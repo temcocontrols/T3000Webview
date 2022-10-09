@@ -119,7 +119,6 @@ import { defineComponent, ref, onMounted, onUnmounted } from "vue";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import { cloneDeep } from "lodash";
-import "yoyoo-ddr-vue3/dist/yoyoo-ddr-vue3.css";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
 

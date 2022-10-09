@@ -73,7 +73,7 @@ module.exports = configure(function (/* ctx */) {
       viteVuePluginOptions: {
         template: {
           compilerOptions: {
-            isCustomElement: (tag) => tag.startsWith("wokwi-"),
+            // isCustomElement: (tag) => tag.startsWith("wokwi-"),
           },
         },
       },
