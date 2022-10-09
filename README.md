@@ -1,6 +1,8 @@
-# Hvac Designer (hvac-designer)
+# T3000 HVAC Drawer
 
-Hvac Designer
+T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings.
+
+This will be used inside T3000 to provide a way to make HVAC drawings for buildings.
 
 ## Install the dependencies
 

@@ -1,9 +1,9 @@
 {
   "name": "hvac-drawer",
-  "version": "0.0.1",
-  "description": "Hvac drawer",
-  "productName": "Hvac Drawer",
-  "author": "Alaa Rihan <alaa.addeen@gmail.com>",
+  "version": "0.1.0",
+  "description": "HVAC drawer",
+  "productName": "HVAC Drawer",
+  "author": "Alaa Rihan <alaa@temcocontrols.com>",
   "private": true,
   "scripts": {
     "lint": "eslint --ext .js,.vue ./",
