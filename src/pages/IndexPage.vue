@@ -9,14 +9,6 @@
           </q-item-section>
         </q-item>
       </q-list>
-      <!-- <q-btn v-for="tool in tools" :key="tool.name" @click="selectTool(tool.name)" class="q-mx-sm" flat round
-        color="primary" :icon="tool.icon" />
-      <q-btn @click="addObject('Fan')" class="q-mx-sm" flat round color="primary" :icon="'img:/fan.svg'" />
-      <q-btn @click="startResize" class="q-mx-sm" flat round color="primary" icon="stop" />
-      <q-btn @click="addLED" class="q-mx-sm" flat round color="primary" icon="highlight" />
-      <q-btn @click="addLCD" class="q-mx-sm" flat round color="primary" icon="aod" />
-      <q-btn @click="addArduino" class="q-mx-sm" flat round color="primary" icon="developer_board" />
-      <q-btn @click="addMotor" class="q-mx-sm" flat round color="primary" icon="settings" /> -->
     </div>
     <div class="viewport">
       <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
@@ -26,13 +18,13 @@
       </vue-selecto>
       <div ref="viewport">
         <vue-moveable ref="movable" v-bind:draggable="true" v-bind:resizable="true" v-bind:rotatable="true"
-          v-bind:target="selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
+          v-bind:target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
           :snapGap="true" :snapDirections="{ top: true, right: true, bottom: true, left: true }" :elementSnapDirections="{
             top: true,
             right: true,
             bottom: true,
             left: true,
-          }" :snapDigit="0" :elementGuidelines="elementGuidelines" :origin="true" :throttleResize="0"
+          }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
           :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
           :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
           @clickGroup="onClickGroup" @drag="onDrag" @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup"
@@ -41,7 +33,7 @@
           @rotateGroupStart="onRotateGroupStart" @rotateGroup="onRotateGroup">
         </vue-moveable>
 
-        <div v-for="item in items" :key="item.id" ref="targets"
+        <div v-for="item in appState.items" :key="item.id" ref="targets"
           :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
           :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick">
           <!-- <div v-if="item.props.title">{{item.props.title}}</div> -->
@@ -80,36 +72,37 @@
         </div>
       </div>
     </div>
-    <div class="item-config flex column" v-if="activeItemIndex || activeItemIndex === 0">
+    <div class="item-config flex column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
       <div class="grid gap-4 grid-cols-2 mb-4">
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="X"
-          v-model.number="items[activeItemIndex].translate[0]" dark filled type="number" />
+          v-model.number="appState.items[appState.activeItemIndex].translate[0]" dark filled type="number" />
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Y"
-          v-model.number="items[activeItemIndex].translate[1]" dark filled type="number" />
+          v-model.number="appState.items[appState.activeItemIndex].translate[1]" dark filled type="number" />
 
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Width"
-          v-model.number="items[activeItemIndex].width" dark filled type="number" />
+          v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Height"
-          v-model.number="items[activeItemIndex].height" dark filled type="number" />
+          v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Rotate"
-          v-model.number="items[activeItemIndex].rotate" dark filled type="number" />
-        <q-input v-if="items[activeItemIndex].props.fontSize !== undefined" input-style="width: 60px" label="Font size"
-          v-model.number="items[activeItemIndex].props.fontSize" dark filled type="number" />
-        <q-input dark filled v-model="items[activeItemIndex].props.color" label="Color"
-          v-if="items[activeItemIndex].props.color !== undefined">
+          v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
+        <q-input v-if="appState.items[appState.activeItemIndex].props.fontSize !== undefined" input-style="width: 60px"
+          label="Font size" v-model.number="appState.items[appState.activeItemIndex].props.fontSize" dark filled
+          type="number" />
+        <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color"
+          v-if="appState.items[appState.activeItemIndex].props.color !== undefined">
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                <q-color v-model="items[activeItemIndex].props.color" />
+                <q-color v-model="appState.items[appState.activeItemIndex].props.color" />
               </q-popup-proxy>
             </q-icon>
           </template>
         </q-input>
       </div>
-      <q-checkbox dark filled v-model="items[activeItemIndex].props.active" class="text-white" label="Active"
-        v-if="items[activeItemIndex].props.active !== undefined" />
-      <q-checkbox dark filled v-model="items[activeItemIndex].props.inAlarm" class="text-white" label="In alarm"
-        v-if="items[activeItemIndex].props.inAlarm !== undefined" />
+      <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.active" class="text-white"
+        label="Active" v-if="appState.items[appState.activeItemIndex].props.active !== undefined" />
+      <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.inAlarm" class="text-white"
+        label="In alarm" v-if="appState.items[appState.activeItemIndex].props.inAlarm !== undefined" />
     </div>
   </q-page>
 </template>
@@ -133,13 +126,8 @@ export default defineComponent({
     const movable = ref(null);
     const selecto = ref(null);
     const viewport = ref(null);
-    const items = ref([]);
     const targets = ref([]);
-    const selectedTargets = ref([]);
-    const elementGuidelines = ref([]);
-    const itemsCount = ref(0);
     const selectedTool = ref("Pointer");
-    const activeItemIndex = ref(null);
     const tools = [
       {
         name: "Pointer",
@@ -189,7 +177,14 @@ export default defineComponent({
       },
     ];
     let panzoomInstance = null;
-    const viewportTransform = ref({ x: 0, y: 0, scale: 1 });
+    const appState = ref({
+      items: [],
+      selectedTargets: [],
+      elementGuidelines: [],
+      itemsCount: 0,
+      activeItemIndex: null,
+      viewportTransform: { x: 0, y: 0, scale: 1 }
+    })
     onMounted(() => {
       panzoomInstance = panzoom(viewport.value, {
         maxZoom: 4,
@@ -206,11 +201,11 @@ export default defineComponent({
         },
       });
       panzoomInstance.on("transform", function (e) {
-        viewportTransform.value = e.getTransform();
+        appState.value.viewportTransform = e.getTransform();
       });
       const lines = document.querySelectorAll(".movable-item");
       Array.from(lines).forEach(function (el) {
-        elementGuidelines.value.push(el);
+        appState.value.elementGuidelines.push(el);
       });
     });
     onUnmounted(() => {
@@ -222,44 +217,44 @@ export default defineComponent({
       selecto.value.clickTarget(e.inputEvent, e.inputTarget);
     }
     function onDrag(e) {
-      const item = items.value.find(
+      const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
       );
       item.translate = e.beforeTranslate;
     }
     function onDragGroupStart(e) {
       e.events.forEach((ev, i) => {
-        const itemIndex = items.value.findIndex(
+        const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
         );
-        ev.set(items.value[itemIndex].translate);
+        ev.set(appState.value.items[itemIndex].translate);
       });
     }
     function onDragGroup(e) {
       e.events.forEach((ev, i) => {
-        const itemIndex = items.value.findIndex(
+        const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
         );
-        items.value[itemIndex].translate = ev.beforeTranslate;
+        appState.value.items[itemIndex].translate = ev.beforeTranslate;
       });
     }
     function onDragStart(e) {
       const target = e.inputEvent.target;
       if (
         movable.value.isMoveableElement(target) ||
-        selectedTargets.value.some((t) => t === target || t.contains(target))
+        appState.value.selectedTargets.some((t) => t === target || t.contains(target))
       ) {
         e.stop();
       }
     }
     function onSelectEnd(e) {
-      selectedTargets.value = e.selected;
-      if (selectedTargets.value.length === 1) {
-        activeItemIndex.value = items.value.findIndex(
-          (item) => `movable-item-${item.id}` === selectedTargets.value[0].id
+      appState.value.selectedTargets = e.selected;
+      if (appState.value.selectedTargets.length === 1) {
+        appState.value.activeItemIndex = appState.value.items.findIndex(
+          (item) => `movable-item-${item.id}` === appState.value.selectedTargets[0].id
         );
       } else {
-        activeItemIndex.value = null;
+        appState.value.activeItemIndex = null;
       }
 
       if (e.isDragStart) {
@@ -272,18 +267,18 @@ export default defineComponent({
     }
 
     function onResizeStart(e) {
-      const itemIndex = items.value.findIndex(
+      const itemIndex = appState.value.items.findIndex(
         (item) => `movable-item-${item.id}` === e.target.id
       );
       e.setOrigin(["%", "%"]);
-      e.dragStart && e.dragStart.set(items.value[itemIndex].translate);
+      e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
     }
 
     function onResize(e) {
-      // items.value[itemIndex].width = e.width
-      // items.value[itemIndex].height = e.height
-      // items.value[itemIndex].translate = e.drag.beforeTranslate;
-      const item = items.value.find(
+      // appState.value.items[itemIndex].width = e.width
+      // appState.value.items[itemIndex].height = e.height
+      // appState.value.items[itemIndex].translate = e.drag.beforeTranslate;
+      const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
       );
       e.target.style.width = `${e.width}px`;
@@ -291,16 +286,16 @@ export default defineComponent({
       e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
     }
     function onResizeEnd(e) {
-      const itemIndex = items.value.findIndex(
+      const itemIndex = appState.value.items.findIndex(
         (item) => `movable-item-${item.id}` === e.lastEvent.target.id
       );
-      items.value[itemIndex].width = e.lastEvent.width;
-      items.value[itemIndex].height = e.lastEvent.height;
-      items.value[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+      appState.value.items[itemIndex].width = e.lastEvent.width;
+      appState.value.items[itemIndex].height = e.lastEvent.height;
+      appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
     }
     function onRotate(e) {
       // e.target.style.transform = e.drag.transform;
-      const item = items.value.find(
+      const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
       );
       item.rotate = e.rotate;
@@ -308,12 +303,12 @@ export default defineComponent({
 
     function onResizeGroupStart(e) {
       e.events.forEach((ev, i) => {
-        ev.dragStart && ev.dragStart.set(items.value[i].translate);
+        ev.dragStart && ev.dragStart.set(appState.value.items[i].translate);
       });
     }
     function onResizeGroup(e) {
       e.events.forEach((ev, i) => {
-        const item = items.value.find(
+        const item = appState.value.items.find(
           (item) => `movable-item-${item.id}` === ev.target.id
         );
         ev.target.style.width = `${ev.width}px`;
@@ -323,42 +318,42 @@ export default defineComponent({
     }
     function onResizeGroupEnd(e) {
       e.events.forEach((ev) => {
-        const itemIndex = items.value.findIndex(
+        const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.lastEvent.target.id
         );
-        items.value[itemIndex].width = ev.lastEvent.width;
-        items.value[itemIndex].height = ev.lastEvent.height;
-        items.value[itemIndex].translate = ev.lastEvent.drag.beforeTranslate;
+        appState.value.items[itemIndex].width = ev.lastEvent.width;
+        appState.value.items[itemIndex].height = ev.lastEvent.height;
+        appState.value.items[itemIndex].translate = ev.lastEvent.drag.beforeTranslate;
       });
     }
 
     function onRotateGroupStart(e) {
       e.events.forEach((ev) => {
-        const itemIndex = items.value.findIndex(
+        const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
         );
-        ev.set(items.value[itemIndex].rotate);
-        ev.dragStart && ev.dragStart.set(items.value[itemIndex].translate);
+        ev.set(appState.value.items[itemIndex].rotate);
+        ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
       });
     }
     function onRotateGroup(e) {
       e.events.forEach((ev, i) => {
-        const itemIndex = items.value.findIndex(
+        const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
         );
-        items.value[itemIndex].translate = ev.drag.beforeTranslate;
-        items.value[itemIndex].rotate = ev.rotate;
+        appState.value.items[itemIndex].translate = ev.drag.beforeTranslate;
+        appState.value.items[itemIndex].rotate = ev.rotate;
       });
     }
 
     function addObject(item) {
-      itemsCount.value++;
-      item.id = itemsCount.value;
-      items.value.push(item);
+      appState.value.itemsCount++;
+      item.id = appState.value.itemsCount;
+      appState.value.items.push(item);
       const lines = document.querySelectorAll(".movable-item");
-      elementGuidelines.value = [];
+      appState.value.elementGuidelines = [];
       Array.from(lines).forEach(function (el) {
-        elementGuidelines.value.push(el);
+        appState.value.elementGuidelines.push(el);
       });
       return item;
     }
@@ -395,13 +390,13 @@ export default defineComponent({
         e.rect.height < 20
       )
         return;
-      const scalPercentage = 1 / viewportTransform.value.scale;
+      const scalPercentage = 1 / appState.value.viewportTransform.scale;
       const item = addObject({
         active: false,
         type: selectedTool.value,
         translate: [
-          (e.rect.left - 56 - viewportTransform.value.x) * scalPercentage,
-          (e.rect.top - viewportTransform.value.y) * scalPercentage,
+          (e.rect.left - 56 - appState.value.viewportTransform.x) * scalPercentage,
+          (e.rect.top - appState.value.viewportTransform.y) * scalPercentage,
         ],
         width: e.rect.width * scalPercentage,
         height: e.rect.height * scalPercentage,
@@ -415,8 +410,8 @@ export default defineComponent({
       // selectedTool.value = "Pointer"
       setTimeout(() => {
         const target = document.querySelector(`#movable-item-${item.id}`);
-        selectedTargets.value = [target];
-        activeItemIndex.value = items.value.findIndex((i) => i.id === item.id);
+        appState.value.selectedTargets = [target];
+        appState.value.activeItemIndex = appState.value.items.findIndex((i) => i.id === item.id);
       }, 10);
     }
 
@@ -425,10 +420,10 @@ export default defineComponent({
     }
 
     function refreshSelecto() {
-      const targetsCache = cloneDeep(selectedTargets.value);
-      selectedTargets.value = [];
+      const targetsCache = cloneDeep(appState.value.selectedTargets);
+      appState.value.selectedTargets = [];
       setTimeout(() => {
-        selectedTargets.value = targetsCache;
+        appState.value.selectedTargets = targetsCache;
       }, 10);
     }
 
@@ -465,23 +460,23 @@ export default defineComponent({
     }
 
     function removeObject(item) {
-      const index = items.value.findIndex((i) => i.id === item.id);
-      activeItemIndex.value = null;
-      items.value.splice(index, 1);
+      const index = appState.value.items.findIndex((i) => i.id === item.id);
+      appState.value.activeItemIndex = null;
+      appState.value.items.splice(index, 1);
 
-      selectedTargets.value = [];
+      appState.value.selectedTargets = [];
     }
     function duplicateObject(i) {
-      activeItemIndex.value = null;
+      appState.value.activeItemIndex = null;
       const dubItem = cloneDeep(i);
       dubItem.translate[0] = dubItem.translate[0] + 10;
       dubItem.translate[1] = dubItem.translate[1] + 10;
       const item = addObject(dubItem);
-      selectedTargets.value = [];
+      appState.value.selectedTargets = [];
       setTimeout(() => {
         const target = document.querySelector(`#movable-item-${item.id}`);
-        selectedTargets.value = [target];
-        activeItemIndex.value = items.value.findIndex((i) => i.id === item.id);
+        appState.value.selectedTargets = [target];
+        appState.value.activeItemIndex = appState.value.items.findIndex((i) => i.id === item.id);
       }, 10);
     }
 
@@ -502,7 +497,7 @@ export default defineComponent({
     return {
       movable,
       selecto,
-      items,
+      appState,
       addObject,
       viewport,
       onClickGroup,
@@ -511,10 +506,7 @@ export default defineComponent({
       onDragStart,
       onDragGroupStart,
       onSelectEnd,
-      elementGuidelines,
       targets,
-      selectedTargets,
-      activeItemIndex,
       onResize,
       onResizeEnd,
       onRotate,
