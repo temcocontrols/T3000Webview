@@ -4,19 +4,6 @@
   <template v-if="item.type === 'Fan'">
     <fan class="movable-item fan" v-bind="item.props" />
   </template>
-  <template v-else-if="item.type === 'LED'">
-    <wokwi-led class="movable-item led" :color="item.props.color" label="" lightcolor=""></wokwi-led>
-  </template>
-  <template v-else-if="item.type === 'LCD'">
-    <wokwi-lcd1602 class="movable-item lcd" cursorx="0" cursory="0" text="Hello, World!" :color="item.props.color">
-    </wokwi-lcd1602>
-  </template>
-  <template v-else-if="item.type === 'Arduino'">
-    <wokwi-arduino-uno class="movable-item arduino"></wokwi-arduino-uno>
-  </template>
-  <template v-else-if="item.type === 'Motor'">
-    <wokwi-stepper-motor class="movable-item stepper-motor"></wokwi-stepper-motor>
-  </template>
   <template v-else-if="item.type === 'Duct'">
     <duct class="movable-item duct" />
   </template>
