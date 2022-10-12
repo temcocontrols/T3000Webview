@@ -17,7 +17,7 @@ jobs:
       id: zip
       uses: Roslovets-Inc/zip-npm-files@v1
       with:
-        files: ../spa/*
+        files: ./*
         cwd: "dist/spa/"
     - name: Upload release asset
       uses: actions/upload-release-asset@v1
