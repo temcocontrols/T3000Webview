@@ -48,7 +48,7 @@ See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-
 
 1- Build the package as you see above
 
-2- get the result files from `dist/spa/` and serve theme using a http lib like `[cpp-httplib](https://github.com/yhirose/cpp-httplib)`, as you see in this C++ example:
+2- get the result files from `dist/spa/` and serve them using a http lib like [cpp-httplib](https://github.com/yhirose/cpp-httplib), as you see in this C++ example:
 
 https://github.com/yhirose/cpp-httplib/blob/master/example/server.cc
 
