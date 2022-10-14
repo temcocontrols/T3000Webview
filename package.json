@@ -8,7 +8,8 @@
   "scripts": {
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
-    "build": "quasar build"
+    "build": "quasar build",
+    "dev": "quasar dev"
   },
   "dependencies": {
     "@braks/revue-draggable": "^0.4.2",
