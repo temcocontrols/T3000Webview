@@ -70,3 +70,5 @@ Here is an example how we used it to send the T3000 input value changes to this 
     String input_data = L"{\"SetInput\":{\"id\":\"IN1\",\"value\":\"On\"}}");
     webview->PostWebMessageAsJson(input_data);
 As you see we sent the data as a Json string, in this example we sent the input id and input value, this we make the drawer object that has this input Id to change the active value to true ( If it was a fan then this fan will start running )
+
+To learn more, check [Interop of native-side and web-side code](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/communicate-btwn-web-native)
