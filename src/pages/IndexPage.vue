@@ -85,11 +85,15 @@
           v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
         <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Rotate"
           v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
-        <q-input v-if="appState.items[appState.activeItemIndex].props.fontSize !== undefined" input-style="width: 60px"
-          label="Font size" v-model.number="appState.items[appState.activeItemIndex].props.fontSize" dark filled
-          type="number" />
-        <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color"
-          v-if="appState.items[appState.activeItemIndex].props.color !== undefined">
+        <q-input v-if="
+          appState.items[appState.activeItemIndex].props.fontSize !==
+          undefined
+        " input-style="width: 60px" label="Font size" v-model.number="
+          appState.items[appState.activeItemIndex].props.fontSize
+        " dark filled type="number" />
+        <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color" v-if="
+          appState.items[appState.activeItemIndex].props.color !== undefined
+        ">
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -100,9 +104,13 @@
         </q-input>
       </div>
       <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.active" class="text-white"
-        label="Active" v-if="appState.items[appState.activeItemIndex].props.active !== undefined" />
+        label="Active" v-if="
+          appState.items[appState.activeItemIndex].props.active !== undefined
+        " />
       <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.inAlarm" class="text-white"
-        label="In alarm" v-if="appState.items[appState.activeItemIndex].props.inAlarm !== undefined" />
+        label="In alarm" v-if="
+          appState.items[appState.activeItemIndex].props.inAlarm !== undefined
+        " />
     </div>
   </q-page>
 </template>
@@ -183,8 +191,8 @@ export default defineComponent({
       elementGuidelines: [],
       itemsCount: 0,
       activeItemIndex: null,
-      viewportTransform: { x: 0, y: 0, scale: 1 }
-    })
+      viewportTransform: { x: 0, y: 0, scale: 1 },
+    });
     onMounted(() => {
       panzoomInstance = panzoom(viewport.value, {
         maxZoom: 4,
@@ -211,6 +219,20 @@ export default defineComponent({
     onUnmounted(() => {
       if (!panzoomInstance) return;
       panzoomInstance.dispose();
+    });
+
+    window.chrome?.webview?.addEventListener("webview_message", (arg) => {
+      if ("SetInput" in arg.data) {
+        console.log(arg.data.SetInput);
+        const itemIndex = items.value.findIndex(
+          (i) => i.inputId === arg.data.SetInput.id
+        );
+        if (itemIndex && items.value[itemIndex]?.props) {
+          arg.data.SetInput.value === "On"
+            ? items.value[itemIndex].props.active === true
+            : items.value[itemIndex].props.active === false;
+        }
+      }
     });
 
     function onClickGroup(e) {
@@ -242,7 +264,9 @@ export default defineComponent({
       const target = e.inputEvent.target;
       if (
         movable.value.isMoveableElement(target) ||
-        appState.value.selectedTargets.some((t) => t === target || t.contains(target))
+        appState.value.selectedTargets.some(
+          (t) => t === target || t.contains(target)
+        )
       ) {
         e.stop();
       }
@@ -251,7 +275,8 @@ export default defineComponent({
       appState.value.selectedTargets = e.selected;
       if (appState.value.selectedTargets.length === 1) {
         appState.value.activeItemIndex = appState.value.items.findIndex(
-          (item) => `movable-item-${item.id}` === appState.value.selectedTargets[0].id
+          (item) =>
+            `movable-item-${item.id}` === appState.value.selectedTargets[0].id
         );
       } else {
         appState.value.activeItemIndex = null;
@@ -291,7 +316,8 @@ export default defineComponent({
       );
       appState.value.items[itemIndex].width = e.lastEvent.width;
       appState.value.items[itemIndex].height = e.lastEvent.height;
-      appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+      appState.value.items[itemIndex].translate =
+        e.lastEvent.drag.beforeTranslate;
     }
     function onRotate(e) {
       // e.target.style.transform = e.drag.transform;
@@ -323,7 +349,8 @@ export default defineComponent({
         );
         appState.value.items[itemIndex].width = ev.lastEvent.width;
         appState.value.items[itemIndex].height = ev.lastEvent.height;
-        appState.value.items[itemIndex].translate = ev.lastEvent.drag.beforeTranslate;
+        appState.value.items[itemIndex].translate =
+          ev.lastEvent.drag.beforeTranslate;
       });
     }
 
@@ -333,7 +360,8 @@ export default defineComponent({
           (item) => `movable-item-${item.id}` === ev.target.id
         );
         ev.set(appState.value.items[itemIndex].rotate);
-        ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
+        ev.dragStart &&
+          ev.dragStart.set(appState.value.items[itemIndex].translate);
       });
     }
     function onRotateGroup(e) {
@@ -395,7 +423,8 @@ export default defineComponent({
         active: false,
         type: selectedTool.value,
         translate: [
-          (e.rect.left - 56 - appState.value.viewportTransform.x) * scalPercentage,
+          (e.rect.left - 56 - appState.value.viewportTransform.x) *
+          scalPercentage,
           (e.rect.top - appState.value.viewportTransform.y) * scalPercentage,
         ],
         width: e.rect.width * scalPercentage,
@@ -406,12 +435,15 @@ export default defineComponent({
         props:
           tools.find((tool) => tool.name === selectedTool.value)?.props || {},
         zindex: 1,
+        inputId: null,
       });
       // selectedTool.value = "Pointer"
       setTimeout(() => {
         const target = document.querySelector(`#movable-item-${item.id}`);
         appState.value.selectedTargets = [target];
-        appState.value.activeItemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+        appState.value.activeItemIndex = appState.value.items.findIndex(
+          (i) => i.id === item.id
+        );
       }, 10);
     }
 
@@ -476,7 +508,9 @@ export default defineComponent({
       setTimeout(() => {
         const target = document.querySelector(`#movable-item-${item.id}`);
         appState.value.selectedTargets = [target];
-        appState.value.activeItemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+        appState.value.activeItemIndex = appState.value.items.findIndex(
+          (i) => i.id === item.id
+        );
       }, 10);
     }
 
