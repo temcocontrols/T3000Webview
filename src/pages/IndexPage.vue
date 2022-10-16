@@ -111,6 +111,8 @@
         label="In alarm" v-if="
           appState.items[appState.activeItemIndex].props.inAlarm !== undefined
         " />
+      <q-input input-style="width: 60px" label="Input ID" v-model="appState.items[appState.activeItemIndex].inputId"
+        dark filled class="pt-2" />
     </div>
   </q-page>
 </template>
@@ -578,6 +580,7 @@ export default defineComponent({
 
 .item-config {
   width: 250px;
+  padding: 10px;
 }
 
 .box {
