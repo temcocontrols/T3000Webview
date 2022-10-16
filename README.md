@@ -57,4 +57,8 @@ https://github.com/yhirose/cpp-httplib/blob/master/example/server.cc
 https://github.com/MicrosoftEdge/WebView2Samples/tree/main/GettingStartedGuides/Win32_GettingStarted
 
 Just replace "https://bing.com" with your url from step #2 and run the example. that's it, you have the HVAC drawer running in the webview.
+> Don't forget to delete these three lines from the example to allow non-ssl http urls:
+> if (source.substr(0, 5) != L"https") {
+>		args->put_Cancel(true);
+> }
 
