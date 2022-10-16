@@ -221,7 +221,7 @@ export default defineComponent({
       panzoomInstance.dispose();
     });
 
-    window.chrome?.webview?.addEventListener("webview_message", (arg) => {
+    window.chrome?.webview?.addEventListener("message", (arg) => {
       if ("SetInput" in arg.data) {
         console.log(arg.data.SetInput);
         const itemIndex = items.value.findIndex(
