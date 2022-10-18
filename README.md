@@ -50,7 +50,7 @@ See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-
 
 2- get the result files from `dist/spa/` and serve them using a http lib like [cpp-httplib](https://github.com/yhirose/cpp-httplib), as you see in this C++ example:
 
-https://github.com/yhirose/cpp-httplib/blob/master/example/server.cc
+https://github.com/yhirose/cpp-httplib/blob/master/example/simplesvr.cc
 
 3- Use the url you got from the previous step in webview2 like this example from Microsoft:
 
