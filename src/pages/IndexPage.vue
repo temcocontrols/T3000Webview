@@ -111,8 +111,14 @@
         label="In alarm" v-if="
           appState.items[appState.activeItemIndex].props.inAlarm !== undefined
         " />
-      <q-input input-style="width: 60px" label="Input ID" v-model="appState.items[appState.activeItemIndex].inputId"
-        dark filled class="pt-2" />
+      <q-input input-style="width: 60px" label="Panel ID"
+        v-model.number="appState.items[appState.activeItemIndex].panelId" dark filled class="pt-2" @update:model-value="
+          getInputFromWebViewHost(appState.items[appState.activeItemIndex])
+        " />
+      <q-input input-style="width: 60px" label="Input ID"
+        v-model.number="appState.items[appState.activeItemIndex].inputId" dark filled class="pt-2" @update:model-value="
+          getInputFromWebViewHost(appState.items[appState.activeItemIndex])
+        " />
     </div>
   </q-page>
 </template>
@@ -217,6 +223,10 @@ export default defineComponent({
       Array.from(lines).forEach(function (el) {
         appState.value.elementGuidelines.push(el);
       });
+
+      window.chrome?.webview?.postMessage({
+        action: 1,
+      });
     });
     onUnmounted(() => {
       if (!panzoomInstance) return;
@@ -224,15 +234,21 @@ export default defineComponent({
     });
 
     window.chrome?.webview?.addEventListener("message", (arg) => {
-      if ("SetInput" in arg.data) {
-        console.log(arg.data.SetInput);
-        const itemIndex = items.value.findIndex(
-          (i) => i.inputId === arg.data.SetInput.id
-        );
-        if (itemIndex && items.value[itemIndex]?.props) {
-          arg.data.SetInput.value === "On"
-            ? items.value[itemIndex].props.active === true
-            : items.value[itemIndex].props.active === false;
+      alert(`Recieved web message action: ${arg.data?.action}`);
+      console.log("Recieved web message", arg.data);
+      if ("action" in arg.data) {
+        if ((arg.data.action = "setInput")) {
+          const itemIndex = items.value.findIndex(
+            (i) =>
+              i.inputId === arg.data.input.id && i.panelId === arg.data.panelId
+          );
+          if (itemIndex && items.value[itemIndex]?.props) {
+            arg.data.input.value === "On"
+              ? items.value[itemIndex].props.active === true
+              : items.value[itemIndex].props.active === false;
+          }
+        } else if ((arg.data.action = "setInitialData")) {
+          appState.value = arg.data.data
         }
       }
     });
@@ -437,6 +453,7 @@ export default defineComponent({
         props:
           tools.find((tool) => tool.name === selectedTool.value)?.props || {},
         zindex: 1,
+        panelId: null,
         inputId: null,
       });
       // selectedTool.value = "Pointer"
@@ -530,6 +547,16 @@ export default defineComponent({
       return !e.inputEvent.altKey;
     }
 
+    function getInputFromWebViewHost(item) {
+      if (item.panelId && item.inputId) {
+        window.chrome?.webview?.postMessage({
+          action: 0,
+          panelId: item.panelId,
+          inputId: item.inputId,
+        });
+      }
+    }
+
     return {
       movable,
       selecto,
@@ -566,6 +593,7 @@ export default defineComponent({
       objectPropChanged,
       selectoDragCondition,
       duplicateObject,
+      getInputFromWebViewHost,
     };
   },
 });
