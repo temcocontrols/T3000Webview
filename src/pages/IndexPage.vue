@@ -41,9 +41,7 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-          <q-separator dark vertical />
           <q-btn no-caps stretch flat label="Edit" />
-          <q-separator dark vertical />
           <q-btn no-caps stretch flat label="Object" />
         </q-toolbar>
         <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
@@ -279,14 +277,14 @@ export default defineComponent({
       console.log("Recieved webview message", arg.data);
       if ("action" in arg.data) {
         if ((arg.data.action = "setInput")) {
-          const itemIndex = items.value.findIndex(
+          const itemIndex = appState.value.items.findIndex(
             (i) =>
-              i.inputId === arg.data.input.id && i.panelId === arg.data.panelId
+              i.inputId === arg.data.data.inputId && i.panelId === arg.data.panelId
           );
-          if (itemIndex && items.value[itemIndex]?.props) {
-            arg.data.input.value === "On"
-              ? items.value[itemIndex].props.active === true
-              : items.value[itemIndex].props.active === false;
+          if (itemIndex && appState.value.items[itemIndex]?.props) {
+            arg.data.data.value === "On"
+              ? appState.value.items[itemIndex].props.active === true
+              : appState.value.items[itemIndex].props.active === false;
           }
         } else if ((arg.data.action = "setInitialData")) {
           appState.value = arg.data.data
