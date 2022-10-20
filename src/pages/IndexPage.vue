@@ -276,8 +276,7 @@ export default defineComponent({
     });
 
     window.chrome?.webview?.addEventListener("message", (arg) => {
-      alert(`Recieved web message action: ${arg.data?.action}`);
-      console.log("Recieved web message", arg.data);
+      console.log("Recieved webview message", arg.data);
       if ("action" in arg.data) {
         if ((arg.data.action = "setInput")) {
           const itemIndex = items.value.findIndex(
