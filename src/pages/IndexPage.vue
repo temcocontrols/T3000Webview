@@ -22,9 +22,6 @@
                 <q-item-section>
                   <q-item-label>New Project</q-item-label>
                 </q-item-section>
-                <q-item-section side>
-                  <q-chip>Ctrl + N</q-chip>
-                </q-item-section>
               </q-item>
               <q-separator inset spaced />
               <q-item dense clickable v-close-popup @click="save" tabindex="0">
@@ -632,6 +629,11 @@ export default defineComponent({
       if (["up", "down", "left", "right"].includes(e.key)) {
         refreshSelecto();
       }
+    });
+
+    keycon.keydown(["ctrl", "s"], (e) => {
+      e.inputEvent.preventDefault();
+      save()
     });
 
     return {
