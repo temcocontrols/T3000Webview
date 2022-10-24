@@ -5,6 +5,9 @@
         <q-list class="rounded-borders text-primary">
           <q-item v-for="tool in tools" :key="tool.name" @click="selectTool(tool.name)" clickable v-ripple
             :active="selectedTool === tool.name" active-class="active-tool">
+            <q-tooltip anchor="center right" self="center left">
+              {{ tool.label }}
+            </q-tooltip>
             <q-item-section>
               <q-icon :name="tool.icon" size="sm" />
             </q-item-section>
@@ -192,48 +195,58 @@ export default defineComponent({
     const tools = [
       {
         name: "Pointer",
+        text: "Select",
         icon: "img:/cursor.svg",
       },
       {
         name: "Text",
+        label: "Text",
         icon: "title",
         props: { content: "Text", color: "black", fontSize: 16 },
       },
       {
         name: "Duct",
+        label: "Duct",
         icon: "img:/duct.svg",
       },
       {
         name: "Fan",
+        label: "Fan",
         icon: "img:/fan.svg",
         props: { active: false, inAlarm: false },
       },
       {
         name: "CoolingCoil",
+        label: "Cooling Coil",
         icon: "img:/cooling-coil.svg",
         props: { active: false, inAlarm: false },
       },
       {
         name: "HeatingCoil",
+        label: "Heating Coil",
         icon: "img:/heating-coil.svg",
         props: { active: false, inAlarm: false },
       },
       {
         name: "Filter",
+        label: "Filter",
         icon: "img:/filter.svg",
       },
       {
         name: "Humidifier",
+        label: "Humidifier",
         icon: "img:/humidifier.svg",
         props: { active: false, inAlarm: false },
       },
       {
         name: "Damper",
+        label: "Damper",
         icon: "img:/damper.svg",
         props: { inAlarm: false },
       },
       {
         name: "Temperature",
+        label: "Temperature",
         icon: "img:/temperature.svg",
       },
     ];
