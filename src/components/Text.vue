@@ -28,7 +28,6 @@ export default defineComponent({
     const editable = ref(false)
     const editableElement = ref(null)
 
-
     onMounted(() => {
       editableElement.value.focus();
     })
@@ -39,3 +38,11 @@ export default defineComponent({
   }
 })
 </script>
+
+<style scoped>
+div {
+  width: 100%;
+  height: 100%;
+  margin-top: 15px;
+}
+</style>
