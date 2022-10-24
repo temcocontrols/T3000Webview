@@ -1,6 +1,5 @@
 <template>
   <q-page>
-
     <div class="flex no-wrap items-start justify-between">
       <div class="tools flex column">
         <q-list class="rounded-borders text-primary">
@@ -52,8 +51,12 @@
         <div ref="viewport">
           <vue-moveable ref="movable" v-bind:draggable="true" v-bind:resizable="true" v-bind:rotatable="true"
             v-bind:target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
-            :snapGap="true" :snapDirections="{ top: true, right: true, bottom: true, left: true }"
-            :elementSnapDirections="{
+            :snapGap="true" :snapDirections="{
+              top: true,
+              right: true,
+              bottom: true,
+              left: true,
+            }" :elementSnapDirections="{
               top: true,
               right: true,
               bottom: true,
@@ -108,10 +111,12 @@
       </div>
       <div class="item-config flex column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
         <div class="grid gap-4 grid-cols-2 mb-4">
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="X"
-            v-model.number="appState.items[appState.activeItemIndex].translate[0]" dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Y"
-            v-model.number="appState.items[appState.activeItemIndex].translate[1]" dark filled type="number" />
+          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="X" v-model.number="
+            appState.items[appState.activeItemIndex].translate[0]
+          " dark filled type="number" />
+          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Y" v-model.number="
+            appState.items[appState.activeItemIndex].translate[1]
+          " dark filled type="number" />
 
           <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Width"
             v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
@@ -131,7 +136,9 @@
             <template v-slot:append>
               <q-icon name="colorize" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-color v-model="appState.items[appState.activeItemIndex].props.color" />
+                  <q-color v-model="
+                    appState.items[appState.activeItemIndex].props.color
+                  " />
                 </q-popup-proxy>
               </q-icon>
             </template>
@@ -162,9 +169,10 @@
 
 <script>
 import { defineComponent, ref, onMounted, onUnmounted, toRaw } from "vue";
-import { useQuasar } from 'quasar'
+import { useQuasar } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
+import KeyController, { getCombi, getKey } from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
@@ -177,7 +185,8 @@ export default defineComponent({
     ObjectType,
   },
   setup() {
-    const $q = useQuasar()
+    const keycon = new KeyController();
+    const $q = useQuasar();
     const movable = ref(null);
     const selecto = ref(null);
     const viewport = ref(null);
@@ -239,7 +248,7 @@ export default defineComponent({
       itemsCount: 0,
       activeItemIndex: null,
       viewportTransform: { x: 0, y: 0, scale: 1 },
-    }
+    };
     const appState = ref(cloneDeep(emptyProject));
     onMounted(() => {
       panzoomInstance = panzoom(viewport.value, {
@@ -279,7 +288,8 @@ export default defineComponent({
         if ((arg.data.action = "setInput")) {
           const itemIndex = appState.value.items.findIndex(
             (i) =>
-              i.inputId === arg.data.data.inputId && i.panelId === arg.data.panelId
+              i.inputId === arg.data.data.inputId &&
+              i.panelId === arg.data.panelId
           );
           if (itemIndex && appState.value.items[itemIndex]?.props) {
             arg.data.data.value === "On"
@@ -287,7 +297,7 @@ export default defineComponent({
               : appState.value.items[itemIndex].props.active === false;
           }
         } else if ((arg.data.action = "setInitialData")) {
-          appState.value = arg.data.data
+          appState.value = arg.data.data;
         }
       }
     });
@@ -443,35 +453,10 @@ export default defineComponent({
       return item;
     }
 
-    /* function startResize() {
-      // const requester = movable.value.request("resizable", { offsetWidth: 100, offsetHeight: 100 }, true);
-      // const movableClass = movable.value.getManager();
-      // const emitter = movableClass._emitter
-      // console.log(requester)
-      // movable.value.dragStart()
-      var targetNode = document.querySelector("div[data-direction='se']");
-      console.log(targetNode)
-      if (targetNode) {
-        //--- Simulate a natural mouse-click sequence.
-        // triggerMouseEvent (targetNode, "mouseover");
-        triggerMouseEvent(targetNode, "mousedown");
-        //triggerMouseEvent (targetNode, "mouseup");
-        //triggerMouseEvent (targetNode, "click");
-      }
-      else
-        console.log("*** Target node not found!");
-    } */
-
-    /* function triggerMouseEvent(node, eventType) {
-      var clickEvent = document.createEvent('MouseEvents');
-      clickEvent.initEvent(eventType, true, true);
-      node.dispatchEvent(clickEvent);
-    } */
-
     const viewportMargins = {
       top: 36,
-      left: 56
-    }
+      left: 56,
+    };
 
     function onSelectoDragEnd(e) {
       if (
@@ -485,9 +470,14 @@ export default defineComponent({
         active: false,
         type: selectedTool.value,
         translate: [
-          (e.rect.left - viewportMargins.left - appState.value.viewportTransform.x) *
+          (e.rect.left -
+            viewportMargins.left -
+            appState.value.viewportTransform.x) *
           scalPercentage,
-          (e.rect.top - viewportMargins.top - appState.value.viewportTransform.y) * scalPercentage,
+          (e.rect.top -
+            viewportMargins.top -
+            appState.value.viewportTransform.y) *
+          scalPercentage,
         ],
         width: e.rect.width * scalPercentage,
         height: e.rect.height * scalPercentage,
@@ -602,28 +592,47 @@ export default defineComponent({
     }
 
     function save() {
-      window.chrome?.webview?.postMessage({ action: 2, data: toRaw(appState.value) });
+      window.chrome?.webview?.postMessage({
+        action: 2,
+        data: toRaw(appState.value),
+      });
     }
 
     function newProject() {
       if (appState.value.items?.length > 0) {
         $q.dialog({
           dark: true,
-          title: 'Do you want to clear the drawing?',
-          message: 'This will also erase your undo history',
+          title: "Do you want to clear the drawing?",
+          message: "This will also erase your undo history",
           cancel: true,
-          persistent: true
-        }).onOk(() => {
-          appState.value = cloneDeep(emptyProject)
-          refreshSelecto()
-        }).onCancel(() => {
-
+          persistent: true,
         })
-        return
+          .onOk(() => {
+            appState.value = cloneDeep(emptyProject);
+            refreshSelecto();
+          })
+          .onCancel(() => { });
+        return;
       }
-      appState.value = cloneDeep(emptyProject)
-      refreshSelecto()
+      appState.value = cloneDeep(emptyProject);
+      refreshSelecto();
     }
+
+    keycon.keydown((e) => {
+      if (!appState.value.selectedTargets.length) return;
+      if (e.key === "up") {
+        movable.value.request("draggable", { deltaX: 0, deltaY: -5 }, true);
+      } else if (e.key === "down") {
+        movable.value.request("draggable", { deltaX: 0, deltaY: 5 }, true);
+      } else if (e.key === "left") {
+        movable.value.request("draggable", { deltaX: -5, deltaY: 0 }, true);
+      } else if (e.key === "right") {
+        movable.value.request("draggable", { deltaX: 5, deltaY: 0 }, true);
+      }
+      if (["up", "down", "left", "right"].includes(e.key)) {
+        refreshSelecto();
+      }
+    });
 
     return {
       movable,
@@ -663,7 +672,7 @@ export default defineComponent({
       duplicateObject,
       getInputFromWebViewHost,
       newProject,
-      save
+      save,
     };
   },
 });
@@ -692,7 +701,6 @@ export default defineComponent({
 
 .q-toolbar {
   min-height: 35px;
-  ;
 }
 
 .box {
