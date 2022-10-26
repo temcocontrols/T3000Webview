@@ -301,8 +301,9 @@ export default defineComponent({
               i.inputId === arg.data.inputId &&
               i.panelId === arg.data.panelId
           );
-          if (itemIndex !== -1 && appState.value.items[itemIndex]?.props) {
-            if (arg.data.data.digital_analog === 0) {
+          if (itemIndex !== -1) {
+            appState.value.items[itemIndex].title = arg.data.data.desc
+            if (appState.value.items[itemIndex]?.props && arg.data.data.digital_analog === 0) {
               if (arg.data.data.control === 1) {
                 appState.value.items[itemIndex].props.active = true
               } else {
@@ -483,6 +484,7 @@ export default defineComponent({
         return;
       const scalPercentage = 1 / appState.value.viewportTransform.scale;
       const item = addObject({
+        title: null,
         active: false,
         type: selectedTool.value,
         translate: [

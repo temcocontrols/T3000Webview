@@ -1,33 +1,34 @@
 
 
 <template>
-  <template v-if="item.type === 'Fan'">
+  <div class="object-title" v-if="item.title">{{ item.title }}</div>
+  <div v-if="item.type === 'Fan'">
     <fan class="movable-item fan" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Duct'">
+  </div>
+  <div v-else-if="item.type === 'Duct'">
     <duct class="movable-item duct" />
-  </template>
-  <template v-else-if="item.type === 'CoolingCoil'">
+  </div>
+  <div v-else-if="item.type === 'CoolingCoil'">
     <cooling-coil class="movable-item cooling-coil" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'HeatingCoil'">
+  </div>
+  <div v-else-if="item.type === 'HeatingCoil'">
     <heating-coil class="movable-item heating-coil" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Filter'">
+  </div>
+  <div v-else-if="item.type === 'Filter'">
     <Filter class="movable-item filter" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Humidifier'">
+  </div>
+  <div v-else-if="item.type === 'Humidifier'">
     <humidifier class="movable-item humidifier" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Damper'">
+  </div>
+  <div v-else-if="item.type === 'Damper'">
     <damper class="movable-item damper" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Text'">
+  </div>
+  <div v-else-if="item.type === 'Text'">
     <Text class="movable-item text" v-bind="item.props" />
-  </template>
-  <template v-else-if="item.type === 'Temperature'">
+  </div>
+  <div v-else-if="item.type === 'Temperature'">
     <temperature class="movable-item temperature" v-bind="item.props" />
-  </template>
+  </div>
 </template>
 
 <script>
@@ -62,3 +63,10 @@ export default defineComponent({
   }
 })
 </script>
+
+<style scoped>
+.object-title {
+  text-align: center;
+  width: 100%;
+}
+</style>
