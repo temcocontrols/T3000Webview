@@ -295,18 +295,24 @@ export default defineComponent({
     window.chrome?.webview?.addEventListener("message", (arg) => {
       console.log("Recieved webview message", arg.data);
       if ("action" in arg.data) {
-        if ((arg.data.action = "setInput")) {
+        if (arg.data.action === "setInput") {
           const itemIndex = appState.value.items.findIndex(
             (i) =>
-              i.inputId === arg.data.data.inputId &&
+              i.inputId === arg.data.inputId &&
               i.panelId === arg.data.panelId
           );
-          if (itemIndex && appState.value.items[itemIndex]?.props) {
-            arg.data.data.value === "On"
-              ? appState.value.items[itemIndex].props.active === true
-              : appState.value.items[itemIndex].props.active === false;
+          if (itemIndex !== -1 && appState.value.items[itemIndex]?.props) {
+            if (arg.data.data.digital_analog === 0) {
+              if (arg.data.data.control === 1) {
+                appState.value.items[itemIndex].props.active = true
+              } else {
+                appState.value.items[itemIndex].props.active = false;
+              }
+            }
+
           }
-        } else if ((arg.data.action = "setInitialData")) {
+        } else if (arg.data.action === "setInitialData") {
+          if (arg.data.data) { arg.data.data = JSON.parse(arg.data.data) }
           appState.value = arg.data.data;
         }
       }
