@@ -68,5 +68,7 @@ export default defineComponent({
 .object-title {
   text-align: center;
   width: 100%;
+  position: absolute;
+  top: -25px;
 }
 </style>

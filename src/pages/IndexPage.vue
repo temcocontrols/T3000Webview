@@ -57,11 +57,11 @@
               bottom: true,
               left: true,
             }" :elementSnapDirections="{
-              top: true,
-              right: true,
-              bottom: true,
-              left: true,
-            }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+  top: true,
+  right: true,
+  bottom: true,
+  left: true,
+}" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
             :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
             :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
             @clickGroup="onClickGroup" @drag="onDrag" @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup"
@@ -72,8 +72,7 @@
 
           <div v-for="item in appState.items" :key="item.id" ref="targets"
             :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-            :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick">
-            <!-- <div v-if="item.props.title">{{item.props.title}}</div> -->
+            :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick" class="movable-item-wrapper">
             <object-type :item="item" />
             <q-menu touch-position context-menu>
               <q-list dense style="min-width: 100px">
@@ -111,25 +110,25 @@
       </div>
       <div class="item-config flex column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
         <div class="grid gap-4 grid-cols-2 mb-4">
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="X" v-model.number="
+          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="X" v-model.number="
             appState.items[appState.activeItemIndex].translate[0]
           " dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Y" v-model.number="
+          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Y" v-model.number="
             appState.items[appState.activeItemIndex].translate[1]
           " dark filled type="number" />
 
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Width"
+          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Width"
             v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Height"
+          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Height"
             v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="objectPropChanged(true)" label="Rotate"
+          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Rotate"
             v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
           <q-input v-if="
             appState.items[appState.activeItemIndex].props.fontSize !==
             undefined
           " input-style="width: 60px" label="Font size" v-model.number="
-            appState.items[appState.activeItemIndex].props.fontSize
-          " dark filled type="number" />
+  appState.items[appState.activeItemIndex].props.fontSize
+" dark filled type="number" />
           <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color" v-if="
             appState.items[appState.activeItemIndex].props.color !== undefined
           ">
@@ -144,7 +143,8 @@
             </template>
           </q-input>
         </div>
-        <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.active" class="text-white"
+        <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.active"
+          @update:model-value="objectPropChanged('active', appState.items[appState.activeItemIndex])" class="text-white"
           label="Active" v-if="
             appState.items[appState.activeItemIndex].props.active !== undefined
           " />
@@ -160,7 +160,7 @@
         <q-input input-style="width: 60px" label="Input ID"
           v-model.number="appState.items[appState.activeItemIndex].inputId" dark filled class="pt-2"
           @update:model-value="
-            getInputFromWebViewHost(appState.items[appState.activeItemIndex])
+  getInputFromWebViewHost(appState.items[appState.activeItemIndex])
           " />
       </div>
     </div>
@@ -298,23 +298,58 @@ export default defineComponent({
         if (arg.data.action === "setInput") {
           const itemIndex = appState.value.items.findIndex(
             (i) =>
-              i.inputId === arg.data.inputId &&
-              i.panelId === arg.data.panelId
+              i.inputId === arg.data.inputId && i.panelId === arg.data.panelId
           );
           if (itemIndex !== -1) {
-            appState.value.items[itemIndex].title = arg.data.data.desc
-            if (appState.value.items[itemIndex]?.props && arg.data.data.digital_analog === 0) {
+            appState.value.items[itemIndex].title = arg.data.data.desc;
+            if (
+              appState.value.items[itemIndex]?.props &&
+              arg.data.data.digital_analog === 0
+            ) {
               if (arg.data.data.control === 1) {
-                appState.value.items[itemIndex].props.active = true
+                appState.value.items[itemIndex].props.active = true;
               } else {
                 appState.value.items[itemIndex].props.active = false;
               }
             }
-
           }
         } else if (arg.data.action === "setInitialData") {
-          if (arg.data.data) { arg.data.data = JSON.parse(arg.data.data) }
+          if (arg.data.data) {
+            arg.data.data = JSON.parse(arg.data.data);
+          }
           appState.value = arg.data.data;
+        } else if (arg.data.action === "saveGraphicResponse") {
+          if (arg.data.data?.status === true) {
+            $q.notify({
+              message: "Saved successfully.",
+              color: "primary",
+              icon: "check_circle",
+              actions: [
+                {
+                  label: "Dismiss",
+                  color: "white",
+                  handler: () => {
+                    /* ... */
+                  },
+                },
+              ],
+            });
+          } else {
+            $q.notify({
+              message: "Error, not saved!",
+              color: "danger",
+              icon: "error",
+              actions: [
+                {
+                  label: "Dismiss",
+                  color: "white",
+                  handler: () => {
+                    /* ... */
+                  },
+                },
+              ],
+            });
+          }
         }
       }
     });
@@ -589,9 +624,18 @@ export default defineComponent({
       selecto.value.clickTarget(e);
     }
 
-    function objectPropChanged(refresh = false) {
-      if (refresh) {
-        refreshSelecto();
+    function objectPropChanged(key, obj) {
+      if (
+        key === "active" &&
+        obj.inputId &&
+        obj.props?.active !== undefined
+      ) {
+        window.chrome?.webview?.postMessage({
+          action: 3,
+          data: { control: obj.props.active ? 1 : 0 },
+          panelId: obj.panelId,
+          inputId: obj.inputId
+        });
       }
     }
 
@@ -654,7 +698,7 @@ export default defineComponent({
 
     keycon.keydown(["ctrl", "s"], (e) => {
       e.inputEvent.preventDefault();
-      save()
+      save();
     });
 
     return {
@@ -696,6 +740,7 @@ export default defineComponent({
       getInputFromWebViewHost,
       newProject,
       save,
+      refreshSelecto,
     };
   },
 });
@@ -762,5 +807,8 @@ export default defineComponent({
 
 .menu-dropdown {
   max-width: 300px !important;
+}
+.movable-item-wrapper{
+  position: relative;
 }
 </style>
