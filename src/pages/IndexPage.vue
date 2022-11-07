@@ -3,8 +3,15 @@
     <div class="flex no-wrap items-start justify-between">
       <div class="tools flex column">
         <q-list class="rounded-borders text-primary">
-          <q-item v-for="tool in tools" :key="tool.name" @click="selectTool(tool.name)" clickable v-ripple
-            :active="selectedTool === tool.name" active-class="active-tool">
+          <q-item
+            v-for="tool in tools"
+            :key="tool.name"
+            @click="selectTool(tool.name)"
+            clickable
+            v-ripple
+            :active="selectedTool === tool.name"
+            active-class="active-tool"
+          >
             <q-tooltip anchor="center right" self="center left">
               {{ tool.label }}
             </q-tooltip>
@@ -16,11 +23,28 @@
       </div>
       <div class="viewport">
         <q-toolbar class="toolbar text-white shadow-2">
-          <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="File">
+          <q-btn-dropdown
+            no-caps
+            stretch
+            flat
+            content-class="menu-dropdown"
+            label="File"
+          >
             <q-list>
-              <q-item dense clickable v-close-popup @click="newProject" tabindex="0">
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="newProject"
+                tabindex="0"
+              >
                 <q-item-section avatar>
-                  <q-avatar size="md" icon="assignment" color="primary" text-color="white" />
+                  <q-avatar
+                    size="md"
+                    icon="assignment"
+                    color="primary"
+                    text-color="white"
+                  />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>New Project</q-item-label>
@@ -29,7 +53,12 @@
               <q-separator inset spaced />
               <q-item dense clickable v-close-popup @click="save" tabindex="0">
                 <q-item-section avatar>
-                  <q-avatar size="md" icon="assignment" color="primary" text-color="white" />
+                  <q-avatar
+                    size="md"
+                    icon="assignment"
+                    color="primary"
+                    text-color="white"
+                  />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Save</q-item-label>
@@ -43,128 +72,435 @@
           <q-btn no-caps stretch flat label="Edit" />
           <q-btn no-caps stretch flat label="Object" />
         </q-toolbar>
-        <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
-          v-bind:selectByClick="true" v-bind:selectFromInside="true" v-bind:toggleContinueSelect="['shift']"
-          v-bind:ratio="0" :boundContainer="true" @dragStart="onDragStart" @selectEnd="onSelectEnd"
-          @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
+        <vue-selecto
+          ref="selecto"
+          dragContainer=".viewport"
+          v-bind:selectableTargets="targets"
+          v-bind:hitRate="100"
+          v-bind:selectByClick="true"
+          v-bind:selectFromInside="true"
+          v-bind:toggleContinueSelect="['shift']"
+          v-bind:ratio="0"
+          :boundContainer="true"
+          @dragStart="onDragStart"
+          @selectEnd="onSelectEnd"
+          @dragEnd="onSelectoDragEnd"
+          :dragCondition="selectoDragCondition"
+        >
         </vue-selecto>
         <div ref="viewport">
-          <vue-moveable ref="movable" v-bind:draggable="true" v-bind:resizable="true" v-bind:rotatable="true"
-            v-bind:target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
-            :snapGap="true" :snapDirections="{
+          <vue-moveable
+            ref="movable"
+            v-bind:draggable="true"
+            v-bind:resizable="true"
+            v-bind:rotatable="true"
+            v-bind:target="appState.selectedTargets"
+            :snappable="true"
+            :snapThreshold="10"
+            :isDisplaySnapDigit="true"
+            :snapGap="true"
+            :snapDirections="{
               top: true,
               right: true,
               bottom: true,
               left: true,
-            }" :elementSnapDirections="{
-  top: true,
-  right: true,
-  bottom: true,
-  left: true,
-}" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
-            :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
-            :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
-            @clickGroup="onClickGroup" @drag="onDrag" @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup"
-            @resizeStart="onResizeStart" @resize="onResize" @resizeEnd="onResizeEnd" @rotate="onRotate"
-            @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup" @resizeGroupEnd="onResizeGroupEnd"
-            @rotateGroupStart="onRotateGroupStart" @rotateGroup="onRotateGroup">
+            }"
+            :elementSnapDirections="{
+              top: true,
+              right: true,
+              bottom: true,
+              left: true,
+            }"
+            :snapDigit="0"
+            :elementGuidelines="appState.elementGuidelines"
+            :origin="true"
+            :throttleResize="0"
+            :throttleRotate="0"
+            rotationPosition="top"
+            :originDraggable="true"
+            :originRelative="true"
+            :defaultGroupRotate="0"
+            defaultGroupOrigin="50% 50%"
+            :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
+            @clickGroup="onClickGroup"
+            @drag="onDrag"
+            @dragGroupStart="onDragGroupStart"
+            @dragGroup="onDragGroup"
+            @resizeStart="onResizeStart"
+            @resize="onResize"
+            @resizeEnd="onResizeEnd"
+            @rotate="onRotate"
+            @resizeGroupStart="onResizeGroupStart"
+            @resizeGroup="onResizeGroup"
+            @resizeGroupEnd="onResizeGroupEnd"
+            @rotateGroupStart="onRotateGroupStart"
+            @rotateGroup="onRotateGroup"
+          >
           </vue-moveable>
 
-          <div v-for="item in appState.items" :key="item.id" ref="targets"
+          <div
+            v-for="item in appState.items"
+            :key="item.id"
+            ref="targets"
             :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-            :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick" class="movable-item-wrapper">
-            <object-type :item="item" />
-            <q-menu touch-position context-menu>
-              <q-list dense style="min-width: 100px">
-                <q-item clickable v-close-popup @click="duplicateObject(item)">
-                  <q-item-section>Duplicate</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="rotete90(item)">
-                  <q-item-section>Rotate 90°</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="rotete90(item, true)">
-                  <q-item-section>Rotate -90°</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="flipH(item)">
-                  <q-item-section>Flip horizontal</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="flipV(item)">
-                  <q-item-section>Flip vertical</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="bringToFront(item)">
-                  <q-item-section>Bring to front</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="sendToBack(item)">
-                  <q-item-section>Send to Back</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="removeObject(item)">
-                  <q-item-section>Remove</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
+            :id="`movable-item-${item.id}`"
+            @mousedown.right="selectByRightClick"
+            class="movable-item-wrapper"
+          >
+            <object-type :item="item">
+              <q-menu touch-position context-menu>
+                <q-list dense style="min-width: 100px">
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="duplicateObject(item)"
+                  >
+                    <q-item-section>Duplicate</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="rotete90(item)">
+                    <q-item-section>Rotate 90°</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="rotete90(item, true)">
+                    <q-item-section>Rotate -90°</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item clickable v-close-popup @click="flipH(item)">
+                    <q-item-section>Flip horizontal</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="flipV(item)">
+                    <q-item-section>Flip vertical</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item clickable v-close-popup @click="bringToFront(item)">
+                    <q-item-section>Bring to front</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="sendToBack(item)">
+                    <q-item-section>Send to Back</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item clickable v-close-popup @click="removeObject(item)">
+                    <q-item-section>Remove</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </object-type>
           </div>
         </div>
       </div>
-      <div class="item-config flex column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
-        <div class="grid gap-4 grid-cols-2 mb-4">
-          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="X" v-model.number="
-            appState.items[appState.activeItemIndex].translate[0]
-          " dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Y" v-model.number="
-            appState.items[appState.activeItemIndex].translate[1]
-          " dark filled type="number" />
+      <div
+        class="item-config flex column"
+        v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
+      >
+        <q-expansion-item
+          class="mb-2 border border-solid border-gray-700"
+          dark
+          default-opened
+          label="General"
+        >
+          <div class="grid gap-4 grid-cols-2 mb-4">
+            <q-input
+              input-style="width: 60px"
+              @update:model-value="refreshSelecto"
+              label="X"
+              v-model.number="
+                appState.items[appState.activeItemIndex].translate[0]
+              "
+              dark
+              filled
+              type="number"
+            />
+            <q-input
+              input-style="width: 60px"
+              @update:model-value="refreshSelecto"
+              label="Y"
+              v-model.number="
+                appState.items[appState.activeItemIndex].translate[1]
+              "
+              dark
+              filled
+              type="number"
+            />
 
-          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Width"
-            v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Height"
-            v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
-          <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Rotate"
-            v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
-          <q-input v-if="
-            appState.items[appState.activeItemIndex].props.fontSize !==
-            undefined
-          " input-style="width: 60px" label="Font size" v-model.number="
-  appState.items[appState.activeItemIndex].props.fontSize
-" dark filled type="number" />
-          <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color" v-if="
-            appState.items[appState.activeItemIndex].props.color !== undefined
-          ">
-            <template v-slot:append>
-              <q-icon name="colorize" class="cursor-pointer">
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-color v-model="
-                    appState.items[appState.activeItemIndex].props.color
-                  " />
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
+            <q-input
+              input-style="width: 60px"
+              @update:model-value="refreshSelecto"
+              label="Width"
+              v-model.number="appState.items[appState.activeItemIndex].width"
+              dark
+              filled
+              type="number"
+            />
+            <q-input
+              input-style="width: 60px"
+              @update:model-value="refreshSelecto"
+              label="Height"
+              v-model.number="appState.items[appState.activeItemIndex].height"
+              dark
+              filled
+              type="number"
+            />
+            <q-input
+              input-style="width: 60px"
+              @update:model-value="refreshSelecto"
+              label="Rotate"
+              v-model.number="appState.items[appState.activeItemIndex].rotate"
+              dark
+              filled
+              type="number"
+            />
+            <q-input
+              v-if="
+                appState.items[appState.activeItemIndex].props.fontSize !==
+                undefined
+              "
+              input-style="width: 60px"
+              label="Font size"
+              v-model.number="
+                appState.items[appState.activeItemIndex].props.fontSize
+              "
+              dark
+              filled
+              type="number"
+            />
+            <q-input
+              dark
+              filled
+              v-model="appState.items[appState.activeItemIndex].props.color"
+              label="Color"
+              v-if="
+                appState.items[appState.activeItemIndex].props.color !==
+                undefined
+              "
+            >
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy
+                    cover
+                    transition-show="scale"
+                    transition-hide="scale"
+                  >
+                    <q-color
+                      v-model="
+                        appState.items[appState.activeItemIndex].props.color
+                      "
+                    />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+          <q-checkbox
+            v-if="
+              !appState.items[appState.activeItemIndex].t3Entry &&
+              appState.items[appState.activeItemIndex].props.active !==
+                undefined
+            "
+            dark
+            filled
+            v-model="appState.items[appState.activeItemIndex].props.active"
+            @update:model-value="
+              T3UpdateEntryField(
+                'value',
+                appState.items[appState.activeItemIndex],
+                'activeCheckBox'
+              )
+            "
+            class="text-white w-full"
+            :label="activeCheckboxLabel"
+            :disable="
+              (appState.items[appState.activeItemIndex].t3Entry &&
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.auto_manual === 0) ||
+              appState.items[appState.activeItemIndex].t3Entry
+                ?.digital_analog === 1
+            "
+          >
+            <q-tooltip
+              v-if="
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.auto_manual === 0
+              "
+              anchor="center left"
+              self="center end"
+            >
+              Can't activate it because the linked entry is in auto mode
+            </q-tooltip></q-checkbox
+          >
+          <q-checkbox
+            dark
+            filled
+            v-model="appState.items[appState.activeItemIndex].props.inAlarm"
+            class="text-white w-full"
+            label="In alarm"
+            v-if="
+              appState.items[appState.activeItemIndex].props.inAlarm !==
+              undefined
+            "
+          />
+        </q-expansion-item>
+
+        <div>
+          <q-btn
+            dark
+            outline
+            no-caps
+            stretch
+            :icon="
+              appState.items[appState.activeItemIndex].t3Entry
+                ? 'dataset_linked'
+                : undefined
+            "
+            class="text-white w-full"
+            :label="
+              !appState.items[appState.activeItemIndex].t3Entry
+                ? 'Link with an entry'
+                : `Linked with ${
+                    appState.items[appState.activeItemIndex].t3Entry.description
+                  }`
+            "
+            @click="linkT3EntryDialogAction"
+          />
+          <q-expansion-item
+            v-if="appState.items[appState.activeItemIndex].t3Entry"
+            class="mt-2 border border-solid border-gray-700"
+            dark
+            default-opened
+            label="Entry settings"
+          >
+            <q-select
+              class="mb-1"
+              filled
+              dark
+              v-model="
+                appState.items[appState.activeItemIndex].t3Entry.auto_manual
+              "
+              :options="[
+                { label: 'Auto', value: 0 },
+                { label: 'Manual', value: 1 },
+              ]"
+              label="Auto/Manual"
+              emit-value
+              map-options
+              @update:model-value="
+                T3UpdateEntryField(
+                  'auto_manual',
+                  appState.items[appState.activeItemIndex]
+                )
+              "
+            />
+            <q-select
+              class="mb-1"
+              v-if="
+                appState.items[appState.activeItemIndex].t3Entry
+                  .digital_analog === 0 &&
+                appState.items[appState.activeItemIndex].t3Entry.range
+              "
+              :disable="
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.auto_manual === 0
+              "
+              filled
+              dark
+              v-model="appState.items[appState.activeItemIndex].t3Entry.control"
+              :options="[
+                {
+                  label: getRangeById(
+                    appState.items[appState.activeItemIndex].t3Entry.range
+                  ).off,
+                  value: 0,
+                },
+                {
+                  label: getRangeById(
+                    appState.items[appState.activeItemIndex].t3Entry.range
+                  ).on,
+                  value: 1,
+                },
+              ]"
+              label="Value"
+              emit-value
+              map-options
+              @update:model-value="
+                T3UpdateEntryField(
+                  'control',
+                  appState.items[appState.activeItemIndex]
+                )
+              "
+            />
+            <q-input
+              class="mb-1"
+              v-if="
+                appState.items[appState.activeItemIndex].t3Entry
+                  .digital_analog === 1
+              "
+              :disable="
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.auto_manual === 0
+              "
+              filled
+              dark
+              type="number"
+              v-model.number="
+                appState.items[appState.activeItemIndex].t3Entry.value
+              "
+              label="Filled"
+            />
+            <q-select
+              filled
+              dark
+              v-model="
+                appState.items[appState.activeItemIndex].t3EntryDisplayField
+              "
+              :options="[
+                {
+                  label: 'Value',
+                  value:
+                    appState.items[appState.activeItemIndex].t3Entry
+                      ?.digital_analog === 1
+                      ? 'value'
+                      : 'control',
+                },
+                { label: 'Label', value: 'label' },
+                { label: 'Description', value: 'description' },
+              ]"
+              label="Display field"
+              emit-value
+              map-options
+            />
+          </q-expansion-item>
         </div>
-        <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.active"
-          @update:model-value="objectPropChanged('active', appState.items[appState.activeItemIndex])" class="text-white"
-          label="Active" v-if="
-            appState.items[appState.activeItemIndex].props.active !== undefined
-          " />
-        <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.inAlarm" class="text-white"
-          label="In alarm" v-if="
-            appState.items[appState.activeItemIndex].props.inAlarm !== undefined
-          " />
-        <q-input input-style="width: 60px" label="Panel ID"
-          v-model.number="appState.items[appState.activeItemIndex].panelId" dark filled class="pt-2"
-          @update:model-value="
-            getInputFromWebViewHost(appState.items[appState.activeItemIndex])
-          " />
-        <q-input input-style="width: 60px" label="Input ID"
-          v-model.number="appState.items[appState.activeItemIndex].inputId" dark filled class="pt-2"
-          @update:model-value="
-  getInputFromWebViewHost(appState.items[appState.activeItemIndex])
-          " />
       </div>
     </div>
   </q-page>
+  <!-- Link entry dialog -->
+  <q-dialog v-model="linkT3EntryDialog.active">
+    <q-card>
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Link Entry</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section style="max-height: 60vh" class="scroll">
+        <q-select
+          option-label="description"
+          option-value="id"
+          filled
+          v-model="linkT3EntryDialog.data"
+          :options="T3000_Data.currentPanelData"
+          label="Select Entry"
+        />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
@@ -176,6 +512,8 @@ import KeyController, { getCombi, getKey } from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
+import { tools, T3_Types, ranges } from "../lib/common";
+import { computed } from "@vue/reactivity";
 
 export default defineComponent({
   name: "IndexPage",
@@ -192,64 +530,9 @@ export default defineComponent({
     const viewport = ref(null);
     const targets = ref([]);
     const selectedTool = ref("Pointer");
-    const tools = [
-      {
-        name: "Pointer",
-        text: "Select",
-        icon: "img:/cursor.svg",
-      },
-      {
-        name: "Text",
-        label: "Text",
-        icon: "title",
-        props: { content: "Text", color: "black", fontSize: 16 },
-      },
-      {
-        name: "Duct",
-        label: "Duct",
-        icon: "img:/duct.svg",
-      },
-      {
-        name: "Fan",
-        label: "Fan",
-        icon: "img:/fan.svg",
-        props: { active: false, inAlarm: false },
-      },
-      {
-        name: "CoolingCoil",
-        label: "Cooling Coil",
-        icon: "img:/cooling-coil.svg",
-        props: { active: false, inAlarm: false },
-      },
-      {
-        name: "HeatingCoil",
-        label: "Heating Coil",
-        icon: "img:/heating-coil.svg",
-        props: { active: false, inAlarm: false },
-      },
-      {
-        name: "Filter",
-        label: "Filter",
-        icon: "img:/filter.svg",
-      },
-      {
-        name: "Humidifier",
-        label: "Humidifier",
-        icon: "img:/humidifier.svg",
-        props: { active: false, inAlarm: false },
-      },
-      {
-        name: "Damper",
-        label: "Damper",
-        icon: "img:/damper.svg",
-        props: { inAlarm: false },
-      },
-      {
-        name: "Temperature",
-        label: "Temperature",
-        icon: "img:/temperature.svg",
-      },
-    ];
+    const linkT3EntryDialog = ref({ active: false, data: null });
+    const T3000_Data = ref({ currentPanelData: [] });
+
     let panzoomInstance = null;
     const emptyProject = {
       items: [],
@@ -286,39 +569,57 @@ export default defineComponent({
       window.chrome?.webview?.postMessage({
         action: 1,
       });
+      window.chrome?.webview?.postMessage({
+        action: 0,
+      });
     });
     onUnmounted(() => {
       if (!panzoomInstance) return;
       panzoomInstance.dispose();
     });
 
+    const activeCheckboxLabel = computed(() => {
+      if (appState.value.activeItemIndex === null) {
+        return;
+      }
+      if (
+        appState.value.items[appState.value.activeItemIndex].t3Entry
+          ?.digital_analog === 0 &&
+        appState.value.items[appState.value.activeItemIndex].t3Entry.range
+      ) {
+        const range = ranges.find(
+          (i) =>
+            i.id ===
+            appState.value.items[appState.value.activeItemIndex].t3Entry.range
+        );
+        if (!range) return;
+        return range.label;
+      }
+      return "Active";
+    });
+
     window.chrome?.webview?.addEventListener("message", (arg) => {
       console.log("Recieved webview message", arg.data);
       if ("action" in arg.data) {
-        if (arg.data.action === "setInput") {
-          const itemIndex = appState.value.items.findIndex(
-            (i) =>
-              i.inputId === arg.data.inputId && i.panelId === arg.data.panelId
-          );
-          if (itemIndex !== -1) {
-            appState.value.items[itemIndex].title = arg.data.data.desc;
-            if (
-              appState.value.items[itemIndex]?.props &&
-              arg.data.data.digital_analog === 0
-            ) {
-              if (arg.data.data.control === 1) {
-                appState.value.items[itemIndex].props.active = true;
-              } else {
-                appState.value.items[itemIndex].props.active = false;
-              }
-            }
-          }
-        } else if (arg.data.action === "setInitialData") {
+        if (arg.data.action === "UPDATE_ENTRY_RES") {
+        } else if (arg.data.action === "GET_INITIAL_DATA_RES") {
           if (arg.data.data) {
             arg.data.data = JSON.parse(arg.data.data);
           }
           appState.value = arg.data.data;
-        } else if (arg.data.action === "saveGraphicResponse") {
+        } else if (arg.data.action === "GET_CURRENT_PANEL_DATA_RES") {
+          T3000_Data.value.currentPanelData = arg.data.data;
+          appState.value.items
+            .filter((i) => i.t3Entry?.type)
+            .forEach((item) => {
+              item.t3Entry = arg.data.data.find(
+                (ii) =>
+                  ii.index === item.t3Entry.index &&
+                  ii.type === item.t3Entry.type
+              );
+              refreshObjectActiveValue(item);
+            });
+        } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
           if (arg.data.data?.status === true) {
             $q.notify({
               message: "Saved successfully.",
@@ -526,11 +827,11 @@ export default defineComponent({
           (e.rect.left -
             viewportMargins.left -
             appState.value.viewportTransform.x) *
-          scalPercentage,
+            scalPercentage,
           (e.rect.top -
             viewportMargins.top -
             appState.value.viewportTransform.y) *
-          scalPercentage,
+            scalPercentage,
         ],
         width: e.rect.width * scalPercentage,
         height: e.rect.height * scalPercentage,
@@ -540,8 +841,8 @@ export default defineComponent({
         props:
           tools.find((tool) => tool.name === selectedTool.value)?.props || {},
         zindex: 1,
-        panelId: null,
-        inputId: null,
+        t3Entry: null,
+        t3EntryDisplayField: "label",
       });
       // selectedTool.value = "Pointer"
       setTimeout(() => {
@@ -624,32 +925,60 @@ export default defineComponent({
       selecto.value.clickTarget(e);
     }
 
-    function objectPropChanged(key, obj) {
-      if (
-        key === "active" &&
-        obj.inputId &&
-        obj.props?.active !== undefined
-      ) {
-        window.chrome?.webview?.postMessage({
-          action: 3,
-          data: { control: obj.props.active ? 1 : 0 },
-          panelId: obj.panelId,
-          inputId: obj.inputId
-        });
+    function T3UpdateEntryField(key, obj, source) {
+      if (!obj.t3Entry) return;
+      let fieldVal = obj.t3Entry[key];
+      if (source === "activeCheckBox" && obj.t3Entry?.digital_analog === 0) {
+        if (key === "value" || key === "control") {
+          key = "control";
+          const range = ranges.find((i) => i.id === obj.t3Entry.range);
+          fieldVal =
+            (obj.props.active && !range?.directInvers) ||
+            (!obj.props.active && range?.directInvers)
+              ? 1
+              : 0;
+        }
       }
+      if (key === "value" || key === "control") {
+        refreshObjectActiveValue(obj);
+      }
+      window.chrome?.webview?.postMessage({
+        action: 3, // UPDATE_ENTRY
+        field: key,
+        value: fieldVal,
+        panelId: 1, // Local panel only for now
+        entryIndex: obj.t3Entry.index,
+        entryType: T3_Types[obj.t3Entry.type],
+      });
     }
 
     function selectoDragCondition(e) {
       return !e.inputEvent.altKey;
     }
 
-    function getInputFromWebViewHost(item) {
-      if (item.panelId && item.inputId) {
-        window.chrome?.webview?.postMessage({
-          action: 0,
-          panelId: item.panelId,
-          inputId: item.inputId,
-        });
+    function linkT3EntrySave() {
+      appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
+        linkT3EntryDialog.value.data
+      );
+      refreshObjectActiveValue(
+        appState.value.items[appState.value.activeItemIndex]
+      );
+      linkT3EntryDialog.value.data = null;
+      linkT3EntryDialog.value.active = false;
+    }
+
+    function refreshObjectActiveValue(item) {
+      if (item.props?.active !== undefined) {
+        if (!item.t3Entry) return;
+        const range = ranges.find((i) => i.id === item.t3Entry.range);
+        if (!range) return;
+        item.props.active =
+          (item.t3Entry?.digital_analog === 0 &&
+            ((item.t3Entry?.control === 1 && !range.directInvers) ||
+              (item.t3Entry?.control === 0 && range.directInvers))) ||
+          (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
+            ? true
+            : false;
       }
     }
 
@@ -673,7 +1002,7 @@ export default defineComponent({
             appState.value = cloneDeep(emptyProject);
             refreshSelecto();
           })
-          .onCancel(() => { });
+          .onCancel(() => {});
         return;
       }
       appState.value = cloneDeep(emptyProject);
@@ -700,6 +1029,19 @@ export default defineComponent({
       e.inputEvent.preventDefault();
       save();
     });
+
+    function linkT3EntryDialogAction() {
+      linkT3EntryDialog.value.active = true;
+      if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry)
+        return;
+      linkT3EntryDialog.value.data = cloneDeep(
+        appState.value.items[appState.value.activeItemIndex]?.t3Entry
+      );
+    }
+
+    function getRangeById(id) {
+      return ranges.find((i) => i.id === id);
+    }
 
     return {
       movable,
@@ -734,13 +1076,18 @@ export default defineComponent({
       sendToBack,
       removeObject,
       selectByRightClick,
-      objectPropChanged,
+      T3UpdateEntryField,
       selectoDragCondition,
       duplicateObject,
-      getInputFromWebViewHost,
+      linkT3EntrySave,
       newProject,
       save,
       refreshSelecto,
+      linkT3EntryDialog,
+      linkT3EntryDialogAction,
+      T3000_Data,
+      activeCheckboxLabel,
+      getRangeById,
     };
   },
 });
@@ -808,7 +1155,8 @@ export default defineComponent({
 .menu-dropdown {
   max-width: 300px !important;
 }
-.movable-item-wrapper{
+
+.movable-item-wrapper {
   position: relative;
 }
 </style>

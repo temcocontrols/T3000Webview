@@ -1,7 +1,19 @@
-
-
 <template>
-  <div class="object-title" v-if="item.title">{{ item.title }}</div>
+  <div class="object-title" v-if="item.t3Entry">
+    {{ item.t3Entry[item.t3EntryDisplayField] || "N/A" }}
+    <span class="ml-2 text-lg">
+      <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+        <q-tooltip anchor="top middle" self="center middle">
+          In auto mode
+        </q-tooltip>
+      </q-icon>
+      <q-icon v-else name="swipe_up">
+        <q-tooltip anchor="top middle" self="center middle">
+          In manual mode
+        </q-tooltip>
+      </q-icon>
+    </span>
+  </div>
   <div v-if="item.type === 'Fan'">
     <fan class="movable-item fan" v-bind="item.props" />
   </div>
@@ -32,18 +44,18 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
-import DuctEl from "./Duct.vue"
-import FanEl from "./Fan.vue"
-import CoolingCoil from './CoolingCoil.vue'
-import HeatingCoil from './HeatingCoil.vue'
-import FilterEl from './Filter.vue'
-import HumidifierEl from './Humidifier.vue'
-import Damper from './Damper.vue'
-import Text from './Text.vue'
-import Temperature from './Temperature.vue'
+import { defineComponent } from "vue";
+import DuctEl from "./Duct.vue";
+import FanEl from "./Fan.vue";
+import CoolingCoil from "./CoolingCoil.vue";
+import HeatingCoil from "./HeatingCoil.vue";
+import FilterEl from "./Filter.vue";
+import HumidifierEl from "./Humidifier.vue";
+import Damper from "./Damper.vue";
+import Text from "./Text.vue";
+import Temperature from "./Temperature.vue";
 export default defineComponent({
-  name: 'ObjectType',
+  name: "ObjectType",
   components: {
     Duct: DuctEl,
     Fan: FanEl,
@@ -53,15 +65,15 @@ export default defineComponent({
     Humidifier: HumidifierEl,
     Damper,
     Text,
-    Temperature
+    Temperature,
   },
   props: {
     item: {
       type: Object,
-      required: true
-    }
-  }
-})
+      required: true,
+    },
+  },
+});
 </script>
 
 <style scoped>
