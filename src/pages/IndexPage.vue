@@ -147,43 +147,38 @@
             @mousedown.right="selectByRightClick"
             class="movable-item-wrapper"
           >
-            <object-type :item="item">
-              <q-menu touch-position context-menu>
-                <q-list dense style="min-width: 100px">
-                  <q-item
-                    clickable
-                    v-close-popup
-                    @click="duplicateObject(item)"
-                  >
-                    <q-item-section>Duplicate</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="rotete90(item)">
-                    <q-item-section>Rotate 90°</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="rotete90(item, true)">
-                    <q-item-section>Rotate -90°</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item clickable v-close-popup @click="flipH(item)">
-                    <q-item-section>Flip horizontal</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="flipV(item)">
-                    <q-item-section>Flip vertical</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item clickable v-close-popup @click="bringToFront(item)">
-                    <q-item-section>Bring to front</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="sendToBack(item)">
-                    <q-item-section>Send to Back</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item clickable v-close-popup @click="removeObject(item)">
-                    <q-item-section>Remove</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-menu>
-            </object-type>
+            <q-menu touch-position context-menu>
+              <q-list dense style="min-width: 100px">
+                <q-item clickable v-close-popup @click="duplicateObject(item)">
+                  <q-item-section>Duplicate</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="rotete90(item)">
+                  <q-item-section>Rotate 90°</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="rotete90(item, true)">
+                  <q-item-section>Rotate -90°</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="flipH(item)">
+                  <q-item-section>Flip horizontal</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="flipV(item)">
+                  <q-item-section>Flip vertical</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="bringToFront(item)">
+                  <q-item-section>Bring to front</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="sendToBack(item)">
+                  <q-item-section>Send to Back</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="removeObject(item)">
+                  <q-item-section>Remove</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+            <object-type :item="item" />
           </div>
         </div>
       </div>
@@ -473,7 +468,7 @@
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
-    <q-card>
+    <q-card style="min-width: 400px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
         <q-space />
