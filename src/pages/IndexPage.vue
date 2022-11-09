@@ -1014,6 +1014,8 @@ export default defineComponent({
         movable.value.request("draggable", { deltaX: -5, deltaY: 0 }, true);
       } else if (e.key === "right") {
         movable.value.request("draggable", { deltaX: 5, deltaY: 0 }, true);
+      } else if (e.key === "delete") {
+        deleteSelected();
       }
       if (["up", "down", "left", "right"].includes(e.key)) {
         refreshSelecto();
@@ -1036,6 +1038,21 @@ export default defineComponent({
 
     function getRangeById(id) {
       return ranges.find((i) => i.id === id);
+    }
+
+    function deleteSelected() {
+      if (appState.value.selectedTargets.length > 0) {
+        appState.value.selectedTargets.forEach((el) => {
+          const iIndex = appState.value.items.findIndex(
+            (item) => `movable-item-${item.id}` === el.id
+          );
+          if (iIndex !== -1) {
+            appState.value.items.splice(iIndex, 1);
+          }
+        });
+        appState.value.selectedTargets = [];
+        appState.value.activeItemIndex = null;
+      }
     }
 
     return {
