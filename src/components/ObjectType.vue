@@ -1,6 +1,16 @@
 <template>
   <div class="object-title" v-if="item.t3Entry">
-    {{ item.t3Entry[item.t3EntryDisplayField] || "N/A" }}
+    {{ item.t3Entry[item.t3EntryDisplayField] || "N/A" }} - {{ range }}
+    <span v-if="item.t3Entry.hw_switch_status !== 1">
+      -
+      {{
+        item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
+          ? item.t3Entry.hw_switch_status
+            ? "MAN-ON"
+            : "MAN-OFF"
+          : ""
+      }}</span
+    >
     <span class="ml-2 text-lg">
       <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
         <q-tooltip anchor="top middle" self="center middle">
@@ -44,7 +54,7 @@
 </template>
 
 <script>
-import { defineComponent } from "vue";
+import { defineComponent, computed } from "vue";
 import DuctEl from "./Duct.vue";
 import FanEl from "./Fan.vue";
 import CoolingCoil from "./CoolingCoil.vue";
@@ -54,6 +64,9 @@ import HumidifierEl from "./Humidifier.vue";
 import Damper from "./Damper.vue";
 import Text from "./Text.vue";
 import Temperature from "./Temperature.vue";
+
+import { ranges } from "src/lib/common";
+
 export default defineComponent({
   name: "ObjectType",
   components: {
@@ -73,14 +86,29 @@ export default defineComponent({
       required: true,
     },
   },
+  setup(props) {
+    const range = computed(() => {
+      if (props.item.t3Entry.range) {
+        const range = ranges.find((i) => i.id === props.item.t3Entry.range);
+        if (range) return range.label;
+      }
+
+      return "Unused";
+    });
+
+    return {
+      range,
+    };
+  },
 });
 </script>
 
 <style scoped>
 .object-title {
   text-align: center;
-  width: 100%;
+  min-width: 100%;
   position: absolute;
   top: -25px;
+  white-space: nowrap;
 }
 </style>

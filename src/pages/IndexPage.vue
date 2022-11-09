@@ -183,285 +183,397 @@
         </div>
       </div>
       <div
-        class="item-config flex column"
+        class="item-config flex flex-nowrap column"
         v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
       >
-        <q-expansion-item
-          class="mb-2 border border-solid border-gray-700"
-          dark
-          default-opened
-          label="General"
-        >
-          <div class="grid gap-4 grid-cols-2 mb-4">
-            <q-input
-              input-style="width: 60px"
-              @update:model-value="refreshSelecto"
-              label="X"
-              v-model.number="
-                appState.items[appState.activeItemIndex].translate[0]
-              "
-              dark
-              filled
-              type="number"
-            />
-            <q-input
-              input-style="width: 60px"
-              @update:model-value="refreshSelecto"
-              label="Y"
-              v-model.number="
-                appState.items[appState.activeItemIndex].translate[1]
-              "
-              dark
-              filled
-              type="number"
-            />
-
-            <q-input
-              input-style="width: 60px"
-              @update:model-value="refreshSelecto"
-              label="Width"
-              v-model.number="appState.items[appState.activeItemIndex].width"
-              dark
-              filled
-              type="number"
-            />
-            <q-input
-              input-style="width: 60px"
-              @update:model-value="refreshSelecto"
-              label="Height"
-              v-model.number="appState.items[appState.activeItemIndex].height"
-              dark
-              filled
-              type="number"
-            />
-            <q-input
-              input-style="width: 60px"
-              @update:model-value="refreshSelecto"
-              label="Rotate"
-              v-model.number="appState.items[appState.activeItemIndex].rotate"
-              dark
-              filled
-              type="number"
-            />
-            <q-input
-              v-if="
-                appState.items[appState.activeItemIndex].props.fontSize !==
-                undefined
-              "
-              input-style="width: 60px"
-              label="Font size"
-              v-model.number="
-                appState.items[appState.activeItemIndex].props.fontSize
-              "
-              dark
-              filled
-              type="number"
-            />
-            <q-input
-              dark
-              filled
-              v-model="appState.items[appState.activeItemIndex].props.color"
-              label="Color"
-              v-if="
-                appState.items[appState.activeItemIndex].props.color !==
-                undefined
-              "
-            >
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy
-                    cover
-                    transition-show="scale"
-                    transition-hide="scale"
-                  >
-                    <q-color
-                      v-model="
-                        appState.items[appState.activeItemIndex].props.color
-                      "
-                    />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-          </div>
-          <q-checkbox
-            v-if="
-              !appState.items[appState.activeItemIndex].t3Entry &&
-              appState.items[appState.activeItemIndex].props.active !==
-                undefined
-            "
-            dark
-            filled
-            v-model="appState.items[appState.activeItemIndex].props.active"
-            @update:model-value="
-              T3UpdateEntryField(
-                'value',
-                appState.items[appState.activeItemIndex],
-                'activeCheckBox'
-              )
-            "
-            class="text-white w-full"
-            :label="activeCheckboxLabel"
-            :disable="
-              (appState.items[appState.activeItemIndex].t3Entry &&
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.auto_manual === 0) ||
-              appState.items[appState.activeItemIndex].t3Entry
-                ?.digital_analog === 1
-            "
-          >
-            <q-tooltip
-              v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.auto_manual === 0
-              "
-              anchor="center left"
-              self="center end"
-            >
-              Can't activate it because the linked entry is in auto mode
-            </q-tooltip></q-checkbox
-          >
-          <q-checkbox
-            dark
-            filled
-            v-model="appState.items[appState.activeItemIndex].props.inAlarm"
-            class="text-white w-full"
-            label="In alarm"
-            v-if="
-              appState.items[appState.activeItemIndex].props.inAlarm !==
-              undefined
-            "
-          />
-        </q-expansion-item>
-
-        <div>
-          <q-btn
-            dark
-            outline
-            no-caps
-            stretch
-            :icon="
-              appState.items[appState.activeItemIndex].t3Entry
-                ? 'dataset_linked'
-                : undefined
-            "
-            class="text-white w-full"
-            :label="
-              !appState.items[appState.activeItemIndex].t3Entry
-                ? 'Link with an entry'
-                : `Linked with ${
-                    appState.items[appState.activeItemIndex].t3Entry.description
-                  }`
-            "
-            @click="linkT3EntryDialogAction"
-          />
+        <div class="item-config-inner">
           <q-expansion-item
-            v-if="appState.items[appState.activeItemIndex].t3Entry"
-            class="mt-2 border border-solid border-gray-700"
+            class="mb-2 border border-solid border-gray-700"
             dark
             default-opened
-            label="Entry settings"
+            label="General"
           >
-            <q-select
-              class="mb-1"
-              filled
-              dark
-              v-model="
-                appState.items[appState.activeItemIndex].t3Entry.auto_manual
-              "
-              :options="[
-                { label: 'Auto', value: 0 },
-                { label: 'Manual', value: 1 },
-              ]"
-              label="Auto/Manual"
-              emit-value
-              map-options
-              @update:model-value="
-                T3UpdateEntryField(
-                  'auto_manual',
-                  appState.items[appState.activeItemIndex]
-                )
-              "
-            />
-            <q-select
-              class="mb-1"
+            <div class="grid gap-4 grid-cols-2 mb-4">
+              <q-input
+                input-style="width: 60px"
+                @update:model-value="refreshSelecto"
+                label="X"
+                v-model.number="
+                  appState.items[appState.activeItemIndex].translate[0]
+                "
+                dark
+                filled
+                type="number"
+              />
+              <q-input
+                input-style="width: 60px"
+                @update:model-value="refreshSelecto"
+                label="Y"
+                v-model.number="
+                  appState.items[appState.activeItemIndex].translate[1]
+                "
+                dark
+                filled
+                type="number"
+              />
+
+              <q-input
+                input-style="width: 60px"
+                @update:model-value="refreshSelecto"
+                label="Width"
+                v-model.number="appState.items[appState.activeItemIndex].width"
+                dark
+                filled
+                type="number"
+              />
+              <q-input
+                input-style="width: 60px"
+                @update:model-value="refreshSelecto"
+                label="Height"
+                v-model.number="appState.items[appState.activeItemIndex].height"
+                dark
+                filled
+                type="number"
+              />
+              <q-input
+                input-style="width: 60px"
+                @update:model-value="refreshSelecto"
+                label="Rotate"
+                v-model.number="appState.items[appState.activeItemIndex].rotate"
+                dark
+                filled
+                type="number"
+              />
+              <q-input
+                v-if="
+                  appState.items[appState.activeItemIndex].props.fontSize !==
+                  undefined
+                "
+                input-style="width: 60px"
+                label="Font size"
+                v-model.number="
+                  appState.items[appState.activeItemIndex].props.fontSize
+                "
+                dark
+                filled
+                type="number"
+              />
+              <q-input
+                dark
+                filled
+                v-model="appState.items[appState.activeItemIndex].props.color"
+                label="Color"
+                v-if="
+                  appState.items[appState.activeItemIndex].props.color !==
+                  undefined
+                "
+              >
+                <template v-slot:append>
+                  <q-icon name="colorize" class="cursor-pointer">
+                    <q-popup-proxy
+                      cover
+                      transition-show="scale"
+                      transition-hide="scale"
+                    >
+                      <q-color
+                        v-model="
+                          appState.items[appState.activeItemIndex].props.color
+                        "
+                      />
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
+            <q-checkbox
               v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  .digital_analog === 0 &&
-                appState.items[appState.activeItemIndex].t3Entry.range
+                !appState.items[appState.activeItemIndex].t3Entry &&
+                appState.items[appState.activeItemIndex].props.active !==
+                  undefined
               "
-              :disable="
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.auto_manual === 0
-              "
-              filled
               dark
-              v-model="appState.items[appState.activeItemIndex].t3Entry.control"
-              :options="[
-                {
-                  label: getRangeById(
-                    appState.items[appState.activeItemIndex].t3Entry.range
-                  ).off,
-                  value: 0,
-                },
-                {
-                  label: getRangeById(
-                    appState.items[appState.activeItemIndex].t3Entry.range
-                  ).on,
-                  value: 1,
-                },
-              ]"
-              label="Value"
-              emit-value
-              map-options
-              @update:model-value="
-                T3UpdateEntryField(
-                  'control',
-                  appState.items[appState.activeItemIndex]
-                )
+              filled
+              v-model="appState.items[appState.activeItemIndex].props.active"
+              class="text-white w-full"
+              label="Active"
+              :disable="
+                (appState.items[appState.activeItemIndex].t3Entry &&
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0) ||
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.digital_analog === 1
               "
-            />
-            <q-input
-              class="mb-1"
+            >
+              <q-tooltip
+                v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                anchor="center left"
+                self="center end"
+              >
+                Can't activate it because the linked entry is in auto mode
+              </q-tooltip></q-checkbox
+            >
+            <q-checkbox
+              dark
+              filled
+              v-model="appState.items[appState.activeItemIndex].props.inAlarm"
+              class="text-white w-full"
+              label="In alarm"
               v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  .digital_analog === 1
+                appState.items[appState.activeItemIndex].props.inAlarm !==
+                undefined
               "
-              :disable="
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.auto_manual === 0
-              "
-              filled
-              dark
-              type="number"
-              v-model.number="
-                appState.items[appState.activeItemIndex].t3Entry.value
-              "
-              label="Filled"
-            />
-            <q-select
-              filled
-              dark
-              v-model="
-                appState.items[appState.activeItemIndex].t3EntryDisplayField
-              "
-              :options="[
-                {
-                  label: 'Value',
-                  value:
-                    appState.items[appState.activeItemIndex].t3Entry
-                      ?.digital_analog === 1
-                      ? 'value'
-                      : 'control',
-                },
-                { label: 'Label', value: 'label' },
-                { label: 'Description', value: 'description' },
-              ]"
-              label="Display field"
-              emit-value
-              map-options
             />
           </q-expansion-item>
+
+          <div>
+            <q-btn
+              dark
+              outline
+              no-caps
+              stretch
+              :icon="
+                appState.items[appState.activeItemIndex].t3Entry
+                  ? 'dataset_linked'
+                  : undefined
+              "
+              class="text-white w-full"
+              :label="
+                !appState.items[appState.activeItemIndex].t3Entry
+                  ? 'Link with an entry'
+                  : `Linked with ${
+                      appState.items[appState.activeItemIndex].t3Entry
+                        .description
+                    }`
+              "
+              @click="linkT3EntryDialogAction"
+            />
+            <q-expansion-item
+              v-if="appState.items[appState.activeItemIndex].t3Entry"
+              class="mt-2 border border-solid border-gray-700"
+              dark
+              default-opened
+              label="Entry settings"
+            >
+              <q-select
+                class="mb-1"
+                filled
+                dark
+                v-model="
+                  appState.items[appState.activeItemIndex].t3Entry.auto_manual
+                "
+                :options="[
+                  { label: 'Auto', value: 0 },
+                  { label: 'Manual', value: 1 },
+                ]"
+                label="Auto/Manual"
+                emit-value
+                map-options
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'auto_manual',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <q-select
+                class="mb-1"
+                v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    .digital_analog === 0 &&
+                  appState.items[appState.activeItemIndex].t3Entry.range
+                "
+                :disable="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                filled
+                dark
+                v-model="
+                  appState.items[appState.activeItemIndex].t3Entry.control
+                "
+                :options="[
+                  {
+                    label: getRangeById(
+                      appState.items[appState.activeItemIndex].t3Entry.range
+                    ).off,
+                    value: 0,
+                  },
+                  {
+                    label: getRangeById(
+                      appState.items[appState.activeItemIndex].t3Entry.range
+                    ).on,
+                    value: 1,
+                  },
+                ]"
+                label="Value"
+                emit-value
+                map-options
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'control',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <!-- Program status -->
+              <q-select
+                class="mb-1"
+                v-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'PROGRAM'
+                "
+                :disable="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                filled
+                dark
+                v-model="
+                  appState.items[appState.activeItemIndex].t3Entry.status
+                "
+                :options="[
+                  {
+                    label: 'OFF',
+                    value: 0,
+                  },
+                  {
+                    label: 'ON',
+                    value: 1,
+                  },
+                ]"
+                label="Status"
+                emit-value
+                map-options
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'status',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <!-- Schedule output -->
+              <q-select
+                class="mb-1"
+                v-else-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'SCHEDULE'
+                "
+                :disable="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                filled
+                dark
+                v-model="
+                  appState.items[appState.activeItemIndex].t3Entry.output
+                "
+                :options="[
+                  {
+                    label: 'OFF',
+                    value: 0,
+                  },
+                  {
+                    label: 'ON',
+                    value: 1,
+                  },
+                ]"
+                label="Output"
+                emit-value
+                map-options
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'output',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <!-- Holiday value -->
+              <q-select
+                class="mb-1"
+                v-else-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'HOLIDAY'
+                "
+                :disable="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                filled
+                dark
+                v-model="appState.items[appState.activeItemIndex].t3Entry.value"
+                :options="[
+                  {
+                    label: 'OFF',
+                    value: 0,
+                  },
+                  {
+                    label: 'ON',
+                    value: 1,
+                  },
+                ]"
+                label="Value"
+                emit-value
+                map-options
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'value',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <!-- Analog range value -->
+              <q-input
+                class="mb-1"
+                v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    .digital_analog === 1
+                "
+                :disable="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                "
+                filled
+                dark
+                type="number"
+                v-model.number="
+                  appState.items[appState.activeItemIndex].t3Entry.value
+                "
+                label="Value"
+                @update:model-value="
+                  T3UpdateEntryField(
+                    'value',
+                    appState.items[appState.activeItemIndex]
+                  )
+                "
+              />
+              <!-- Display field -->
+              <q-select
+                filled
+                dark
+                v-model="
+                  appState.items[appState.activeItemIndex].t3EntryDisplayField
+                "
+                :options="[
+                  {
+                    label: 'Value',
+                    value:
+                      appState.items[appState.activeItemIndex].t3Entry
+                        ?.digital_analog === 1
+                        ? 'value'
+                        : 'control',
+                  },
+                  { label: 'Label', value: 'label' },
+                  { label: 'Description', value: 'description' },
+                ]"
+                label="Display field"
+                emit-value
+                map-options
+              />
+            </q-expansion-item>
+          </div>
         </div>
       </div>
     </div>
@@ -503,12 +615,13 @@ import { defineComponent, ref, onMounted, onUnmounted, toRaw } from "vue";
 import { useQuasar } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
-import KeyController, { getCombi, getKey } from "keycon";
+import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
-import { computed } from "@vue/reactivity";
+
+// import { deviceData } from "../lib/demo-data";
 
 export default defineComponent({
   name: "IndexPage",
@@ -527,6 +640,10 @@ export default defineComponent({
     const selectedTool = ref("Pointer");
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ currentPanelData: [] });
+
+    if (process.env.DEV) {
+      T3000_Data.value.currentPanelData = deviceData;
+    }
 
     let panzoomInstance = null;
     const emptyProject = {
@@ -571,26 +688,6 @@ export default defineComponent({
     onUnmounted(() => {
       if (!panzoomInstance) return;
       panzoomInstance.dispose();
-    });
-
-    const activeCheckboxLabel = computed(() => {
-      if (appState.value.activeItemIndex === null) {
-        return;
-      }
-      if (
-        appState.value.items[appState.value.activeItemIndex].t3Entry
-          ?.digital_analog === 0 &&
-        appState.value.items[appState.value.activeItemIndex].t3Entry.range
-      ) {
-        const range = ranges.find(
-          (i) =>
-            i.id ===
-            appState.value.items[appState.value.activeItemIndex].t3Entry.range
-        );
-        if (!range) return;
-        return range.label;
-      }
-      return "Active";
     });
 
     window.chrome?.webview?.addEventListener("message", (arg) => {
@@ -920,20 +1017,9 @@ export default defineComponent({
       selecto.value.clickTarget(e);
     }
 
-    function T3UpdateEntryField(key, obj, source) {
+    function T3UpdateEntryField(key, obj) {
       if (!obj.t3Entry) return;
       let fieldVal = obj.t3Entry[key];
-      if (source === "activeCheckBox" && obj.t3Entry?.digital_analog === 0) {
-        if (key === "value" || key === "control") {
-          key = "control";
-          const range = ranges.find((i) => i.id === obj.t3Entry.range);
-          fieldVal =
-            (obj.props.active && !range?.directInvers) ||
-            (!obj.props.active && range?.directInvers)
-              ? 1
-              : 0;
-        }
-      }
       if (key === "value" || key === "control") {
         refreshObjectActiveValue(obj);
       }
@@ -965,15 +1051,29 @@ export default defineComponent({
     function refreshObjectActiveValue(item) {
       if (item.props?.active !== undefined) {
         if (!item.t3Entry) return;
-        const range = ranges.find((i) => i.id === item.t3Entry.range);
-        if (!range) return;
-        item.props.active =
-          (item.t3Entry?.digital_analog === 0 &&
-            ((item.t3Entry?.control === 1 && !range.directInvers) ||
-              (item.t3Entry?.control === 0 && range.directInvers))) ||
-          (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
-            ? true
-            : false;
+        if (
+          item.t3Entry.type === "OUTPUT" &&
+          item.t3Entry.hw_switch_status !== 1
+        ) {
+          item.props.active = !!item.t3Entry.hw_switch_status;
+        } else if (item.t3Entry.range) {
+          const range = ranges.find((i) => i.id === item.t3Entry.range);
+          if (range) {
+            item.props.active =
+              (item.t3Entry?.digital_analog === 0 &&
+                ((item.t3Entry?.control === 1 && !range.directInvers) ||
+                  (item.t3Entry?.control === 0 && range.directInvers))) ||
+              (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
+                ? true
+                : false;
+          }
+        } else if (item.t3Entry.type === "PROGRAM") {
+          item.props.active = !!item.t3Entry.status;
+        } else if (item.t3Entry.type === "SCHEDULE") {
+          item.props.active = !!item.t3Entry.output;
+        } else if (item.t3Entry.type === "HOLIDAY") {
+          item.props.active = !!item.t3Entry.value;
+        }
       }
     }
 
@@ -1098,7 +1198,6 @@ export default defineComponent({
       linkT3EntryDialog,
       linkT3EntryDialogAction,
       T3000_Data,
-      activeCheckboxLabel,
       getRangeById,
     };
   },
@@ -1110,16 +1209,26 @@ export default defineComponent({
   background-color: #2a2a2a;
   padding: 10px 0;
   align-self: stretch;
+  overflow-y: hidden;
+  max-height: 100vh;
 }
 
 .tools {
   padding-top: 34px;
+  width: 70px;
 }
-
 .item-config {
   width: 250px;
   padding: 10px;
   padding-top: 34px;
+}
+.item-config-inner {
+  overflow-y: auto;
+  max-height: calc(100vh - 45px);
+  scrollbar-width: thin;
+}
+.item-config-inner::-webkit-scrollbar {
+  display: none;
 }
 
 .toolbar {
