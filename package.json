@@ -1,6 +1,6 @@
 {
   "name": "hvac-drawer",
-  "version": "0.1.2",
+  "version": "0.2.1",
   "description": "HVAC drawer",
   "productName": "HVAC Drawer",
   "author": "Alaa Rihan <alaa@temcocontrols.com>",
@@ -20,7 +20,7 @@
     "quasar": "^2.6.0",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0",
-    "vue3-moveable": "^0.12.1",
+    "vue3-moveable": "^0.13.1",
     "vue3-selecto": "^1.6.2"
   },
   "devDependencies": {
