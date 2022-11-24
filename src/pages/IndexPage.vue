@@ -949,8 +949,8 @@ import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
-//Remove when deploy
-import { deviceData } from "../lib/demo-data";
+// Remove when deploy
+// import { deviceData } from "../lib/demo-data";
 
 export default defineComponent({
   name: "IndexPage",
@@ -973,10 +973,10 @@ export default defineComponent({
     const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
 
     // Remove when deploy
-    if (process.env.DEV) {
+    /*  if (process.env.DEV) {
       T3000_Data.value.currentPanelData = deviceData;
       selectPanelOptions.value = T3000_Data.value.currentPanelData;
-    }
+    } */
 
     let panzoomInstance = null;
     const emptyProject = {
