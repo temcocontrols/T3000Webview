@@ -129,6 +129,7 @@
             @resizeStart="onResizeStart"
             @resize="onResize"
             @resizeEnd="onResizeEnd"
+            @rotateStart="onRotateStart"
             @rotate="onRotate"
             @resizeGroupStart="onResizeGroupStart"
             @resizeGroup="onResizeGroup"
@@ -580,7 +581,7 @@
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
-    <q-card style="min-width: 400px">
+    <q-card style="min-width: 600px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
         <q-space />
@@ -589,13 +590,18 @@
 
       <q-separator />
 
-      <q-card-section style="max-height: 60vh" class="scroll">
+      <q-card-section style="height: 70vh" class="scroll">
         <q-select
           option-label="description"
           option-value="id"
           filled
+          use-input
+          hide-selected
+          fill-input
+          input-debounce="0"
           v-model="linkT3EntryDialog.data"
-          :options="T3000_Data.currentPanelData"
+          :options="selectPanelOptions"
+          @filter="selectPanelFilterFn"
           label="Select Entry"
         />
       </q-card-section>
@@ -604,7 +610,13 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" color="primary" @click="linkT3EntrySave" />
+        <q-btn
+          flat
+          label="Save"
+          :disable="!linkT3EntryDialog.data"
+          color="primary"
+          @click="linkT3EntrySave"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -621,7 +633,8 @@ import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
-// import { deviceData } from "../lib/demo-data";
+//Remove when deploy
+import { deviceData } from "../lib/demo-data";
 
 export default defineComponent({
   name: "IndexPage",
@@ -641,8 +654,12 @@ export default defineComponent({
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ currentPanelData: [] });
 
+    const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
+
+    // Remove when deploy
     if (process.env.DEV) {
       T3000_Data.value.currentPanelData = deviceData;
+      selectPanelOptions.value = T3000_Data.value.currentPanelData;
     }
 
     let panzoomInstance = null;
@@ -655,6 +672,9 @@ export default defineComponent({
       viewportTransform: { x: 0, y: 0, scale: 1 },
     };
     const appState = ref(cloneDeep(emptyProject));
+    let undoHistory = [];
+    let redoHistory = [];
+    let lastAction = null;
     onMounted(() => {
       panzoomInstance = panzoom(viewport.value, {
         maxZoom: 4,
@@ -699,8 +719,9 @@ export default defineComponent({
             arg.data.data = JSON.parse(arg.data.data);
           }
           appState.value = arg.data.data;
-        } else if (arg.data.action === "GET_CURRENT_PANEL_DATA_RES") {
+        } else if (arg.data.action === "GET_PANEL_DATA_RES") {
           T3000_Data.value.currentPanelData = arg.data.data;
+          selectPanelOptions.value = T3000_Data.value.currentPanelData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
             .forEach((item) => {
@@ -747,6 +768,14 @@ export default defineComponent({
       }
     });
 
+    function addActionToHistory(title) {
+      redoHistory = [];
+      undoHistory.unshift({
+        title,
+        state: cloneDeep(appState.value),
+      });
+    }
+
     function onClickGroup(e) {
       selecto.value.clickTarget(e.inputEvent, e.inputTarget);
     }
@@ -757,6 +786,7 @@ export default defineComponent({
       item.translate = e.beforeTranslate;
     }
     function onDragGroupStart(e) {
+      addActionToHistory("Drag Group");
       e.events.forEach((ev, i) => {
         const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
@@ -780,6 +810,7 @@ export default defineComponent({
           (t) => t === target || t.contains(target)
         )
       ) {
+        addActionToHistory("Drag object");
         e.stop();
       }
     }
@@ -804,6 +835,7 @@ export default defineComponent({
     }
 
     function onResizeStart(e) {
+      addActionToHistory("Resize object");
       const itemIndex = appState.value.items.findIndex(
         (item) => `movable-item-${item.id}` === e.target.id
       );
@@ -830,6 +862,9 @@ export default defineComponent({
       appState.value.items[itemIndex].height = e.lastEvent.height;
       appState.value.items[itemIndex].translate =
         e.lastEvent.drag.beforeTranslate;
+    }
+    function onRotateStart(e) {
+      addActionToHistory("Rotate object");
     }
     function onRotate(e) {
       // e.target.style.transform = e.drag.transform;
@@ -867,6 +902,7 @@ export default defineComponent({
     }
 
     function onRotateGroupStart(e) {
+      addActionToHistory("Rotate Group");
       e.events.forEach((ev) => {
         const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
@@ -887,6 +923,7 @@ export default defineComponent({
     }
 
     function addObject(item) {
+      addActionToHistory(`Add ${item.type}`);
       appState.value.itemsCount++;
       item.id = appState.value.itemsCount;
       appState.value.items.push(item);
@@ -959,6 +996,7 @@ export default defineComponent({
     }
 
     function rotete90(item, minues = false) {
+      addActionToHistory("Rotate object");
       if (!minues) {
         item.rotate = item.rotate + 90;
       } else {
@@ -967,6 +1005,7 @@ export default defineComponent({
       refreshSelecto();
     }
     function flipH(item) {
+      addActionToHistory("Flip object H");
       if (item.scaleX === 1) {
         item.scaleX = -1;
       } else {
@@ -975,6 +1014,7 @@ export default defineComponent({
       refreshSelecto();
     }
     function flipV(item) {
+      addActionToHistory("Flip object V");
       if (item.scaleY === 1) {
         item.scaleY = -1;
       } else {
@@ -984,13 +1024,16 @@ export default defineComponent({
     }
 
     function bringToFront(item) {
+      addActionToHistory("Bring object to front");
       item.zindex = item.zindex + 1;
     }
     function sendToBack(item) {
+      addActionToHistory("Send object to back");
       item.zindex = item.zindex - 1;
     }
 
     function removeObject(item) {
+      addActionToHistory("Remove object");
       const index = appState.value.items.findIndex((i) => i.id === item.id);
       appState.value.activeItemIndex = null;
       appState.value.items.splice(index, 1);
@@ -1038,6 +1081,7 @@ export default defineComponent({
     }
 
     function linkT3EntrySave() {
+      addActionToHistory("Link object to T3000 entry");
       appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
         linkT3EntryDialog.value.data
       );
@@ -1049,6 +1093,7 @@ export default defineComponent({
     }
 
     function refreshObjectActiveValue(item) {
+      addActionToHistory("Change linked entry value");
       if (item.props?.active !== undefined) {
         if (!item.t3Entry) return;
         if (
@@ -1095,17 +1140,25 @@ export default defineComponent({
         })
           .onOk(() => {
             appState.value = cloneDeep(emptyProject);
+            undoHistory = [];
+            redoHistory = [];
             refreshSelecto();
           })
           .onCancel(() => {});
         return;
       }
       appState.value = cloneDeep(emptyProject);
+      undoHistory = [];
+      redoHistory = [];
       refreshSelecto();
     }
 
     keycon.keydown((e) => {
-      if (!appState.value.selectedTargets.length) return;
+      if (appState.value.selectedTargets.length < 1) return;
+
+      if (["up", "down", "left", "right"].includes(e.key)) {
+        addActionToHistory("Move object");
+      }
       if (e.key === "up") {
         movable.value.request("draggable", { deltaX: 0, deltaY: -5 }, true);
       } else if (e.key === "down") {
@@ -1127,6 +1180,15 @@ export default defineComponent({
       save();
     });
 
+    keycon.keydown(["ctrl", "z"], (e) => {
+      e.inputEvent.preventDefault();
+      undoAction();
+    });
+    keycon.keydown(["ctrl", "y"], (e) => {
+      e.inputEvent.preventDefault();
+      redoAction();
+    });
+
     function linkT3EntryDialogAction() {
       linkT3EntryDialog.value.active = true;
       if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry)
@@ -1141,6 +1203,7 @@ export default defineComponent({
     }
 
     function deleteSelected() {
+      addActionToHistory("Remove selected objects");
       if (appState.value.selectedTargets.length > 0) {
         appState.value.selectedTargets.forEach((el) => {
           const iIndex = appState.value.items.findIndex(
@@ -1153,6 +1216,49 @@ export default defineComponent({
         appState.value.selectedTargets = [];
         appState.value.activeItemIndex = null;
       }
+    }
+
+    function selectPanelFilterFn(val, update) {
+      if (val === "") {
+        update(() => {
+          selectPanelOptions.value = T3000_Data.value.currentPanelData;
+
+          // here you have access to "ref" which
+          // is the Vue reference of the QSelect
+        });
+        return;
+      }
+
+      update(() => {
+        const keyword = val.toUpperCase();
+        selectPanelOptions.value = T3000_Data.value.currentPanelData.filter(
+          (item) =>
+            item.command.indexOf(keyword) > -1 ||
+            item.description.indexOf(keyword) > -1 ||
+            item.label.indexOf(keyword) > -1
+        );
+      });
+    }
+    function undoAction() {
+      if (undoHistory.length < 1) return;
+      redoHistory.unshift({
+        title: lastAction,
+        state: cloneDeep(appState.value),
+      });
+      appState.value = cloneDeep(undoHistory[0].state);
+      undoHistory.shift();
+      refreshSelecto();
+    }
+
+    function redoAction() {
+      if (redoHistory.length < 1) return;
+      undoHistory.unshift({
+        title: lastAction,
+        state: cloneDeep(appState.value),
+      });
+      appState.value = cloneDeep(redoHistory[0].state);
+      redoHistory.shift();
+      refreshSelecto();
     }
 
     return {
@@ -1170,6 +1276,7 @@ export default defineComponent({
       targets,
       onResize,
       onResizeEnd,
+      onRotateStart,
       onRotate,
       onResizeGroupStart,
       onResizeGroup,
@@ -1198,7 +1305,9 @@ export default defineComponent({
       linkT3EntryDialog,
       linkT3EntryDialogAction,
       T3000_Data,
+      selectPanelOptions,
       getRangeById,
+      selectPanelFilterFn,
     };
   },
 });
