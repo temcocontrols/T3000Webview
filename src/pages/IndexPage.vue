@@ -1,6 +1,6 @@
 <template>
   <q-page>
-    <div class="flex no-wrap items-start justify-between">
+    <div>
       <div class="tools flex column">
         <q-list class="rounded-borders text-primary">
           <q-item
@@ -21,8 +21,9 @@
           </q-item>
         </q-list>
       </div>
-      <div class="viewport">
+      <div class="viewport-wrapper">
         <q-toolbar class="toolbar text-white shadow-2">
+          <!-- File menu -->
           <q-btn-dropdown
             no-caps
             stretch
@@ -31,18 +32,12 @@
             label="File"
           >
             <q-list>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="newProject"
-                tabindex="0"
-              >
+              <q-item dense clickable v-close-popup @click="newProject">
                 <q-item-section avatar>
                   <q-avatar
-                    size="md"
+                    size="sm"
                     icon="assignment"
-                    color="primary"
+                    color="grey-7"
                     text-color="white"
                   />
                 </q-item-section>
@@ -51,12 +46,12 @@
                 </q-item-section>
               </q-item>
               <q-separator inset spaced />
-              <q-item dense clickable v-close-popup @click="save" tabindex="0">
+              <q-item dense clickable v-close-popup @click="save">
                 <q-item-section avatar>
                   <q-avatar
-                    size="md"
+                    size="sm"
                     icon="assignment"
-                    color="primary"
+                    color="grey-7"
                     text-color="white"
                   />
                 </q-item-section>
@@ -69,117 +64,437 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-          <q-btn no-caps stretch flat label="Edit" />
-          <q-btn no-caps stretch flat label="Object" />
+          <!--  Edit menu -->
+          <q-btn-dropdown
+            no-caps
+            stretch
+            flat
+            content-class="menu-dropdown"
+            label="Edit"
+          >
+            <q-list>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="undoAction"
+                :disable="undoHistory.length < 1"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="undo"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Undo</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + Z</q-chip>
+                </q-item-section>
+              </q-item>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="redoAction"
+                :disable="redoHistory.length < 1"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="redo"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Redo</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + Y</q-chip>
+                </q-item-section>
+              </q-item>
+              <q-separator inset spaced />
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="deleteSelected"
+                :disable="appState.selectedTargets.length < 1"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="delete"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Delete selected</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+          <!-- Object menu -->
+          <q-btn-dropdown
+            no-caps
+            stretch
+            flat
+            content-class="menu-dropdown"
+            label="Object"
+            :disable="appState.activeItemIndex === null"
+          >
+            <q-list>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="
+                  duplicateObject(appState.items[appState.activeItemIndex])
+                "
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="file_copy"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Duplicate</q-item-section>
+              </q-item>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="rotete90(appState.items[appState.activeitemindex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="autorenew"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Rotate 90°</q-item-section>
+              </q-item>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="
+                  rotete90(appState.items[appState.activeitemindex], true)
+                "
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="sync"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Rotate -90°</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="flipH(appState.items[appState.activeItemIndex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="flip"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Flip horizontal</q-item-section>
+              </q-item>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="flipV(appState.items[appState.activeItemIndex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="flip"
+                    color="grey-7"
+                    text-color="white"
+                    style="transform: rotate(90deg)"
+                  />
+                </q-item-section>
+                <q-item-section>Flip vertical</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="bringToFront(appState.items[appState.activeItemIndex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="flip_to_front"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Bring to front</q-item-section>
+              </q-item>
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="sendToBack(appState.items[appState.activeItemIndex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="flip_to_back"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Send to Back</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item
+                dense
+                clickable
+                v-close-popup
+                @click="removeObject(appState.items[appState.activeItemIndex])"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    icon="remove"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>Remove</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
         </q-toolbar>
-        <vue-selecto
-          ref="selecto"
-          dragContainer=".viewport"
-          v-bind:selectableTargets="targets"
-          v-bind:hitRate="100"
-          v-bind:selectByClick="true"
-          v-bind:selectFromInside="true"
-          v-bind:toggleContinueSelect="['shift']"
-          v-bind:ratio="0"
-          :boundContainer="true"
-          @dragStart="onDragStart"
-          @selectEnd="onSelectEnd"
-          @dragEnd="onSelectoDragEnd"
-          :dragCondition="selectoDragCondition"
-        >
-        </vue-selecto>
-        <div ref="viewport">
-          <vue-moveable
-            ref="movable"
-            v-bind:draggable="true"
-            v-bind:resizable="true"
-            v-bind:rotatable="true"
-            v-bind:target="appState.selectedTargets"
-            :snappable="true"
-            :snapThreshold="10"
-            :isDisplaySnapDigit="true"
-            :snapGap="true"
-            :snapDirections="{
-              top: true,
-              right: true,
-              bottom: true,
-              left: true,
-            }"
-            :elementSnapDirections="{
-              top: true,
-              right: true,
-              bottom: true,
-              left: true,
-            }"
-            :snapDigit="0"
-            :elementGuidelines="appState.elementGuidelines"
-            :origin="true"
-            :throttleResize="0"
-            :throttleRotate="0"
-            rotationPosition="top"
-            :originDraggable="true"
-            :originRelative="true"
-            :defaultGroupRotate="0"
-            defaultGroupOrigin="50% 50%"
-            :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
-            @clickGroup="onClickGroup"
-            @drag="onDrag"
-            @dragGroupStart="onDragGroupStart"
-            @dragGroup="onDragGroup"
-            @resizeStart="onResizeStart"
-            @resize="onResize"
-            @resizeEnd="onResizeEnd"
-            @rotateStart="onRotateStart"
-            @rotate="onRotate"
-            @resizeGroupStart="onResizeGroupStart"
-            @resizeGroup="onResizeGroup"
-            @resizeGroupEnd="onResizeGroupEnd"
-            @rotateGroupStart="onRotateGroupStart"
-            @rotateGroup="onRotateGroup"
+        <div class="viewport">
+          <vue-selecto
+            ref="selecto"
+            dragContainer=".viewport"
+            v-bind:selectableTargets="targets"
+            v-bind:hitRate="100"
+            v-bind:selectByClick="true"
+            v-bind:selectFromInside="true"
+            v-bind:toggleContinueSelect="['shift']"
+            v-bind:ratio="0"
+            :boundContainer="true"
+            @dragStart="onDragStart"
+            @selectEnd="onSelectEnd"
+            @dragEnd="onSelectoDragEnd"
+            :dragCondition="selectoDragCondition"
           >
-          </vue-moveable>
+          </vue-selecto>
+          <div ref="viewport">
+            <vue-moveable
+              ref="movable"
+              v-bind:draggable="true"
+              v-bind:resizable="true"
+              v-bind:rotatable="true"
+              v-bind:target="appState.selectedTargets"
+              :snappable="true"
+              :snapThreshold="10"
+              :isDisplaySnapDigit="true"
+              :snapGap="true"
+              :snapDirections="{
+                top: true,
+                right: true,
+                bottom: true,
+                left: true,
+              }"
+              :elementSnapDirections="{
+                top: true,
+                right: true,
+                bottom: true,
+                left: true,
+              }"
+              :snapDigit="0"
+              :elementGuidelines="appState.elementGuidelines"
+              :origin="true"
+              :throttleResize="0"
+              :throttleRotate="0"
+              rotationPosition="top"
+              :originDraggable="true"
+              :originRelative="true"
+              :defaultGroupRotate="0"
+              defaultGroupOrigin="50% 50%"
+              :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
+              @clickGroup="onClickGroup"
+              @drag="onDrag"
+              @dragGroupStart="onDragGroupStart"
+              @dragGroup="onDragGroup"
+              @resizeStart="onResizeStart"
+              @resize="onResize"
+              @resizeEnd="onResizeEnd"
+              @rotateStart="onRotateStart"
+              @rotate="onRotate"
+              @resizeGroupStart="onResizeGroupStart"
+              @resizeGroup="onResizeGroup"
+              @resizeGroupEnd="onResizeGroupEnd"
+              @rotateGroupStart="onRotateGroupStart"
+              @rotateGroup="onRotateGroup"
+            >
+            </vue-moveable>
 
-          <div
-            v-for="item in appState.items"
-            :key="item.id"
-            ref="targets"
-            :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-            :id="`movable-item-${item.id}`"
-            @mousedown.right="selectByRightClick"
-            class="movable-item-wrapper"
-          >
-            <q-menu touch-position context-menu>
-              <q-list dense style="min-width: 100px">
-                <q-item clickable v-close-popup @click="duplicateObject(item)">
-                  <q-item-section>Duplicate</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="rotete90(item)">
-                  <q-item-section>Rotate 90°</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="rotete90(item, true)">
-                  <q-item-section>Rotate -90°</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="flipH(item)">
-                  <q-item-section>Flip horizontal</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="flipV(item)">
-                  <q-item-section>Flip vertical</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="bringToFront(item)">
-                  <q-item-section>Bring to front</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="sendToBack(item)">
-                  <q-item-section>Send to Back</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="removeObject(item)">
-                  <q-item-section>Remove</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-            <object-type :item="item" />
+            <div
+              v-for="item in appState.items"
+              :key="item.id"
+              ref="targets"
+              :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
+              :id="`movable-item-${item.id}`"
+              @mousedown.right="selectByRightClick"
+              class="movable-item-wrapper"
+            >
+              <q-menu touch-position context-menu>
+                <q-list>
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="duplicateObject(item)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="file_copy"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Duplicate</q-item-section>
+                  </q-item>
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="rotete90(appState.items[appState.activeitemindex])"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="autorenew"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Rotate 90°</q-item-section>
+                  </q-item>
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="
+                      rotete90(appState.items[appState.activeitemindex], true)
+                    "
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="sync"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Rotate -90°</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item dense clickable v-close-popup @click="flipH(item)">
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="flip"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Flip horizontal</q-item-section>
+                  </q-item>
+                  <q-item dense clickable v-close-popup @click="flipV(item)">
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="flip"
+                        color="grey-7"
+                        text-color="white"
+                        style="transform: rotate(90deg)"
+                      />
+                    </q-item-section>
+                    <q-item-section>Flip vertical</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="bringToFront(item)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="flip_to_front"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Bring to front</q-item-section>
+                  </q-item>
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="sendToBack(item)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="flip_to_back"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Send to Back</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="removeObject(item)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="remove"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Remove</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+              <object-type :item="item" />
+            </div>
           </div>
         </div>
       </div>
@@ -577,6 +892,7 @@
           </div>
         </div>
       </div>
+      <div v-else></div>
     </div>
   </q-page>
   <!-- Link entry dialog -->
@@ -672,8 +988,8 @@ export default defineComponent({
       viewportTransform: { x: 0, y: 0, scale: 1 },
     };
     const appState = ref(cloneDeep(emptyProject));
-    let undoHistory = [];
-    let redoHistory = [];
+    const undoHistory = ref([]);
+    const redoHistory = ref([]);
     let lastAction = null;
     onMounted(() => {
       panzoomInstance = panzoom(viewport.value, {
@@ -769,8 +1085,8 @@ export default defineComponent({
     });
 
     function addActionToHistory(title) {
-      redoHistory = [];
-      undoHistory.unshift({
+      redoHistory.value = [];
+      undoHistory.value.unshift({
         title,
         state: cloneDeep(appState.value),
       });
@@ -937,7 +1253,7 @@ export default defineComponent({
 
     const viewportMargins = {
       top: 36,
-      left: 56,
+      left: 0,
     };
 
     function onSelectoDragEnd(e) {
@@ -1240,24 +1556,24 @@ export default defineComponent({
       });
     }
     function undoAction() {
-      if (undoHistory.length < 1) return;
-      redoHistory.unshift({
+      if (undoHistory.value.length < 1) return;
+      redoHistory.value.unshift({
         title: lastAction,
         state: cloneDeep(appState.value),
       });
-      appState.value = cloneDeep(undoHistory[0].state);
-      undoHistory.shift();
+      appState.value = cloneDeep(undoHistory.value[0].state);
+      undoHistory.value.shift();
       refreshSelecto();
     }
 
     function redoAction() {
-      if (redoHistory.length < 1) return;
-      undoHistory.unshift({
+      if (redoHistory.value.length < 1) return;
+      undoHistory.value.unshift({
         title: lastAction,
         state: cloneDeep(appState.value),
       });
-      appState.value = cloneDeep(redoHistory[0].state);
-      redoHistory.shift();
+      appState.value = cloneDeep(redoHistory.value[0].state);
+      redoHistory.value.shift();
       refreshSelecto();
     }
 
@@ -1308,6 +1624,11 @@ export default defineComponent({
       selectPanelOptions,
       getRangeById,
       selectPanelFilterFn,
+      undoHistory,
+      redoHistory,
+      undoAction,
+      redoAction,
+      deleteSelected,
     };
   },
 });
@@ -1324,12 +1645,17 @@ export default defineComponent({
 
 .tools {
   padding-top: 34px;
-  width: 70px;
+  position: absolute;
+  height: 100%;
+  z-index: 1;
 }
 .item-config {
   width: 250px;
   padding: 10px;
   padding-top: 34px;
+  position: absolute;
+  right: 0;
+  height: 100%;
 }
 .item-config-inner {
   overflow-y: auto;
@@ -1342,6 +1668,7 @@ export default defineComponent({
 
 .toolbar {
   background-color: #2a2a2a;
+  margin-left: 55px;
 }
 
 .q-toolbar {
@@ -1354,6 +1681,13 @@ export default defineComponent({
   padding: 20px;
   width: 100%;
   height: 100%;
+}
+
+.viewport-wrapper {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: absolute;
 }
 
 .viewport {
