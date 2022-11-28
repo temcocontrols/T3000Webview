@@ -299,7 +299,7 @@
             v-bind:toggleContinueSelect="['shift']"
             v-bind:ratio="0"
             :boundContainer="true"
-            @dragStart="onDragStart"
+            @dragStart="onSelectoDragStart"
             @selectEnd="onSelectEnd"
             @dragEnd="onSelectoDragEnd"
             :dragCondition="selectoDragCondition"
@@ -340,7 +340,9 @@
               defaultGroupOrigin="50% 50%"
               :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
               @clickGroup="onClickGroup"
+              @drag-start="onDragStart"
               @drag="onDrag"
+              @drag-end="onDragEnd"
               @dragGroupStart="onDragGroupStart"
               @dragGroup="onDragGroup"
               @resizeStart="onResizeStart"
@@ -969,6 +971,7 @@ export default defineComponent({
     const selectedTool = ref("Pointer");
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ currentPanelData: [] });
+    let lastDragTranslate = null;
 
     const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
 
@@ -1085,6 +1088,7 @@ export default defineComponent({
     });
 
     function addActionToHistory(title) {
+      console.log(title);
       redoHistory.value = [];
       undoHistory.value.unshift({
         title,
@@ -1099,14 +1103,23 @@ export default defineComponent({
     function onClickGroup(e) {
       selecto.value.clickTarget(e.inputEvent, e.inputTarget);
     }
+
+    function onDragStart(e) {}
     function onDrag(e) {
       const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
       );
       item.translate = e.beforeTranslate;
     }
+
+    function onDragEnd(e) {
+      if (e.lastEvent) {
+        addActionToHistory("Move Object");
+      }
+    }
+
     function onDragGroupStart(e) {
-      addActionToHistory("Drag Group");
+      addActionToHistory("Move Group");
       e.events.forEach((ev, i) => {
         const itemIndex = appState.value.items.findIndex(
           (item) => `movable-item-${item.id}` === ev.target.id
@@ -1122,7 +1135,7 @@ export default defineComponent({
         appState.value.items[itemIndex].translate = ev.beforeTranslate;
       });
     }
-    function onDragStart(e) {
+    function onSelectoDragStart(e) {
       const target = e.inputEvent.target;
       if (
         movable.value.isMoveableElement(target) ||
@@ -1130,7 +1143,6 @@ export default defineComponent({
           (t) => t === target || t.contains(target)
         )
       ) {
-        addActionToHistory("Drag object");
         e.stop();
       }
     }
@@ -1588,9 +1600,11 @@ export default defineComponent({
       addObject,
       viewport,
       onClickGroup,
-      onDrag,
-      onDragGroup,
       onDragStart,
+      onDrag,
+      onDragEnd,
+      onDragGroup,
+      onSelectoDragStart,
       onDragGroupStart,
       onSelectEnd,
       targets,
