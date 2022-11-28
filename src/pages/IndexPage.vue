@@ -345,6 +345,7 @@
               @drag-end="onDragEnd"
               @dragGroupStart="onDragGroupStart"
               @dragGroup="onDragGroup"
+              @dragGroupEnd="onDragGroupEnd"
               @resizeStart="onResizeStart"
               @resize="onResize"
               @resizeEnd="onResizeEnd"
@@ -1104,7 +1105,9 @@ export default defineComponent({
       selecto.value.clickTarget(e.inputEvent, e.inputTarget);
     }
 
-    function onDragStart(e) {}
+    function onDragStart(e) {
+      addActionToHistory("Move Object");
+    }
     function onDrag(e) {
       const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
@@ -1113,8 +1116,8 @@ export default defineComponent({
     }
 
     function onDragEnd(e) {
-      if (e.lastEvent) {
-        addActionToHistory("Move Object");
+      if (!e.lastEvent) {
+        undoHistory.value.shift();
       }
     }
 
@@ -1134,6 +1137,11 @@ export default defineComponent({
         );
         appState.value.items[itemIndex].translate = ev.beforeTranslate;
       });
+    }
+    function onDragGroupEnd(e) {
+      if (!e.lastEvent) {
+        undoHistory.value.shift();
+      }
     }
     function onSelectoDragStart(e) {
       const target = e.inputEvent.target;
@@ -1606,6 +1614,7 @@ export default defineComponent({
       onDragGroup,
       onSelectoDragStart,
       onDragGroupStart,
+      onDragGroupEnd,
       onSelectEnd,
       targets,
       onResize,
