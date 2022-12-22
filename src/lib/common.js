@@ -10,7 +10,7 @@ export const T3_Types = {
 export const tools = [
   {
     name: "Pointer",
-    text: "Select",
+    label: "Select",
     icon: "img:/cursor.svg",
   },
   {

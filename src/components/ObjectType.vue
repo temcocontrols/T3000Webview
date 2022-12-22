@@ -4,13 +4,12 @@
     <span v-if="item.t3Entry.hw_switch_status !== 1">
       -
       {{
-        item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
-          ? item.t3Entry.hw_switch_status
-            ? "MAN-ON"
-            : "MAN-OFF"
-          : ""
-      }}</span
-    >
+          item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
+            ? item.t3Entry.hw_switch_status
+              ? "MAN-ON"
+              : "MAN-OFF"
+            : ""
+      }}</span>
     <span class="ml-2 text-lg">
       <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
         <q-tooltip anchor="top middle" self="center middle">
@@ -37,7 +36,7 @@
     <heating-coil class="movable-item heating-coil" v-bind="item.props" />
   </div>
   <div v-else-if="item.type === 'Filter'">
-    <Filter class="movable-item filter" v-bind="item.props" />
+    <filter-el class="movable-item filter" v-bind="item.props" />
   </div>
   <div v-else-if="item.type === 'Humidifier'">
     <humidifier class="movable-item humidifier" v-bind="item.props" />
@@ -46,7 +45,7 @@
     <damper class="movable-item damper" v-bind="item.props" />
   </div>
   <div v-else-if="item.type === 'Text'">
-    <Text class="movable-item text" v-bind="item.props" />
+    <text-el class="movable-item text" v-bind="item.props" />
   </div>
   <div v-else-if="item.type === 'Temperature'">
     <temperature class="movable-item temperature" v-bind="item.props" />
@@ -62,7 +61,7 @@ import HeatingCoil from "./HeatingCoil.vue";
 import FilterEl from "./Filter.vue";
 import HumidifierEl from "./Humidifier.vue";
 import Damper from "./Damper.vue";
-import Text from "./Text.vue";
+import TextEl from "./Text.vue";
 import Temperature from "./Temperature.vue";
 
 import { ranges } from "src/lib/common";
@@ -74,10 +73,10 @@ export default defineComponent({
     Fan: FanEl,
     CoolingCoil,
     HeatingCoil,
-    Filter: FilterEl,
+    FilterEl,
     Humidifier: HumidifierEl,
     Damper,
-    Text,
+    TextEl,
     Temperature,
   },
   props: {

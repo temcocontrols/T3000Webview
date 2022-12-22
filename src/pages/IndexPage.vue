@@ -3,15 +3,8 @@
     <div>
       <div class="tools flex column">
         <q-list class="rounded-borders text-primary">
-          <q-item
-            v-for="tool in tools"
-            :key="tool.name"
-            @click="selectTool(tool.name)"
-            clickable
-            v-ripple
-            :active="selectedTool === tool.name"
-            active-class="active-tool"
-          >
+          <q-item v-for="tool in tools" :key="tool.name" @click="selectTool(tool.name)" clickable v-ripple
+            :active="selectedTool === tool.name" active-class="active-tool">
             <q-tooltip anchor="center right" self="center left">
               {{ tool.label }}
             </q-tooltip>
@@ -19,27 +12,24 @@
               <q-icon :name="tool.icon" size="sm" />
             </q-item-section>
           </q-item>
+          <q-item @click="uploadObjectDialog.active = true" clickable v-ripple>
+            <q-tooltip anchor="center right" self="center left">
+              Add custom SVG
+            </q-tooltip>
+            <q-item-section>
+              <q-icon name="add_circle_outline" size="sm" />
+            </q-item-section>
+          </q-item>
         </q-list>
       </div>
       <div class="viewport-wrapper">
         <q-toolbar class="toolbar text-white shadow-2">
           <!-- File menu -->
-          <q-btn-dropdown
-            no-caps
-            stretch
-            flat
-            content-class="menu-dropdown"
-            label="File"
-          >
+          <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="File">
             <q-list>
               <q-item dense clickable v-close-popup @click="newProject">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="assignment"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="assignment" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>New Project</q-item-label>
@@ -48,12 +38,7 @@
               <q-separator inset spaced />
               <q-item dense clickable v-close-popup @click="save">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="assignment"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="assignment" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Save</q-item-label>
@@ -65,28 +50,11 @@
             </q-list>
           </q-btn-dropdown>
           <!--  Edit menu -->
-          <q-btn-dropdown
-            no-caps
-            stretch
-            flat
-            content-class="menu-dropdown"
-            label="Edit"
-          >
+          <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Edit">
             <q-list>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="undoAction"
-                :disable="undoHistory.length < 1"
-              >
+              <q-item dense clickable v-close-popup @click="undoAction" :disable="undoHistory.length < 1">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="undo"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="undo" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Undo</q-item-label>
@@ -95,20 +63,9 @@
                   <q-chip>Ctrl + Z</q-chip>
                 </q-item-section>
               </q-item>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="redoAction"
-                :disable="redoHistory.length < 1"
-              >
+              <q-item dense clickable v-close-popup @click="redoAction" :disable="redoHistory.length < 1">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="redo"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="redo" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Redo</q-item-label>
@@ -118,20 +75,10 @@
                 </q-item-section>
               </q-item>
               <q-separator inset spaced />
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="deleteSelected"
-                :disable="appState.selectedTargets.length < 1"
-              >
+              <q-item dense clickable v-close-popup @click="deleteSelected"
+                :disable="appState.selectedTargets.length < 1">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="delete"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Delete selected</q-item-label>
@@ -140,148 +87,61 @@
             </q-list>
           </q-btn-dropdown>
           <!-- Object menu -->
-          <q-btn-dropdown
-            no-caps
-            stretch
-            flat
-            content-class="menu-dropdown"
-            label="Object"
-            :disable="appState.activeItemIndex === null"
-          >
+          <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Object"
+            :disable="appState.activeItemIndex === null">
             <q-list>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="
-                  duplicateObject(appState.items[appState.activeItemIndex])
-                "
-              >
+              <q-item dense clickable v-close-popup @click="
+                duplicateObject(appState.items[appState.activeItemIndex])
+              ">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="file_copy"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Duplicate</q-item-section>
               </q-item>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="rotete90(appState.items[appState.activeitemindex])"
-              >
+              <q-item dense clickable v-close-popup @click="rotete90(appState.items[appState.activeitemindex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="autorenew"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Rotate 90°</q-item-section>
               </q-item>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="
-                  rotete90(appState.items[appState.activeitemindex], true)
-                "
-              >
+              <q-item dense clickable v-close-popup @click="
+                rotete90(appState.items[appState.activeitemindex], true)
+              ">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="sync"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Rotate -90°</q-item-section>
               </q-item>
               <q-separator />
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="flipH(appState.items[appState.activeItemIndex])"
-              >
+              <q-item dense clickable v-close-popup @click="flipH(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="flip"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Flip horizontal</q-item-section>
               </q-item>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="flipV(appState.items[appState.activeItemIndex])"
-              >
+              <q-item dense clickable v-close-popup @click="flipV(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="flip"
-                    color="grey-7"
-                    text-color="white"
-                    style="transform: rotate(90deg)"
-                  />
+                  <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" style="transform: rotate(90deg)" />
                 </q-item-section>
                 <q-item-section>Flip vertical</q-item-section>
               </q-item>
               <q-separator />
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="bringToFront(appState.items[appState.activeItemIndex])"
-              >
+              <q-item dense clickable v-close-popup @click="bringToFront(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="flip_to_front"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Bring to front</q-item-section>
               </q-item>
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="sendToBack(appState.items[appState.activeItemIndex])"
-              >
+              <q-item dense clickable v-close-popup @click="sendToBack(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="flip_to_back"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Send to Back</q-item-section>
               </q-item>
               <q-separator />
-              <q-item
-                dense
-                clickable
-                v-close-popup
-                @click="removeObject(appState.items[appState.activeItemIndex])"
-              >
+              <q-item dense clickable v-close-popup @click="removeObject(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    icon="remove"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Remove</q-item-section>
               </q-item>
@@ -289,208 +149,90 @@
           </q-btn-dropdown>
         </q-toolbar>
         <div class="viewport">
-          <vue-selecto
-            ref="selecto"
-            dragContainer=".viewport"
-            v-bind:selectableTargets="targets"
-            v-bind:hitRate="100"
-            v-bind:selectByClick="true"
-            v-bind:selectFromInside="true"
-            v-bind:toggleContinueSelect="['shift']"
-            v-bind:ratio="0"
-            :boundContainer="true"
-            @dragStart="onSelectoDragStart"
-            @selectEnd="onSelectEnd"
-            @dragEnd="onSelectoDragEnd"
-            :dragCondition="selectoDragCondition"
-          >
+          <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
+            v-bind:selectByClick="true" v-bind:selectFromInside="true" v-bind:toggleContinueSelect="['shift']"
+            v-bind:ratio="0" :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectEnd"
+            @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
           </vue-selecto>
           <div ref="viewport">
-            <vue-moveable
-              ref="movable"
-              v-bind:draggable="true"
-              v-bind:resizable="true"
-              v-bind:rotatable="true"
-              v-bind:target="appState.selectedTargets"
-              :snappable="true"
-              :snapThreshold="10"
-              :isDisplaySnapDigit="true"
-              :snapGap="true"
-              :snapDirections="{
+            <vue-moveable ref="movable" v-bind:draggable="true" v-bind:resizable="true" v-bind:rotatable="true"
+              v-bind:target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
+              :snapGap="true" :snapDirections="{
                 top: true,
                 right: true,
                 bottom: true,
                 left: true,
-              }"
-              :elementSnapDirections="{
-                top: true,
-                right: true,
-                bottom: true,
-                left: true,
-              }"
-              :snapDigit="0"
-              :elementGuidelines="appState.elementGuidelines"
-              :origin="true"
-              :throttleResize="0"
-              :throttleRotate="0"
-              rotationPosition="top"
-              :originDraggable="true"
-              :originRelative="true"
-              :defaultGroupRotate="0"
-              defaultGroupOrigin="50% 50%"
-              :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
-              @clickGroup="onClickGroup"
-              @drag-start="onDragStart"
-              @drag="onDrag"
-              @drag-end="onDragEnd"
-              @dragGroupStart="onDragGroupStart"
-              @dragGroup="onDragGroup"
-              @dragGroupEnd="onDragGroupEnd"
-              @resizeStart="onResizeStart"
-              @resize="onResize"
-              @resizeEnd="onResizeEnd"
-              @rotateStart="onRotateStart"
-              @rotate="onRotate"
-              @resizeGroupStart="onResizeGroupStart"
-              @resizeGroup="onResizeGroup"
-              @resizeGroupEnd="onResizeGroupEnd"
-              @rotateGroupStart="onRotateGroupStart"
-              @rotateGroup="onRotateGroup"
-            >
+              }" :elementSnapDirections="{
+  top: true,
+  right: true,
+  bottom: true,
+  left: true,
+}" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+              :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
+              :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
+              @clickGroup="onClickGroup" @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd"
+              @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd"
+              @resizeStart="onResizeStart" @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart"
+              @rotate="onRotate" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
+              @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart" @rotateGroup="onRotateGroup">
             </vue-moveable>
 
-            <div
-              v-for="item in appState.items"
-              :key="item.id"
-              ref="targets"
+            <div v-for="item in appState.items" :key="item.id" ref="targets"
               :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-              :id="`movable-item-${item.id}`"
-              @mousedown.right="selectByRightClick"
-              class="movable-item-wrapper"
-            >
+              :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick" class="movable-item-wrapper">
               <q-menu touch-position context-menu>
                 <q-list>
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="duplicateObject(item)"
-                  >
+                  <q-item dense clickable v-close-popup @click="duplicateObject(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="file_copy"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Duplicate</q-item-section>
                   </q-item>
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="rotete90(appState.items[appState.activeitemindex])"
-                  >
+                  <q-item dense clickable v-close-popup @click="rotete90(appState.items[appState.activeitemindex])">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="autorenew"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Rotate 90°</q-item-section>
                   </q-item>
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="
-                      rotete90(appState.items[appState.activeitemindex], true)
-                    "
-                  >
+                  <q-item dense clickable v-close-popup @click="
+                    rotete90(appState.items[appState.activeitemindex], true)
+                  ">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="sync"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Rotate -90°</q-item-section>
                   </q-item>
                   <q-separator />
                   <q-item dense clickable v-close-popup @click="flipH(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="flip"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Flip horizontal</q-item-section>
                   </q-item>
                   <q-item dense clickable v-close-popup @click="flipV(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="flip"
-                        color="grey-7"
-                        text-color="white"
-                        style="transform: rotate(90deg)"
-                      />
+                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
+                        style="transform: rotate(90deg)" />
                     </q-item-section>
                     <q-item-section>Flip vertical</q-item-section>
                   </q-item>
                   <q-separator />
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="bringToFront(item)"
-                  >
+                  <q-item dense clickable v-close-popup @click="bringToFront(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="flip_to_front"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Bring to front</q-item-section>
                   </q-item>
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="sendToBack(item)"
-                  >
+                  <q-item dense clickable v-close-popup @click="sendToBack(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="flip_to_back"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Send to Back</q-item-section>
                   </q-item>
                   <q-separator />
-                  <q-item
-                    dense
-                    clickable
-                    v-close-popup
-                    @click="removeObject(item)"
-                  >
+                  <q-item dense clickable v-close-popup @click="removeObject(item)">
                     <q-item-section avatar>
-                      <q-avatar
-                        size="sm"
-                        icon="remove"
-                        color="grey-7"
-                        text-color="white"
-                      />
+                      <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Remove</q-item-section>
                   </q-item>
@@ -501,396 +243,223 @@
           </div>
         </div>
       </div>
-      <div
-        class="item-config flex flex-nowrap column"
-        v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
-      >
+      <div class="item-config flex flex-nowrap column"
+        v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
         <div class="item-config-inner">
-          <q-expansion-item
-            class="mb-2 border border-solid border-gray-700"
-            dark
-            default-opened
-            label="General"
-          >
+          <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
             <div class="grid gap-4 grid-cols-2 mb-4">
-              <q-input
-                input-style="width: 60px"
-                @update:model-value="refreshSelecto"
-                label="X"
-                v-model.number="
-                  appState.items[appState.activeItemIndex].translate[0]
-                "
-                dark
-                filled
-                type="number"
-              />
-              <q-input
-                input-style="width: 60px"
-                @update:model-value="refreshSelecto"
-                label="Y"
-                v-model.number="
-                  appState.items[appState.activeItemIndex].translate[1]
-                "
-                dark
-                filled
-                type="number"
-              />
+              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="X" v-model.number="
+                appState.items[appState.activeItemIndex].translate[0]
+              " dark filled type="number" />
+              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Y" v-model.number="
+                appState.items[appState.activeItemIndex].translate[1]
+              " dark filled type="number" />
 
-              <q-input
-                input-style="width: 60px"
-                @update:model-value="refreshSelecto"
-                label="Width"
-                v-model.number="appState.items[appState.activeItemIndex].width"
-                dark
-                filled
-                type="number"
-              />
-              <q-input
-                input-style="width: 60px"
-                @update:model-value="refreshSelecto"
-                label="Height"
-                v-model.number="appState.items[appState.activeItemIndex].height"
-                dark
-                filled
-                type="number"
-              />
-              <q-input
-                input-style="width: 60px"
-                @update:model-value="refreshSelecto"
-                label="Rotate"
-                v-model.number="appState.items[appState.activeItemIndex].rotate"
-                dark
-                filled
-                type="number"
-              />
-              <q-input
-                v-if="
-                  appState.items[appState.activeItemIndex].props.fontSize !==
-                  undefined
-                "
-                input-style="width: 60px"
-                label="Font size"
-                v-model.number="
-                  appState.items[appState.activeItemIndex].props.fontSize
-                "
-                dark
-                filled
-                type="number"
-              />
-              <q-input
-                dark
-                filled
-                v-model="appState.items[appState.activeItemIndex].props.color"
-                label="Color"
-                v-if="
-                  appState.items[appState.activeItemIndex].props.color !==
-                  undefined
-                "
-              >
+              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Width"
+                v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
+              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Height"
+                v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
+              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Rotate"
+                v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
+              <q-input v-if="
+                appState.items[appState.activeItemIndex].props.fontSize !==
+                undefined
+              " input-style="width: 60px" label="Font size" v-model.number="
+  appState.items[appState.activeItemIndex].props.fontSize
+" dark filled type="number" />
+              <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color" v-if="
+                appState.items[appState.activeItemIndex].props.color !==
+                undefined
+              ">
                 <template v-slot:append>
                   <q-icon name="colorize" class="cursor-pointer">
-                    <q-popup-proxy
-                      cover
-                      transition-show="scale"
-                      transition-hide="scale"
-                    >
-                      <q-color
-                        v-model="
-                          appState.items[appState.activeItemIndex].props.color
-                        "
-                      />
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-color v-model="
+                        appState.items[appState.activeItemIndex].props.color
+                      " />
                     </q-popup-proxy>
                   </q-icon>
                 </template>
               </q-input>
             </div>
-            <q-checkbox
-              v-if="
-                !appState.items[appState.activeItemIndex].t3Entry &&
-                appState.items[appState.activeItemIndex].props.active !==
-                  undefined
-              "
-              dark
-              filled
-              v-model="appState.items[appState.activeItemIndex].props.active"
-              class="text-white w-full"
-              label="Active"
-              :disable="
+            <q-checkbox v-if="
+              !appState.items[appState.activeItemIndex].t3Entry &&
+              appState.items[appState.activeItemIndex].props.active !==
+              undefined
+            " dark filled v-model="appState.items[appState.activeItemIndex].props.active" class="text-white w-full"
+              label="Active" :disable="
                 (appState.items[appState.activeItemIndex].t3Entry &&
                   appState.items[appState.activeItemIndex].t3Entry
                     ?.auto_manual === 0) ||
                 appState.items[appState.activeItemIndex].t3Entry
                   ?.digital_analog === 1
-              "
-            >
-              <q-tooltip
-                v-if="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                anchor="center left"
-                self="center end"
-              >
+              ">
+              <q-tooltip v-if="
+                appState.items[appState.activeItemIndex].t3Entry
+                  ?.auto_manual === 0
+              " anchor="center left" self="center end">
                 Can't activate it because the linked entry is in auto mode
-              </q-tooltip></q-checkbox
-            >
-            <q-checkbox
-              dark
-              filled
-              v-model="appState.items[appState.activeItemIndex].props.inAlarm"
-              class="text-white w-full"
-              label="In alarm"
-              v-if="
+              </q-tooltip></q-checkbox>
+            <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.inAlarm"
+              class="text-white w-full" label="In alarm" v-if="
                 appState.items[appState.activeItemIndex].props.inAlarm !==
                 undefined
-              "
-            />
+              " />
           </q-expansion-item>
 
           <div>
-            <q-btn
-              dark
-              outline
-              no-caps
-              stretch
-              :icon="
+            <q-btn dark outline no-caps stretch :icon="
+              appState.items[appState.activeItemIndex].t3Entry
+                ? 'dataset_linked'
+                : undefined
+            " class="text-white w-full" :label="
+  !appState.items[appState.activeItemIndex].t3Entry
+    ? 'Link with an entry'
+    : `Linked with ${appState.items[appState.activeItemIndex].t3Entry
+      .description
+    }`
+" @click="linkT3EntryDialogAction" />
+            <q-expansion-item v-if="appState.items[appState.activeItemIndex].t3Entry"
+              class="mt-2 border border-solid border-gray-700" dark default-opened label="Entry settings">
+              <q-select class="mb-1" filled dark v-model="
+                appState.items[appState.activeItemIndex].t3Entry.auto_manual
+              " :options="[
+  { label: 'Auto', value: 0 },
+  { label: 'Manual', value: 1 },
+]" label="Auto/Manual" emit-value map-options @update:model-value="
+  T3UpdateEntryField(
+    'auto_manual',
+    appState.items[appState.activeItemIndex]
+  )
+" />
+              <q-select class="mb-1" v-if="
                 appState.items[appState.activeItemIndex].t3Entry
-                  ? 'dataset_linked'
-                  : undefined
-              "
-              class="text-white w-full"
-              :label="
-                !appState.items[appState.activeItemIndex].t3Entry
-                  ? 'Link with an entry'
-                  : `Linked with ${
-                      appState.items[appState.activeItemIndex].t3Entry
-                        .description
-                    }`
-              "
-              @click="linkT3EntryDialogAction"
-            />
-            <q-expansion-item
-              v-if="appState.items[appState.activeItemIndex].t3Entry"
-              class="mt-2 border border-solid border-gray-700"
-              dark
-              default-opened
-              label="Entry settings"
-            >
-              <q-select
-                class="mb-1"
-                filled
-                dark
-                v-model="
-                  appState.items[appState.activeItemIndex].t3Entry.auto_manual
-                "
-                :options="[
-                  { label: 'Auto', value: 0 },
-                  { label: 'Manual', value: 1 },
-                ]"
-                label="Auto/Manual"
-                emit-value
-                map-options
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'auto_manual',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
-              <q-select
-                class="mb-1"
-                v-if="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    .digital_analog === 0 &&
-                  appState.items[appState.activeItemIndex].t3Entry.range
-                "
-                :disable="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                filled
-                dark
-                v-model="
-                  appState.items[appState.activeItemIndex].t3Entry.control
-                "
-                :options="[
-                  {
-                    label: getRangeById(
-                      appState.items[appState.activeItemIndex].t3Entry.range
-                    ).off,
-                    value: 0,
-                  },
-                  {
-                    label: getRangeById(
-                      appState.items[appState.activeItemIndex].t3Entry.range
-                    ).on,
-                    value: 1,
-                  },
-                ]"
-                label="Value"
-                emit-value
-                map-options
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'control',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
+                  .digital_analog === 0 &&
+                appState.items[appState.activeItemIndex].t3Entry.range
+              " :disable="
+  appState.items[appState.activeItemIndex].t3Entry
+    ?.auto_manual === 0
+" filled dark v-model="
+  appState.items[appState.activeItemIndex].t3Entry.control
+" :options="[
+  {
+    label: getRangeById(
+      appState.items[appState.activeItemIndex].t3Entry.range
+    ).off,
+    value: 0,
+  },
+  {
+    label: getRangeById(
+      appState.items[appState.activeItemIndex].t3Entry.range
+    ).on,
+    value: 1,
+  },
+]" label="Value" emit-value map-options @update:model-value="
+  T3UpdateEntryField(
+    'control',
+    appState.items[appState.activeItemIndex]
+  )
+" />
               <!-- Program status -->
-              <q-select
-                class="mb-1"
-                v-if="
-                  appState.items[appState.activeItemIndex].t3Entry.type ===
-                  'PROGRAM'
-                "
-                :disable="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                filled
-                dark
-                v-model="
-                  appState.items[appState.activeItemIndex].t3Entry.status
-                "
-                :options="[
-                  {
-                    label: 'OFF',
-                    value: 0,
-                  },
-                  {
-                    label: 'ON',
-                    value: 1,
-                  },
-                ]"
-                label="Status"
-                emit-value
-                map-options
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'status',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
+              <q-select class="mb-1" v-if="
+                appState.items[appState.activeItemIndex].t3Entry.type ===
+                'PROGRAM'
+              " :disable="
+  appState.items[appState.activeItemIndex].t3Entry
+    ?.auto_manual === 0
+" filled dark v-model="
+  appState.items[appState.activeItemIndex].t3Entry.status
+" :options="[
+  {
+    label: 'OFF',
+    value: 0,
+  },
+  {
+    label: 'ON',
+    value: 1,
+  },
+]" label="Status" emit-value map-options @update:model-value="
+  T3UpdateEntryField(
+    'status',
+    appState.items[appState.activeItemIndex]
+  )
+" />
               <!-- Schedule output -->
-              <q-select
-                class="mb-1"
-                v-else-if="
-                  appState.items[appState.activeItemIndex].t3Entry.type ===
-                  'SCHEDULE'
-                "
-                :disable="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                filled
-                dark
-                v-model="
-                  appState.items[appState.activeItemIndex].t3Entry.output
-                "
-                :options="[
-                  {
-                    label: 'OFF',
-                    value: 0,
-                  },
-                  {
-                    label: 'ON',
-                    value: 1,
-                  },
-                ]"
-                label="Output"
-                emit-value
-                map-options
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'output',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
+              <q-select class="mb-1" v-else-if="
+                appState.items[appState.activeItemIndex].t3Entry.type ===
+                'SCHEDULE'
+              " :disable="
+  appState.items[appState.activeItemIndex].t3Entry
+    ?.auto_manual === 0
+" filled dark v-model="
+  appState.items[appState.activeItemIndex].t3Entry.output
+" :options="[
+  {
+    label: 'OFF',
+    value: 0,
+  },
+  {
+    label: 'ON',
+    value: 1,
+  },
+]" label="Output" emit-value map-options @update:model-value="
+  T3UpdateEntryField(
+    'output',
+    appState.items[appState.activeItemIndex]
+  )
+" />
               <!-- Holiday value -->
-              <q-select
-                class="mb-1"
-                v-else-if="
-                  appState.items[appState.activeItemIndex].t3Entry.type ===
-                  'HOLIDAY'
-                "
-                :disable="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                filled
-                dark
-                v-model="appState.items[appState.activeItemIndex].t3Entry.value"
-                :options="[
-                  {
-                    label: 'OFF',
-                    value: 0,
-                  },
-                  {
-                    label: 'ON',
-                    value: 1,
-                  },
-                ]"
-                label="Value"
-                emit-value
-                map-options
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'value',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
+              <q-select class="mb-1" v-else-if="
+                appState.items[appState.activeItemIndex].t3Entry.type ===
+                'HOLIDAY'
+              " :disable="
+  appState.items[appState.activeItemIndex].t3Entry
+    ?.auto_manual === 0
+" filled dark v-model="appState.items[appState.activeItemIndex].t3Entry.value" :options="[
+  {
+    label: 'OFF',
+    value: 0,
+  },
+  {
+    label: 'ON',
+    value: 1,
+  },
+]" label="Value" emit-value map-options @update:model-value="
+  T3UpdateEntryField(
+    'value',
+    appState.items[appState.activeItemIndex]
+  )
+" />
               <!-- Analog range value -->
-              <q-input
-                class="mb-1"
-                v-if="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    .digital_analog === 1
-                "
-                :disable="
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0
-                "
-                filled
-                dark
-                type="number"
-                v-model.number="
-                  appState.items[appState.activeItemIndex].t3Entry.value
-                "
-                label="Value"
-                @update:model-value="
-                  T3UpdateEntryField(
-                    'value',
-                    appState.items[appState.activeItemIndex]
-                  )
-                "
-              />
+              <q-input class="mb-1" v-if="
+                appState.items[appState.activeItemIndex].t3Entry
+                  .digital_analog === 1
+              " :disable="
+  appState.items[appState.activeItemIndex].t3Entry
+    ?.auto_manual === 0
+" filled dark type="number" v-model.number="
+  appState.items[appState.activeItemIndex].t3Entry.value
+" label="Value" @update:model-value="
+  T3UpdateEntryField(
+    'value',
+    appState.items[appState.activeItemIndex]
+  )
+" />
               <!-- Display field -->
-              <q-select
-                filled
-                dark
-                v-model="
-                  appState.items[appState.activeItemIndex].t3EntryDisplayField
-                "
-                :options="[
-                  {
-                    label: 'Value',
-                    value:
-                      appState.items[appState.activeItemIndex].t3Entry
-                        ?.digital_analog === 1
-                        ? 'value'
-                        : 'control',
-                  },
-                  { label: 'Label', value: 'label' },
-                  { label: 'Description', value: 'description' },
-                ]"
-                label="Display field"
-                emit-value
-                map-options
-              />
+              <q-select filled dark v-model="
+                appState.items[appState.activeItemIndex].t3EntryDisplayField
+              " :options="[
+  {
+    label: 'Value',
+    value:
+      appState.items[appState.activeItemIndex].t3Entry
+        ?.digital_analog === 1
+        ? 'value'
+        : 'control',
+  },
+  { label: 'Label', value: 'label' },
+  { label: 'Description', value: 'description' },
+]" label="Display field" emit-value map-options />
             </q-expansion-item>
           </div>
         </div>
@@ -910,32 +479,35 @@
       <q-separator />
 
       <q-card-section style="height: 70vh" class="scroll">
-        <q-select
-          option-label="description"
-          option-value="id"
-          filled
-          use-input
-          hide-selected
-          fill-input
-          input-debounce="0"
-          v-model="linkT3EntryDialog.data"
-          :options="selectPanelOptions"
-          @filter="selectPanelFilterFn"
-          label="Select Entry"
-        />
+        <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
+          input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+          @filter="selectPanelFilterFn" label="Select Entry" />
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn
-          flat
-          label="Save"
-          :disable="!linkT3EntryDialog.data"
-          color="primary"
-          @click="linkT3EntrySave"
-        />
+        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <!-- Upload custom object dialog -->
+  <q-dialog v-model="uploadObjectDialog.active">
+    <q-card style="min-width: 450px">
+      <q-card-section>
+        <div class="text-h6">Upload custom SVG</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <file-upload :types="['image/*']" @uploaded="handleCustomObjectUpload" @file-added="customObjectFileAdded"
+          @file-removed="uploadObjectDialog.uploadBtnDisabled = true" />
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Cancel" @click="uploadObjectDialog.active = false" />
+        <q-btn :disabled="uploadObjectDialog.uploadBtnDisabled" :loading="uploadObjectDialog.uploadBtnLoading" flat
+          label="Save" @click="uploadCustomObject()" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -943,13 +515,14 @@
 
 <script>
 import { defineComponent, ref, onMounted, onUnmounted, toRaw } from "vue";
-import { useQuasar } from "quasar";
+import { useQuasar, useMeta } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
+import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
@@ -961,8 +534,13 @@ export default defineComponent({
     VueMoveable,
     VueSelecto,
     ObjectType,
+    FileUpload,
   },
   setup() {
+    const metaData = {
+      title: 'HVAC Drawer',
+    }
+    useMeta(metaData)
     const keycon = new KeyController();
     const $q = useQuasar();
     const movable = ref(null);
@@ -972,7 +550,11 @@ export default defineComponent({
     const selectedTool = ref("Pointer");
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ currentPanelData: [] });
-    let lastDragTranslate = null;
+    const uploadObjectDialog = ref({
+      active: false,
+      uploadBtnDisabled: true,
+      uploadBtnLoading: false,
+    });
 
     const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
 
@@ -1296,11 +878,11 @@ export default defineComponent({
           (e.rect.left -
             viewportMargins.left -
             appState.value.viewportTransform.x) *
-            scalPercentage,
+          scalPercentage,
           (e.rect.top -
             viewportMargins.top -
             appState.value.viewportTransform.y) *
-            scalPercentage,
+          scalPercentage,
         ],
         width: e.rect.width * scalPercentage,
         height: e.rect.height * scalPercentage,
@@ -1448,7 +1030,7 @@ export default defineComponent({
               (item.t3Entry?.digital_analog === 0 &&
                 ((item.t3Entry?.control === 1 && !range.directInvers) ||
                   (item.t3Entry?.control === 0 && range.directInvers))) ||
-              (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
+                (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
                 ? true
                 : false;
           }
@@ -1480,16 +1062,16 @@ export default defineComponent({
         })
           .onOk(() => {
             appState.value = cloneDeep(emptyProject);
-            undoHistory = [];
-            redoHistory = [];
+            undoHistory.value = [];
+            redoHistory.value = [];
             refreshSelecto();
           })
-          .onCancel(() => {});
+          .onCancel(() => { });
         return;
       }
       appState.value = cloneDeep(emptyProject);
-      undoHistory = [];
-      redoHistory = [];
+      undoHistory.value = [];
+      redoHistory.value = [];
       refreshSelecto();
     }
 
@@ -1601,6 +1183,16 @@ export default defineComponent({
       refreshSelecto();
     }
 
+    function handleCustomObjectUpload(data) {
+      console.log("handleCustomObjectUpload", data);
+    }
+
+    async function customObjectFileAdded(file) {
+      uploadObjectDialog.value.uploadBtnDisabled = false;
+      const blob = await file.data.text();
+      console.log(blob);
+    }
+
     return {
       movable,
       selecto,
@@ -1656,6 +1248,9 @@ export default defineComponent({
       undoAction,
       redoAction,
       deleteSelected,
+      uploadObjectDialog,
+      handleCustomObjectUpload,
+      customObjectFileAdded,
     };
   },
 });
@@ -1671,11 +1266,15 @@ export default defineComponent({
 }
 
 .tools {
-  padding-top: 34px;
+  margin-top: 34px;
   position: absolute;
   height: 100%;
+  overflow-y: auto;
+  max-height: calc(100vh - 34px);
+  scrollbar-width: thin;
   z-index: 1;
 }
+
 .item-config {
   width: 250px;
   padding: 10px;
@@ -1684,18 +1283,21 @@ export default defineComponent({
   right: 0;
   height: 100%;
 }
+
 .item-config-inner {
   overflow-y: auto;
   max-height: calc(100vh - 45px);
   scrollbar-width: thin;
 }
-.item-config-inner::-webkit-scrollbar {
+
+.item-config-inner::-webkit-scrollbar,
+.tools::-webkit-scrollbar {
   display: none;
 }
 
 .toolbar {
   background-color: #2a2a2a;
-  margin-left: 55px;
+  padding-left: 55px;
 }
 
 .q-toolbar {
