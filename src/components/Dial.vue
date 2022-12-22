@@ -47,8 +47,8 @@ export default defineComponent({
   },
   inheritAttrs: false,
   data: () => ({
-    svgwidth: 120,
-    svgheight: 300,
+    svgwidth: 100,
+    svgheight: 240,
     offsetX: 20,
     offsetY: 20,
     barHeight: 40,
