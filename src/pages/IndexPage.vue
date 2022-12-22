@@ -12,14 +12,14 @@
               <q-icon :name="tool.icon" size="sm" />
             </q-item-section>
           </q-item>
-          <q-item @click="uploadObjectDialog.active = true" clickable v-ripple>
+          <!--  <q-item @click="uploadObjectDialog.active = true" clickable v-ripple>
             <q-tooltip anchor="center right" self="center left">
               Add custom SVG
             </q-tooltip>
             <q-item-section>
               <q-icon name="add_circle_outline" size="sm" />
             </q-item-section>
-          </q-item>
+          </q-item> -->
         </q-list>
       </div>
       <div class="viewport-wrapper">
@@ -494,7 +494,7 @@
   </q-dialog>
 
   <!-- Upload custom object dialog -->
-  <q-dialog v-model="uploadObjectDialog.active">
+  <!-- <q-dialog v-model="uploadObjectDialog.active">
     <q-card style="min-width: 450px">
       <q-card-section>
         <div class="text-h6">Upload custom SVG</div>
@@ -510,7 +510,7 @@
           label="Save" @click="uploadCustomObject()" />
       </q-card-actions>
     </q-card>
-  </q-dialog>
+  </q-dialog> -->
 </template>
 
 <script>
@@ -522,7 +522,7 @@ import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
-import FileUpload from "../components/FileUpload.vue";
+// import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
@@ -534,7 +534,7 @@ export default defineComponent({
     VueMoveable,
     VueSelecto,
     ObjectType,
-    FileUpload,
+    // FileUpload,
   },
   setup() {
     const metaData = {
