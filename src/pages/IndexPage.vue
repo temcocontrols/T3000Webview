@@ -526,7 +526,15 @@ import ObjectType from "../components/ObjectType.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
-import { deviceData } from "../lib/demo-data";
+const demoDeviceData = () => {
+  if (process.env.DEV) {
+    return import("../lib/demo-data").then(exps => {
+      return exps.default
+    })
+  }
+  return undefined
+};
+
 
 export default defineComponent({
   name: "IndexPage",
@@ -560,7 +568,7 @@ export default defineComponent({
 
     // Remove when deploy
     if (process.env.DEV) {
-      T3000_Data.value.currentPanelData = deviceData;
+      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data });
       selectPanelOptions.value = T3000_Data.value.currentPanelData;
     }
 

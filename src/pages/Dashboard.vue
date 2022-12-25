@@ -75,7 +75,15 @@ import DialChart from '../components/Dial.vue'
 import { ranges } from "../lib/common";
 
 // Remove when deploy
-import { deviceData } from "../lib/demo-data";
+const demoDeviceData = () => {
+  if (process.env.DEV) {
+    return import("../lib/demo-data").then(exps => {
+      return exps.default
+    })
+  }
+  return undefined
+};
+
 
 export default defineComponent({
   name: "DashboardPage",
@@ -199,7 +207,7 @@ export default defineComponent({
 
     // Remove when deploy
     if (process.env.DEV) {
-      T3000_Data.value.currentPanelData = deviceData.filter(item => item.type === "VARIABLE");
+      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data.filter(item => item.type === "VARIABLE") });
       selectPanelOptions.value = T3000_Data.value.currentPanelData;
     }
 
