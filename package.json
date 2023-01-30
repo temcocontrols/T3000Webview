@@ -28,7 +28,7 @@
     "shifty": "^2.19.1",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0",
-    "vue3-moveable": "^0.17.0",
+    "vue3-moveable": "^0.18.1",
     "vue3-selecto": "^1.6.2"
   },
   "devDependencies": {
