@@ -4,12 +4,12 @@
     <span v-if="item.t3Entry.hw_switch_status !== 1">
       -
       {{
-          item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
-            ? item.t3Entry.hw_switch_status
-              ? "MAN-ON"
-              : "MAN-OFF"
-            : ""
-      }}</span>
+    item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
+      ? item.t3Entry.hw_switch_status
+        ? "MAN-ON"
+        : "MAN-OFF"
+      : ""
+}}</span>
     <span class="ml-2 text-lg">
       <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
         <q-tooltip anchor="top middle" self="center middle">
@@ -49,6 +49,9 @@
   </div>
   <div v-else-if="item.type === 'Temperature'">
     <temperature class="movable-item temperature" v-bind="item.props" />
+  </div>
+  <div v-else-if="item.type.startsWith('Custom-')">
+    <div v-html="item.svg"></div>
   </div>
 </template>
 

@@ -2186,7 +2186,7 @@ export default [
     label: "",
     range: 0,
     type: "VARIABLE",
-    value: 0,
+    value: 90000,
   },
   {
     auto_manual: 0,

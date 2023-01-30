@@ -4,7 +4,7 @@
       <div class="tools flex column">
         <q-list class="rounded-borders text-primary">
           <q-item v-for="tool in tools" :key="tool.name" @click="selectTool(tool.name)" clickable v-ripple
-            :active="selectedTool === tool.name" active-class="active-tool">
+            :active="selectedTool.name === tool.name" active-class="active-tool">
             <q-tooltip anchor="center right" self="center left">
               {{ tool.label }}
             </q-tooltip>
@@ -12,14 +12,23 @@
               <q-icon :name="tool.icon" size="sm" />
             </q-item-section>
           </q-item>
-          <!--  <q-item @click="uploadObjectDialog.active = true" clickable v-ripple>
+          <q-item v-for="tool in customTools" :key="tool.name" @click="selectTool(tool.name, 'custom', tool.svg)"
+            clickable v-ripple :active="selectedTool.name === tool.name" active-class="active-tool">
+            <q-tooltip anchor="center right" self="center left">
+              {{ tool.label }}
+            </q-tooltip>
+            <q-item-section>
+              <q-icon name="dashboard_customize" size="sm" />
+            </q-item-section>
+          </q-item>
+          <q-item @click="uploadObjectDialog.active = true" clickable v-ripple>
             <q-tooltip anchor="center right" self="center left">
               Add custom SVG
             </q-tooltip>
             <q-item-section>
               <q-icon name="add_circle_outline" size="sm" />
             </q-item-section>
-          </q-item> -->
+          </q-item>
         </q-list>
       </div>
       <div class="viewport-wrapper">
@@ -98,14 +107,14 @@
                 </q-item-section>
                 <q-item-section>Duplicate</q-item-section>
               </q-item>
-              <q-item dense clickable v-close-popup @click="rotete90(appState.items[appState.activeitemindex])">
+              <q-item dense clickable v-close-popup @click="rotate90(appState.items[appState.activeItemIndex])">
                 <q-item-section avatar>
                   <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>Rotate 90°</q-item-section>
               </q-item>
               <q-item dense clickable v-close-popup @click="
-                rotete90(appState.items[appState.activeitemindex], true)
+                rotate90(appState.items[appState.activeItemIndex], true)
               ">
                 <q-item-section avatar>
                   <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
@@ -151,7 +160,7 @@
         <div class="viewport">
           <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
             v-bind:selectByClick="true" v-bind:selectFromInside="true" v-bind:toggleContinueSelect="['shift']"
-            v-bind:ratio="0" :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectEnd"
+            v-bind:ratio="0" :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectoSelectEnd"
             @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
           </vue-selecto>
           <div ref="viewport">
@@ -188,14 +197,14 @@
                     </q-item-section>
                     <q-item-section>Duplicate</q-item-section>
                   </q-item>
-                  <q-item dense clickable v-close-popup @click="rotete90(appState.items[appState.activeitemindex])">
+                  <q-item dense clickable v-close-popup @click="rotate90(item)">
                     <q-item-section avatar>
                       <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
                     </q-item-section>
                     <q-item-section>Rotate 90°</q-item-section>
                   </q-item>
                   <q-item dense clickable v-close-popup @click="
-                    rotete90(appState.items[appState.activeitemindex], true)
+                    rotate90(item, true)
                   ">
                     <q-item-section avatar>
                       <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
@@ -494,23 +503,23 @@
   </q-dialog>
 
   <!-- Upload custom object dialog -->
-  <!-- <q-dialog v-model="uploadObjectDialog.active">
+  <q-dialog v-model="uploadObjectDialog.active">
     <q-card style="min-width: 450px">
       <q-card-section>
         <div class="text-h6">Upload custom SVG</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <file-upload :types="['image/*']" @uploaded="handleCustomObjectUpload" @file-added="customObjectFileAdded"
+        <file-upload :types="['image/svg+xml']" @uploaded="handleCustomObjectUpload" @file-added="customObjectFileAdded"
           @file-removed="uploadObjectDialog.uploadBtnDisabled = true" />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
         <q-btn flat label="Cancel" @click="uploadObjectDialog.active = false" />
         <q-btn :disabled="uploadObjectDialog.uploadBtnDisabled" :loading="uploadObjectDialog.uploadBtnLoading" flat
-          label="Save" @click="uploadCustomObject()" />
+          label="Save" @click="saveCustomObject()" />
       </q-card-actions>
     </q-card>
-  </q-dialog> -->
+  </q-dialog>
 </template>
 
 <script>
@@ -522,19 +531,18 @@ import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
-// import FileUpload from "../components/FileUpload.vue";
+import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
 const demoDeviceData = () => {
   if (process.env.DEV) {
-    return import("../lib/demo-data").then(exps => {
-      return exps.default
-    })
+    return import("../lib/demo-data").then((exps) => {
+      return exps.default;
+    });
   }
-  return undefined
+  return undefined;
 };
-
 
 export default defineComponent({
   name: "IndexPage",
@@ -542,33 +550,38 @@ export default defineComponent({
     VueMoveable,
     VueSelecto,
     ObjectType,
-    // FileUpload,
+    FileUpload,
   },
   setup() {
     const metaData = {
-      title: 'HVAC Drawer',
-    }
-    useMeta(metaData)
+      title: "HVAC Drawer",
+    };
+    useMeta(metaData);
     const keycon = new KeyController();
     const $q = useQuasar();
     const movable = ref(null);
     const selecto = ref(null);
     const viewport = ref(null);
     const targets = ref([]);
-    const selectedTool = ref("Pointer");
+    const selectedTool = ref({ name: "Pointer", type: "default", svg: null });
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ currentPanelData: [] });
     const uploadObjectDialog = ref({
+      addedCount: 0,
       active: false,
       uploadBtnDisabled: true,
       uploadBtnLoading: false,
+      svg: null,
     });
+    const customTools = ref([]);
 
     const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
 
     // Remove when deploy
     if (process.env.DEV) {
-      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data });
+      demoDeviceData().then((data) => {
+        T3000_Data.value.currentPanelData = data;
+      });
       selectPanelOptions.value = T3000_Data.value.currentPanelData;
     }
 
@@ -702,12 +715,19 @@ export default defineComponent({
       const item = appState.value.items.find(
         (item) => `movable-item-${item.id}` === e.target.id
       );
-      item.translate = e.beforeTranslate;
+      // item.translate = e.beforeTranslate;
+      e.target.style.transform = e.transform;
     }
 
     function onDragEnd(e) {
+
       if (!e.lastEvent) {
         undoHistory.value.shift();
+      } else {
+        const item = appState.value.items.find(
+          (item) => `movable-item-${item.id}` === e.target.id
+        );
+        item.translate = e.lastEvent.beforeTranslate;
       }
     }
 
@@ -744,7 +764,7 @@ export default defineComponent({
         e.stop();
       }
     }
-    function onSelectEnd(e) {
+    function onSelectoSelectEnd(e) {
       appState.value.selectedTargets = e.selected;
       if (appState.value.selectedTargets.length === 1) {
         appState.value.activeItemIndex = appState.value.items.findIndex(
@@ -759,7 +779,7 @@ export default defineComponent({
         e.inputEvent.preventDefault();
 
         setTimeout(() => {
-          movable.value.dragStart(e.inputEvent);
+          this.$refs.moveable.ngDragStart(e.inputEvent);
         });
       }
     }
@@ -872,7 +892,7 @@ export default defineComponent({
 
     function onSelectoDragEnd(e) {
       if (
-        selectedTool.value === "Pointer" ||
+        selectedTool.value.name === "Pointer" ||
         e.rect.width < 20 ||
         e.rect.height < 20
       )
@@ -881,7 +901,8 @@ export default defineComponent({
       const item = addObject({
         title: null,
         active: false,
-        type: selectedTool.value,
+        type: selectedTool.value.name,
+        svg: selectedTool.value.svg,
         translate: [
           (e.rect.left -
             viewportMargins.left -
@@ -898,23 +919,27 @@ export default defineComponent({
         scaleX: 1,
         scaleY: 1,
         props:
-          tools.find((tool) => tool.name === selectedTool.value)?.props || {},
+          tools.find((tool) => tool.name === selectedTool.value.name)?.props || {},
         zindex: 1,
         t3Entry: null,
         t3EntryDisplayField: "label",
       });
-      // selectedTool.value = "Pointer"
+      // selectedTool.value.name = "Pointer"
       setTimeout(() => {
-        const target = document.querySelector(`#movable-item-${item.id}`);
-        appState.value.selectedTargets = [target];
         appState.value.activeItemIndex = appState.value.items.findIndex(
           (i) => i.id === item.id
         );
       }, 10);
+      setTimeout(() => {
+        const target = document.querySelector(`#movable-item-${item.id}`);
+        appState.value.selectedTargets = [target];
+      }, 100);
     }
 
-    function selectTool(name) {
-      selectedTool.value = name;
+    function selectTool(name, type = "default", svg = null) {
+      selectedTool.value.name = name;
+      selectedTool.value.type = type;
+      selectedTool.value.svg = svg;
     }
 
     function refreshSelecto() {
@@ -925,7 +950,9 @@ export default defineComponent({
       }, 10);
     }
 
-    function rotete90(item, minues = false) {
+    function rotate90(item, minues = false) {
+      console.log("item", item)
+      if (!item) return;
       addActionToHistory("Rotate object");
       if (!minues) {
         item.rotate = item.rotate + 90;
@@ -1198,7 +1225,19 @@ export default defineComponent({
     async function customObjectFileAdded(file) {
       uploadObjectDialog.value.uploadBtnDisabled = false;
       const blob = await file.data.text();
-      console.log(blob);
+      uploadObjectDialog.value.svg = blob;
+    }
+
+    function saveCustomObject() {
+      uploadObjectDialog.value.addedCount++;
+      uploadObjectDialog.value.active = false;
+      uploadObjectDialog.value.uploadBtnDisabled = true;
+      customTools.value.push({
+        name: "Custom-" + uploadObjectDialog.value.addedCount,
+        label: "Custom Element",
+        svg: cloneDeep(uploadObjectDialog.value.svg),
+      });
+      uploadObjectDialog.value.svg = null;
     }
 
     return {
@@ -1215,7 +1254,7 @@ export default defineComponent({
       onSelectoDragStart,
       onDragGroupStart,
       onDragGroupEnd,
-      onSelectEnd,
+      onSelectoSelectEnd,
       targets,
       onResize,
       onResizeEnd,
@@ -1231,7 +1270,7 @@ export default defineComponent({
       selectTool,
       tools,
       selectedTool,
-      rotete90,
+      rotate90,
       flipH,
       flipV,
       bringToFront,
@@ -1259,6 +1298,8 @@ export default defineComponent({
       uploadObjectDialog,
       handleCustomObjectUpload,
       customObjectFileAdded,
+      saveCustomObject,
+      customTools,
     };
   },
 });
@@ -1325,11 +1366,12 @@ export default defineComponent({
   height: 100vh;
   overflow: hidden;
   position: absolute;
+  top: 0;
 }
 
 .viewport {
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 36px);
   overflow: hidden;
   position: relative;
   background-image: repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
