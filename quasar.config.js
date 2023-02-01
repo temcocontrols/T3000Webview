@@ -190,7 +190,7 @@ module.exports = configure(function (/* ctx */) {
       builder: {
         // https://www.electron.build/configuration/configuration
 
-        appId: "hvac-drawer",
+        appId: "t3-webview-ui",
       },
     },
 

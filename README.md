@@ -66,7 +66,7 @@ Just replace "https://bing.com" with your url from step #2 and run the example. 
         args->put_Cancel(true);
     }
 
-## How to send data from C++ webview2 to this HVAC Drawer ( Used in T3000 software to send inputs changes to the drawer objects )
+## How to send data from C++ webview2 to HVAC Drawer ( Used in T3000 software to send inputs changes to the drawer objects )
 
 You can use the webview pointer that has defined in the `How to run this tool in C++ webview2` section step `3`, in line #33 in particular.
 Here is an example how we used it to send the T3000 input value changes to this app
