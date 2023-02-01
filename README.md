@@ -3,8 +3,8 @@
 Thisa repo contains the webview componets that we used in T3000, currently there is two main components ( pages )
 
 1- T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings,used inside T3000 to provide a way to make HVAC drawings for buildings.
-2- T3000 Dashboard to visualize the T3000 entries values using gauges and dials.
 
+2- T3000 Dashboard to visualize the T3000 entries values using gauges and dials.
 
 ## Install the dependencies
 
@@ -59,18 +59,21 @@ https://github.com/yhirose/cpp-httplib/blob/master/example/simplesvr.cc
 https://github.com/MicrosoftEdge/WebView2Samples/tree/main/GettingStartedGuides/Win32_GettingStarted
 
 Just replace "https://bing.com" with your url from step #2 and run the example. that's it, you have the HVAC drawer running in the webview.
+
 > And don't forget to delete the following three lines from the example to allow non-ssl http urls:
 
     if (source.substr(0, 5) != L"https") {
-	    args->put_Cancel(true);
+        args->put_Cancel(true);
     }
 
 ## How to send data from C++ webview2 to this HVAC Drawer ( Used in T3000 software to send inputs changes to the drawer objects )
+
 You can use the webview pointer that has defined in the `How to run this tool in C++ webview2` section step `3`, in line #33 in particular.
 Here is an example how we used it to send the T3000 input value changes to this app
 
     String input_data = L"{\"SetInput\":{\"id\":\"IN1\",\"value\":\"On\"}}");
     webview->PostWebMessageAsJson(input_data);
+
 As you see we sent the data as a Json string, in this example we sent the input id and input value, this we make the drawer object that has this input Id to change the active value to true ( If it was a fan then this fan will start running )
 
 To learn more, check [Interop of native-side and web-side code](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/communicate-btwn-web-native)
