@@ -1,8 +1,10 @@
-# T3000 HVAC Drawer
+# T3000 Webview User Interface
 
-T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings.
+Thisa repo contains the webview componets that we used in T3000, currently there is two main components ( pages )
 
-This will be used inside T3000 to provide a way to make HVAC drawings for buildings.
+1- T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings,used inside T3000 to provide a way to make HVAC drawings for buildings.
+2- T3000 Dashboard to visualize the T3000 entries values using gauges and dials.
+
 
 ## Install the dependencies
 
