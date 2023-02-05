@@ -23,14 +23,14 @@
       </template>
 
     </svg>
-    <div class="temco-dial-linear-vertical-output">
+    <div class="temco-dial-linear-vertical-output flex justify-center">
+      <div :class="'temco-dial-value mr-1 temco-dial-' + $attrs.variation + '-' + $attrs.orientation + '-value'">
+        <animated-number :ref="'num_' + this.$attrs.serial" :precision="$attrs.precision" :duration="$attrs.animation"
+          :from="oldValue" :to="$attrs.value" @end="oldValue = $attrs.value" />
+      </div>
       <div class="temco-dial-linear-vertical-name">
         {{ this.$attrs.name }} {{ this.$attrs.units }}
 
-      </div>
-      <div :class="'temco-dial-value temco-dial-' + $attrs.variation + '-' + $attrs.orientation + '-value'">
-        <animated-number :ref="'num_' + this.$attrs.serial" :precision="$attrs.precision" :duration="$attrs.animation"
-          :from="oldValue" :to="$attrs.value" @end="oldValue = $attrs.value" />
       </div>
     </div>
   </div>
@@ -47,10 +47,10 @@ export default defineComponent({
   },
   inheritAttrs: false,
   data: () => ({
-    svgwidth: 100,
-    svgheight: 240,
-    offsetX: 20,
-    offsetY: 20,
+    svgwidth: 70,
+    svgheight: 260,
+    offsetX: 10,
+    offsetY: 10,
     barHeight: 40,
     scaleY: -20,
     factor: 3.5,
@@ -130,11 +130,11 @@ export default defineComponent({
     dialSize() {
       switch (this.$attrs.size) {
         case 'md':
-          this.offsetY = 20
+          this.offsetY = 10
           this.barHeight = 30
-          this.offsetX = (this.svgwidth / 2) - (this.barHeight / 2)
+          this.offsetX = 10 //(this.svgwidth / 2) - (this.barHeight / 2)
           this.scaleY = -25
-          this.scaleX = 70
+          this.scaleX = 35
           break
         case 'sm':
           this.offsetY = 20

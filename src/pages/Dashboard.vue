@@ -1,30 +1,23 @@
 <template>
   <q-page>
-    <div class="flex flex-row justify-center gap-4 mt-4">
-      <div v-for="item in appState.items" class="item flex items-center justify-center bg-slate-100 cursor-pointer"
-        :key="item.id" :class="{ gauge: item.type === 'gauge', dial: item.type === 'dial' }">
-        <gauge-chart v-if="item.type === 'gauge'" class="customizable-gauge"
-          :start-angle="gaugeDefault.startAngle || 110" :end-angle="gaugeDefault.endAngle || -110"
-          :modelValue="(item.t3Entry.value / 1000)" :separator-step="gaugeDefault.separatorStep" :min="item.min"
-          :max="item.max" :scale-interval="gaugeDefault.scale" :inner-radius="gaugeDefault.innerRadius"
-          :separator-thickness="gaugeDefault.separatorThickness" :base-color="gaugeDefault.baseColor" :gauge-color="[
-            { offset: 0, color: '#64bf8a' },
-            { offset: 100, color: '#347AB0' },
-          ]" :easing="gaugeDefault.easing">
-          <div class="gauge-inner-text">
-            <div>
-              <div>{{ item.unit }}</div>
-              <div>{{ item.t3Entry.value / 1000 }}</div>
-            </div>
-          </div>
+    <div class="flex flex-row justify-center gap-4 pt-4 px-8">
+      <div v-for="item in appState.items"
+        class="item flex flex-col flex-nowrap items-center bg-slate-100 cursor-pointer" :key="item.id"
+        :class="{ gauge: item.type === 'gauge', dial: item.type === 'dial' }">
+        <div class="w-full p-2 bg-gray-200 text-center">{{ item.t3Entry.description }}</div>
+        <gauge-chart v-if="item.type === 'gauge'" class="customizable-gauge mt-4" :title="item.label" :unit="item.unit"
+          :min="item.min" :max="item.max" :colors="item.colors" :value="item.t3Entry.value / 1000">
+
         </gauge-chart>
-        <dial-chart v-else-if="item.type === 'dial'" svgStyle="overflow: visible;" :serial="'dial' + item.id"
-          :id="'dial' + item.id" type="gauge" variation="linear" :value="(item.t3Entry.value / 1000)" :units="item.unit"
-          :min="item.min" :max="item.max" precision="2" animation="500" svgwidth="250" svgheight="200" textColor="#333"
-          valueColor="#777" valueBg="transparent" valueBorder="0px solid #fac83c" controlColor="#888" controlBg="none"
-          orientation="vertical" size="md" scale="1" smallscale="1" ticks="10" needle="0" bar-color="#111"
-          progressColor="#4ea5f1" scaleColor="#aaa" scaleTextColor="#333" needleColor="#ff8800" needleStroke="#000"
-          zones="#00ff00,#ff8800,#ff0000"></dial-chart>
+        <div v-else-if="item.type === 'dial'" class="grow mt-2">
+          <dial-chart svgStyle="overflow: visible;" :serial="'dial' + item.id" :id="'dial' + item.id" type="gauge"
+            variation="linear" :value="(item.t3Entry.value / 1000)" :units="item.unit" :min="item.min" :max="item.max"
+            precision="2" animation="500" svgwidth="250" svgheight="200" textColor="#333" valueColor="#777"
+            valueBg="transparent" valueBorder="0px solid #fac83c" controlColor="#888" controlBg="none"
+            orientation="vertical" size="md" scale="1" smallscale="1" ticks="5" needle="0" bar-color="#111"
+            progressColor="#4ea5f1" scaleColor="#aaa" scaleTextColor="#333" needleColor="#ff8800" needleStroke="#000"
+            :zones="item.colors.reverse().toString()"></dial-chart>
+        </div>
       </div>
       <div class="add-new-item flex items-center justify-center bg-slate-100 cursor-pointer"
         @click="addItemDialogAction">
@@ -51,6 +44,35 @@
           <q-input label="Min" v-model.number="addItemDialog.min" filled type="number" class="grow" />
           <q-input label="Max" v-model.number="addItemDialog.max" filled type="number" class="grow" />
         </div>
+        <div class="flex flex-col no-wrap mb-6">
+          <div class="flex no-wrap mb-2">
+            <h2 class="leading-5 font-bold grow">Colors: </h2>
+            <q-btn size="sm" round color="grey-4" text-color="grey-9" icon="add"
+              @click="() => addItemDialog.colors.push({ offset: 1, color: '#000000' })" />
+          </div>
+
+          <div class="flex flex-col no-wrap gap-1">
+            <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in addItemDialog.colors"
+              :key="cItem.color">
+              <q-input label="Offset" v-model.number="cItem.offset" filled type="number" step="0.1" min="0" max="1"
+                class="mr-2 w-24" />
+              <q-input filled v-model="cItem.color" label="Color" class="grow">
+                <template v-slot:append>
+                  <q-icon name="colorize" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-color v-model="
+                        cItem.color
+                      " />
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+              <div class="px-8"><q-btn size="xs" round color="red-10" icon="remove"
+                  @click="() => addItemDialog.colors.splice(index, 1)" /></div>
+
+            </div>
+          </div>
+        </div>
         <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
           input-debounce="0" v-model="addItemDialog.data" :options="selectPanelOptions" @filter="selectPanelFilterFn"
           label="Select Entry" />
@@ -70,7 +92,7 @@
 import { defineComponent, ref, onMounted } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { cloneDeep } from "lodash";
-import GaugeChart from '../components/Gauge.vue'
+import GaugeChart from '../components/EchartsGauge.vue'
 import DialChart from '../components/Dial.vue'
 import { ranges } from "../lib/common";
 
@@ -97,7 +119,14 @@ export default defineComponent({
     };
     useMeta(metaData);
     const $q = useQuasar();
-    const emptyItemDialog = { active: false, type: "gauge", unit: "%", min: 0, max: 100, data: null }
+    const emptyItemDialog = {
+      active: false, type: "gauge", unit: "%", min: 0, max: 100,
+      colors: [
+        { offset: 0.3, color: '#14BE64' },
+        { offset: 0.7, color: '#FFB100' },
+        { offset: 1, color: '#fd666d' },
+      ]
+    }
     const addItemDialog = ref(emptyItemDialog);
     const T3000_Data = ref({ currentPanelData: [] });
     const itemTypes = [
@@ -117,19 +146,6 @@ export default defineComponent({
       "RPM",
       "HP"
     ];
-    const gaugeDefault = {
-      startAngle: -110,
-      endAngle: 110,
-      separatorStep: 5,
-      min: 0,
-      max: 100,
-      scale: 5,
-      innerRadius: 60,
-      separatorThickness: 1,
-      baseColor: "#d0cdcd",
-      easingFct: "Circular",
-      easingType: "Out",
-    };
 
     const emptyProject = {
       items: [],
@@ -207,7 +223,7 @@ export default defineComponent({
 
     // Remove when deploy
     if (process.env.DEV) {
-      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data.filter(item => item.type === "VARIABLE") });
+      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type)) });
       selectPanelOptions.value = T3000_Data.value.currentPanelData;
     }
 
@@ -235,12 +251,16 @@ export default defineComponent({
 
     function addItemSave() {
       const addItemData = cloneDeep(addItemDialog.value)
+      const colors = addItemData.type === "gauge" ?
+        addItemData.colors.map(item => [item.offset, item.color]) :
+        addItemData.colors.map(item => item.color)
       appState.value.items.push({
         id: appState.value.itemsCount,
         type: addItemData.type,
         unit: addItemData.unit,
         min: addItemData.min,
         max: addItemData.max,
+        colors,
         t3Entry: addItemData.data,
       });
       addItemDialog.value = cloneDeep(emptyItemDialog);
@@ -265,7 +285,6 @@ export default defineComponent({
       addItemSave,
       itemTypes,
       itemUnits,
-      gaugeDefault,
       getRangeById
     };
   },
@@ -274,13 +293,12 @@ export default defineComponent({
 
 <style scoped>
 .item {
-  min-height: 300px;
-  padding: 0 15px;
+  min-height: 340px;
 }
 
 .item.gauge {
   width: 300px;
-  height: 300px;
+  height: 340px;
 }
 
 .item.dial {
@@ -306,6 +324,6 @@ export default defineComponent({
 
 .add-new-item {
   width: 300px;
-  height: 300px;
+  height: 340px;
 }
 </style>
