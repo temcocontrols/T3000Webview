@@ -16,7 +16,7 @@
             valueBg="transparent" valueBorder="0px solid #fac83c" controlColor="#888" controlBg="none"
             orientation="vertical" size="md" scale="1" smallscale="1" ticks="5" needle="0" bar-color="#111"
             progressColor="#4ea5f1" scaleColor="#aaa" scaleTextColor="#333" needleColor="#ff8800" needleStroke="#000"
-            :zones="item.colors.reverse().toString()"></dial-chart>
+            :zones="item.colors"></dial-chart>
         </div>
       </div>
       <div class="add-new-item flex items-center justify-center bg-slate-100 cursor-pointer"
@@ -37,6 +37,9 @@
       <q-separator />
 
       <q-card-section style="height: 50vh" class="scroll">
+        <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
+          input-debounce="0" v-model="addItemDialog.data" :options="selectPanelOptions" @filter="selectPanelFilterFn"
+          label="Select Entry" class="mb-6" />
         <q-select emit-value filled map-options v-model="addItemDialog.type" :options="itemTypes" label="Chart Type"
           class="mb-6" />
         <q-select filled v-model="addItemDialog.unit" :options="itemUnits" label="Unit" class="mb-6" />
@@ -44,7 +47,7 @@
           <q-input label="Min" v-model.number="addItemDialog.min" filled type="number" class="grow" />
           <q-input label="Max" v-model.number="addItemDialog.max" filled type="number" class="grow" />
         </div>
-        <div class="flex flex-col no-wrap mb-6">
+        <div class="flex flex-col no-wrap">
           <div class="flex no-wrap mb-2">
             <h2 class="leading-5 font-bold grow">Colors: </h2>
             <q-btn size="sm" round color="grey-4" text-color="grey-9" icon="add"
@@ -73,9 +76,6 @@
             </div>
           </div>
         </div>
-        <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
-          input-debounce="0" v-model="addItemDialog.data" :options="selectPanelOptions" @filter="selectPanelFilterFn"
-          label="Select Entry" />
       </q-card-section>
 
       <q-separator />
@@ -141,10 +141,38 @@ export default defineComponent({
     ];
     const itemUnits = [
       "%",
+      "%RH",
       "Volts",
+      "KV",
       "Amps",
-      "RPM",
-      "HP"
+      "ma",
+      "Watts",
+      "KWatts",
+      "KWH",
+      "°C",
+      "°F",
+      "FPM",
+      "Pascals",
+      "KPascals",
+      "lbs/sqr.inch",
+      "Inches ofWC",
+      "CFM",
+      "Seconds",
+      "Minutes",
+      "Hours",
+      "Days",
+      "Time",
+      "p/min",
+      "Ohms",
+      "Counts",
+      "%Open",
+      "Kg",
+      "L/Hour",
+      "GPH",
+      "GAL",
+      "CF",
+      "BTU",
+      "CMH",
     ];
 
     const emptyProject = {
@@ -172,7 +200,7 @@ export default defineComponent({
           }
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-          T3000_Data.value.currentPanelData = arg.data.data.filter(item => item.type === "VARIABLE");
+          T3000_Data.value.currentPanelData = arg.data.data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type));
           selectPanelOptions.value = T3000_Data.value.currentPanelData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
@@ -242,9 +270,9 @@ export default defineComponent({
         const keyword = val.toUpperCase();
         selectPanelOptions.value = T3000_Data.value.currentPanelData.filter(
           (item) =>
-            item.command.indexOf(keyword) > -1 ||
-            item.description.indexOf(keyword) > -1 ||
-            item.label.indexOf(keyword) > -1
+            item.command.toUpperCase().indexOf(keyword) > -1 ||
+            item.description.toUpperCase().indexOf(keyword) > -1 ||
+            item.label.toUpperCase().indexOf(keyword) > -1
         );
       });
     }
@@ -253,7 +281,7 @@ export default defineComponent({
       const addItemData = cloneDeep(addItemDialog.value)
       const colors = addItemData.type === "gauge" ?
         addItemData.colors.map(item => [item.offset, item.color]) :
-        addItemData.colors.map(item => item.color)
+        addItemData.colors.map(item => item.color).reverse().toString()
       appState.value.items.push({
         id: appState.value.itemsCount,
         type: addItemData.type,

@@ -1190,9 +1190,9 @@ export default defineComponent({
         const keyword = val.toUpperCase();
         selectPanelOptions.value = T3000_Data.value.currentPanelData.filter(
           (item) =>
-            item.command.indexOf(keyword) > -1 ||
-            item.description.indexOf(keyword) > -1 ||
-            item.label.indexOf(keyword) > -1
+            item.command.toUpperCase().indexOf(keyword) > -1 ||
+            item.description.toUpperCase().indexOf(keyword) > -1 ||
+            item.label.toUpperCase().indexOf(keyword) > -1
         );
       });
     }
