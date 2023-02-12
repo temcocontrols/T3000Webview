@@ -201,15 +201,15 @@ export default defineComponent({
       if ("action" in arg.data) {
         if (arg.data.action === "GET_PANELS_LIST_RES") {
           if (arg.data.data) {
-            arg.data.data = JSON.parse(arg.data.data);
-          }
-          T3000_Data.value.panelsList = arg.data.data
-          T3000_Data.value.panelsList.forEach(panel => {
-            window.chrome?.webview?.postMessage({
-              action: 0, // GET_PANEL_DATA
-              panelId: panel.pid,
+            T3000_Data.value.panelsList = arg.data.data
+            T3000_Data.value.panelsList.forEach(panel => {
+              window.chrome?.webview?.postMessage({
+                action: 0, // GET_PANEL_DATA
+                panelId: panel.pid,
+              });
             });
-          });
+          }
+
         }
         else if (arg.data.action === "UPDATE_ENTRY_RES") {
         } else if (arg.data.action === "GET_DASHBOARD_INITIAL_DATA_RES") {
