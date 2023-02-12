@@ -128,7 +128,7 @@ export default defineComponent({
       ]
     }
     const addItemDialog = ref(emptyItemDialog);
-    const T3000_Data = ref({ currentPanelData: [] });
+    const T3000_Data = ref({ panelsData: [], panelsList: [], });
     const itemTypes = [
       {
         label: "Gauge",
@@ -183,25 +183,43 @@ export default defineComponent({
 
     onMounted(() => {
       window.chrome?.webview?.postMessage({
-        action: 1,
+        action: 6, // GET_DASHBOARD_INITIAL_DATA
       });
-      window.chrome?.webview?.postMessage({
-        action: 0,
-      });
+      /*  window.chrome?.webview?.postMessage({
+         action: 4, // GET_PANELS_LIST
+       }); */
+      if (window.chrome?.webview?.postMessage) {
+        setInterval(window.chrome.webview.postMessage, 5000, {
+          action: 4, // GET_PANELS_LIST
+        });
+      }
+
     });
 
     window.chrome?.webview?.addEventListener("message", (arg) => {
       console.log("Recieved webview message", arg.data);
       if ("action" in arg.data) {
-        if (arg.data.action === "UPDATE_ENTRY_RES") {
+        if (arg.data.action === "GET_PANELS_LIST_RES") {
+          if (arg.data.data) {
+            arg.data.data = JSON.parse(arg.data.data);
+          }
+          T3000_Data.value.panelsList = arg.data.data
+          T3000_Data.value.panelsList.forEach(panel => {
+            window.chrome?.webview?.postMessage({
+              action: 0, // GET_PANEL_DATA
+              panelId: panel.pid,
+            });
+          });
+        }
+        else if (arg.data.action === "UPDATE_ENTRY_RES") {
         } else if (arg.data.action === "GET_DASHBOARD_INITIAL_DATA_RES") {
           if (arg.data.data) {
             arg.data.data = JSON.parse(arg.data.data);
           }
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-          T3000_Data.value.currentPanelData = arg.data.data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type));
-          selectPanelOptions.value = T3000_Data.value.currentPanelData;
+          T3000_Data.value.panelsData = arg.data.data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type));
+          selectPanelOptions.value = T3000_Data.value.panelsData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
             .forEach((item) => {
@@ -247,18 +265,18 @@ export default defineComponent({
       }
     });
 
-    const selectPanelOptions = ref(T3000_Data.value.currentPanelData);
+    const selectPanelOptions = ref(T3000_Data.value.panelsData);
 
     // Remove when deploy
     if (process.env.DEV) {
-      demoDeviceData().then(data => { T3000_Data.value.currentPanelData = data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type)) });
-      selectPanelOptions.value = T3000_Data.value.currentPanelData;
+      demoDeviceData().then(data => { T3000_Data.value.panelsData = data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type)) });
+      selectPanelOptions.value = T3000_Data.value.panelsData;
     }
 
     function selectPanelFilterFn(val, update) {
       if (val === "") {
         update(() => {
-          selectPanelOptions.value = T3000_Data.value.currentPanelData;
+          selectPanelOptions.value = T3000_Data.value.panelsData;
 
           // here you have access to "ref" which
           // is the Vue reference of the QSelect
@@ -268,7 +286,7 @@ export default defineComponent({
 
       update(() => {
         const keyword = val.toUpperCase();
-        selectPanelOptions.value = T3000_Data.value.currentPanelData.filter(
+        selectPanelOptions.value = T3000_Data.value.panelsData.filter(
           (item) =>
             item.command.toUpperCase().indexOf(keyword) > -1 ||
             item.description.toUpperCase().indexOf(keyword) > -1 ||
