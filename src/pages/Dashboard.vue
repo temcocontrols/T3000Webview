@@ -55,8 +55,7 @@
           </div>
 
           <div class="flex flex-col no-wrap gap-1">
-            <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in addItemDialog.colors"
-              :key="cItem.color">
+            <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in addItemDialog.colors" :key="index">
               <q-input label="Offset" v-model.number="cItem.offset" filled type="number" step="0.1" min="0" max="1"
                 class="mr-2 w-24" />
               <q-input filled v-model="cItem.color" label="Color" class="grow">
