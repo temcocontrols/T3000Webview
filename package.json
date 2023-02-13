@@ -12,7 +12,7 @@
     "dev": "quasar dev"
   },
   "dependencies": {
-    "@quasar/extras": "^1.0.0",
+    "@quasar/extras": "^1.15.11",
     "@uppy/core": "^3.0.4",
     "@uppy/dashboard": "^3.2.0",
     "@uppy/drag-drop": "^3.0.1",
