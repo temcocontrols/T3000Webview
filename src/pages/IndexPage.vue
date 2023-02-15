@@ -624,11 +624,11 @@ export default defineComponent({
       window.chrome?.webview?.postMessage({
         action: 1,
       });
-      /*  window.chrome?.webview?.postMessage({
+      window.chrome?.webview?.postMessage({
         action: 4, // GET_PANELS_LIST
-      }); */
+      });
       if (window.chrome?.webview?.postMessage) {
-        setInterval(window.chrome.webview.postMessage, 5000, {
+        setInterval(window.chrome.webview.postMessage, 10000, {
           action: 4, // GET_PANELS_LIST
         });
       }
@@ -660,7 +660,8 @@ export default defineComponent({
           }
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-          T3000_Data.value.panelsData = arg.data.data;
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(item => item.pid !== arg.data.panel_id)
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(arg.data.data);
           selectPanelOptions.value = T3000_Data.value.panelsData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
