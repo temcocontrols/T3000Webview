@@ -2,7 +2,13 @@
   <q-dialog :model-value="active" @update:model-value="$emit('update:active', $event)" @show="defaultStatus">
     <q-card style="min-width: 600px">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">Add Item</div>
+        <div class="text-h6"> <template v-if="action === 'Add'">
+            Add Item
+          </template>
+          <template v-else>
+            Edit Item
+          </template>
+        </div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
@@ -11,7 +17,7 @@
 
       <q-card-section style="height: 50vh" class="scroll">
         <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-          input-debounce="0" v-model="dialog.point" :options="selectPanelOptions" @filter="selectPanelFilterFn"
+          input-debounce="0" v-model="dialog.t3Entry" :options="selectPanelOptions" @filter="selectPanelFilterFn"
           label="Select Entry" class="mb-6" />
         <q-select emit-value filled map-options v-model="dialog.type" :options="itemTypes" label="Chart Type"
           class="mb-6" />
@@ -54,7 +60,7 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!dialog.point" color="primary" @click="addItemSave" />
+        <q-btn flat label="Save" :disable="!dialog.t3Entry" color="primary" @click="itemSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -64,7 +70,7 @@
 import { PROPERTIES } from 'moveable';
 import { defineComponent, onMounted, ref, toRaw } from 'vue'
 const emptyItemDialog = {
-  point: null,
+  t3Entry: null,
   active: false, type: "gauge", unit: "%", min: 0, max: 100,
   colors: [
     { offset: 0.3, color: '#14BE64' },
@@ -77,14 +83,14 @@ export default defineComponent({
   name: 'AddEditDashboardItem',
   props: {
     active: Boolean,
-    data: {
+    item: {
       type: Object,
       default: () => emptyItemDialog
     },
     panelsData: Array,
     action: String
   },
-  emits: ['update:active', 'itemAdded', 'itemEdited'],
+  emits: ['update:active', 'itemSaved'],
   setup(props, { emit }) {
     const itemUnits = [
       "%",
@@ -141,8 +147,8 @@ export default defineComponent({
     })
 
     function defaultStatus() {
-      if (PROPERTIES.action === "Edit") {
-        dialog.value = props.data
+      if (props.action === "Edit") {
+        dialog.value = structuredClone(toRaw(props.item))
       } else {
         dialog.value = structuredClone(emptyItemDialog)
       }
@@ -171,19 +177,16 @@ export default defineComponent({
       });
     }
 
-    function addItemSave() {
-      const addItemData = structuredClone(toRaw(dialog.value))
-      const colors = addItemData.type === "gauge" ?
-        addItemData.colors.map(item => [item.offset, item.color]) :
-        addItemData.colors.map(item => item.color).reverse().toString()
-      emit('itemAdded', {
-        type: addItemData.type,
-        unit: addItemData.unit,
-        min: addItemData.min,
-        max: addItemData.max,
-        colors,
-        t3Entry: addItemData.point,
-      })
+    function itemSave() {
+      const item = structuredClone(toRaw(dialog.value))
+      item.processedColors = processColors(item)
+      emit('itemSaved', item)
+    }
+
+    function processColors(item) {
+      return item.type === "gauge" ?
+        item.colors.map(i => [i.offset, i.color]) :
+        item.colors.map(i => i.color).reverse().toString()
     }
 
     function entryLabel(option) {
@@ -192,7 +195,7 @@ export default defineComponent({
       return prefix + (option.description || option.label)
     }
 
-    return { dialog, itemUnits, itemTypes, selectPanelOptions, defaultStatus, selectPanelFilterFn, addItemSave, entryLabel }
+    return { dialog, itemUnits, itemTypes, selectPanelOptions, defaultStatus, selectPanelFilterFn, itemSave, entryLabel }
   }
 })
 </script>

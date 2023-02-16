@@ -4,9 +4,28 @@
       <div v-for="item in appState.items"
         class="item flex flex-col flex-nowrap items-center bg-slate-100 cursor-pointer" :key="item.id"
         :class="{ gauge: item.type === 'gauge', dial: item.type === 'dial' }">
-        <div class="w-full p-2 bg-gray-200 text-center">{{ item.t3Entry.description }}</div>
+        <div class="relative w-full p-2 bg-gray-200 text-center"><span>{{ item.t3Entry.description }}</span>
+          <q-btn color="primary" flat round icon="more_vert" size="sm" class="absolute right-1 top-1">
+            <q-menu>
+              <q-list>
+                <q-item clickable v-close-popup @click="editItemAction(item)">
+                  <q-item-section>
+                    <q-item-label>Edit</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item clickable v-close-popup @click="deleteItemAction(item)">
+                  <q-item-section>
+                    <q-item-label class="text-red">Delete</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </div>
         <gauge-chart v-if="item.type === 'gauge'" class="customizable-gauge mt-4" :title="item.label" :unit="item.unit"
-          :min="item.min" :max="item.max" :colors="item.colors" :value="item.t3Entry.value / 1000">
+          :min="item.min" :max="item.max" :colors="item.processedColors" :value="item.t3Entry.value / 1000">
 
         </gauge-chart>
         <div v-else-if="item.type === 'dial'" class="grow mt-2">
@@ -16,18 +35,20 @@
             valueBg="transparent" valueBorder="0px solid #fac83c" controlColor="#888" controlBg="none"
             orientation="vertical" size="md" scale="1" smallscale="1" ticks="5" needle="0" bar-color="#111"
             progressColor="#4ea5f1" scaleColor="#aaa" scaleTextColor="#333" needleColor="#ff8800" needleStroke="#000"
-            :zones="item.colors"></dial-chart>
+            :zones="item.processedColors"></dial-chart>
         </div>
       </div>
-      <div class="add-new-item flex items-center justify-center bg-slate-100 cursor-pointer"
-        @click="addItemDialogAction">
+      <div class="add-new-item flex items-center justify-center bg-slate-100 cursor-pointer" @click="addItemAction">
         <q-icon name="add" class="text-4xl" />
       </div>
     </div>
   </q-page>
   <!-- Add item dialog -->
   <AddEditDashboardItem action="Add" v-model:active="addItemDialog" :panels-data="T3000_Data.panelsData"
-    @item-added="addItemSave" />
+    @item-saved="addItemSave" />
+  <!-- Edit item dialog -->
+  <AddEditDashboardItem action="Edit" v-model:active="editItemDialog.active" :item="editItemDialog.data"
+    :panels-data="T3000_Data.panelsData" @item-saved="editItemSave" />
 </template>
 
 <script>
@@ -64,6 +85,7 @@ export default defineComponent({
     useMeta(metaData);
     const $q = useQuasar();
     const addItemDialog = ref(false)
+    const editItemDialog = ref({ active: false, data: {} })
     const T3000_Data = ref({ panelsData: [], panelsList: [], });
 
     const emptyProject = {
@@ -162,7 +184,7 @@ export default defineComponent({
       demoDeviceData().then(data => { T3000_Data.value.panelsData = data.filter(item => ["VARIABLE", "INPUT", "OUTPUT"].includes(item.type)) });
     }
 
-    function addItemDialogAction() {
+    function addItemAction() {
       if (T3000_Data.value.panelsData.length) {
         addItemDialog.value = true;
       } else {
@@ -180,11 +202,44 @@ export default defineComponent({
 
     }
 
+    function editItemAction(item) {
+      editItemDialog.value.active = true
+      editItemDialog.value.data = item
+    }
+
+    function deleteItemAction(item) {
+      $q.dialog({
+        title: 'Delete Item Warning',
+        cancel: true,
+        persistent: true,
+        ok: {
+          label: "Delete",
+          textColor: "red",
+          flat: true
+        },
+        message: 'Are you sure you want to delete this item?'
+      }).onOk(() => {
+        const itemIndex = appState.value.items.findIndex(i => i.id === item.id)
+        appState.value.items.splice(itemIndex, 1);
+      }).onCancel(() => {
+        // console.log('Cancel')
+      }).onDismiss(() => {
+        // console.log('I am triggered on both OK and Cancel')
+      })
+    }
+
     function addItemSave(item) {
       item.id = appState.value.itemsCount;
       appState.value.items.push(item);
       addItemDialog.value = false;
       appState.value.itemsCount++;
+    }
+
+    function editItemSave(item) {
+      const itemIndex = appState.value.items.findIndex(i => i.id === item.id)
+      appState.value.items[itemIndex] = item;
+      editItemDialog.value.active = false;
+      editItemDialog.value.data = {}
     }
 
     function getRangeById(id) {
@@ -195,8 +250,12 @@ export default defineComponent({
       appState,
       T3000_Data,
       addItemDialog,
-      addItemDialogAction,
+      editItemDialog,
+      addItemAction,
+      editItemAction,
+      deleteItemAction,
       addItemSave,
+      editItemSave,
       getRangeById
     };
   },
