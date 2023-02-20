@@ -222,128 +222,243 @@ export const ranges = [
     directInvers: true,
   },
   {
-    id: 31,
-    label: "3K YSI 44005",
+    analog: true,
+    id: 0,
+    unit: "",
+    label: "Unused"
+  },
+  {
+    analog: true,
+    id: 1,
     unit: "Deg.C",
+    label: "Y3K -40 to 150"
   },
   {
-    id: 32,
-    label: "3K YSI 44005",
+    analog: true,
+    id: 2,
     unit: "Deg.F",
+    label: "Y3K -40 to 300"
   },
   {
-    id: 33,
-    label: "10K Type2",
+    analog: true,
+    id: 3,
     unit: "Deg.C",
+    label: "10K Type2"
   },
   {
-    id: 34,
-    label: "10K Type2",
+    analog: true,
+    id: 4,
     unit: "Deg.F",
+    label: "10K Type2"
   },
   {
-    id: 35,
-    label: "Allerto/Walker/ASI",
+    analog: true,
+    id: 5,
     unit: "Deg.C",
+    label: "G3K -40 to 120"
   },
   {
-    id: 36,
-    label: "Allerto/Walker/ASI",
+    analog: true,
+    id: 6,
     unit: "Deg.F",
+    label: "G3K -40 to 250"
   },
   {
-    id: 37,
-    label: "10K-40 to 120 (type3)",
+    analog: true,
+    id: 7,
     unit: "Deg.C",
+    label: "10K Type3"
   },
   {
-    id: 38,
-    label: "10K-40 to 120 (type3)",
+    analog: true,
+    id: 8,
     unit: "Deg.F",
+    label: "10K Type3"
   },
   {
-    id: 41,
-    label: "0.0 to 5.0 Volts",
+    analog: true,
+    id: 9,
+    unit: "Deg.C",
+    label: "PT 1K -200 to 300"
+  },
+  {
+    analog: true,
+    id: 10,
+    unit: "Deg.F",
+    label: "PT 1K -200 to 570"
+  },
+  {
+    analog: true,
+    id: 11,
     unit: "Volts",
+    label: "0.0 to 5.0"
   },
   {
-    id: 42,
-    label: "0.0 to 100 Amps",
+    analog: true,
+    id: 12,
     unit: "Amps",
+    label: "0.0 to 100"
   },
   {
-    id: 43,
-    label: "4.0 to 20 ma",
+    analog: true,
+    id: 13,
     unit: "ma",
+    label: "4 to 20"
   },
   {
-    id: 44,
-    label: "0.0 to 20 psi",
+    analog: true,
+    id: 14,
     unit: "psi",
+    label: "4 to 20"
   },
   {
-    id: 45,
-    label: "Pulse Count (Slow 1Hz)",
+    analog: true,
+    id: 15,
     unit: "counts",
+    label: "Pulse Count (Slow 1Hz)"
   },
   {
-    id: 46,
-    label: "0 to 100 %(0-10V)",
+    analog: true,
+    id: 16,
     unit: "%",
+    label: "0 to 100"
   },
   {
-    id: 47,
-    label: "0 to 100 %(0-5V)",
+    analog: true,
+    id: 17,
     unit: "%",
+    label: "0 to 100"
   },
   {
-    id: 48,
-    label: "0 to 100 %(4-20ma)",
+    analog: true,
+    id: 18,
     unit: "%",
+    label: "0 to 100"
   },
   {
-    id: 49,
-    label: "0.0 to 10.0 Volts",
+    analog: true,
+    id: 19,
     unit: "Volts",
+    label: "0.0 to 10.0"
   },
   {
-    id: 56,
-    label: "Hz",
+    analog: true,
+    id: 20,
+    unit: "",
+    label: "Table 1"
+  },
+  {
+    analog: true,
+    id: 21,
+    unit: "",
+    label: "Table 2"
+  },
+  {
+    analog: true,
+    id: 22,
+    unit: "",
+    label: "Table 3"
+  },
+  {
+    analog: true,
+    id: 23,
+    unit: "",
+    label: "Table 4"
+  },
+  {
+    analog: true,
+    id: 24,
+    unit: "",
+    label: "Table 5"
+  },
+  {
+    analog: true,
+    id: 25,
+    unit: "counts",
+    label: "Pulse Count (Fast 100Hz)"
+  },
+  {
+    analog: true,
+    id: 26,
     unit: "Hz",
+    label: "Frequency"
   },
   {
-    id: 57,
-    label: "Humidty %",
+    analog: true,
+    id: 27,
     unit: "%",
+    label: "Humidty %"
   },
   {
-    id: 58,
-    label: "CO2 PPM",
+    analog: true,
+    id: 28,
     unit: "PPM",
+    label: "CO2  PPM"
   },
   {
-    id: 60,
-    label: "TVOC PPM",
-    unit: "PPM",
+    analog: true,
+    id: 29,
+    unit: "RPM",
+    label: "Revolutions Per Minute"
   },
   {
-    id: 61,
-    label: "ug/m3",
+    analog: true,
+    id: 30,
+    unit: "PPB",
+    label: "TVOC PPB"
+  },
+  {
+    analog: true,
+    id: 31,
     unit: "ug/m3",
+    label: "ug/m3"
   },
   {
-    id: 62,
-    label: "#/cm3",
+    analog: true,
+    id: 32,
     unit: "#/cm3",
+    label: "#/cm3"
   },
   {
-    id: 63,
-    label: "dB",
+    analog: true,
+    id: 33,
     unit: "dB",
+    label: "dB"
   },
   {
-    id: 64,
-    label: "Lux",
+    analog: true,
+    id: 34,
     unit: "Lux",
+    label: "Lux"
   },
+  {
+    analog: true,
+    id: 35,
+    unit: "",
+    label: ""
+  },
+  {
+    analog: true,
+    id: 36,
+    unit: "",
+    label: ""
+  },
+  {
+    analog: true,
+    id: 37,
+    unit: "",
+    label: ""
+  },
+  {
+    analog: true,
+    id: 38,
+    unit: "",
+    label: ""
+  },
+  {
+    analog: true,
+    id: 39,
+    unit: "",
+    label: ""
+  }
 ];

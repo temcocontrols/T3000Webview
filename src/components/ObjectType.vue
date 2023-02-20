@@ -1,15 +1,15 @@
 <template>
   <div class="object-title" v-if="item.t3Entry">
-    {{ item.t3Entry[item.t3EntryDisplayField] || "N/A" }} - {{ range }}
+    {{ dispalyText || "N/A" }} - {{ range.label }}
     <span v-if="item.t3Entry.hw_switch_status !== 1">
       -
       {{
-    item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
-      ? item.t3Entry.hw_switch_status
-        ? "MAN-ON"
-        : "MAN-OFF"
-      : ""
-}}</span>
+        item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
+        ? item.t3Entry.hw_switch_status
+          ? "MAN-ON"
+          : "MAN-OFF"
+        : ""
+      }}</span>
     <span class="ml-2 text-lg">
       <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
         <q-tooltip anchor="top middle" self="center middle">
@@ -91,15 +91,39 @@ export default defineComponent({
   setup(props) {
     const range = computed(() => {
       if (props.item.t3Entry.range) {
-        const range = ranges.find((i) => i.id === props.item.t3Entry.range);
-        if (range) return range.label;
+        const range = !props.item.t3Entry.digital_analog
+          ? ranges.find((i) => !i.analog && i.id === props.item.t3Entry.range)
+          : ranges.find((i) => i.analog && i.id === props.item.t3Entry.range);
+        if (range) return range;
       }
 
-      return "Unused";
+      return { label: "Unused", unit: "" };
+    });
+    const dispalyText = computed(() => {
+      if (
+        props.item.t3EntryDisplayField === "value" &&
+        props.item.t3Entry.digital_analog === 1
+      ) {
+        const range = ranges.find((i) => i.analog && i.id === props.item.t3Entry.range)
+        return props.item.t3Entry.value / 1000 + " " + range.unit;
+      } else if (
+        props.item.t3EntryDisplayField === "value" &&
+        !props.item.t3Entry.digital_analog
+      ) {
+        const range = ranges.find((i) => i.id === props.item.t3Entry.range);
+        if (props.item.t3Entry.control) {
+          return range.on;
+        } else {
+          return range.off;
+        }
+      }
+
+      return props.item.t3Entry[props.item.t3EntryDisplayField];
     });
 
     return {
       range,
+      dispalyText,
     };
   },
 });

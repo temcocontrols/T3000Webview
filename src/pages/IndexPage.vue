@@ -252,8 +252,7 @@
           </div>
         </div>
       </div>
-      <div class="item-config flex flex-nowrap column"
-        v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
+      <div class="item-config flex flex-nowrap column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
         <div class="item-config-inner">
           <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
             <div class="grid gap-4 grid-cols-2 mb-4">
@@ -489,8 +488,8 @@
 
       <q-card-section style="height: 70vh" class="scroll">
         <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
-          input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
-          @filter="selectPanelFilterFn" label="Select Entry" />
+          input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions" @filter="selectPanelFilterFn"
+          label="Select Entry" />
       </q-card-section>
 
       <q-separator />
@@ -669,7 +668,8 @@ export default defineComponent({
               item.t3Entry = arg.data.data.find(
                 (ii) =>
                   ii.index === item.t3Entry.index &&
-                  ii.type === item.t3Entry.type
+                  ii.type === item.t3Entry.type &&
+                  ii.pid === item.t3Entry.pid
               );
               refreshObjectActiveValue(item);
             });
@@ -1045,7 +1045,7 @@ export default defineComponent({
         action: 3, // UPDATE_ENTRY
         field: key,
         value: fieldVal,
-        panelId: 1, // Local panel only for now
+        panelId: obj.t3Entry.pid,
         entryIndex: obj.t3Entry.index,
         entryType: T3_Types[obj.t3Entry.type],
       });
@@ -1068,7 +1068,7 @@ export default defineComponent({
     }
 
     function refreshObjectActiveValue(item) {
-      addActionToHistory("Change linked entry value");
+      // addActionToHistory("Update linked entry value");
       if (item.props?.active !== undefined) {
         if (!item.t3Entry) return;
         if (
