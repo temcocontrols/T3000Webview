@@ -316,6 +316,9 @@
           </q-expansion-item>
 
           <div>
+            <q-btn v-if="['Gauge', 'Dial'].includes(appState.items[appState.activeItemIndex].type)" dark outline no-caps
+              stretch icon="settings" class="text-white w-full mb-2" label="Settings"
+              @click="gaugeSettingsDialogAction(appState.items[appState.activeItemIndex])" />
             <q-btn dark outline no-caps stretch :icon="
               appState.items[appState.activeItemIndex].t3Entry
                 ? 'dataset_linked'
@@ -519,6 +522,9 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+  <!-- Edit Gauge/Dial dialog -->
+  <AddEditDashboardItem action="Edit" v-model:active="gaugeSettingsDialog.active" :item="gaugeSettingsDialog.data"
+    :panels-data="T3000_Data.panelsData" @item-saved="gaugeSettingsSave" />
 </template>
 
 <script>
@@ -530,6 +536,7 @@ import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
+import AddEditDashboardItem from '../components/AddEditGaugeDialog.vue'
 import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
@@ -550,6 +557,7 @@ export default defineComponent({
     VueSelecto,
     ObjectType,
     FileUpload,
+    AddEditDashboardItem
   },
   setup() {
     const metaData = {
@@ -942,6 +950,16 @@ export default defineComponent({
         t3Entry: null,
         t3EntryDisplayField: "label",
       });
+      if (['Gauge', 'Dial'].includes(selectedTool.value.name)) {
+        item.min = 0
+        item.max = 100
+        item.colors = [
+          { offset: 0.3, color: '#14BE64' },
+          { offset: 0.7, color: '#FFB100' },
+          { offset: 1, color: '#fd666d' },
+        ]
+
+      }
       // selectedTool.value.name = "Pointer"
       setTimeout(() => {
         appState.value.activeItemIndex = appState.value.items.findIndex(
@@ -1258,6 +1276,20 @@ export default defineComponent({
       uploadObjectDialog.value.svg = null;
     }
 
+    const gaugeSettingsDialog = ref({ active: false, data: {} })
+
+    function gaugeSettingsDialogAction(item) {
+      gaugeSettingsDialog.value.active = true
+      gaugeSettingsDialog.value.data = item
+    }
+
+    function gaugeSettingsSave(item) {
+      const itemIndex = appState.value.items.findIndex(i => i.id === item.id)
+      appState.value.items[itemIndex] = item;
+      gaugeSettingsDialog.value.active = false;
+      gaugeSettingsDialog.value.data = {}
+    }
+
     return {
       movable,
       selecto,
@@ -1318,6 +1350,9 @@ export default defineComponent({
       customObjectFileAdded,
       saveCustomObject,
       customTools,
+      gaugeSettingsDialogAction,
+      gaugeSettingsDialog,
+      gaugeSettingsSave
     };
   },
 });

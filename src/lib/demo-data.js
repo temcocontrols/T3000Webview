@@ -2184,7 +2184,7 @@ export default [
     id: "VAR1",
     index: 0,
     label: "",
-    range: 41,
+    range: 12,
     type: "VARIABLE",
     value: 70000,
   },

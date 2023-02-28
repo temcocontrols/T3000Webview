@@ -64,6 +64,16 @@ export const tools = [
     label: "Temperature",
     icon: "img:/temperature.svg",
   },
+  {
+    name: "Gauge",
+    label: "Gauge",
+    icon: "speed",
+  },
+  {
+    name: "Dial",
+    label: "Dial",
+    icon: "horizontal_split",
+  },
 ];
 
 export const ranges = [
@@ -225,240 +235,240 @@ export const ranges = [
     analog: true,
     id: 0,
     unit: "",
-    label: "Unused"
+    label: "Unused",
   },
   {
     analog: true,
     id: 1,
     unit: "Deg.C",
-    label: "Y3K -40 to 150"
+    label: "Y3K -40 to 150",
   },
   {
     analog: true,
     id: 2,
     unit: "Deg.F",
-    label: "Y3K -40 to 300"
+    label: "Y3K -40 to 300",
   },
   {
     analog: true,
     id: 3,
     unit: "Deg.C",
-    label: "10K Type2"
+    label: "10K Type2",
   },
   {
     analog: true,
     id: 4,
     unit: "Deg.F",
-    label: "10K Type2"
+    label: "10K Type2",
   },
   {
     analog: true,
     id: 5,
     unit: "Deg.C",
-    label: "G3K -40 to 120"
+    label: "G3K -40 to 120",
   },
   {
     analog: true,
     id: 6,
     unit: "Deg.F",
-    label: "G3K -40 to 250"
+    label: "G3K -40 to 250",
   },
   {
     analog: true,
     id: 7,
     unit: "Deg.C",
-    label: "10K Type3"
+    label: "10K Type3",
   },
   {
     analog: true,
     id: 8,
     unit: "Deg.F",
-    label: "10K Type3"
+    label: "10K Type3",
   },
   {
     analog: true,
     id: 9,
     unit: "Deg.C",
-    label: "PT 1K -200 to 300"
+    label: "PT 1K -200 to 300",
   },
   {
     analog: true,
     id: 10,
     unit: "Deg.F",
-    label: "PT 1K -200 to 570"
+    label: "PT 1K -200 to 570",
   },
   {
     analog: true,
     id: 11,
     unit: "Volts",
-    label: "0.0 to 5.0"
+    label: "0.0 to 5.0",
   },
   {
     analog: true,
     id: 12,
     unit: "Amps",
-    label: "0.0 to 100"
+    label: "0.0 to 100",
   },
   {
     analog: true,
     id: 13,
     unit: "ma",
-    label: "4 to 20"
+    label: "4 to 20",
   },
   {
     analog: true,
     id: 14,
     unit: "psi",
-    label: "4 to 20"
+    label: "4 to 20",
   },
   {
     analog: true,
     id: 15,
     unit: "counts",
-    label: "Pulse Count (Slow 1Hz)"
+    label: "Pulse Count (Slow 1Hz)",
   },
   {
     analog: true,
     id: 16,
     unit: "%",
-    label: "0 to 100"
+    label: "0 to 100",
   },
   {
     analog: true,
     id: 17,
     unit: "%",
-    label: "0 to 100"
+    label: "0 to 100",
   },
   {
     analog: true,
     id: 18,
     unit: "%",
-    label: "0 to 100"
+    label: "0 to 100",
   },
   {
     analog: true,
     id: 19,
     unit: "Volts",
-    label: "0.0 to 10.0"
+    label: "0.0 to 10.0",
   },
   {
     analog: true,
     id: 20,
     unit: "",
-    label: "Table 1"
+    label: "Table 1",
   },
   {
     analog: true,
     id: 21,
     unit: "",
-    label: "Table 2"
+    label: "Table 2",
   },
   {
     analog: true,
     id: 22,
     unit: "",
-    label: "Table 3"
+    label: "Table 3",
   },
   {
     analog: true,
     id: 23,
     unit: "",
-    label: "Table 4"
+    label: "Table 4",
   },
   {
     analog: true,
     id: 24,
     unit: "",
-    label: "Table 5"
+    label: "Table 5",
   },
   {
     analog: true,
     id: 25,
     unit: "counts",
-    label: "Pulse Count (Fast 100Hz)"
+    label: "Pulse Count (Fast 100Hz)",
   },
   {
     analog: true,
     id: 26,
     unit: "Hz",
-    label: "Frequency"
+    label: "Frequency",
   },
   {
     analog: true,
     id: 27,
     unit: "%",
-    label: "Humidty %"
+    label: "Humidty %",
   },
   {
     analog: true,
     id: 28,
     unit: "PPM",
-    label: "CO2  PPM"
+    label: "CO2  PPM",
   },
   {
     analog: true,
     id: 29,
     unit: "RPM",
-    label: "Revolutions Per Minute"
+    label: "Revolutions Per Minute",
   },
   {
     analog: true,
     id: 30,
     unit: "PPB",
-    label: "TVOC PPB"
+    label: "TVOC PPB",
   },
   {
     analog: true,
     id: 31,
     unit: "ug/m3",
-    label: "ug/m3"
+    label: "ug/m3",
   },
   {
     analog: true,
     id: 32,
     unit: "#/cm3",
-    label: "#/cm3"
+    label: "#/cm3",
   },
   {
     analog: true,
     id: 33,
     unit: "dB",
-    label: "dB"
+    label: "dB",
   },
   {
     analog: true,
     id: 34,
     unit: "Lux",
-    label: "Lux"
+    label: "Lux",
   },
   {
     analog: true,
     id: 35,
     unit: "",
-    label: ""
+    label: "",
   },
   {
     analog: true,
     id: 36,
     unit: "",
-    label: ""
+    label: "",
   },
   {
     analog: true,
     id: 37,
     unit: "",
-    label: ""
+    label: "",
   },
   {
     analog: true,
     id: 38,
     unit: "",
-    label: ""
+    label: "",
   },
   {
     analog: true,
     id: 39,
     unit: "",
-    label: ""
-  }
+    label: "",
+  },
 ];

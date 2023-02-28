@@ -50,6 +50,20 @@
   <div v-else-if="item.type === 'Temperature'">
     <temperature class="movable-item temperature" v-bind="item.props" />
   </div>
+  <div v-else-if="item.type === 'Gauge'" class="gauge-object">
+    <gauge-chart class="customizable-gauge mt-4" :title="item.label" :unit="range.unit" :min="item.min" :max="item.max"
+      :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0">
+
+    </gauge-chart>
+  </div>
+  <div v-else-if="item.type === 'Dial'" class="gauge-object">
+    <dial-chart svgStyle="overflow: visible;" :serial="'dial' + item.id" :id="'dial' + item.id" type="gauge"
+      variation="linear" :value="(item.t3Entry?.value / 1000 || 0)" :units="range.unit" :min="item.min" :max="item.max"
+      precision="2" animation="500" svgwidth="250" svgheight="200" textColor="#333" valueColor="#777"
+      valueBg="transparent" valueBorder="0px solid #fac83c" controlColor="#888" controlBg="none" orientation="vertical"
+      size="md" scale="1" smallscale="1" ticks="5" needle="0" bar-color="#111" progressColor="#4ea5f1" scaleColor="#aaa"
+      scaleTextColor="#333" needleColor="#ff8800" needleStroke="#000" :zones="item.processedColors"></dial-chart>
+  </div>
   <div v-else-if="item.type.startsWith('Custom-')">
     <div v-html="item.svg"></div>
   </div>
@@ -66,6 +80,8 @@ import HumidifierEl from "./Humidifier.vue";
 import Damper from "./Damper.vue";
 import TextEl from "./Text.vue";
 import Temperature from "./Temperature.vue";
+import GaugeChart from './EchartsGauge.vue'
+import DialChart from './Dial.vue'
 
 import { ranges } from "src/lib/common";
 
@@ -81,6 +97,8 @@ export default defineComponent({
     Damper,
     TextEl,
     Temperature,
+    GaugeChart,
+    DialChart
   },
   props: {
     item: {
@@ -90,7 +108,7 @@ export default defineComponent({
   },
   setup(props) {
     const range = computed(() => {
-      if (props.item.t3Entry.range) {
+      if (props.item.t3Entry?.range) {
         const range = !props.item.t3Entry.digital_analog
           ? ranges.find((i) => !i.analog && i.id === props.item.t3Entry.range)
           : ranges.find((i) => i.analog && i.id === props.item.t3Entry.range);
@@ -136,5 +154,10 @@ export default defineComponent({
   position: absolute;
   top: -25px;
   white-space: nowrap;
+}
+
+.gauge-object {
+  width: 100%;
+  height: 100%;
 }
 </style>

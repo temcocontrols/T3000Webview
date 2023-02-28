@@ -6,7 +6,7 @@
             Add Item
           </template>
           <template v-else>
-            Edit Item
+            Edit {{ dialog.type }}
           </template>
         </div>
         <q-space />
@@ -67,11 +67,10 @@
 </template>
 
 <script>
-import { PROPERTIES } from 'moveable';
 import { defineComponent, onMounted, ref, toRaw } from 'vue'
 const emptyItemDialog = {
   t3Entry: null,
-  active: false, type: "gauge", unit: "%", min: 0, max: 100,
+  active: false, type: "Gauge", unit: "%", min: 0, max: 100,
   colors: [
     { offset: 0.3, color: '#14BE64' },
     { offset: 0.7, color: '#FFB100' },
@@ -130,11 +129,11 @@ export default defineComponent({
     const itemTypes = [
       {
         label: "Gauge",
-        value: "gauge",
+        value: "Gauge",
       },
       {
         label: "Dial",
-        value: "dial",
+        value: "Dial",
       },
     ];
 
@@ -184,7 +183,7 @@ export default defineComponent({
     }
 
     function processColors(item) {
-      return item.type === "gauge" ?
+      return item.type === "Gauge" ?
         item.colors.map(i => [i.offset, i.color]) :
         item.colors.map(i => i.color).reverse().toString()
     }

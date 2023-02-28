@@ -1,9 +1,8 @@
 <template>
   <q-page>
     <div class="flex flex-row justify-center gap-4 pt-4 px-8">
-      <div v-for="item in appState.items"
-        class="item flex flex-col flex-nowrap items-center bg-slate-100 cursor-pointer" :key="item.id"
-        :class="{ gauge: item.type === 'gauge', dial: item.type === 'dial' }">
+      <div v-for="item in appState.items" class="item flex flex-col flex-nowrap items-center bg-slate-100 cursor-pointer"
+        :key="item.id" :class="{ gauge: item.type === 'Gauge', dial: item.type === 'Dial' }">
         <div class="relative w-full p-2 bg-gray-200 text-center"><span>{{ item.t3Entry.description }}</span>
           <q-btn color="primary" flat round icon="more_vert" size="sm" class="absolute right-1 top-1">
             <q-menu>
@@ -24,11 +23,11 @@
             </q-menu>
           </q-btn>
         </div>
-        <gauge-chart v-if="item.type === 'gauge'" class="customizable-gauge mt-4" :title="item.label" :unit="item.unit"
+        <gauge-chart v-if="item.type === 'Gauge'" class="customizable-gauge mt-4" :title="item.label" :unit="item.unit"
           :min="item.min" :max="item.max" :colors="item.processedColors" :value="item.t3Entry.value / 1000">
 
         </gauge-chart>
-        <div v-else-if="item.type === 'dial'" class="grow mt-2">
+        <div v-else-if="item.type === 'Dial'" class="grow mt-2">
           <dial-chart svgStyle="overflow: visible;" :serial="'dial' + item.id" :id="'dial' + item.id" type="gauge"
             variation="linear" :value="(item.t3Entry.value / 1000)" :units="item.unit" :min="item.min" :max="item.max"
             precision="2" animation="500" svgwidth="250" svgheight="200" textColor="#333" valueColor="#777"
@@ -57,7 +56,7 @@ import { useQuasar, useMeta } from "quasar";
 import { cloneDeep } from "lodash";
 import GaugeChart from '../components/EchartsGauge.vue'
 import DialChart from '../components/Dial.vue'
-import AddEditDashboardItem from '../components/Dashboard/AddEditDashboardItem.vue'
+import AddEditDashboardItem from '../components/AddEditGaugeDialog.vue'
 import { ranges } from "../lib/common";
 
 // Remove when deploy

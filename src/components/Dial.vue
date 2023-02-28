@@ -246,6 +246,8 @@ export default defineComponent({
       }
       if (this.$attrs.zones) {
         this.limitzones = this.$attrs.zones.split(',')
+      } else {
+        this.limitzones = ["#14BE64", "#FFB100", "#fd666d"]
       }
     }
   },
@@ -269,6 +271,8 @@ export default defineComponent({
     }
     if (this.$attrs.zones) {
       this.limitzones = this.$attrs.zones.split(',')
+    } else {
+      this.limitzones = ["#14BE64", "#FFB100", "#fd666d"]
     }
   }
 })
