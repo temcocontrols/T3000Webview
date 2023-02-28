@@ -30,12 +30,12 @@
           <div class="flex no-wrap mb-2">
             <h2 class="leading-5 font-bold grow">Colors: </h2>
             <q-btn size="sm" round color="grey-4" text-color="grey-9" icon="add"
-              @click="() => dialog.colors.push({ offset: 1, color: '#000000' })" />
+              @click="() => dialog.colors.push({ offset: 100, color: '#000000' })" />
           </div>
 
           <div class="flex flex-col no-wrap gap-1">
             <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in dialog.colors" :key="index">
-              <q-input label="Offset" v-model.number="cItem.offset" filled type="number" step="0.1" min="0" max="1"
+              <q-input label="Offset" v-model.number="cItem.offset" filled type="number" step="1" min="0" max="100"
                 class="mr-2 w-24" />
               <q-input filled v-model="cItem.color" label="Color" class="grow">
                 <template v-slot:append>
@@ -72,9 +72,9 @@ const emptyItemDialog = {
   t3Entry: null,
   active: false, type: "Gauge", unit: "%", min: 0, max: 100,
   colors: [
-    { offset: 0.3, color: '#14BE64' },
-    { offset: 0.7, color: '#FFB100' },
-    { offset: 1, color: '#fd666d' },
+    { offset: 33, color: '#14BE64' },
+    { offset: 66, color: '#FFB100' },
+    { offset: 100, color: '#fd666d' },
   ]
 }
 
@@ -184,8 +184,8 @@ export default defineComponent({
 
     function processColors(item) {
       return item.type === "Gauge" ?
-        item.colors.map(i => [i.offset, i.color]) :
-        item.colors.map(i => i.color).reverse().toString()
+        item.colors.map(i => [i.offset / 100, i.color]) :
+        item.colors.map((i, index) => { return { from: index ? item.colors[index - 1].offset : 0, to: i.offset, color: [i.color] } })
     }
 
     function entryLabel(option) {

@@ -805,7 +805,7 @@ export default defineComponent({
         e.inputEvent.preventDefault();
 
         setTimeout(() => {
-          this.$refs.moveable.ngDragStart(e.inputEvent);
+          movable.value.dragStart(e.inputEvent);
         });
       }
     }
@@ -954,9 +954,9 @@ export default defineComponent({
         item.min = 0
         item.max = 100
         item.colors = [
-          { offset: 0.3, color: '#14BE64' },
-          { offset: 0.7, color: '#FFB100' },
-          { offset: 1, color: '#fd666d' },
+          { offset: 33, color: '#14BE64' },
+          { offset: 66, color: '#FFB100' },
+          { offset: 100, color: '#fd666d' },
         ]
 
       }
