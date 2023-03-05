@@ -50,13 +50,13 @@
   <div v-else-if="item.type === 'Temperature'">
     <temperature class="movable-item temperature" v-bind="item.props" />
   </div>
-  <div v-else-if="item.type === 'Gauge'" class="gauge-object">
+  <div v-else-if="item.type === 'Gauge'" class="movable-item gauge-object gauge">
     <gauge-chart class="customizable-gauge mt-4" :title="item.label" :unit="range.unit" :min="item.min" :max="item.max"
       :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0">
 
     </gauge-chart>
   </div>
-  <div v-else-if="item.type === 'Dial'" class="gauge-object">
+  <div v-else-if="item.type === 'Dial'" class="movable-item gauge-object dial">
     <dial-chart
       :options="{ value: item.t3Entry?.value / 1000 || 0, unit: range.unit, min: item.min, max: item.max, colors: item.processedColors }"></dial-chart>
   </div>
