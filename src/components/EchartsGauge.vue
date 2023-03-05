@@ -22,7 +22,6 @@ use([
   LegendComponent,
 ]);
 
-// provide(THEME_KEY, 'dark');
 const props = defineProps({
   title: {
     type: String,
@@ -60,13 +59,11 @@ const props = defineProps({
 
 const options = computed(() => {
   return {
-    title: {
-      text: props.title,
-      left: 'center',
-    },
     series: [
       {
         type: 'gauge',
+
+        radius: '85%',
         min: props.min,
         max: props.max,
         splitNumber: props.splitNumber,

@@ -203,9 +203,7 @@
                     </q-item-section>
                     <q-item-section>Rotate 90°</q-item-section>
                   </q-item>
-                  <q-item dense clickable v-close-popup @click="
-                    rotate90(item, true)
-                  ">
+                  <q-item dense clickable v-close-popup @click="rotate90(item, true)">
                     <q-item-section avatar>
                       <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
                     </q-item-section>
@@ -316,9 +314,15 @@
           </q-expansion-item>
 
           <div>
-            <q-btn v-if="['Gauge', 'Dial'].includes(appState.items[appState.activeItemIndex].type)" dark outline no-caps
-              stretch icon="settings" class="text-white w-full mb-2" label="Settings"
-              @click="gaugeSettingsDialogAction(appState.items[appState.activeItemIndex])" />
+            <q-btn v-if="
+              ['Gauge', 'Dial'].includes(
+                appState.items[appState.activeItemIndex].type
+              )
+            " dark outline no-caps stretch icon="settings" class="text-white w-full mb-2" label="Settings" @click="
+  gaugeSettingsDialogAction(
+    appState.items[appState.activeItemIndex]
+  )
+" />
             <q-btn dark outline no-caps stretch :icon="
               appState.items[appState.activeItemIndex].t3Entry
                 ? 'dataset_linked'
@@ -459,18 +463,7 @@
               <!-- Display field -->
               <q-select filled dark v-model="
                 appState.items[appState.activeItemIndex].t3EntryDisplayField
-              " :options="[
-  {
-    label: 'Value',
-    value:
-      appState.items[appState.activeItemIndex].t3Entry
-        ?.digital_analog === 1
-        ? 'value'
-        : 'control',
-  },
-  { label: 'Label', value: 'label' },
-  { label: 'Description', value: 'description' },
-]" label="Display field" emit-value map-options />
+              " :options="t3EntryDisplayFieldOptions" label="Display field" emit-value map-options />
             </q-expansion-item>
           </div>
         </div>
@@ -528,7 +521,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, onMounted, onUnmounted, toRaw } from "vue";
+import { defineComponent, ref, computed, onMounted, onUnmounted, toRaw } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
@@ -536,7 +529,7 @@ import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
-import AddEditDashboardItem from '../components/AddEditGaugeDialog.vue'
+import AddEditDashboardItem from "../components/AddEditGaugeDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
@@ -557,7 +550,7 @@ export default defineComponent({
     VueSelecto,
     ObjectType,
     FileUpload,
-    AddEditDashboardItem
+    AddEditDashboardItem,
   },
   setup() {
     const metaData = {
@@ -572,7 +565,7 @@ export default defineComponent({
     const targets = ref([]);
     const selectedTool = ref({ name: "Pointer", type: "default", svg: null });
     const linkT3EntryDialog = ref({ active: false, data: null });
-    const T3000_Data = ref({ panelsData: [], panelsList: [], });
+    const T3000_Data = ref({ panelsData: [], panelsList: [] });
     const uploadObjectDialog = ref({
       addedCount: 0,
       active: false,
@@ -650,25 +643,27 @@ export default defineComponent({
       if ("action" in arg.data) {
         if (arg.data.action === "GET_PANELS_LIST_RES") {
           if (arg.data.data) {
-            T3000_Data.value.panelsList = arg.data.data
-            T3000_Data.value.panelsList.forEach(panel => {
+            T3000_Data.value.panelsList = arg.data.data;
+            T3000_Data.value.panelsList.forEach((panel) => {
               window.chrome?.webview?.postMessage({
                 action: 0, // GET_PANEL_DATA
                 panelId: panel.pid,
               });
             });
           }
-
-        }
-        else if (arg.data.action === "UPDATE_ENTRY_RES") {
+        } else if (arg.data.action === "UPDATE_ENTRY_RES") {
         } else if (arg.data.action === "GET_INITIAL_DATA_RES") {
           if (arg.data.data) {
             arg.data.data = JSON.parse(arg.data.data);
           }
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-          T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(item => item.pid !== arg.data.panel_id)
-          T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(arg.data.data);
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+            (item) => item.pid !== arg.data.panel_id
+          );
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+            arg.data.data
+          );
           selectPanelOptions.value = T3000_Data.value.panelsData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
@@ -746,7 +741,6 @@ export default defineComponent({
     }
 
     function onDragEnd(e) {
-
       if (!e.lastEvent) {
         undoHistory.value.shift();
       } else {
@@ -945,20 +939,20 @@ export default defineComponent({
         scaleX: 1,
         scaleY: 1,
         props:
-          tools.find((tool) => tool.name === selectedTool.value.name)?.props || {},
+          tools.find((tool) => tool.name === selectedTool.value.name)?.props ||
+          {},
         zindex: 1,
         t3Entry: null,
         t3EntryDisplayField: "label",
       });
-      if (['Gauge', 'Dial'].includes(selectedTool.value.name)) {
-        item.min = 0
-        item.max = 100
+      if (["Gauge", "Dial"].includes(selectedTool.value.name)) {
+        item.min = 0;
+        item.max = 100;
         item.colors = [
-          { offset: 33, color: '#14BE64' },
-          { offset: 66, color: '#FFB100' },
-          { offset: 100, color: '#fd666d' },
-        ]
-
+          { offset: 33, color: "#14BE64" },
+          { offset: 66, color: "#FFB100" },
+          { offset: 100, color: "#fd666d" },
+        ];
       }
       // selectedTool.value.name = "Pointer"
       setTimeout(() => {
@@ -987,7 +981,7 @@ export default defineComponent({
     }
 
     function rotate90(item, minues = false) {
-      console.log("item", item)
+      console.log("item", item);
       if (!item) return;
       addActionToHistory("Rotate object");
       if (!minues) {
@@ -1276,19 +1270,35 @@ export default defineComponent({
       uploadObjectDialog.value.svg = null;
     }
 
-    const gaugeSettingsDialog = ref({ active: false, data: {} })
+    const gaugeSettingsDialog = ref({ active: false, data: {} });
 
     function gaugeSettingsDialogAction(item) {
-      gaugeSettingsDialog.value.active = true
-      gaugeSettingsDialog.value.data = item
+      gaugeSettingsDialog.value.active = true;
+      gaugeSettingsDialog.value.data = item;
     }
 
     function gaugeSettingsSave(item) {
-      const itemIndex = appState.value.items.findIndex(i => i.id === item.id)
+      const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
       appState.value.items[itemIndex] = item;
       gaugeSettingsDialog.value.active = false;
-      gaugeSettingsDialog.value.data = {}
+      gaugeSettingsDialog.value.data = {};
     }
+
+    const t3EntryDisplayFieldOptions = computed(() => {
+      return [
+        { label: "None", value: "none" },
+        {
+          label: "Value",
+          value:
+            appState.value.items[appState.value.activeItemIndex].t3Entry
+              ?.digital_analog === 1
+              ? "value"
+              : "control",
+        },
+        { label: "Label", value: "label" },
+        { label: "Description", value: "description" },
+      ];
+    });
 
     return {
       movable,
@@ -1352,7 +1362,8 @@ export default defineComponent({
       customTools,
       gaugeSettingsDialogAction,
       gaugeSettingsDialog,
-      gaugeSettingsSave
+      gaugeSettingsSave,
+      t3EntryDisplayFieldOptions,
     };
   },
 });

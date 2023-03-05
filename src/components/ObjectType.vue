@@ -1,5 +1,5 @@
 <template>
-  <div class="object-title" v-if="item.t3Entry">
+  <div class="object-title" v-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
     {{ dispalyText || "N/A" }} - {{ range.label }}
     <span v-if="item.t3Entry.hw_switch_status !== 1">
       -
@@ -51,7 +51,7 @@
     <temperature class="movable-item temperature" v-bind="item.props" />
   </div>
   <div v-else-if="item.type === 'Gauge'" class="movable-item gauge-object gauge">
-    <gauge-chart class="customizable-gauge mt-4" :title="item.label" :unit="range.unit" :min="item.min" :max="item.max"
+    <gauge-chart class="customizable-gauge mt-4" :unit="range.unit" :min="item.min" :max="item.max"
       :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0">
 
     </gauge-chart>
