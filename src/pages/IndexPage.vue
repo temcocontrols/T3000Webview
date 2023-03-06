@@ -288,6 +288,18 @@
                 </template>
               </q-input>
             </div>
+            <q-input class="w-full mb-2" dark filled
+              v-model="appState.items[appState.activeItemIndex].props.backgroundColor" label="Background Color">
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-color v-model="
+                      appState.items[appState.activeItemIndex].props.backgroundColor
+                    " />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
             <q-checkbox v-if="
               !appState.items[appState.activeItemIndex].t3Entry &&
               appState.items[appState.activeItemIndex].props.active !==

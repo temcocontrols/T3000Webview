@@ -1,67 +1,57 @@
 <template>
-  <div class="object-title" v-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
-    {{ dispalyText || "N/A" }} - {{ range.label }}
-    <span v-if="item.t3Entry.hw_switch_status !== 1">
-      -
-      {{
-        item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
-        ? item.t3Entry.hw_switch_status
-          ? "MAN-ON"
-          : "MAN-OFF"
-        : ""
-      }}</span>
-    <span class="ml-2 text-lg">
-      <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
-        <q-tooltip anchor="top middle" self="center middle">
-          In auto mode
-        </q-tooltip>
-      </q-icon>
-      <q-icon v-else name="swipe_up">
-        <q-tooltip anchor="top middle" self="center middle">
-          In manual mode
-        </q-tooltip>
-      </q-icon>
-    </span>
-  </div>
-  <div v-if="item.type === 'Fan'">
-    <fan class="movable-item fan" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Duct'">
-    <duct class="movable-item duct" />
-  </div>
-  <div v-else-if="item.type === 'CoolingCoil'">
-    <cooling-coil class="movable-item cooling-coil" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'HeatingCoil'">
-    <heating-coil class="movable-item heating-coil" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Filter'">
-    <filter-el class="movable-item filter" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Humidifier'">
-    <humidifier class="movable-item humidifier" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Damper'">
-    <damper class="movable-item damper" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Text'">
-    <text-el class="movable-item text" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Temperature'">
-    <temperature class="movable-item temperature" v-bind="item.props" />
-  </div>
-  <div v-else-if="item.type === 'Gauge'" class="movable-item gauge-object gauge">
-    <gauge-chart class="customizable-gauge mt-4" :unit="range.unit" :min="item.min" :max="item.max"
-      :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0">
-
-    </gauge-chart>
-  </div>
-  <div v-else-if="item.type === 'Dial'" class="movable-item gauge-object dial">
-    <dial-chart
-      :options="{ value: item.t3Entry?.value / 1000 || 0, unit: range.unit, min: item.min, max: item.max, colors: item.processedColors }"></dial-chart>
-  </div>
-  <div v-else-if="item.type.startsWith('Custom-')">
-    <div v-html="item.svg"></div>
+  <div class="movable-item" :class="{
+    'with-bg': item.props?.backgroundColor,
+    'with-title': item.t3Entry && item.t3EntryDisplayField !== 'none',
+  }">
+    <div class="object-title" v-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
+      {{ dispalyText || "N/A" }}
+      <span v-if="!['Dial', 'Gauge'].includes(item.type)">
+        - {{ range.label }}</span>
+      <span v-if="
+        item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
+      ">
+        -
+        {{
+          item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
+          ? item.t3Entry.hw_switch_status
+            ? "MAN-ON"
+            : "MAN-OFF"
+          : ""
+        }}</span>
+      <span class="ml-2 text-lg">
+        <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+          <q-tooltip anchor="top middle" self="center middle">
+            In auto mode
+          </q-tooltip>
+        </q-icon>
+        <q-icon v-else name="swipe_up">
+          <q-tooltip anchor="top middle" self="center middle">
+            In manual mode
+          </q-tooltip>
+        </q-icon>
+      </span>
+    </div>
+    <div class="object-container">
+      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.props" />
+      <duct v-else-if="item.type === 'Duct'" class="duct" />
+      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.props" />
+      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.props" />
+      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.props" />
+      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.props" />
+      <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.props" />
+      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.props" />
+      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.props" />
+      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" :unit="range.unit" :min="item.min"
+        :max="item.max" :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0" />
+      <dial-chart v-else-if="item.type === 'Dial'" class="gauge-object dial" :options="{
+        value: item.t3Entry?.value / 1000 || 0,
+        unit: range.unit,
+        min: item.min,
+        max: item.max,
+        colors: item.processedColors,
+      }" />
+      <div v-else-if="item.type.startsWith('Custom-')" v-html="item.svg"></div>
+    </div>
   </div>
 </template>
 
@@ -76,8 +66,8 @@ import HumidifierEl from "./Humidifier.vue";
 import Damper from "./Damper.vue";
 import TextEl from "./Text.vue";
 import Temperature from "./Temperature.vue";
-import GaugeChart from './EchartsGauge.vue'
-import AnyChartDial from 'src/components/AnyChartDial.vue';
+import GaugeChart from "./EchartsGauge.vue";
+import AnyChartDial from "src/components/AnyChartDial.vue";
 
 import { ranges } from "src/lib/common";
 
@@ -94,7 +84,7 @@ export default defineComponent({
     TextEl,
     Temperature,
     GaugeChart,
-    DialChart: AnyChartDial
+    DialChart: AnyChartDial,
   },
   props: {
     item: {
@@ -118,7 +108,9 @@ export default defineComponent({
         props.item.t3EntryDisplayField === "value" &&
         props.item.t3Entry.digital_analog === 1
       ) {
-        const range = ranges.find((i) => i.analog && i.id === props.item.t3Entry.range)
+        const range = ranges.find(
+          (i) => i.analog && i.id === props.item.t3Entry.range
+        );
         return props.item.t3Entry.value / 1000 + " " + range.unit;
       } else if (
         props.item.t3EntryDisplayField === "value" &&
@@ -147,13 +139,27 @@ export default defineComponent({
 .object-title {
   text-align: center;
   min-width: 100%;
-  position: absolute;
-  top: -25px;
   white-space: nowrap;
+  line-height: 3em;
 }
 
-.gauge-object {
+.with-bg .object-title {
+  border-bottom: 1px solid;
+  background-color: rgb(255 255 255 / 40%);
+}
+
+.movable-item {
+  height: 100%;
+  border-radius: 5px;
+  background-color: v-bind("item.props?.backgroundColor");
+}
+
+.object-container {
   width: 100%;
   height: 100%;
+}
+
+.with-title .object-container {
+  height: calc(100% - 43px);
 }
 </style>

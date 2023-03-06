@@ -1,146 +1,147 @@
 <template>
-    <div class="dial-chart" style="height: 100%; max-width: 170px;" ref="gaugeElement"></div>
+  <div class="dial-chart" style="height: 100%; max-width: 170px;" ref="gaugeElement"></div>
 </template>
-  
+
 <script>
 import { defineComponent, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import anychart from 'anychart'
 
 export default defineComponent({
-    name: 'DialChart',
-    props: {
-        options: {
-            type: Object,
-            default: () => null
-        },
+  name: 'DialChart',
+  props: {
+    options: {
+      type: Object,
+      default: () => null
     },
-    setup(props) {
-        const gauge = ref(null)
-        const gaugeElement = ref(null)
-        const options = computed(() => {
-            return props.options
-        })
+  },
+  setup(props) {
+    const gauge = ref(null)
+    const gaugeElement = ref(null)
+    const options = computed(() => {
+      return props.options
+    })
 
-        onMounted(() => {
-            if (!gauge.value && props.options) {
-                init();
-            }
-        })
+    onMounted(() => {
+      if (!gauge.value && props.options) {
+        init();
+      }
+    })
 
-        onUnmounted(() => {
-            if (gauge.value) {
-                gauge.value.dispose();
-                gauge.value = null;
-            }
-        })
+    onUnmounted(() => {
+      if (gauge.value) {
+        gauge.value.dispose();
+        gauge.value = null;
+      }
+    })
 
-        watch(options, async (newOptions, _oldOptions) => {
-            if (!gauge.value && newOptions) {
-                init()
-            } else {
-                gauge.value.dispose();
-                gauge.value = null;
-                init();
-            }
-        })
+    watch(options, async (newOptions, _oldOptions) => {
+      if (!gauge.value && newOptions) {
+        init()
+      } else {
+        gauge.value.dispose();
+        gauge.value = null;
+        init();
+      }
+    })
 
-        function init() {
-            if (!gauge.value && props.options) {
-                // create data
-                var data = [props.options.value];
+    function init() {
+      if (!gauge.value && props.options) {
+        // create data
+        var data = [props.options.value];
 
-                // set the gauge type
-                gauge.value = anychart.gauges.linear();
+        // set the gauge type
+        gauge.value = anychart.gauges.linear();
 
-                // set the data for the gauge
-                gauge.value.data(data);
+        gauge.value.background().fill(false);
 
-                // set the layout
-                gauge.value.layout('vertical');
+        // set the data for the gauge
+        gauge.value.data(data);
 
-                // create a color scale
-                var scaleBarColorScale = anychart.scales.ordinalColor().ranges(
-                    props.options.colors || [{
-                        from: 0,
-                        to: 30,
-                        color: ['#14BE64']
-                    },
-                    {
-                        from: 30,
-                        to: 70,
-                        color: ['#FFB100']
-                    },
-                    {
-                        from: 70,
-                        to: 100,
-                        color: ['#fd666d']
-                    },]
-                );
+        // set the layout
+        gauge.value.layout('vertical');
 
-                // create a Scale Bar
-                var scaleBar = gauge.value.scaleBar(0);
+        // create a color scale
+        var scaleBarColorScale = anychart.scales.ordinalColor().ranges(
+          props.options.colors || [{
+            from: 0,
+            to: 30,
+            color: ['#14BE64']
+          },
+          {
+            from: 30,
+            to: 70,
+            color: ['#FFB100']
+          },
+          {
+            from: 70,
+            to: 100,
+            color: ['#fd666d']
+          },]
+        );
 
-                // set the height and offset of the Scale Bar (both as percentages of the gauge height)
-                scaleBar.width('60%');
-                scaleBar.offset('32.5%');
+        // create a Scale Bar
+        var scaleBar = gauge.value.scaleBar(0);
 
-                // use the color scale (defined earlier) as the color scale of the Scale Bar
-                scaleBar.colorScale(scaleBarColorScale);
+        // set the height and offset of the Scale Bar (both as percentages of the gauge height)
+        scaleBar.width('60%');
+        scaleBar.offset('32.5%');
 
-                // add a marker pointer
-                var marker = gauge.value.marker(0);
+        // use the color scale (defined earlier) as the color scale of the Scale Bar
+        scaleBar.colorScale(scaleBarColorScale);
 
-                // set the offset of the pointer as a percentage of the gauge width
-                marker.offset('90%');
+        // add a marker pointer
+        var marker = gauge.value.marker(0);
 
-                // set the marker type
-                marker.type('triangle-left');
-                marker.width('20%');
-                // marker.stroke({ thickness: 7, color: "#64b5f6" });
+        // set the offset of the pointer as a percentage of the gauge width
+        marker.offset('90%');
 
-                // set the zIndex of the marker
-                marker.zIndex(10);
+        // set the marker type
+        marker.type('triangle-left');
+        marker.width('20%');
+        // marker.stroke({ thickness: 7, color: "#64b5f6" });
 
-                // configure the scale
-                var scale = gauge.value.scale();
-                scale.minimum(props.options.min);
-                scale.maximum(props.options.max);
-                scale.ticks().interval(props.options.ticks || 5);
+        // set the zIndex of the marker
+        marker.zIndex(10);
 
-                // configure the axis
-                var axis = gauge.value.axis();
-                axis.minorTicks(true)
-                axis.minorTicks().stroke('#cecece').length(5).stroke("#000000");
-                axis.width("20%");
-                axis.offset("14%");
-                axis.orientation('left');
-                axis.stroke(null);
-                axis.ticks().length(10).stroke("#000000");
+        // configure the scale
+        var scale = gauge.value.scale();
+        scale.minimum(props.options.min);
+        scale.maximum(props.options.max);
+        scale.ticks().interval(props.options.ticks || 5);
 
-                // format axis labels
-                axis.labels().format(`{%value}`);
+        // configure the axis
+        var axis = gauge.value.axis();
+        axis.minorTicks(true)
+        axis.minorTicks().stroke('#cecece').length(5).stroke("#000000");
+        axis.width("20%");
+        axis.offset("14%");
+        axis.orientation('left');
+        axis.stroke(null);
+        axis.ticks().length(10).stroke("#000000");
 
-                // set paddings
-                gauge.value.padding([10, 30]);
+        // format axis labels
+        axis.labels().format(`{%value}`);
 
-                // set the container id
-                gauge.value.container(gaugeElement.value);
+        // set paddings
+        gauge.value.padding([10, 30]);
 
-                // initiate drawing the gauge
-                gauge.value.draw();
-            }
-        }
+        // set the container id
+        gauge.value.container(gaugeElement.value);
 
-        return {
-            gaugeElement
-        }
+        // initiate drawing the gauge
+        gauge.value.draw();
+      }
     }
+
+    return {
+      gaugeElement
+    }
+  }
 })
 </script>
 
 <style>
 .anychart-credits {
-    display: none;
+  display: none;
 }
 </style>
-  
