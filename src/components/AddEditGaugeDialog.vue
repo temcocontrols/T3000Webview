@@ -2,12 +2,9 @@
   <q-dialog :model-value="active" @update:model-value="$emit('update:active', $event)" @show="defaultStatus">
     <q-card style="min-width: 600px">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6"> <template v-if="action === 'Add'">
-            Add Item
-          </template>
-          <template v-else>
-            Edit {{ dialog.type }}
-          </template>
+        <div class="text-h6">
+          <template v-if="action === 'Add'"> Add Item </template>
+          <template v-else> Edit {{ dialog.type }} </template>
         </div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
@@ -16,41 +13,62 @@
       <q-separator />
 
       <q-card-section style="height: 50vh" class="scroll">
-        <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-          input-debounce="0" v-model="dialog.t3Entry" :options="selectPanelOptions" @filter="selectPanelFilterFn"
-          label="Select Entry" class="mb-6" />
         <q-select emit-value filled map-options v-model="dialog.type" :options="itemTypes" label="Chart Type"
           class="mb-6" />
-        <q-select filled v-model="dialog.unit" :options="itemUnits" label="Unit" class="mb-6" />
         <div class="flex no-wrap gap-3 mb-6">
-          <q-input label="Min" v-model.number="dialog.min" filled type="number" class="grow" />
-          <q-input label="Max" v-model.number="dialog.max" filled type="number" class="grow" />
+          <q-input label="Min" v-model.number="dialog.settings.min" filled type="number" class="grow" />
+          <q-input label="Max" v-model.number="dialog.settings.max" filled type="number" class="grow" />
         </div>
+        <div class="flex no-wrap gap-3 mb-6">
+          <q-input v-if="dialog.type === 'Gauge'" label="Thickness ( px )" v-model.number="dialog.settings.thickness"
+            filled type="number" class="grow" />
+          <q-input label="Ticks" v-model.number="dialog.settings.ticks" filled type="number" class="grow" />
+          <q-input label="Minor ticks" v-model.number="dialog.settings.minorTicks" filled type="number" class="grow" />
+        </div>
+        <q-input filled v-model="dialog.settings.bgColor" label="Background color" class="grow mb-6">
+          <template v-slot:append>
+            <q-icon name="colorize" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-color v-model="dialog.settings.bgColor" />
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+        <q-input filled v-model="dialog.settings.textColor" label="Text color" class="grow mb-6">
+          <template v-slot:append>
+            <q-icon name="colorize" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-color v-model="dialog.settings.textColor" />
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
         <div class="flex flex-col no-wrap">
           <div class="flex no-wrap mb-2">
-            <h2 class="leading-5 font-bold grow">Colors: </h2>
-            <q-btn size="sm" round color="grey-4" text-color="grey-9" icon="add"
-              @click="() => dialog.colors.push({ offset: 100, color: '#000000' })" />
+            <h2 class="leading-5 font-bold grow">{{ dialog.type }} colors:</h2>
+            <q-btn size="sm" round color="grey-4" text-color="grey-9" icon="add" @click="
+              () =>
+                dialog.settings.colors.push({ offset: 100, color: '#000000' })
+            " />
           </div>
 
           <div class="flex flex-col no-wrap gap-1">
-            <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in dialog.colors" :key="index">
+            <div class="flex items-center no-wrap mb-2" v-for="(cItem, index) in dialog.settings.colors" :key="index">
               <q-input label="Offset" v-model.number="cItem.offset" filled type="number" step="1" min="0" max="100"
                 class="mr-2 w-24" />
               <q-input filled v-model="cItem.color" label="Color" class="grow">
                 <template v-slot:append>
                   <q-icon name="colorize" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-color v-model="
-                        cItem.color
-                      " />
+                      <q-color v-model="cItem.color" />
                     </q-popup-proxy>
                   </q-icon>
                 </template>
               </q-input>
-              <div class="px-8"><q-btn size="xs" round color="red-10" icon="remove"
-                  @click="() => dialog.colors.splice(index, 1)" /></div>
-
+              <div class="px-8">
+                <q-btn size="xs" round color="red-10" icon="remove"
+                  @click="() => dialog.settings.colors.splice(index, 1)" />
+              </div>
             </div>
           </div>
         </div>
@@ -60,37 +78,38 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!dialog.t3Entry" color="primary" @click="itemSave" />
+        <q-btn flat label="Save" color="primary" @click="itemSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script>
-import { defineComponent, onMounted, ref, toRaw } from 'vue'
-const emptyItemDialog = {
-  t3Entry: null,
-  active: false, type: "Gauge", unit: "%", min: 0, max: 100,
-  colors: [
-    { offset: 33, color: '#14BE64' },
-    { offset: 66, color: '#FFB100' },
-    { offset: 100, color: '#fd666d' },
-  ]
-}
+import { defineComponent, onMounted, ref, toRaw } from "vue";
 
 export default defineComponent({
-  name: 'AddEditDashboardItem',
+  name: "AddEditDashboardItem",
   props: {
     active: Boolean,
     item: {
       type: Object,
-      default: () => emptyItemDialog
+      default: () => emptyItemDialog,
     },
     panelsData: Array,
-    action: String
+    action: String,
   },
-  emits: ['update:active', 'itemSaved'],
+  emits: ["update:active", "itemSaved"],
   setup(props, { emit }) {
+    const emptyItemDialog = {
+      t3Entry: null,
+      active: false,
+      type: "Gauge",
+      settings: {
+        min: 0,
+        max: 100,
+        colors: [],
+      },
+    };
     const itemUnits = [
       "%",
       "%RH",
@@ -137,65 +156,42 @@ export default defineComponent({
       },
     ];
 
-
-
-    const dialog = ref(emptyItemDialog)
-    const selectPanelOptions = ref([])
+    const dialog = ref(emptyItemDialog);
     onMounted(() => {
-      defaultStatus()
-    })
+      defaultStatus();
+    });
 
     function defaultStatus() {
       if (props.action === "Edit") {
-        dialog.value = structuredClone(toRaw(props.item))
+        dialog.value = structuredClone(toRaw(props.item));
       } else {
-        dialog.value = structuredClone(emptyItemDialog)
+        dialog.value = structuredClone(emptyItemDialog);
       }
-      selectPanelOptions.value = props.panelsData;
-    }
-
-    function selectPanelFilterFn(val, update) {
-      if (val === "") {
-        update(() => {
-          selectPanelOptions.value = props.panelsData;
-
-          // here you have access to "ref" which
-          // is the Vue reference of the QSelect
-        });
-        return;
-      }
-
-      update(() => {
-        const keyword = val.toUpperCase();
-        selectPanelOptions.value = props.panelsData.filter(
-          (item) =>
-            item.command.toUpperCase().indexOf(keyword) > -1 ||
-            item.description.toUpperCase().indexOf(keyword) > -1 ||
-            item.label.toUpperCase().indexOf(keyword) > -1
-        );
-      });
     }
 
     function itemSave() {
-      const item = structuredClone(toRaw(dialog.value))
-      item.processedColors = processColors(item)
-      emit('itemSaved', item)
-    }
-
-    function processColors(item) {
-      return item.type === "Gauge" ?
-        item.colors.map(i => [i.offset / 100, i.color]) :
-        item.colors.map((i, index) => { return { from: index ? item.colors[index - 1].offset : 0, to: i.offset, color: [i.color] } })
+      const item = structuredClone(toRaw(dialog.value));
+      emit("itemSaved", item);
     }
 
     function entryLabel(option) {
-      let prefix = (option.description && option.id !== option.description) || (!option.description && option.id !== option.label) ? option.id + ' - ' : ''
-      prefix = !option.description && !option.label ? option.id : prefix
-      return prefix + (option.description || option.label)
+      let prefix =
+        (option.description && option.id !== option.description) ||
+          (!option.description && option.id !== option.label)
+          ? option.id + " - "
+          : "";
+      prefix = !option.description && !option.label ? option.id : prefix;
+      return prefix + (option.description || option.label);
     }
 
-    return { dialog, itemUnits, itemTypes, selectPanelOptions, defaultStatus, selectPanelFilterFn, itemSave, entryLabel }
-  }
-})
+    return {
+      dialog,
+      itemUnits,
+      itemTypes,
+      defaultStatus,
+      itemSave,
+      entryLabel,
+    };
+  },
+});
 </script>
-

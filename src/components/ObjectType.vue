@@ -1,6 +1,6 @@
 <template>
   <div class="movable-item" :class="{
-    'with-bg': item.props?.backgroundColor,
+    'with-bg': item.settings?.bgColor,
     'with-title': item.t3Entry && item.t3EntryDisplayField !== 'none',
   }">
     <div class="object-title" v-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
@@ -31,25 +31,28 @@
         </q-icon>
       </span>
     </div>
-    <div class="object-container">
-      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.props" />
+    <div class="flex justify-center object-container">
+      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
       <duct v-else-if="item.type === 'Duct'" class="duct" />
-      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.props" />
-      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.props" />
-      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.props" />
-      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.props" />
-      <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.props" />
-      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.props" />
-      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.props" />
-      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" :unit="range.unit" :min="item.min"
-        :max="item.max" :colors="item.processedColors" :value="item.t3Entry?.value / 1000 || 0" />
-      <dial-chart v-else-if="item.type === 'Dial'" class="gauge-object dial" :options="{
-        value: item.t3Entry?.value / 1000 || 0,
-        unit: range.unit,
-        min: item.min,
-        max: item.max,
-        colors: item.processedColors,
-      }" />
+      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
+      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.settings" />
+      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.settings" />
+      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.settings" />
+      <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
+      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
+      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
+      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
+        :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
+      <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
+        <dial-chart class="gauge-object dial" :options="{
+          value: item.t3Entry?.value / 1000 || 0,
+          unit: range.unit,
+          ...item.settings,
+          colors: processedColors,
+        }" />
+        <div class="text-center font-bold pl-8 pb-2">{{ item.t3Entry?.value / 1000 || 0 }} {{ range.unit }}</div>
+      </div>
+
       <div v-else-if="item.type.startsWith('Custom-')" v-html="item.svg"></div>
     </div>
   </div>
@@ -127,9 +130,20 @@ export default defineComponent({
       return props.item.t3Entry[props.item.t3EntryDisplayField];
     });
 
+    const processedColors = computed(() => {
+      const item = props.item
+      if (!['Gauge', 'Dial'].includes(item.type)) {
+        return null
+      }
+      return item.type === "Gauge" ?
+        item.settings.colors.map(i => [i.offset / 100, i.color]) :
+        item.settings.colors.map((i, index) => { return { from: index ? item.settings.colors[index - 1].offset : 0, to: i.offset, color: [i.color] } })
+    })
+
     return {
       range,
       dispalyText,
+      processedColors
     };
   },
 });
@@ -140,7 +154,7 @@ export default defineComponent({
   text-align: center;
   min-width: 100%;
   white-space: nowrap;
-  line-height: 3em;
+  line-height: 2.5em;
 }
 
 .with-bg .object-title {
@@ -151,7 +165,8 @@ export default defineComponent({
 .movable-item {
   height: 100%;
   border-radius: 5px;
-  background-color: v-bind("item.props?.backgroundColor");
+  background-color: v-bind("item.settings?.bgColor");
+  color: v-bind("item.settings?.textColor");
 }
 
 .object-container {
@@ -160,6 +175,10 @@ export default defineComponent({
 }
 
 .with-title .object-container {
-  height: calc(100% - 43px);
+  height: calc(100% - 36px);
+}
+
+.with-title .gauge-object.gauge {
+  margin-top: 10px;
 }
 </style>

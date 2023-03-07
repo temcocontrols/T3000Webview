@@ -7,6 +7,12 @@ export const T3_Types = {
   HOLIDAY: 5,
 };
 
+const gaugeDefautColors = [
+  { offset: 33, color: "#14BE64" },
+  { offset: 66, color: "#FFB100" },
+  { offset: 100, color: "#fd666d" },
+];
+
 export const tools = [
   {
     name: "Pointer",
@@ -17,7 +23,7 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
-    props: { content: "Text", color: "black", fontSize: 16 },
+    settings: { content: "Text", color: "black", fontSize: 16 },
   },
   {
     name: "Duct",
@@ -28,19 +34,19 @@ export const tools = [
     name: "Fan",
     label: "Fan",
     icon: "img:/fan.svg",
-    props: { active: false, inAlarm: false },
+    settings: { active: false, inAlarm: false },
   },
   {
     name: "CoolingCoil",
     label: "Cooling Coil",
     icon: "img:/cooling-coil.svg",
-    props: { active: false, inAlarm: false },
+    settings: { active: false, inAlarm: false },
   },
   {
     name: "HeatingCoil",
     label: "Heating Coil",
     icon: "img:/heating-coil.svg",
-    props: { active: false, inAlarm: false },
+    settings: { active: false, inAlarm: false },
   },
   {
     name: "Filter",
@@ -51,13 +57,13 @@ export const tools = [
     name: "Humidifier",
     label: "Humidifier",
     icon: "img:/humidifier.svg",
-    props: { active: false, inAlarm: false },
+    settings: { active: false, inAlarm: false },
   },
   {
     name: "Damper",
     label: "Damper",
     icon: "img:/damper.svg",
-    props: { inAlarm: false },
+    settings: { inAlarm: false },
   },
   {
     name: "Temperature",
@@ -68,11 +74,30 @@ export const tools = [
     name: "Gauge",
     label: "Gauge",
     icon: "speed",
+    settings: {
+      min: 0,
+      max: 100,
+      ticks: 10,
+      minorTicks: 5,
+      thickness: 30,
+      colors: gaugeDefautColors,
+      bgColor: null,
+      textColor: "#000000",
+    },
   },
   {
     name: "Dial",
     label: "Dial",
     icon: "horizontal_split",
+    settings: {
+      min: 0,
+      max: 100,
+      ticks: 5,
+      minorTicks: 5,
+      colors: gaugeDefautColors,
+      bgColor: null,
+      textColor: "#000000",
+    },
   },
 ];
 

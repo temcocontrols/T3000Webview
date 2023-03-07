@@ -43,6 +43,18 @@ const props = defineProps({
     type: Number,
     default: 10
   },
+  ticks: {
+    type: Number,
+    default: 10
+  },
+  minorTicks: {
+    type: Number,
+    default: 5
+  },
+  thickness: {
+    type: Number,
+    default: 30
+  },
   unit: {
     type: String,
     default: ''
@@ -64,12 +76,14 @@ const options = computed(() => {
         type: 'gauge',
 
         radius: '85%',
+
+        center: ['50%', '55%'],
         min: props.min,
         max: props.max,
-        splitNumber: props.splitNumber,
+        splitNumber: props.ticks,
         axisLine: {
           lineStyle: {
-            width: 30,
+            width: props.thickness,
             color: props.colors,
           },
         },
@@ -79,24 +93,26 @@ const options = computed(() => {
           },
         },
         axisTick: {
-          distance: -10,
-          length: 10,
+          splitNumber: props.minorTicks,
+          distance: -(props.thickness / 3.5),
+          length: props.thickness / 3.5,
           lineStyle: {
             color: '#fff',
             width: 1,
           },
         },
         splitLine: {
-          distance: -30,
-          length: 30,
+          distance: -props.thickness,
+          length: props.thickness,
           lineStyle: {
             color: '#fff',
             width: 2,
           },
         },
         axisLabel: {
+          lineHeight: 25,
           color: 'inherit',
-          distance: -20,
+          distance: -25,
           fontSize: 13,
         },
         detail: {

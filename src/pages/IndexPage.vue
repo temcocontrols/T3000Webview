@@ -36,18 +36,28 @@
           <!-- File menu -->
           <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="File">
             <q-list>
-              <q-item dense clickable v-close-popup @click="newProject">
+              <q-item clickable v-close-popup @click="newProject">
                 <q-item-section avatar>
                   <q-avatar size="sm" icon="assignment" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>New Project</q-item-label>
                 </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + R</q-chip>
+                </q-item-section>
               </q-item>
-              <q-separator inset spaced />
-              <q-item dense clickable v-close-popup @click="save">
+              <q-item clickable v-close-popup @click="importFileAction">
                 <q-item-section avatar>
-                  <q-avatar size="sm" icon="assignment" color="grey-7" text-color="white" />
+                  <q-avatar size="sm" icon="file_open" color="grey-7" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Import</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="save">
+                <q-item-section avatar>
+                  <q-avatar size="sm" icon="save" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Save</q-item-label>
@@ -268,33 +278,33 @@
               <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Rotate"
                 v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
               <q-input v-if="
-                appState.items[appState.activeItemIndex].props.fontSize !==
+                appState.items[appState.activeItemIndex].settings.fontSize !==
                 undefined
               " input-style="width: 60px" label="Font size" v-model.number="
-  appState.items[appState.activeItemIndex].props.fontSize
+  appState.items[appState.activeItemIndex].settings.fontSize
 " dark filled type="number" />
-              <q-input dark filled v-model="appState.items[appState.activeItemIndex].props.color" label="Color" v-if="
-                appState.items[appState.activeItemIndex].props.color !==
+              <q-input dark filled v-model="appState.items[appState.activeItemIndex].settings.color" label="Color" v-if="
+                appState.items[appState.activeItemIndex].settings.color !==
                 undefined
               ">
                 <template v-slot:append>
                   <q-icon name="colorize" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-color v-model="
-                        appState.items[appState.activeItemIndex].props.color
+                        appState.items[appState.activeItemIndex].settings.color
                       " />
                     </q-popup-proxy>
                   </q-icon>
                 </template>
               </q-input>
             </div>
-            <q-input class="w-full mb-2" dark filled
-              v-model="appState.items[appState.activeItemIndex].props.backgroundColor" label="Background Color">
+            <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.bgColor"
+              label="Background Color">
               <template v-slot:append>
                 <q-icon name="colorize" class="cursor-pointer">
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                     <q-color v-model="
-                      appState.items[appState.activeItemIndex].props.backgroundColor
+                      appState.items[appState.activeItemIndex].settings.bgColor
                     " />
                   </q-popup-proxy>
                 </q-icon>
@@ -302,9 +312,9 @@
             </q-input>
             <q-checkbox v-if="
               !appState.items[appState.activeItemIndex].t3Entry &&
-              appState.items[appState.activeItemIndex].props.active !==
+              appState.items[appState.activeItemIndex].settings.active !==
               undefined
-            " dark filled v-model="appState.items[appState.activeItemIndex].props.active" class="text-white w-full"
+            " dark filled v-model="appState.items[appState.activeItemIndex].settings.active" class="text-white w-full"
               label="Active" :disable="
                 (appState.items[appState.activeItemIndex].t3Entry &&
                   appState.items[appState.activeItemIndex].t3Entry
@@ -318,9 +328,9 @@
               " anchor="center left" self="center end">
                 Can't activate it because the linked entry is in auto mode
               </q-tooltip></q-checkbox>
-            <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].props.inAlarm"
+            <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].settings.inAlarm"
               class="text-white w-full" label="In alarm" v-if="
-                appState.items[appState.activeItemIndex].props.inAlarm !==
+                appState.items[appState.activeItemIndex].settings.inAlarm !==
                 undefined
               " />
           </q-expansion-item>
@@ -950,22 +960,13 @@ export default defineComponent({
         rotate: 0,
         scaleX: 1,
         scaleY: 1,
-        props:
-          tools.find((tool) => tool.name === selectedTool.value.name)?.props ||
+        settings:
+          tools.find((tool) => tool.name === selectedTool.value.name)?.settings ||
           {},
         zindex: 1,
         t3Entry: null,
         t3EntryDisplayField: "label",
       });
-      if (["Gauge", "Dial"].includes(selectedTool.value.name)) {
-        item.min = 0;
-        item.max = 100;
-        item.colors = [
-          { offset: 33, color: "#14BE64" },
-          { offset: 66, color: "#FFB100" },
-          { offset: 100, color: "#fd666d" },
-        ];
-      }
       // selectedTool.value.name = "Pointer"
       setTimeout(() => {
         appState.value.activeItemIndex = appState.value.items.findIndex(
@@ -1093,17 +1094,17 @@ export default defineComponent({
 
     function refreshObjectActiveValue(item) {
       // addActionToHistory("Update linked entry value");
-      if (item.props?.active !== undefined) {
+      if (item.settings?.active !== undefined) {
         if (!item.t3Entry) return;
         if (
           item.t3Entry.type === "OUTPUT" &&
           item.t3Entry.hw_switch_status !== 1
         ) {
-          item.props.active = !!item.t3Entry.hw_switch_status;
+          item.settings.active = !!item.t3Entry.hw_switch_status;
         } else if (item.t3Entry.range) {
           const range = ranges.find((i) => i.id === item.t3Entry.range);
           if (range) {
-            item.props.active =
+            item.settings.active =
               (item.t3Entry?.digital_analog === 0 &&
                 ((item.t3Entry?.control === 1 && !range.directInvers) ||
                   (item.t3Entry?.control === 0 && range.directInvers))) ||
@@ -1112,11 +1113,11 @@ export default defineComponent({
                 : false;
           }
         } else if (item.t3Entry.type === "PROGRAM") {
-          item.props.active = !!item.t3Entry.status;
+          item.settings.active = !!item.t3Entry.status;
         } else if (item.t3Entry.type === "SCHEDULE") {
-          item.props.active = !!item.t3Entry.output;
+          item.settings.active = !!item.t3Entry.output;
         } else if (item.t3Entry.type === "HOLIDAY") {
-          item.props.active = !!item.t3Entry.value;
+          item.settings.active = !!item.t3Entry.value;
         }
       }
     }
@@ -1186,6 +1187,11 @@ export default defineComponent({
     keycon.keydown(["ctrl", "y"], (e) => {
       e.inputEvent.preventDefault();
       redoAction();
+    });
+
+    keycon.keydown(["ctrl", "r"], (e) => {
+      e.inputEvent.preventDefault();
+      newProject();
     });
 
     function linkT3EntryDialogAction() {
@@ -1282,7 +1288,7 @@ export default defineComponent({
       uploadObjectDialog.value.svg = null;
     }
 
-    const gaugeSettingsDialog = ref({ active: false, data: {} });
+    const gaugeSettingsDialog = ref({ active: false, data: { settings: tools.find((tool) => tool.name === 'Gauge')?.settings } });
 
     function gaugeSettingsDialogAction(item) {
       gaugeSettingsDialog.value.active = true;
@@ -1311,6 +1317,10 @@ export default defineComponent({
         { label: "Description", value: "description" },
       ];
     });
+
+    function importFileAction() {
+
+    }
 
     return {
       movable,
@@ -1376,6 +1386,7 @@ export default defineComponent({
       gaugeSettingsDialog,
       gaugeSettingsSave,
       t3EntryDisplayFieldOptions,
+      importFileAction
     };
   },
 });

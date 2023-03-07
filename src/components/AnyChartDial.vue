@@ -93,7 +93,7 @@ export default defineComponent({
         var marker = gauge.value.marker(0);
 
         // set the offset of the pointer as a percentage of the gauge width
-        marker.offset('90%');
+        marker.offset('86%');
 
         // set the marker type
         marker.type('triangle-left');
@@ -107,23 +107,29 @@ export default defineComponent({
         var scale = gauge.value.scale();
         scale.minimum(props.options.min);
         scale.maximum(props.options.max);
-        scale.ticks().interval(props.options.ticks || 5);
+        const dialRangeTotal = props.options.max + (props.options.min * -1)
+        scale.ticks().interval(dialRangeTotal / props.options.ticks || 5);
+        scale.minorTicks().interval((dialRangeTotal / props.options.ticks) / props.options.minorTicks || 2);
 
         // configure the axis
         var axis = gauge.value.axis();
         axis.minorTicks(true)
-        axis.minorTicks().stroke('#cecece').length(5).stroke("#000000");
-        axis.width("20%");
-        axis.offset("14%");
+        axis.minorTicks().stroke('#cecece').length(5).stroke(props.options.textColor || "#000000");
+        axis.width(34);
+        // axis.offset("4%");
+        axis.padding([1, 0]);
         axis.orientation('left');
         axis.stroke(null);
-        axis.ticks().length(10).stroke("#000000");
+        axis.ticks().length(10).stroke(props.options.textColor || "#000000");
 
         // format axis labels
-        axis.labels().format(`{%value}`);
+        axis.labels().format(function () {
+          return Math.round(this.value)
+        });
+        axis.labels().fontColor(props.options.textColor || "#000000");
 
         // set paddings
-        gauge.value.padding([10, 30]);
+        gauge.value.padding([10, 2, 10, 20]);
 
         // set the container id
         gauge.value.container(gaugeElement.value);
