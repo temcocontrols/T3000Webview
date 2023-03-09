@@ -713,7 +713,7 @@ export default defineComponent({
             });
         } else if (arg.data.action === "GET_ENTRIES_RES") {
           arg.data.data.forEach(item => {
-            itemIndex = T3000_Data.value.panelsData.findIndex(
+            const itemIndex = T3000_Data.value.panelsData.findIndex(
               (ii) =>
                 ii.index === item.index &&
                 ii.type === item.type &&
