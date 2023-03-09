@@ -47,12 +47,20 @@
                   <q-chip>Ctrl + R</q-chip>
                 </q-item-section>
               </q-item>
-              <q-item clickable v-close-popup @click="importFileAction">
+              <q-item clickable v-close-popup @click="importJsonAction">
                 <q-item-section avatar>
                   <q-avatar size="sm" icon="file_open" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Import</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportToJsonAction">
+                <q-item-section avatar>
+                  <q-avatar size="sm" icon="file_open" color="grey-7" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Export</q-item-label>
                 </q-item-section>
               </q-item>
               <q-item clickable v-close-popup @click="save">
@@ -526,7 +534,7 @@
         <div class="text-h6">Upload custom SVG</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <file-upload :types="['image/svg+xml']" @uploaded="handleCustomObjectUpload" @file-added="customObjectFileAdded"
+        <file-upload :types="['image/svg+xml']" @uploaded="handleFileUploaded" @file-added="customObjectFileAdded"
           @file-removed="uploadObjectDialog.uploadBtnDisabled = true" />
       </q-card-section>
 
@@ -540,6 +548,25 @@
   <!-- Edit Gauge/Dial dialog -->
   <AddEditDashboardItem action="Edit" v-model:active="gaugeSettingsDialog.active" :item="gaugeSettingsDialog.data"
     :panels-data="T3000_Data.panelsData" @item-saved="gaugeSettingsSave" />
+
+  <!-- Import from JSON -->
+  <q-dialog v-model="importJsonDialog.active">
+    <q-card style="min-width: 450px">
+      <q-card-section>
+        <div class="text-h6">Import from a JSON file</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <file-upload :types="['application/json']" @uploaded="handleFileUploaded" @file-added="importJsonFileAdded"
+          @file-removed="importJsonDialog.uploadBtnDisabled = true" />
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Cancel" @click="importJsonDialog.active = false" />
+        <q-btn :disabled="importJsonDialog.uploadBtnDisabled" :loading="importJsonDialog.uploadBtnLoading" flat
+          label="Import" @click="executeImportFromJson()" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
@@ -554,6 +581,7 @@ import ObjectType from "../components/ObjectType.vue";
 import AddEditDashboardItem from "../components/AddEditGaugeDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
+import { VisualMapContinuousComponent } from "echarts/components";
 
 // Remove when deploy
 const demoDeviceData = () => {
@@ -589,6 +617,14 @@ export default defineComponent({
     const linkT3EntryDialog = ref({ active: false, data: null });
     const T3000_Data = ref({ panelsData: [], panelsList: [] });
     const uploadObjectDialog = ref({
+      addedCount: 0,
+      active: false,
+      uploadBtnDisabled: true,
+      uploadBtnLoading: false,
+      svg: null,
+    });
+
+    const importJsonDialog = ref({
       addedCount: 0,
       active: false,
       uploadBtnDisabled: true,
@@ -639,10 +675,8 @@ export default defineComponent({
       panzoomInstance.on("transform", function (e) {
         appState.value.viewportTransform = e.getTransform();
       });
-      const lines = document.querySelectorAll(".movable-item");
-      Array.from(lines).forEach(function (el) {
-        appState.value.elementGuidelines.push(el);
-      });
+
+      refreshMovable()
 
       window.chrome?.webview?.postMessage({
         action: 1,
@@ -689,6 +723,9 @@ export default defineComponent({
             arg.data.data = JSON.parse(arg.data.data);
           }
           appState.value = arg.data.data;
+          setTimeout(() => {
+            refreshMovable()
+          }, 100);
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
           if (getPanelsInterval && arg.data?.panel_id) {
             // clearInterval(getPanelsInterval);
@@ -777,6 +814,13 @@ export default defineComponent({
         }
       }
     });
+
+    function refreshMovable() {
+      const lines = document.querySelectorAll(".movable-item");
+      Array.from(lines).forEach(function (el) {
+        appState.value.elementGuidelines.push(el);
+      });
+    }
 
     function addActionToHistory(title) {
       console.log(title);
@@ -1167,9 +1211,12 @@ export default defineComponent({
     }
 
     function save() {
+      const content = toRaw(appState.value)
+      content.selectedTargets = []
+      content.elementGuidelines = []
       window.chrome?.webview?.postMessage({
-        action: 2,
-        data: toRaw(appState.value),
+        action: 2, // SAVE_GRAPHIC
+        data: content,
       });
     }
 
@@ -1310,8 +1357,8 @@ export default defineComponent({
       refreshSelecto();
     }
 
-    function handleCustomObjectUpload(data) {
-      console.log("handleCustomObjectUpload", data);
+    function handleFileUploaded(data) {
+      console.log("handleFileUploaded", data);
     }
 
     async function customObjectFileAdded(file) {
@@ -1362,14 +1409,44 @@ export default defineComponent({
       ];
     });
 
-    function importFileAction() {
+    function importJsonAction() {
+      importJsonDialog.value.active = true;
+    }
 
+    function exportToJsonAction() {
+      const content = toRaw(appState.value)
+      content.selectedTargets = []
+      content.elementGuidelines = []
+
+      const a = document.createElement("a");
+      const file = new Blob([JSON.stringify(content)], { type: "application/json" });
+      a.href = URL.createObjectURL(file);
+      a.download = "HVAC_Drawer_Project.json";
+      a.click();
     }
 
     function getLinkedEntries() {
       const items = appState.value.items
       if (items.length === 0) return [];
       return toRaw(appState.value).items.filter(i => i.t3Entry);
+    }
+
+    async function importJsonFileAdded(file) {
+      importJsonDialog.value.uploadBtnDisabled = false;
+      const blob = await file.data.text();
+      importJsonDialog.value.json = blob;
+    }
+
+    function executeImportFromJson() {
+      importJsonDialog.value.addedCount++;
+      importJsonDialog.value.active = false;
+      importJsonDialog.value.uploadBtnDisabled = true;
+      appState.value = JSON.parse(importJsonDialog.value.json)
+      importJsonDialog.value.json = null;
+      setTimeout(() => {
+        refreshMovable()
+
+      }, 100);
     }
 
     return {
@@ -1428,7 +1505,7 @@ export default defineComponent({
       redoAction,
       deleteSelected,
       uploadObjectDialog,
-      handleCustomObjectUpload,
+      handleFileUploaded,
       customObjectFileAdded,
       saveCustomObject,
       customTools,
@@ -1436,7 +1513,11 @@ export default defineComponent({
       gaugeSettingsDialog,
       gaugeSettingsSave,
       t3EntryDisplayFieldOptions,
-      importFileAction
+      importJsonDialog,
+      importJsonAction,
+      importJsonFileAdded,
+      executeImportFromJson,
+      exportToJsonAction
     };
   },
 });
