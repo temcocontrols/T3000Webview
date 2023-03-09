@@ -656,6 +656,7 @@ export default defineComponent({
         });
 
         setInterval(function () {
+          if (getLinkedEntries().length === 0) return;
           window.chrome?.webview?.postMessage({
             action: 6, // GET_ENTRIES
             data: getLinkedEntries().map(ii => { return { panelId: ii.t3Entry.pid, index: ii.t3Entry.index, type: T3_Types[ii.t3Entry.type] } })
@@ -690,8 +691,39 @@ export default defineComponent({
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
           if (getPanelsInterval && arg.data?.panel_id) {
-            clearInterval(getPanelsInterval);
+            // clearInterval(getPanelsInterval);
           }
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+            (item) => item.pid !== arg.data.panel_id
+          );
+          T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+            arg.data.data
+          );
+          selectPanelOptions.value = T3000_Data.value.panelsData;
+          appState.value.items
+            .filter((i) => i.t3Entry?.type)
+            .forEach((item) => {
+              item.t3Entry = arg.data.data.find(
+                (ii) =>
+                  ii.index === item.t3Entry.index &&
+                  ii.type === item.t3Entry.type &&
+                  ii.pid === item.t3Entry.pid
+              );
+              refreshObjectActiveValue(item);
+            });
+        } else if (arg.data.action === "GET_ENTRIES_RES") {
+          arg.data.data.forEach(item => {
+            itemIndex = T3000_Data.value.panelsData.findIndex(
+              (ii) =>
+                ii.index === item.index &&
+                ii.type === item.type &&
+                ii.pid === item.pid
+            );
+            if (itemIndex !== -1) {
+              T3000_Data.value.panelsData.splice(itemIndex, 1)
+              T3000_Data.value.panelsData.push(item)
+            }
+          })
           T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
             (item) => item.pid !== arg.data.panel_id
           );
