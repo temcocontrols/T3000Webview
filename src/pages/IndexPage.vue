@@ -598,6 +598,7 @@ export default defineComponent({
     const customTools = ref([]);
 
     const selectPanelOptions = ref(T3000_Data.value.panelsData);
+    let getPanelsInterval = null
 
     // Remove when deploy
     if (process.env.DEV) {
@@ -650,9 +651,17 @@ export default defineComponent({
         action: 4, // GET_PANELS_LIST
       });
       if (window.chrome?.webview?.postMessage) {
-        setInterval(window.chrome.webview.postMessage, 10000, {
+        getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
           action: 4, // GET_PANELS_LIST
         });
+
+        setInterval(function () {
+          window.chrome?.webview?.postMessage({
+            action: 6, // GET_ENTRIES
+            data: getLinkedEntries().map(ii => { return { panelId: ii.t3Entry.pid, index: ii.t3Entry.index, type: T3_Types[ii.t3Entry.type] } })
+          });
+        }, 5000);
+
       }
     });
     onUnmounted(() => {
@@ -680,6 +689,9 @@ export default defineComponent({
           }
           appState.value = arg.data.data;
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
+          if (getPanelsInterval && arg.data?.panel_id) {
+            clearInterval(getPanelsInterval);
+          }
           T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
             (item) => item.pid !== arg.data.panel_id
           );
@@ -1320,6 +1332,12 @@ export default defineComponent({
 
     function importFileAction() {
 
+    }
+
+    function getLinkedEntries() {
+      const items = appState.value.items
+      if (items.length === 0) return [];
+      return toRaw(appState.value).items.filter(i => i.t3Entry);
     }
 
     return {
