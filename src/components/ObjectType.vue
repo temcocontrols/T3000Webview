@@ -60,17 +60,17 @@
 
 <script>
 import { defineComponent, computed } from "vue";
-import DuctEl from "./Duct.vue";
-import FanEl from "./Fan.vue";
-import CoolingCoil from "./CoolingCoil.vue";
-import HeatingCoil from "./HeatingCoil.vue";
-import FilterEl from "./Filter.vue";
-import HumidifierEl from "./Humidifier.vue";
-import Damper from "./Damper.vue";
-import TextEl from "./Text.vue";
-import Temperature from "./Temperature.vue";
-import GaugeChart from "./EchartsGauge.vue";
-import AnyChartDial from "src/components/AnyChartDial.vue";
+import DuctEl from "./ObjectTypes/Duct.vue";
+import FanEl from "./ObjectTypes/Fan.vue";
+import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
+import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
+import FilterEl from "./ObjectTypes/Filter.vue";
+import HumidifierEl from "./ObjectTypes/Humidifier.vue";
+import Damper from "./ObjectTypes/Damper.vue";
+import TextEl from "./ObjectTypes/Text.vue";
+import Temperature from "./ObjectTypes/Temperature.vue";
+import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
+import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
 
 import { ranges } from "src/lib/common";
 

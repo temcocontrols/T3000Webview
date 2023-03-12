@@ -38,7 +38,7 @@
 
 <script>
 import { defineComponent } from "vue";
-import AnimatedNumber from "./AnimatedNumber.vue";
+import AnimatedNumber from "../AnimatedNumber.vue";
 /* eslint-disable */
 export default defineComponent({
   name: 'DialChart',
