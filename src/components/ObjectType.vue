@@ -1,9 +1,10 @@
 <template>
   <div class="movable-item" :class="{
     'with-bg': item.settings?.bgColor,
-    'with-title': item.t3Entry && item.t3EntryDisplayField !== 'none',
+    'with-title': item.settings?.title || (item.t3Entry && item.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" v-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
+    <div class="object-title" v-if="item.settings?.title">{{ item.settings.title }}</div>
+    <div class="object-title" v-else-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
       {{ dispalyText || "N/A" }}
       <span v-if="!['Dial', 'Gauge'].includes(item.type)">
         - {{ range.label }}</span>
@@ -40,6 +41,7 @@
       <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.settings" />
       <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
       <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
+      <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
         :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
@@ -68,6 +70,7 @@ import FilterEl from "./ObjectTypes/Filter.vue";
 import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
+import BoxEl from "./ObjectTypes/Box.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
@@ -85,6 +88,7 @@ export default defineComponent({
     Humidifier: HumidifierEl,
     Damper,
     TextEl,
+    BoxEl,
     Temperature,
     GaugeChart,
     DialChart: AnyChartDial,

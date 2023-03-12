@@ -20,6 +20,12 @@ export const tools = [
     icon: "img:/cursor.svg",
   },
   {
+    name: "Box",
+    label: "Box",
+    icon: "square",
+    settings: { bgColor: "#659dc5" },
+  },
+  {
     name: "Text",
     label: "Text",
     icon: "title",

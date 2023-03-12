@@ -306,6 +306,9 @@
                 </template>
               </q-input>
             </div>
+            <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.title"
+              label="Title">
+            </q-input>
             <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.bgColor"
               label="Background Color">
               <template v-slot:append>
