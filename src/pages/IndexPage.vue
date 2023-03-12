@@ -823,6 +823,7 @@ export default defineComponent({
 
     function addActionToHistory(title) {
       console.log(title);
+      save();
       redoHistory.value = [];
       undoHistory.value.unshift({
         title,
