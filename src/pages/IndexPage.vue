@@ -559,14 +559,11 @@
         <div class="text-h6">Import from a JSON file</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <file-upload :types="['application/json']" @uploaded="handleFileUploaded" @file-added="importJsonFileAdded"
-          @file-removed="importJsonDialog.uploadBtnDisabled = true" />
+        <file-upload :types="['application/json']" @uploaded="handleFileUploaded" @file-added="importJsonFileAdded" />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
         <q-btn flat label="Cancel" @click="importJsonDialog.active = false" />
-        <q-btn :disabled="importJsonDialog.uploadBtnDisabled" :loading="importJsonDialog.uploadBtnLoading" flat
-          label="Import" @click="executeImportFromJson()" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -630,7 +627,6 @@ export default defineComponent({
     const importJsonDialog = ref({
       addedCount: 0,
       active: false,
-      uploadBtnDisabled: true,
       uploadBtnLoading: false,
       svg: null,
     });
@@ -801,7 +797,7 @@ export default defineComponent({
           } else {
             $q.notify({
               message: "Error, not saved!",
-              color: "danger",
+              color: "negative",
               icon: "error",
               actions: [
                 {
@@ -1435,21 +1431,66 @@ export default defineComponent({
     }
 
     async function importJsonFileAdded(file) {
-      importJsonDialog.value.uploadBtnDisabled = false;
       const blob = await file.data.text();
       importJsonDialog.value.json = blob;
+      executeImportFromJson()
+
     }
 
     function executeImportFromJson() {
-      importJsonDialog.value.addedCount++;
+      const importedState = JSON.parse(importJsonDialog.value.json)
+      if (!importedState.items?.[0].type) {
+        $q.notify({
+          message: "Error, Invalid json file",
+          color: "negative",
+          icon: "error",
+          actions: [
+            {
+              label: "Dismiss",
+              color: "white",
+              handler: () => {
+                /* ... */
+              },
+            },
+          ],
+        });
+        return
+      }
+
+      if (appState.value.items?.length > 0) {
+        $q.dialog({
+          dark: true,
+          title: "You have unsaved drawing!",
+          message: `Before proceeding with the import, please note that any unsaved drawing will be lost,
+           and your undo history will also be erased. Are you sure you want to proceed?`,
+          cancel: true,
+          persistent: true,
+        })
+          .onOk(() => {
+            undoHistory.value = [];
+            redoHistory.value = [];
+            importJsonDialog.value.active = false;
+            appState.value = importedState
+            importJsonDialog.value.json = null;
+            setTimeout(() => {
+              refreshMovable()
+
+            }, 100);
+            refreshSelecto();
+          })
+          .onCancel(() => { importJsonDialog.value.active = false; });
+        return;
+      }
+      undoHistory.value = [];
+      redoHistory.value = [];
       importJsonDialog.value.active = false;
-      importJsonDialog.value.uploadBtnDisabled = true;
-      appState.value = JSON.parse(importJsonDialog.value.json)
+      appState.value = importedState
       importJsonDialog.value.json = null;
       setTimeout(() => {
         refreshMovable()
 
       }, 100);
+      refreshSelecto();
     }
 
     return {

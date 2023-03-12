@@ -162,7 +162,6 @@ export default defineComponent({
 }
 
 .with-bg .object-title {
-  border-bottom: 1px solid;
   background-color: rgb(255 255 255 / 40%);
 }
 
