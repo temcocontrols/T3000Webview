@@ -29,7 +29,7 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
-    settings: { content: "Text", color: "black", fontSize: 16 },
+    settings: { content: "Text", textColor: "black", fontSize: 16 },
   },
   {
     name: "Duct",
@@ -88,7 +88,7 @@ export const tools = [
       thickness: 30,
       colors: gaugeDefautColors,
       bgColor: null,
-      textColor: "#000000",
+      titleColor: "#000000",
     },
   },
   {
@@ -102,8 +102,14 @@ export const tools = [
       minorTicks: 5,
       colors: gaugeDefautColors,
       bgColor: null,
-      textColor: "#000000",
+      titleColor: "#000000",
     },
+  },
+  {
+    name: "Number",
+    label: "Number",
+    icon: "123",
+    settings: { title: "Title", bgColor: "", textColor: "" },
   },
 ];
 

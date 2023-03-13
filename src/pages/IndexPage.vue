@@ -291,23 +291,33 @@
               " input-style="width: 60px" label="Font size" v-model.number="
   appState.items[appState.activeItemIndex].settings.fontSize
 " dark filled type="number" />
-              <q-input dark filled v-model="appState.items[appState.activeItemIndex].settings.color" label="Color" v-if="
-                appState.items[appState.activeItemIndex].settings.color !==
-                undefined
-              ">
-                <template v-slot:append>
-                  <q-icon name="colorize" class="cursor-pointer">
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-color v-model="
-                        appState.items[appState.activeItemIndex].settings.color
-                      " />
-                    </q-popup-proxy>
-                  </q-icon>
-                </template>
-              </q-input>
             </div>
+            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.textColor !== undefined"
+              dark filled v-model="appState.items[appState.activeItemIndex].settings.textColor" label="Text Color">
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-color v-model="
+                      appState.items[appState.activeItemIndex].settings.textColor
+                    " />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
             <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.title"
               label="Title">
+            </q-input>
+            <q-input class="w-full mb-2" dark filled
+              v-model="appState.items[appState.activeItemIndex].settings.titleColor" label="Title Color">
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-color v-model="
+                      appState.items[appState.activeItemIndex].settings.titleColor
+                    " />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
             </q-input>
             <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.bgColor"
               label="Background Color">
@@ -1414,7 +1424,7 @@ export default defineComponent({
     }
 
     function exportToJsonAction() {
-      const content = toRaw(appState.value)
+      const content = cloneDeep(toRaw(appState.value))
       content.selectedTargets = []
       content.elementGuidelines = []
 

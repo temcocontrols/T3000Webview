@@ -1,7 +1,8 @@
 
 
 <template>
-  <div ref="editableElement" :contenteditable="true" :style="`font-size: ${fontSize}px; color: ${color}`">{{ content }}
+  <div ref="editableElement" :contenteditable="true" :style="`font-size: ${fontSize}px; color: ${textColor}`">{{ content
+  }}
   </div>
 </template>
 

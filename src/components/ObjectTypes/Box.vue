@@ -8,7 +8,7 @@
 import { defineComponent } from 'vue'
 
 export default defineComponent({
-  name: 'TextEl',
+  name: 'BoxEl',
   props: {
     bgColor: {
       type: String,
