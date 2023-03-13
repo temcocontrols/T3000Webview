@@ -1,13 +1,12 @@
 <template>
   <div class="movable-item" :class="{
+    [item.type]: item.type,
     'with-bg': item.settings?.bgColor,
     'with-title': item.settings?.title || (item.t3Entry && item.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" v-if="item.settings?.title">{{ item.settings.title }}</div>
+    <div class="object-title" v-if="item.settings?.title || item.type === 'Number'">{{ item.settings.title }}</div>
     <div class="object-title" v-else-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
       {{ dispalyText || "N/A" }}
-      <span v-if="!['Dial', 'Gauge'].includes(item.type)">
-        - {{ range.label }}</span>
       <span v-if="
         item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
       ">
@@ -19,7 +18,7 @@
             : "MAN-OFF"
           : ""
         }}</span>
-      <span class="ml-2 text-lg">
+      <span class="mode-icon ml-2 text-lg">
         <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
           <q-tooltip anchor="top middle" self="center middle">
             In auto mode
@@ -42,6 +41,7 @@
       <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
       <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
       <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
+      <number-el v-else-if="item.type === 'Number'" class="number" :value="dispalyText" v-bind="item.settings" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
         :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
@@ -71,6 +71,7 @@ import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
+import NumberEl from "./ObjectTypes/Number.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
@@ -89,6 +90,7 @@ export default defineComponent({
     Damper,
     TextEl,
     BoxEl,
+    NumberEl,
     Temperature,
     GaugeChart,
     DialChart: AnyChartDial,
@@ -111,6 +113,9 @@ export default defineComponent({
       return { label: "Unused", unit: "" };
     });
     const dispalyText = computed(() => {
+      if (!props.item.t3Entry) {
+        return ""
+      }
       if (
         props.item.t3EntryDisplayField === "value" &&
         props.item.t3Entry.digital_analog === 1
@@ -159,6 +164,7 @@ export default defineComponent({
   min-width: 100%;
   white-space: nowrap;
   line-height: 2.5em;
+  color: v-bind("item.settings?.titleColor");
 }
 
 .with-bg .object-title {
@@ -183,5 +189,32 @@ export default defineComponent({
 
 .with-title .gauge-object.gauge {
   margin-top: 10px;
+}
+
+.movable-item.Number.with-title {
+  display: flex;
+}
+
+.movable-item.Number.with-title .object-container {
+  height: 100%;
+  flex-grow: 1;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.movable-item.Number.with-title .object-title {
+  min-width: auto;
+  padding: 10px;
+  line-height: 1.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.movable-item.Number.with-title .object-title .mode-icon {
+  display: none;
 }
 </style>
