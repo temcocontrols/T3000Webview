@@ -1211,7 +1211,7 @@ export default defineComponent({
     }
 
     function save() {
-      const content = toRaw(appState.value)
+      const content = cloneDeep(toRaw(appState.value))
       content.selectedTargets = []
       content.elementGuidelines = []
       window.chrome?.webview?.postMessage({
