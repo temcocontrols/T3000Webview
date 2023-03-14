@@ -174,6 +174,16 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
+          <q-space />
+          <div class="flex">
+            <q-btn @click="zoom = zoom - 10" dense flat size="sm" icon="zoom_out" />
+            <div class="px-1">
+              <input class="zoom-input" @keydown.enter="changeZoomValue" :value="zoom" type="number" />%
+            </div>
+            <q-btn @click="zoom = zoom + 10" dense flat size="sm" icon="zoom_in" />
+          </div>
+
+
         </q-toolbar>
         <div class="viewport">
           <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
@@ -580,7 +590,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, onMounted, onUnmounted, toRaw } from "vue";
+import { defineComponent, ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
@@ -591,7 +601,6 @@ import ObjectType from "../components/ObjectType.vue";
 import AddEditDashboardItem from "../components/AddEditGaugeDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
-import { VisualMapContinuousComponent } from "echarts/components";
 
 // Remove when deploy
 const demoDeviceData = () => {
@@ -683,6 +692,7 @@ export default defineComponent({
       });
       panzoomInstance.on("transform", function (e) {
         appState.value.viewportTransform = e.getTransform();
+        triggerRef(appState)
       });
 
       refreshMovable()
@@ -709,7 +719,7 @@ export default defineComponent({
       }
     });
     onUnmounted(() => {
-      if (!panzoomInstance) return;
+      if (panzoomInstance?.dispose) return;
       panzoomInstance.dispose();
     });
 
@@ -758,7 +768,7 @@ export default defineComponent({
               refreshObjectActiveValue(item);
             });
         } else if (arg.data.action === "GET_ENTRIES_RES") {
-          arg.data.data.forEach(item => {
+          /* arg.data.data.forEach(item => {
             const itemIndex = T3000_Data.value.panelsData.findIndex(
               (ii) =>
                 ii.index === item.index &&
@@ -780,6 +790,7 @@ export default defineComponent({
           appState.value.items
             .filter((i) => i.t3Entry?.type)
             .forEach((item) => {
+              console.log("arg.data.data", arg.data.data)
               item.t3Entry = arg.data.data.find(
                 (ii) =>
                   ii.index === item.t3Entry.index &&
@@ -787,7 +798,7 @@ export default defineComponent({
                   ii.pid === item.t3Entry.pid
               );
               refreshObjectActiveValue(item);
-            });
+            }); */
         } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
           if (arg.data.data?.status === true) {
             $q.notify({
@@ -833,7 +844,7 @@ export default defineComponent({
 
     function addActionToHistory(title) {
       console.log(title);
-      save();
+      // save();
       redoHistory.value = [];
       undoHistory.value.unshift({
         title,
@@ -1181,7 +1192,7 @@ export default defineComponent({
     function linkT3EntrySave() {
       addActionToHistory("Link object to T3000 entry");
       appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
-        linkT3EntryDialog.value.data
+        toRaw(linkT3EntryDialog.value.data)
       );
       refreshObjectActiveValue(
         appState.value.items[appState.value.activeItemIndex]
@@ -1504,6 +1515,26 @@ export default defineComponent({
       refreshSelecto();
     }
 
+    const zoom = computed({
+      get() {
+        return parseInt(appState.value.viewportTransform.scale * 100)
+      },
+      // setter
+      set(newValue) {
+        if (!newValue) return
+        appState.value.viewportTransform.scale = newValue / 100
+        panzoomInstance.smoothZoomAbs(appState.value.viewportTransform.x, appState.value.viewportTransform.y, newValue / 100)
+      }
+
+    });
+
+    function changeZoomValue(ev) {
+      const newValue = parseInt(ev.target.value)
+      if (!newValue) return
+      appState.value.viewportTransform.scale = newValue / 100
+      panzoomInstance.smoothZoomAbs(appState.value.viewportTransform.x, appState.value.viewportTransform.y, newValue / 100)
+    }
+
     return {
       movable,
       selecto,
@@ -1572,7 +1603,9 @@ export default defineComponent({
       importJsonAction,
       importJsonFileAdded,
       executeImportFromJson,
-      exportToJsonAction
+      exportToJsonAction,
+      zoom,
+      changeZoomValue
     };
   },
 });
@@ -1603,7 +1636,8 @@ export default defineComponent({
   padding-top: 34px;
   position: absolute;
   right: 0;
-  height: 100%;
+  top: 40px;
+  height: calc(100% - 40px);
 }
 
 .item-config-inner {
@@ -1674,5 +1708,17 @@ export default defineComponent({
 
 .movable-item-wrapper {
   position: relative;
+}
+
+.zoom-input {
+  background: transparent;
+  width: 27px;
+  -moz-appearance: textfield;
+}
+
+.zoom-input::-webkit-outer-spin-button,
+.zoom-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 </style>
