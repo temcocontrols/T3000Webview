@@ -729,11 +729,14 @@ export default defineComponent({
         if (arg.data.action === "GET_PANELS_LIST_RES") {
           if (arg.data.data) {
             T3000_Data.value.panelsList = arg.data.data;
-            T3000_Data.value.panelsList.forEach((panel) => {
-              window.chrome?.webview?.postMessage({
-                action: 0, // GET_PANEL_DATA
-                panelId: panel.pid,
-              });
+            T3000_Data.value.panelsList.forEach((panel, index) => {
+              setTimeout(() => {
+                window.chrome?.webview?.postMessage({
+                  action: 0, // GET_PANEL_DATA
+                  panelId: panel.panel_number,
+                });
+              }, 5000 * index);
+
             });
           }
         } else if (arg.data.action === "UPDATE_ENTRY_RES") {
