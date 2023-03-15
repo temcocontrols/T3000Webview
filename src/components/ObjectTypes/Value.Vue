@@ -1,7 +1,7 @@
 
 
 <template>
-    <div class="number-element">
+    <div class="value-element">
         {{ value }}
     </div>
 </template>
@@ -10,7 +10,7 @@
 import { defineComponent } from 'vue'
 
 export default defineComponent({
-    name: 'NumberEl',
+    name: 'ValueEl',
     props: {
         bgColor: {
             type: String,
@@ -31,7 +31,7 @@ export default defineComponent({
 </script>
   
 <style scoped>
-.number-element {
+.value-element {
     background-color: v-bind("bgColor");
     ;
 }

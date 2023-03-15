@@ -2,10 +2,12 @@
   <div class="movable-item" :class="{
     [item.type]: item.type,
     'with-bg': item.settings?.bgColor,
-    'with-title': item.settings?.title || (item.t3Entry && item.t3EntryDisplayField !== 'none'),
+    'with-title': item.settings?.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" v-if="item.settings?.title || item.type === 'Number'">{{ item.settings.title }}</div>
-    <div class="object-title" v-else-if="item.t3Entry && item.t3EntryDisplayField !== 'none'">
+    <div class="object-title" v-if="item.settings?.title || (item.type === 'Value' && item.settings.title)">{{
+      item.settings.title }}</div>
+    <div class="object-title"
+      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none' && item.type !== 'Value'">
       {{ dispalyText || "N/A" }}
       <span v-if="
         item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
@@ -41,7 +43,7 @@
       <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
       <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
       <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
-      <number-el v-else-if="item.type === 'Number'" class="number" :value="dispalyText" v-bind="item.settings" />
+      <value-el v-else-if="item.type === 'Value'" class="value" :value="dispalyText" v-bind="item.settings" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
         :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
@@ -71,7 +73,7 @@ import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
-import NumberEl from "./ObjectTypes/Number.vue";
+import ValueEl from "./ObjectTypes/Value.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
@@ -90,7 +92,7 @@ export default defineComponent({
     Damper,
     TextEl,
     BoxEl,
-    NumberEl,
+    ValueEl,
     Temperature,
     GaugeChart,
     DialChart: AnyChartDial,
@@ -117,7 +119,7 @@ export default defineComponent({
         return ""
       }
       if (
-        props.item.t3EntryDisplayField === "value" &&
+        props.item.settings.t3EntryDisplayField === "value" &&
         props.item.t3Entry.digital_analog === 1
       ) {
         const range = ranges.find(
@@ -125,7 +127,7 @@ export default defineComponent({
         );
         return props.item.t3Entry.value / 1000 + " " + range.unit;
       } else if (
-        props.item.t3EntryDisplayField === "value" &&
+        props.item.settings.t3EntryDisplayField === "value" &&
         !props.item.t3Entry.digital_analog
       ) {
         const range = ranges.find((i) => i.id === props.item.t3Entry.range);
@@ -136,7 +138,7 @@ export default defineComponent({
         }
       }
 
-      return props.item.t3Entry[props.item.t3EntryDisplayField];
+      return props.item.t3Entry[props.item.settings.t3EntryDisplayField];
     });
 
     const processedColors = computed(() => {
@@ -191,11 +193,11 @@ export default defineComponent({
   margin-top: 10px;
 }
 
-.movable-item.Number.with-title {
+.movable-item.Value.with-title {
   display: flex;
 }
 
-.movable-item.Number.with-title .object-container {
+.movable-item.Value.with-title .object-container {
   height: 100%;
   flex-grow: 1;
   padding: 10px;
@@ -204,7 +206,7 @@ export default defineComponent({
   justify-content: flex-end;
 }
 
-.movable-item.Number.with-title .object-title {
+.movable-item.Value.with-title .object-title {
   min-width: auto;
   padding: 10px;
   line-height: 1.5em;
@@ -214,7 +216,7 @@ export default defineComponent({
   font-weight: bold;
 }
 
-.movable-item.Number.with-title .object-title .mode-icon {
+.movable-item.Value.with-title .object-title .mode-icon {
   display: none;
 }
 </style>

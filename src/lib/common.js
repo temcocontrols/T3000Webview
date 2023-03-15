@@ -107,10 +107,15 @@ export const tools = [
     },
   },
   {
-    name: "Number",
-    label: "Number",
+    name: "Value",
+    label: "Value",
     icon: "123",
-    settings: { title: "Title", bgColor: "", textColor: "" },
+    settings: {
+      title: "Title",
+      bgColor: "",
+      textColor: "",
+      t3EntryDisplayField: "value",
+    },
   },
 ];
 

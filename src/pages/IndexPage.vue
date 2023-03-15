@@ -515,7 +515,7 @@
 " />
               <!-- Display field -->
               <q-select filled dark v-model="
-                appState.items[appState.activeItemIndex].t3EntryDisplayField
+                appState.items[appState.activeItemIndex].settings.t3EntryDisplayField
               " :options="t3EntryDisplayFieldOptions" label="Display field" emit-value map-options />
             </q-expansion-item>
           </div>
@@ -1074,7 +1074,6 @@ export default defineComponent({
           {},
         zindex: 1,
         t3Entry: null,
-        t3EntryDisplayField: "label",
       });
       // selectedTool.value.name = "Pointer"
       setTimeout(() => {
@@ -1191,6 +1190,9 @@ export default defineComponent({
 
     function linkT3EntrySave() {
       addActionToHistory("Link object to T3000 entry");
+      if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+        appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label"
+      }
       appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
         toRaw(linkT3EntryDialog.value.data)
       );
