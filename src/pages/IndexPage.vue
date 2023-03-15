@@ -1641,8 +1641,8 @@ export default defineComponent({
   padding-top: 34px;
   position: absolute;
   right: 0;
-  top: 40px;
-  height: calc(100% - 40px);
+  top: 36px;
+  height: calc(100% - 36px);
 }
 
 .item-config-inner {
