@@ -1,10 +1,10 @@
 export const T3_Types = {
-  INPUT: 0,
-  OUTPUT: 1,
+  OUTPUT: 0,
+  INPUT: 1,
   VARIABLE: 2,
-  PROGRAM: 3,
   SCHEDULE: 4,
   HOLIDAY: 5,
+  PROGRAM: 6,
 };
 
 const gaugeDefautColors = [
