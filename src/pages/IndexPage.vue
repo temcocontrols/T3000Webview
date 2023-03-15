@@ -314,6 +314,30 @@
                 </q-icon>
               </template>
             </q-input>
+            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.offColor !== undefined"
+              dark filled v-model="appState.items[appState.activeItemIndex].settings.offColor" label="Off Color">
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-color v-model="
+                      appState.items[appState.activeItemIndex].settings.offColor
+                    " />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.onColor !== undefined"
+              dark filled v-model="appState.items[appState.activeItemIndex].settings.onColor" label="Off Color">
+              <template v-slot:append>
+                <q-icon name="colorize" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-color v-model="
+                      appState.items[appState.activeItemIndex].settings.onColor
+                    " />
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
             <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.title"
               label="Title">
             </q-input>

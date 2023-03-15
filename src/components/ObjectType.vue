@@ -43,6 +43,7 @@
       <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
       <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
       <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
+      <power-btn v-else-if="item.type === 'PowerBtn'" class="power-btn" v-bind="item.settings" />
       <value-el v-else-if="item.type === 'Value'" class="value" :value="dispalyText" v-bind="item.settings" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
@@ -73,6 +74,7 @@ import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
+import PowerBtn from "./ObjectTypes/PowerBtn.vue";
 import ValueEl from "./ObjectTypes/Value.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
@@ -92,6 +94,7 @@ export default defineComponent({
     Damper,
     TextEl,
     BoxEl,
+    PowerBtn,
     ValueEl,
     Temperature,
     GaugeChart,

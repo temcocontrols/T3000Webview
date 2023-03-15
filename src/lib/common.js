@@ -117,6 +117,17 @@ export const tools = [
       t3EntryDisplayField: "value",
     },
   },
+  {
+    name: "PowerBtn",
+    label: "Power On/Off",
+    icon: "power_settings_new",
+    settings: {
+      active: false,
+      bgColor: "",
+      offColor: "#940303",
+      onColor: "#0d87d9",
+    },
+  },
 ];
 
 export const ranges = [
