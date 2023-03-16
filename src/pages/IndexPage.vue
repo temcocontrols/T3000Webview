@@ -812,7 +812,6 @@ export default defineComponent({
           appState.value.items
             .filter((i) => i.t3Entry?.type)
             .forEach((item) => {
-              console.log("arg.data.data", arg.data.data)
               const linkedEntry = arg.data.data.find(
                 (ii) =>
                   ii.index === item.t3Entry.index &&
