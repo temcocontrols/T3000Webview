@@ -281,113 +281,83 @@
       <div class="item-config flex flex-nowrap column" v-if="appState.activeItemIndex || appState.activeItemIndex === 0">
         <div class="item-config-inner">
           <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
-            <div class="grid gap-4 grid-cols-2 mb-4">
-              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="X" v-model.number="
-                appState.items[appState.activeItemIndex].translate[0]
-              " dark filled type="number" />
-              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Y" v-model.number="
-                appState.items[appState.activeItemIndex].translate[1]
-              " dark filled type="number" />
+            <div class="p-1">
+              <div class="grid gap-4 grid-cols-2 mb-4">
+                <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="X" v-model.number="
+                  appState.items[appState.activeItemIndex].translate[0]
+                " dark filled type="number" />
+                <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="Y" v-model.number="
+                  appState.items[appState.activeItemIndex].translate[1]
+                " dark filled type="number" />
 
-              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Width"
-                v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
-              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Height"
-                v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
-              <q-input input-style="width: 60px" @update:model-value="refreshSelecto" label="Rotate"
-                v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
-              <q-input v-if="
-                appState.items[appState.activeItemIndex].settings.fontSize !==
-                undefined
-              " input-style="width: 60px" label="Font size" v-model.number="
+                <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="Width"
+                  v-model.number="appState.items[appState.activeItemIndex].width" dark filled type="number" />
+                <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="Height"
+                  v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
+                <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="Rotate"
+                  v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
+                <q-input v-if="
+                  appState.items[appState.activeItemIndex].settings.fontSize !==
+                  undefined
+                " input-style="width: 100%" label="Font size" v-model.number="
   appState.items[appState.activeItemIndex].settings.fontSize
 " dark filled type="number" />
-            </div>
-            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.textColor !== undefined"
-              dark filled v-model="appState.items[appState.activeItemIndex].settings.textColor" label="Text Color">
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-color v-model="
-                      appState.items[appState.activeItemIndex].settings.textColor
-                    " />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.offColor !== undefined"
-              dark filled v-model="appState.items[appState.activeItemIndex].settings.offColor" label="Off Color">
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-color v-model="
-                      appState.items[appState.activeItemIndex].settings.offColor
-                    " />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input class="w-full mb-2" v-if="appState.items[appState.activeItemIndex].settings.onColor !== undefined"
-              dark filled v-model="appState.items[appState.activeItemIndex].settings.onColor" label="Off Color">
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-color v-model="
-                      appState.items[appState.activeItemIndex].settings.onColor
-                    " />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.title"
-              label="Title">
-            </q-input>
-            <q-input class="w-full mb-2" dark filled
-              v-model="appState.items[appState.activeItemIndex].settings.titleColor" label="Title Color">
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-color v-model="
-                      appState.items[appState.activeItemIndex].settings.titleColor
-                    " />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input class="w-full mb-2" dark filled v-model="appState.items[appState.activeItemIndex].settings.bgColor"
-              label="Background Color">
-              <template v-slot:append>
-                <q-icon name="colorize" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-color v-model="
-                      appState.items[appState.activeItemIndex].settings.bgColor
-                    " />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-checkbox v-if="
-              !appState.items[appState.activeItemIndex].t3Entry &&
-              appState.items[appState.activeItemIndex].settings.active !==
-              undefined
-            " dark filled v-model="appState.items[appState.activeItemIndex].settings.active" class="text-white w-full"
-              label="Active" :disable="
-                (appState.items[appState.activeItemIndex].t3Entry &&
-                  appState.items[appState.activeItemIndex].t3Entry
-                    ?.auto_manual === 0) ||
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.digital_analog === 1
-              ">
-              <q-tooltip v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  ?.auto_manual === 0
-              " anchor="center left" self="center end">
-                Can't activate it because the linked entry is in auto mode
-              </q-tooltip></q-checkbox>
-            <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].settings.inAlarm"
-              class="text-white w-full" label="In alarm" v-if="
-                appState.items[appState.activeItemIndex].settings.inAlarm !==
+              </div>
+              <div class="flex flex-nowrap items-center mb-2" v-if="
+                appState.items[appState.activeItemIndex].settings.textColor !==
+                undefined">
+                <input type="color" id="text-color-input"
+                  v-model="appState.items[appState.activeItemIndex].settings.textColor" />
+                <label class="ml-2" for="text-color-input">Text Color</label>
+              </div>
+              <div class="flex flex-nowrap items-center mb-2" v-if="
+                appState.items[appState.activeItemIndex].settings.offColor !==
+                undefined">
+                <input type="color" id="off-color-input"
+                  v-model="appState.items[appState.activeItemIndex].settings.offColor" />
+                <label class="ml-2" for="off-color-input">Off Color</label>
+              </div>
+              <div class="flex flex-nowrap items-center mb-2" v-if="
+                appState.items[appState.activeItemIndex].settings.onColor !==
+                undefined">
+                <input type="color" id="on-color-input"
+                  v-model="appState.items[appState.activeItemIndex].settings.onColor" />
+                <label class="ml-2" for="on-color-input">On Color</label>
+              </div>
+              <div class="w-full relative mb-2">
+                <q-input dark filled v-model="appState.items[appState.activeItemIndex].settings.title" label="Title" />
+                <input type="color" class="absolute top-2 right-2"
+                  v-model="appState.items[appState.activeItemIndex].settings.titleColor" />
+              </div>
+              <div class="flex flex-nowrap items-center mb-2">
+                <input type="color" id="bg-color-input"
+                  v-model="appState.items[appState.activeItemIndex].settings.bgColor" />
+                <label class="ml-2" for="bg-color-input">Background Color</label>
+              </div>
+              <q-checkbox v-if="
+                !appState.items[appState.activeItemIndex].t3Entry &&
+                appState.items[appState.activeItemIndex].settings.active !==
                 undefined
-              " />
+              " dark filled v-model="appState.items[appState.activeItemIndex].settings.active"
+                class="text-white w-full" label="Active" :disable="
+                  (appState.items[appState.activeItemIndex].t3Entry &&
+                    appState.items[appState.activeItemIndex].t3Entry
+                      ?.auto_manual === 0) ||
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.digital_analog === 1
+                ">
+                <q-tooltip v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    ?.auto_manual === 0
+                " anchor="center left" self="center end">
+                  Can't activate it because the linked entry is in auto mode
+                </q-tooltip></q-checkbox>
+              <q-checkbox dark filled v-model="appState.items[appState.activeItemIndex].settings.inAlarm"
+                class="text-white w-full" label="In alarm" v-if="
+                  appState.items[appState.activeItemIndex].settings.inAlarm !==
+                  undefined
+                " />
+            </div>
           </q-expansion-item>
 
           <div>
@@ -413,9 +383,10 @@
 " @click="linkT3EntryDialogAction" />
             <q-expansion-item v-if="appState.items[appState.activeItemIndex].t3Entry"
               class="mt-2 border border-solid border-gray-700" dark default-opened label="Entry settings">
-              <q-select class="mb-1" filled dark v-model="
-                appState.items[appState.activeItemIndex].t3Entry.auto_manual
-              " :options="[
+              <div class="p-1">
+                <q-select class="mb-1" filled dark v-model="
+                  appState.items[appState.activeItemIndex].t3Entry.auto_manual
+                " :options="[
   { label: 'Auto', value: 0 },
   { label: 'Manual', value: 1 },
 ]" label="Auto/Manual" emit-value map-options @update:model-value="
@@ -424,11 +395,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <q-select class="mb-1" v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  .digital_analog === 0 &&
-                appState.items[appState.activeItemIndex].t3Entry.range
-              " :disable="
+                <q-select class="mb-1" v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    .digital_analog === 0 &&
+                  appState.items[appState.activeItemIndex].t3Entry.range
+                " :disable="
   appState.items[appState.activeItemIndex].t3Entry
     ?.auto_manual === 0
 " filled dark v-model="
@@ -452,11 +423,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <!-- Program status -->
-              <q-select class="mb-1" v-if="
-                appState.items[appState.activeItemIndex].t3Entry.type ===
-                'PROGRAM'
-              " :disable="
+                <!-- Program status -->
+                <q-select class="mb-1" v-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'PROGRAM'
+                " :disable="
   appState.items[appState.activeItemIndex].t3Entry
     ?.auto_manual === 0
 " filled dark v-model="
@@ -476,11 +447,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <!-- Schedule output -->
-              <q-select class="mb-1" v-else-if="
-                appState.items[appState.activeItemIndex].t3Entry.type ===
-                'SCHEDULE'
-              " :disable="
+                <!-- Schedule output -->
+                <q-select class="mb-1" v-else-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'SCHEDULE'
+                " :disable="
   appState.items[appState.activeItemIndex].t3Entry
     ?.auto_manual === 0
 " filled dark v-model="
@@ -500,11 +471,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <!-- Holiday value -->
-              <q-select class="mb-1" v-else-if="
-                appState.items[appState.activeItemIndex].t3Entry.type ===
-                'HOLIDAY'
-              " :disable="
+                <!-- Holiday value -->
+                <q-select class="mb-1" v-else-if="
+                  appState.items[appState.activeItemIndex].t3Entry.type ===
+                  'HOLIDAY'
+                " :disable="
   appState.items[appState.activeItemIndex].t3Entry
     ?.auto_manual === 0
 " filled dark v-model="appState.items[appState.activeItemIndex].t3Entry.value" :options="[
@@ -522,11 +493,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <!-- Analog range value -->
-              <q-input class="mb-1" v-if="
-                appState.items[appState.activeItemIndex].t3Entry
-                  .digital_analog === 1
-              " :disable="
+                <!-- Analog range value -->
+                <q-input class="mb-1" v-if="
+                  appState.items[appState.activeItemIndex].t3Entry
+                    .digital_analog === 1
+                " :disable="
   appState.items[appState.activeItemIndex].t3Entry
     ?.auto_manual === 0
 " filled dark type="number" v-model.number="
@@ -537,10 +508,11 @@
     appState.items[appState.activeItemIndex]
   )
 " />
-              <!-- Display field -->
-              <q-select filled dark v-model="
-                appState.items[appState.activeItemIndex].settings.t3EntryDisplayField
-              " :options="t3EntryDisplayFieldOptions" label="Display field" emit-value map-options />
+                <!-- Display field -->
+                <q-select filled dark v-model="
+                  appState.items[appState.activeItemIndex].settings.t3EntryDisplayField
+                " :options="t3EntryDisplayFieldOptions" label="Display field" emit-value map-options />
+              </div>
             </q-expansion-item>
           </div>
         </div>
@@ -1664,6 +1636,7 @@ export default defineComponent({
   right: 0;
   top: 36px;
   height: calc(100% - 36px);
+  color: #ffffff99;
 }
 
 .item-config-inner {
