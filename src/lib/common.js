@@ -103,7 +103,7 @@ export const tools = [
       colors: gaugeDefautColors,
       bgColor: null,
       titleColor: "#000000",
-      textColor: "#ffffff",
+      textColor: "#000000",
     },
   },
   {
