@@ -795,7 +795,7 @@ export default defineComponent({
               refreshObjectActiveValue(item);
             });
         } else if (arg.data.action === "GET_ENTRIES_RES") {
-          /* arg.data.data.forEach(item => {
+          arg.data.data.forEach(item => {
             const itemIndex = T3000_Data.value.panelsData.findIndex(
               (ii) =>
                 ii.index === item.index &&
@@ -807,25 +807,23 @@ export default defineComponent({
               T3000_Data.value.panelsData.push(item)
             }
           })
-          T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-            (item) => item.pid !== arg.data.panel_id
-          );
-          T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-            arg.data.data
-          );
+
           selectPanelOptions.value = T3000_Data.value.panelsData;
           appState.value.items
             .filter((i) => i.t3Entry?.type)
             .forEach((item) => {
               console.log("arg.data.data", arg.data.data)
-              item.t3Entry = arg.data.data.find(
+              const linkedEntry = arg.data.data.find(
                 (ii) =>
                   ii.index === item.t3Entry.index &&
                   ii.type === item.t3Entry.type &&
                   ii.pid === item.t3Entry.pid
               );
+              if (linkedEntry && linkedEntry.id) {
+                item.t3Entry = linkedEntry
+              }
               refreshObjectActiveValue(item);
-            }); */
+            });
         } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
           if (arg.data.data?.status === true) {
             $q.notify({
