@@ -176,11 +176,11 @@
           </q-btn-dropdown>
           <q-space />
           <div class="flex">
-            <q-btn @click="zoom = zoom - 10" dense flat size="sm" icon="zoom_out" />
+            <q-btn @click="zoom = zoom - 10" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out" />
             <div class="px-1">
               <input class="zoom-input" @keydown.enter="changeZoomValue" :value="zoom" type="number" />%
             </div>
-            <q-btn @click="zoom = zoom + 10" dense flat size="sm" icon="zoom_in" />
+            <q-btn @click="zoom = zoom + 10" :disable="zoom >= 400" dense flat size="sm" icon="zoom_in" />
           </div>
 
 
