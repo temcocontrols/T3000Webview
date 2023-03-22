@@ -17,7 +17,7 @@ export const tools = [
   {
     name: "Pointer",
     label: "Select",
-    icon: "img:/cursor.svg",
+    icon: "svguse:icons.svg#cursor|0 0 320 512",
   },
   {
     name: "Box",
@@ -29,52 +29,52 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
-    settings: { content: "Text", textColor: "black", fontSize: 16 },
+    settings: { content: "Text", textColor: "black" },
   },
   {
     name: "Duct",
     label: "Duct",
-    icon: "img:/duct.svg",
+    icon: "svguse:icons.svg#duct|0 0 226 75",
   },
   {
     name: "Fan",
     label: "Fan",
-    icon: "img:/fan.svg",
+    icon: "svguse:icons.svg#fan",
     settings: { active: false, inAlarm: false },
   },
   {
     name: "CoolingCoil",
     label: "Cooling Coil",
-    icon: "img:/cooling-coil.svg",
+    icon: "svguse:icons.svg#cooling-coil|0 0 20 29",
     settings: { active: false, inAlarm: false },
   },
   {
     name: "HeatingCoil",
     label: "Heating Coil",
-    icon: "img:/heating-coil.svg",
+    icon: "svguse:icons.svg#heating-coil|0 0 19.526541 28.758413",
     settings: { active: false, inAlarm: false },
   },
   {
     name: "Filter",
     label: "Filter",
-    icon: "img:/filter.svg",
+    icon: "svguse:icons.svg#filter|0 0 13 29",
   },
   {
     name: "Humidifier",
     label: "Humidifier",
-    icon: "img:/humidifier.svg",
+    icon: "svguse:icons.svg#humidifier|0 0 18 25",
     settings: { active: false, inAlarm: false },
   },
   {
     name: "Damper",
     label: "Damper",
-    icon: "img:/damper.svg",
+    icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
     settings: { inAlarm: false },
   },
   {
     name: "Temperature",
     label: "Temperature",
-    icon: "img:/temperature.svg",
+    icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
   },
   {
     name: "Gauge",
@@ -87,7 +87,6 @@ export const tools = [
       minorTicks: 5,
       thickness: 30,
       colors: gaugeDefautColors,
-      bgColor: null,
       titleColor: "#000000",
     },
   },
@@ -101,7 +100,6 @@ export const tools = [
       ticks: 5,
       minorTicks: 5,
       colors: gaugeDefautColors,
-      bgColor: null,
       titleColor: "#000000",
       textColor: "#000000",
     },
@@ -112,21 +110,71 @@ export const tools = [
     icon: "123",
     settings: {
       title: "Title",
-      bgColor: "",
-      textColor: "",
       t3EntryDisplayField: "value",
     },
   },
   {
-    name: "PowerBtn",
-    label: "Power On/Off",
-    icon: "power_settings_new",
+    name: "Icon",
+    label: "Icon with title/value",
+    icon: "add_reaction",
     settings: {
       active: false,
-      bgColor: "",
       offColor: "#940303",
       onColor: "#0d87d9",
+      icon: "power_settings_new",
+      t3EntryDisplayField: "value",
     },
+  },
+];
+
+export const icons = [
+  {
+    value: "power_settings_new",
+    label: "Power Button",
+  },
+  {
+    value: "bolt",
+    label: "Bolt",
+  },
+  {
+    value: "grid_view",
+    label: "Grid",
+  },
+  {
+    value: "question_mark",
+    label: "Question mark",
+  },
+  {
+    value: "help",
+    label: "Help",
+  },
+  {
+    value: "error",
+    label: "Error",
+  },
+  {
+    value: "cancel",
+    label: "Cancel",
+  },
+  {
+    value: "check",
+    label: "Check",
+  },
+  {
+    value: "check_circle",
+    label: "Check circle",
+  },
+  {
+    value: "schedule",
+    label: "Schedule",
+  },
+  {
+    value: "visibility",
+    label: "Visibility",
+  },
+  {
+    value: "visibility_off",
+    label: "Visibility off",
   },
 ];
 

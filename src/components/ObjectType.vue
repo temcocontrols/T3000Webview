@@ -43,7 +43,7 @@
       <damper v-else-if="item.type === 'Damper'" class="damper" v-bind="item.settings" />
       <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
       <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
-      <power-btn v-else-if="item.type === 'PowerBtn'" class="power-btn" v-bind="item.settings" />
+      <icon-value v-else-if="item.type === 'Icon'" class="icon-value" v-bind="item.settings" />
       <value-el v-else-if="item.type === 'Value'" class="value" :value="dispalyText" v-bind="item.settings" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings" :unit="range.unit"
@@ -74,7 +74,7 @@ import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
-import PowerBtn from "./ObjectTypes/PowerBtn.vue";
+import IconValue from "./ObjectTypes/IconValue.vue";
 import ValueEl from "./ObjectTypes/Value.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
@@ -94,7 +94,7 @@ export default defineComponent({
     Damper,
     TextEl,
     BoxEl,
-    PowerBtn,
+    IconValue,
     ValueEl,
     Temperature,
     GaugeChart,
@@ -169,7 +169,7 @@ export default defineComponent({
   min-width: 100%;
   white-space: nowrap;
   line-height: 2.5em;
-  color: v-bind("item.settings?.titleColor");
+  color: v-bind("item.settings.titleColor");
 }
 
 .with-bg .object-title {
@@ -179,8 +179,9 @@ export default defineComponent({
 .movable-item {
   height: 100%;
   border-radius: 5px;
-  background-color: v-bind("item.settings?.bgColor");
-  color: v-bind("item.settings?.textColor");
+  background-color: v-bind("item.settings.bgColor");
+  color: v-bind("item.settings.textColor");
+  font-size: v-bind("item.settings.fontSize + 'px'");
 }
 
 .object-container {
@@ -188,7 +189,8 @@ export default defineComponent({
   height: 100%;
 }
 
-.with-title .object-container {
+.movable-item.Gauge.with-title .object-container,
+.movable-item.Dial.with-title .object-container {
   height: calc(100% - 36px);
 }
 
@@ -196,20 +198,36 @@ export default defineComponent({
   margin-top: 10px;
 }
 
-.movable-item.Value.with-title {
+.movable-item.Value.with-title,
+.movable-item.Icon.with-title {
   display: flex;
+}
+
+.movable-item.Icon.with-title {
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+.movable-item.Value.with-title .object-container,
+.movable-item.Icon.with-title .object-container {
+  height: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .movable-item.Value.with-title .object-container {
-  height: 100%;
   flex-grow: 1;
-  padding: 10px;
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
+  padding: 10px;
 }
 
-.movable-item.Value.with-title .object-title {
+.movable-item.Icon.with-title .object-container {
+  width: auto;
+}
+
+
+.movable-item.Value.with-title .object-title,
+.movable-item.Icon.with-title .object-title {
   min-width: auto;
   padding: 10px;
   line-height: 1.5em;
@@ -219,7 +237,17 @@ export default defineComponent({
   font-weight: bold;
 }
 
-.movable-item.Value.with-title .object-title .mode-icon {
+.movable-item.Icon.with-title .object-title {
+  flex-grow: 1;
+  justify-content: flex-start;
+}
+
+.movable-item.Value.with-title .object-title .mode-icon,
+.movable-item.Icon.with-title .object-title .mode-icon {
   display: none;
+}
+
+.movable-item.Icon.with-bg .object-title {
+  background-color: transparent;
 }
 </style>

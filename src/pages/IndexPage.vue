@@ -296,12 +296,9 @@
                   v-model.number="appState.items[appState.activeItemIndex].height" dark filled type="number" />
                 <q-input input-style="width: 100%" @update:model-value="refreshSelecto" label="Rotate"
                   v-model.number="appState.items[appState.activeItemIndex].rotate" dark filled type="number" />
-                <q-input v-if="
-                  appState.items[appState.activeItemIndex].settings.fontSize !==
-                  undefined
-                " input-style="width: 100%" label="Font size" v-model.number="
-  appState.items[appState.activeItemIndex].settings.fontSize
-" dark filled type="number" />
+                <q-input input-style="width: 100%" label="Font size" v-model.number="
+                  appState.items[appState.activeItemIndex].settings.fontSize
+                " dark filled type="number" />
               </div>
               <div class="flex flex-nowrap items-center mb-2" v-if="
                 appState.items[appState.activeItemIndex].settings.textColor !==
@@ -309,6 +306,27 @@
                 <input type="color" id="text-color-input"
                   v-model="appState.items[appState.activeItemIndex].settings.textColor" />
                 <label class="ml-2" for="text-color-input">Text Color</label>
+              </div>
+              <div class="w-full mb-2" v-if="
+                appState.items[appState.activeItemIndex].settings.icon !==
+                undefined">
+                <q-select filled dark v-model="
+                  appState.items[appState.activeItemIndex].settings.icon
+                " :options="icons" label="Icon" emit-value map-options>
+                  <template v-slot:prepend>
+                    <q-icon :name="appState.items[appState.activeItemIndex].settings.icon" />
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar class="pr-1 min-w-0">
+                        <q-icon :name="scope.opt.value" />
+                      </q-item-section>
+                      <q-item-section class="grow">
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="flex flex-nowrap items-center mb-2" v-if="
                 appState.items[appState.activeItemIndex].settings.offColor !==
@@ -596,7 +614,7 @@ import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
 import AddEditDashboardItem from "../components/AddEditGaugeDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
-import { tools, T3_Types, ranges } from "../lib/common";
+import { tools, T3_Types, ranges, icons } from "../lib/common";
 
 // Remove when deploy
 const demoDeviceData = () => {
@@ -1023,6 +1041,18 @@ export default defineComponent({
       addActionToHistory(`Add ${item.type}`);
       appState.value.itemsCount++;
       item.id = appState.value.itemsCount;
+      if (!item.settings.titleColor) {
+        item.settings.titleColor = 'inherit'
+      }
+      if (!item.settings.bgColor) {
+        item.settings.bgColor = 'inherit'
+      }
+      if (!item.settings.textColor) {
+        item.settings.textColor = 'inherit'
+      }
+      if (!item.settings.fontSize) {
+        item.settings.fontSize = 16
+      }
       appState.value.items.push(item);
       const lines = document.querySelectorAll(".movable-item");
       appState.value.elementGuidelines = [];
@@ -1603,7 +1633,8 @@ export default defineComponent({
       executeImportFromJson,
       exportToJsonAction,
       zoom,
-      changeZoomValue
+      changeZoomValue,
+      icons
     };
   },
 });
