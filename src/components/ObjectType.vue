@@ -186,7 +186,6 @@ export default defineComponent({
 
 .object-container {
   width: 100%;
-  height: 100%;
 }
 
 .movable-item.Gauge.with-title .object-container,

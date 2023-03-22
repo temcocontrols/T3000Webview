@@ -25,9 +25,6 @@ export default defineComponent({
 
 <style scoped>
 .box-element {
-  width: 100%;
-  height: 100%;
   background-color: v-bind("bgColor");
-  ;
 }
 </style>
