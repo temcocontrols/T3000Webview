@@ -791,7 +791,7 @@ export default defineComponent({
           }, 100);
         } else if (arg.data.action === "GET_PANEL_DATA_RES") {
           if (getPanelsInterval && arg.data?.panel_id) {
-            // clearInterval(getPanelsInterval);
+            clearInterval(getPanelsInterval);
           }
           T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
             (item) => item.pid !== arg.data.panel_id
