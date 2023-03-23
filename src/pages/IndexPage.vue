@@ -102,6 +102,29 @@
                 </q-item-section>
               </q-item>
               <q-separator inset spaced />
+              <q-item dense clickable v-close-popup @click="duplicateSelected"
+                :disable="appState.selectedTargets.length < 1">
+                <q-item-section avatar>
+                  <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Duplicate selected</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + D</q-chip>
+                </q-item-section>
+              </q-item>
+              <q-item dense clickable v-close-popup @click="groupSelected" :disable="appState.selectedTargets.length < 2">
+                <q-item-section avatar>
+                  <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Group selected</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + G</q-chip>
+                </q-item-section>
+              </q-item>
               <q-item dense clickable v-close-popup @click="deleteSelected"
                 :disable="appState.selectedTargets.length < 1">
                 <q-item-section avatar>
@@ -109,6 +132,9 @@
                 </q-item-section>
                 <q-item-section>
                   <q-item-label>Delete selected</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Delete</q-chip>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -682,6 +708,7 @@ export default defineComponent({
       selectedTargets: [],
       elementGuidelines: [],
       itemsCount: 0,
+      groupCount: 0,
       activeItemIndex: null,
       viewportTransform: { x: 0, y: 0, scale: 1 },
     };
@@ -931,6 +958,12 @@ export default defineComponent({
     }
     function onSelectoSelectEnd(e) {
       appState.value.selectedTargets = e.selected;
+
+      const selectedItems = appState.value.items.filter(i => e.selected.some(ii => ii.id === `movable-item-${i.id}`))
+      const selectedGroups = [...new Set(selectedItems.filter(iii => iii.group).map(iiii => iiii.group))];
+      selectedGroups.forEach(item => {
+        selectGroup(item.group)
+      })
       if (appState.value.selectedTargets.length === 1) {
         appState.value.activeItemIndex = appState.value.items.findIndex(
           (item) =>
@@ -947,6 +980,10 @@ export default defineComponent({
           movable.value.dragStart(e.inputEvent);
         });
       }
+    }
+
+    function selectGroup(id) {
+      console.log("group select", id)
     }
 
     function onResizeStart(e) {
@@ -1037,8 +1074,10 @@ export default defineComponent({
       });
     }
 
-    function addObject(item) {
-      addActionToHistory(`Add ${item.type}`);
+    function addObject(item, addToHistory = true) {
+      if (addToHistory) {
+        addActionToHistory(`Add ${item.type}`);
+      }
       appState.value.itemsCount++;
       item.id = appState.value.itemsCount;
       if (!item.settings.titleColor) {
@@ -1175,19 +1214,30 @@ export default defineComponent({
       appState.value.selectedTargets = [];
     }
     function duplicateObject(i) {
+      addActionToHistory(`Duplicate ${i.type}`);
       appState.value.activeItemIndex = null;
-      const dubItem = cloneDeep(i);
-      dubItem.translate[0] = dubItem.translate[0] + 10;
-      dubItem.translate[1] = dubItem.translate[1] + 10;
-      const item = addObject(dubItem);
+      const item = cloneObject(i);
       appState.value.selectedTargets = [];
       setTimeout(() => {
-        const target = document.querySelector(`#movable-item-${item.id}`);
-        appState.value.selectedTargets = [target];
-        appState.value.activeItemIndex = appState.value.items.findIndex(
-          (i) => i.id === item.id
-        );
+        selectObject(item)
       }, 10);
+    }
+
+    function cloneObject(i) {
+      const dubItem = cloneDeep(i);
+      dubItem.translate[0] = dubItem.translate[0] + 5;
+      dubItem.translate[1] = dubItem.translate[1] + 5;
+      const item = addObject(dubItem, false);
+      return item
+    }
+
+    function selectObject(item) {
+      const target = document.querySelector(`#movable-item-${item.id}`);
+      appState.value.selectedTargets = [target];
+      appState.value.activeItemIndex = appState.value.items.findIndex(
+        (ii) => ii.id === item.id
+      );
+
     }
 
     function selectByRightClick(e) {
@@ -1332,6 +1382,10 @@ export default defineComponent({
     keycon.keydown(["ctrl", "r"], (e) => {
       e.inputEvent.preventDefault();
       newProject();
+    });
+    keycon.keydown(["ctrl", "d"], (e) => {
+      e.inputEvent.preventDefault();
+      duplicateSelected();
     });
 
     function linkT3EntryDialogAction() {
@@ -1563,6 +1617,44 @@ export default defineComponent({
       panzoomInstance.smoothZoomAbs(appState.value.viewportTransform.x, appState.value.viewportTransform.y, newValue / 100)
     }
 
+    function duplicateSelected() {
+      addActionToHistory("Duplicate the selected objects");
+      if (appState.value.selectedTargets.length > 0) {
+        const elements = []
+        appState.value.selectedTargets.forEach((el) => {
+          const item = appState.value.items.find(
+            (i) => `movable-item-${i.id}` === el.id
+          );
+          if (item) {
+            const dupItem = cloneObject(item)
+            setTimeout(() => {
+              const dupElement = document.querySelector(`#movable-item-${dupItem.id}`);
+              elements.push(dupElement)
+            }, 10)
+          }
+        });
+        setTimeout(() => {
+          appState.value.selectedTargets = elements;
+          appState.value.activeItemIndex = null;
+        }, 20)
+      }
+    }
+
+    function groupSelected() {
+      addActionToHistory("Group the selected objects");
+      if (appState.value.selectedTargets.length > 0) {
+        appState.value.groupCount++;
+        appState.value.selectedTargets.forEach((el) => {
+          const item = appState.value.items.find(
+            (i) => `movable-item-${i.id}` === el.id
+          );
+          if (item) {
+            item.group = appState.value.groupCount
+          }
+        });
+      }
+    }
+
     return {
       movable,
       selecto,
@@ -1634,7 +1726,9 @@ export default defineComponent({
       exportToJsonAction,
       zoom,
       changeZoomValue,
-      icons
+      icons,
+      duplicateSelected,
+      groupSelected
     };
   },
 });
