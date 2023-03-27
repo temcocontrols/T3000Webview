@@ -188,13 +188,14 @@ export default defineComponent({
   width: 100%;
 }
 
-.movable-item.Gauge.with-title .object-container,
-.movable-item.Dial.with-title .object-container {
-  height: calc(100% - 36px);
+.movable-item.Gauge .object-container,
+.movable-item.Dial .object-container {
+  height: 100%;
 }
 
-.with-title .gauge-object.gauge {
-  margin-top: 10px;
+.movable-item.Gauge.with-title .object-container,
+.movable-item.Dial.with-title .object-container {
+  height: calc(100% - 41px);
 }
 
 .movable-item.Value.with-title,
