@@ -125,6 +125,18 @@
                   <q-chip>Ctrl + G</q-chip>
                 </q-item-section>
               </q-item>
+              <q-item dense clickable v-close-popup @click="ungroupSelected"
+                :disable="appState.selectedTargets.length < 2">
+                <q-item-section avatar>
+                  <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Ungroup selected</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip>Ctrl + Shift + G</q-chip>
+                </q-item-section>
+              </q-item>
               <q-item dense clickable v-close-popup @click="deleteSelected"
                 :disable="appState.selectedTargets.length < 1">
                 <q-item-section avatar>
@@ -962,7 +974,7 @@ export default defineComponent({
       const selectedItems = appState.value.items.filter(i => e.selected.some(ii => ii.id === `movable-item-${i.id}`))
       const selectedGroups = [...new Set(selectedItems.filter(iii => iii.group).map(iiii => iiii.group))];
       selectedGroups.forEach(item => {
-        selectGroup(item.group)
+        selectGroup(item)
       })
       if (appState.value.selectedTargets.length === 1) {
         appState.value.activeItemIndex = appState.value.items.findIndex(
@@ -983,7 +995,13 @@ export default defineComponent({
     }
 
     function selectGroup(id) {
-      console.log("group select", id)
+      const targets = []
+      appState.value.items.filter(i => i.group === id && !appState.value.selectedTargets.some(ii => ii.id === `movable-item-${i.id}`)).forEach(iii => {
+        const target = document.querySelector(`#movable-item-${iii.id}`);
+        targets.push(target)
+      })
+
+      appState.value.selectedTargets = appState.value.selectedTargets.concat(targets)
     }
 
     function onResizeStart(e) {
@@ -1074,12 +1092,13 @@ export default defineComponent({
       });
     }
 
-    function addObject(item, addToHistory = true) {
+    function addObject(item, group = undefined, addToHistory = true) {
       if (addToHistory) {
         addActionToHistory(`Add ${item.type}`);
       }
       appState.value.itemsCount++;
       item.id = appState.value.itemsCount;
+      item.group = group
       if (!item.settings.titleColor) {
         item.settings.titleColor = 'inherit'
       }
@@ -1167,7 +1186,6 @@ export default defineComponent({
     }
 
     function rotate90(item, minues = false) {
-      console.log("item", item);
       if (!item) return;
       addActionToHistory("Rotate object");
       if (!minues) {
@@ -1223,11 +1241,11 @@ export default defineComponent({
       }, 10);
     }
 
-    function cloneObject(i) {
+    function cloneObject(i, group = undefined) {
       const dubItem = cloneDeep(i);
       dubItem.translate[0] = dubItem.translate[0] + 5;
       dubItem.translate[1] = dubItem.translate[1] + 5;
-      const item = addObject(dubItem, false);
+      const item = addObject(dubItem, group, false);
       return item
     }
 
@@ -1386,6 +1404,14 @@ export default defineComponent({
     keycon.keydown(["ctrl", "d"], (e) => {
       e.inputEvent.preventDefault();
       duplicateSelected();
+    });
+    keycon.keydown(["ctrl", "g"], (e) => {
+      e.inputEvent.preventDefault();
+      groupSelected();
+    });
+    keycon.keydown(["ctrl", "shift", "g"], (e) => {
+      e.inputEvent.preventDefault();
+      ungroupSelected();
     });
 
     function linkT3EntryDialogAction() {
@@ -1621,12 +1647,22 @@ export default defineComponent({
       addActionToHistory("Duplicate the selected objects");
       if (appState.value.selectedTargets.length > 0) {
         const elements = []
+        const dupGroups = {}
         appState.value.selectedTargets.forEach((el) => {
           const item = appState.value.items.find(
             (i) => `movable-item-${i.id}` === el.id
           );
           if (item) {
-            const dupItem = cloneObject(item)
+            let group = undefined
+            if (item.group) {
+              if (!dupGroups[`${item.group}`]) {
+                appState.value.groupCount++
+                dupGroups[`${item.group}`] = appState.value.groupCount
+              }
+
+              group = dupGroups[`${item.group}`]
+            }
+            const dupItem = cloneObject(item, group)
             setTimeout(() => {
               const dupElement = document.querySelector(`#movable-item-${dupItem.id}`);
               elements.push(dupElement)
@@ -1650,6 +1686,20 @@ export default defineComponent({
           );
           if (item) {
             item.group = appState.value.groupCount
+          }
+        });
+      }
+    }
+
+    function ungroupSelected() {
+      addActionToHistory("Ungroup the selected objects");
+      if (appState.value.selectedTargets.length > 0) {
+        appState.value.selectedTargets.forEach((el) => {
+          const item = appState.value.items.find(
+            (i) => `movable-item-${i.id}` === el.id
+          );
+          if (item) {
+            item.group = undefined
           }
         });
       }
@@ -1728,7 +1778,8 @@ export default defineComponent({
       changeZoomValue,
       icons,
       duplicateSelected,
-      groupSelected
+      groupSelected,
+      ungroupSelected
     };
   },
 });
