@@ -159,7 +159,6 @@ export default defineComponent({
   },
   emits: ["refreshSelecto", "T3UpdateEntryField", "linkT3Entry", "gaugeSettings"],
   setup(props, { emit }) {
-    const item = ref(null);
     const t3EntryDisplayFieldOptions = computed(() => {
       return [
         { label: "None", value: "none" },
@@ -171,12 +170,16 @@ export default defineComponent({
         { label: "Description", value: "description" },
       ];
     });
-    onMounted(() => {
-      item.value = props.object;
+    const item = computed({
+      get() {
+        return props.object;
+      },
+      // setter
+      set(newValue) {
+        if (!newValue) return;
+        emit("update:object", newValue)
+      },
     });
-    watch(() => props.object, (newObj) => {
-      item.value = newObj
-    })
     function getRangeById(id) {
       return ranges.find((i) => i.id === id);
     }
