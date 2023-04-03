@@ -12,19 +12,43 @@
           <q-icon :name="tool.icon" size="sm" />
         </q-item-section>
       </q-item>
-      <q-item v-for="tool in customTools" :key="tool.name" @click="selectTool(tool.name, 'custom', tool.svg)" clickable
-        v-ripple :active="selectedTool.name === tool.name" active-class="active-tool">
+      <q-item clickable v-ripple active-class="active-tool" :active="selectedTool.name.startsWith('Custom-')">
         <q-tooltip anchor="center right" self="center left">
-          {{ tool.label }}
+          User objects library
         </q-tooltip>
-        <q-item-section>
-          <q-icon name="dashboard_customize" size="sm" />
-        </q-item-section>
-      </q-item>
-      <q-item @click="addCustomTool" clickable v-ripple>
-        <q-tooltip anchor="center right" self="center left">
-          Add custom SVG
-        </q-tooltip>
+        <q-menu anchor="bottom right" self="bottom left" max-height="650px">
+          <q-card dark style="min-width: 500px; height: 400px;">
+            <q-tabs v-model="libTab" inline-label class="text-grey" active-color="primary" indicator-color="primary"
+              align="justify" narrow-indicator>
+              <q-tab v-if="false" name="lib" icon="library_books" label="Library" />
+              <q-tab name="svgs" icon="collections" label="Custom SVGs" />
+            </q-tabs>
+
+            <q-separator />
+
+            <q-tab-panels v-model="libTab" animated dark>
+              <q-tab-panel name="lib" v-if="false">
+                <div class="flex p-4 items-center justify-center">The library is empty.</div>
+              </q-tab-panel>
+
+              <q-tab-panel name="svgs">
+                <q-btn dense @click="addCustomTool" icon="library_add" color="white" text-color="black"
+                  label="Add custom SVG" />
+                <div v-if="customTools?.length" class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4">
+                  <div v-for="tool in customTools" :key="tool.name" v-close-popup
+                    @click="selectTool(tool.name, 'custom', tool.svg)">
+                    <div class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer">
+                      <div class="flex flex-col items-center justify-center h-full"><img :src="getSvgImageUrl(tool.svg)"
+                          alt="Custom Svg"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex p-4 items-center justify-center" v-else>No custom SVGs yet.</div>
+              </q-tab-panel>
+            </q-tab-panels>
+          </q-card>
+
+        </q-menu>
         <q-item-section>
           <q-icon name="add_circle_outline" size="sm" />
         </q-item-section>
@@ -34,7 +58,7 @@
 </template>
   
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { tools } from "../lib/common";
 export default defineComponent({
   name: 'ToolsSidebar',
@@ -50,6 +74,7 @@ export default defineComponent({
   },
   emits: ["selectTool", "addCustomTool"],
   setup(_props, { emit }) {
+    const libTab = ref('svgs')
     function selectTool(name, type = "default", svg = null) {
       emit("selectTool", { name, type, svg });
     }
@@ -57,10 +82,18 @@ export default defineComponent({
     function addCustomTool() {
       emit("addCustomTool");
     }
+
+    function getSvgImageUrl(svg) {
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      return url
+    }
     return {
       tools,
       selectTool,
-      addCustomTool
+      addCustomTool,
+      libTab,
+      getSvgImageUrl
     }
   }
 })

@@ -7,14 +7,14 @@
         <top-toolbar @menu-action="handleMenuAction" :app-state="appState" :undo-history="undoHistory"
           :redo-history="redoHistory" :zoom="zoom" />
         <div class="viewport">
-          <vue-selecto ref="selecto" dragContainer=".viewport" v-bind:selectableTargets="targets" v-bind:hitRate="100"
-            v-bind:selectByClick="true" v-bind:selectFromInside="true" v-bind:toggleContinueSelect="['shift']"
-            v-bind:ratio="0" :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectoSelectEnd"
+          <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="targets" :hitRate="100"
+            :selectByClick="true" :selectFromInside="true" :toggleContinueSelect="['shift']" :ratio="0"
+            :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectoSelectEnd"
             @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
           </vue-selecto>
           <div ref="viewport">
-            <vue-moveable ref="movable" v-bind:draggable="true" v-bind:resizable="true" v-bind:rotatable="true"
-              v-bind:target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
+            <vue-moveable ref="movable" :draggable="true" :resizable="true" :rotatable="true" :keepRatio="false"
+              :target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
               :snapGap="true" :snapDirections="{
                 top: true,
                 right: true,
