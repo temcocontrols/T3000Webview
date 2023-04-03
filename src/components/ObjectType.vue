@@ -1,13 +1,12 @@
 <template>
   <div class="movable-item" :class="{
     [item.type]: item.type,
-    'with-bg': item.settings?.bgColor,
-    'with-title': item.settings?.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+    'with-bg': item.settings.bgColor,
+    'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" v-if="item.settings?.title || (item.type === 'Value' && item.settings.title)">{{
+    <div class="object-title" v-if="item.settings.title">{{
       item.settings.title }}</div>
-    <div class="object-title"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none' && item.type !== 'Value'">
+    <div class="object-title" v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
       {{ dispalyText || "N/A" }}
       <span v-if="
         item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
