@@ -150,7 +150,7 @@
     </q-card>
   </q-dialog>
   <!-- Edit Gauge/Dial dialog -->
-  <AddEditDashboardItem action="Edit" v-model:active="gaugeSettingsDialog.active" :item="gaugeSettingsDialog.data"
+  <GaugeSettingsDialog action="Edit" v-model:active="gaugeSettingsDialog.active" :item="gaugeSettingsDialog.data"
     :panels-data="T3000_Data.panelsData" @item-saved="gaugeSettingsSave" />
 
   <!-- Import from JSON -->
@@ -179,7 +179,7 @@ import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
 import ObjectType from "../components/ObjectType.vue";
-import AddEditDashboardItem from "../components/AddEditGaugeDialog.vue";
+import GaugeSettingsDialog from "../components/GaugeSettingsDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
 import TopToolbar from "../components/TopToolbar.vue";
 import ToolsSidebar from "../components/ToolsSidebar.vue";

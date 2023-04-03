@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">
           <template v-if="action === 'Add'"> Add Item </template>
-          <template v-else> Edit {{ dialog.type }} </template>
+          <template v-else> {{ dialog.type }} settings </template>
         </div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
@@ -65,7 +65,7 @@
 import { defineComponent, onMounted, ref, toRaw } from "vue";
 
 export default defineComponent({
-  name: "AddEditDashboardItem",
+  name: "GaugeSettingsDialog",
   props: {
     active: Boolean,
     item: {
