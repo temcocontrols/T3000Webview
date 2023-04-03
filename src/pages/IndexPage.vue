@@ -17,15 +17,15 @@
               :target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
               :snapGap="true" :snapDirections="{
                 top: true,
-                right: true,
-                bottom: true,
-                left: true,
-              }" :elementSnapDirections="{
-  top: true,
-  right: true,
-  bottom: true,
-  left: true,
-}" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+                  right: true,
+                    bottom: true,
+                      left: true,
+                                          }" :elementSnapDirections="{
+                              top: true,
+                                right: true,
+                                  bottom: true,
+                                    left: true,
+                                          }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
               :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
               :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
               @clickGroup="onClickGroup" @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd"
@@ -261,6 +261,7 @@ if (process.env.DEV) {
 
 let panzoomInstance = null;
 const emptyProject = {
+  version: process.env.VERSION,
   items: [],
   selectedTargets: [],
   elementGuidelines: [],
