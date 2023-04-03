@@ -107,7 +107,7 @@
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
-    <q-card style="min-width: 600px">
+    <q-card style="min-width: 650px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
         <q-space />
@@ -117,9 +117,27 @@
       <q-separator />
 
       <q-card-section style="height: 70vh" class="scroll">
-        <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
-          input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions" @filter="selectPanelFilterFn"
-          label="Select Entry" />
+        <div class="flex">
+          <q-btn icon="refresh" flat @click="reloadPanelsData">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Reload panels data</strong>
+            </q-tooltip>
+          </q-btn>
+          <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
+            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+            @filter="selectPanelFilterFn" label="Select Entry" class="grow" />
+        </div>
+        <div class="flex flex-col items-center mt-4">
+          <q-circular-progress v-if="T3000_Data.loadingPanel !== null" indeterminate show-value
+            :value="loadingPanelsProgress" size="270px" :thickness="0.22" color="light-blue" track-color="grey-3"
+            class="q-ma-md overflow-hidden">
+            <div class="text-xl text-center">
+              <div> {{ loadingPanelsProgress }}%</div>
+              <div> Loading Panel #{{
+                T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number }}</div>
+            </div>
+          </q-circular-progress>
+        </div>
       </q-card-section>
 
       <q-separator />
@@ -208,7 +226,7 @@ const viewport = ref(null);
 const targets = ref([]);
 const selectedTool = ref({ name: "Pointer", type: "default", svg: null });
 const linkT3EntryDialog = ref({ active: false, data: null });
-const T3000_Data = ref({ panelsData: [], panelsList: [] });
+const T3000_Data = ref({ panelsData: [], panelsList: [], loadingPanel: null });
 const uploadObjectDialog = ref({
   active: false,
   uploadBtnDisabled: true,
@@ -226,6 +244,12 @@ const customTools = ref([]);
 
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
+
+const loadingPanelsProgress = computed(() => {
+  if (T3000_Data.value.loadingPanel === null)
+    return 100
+  return parseInt((T3000_Data.value.loadingPanel + 1 / T3000_Data.value.panelsList.length) * 100)
+})
 
 // Remove when deploy
 if (process.env.DEV) {
@@ -307,15 +331,12 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   console.log("Recieved webview message", arg.data);
   if ("action" in arg.data) {
     if (arg.data.action === "GET_PANELS_LIST_RES") {
-      if (arg.data.data) {
+      if (arg.data.data.length) {
         T3000_Data.value.panelsList = arg.data.data;
-        T3000_Data.value.panelsList.forEach((panel, index) => {
-          setTimeout(() => {
-            window.chrome?.webview?.postMessage({
-              action: 0, // GET_PANEL_DATA
-              panelId: panel.panel_number,
-            });
-          }, 5000 * index);
+        T3000_Data.value.loadingPanel = 0
+        window.chrome?.webview?.postMessage({
+          action: 0, // GET_PANEL_DATA
+          panelId: T3000_Data.value.panelsList[0].panel_number,
         });
       }
     } else if (arg.data.action === "UPDATE_ENTRY_RES") {
@@ -330,6 +351,20 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     } else if (arg.data.action === "GET_PANEL_DATA_RES") {
       if (getPanelsInterval && arg.data?.panel_id) {
         clearInterval(getPanelsInterval);
+      }
+      if (arg.data?.panel_id) {
+        if (T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < (T3000_Data.value.panelsList.length - 1)) {
+          T3000_Data.value.loadingPanel++
+          const index = T3000_Data.value.loadingPanel
+          window.chrome?.webview?.postMessage({
+            action: 0, // GET_PANEL_DATA
+            panelId: T3000_Data.value.panelsList[index].panel_number,
+          });
+
+        }
+        if (T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === (T3000_Data.value.panelsList.length - 1)) {
+          T3000_Data.value.loadingPanel = null
+        }
       }
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== arg.data.panel_id
@@ -1298,6 +1333,13 @@ function handleMenuAction(action) {
     default:
       break;
   }
+}
+
+
+function reloadPanelsData() {
+  window.chrome?.webview?.postMessage({
+    action: 4, // GET_PANELS_LIST
+  });
 }
 </script>
 <style>
