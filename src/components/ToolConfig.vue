@@ -338,8 +338,8 @@
 </template>
 
 <script>
-import { defineComponent, ref, onMounted, computed, watch } from "vue";
-import { ranges } from "../lib/common";
+import { defineComponent, computed } from "vue";
+import { ranges, icons } from "../lib/common";
 export default defineComponent({
   name: "ToolConfig",
   props: {
@@ -400,6 +400,7 @@ export default defineComponent({
       t3EntryDisplayFieldOptions,
       gaugeSettings,
       getRangeById,
+      icons,
     };
   },
 });
