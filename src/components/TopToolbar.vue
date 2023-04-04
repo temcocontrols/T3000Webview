@@ -191,7 +191,7 @@ export default defineComponent({
   emits: ["menuAction"],
   props: {
     selectedCount: {
-      type: Object,
+      type: Number,
       required: true,
     },
     disableUndo: {

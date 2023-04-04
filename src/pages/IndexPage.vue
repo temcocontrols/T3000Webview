@@ -21,13 +21,13 @@
                   right: true,
                     bottom: true,
                       left: true,
-                                                                                                                                                                                                                                                                                        }"
+                                                                                                                                                                                                                                                                                                                                                                                          }"
               :elementSnapDirections="{
                 top: true,
                   right: true,
                     bottom: true,
                       left: true,
-                                                                                                                                                                                                                                                                                                                                                              }"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                }"
               :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
               :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
               :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
@@ -97,7 +97,7 @@
                   </q-item>
                 </q-list>
               </q-menu>
-              <object-type :item="item" />
+              <object-type :item="item" :key="item.id + item.type" />
             </div>
           </div>
         </div>
