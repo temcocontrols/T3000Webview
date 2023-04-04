@@ -4,8 +4,8 @@
       <ToolsSidebar :selected-tool="selectedTool" :custom-tools="customTools" @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true" />
       <div class="viewport-wrapper">
-        <top-toolbar @menu-action="handleMenuAction" :app-state="appState" :undo-history="undoHistory"
-          :redo-history="redoHistory" :zoom="zoom" />
+        <top-toolbar @menu-action="handleMenuAction" :selected-count="appState.selectedTargets.length"
+          :disable-undo="undoHistory.length < 1" :disable-redo="redoHistory.length < 1" :zoom="zoom" />
         <div class="viewport">
           <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="targets" :hitRate="100"
             :selectByClick="true" :selectFromInside="true" :toggleContinueSelect="['shift']" :ratio="0"
@@ -15,17 +15,20 @@
           <div ref="viewport">
             <vue-moveable ref="movable" :draggable="true" :resizable="true" :rotatable="true" :keepRatio="false"
               :target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
-              :snapGap="true" :snapDirections="{
+              :snapGap="true"
+              :snapDirections="{
                 top: true,
                   right: true,
                     bottom: true,
                       left: true,
-                                          }" :elementSnapDirections="{
-                              top: true,
-                                right: true,
-                                  bottom: true,
-                                    left: true,
-                                          }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+                                                                                                                                                                                                                                                                                        }"
+              :elementSnapDirections="{
+                top: true,
+                  right: true,
+                    bottom: true,
+                      left: true,
+                                                                                                                                                                                                                                                                                                                                                              }"
+              :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
               :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
               :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
               @clickGroup="onClickGroup" @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd"
@@ -123,7 +126,7 @@
               <strong>Reload panels data</strong>
             </q-tooltip>
           </q-btn>
-          <q-select option-label="description" option-value="id" filled use-input hide-selected fill-input
+          <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
             input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
             @filter="selectPanelFilterFn" label="Select Entry" class="grow" />
         </div>
@@ -168,8 +171,8 @@
     </q-card>
   </q-dialog>
   <!-- Edit Gauge/Dial dialog -->
-  <GaugeSettingsDialog action="Edit" v-model:active="gaugeSettingsDialog.active" :item="gaugeSettingsDialog.data"
-    :panels-data="T3000_Data.panelsData" @item-saved="gaugeSettingsSave" />
+  <GaugeSettingsDialog v-model:active="gaugeSettingsDialog.active" :data="gaugeSettingsDialog.data"
+    @saved="gaugeSettingsSave" />
 
   <!-- Import from JSON -->
   <q-dialog v-model="importJsonDialog.active">
@@ -202,7 +205,7 @@ import FileUpload from "../components/FileUpload.vue";
 import TopToolbar from "../components/TopToolbar.vue";
 import ToolsSidebar from "../components/ToolsSidebar.vue";
 import ToolConfig from "../components/ToolConfig.vue";
-import { tools, T3_Types, ranges, icons } from "../lib/common";
+import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
 const demoDeviceData = () => {
@@ -373,18 +376,9 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         arg.data.data
       );
+      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      appState.value.items
-        .filter((i) => i.t3Entry?.type)
-        .forEach((item) => {
-          item.t3Entry = arg.data.data.find(
-            (ii) =>
-              ii.index === item.t3Entry.index &&
-              ii.type === item.t3Entry.type &&
-              ii.pid === item.t3Entry.pid
-          );
-          refreshObjectActiveValue(item);
-        });
+      refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "GET_ENTRIES_RES") {
       arg.data.data.forEach((item) => {
         const itemIndex = T3000_Data.value.panelsData.findIndex(
@@ -394,26 +388,12 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
             ii.pid === item.pid
         );
         if (itemIndex !== -1) {
-          T3000_Data.value.panelsData.splice(itemIndex, 1);
-          T3000_Data.value.panelsData.push(item);
+          T3000_Data.value.panelsData[itemIndex] = item;
         }
       });
 
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      appState.value.items
-        .filter((i) => i.t3Entry?.type)
-        .forEach((item) => {
-          const linkedEntry = arg.data.data.find(
-            (ii) =>
-              ii.index === item.t3Entry.index &&
-              ii.type === item.t3Entry.type &&
-              ii.pid === item.t3Entry.pid
-          );
-          if (linkedEntry && linkedEntry.id) {
-            item.t3Entry = linkedEntry;
-          }
-          refreshObjectActiveValue(item);
-        });
+      refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
       if (arg.data.data?.status === true) {
         $q.notify({
@@ -1338,9 +1318,36 @@ function handleMenuAction(action) {
 
 
 function reloadPanelsData() {
+  T3000_Data.value.loadingPanel = null
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
+}
+
+function refreshLinkedEntries(panelData) {
+  appState.value.items
+    .filter((i) => i.t3Entry?.type)
+    .forEach((item) => {
+      const linkedEntry = panelData.find(
+        (ii) =>
+          ii.index === item.t3Entry.index &&
+          ii.type === item.t3Entry.type &&
+          ii.pid === item.t3Entry.pid
+      );
+      if (linkedEntry && linkedEntry.id) {
+        item.t3Entry = linkedEntry;
+        refreshObjectActiveValue(item);
+      }
+    });
+}
+function entryLabel(option) {
+  let prefix =
+    (option.description && option.id !== option.description) ||
+      (!option.description && option.id !== option.label)
+      ? option.id + " - "
+      : "";
+  prefix = !option.description && !option.label ? option.id : prefix;
+  return prefix + (option.description || option.label);
 }
 </script>
 <style>

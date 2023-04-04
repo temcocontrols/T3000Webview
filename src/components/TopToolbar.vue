@@ -46,7 +46,7 @@
     <!--  Edit menu -->
     <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Edit">
       <q-list>
-        <q-item dense clickable v-close-popup @click="menuActionEmit('undoAction')" :disable="undoHistory.length < 1">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('undoAction')" :disable="disableUndo">
           <q-item-section avatar>
             <q-avatar size="sm" icon="undo" color="grey-7" text-color="white" />
           </q-item-section>
@@ -57,7 +57,7 @@
             <q-chip>Ctrl + Z</q-chip>
           </q-item-section>
         </q-item>
-        <q-item dense clickable v-close-popup @click="menuActionEmit('redoAction')" :disable="redoHistory.length < 1">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('redoAction')" :disable="disableRedo">
           <q-item-section avatar>
             <q-avatar size="sm" icon="redo" color="grey-7" text-color="white" />
           </q-item-section>
@@ -69,8 +69,7 @@
           </q-item-section>
         </q-item>
         <q-separator inset spaced />
-        <q-item dense clickable v-close-popup @click="menuActionEmit('duplicateSelected')"
-          :disable="appState.selectedTargets.length < 1">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('duplicateSelected')" :disable="selectedCount < 1">
           <q-item-section avatar>
             <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
           </q-item-section>
@@ -81,8 +80,7 @@
             <q-chip>Ctrl + D</q-chip>
           </q-item-section>
         </q-item>
-        <q-item dense clickable v-close-popup @click="menuActionEmit('groupSelected')"
-          :disable="appState.selectedTargets.length < 2">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('groupSelected')" :disable="selectedCount < 2">
           <q-item-section avatar>
             <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
           </q-item-section>
@@ -93,8 +91,7 @@
             <q-chip>Ctrl + G</q-chip>
           </q-item-section>
         </q-item>
-        <q-item dense clickable v-close-popup @click="menuActionEmit('ungroupSelected')"
-          :disable="appState.selectedTargets.length < 2">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('ungroupSelected')" :disable="selectedCount < 2">
           <q-item-section avatar>
             <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
           </q-item-section>
@@ -105,8 +102,7 @@
             <q-chip>Ctrl + Shift + G</q-chip>
           </q-item-section>
         </q-item>
-        <q-item dense clickable v-close-popup @click="menuActionEmit('deleteSelected')"
-          :disable="appState.selectedTargets.length < 1">
+        <q-item dense clickable v-close-popup @click="menuActionEmit('deleteSelected')" :disable="selectedCount < 1">
           <q-item-section avatar>
             <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
           </q-item-section>
@@ -121,7 +117,7 @@
     </q-btn-dropdown>
     <!-- Object menu -->
     <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Object"
-      :disable="appState.activeItemIndex === null">
+      :disable="!selectedCount || selectedCount > 1">
       <q-list>
         <q-item dense clickable v-close-popup @click="menuActionEmit('duplicateObject')">
           <q-item-section avatar>
@@ -194,16 +190,16 @@ export default defineComponent({
   name: "TopToolbar",
   emits: ["menuAction"],
   props: {
-    appState: {
+    selectedCount: {
       type: Object,
       required: true,
     },
-    undoHistory: {
-      type: Array,
+    disableUndo: {
+      type: Boolean,
       required: false,
     },
-    redoHistory: {
-      type: Array,
+    disableRedo: {
+      type: Boolean,
       required: false,
     },
     zoom: {
