@@ -1,97 +1,217 @@
 <template>
   <q-page>
     <div>
-      <ToolsSidebar :selected-tool="selectedTool" :custom-tools="customTools" @select-tool="selectTool"
-        @add-custom-tool="uploadObjectDialog.active = true" />
+      <ToolsSidebar
+        :selected-tool="selectedTool"
+        :custom-tools="customTools"
+        @select-tool="selectTool"
+        @add-custom-tool="uploadObjectDialog.active = true"
+      />
       <div class="viewport-wrapper">
-        <top-toolbar @menu-action="handleMenuAction" :selected-count="appState.selectedTargets.length"
-          :disable-undo="undoHistory.length < 1" :disable-redo="redoHistory.length < 1" :zoom="zoom" />
+        <top-toolbar
+          @menu-action="handleMenuAction"
+          :selected-count="appState.selectedTargets.length"
+          :disable-undo="undoHistory.length < 1"
+          :disable-redo="redoHistory.length < 1"
+          :zoom="zoom"
+        />
         <div class="viewport">
-          <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="targets" :hitRate="100"
-            :selectByClick="true" :selectFromInside="true" :toggleContinueSelect="['shift']" :ratio="0"
-            :boundContainer="true" @dragStart="onSelectoDragStart" @selectEnd="onSelectoSelectEnd"
-            @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
+          <vue-selecto
+            ref="selecto"
+            dragContainer=".viewport"
+            :selectableTargets="targets"
+            :hitRate="100"
+            :selectByClick="true"
+            :selectFromInside="true"
+            :toggleContinueSelect="['shift']"
+            :ratio="0"
+            :boundContainer="true"
+            @dragStart="onSelectoDragStart"
+            @selectEnd="onSelectoSelectEnd"
+            @dragEnd="onSelectoDragEnd"
+            :dragCondition="selectoDragCondition"
+          >
           </vue-selecto>
           <div ref="viewport">
-            <vue-moveable ref="movable" :draggable="true" :resizable="true" :rotatable="true" :keepRatio="false"
-              :target="appState.selectedTargets" :snappable="true" :snapThreshold="10" :isDisplaySnapDigit="true"
+            <vue-moveable
+              ref="movable"
+              :draggable="true"
+              :resizable="true"
+              :rotatable="true"
+              :keepRatio="false"
+              :target="appState.selectedTargets"
+              :snappable="true"
+              :snapThreshold="10"
+              :isDisplaySnapDigit="true"
               :snapGap="true"
               :snapDirections="{
                 top: true,
-                  right: true,
-                    bottom: true,
-                      left: true,
-                                                                                                                                                                                                                                                                                                                                                                                          }"
+                right: true,
+                bottom: true,
+                left: true,
+              }"
               :elementSnapDirections="{
                 top: true,
-                  right: true,
-                    bottom: true,
-                      left: true,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                }"
-              :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
-              :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
-              :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
-              @clickGroup="onClickGroup" @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd"
-              @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd"
-              @resizeStart="onResizeStart" @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart"
-              @rotate="onRotate" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
-              @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart" @rotateGroup="onRotateGroup">
+                right: true,
+                bottom: true,
+                left: true,
+              }"
+              :snapDigit="0"
+              :elementGuidelines="appState.elementGuidelines"
+              :origin="true"
+              :throttleResize="0"
+              :throttleRotate="0"
+              rotationPosition="top"
+              :originDraggable="true"
+              :originRelative="true"
+              :defaultGroupRotate="0"
+              defaultGroupOrigin="50% 50%"
+              :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
+              @clickGroup="onClickGroup"
+              @drag-start="onDragStart"
+              @drag="onDrag"
+              @drag-end="onDragEnd"
+              @dragGroupStart="onDragGroupStart"
+              @dragGroup="onDragGroup"
+              @dragGroupEnd="onDragGroupEnd"
+              @resizeStart="onResizeStart"
+              @resize="onResize"
+              @resizeEnd="onResizeEnd"
+              @rotateStart="onRotateStart"
+              @rotate="onRotate"
+              @resizeGroupStart="onResizeGroupStart"
+              @resizeGroup="onResizeGroup"
+              @resizeGroupEnd="onResizeGroupEnd"
+              @rotateGroupStart="onRotateGroupStart"
+              @rotateGroup="onRotateGroup"
+            >
             </vue-moveable>
 
-            <div v-for="item in appState.items" :key="item.id" ref="targets"
+            <div
+              v-for="item in appState.items"
+              :key="item.id"
+              ref="targets"
               :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-              :id="`movable-item-${item.id}`" @mousedown.right="selectByRightClick" class="movable-item-wrapper">
+              :id="`movable-item-${item.id}`"
+              @mousedown.right="selectByRightClick"
+              class="movable-item-wrapper"
+            >
               <q-menu touch-position context-menu>
                 <q-list>
-                  <q-item dense clickable v-close-popup @click="duplicateObject(item)">
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="duplicateObject(item)"
+                  >
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="file_copy"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Duplicate</q-item-section>
                   </q-item>
                   <q-item dense clickable v-close-popup @click="rotate90(item)">
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="autorenew"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Rotate 90°</q-item-section>
                   </q-item>
-                  <q-item dense clickable v-close-popup @click="rotate90(item, true)">
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="rotate90(item, true)"
+                  >
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="sync"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Rotate -90°</q-item-section>
                   </q-item>
                   <q-separator />
                   <q-item dense clickable v-close-popup @click="flipH(item)">
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="flip"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Flip horizontal</q-item-section>
                   </q-item>
                   <q-item dense clickable v-close-popup @click="flipV(item)">
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
-                        style="transform: rotate(90deg)" />
+                      <q-avatar
+                        size="sm"
+                        icon="flip"
+                        color="grey-7"
+                        text-color="white"
+                        style="transform: rotate(90deg)"
+                      />
                     </q-item-section>
                     <q-item-section>Flip vertical</q-item-section>
                   </q-item>
                   <q-separator />
-                  <q-item dense clickable v-close-popup @click="bringToFront(item)">
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="bringToFront(item)"
+                  >
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="flip_to_front"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Bring to front</q-item-section>
                   </q-item>
-                  <q-item dense clickable v-close-popup @click="sendToBack(item)">
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="sendToBack(item)"
+                  >
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="flip_to_back"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Send to Back</q-item-section>
                   </q-item>
                   <q-separator />
-                  <q-item dense clickable v-close-popup @click="removeObject(item)">
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
+                    @click="removeObject(item)"
+                  >
                     <q-item-section avatar>
-                      <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
+                      <q-avatar
+                        size="sm"
+                        icon="remove"
+                        color="grey-7"
+                        text-color="white"
+                      />
                     </q-item-section>
                     <q-item-section>Remove</q-item-section>
                   </q-item>
@@ -102,10 +222,14 @@
           </div>
         </div>
       </div>
-      <ToolConfig v-model:object="appState.items[appState.activeItemIndex]"
-        v-if="appState.activeItemIndex || appState.activeItemIndex === 0" @refresh-selecto="refreshSelecto"
-        @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
-        @gaugeSettings="gaugeSettingsDialogAction" />
+      <ToolConfig
+        v-model:object="appState.items[appState.activeItemIndex]"
+        v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
+        @refresh-selecto="refreshSelecto"
+        @T3UpdateEntryField="T3UpdateEntryField"
+        @linkT3Entry="linkT3EntryDialogAction"
+        @gaugeSettings="gaugeSettingsDialogAction"
+      />
     </div>
   </q-page>
   <!-- Link entry dialog -->
@@ -126,18 +250,40 @@
               <strong>Reload panels data</strong>
             </q-tooltip>
           </q-btn>
-          <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
-            @filter="selectPanelFilterFn" label="Select Entry" class="grow" />
+          <q-select
+            :option-label="entryLabel"
+            option-value="id"
+            filled
+            use-input
+            hide-selected
+            fill-input
+            input-debounce="0"
+            v-model="linkT3EntryDialog.data"
+            :options="selectPanelOptions"
+            @filter="selectPanelFilterFn"
+            label="Select Entry"
+            class="grow"
+          />
         </div>
         <div class="flex flex-col items-center mt-4">
-          <q-circular-progress v-if="T3000_Data.loadingPanel !== null" indeterminate show-value
-            :value="loadingPanelsProgress" size="270px" :thickness="0.22" color="light-blue" track-color="grey-3"
-            class="q-ma-md overflow-hidden">
+          <q-circular-progress
+            v-if="T3000_Data.loadingPanel !== null"
+            indeterminate
+            show-value
+            :value="loadingPanelsProgress"
+            size="270px"
+            :thickness="0.22"
+            color="light-blue"
+            track-color="grey-3"
+            class="q-ma-md overflow-hidden"
+          >
             <div class="text-xl text-center">
-              <div> {{ loadingPanelsProgress }}%</div>
-              <div> Loading Panel #{{
-                T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number }}</div>
+              <div>{{ loadingPanelsProgress }}%</div>
+              <div>
+                Loading Panel #{{
+                  T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number
+                }}
+              </div>
             </div>
           </q-circular-progress>
         </div>
@@ -147,7 +293,13 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+        <q-btn
+          flat
+          label="Save"
+          :disable="!linkT3EntryDialog.data"
+          color="primary"
+          @click="linkT3EntrySave"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -159,20 +311,32 @@
         <div class="text-h6">Upload custom SVG</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <file-upload :types="['image/svg+xml']" @uploaded="handleFileUploaded" @file-added="customObjectFileAdded"
-          @file-removed="uploadObjectDialog.uploadBtnDisabled = true" />
+        <file-upload
+          :types="['image/svg+xml']"
+          @uploaded="handleFileUploaded"
+          @file-added="customObjectFileAdded"
+          @file-removed="uploadObjectDialog.uploadBtnDisabled = true"
+        />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
         <q-btn flat label="Cancel" @click="uploadObjectDialog.active = false" />
-        <q-btn :disabled="uploadObjectDialog.uploadBtnDisabled" :loading="uploadObjectDialog.uploadBtnLoading" flat
-          label="Save" @click="saveCustomObject()" />
+        <q-btn
+          :disabled="uploadObjectDialog.uploadBtnDisabled"
+          :loading="uploadObjectDialog.uploadBtnLoading"
+          flat
+          label="Save"
+          @click="saveCustomObject()"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
   <!-- Edit Gauge/Dial dialog -->
-  <GaugeSettingsDialog v-model:active="gaugeSettingsDialog.active" :data="gaugeSettingsDialog.data"
-    @saved="gaugeSettingsSave" />
+  <GaugeSettingsDialog
+    v-model:active="gaugeSettingsDialog.active"
+    :data="gaugeSettingsDialog.data"
+    @saved="gaugeSettingsSave"
+  />
 
   <!-- Import from JSON -->
   <q-dialog v-model="importJsonDialog.active">
@@ -181,7 +345,11 @@
         <div class="text-h6">Import from a JSON file</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <file-upload :types="['application/json']" @uploaded="handleFileUploaded" @file-added="importJsonFileAdded" />
+        <file-upload
+          :types="['application/json']"
+          @uploaded="handleFileUploaded"
+          @file-added="importJsonFileAdded"
+        />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -249,10 +417,12 @@ const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
 
 const loadingPanelsProgress = computed(() => {
-  if (T3000_Data.value.loadingPanel === null)
-    return 100
-  return parseInt((T3000_Data.value.loadingPanel + 1 / T3000_Data.value.panelsList.length) * 100)
-})
+  if (T3000_Data.value.loadingPanel === null) return 100;
+  return parseInt(
+    (T3000_Data.value.loadingPanel + 1 / T3000_Data.value.panelsList.length) *
+      100
+  );
+});
 
 // Remove when deploy
 if (process.env.DEV) {
@@ -337,7 +507,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     if (arg.data.action === "GET_PANELS_LIST_RES") {
       if (arg.data.data.length) {
         T3000_Data.value.panelsList = arg.data.data;
-        T3000_Data.value.loadingPanel = 0
+        T3000_Data.value.loadingPanel = 0;
         window.chrome?.webview?.postMessage({
           action: 0, // GET_PANEL_DATA
           panelId: T3000_Data.value.panelsList[0].panel_number,
@@ -357,17 +527,23 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         clearInterval(getPanelsInterval);
       }
       if (arg.data?.panel_id) {
-        if (T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < (T3000_Data.value.panelsList.length - 1)) {
-          T3000_Data.value.loadingPanel++
-          const index = T3000_Data.value.loadingPanel
+        if (
+          T3000_Data.value.loadingPanel !== null &&
+          T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1
+        ) {
+          T3000_Data.value.loadingPanel++;
+          const index = T3000_Data.value.loadingPanel;
           window.chrome?.webview?.postMessage({
             action: 0, // GET_PANEL_DATA
             panelId: T3000_Data.value.panelsList[index].panel_number,
           });
-
         }
-        if (T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === (T3000_Data.value.panelsList.length - 1)) {
-          T3000_Data.value.loadingPanel = null
+        if (
+          T3000_Data.value.loadingPanel !== null &&
+          T3000_Data.value.loadingPanel ===
+            T3000_Data.value.panelsList.length - 1
+        ) {
+          T3000_Data.value.loadingPanel = null;
         }
       }
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
@@ -697,9 +873,9 @@ function onSelectoDragEnd(e) {
       (e.rect.left -
         viewportMargins.left -
         appState.value.viewportTransform.x) *
-      scalPercentage,
+        scalPercentage,
       (e.rect.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
+        scalPercentage,
     ],
     width: e.rect.width * scalPercentage,
     height: e.rect.height * scalPercentage,
@@ -867,7 +1043,7 @@ function refreshObjectActiveValue(item) {
           (item.t3Entry?.digital_analog === 0 &&
             ((item.t3Entry?.control === 1 && !range.directInvers) ||
               (item.t3Entry?.control === 0 && range.directInvers))) ||
-            (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
+          (item.t3Entry?.digital_analog === 1 && item.t3Entry?.value > 0)
             ? true
             : false;
       }
@@ -906,7 +1082,7 @@ function newProject() {
         redoHistory.value = [];
         refreshSelecto();
       })
-      .onCancel(() => { });
+      .onCancel(() => {});
     return;
   }
   appState.value = cloneDeep(emptyProject);
@@ -1316,9 +1492,8 @@ function handleMenuAction(action) {
   }
 }
 
-
 function reloadPanelsData() {
-  T3000_Data.value.loadingPanel = null
+  T3000_Data.value.loadingPanel = null;
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
@@ -1343,7 +1518,7 @@ function refreshLinkedEntries(panelData) {
 function entryLabel(option) {
   let prefix =
     (option.description && option.id !== option.description) ||
-      (!option.description && option.id !== option.label)
+    (!option.description && option.id !== option.label)
       ? option.id + " - "
       : "";
   prefix = !option.description && !option.label ? option.id : prefix;

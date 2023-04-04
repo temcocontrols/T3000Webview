@@ -1,26 +1,22 @@
-
-
 <template>
   <div class="box-element"></div>
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: 'BoxEl',
+  name: "BoxEl",
   props: {
     bgColor: {
       type: String,
-      default: "black"
+      default: "black",
     },
   },
   setup() {
-
-    return {
-    }
-  }
-})
+    return {};
+  },
+});
 </script>
 
 <style scoped>

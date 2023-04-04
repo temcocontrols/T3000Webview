@@ -1,39 +1,74 @@
 <template>
-  <svg viewBox="0 0 19.526541 28.758413" height="100%" width="100%" version="1.1" xmlns="http://www.w3.org/2000/svg"
-    :class="{'active': active, 'in-alarm': inAlarm}">
+  <svg
+    viewBox="0 0 19.526541 28.758413"
+    height="100%"
+    width="100%"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    :class="{ active: active, 'in-alarm': inAlarm }"
+  >
     <defs id="defs3">
       <rect id="heating-coil-rect" height="27.246" width="17.868" x="0" y="0" />
     </defs>
     <g stroke="#000000" id="g15" transform="translate(-6.129206,-1.5327875)">
-      <use xlink:href="#heating-coil-rect" fill="#659dc5" stroke="none" x="7.066" y="2.3771999" id="use6" />
+      <use
+        xlink:href="#heating-coil-rect"
+        fill="#659dc5"
+        stroke="none"
+        x="7.066"
+        y="2.3771999"
+        id="use6"
+      />
       <g transform="rotate(180,12.4667,14.8116)" id="g10">
-        <use xlink:href="#heating-coil-rect" class="heating-coil" x="0" y="0" fill="#659dc5" stroke="none" id="use8" />
+        <use
+          xlink:href="#heating-coil-rect"
+          class="heating-coil"
+          x="0"
+          y="0"
+          fill="#659dc5"
+          stroke="none"
+          id="use8"
+        />
       </g>
-      <use xlink:href="#heating-coil-rect" stroke-width="1" fill="none" x="7.066" y="2.3771999" id="use12" />
-      <path id="path3003" stroke-linejoin="miter" d="M 24.929,2.3734 7.2868,29.555" stroke="#000000"
-        stroke-linecap="butt" stroke-width="1px" fill="none" />
+      <use
+        xlink:href="#heating-coil-rect"
+        stroke-width="1"
+        fill="none"
+        x="7.066"
+        y="2.3771999"
+        id="use12"
+      />
+      <path
+        id="path3003"
+        stroke-linejoin="miter"
+        d="M 24.929,2.3734 7.2868,29.555"
+        stroke="#000000"
+        stroke-linecap="butt"
+        stroke-width="1px"
+        fill="none"
+      />
     </g>
   </svg>
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: 'HeatingCoil',
+  name: "HeatingCoil",
   props: {
     active: {
       type: Boolean,
       required: false,
-      default: false
+      default: false,
     },
     inAlarm: {
       type: Boolean,
       required: false,
-      default: false
-    }
-  }
-})
+      default: false,
+    },
+  },
+});
 </script>
 
 <style scoped>

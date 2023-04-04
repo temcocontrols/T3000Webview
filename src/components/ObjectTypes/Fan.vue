@@ -1,17 +1,32 @@
-
-
 <template>
-  <svg height="100%" width="100%" viewBox="0 0 32 24" version="1.1" xmlns="http://www.w3.org/2000/svg"
-    :class="{'active': active, 'in-alarm': inAlarm}">
+  <svg
+    height="100%"
+    width="100%"
+    viewBox="0 0 32 24"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    :class="{ active: active, 'in-alarm': inAlarm }"
+  >
     <g fill="#659dc5" transform="matrix(1, 0, 0, 1, -0.231, -4.151388)">
       <g class="fan">
         <g id="g8">
-          <path class="fan-background"
+          <path
+            class="fan-background"
             d="m12.297 5.154c-6.117 0-11.066 4.9492-11.066 11.066 0 6.117 4.9492 11.066 11.066 11.066 5.7137 0 10.408-4.3091 11.003-9.8647h7.525v-12.268h-18.148c-0.12601-0.0043-0.25236 0-0.37941 0z"
-            fill-rule="evenodd" stroke="#000" stroke-width="1px" fill="inherit" />
+            fill-rule="evenodd"
+            stroke="#000"
+            stroke-width="1px"
+            fill="inherit"
+          />
         </g>
         <g id="g4148" transform="translate(12.464 16.395)">
-          <g id="g4162" stroke="#000" stroke-width="1.5" fill="none" class="rotating-middle">
+          <g
+            id="g4162"
+            stroke="#000"
+            stroke-width="1.5"
+            fill="none"
+            class="rotating-middle"
+          >
             <path id="use3009" d="m-1.8112-3.9787 3.6227-4.4971" />
             <path id="use3011" d="m0.87376-4.2835 5.5741-1.5089" />
             <path id="use3013" d="m3.2243-2.9521 5.3965 2.0557" />
@@ -30,23 +45,23 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: 'FanEl',
+  name: "FanEl",
   props: {
     active: {
       type: Boolean,
       required: false,
-      default: false
+      default: false,
     },
     inAlarm: {
       type: Boolean,
       required: false,
-      default: false
-    }
-  }
-})
+      default: false,
+    },
+  },
+});
 </script>
 
 <style scoped>
@@ -75,8 +90,6 @@ export default defineComponent({
 .active:not(.in-alarm) .fan .fan-background {
   fill: #66c492;
 }
-
-
 
 @keyframes fan-spin {
   100% {

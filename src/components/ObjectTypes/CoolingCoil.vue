@@ -1,39 +1,75 @@
-
-
 <template>
-  <svg viewBox="0 0 20 29" height="100%" width="100%" version="1.1" xmlns="http://www.w3.org/2000/svg"
-    :class="{'active': active, 'in-alarm': inAlarm}">
+  <svg
+    viewBox="0 0 20 29"
+    height="100%"
+    width="100%"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    :class="{ active: active, 'in-alarm': inAlarm }"
+  >
     <g stroke="#000" transform="matrix(1, 0, 0, 1, -6.058399, -1.3729)">
-      <rect id="rect4367" height="27.246" width="17.868" x="7.066" y="2.3772" fill="#659dc5" />
+      <rect
+        id="rect4367"
+        height="27.246"
+        width="17.868"
+        x="7.066"
+        y="2.3772"
+        fill="#659dc5"
+      />
       <g transform="translate(24.9334,29.6232) rotate(180)">
-        <rect id="rect4367" class="cooling-coil" height="27.246" width="17.875" x="0" y="0" fill="#659dc5"
-          stroke="none" />
+        <rect
+          id="rect4367"
+          class="cooling-coil"
+          height="27.246"
+          width="17.875"
+          x="0"
+          y="0"
+          fill="#659dc5"
+          stroke="none"
+        />
       </g>
-      <rect id="rect4367" height="27.246" width="17.868" x="7.066" y="2.3772" fill="none" />
-      <path id="path3001" d="m7.322 2.3729 17.424 27.254" stroke-width="1px" fill="none" />
-      <path id="path3003" d="m24.929 2.3734-17.642 27.182" stroke-width="1px" fill="none" />
+      <rect
+        id="rect4367"
+        height="27.246"
+        width="17.868"
+        x="7.066"
+        y="2.3772"
+        fill="none"
+      />
+      <path
+        id="path3001"
+        d="m7.322 2.3729 17.424 27.254"
+        stroke-width="1px"
+        fill="none"
+      />
+      <path
+        id="path3003"
+        d="m24.929 2.3734-17.642 27.182"
+        stroke-width="1px"
+        fill="none"
+      />
     </g>
   </svg>
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: 'CoolingCoil',
+  name: "CoolingCoil",
   props: {
     active: {
       type: Boolean,
       required: false,
-      default: false
+      default: false,
     },
     inAlarm: {
       type: Boolean,
       required: false,
-      default: false
-    }
-  }
-})
+      default: false,
+    },
+  },
+});
 </script>
 
 <style scoped>
@@ -61,7 +97,7 @@ export default defineComponent({
 
 @keyframes cooling-coil-active {
   0% {
-    fill: #98EEFF;
+    fill: #98eeff;
   }
 
   50% {
@@ -69,7 +105,7 @@ export default defineComponent({
   }
 
   100% {
-    fill: #98EEFF;
+    fill: #98eeff;
   }
 }
 

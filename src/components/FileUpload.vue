@@ -86,19 +86,24 @@ export default {
 </script>
 
 <template>
-  <dashboard ref="dash" :uppy="uppy" :props="{
-    proudlyDisplayPoweredByUppy: false,
-    hideUploadButton: true,
-    height: 300,
-    metaFields: [
-      { id: 'name', name: 'Name', placeholder: 'file name' },
-      {
-        id: 'caption',
-        name: 'Caption',
-        placeholder: 'describe what the image is about',
-      },
-    ],
-  }" :plugins="['ImageEditor']" />
+  <dashboard
+    ref="dash"
+    :uppy="uppy"
+    :props="{
+      proudlyDisplayPoweredByUppy: false,
+      hideUploadButton: true,
+      height: 300,
+      metaFields: [
+        { id: 'name', name: 'Name', placeholder: 'file name' },
+        {
+          id: 'caption',
+          name: 'Caption',
+          placeholder: 'describe what the image is about',
+        },
+      ],
+    }"
+    :plugins="['ImageEditor']"
+  />
 </template>
 
 <style scoped>
