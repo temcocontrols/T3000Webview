@@ -222,7 +222,7 @@
           </div>
         </div>
       </div>
-      <ToolConfig
+      <ObjectConfig
         v-model:object="appState.items[appState.activeItemIndex]"
         v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
         @refresh-selecto="refreshSelecto"
@@ -372,7 +372,7 @@ import GaugeSettingsDialog from "../components/GaugeSettingsDialog.vue";
 import FileUpload from "../components/FileUpload.vue";
 import TopToolbar from "../components/TopToolbar.vue";
 import ToolsSidebar from "../components/ToolsSidebar.vue";
-import ToolConfig from "../components/ToolConfig.vue";
+import ObjectConfig from "../components/ObjectConfig.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
 // Remove when deploy
