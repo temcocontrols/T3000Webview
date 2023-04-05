@@ -11,17 +11,27 @@
         <top-toolbar
           @menu-action="handleMenuAction"
           :selected-count="appState.selectedTargets.length"
-          :disable-undo="undoHistory.length < 1"
-          :disable-redo="redoHistory.length < 1"
+          :disable-undo="locked || undoHistory.length < 1"
+          :disable-redo="locked || redoHistory.length < 1"
           :zoom="zoom"
+        />
+        <q-btn
+          :icon="locked ? 'lock_outline' : 'lock_open'"
+          class="lock-btn fixed top-10 left-16 z-50"
+          flat
+          round
+          dense
+          size="lg"
+          :color="locked ? 'primary' : 'normal'"
+          @click="lockToggle"
         />
         <div class="viewport">
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
-            :selectableTargets="targets"
+            :selectableTargets="!locked ? targets : []"
             :hitRate="100"
-            :selectByClick="true"
+            :selectByClick="!locked"
             :selectFromInside="true"
             :toggleContinueSelect="['shift']"
             :ratio="0"
@@ -35,12 +45,12 @@
           <div ref="viewport">
             <vue-moveable
               ref="movable"
-              :draggable="true"
-              :resizable="true"
-              :rotatable="true"
+              :draggable="!locked"
+              :resizable="!locked"
+              :rotatable="!locked"
               :keepRatio="false"
               :target="appState.selectedTargets"
-              :snappable="true"
+              :snappable="!locked"
               :snapThreshold="10"
               :isDisplaySnapDigit="true"
               :snapGap="true"
@@ -96,7 +106,7 @@
               @mousedown.right="selectByRightClick"
               class="movable-item-wrapper"
             >
-              <q-menu touch-position context-menu>
+              <q-menu v-if="!locked" touch-position context-menu>
                 <q-list>
                   <q-item
                     dense
@@ -447,6 +457,7 @@ const emptyProject = {
 const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]);
 const redoHistory = ref([]);
+const locked = ref(false);
 let lastAction = null;
 onMounted(() => {
   panzoomInstance = panzoom(viewport.value, {
@@ -890,11 +901,13 @@ function onSelectoDragEnd(e) {
   });
   // selectedTool.value.name = "Pointer"
   setTimeout(() => {
+    if (locked.value) return;
     appState.value.activeItemIndex = appState.value.items.findIndex(
       (i) => i.id === item.id
     );
   }, 10);
   setTimeout(() => {
+    if (locked.value) return;
     const target = document.querySelector(`#movable-item-${item.id}`);
     appState.value.selectedTargets = [target];
   }, 100);
@@ -1120,10 +1133,12 @@ keycon.keydown(["ctrl", "s"], (e) => {
 
 keycon.keydown(["ctrl", "z"], (e) => {
   e.inputEvent.preventDefault();
+  if (locked.value) return;
   undoAction();
 });
 keycon.keydown(["ctrl", "y"], (e) => {
   e.inputEvent.preventDefault();
+  if (locked.value) return;
   redoAction();
 });
 
@@ -1353,6 +1368,7 @@ const zoom = computed({
 });
 
 function duplicateSelected() {
+  if (appState.value.selectedTargets.length < 1) return;
   addActionToHistory("Duplicate the selected objects");
   if (appState.value.selectedTargets.length > 0) {
     const elements = [];
@@ -1388,6 +1404,7 @@ function duplicateSelected() {
 }
 
 function groupSelected() {
+  if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Group the selected objects");
   if (appState.value.selectedTargets.length > 0) {
     appState.value.groupCount++;
@@ -1403,6 +1420,7 @@ function groupSelected() {
 }
 
 function ungroupSelected() {
+  if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Ungroup the selected objects");
   if (appState.value.selectedTargets.length > 0) {
     appState.value.selectedTargets.forEach((el) => {
@@ -1523,6 +1541,12 @@ function entryLabel(option) {
       : "";
   prefix = !option.description && !option.label ? option.id : prefix;
   return prefix + (option.description || option.label);
+}
+
+function lockToggle() {
+  appState.value.activeItemIndex = null;
+  appState.value.selectedTargets = [];
+  locked.value = !locked.value;
 }
 </script>
 <style>
