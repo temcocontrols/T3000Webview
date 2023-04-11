@@ -109,8 +109,9 @@ export const tools = [
     label: "Value",
     icon: "123",
     settings: {
-      title: "Title",
-      t3EntryDisplayField: "value",
+      bgColor: "#0065a3",
+      titleColor: "#000000",
+      textColor: "#ffffff",
     },
   },
   {
@@ -163,6 +164,10 @@ export const icons = [
   {
     value: "check_circle",
     label: "Check circle",
+  },
+  {
+    value: "image",
+    label: "Graphic",
   },
   {
     value: "schedule",
