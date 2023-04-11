@@ -1,12 +1,12 @@
 <template>
   <div class="value-element">
-    {{ value }}
+    {{ dispalyText }}
   </div>
 </template>
 
 <script>
-import { defineComponent } from "vue";
-
+import { defineComponent, computed } from "vue";
+import { ranges } from "src/lib/common";
 export default defineComponent({
   name: "ValueEl",
   props: {
@@ -14,13 +14,39 @@ export default defineComponent({
       type: String,
       default: "black",
     },
-    value: {
-      type: String,
-      default: "",
+    item: {
+      type: Object,
+      required: true,
     },
   },
-  setup() {
-    return {};
+  setup(props) {
+    const dispalyText = computed(() => {
+      if (!props.item.t3Entry) {
+        return "";
+      }
+      if (
+        props.item.t3Entry.value !== undefined &&
+        props.item.t3Entry.digital_analog === 1
+      ) {
+        const range = ranges.find(
+          (i) => i.analog && i.id === props.item.t3Entry.range
+        );
+        return props.item.t3Entry.value / 1000 + " " + range.unit;
+      } else if (
+        props.item.t3Entry.value !== undefined &&
+        props.item.t3Entry.digital_analog === 0
+      ) {
+        const range = ranges.find((i) => i.id === props.item.t3Entry.range);
+        if (props.item.t3Entry.control) {
+          return range.on;
+        } else {
+          return range.off;
+        }
+      }
+
+      return props.item.t3Entry.value || "";
+    });
+    return { dispalyText };
   },
 });
 </script>

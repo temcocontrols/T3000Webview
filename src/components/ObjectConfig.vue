@@ -204,6 +204,7 @@
         >
           <div class="p-1">
             <q-select
+              v-if="item.t3Entry.auto_manual !== undefined"
               class="mb-1"
               filled
               dark
@@ -355,17 +356,6 @@ export default defineComponent({
     "gaugeSettings",
   ],
   setup(props, { emit }) {
-    const t3EntryDisplayFieldOptions = computed(() => {
-      return [
-        { label: "None", value: "none" },
-        {
-          label: "Value",
-          value: item.value.t3Entry?.digital_analog === 1 ? "value" : "control",
-        },
-        { label: "Label", value: "label" },
-        { label: "Description", value: "description" },
-      ];
-    });
     const item = computed({
       get() {
         return props.object;
@@ -375,6 +365,25 @@ export default defineComponent({
         if (!newValue) return;
         emit("update:object", newValue);
       },
+    });
+    const t3EntryDisplayFieldOptions = computed(() => {
+      const options = [
+        { label: "None", value: "none" },
+        { label: "ID", value: "id" },
+      ];
+      if (item.value.t3Entry?.label !== undefined) {
+        options.push({ label: "Label", value: "label" });
+      }
+      if (item.value.t3Entry?.description !== undefined) {
+        options.push({ label: "Description", value: "description" });
+      }
+      if (item.value.t3Entry?.value !== undefined) {
+        options.push({
+          label: "Value",
+          value: item.value.t3Entry?.digital_analog === 1 ? "value" : "control",
+        });
+      }
+      return options;
     });
     function getRangeById(id) {
       return ranges.find((i) => i.id === id);

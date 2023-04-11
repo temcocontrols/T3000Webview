@@ -16,7 +16,7 @@
       class="object-title"
       v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
     >
-      {{ dispalyText || "N/A" }}
+      {{ dispalyText || item.t3Entry.id }}
       <span
         v-if="
           item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
@@ -31,7 +31,10 @@
             : ""
         }}</span
       >
-      <span class="mode-icon ml-2 text-lg">
+      <span
+        v-if="item.t3Entry.auto_manual !== undefined"
+        class="mode-icon ml-2 text-lg"
+      >
         <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
           <q-tooltip anchor="top middle" self="center middle">
             In auto mode
@@ -90,7 +93,7 @@
       <value-el
         v-else-if="item.type === 'Value'"
         class="value"
-        :value="dispalyText"
+        :item="item"
         v-bind="item.settings"
       />
       <temperature
@@ -189,6 +192,7 @@ export default defineComponent({
       }
       if (
         props.item.settings.t3EntryDisplayField === "value" &&
+        props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 1
       ) {
         const range = ranges.find(
@@ -197,7 +201,8 @@ export default defineComponent({
         return props.item.t3Entry.value / 1000 + " " + range.unit;
       } else if (
         props.item.settings.t3EntryDisplayField === "value" &&
-        !props.item.t3Entry.digital_analog
+        props.item.t3Entry.value !== undefined &&
+        props.item.t3Entry.digital_analog === 0
       ) {
         const range = ranges.find((i) => i.id === props.item.t3Entry.range);
         if (props.item.t3Entry.control) {
@@ -207,7 +212,7 @@ export default defineComponent({
         }
       }
 
-      return props.item.t3Entry[props.item.settings.t3EntryDisplayField];
+      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
     });
 
     const processedColors = computed(() => {
@@ -289,7 +294,7 @@ export default defineComponent({
 
 .movable-item.Value.with-title .object-container {
   flex-grow: 1;
-  justify-content: flex-end;
+  justify-content: flex-start;
   padding: 10px;
 }
 
@@ -320,5 +325,8 @@ export default defineComponent({
 
 .movable-item.Icon.with-bg .object-title {
   background-color: transparent;
+}
+.movable-item.link {
+  cursor: pointer;
 }
 </style>
