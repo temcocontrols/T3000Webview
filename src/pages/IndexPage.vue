@@ -15,16 +15,40 @@
           :disable-redo="locked || redoHistory.length < 1"
           :zoom="zoom"
         />
-        <q-btn
-          :icon="locked ? 'lock_outline' : 'lock_open'"
-          class="lock-btn fixed top-10 left-16 z-50"
-          flat
-          round
-          dense
-          size="lg"
-          :color="locked ? 'primary' : 'normal'"
-          @click="lockToggle"
-        />
+        <div class="flex fixed top-10 left-16 z-50">
+          <q-btn
+            v-if="
+              grpEntry.current.pid !== grpEntry.initial.pid ||
+              grpEntry.current.index !== grpEntry.initial.index
+            "
+            icon="arrow_back"
+            class="back-btn mr-2"
+            dense
+            round
+            size="lg"
+            color="primary"
+            @click="loadInitialData"
+          >
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Go back to the main graphic</strong>
+            </q-tooltip>
+          </q-btn>
+          <q-btn
+            :icon="locked ? 'lock_outline' : 'lock_open'"
+            class="lock-btn"
+            flat
+            round
+            dense
+            size="lg"
+            :color="locked ? 'primary' : 'normal'"
+            @click="lockToggle"
+          >
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong v-if="!locked">Lock</strong>
+              <strong v-else>Unlock</strong>
+            </q-tooltip>
+          </q-btn>
+        </div>
         <div class="viewport">
           <vue-selecto
             ref="selecto"
@@ -227,7 +251,14 @@
                   </q-item>
                 </q-list>
               </q-menu>
-              <object-type :item="item" :key="item.id + item.type" />
+              <object-type
+                :item="item"
+                :key="item.id + item.type"
+                :class="{
+                  link: locked && ['Icon', 'Value'].includes(item.type),
+                }"
+                @click="objectClicked(item)"
+              />
             </div>
           </div>
         </div>
@@ -273,7 +304,20 @@
             @filter="selectPanelFilterFn"
             label="Select Entry"
             class="grow"
-          />
+          >
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section class="grow">
+                  <q-item-label>{{ entryLabel(scope.opt) }}</q-item-label>
+                </q-item-section>
+                <q-item-section avatar class="pl-1 min-w-0">
+                  <q-chip size="sm" icon="label_important"
+                    >Panel: {{ scope.opt.pid }}</q-chip
+                  >
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
         <div class="flex flex-col items-center mt-4">
           <q-circular-progress
@@ -422,6 +466,7 @@ const importJsonDialog = ref({
   svg: null,
 });
 const customTools = ref([]);
+const savedNotify = ref(false);
 
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
@@ -458,6 +503,7 @@ const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]);
 const redoHistory = ref([]);
 const locked = ref(false);
+const grpEntry = ref({ initial: {}, current: {} });
 let lastAction = null;
 onMounted(() => {
   panzoomInstance = panzoom(viewport.value, {
@@ -480,10 +526,7 @@ onMounted(() => {
   });
 
   refreshMovable();
-
-  window.chrome?.webview?.postMessage({
-    action: 1,
-  });
+  loadInitialData();
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
@@ -516,7 +559,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   console.log("Recieved webview message", arg.data);
   if ("action" in arg.data) {
     if (arg.data.action === "GET_PANELS_LIST_RES") {
-      if (arg.data.data.length) {
+      if (arg.data.data?.length) {
         T3000_Data.value.panelsList = arg.data.data;
         T3000_Data.value.loadingPanel = 0;
         window.chrome?.webview?.postMessage({
@@ -530,6 +573,17 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         arg.data.data = JSON.parse(arg.data.data);
       }
       appState.value = arg.data.data;
+      grpEntry.value.initial = arg.data.entry;
+      grpEntry.value.current = arg.data.entry;
+      setTimeout(() => {
+        refreshMovable();
+      }, 100);
+    } else if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+      if (arg.data.data) {
+        arg.data.data = JSON.parse(arg.data.data);
+      }
+      appState.value = arg.data.data;
+      grpEntry.value.current = arg.data.entry;
       setTimeout(() => {
         refreshMovable();
       }, 100);
@@ -583,6 +637,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
       if (arg.data.data?.status === true) {
+        if (!savedNotify.value) return;
         $q.notify({
           message: "Saved successfully.",
           color: "primary",
@@ -626,7 +681,9 @@ function refreshMovable() {
 
 function addActionToHistory(title) {
   console.log(title);
-  // save();
+  setTimeout(() => {
+    save();
+  }, 200);
   redoHistory.value = [];
   undoHistory.value.unshift({
     title,
@@ -899,6 +956,9 @@ function onSelectoDragEnd(e) {
     zindex: 1,
     t3Entry: null,
   });
+  if (["Value", "Icon"].includes(selectedTool.value.name)) {
+    linkT3EntryDialog.value.active = true;
+  }
   // selectedTool.value.name = "Pointer"
   setTimeout(() => {
     if (locked.value) return;
@@ -1029,9 +1089,17 @@ function linkT3EntrySave() {
     !appState.value.items[appState.value.activeItemIndex].settings
       .t3EntryDisplayField
   ) {
-    appState.value.items[
-      appState.value.activeItemIndex
-    ].settings.t3EntryDisplayField = "label";
+    if (
+      appState.value.items[appState.value.activeItemIndex].label === undefined
+    ) {
+      appState.value.items[
+        appState.value.activeItemIndex
+      ].settings.t3EntryDisplayField = "id";
+    } else {
+      appState.value.items[
+        appState.value.activeItemIndex
+      ].settings.t3EntryDisplayField = "label";
+    }
   }
   appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
     toRaw(linkT3EntryDialog.value.data)
@@ -1070,13 +1138,14 @@ function refreshObjectActiveValue(item) {
   }
 }
 
-function save() {
-  const content = cloneDeep(toRaw(appState.value));
-  content.selectedTargets = [];
-  content.elementGuidelines = [];
+function save(notify = false) {
+  savedNotify.value = notify;
+  const data = cloneDeep(toRaw(appState.value));
+  data.selectedTargets = [];
+  data.elementGuidelines = [];
   window.chrome?.webview?.postMessage({
     action: 2, // SAVE_GRAPHIC
-    data: content,
+    data,
   });
 }
 
@@ -1105,6 +1174,13 @@ function newProject() {
 }
 
 keycon.keydown((e) => {
+  if (
+    (e.key === "esc" &&
+      grpEntry.value.current.pid !== grpEntry.value.initial.pid) ||
+    grpEntry.value.current.index !== grpEntry.value.initial.index
+  ) {
+    loadInitialData();
+  }
   if (appState.value.selectedTargets.length < 1) return;
 
   if (["up", "down", "left", "right"].includes(e.key)) {
@@ -1128,7 +1204,7 @@ keycon.keydown((e) => {
 
 keycon.keydown(["ctrl", "s"], (e) => {
   e.inputEvent.preventDefault();
-  save();
+  save(true);
 });
 
 keycon.keydown(["ctrl", "z"], (e) => {
@@ -1199,8 +1275,8 @@ function selectPanelFilterFn(val, update) {
     selectPanelOptions.value = T3000_Data.value.panelsData.filter(
       (item) =>
         item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description.toUpperCase().indexOf(keyword) > -1 ||
-        item.label.toUpperCase().indexOf(keyword) > -1
+        item.description?.toUpperCase().indexOf(keyword) > -1 ||
+        item.label?.toUpperCase().indexOf(keyword) > -1
     );
   });
 }
@@ -1455,7 +1531,7 @@ function handleMenuAction(action) {
       exportToJsonAction();
       break;
     case "save":
-      save();
+      save(true);
       break;
     case "undoAction":
       undoAction();
@@ -1540,13 +1616,33 @@ function entryLabel(option) {
       ? option.id + " - "
       : "";
   prefix = !option.description && !option.label ? option.id : prefix;
-  return prefix + (option.description || option.label);
+  return prefix + (option.description || option.label || "");
 }
 
 function lockToggle() {
   appState.value.activeItemIndex = null;
   appState.value.selectedTargets = [];
   locked.value = !locked.value;
+}
+
+function objectClicked(item) {
+  if (!locked.value) return;
+  if (item.type === "Icon" || item.type === "Value") {
+    if (item.t3Entry?.type === "GRP") {
+      window.chrome?.webview?.postMessage({
+        action: 7, // LOAD_GRAPHIC_DATA
+        panelId: item.t3Entry.pid,
+        entryIndex: item.t3Entry.index,
+      });
+      console.log("Handle loading GRP entry");
+    }
+  }
+}
+
+function loadInitialData() {
+  window.chrome?.webview?.postMessage({
+    action: 1, // GET_INITIAL_DATA
+  });
 }
 </script>
 <style>
