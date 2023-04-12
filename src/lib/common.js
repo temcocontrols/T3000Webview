@@ -112,23 +112,37 @@ export const tools = [
       bgColor: "#0065a3",
       titleColor: "#000000",
       textColor: "#ffffff",
+      textAlign: "flex-start",
     },
   },
   {
     name: "Icon",
-    label: "Icon with title/value",
-    icon: "add_reaction",
+    label: "Icon with title",
+    icon: "circle",
     settings: {
       active: false,
+      textAlign: "flex-start",
       offColor: "#940303",
       onColor: "#0d87d9",
-      icon: "power_settings_new",
+      icon: "image",
       t3EntryDisplayField: "value",
     },
   },
 ];
 
 export const icons = [
+  {
+    value: "",
+    label: "None",
+  },
+  {
+    value: "image",
+    label: "Graphic",
+  },
+  {
+    value: "schedule",
+    label: "Schedule",
+  },
   {
     value: "power_settings_new",
     label: "Power Button",
@@ -164,14 +178,6 @@ export const icons = [
   {
     value: "check_circle",
     label: "Check circle",
-  },
-  {
-    value: "image",
-    label: "Graphic",
-  },
-  {
-    value: "schedule",
-    label: "Schedule",
   },
   {
     value: "visibility",

@@ -285,16 +285,16 @@ export default defineComponent({
   flex-direction: row-reverse;
 }
 
-.movable-item.Value.with-title .object-container,
+.movable-item.Value .object-container,
 .movable-item.Icon.with-title .object-container {
   height: 100%;
   display: flex;
   align-items: center;
 }
 
-.movable-item.Value.with-title .object-container {
+.movable-item.Value .object-container {
   flex-grow: 1;
-  justify-content: flex-start;
+  justify-content: v-bind("item.settings.textAlign");
   padding: 10px;
 }
 
@@ -315,7 +315,7 @@ export default defineComponent({
 
 .movable-item.Icon.with-title .object-title {
   flex-grow: 1;
-  justify-content: flex-start;
+  justify-content: v-bind("item.settings.textAlign");
 }
 
 .movable-item.Value.with-title .object-title .mode-icon,

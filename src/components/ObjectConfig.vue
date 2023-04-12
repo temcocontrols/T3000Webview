@@ -66,6 +66,39 @@
           </div>
           <div
             class="flex flex-nowrap items-center mb-2"
+            v-if="item.settings.textAlign !== undefined"
+          >
+            <div>Text Align</div>
+            <q-btn-group push>
+              <q-btn
+                push
+                icon="format_align_left"
+                :color="
+                  item.settings.textAlign === 'flex-start' ? 'grey-9' : false
+                "
+                text-color="grey-5"
+                @click="item.settings.textAlign = 'flex-start'"
+              />
+              <q-btn
+                push
+                icon="format_align_center"
+                :color="item.settings.textAlign === 'center' ? 'grey-9' : false"
+                text-color="grey-5"
+                @click="item.settings.textAlign = 'center'"
+              />
+              <q-btn
+                push
+                icon="format_align_right"
+                :color="
+                  item.settings.textAlign === 'flex-end' ? 'grey-9' : false
+                "
+                text-color="grey-5"
+                @click="item.settings.textAlign = 'flex-end'"
+              />
+            </q-btn-group>
+          </div>
+          <div
+            class="flex flex-nowrap items-center mb-2"
             v-if="item.settings.textColor !== undefined"
           >
             <input
@@ -74,6 +107,22 @@
               v-model="item.settings.textColor"
             />
             <label class="ml-2" for="text-color-input">Text Color</label>
+          </div>
+          <div class="flex flex-nowrap items-center mb-2">
+            <input
+              type="color"
+              id="bg-color-input"
+              v-model="item.settings.bgColor"
+            />
+            <label class="ml-2" for="bg-color-input">Background Color</label>
+          </div>
+          <div class="w-full relative mb-2">
+            <q-input dark filled v-model="item.settings.title" label="Title" />
+            <input
+              type="color"
+              class="absolute top-2 right-2"
+              v-model="item.settings.titleColor"
+            />
           </div>
           <div class="w-full mb-2" v-if="item.settings.icon !== undefined">
             <q-select
@@ -86,12 +135,12 @@
               map-options
             >
               <template v-slot:prepend>
-                <q-icon :name="item.settings.icon" />
+                <q-icon :name="item.settings.icon || 'block'" />
               </template>
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section avatar class="pr-1 min-w-0">
-                    <q-icon :name="scope.opt.value" />
+                    <q-icon :name="scope.opt.value || 'block'" />
                   </q-item-section>
                   <q-item-section class="grow">
                     <q-item-label>{{ scope.opt.label }}</q-item-label>
@@ -102,7 +151,7 @@
           </div>
           <div
             class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.offColor !== undefined"
+            v-if="item.settings.offColor !== undefined && item.settings.icon"
           >
             <input
               type="color"
@@ -113,7 +162,7 @@
           </div>
           <div
             class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.onColor !== undefined"
+            v-if="item.settings.onColor !== undefined && item.settings.icon"
           >
             <input
               type="color"
@@ -122,24 +171,8 @@
             />
             <label class="ml-2" for="on-color-input">On Color</label>
           </div>
-          <div class="w-full relative mb-2">
-            <q-input dark filled v-model="item.settings.title" label="Title" />
-            <input
-              type="color"
-              class="absolute top-2 right-2"
-              v-model="item.settings.titleColor"
-            />
-          </div>
-          <div class="flex flex-nowrap items-center mb-2">
-            <input
-              type="color"
-              id="bg-color-input"
-              v-model="item.settings.bgColor"
-            />
-            <label class="ml-2" for="bg-color-input">Background Color</label>
-          </div>
           <q-checkbox
-            v-if="!item.t3Entry && item.settings.active !== undefined"
+            v-if="!item.t3Entry?.value && item.settings.active !== undefined"
             dark
             filled
             v-model="item.settings.active"

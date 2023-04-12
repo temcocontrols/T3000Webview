@@ -1,5 +1,6 @@
 <template>
   <svg
+    v-if="icon"
     xmlns="http://www.w3.org/2000/svg"
     height="100%"
     viewBox="0 0 24 24"
@@ -31,7 +32,7 @@ export default defineComponent({
     },
     icon: {
       type: String,
-      default: "power_settings_new",
+      default: "image",
     },
   },
   setup() {
