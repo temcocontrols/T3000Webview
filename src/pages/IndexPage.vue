@@ -17,20 +17,17 @@
         />
         <div class="flex fixed top-10 left-16 z-50">
           <q-btn
-            v-if="
-              grpEntry.current.pid !== grpEntry.initial.pid ||
-              grpEntry.current.index !== grpEntry.initial.index
-            "
+            v-if="grpNav.length > 1"
             icon="arrow_back"
             class="back-btn mr-2"
             dense
             round
             size="lg"
             color="primary"
-            @click="loadInitialData"
+            @click="navGoBack"
           >
             <q-tooltip anchor="top middle" self="bottom middle">
-              <strong>Go back to the main graphic</strong>
+              <strong>Go back</strong>
             </q-tooltip>
           </q-btn>
           <q-btn
@@ -503,7 +500,7 @@ const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]);
 const redoHistory = ref([]);
 const locked = ref(false);
-const grpEntry = ref({ initial: {}, current: {} });
+const grpNav = ref([]);
 let lastAction = null;
 onMounted(() => {
   panzoomInstance = panzoom(viewport.value, {
@@ -526,7 +523,9 @@ onMounted(() => {
   });
 
   refreshMovable();
-  loadInitialData();
+  window.chrome?.webview?.postMessage({
+    action: 1, // GET_INITIAL_DATA
+  });
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
@@ -573,8 +572,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         arg.data.data = JSON.parse(arg.data.data);
       }
       appState.value = arg.data.data;
-      grpEntry.value.initial = arg.data.entry;
-      grpEntry.value.current = arg.data.entry;
+      grpNav.value = [arg.data.entry];
       setTimeout(() => {
         refreshMovable();
       }, 100);
@@ -583,7 +581,20 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         arg.data.data = JSON.parse(arg.data.data);
       }
       appState.value = arg.data.data;
-      grpEntry.value.current = arg.data.entry;
+      if (grpNav.value.length > 1) {
+        const navItem = grpNav.value[grpNav.value.length - 2];
+        if (
+          navItem.index !== arg.data.entry.index ||
+          navItem.pid !== arg.data.entry.pid
+        ) {
+          grpNav.value.push(arg.data.entry);
+        } else {
+          grpNav.value.pop();
+        }
+      } else {
+        grpNav.value.push(arg.data.entry);
+      }
+
       setTimeout(() => {
         refreshMovable();
       }, 100);
@@ -1174,12 +1185,8 @@ function newProject() {
 }
 
 keycon.keydown((e) => {
-  if (
-    (e.key === "esc" &&
-      grpEntry.value.current.pid !== grpEntry.value.initial.pid) ||
-    grpEntry.value.current.index !== grpEntry.value.initial.index
-  ) {
-    loadInitialData();
+  if (e.key === "esc" && grpNav.value.length > 1) {
+    navGoBack();
   }
   if (appState.value.selectedTargets.length < 1) return;
 
@@ -1630,19 +1637,27 @@ function objectClicked(item) {
   if (item.type === "Icon" || item.type === "Value") {
     if (item.t3Entry?.type === "GRP") {
       window.chrome?.webview?.postMessage({
-        action: 7, // LOAD_GRAPHIC_DATA
+        action: 7, // LOAD_GRAPHIC_ENTRY
         panelId: item.t3Entry.pid,
         entryIndex: item.t3Entry.index,
       });
-      console.log("Handle loading GRP entry");
     }
   }
 }
 
-function loadInitialData() {
-  window.chrome?.webview?.postMessage({
-    action: 1, // GET_INITIAL_DATA
-  });
+function navGoBack() {
+  if (grpNav.value.length > 1) {
+    const item = grpNav.value[grpNav.value.length - 2];
+    window.chrome?.webview?.postMessage({
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.pid,
+      entryIndex: item.index,
+    });
+  } else {
+    window.chrome?.webview?.postMessage({
+      action: 1, // GET_INITIAL_DATA
+    });
+  }
 }
 </script>
 <style>
