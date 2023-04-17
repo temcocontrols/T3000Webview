@@ -294,7 +294,7 @@ export default defineComponent({
 
 .movable-item.Value .object-container {
   flex-grow: 1;
-  justify-content: v-bind("item.settings.textAlign");
+  justify-content: v-bind("item.settings.justifyContent");
   padding: 10px;
 }
 
@@ -315,7 +315,7 @@ export default defineComponent({
 
 .movable-item.Icon.with-title .object-title {
   flex-grow: 1;
-  justify-content: v-bind("item.settings.textAlign");
+  justify-content: v-bind("item.settings.justifyContent");
 }
 
 .movable-item.Value.with-title .object-title .mode-icon,

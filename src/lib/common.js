@@ -124,7 +124,7 @@ export const tools = [
       justifyContent: "flex-start",
       offColor: "#940303",
       onColor: "#0d87d9",
-      icon: "image",
+      icon: "visibility",
       t3EntryDisplayField: "value",
     },
   },
