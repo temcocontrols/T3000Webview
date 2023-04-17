@@ -2,6 +2,7 @@
   <q-page>
     <div>
       <ToolsSidebar
+        v-if="!locked"
         :selected-tool="selectedTool"
         :custom-tools="customTools"
         @select-tool="selectTool"
@@ -15,7 +16,10 @@
           :disable-redo="locked || redoHistory.length < 1"
           :zoom="zoom"
         />
-        <div class="flex fixed top-10 left-16 z-50">
+        <div
+          class="flex fixed top-10 left-16 z-50"
+          :class="{ '!left-4': locked }"
+        >
           <q-btn
             v-if="grpNav.length > 1"
             icon="arrow_back"
@@ -262,7 +266,10 @@
       </div>
       <ObjectConfig
         :object="appState.items[appState.activeItemIndex]"
-        v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
+        v-if="
+          !locked &&
+          (appState.activeItemIndex || appState.activeItemIndex === 0)
+        "
         @refresh-selecto="refreshSelecto"
         @T3UpdateEntryField="T3UpdateEntryField"
         @linkT3Entry="linkT3EntryDialogAction"
@@ -1633,6 +1640,9 @@ function lockToggle() {
   appState.value.activeItemIndex = null;
   appState.value.selectedTargets = [];
   locked.value = !locked.value;
+  if (locked.value) {
+    selectTool({ name: "Pointer", type: "default", svg: null });
+  }
 }
 
 function objectClicked(item) {
