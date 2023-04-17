@@ -66,7 +66,7 @@
           </div>
           <div
             class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.textAlign !== undefined"
+            v-if="item.settings.justifyContent !== undefined"
           >
             <div>Text Align</div>
             <q-btn-group push>
@@ -74,26 +74,59 @@
                 push
                 icon="format_align_left"
                 :color="
-                  item.settings.textAlign === 'flex-start' ? 'grey-9' : false
+                  item.settings.justifyContent === 'flex-start'
+                    ? 'grey-9'
+                    : null
                 "
                 text-color="grey-5"
-                @click="item.settings.textAlign = 'flex-start'"
+                @click="item.settings.justifyContent = 'flex-start'"
               />
               <q-btn
                 push
                 icon="format_align_center"
-                :color="item.settings.textAlign === 'center' ? 'grey-9' : false"
+                :color="
+                  item.settings.justifyContent === 'center' ? 'grey-9' : null
+                "
+                text-color="grey-5"
+                @click="item.settings.justifyContent = 'center'"
+              />
+              <q-btn
+                push
+                icon="format_align_right"
+                :color="
+                  item.settings.justifyContent === 'flex-end' ? 'grey-9' : null
+                "
+                text-color="grey-5"
+                @click="item.settings.justifyContent = 'flex-end'"
+              />
+            </q-btn-group>
+          </div>
+          <div
+            class="flex flex-nowrap items-center mb-2"
+            v-if="item.settings.textAlign !== undefined"
+          >
+            <div>Text Align</div>
+            <q-btn-group push>
+              <q-btn
+                push
+                icon="format_align_left"
+                :color="item.settings.textAlign === 'left' ? 'grey-9' : null"
+                text-color="grey-5"
+                @click="item.settings.textAlign = 'left'"
+              />
+              <q-btn
+                push
+                icon="format_align_center"
+                :color="item.settings.textAlign === 'center' ? 'grey-9' : null"
                 text-color="grey-5"
                 @click="item.settings.textAlign = 'center'"
               />
               <q-btn
                 push
                 icon="format_align_right"
-                :color="
-                  item.settings.textAlign === 'flex-end' ? 'grey-9' : false
-                "
+                :color="item.settings.textAlign === 'right' ? 'grey-9' : null"
                 text-color="grey-5"
-                @click="item.settings.textAlign = 'flex-end'"
+                @click="item.settings.textAlign = 'right'"
               />
             </q-btn-group>
           </div>
@@ -122,6 +155,19 @@
               type="color"
               class="absolute top-2 right-2"
               v-model="item.settings.titleColor"
+            />
+          </div>
+          <div
+            class="w-full relative mb-2"
+            v-if="item.settings.text !== undefined"
+          >
+            <q-input
+              autogrow
+              autofocus
+              dark
+              filled
+              v-model="item.settings.text"
+              label="Text"
             />
           </div>
           <div class="w-full mb-2" v-if="item.settings.icon !== undefined">
@@ -372,7 +418,8 @@
 </template>
 
 <script>
-import { defineComponent, computed } from "vue";
+import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
+import { cloneDeep, isEqual } from "lodash";
 import { ranges, icons } from "../lib/common";
 export default defineComponent({
   name: "ToolConfig",
@@ -387,15 +434,22 @@ export default defineComponent({
     "T3UpdateEntryField",
     "linkT3Entry",
     "gaugeSettings",
+    "mounted",
+    "noChange",
   ],
   setup(props, { emit }) {
+    let initialObject = {};
+    onMounted(() => {
+      initialObject = cloneDeep(props.object);
+      emit("mounted");
+    });
     const item = computed({
       get() {
         return props.object;
       },
       // setter
-      set(newValue) {
-        if (!newValue) return;
+      set(newValue, oldValue) {
+        if (newValue === oldValue) return;
         emit("update:object", newValue);
       },
     });
@@ -434,6 +488,11 @@ export default defineComponent({
     function gaugeSettings(item) {
       emit("gaugeSettings", item);
     }
+    onBeforeUnmount(() => {
+      if (isEqual(props.object, initialObject)) {
+        emit("noChange");
+      }
+    });
     return {
       item,
       refreshSelecto,

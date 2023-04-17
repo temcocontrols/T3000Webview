@@ -1,20 +1,19 @@
 <template>
   <div
-    ref="editableElement"
-    :contenteditable="true"
-    :style="`font-size: ${fontSize}px; color: ${textColor}`"
+    class="text-el"
+    :style="`font-size: ${fontSize}px; color: ${textColor}; text-align: ${textAlign} ; white-space: pre-wrap;`"
   >
-    {{ content }}
+    {{ text }}
   </div>
 </template>
 
 <script>
-import { defineComponent, ref, onMounted } from "vue";
+import { defineComponent } from "vue";
 
 export default defineComponent({
   name: "TextEl",
   props: {
-    content: {
+    text: {
       type: String,
       default: "Text element",
     },
@@ -22,22 +21,17 @@ export default defineComponent({
       type: Number,
       default: 16,
     },
-    color: {
+    textColor: {
       type: String,
       default: "black",
     },
+    textAlign: {
+      type: String,
+      default: "left",
+    },
   },
   setup() {
-    const editable = ref(false);
-    const editableElement = ref(null);
-
-    onMounted(() => {
-      editableElement.value.focus();
-    });
-    return {
-      editable,
-      editableElement,
-    };
+    return {};
   },
 });
 </script>
@@ -46,6 +40,5 @@ export default defineComponent({
 div {
   width: 100%;
   height: 100%;
-  margin-top: 15px;
 }
 </style>

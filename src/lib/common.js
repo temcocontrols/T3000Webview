@@ -29,7 +29,7 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
-    settings: { content: "Text", textColor: "black" },
+    settings: { text: "Text", textColor: "black", textAlign: "left" },
   },
   {
     name: "Duct",
@@ -112,16 +112,16 @@ export const tools = [
       bgColor: "#0065a3",
       titleColor: "#000000",
       textColor: "#ffffff",
-      textAlign: "flex-start",
+      justifyContent: "flex-start",
     },
   },
   {
     name: "Icon",
     label: "Icon with title",
-    icon: "circle",
+    icon: "fa-solid fa-icons",
     settings: {
       active: false,
-      textAlign: "flex-start",
+      justifyContent: "flex-start",
       offColor: "#940303",
       onColor: "#0d87d9",
       icon: "image",

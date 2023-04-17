@@ -261,12 +261,14 @@
         </div>
       </div>
       <ObjectConfig
-        v-model:object="appState.items[appState.activeItemIndex]"
+        :object="appState.items[appState.activeItemIndex]"
         v-if="appState.activeItemIndex || appState.activeItemIndex === 0"
         @refresh-selecto="refreshSelecto"
         @T3UpdateEntryField="T3UpdateEntryField"
         @linkT3Entry="linkT3EntryDialogAction"
         @gaugeSettings="gaugeSettingsDialogAction"
+        @mounted="addActionToHistory('Object settings opened')"
+        @no-change="objectSettingsUnchanged"
       />
     </div>
   </q-page>
@@ -962,8 +964,9 @@ function onSelectoDragEnd(e) {
     scaleX: 1,
     scaleY: 1,
     settings:
-      tools.find((tool) => tool.name === selectedTool.value.name)?.settings ||
-      {},
+      cloneDeep(
+        tools.find((tool) => tool.name === selectedTool.value.name)?.settings
+      ) || {},
     zindex: 1,
     t3Entry: null,
   });
@@ -1658,6 +1661,10 @@ function navGoBack() {
       action: 1, // GET_INITIAL_DATA
     });
   }
+}
+
+function objectSettingsUnchanged() {
+  undoHistory.value.shift();
 }
 </script>
 <style>
