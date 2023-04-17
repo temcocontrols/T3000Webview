@@ -256,7 +256,14 @@
                 :item="item"
                 :key="item.id + item.type"
                 :class="{
-                  link: locked && ['Icon', 'Value'].includes(item.type),
+                  link:
+                    locked &&
+                    (['Icon', 'Value', 'SCH', 'PRG', 'HOL'].includes(
+                      item.type
+                    ) ||
+                      (item.t3Entry?.auto_manual === 1 &&
+                        item.t3Entry?.digital_analog === 0 &&
+                        item.t3Entry?.range)),
                 }"
                 @click="objectClicked(item)"
               />
@@ -555,7 +562,7 @@ onMounted(() => {
           };
         }),
       });
-    }, 5000);
+    }, 10000);
   }
 });
 onUnmounted(() => {
@@ -1084,7 +1091,7 @@ function selectByRightClick(e) {
   selecto.value.clickTarget(e);
 }
 
-function T3UpdateEntryField({ key, obj }) {
+function T3UpdateEntryField(key, obj) {
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
   if (key === "value" || key === "control") {
@@ -1655,6 +1662,21 @@ function objectClicked(item) {
         entryIndex: item.t3Entry.index,
       });
     }
+  } else if (["SCH", "PRG", "HOL"].includes(item.t3Entry?.type)) {
+    window.chrome?.webview?.postMessage({
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    });
+  }
+  if (
+    item.t3Entry?.auto_manual === 1 &&
+    item.t3Entry?.digital_analog === 0 &&
+    item.t3Entry?.range
+  ) {
+    item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
+    T3UpdateEntryField("control", item);
   }
 }
 

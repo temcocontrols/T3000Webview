@@ -480,7 +480,7 @@ export default defineComponent({
       emit("refreshSelecto");
     }
     function T3UpdateEntryField(key, obj) {
-      emit("T3UpdateEntryField", { key, obj });
+      emit("T3UpdateEntryField", key, obj);
     }
     function linkT3Entry() {
       emit("linkT3Entry");
