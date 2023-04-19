@@ -122,6 +122,101 @@
             >
             </vue-moveable>
 
+            <q-menu
+              v-if="contextMenuShow"
+              touch-position
+              target=".moveable-area"
+              context-menu
+            >
+              <q-list>
+                <q-item
+                  dense
+                  clickable
+                  v-close-popup
+                  @click="duplicateSelected"
+                >
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="content_copy"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Duplicate</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + D</q-chip>
+                  </q-item-section>
+                </q-item>
+                <q-item dense clickable v-close-popup @click="groupSelected">
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="join_full"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Group</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + G</q-chip>
+                  </q-item-section>
+                </q-item>
+                <q-item dense clickable v-close-popup @click="ungroupSelected">
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="join_inner"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Ungroup</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + Shift + G</q-chip>
+                  </q-item-section>
+                </q-item>
+                <q-item dense clickable v-close-popup>
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="join_full"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Add to Library</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + L</q-chip>
+                  </q-item-section>
+                </q-item>
+                <q-item dense clickable v-close-popup @click="deleteSelected">
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="delete"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Delete</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Delete</q-chip>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+
             <div
               v-for="item in appState.items"
               :key="item.id"
@@ -480,6 +575,7 @@ const importJsonDialog = ref({
 });
 const customTools = ref([]);
 const savedNotify = ref(false);
+const contextMenuShow = ref(false);
 
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
@@ -810,6 +906,14 @@ function onSelectoSelectEnd(e) {
     setTimeout(() => {
       movable.value.dragStart(e.inputEvent);
     });
+  }
+
+  if (appState.value.selectedTargets.length > 1 && !locked.value) {
+    setTimeout(() => {
+      contextMenuShow.value = true;
+    }, 100);
+  } else {
+    contextMenuShow.value = false;
   }
 }
 
