@@ -5,6 +5,7 @@
         v-if="!locked"
         :selected-tool="selectedTool"
         :custom-tools="customTools"
+        :object-lib="objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
       />
@@ -182,11 +183,11 @@
                     <q-chip>Ctrl + Shift + G</q-chip>
                   </q-item-section>
                 </q-item>
-                <q-item dense clickable v-close-popup>
+                <q-item dense clickable v-close-popup @click="addToLibrary">
                   <q-item-section avatar>
                     <q-avatar
                       size="sm"
-                      icon="join_full"
+                      icon="library_books"
                       color="grey-7"
                       text-color="white"
                     />
@@ -576,6 +577,7 @@ const importJsonDialog = ref({
 const customTools = ref([]);
 const savedNotify = ref(false);
 const contextMenuShow = ref(false);
+const objLib = ref([]);
 
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
@@ -1676,6 +1678,9 @@ function handleMenuAction(action) {
     case "ungroupSelected":
       ungroupSelected();
       break;
+    case "addToLibrary":
+      addToLibrary();
+      break;
     case "deleteSelected":
       deleteSelected();
       break;
@@ -1801,6 +1806,16 @@ function navGoBack() {
 
 function objectSettingsUnchanged() {
   undoHistory.value.shift();
+}
+
+function addToLibrary() {
+  if (appState.value.selectedTargets.length < 2 || locked.value) return;
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `movable-item-${i.id}`
+    )
+  );
+  objLib.value.push({ name: "", items: cloneDeep(selectedItems) });
 }
 </script>
 <style>

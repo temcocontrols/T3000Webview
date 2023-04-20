@@ -37,20 +37,39 @@
               align="justify"
               narrow-indicator
             >
-              <q-tab
-                v-if="false"
-                name="lib"
-                icon="library_books"
-                label="Library"
-              />
+              <q-tab name="lib" icon="library_books" label="Library" />
               <q-tab name="svgs" icon="collections" label="Custom SVGs" />
             </q-tabs>
 
             <q-separator />
 
             <q-tab-panels v-model="libTab" animated dark>
-              <q-tab-panel name="lib" v-if="false">
-                <div class="flex p-4 items-center justify-center">
+              <q-tab-panel name="lib">
+                <div
+                  v-if="objectLib.length > 0"
+                  class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
+                >
+                  <div
+                    v-for="group in objectLib"
+                    :key="group.name"
+                    v-close-popup
+                  >
+                    <div
+                      class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
+                    >
+                      <div
+                        class="flex flex-col items-center justify-center h-full"
+                      >
+                        <q-icon
+                          color="blue-10"
+                          name="library_books"
+                          size="xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex p-4 items-center justify-center" v-else>
                   The library is empty.
                 </div>
               </q-tab-panel>
@@ -65,7 +84,7 @@
                   label="Add custom SVG"
                 />
                 <div
-                  v-if="customTools?.length"
+                  v-if="customTools.length > 0"
                   class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
                 >
                   <div
@@ -113,11 +132,21 @@ export default defineComponent({
     customTools: {
       type: Array,
       required: false,
+      default() {
+        return [];
+      },
+    },
+    objectLib: {
+      type: Array,
+      required: false,
+      default() {
+        return [];
+      },
     },
   },
   emits: ["selectTool", "addCustomTool"],
   setup(_props, { emit }) {
-    const libTab = ref("svgs");
+    const libTab = ref("lib");
     function selectTool(name, type = "default", svg = null) {
       emit("selectTool", { name, type, svg });
     }

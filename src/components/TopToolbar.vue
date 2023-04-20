@@ -186,6 +186,28 @@
           dense
           clickable
           v-close-popup
+          @click="menuActionEmit('addToLibrary')"
+          :disable="selectedCount < 2"
+        >
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="library_books"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Add selected to library</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + L</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-item
+          dense
+          clickable
+          v-close-popup
           @click="menuActionEmit('deleteSelected')"
           :disable="selectedCount < 1"
         >
