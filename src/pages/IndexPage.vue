@@ -352,14 +352,7 @@
                 :item="item"
                 :key="item.id + item.type"
                 :class="{
-                  link:
-                    locked &&
-                    (['Icon', 'Value', 'SCH', 'PRG', 'HOL'].includes(
-                      item.type
-                    ) ||
-                      (item.t3Entry?.auto_manual === 1 &&
-                        item.t3Entry?.digital_analog === 0 &&
-                        item.t3Entry?.range)),
+                  link: locked && item.t3Entry,
                 }"
                 @click="objectClicked(item)"
               />
@@ -1211,6 +1204,7 @@ function T3UpdateEntryField(key, obj) {
     entryIndex: obj.t3Entry.index,
     entryType: T3_Types[obj.t3Entry.type],
   });
+  save();
 }
 
 function selectoDragCondition(e) {
@@ -1739,6 +1733,7 @@ function refreshLinkedEntries(panelData) {
       if (linkedEntry && linkedEntry.id) {
         item.t3Entry = linkedEntry;
         refreshObjectActiveValue(item);
+        save();
       }
     });
 }
@@ -1763,23 +1758,20 @@ function lockToggle() {
 
 function objectClicked(item) {
   if (!locked.value) return;
-  if (item.type === "Icon" || item.type === "Value") {
-    if (item.t3Entry?.type === "GRP") {
-      window.chrome?.webview?.postMessage({
-        action: 7, // LOAD_GRAPHIC_ENTRY
-        panelId: item.t3Entry.pid,
-        entryIndex: item.t3Entry.index,
-      });
-    }
-  } else if (["SCH", "PRG", "HOL"].includes(item.t3Entry?.type)) {
+  if (item.t3Entry?.type === "GRP") {
+    window.chrome?.webview?.postMessage({
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    });
+  } else if (["SCHEDULE", "PROGRAM", "HOLIDAY"].includes(item.t3Entry?.type)) {
     window.chrome?.webview?.postMessage({
       action: 8, // OPEN_ENTRY_EDIT_WINDOW
       panelId: item.t3Entry.pid,
       entryType: T3_Types[item.t3Entry.type],
       entryIndex: item.t3Entry.index,
     });
-  }
-  if (
+  } else if (
     item.t3Entry?.auto_manual === 1 &&
     item.t3Entry?.digital_analog === 0 &&
     item.t3Entry?.range
