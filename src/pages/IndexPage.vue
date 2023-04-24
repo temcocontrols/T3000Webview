@@ -610,6 +610,10 @@ const locked = ref(false);
 const grpNav = ref([]);
 let lastAction = null;
 onMounted(() => {
+  window.addEventListener("beforeunload", function (event) {
+    // event.returnValue = "Not saved!";
+    save();
+  });
   panzoomInstance = panzoom(viewport.value, {
     maxZoom: 4,
     minZoom: 0.1,
@@ -1204,7 +1208,6 @@ function T3UpdateEntryField(key, obj) {
     entryIndex: obj.t3Entry.index,
     entryType: T3_Types[obj.t3Entry.type],
   });
-  save();
 }
 
 function selectoDragCondition(e) {
@@ -1733,7 +1736,6 @@ function refreshLinkedEntries(panelData) {
       if (linkedEntry && linkedEntry.id) {
         item.t3Entry = linkedEntry;
         refreshObjectActiveValue(item);
-        save();
       }
     });
 }
