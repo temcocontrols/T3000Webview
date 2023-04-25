@@ -23,13 +23,38 @@ export const tools = [
     name: "Box",
     label: "Box",
     icon: "square",
-    settings: { bgColor: "#659dc5" },
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
   },
   {
     name: "Text",
     label: "Text",
     icon: "title",
-    settings: { text: "Text", textColor: "black", textAlign: "left" },
+    settings: {
+      textColor: {
+        value: "black",
+        type: "color",
+        label: "Text Color",
+        id: 2,
+      },
+      textAlign: {
+        value: "left",
+        type: "textAlign",
+        id: 3,
+      },
+      text: {
+        value: "Text",
+        type: "text",
+        label: "Text",
+        id: 1,
+      },
+    },
   },
   {
     name: "Duct",
@@ -40,19 +65,58 @@ export const tools = [
     name: "Fan",
     label: "Fan",
     icon: "svguse:icons.svg#fan",
-    settings: { active: false, inAlarm: false },
+    settings: {
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 1,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 2,
+      },
+    },
   },
   {
     name: "CoolingCoil",
     label: "Cooling Coil",
     icon: "svguse:icons.svg#cooling-coil|0 0 20 29",
-    settings: { active: false, inAlarm: false },
+    settings: {
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 1,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 2,
+      },
+    },
   },
   {
     name: "HeatingCoil",
     label: "Heating Coil",
     icon: "svguse:icons.svg#heating-coil|0 0 19.526541 28.758413",
-    settings: { active: false, inAlarm: false },
+    settings: {
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 1,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 2,
+      },
+    },
   },
   {
     name: "Filter",
@@ -63,13 +127,33 @@ export const tools = [
     name: "Humidifier",
     label: "Humidifier",
     icon: "svguse:icons.svg#humidifier|0 0 18 25",
-    settings: { active: false, inAlarm: false },
+    settings: {
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 1,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 2,
+      },
+    },
   },
   {
     name: "Damper",
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
-    settings: { inAlarm: false },
+    settings: {
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 1,
+      },
+    },
   },
   {
     name: "Temperature",
@@ -81,13 +165,41 @@ export const tools = [
     label: "Gauge",
     icon: "speed",
     settings: {
-      min: 0,
-      max: 100,
-      ticks: 10,
-      minorTicks: 5,
-      thickness: 30,
-      colors: gaugeDefautColors,
-      titleColor: "#000000",
+      min: {
+        value: 0,
+        type: "number",
+        id: 1,
+      },
+      max: {
+        value: 100,
+        type: "number",
+        id: 2,
+      },
+      ticks: {
+        value: 10,
+        type: "number",
+        id: 3,
+      },
+      minorTicks: {
+        value: 5,
+        type: "number",
+        id: 4,
+      },
+      thickness: {
+        value: 30,
+        type: "number",
+        id: 5,
+      },
+      colors: {
+        value: gaugeDefautColors,
+        type: "colors",
+        id: 6,
+      },
+      titleColor: {
+        value: "#000000",
+        type: "titleColor",
+        id: 7,
+      },
     },
   },
   {
@@ -95,13 +207,42 @@ export const tools = [
     label: "Dial",
     icon: "horizontal_split",
     settings: {
-      min: 0,
-      max: 100,
-      ticks: 5,
-      minorTicks: 5,
-      colors: gaugeDefautColors,
-      titleColor: "#000000",
-      textColor: "#000000",
+      min: {
+        value: 0,
+        type: "number",
+        id: 1,
+      },
+      max: {
+        value: 100,
+        type: "number",
+        id: 2,
+      },
+      ticks: {
+        value: 5,
+        type: "number",
+        id: 3,
+      },
+      minorTicks: {
+        value: 5,
+        type: "number",
+        id: 4,
+      },
+      colors: {
+        value: gaugeDefautColors,
+        type: "colors",
+        id: 5,
+      },
+      titleColor: {
+        value: "#000000",
+        type: "titleColor",
+        id: 6,
+      },
+      textColor: {
+        value: "#000000",
+        type: "color",
+        label: "Text Color",
+        id: 7,
+      },
     },
   },
   {
@@ -109,10 +250,28 @@ export const tools = [
     label: "Value",
     icon: "123",
     settings: {
-      bgColor: "#0065a3",
-      titleColor: "#000000",
-      textColor: "#ffffff",
-      justifyContent: "flex-start",
+      bgColor: {
+        value: "#0065a3",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      textColor: {
+        value: "#ffffff",
+        type: "color",
+        label: "Text Color",
+        id: 3,
+      },
+      titleColor: {
+        value: "#000000",
+        type: "titleColor",
+        id: 2,
+      },
+      justifyContent: {
+        value: "flex-start",
+        type: "justifyContent",
+        id: 4,
+      },
     },
   },
   {
@@ -120,12 +279,40 @@ export const tools = [
     label: "Icon with title",
     icon: "fa-solid fa-icons",
     settings: {
-      active: false,
-      justifyContent: "flex-start",
-      offColor: "#940303",
-      onColor: "#0d87d9",
-      icon: "visibility",
-      t3EntryDisplayField: "value",
+      justifyContent: {
+        value: "flex-start",
+        type: "justifyContent",
+        id: 2,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 1,
+      },
+      offColor: {
+        value: "#940303",
+        type: "color",
+        label: "Off Color",
+        id: 3,
+      },
+      onColor: {
+        value: "#0d87d9",
+        type: "color",
+        label: "On Color",
+        id: 4,
+      },
+      icon: {
+        value: "visibility",
+        type: "icon",
+        label: "Icon",
+        id: 5,
+      },
+      t3EntryDisplayField: {
+        value: "value",
+        type: "select",
+        id: 6,
+      },
     },
   },
 ];

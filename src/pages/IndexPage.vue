@@ -1069,6 +1069,15 @@ function onSelectoDragEnd(e) {
   )
     return;
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+  const toolSettings =
+    cloneDeep(
+      tools.find((tool) => tool.name === selectedTool.value.name)?.settings
+    ) || {};
+  const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+    acc[key] = toolSettings[key].value;
+    return acc;
+  }, {});
   const item = addObject({
     title: null,
     active: false,
@@ -1086,10 +1095,7 @@ function onSelectoDragEnd(e) {
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
-    settings:
-      cloneDeep(
-        tools.find((tool) => tool.name === selectedTool.value.name)?.settings
-      ) || {},
+    settings: objectSettings,
     zindex: 1,
     t3Entry: null,
   });

@@ -64,82 +64,13 @@
               type="number"
             />
           </div>
-          <div
-            class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.justifyContent !== undefined"
-          >
-            <div>Text Align</div>
-            <q-btn-group push>
-              <q-btn
-                push
-                icon="format_align_left"
-                :color="
-                  item.settings.justifyContent === 'flex-start'
-                    ? 'grey-9'
-                    : null
-                "
-                text-color="grey-5"
-                @click="item.settings.justifyContent = 'flex-start'"
-              />
-              <q-btn
-                push
-                icon="format_align_center"
-                :color="
-                  item.settings.justifyContent === 'center' ? 'grey-9' : null
-                "
-                text-color="grey-5"
-                @click="item.settings.justifyContent = 'center'"
-              />
-              <q-btn
-                push
-                icon="format_align_right"
-                :color="
-                  item.settings.justifyContent === 'flex-end' ? 'grey-9' : null
-                "
-                text-color="grey-5"
-                @click="item.settings.justifyContent = 'flex-end'"
-              />
-            </q-btn-group>
-          </div>
-          <div
-            class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.textAlign !== undefined"
-          >
-            <div>Text Align</div>
-            <q-btn-group push>
-              <q-btn
-                push
-                icon="format_align_left"
-                :color="item.settings.textAlign === 'left' ? 'grey-9' : null"
-                text-color="grey-5"
-                @click="item.settings.textAlign = 'left'"
-              />
-              <q-btn
-                push
-                icon="format_align_center"
-                :color="item.settings.textAlign === 'center' ? 'grey-9' : null"
-                text-color="grey-5"
-                @click="item.settings.textAlign = 'center'"
-              />
-              <q-btn
-                push
-                icon="format_align_right"
-                :color="item.settings.textAlign === 'right' ? 'grey-9' : null"
-                text-color="grey-5"
-                @click="item.settings.textAlign = 'right'"
-              />
-            </q-btn-group>
-          </div>
-          <div
-            class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.textColor !== undefined"
-          >
+          <div class="w-full relative mb-2">
+            <q-input dark filled v-model="item.settings.title" label="Title" />
             <input
               type="color"
-              id="text-color-input"
-              v-model="item.settings.textColor"
+              class="absolute top-2 right-2"
+              v-model="item.settings.titleColor"
             />
-            <label class="ml-2" for="text-color-input">Text Color</label>
           </div>
           <div class="flex flex-nowrap items-center mb-2">
             <input
@@ -149,102 +80,148 @@
             />
             <label class="ml-2" for="bg-color-input">Background Color</label>
           </div>
-          <div class="w-full relative mb-2">
-            <q-input dark filled v-model="item.settings.title" label="Title" />
-            <input
-              type="color"
-              class="absolute top-2 right-2"
-              v-model="item.settings.titleColor"
-            />
-          </div>
-          <div
-            class="w-full relative mb-2"
-            v-if="item.settings.text !== undefined"
-          >
-            <q-input
-              autogrow
-              autofocus
-              dark
-              filled
-              v-model="item.settings.text"
-              label="Text"
-            />
-          </div>
-          <div class="w-full mb-2" v-if="item.settings.icon !== undefined">
-            <q-select
-              filled
-              dark
-              v-model="item.settings.icon"
-              :options="icons"
-              label="Icon"
-              emit-value
-              map-options
+          <template v-for="(setting, key) in settings" :key="key">
+            <template
+              v-if="
+                !['Dial', 'Gauge'].includes(item.type) &&
+                !['bgColor', 'title', 'titleColor'].includes(key)
+              "
             >
-              <template v-slot:prepend>
-                <q-icon :name="item.settings.icon || 'block'" />
-              </template>
-              <template v-slot:option="scope">
-                <q-item v-bind="scope.itemProps">
-                  <q-item-section avatar class="pr-1 min-w-0">
-                    <q-icon :name="scope.opt.value || 'block'" />
-                  </q-item-section>
-                  <q-item-section class="grow">
-                    <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </div>
-          <div
-            class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.offColor !== undefined && item.settings.icon"
-          >
-            <input
-              type="color"
-              id="off-color-input"
-              v-model="item.settings.offColor"
-            />
-            <label class="ml-2" for="off-color-input">Off Color</label>
-          </div>
-          <div
-            class="flex flex-nowrap items-center mb-2"
-            v-if="item.settings.onColor !== undefined && item.settings.icon"
-          >
-            <input
-              type="color"
-              id="on-color-input"
-              v-model="item.settings.onColor"
-            />
-            <label class="ml-2" for="on-color-input">On Color</label>
-          </div>
-          <q-checkbox
-            v-if="!item.t3Entry?.value && item.settings.active !== undefined"
-            dark
-            filled
-            v-model="item.settings.active"
-            class="text-white w-full"
-            label="Active"
-            :disable="
-              (item.t3Entry && item.t3Entry?.auto_manual === 0) ||
-              item.t3Entry?.digital_analog === 1
-            "
-          >
-            <q-tooltip
-              v-if="item.t3Entry?.auto_manual === 0"
-              anchor="center left"
-              self="center end"
-            >
-              Can't activate it because the linked entry is in auto mode
-            </q-tooltip></q-checkbox
-          >
-          <q-checkbox
-            dark
-            filled
-            v-model="item.settings.inAlarm"
-            class="text-white w-full"
-            label="In alarm"
-            v-if="item.settings.inAlarm !== undefined"
-          />
+              <div
+                class="flex flex-nowrap justify-center items-center mb-2"
+                v-if="setting.type === 'justifyContent'"
+              >
+                <div class="mx-1">Align</div>
+                <q-btn-group push>
+                  <q-btn
+                    push
+                    icon="format_align_left"
+                    :color="
+                      item.settings[key] === 'flex-start' ? 'grey-9' : null
+                    "
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'flex-start'"
+                  />
+                  <q-btn
+                    push
+                    icon="format_align_center"
+                    :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'center'"
+                  />
+                  <q-btn
+                    push
+                    icon="format_align_right"
+                    :color="item.settings[key] === 'flex-end' ? 'grey-9' : null"
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'flex-end'"
+                  />
+                </q-btn-group>
+              </div>
+              <div
+                class="flex flex-nowrap justify-center items-center mb-2"
+                v-else-if="setting.type === 'textAlign'"
+              >
+                <div class="mx-1">Align</div>
+                <q-btn-group push>
+                  <q-btn
+                    push
+                    icon="format_align_left"
+                    :color="item.settings[key] === 'left' ? 'grey-9' : null"
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'left'"
+                  />
+                  <q-btn
+                    push
+                    icon="format_align_center"
+                    :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'center'"
+                  />
+                  <q-btn
+                    push
+                    icon="format_align_right"
+                    :color="item.settings[key] === 'right' ? 'grey-9' : null"
+                    text-color="grey-5"
+                    @click="item.settings[key] = 'right'"
+                  />
+                </q-btn-group>
+              </div>
+              <div
+                class="flex flex-nowrap items-center mb-2"
+                v-else-if="setting.type === 'color'"
+              >
+                <input
+                  type="color"
+                  id="text-color-input"
+                  v-model="item.settings[key]"
+                />
+                <label class="ml-2" for="text-color-input">{{
+                  setting.label
+                }}</label>
+              </div>
+              <div
+                class="w-full relative mb-2"
+                v-else-if="setting.type === 'text'"
+              >
+                <q-input
+                  autogrow
+                  autofocus
+                  dark
+                  filled
+                  v-model="item.settings[key]"
+                  :label="setting.label"
+                />
+              </div>
+              <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
+                <q-select
+                  filled
+                  dark
+                  v-model="item.settings[key]"
+                  :options="icons"
+                  :label="setting.label"
+                  emit-value
+                  map-options
+                >
+                  <template v-slot:prepend>
+                    <q-icon :name="item.settings[key] || 'block'" />
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar class="pr-1 min-w-0">
+                        <q-icon :name="scope.opt.value || 'block'" />
+                      </q-item-section>
+                      <q-item-section class="grow">
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+              <q-checkbox
+                v-else-if="setting.type === 'boolean'"
+                dark
+                filled
+                v-model="item.settings[key]"
+                class="text-white w-full"
+                :label="setting.label"
+                :disable="
+                  key === 'active' &&
+                  ((item.t3Entry && item.t3Entry?.auto_manual === 0) ||
+                    item.t3Entry?.digital_analog === 1)
+                "
+              >
+                <q-tooltip
+                  v-if="key === 'active' && item.t3Entry?.auto_manual === 0"
+                  anchor="center left"
+                  self="center end"
+                >
+                  Manual changes are not possible as the linked entry is set to
+                  auto mode.
+                </q-tooltip>
+              </q-checkbox>
+            </template>
+          </template>
         </div>
       </q-expansion-item>
 
@@ -420,7 +397,7 @@
 <script>
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
-import { ranges, icons } from "../lib/common";
+import { ranges, icons, tools } from "../lib/common";
 export default defineComponent({
   name: "ToolConfig",
   props: {
@@ -452,6 +429,10 @@ export default defineComponent({
         if (newValue === oldValue) return;
         emit("update:object", newValue);
       },
+    });
+
+    const settings = computed(() => {
+      return tools.find((i) => i.name === props.object.type).settings;
     });
     const t3EntryDisplayFieldOptions = computed(() => {
       const options = [
@@ -502,6 +483,7 @@ export default defineComponent({
       gaugeSettings,
       getRangeById,
       icons,
+      settings,
     };
   },
 });
