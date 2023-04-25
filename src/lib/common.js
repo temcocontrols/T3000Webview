@@ -287,7 +287,7 @@ export const tools = [
       active: {
         value: false,
         type: "boolean",
-        label: "Active",
+        label: "On/Off",
         id: 1,
       },
       offColor: {

@@ -365,7 +365,7 @@
       <div class="px-1">
         <input
           class="zoom-input"
-          @keydown.enter="changeZoomValue"
+          @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
           :value="zoom"
           type="number"
         />%
@@ -407,8 +407,8 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
-    function menuActionEmit(action) {
-      emit("menuAction", action);
+    function menuActionEmit(action, val = null) {
+      emit("menuAction", action, val);
     }
 
     return {

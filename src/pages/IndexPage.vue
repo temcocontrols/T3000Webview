@@ -1655,15 +1655,17 @@ function ungroupSelected() {
   }
 }
 
-function zoomAction(action = "in") {
+function zoomAction(action = "in", val = null) {
   if (action === "out") {
     zoom.value -= 10;
+  } else if (action === "set") {
+    zoom.value = val;
   } else {
     zoom.value += 10;
   }
 }
 
-function handleMenuAction(action) {
+function handleMenuAction(action, val) {
   const item = appState.value.items[appState.value.activeItemIndex];
   switch (action) {
     case "newProject":
@@ -1728,6 +1730,9 @@ function handleMenuAction(action) {
       break;
     case "zoomIn":
       zoomAction();
+      break;
+    case "zoomSet":
+      zoomAction("set", val);
       break;
     default:
       break;
