@@ -77,7 +77,7 @@
               <q-tab-panel name="svgs">
                 <q-btn
                   dense
-                  @click="addCustomTool"
+                  @click="$emit('addCustomTool')"
                   icon="library_add"
                   color="white"
                   text-color="black"
@@ -148,11 +148,7 @@ export default defineComponent({
   setup(_props, { emit }) {
     const libTab = ref("lib");
     function selectTool(name, type = "default", svg = null) {
-      emit("selectTool", { name, type, svg });
-    }
-
-    function addCustomTool() {
-      emit("addCustomTool");
+      emit("selectTool", name, type, svg);
     }
 
     function getSvgImageUrl(svg) {
@@ -163,7 +159,6 @@ export default defineComponent({
     return {
       tools,
       selectTool,
-      addCustomTool,
       libTab,
       getSvgImageUrl,
     };

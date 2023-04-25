@@ -4,8 +4,8 @@
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
-        :custom-tools="customTools"
-        :object-lib="objLib"
+        :custom-tools="appState.customTools"
+        :object-lib="appState.objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
       />
@@ -350,6 +350,7 @@
               </q-menu>
               <object-type
                 :item="item"
+                :svgs="appState.customTools"
                 :key="item.id + item.type"
                 :class="{
                   link: locked && item.t3Entry,
@@ -567,10 +568,8 @@ const importJsonDialog = ref({
   uploadBtnLoading: false,
   svg: null,
 });
-const customTools = ref([]);
 const savedNotify = ref(false);
 const contextMenuShow = ref(false);
-const objLib = ref([]);
 
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null;
@@ -600,6 +599,8 @@ const emptyProject = {
   itemsCount: 0,
   groupCount: 0,
   customObjectsCount: 0,
+  customTools: [],
+  objLib: [],
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
 };
@@ -610,6 +611,12 @@ const locked = ref(false);
 const grpNav = ref([]);
 let lastAction = null;
 onMounted(() => {
+  if (!window.chrome?.webview?.postMessage) {
+    const localState = localStorage.getItem("appState");
+    if (localState) {
+      appState.value = JSON.parse(localState);
+    }
+  }
   window.addEventListener("beforeunload", function (event) {
     // event.returnValue = "Not saved!";
     save();
@@ -1066,7 +1073,6 @@ function onSelectoDragEnd(e) {
     title: null,
     active: false,
     type: selectedTool.value.name,
-    svg: selectedTool.value.svg,
     translate: [
       (e.rect.left -
         viewportMargins.left -
@@ -1104,7 +1110,7 @@ function onSelectoDragEnd(e) {
   }, 100);
 }
 
-function selectTool({ name, type, svg }) {
+function selectTool(name, type = "default", svg = null) {
   selectedTool.value.name = name;
   selectedTool.value.type = type;
   selectedTool.value.svg = svg;
@@ -1278,6 +1284,9 @@ function save(notify = false) {
     action: 2, // SAVE_GRAPHIC
     data,
   });
+  if (!window.chrome?.webview?.postMessage) {
+    localStorage.setItem("appState", JSON.stringify(data));
+  }
 }
 
 function newProject() {
@@ -1294,6 +1303,9 @@ function newProject() {
         undoHistory.value = [];
         redoHistory.value = [];
         refreshSelecto();
+        if (!window.chrome?.webview?.postMessage) {
+          localStorage.removeItem("appState");
+        }
       })
       .onCancel(() => {});
     return;
@@ -1443,7 +1455,7 @@ function saveCustomObject() {
   appState.value.customObjectsCount++;
   uploadObjectDialog.value.active = false;
   uploadObjectDialog.value.uploadBtnDisabled = true;
-  customTools.value.push({
+  appState.value.customTools.push({
     name: "Custom-" + appState.value.customObjectsCount,
     label: "Custom Object",
     svg: cloneDeep(uploadObjectDialog.value.svg),
@@ -1754,7 +1766,7 @@ function lockToggle() {
   appState.value.selectedTargets = [];
   locked.value = !locked.value;
   if (locked.value) {
-    selectTool({ name: "Pointer", type: "default", svg: null });
+    selectTool("Pointer");
   }
 }
 
@@ -1809,7 +1821,7 @@ function addToLibrary() {
       (ii) => ii.id === `movable-item-${i.id}`
     )
   );
-  objLib.value.push({ name: "", items: cloneDeep(selectedItems) });
+  appState.value.objLib.push({ name: "", items: cloneDeep(selectedItems) });
 }
 </script>
 <style>

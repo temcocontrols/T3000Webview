@@ -127,7 +127,10 @@
         </div>
       </div>
 
-      <div v-else-if="item.type.startsWith('Custom-')" v-html="item.svg"></div>
+      <div
+        v-else-if="item.type.startsWith('Custom-')"
+        v-html="svgs.find((i) => i.name === item.type)?.svg"
+      ></div>
     </div>
   </div>
 </template>
@@ -173,6 +176,10 @@ export default defineComponent({
     item: {
       type: Object,
       required: true,
+    },
+    svgs: {
+      type: Object,
+      required: false,
     },
   },
   setup(props) {
