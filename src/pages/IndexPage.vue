@@ -1076,30 +1076,32 @@ function addLibItem(items, e) {
     });
     appState.value.selectedTargets = elements;
     appState.value.activeItemIndex = null;
+    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+    setTimeout(() => {
+      movable.value.request(
+        "draggable",
+        {
+          x:
+            (e.clientX -
+              viewportMargins.left -
+              appState.value.viewportTransform.x) *
+              scalPercentage -
+            e.rect.width * scalPercentage,
+          y:
+            (e.clientY -
+              viewportMargins.top -
+              appState.value.viewportTransform.y) *
+              scalPercentage -
+            e.rect.height * scalPercentage,
+        },
+        true
+      );
+      appState.value.selectedTargets = [];
+      setTimeout(() => {
+        appState.value.selectedTargets = elements;
+      }, 1);
+    }, 10);
   }, 10);
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
-  setTimeout(() => {
-    movable.value.request(
-      "draggable",
-      {
-        x:
-          (e.clientX -
-            viewportMargins.left -
-            appState.value.viewportTransform.x) *
-            scalPercentage -
-          e.rect.width * scalPercentage,
-        y:
-          (e.clientY -
-            viewportMargins.top -
-            appState.value.viewportTransform.y) *
-            scalPercentage -
-          e.rect.height * scalPercentage,
-      },
-      true
-    );
-    refreshSelecto();
-  }, 30);
-
   /* setTimeout(() => {
     movable.value.request(
       "resizable",

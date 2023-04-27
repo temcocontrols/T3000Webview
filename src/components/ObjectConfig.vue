@@ -81,12 +81,7 @@
             <label class="ml-2" for="bg-color-input">Background Color</label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
-            <template
-              v-if="
-                !['Dial', 'Gauge'].includes(item.type) &&
-                !['bgColor', 'title', 'titleColor'].includes(key)
-              "
-            >
+            <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
               <div
                 class="flex flex-nowrap justify-center items-center mb-2"
                 v-if="setting.type === 'justifyContent'"
