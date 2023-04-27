@@ -128,8 +128,8 @@
       </div>
 
       <div
-        v-else-if="item.type.startsWith('Custom-')"
-        v-html="svgs.find((i) => i.name === item.type)?.svg"
+        v-else-if="item.type.startsWith('SVG-')"
+        v-html="svgs.find((i) => i.name === item.type)?.data"
       ></div>
     </div>
   </div>

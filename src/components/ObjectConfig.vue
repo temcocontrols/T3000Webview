@@ -432,7 +432,7 @@ export default defineComponent({
     });
 
     const settings = computed(() => {
-      return tools.find((i) => i.name === props.object.type).settings;
+      return tools.find((i) => i.name === props.object.type)?.settings || {};
     });
     const t3EntryDisplayFieldOptions = computed(() => {
       const options = [

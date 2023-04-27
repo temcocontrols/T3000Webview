@@ -21,7 +21,7 @@
         clickable
         v-ripple
         active-class="active-tool"
-        :active="selectedTool.name.startsWith('Custom-')"
+        :active="selectedTool.type !== 'default'"
       >
         <q-tooltip anchor="center right" self="center left">
           User objects library
@@ -53,6 +53,7 @@
                     v-for="group in objectLib"
                     :key="group.name"
                     v-close-popup
+                    @click="selectTool(group.name, 'libItem', group.items)"
                   >
                     <div
                       class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
@@ -84,14 +85,14 @@
                   label="Add custom SVG"
                 />
                 <div
-                  v-if="customTools.length > 0"
+                  v-if="customSvgs.length > 0"
                   class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
                 >
                   <div
-                    v-for="tool in customTools"
+                    v-for="tool in customSvgs"
                     :key="tool.name"
                     v-close-popup
-                    @click="selectTool(tool.name, 'custom', tool.svg)"
+                    @click="selectTool(tool.name, 'svg', tool.data)"
                   >
                     <div
                       class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
@@ -99,7 +100,10 @@
                       <div
                         class="flex flex-col items-center justify-center h-full"
                       >
-                        <img :src="getSvgImageUrl(tool.svg)" alt="Custom Svg" />
+                        <img
+                          :src="getSvgImageUrl(tool.data)"
+                          alt="Custom Svg"
+                        />
                       </div>
                     </div>
                   </div>
@@ -129,7 +133,7 @@ export default defineComponent({
       type: Object,
       required: true,
     },
-    customTools: {
+    customSvgs: {
       type: Array,
       required: false,
       default() {
@@ -147,8 +151,8 @@ export default defineComponent({
   emits: ["selectTool", "addCustomTool"],
   setup(_props, { emit }) {
     const libTab = ref("lib");
-    function selectTool(name, type = "default", svg = null) {
-      emit("selectTool", name, type, svg);
+    function selectTool(name, type = "default", data = null) {
+      emit("selectTool", name, type, data);
     }
 
     function getSvgImageUrl(svg) {

@@ -4,7 +4,7 @@
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
-        :custom-tools="appState.customTools"
+        :custom-svgs="appState.customSvgs"
         :object-lib="appState.objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
@@ -350,7 +350,7 @@
               </q-menu>
               <object-type
                 :item="item"
-                :svgs="appState.customTools"
+                :svgs="appState.customSvgs"
                 :key="item.id + item.type"
                 :class="{
                   link: locked && item.t3Entry,
@@ -552,7 +552,7 @@ const movable = ref(null);
 const selecto = ref(null);
 const viewport = ref(null);
 const targets = ref([]);
-const selectedTool = ref({ name: "Pointer", type: "default", svg: null });
+const selectedTool = ref({ name: "Pointer", type: "default", data: null });
 const linkT3EntryDialog = ref({ active: false, data: null });
 const T3000_Data = ref({ panelsData: [], panelsList: [], loadingPanel: null });
 const uploadObjectDialog = ref({
@@ -598,8 +598,9 @@ const emptyProject = {
   elementGuidelines: [],
   itemsCount: 0,
   groupCount: 0,
-  customObjectsCount: 0,
-  customTools: [],
+  customSvgsCount: 0,
+  objLibItemsCount: 0,
+  customSvgs: [],
   objLib: [],
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
@@ -1061,6 +1062,57 @@ const viewportMargins = {
   left: 0,
 };
 
+function addLibItem(items, e) {
+  const elements = [];
+  const addedItems = [];
+  appState.value.groupCount++;
+  items.forEach((item) => {
+    addedItems.push(cloneObject(item, appState.value.groupCount));
+  });
+  setTimeout(() => {
+    addedItems.forEach((addedItem) => {
+      const el = document.querySelector(`#movable-item-${addedItem.id}`);
+      elements.push(el);
+    });
+    appState.value.selectedTargets = elements;
+    appState.value.activeItemIndex = null;
+  }, 10);
+  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+  setTimeout(() => {
+    movable.value.request(
+      "draggable",
+      {
+        x:
+          (e.clientX -
+            viewportMargins.left -
+            appState.value.viewportTransform.x) *
+            scalPercentage -
+          e.rect.width * scalPercentage,
+        y:
+          (e.clientY -
+            viewportMargins.top -
+            appState.value.viewportTransform.y) *
+            scalPercentage -
+          e.rect.height * scalPercentage,
+      },
+      true
+    );
+    refreshSelecto();
+  }, 30);
+
+  /* setTimeout(() => {
+    movable.value.request(
+      "resizable",
+      {
+        offsetWidth: e.rect.width * scalPercentage,
+        offsetHeight: e.rect.height * scalPercentage,
+      },
+      true
+    );
+    refreshSelecto();
+  }, 60); */
+}
+
 function onSelectoDragEnd(e) {
   if (
     selectedTool.value.name === "Pointer" ||
@@ -1068,6 +1120,11 @@ function onSelectoDragEnd(e) {
     e.rect.height < 20
   )
     return;
+
+  if (selectedTool.value.type === "libItem") {
+    addLibItem(selectedTool.value.data, e);
+    return;
+  }
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   const toolSettings =
@@ -1116,10 +1173,10 @@ function onSelectoDragEnd(e) {
   }, 100);
 }
 
-function selectTool(name, type = "default", svg = null) {
+function selectTool(name, type = "default", data = null) {
   selectedTool.value.name = name;
   selectedTool.value.type = type;
-  selectedTool.value.svg = svg;
+  selectedTool.value.data = data;
 }
 
 function refreshSelecto() {
@@ -1341,6 +1398,34 @@ keycon.keydown((e) => {
     movable.value.request("draggable", { deltaX: 5, deltaY: 0 }, true);
   } else if (e.key === "delete") {
     deleteSelected();
+  } else if (e.key === "end") {
+    document.addEventListener("mousemove", function (event) {
+      var mouseX = event.clientX;
+      var mouseY = event.clientY;
+      const rect = movable.value.getRect();
+      console.log("Mouse position: " + mouseX + ", " + mouseY, rect);
+      const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+      movable.value.request(
+        "draggable",
+        {
+          x:
+            (mouseX -
+              viewportMargins.left -
+              appState.value.viewportTransform.x) *
+              scalPercentage -
+            rect.width,
+          y:
+            (mouseY -
+              viewportMargins.top -
+              appState.value.viewportTransform.y) *
+              scalPercentage -
+            rect.height,
+        },
+        true
+      );
+    });
+    console.log("end", e);
   }
   if (["up", "down", "left", "right"].includes(e.key)) {
     refreshSelecto();
@@ -1458,13 +1543,13 @@ async function customObjectFileAdded(file) {
 }
 
 function saveCustomObject() {
-  appState.value.customObjectsCount++;
+  appState.value.customSvgsCount++;
   uploadObjectDialog.value.active = false;
   uploadObjectDialog.value.uploadBtnDisabled = true;
-  appState.value.customTools.push({
-    name: "Custom-" + appState.value.customObjectsCount,
-    label: "Custom Object",
-    svg: cloneDeep(uploadObjectDialog.value.svg),
+  appState.value.customSvgs.push({
+    name: "SVG-" + appState.value.customSvgsCount,
+    label: "Custom SVG",
+    data: cloneDeep(uploadObjectDialog.value.svg),
   });
   uploadObjectDialog.value.svg = null;
 }
@@ -1591,37 +1676,35 @@ const zoom = computed({
 function duplicateSelected() {
   if (appState.value.selectedTargets.length < 1) return;
   addActionToHistory("Duplicate the selected objects");
-  if (appState.value.selectedTargets.length > 0) {
-    const elements = [];
-    const dupGroups = {};
-    appState.value.selectedTargets.forEach((el) => {
-      const item = appState.value.items.find(
-        (i) => `movable-item-${i.id}` === el.id
-      );
-      if (item) {
-        let group = undefined;
-        if (item.group) {
-          if (!dupGroups[`${item.group}`]) {
-            appState.value.groupCount++;
-            dupGroups[`${item.group}`] = appState.value.groupCount;
-          }
-
-          group = dupGroups[`${item.group}`];
+  const elements = [];
+  const dupGroups = {};
+  appState.value.selectedTargets.forEach((el) => {
+    const item = appState.value.items.find(
+      (i) => `movable-item-${i.id}` === el.id
+    );
+    if (item) {
+      let group = undefined;
+      if (item.group) {
+        if (!dupGroups[`${item.group}`]) {
+          appState.value.groupCount++;
+          dupGroups[`${item.group}`] = appState.value.groupCount;
         }
-        const dupItem = cloneObject(item, group);
-        setTimeout(() => {
-          const dupElement = document.querySelector(
-            `#movable-item-${dupItem.id}`
-          );
-          elements.push(dupElement);
-        }, 10);
+
+        group = dupGroups[`${item.group}`];
       }
-    });
-    setTimeout(() => {
-      appState.value.selectedTargets = elements;
-      appState.value.activeItemIndex = null;
-    }, 20);
-  }
+      const dupItem = cloneObject(item, group);
+      setTimeout(() => {
+        const dupElement = document.querySelector(
+          `#movable-item-${dupItem.id}`
+        );
+        elements.push(dupElement);
+      }, 10);
+    }
+  });
+  setTimeout(() => {
+    appState.value.selectedTargets = elements;
+    appState.value.activeItemIndex = null;
+  }, 20);
 }
 
 function groupSelected() {
@@ -1832,7 +1915,11 @@ function addToLibrary() {
       (ii) => ii.id === `movable-item-${i.id}`
     )
   );
-  appState.value.objLib.push({ name: "", items: cloneDeep(selectedItems) });
+  appState.value.objLibItemsCount++;
+  appState.value.objLib.push({
+    name: "libItem-" + appState.value.objLibItemsCount,
+    items: cloneDeep(selectedItems),
+  });
 }
 </script>
 <style>
