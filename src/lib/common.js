@@ -5,6 +5,7 @@ export const T3_Types = {
   SCHEDULE: 4,
   HOLIDAY: 5,
   PROGRAM: 6,
+  MON: 9,
 };
 
 const gaugeDefautColors = [
