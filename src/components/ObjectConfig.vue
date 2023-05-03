@@ -11,7 +11,7 @@
           <div class="grid gap-4 grid-cols-2 mb-4">
             <q-input
               input-style="width: 100%"
-              @update:model-value="refreshSelecto"
+              @update:model-value="refreshMoveable"
               label="X"
               v-model.number="item.translate[0]"
               dark
@@ -20,7 +20,7 @@
             />
             <q-input
               input-style="width: 100%"
-              @update:model-value="refreshSelecto"
+              @update:model-value="refreshMoveable"
               label="Y"
               v-model.number="item.translate[1]"
               dark
@@ -30,7 +30,7 @@
 
             <q-input
               input-style="width: 100%"
-              @update:model-value="refreshSelecto"
+              @update:model-value="refreshMoveable"
               label="Width"
               v-model.number="item.width"
               dark
@@ -39,7 +39,7 @@
             />
             <q-input
               input-style="width: 100%"
-              @update:model-value="refreshSelecto"
+              @update:model-value="refreshMoveable"
               label="Height"
               v-model.number="item.height"
               dark
@@ -48,7 +48,7 @@
             />
             <q-input
               input-style="width: 100%"
-              @update:model-value="refreshSelecto"
+              @update:model-value="refreshMoveable"
               label="Rotate"
               v-model.number="item.rotate"
               dark
@@ -402,7 +402,7 @@ export default defineComponent({
     },
   },
   emits: [
-    "refreshSelecto",
+    "refreshMoveable",
     "T3UpdateEntryField",
     "linkT3Entry",
     "gaugeSettings",
@@ -452,8 +452,8 @@ export default defineComponent({
       return ranges.find((i) => i.id === id);
     }
 
-    function refreshSelecto() {
-      emit("refreshSelecto");
+    function refreshMoveable() {
+      emit("refreshMoveable");
     }
     function T3UpdateEntryField(key, obj) {
       emit("T3UpdateEntryField", key, obj);
@@ -471,7 +471,7 @@ export default defineComponent({
     });
     return {
       item,
-      refreshSelecto,
+      refreshMoveable,
       T3UpdateEntryField,
       linkT3Entry,
       t3EntryDisplayFieldOptions,

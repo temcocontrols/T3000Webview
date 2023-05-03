@@ -1,6 +1,6 @@
 <template>
   <div
-    class="movable-item"
+    class="moveable-item"
     :class="{
       [item.type]: item.type,
       'with-bg': item.settings.bgColor,
@@ -260,7 +260,7 @@ export default defineComponent({
   background-color: rgb(255 255 255 / 40%);
 }
 
-.movable-item {
+.moveable-item {
   height: 100%;
   border-radius: 5px;
   background-color: v-bind("item.settings.bgColor");
@@ -272,45 +272,45 @@ export default defineComponent({
   width: 100%;
 }
 
-.movable-item.Gauge .object-container,
-.movable-item.Dial .object-container {
+.moveable-item.Gauge .object-container,
+.moveable-item.Dial .object-container {
   height: 100%;
 }
 
-.movable-item.Gauge.with-title .object-container,
-.movable-item.Dial.with-title .object-container {
+.moveable-item.Gauge.with-title .object-container,
+.moveable-item.Dial.with-title .object-container {
   height: calc(100% - 41px);
 }
 
-.movable-item.Value.with-title,
-.movable-item.Icon.with-title {
+.moveable-item.Value.with-title,
+.moveable-item.Icon.with-title {
   display: flex;
 }
 
-.movable-item.Icon.with-title {
+.moveable-item.Icon.with-title {
   display: flex;
   flex-direction: row-reverse;
 }
 
-.movable-item.Value .object-container,
-.movable-item.Icon.with-title .object-container {
+.moveable-item.Value .object-container,
+.moveable-item.Icon.with-title .object-container {
   height: 100%;
   display: flex;
   align-items: center;
 }
 
-.movable-item.Value .object-container {
+.moveable-item.Value .object-container {
   flex-grow: 1;
   justify-content: v-bind("item.settings.justifyContent");
   padding: 10px;
 }
 
-.movable-item.Icon.with-title .object-container {
+.moveable-item.Icon.with-title .object-container {
   width: auto;
 }
 
-.movable-item.Value.with-title .object-title,
-.movable-item.Icon.with-title .object-title {
+.moveable-item.Value.with-title .object-title,
+.moveable-item.Icon.with-title .object-title {
   min-width: auto;
   padding: 10px;
   line-height: 1.5em;
@@ -320,20 +320,20 @@ export default defineComponent({
   font-weight: bold;
 }
 
-.movable-item.Icon.with-title .object-title {
+.moveable-item.Icon.with-title .object-title {
   flex-grow: 1;
   justify-content: v-bind("item.settings.justifyContent");
 }
 
-.movable-item.Value.with-title .object-title .mode-icon,
-.movable-item.Icon.with-title .object-title .mode-icon {
+.moveable-item.Value.with-title .object-title .mode-icon,
+.moveable-item.Icon.with-title .object-title .mode-icon {
   display: none;
 }
 
-.movable-item.Icon.with-bg .object-title {
+.moveable-item.Icon.with-bg .object-title {
   background-color: transparent;
 }
-.movable-item.link {
+.moveable-item.link {
   cursor: pointer;
 }
 </style>
