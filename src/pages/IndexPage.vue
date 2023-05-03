@@ -469,7 +469,7 @@
       </q-card-section>
       <q-card-section class="q-pt-none">
         <file-upload
-          :types="['image/svg+xml']"
+          :types="['image/*']"
           @uploaded="handleFileUploaded"
           @file-added="customObjectFileAdded"
           @file-removed="uploadObjectDialog.uploadBtnDisabled = true"
@@ -559,7 +559,7 @@ const uploadObjectDialog = ref({
   active: false,
   uploadBtnDisabled: true,
   uploadBtnLoading: false,
-  svg: null,
+  file: null,
 });
 
 const importJsonDialog = ref({
@@ -1540,20 +1540,28 @@ function handleFileUploaded(data) {
 
 async function customObjectFileAdded(file) {
   uploadObjectDialog.value.uploadBtnDisabled = false;
-  const blob = await file.data.text();
-  uploadObjectDialog.value.svg = blob;
+  uploadObjectDialog.value.file = file;
 }
 
-function saveCustomObject() {
+async function saveCustomObject() {
   appState.value.customSvgsCount++;
   uploadObjectDialog.value.active = false;
   uploadObjectDialog.value.uploadBtnDisabled = true;
-  appState.value.customSvgs.push({
-    name: "SVG-" + appState.value.customSvgsCount,
-    label: "Custom SVG",
-    data: cloneDeep(uploadObjectDialog.value.svg),
-  });
-  uploadObjectDialog.value.svg = null;
+  if (uploadObjectDialog.value.file.type === "image/svg+xml") {
+    appState.value.customSvgs.push({
+      name: "SVG-" + appState.value.customSvgsCount,
+      label: "Custom SVG",
+      data: cloneDeep(await uploadObjectDialog.value.file.data.text()),
+    });
+  } else {
+    window.chrome?.webview?.postMessage({
+      action: 10, // SAVE_FILE
+      filename: uploadObjectDialog.value.file.name,
+      fileLength: uploadObjectDialog.value.file.size,
+      fileData: await uploadObjectDialog.value.file.data.arrayBuffer(),
+    });
+  }
+  uploadObjectDialog.value.file = null;
 }
 
 const gaugeSettingsDialog = ref({
