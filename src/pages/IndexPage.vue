@@ -4,7 +4,7 @@
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
-        :custom-svgs="appState.customSvgs"
+        :images="appState.images"
         :object-lib="appState.objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
@@ -424,7 +424,6 @@
               </q-menu>
               <object-type
                 :item="item"
-                :svgs="appState.customSvgs"
                 :key="item.id + item.type"
                 :class="{
                   link: locked && item.t3Entry,
@@ -539,7 +538,7 @@
   <q-dialog v-model="uploadObjectDialog.active">
     <q-card style="min-width: 450px">
       <q-card-section>
-        <div class="text-h6">Upload custom SVG</div>
+        <div class="text-h6">Upload image</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
         <file-upload
@@ -591,7 +590,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  toRaw,
+  triggerRef,
+  transformVNodeArgs,
+} from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
@@ -640,7 +647,7 @@ const importJsonDialog = ref({
   addedCount: 0,
   active: false,
   uploadBtnLoading: false,
-  svg: null,
+  data: null,
 });
 const savedNotify = ref(false);
 const contextMenuShow = ref(false);
@@ -672,9 +679,9 @@ const emptyProject = {
   elementGuidelines: [],
   itemsCount: 0,
   groupCount: 0,
-  customSvgsCount: 0,
+  imagesCount: 0,
   objLibItemsCount: 0,
-  customSvgs: [],
+  images: [],
   objLib: [],
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
@@ -872,6 +879,13 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
           ],
         });
       }
+    } else if (arg.data.action === "SAVE_FILE_RES") {
+      appState.value.imagesCount++;
+      appState.value.images.push({
+        id: "IMG-" + appState.value.imagesCount,
+        name: arg.data.data.name,
+        path: arg.data.data.path,
+      });
     }
   }
 });
@@ -1215,7 +1229,8 @@ function onSelectoDragEnd(e) {
     acc[key] = toolSettings[key].value;
     return acc;
   }, {});
-  const item = addObject({
+
+  const tempItem = {
     title: null,
     active: false,
     type: selectedTool.value.name,
@@ -1235,7 +1250,11 @@ function onSelectoDragEnd(e) {
     settings: objectSettings,
     zindex: 1,
     t3Entry: null,
-  });
+  };
+  if (selectedTool.value.type === "Image") {
+    tempItem.image = selectedTool.value.data;
+  }
+  const item = addObject(tempItem);
   if (["Value", "Icon"].includes(selectedTool.value.name)) {
     linkT3EntryDialog.value.active = true;
   }
@@ -1624,23 +1643,17 @@ async function customObjectFileAdded(file) {
 }
 
 async function saveCustomObject() {
-  appState.value.customSvgsCount++;
+  appState.value.imagesCount++;
   uploadObjectDialog.value.active = false;
   uploadObjectDialog.value.uploadBtnDisabled = true;
-  if (uploadObjectDialog.value.file.type === "image/svg+xml") {
-    appState.value.customSvgs.push({
-      name: "SVG-" + appState.value.customSvgsCount,
-      label: "Custom SVG",
-      data: cloneDeep(await uploadObjectDialog.value.file.data.text()),
-    });
-  } else {
-    window.chrome?.webview?.postMessage({
-      action: 10, // SAVE_FILE
-      filename: uploadObjectDialog.value.file.name,
-      fileLength: uploadObjectDialog.value.file.size,
-      fileData: await uploadObjectDialog.value.file.data.arrayBuffer(),
-    });
-  }
+
+  window.chrome?.webview?.postMessage({
+    action: 9, // SAVE_FILE
+    filename: uploadObjectDialog.value.file.name,
+    fileLength: uploadObjectDialog.value.file.size,
+    fileData: await uploadObjectDialog.value.file.data.arrayBuffer(),
+  });
+
   uploadObjectDialog.value.file = null;
 }
 
@@ -1687,12 +1700,12 @@ function getLinkedEntries() {
 
 async function importJsonFileAdded(file) {
   const blob = await file.data.text();
-  importJsonDialog.value.json = blob;
+  importJsonDialog.value.data = blob;
   executeImportFromJson();
 }
 
 function executeImportFromJson() {
-  const importedState = JSON.parse(importJsonDialog.value.json);
+  const importedState = JSON.parse(importJsonDialog.value.data);
   if (!importedState.items?.[0].type) {
     $q.notify({
       message: "Error, Invalid json file",
@@ -1725,7 +1738,7 @@ function executeImportFromJson() {
         redoHistory.value = [];
         importJsonDialog.value.active = false;
         appState.value = importedState;
-        importJsonDialog.value.json = null;
+        importJsonDialog.value.data = null;
         setTimeout(() => {
           refreshMoveableGuides();
         }, 100);
@@ -1740,7 +1753,7 @@ function executeImportFromJson() {
   redoHistory.value = [];
   importJsonDialog.value.active = false;
   appState.value = importedState;
-  importJsonDialog.value.json = null;
+  importJsonDialog.value.data = null;
   setTimeout(() => {
     refreshMoveableGuides();
   }, 100);

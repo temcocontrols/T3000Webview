@@ -127,10 +127,11 @@
         </div>
       </div>
 
-      <div
-        v-else-if="item.type.startsWith('SVG-')"
-        v-html="svgs.find((i) => i.name === item.type)?.data"
-      ></div>
+      <img
+        class="img-object"
+        v-else-if="item.type.startsWith('IMG-')"
+        :src="item.image.path"
+      />
     </div>
   </div>
 </template>
@@ -176,10 +177,6 @@ export default defineComponent({
     item: {
       type: Object,
       required: true,
-    },
-    svgs: {
-      type: Object,
-      required: false,
     },
   },
   setup(props) {

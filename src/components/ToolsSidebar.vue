@@ -38,7 +38,7 @@
               narrow-indicator
             >
               <q-tab name="lib" icon="library_books" label="Library" />
-              <q-tab name="svgs" icon="collections" label="Custom SVGs" />
+              <q-tab name="imgs" icon="collections" label="Custom SVGs" />
             </q-tabs>
 
             <q-separator />
@@ -75,24 +75,24 @@
                 </div>
               </q-tab-panel>
 
-              <q-tab-panel name="svgs">
+              <q-tab-panel name="imgs">
                 <q-btn
                   dense
                   @click="$emit('addCustomTool')"
                   icon="library_add"
                   color="white"
                   text-color="black"
-                  label="Add custom SVG"
+                  label="Add Image"
                 />
                 <div
-                  v-if="customSvgs.length > 0"
+                  v-if="images.length > 0"
                   class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
                 >
                   <div
-                    v-for="tool in customSvgs"
+                    v-for="tool in images"
                     :key="tool.name"
                     v-close-popup
-                    @click="selectTool(tool.name, 'svg', tool.data)"
+                    @click="selectTool(tool.id, 'Image', tool.data)"
                   >
                     <div
                       class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
@@ -100,16 +100,13 @@
                       <div
                         class="flex flex-col items-center justify-center h-full"
                       >
-                        <img
-                          :src="getSvgImageUrl(tool.data)"
-                          alt="Custom Svg"
-                        />
+                        <img :src="tool.data.path" />
                       </div>
                     </div>
                   </div>
                 </div>
                 <div class="flex p-4 items-center justify-center" v-else>
-                  No custom SVGs yet.
+                  No images yet.
                 </div>
               </q-tab-panel>
             </q-tab-panels>
@@ -133,7 +130,7 @@ export default defineComponent({
       type: Object,
       required: true,
     },
-    customSvgs: {
+    images: {
       type: Array,
       required: false,
       default() {
@@ -155,16 +152,10 @@ export default defineComponent({
       emit("selectTool", name, type, data);
     }
 
-    function getSvgImageUrl(svg) {
-      const blob = new Blob([svg], { type: "image/svg+xml" });
-      const url = URL.createObjectURL(blob);
-      return url;
-    }
     return {
       tools,
       selectTool,
       libTab,
-      getSvgImageUrl,
     };
   },
 });
@@ -175,11 +166,6 @@ export default defineComponent({
   background-color: #2a2a2a;
   padding: 10px 0;
   align-self: stretch;
-  overflow-y: hidden;
-  max-height: 100vh;
-}
-
-.tools {
   margin-top: 34px;
   position: absolute;
   height: 100%;
