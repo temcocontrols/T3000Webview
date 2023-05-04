@@ -38,7 +38,7 @@
               narrow-indicator
             >
               <q-tab name="lib" icon="library_books" label="Library" />
-              <q-tab name="imgs" icon="collections" label="Custom SVGs" />
+              <q-tab name="imgs" icon="collections" label="Images" />
             </q-tabs>
 
             <q-separator />
