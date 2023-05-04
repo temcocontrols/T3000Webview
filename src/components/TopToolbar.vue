@@ -81,6 +81,45 @@
       label="Edit"
     >
       <q-list>
+        <q-item dense clickable v-close-popup @click="menuActionEmit('copy')">
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="content_copy"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Copy</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + C</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-item
+          dense
+          clickable
+          v-close-popup
+          @click="menuActionEmit('paste')"
+          :disable="disablePaste"
+        >
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="content_paste"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Paste</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + V</q-chip>
+          </q-item-section>
+        </q-item>
+        <q-separator inset spaced />
         <q-item
           dense
           clickable
@@ -398,6 +437,10 @@ export default defineComponent({
       required: false,
     },
     disableRedo: {
+      type: Boolean,
+      required: false,
+    },
+    disablePaste: {
       type: Boolean,
       required: false,
     },

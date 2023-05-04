@@ -15,6 +15,7 @@
           :selected-count="appState.selectedTargets.length"
           :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1"
+          :disable-paste="locked || !clipboardFull"
           :zoom="zoom"
         />
         <div
@@ -599,7 +600,7 @@ import {
   triggerRef,
   transformVNodeArgs,
 } from "vue";
-import { useQuasar, useMeta } from "quasar";
+import { useQuasar, useMeta, copyToClipboard } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
@@ -662,6 +663,8 @@ const loadingPanelsProgress = computed(() => {
       100
   );
 });
+
+const clipboardFull = ref(false);
 
 // Remove when deploy
 if (process.env.DEV) {
@@ -899,7 +902,9 @@ function refreshMoveableGuides() {
 }
 
 function addActionToHistory(title) {
-  console.log(title);
+  if (process.env.DEV) {
+    console.log(title);
+  }
   setTimeout(() => {
     save();
   }, 200);
@@ -1187,10 +1192,8 @@ function addLibItem(items, e) {
         },
         true
       );
-      appState.value.selectedTargets = [];
       setTimeout(() => {
-        appState.value.selectedTargets = elements;
-        selecto.value.setSelectedTargets(elements);
+        refreshMoveable();
       }, 1);
     }, 10);
   }, 10);
@@ -1566,6 +1569,16 @@ keycon.keydown(["ctrl", "shift", "g"], (e) => {
   ungroupSelected();
 });
 
+keycon.keydown(["ctrl", "c"], (e) => {
+  e.inputEvent.preventDefault();
+  saveSelectedToClipboard();
+});
+
+keycon.keydown(["ctrl", "v"], (e) => {
+  e.inputEvent.preventDefault();
+  pasteFromClipboard();
+});
+
 function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
@@ -1921,6 +1934,12 @@ function handleMenuAction(action, val) {
     case "zoomSet":
       zoomAction("set", val);
       break;
+    case "copy":
+      saveSelectedToClipboard();
+      break;
+    case "paste":
+      pasteFromClipboard();
+      break;
     default:
       break;
   }
@@ -2059,6 +2078,44 @@ function rotate90Selected(minues = false) {
     true
   );
   refreshMoveable();
+}
+
+function saveSelectedToClipboard() {
+  if (locked.value) return;
+  if (appState.value.selectedTargets.length === 0) return;
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  localStorage.setItem("clipboard", JSON.stringify(selectedItems));
+  clipboardFull.value = true;
+}
+
+function pasteFromClipboard() {
+  if (locked.value) return;
+  let items = [];
+  const clipboard = localStorage.getItem("clipboard");
+  if (clipboard) {
+    items = JSON.parse(clipboard);
+  }
+  if (!items) return;
+  addActionToHistory("Paste");
+  const elements = [];
+  const addedItems = [];
+  items.forEach((item) => {
+    addedItems.push(cloneObject(item));
+  });
+  setTimeout(() => {
+    addedItems.forEach((addedItem) => {
+      const el = document.querySelector(`#moveable-item-${addedItem.id}`);
+      elements.push(el);
+    });
+    appState.value.selectedTargets = elements;
+    selecto.value.setSelectedTargets(elements);
+    appState.value.activeItemIndex = null;
+  }, 10);
 }
 </script>
 <style>
