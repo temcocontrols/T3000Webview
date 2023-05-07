@@ -52,7 +52,7 @@
             </q-tooltip>
           </q-btn>
         </div>
-        <div class="viewport">
+        <div class="viewport" tabindex="0">
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
@@ -1502,34 +1502,6 @@ keycon.keydown((e) => {
     moveable.value.request("draggable", { deltaX: 5, deltaY: 0 }, true);
   } else if (e.key === "delete") {
     deleteSelected();
-  } else if (e.key === "end") {
-    document.addEventListener("mousemove", function (event) {
-      var mouseX = event.clientX;
-      var mouseY = event.clientY;
-      const rect = moveable.value.getRect();
-      console.log("Mouse position: " + mouseX + ", " + mouseY, rect);
-      const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-      moveable.value.request(
-        "draggable",
-        {
-          x:
-            (mouseX -
-              viewportMargins.left -
-              appState.value.viewportTransform.x) *
-              scalPercentage -
-            rect.width,
-          y:
-            (mouseY -
-              viewportMargins.top -
-              appState.value.viewportTransform.y) *
-              scalPercentage -
-            rect.height,
-        },
-        true
-      );
-    });
-    console.log("end", e);
   }
   if (["up", "down", "left", "right"].includes(e.key)) {
     refreshMoveable();
@@ -1570,11 +1542,13 @@ keycon.keydown(["ctrl", "shift", "g"], (e) => {
 });
 
 keycon.keydown(["ctrl", "c"], (e) => {
+  if (!document.activeElement.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   saveSelectedToClipboard();
 });
 
 keycon.keydown(["ctrl", "v"], (e) => {
+  if (!document.activeElement.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   pasteFromClipboard();
 });
