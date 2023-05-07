@@ -1621,6 +1621,17 @@ async function customObjectFileAdded(file) {
   uploadObjectDialog.value.file = file;
 }
 
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    var fr = new FileReader();
+    fr.onload = () => {
+      resolve(fr.result);
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
 async function saveCustomObject() {
   appState.value.imagesCount++;
   uploadObjectDialog.value.active = false;
@@ -1630,7 +1641,7 @@ async function saveCustomObject() {
     action: 9, // SAVE_IMAGE
     filename: uploadObjectDialog.value.file.name,
     fileLength: uploadObjectDialog.value.file.size,
-    fileData: await uploadObjectDialog.value.file.data.text(),
+    fileData: await readFile(uploadObjectDialog.value.file.data),
   });
 
   uploadObjectDialog.value.file = null;
