@@ -591,16 +591,8 @@
 </template>
 
 <script setup>
-import {
-  ref,
-  computed,
-  onMounted,
-  onUnmounted,
-  toRaw,
-  triggerRef,
-  transformVNodeArgs,
-} from "vue";
-import { useQuasar, useMeta, copyToClipboard } from "quasar";
+import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
+import { useQuasar, useMeta } from "quasar";
 import { VueMoveable } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
@@ -614,7 +606,7 @@ import ToolsSidebar from "../components/ToolsSidebar.vue";
 import ObjectConfig from "../components/ObjectConfig.vue";
 import { tools, T3_Types, ranges } from "../lib/common";
 
-// Remove when deploy
+// Dev mode only
 const demoDeviceData = () => {
   if (process.env.DEV) {
     return import("../lib/demo-data").then((exps) => {
@@ -666,7 +658,7 @@ const loadingPanelsProgress = computed(() => {
 
 const clipboardFull = ref(false);
 
-// Remove when deploy
+// Dev mode only
 if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data;
@@ -882,7 +874,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
           ],
         });
       }
-    } else if (arg.data.action === "SAVE_FILE_RES") {
+    } else if (arg.data.action === "SAVE_IMAGE_RES") {
       appState.value.imagesCount++;
       appState.value.images.push({
         id: "IMG-" + appState.value.imagesCount,
@@ -1635,10 +1627,10 @@ async function saveCustomObject() {
   uploadObjectDialog.value.uploadBtnDisabled = true;
 
   window.chrome?.webview?.postMessage({
-    action: 9, // SAVE_FILE
+    action: 9, // SAVE_IMAGE
     filename: uploadObjectDialog.value.file.name,
     fileLength: uploadObjectDialog.value.file.size,
-    fileData: await uploadObjectDialog.value.file.data.arrayBuffer(),
+    fileData: await uploadObjectDialog.value.file.data.text(),
   });
 
   uploadObjectDialog.value.file = null;
