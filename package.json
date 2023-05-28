@@ -1,6 +1,6 @@
 {
   "name": "t3-webview-ui",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "T3 webview UI",
   "productName": "T3 webview UI",
   "author": "Alaa Rihan <alaa@temcocontrols.com>",
@@ -28,7 +28,7 @@
     "vue": "^3.0.0",
     "vue-echarts": "^6.5.2",
     "vue-router": "^4.0.0",
-    "vue3-moveable": "^0.21.1",
+    "vue3-moveable": "^0.22.9",
     "vue3-selecto": "^1.6.2"
   },
   "devDependencies": {
