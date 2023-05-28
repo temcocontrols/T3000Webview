@@ -4,8 +4,8 @@
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
-        :images="appState.images"
-        :object-lib="appState.objLib"
+        :images="library.images"
+        :object-lib="library.objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
       />
@@ -674,13 +674,18 @@ const emptyProject = {
   elementGuidelines: [],
   itemsCount: 0,
   groupCount: 0,
+  activeItemIndex: null,
+  viewportTransform: { x: 0, y: 0, scale: 1 },
+};
+const emptyLib = {
+  version: process.env.VERSION,
   imagesCount: 0,
   objLibItemsCount: 0,
   images: [],
   objLib: [],
-  activeItemIndex: null,
-  viewportTransform: { x: 0, y: 0, scale: 1 },
 };
+
+const library = ref(cloneDeep(emptyLib));
 const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]);
 const redoHistory = ref([]);
@@ -875,12 +880,13 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         });
       }
     } else if (arg.data.action === "SAVE_IMAGE_RES") {
-      appState.value.imagesCount++;
-      appState.value.images.push({
-        id: "IMG-" + appState.value.imagesCount,
+      library.value.imagesCount++;
+      library.value.images.push({
+        id: "IMG-" + library.value.imagesCount,
         name: arg.data.data.name,
         path: arg.data.data.path,
       });
+      saveLib();
     }
   }
 });
@@ -1633,7 +1639,7 @@ function readFile(file) {
 }
 
 async function saveCustomObject() {
-  appState.value.imagesCount++;
+  library.value.imagesCount++;
   uploadObjectDialog.value.active = false;
   uploadObjectDialog.value.uploadBtnDisabled = true;
 
@@ -2015,11 +2021,12 @@ function addToLibrary() {
       (ii) => ii.id === `moveable-item-${i.id}`
     )
   );
-  appState.value.objLibItemsCount++;
-  appState.value.objLib.push({
-    name: "libItem-" + appState.value.objLibItemsCount,
+  library.value.objLibItemsCount++;
+  library.value.objLib.push({
+    name: "libItem-" + library.value.objLibItemsCount,
     items: cloneDeep(selectedItems),
   });
+  saveLib();
 }
 
 function bringSelectedToFront() {
@@ -2093,6 +2100,12 @@ function pasteFromClipboard() {
     selecto.value.setSelectedTargets(elements);
     appState.value.activeItemIndex = null;
   }, 10);
+}
+
+function saveLib() {
+  window.chrome?.webview?.postMessage({
+    action: 10, // SAVE_LIBRARY_DATA
+  });
 }
 </script>
 <style>
