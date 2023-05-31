@@ -277,6 +277,13 @@
       :disable="!selectedCount || selectedCount > 1"
     >
       <q-list>
+        <q-item dense clickable v-close-popup @click="menuActionEmit('link')">
+          <q-item-section avatar>
+            <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
+          </q-item-section>
+          <q-item-section>Link</q-item-section>
+        </q-item>
+        <q-separator />
         <q-item
           dense
           clickable
