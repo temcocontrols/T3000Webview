@@ -135,6 +135,28 @@
                   dense
                   clickable
                   v-close-popup
+                  @click="saveSelectedToClipboard"
+                >
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="content_copy"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Copy</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + C</q-chip>
+                  </q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item
+                  dense
+                  clickable
+                  v-close-popup
                   @click="duplicateSelected"
                 >
                   <q-item-section avatar>
@@ -324,6 +346,28 @@
                     dense
                     clickable
                     v-close-popup
+                    @click="saveSelectedToClipboard"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="content_copy"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Copy</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-chip>Ctrl + C</q-chip>
+                    </q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
                     @click="duplicateObject(item)"
                   >
                     <q-item-section avatar>
@@ -446,7 +490,8 @@
                 :class="{
                   link: locked && item.t3Entry,
                 }"
-                @click="objectClicked(item)"
+                @object-clicked="objectClicked(item)"
+                @auto-manual-toggle="autoManualToggle(item)"
               />
             </div>
           </div>
@@ -2140,6 +2185,12 @@ function saveLib() {
   window.chrome?.webview?.postMessage({
     action: 10, // SAVE_LIBRARY_DATA
   });
+}
+
+function autoManualToggle(item) {
+  if (!locked.value) return;
+  item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
+  T3UpdateEntryField("auto_manual", item);
 }
 </script>
 <style>

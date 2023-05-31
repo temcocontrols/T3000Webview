@@ -9,31 +9,24 @@
         (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
     }"
   >
-    <div class="object-title" v-if="item.settings.title">
+    <div
+      class="object-title"
+      v-if="item.settings.title"
+      @click="$emit('objectClicked')"
+    >
       {{ item.settings.title }}
     </div>
     <div
       class="object-title"
       v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
     >
-      {{ dispalyText || item.t3Entry.id }}
-      <span
-        v-if="
-          item.t3Entry.type === 'OUTPUT' && item.t3Entry.hw_switch_status !== 1
-        "
-      >
-        -
-        {{
-          item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1
-            ? item.t3Entry.hw_switch_status
-              ? "MAN-ON"
-              : "MAN-OFF"
-            : ""
-        }}</span
-      >
+      <span @click="$emit('objectClicked')">{{
+        dispalyText || item.t3Entry.id
+      }}</span>
       <span
         v-if="item.t3Entry.auto_manual !== undefined"
         class="mode-icon ml-2 text-lg"
+        @click="$emit('autoManualToggle')"
       >
         <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
           <q-tooltip anchor="top middle" self="center middle">
@@ -47,7 +40,10 @@
         </q-icon>
       </span>
     </div>
-    <div class="flex justify-center object-container">
+    <div
+      class="flex justify-center object-container"
+      @click="$emit('objectClicked')"
+    >
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
       <duct v-else-if="item.type === 'Duct'" class="duct" />
       <cooling-coil
@@ -179,6 +175,7 @@ export default defineComponent({
       required: true,
     },
   },
+  emits: ["autoManualToggle", "objectClicked"],
   setup(props) {
     const range = computed(() => {
       if (props.item.t3Entry?.range) {
