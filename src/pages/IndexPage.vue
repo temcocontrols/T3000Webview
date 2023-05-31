@@ -1406,6 +1406,20 @@ function linkT3EntrySave() {
   appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
     toRaw(linkT3EntryDialog.value.data)
   );
+  // Change the icon based on the linked entry type
+  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+    let icon = "fa-solid fa-camera-retro";
+    if (linkT3EntryDialog.value.data.type === "GRP") {
+      icon = "fa-solid fa-camera-retro";
+    } else if (linkT3EntryDialog.value.data.type === "SCHEDULE") {
+      icon = "schedule";
+    } else if (linkT3EntryDialog.value.data.type === "PROGRAM") {
+      icon = "fa-solid fa-laptop-code";
+    } else if (linkT3EntryDialog.value.data.type === "HOLIDAY") {
+      icon = "calendar_month";
+    }
+    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+  }
   refreshObjectActiveValue(
     appState.value.items[appState.value.activeItemIndex]
   );

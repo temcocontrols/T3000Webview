@@ -304,7 +304,7 @@ export const tools = [
         id: 4,
       },
       icon: {
-        value: "visibility",
+        value: "fa-solid fa-camera-retro",
         type: "icon",
         label: "Icon",
         id: 5,
@@ -325,7 +325,7 @@ export const icons = [
   },
   {
     value: "image",
-    label: "Graphic",
+    label: "Image",
   },
   {
     value: "schedule",
@@ -372,8 +372,16 @@ export const icons = [
     label: "Visibility",
   },
   {
-    value: "visibility_off",
-    label: "Visibility off",
+    value: "fa-solid fa-camera-retro",
+    label: "Camera Retro",
+  },
+  {
+    value: "fa-solid fa-laptop-code",
+    label: "Code",
+  },
+  {
+    value: "calendar_month",
+    label: "Calendar",
   },
 ];
 
