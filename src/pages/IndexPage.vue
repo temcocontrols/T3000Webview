@@ -1952,7 +1952,7 @@ function handleMenuAction(action, val) {
       saveSelectedToClipboard();
       break;
     case "paste":
-      linkT3EntryDialogAction();
+      pasteFromClipboard();
       break;
     case "link":
       linkT3EntryDialogAction();
