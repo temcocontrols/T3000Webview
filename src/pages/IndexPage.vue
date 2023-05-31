@@ -307,6 +307,23 @@
                     dense
                     clickable
                     v-close-popup
+                    @click="linkT3EntryDialogAction"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="link"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Link</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item
+                    dense
+                    clickable
+                    v-close-popup
                     @click="duplicateObject(item)"
                   >
                     <q-item-section avatar>
