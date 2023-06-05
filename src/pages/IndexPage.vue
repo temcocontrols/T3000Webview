@@ -2184,6 +2184,7 @@ function pasteFromClipboard() {
 function saveLib() {
   window.chrome?.webview?.postMessage({
     action: 10, // SAVE_LIBRARY_DATA
+    data: toRaw(library.value),
   });
 }
 
