@@ -179,9 +179,12 @@ export default defineComponent({
   setup(props) {
     const range = computed(() => {
       if (props.item.t3Entry?.range) {
+        const rangeType = props.item.t3Entry.type.toLowerCase();
         const range = !props.item.t3Entry.digital_analog
-          ? ranges.find((i) => !i.analog && i.id === props.item.t3Entry.range)
-          : ranges.find((i) => i.analog && i.id === props.item.t3Entry.range);
+          ? ranges.digital.find((i) => i.id === props.item.t3Entry.range)
+          : ranges.analog[rangeType].find(
+              (i) => i.id === props.item.t3Entry.range
+            );
         if (range) return range;
       }
 
@@ -196,8 +199,9 @@ export default defineComponent({
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 1
       ) {
-        const range = ranges.find(
-          (i) => i.analog && i.id === props.item.t3Entry.range
+        const rangeType = props.item.t3Entry.type.toLowerCase();
+        const range = ranges.analog[rangeType].find(
+          (i) => i.id === props.item.t3Entry.range
         );
         return props.item.t3Entry.value / 1000 + " " + range.unit;
       } else if (
@@ -205,7 +209,9 @@ export default defineComponent({
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 0
       ) {
-        const range = ranges.find((i) => i.id === props.item.t3Entry.range);
+        const range = ranges.digital.find(
+          (i) => i.id === props.item.t3Entry.range
+        );
         if (props.item.t3Entry.control) {
           return range.on;
         } else {
@@ -329,5 +335,9 @@ export default defineComponent({
 }
 .moveable-item.link {
   cursor: pointer;
+}
+.img-object {
+  max-width: none;
+  width: 100%;
 }
 </style>

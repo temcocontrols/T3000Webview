@@ -92,7 +92,7 @@
                     v-for="tool in images"
                     :key="tool.name"
                     v-close-popup
-                    @click="selectTool(tool.id, 'Image', tool.data)"
+                    @click="selectTool(tool.id, 'Image', tool)"
                   >
                     <div
                       class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
@@ -100,7 +100,7 @@
                       <div
                         class="flex flex-col items-center justify-center h-full"
                       >
-                        <img :src="tool.data.path" />
+                        <img :src="tool.path" />
                       </div>
                     </div>
                   </div>
