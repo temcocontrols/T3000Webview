@@ -1547,7 +1547,7 @@ function newProject() {
   if (appState.value.items?.length > 0) {
     $q.dialog({
       dark: true,
-      title: "Do you want to clear the drawing?",
+      title: "Do you want to clear the drawing and start over?",
       message: "This will also erase your undo history",
       cancel: true,
       persistent: true,
@@ -1568,6 +1568,9 @@ function newProject() {
   undoHistory.value = [];
   redoHistory.value = [];
   refreshMoveable();
+  if (!window.chrome?.webview?.postMessage) {
+    localStorage.removeItem("appState");
+  }
 }
 
 keycon.keydown((e) => {
