@@ -666,7 +666,7 @@ import FileUpload from "../components/FileUpload.vue";
 import TopToolbar from "../components/TopToolbar.vue";
 import ToolsSidebar from "../components/ToolsSidebar.vue";
 import ObjectConfig from "../components/ObjectConfig.vue";
-import { tools, T3_Types, ranges } from "../lib/common";
+import { tools, T3_Types, getEntryRange, T3000_Data } from "../lib/common";
 
 // Dev mode only
 const demoDeviceData = () => {
@@ -690,7 +690,6 @@ const viewport = ref(null);
 const targets = ref([]);
 const selectedTool = ref({ name: "Pointer", type: "default", data: null });
 const linkT3EntryDialog = ref({ active: false, data: null });
-const T3000_Data = ref({ panelsData: [], panelsList: [], loadingPanel: null });
 const uploadObjectDialog = ref({
   active: false,
   uploadBtnDisabled: true,
@@ -723,7 +722,8 @@ const clipboardFull = ref(false);
 // Dev mode only
 if (process.env.DEV) {
   demoDeviceData().then((data) => {
-    T3000_Data.value.panelsData = data;
+    T3000_Data.value.panelsData = data.data;
+    T3000_Data.value.panelsRanges = data.ranges;
   });
   selectPanelOptions.value = T3000_Data.value.panelsData;
 }
@@ -887,16 +887,24 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         ) {
           T3000_Data.value.loadingPanel = null;
         }
+
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+          arg.data.data
+        );
+        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(
+          arg.data.ranges
+        );
+
+        refreshLinkedEntries(arg.data.data);
       }
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-        (item) => item.pid !== arg.data.panel_id
-      );
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-        arg.data.data
-      );
-      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-      refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "GET_ENTRIES_RES") {
       arg.data.data.forEach((item) => {
         const itemIndex = T3000_Data.value.panelsData.findIndex(
@@ -1501,20 +1509,12 @@ function refreshObjectActiveValue(item) {
       item.settings.active = !!item.t3Entry.hw_switch_status;
     } else if (item.t3Entry.range) {
       const analog = item.t3Entry.digital_analog;
-      const rangeType = item.t3Entry.type.toUpperCase();
-      let range;
-      if (analog) {
-        range = ranges.analog[rangeType].find(
-          (i) => i.id === item.t3Entry.range
-        );
-      } else {
-        range = ranges.digital.find((i) => i.id === item.t3Entry.range);
-      }
+      const range = getEntryRange(item.t3Entry);
       if (range) {
         item.settings.active =
           (!analog &&
-            ((item.t3Entry?.control === 1 && !range.directInvers) ||
-              (item.t3Entry?.control === 0 && range.directInvers))) ||
+            ((item.t3Entry?.control === 1 && !range.direct) ||
+              (item.t3Entry?.control === 0 && range.direct))) ||
           (analog && item.t3Entry?.value > 0)
             ? true
             : false;

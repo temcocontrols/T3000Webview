@@ -278,11 +278,11 @@
               v-model="item.t3Entry.control"
               :options="[
                 {
-                  label: getRangeById(item.t3Entry.range).off,
+                  label: getEntryRange(item.t3Entry)?.off,
                   value: 0,
                 },
                 {
-                  label: getRangeById(item.t3Entry.range).on,
+                  label: getEntryRange(item.t3Entry)?.on,
                   value: 1,
                 },
               ]"
@@ -392,7 +392,7 @@
 <script>
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
-import { ranges, icons, tools } from "../lib/common";
+import { getEntryRange, icons, tools } from "../lib/common";
 export default defineComponent({
   name: "ToolConfig",
   props: {
@@ -448,9 +448,6 @@ export default defineComponent({
       }
       return options;
     });
-    function getRangeById(id) {
-      return ranges.find((i) => i.id === id);
-    }
 
     function refreshMoveable() {
       emit("refreshMoveable");
@@ -476,9 +473,9 @@ export default defineComponent({
       linkT3Entry,
       t3EntryDisplayFieldOptions,
       gaugeSettings,
-      getRangeById,
       icons,
       settings,
+      getEntryRange,
     };
   },
 });

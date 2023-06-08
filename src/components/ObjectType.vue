@@ -149,7 +149,7 @@ import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
 
-import { ranges } from "src/lib/common";
+import { getEntryRange } from "src/lib/common";
 
 export default defineComponent({
   name: "ObjectType",
@@ -178,17 +178,7 @@ export default defineComponent({
   emits: ["autoManualToggle", "objectClicked"],
   setup(props) {
     const range = computed(() => {
-      if (props.item.t3Entry?.range) {
-        const rangeType = props.item.t3Entry.type.toLowerCase();
-        const range = !props.item.t3Entry.digital_analog
-          ? ranges.digital.find((i) => i.id === props.item.t3Entry.range)
-          : ranges.analog[rangeType].find(
-              (i) => i.id === props.item.t3Entry.range
-            );
-        if (range) return range;
-      }
-
-      return { label: "Unused", unit: "" };
+      return getEntryRange(props.item?.t3Entry);
     });
     const dispalyText = computed(() => {
       if (!props.item.t3Entry) {
@@ -199,23 +189,17 @@ export default defineComponent({
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 1
       ) {
-        const rangeType = props.item.t3Entry.type.toLowerCase();
-        const range = ranges.analog[rangeType].find(
-          (i) => i.id === props.item.t3Entry.range
-        );
-        return props.item.t3Entry.value / 1000 + " " + range.unit;
+        return props.item.t3Entry.value / 1000 + " " + range.value.unit;
       } else if (
-        props.item.settings.t3EntryDisplayField === "value" &&
-        props.item.t3Entry.value !== undefined &&
+        (props.item.settings.t3EntryDisplayField === "value" ||
+          props.item.settings.t3EntryDisplayField === "control") &&
+        props.item.t3Entry.control !== undefined &&
         props.item.t3Entry.digital_analog === 0
       ) {
-        const range = ranges.digital.find(
-          (i) => i.id === props.item.t3Entry.range
-        );
         if (props.item.t3Entry.control) {
-          return range.on;
+          return range.value.on;
         } else {
-          return range.off;
+          return range.value.off;
         }
       }
 

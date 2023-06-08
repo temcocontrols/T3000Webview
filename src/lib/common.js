@@ -1,3 +1,37 @@
+import { ref } from "vue";
+
+export const T3000_Data = ref({
+  panelsData: [],
+  panelsList: [],
+  panelsRanges: [],
+  loadingPanel: null,
+});
+
+export const getEntryRange = (item) => {
+  if (item?.range) {
+    const rangeType = item.type.toLowerCase();
+    let range = !item.digital_analog
+      ? ranges.digital.find((i) => i.id === item.range)
+      : ranges.analog[rangeType].find((i) => i.id === item.range);
+
+    if (!range) {
+      const customRanges = T3000_Data.value.panelsRanges.filter(
+        (i) => i.pid === item.pid
+      );
+      range = !item.digital_analog
+        ? customRanges.find(
+            (i) => i.type === "digital" && i.index === item.range
+          )
+        : customRanges.find(
+            (i) => i.type === "analog" && i.index === item.range
+          );
+    }
+    if (range) return range;
+  }
+
+  return { label: "Unused", unit: "" };
+};
+
 export const T3_Types = {
   OUTPUT: 0,
   INPUT: 1,
@@ -392,154 +426,154 @@ export const ranges = {
       label: "Off/On",
       off: "Off",
       on: "On",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 2,
       label: "Close/Open",
       off: "Close",
       on: "Open",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 3,
       label: "Stop/Start",
       off: "Stop",
       on: "Start",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 4,
       label: "Disable/Enable",
       off: "Disable",
       on: "Enable",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 5,
       label: "Normal/Alarm",
       off: "Normal",
       on: "Alarm",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 6,
       label: "Normal/High",
       off: "Normal",
       on: "High",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 7,
       label: "Normal/Low",
       off: "Normal",
       on: "Low",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 8,
       label: "No/Yes",
       off: "No",
       on: "Yes",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 9,
       label: "Cool/Heat",
       off: "Cool",
       on: "Heat",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 10,
       label: "Unoccupy/Occupy",
       off: "Unoccupy",
       on: "Occupy",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 11,
       label: "Low/High",
       on: "Low",
       off: "High",
-      directInvers: null,
+      direct: null,
     },
     {
       id: 12,
       label: "On/Off",
       on: "Off",
       off: "On",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 13,
       label: "Open/Close",
       on: "Close",
       off: "Open",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 14,
       label: "Start/Stop",
       on: "Stop",
       off: "Start",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 15,
       label: "Enable/Disable",
       on: "Disable",
       off: "Enable",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 16,
       label: "Alarm/Normal",
       on: "Normal",
       off: "Alarm",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 17,
       label: "High/Normal",
       on: "Normal",
       off: "High",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 18,
       label: "Low/Normal",
       on: "Normal",
       off: "Low",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 19,
       label: "Yes/No",
       on: "No",
       off: "Yes",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 20,
       label: "Heat/Cool",
       on: "Cool",
       off: "Heat",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 21,
       label: "Occupy/Unoccupy",
       on: "Unoccupy",
       off: "Occupy",
-      directInvers: true,
+      direct: true,
     },
     {
       id: 22,
       label: "High/Low",
       on: "Low",
       off: "High",
-      directInvers: true,
+      direct: true,
     },
   ],
   analog: {
