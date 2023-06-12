@@ -8,6 +8,9 @@
         :object-lib="library.objLib"
         @select-tool="selectTool"
         @add-custom-tool="uploadObjectDialog.active = true"
+        @delete-lib-item="deleteLibItem"
+        @rename-lib-item="renameLibItem"
+        @delete-lib-image="deleteLibImage"
       />
       <div class="viewport-wrapper">
         <top-toolbar
@@ -2119,6 +2122,7 @@ function addToLibrary() {
   library.value.objLibItemsCount++;
   library.value.objLib.push({
     name: "libItem-" + library.value.objLibItemsCount,
+    label: "Item " + library.value.objLibItemsCount,
     items: cloneDeep(selectedItems),
   });
   saveLib();
@@ -2208,6 +2212,39 @@ function autoManualToggle(item) {
   if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
+}
+function deleteLibItem(item) {
+  const itemIndex = library.value.objLib.findIndex(
+    (obj) => obj.name === item.name
+  );
+  if (itemIndex !== -1) {
+    library.value.objLib.splice(itemIndex, 1);
+  }
+  saveLib();
+}
+function renameLibItem(item, name) {
+  const itemIndex = library.value.objLib.findIndex(
+    (obj) => obj.name === item.name
+  );
+  if (itemIndex !== -1) {
+    library.value.objLib[itemIndex].label = name;
+  }
+  saveLib();
+}
+
+function deleteLibImage(item) {
+  const itemIndex = library.value.images.findIndex(
+    (obj) => obj.name === item.name
+  );
+  if (itemIndex !== -1) {
+    const imagePath = cloneDeep(library.value.images[itemIndex].path);
+    window.chrome?.webview?.postMessage({
+      action: 11, // DELETE_IMAGE
+      data: toRaw(imagePath),
+    });
+    library.value.images.splice(itemIndex, 1);
+  }
+  saveLib();
 }
 </script>
 <style>
