@@ -307,6 +307,11 @@ export const tools = [
         type: "justifyContent",
         id: 4,
       },
+      t3EntryDisplayField: {
+        value: "description",
+        type: "select",
+        id: 6,
+      },
     },
   },
   {
