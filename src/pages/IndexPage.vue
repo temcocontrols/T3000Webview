@@ -1056,17 +1056,20 @@ function onSelectoDragStart(e) {
 function onSelectoSelectEnd(e) {
   appState.value.selectedTargets = e.selected;
 
-  const selectedItems = appState.value.items.filter((i) =>
-    e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
-  );
-  const selectedGroups = [
-    ...new Set(
-      selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
-    ),
-  ];
-  selectedGroups.forEach((item) => {
-    selectGroup(item);
-  });
+  if (e.selected && !e.inputEvent.ctrlKey) {
+    const selectedItems = appState.value.items.filter((i) =>
+      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
+    );
+    const selectedGroups = [
+      ...new Set(
+        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
+      ),
+    ];
+    selectedGroups.forEach((gId) => {
+      selectGroup(gId);
+    });
+  }
+
   if (appState.value.selectedTargets.length === 1) {
     appState.value.activeItemIndex = appState.value.items.findIndex(
       (item) =>
