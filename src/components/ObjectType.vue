@@ -2,6 +2,8 @@
   <div
     class="moveable-item"
     :class="{
+      'flex flex-col flex-nowrap': !['Dial', 'Gauge'].includes(item.type),
+      'overflow-hidden': item.type === 'Text',
       [item.type]: item.type,
       'with-bg': item.settings.bgColor,
       'with-title':
@@ -41,7 +43,7 @@
       </span>
     </div>
     <div
-      class="flex justify-center object-container"
+      class="flex justify-center object-container grow"
       @click="$emit('objectClicked')"
     >
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
