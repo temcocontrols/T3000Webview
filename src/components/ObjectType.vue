@@ -2,7 +2,9 @@
   <div
     class="moveable-item"
     :class="{
-      'flex flex-col flex-nowrap': !['Dial', 'Gauge'].includes(item.type),
+      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
+        item.type
+      ),
       'overflow-hidden': item.type === 'Text',
       [item.type]: item.type,
       'with-bg': item.settings.bgColor,
