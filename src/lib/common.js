@@ -25,7 +25,14 @@ export const getEntryRange = (item) => {
         : customRanges.find(
             (i) => i.type === "analog" && i.index === item.range
           );
+
+      if (!range && item.range > 100) {
+        range = customRanges.find(
+          (i) => i.type === "MSV" && i.index === item.range
+        );
+      }
     }
+
     if (range) return range;
   }
 

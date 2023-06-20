@@ -504,6 +504,7 @@
         :object="appState.items[appState.activeItemIndex]"
         v-if="
           !locked &&
+          appState.items[appState.activeItemIndex] &&
           (appState.activeItemIndex || appState.activeItemIndex === 0)
         "
         @refresh-moveable="refreshMoveable"
@@ -727,8 +728,8 @@ if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
     T3000_Data.value.panelsRanges = data.ranges;
+    selectPanelOptions.value = T3000_Data.value.panelsData;
   });
-  selectPanelOptions.value = T3000_Data.value.panelsData;
 }
 
 let panzoomInstance = null;

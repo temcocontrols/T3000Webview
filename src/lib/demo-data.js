@@ -77,7 +77,7 @@ export default {
       value: 5000,
     },
     {
-      auto_manual: 0,
+      auto_manual: 1,
       calibration_h: 0,
       calibration_l: 0,
       calibration_sign: 1,
@@ -90,10 +90,10 @@ export default {
       index: 4,
       label: "IN5",
       pid: 199,
-      range: 0,
+      range: 101,
       type: "INPUT",
       unit: 0,
-      value: 0,
+      value: 1,
     },
     {
       auto_manual: 0,
@@ -5190,24 +5190,24 @@ export default {
       index: 101,
       options: [
         {
-          name: "",
+          name: "Auto",
           status: 0,
-          value: 0,
+          value: 1,
         },
         {
-          name: "",
+          name: "Manual",
           status: 0,
-          value: 0,
+          value: 2,
         },
         {
-          name: "",
+          name: "ON",
           status: 0,
-          value: 0,
+          value: 3,
         },
         {
-          name: "",
+          name: "OFF",
           status: 0,
-          value: 0,
+          value: 4,
         },
         {
           name: "",

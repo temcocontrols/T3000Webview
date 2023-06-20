@@ -107,7 +107,11 @@
         v-bind="item.settings"
         :unit="range.unit"
         :colors="processedColors"
-        :value="item.t3Entry?.value / 1000 || 0"
+        :value="
+          item.t3Entry?.range < 101
+            ? item.t3Entry?.value / 1000 || 0
+            : item.t3Entry?.value || 0
+        "
       />
       <div
         v-else-if="item.type === 'Dial'"
@@ -116,7 +120,10 @@
         <dial-chart
           class="gauge-object dial"
           :options="{
-            value: item.t3Entry?.value / 1000 || 0,
+            value:
+              item.t3Entry?.range < 101
+                ? item.t3Entry?.value / 1000 || 0
+                : item.t3Entry?.value || 0,
             unit: range.unit,
             ...item.settings,
             colors: processedColors,
@@ -188,22 +195,33 @@ export default defineComponent({
       if (!props.item.t3Entry) {
         return "";
       }
+      const range = getEntryRange(props.item.t3Entry);
       if (
-        props.item.settings.t3EntryDisplayField === "value" &&
-        props.item.t3Entry.value !== undefined &&
-        props.item.t3Entry.digital_analog === 1
+        props.item.settings.t3EntryDisplayField === "value" ||
+        props.item.settings.t3EntryDisplayField === "control"
       ) {
-        return props.item.t3Entry.value / 1000 + " " + range.value.unit;
-      } else if (
-        (props.item.settings.t3EntryDisplayField === "value" ||
-          props.item.settings.t3EntryDisplayField === "control") &&
-        props.item.t3Entry.control !== undefined &&
-        props.item.t3Entry.digital_analog === 0
-      ) {
-        if (props.item.t3Entry.control) {
-          return range.value.on;
-        } else {
-          return range.value.off;
+        if (
+          props.item.t3Entry.value !== undefined &&
+          props.item.t3Entry.range > 100
+        ) {
+          const rangeValue = range.options?.find(
+            (item) => item.value === props.item.t3Entry.value
+          );
+          return rangeValue?.name;
+        } else if (
+          props.item.t3Entry.value !== undefined &&
+          props.item.t3Entry.digital_analog === 1
+        ) {
+          return props.item.t3Entry.value / 1000 + " " + range.unit;
+        } else if (
+          props.item.t3Entry.control !== undefined &&
+          props.item.t3Entry.digital_analog === 0
+        ) {
+          if (props.item.t3Entry.control) {
+            return range.on;
+          } else {
+            return range.off;
+          }
         }
       }
 

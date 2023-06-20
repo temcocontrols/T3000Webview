@@ -21,20 +21,24 @@ export default defineComponent({
   },
   setup(props) {
     const dispalyText = computed(() => {
-      if (!props.item.t3Entry) {
+      if (!props.item.t3Entry || props.item.t3Entry?.value === undefined) {
         return "";
       }
-      if (
+      const range = getEntryRange(props.item?.t3Entry);
+      if (props.item.t3Entry.range > 100) {
+        const rangeValue = range.options.find(
+          (item) => item.value === props.item.t3Entry.value
+        );
+        return rangeValue.name;
+      } else if (
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 1
       ) {
-        const range = getEntryRange(props.item?.t3Entry);
         return props.item.t3Entry.value / 1000 + " " + range.unit;
       } else if (
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.digital_analog === 0
       ) {
-        const range = getEntryRange(props.item?.t3Entry);
         if (props.item.t3Entry.control) {
           return range.on;
         } else {

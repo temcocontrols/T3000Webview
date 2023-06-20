@@ -269,9 +269,14 @@
               map-options
               @update:model-value="T3UpdateEntryField('auto_manual', item)"
             />
+            <!-- Digital range values -->
             <q-select
               class="mb-1"
-              v-if="item.t3Entry.digital_analog === 0 && item.t3Entry.range"
+              v-if="
+                item.t3Entry.range < 101 &&
+                item.t3Entry.digital_analog === 0 &&
+                item.t3Entry.range
+              "
               :disable="item.t3Entry?.auto_manual === 0"
               filled
               dark
@@ -291,10 +296,29 @@
               map-options
               @update:model-value="T3UpdateEntryField('control', item)"
             />
+            <!-- MSV range values -->
+            <q-select
+              class="mb-1"
+              v-if="item.t3Entry.range > 100"
+              :disable="item.t3Entry?.auto_manual === 0"
+              filled
+              dark
+              v-model="item.t3Entry.value"
+              :options="
+                getEntryRange(item.t3Entry)?.options.filter(
+                  (i) => i.name !== '' || i.value !== 0
+                )
+              "
+              label="Value"
+              emit-value
+              map-options
+              option-label="name"
+              @update:model-value="T3UpdateEntryField('value', item)"
+            />
             <!-- Program status -->
             <q-select
               class="mb-1"
-              v-if="item.t3Entry.type === 'PROGRAM'"
+              v-else-if="item.t3Entry.type === 'PROGRAM'"
               :disable="item.t3Entry?.auto_manual === 0"
               filled
               dark
@@ -363,7 +387,9 @@
             <!-- Analog range value -->
             <q-input
               class="mb-1"
-              v-if="item.t3Entry.digital_analog === 1"
+              v-if="
+                item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1
+              "
               :disable="item.t3Entry?.auto_manual === 0"
               filled
               dark
