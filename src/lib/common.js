@@ -309,9 +309,9 @@ export const tools = [
         type: "titleColor",
         id: 2,
       },
-      justifyContent: {
-        value: "flex-start",
-        type: "justifyContent",
+      textAlign: {
+        value: "left",
+        type: "textAlign",
         id: 4,
       },
       t3EntryDisplayField: {
@@ -326,9 +326,9 @@ export const tools = [
     label: "Icon with title",
     icon: "fa-solid fa-icons",
     settings: {
-      justifyContent: {
-        value: "flex-start",
-        type: "justifyContent",
+      textAlign: {
+        value: "left",
+        type: "textAlign",
         id: 2,
       },
       active: {

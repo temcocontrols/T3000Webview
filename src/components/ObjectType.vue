@@ -15,6 +15,7 @@
   >
     <div
       class="object-title"
+      :class="{ grow: item.type === 'Icon' }"
       v-if="item.settings.title"
       @click="$emit('objectClicked')"
     >
@@ -22,30 +23,64 @@
     </div>
     <div
       class="object-title"
+      :class="{ grow: item.type === 'Icon' }"
       v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
     >
-      <span @click="$emit('objectClicked')">{{
-        dispalyText || item.t3Entry.id
-      }}</span>
-      <span
-        v-if="item.t3Entry.auto_manual !== undefined"
-        class="mode-icon ml-2 text-lg"
-        @click="$emit('autoManualToggle')"
-      >
-        <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
-          <q-tooltip anchor="top middle" self="center middle">
-            In auto mode
-          </q-tooltip>
-        </q-icon>
-        <q-icon v-else name="swipe_up">
-          <q-tooltip anchor="top middle" self="center middle">
-            In manual mode
-          </q-tooltip>
-        </q-icon>
-      </span>
+      <div class="relative">
+        <q-btn
+          v-if="
+            showArrows &&
+            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
+          "
+          class="up-btn absolute"
+          size="sm"
+          icon="keyboard_arrow_up"
+          color="grey-4"
+          text-color="black"
+          dense
+          :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('increase')"
+        />
+        <div>
+          <span @click="$emit('objectClicked')">{{
+            dispalyText || item.t3Entry.id
+          }}</span>
+          <span
+            v-if="item.t3Entry.auto_manual !== undefined"
+            class="mode-icon ml-2 text-lg"
+            @click="$emit('autoManualToggle')"
+          >
+            <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+              <q-tooltip anchor="top middle" self="center middle">
+                In auto mode
+              </q-tooltip>
+            </q-icon>
+            <q-icon v-else name="swipe_up">
+              <q-tooltip anchor="top middle" self="center middle">
+                In manual mode
+              </q-tooltip>
+            </q-icon>
+          </span>
+        </div>
+        <q-btn
+          v-if="
+            showArrows &&
+            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
+          "
+          class="down-btn absolute"
+          size="sm"
+          icon="keyboard_arrow_down"
+          color="grey-4"
+          text-color="black"
+          dense
+          :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('decrease')"
+        />
+      </div>
     </div>
     <div
-      class="flex justify-center object-container grow"
+      class="flex justify-center object-container relative"
+      :class="{ grow: item.type !== 'Icon' }"
       @click="$emit('objectClicked')"
     >
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
@@ -88,13 +123,18 @@
       <icon-value
         v-else-if="item.type === 'Icon'"
         class="icon-value"
+        :item="item"
+        :show-arrows="showArrows"
         v-bind="item.settings"
+        @change-value="changeValue"
       />
       <value-el
         v-else-if="item.type === 'Value'"
         class="value"
         :item="item"
+        :show-arrows="showArrows"
         v-bind="item.settings"
+        @change-value="changeValue"
       />
       <temperature
         v-else-if="item.type === 'Temperature'"
@@ -185,9 +225,13 @@ export default defineComponent({
       type: Object,
       required: true,
     },
+    showArrows: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["autoManualToggle", "objectClicked"],
-  setup(props) {
+  emits: ["autoManualToggle", "objectClicked", "changeValue"],
+  setup(props, { emit }) {
     const range = computed(() => {
       return getEntryRange(props.item?.t3Entry);
     });
@@ -244,10 +288,59 @@ export default defineComponent({
           });
     });
 
+    function changeValue(type) {
+      if (props.item.t3Entry.auto_manual === 0) return;
+      let control = false;
+      let newVal = props.item.t3Entry.value;
+      const range = getEntryRange(props.item?.t3Entry);
+      if (
+        props.item.t3Entry.value !== undefined &&
+        props.item.t3Entry.range > 100
+      ) {
+        const rangeOptions = range.options?.filter(
+          (item) => item.value !== 0 || item.name !== ""
+        );
+        const rangeIndex = rangeOptions.findIndex(
+          (item) => item.value === props.item.t3Entry.value
+        );
+
+        if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
+          newVal = rangeOptions[rangeIndex + 1].value;
+        } else if (type === "increase" && rangeIndex > 0) {
+          newVal = rangeOptions[rangeIndex - 1].value;
+        } else {
+          return;
+        }
+      } else if (
+        props.item.t3Entry.value !== undefined &&
+        props.item.t3Entry.digital_analog === 1
+      ) {
+        if (type === "increase") {
+          newVal = props.item.t3Entry.value + 1000;
+        } else {
+          newVal = props.item.t3Entry.value - 1000;
+        }
+      } else if (
+        props.item.t3Entry.control !== undefined &&
+        props.item.t3Entry.digital_analog === 0
+      ) {
+        control = true;
+        if (type === "decrease" && props.item.t3Entry.control === 0) {
+          newVal = 1;
+        } else if (type === "increase" && props.item.t3Entry.control === 1) {
+          newVal = 0;
+        } else {
+          return;
+        }
+      }
+      emit("changeValue", props.item, newVal, control);
+    }
+
     return {
       range,
       dispalyText,
       processedColors,
+      changeValue,
     };
   },
 });
@@ -345,5 +438,26 @@ export default defineComponent({
 .img-object {
   max-width: none;
   width: 100%;
+}
+.up-btn {
+  display: none;
+  bottom: 100%;
+  z-index: 1;
+}
+.down-btn {
+  display: none;
+  top: 100%;
+  z-index: 1;
+}
+
+.moveable-item.Icon .up-btn {
+  bottom: calc(100% + 5px);
+}
+.moveable-item.Icon .down-btn {
+  top: calc(100% + 3px);
+}
+.object-title:hover .up-btn,
+.object-title:hover .down-btn {
+  display: inline-flex;
 }
 </style>

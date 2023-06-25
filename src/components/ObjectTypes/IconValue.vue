@@ -18,6 +18,10 @@ import { defineComponent } from "vue";
 export default defineComponent({
   name: "IconValue",
   props: {
+    item: {
+      type: Object,
+      required: true,
+    },
     active: {
       type: Boolean,
       default: false,
@@ -34,6 +38,10 @@ export default defineComponent({
       type: String,
       default: "image",
     },
+    textAlign: {
+      type: String,
+      default: "left",
+    },
   },
   setup() {
     return {};
@@ -42,6 +50,9 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.icon-svg {
+  padding: 5px;
+}
 .icon-svg .icon {
   fill: v-bind(offColor);
 }

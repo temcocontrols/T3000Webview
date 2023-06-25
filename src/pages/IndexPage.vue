@@ -493,8 +493,10 @@
                 :class="{
                   link: locked && item.t3Entry,
                 }"
+                :show-arrows="locked && item.t3Entry && item.t3Entry.range"
                 @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)"
+                @change-value="changeEntryValue"
               />
             </div>
           </div>
@@ -1510,29 +1512,27 @@ function linkT3EntrySave() {
 
 function refreshObjectActiveValue(item) {
   // addActionToHistory("Update linked entry value");
-  if (item.settings?.active !== undefined) {
-    if (!item.t3Entry) return;
-    if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1) {
-      item.settings.active = !!item.t3Entry.hw_switch_status;
-    } else if (item.t3Entry.range) {
-      const analog = item.t3Entry.digital_analog;
-      const range = getEntryRange(item.t3Entry);
-      if (range) {
-        item.settings.active =
-          (!analog &&
-            ((item.t3Entry?.control === 1 && !range.direct) ||
-              (item.t3Entry?.control === 0 && range.direct))) ||
-          (analog && item.t3Entry?.value > 0)
-            ? true
-            : false;
-      }
-    } else if (item.t3Entry.type === "PROGRAM") {
-      item.settings.active = !!item.t3Entry.status;
-    } else if (item.t3Entry.type === "SCHEDULE") {
-      item.settings.active = !!item.t3Entry.output;
-    } else if (item.t3Entry.type === "HOLIDAY") {
-      item.settings.active = !!item.t3Entry.value;
+  if (!item.t3Entry || item.settings?.active === undefined) return;
+  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1) {
+    item.settings.active = !!item.t3Entry.hw_switch_status;
+  } else if (item.t3Entry.range) {
+    const analog = item.t3Entry.digital_analog;
+    const range = getEntryRange(item.t3Entry);
+    if (range) {
+      item.settings.active =
+        (!analog &&
+          ((item.t3Entry?.control === 1 && !range.direct) ||
+            (item.t3Entry?.control === 0 && range.direct))) ||
+        (analog && item.t3Entry?.value > 0)
+          ? true
+          : false;
     }
+  } else if (item.t3Entry.type === "PROGRAM") {
+    item.settings.active = !!item.t3Entry.status;
+  } else if (item.t3Entry.type === "SCHEDULE") {
+    item.settings.active = !!item.t3Entry.output;
+  } else if (item.t3Entry.type === "HOLIDAY") {
+    item.settings.active = !!item.t3Entry.value;
   }
 }
 
@@ -2249,6 +2249,13 @@ function deleteLibImage(item) {
     library.value.images.splice(itemIndex, 1);
   }
   saveLib();
+}
+
+function changeEntryValue(refItem, newVal, control) {
+  const key = control ? "control" : "value";
+  const item = appState.value.items.find((i) => i.id === refItem.id);
+  item.t3Entry[key] = newVal;
+  T3UpdateEntryField(key, item);
 }
 </script>
 <style>
