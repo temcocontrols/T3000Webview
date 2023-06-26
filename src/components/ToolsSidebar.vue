@@ -31,6 +31,7 @@
           anchor="bottom right"
           self="bottom left"
           max-height="650px"
+          @hide="imgTab = 'list'"
         >
           <q-card dark style="min-width: 500px; height: 400px">
             <q-tabs
