@@ -7,10 +7,10 @@
         :images="library.images"
         :object-lib="library.objLib"
         @select-tool="selectTool"
-        @add-custom-tool="uploadObjectDialog.active = true"
         @delete-lib-item="deleteLibItem"
         @rename-lib-item="renameLibItem"
         @delete-lib-image="deleteLibImage"
+        @save-lib-image="saveLibImage"
       />
       <div class="viewport-wrapper">
         <top-toolbar
@@ -602,34 +602,6 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
-
-  <!-- Upload custom object dialog -->
-  <q-dialog v-model="uploadObjectDialog.active">
-    <q-card style="min-width: 450px">
-      <q-card-section>
-        <div class="text-h6">Upload image</div>
-      </q-card-section>
-      <q-card-section class="q-pt-none">
-        <file-upload
-          :types="['image/*']"
-          @uploaded="handleFileUploaded"
-          @file-added="customObjectFileAdded"
-          @file-removed="uploadObjectDialog.uploadBtnDisabled = true"
-        />
-      </q-card-section>
-
-      <q-card-actions align="right" class="text-primary">
-        <q-btn flat label="Cancel" @click="uploadObjectDialog.active = false" />
-        <q-btn
-          :disabled="uploadObjectDialog.uploadBtnDisabled"
-          :loading="uploadObjectDialog.uploadBtnLoading"
-          flat
-          label="Save"
-          @click="saveCustomObject()"
-        />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
   <!-- Edit Gauge/Dial dialog -->
   <GaugeSettingsDialog
     v-model:active="gaugeSettingsDialog.active"
@@ -696,12 +668,6 @@ const viewport = ref(null);
 const targets = ref([]);
 const selectedTool = ref({ name: "Pointer", type: "default", data: null });
 const linkT3EntryDialog = ref({ active: false, data: null });
-const uploadObjectDialog = ref({
-  active: false,
-  uploadBtnDisabled: true,
-  uploadBtnLoading: false,
-  file: null,
-});
 
 const importJsonDialog = ref({
   addedCount: 0,
@@ -1721,11 +1687,6 @@ function handleFileUploaded(data) {
   console.log("handleFileUploaded", data);
 }
 
-async function customObjectFileAdded(file) {
-  uploadObjectDialog.value.uploadBtnDisabled = false;
-  uploadObjectDialog.value.file = file;
-}
-
 function readFile(file) {
   return new Promise((resolve, reject) => {
     var fr = new FileReader();
@@ -1737,19 +1698,15 @@ function readFile(file) {
   });
 }
 
-async function saveCustomObject() {
+async function saveLibImage(file) {
   library.value.imagesCount++;
-  uploadObjectDialog.value.active = false;
-  uploadObjectDialog.value.uploadBtnDisabled = true;
 
   window.chrome?.webview?.postMessage({
     action: 9, // SAVE_IMAGE
-    filename: uploadObjectDialog.value.file.name,
-    fileLength: uploadObjectDialog.value.file.size,
-    fileData: await readFile(uploadObjectDialog.value.file.data),
+    filename: file.name,
+    fileLength: file.size,
+    fileData: await readFile(file.data),
   });
-
-  uploadObjectDialog.value.file = null;
 }
 
 const gaugeSettingsDialog = ref({

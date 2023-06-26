@@ -1,7 +1,7 @@
 <script>
 import { onUnmounted } from "vue";
 import { Dashboard } from "@uppy/vue";
-import { useQuasar } from "quasar";
+// import { useQuasar } from "quasar";
 
 import "@uppy/core/dist/style.css";
 import "@uppy/dashboard/dist/style.css";
@@ -28,10 +28,14 @@ export default {
       type: Number,
       default: 1,
     },
+    height: {
+      type: Number,
+      default: 300,
+    },
   },
   emits: ["uploaded", "fileAdded", "fileRemoved"],
   setup(props, ctx) {
-    const $q = useQuasar();
+    // const $q = useQuasar();
     const uppy = new Uppy({
       autoProceed: false,
       restrictions: {
@@ -92,7 +96,7 @@ export default {
     :props="{
       proudlyDisplayPoweredByUppy: false,
       hideUploadButton: true,
-      height: 300,
+      height,
       metaFields: [
         { id: 'name', name: 'Name', placeholder: 'file name' },
         {

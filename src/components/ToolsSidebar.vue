@@ -116,61 +116,94 @@
                 </div>
               </q-tab-panel>
 
-              <q-tab-panel name="imgs">
-                <q-btn
-                  dense
-                  @click="$emit('addCustomTool')"
-                  icon="library_add"
-                  color="white"
-                  text-color="black"
-                  label="Add Image"
-                />
-                <div
-                  v-if="images.length > 0"
-                  class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
-                >
-                  <div
-                    v-for="image in images"
-                    :key="image.name"
-                    class="relative"
-                  >
-                    <div class="tool-wrapper">
-                      <q-btn
-                        round
-                        dense
-                        color="grey-7"
-                        icon="more_vert"
-                        size="sm"
-                      >
-                        <q-menu>
-                          <q-list style="min-width: 100px">
-                            <q-item
-                              clickable
-                              v-close-popup
-                              @click="deleteLibImage(image)"
-                            >
-                              <q-item-section>Delete</q-item-section>
-                            </q-item>
-                          </q-list>
-                        </q-menu>
-                      </q-btn>
+              <q-tab-panel name="imgs" class="py-1">
+                <q-tab-panels v-model="imgTab" animated dark>
+                  <q-tab-panel name="list" class="p-0">
+                    <q-btn
+                      dense
+                      @click="imgTab = 'upload'"
+                      icon="library_add"
+                      color="white"
+                      text-color="black"
+                      label="Add Image"
+                    />
+                    <div
+                      v-if="images.length > 0"
+                      class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
+                    >
                       <div
-                        class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
-                        v-close-popup
-                        @click="selectTool(image.id, 'Image', image)"
+                        v-for="image in images"
+                        :key="image.name"
+                        class="relative"
                       >
-                        <div
-                          class="flex flex-col items-center justify-center h-full"
-                        >
-                          <img :src="image.path" />
+                        <div class="tool-wrapper">
+                          <q-btn
+                            round
+                            dense
+                            color="grey-7"
+                            icon="more_vert"
+                            size="sm"
+                          >
+                            <q-menu>
+                              <q-list style="min-width: 100px">
+                                <q-item
+                                  clickable
+                                  v-close-popup
+                                  @click="deleteLibImage(image)"
+                                >
+                                  <q-item-section>Delete</q-item-section>
+                                </q-item>
+                              </q-list>
+                            </q-menu>
+                          </q-btn>
+                          <div
+                            class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
+                            v-close-popup
+                            @click="selectTool(image.id, 'Image', image)"
+                          >
+                            <div
+                              class="flex flex-col items-center justify-center h-full"
+                            >
+                              <img :src="image.path" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div class="flex p-4 items-center justify-center" v-else>
-                  No images yet.
-                </div>
+                    <div class="flex p-4 items-center justify-center" v-else>
+                      No images yet.
+                    </div>
+                  </q-tab-panel>
+
+                  <q-tab-panel name="upload" class="p-0">
+                    <q-card dark style="max-width: 468px">
+                      <q-card-section class="py-1">
+                        <div class="text-h6">Upload image</div>
+                      </q-card-section>
+                      <q-card-section class="q-pt-none">
+                        <file-upload
+                          :types="['image/*']"
+                          :height="240"
+                          @file-added="imageFileAdded"
+                          @file-removed="
+                            imgTabUploader.uploadBtnDisabled = true
+                          "
+                        />
+                      </q-card-section>
+
+                      <q-card-actions align="right" class="text-primary pb-0">
+                        <q-btn flat label="Cancel" @click="imgTab = 'list'" />
+                        <q-btn
+                          :disabled="imgTabUploader.uploadBtnDisabled"
+                          :loading="imgTabUploader.uploadBtnLoading"
+                          flat
+                          label="Save"
+                          @click="saveLibImage()"
+                        />
+                      </q-card-actions>
+                    </q-card>
+                  </q-tab-panel>
+                </q-tab-panels>
               </q-tab-panel>
             </q-tab-panels>
           </q-card>
@@ -186,9 +219,13 @@
 <script>
 import { defineComponent, ref } from "vue";
 import { useQuasar } from "quasar";
+import FileUpload from "./FileUpload.vue";
 import { tools } from "../lib/common";
 export default defineComponent({
   name: "ToolsSidebar",
+  components: {
+    FileUpload,
+  },
   props: {
     selectedTool: {
       type: Object,
@@ -211,7 +248,7 @@ export default defineComponent({
   },
   emits: [
     "selectTool",
-    "addCustomTool",
+    "saveLibImage",
     "deleteLibItem",
     "renameLibItem",
     "deleteLibImage",
@@ -272,6 +309,25 @@ export default defineComponent({
         });
     }
 
+    const imgTab = ref("list");
+
+    const imgTabUploader = ref({
+      uploadBtnDisabled: true,
+      uploadBtnLoading: false,
+      file: null,
+    });
+
+    function imageFileAdded(file) {
+      imgTabUploader.value.uploadBtnDisabled = false;
+      imgTabUploader.value.file = file;
+    }
+
+    function saveLibImage() {
+      emit("saveLibImage", imgTabUploader.value.file);
+      imgTab.value = "list";
+      imgTabUploader.value.file = null;
+    }
+
     return {
       tools,
       selectTool,
@@ -279,6 +335,10 @@ export default defineComponent({
       deleteLibItem,
       renameLibItem,
       deleteLibImage,
+      imgTab,
+      imgTabUploader,
+      saveLibImage,
+      imageFileAdded,
     };
   },
 });
