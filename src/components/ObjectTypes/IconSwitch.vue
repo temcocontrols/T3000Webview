@@ -1,6 +1,6 @@
 <template>
   <svg
-    v-if="icon"
+    v-if="switchIcon"
     xmlns="http://www.w3.org/2000/svg"
     height="100%"
     viewBox="0 0 24 24"
@@ -8,15 +8,16 @@
     :class="{ active: active }"
     class="icon-svg"
   >
-    <use class="icon" :xlink:href="`icons.svg#${icon}`"></use>
+    <use class="icon" :xlink:href="`icons.svg#${switchIcon}`"></use>
   </svg>
 </template>
 
 <script>
-import { defineComponent } from "vue";
+import { switchIcons } from "src/lib/common";
+import { computed, defineComponent } from "vue";
 
 export default defineComponent({
-  name: "IconValue",
+  name: "IconSwitch",
   props: {
     item: {
       type: Object,
@@ -35,15 +36,20 @@ export default defineComponent({
     },
     icon: {
       type: String,
-      default: "image",
+      default: "toggle_off",
     },
     textAlign: {
       type: String,
       default: "left",
     },
   },
-  setup() {
-    return {};
+  setup(props) {
+    const switchIcon = computed(() => {
+      const item = switchIcons.find((i) => i.value === props.icon);
+      if (!item) return {};
+      return props.active ? item.icon.on : item.icon.off;
+    });
+    return { switchIcon };
   },
 });
 </script>

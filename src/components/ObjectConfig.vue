@@ -193,6 +193,34 @@
                   </template>
                 </q-select>
               </div>
+              <div
+                class="w-full mb-2"
+                v-else-if="setting.type === 'iconSwitch'"
+              >
+                <q-select
+                  filled
+                  dark
+                  v-model="item.settings[key]"
+                  :options="switchIcons"
+                  :label="setting.label"
+                  emit-value
+                  map-options
+                >
+                  <template v-slot:prepend>
+                    <q-icon :name="getSwitchIcon(item.settings[key])" />
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar class="pr-1 min-w-0">
+                        <q-icon :name="scope.opt.icon.off || 'block'" />
+                      </q-item-section>
+                      <q-item-section class="grow">
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
               <q-checkbox
                 v-else-if="setting.type === 'boolean'"
                 dark
@@ -418,7 +446,7 @@
 <script>
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
-import { getEntryRange, icons, tools } from "../lib/common";
+import { getEntryRange, icons, switchIcons, tools } from "../lib/common";
 export default defineComponent({
   name: "ToolConfig",
   props: {
@@ -492,6 +520,10 @@ export default defineComponent({
         emit("noChange");
       }
     });
+    function getSwitchIcon(name) {
+      const iconItem = switchIcons.find((item) => item.value === name);
+      return iconItem?.icon?.off ? iconItem.icon.off : "block";
+    }
     return {
       item,
       refreshMoveable,
@@ -500,8 +532,10 @@ export default defineComponent({
       t3EntryDisplayFieldOptions,
       gaugeSettings,
       icons,
+      switchIcons,
       settings,
       getEntryRange,
+      getSwitchIcon,
     };
   },
 });

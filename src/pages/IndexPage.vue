@@ -493,7 +493,7 @@
                 :class="{
                   link: locked && item.t3Entry,
                 }"
-                :show-arrows="locked && item.t3Entry && item.t3Entry.range"
+                :show-arrows="locked && !!item.t3Entry?.range"
                 @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)"
                 @change-value="changeEntryValue"
@@ -1339,7 +1339,7 @@ function onSelectoDragEnd(e) {
     tempItem.image = selectedTool.value.data;
   }
   const item = addObject(tempItem);
-  if (["Value", "Icon"].includes(selectedTool.value.name)) {
+  if (["Value", "Icon", "Switch"].includes(selectedTool.value.name)) {
     linkT3EntryDialog.value.active = true;
   }
   // selectedTool.value.name = "Pointer"

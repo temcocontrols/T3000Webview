@@ -362,6 +362,47 @@ export const tools = [
       },
     },
   },
+  {
+    name: "Switch",
+    label: "Switch Icon",
+    icon: "toggle_off",
+    settings: {
+      textAlign: {
+        value: "left",
+        type: "textAlign",
+        id: 2,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "On/Off",
+        id: 1,
+      },
+      offColor: {
+        value: "#000000",
+        type: "color",
+        label: "Off Color",
+        id: 3,
+      },
+      onColor: {
+        value: "#01c16e",
+        type: "color",
+        label: "On Color",
+        id: 4,
+      },
+      icon: {
+        value: "toggle",
+        type: "iconSwitch",
+        label: "Icon",
+        id: 5,
+      },
+      t3EntryDisplayField: {
+        value: "value",
+        type: "select",
+        id: 6,
+      },
+    },
+  },
 ];
 
 export const icons = [
@@ -428,6 +469,38 @@ export const icons = [
   {
     value: "calendar_month",
     label: "Calendar",
+  },
+];
+
+export const switchIcons = [
+  {
+    icon: {},
+    value: "none",
+    label: "None",
+  },
+  {
+    icon: {
+      off: "toggle_off",
+      on: "toggle_on",
+    },
+    value: "toggle",
+    label: "Toggle",
+  },
+  {
+    icon: {
+      off: "radio_button_unchecked",
+      on: "radio_button_checked",
+    },
+    value: "radio",
+    label: "Radio",
+  },
+  {
+    icon: {
+      off: "check_box_outline_blank",
+      on: "check_box",
+    },
+    value: "checkbox",
+    label: "Check box",
   },
 ];
 

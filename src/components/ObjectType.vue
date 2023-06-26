@@ -15,7 +15,7 @@
   >
     <div
       class="object-title"
-      :class="{ grow: item.type === 'Icon' }"
+      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
       v-if="item.settings.title"
       @click="$emit('objectClicked')"
     >
@@ -23,13 +23,14 @@
     </div>
     <div
       class="object-title"
-      :class="{ grow: item.type === 'Icon' }"
+      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
       v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
     >
       <div class="relative">
         <q-btn
           v-if="
             showArrows &&
+            item.type !== 'Switch' &&
             ['value', 'control'].includes(item.settings.t3EntryDisplayField)
           "
           class="up-btn absolute"
@@ -65,6 +66,7 @@
         <q-btn
           v-if="
             showArrows &&
+            item.type !== 'Switch' &&
             ['value', 'control'].includes(item.settings.t3EntryDisplayField)
           "
           class="down-btn absolute"
@@ -80,7 +82,7 @@
     </div>
     <div
       class="flex justify-center object-container relative"
-      :class="{ grow: item.type !== 'Icon' }"
+      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }"
       @click="$emit('objectClicked')"
     >
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
@@ -123,6 +125,14 @@
       <icon-value
         v-else-if="item.type === 'Icon'"
         class="icon-value"
+        :item="item"
+        :show-arrows="showArrows"
+        v-bind="item.settings"
+        @change-value="changeValue"
+      />
+      <icon-switch
+        v-else-if="item.type === 'Switch'"
+        class="icon-switch"
         :item="item"
         :show-arrows="showArrows"
         v-bind="item.settings"
@@ -195,6 +205,7 @@ import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
 import IconValue from "./ObjectTypes/IconValue.vue";
+import IconSwitch from "./ObjectTypes/IconSwitch.vue";
 import ValueEl from "./ObjectTypes/Value.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
@@ -215,6 +226,7 @@ export default defineComponent({
     TextEl,
     BoxEl,
     IconValue,
+    IconSwitch,
     ValueEl,
     Temperature,
     GaugeChart,
@@ -382,17 +394,20 @@ export default defineComponent({
 }
 
 .moveable-item.Value.with-title,
-.moveable-item.Icon.with-title {
+.moveable-item.Icon.with-title,
+.moveable-item.Switch.with-title {
   display: flex;
 }
 
-.moveable-item.Icon.with-title {
+.moveable-item.Icon.with-title,
+.moveable-item.Switch.with-title {
   display: flex;
   flex-direction: row-reverse;
 }
 
 .moveable-item.Value .object-container,
-.moveable-item.Icon.with-title .object-container {
+.moveable-item.Icon.with-title .object-container,
+.moveable-item.Switch.with-title .object-container {
   height: 100%;
   display: flex;
   align-items: center;
@@ -404,12 +419,14 @@ export default defineComponent({
   padding: 10px;
 }
 
-.moveable-item.Icon.with-title .object-container {
+.moveable-item.Icon.with-title .object-container,
+.moveable-item.Switch.with-title .object-container {
   width: auto;
 }
 
 .moveable-item.Value.with-title .object-title,
-.moveable-item.Icon.with-title .object-title {
+.moveable-item.Icon.with-title .object-title,
+.moveable-item.Switch.with-title .object-title {
   min-width: auto;
   padding: 10px;
   line-height: 1.5em;
@@ -419,17 +436,20 @@ export default defineComponent({
   font-weight: bold;
 }
 
-.moveable-item.Icon.with-title .object-title {
+.moveable-item.Icon.with-title .object-title,
+.moveable-item.Switch.with-title .object-title {
   flex-grow: 1;
   justify-content: v-bind("item.settings.justifyContent");
 }
 
 .moveable-item.Value.with-title .object-title .mode-icon,
-.moveable-item.Icon.with-title .object-title .mode-icon {
+.moveable-item.Icon.with-title .object-title .mode-icon,
+.moveable-item.Switch.with-title .object-title .mode-icon {
   display: none;
 }
 
-.moveable-item.Icon.with-bg .object-title {
+.moveable-item.Icon.with-bg .object-title,
+.moveable-item.Switch.with-bg .object-title {
   background-color: transparent;
 }
 .moveable-item.link {
@@ -450,10 +470,12 @@ export default defineComponent({
   z-index: 1;
 }
 
-.moveable-item.Icon .up-btn {
+.moveable-item.Icon .up-btn,
+.moveable-item.Switch .up-btn {
   bottom: calc(100% + 5px);
 }
-.moveable-item.Icon .down-btn {
+.moveable-item.Icon .down-btn,
+.moveable-item.Switch .down-btn {
   top: calc(100% + 3px);
 }
 .object-title:hover .up-btn,
