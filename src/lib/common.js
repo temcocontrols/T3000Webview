@@ -210,26 +210,31 @@ export const tools = [
       min: {
         value: 0,
         type: "number",
+        label: "Min",
         id: 1,
       },
       max: {
         value: 100,
         type: "number",
+        label: "Max",
         id: 2,
       },
       ticks: {
         value: 10,
         type: "number",
+        label: "Ticks",
         id: 3,
       },
       minorTicks: {
         value: 5,
         type: "number",
+        label: "Minor ticks",
         id: 4,
       },
       thickness: {
         value: 30,
         type: "number",
+        label: "Thickness",
         id: 5,
       },
       colors: {
@@ -252,21 +257,25 @@ export const tools = [
       min: {
         value: 0,
         type: "number",
+        label: "Min",
         id: 1,
       },
       max: {
         value: 100,
         type: "number",
+        label: "Max",
         id: 2,
       },
       ticks: {
         value: 5,
         type: "number",
+        label: "Ticks",
         id: 3,
       },
       minorTicks: {
         value: 5,
         type: "number",
+        label: "Minor ticks",
         id: 4,
       },
       colors: {
