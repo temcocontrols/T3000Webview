@@ -403,6 +403,53 @@ export const tools = [
       },
     },
   },
+  {
+    name: "LED",
+    label: "LED",
+    icon: "svguse:icons.svg#led",
+    settings: {
+      textAlign: {
+        value: "left",
+        type: "textAlign",
+        id: 3,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "On/Off",
+        id: 1,
+      },
+      blink: {
+        value: false,
+        type: "boolean",
+        label: "Blink",
+        id: 2,
+      },
+      blinkInterval: {
+        value: 700,
+        type: "number",
+        label: "Blink interval",
+        id: 4,
+      },
+      offColor: {
+        value: "#000000",
+        type: "color",
+        label: "Off Color",
+        id: 5,
+      },
+      onColor: {
+        value: "#01c16e",
+        type: "color",
+        label: "On Color",
+        id: 6,
+      },
+      t3EntryDisplayField: {
+        value: "value",
+        type: "select",
+        id: 7,
+      },
+    },
+  },
 ];
 
 export const icons = [

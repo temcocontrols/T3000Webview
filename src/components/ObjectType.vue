@@ -138,6 +138,12 @@
         v-bind="item.settings"
         @change-value="changeValue"
       />
+      <led-el
+        v-else-if="item.type === 'LED'"
+        class="led-el"
+        :item="item"
+        v-bind="item.settings"
+      />
       <value-el
         v-else-if="item.type === 'Value'"
         class="value"
@@ -210,6 +216,7 @@ import ValueEl from "./ObjectTypes/Value.vue";
 import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
+import LedEl from "./ObjectTypes/Led.vue";
 
 import { getEntryRange } from "src/lib/common";
 
@@ -231,6 +238,7 @@ export default defineComponent({
     Temperature,
     GaugeChart,
     DialChart: AnyChartDial,
+    LedEl,
   },
   props: {
     item: {

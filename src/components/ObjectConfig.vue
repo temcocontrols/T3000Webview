@@ -168,6 +168,19 @@
                   :label="setting.label"
                 />
               </div>
+              <div
+                class="w-full relative mb-2"
+                v-else-if="setting.type === 'number'"
+              >
+                <q-input
+                  class="mb-1"
+                  filled
+                  dark
+                  type="number"
+                  v-model.number="item.settings[key]"
+                  :label="setting.label"
+                />
+              </div>
               <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
                 <q-select
                   filled
