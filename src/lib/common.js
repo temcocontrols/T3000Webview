@@ -102,6 +102,14 @@ export const tools = [
     name: "Duct",
     label: "Duct",
     icon: "svguse:icons.svg#duct|0 0 226 75",
+    settings: {
+      bgColor: {
+        value: "#808080",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
   },
   {
     name: "Fan",

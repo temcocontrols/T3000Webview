@@ -86,7 +86,11 @@
       @click="$emit('objectClicked')"
     >
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
-      <duct v-else-if="item.type === 'Duct'" class="duct" />
+      <duct
+        v-else-if="item.type === 'Duct'"
+        class="duct"
+        v-bind="item.settings"
+      />
       <cooling-coil
         v-else-if="item.type === 'CoolingCoil'"
         class="cooling-coil"
@@ -386,6 +390,9 @@ export default defineComponent({
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
 }
+.moveable-item.Duct {
+  background-color: transparent;
+}
 
 .object-container {
   width: 100%;
@@ -489,5 +496,9 @@ export default defineComponent({
 .object-title:hover .up-btn,
 .object-title:hover .down-btn {
   display: inline-flex;
+}
+
+.Duct .object-container {
+  max-height: 100%;
 }
 </style>

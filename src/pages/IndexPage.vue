@@ -756,7 +756,6 @@ onMounted(() => {
     triggerRef(appState);
   });
 
-  refreshMoveableGuides();
   window.chrome?.webview?.postMessage({
     action: 1, // GET_INITIAL_DATA
   });
@@ -782,6 +781,9 @@ onMounted(() => {
       });
     }, 10000);
   }
+  setTimeout(() => {
+    refreshMoveableGuides();
+  }, 100);
 });
 onUnmounted(() => {
   if (panzoomInstance?.dispose) return;
@@ -789,7 +791,7 @@ onUnmounted(() => {
 });
 
 window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("Recieved webview message", arg.data);
+  console.log("Recieved a message from webview", arg.data);
   if ("action" in arg.data) {
     if (arg.data.action === "GET_PANELS_LIST_RES") {
       if (arg.data.data?.length) {
@@ -940,6 +942,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
   const lines = document.querySelectorAll(".moveable-item");
+  console.log("lines", lines);
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });
