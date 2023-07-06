@@ -942,7 +942,6 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
   const lines = document.querySelectorAll(".moveable-item");
-  console.log("lines", lines);
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });

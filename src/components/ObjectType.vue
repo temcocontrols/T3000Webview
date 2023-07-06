@@ -167,11 +167,7 @@
         v-bind="item.settings"
         :unit="range.unit"
         :colors="processedColors"
-        :value="
-          item.t3Entry?.range < 101
-            ? item.t3Entry?.value / 1000 || 0
-            : item.t3Entry?.value || 0
-        "
+        :value="item.t3Entry?.value / 1000 || 0"
       />
       <div
         v-else-if="item.type === 'Dial'"
@@ -180,10 +176,7 @@
         <dial-chart
           class="gauge-object dial"
           :options="{
-            value:
-              item.t3Entry?.range < 101
-                ? item.t3Entry?.value / 1000 || 0
-                : item.t3Entry?.value || 0,
+            value: item.t3Entry?.value / 1000 || 0,
             unit: range.unit,
             ...item.settings,
             colors: processedColors,
@@ -273,7 +266,7 @@ export default defineComponent({
           props.item.t3Entry.range > 100
         ) {
           const rangeValue = range.options?.find(
-            (item) => item.value === props.item.t3Entry.value
+            (item) => item.value * 1000 === props.item.t3Entry.value
           );
           return rangeValue?.name;
         } else if (
@@ -321,17 +314,15 @@ export default defineComponent({
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.range > 100
       ) {
-        const rangeOptions = range.options?.filter(
-          (item) => item.value !== 0 || item.name !== ""
-        );
+        const rangeOptions = range.options?.filter((item) => item.status === 1);
         const rangeIndex = rangeOptions.findIndex(
-          (item) => item.value === props.item.t3Entry.value
+          (item) => item.value * 1000 === props.item.t3Entry.value
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          newVal = rangeOptions[rangeIndex + 1].value;
+          newVal = rangeOptions[rangeIndex + 1].value * 1000;
         } else if (type === "increase" && rangeIndex > 0) {
-          newVal = rangeOptions[rangeIndex - 1].value;
+          newVal = rangeOptions[rangeIndex - 1].value * 1000;
         } else {
           return;
         }

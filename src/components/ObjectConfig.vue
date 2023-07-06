@@ -345,11 +345,7 @@
               filled
               dark
               v-model="item.t3Entry.value"
-              :options="
-                getEntryRange(item.t3Entry)?.options.filter(
-                  (i) => i.name !== '' || i.value !== 0
-                )
-              "
+              :options="rangeOptions"
               label="Value"
               emit-value
               map-options
@@ -496,6 +492,16 @@ export default defineComponent({
     const settings = computed(() => {
       return tools.find((i) => i.name === props.object.type)?.settings || {};
     });
+    const rangeOptions = computed(() => {
+      const items = getEntryRange(props.object.t3Entry)?.options?.filter(
+        (i) => i.status === 1
+      );
+      const ranges = cloneDeep(items);
+      return ranges?.map((ii) => {
+        ii.value = ii.value * 1000;
+        return ii;
+      });
+    });
     const t3EntryDisplayFieldOptions = computed(() => {
       const options = [
         { label: "None", value: "none" },
@@ -549,6 +555,7 @@ export default defineComponent({
       settings,
       getEntryRange,
       getSwitchIcon,
+      rangeOptions,
     };
   },
 });
