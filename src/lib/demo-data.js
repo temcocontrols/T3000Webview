@@ -93,7 +93,7 @@ export default {
       range: 101,
       type: "INPUT",
       unit: 0,
-      value: 1,
+      value: 1000,
     },
     {
       auto_manual: 0,
@@ -5191,22 +5191,22 @@ export default {
       options: [
         {
           name: "Auto",
-          status: 0,
+          status: 1,
           value: 1,
         },
         {
           name: "Manual",
-          status: 0,
+          status: 1,
           value: 2,
         },
         {
           name: "ON",
-          status: 0,
+          status: 1,
           value: 3,
         },
         {
           name: "OFF",
-          status: 0,
+          status: 1,
           value: 4,
         },
         {
