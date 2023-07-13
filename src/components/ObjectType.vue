@@ -90,6 +90,7 @@
         v-else-if="item.type === 'Duct'"
         class="duct"
         v-bind="item.settings"
+        ref="objectRef"
       />
       <cooling-coil
         v-else-if="item.type === 'CoolingCoil'"
@@ -197,7 +198,7 @@
 </template>
 
 <script>
-import { defineComponent, computed } from "vue";
+import { defineComponent, computed, ref } from "vue";
 import DuctEl from "./ObjectTypes/Duct.vue";
 import FanEl from "./ObjectTypes/Fan.vue";
 import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
@@ -351,11 +352,22 @@ export default defineComponent({
       emit("changeValue", props.item, newVal, control);
     }
 
+    const objectRef = ref(null);
+
+    function refresh() {
+      if (!objectRef.value) return;
+      if (props.item?.type === "Duct") {
+        objectRef.value.refresh();
+      }
+    }
+
     return {
       range,
       dispalyText,
       processedColors,
       changeValue,
+      refresh,
+      objectRef,
     };
   },
 });

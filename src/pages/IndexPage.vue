@@ -15,7 +15,7 @@
       <div class="viewport-wrapper">
         <top-toolbar
           @menu-action="handleMenuAction"
-          :selected-count="appState.selectedTargets.length"
+          :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull"
@@ -26,7 +26,7 @@
           :class="{ '!left-4': locked }"
         >
           <q-btn
-            v-if="grpNav.length > 1"
+            v-if="grpNav?.length > 1"
             icon="arrow_back"
             class="back-btn mr-2"
             dense
@@ -323,7 +323,7 @@
               class="moveable-item-wrapper"
             >
               <q-menu
-                v-if="!locked && appState.selectedTargets.length === 1"
+                v-if="!locked && appState.selectedTargets?.length === 1"
                 touch-position
                 context-menu
               >
@@ -488,6 +488,7 @@
                 </q-list>
               </q-menu>
               <object-type
+                ref="objectsRef"
                 :item="item"
                 :key="item.id + item.type"
                 :class="{
@@ -726,6 +727,7 @@ const redoHistory = ref([]);
 const locked = ref(false);
 const grpNav = ref([]);
 let lastAction = null;
+const objectsRef = ref(null);
 onMounted(() => {
   if (!window.chrome?.webview?.postMessage) {
     const localState = localStorage.getItem("appState");
@@ -947,13 +949,25 @@ function refreshMoveableGuides() {
   });
 }
 
+function refreshObjects() {
+  if (!objectsRef.value) return;
+  for (const obj of objectsRef.value) {
+    if (!obj.refresh) continue;
+    obj.refresh();
+  }
+}
+
 function addActionToHistory(title) {
   if (process.env.DEV) {
     console.log(title);
   }
-  setTimeout(() => {
-    save();
-  }, 200);
+  if (title !== "Move Object") {
+    setTimeout(() => {
+      save();
+      refreshObjects();
+    }, 200);
+  }
+
   redoHistory.value = [];
   undoHistory.value.unshift({
     title,
@@ -988,6 +1002,8 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
+    save();
+    refreshObjects();
   }
 }
 

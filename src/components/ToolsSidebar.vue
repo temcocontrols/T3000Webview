@@ -52,7 +52,7 @@
             <q-tab-panels v-model="libTab" animated dark>
               <q-tab-panel name="lib">
                 <div
-                  v-if="objectLib.length > 0"
+                  v-if="objectLib?.length > 0"
                   class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
                 >
                   <div
@@ -129,7 +129,7 @@
                       label="Add Image"
                     />
                     <div
-                      v-if="images.length > 0"
+                      v-if="images?.length > 0"
                       class="grid gap-4 grid-cols-4 grid-flow-row auto-rows-max p-4"
                     >
                       <div
