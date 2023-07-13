@@ -92,10 +92,10 @@ export default defineComponent({
   max-width: 40px;
 }
 
-.duct-end {
+.duct-end.shown {
   margin-left: -1px;
 }
-.duct-start {
+.duct-start.shown {
   margin-right: -1px;
 }
 .duct svg {
