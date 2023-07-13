@@ -28,7 +28,7 @@
     "vue": "^3.0.0",
     "vue-echarts": "^6.5.2",
     "vue-router": "^4.0.0",
-    "vue3-moveable": "^0.25.2",
+    "vue3-moveable": "^0.26.1",
     "vue3-selecto": "^1.6.2"
   },
   "devDependencies": {
