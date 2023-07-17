@@ -294,6 +294,47 @@
                   <q-item-section>Rotate -90°</q-item-section>
                 </q-item>
                 <q-separator />
+                <q-item dense clickable>
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="transform"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>Convert to</q-item-section>
+                  <q-item-section side>
+                    <q-icon name="keyboard_arrow_right" />
+                  </q-item-section>
+                  <q-menu anchor="top end" self="top start" auto-close>
+                    <q-list>
+                      <q-item
+                        v-for="t in tools.filter(
+                          (i) =>
+                            i.name !== item.type &&
+                            !['Duct', 'Pointer'].includes(i.name)
+                        )"
+                        :key="t.name"
+                        dense
+                        clickable
+                        v-close-popup
+                        @click="convertObjectType(null, t.name)"
+                      >
+                        <q-item-section avatar>
+                          <q-avatar
+                            size="sm"
+                            :icon="t.icon"
+                            color="grey-7"
+                            text-color="primary"
+                          />
+                        </q-item-section>
+                        <q-item-section>{{ t.name }}</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-item>
+                <q-separator />
                 <q-item dense clickable v-close-popup @click="deleteSelected">
                   <q-item-section avatar>
                     <q-avatar
@@ -467,6 +508,47 @@
                       />
                     </q-item-section>
                     <q-item-section>Send to Back</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item dense clickable>
+                    <q-item-section avatar>
+                      <q-avatar
+                        size="sm"
+                        icon="transform"
+                        color="grey-7"
+                        text-color="white"
+                      />
+                    </q-item-section>
+                    <q-item-section>Convert to</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="keyboard_arrow_right" />
+                    </q-item-section>
+                    <q-menu anchor="top end" self="top start" auto-close>
+                      <q-list>
+                        <q-item
+                          v-for="t in tools.filter(
+                            (i) =>
+                              i.name !== item.type &&
+                              !['Duct', 'Pointer'].includes(i.name)
+                          )"
+                          :key="t.name"
+                          dense
+                          clickable
+                          v-close-popup
+                          @click="convertObjectType(item, t.name)"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar
+                              size="sm"
+                              :icon="t.icon"
+                              color="grey-7"
+                              text-color="primary"
+                            />
+                          </q-item-section>
+                          <q-item-section>{{ t.name }}</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
                   </q-item>
                   <q-separator />
                   <q-item
@@ -2231,6 +2313,37 @@ function changeEntryValue(refItem, newVal, control) {
   const item = appState.value.items.find((i) => i.id === refItem.id);
   item.t3Entry[key] = newVal;
   T3UpdateEntryField(key, item);
+}
+function convertObjectType(item, type) {
+  if (!item) {
+    item = appState.value.items[appState.value.activeItemIndex];
+  }
+  if (!item) return;
+  addActionToHistory("Convert object to " + type);
+  const toolSettings =
+    cloneDeep(tools.find((tool) => tool.name === type)?.settings) || {};
+  const defaultSettings = Object.keys(toolSettings).reduce((acc, key) => {
+    acc[key] = toolSettings[key].value;
+    return acc;
+  }, {});
+  const newSettings = {};
+  for (const key in defaultSettings) {
+    if (Object.hasOwnProperty.call(defaultSettings, key)) {
+      if (item.settings[key] !== undefined) {
+        newSettings[key] = item.settings[key];
+      } else {
+        newSettings[key] = defaultSettings[key];
+      }
+    }
+  }
+  const mainSettings = ["bgColor", "textColor", "title", "t3EntryDisplayField"];
+  for (const mSetting of mainSettings) {
+    if (newSettings[mSetting] === undefined) {
+      newSettings[mSetting] = item.settings[mSetting];
+    }
+  }
+  item.type = type;
+  item.settings = newSettings;
 }
 </script>
 <style>
