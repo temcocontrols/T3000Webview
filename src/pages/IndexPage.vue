@@ -15,6 +15,7 @@
       <div class="viewport-wrapper">
         <top-toolbar
           @menu-action="handleMenuAction"
+          :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1"
@@ -292,47 +293,6 @@
                     />
                   </q-item-section>
                   <q-item-section>Rotate -90°</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item dense clickable>
-                  <q-item-section avatar>
-                    <q-avatar
-                      size="sm"
-                      icon="transform"
-                      color="grey-7"
-                      text-color="white"
-                    />
-                  </q-item-section>
-                  <q-item-section>Convert to</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="keyboard_arrow_right" />
-                  </q-item-section>
-                  <q-menu anchor="top end" self="top start" auto-close>
-                    <q-list>
-                      <q-item
-                        v-for="t in tools.filter(
-                          (i) =>
-                            i.name !== item.type &&
-                            !['Duct', 'Pointer'].includes(i.name)
-                        )"
-                        :key="t.name"
-                        dense
-                        clickable
-                        v-close-popup
-                        @click="convertObjectType(null, t.name)"
-                      >
-                        <q-item-section avatar>
-                          <q-avatar
-                            size="sm"
-                            :icon="t.icon"
-                            color="grey-7"
-                            text-color="primary"
-                          />
-                        </q-item-section>
-                        <q-item-section>{{ t.name }}</q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
                 </q-item>
                 <q-separator />
                 <q-item dense clickable v-close-popup @click="deleteSelected">
@@ -2081,6 +2041,9 @@ function handleMenuAction(action, val) {
       break;
     case "link":
       linkT3EntryDialogAction();
+      break;
+    case "convertObjectType":
+      convertObjectType(item, val);
       break;
     default:
       break;

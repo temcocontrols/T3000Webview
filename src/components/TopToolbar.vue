@@ -380,6 +380,47 @@
           <q-item-section>Send to Back</q-item-section>
         </q-item>
         <q-separator />
+        <q-item dense clickable>
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="transform"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>Convert to</q-item-section>
+          <q-item-section side>
+            <q-icon name="keyboard_arrow_right" />
+          </q-item-section>
+          <q-menu anchor="top end" self="top start" auto-close>
+            <q-list>
+              <q-item
+                v-for="t in tools.filter(
+                  (i) =>
+                    i.name !== object.type &&
+                    !['Duct', 'Pointer'].includes(i.name)
+                )"
+                :key="t.name"
+                dense
+                clickable
+                v-close-popup
+                @click="menuActionEmit('convertObjectType', t.name)"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    :icon="t.icon"
+                    color="grey-7"
+                    text-color="primary"
+                  />
+                </q-item-section>
+                <q-item-section>{{ t.name }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-item>
+        <q-separator />
         <q-item
           dense
           clickable
@@ -430,11 +471,16 @@
 
 <script>
 import { defineComponent } from "vue";
+import { tools } from "../lib/common";
 
 export default defineComponent({
   name: "TopToolbar",
   emits: ["menuAction"],
   props: {
+    object: {
+      type: Object,
+      required: false,
+    },
     selectedCount: {
       type: Number,
       required: true,
@@ -463,6 +509,7 @@ export default defineComponent({
 
     return {
       menuActionEmit,
+      tools,
     };
   },
 });
