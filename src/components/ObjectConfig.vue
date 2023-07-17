@@ -1,5 +1,6 @@
 <template>
   <div class="item-config flex flex-nowrap column" v-if="item">
+    <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>
     <div class="item-config-inner">
       <q-expansion-item
         class="mb-2 border border-solid border-gray-700"
@@ -569,7 +570,7 @@ export default defineComponent({
   max-height: 100vh;
   width: 250px;
   padding: 10px;
-  padding-top: 34px;
+  padding-top: 0;
   position: absolute;
   right: 0;
   top: 36px;
