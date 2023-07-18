@@ -5,9 +5,10 @@
     viewBox="0 0 32 24"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
     :class="{ active: active, 'in-alarm': inAlarm }"
   >
-    <g fill="#659dc5" transform="matrix(1, 0, 0, 1, -0.231, -4.151388)">
+    <g fill="currentColor" transform="matrix(1, 0, 0, 1, -0.231, -4.151388)">
       <g class="fan">
         <g id="g8">
           <path
@@ -60,6 +61,10 @@ export default defineComponent({
       required: false,
       default: false,
     },
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
   },
 });
 </script>
@@ -75,7 +80,7 @@ export default defineComponent({
   }
 
   50% {
-    fill: #659dc5;
+    fill: v-bind(fillColor);
   }
 
   100% {
@@ -95,5 +100,8 @@ export default defineComponent({
   100% {
     transform: rotate(360deg);
   }
+}
+.object-svg {
+  color: v-bind(fillColor);
 }
 </style>

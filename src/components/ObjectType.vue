@@ -117,6 +117,11 @@
         class="damper"
         v-bind="item.settings"
       />
+      <boiler
+        v-else-if="item.type === 'Boiler'"
+        class="boiler"
+        v-bind="item.settings"
+      />
       <text-el
         v-else-if="item.type === 'Text'"
         class="text"
@@ -215,6 +220,7 @@ import Temperature from "./ObjectTypes/Temperature.vue";
 import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
 import LedEl from "./ObjectTypes/Led.vue";
+import Boiler from "./ObjectTypes/Boiler.vue";
 
 import { getEntryRange } from "src/lib/common";
 
@@ -237,6 +243,7 @@ export default defineComponent({
     GaugeChart,
     DialChart: AnyChartDial,
     LedEl,
+    Boiler,
   },
   props: {
     item: {

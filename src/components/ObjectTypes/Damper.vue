@@ -5,6 +5,7 @@
     width="100%"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
     :class="{ 'in-alarm': inAlarm }"
   >
     <rect
@@ -18,7 +19,7 @@
       y="0.67645228"
       stroke-dasharray="none"
       stroke-width="1"
-      fill="#659dc5"
+      fill="currentColor"
     />
     <g
       stroke="#000000"
@@ -99,11 +100,18 @@ export default defineComponent({
       required: false,
       default: false,
     },
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
   },
 });
 </script>
 
 <style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
 .in-alarm .damper {
   animation: damper-alarm 1s infinite;
 }
@@ -114,7 +122,7 @@ export default defineComponent({
   }
 
   50% {
-    fill: #659dc5;
+    fill: currentColor;
   }
 
   100% {

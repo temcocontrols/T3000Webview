@@ -5,6 +5,7 @@
     width="100%"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
     :class="{ active: active, 'in-alarm': inAlarm }"
   >
     <g stroke="#000" transform="matrix(1, 0, 0, 1, -6.058399, -1.3729)">
@@ -14,7 +15,7 @@
         width="17.868"
         x="7.066"
         y="2.3772"
-        fill="#659dc5"
+        fill="currentColor"
       />
       <g transform="translate(24.9334,29.6232) rotate(180)">
         <rect
@@ -24,7 +25,7 @@
           width="17.875"
           x="0"
           y="0"
-          fill="#659dc5"
+          fill="currentColor"
           stroke="none"
         />
       </g>
@@ -68,11 +69,18 @@ export default defineComponent({
       required: false,
       default: false,
     },
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
   },
 });
 </script>
 
 <style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
 .in-alarm .cooling-coil {
   animation: cooling-coil-alarm 1s infinite;
 }
@@ -83,7 +91,7 @@ export default defineComponent({
   }
 
   50% {
-    fill: #659dc5;
+    fill: currentColor;
   }
 
   100% {

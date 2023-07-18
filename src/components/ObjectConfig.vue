@@ -79,7 +79,9 @@
               id="bg-color-input"
               v-model="item.settings.bgColor"
             />
-            <label class="ml-2" for="bg-color-input">Background Color</label>
+            <label class="ml-2" for="bg-color-input">{{
+              settings.bgColor?.label || "Background color"
+            }}</label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
             <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">

@@ -6,6 +6,7 @@
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
     xmlns:bx="https://boxy-svg.com"
+    class="object-svg"
     :class="{ inactive: !active, active: active, 'in-alarm': inAlarm }"
   >
     <g
@@ -65,7 +66,7 @@
         class="humidifier-body"
         d="m4.3242 8.877v22.586h4.0059v-9.883h4.3789v-2.617h-4.3789v-5.721h4.3789v-2.617h-4.3789v-1.748h-4.0059z"
         stroke="#000"
-        fill="#659dc5"
+        fill="currentColor"
       />
     </g>
   </svg>
@@ -87,10 +88,17 @@ export default defineComponent({
       required: false,
       default: false,
     },
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
   },
 });
 </script>
 <style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
 .in-alarm .duct-humidifier .humidifier-body {
   animation: duct_humidifier_color_change 1s infinite;
 }
@@ -101,7 +109,7 @@ export default defineComponent({
   }
 
   50% {
-    fill: #659dc5;
+    fill: currentColor;
   }
 
   100% {

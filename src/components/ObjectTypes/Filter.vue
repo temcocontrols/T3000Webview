@@ -5,6 +5,7 @@
     width="100%"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
   >
     <g
       stroke="#000"
@@ -17,7 +18,7 @@
         width="11.26"
         y="2.3252"
         x="10.37"
-        fill="#659dc5"
+        fill="currentColor"
       />
       <path
         id="path3756"
@@ -38,5 +39,17 @@ import { defineComponent } from "vue";
 
 export default defineComponent({
   name: "FilterEl",
+  props: {
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
+  },
 });
 </script>
+
+<style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
+</style>

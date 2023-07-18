@@ -5,6 +5,7 @@
     version="1.1"
     viewBox="0 0 10.423067 22.852614"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
   >
     <g
       id="layer1"
@@ -24,7 +25,7 @@
         id="path3010"
         stroke-width="1.2px"
         transform="matrix(0.74098,0,0,0.74098,7.3047,15.679)"
-        fill="#659dc5"
+        fill="currentColor"
         d="m 17.949,15.898 -3.1021,5.373 H 8.6427 L 5.5406,15.898 8.6427,10.525 h 6.2042 z"
       />
     </g>
@@ -69,5 +70,17 @@ import { defineComponent } from "vue";
 
 export default defineComponent({
   name: "TemperatureEl",
+  props: {
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
+  },
 });
 </script>
+
+<style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
+</style>

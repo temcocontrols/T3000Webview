@@ -5,6 +5,7 @@
     width="100%"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
+    class="object-svg"
     :class="{ active: active, 'in-alarm': inAlarm }"
   >
     <defs id="defs3">
@@ -13,7 +14,7 @@
     <g stroke="#000000" id="g15" transform="translate(-6.129206,-1.5327875)">
       <use
         xlink:href="#heating-coil-rect"
-        fill="#659dc5"
+        fill="currentColor"
         stroke="none"
         x="7.066"
         y="2.3771999"
@@ -25,7 +26,7 @@
           class="heating-coil"
           x="0"
           y="0"
-          fill="#659dc5"
+          fill="currentColor"
           stroke="none"
           id="use8"
         />
@@ -67,11 +68,18 @@ export default defineComponent({
       required: false,
       default: false,
     },
+    fillColor: {
+      type: String,
+      default: "#659dc5",
+    },
   },
 });
 </script>
 
 <style scoped>
+.object-svg {
+  color: v-bind(fillColor);
+}
 .in-alarm .heating-coil {
   animation: heating-coil-alarm 1s infinite;
 }
@@ -82,7 +90,7 @@ export default defineComponent({
   }
 
   50% {
-    fill: #659dc5;
+    fill: currentColor;
   }
 
   100% {

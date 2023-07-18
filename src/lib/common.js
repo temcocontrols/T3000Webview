@@ -82,7 +82,7 @@ export const tools = [
       textColor: {
         value: "black",
         type: "color",
-        label: "Text Color",
+        label: "Text color",
         id: 2,
       },
       textAlign: {
@@ -106,7 +106,7 @@ export const tools = [
       bgColor: {
         value: "#808080",
         type: "color",
-        label: "Background Color",
+        label: "Fill color",
         id: 1,
       },
     },
@@ -116,17 +116,23 @@ export const tools = [
     label: "Fan",
     icon: "svguse:icons.svg#fan",
     settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
       active: {
         value: false,
         type: "boolean",
         label: "Active",
-        id: 1,
+        id: 2,
       },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 2,
+        id: 3,
       },
     },
   },
@@ -135,17 +141,23 @@ export const tools = [
     label: "Cooling Coil",
     icon: "svguse:icons.svg#cooling-coil|0 0 20 29",
     settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
       active: {
         value: false,
         type: "boolean",
         label: "Active",
-        id: 1,
+        id: 2,
       },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 2,
+        id: 3,
       },
     },
   },
@@ -154,17 +166,23 @@ export const tools = [
     label: "Heating Coil",
     icon: "svguse:icons.svg#heating-coil|0 0 19.526541 28.758413",
     settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
       active: {
         value: false,
         type: "boolean",
         label: "Active",
-        id: 1,
+        id: 2,
       },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 2,
+        id: 3,
       },
     },
   },
@@ -172,23 +190,37 @@ export const tools = [
     name: "Filter",
     label: "Filter",
     icon: "svguse:icons.svg#filter|0 0 13 29",
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
   },
   {
     name: "Humidifier",
     label: "Humidifier",
     icon: "svguse:icons.svg#humidifier|0 0 18 25",
     settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
       active: {
         value: false,
         type: "boolean",
         label: "Active",
-        id: 1,
+        id: 2,
       },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 2,
+        id: 3,
       },
     },
   },
@@ -197,11 +229,17 @@ export const tools = [
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
     settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 1,
+        id: 2,
       },
     },
   },
@@ -209,6 +247,39 @@ export const tools = [
     name: "Temperature",
     label: "Temperature",
     icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Boiler",
+    label: "Boiler",
+    icon: "svguse:icons.svg#boiler",
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
+      },
+    },
   },
   {
     name: "Gauge",
@@ -299,7 +370,7 @@ export const tools = [
       textColor: {
         value: "#000000",
         type: "color",
-        label: "Text Color",
+        label: "Text color",
         id: 7,
       },
     },
@@ -312,13 +383,13 @@ export const tools = [
       bgColor: {
         value: "#0065a3",
         type: "color",
-        label: "Background Color",
+        label: "Background color",
         id: 1,
       },
       textColor: {
         value: "#ffffff",
         type: "color",
-        label: "Text Color",
+        label: "Text color",
         id: 3,
       },
       titleColor: {
