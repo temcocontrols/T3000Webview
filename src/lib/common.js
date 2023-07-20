@@ -257,6 +257,32 @@ export const tools = [
     },
   },
   {
+    name: "Enthalpy",
+    label: "Enthalpy",
+    icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Flow",
+    label: "Flow",
+    icon: "svguse:icons.svg#flow",
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
     name: "Boiler",
     label: "Boiler",
     icon: "svguse:icons.svg#boiler",

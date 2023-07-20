@@ -122,6 +122,16 @@
         class="boiler"
         v-bind="item.settings"
       />
+      <enthalpy
+        v-else-if="item.type === 'Enthalpy'"
+        class="enthalpy"
+        v-bind="item.settings"
+      />
+      <flow
+        v-else-if="item.type === 'Flow'"
+        class="flow"
+        v-bind="item.settings"
+      />
       <text-el
         v-else-if="item.type === 'Text'"
         class="text"
@@ -221,6 +231,8 @@ import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
 import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
 import LedEl from "./ObjectTypes/Led.vue";
 import Boiler from "./ObjectTypes/Boiler.vue";
+import Enthalpy from "./ObjectTypes/Enthalpy.vue";
+import Flow from "./ObjectTypes/Flow.vue";
 
 import { getEntryRange } from "src/lib/common";
 
@@ -244,6 +256,8 @@ export default defineComponent({
     DialChart: AnyChartDial,
     LedEl,
     Boiler,
+    Enthalpy,
+    Flow,
   },
   props: {
     item: {
