@@ -10,7 +10,7 @@
     class="object-svg"
   >
     <defs>
-      <linearGradient id="linearGradient4194" inkscape:swatch="gradient">
+      <linearGradient id="linearGradient4194">
         <stop
           style="stop-color: #ffff00; stop-opacity: 1"
           offset="0"
@@ -33,7 +33,6 @@
         />
       </linearGradient>
       <linearGradient
-        inkscape:collect="always"
         xlink:href="#linearGradient4194"
         id="linearGradient4219"
         x1="15.955305"
@@ -60,7 +59,6 @@
     />
     <path
       :style="`fill: ${fillColor}; stroke: #000000; stroke-width: 0.889176px`"
-      inkscape:connector-curvature="0"
       d="m 9.7077419,18.0463 -2.298594,3.981286 H 2.8119599 L 0.51336587,18.0463 2.8119599,14.065014 h 4.597188 z"
     />
     <g transform="translate(-10.733726,-9.4127998)">
@@ -104,7 +102,6 @@
           stroke-dasharray: none;
           stroke-opacity: 1;
         "
-        inkscape:connector-curvature="0"
         d="m 17.270488,24.668533 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
       />
       <path
@@ -116,7 +113,6 @@
           stroke-dasharray: none;
           stroke-opacity: 1;
         "
-        inkscape:connector-curvature="0"
         d="m 17.270488,27.878474 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
       />
     </g>

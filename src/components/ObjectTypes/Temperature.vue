@@ -46,7 +46,6 @@
         "
       />
       <path
-        inkscape:connector-curvature="0"
         id="path4139"
         d="M 6.4061205,27.157211 V 23.65349"
         style="
