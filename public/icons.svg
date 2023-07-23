@@ -7,7 +7,6 @@
   >
     <g stroke="#000" transform="matrix(1, 0, 0, 1, -6.058399, -1.3729)">
       <rect
-        id="rect4367"
         height="27.246"
         width="17.868"
         x="7.066"
@@ -16,7 +15,6 @@
       />
       <g transform="translate(24.9334,29.6232) rotate(180)">
         <rect
-          id="rect4367"
           class="cooling-coil"
           height="27.246"
           width="17.875"
@@ -26,26 +24,9 @@
           stroke="none"
         />
       </g>
-      <rect
-        id="rect4367"
-        height="27.246"
-        width="17.868"
-        x="7.066"
-        y="2.3772"
-        fill="none"
-      />
-      <path
-        id="path3001"
-        d="m7.322 2.3729 17.424 27.254"
-        stroke-width="1px"
-        fill="none"
-      />
-      <path
-        id="path3003"
-        d="m24.929 2.3734-17.642 27.182"
-        stroke-width="1px"
-        fill="none"
-      />
+      <rect height="27.246" width="17.868" x="7.066" y="2.3772" fill="none" />
+      <path d="m7.322 2.3729 17.424 27.254" stroke-width="1px" fill="none" />
+      <path d="m24.929 2.3734-17.642 27.182" stroke-width="1px" fill="none" />
     </g>
   </symbol>
   <symbol id="cursor" viewBox="0 0 320 512">
@@ -56,7 +37,6 @@
   </symbol>
   <symbol id="damper" viewBox="0 0 13.431694 28.950886" version="1.1">
     <rect
-      id="rect4367"
       class="damper"
       height="27.5"
       width="12"
@@ -71,10 +51,9 @@
     <g
       stroke="#000000"
       stroke-width="1.5px"
-      id="g19"
       transform="translate(-9.3051848,-1.5735477)"
     >
-      <g transform="translate(16,7)" id="g5">
+      <g transform="translate(16,7)">
         <line
           x1="-5"
           x2="5"
@@ -82,10 +61,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line3"
         />
       </g>
-      <g transform="translate(16,13)" id="g9">
+      <g transform="translate(16,13)">
         <line
           x1="-5"
           x2="5"
@@ -93,10 +71,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line7"
         />
       </g>
-      <g transform="translate(16,19)" id="g13">
+      <g transform="translate(16,19)">
         <line
           x1="-5"
           x2="5"
@@ -104,10 +81,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line11"
         />
       </g>
-      <g transform="translate(16,25)" id="g17">
+      <g transform="translate(16,25)">
         <line
           x1="-5"
           x2="5"
@@ -115,23 +91,17 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line15"
         />
       </g>
     </g>
     <g
-      id="g4877"
       stroke-linejoin="miter"
       transform="matrix(1.2268237,0,0,0.94845469,-13.299764,-1.1862851)"
       stroke="#000000"
       stroke-linecap="butt"
       fill="none"
     >
-      <path
-        id="path4317"
-        stroke-width="1.06273px"
-        d="m 16.298,2.2402 v 28.442"
-      />
+      <path stroke-width="1.06273px" d="m 16.298,2.2402 v 28.442" />
     </g>
   </symbol>
   <symbol
@@ -178,7 +148,6 @@
       transform="matrix(1, 0, 0, 1, -9.37, -1.3252)"
     >
       <rect
-        id="rect4367"
         height="27.35"
         width="11.26"
         y="2.3252"
@@ -186,7 +155,6 @@
         fill="currentColor"
       />
       <path
-        id="path3756"
         stroke-linejoin="miter"
         d="m11.892,2.6997,8.2165,4.4334-8.2165,4.4334,8.2165,4.4334-8.2165,4.4334,8.2165,4.4334-8.2165,4.4334"
         stroke-linecap="round"
@@ -205,19 +173,18 @@
     xmlns="http://www.w3.org/2000/svg"
     xmlns:svg="http://www.w3.org/2000/svg"
   >
-    <defs id="defs3">
+    <defs>
       <rect id="heating-coil-rect" height="27.246" width="17.868" x="0" y="0" />
     </defs>
-    <g stroke="#000000" id="g15" transform="translate(-6.129206,-1.5327875)">
+    <g stroke="#000000" transform="translate(-6.129206,-1.5327875)">
       <use
         xlink:href="#heating-coil-rect"
         fill="currentColor"
         stroke="none"
         x="7.066"
         y="2.3771999"
-        id="use6"
       />
-      <g transform="rotate(180,12.4667,14.8116)" id="g10">
+      <g transform="rotate(180,12.4667,14.8116)">
         <use
           xlink:href="#heating-coil-rect"
           class="heating-coil"
@@ -225,7 +192,6 @@
           y="0"
           fill="currentColor"
           stroke="none"
-          id="use8"
         />
       </g>
       <use
@@ -234,10 +200,8 @@
         fill="none"
         x="7.066"
         y="2.3771999"
-        id="use12"
       />
       <path
-        id="path3003"
         stroke-linejoin="miter"
         d="M 24.929,2.3734 7.2868,29.555"
         stroke="#000000"
@@ -257,48 +221,40 @@
       class="duct-humidifier"
       transform="matrix(1, 0, 0, 1, -3.324199, -7.877)"
     >
-      <g id="g11" transform="translate(0 5.1505)">
+      <g transform="translate(0 5.1505)">
         <g
-          id="g13"
           stroke="#000"
           stroke-width=".5"
           class="water-drops"
           fill="currentColor"
         >
           <path
-            id="path4150"
             d="m14.291 6.7851c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
           />
-          <g id="g4236" transform="translate(0 .17167)">
+          <g transform="translate(0 .17167)">
             <path
-              id="path4150-7"
               d="m18.179 5.3612c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
             />
             <path
-              id="path4150-7-1"
               d="m18.234 7.8656c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
             />
           </g>
         </g>
-        <g id="g19" transform="translate(0,8)">
+        <g transform="translate(0,8)">
           <g
-            id="g21"
             stroke="#000"
             stroke-width=".5"
             class="water-drops water-drops-2"
             fill="currentColor"
           >
             <path
-              id="path23"
               d="m14.291 6.7851c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
             />
-            <g id="g25" transform="translate(0 .17167)">
+            <g transform="translate(0 .17167)">
               <path
-                id="path27"
                 d="m18.179 5.3612c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
               />
               <path
-                id="path29"
                 d="m18.234 7.8656c0.46542-0.0958 0.69019-0.27099 0.99164-0.49615 0.10429-0.07789 0.23068-0.12587 0.37088-0.12587 0.34281 0 0.62078 0.27918 0.62078 0.62199s-0.27796 0.61956-0.62078 0.61956c-0.13834 0-0.26988-0.0428-0.37088-0.1222-0.29895-0.23498-0.52493-0.40696-0.99168-0.49732z"
               />
             </g>
@@ -306,7 +262,6 @@
         </g>
       </g>
       <path
-        id="rect4136-6"
         class="humidifier-body"
         d="m4.3242 8.877v22.586h4.0059v-9.883h4.3789v-2.617h-4.3789v-5.721h4.3789v-2.617h-4.3789v-1.748h-4.0059z"
         stroke="#000"
@@ -318,24 +273,16 @@
     id="temperature"
     version="1.1"
     viewBox="0 0 10.423067 22.852614"
-    inkscape:version="1.2.1 (9c6d41e410, 2022-07-14, custom)"
     sodipodi:docname="temperature.svg"
-    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
     xmlns="http://www.w3.org/2000/svg"
     xmlns:svg="http://www.w3.org/2000/svg"
-    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    xmlns:cc="http://creativecommons.org/ns#"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
   >
     <g
-      id="layer1"
       stroke="#000000"
       stroke-width="1px"
       transform="translate(-10.804626,-9.2243756)"
     >
       <rect
-        id="rect3012"
         height="14.505"
         width="2.901"
         y="9.9127998"
@@ -343,19 +290,17 @@
         fill="#ffff00"
       />
       <path
-        id="path3010"
         stroke-width="1.2px"
         transform="matrix(0.74098,0,0,0.74098,7.3047,15.679)"
         fill="currentColor"
         d="m 17.949,15.898 -3.1021,5.373 H 8.6427 L 5.5406,15.898 8.6427,10.525 h 6.2042 z"
       />
     </g>
-    <g id="g4141" transform="translate(-1.2033861,-8.1217684)">
+    <g transform="translate(-1.2033861,-8.1217684)">
       <circle
         r="0.77312505"
         cy="28.129852"
         cx="6.4061227"
-        id="path4137"
         style="
           fill: none;
           fill-opacity: 1;
@@ -367,8 +312,6 @@
         "
       />
       <path
-        inkscape:connector-curvature="0"
-        id="path4139"
         d="M 6.4061205,27.157211 V 23.65349"
         style="
           fill: none;
@@ -598,26 +541,13 @@
   <symbol viewBox="0 0 10 22" xmlns="http://www.w3.org/2000/svg" id="enthalpy">
     <defs>
       <linearGradient id="linearGradient4194">
+        <stop style="stop-color: #ffff00; stop-opacity: 1" offset="0" />
+        <stop offset="0.3598454" style="stop-color: #ffff00; stop-opacity: 1" />
         <stop
-          style="stop-color: #ffff00; stop-opacity: 1"
-          offset="0"
-          id="stop4196"
-        />
-        <stop
-          id="stop4148"
-          offset="0.3598454"
-          style="stop-color: #ffff00; stop-opacity: 1"
-        />
-        <stop
-          id="stop4144"
           offset="0.59441435"
           style="stop-color: #00ffff; stop-opacity: 1"
         />
-        <stop
-          style="stop-color: #00ffff; stop-opacity: 1"
-          offset="1"
-          id="stop4198"
-        />
+        <stop style="stop-color: #00ffff; stop-opacity: 1" offset="1" />
       </linearGradient>
       <linearGradient
         xlink:href="#linearGradient4194"
@@ -659,7 +589,6 @@
             stroke-dasharray: none;
             stroke-opacity: 1;
           "
-          id="path4137"
           cx="6.4061227"
           cy="28.129852"
           r="0.77312505"
@@ -706,17 +635,10 @@
   <symbol xmlns="http://www.w3.org/2000/svg" id="flow" viewBox="0 0 32 32">
     <path
       style="fill: #659dc5; stroke: #000000; stroke-width: 0.88917601px"
-      inkscape:connector-curvature="0"
       d="m 20.60455,27.4591 -2.298594,3.981286 -4.597188,0 -2.298594,-3.981286 2.298594,-3.981286 4.597188,0 z"
-      id="path3010"
     ></path>
-    <g
-      id="g4150"
-      transform="matrix(0.83920236,0,0,0.83920236,2.5837137,4.2139363)"
-    >
+    <g transform="matrix(0.83920236,0,0,0.83920236,2.5837137,4.2139363)">
       <path
-        inkscape:connector-curvature="0"
-        id="path4146"
         d="m 14.917284,30.513877 0,-5.217284 2.569115,0"
         style="
           fill: none;
@@ -729,8 +651,6 @@
         "
       ></path>
       <path
-        inkscape:connector-curvature="0"
-        id="path4148"
         d="m 14.956808,27.549512 2.529591,0"
         style="
           fill: none;
@@ -754,8 +674,6 @@
         stroke-opacity: 1;
       "
       d="m 16.059713,23.514719 0,-12.464256 -4.602186,0"
-      id="path4156"
-      inkscape:connector-curvature="0"
     ></path>
     <path
       style="
@@ -768,8 +686,6 @@
         stroke-opacity: 1;
       "
       d="m 15.915895,19.439866 2.205215,0 0,4.122792"
-      id="path4158"
-      inkscape:connector-curvature="0"
     ></path>
   </symbol>
 </svg>
