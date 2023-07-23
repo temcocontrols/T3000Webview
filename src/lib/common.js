@@ -259,7 +259,7 @@ export const tools = [
   {
     name: "Enthalpy",
     label: "Enthalpy",
-    icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
+    icon: "svguse:icons.svg#enthalpy|0 0 10 22",
     settings: {
       fillColor: {
         value: "#659dc5",

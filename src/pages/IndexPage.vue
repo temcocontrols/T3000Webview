@@ -489,7 +489,7 @@
                           v-for="t in tools.filter(
                             (i) =>
                               i.name !== item.type &&
-                              !['Duct', 'Pointer'].includes(i.name)
+                              !['Duct', 'Pointer', 'Text'].includes(i.name)
                           )"
                           :key="t.name"
                           dense
@@ -502,7 +502,7 @@
                               size="sm"
                               :icon="t.icon"
                               color="grey-7"
-                              text-color="primary"
+                              text-color="white"
                             />
                           </q-item-section>
                           <q-item-section>{{ t.name }}</q-item-section>
