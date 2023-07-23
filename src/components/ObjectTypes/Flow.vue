@@ -1,62 +1,51 @@
 <template>
   <svg
-    xmlns:svg="http://www.w3.org/2000/svg"
-    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
     height="100%"
     width="100%"
-    version="1.1"
-    viewBox="0 0 32 32"
+    viewBox="0 0 10.221108 21.334512"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:osb="http://www.openswatchbook.org/uri/2009/osb"
     class="object-svg"
   >
-    <defs id="defs9">
+    <defs>
       <linearGradient id="linearGradient4194" osb:paint="gradient">
-        <stop
-          style="stop-color: #ffff00; stop-opacity: 1"
-          offset="0"
-          id="stop4196"
-        ></stop>
-        <stop
-          style="stop-color: #659dc5; stop-opacity: 1"
-          offset="1"
-          id="stop4198"
-        ></stop>
+        <stop style="stop-color: #ffff00; stop-opacity: 1" offset="0" />
+        <stop style="stop-color: currentColor; stop-opacity: 1" offset="1" />
       </linearGradient>
     </defs>
     <path
-      style="fill: #659dc5; stroke: #000000; stroke-width: 0.88917601px"
-      d="m 20.60455,27.4591 -2.298594,3.981286 -4.597188,0 -2.298594,-3.981286 2.298594,-3.981286 4.597188,0 z"
-      id="path3010"
-    ></path>
-    <g
-      id="g4150"
-      transform="matrix(0.83920236,0,0,0.83920236,2.5837137,4.2139363)"
-    >
+      style="fill: currentColor; stroke: #000000; stroke-width: 0.889176px"
+      d="m 9.7077419,16.908637 -2.298594,3.981286 H 2.8119599 L 0.51336587,16.908637 2.8119599,12.927351 h 4.597188 z"
+    />
+    <g transform="matrix(0.83920236,0,0,0.83920236,-8.3130944,-6.3365267)">
       <path
         id="path4146"
-        d="m 14.917284,30.513877 0,-5.217284 2.569115,0"
+        d="m 14.917284,30.513877 v -5.217284 h 2.569115"
         style="
           fill: none;
           fill-rule: evenodd;
           stroke: #000000;
-          stroke-width: 0.82447493px;
+          stroke-width: 0.824475px;
           stroke-linecap: butt;
           stroke-linejoin: miter;
           stroke-opacity: 1;
         "
-      ></path>
+      />
       <path
-        id="path4148"
-        d="m 14.956808,27.549512 2.529591,0"
+        d="m 14.956808,27.549512 h 2.529591"
         style="
           fill: none;
           fill-rule: evenodd;
           stroke: #000000;
-          stroke-width: 0.82447493px;
+          stroke-width: 0.824475px;
           stroke-linecap: butt;
           stroke-linejoin: miter;
           stroke-opacity: 1;
         "
-      ></path>
+      />
     </g>
     <path
       style="
@@ -68,9 +57,8 @@
         stroke-linejoin: miter;
         stroke-opacity: 1;
       "
-      d="m 16.059713,23.514719 0,-12.464256 -4.602186,0"
-      id="path4156"
-    ></path>
+      d="M 5.1629049,12.964256 V 0.5 H 0.56071887"
+    />
     <path
       style="
         fill: none;
@@ -81,9 +69,8 @@
         stroke-linejoin: miter;
         stroke-opacity: 1;
       "
-      d="m 15.915895,19.439866 2.205215,0 0,4.122792"
-      id="path4158"
-    ></path>
+      d="m 5.0190869,8.889403 h 2.205215 v 4.122792"
+    />
   </svg>
 </template>
 
