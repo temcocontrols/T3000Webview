@@ -518,7 +518,7 @@ export default defineComponent({
 <style scoped>
 .toolbar {
   background-color: #2a2a2a;
-  padding-left: 55px;
+  padding-left: 105px;
 }
 
 .q-toolbar {

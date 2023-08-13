@@ -55,16 +55,20 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
+export const toolsCategories = ["Pipe", "Duct", "Metrics", "Basic"];
+
 export const tools = [
   {
     name: "Pointer",
     label: "Select",
     icon: "svguse:icons.svg#cursor|0 0 320 512",
+    cat: "Top",
   },
   {
     name: "Box",
     label: "Box",
     icon: "square",
+    cat: "Basic",
     settings: {
       bgColor: {
         value: "#659dc5",
@@ -78,6 +82,7 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
+    cat: "Basic",
     settings: {
       textColor: {
         value: "black",
@@ -102,6 +107,7 @@ export const tools = [
     name: "Duct",
     label: "Duct",
     icon: "svguse:icons.svg#duct|0 0 226 75",
+    cat: "Duct",
     settings: {
       bgColor: {
         value: "#808080",
@@ -115,6 +121,7 @@ export const tools = [
     name: "Fan",
     label: "Fan",
     icon: "svguse:icons.svg#fan",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -140,6 +147,7 @@ export const tools = [
     name: "CoolingCoil",
     label: "Cooling Coil",
     icon: "svguse:icons.svg#cooling-coil|0 0 20 29",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -165,6 +173,7 @@ export const tools = [
     name: "HeatingCoil",
     label: "Heating Coil",
     icon: "svguse:icons.svg#heating-coil|0 0 19.526541 28.758413",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -190,6 +199,7 @@ export const tools = [
     name: "Filter",
     label: "Filter",
     icon: "svguse:icons.svg#filter|0 0 13 29",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -203,6 +213,7 @@ export const tools = [
     name: "Humidifier",
     label: "Humidifier",
     icon: "svguse:icons.svg#humidifier|0 0 18 25",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -228,6 +239,7 @@ export const tools = [
     name: "Damper",
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -246,6 +258,7 @@ export const tools = [
   {
     name: "Temperature",
     label: "Temperature",
+    cat: "Duct",
     icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
     settings: {
       fillColor: {
@@ -260,6 +273,7 @@ export const tools = [
     name: "Enthalpy",
     label: "Enthalpy",
     icon: "svguse:icons.svg#enthalpy|0 0 10 22",
+    cat: "Pipe",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -273,6 +287,7 @@ export const tools = [
     name: "Flow",
     label: "Flow",
     icon: "svguse:icons.svg#flow",
+    cat: "Duct",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -286,6 +301,7 @@ export const tools = [
     name: "Boiler",
     label: "Boiler",
     icon: "svguse:icons.svg#boiler",
+    cat: "Pipe",
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -311,6 +327,7 @@ export const tools = [
     name: "Gauge",
     label: "Gauge",
     icon: "speed",
+    cat: "Metrics",
     settings: {
       min: {
         value: 0,
@@ -358,6 +375,7 @@ export const tools = [
     name: "Dial",
     label: "Dial",
     icon: "horizontal_split",
+    cat: "Metrics",
     settings: {
       min: {
         value: 0,
@@ -405,6 +423,7 @@ export const tools = [
     name: "Value",
     label: "Value",
     icon: "123",
+    cat: "Metrics",
     settings: {
       bgColor: {
         value: "#0065a3",
@@ -439,6 +458,7 @@ export const tools = [
     name: "Icon",
     label: "Icon with title",
     icon: "fa-solid fa-icons",
+    cat: "Metrics",
     settings: {
       textAlign: {
         value: "left",
@@ -480,6 +500,7 @@ export const tools = [
     name: "Switch",
     label: "Switch Icon",
     icon: "toggle_off",
+    cat: "Basic",
     settings: {
       textAlign: {
         value: "left",
@@ -521,6 +542,7 @@ export const tools = [
     name: "LED",
     label: "LED",
     icon: "svguse:icons.svg#led",
+    cat: "Basic",
     settings: {
       textAlign: {
         value: "left",

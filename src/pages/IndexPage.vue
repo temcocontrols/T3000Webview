@@ -23,8 +23,8 @@
           :zoom="zoom"
         />
         <div
-          class="flex fixed top-10 left-16 z-50"
-          :class="{ '!left-4': locked }"
+          class="flex fixed top-10 z-50 nav-btns"
+          :class="{ locked: locked }"
         >
           <q-btn
             v-if="grpNav?.length > 1"
@@ -2345,5 +2345,12 @@ function convertObjectType(item, type) {
 
 .moveable-item-wrapper {
   position: relative;
+}
+
+.nav-btns {
+  left: 7rem;
+}
+.nav-btns.locked {
+  left: 1rem;
 }
 </style>
