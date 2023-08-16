@@ -62,13 +62,13 @@ export const tools = [
     name: "Pointer",
     label: "Select",
     icon: "svguse:icons.svg#cursor|0 0 320 512",
-    cat: "Top",
+    cat: ["Top"],
   },
   {
     name: "Box",
     label: "Box",
     icon: "square",
-    cat: "Basic",
+    cat: ["Basic"],
     settings: {
       bgColor: {
         value: "#659dc5",
@@ -82,7 +82,7 @@ export const tools = [
     name: "Text",
     label: "Text",
     icon: "title",
-    cat: "Basic",
+    cat: ["Basic"],
     settings: {
       textColor: {
         value: "black",
@@ -107,7 +107,7 @@ export const tools = [
     name: "Duct",
     label: "Duct",
     icon: "svguse:icons.svg#duct|0 0 226 75",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       bgColor: {
         value: "#808080",
@@ -121,7 +121,7 @@ export const tools = [
     name: "Fan",
     label: "Fan",
     icon: "svguse:icons.svg#fan",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -147,7 +147,7 @@ export const tools = [
     name: "CoolingCoil",
     label: "Cooling Coil",
     icon: "svguse:icons.svg#cooling-coil|0 0 20 29",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -173,7 +173,7 @@ export const tools = [
     name: "HeatingCoil",
     label: "Heating Coil",
     icon: "svguse:icons.svg#heating-coil|0 0 19.526541 28.758413",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -199,7 +199,7 @@ export const tools = [
     name: "Filter",
     label: "Filter",
     icon: "svguse:icons.svg#filter|0 0 13 29",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -213,7 +213,7 @@ export const tools = [
     name: "Humidifier",
     label: "Humidifier",
     icon: "svguse:icons.svg#humidifier|0 0 18 25",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -239,7 +239,7 @@ export const tools = [
     name: "Damper",
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -258,7 +258,7 @@ export const tools = [
   {
     name: "Temperature",
     label: "Temperature",
-    cat: "Duct",
+    cat: ["Duct", "Pipe"],
     icon: "svguse:icons.svg#temperature|0 0 10.423067 22.852614",
     settings: {
       fillColor: {
@@ -273,7 +273,7 @@ export const tools = [
     name: "Enthalpy",
     label: "Enthalpy",
     icon: "svguse:icons.svg#enthalpy|0 0 10 22",
-    cat: "Pipe",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -287,7 +287,7 @@ export const tools = [
     name: "Flow",
     label: "Flow",
     icon: "svguse:icons.svg#flow",
-    cat: "Duct",
+    cat: ["Duct"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -301,7 +301,59 @@ export const tools = [
     name: "Boiler",
     label: "Boiler",
     icon: "svguse:icons.svg#boiler",
-    cat: "Pipe",
+    cat: ["Pipe"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
+      },
+    },
+  },
+  {
+    name: "Heatpump",
+    label: "Heat pump",
+    icon: "svguse:icons.svg#heatpump",
+    cat: ["Pipe"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
+      },
+    },
+  },
+  {
+    name: "Pump",
+    label: "Pump",
+    icon: "svguse:icons.svg#pump",
+    cat: ["Pipe"],
     settings: {
       fillColor: {
         value: "#659dc5",
@@ -327,7 +379,7 @@ export const tools = [
     name: "Gauge",
     label: "Gauge",
     icon: "speed",
-    cat: "Metrics",
+    cat: ["Metrics"],
     settings: {
       min: {
         value: 0,
@@ -375,7 +427,7 @@ export const tools = [
     name: "Dial",
     label: "Dial",
     icon: "horizontal_split",
-    cat: "Metrics",
+    cat: ["Metrics"],
     settings: {
       min: {
         value: 0,
@@ -423,7 +475,7 @@ export const tools = [
     name: "Value",
     label: "Value",
     icon: "123",
-    cat: "Metrics",
+    cat: ["Metrics"],
     settings: {
       bgColor: {
         value: "#0065a3",
@@ -458,7 +510,7 @@ export const tools = [
     name: "Icon",
     label: "Icon with title",
     icon: "fa-solid fa-icons",
-    cat: "Metrics",
+    cat: ["Metrics"],
     settings: {
       textAlign: {
         value: "left",
@@ -500,7 +552,7 @@ export const tools = [
     name: "Switch",
     label: "Switch Icon",
     icon: "toggle_off",
-    cat: "Basic",
+    cat: ["Basic"],
     settings: {
       textAlign: {
         value: "left",
@@ -542,7 +594,7 @@ export const tools = [
     name: "LED",
     label: "LED",
     icon: "svguse:icons.svg#led",
-    cat: "Basic",
+    cat: ["Basic"],
     settings: {
       textAlign: {
         value: "left",

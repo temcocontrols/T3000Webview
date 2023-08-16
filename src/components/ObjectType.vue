@@ -122,6 +122,16 @@
         class="boiler"
         v-bind="item.settings"
       />
+      <heatpump
+        v-else-if="item.type === 'Heatpump'"
+        class="heatpump"
+        v-bind="item.settings"
+      />
+      <pump
+        v-else-if="item.type === 'Pump'"
+        class="heatpump"
+        v-bind="item.settings"
+      />
       <enthalpy
         v-else-if="item.type === 'Enthalpy'"
         class="enthalpy"
@@ -233,6 +243,8 @@ import LedEl from "./ObjectTypes/Led.vue";
 import Boiler from "./ObjectTypes/Boiler.vue";
 import Enthalpy from "./ObjectTypes/Enthalpy.vue";
 import Flow from "./ObjectTypes/Flow.vue";
+import Heatpump from "./ObjectTypes/Heatpump.vue";
+import Pump from "./ObjectTypes/Pump.vue";
 
 import { getEntryRange } from "src/lib/common";
 
@@ -258,6 +270,8 @@ export default defineComponent({
     Boiler,
     Enthalpy,
     Flow,
+    Heatpump,
+    Pump,
   },
   props: {
     item: {

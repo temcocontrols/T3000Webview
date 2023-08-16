@@ -10,9 +10,9 @@
       header-class="p-2 min-h-0"
       expand-icon-class="pl-2"
     >
-      <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 px-1">
+      <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 p-1">
         <q-item
-          v-for="tool in tools.filter((i) => i.cat === cat)"
+          v-for="tool in tools.filter((i) => i.cat.includes(cat))"
           :key="tool.name"
           @click="selectTool(tool.name)"
           clickable
@@ -38,7 +38,7 @@
       header-class="p-2 min-h-0"
       expand-icon-class="pl-2"
     >
-      <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 px-1">
+      <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 p-1">
         <q-item
           clickable
           v-ripple
