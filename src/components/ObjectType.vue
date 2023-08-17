@@ -112,6 +112,11 @@
         class="humidifier"
         v-bind="item.settings"
       />
+      <humidity
+        v-else-if="item.type === 'Humidity'"
+        class="humidity"
+        v-bind="item.settings"
+      />
       <damper
         v-else-if="item.type === 'Damper'"
         class="damper"
@@ -130,6 +135,16 @@
       <pump
         v-else-if="item.type === 'Pump'"
         class="heatpump"
+        v-bind="item.settings"
+      />
+      <ValveThreeWay
+        v-else-if="item.type === 'ValveThreeWay'"
+        class="valve-threeway"
+        v-bind="item.settings"
+      />
+      <ValveTwoWay
+        v-else-if="item.type === 'ValveTwoWay'"
+        class="valve-threeway"
         v-bind="item.settings"
       />
       <enthalpy
@@ -245,6 +260,9 @@ import Enthalpy from "./ObjectTypes/Enthalpy.vue";
 import Flow from "./ObjectTypes/Flow.vue";
 import Heatpump from "./ObjectTypes/Heatpump.vue";
 import Pump from "./ObjectTypes/Pump.vue";
+import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
+import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
+import Humidity from "./ObjectTypes/Humidity.vue";
 
 import { getEntryRange } from "src/lib/common";
 
@@ -272,6 +290,9 @@ export default defineComponent({
     Flow,
     Heatpump,
     Pump,
+    ValveThreeWay,
+    ValveTwoWay,
+    Humidity,
   },
   props: {
     item: {

@@ -55,14 +55,14 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Pipe", "Duct", "Metrics", "Basic"];
+export const toolsCategories = ["Basic", "Pipe", "Duct", "Metrics"];
 
 export const tools = [
   {
     name: "Pointer",
     label: "Select",
     icon: "svguse:icons.svg#cursor|0 0 320 512",
-    cat: ["Top"],
+    cat: ["Basic"],
   },
   {
     name: "Box",
@@ -236,6 +236,20 @@ export const tools = [
     },
   },
   {
+    name: "Humidity",
+    label: "Humidity",
+    icon: "svguse:icons.svg#humidity|0 0 10.221108 22.472175",
+    cat: ["Duct"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
     name: "Damper",
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
@@ -372,6 +386,40 @@ export const tools = [
         type: "boolean",
         label: "In alarm",
         id: 3,
+      },
+    },
+  },
+  {
+    name: "ValveThreeWay",
+    label: "Valve Three-Way",
+    icon: "svguse:icons.svg#ValveThreeWay",
+    cat: ["Pipe"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
+      },
+    },
+  },
+  {
+    name: "ValveTwoWay",
+    label: "Valve Two-Way",
+    icon: "svguse:icons.svg#ValveTwoWay",
+    cat: ["Pipe"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
       },
     },
   },

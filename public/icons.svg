@@ -775,4 +775,157 @@
       </g>
     </g>
   </symbol>
+  <symbol
+    id="ValveThreeWay"
+    viewBox="0 0 23.15 18.469064"
+    version="1.1"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+  >
+    <g transform="matrix(1,0,0,-1,-4.425,22.894063)">
+      <g
+        stroke-linejoin="round"
+        stroke="#000000"
+        class="twv"
+        fill="currentColor"
+      >
+        <g stroke-linecap="round">
+          <path d="M 16,16 4.925,22.3941 V 9.6061 Z" />
+          <path d="m 16,16 11.075,6.3941 V 9.6061 Z" />
+          <path d="M 16,16 9.606,4.925 h 12.788 z" />
+        </g>
+        <g class="blocker-wrapper">
+          <g class="blocker" fill="#000000">
+            <path
+              stroke-width="0.80716"
+              d="m 16.0193,6.3312988 a 8.8788,8.8788 0 0 0 -6.0272998,2.375 L 11.6092,11.507099 a 5.7576,5.7576 0 0 1 4.4101,-2.0547002 5.7576,5.7576 0 0 1 4.4062,2.0605002 l 1.6231,-2.8105002 a 8.8788,8.8788 0 0 0 -6.0293,-2.3711 z"
+            />
+          </g>
+        </g>
+      </g>
+      <path
+        d="M 6.7797,10.576 V 21.084"
+        stroke="#000000"
+        stroke-width="1px"
+        fill="none"
+      />
+    </g>
+  </symbol>
+  <symbol
+    id="ValveTwoWay"
+    viewBox="0 0 22.956221 13.906571"
+    version="1.1"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+  >
+    <g
+      stroke-linejoin="round"
+      fill-rule="nonzero"
+      transform="translate(-3.8922957,-7.3951286)"
+      stroke="#000000"
+      stroke-linecap="round"
+      stroke-dasharray="none"
+      stroke-miterlimit="4"
+      stroke-width="1"
+      fill="currentColor"
+    >
+      <path
+        d="M 10.068,7.9344 -1.007,14.3285 V 1.5405 Z"
+        transform="translate(5.3992957,6.473236)"
+      />
+      <path
+        d="M 10.068,7.9344 -1.007,14.3285 V 1.5405 Z"
+        transform="matrix(-1,0,0,1,25.341517,6.354592)"
+      />
+    </g>
+  </symbol>
+  <symbol
+    id="humidity"
+    version="1.1"
+    viewBox="0 0 10.221108 22.472175"
+    xmlns:osb="http://www.openswatchbook.org/uri/2009/osb"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+  >
+    <defs>
+      <linearGradient inkscape:swatch="gradient">
+        <stop style="stop-color: #ffff00; stop-opacity: 1" offset="0" />
+        <stop style="stop-color: currentColor; stop-opacity: 1" offset="1" />
+      </linearGradient>
+    </defs>
+    <rect
+      style="
+        fill: #00d1ff;
+        fill-opacity: 1;
+        fill-rule: nonzero;
+        stroke: #000000;
+        stroke-width: 1px;
+      "
+      x="3.660192"
+      y="0.5"
+      width="2.901"
+      height="14.505"
+    />
+    <path
+      style="fill: #659dc5; stroke: #000000; stroke-width: 0.889176px"
+      d="m 9.7077419,18.0463 -2.298594,3.981286 H 2.8119599 L 0.51336587,18.0463 2.8119599,14.065014 h 4.597188 z"
+    />
+    <g transform="translate(-10.962785,-9.3157224)">
+      <g>
+        <path
+          d="m 17.43357,24.668533 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 0.5;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+            stroke-opacity: 1;
+          "
+        />
+        <path
+          d="m 17.43357,27.878474 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 0.5;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+            stroke-opacity: 1;
+          "
+        />
+      </g>
+      <g transform="translate(0,0.107786)">
+        <path
+          d="m 14.710621,24.560747 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 0.5;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+            stroke-opacity: 1;
+          "
+        />
+        <path
+          d="m 14.710621,27.770688 c 0.0958,0.465416 0.27099,0.690186 0.496151,0.991638 0.07789,0.10429 0.125868,0.230683 0.125868,0.370878 0,0.342813 -0.279183,0.620776 -0.621988,0.620776 -0.342814,0 -0.619564,-0.277963 -0.619564,-0.620776 0,-0.138342 0.0428,-0.269876 0.1222,-0.370878 0.234976,-0.29895 0.406955,-0.524932 0.497324,-0.991677 z"
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 0.5;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+            stroke-opacity: 1;
+          "
+        />
+      </g>
+    </g>
+  </symbol>
 </svg>
