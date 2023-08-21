@@ -1,5 +1,5 @@
 name: Build & upload artifacts
-on: on: workflow_dispatch
+on: workflow_dispatch
 jobs:
   tag:
     name: Build & upload artifacts
