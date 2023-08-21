@@ -15,8 +15,8 @@ jobs:
         npm install
         npm run build
     - name: Upload artifacts
-      - uses: actions/upload-artifact@v3
-        with:
-          name: webview-ui
-          path: dist/spa/*
+    - uses: actions/upload-artifact@v3
+      with:
+        name: webview-ui
+        path: dist/spa/*
 
