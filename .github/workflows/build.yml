@@ -5,15 +5,14 @@ jobs:
     name: Build & upload artifacts
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Build
-      run: |
-        npm install
-        npm run build
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: webview-ui
-        path: dist/spa/*
-
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build
+        run: |
+          npm install
+          npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: webview-ui
+          path: dist/spa/*
