@@ -117,6 +117,16 @@
         class="humidity"
         v-bind="item.settings"
       />
+      <Pressure
+        v-else-if="item.type === 'Pressure'"
+        class="pressure"
+        v-bind="item.settings"
+      />
+      <ThermalWheel
+        v-else-if="item.type === 'ThermalWheel'"
+        class="thermal-wheel"
+        v-bind="item.settings"
+      />
       <damper
         v-else-if="item.type === 'Damper'"
         class="damper"
@@ -175,6 +185,12 @@
         v-bind="item.settings"
         @change-value="changeValue"
       />
+      <icon-basic
+        v-else-if="item.type === 'IconBasic'"
+        class="icon-basic"
+        :item="item"
+        v-bind="item.settings"
+      />
       <icon-switch
         v-else-if="item.type === 'Switch'"
         class="icon-switch"
@@ -227,7 +243,16 @@
           {{ item.t3Entry?.value / 1000 || 0 }} {{ range.unit }}
         </div>
       </div>
-
+      <RoomHumidity
+        v-else-if="item.type === 'RoomHumidity'"
+        class="room-humidity"
+        v-bind="item.settings"
+      />
+      <RoomTemperature
+        v-else-if="item.type === 'RoomTemperature'"
+        class="room-temperature"
+        v-bind="item.settings"
+      />
       <img
         class="img-object"
         v-else-if="item.type.startsWith('IMG-')"
@@ -239,6 +264,8 @@
 
 <script>
 import { defineComponent, computed, ref } from "vue";
+import { getEntryRange } from "src/lib/common";
+
 import DuctEl from "./ObjectTypes/Duct.vue";
 import FanEl from "./ObjectTypes/Fan.vue";
 import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
@@ -248,6 +275,7 @@ import HumidifierEl from "./ObjectTypes/Humidifier.vue";
 import Damper from "./ObjectTypes/Damper.vue";
 import TextEl from "./ObjectTypes/Text.vue";
 import BoxEl from "./ObjectTypes/Box.vue";
+import IconBasic from "./ObjectTypes/IconBasic.vue";
 import IconValue from "./ObjectTypes/IconValue.vue";
 import IconSwitch from "./ObjectTypes/IconSwitch.vue";
 import ValueEl from "./ObjectTypes/Value.vue";
@@ -263,8 +291,10 @@ import Pump from "./ObjectTypes/Pump.vue";
 import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
 import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
 import Humidity from "./ObjectTypes/Humidity.vue";
-
-import { getEntryRange } from "src/lib/common";
+import Pressure from "./ObjectTypes/Pressure.vue";
+import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
+import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
+import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -278,6 +308,7 @@ export default defineComponent({
     Damper,
     TextEl,
     BoxEl,
+    IconBasic,
     IconValue,
     IconSwitch,
     ValueEl,
@@ -293,6 +324,10 @@ export default defineComponent({
     ValveThreeWay,
     ValveTwoWay,
     Humidity,
+    Pressure,
+    ThermalWheel,
+    RoomHumidity,
+    RoomTemperature,
   },
   props: {
     item: {

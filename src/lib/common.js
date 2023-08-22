@@ -55,7 +55,7 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "Pipe", "Duct", "Metrics"];
+export const toolsCategories = ["Basic", "Pipe", "Duct", "Room", "Metrics"];
 
 export const tools = [
   {
@@ -250,6 +250,20 @@ export const tools = [
     },
   },
   {
+    name: "Pressure",
+    label: "Pressure",
+    icon: "svguse:icons.svg#pressure",
+    cat: ["Duct"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
     name: "Damper",
     label: "Damper",
     icon: "svguse:icons.svg#damper|0 0 13.431694 28.950886",
@@ -280,6 +294,32 @@ export const tools = [
         type: "color",
         label: "Fill color",
         id: 1,
+      },
+    },
+  },
+  {
+    name: "ThermalWheel",
+    label: "Thermal Wheel",
+    icon: "svguse:icons.svg#thermal-wheel",
+    cat: ["Duct"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
       },
     },
   },
@@ -555,6 +595,43 @@ export const tools = [
     },
   },
   {
+    name: "IconBasic",
+    label: "Icon",
+    icon: "emoji_emotions",
+    cat: ["Basic"],
+    settings: {
+      active: {
+        value: true,
+        type: "boolean",
+        label: "On/Off",
+        id: 1,
+      },
+      offColor: {
+        value: "#940303",
+        type: "color",
+        label: "Off Color",
+        id: 3,
+      },
+      onColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "On Color",
+        id: 4,
+      },
+      icon: {
+        value: "warning",
+        type: "icon",
+        label: "Icon",
+        id: 5,
+      },
+      t3EntryDisplayField: {
+        value: "value",
+        type: "select",
+        id: 6,
+      },
+    },
+  },
+  {
     name: "Icon",
     label: "Icon with title",
     icon: "fa-solid fa-icons",
@@ -686,6 +763,34 @@ export const tools = [
       },
     },
   },
+  {
+    name: "RoomHumidity",
+    label: "Room Humidity",
+    icon: "svguse:icons.svg#room-humidity",
+    cat: ["Room"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "RoomTemperature",
+    label: "Room Temperature",
+    icon: "svguse:icons.svg#room-temperature",
+    cat: ["Room"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
 ];
 
 export const icons = [
@@ -752,6 +857,30 @@ export const icons = [
   {
     value: "calendar_month",
     label: "Calendar",
+  },
+  {
+    value: "warning",
+    label: "Alarm",
+  },
+  {
+    value: "link_off",
+    label: "Fault",
+  },
+  {
+    value: "back_hand",
+    label: "Manual",
+  },
+  {
+    value: "block",
+    label: "Out of Service",
+  },
+  {
+    value: "fiber_manual_record",
+    label: "Dot",
+  },
+  {
+    value: "forward",
+    label: "Arrow",
   },
 ];
 

@@ -928,4 +928,312 @@
       </g>
     </g>
   </symbol>
+  <symbol
+    id="pressure"
+    version="1.1"
+    viewBox="0 0 28.852817 27.05043"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+  >
+    <path
+      style="fill: currentColor; stroke: #000000; stroke-width: 1.29098px"
+      d="M 21.101011,20.624556 17.76371,26.404938 H 11.089107 L 7.7518058,20.624556 11.089107,14.844174 h 6.674603 z"
+    />
+    <g transform="matrix(0.39332133,0,0,0.5366036,8.3312906,37.286552)">
+      <g transform="translate(0,0.03745956)">
+        <path
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 1.30927;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+          "
+          d="m 16.929663,-31.088307 4.3966,-1.150699 v 2.301399 z"
+          stroke-miterlimit="4"
+        />
+        <path
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 1;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+          "
+          d="M 27.541431,-31.088307 H 18.912663"
+        />
+      </g>
+      <path
+        d="m 15.532379,-39.152447 v 16.2032"
+        style="
+          fill: none;
+          stroke: #000000;
+          stroke-width: 1px;
+          stroke-linecap: butt;
+          stroke-linejoin: miter;
+        "
+      />
+      <g transform="matrix(-1,0,0,1,-1.8983044,-0.27118644)">
+        <path
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 1.30927;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+          "
+          d="m -15.961713,-30.779661 4.3966,-1.150699 v 2.301399 z"
+          stroke-miterlimit="4"
+        />
+        <path
+          style="
+            fill: none;
+            stroke: #000000;
+            stroke-width: 1;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+          "
+          d="M -5.3499446,-30.779661 H -13.978713"
+        />
+      </g>
+    </g>
+    <g transform="translate(-1.5131572,-0.15657804)">
+      <path
+        d="M 2.0131572,0.15657804 V 6.9638416 H 14.573291 v 8.3199894"
+        style="
+          fill: none;
+          fill-rule: evenodd;
+          stroke: #000000;
+          stroke-width: 1;
+          stroke-linecap: butt;
+          stroke-linejoin: miter;
+          stroke-miterlimit: 4;
+          stroke-dasharray: none;
+          stroke-opacity: 1;
+        "
+      />
+      <path
+        d="M 29.865974,0.15657812 V 6.9638416 H 17.305841 v 8.3199894"
+        style="
+          fill: none;
+          fill-rule: evenodd;
+          stroke: #000000;
+          stroke-width: 1;
+          stroke-linecap: butt;
+          stroke-linejoin: miter;
+          stroke-miterlimit: 4;
+          stroke-dasharray: none;
+          stroke-opacity: 1;
+        "
+      />
+    </g>
+  </symbol>
+  <symbol
+    id="thermal-wheel"
+    viewBox="0 0 26.777448 31.905044"
+    version="1.1"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+  >
+    <g stroke="#000000" fill="currentColor" transform="translate(-2.370089)">
+      <rect
+        class="thermal-wheel-background"
+        height="40"
+        width="25.5"
+        y="-4"
+        x="3"
+        fill="inherit"
+        stroke-width="1"
+      />
+      <g class="thermal-wheel" stroke-width="1">
+        <line x1="3" x2="28.5" y1="-4" y2="-4" />
+        <line x1="3" x2="28.5" y1="0" y2="0" />
+        <line x1="3" x2="28.5" y1="4" y2="4" />
+        <line x1="3" x2="28.5" y1="8" y2="8" />
+        <line x1="3" x2="28.5" y1="12" y2="12" />
+        <line x1="3" x2="28.5" y1="16" y2="16" />
+        <line x1="3" x2="28.5" y1="20" y2="20" />
+        <line x1="3" x2="28.5" y1="24" y2="24" />
+        <line x1="3" x2="28.5" y1="28" y2="28" />
+        <line x1="3" x2="28.5" y1="32" y2="32" />
+        <line x1="3" x2="28.5" y1="36" y2="36" />
+      </g>
+    </g>
+  </symbol>
+  <symbol
+    id="room-humidity"
+    version="1.1"
+    viewBox="0 0 18.016948 18.016948"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+  >
+    <g transform="translate(-6.9915256,-6.9915256)">
+      <circle
+        r="8.6263752"
+        cy="16"
+        cx="16"
+        style="
+          opacity: 1;
+          fill: currentColor;
+          fill-opacity: 1;
+          fill-rule: nonzero;
+          stroke: #000000;
+          stroke-width: 0.764198;
+          stroke-linecap: butt;
+          stroke-linejoin: round;
+          stroke-miterlimit: 4;
+          stroke-dasharray: none;
+          stroke-opacity: 1;
+        "
+      />
+      <g
+        transform="matrix(0.29971746,0,0,0.29971746,20.655088,20.220855)"
+        style="
+          font-style: normal;
+          font-weight: normal;
+          font-size: 51.4601px;
+          line-height: 125%;
+          font-family: Sans;
+          letter-spacing: 0px;
+          word-spacing: 0px;
+          fill: #000000;
+          fill-opacity: 1;
+          stroke: none;
+          stroke-width: 1px;
+          stroke-linecap: butt;
+          stroke-linejoin: miter;
+          stroke-opacity: 1;
+        "
+      >
+        <path
+          d="m -29.828843,-32.840076 h 5.075651 v 15.377717 h 18.4432096 v -15.377717 h 5.0756516 V 4.6745172 H -6.3099824 V -13.190771 H -24.753192 V 4.6745172 h -5.075651 z"
+        />
+      </g>
+    </g>
+  </symbol>
+  <symbol
+    id="room-temperature"
+    version="1.1"
+    viewBox="0 0 18.016949 18.016949"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+  >
+    <g transform="matrix(0.76419842,0,0,0.76419842,-3.2187002,-3.2187002)">
+      <circle
+        r="11.288136"
+        cy="16"
+        cx="16"
+        style="
+          opacity: 1;
+          fill: currentColor;
+          fill-opacity: 1;
+          fill-rule: nonzero;
+          stroke: #000000;
+          stroke-width: 1;
+          stroke-linecap: butt;
+          stroke-linejoin: round;
+          stroke-miterlimit: 4;
+          stroke-dasharray: none;
+          stroke-opacity: 1;
+        "
+      />
+      <g
+        transform="translate(32.100664,13.086915)"
+        style="
+          font-style: normal;
+          font-weight: normal;
+          font-size: 20.2897px;
+          line-height: 125%;
+          font-family: Sans;
+          letter-spacing: 0px;
+          word-spacing: 0px;
+          fill: #000000;
+          fill-opacity: 1;
+          stroke: none;
+          stroke-width: 1px;
+          stroke-linecap: butt;
+          stroke-linejoin: miter;
+          stroke-opacity: 1;
+        "
+      >
+        <path
+          d="m -22.356997,-4.4825641 h 12.5126658 v 1.6842067 H -15.095093 V 10.308734 h -2.011141 V -2.7983574 h -5.250763 z"
+        />
+      </g>
+    </g>
+  </symbol>
+  <symbol
+    id="block"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 -960 960 960"
+  >
+    <path
+      d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-60q142.375 0 241.188-98.812Q820-337.625 820-480q0-60.662-21-116.831Q778-653 740-699L261-220q45 39 101.493 59.5Q418.987-140 480-140ZM221-261l478-478q-46-39-102.169-60T480-820q-142.375 0-241.188 98.812Q140-622.375 140-480q0 61.013 22 117.507Q184-306 221-261Z"
+    />
+  </symbol>
+  <symbol
+    id="back_hand"
+    xmlns="http://www.w3.org/2000/svg"
+    enable-background="new 0 0 24 24"
+    viewBox="0 0 24 24"
+  >
+    <rect fill="none" height="24" width="24" />
+    <path
+      d="M13,24c-3.26,0-6.19-1.99-7.4-5.02l-3.03-7.61C2.26,10.58,3,9.79,3.81,10.05l0.79,0.26c0.56,0.18,1.02,0.61,1.24,1.16 L7.25,15H8V3.25C8,2.56,8.56,2,9.25,2s1.25,0.56,1.25,1.25V12h1V1.25C11.5,0.56,12.06,0,12.75,0S14,0.56,14,1.25V12h1V2.75 c0-0.69,0.56-1.25,1.25-1.25c0.69,0,1.25,0.56,1.25,1.25V12h1V5.75c0-0.69,0.56-1.25,1.25-1.25S21,5.06,21,5.75V16 C21,20.42,17.42,24,13,24z"
+    />
+  </symbol>
+  <symbol
+    id="warning"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 -960 960 960"
+  >
+    <path
+      d="m40-120 440-760 440 760H40Zm104-60h672L480-760 144-180Zm340.175-57q12.825 0 21.325-8.675 8.5-8.676 8.5-21.5 0-12.825-8.675-21.325-8.676-8.5-21.5-8.5-12.825 0-21.325 8.675-8.5 8.676-8.5 21.5 0 12.825 8.675 21.325 8.676 8.5 21.5 8.5ZM454-348h60v-224h-60v224Zm26-122Z"
+    />
+  </symbol>
+  <symbol
+    id="link_off"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 -960 960 960"
+  >
+    <path
+      d="m750-291-49-49q51-10 85-48t34-89q0-58-41-99t-99-41H525v-60h155q83 0 141.5 58.5T880-477q0 62-36 112t-94 74ZM594-447l-60-60h101v60h-41ZM814-56 63-807l43-43L857-99l-43 43ZM450-280H280q-83 0-141.5-58.5T80-480q0-72 44.5-127T238-676l56 56h-14q-58 0-99 41t-41 99q0 58 41 99t99 41h170v60ZM325-450v-60h79l60 60H325Z"
+    />
+  </symbol>
+  <symbol
+    id="fiber_manual_record"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+  >
+    <path d="M24 24H0V0h24v24z" fill="none" />
+    <circle cx="12" cy="12" r="8" />
+  </symbol>
+  <symbol id="forward" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" />
+    <path d="M12 8V4l8 8-8 8v-4H4V8z" />
+  </symbol>
 </svg>
