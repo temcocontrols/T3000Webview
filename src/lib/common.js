@@ -275,11 +275,17 @@ export const tools = [
         label: "Fill color",
         id: 1,
       },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
       inAlarm: {
         value: false,
         type: "boolean",
         label: "In alarm",
-        id: 2,
+        id: 3,
       },
     },
   },
@@ -1447,3 +1453,30 @@ export const ranges = {
     ],
   },
 };
+
+export function getObjectActiveValue(item) {
+  let active = false;
+  if (!item.t3Entry || item.settings?.active === undefined) return false;
+  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1) {
+    active = !!item.t3Entry.hw_switch_status;
+  } else if (item.t3Entry.range) {
+    const analog = item.t3Entry.digital_analog;
+    const range = getEntryRange(item.t3Entry);
+    if (range) {
+      active =
+        (!analog &&
+          ((item.t3Entry?.control === 1 && !range.direct) ||
+            (item.t3Entry?.control === 0 && range.direct))) ||
+        (analog && item.t3Entry?.value > 0)
+          ? true
+          : false;
+    }
+  } else if (item.t3Entry.type === "PROGRAM") {
+    active = !!item.t3Entry.status;
+  } else if (item.t3Entry.type === "SCHEDULE") {
+    active = !!item.t3Entry.output;
+  } else if (item.t3Entry.type === "HOLIDAY") {
+    active = !!item.t3Entry.value;
+  }
+  return active;
+}

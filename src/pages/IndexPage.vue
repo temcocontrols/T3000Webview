@@ -687,7 +687,12 @@ import FileUpload from "../components/FileUpload.vue";
 import TopToolbar from "../components/TopToolbar.vue";
 import ToolsSidebar from "../components/ToolsSidebar.vue";
 import ObjectConfig from "../components/ObjectConfig.vue";
-import { tools, T3_Types, getEntryRange, T3000_Data } from "../lib/common";
+import {
+  tools,
+  T3_Types,
+  getObjectActiveValue,
+  T3000_Data,
+} from "../lib/common";
 
 // Dev mode only
 const demoDeviceData = () => {
@@ -1537,29 +1542,8 @@ function linkT3EntrySave() {
 }
 
 function refreshObjectActiveValue(item) {
-  // addActionToHistory("Update linked entry value");
   if (!item.t3Entry || item.settings?.active === undefined) return;
-  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1) {
-    item.settings.active = !!item.t3Entry.hw_switch_status;
-  } else if (item.t3Entry.range) {
-    const analog = item.t3Entry.digital_analog;
-    const range = getEntryRange(item.t3Entry);
-    if (range) {
-      item.settings.active =
-        (!analog &&
-          ((item.t3Entry?.control === 1 && !range.direct) ||
-            (item.t3Entry?.control === 0 && range.direct))) ||
-        (analog && item.t3Entry?.value > 0)
-          ? true
-          : false;
-    }
-  } else if (item.t3Entry.type === "PROGRAM") {
-    item.settings.active = !!item.t3Entry.status;
-  } else if (item.t3Entry.type === "SCHEDULE") {
-    item.settings.active = !!item.t3Entry.output;
-  } else if (item.t3Entry.type === "HOLIDAY") {
-    item.settings.active = !!item.t3Entry.value;
-  }
+  item.settings.active = getObjectActiveValue(item);
 }
 
 function save(notify = false) {

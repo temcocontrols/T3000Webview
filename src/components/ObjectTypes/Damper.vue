@@ -6,10 +6,14 @@
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"
     class="object-svg"
-    :class="{ 'in-alarm': inAlarm }"
+    :class="{
+      active: active,
+      'in-alarm': inAlarm,
+      'range-analog': item?.t3Entry?.digital_analog,
+      'range-digital': item?.t3Entry && !item?.t3Entry?.digital_analog,
+    }"
   >
     <rect
-      id="rect4367"
       class="damper"
       height="27.5"
       width="12"
@@ -24,10 +28,9 @@
     <g
       stroke="#000000"
       stroke-width="1.5px"
-      id="g19"
       transform="translate(-9.3051848,-1.5735477)"
     >
-      <g transform="translate(16,7)" id="g5">
+      <g transform="translate(16,7)">
         <line
           x1="-5"
           x2="5"
@@ -35,10 +38,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line3"
         />
       </g>
-      <g transform="translate(16,13)" id="g9">
+      <g transform="translate(16,13)">
         <line
           x1="-5"
           x2="5"
@@ -46,10 +48,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line7"
         />
       </g>
-      <g transform="translate(16,19)" id="g13">
+      <g transform="translate(16,19)">
         <line
           x1="-5"
           x2="5"
@@ -57,10 +58,9 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line11"
         />
       </g>
-      <g transform="translate(16,25)" id="g17">
+      <g transform="translate(16,25)">
         <line
           x1="-5"
           x2="5"
@@ -68,23 +68,17 @@
           y2="0"
           transform="rotate(-35)"
           class="damper-line"
-          id="line15"
         />
       </g>
     </g>
     <g
-      id="g4877"
       stroke-linejoin="miter"
       transform="matrix(1.2268237,0,0,0.94845469,-13.299764,-1.1862851)"
       stroke="#000000"
       stroke-linecap="butt"
       fill="none"
     >
-      <path
-        id="path4317"
-        stroke-width="1.06273px"
-        d="m 16.298,2.2402 v 28.442"
-      />
+      <path stroke-width="1.06273px" d="m 16.298,2.2402 v 28.442" />
     </g>
   </svg>
 </template>
@@ -95,6 +89,15 @@ import { defineComponent } from "vue";
 export default defineComponent({
   name: "DamperEl",
   props: {
+    item: {
+      type: Object,
+      required: false,
+    },
+    active: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
     inAlarm: {
       type: Boolean,
       required: false,
@@ -114,6 +117,35 @@ export default defineComponent({
 }
 .in-alarm .damper {
   animation: damper-alarm 1s infinite;
+}
+.active .damper {
+  fill: #66c492;
+}
+.active .damper-line {
+  animation: damper-active 1.5s infinite;
+}
+
+.range-digital .damper-line {
+  transform: rotate(0deg);
+  animation: none;
+}
+
+.active.range-digital .damper-line {
+  transform: rotate(80deg);
+}
+
+@keyframes damper-active {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(80deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 @keyframes damper-alarm {

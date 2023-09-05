@@ -130,6 +130,7 @@
       <damper
         v-else-if="item.type === 'Damper'"
         class="damper"
+        :item="item"
         v-bind="item.settings"
       />
       <boiler
