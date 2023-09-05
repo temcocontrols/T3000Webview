@@ -245,9 +245,10 @@
                 class="text-white w-full"
                 :label="setting.label"
                 :disable="
-                  key === 'active' &&
-                  ((item.t3Entry && item.t3Entry?.auto_manual === 0) ||
-                    item.t3Entry?.digital_analog === 1)
+                  (key === 'active' &&
+                    ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
+                      item.t3Entry.digital_analog === 1)) ||
+                  (item.t3Entry && item.t3Entry.decom !== undefined)
                 "
               >
                 <q-tooltip

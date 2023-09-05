@@ -1483,7 +1483,7 @@ function T3UpdateEntryField(key, obj) {
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
   if (key === "value" || key === "control") {
-    refreshObjectActiveValue(obj);
+    refreshObjectStatus(obj);
   }
   window.chrome?.webview?.postMessage({
     action: 3, // UPDATE_ENTRY
@@ -1534,16 +1534,23 @@ function linkT3EntrySave() {
     }
     appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
   }
-  refreshObjectActiveValue(
-    appState.value.items[appState.value.activeItemIndex]
-  );
+  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   linkT3EntryDialog.value.data = null;
   linkT3EntryDialog.value.active = false;
 }
 
-function refreshObjectActiveValue(item) {
-  if (!item.t3Entry || item.settings?.active === undefined) return;
-  item.settings.active = getObjectActiveValue(item);
+function refreshObjectStatus(item) {
+  if (item.t3Entry && item.settings?.active !== undefined) {
+    item.settings.active = getObjectActiveValue(item);
+  }
+
+  if (
+    item.t3Entry &&
+    item.t3Entry.decom !== undefined &&
+    item.settings?.inAlarm !== undefined
+  ) {
+    item.settings.inAlarm = !!item.t3Entry.decom;
+  }
 }
 
 function save(notify = false) {
@@ -2053,7 +2060,7 @@ function refreshLinkedEntries(panelData) {
       );
       if (linkedEntry && linkedEntry.id) {
         item.t3Entry = linkedEntry;
-        refreshObjectActiveValue(item);
+        refreshObjectStatus(item);
       }
     });
 }
