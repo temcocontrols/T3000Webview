@@ -2352,7 +2352,6 @@ function toolDropped(ev, tool) {
     },
     tool
   );
-  console.log(ev, tool);
 }
 </script>
 <style>
