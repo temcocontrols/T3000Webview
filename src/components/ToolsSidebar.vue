@@ -15,10 +15,12 @@
           v-for="tool in tools.filter((i) => i.cat.includes(cat))"
           :key="tool.name"
           @click="selectTool(tool)"
+          @dragend="toolDropped($event, tool)"
           clickable
           v-ripple
           :active="selectedTool.name === tool.name"
           active-class="active-tool"
+          draggable="true"
           class="p-2 min-h-0"
         >
           <q-tooltip anchor="center right" self="center left">
@@ -277,6 +279,7 @@ export default defineComponent({
     "deleteLibItem",
     "renameLibItem",
     "deleteLibImage",
+    "toolDropped",
   ],
   setup(_props, { emit }) {
     const $q = useQuasar();
@@ -353,6 +356,10 @@ export default defineComponent({
       imgTabUploader.value.file = null;
     }
 
+    function toolDropped(event, tool) {
+      emit("toolDropped", event, tool);
+    }
+
     return {
       tools,
       toolsCategories,
@@ -365,6 +372,7 @@ export default defineComponent({
       imgTabUploader,
       saveLibImage,
       imageFileAdded,
+      toolDropped,
     };
   },
 });

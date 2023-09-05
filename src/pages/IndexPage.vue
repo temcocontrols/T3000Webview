@@ -1,6 +1,6 @@
 <template>
   <q-page>
-    <div>
+    <div @mousemove="moveCursorIcon">
       <q-icon
         class="cursor-icon"
         v-if="!locked && selectedTool.name !== 'Pointer'"
@@ -27,6 +27,7 @@
         @rename-lib-item="renameLibItem"
         @delete-lib-image="deleteLibImage"
         @save-lib-image="saveLibImage"
+        @tool-dropped="toolDropped"
       />
       <div class="viewport-wrapper">
         <top-toolbar
@@ -72,7 +73,15 @@
             </q-tooltip>
           </q-btn>
         </div>
-        <div class="viewport" tabindex="0" @mousemove="moveCursorIcon">
+        <div
+          class="viewport"
+          tabindex="0"
+          @dragover="
+            ($event) => {
+              $event.preventDefault();
+            }
+          "
+        >
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
@@ -1291,7 +1300,7 @@ const viewportMargins = {
   left: 0,
 };
 
-function addLibItem(items, e) {
+function addLibItem(items, size, pos) {
   const elements = [];
   const addedItems = [];
   appState.value.groupCount++;
@@ -1312,17 +1321,17 @@ function addLibItem(items, e) {
         "draggable",
         {
           x:
-            (e.clientX -
+            (pos.clientX -
               viewportMargins.left -
               appState.value.viewportTransform.x) *
               scalPercentage -
-            e.rect.width * scalPercentage,
+            size.width * scalPercentage,
           y:
-            (e.clientY -
+            (pos.clientY -
               viewportMargins.top -
               appState.value.viewportTransform.y) *
               scalPercentage -
-            e.rect.height * scalPercentage,
+            size.height * scalPercentage,
         },
         true
       );
@@ -1345,23 +1354,33 @@ function addLibItem(items, e) {
 }
 
 function onSelectoDragEnd(e) {
+  const size = { width: e.rect.width, height: e.rect.height };
+  const pos = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    top: e.rect.top,
+    left: e.rect.left,
+  };
   if (
     selectedTool.value.name === "Pointer" ||
-    e.rect.width < 20 ||
-    e.rect.height < 20
+    size.width < 20 ||
+    size.height < 20
   )
     return;
+  drawObject(size, pos);
+}
 
-  if (selectedTool.value.type === "libItem") {
-    addLibItem(selectedTool.value.items, e);
+function drawObject(size, pos, tool) {
+  tool = tool || selectedTool.value;
+
+  if (tool.type === "libItem") {
+    addLibItem(tool.items, size, pos);
     return;
   }
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   const toolSettings =
-    cloneDeep(
-      tools.find((tool) => tool.name === selectedTool.value.name)?.settings
-    ) || {};
+    cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
   const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
     acc[key] = toolSettings[key].value;
     return acc;
@@ -1370,17 +1389,15 @@ function onSelectoDragEnd(e) {
   const tempItem = {
     title: null,
     active: false,
-    type: selectedTool.value.name,
+    type: tool.name,
     translate: [
-      (e.rect.left -
-        viewportMargins.left -
-        appState.value.viewportTransform.x) *
+      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
         scalPercentage,
-      (e.rect.top - viewportMargins.top - appState.value.viewportTransform.y) *
+      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
         scalPercentage,
     ],
-    width: e.rect.width * scalPercentage,
-    height: e.rect.height * scalPercentage,
+    width: size.width * scalPercentage,
+    height: size.height * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
@@ -1388,14 +1405,14 @@ function onSelectoDragEnd(e) {
     zindex: 1,
     t3Entry: null,
   };
-  if (selectedTool.value.type === "Image") {
-    tempItem.image = selectedTool.value;
+  if (tool.type === "Image") {
+    tempItem.image = tool;
   }
   const item = addObject(tempItem);
-  if (["Value", "Icon", "Switch"].includes(selectedTool.value.name)) {
+  if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;
   }
-  // selectedTool.value.name = "Pointer"
+
   setTimeout(() => {
     if (locked.value) return;
     appState.value.activeItemIndex = appState.value.items.findIndex(
@@ -2322,6 +2339,20 @@ function convertObjectType(item, type) {
   }
   item.type = type;
   item.settings = newSettings;
+}
+
+function toolDropped(ev, tool) {
+  drawObject(
+    { width: 60, height: 60 },
+    {
+      clientX: ev.clientX,
+      clientY: ev.clientY,
+      top: ev.clientY,
+      left: ev.clientX,
+    },
+    tool
+  );
+  console.log(ev, tool);
 }
 </script>
 <style>
