@@ -1,6 +1,22 @@
 <template>
   <q-page>
     <div>
+      <q-icon
+        class="cursor-icon"
+        v-if="!locked && selectedTool.name !== 'Pointer'"
+        :name="
+          selectedTool.icon
+            ? selectedTool.icon
+            : selectedTool.type === 'libItem'
+            ? 'space_dashboard'
+            : 'photo'
+        "
+        size="sm"
+        :style="{
+          left: cursorIconPos.x + 10 + 'px',
+          top: cursorIconPos.y + 'px',
+        }"
+      />
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
@@ -56,7 +72,7 @@
             </q-tooltip>
           </q-btn>
         </div>
-        <div class="viewport" tabindex="0">
+        <div class="viewport" tabindex="0" @mousemove="moveCursorIcon">
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
@@ -714,7 +730,7 @@ const moveable = ref(null);
 const selecto = ref(null);
 const viewport = ref(null);
 const targets = ref([]);
-const selectedTool = ref({ name: "Pointer", type: "default", data: null });
+const selectedTool = ref({ ...tools[0], type: "default" });
 const linkT3EntryDialog = ref({ active: false, data: null });
 
 const importJsonDialog = ref({
@@ -774,6 +790,7 @@ const redoHistory = ref([]);
 const locked = ref(false);
 const grpNav = ref([]);
 let lastAction = null;
+const cursorIconPos = ref({ x: 0, y: 0 });
 const objectsRef = ref(null);
 onMounted(() => {
   if (!window.chrome?.webview?.postMessage) {
@@ -987,6 +1004,11 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     }
   }
 });
+
+function moveCursorIcon(event) {
+  cursorIconPos.value.x = event.clientX;
+  cursorIconPos.value.y = event.clientY;
+}
 
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
@@ -1331,7 +1353,7 @@ function onSelectoDragEnd(e) {
     return;
 
   if (selectedTool.value.type === "libItem") {
-    addLibItem(selectedTool.value.data, e);
+    addLibItem(selectedTool.value.items, e);
     return;
   }
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
@@ -1367,7 +1389,7 @@ function onSelectoDragEnd(e) {
     t3Entry: null,
   };
   if (selectedTool.value.type === "Image") {
-    tempItem.image = selectedTool.value.data;
+    tempItem.image = selectedTool.value;
   }
   const item = addObject(tempItem);
   if (["Value", "Icon", "Switch"].includes(selectedTool.value.name)) {
@@ -1388,10 +1410,12 @@ function onSelectoDragEnd(e) {
   }, 100);
 }
 
-function selectTool(name, type = "default", data = null) {
-  selectedTool.value.name = name;
+function selectTool(tool, type = "default") {
+  selectedTool.value = tool;
+  if (typeof tool === "string") {
+    selectedTool.value = tools.find((item) => item.name === tool);
+  }
   selectedTool.value.type = type;
-  selectedTool.value.data = data;
 }
 
 function refreshMoveable() {
@@ -2343,5 +2367,10 @@ function convertObjectType(item, type) {
 }
 .nav-btns.locked {
   left: 1rem;
+}
+.cursor-icon {
+  position: absolute;
+  z-index: 1;
+  color: #adadad;
 }
 </style>

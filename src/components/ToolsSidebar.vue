@@ -14,7 +14,7 @@
         <q-item
           v-for="tool in tools.filter((i) => i.cat.includes(cat))"
           :key="tool.name"
-          @click="selectTool(tool.name)"
+          @click="selectTool(tool)"
           clickable
           v-ripple
           :active="selectedTool.name === tool.name"
@@ -113,7 +113,7 @@
                         <div
                           class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
                           v-close-popup
-                          @click="selectTool(item.name, 'libItem', item.items)"
+                          @click="selectTool(item, 'libItem')"
                         >
                           <div
                             class="flex flex-col flex-nowrap items-center justify-center h-full"
@@ -183,7 +183,7 @@
                             <div
                               class="w-24 h-24 bg-slate-200 hover:bg-slate-500 p-2 rounded-lg cursor-pointer"
                               v-close-popup
-                              @click="selectTool(image.id, 'Image', image)"
+                              @click="selectTool(image, 'Image')"
                             >
                               <div
                                 class="flex flex-col items-center justify-center h-full"
@@ -281,8 +281,8 @@ export default defineComponent({
   setup(_props, { emit }) {
     const $q = useQuasar();
     const libTab = ref("lib");
-    function selectTool(name, type = "default", data = null) {
-      emit("selectTool", name, type, data);
+    function selectTool(tool, type = "default") {
+      emit("selectTool", tool, type);
     }
 
     function deleteLibItem(item) {
