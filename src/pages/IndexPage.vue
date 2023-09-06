@@ -1,22 +1,6 @@
 <template>
   <q-page>
-    <div @mousemove="moveCursorIcon">
-      <q-icon
-        class="cursor-icon"
-        v-if="!locked && selectedTool.name !== 'Pointer'"
-        :name="
-          selectedTool.icon
-            ? selectedTool.icon
-            : selectedTool.type === 'libItem'
-            ? 'space_dashboard'
-            : 'photo'
-        "
-        size="sm"
-        :style="{
-          left: cursorIconPos.x + 10 + 'px',
-          top: cursorIconPos.y + 'px',
-        }"
-      />
+    <div>
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
@@ -76,12 +60,30 @@
         <div
           class="viewport"
           tabindex="0"
+          @mousemove="moveCursorIcon"
+          @click.right="selectDefaultTool"
           @dragover="
             ($event) => {
               $event.preventDefault();
             }
           "
         >
+          <q-icon
+            class="cursor-icon"
+            v-if="!locked && selectedTool.name !== 'Pointer'"
+            :name="
+              selectedTool.icon
+                ? selectedTool.icon
+                : selectedTool.type === 'libItem'
+                ? 'space_dashboard'
+                : 'photo'
+            "
+            size="sm"
+            :style="{
+              left: cursorIconPos.x + 10 + 'px',
+              top: cursorIconPos.y + 'px',
+            }"
+          />
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
@@ -1016,7 +1018,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
 function moveCursorIcon(event) {
   cursorIconPos.value.x = event.clientX;
-  cursorIconPos.value.y = event.clientY;
+  cursorIconPos.value.y = event.clientY - 35;
 }
 
 function refreshMoveableGuides() {
@@ -2353,6 +2355,11 @@ function toolDropped(ev, tool) {
     tool
   );
 }
+
+function selectDefaultTool(ev) {
+  ev.preventDefault();
+  selectTool(tools[0]);
+}
 </script>
 <style>
 .viewport-wrapper {
@@ -2402,5 +2409,10 @@ function toolDropped(ev, tool) {
   position: absolute;
   z-index: 1;
   color: #adadad;
+  display: none;
+}
+
+.viewport:hover .cursor-icon {
+  display: block;
 }
 </style>

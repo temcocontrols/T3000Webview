@@ -8,7 +8,7 @@
       default-opened
       :label="cat"
       header-class="p-2 min-h-0"
-      expand-icon-class="pl-2"
+      expand-icon-class="!pl-2"
     >
       <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 p-1">
         <q-item
@@ -38,7 +38,7 @@
       default-opened
       label="User"
       header-class="p-2 min-h-0"
-      expand-icon-class="pl-2"
+      expand-icon-class="!pl-2"
     >
       <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 p-1">
         <q-item
