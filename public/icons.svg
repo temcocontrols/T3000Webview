@@ -874,7 +874,7 @@
       height="14.505"
     />
     <path
-      style="fill: #659dc5; stroke: #000000; stroke-width: 0.889176px"
+      style="fill: currentColor; stroke: #000000; stroke-width: 0.889176px"
       d="m 9.7077419,18.0463 -2.298594,3.981286 H 2.8119599 L 0.51336587,18.0463 2.8119599,14.065014 h 4.597188 z"
     />
     <g transform="translate(-10.962785,-9.3157224)">
