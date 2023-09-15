@@ -8,8 +8,12 @@
         width="100%"
         height="100%"
       >
-        <polygon points="50 0, 50 100, 0 50" />
+        <path
+          d="M 0 0 L 0 100 L 50 100 L 1 50 L 50 0 L 0 0 Z"
+          transform="matrix(-1,0,0,1,50,0)"
+        />
       </svg>
+      <div v-else class="w-full h-full"></div>
     </div>
     <div class="duct-body grow"></div>
     <div class="duct-end" :class="{ shown: showEnd }" ref="endElRef">
@@ -20,14 +24,20 @@
         width="100%"
         height="100%"
       >
-        <path d="M 0 0 L 0 100 L 50 100 L 1 50 L 50 0 L 0 0 Z" />
+        <polygon
+          points="50 0, 50 100, 0 50"
+          transform="matrix(-1,0,0,1,50,0)"
+        />
       </svg>
+      <div v-else class="w-full h-full"></div>
     </div>
   </div>
 </template>
 
 <script>
 import { defineComponent, onMounted, ref } from "vue";
+import { getElementInfo } from "vue3-moveable";
+import { getOverlapSize } from "overlap-area";
 
 export default defineComponent({
   name: "DuctEl",
@@ -42,23 +52,27 @@ export default defineComponent({
     const endElRef = ref(null);
     const showStart = ref(true);
     const showEnd = ref(true);
+
+    function getPoints(info) {
+      const { left, top, pos1, pos2, pos3, pos4 } = info;
+
+      return [pos1, pos2, pos4, pos3].map((pos) => [
+        left + pos[0],
+        top + pos[1],
+      ]);
+    }
     function isOverlap(partEl) {
       const parentDuct = partEl.closest(".moveable-item.Duct");
-      const element1Rect = partEl.getBoundingClientRect();
+      const element1Rect = getElementInfo(partEl);
       const elements = document.querySelectorAll(".moveable-item.Duct");
       for (const el of Array.from(elements)) {
         if (parentDuct.isSameNode(el)) continue;
-        const element2Rect = el.getBoundingClientRect();
+        const element2Rect = getElementInfo(el);
 
-        const overlap = !(
-          element1Rect.right < element2Rect.left ||
-          element1Rect.left > element2Rect.right ||
-          element1Rect.bottom < element2Rect.top ||
-          element1Rect.top > element2Rect.bottom
-        );
-        if (overlap) {
-          return true;
-        }
+        const points1 = getPoints(element1Rect);
+        const points2 = getPoints(element2Rect);
+        const overlapSize = getOverlapSize(points1, points2);
+        if (overlapSize > 0) return true;
       }
       return false;
     }
@@ -84,18 +98,21 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.duct-body {
+.duct-body,
+.duct-start > div,
+.duct-end > div {
   background-color: v-bind(bgColor);
 }
 .duct-start,
 .duct-end {
   max-width: 40px;
+  min-width: 25px;
 }
 
-.duct-end.shown {
+.duct-end {
   margin-left: -1px;
 }
-.duct-start.shown {
+.duct-start {
   margin-right: -1px;
 }
 .duct svg {

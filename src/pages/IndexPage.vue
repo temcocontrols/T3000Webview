@@ -60,8 +60,8 @@
         <div
           class="viewport"
           tabindex="0"
-          @mousemove="moveCursorIcon"
-          @click.right="selectDefaultTool"
+          @mousemove="viewportMouseMoved"
+          @click.right="viewportRightClick"
           @dragover="
             ($event) => {
               $event.preventDefault();
@@ -88,12 +88,13 @@
             ref="selecto"
             dragContainer=".viewport"
             :selectableTargets="!locked ? targets : []"
-            :hitRate="100"
+            :hitRate="20"
             :selectByClick="!locked"
             :selectFromInside="true"
             :toggleContinueSelect="['shift']"
             :ratio="0"
             :boundContainer="true"
+            :getElementRect="getElementInfo"
             @dragStart="onSelectoDragStart"
             @selectEnd="onSelectoSelectEnd"
             @dragEnd="onSelectoDragEnd"
@@ -108,7 +109,7 @@
               :rotatable="!locked"
               :keepRatio="false"
               :target="appState.selectedTargets"
-              :snappable="!locked"
+              :snappable="snappable && !locked"
               :snapThreshold="10"
               :isDisplaySnapDigit="true"
               :snapGap="true"
@@ -147,11 +148,13 @@
               @resizeEnd="onResizeEnd"
               @rotateStart="onRotateStart"
               @rotate="onRotate"
+              @rotateEnd="onRotateEnd"
               @resizeGroupStart="onResizeGroupStart"
               @resizeGroup="onResizeGroup"
               @resizeGroupEnd="onResizeGroupEnd"
               @rotateGroupStart="onRotateGroupStart"
               @rotateGroup="onRotateGroup"
+              @rotateGroupEnd="onRotateGroupEnd"
             >
             </vue-moveable>
 
@@ -342,13 +345,14 @@
             </q-menu>
 
             <div
-              v-for="item in appState.items"
+              v-for="(item, index) in appState.items"
               :key="item.id"
               ref="targets"
               :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
               :id="`moveable-item-${item.id}`"
               @mousedown.right="selectByRightClick"
               class="moveable-item-wrapper"
+              :class="`moveable-item-index-${index}`"
             >
               <q-menu
                 v-if="!locked && appState.selectedTargets?.length === 1"
@@ -703,7 +707,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
-import { VueMoveable } from "vue3-moveable";
+import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
@@ -743,6 +747,10 @@ const viewport = ref(null);
 const targets = ref([]);
 const selectedTool = ref({ ...tools[0], type: "default" });
 const linkT3EntryDialog = ref({ active: false, data: null });
+
+const isDrawing = ref(false);
+const startTransform = ref([0, 0]);
+const snappable = ref(true);
 
 const importJsonDialog = ref({
   addedCount: 0,
@@ -1016,14 +1024,51 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 });
 
-function moveCursorIcon(event) {
-  cursorIconPos.value.x = event.clientX;
-  cursorIconPos.value.y = event.clientY - 35;
+function viewportMouseMoved(e) {
+  // Move object icon with mouse
+  cursorIconPos.value.x = e.clientX - viewportMargins.left;
+  cursorIconPos.value.y = e.clientY - viewportMargins.top;
+
+  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+  // process drawing ducts
+  if (
+    isDrawing.value &&
+    selectedTool.value.name === "Duct" &&
+    appState.value.activeItemIndex !== null
+  ) {
+    // Check if the Ctrl key is pressed
+    const isCtrlPressed = e.ctrlKey;
+    // Calculate the distance and angle between the initial point and mouse cursor
+    const mouseX =
+      (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) *
+      scalPercentage;
+    const mouseY =
+      (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) *
+      scalPercentage;
+    const dx = mouseX - startTransform.value[0];
+    const dy = mouseY - startTransform.value[1];
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Rotate in 10-degree increments when Ctrl is held
+    if (isCtrlPressed) {
+      angle = Math.round(angle / 5) * 5;
+    }
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Set the scale and rotation of the drawing line
+    appState.value.items[appState.value.activeItemIndex].rotate = angle;
+    appState.value.items[appState.value.activeItemIndex].width = distance + 40;
+    refreshObjects();
+  }
 }
 
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
-  const lines = document.querySelectorAll(".moveable-item");
+  const lines = document.querySelectorAll(
+    `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
+  );
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });
@@ -1107,6 +1152,8 @@ function onDragGroup(e) {
 function onDragGroupEnd(e) {
   if (!e.lastEvent) {
     undoHistory.value.shift();
+  } else {
+    refreshObjects();
   }
 }
 function onSelectoDragStart(e) {
@@ -1122,7 +1169,6 @@ function onSelectoDragStart(e) {
 }
 function onSelectoSelectEnd(e) {
   appState.value.selectedTargets = e.selected;
-
   if (e.selected && !e.inputEvent.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
       e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
@@ -1161,6 +1207,7 @@ function onSelectoSelectEnd(e) {
   } else {
     contextMenuShow.value = false;
   }
+  refreshMoveableGuides();
 }
 
 function selectGroup(id) {
@@ -1210,6 +1257,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+  refreshObjects();
 }
 function onRotateStart(e) {
   addActionToHistory("Rotate object");
@@ -1220,6 +1268,14 @@ function onRotate(e) {
     (item) => `moveable-item-${item.id}` === e.target.id
   );
   item.rotate = e.rotate;
+}
+
+function onRotateEnd(e) {
+  refreshObjects();
+}
+
+function onRotateGroupEnd(e) {
+  refreshObjects();
 }
 
 function onResizeGroupStart(e) {
@@ -1247,6 +1303,7 @@ function onResizeGroupEnd(e) {
     appState.value.items[itemIndex].translate =
       ev.lastEvent.drag.beforeTranslate;
   });
+  refreshObjects();
 }
 
 function onRotateGroupStart(e) {
@@ -1364,12 +1421,27 @@ function onSelectoDragEnd(e) {
     left: e.rect.left,
   };
   if (
-    selectedTool.value.name === "Pointer" ||
-    size.width < 20 ||
-    size.height < 20
-  )
+    (selectedTool.value.name === "Pointer" ||
+      size.width < 20 ||
+      size.height < 20) &&
+    selectedTool.value.name !== "Duct"
+  ) {
+    isDrawing.value = false;
     return;
-  drawObject(size, pos);
+  }
+  if (selectedTool.value.name === "Duct" && size.height < 20) {
+    size.height = 40;
+  }
+
+  const item = drawObject(size, pos);
+  if (item.type === "Duct") {
+    setTimeout(() => {
+      isDrawing.value = true;
+      appState.value.selectedTargets = [];
+      appState.value.items[appState.value.activeItemIndex].rotate = 0;
+      startTransform.value = cloneDeep(item.translate);
+    }, 100);
+  }
 }
 
 function drawObject(size, pos, tool) {
@@ -1427,6 +1499,7 @@ function drawObject(size, pos, tool) {
     appState.value.selectedTargets = [target];
     selecto.value.setSelectedTargets([target]);
   }, 100);
+  return item;
 }
 
 function selectTool(tool, type = "default") {
@@ -1640,9 +1713,25 @@ function newProject() {
   }
 }
 
+keycon.keyup((e) => {
+  if (e.key === "ctrl") {
+    snappable.value = true;
+  }
+});
+
 keycon.keydown((e) => {
-  if (e.key === "esc" && grpNav.value.length > 1) {
-    navGoBack();
+  if (e.key === "esc") {
+    selectTool(tools[0]);
+    if (grpNav.value.length > 1) {
+      navGoBack();
+    }
+    if (isDrawing.value) {
+      isDrawing.value = false;
+      undoAction();
+    }
+  }
+  if (e.key === "ctrl") {
+    snappable.value = false;
   }
   if (appState.value.selectedTargets.length < 1) return;
 
@@ -2356,9 +2445,16 @@ function toolDropped(ev, tool) {
   );
 }
 
-function selectDefaultTool(ev) {
+function viewportRightClick(ev) {
   ev.preventDefault();
   selectTool(tools[0]);
+  if (isDrawing.value) {
+    isDrawing.value = false;
+    undoAction();
+    setTimeout(() => {
+      refreshObjects();
+    }, 10);
+  }
 }
 </script>
 <style>
@@ -2389,6 +2485,10 @@ function selectDefaultTool(ev) {
   position: relative;
   transition: transform 0.3s;
   transform-style: preserve-3d;
+}
+.moveable-item-wrapper:has(.Duct) {
+  transform-origin: 20px center;
+  transform: scaleY(0);
 }
 
 .menu-dropdown {

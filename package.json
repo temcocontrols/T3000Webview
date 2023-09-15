@@ -1,6 +1,6 @@
 {
   "name": "t3-webview-ui",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "T3 webview UI",
   "productName": "T3 webview UI",
   "author": "Alaa Rihan <alaa@temcocontrols.com>",
@@ -23,6 +23,7 @@
     "echarts": "^5.4.1",
     "keycon": "^1.3.2",
     "lodash": "^4.17.21",
+    "overlap-area": "^1.1.0",
     "panzoom": "^9.4.3",
     "quasar": "^2.6.0",
     "vue": "^3.0.0",
