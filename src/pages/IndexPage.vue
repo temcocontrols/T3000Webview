@@ -107,7 +107,7 @@
               :draggable="!locked"
               :resizable="!locked"
               :rotatable="!locked"
-              :keepRatio="false"
+              :keepRatio="keepRatio"
               :target="appState.selectedTargets"
               :snappable="snappable && !locked"
               :snapThreshold="10"
@@ -751,6 +751,9 @@ const linkT3EntryDialog = ref({ active: false, data: null });
 const isDrawing = ref(false);
 const startTransform = ref([0, 0]);
 const snappable = ref(true);
+const keepRatio = ref(false);
+
+const continuesObjectTypes = ["Duct", "Wall"];
 
 const importJsonDialog = ref({
   addedCount: 0,
@@ -1034,7 +1037,7 @@ function viewportMouseMoved(e) {
   // process drawing ducts
   if (
     isDrawing.value &&
-    selectedTool.value.name === "Duct" &&
+    continuesObjectTypes.includes(selectedTool.value.name) &&
     appState.value.activeItemIndex !== null
   ) {
     // Check if the Ctrl key is pressed
@@ -1050,16 +1053,16 @@ function viewportMouseMoved(e) {
     const dy = mouseY - startTransform.value[1];
     let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
-    // Rotate in 10-degree increments when Ctrl is held
+    // Rotate in 5-degree increments when Ctrl is held
     if (isCtrlPressed) {
       angle = Math.round(angle / 5) * 5;
     }
 
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
 
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
-    appState.value.items[appState.value.activeItemIndex].width = distance + 40;
+    appState.value.items[appState.value.activeItemIndex].width = distance;
     refreshObjects();
   }
 }
@@ -1279,18 +1282,13 @@ function onRotateGroupEnd(e) {
 }
 
 function onResizeGroupStart(e) {
-  e.events.forEach((ev, i) => {
-    ev.dragStart && ev.dragStart.set(appState.value.items[i].translate);
-  });
+  keepRatio.value = true;
 }
 function onResizeGroup(e) {
   e.events.forEach((ev, i) => {
-    const item = appState.value.items.find(
-      (item) => `moveable-item-${item.id}` === ev.target.id
-    );
     ev.target.style.width = `${ev.width}px`;
     ev.target.style.height = `${ev.height}px`;
-    ev.target.style.transform = `translate(${ev.drag.beforeTranslate[0]}px, ${ev.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}) `;
+    ev.target.style.transform = ev.drag.transform;
   });
 }
 function onResizeGroupEnd(e) {
@@ -1304,6 +1302,7 @@ function onResizeGroupEnd(e) {
       ev.lastEvent.drag.beforeTranslate;
   });
   refreshObjects();
+  keepRatio.value = false;
 }
 
 function onRotateGroupStart(e) {
@@ -1424,17 +1423,20 @@ function onSelectoDragEnd(e) {
     (selectedTool.value.name === "Pointer" ||
       size.width < 20 ||
       size.height < 20) &&
-    selectedTool.value.name !== "Duct"
+    !continuesObjectTypes.includes(selectedTool.value.name)
   ) {
     isDrawing.value = false;
     return;
   }
-  if (selectedTool.value.name === "Duct" && size.height < 20) {
-    size.height = 40;
+  if (
+    continuesObjectTypes.includes(selectedTool.value.name) &&
+    size.height < 20
+  ) {
+    size.height = selectedTool.value.height;
   }
 
   const item = drawObject(size, pos);
-  if (item.type === "Duct") {
+  if (continuesObjectTypes.includes(item.type)) {
     setTimeout(() => {
       isDrawing.value = true;
       appState.value.selectedTargets = [];
@@ -1514,7 +1516,6 @@ function refreshMoveable() {
   // const targetsCache = cloneDeep(appState.value.selectedTargets);
   // appState.value.selectedTargets = [];
   setTimeout(() => {
-    console.log(moveable.value);
     moveable.value.updateRect();
   }, 1);
 }
@@ -1866,9 +1867,7 @@ function redoAction() {
   refreshMoveable();
 }
 
-function handleFileUploaded(data) {
-  console.log("handleFileUploaded", data);
-}
+function handleFileUploaded(data) {}
 
 function readFile(file) {
   return new Promise((resolve, reject) => {
@@ -2488,7 +2487,9 @@ function viewportRightClick(ev) {
 }
 .moveable-item-wrapper:has(.Duct) {
   transform-origin: 20px center;
-  transform: scaleY(0);
+}
+.moveable-item-wrapper:has(.Wall) {
+  transform-origin: 10px center;
 }
 
 .menu-dropdown {

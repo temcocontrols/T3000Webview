@@ -254,6 +254,11 @@
         class="room-temperature"
         v-bind="item.settings"
       />
+      <Wall
+        v-else-if="item.type === 'Wall'"
+        class="room-temperature"
+        v-bind="item.settings"
+      />
       <img
         class="img-object"
         v-else-if="item.type.startsWith('IMG-')"
@@ -296,6 +301,7 @@ import Pressure from "./ObjectTypes/Pressure.vue";
 import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
 import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
 import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
+import Wall from "./ObjectTypes/Wall.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -329,6 +335,7 @@ export default defineComponent({
     ThermalWheel,
     RoomHumidity,
     RoomTemperature,
+    Wall,
   },
   props: {
     item: {

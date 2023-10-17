@@ -108,6 +108,7 @@ export const tools = [
     label: "Duct",
     icon: "svguse:icons.svg#duct|0 0 226 75",
     cat: ["Duct"],
+    height: 40,
     settings: {
       bgColor: {
         value: "#808080",
@@ -766,6 +767,21 @@ export const tools = [
         value: "value",
         type: "select",
         id: 7,
+      },
+    },
+  },
+  {
+    name: "Wall",
+    label: "Wall",
+    icon: "crop_16_9",
+    cat: ["Room"],
+    height: 20,
+    settings: {
+      bgColor: {
+        value: "#666666",
+        type: "color",
+        label: "Background Color",
+        id: 1,
       },
     },
   },
