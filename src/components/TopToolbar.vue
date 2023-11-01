@@ -449,7 +449,7 @@
         size="sm"
         icon="zoom_out"
       />
-      <div class="px-1">
+      <div class="flex items-center px-1">
         <input
           class="zoom-input"
           @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
@@ -465,6 +465,7 @@
         size="sm"
         icon="zoom_in"
       />
+      <div><q-btn flat color="primary" label="Login" to="/login" /></div>
     </div>
   </q-toolbar>
 </template>
