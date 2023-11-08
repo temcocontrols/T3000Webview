@@ -1496,3 +1496,5 @@ export function getObjectActiveValue(item) {
   }
   return active;
 }
+
+export const user = ref(null);

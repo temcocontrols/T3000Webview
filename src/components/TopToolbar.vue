@@ -465,14 +465,54 @@
         size="sm"
         icon="zoom_in"
       />
-      <div><q-btn flat color="primary" label="Login" to="/login" /></div>
+      <div>
+        <q-btn v-if="!user" flat color="primary" label="Login" to="/login" />
+        <q-btn-dropdown
+          v-else
+          no-caps
+          flat
+          dense
+          content-class="menu-dropdown"
+          :label="user.name"
+          class="px-2 ml-4"
+        >
+          <q-list>
+            <q-item dense>
+              <q-item-section avatar>
+                <q-avatar
+                  size="sm"
+                  icon="person"
+                  color="grey-7"
+                  text-color="white"
+                />
+              </q-item-section>
+              <q-item-section class="text-zinc-500">{{
+                user.name
+              }}</q-item-section>
+            </q-item>
+            <q-separator />
+            <q-item dense clickable v-close-popup @click="logout">
+              <q-item-section avatar>
+                <q-avatar
+                  size="sm"
+                  icon="logout"
+                  color="grey-7"
+                  text-color="white"
+                />
+              </q-item-section>
+              <q-item-section>Logout</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+      </div>
     </div>
   </q-toolbar>
 </template>
 
 <script>
 import { defineComponent } from "vue";
-import { tools } from "../lib/common";
+import { useQuasar } from "quasar";
+import { tools, user } from "../lib/common";
 
 export default defineComponent({
   name: "TopToolbar",
@@ -504,13 +544,21 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
+    const $q = useQuasar();
     function menuActionEmit(action, val = null) {
       emit("menuAction", action, val);
     }
 
+    function logout() {
+      $q.cookies.remove("token");
+      user.value = null;
+    }
+
     return {
       menuActionEmit,
+      logout,
       tools,
+      user,
     };
   },
 });

@@ -13,22 +13,25 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useQuasar } from "quasar";
 
+import { user } from "../lib/common";
+
+const router = useRouter();
+const $q = useQuasar();
 const cid = ref(null);
 const loginWindow = ref(null);
 const loggedIn = ref(false);
-const user = ref(null);
 onMounted(() => {
   // Connect to the WebSocket server
   const socket = new WebSocket(process.env.API_WS_URL);
   socket.onmessage = ({ data }) => {
     data = JSON.parse(data);
-    console.log(data, "ws data");
     if (data.type === "hello") {
       cid.value = data.cid;
       const loginUrl = process.env.API_URL + "/login?cid=" + cid.value;
       // if (!window.chrome?.webview?.postMessage) {
-      console.log("open login url", loginUrl);
       loginWindow.value = window.open(loginUrl, "_blank");
       return;
       // }
@@ -39,12 +42,20 @@ onMounted(() => {
     } else if (data.type === "token") {
       loginWindow.value?.close();
       loginWindow.value = null;
-      window.chrome.webview.postMessage({
+      window.chrome?.webview?.postMessage({
         action: 12, // SAVE_USER_LOGIN
         data: { user: data.user, token: data.token },
       });
       loggedIn.value = true;
       user.value = data.user;
+      $q.cookies.set("token", data.token, {
+        expires: 360, // in 360 days
+        sameSite: "Strict",
+        secure: true,
+      });
+      router.push({
+        name: "home",
+      });
     }
   };
 });

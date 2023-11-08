@@ -723,7 +723,9 @@ import {
   T3_Types,
   getObjectActiveValue,
   T3000_Data,
+  user,
 } from "../lib/common";
+import api from "../lib/api";
 
 // Dev mode only
 const demoDeviceData = () => {
@@ -815,6 +817,7 @@ let lastAction = null;
 const cursorIconPos = ref({ x: 0, y: 0 });
 const objectsRef = ref(null);
 onMounted(() => {
+  isLoggedIn();
   if (!window.chrome?.webview?.postMessage) {
     const localState = localStorage.getItem("appState");
     if (localState) {
@@ -2454,6 +2457,22 @@ function viewportRightClick(ev) {
       refreshObjects();
     }, 10);
   }
+}
+
+function isLoggedIn() {
+  const hasToken = $q.cookies.has("token");
+  if (!hasToken) {
+    user.value = null;
+    return;
+  }
+  api
+    .get("me")
+    .then(async (res) => {
+      user.value = await res.json();
+    })
+    .catch((err) => {
+      // Not logged in
+    });
 }
 </script>
 <style>
