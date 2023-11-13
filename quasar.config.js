@@ -91,6 +91,7 @@ module.exports = configure(function (/* ctx */) {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
       // https: true
+      port: 3003,
       open: true, // opens browser window automatically
     },
 
@@ -109,7 +110,7 @@ module.exports = configure(function (/* ctx */) {
       // directives: [],
 
       // Quasar plugins
-      plugins: ["Dialog", "Notify", "Meta"],
+      plugins: ["Dialog", "Notify", "Meta", "Cookies"],
     },
 
     // animations: 'all', // --- includes all animations
