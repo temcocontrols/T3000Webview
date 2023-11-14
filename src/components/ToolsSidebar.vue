@@ -246,7 +246,7 @@
 <script>
 import { defineComponent, ref } from "vue";
 import { useQuasar } from "quasar";
-import FileUpload from "./FileUploadS3.vue";
+import FileUpload from "./FileUpload.vue";
 import { tools, toolsCategories } from "../lib/common";
 export default defineComponent({
   name: "ToolsSidebar",
