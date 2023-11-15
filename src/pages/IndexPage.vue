@@ -1884,14 +1884,21 @@ function readFile(file) {
 }
 
 async function saveLibImage(file) {
+  if (user.value) {
+    console.log("file uploaded", file);
+    return;
+  }
+
   library.value.imagesCount++;
 
-  window.chrome?.webview?.postMessage({
+  const message = {
     action: 9, // SAVE_IMAGE
     filename: file.name,
     fileLength: file.size,
     fileData: await readFile(file.data),
-  });
+  };
+
+  window.chrome?.webview?.postMessage(message);
 }
 
 const gaugeSettingsDialog = ref({

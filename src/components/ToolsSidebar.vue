@@ -208,12 +208,15 @@
                         </q-card-section>
                         <q-card-section class="q-pt-none">
                           <file-upload
+                            ref="fileUploaderRef"
+                            path="lib-images"
                             :types="['image/*']"
                             :height="240"
                             @file-added="imageFileAdded"
                             @file-removed="
                               imgTabUploader.uploadBtnDisabled = true
                             "
+                            @uploaded="handleUploaded"
                           />
                         </q-card-section>
 
@@ -246,8 +249,8 @@
 <script>
 import { defineComponent, ref } from "vue";
 import { useQuasar } from "quasar";
-import FileUpload from "./FileUpload.vue";
-import { tools, toolsCategories } from "../lib/common";
+import FileUpload from "./FileUploadS3.vue";
+import { tools, toolsCategories, user } from "../lib/common";
 export default defineComponent({
   name: "ToolsSidebar",
   components: {
@@ -283,6 +286,7 @@ export default defineComponent({
   ],
   setup(_props, { emit }) {
     const $q = useQuasar();
+    const fileUploaderRef = ref(null);
     const libTab = ref("lib");
     function selectTool(tool, type = "default") {
       emit("selectTool", tool, type);
@@ -346,12 +350,25 @@ export default defineComponent({
     });
 
     function imageFileAdded(file) {
+      console.log("file", file);
       imgTabUploader.value.uploadBtnDisabled = false;
       imgTabUploader.value.file = file;
     }
 
     function saveLibImage() {
-      emit("saveLibImage", imgTabUploader.value.file);
+      if (user.value) {
+        fileUploaderRef.value.upload();
+      } else {
+        saveLibImageEmit(imgTabUploader.value.file);
+      }
+    }
+
+    function handleUploaded(event) {
+      saveLibImageEmit(event.body);
+    }
+
+    function saveLibImageEmit(data) {
+      emit("saveLibImage", data);
       imgTab.value = "list";
       imgTabUploader.value.file = null;
     }
@@ -373,6 +390,8 @@ export default defineComponent({
       saveLibImage,
       imageFileAdded,
       toolDropped,
+      fileUploaderRef,
+      handleUploaded,
     };
   },
 });
