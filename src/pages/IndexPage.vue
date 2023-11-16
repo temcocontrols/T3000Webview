@@ -726,6 +726,7 @@ import {
   user,
 } from "../lib/common";
 import api from "../lib/api";
+import prisma from "../lib/bridg";
 
 // Dev mode only
 const demoDeviceData = () => {
@@ -1024,6 +1025,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         id: "IMG-" + library.value.imagesCount,
         name: arg.data.data.name,
         path: arg.data.data.path,
+        online: false,
       });
       saveLib();
     }
@@ -1486,6 +1488,7 @@ function drawObject(size, pos, tool) {
   };
   if (tool.type === "Image") {
     tempItem.image = tool;
+    tempItem.type = tool.id;
   }
   const item = addObject(tempItem);
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
@@ -1885,7 +1888,16 @@ function readFile(file) {
 
 async function saveLibImage(file) {
   if (user.value) {
-    console.log("file uploaded", file);
+    const oItem = await prisma.hvacObject.create({
+      data: {
+        name: file.name,
+        fileId: file.id,
+      },
+      include: {
+        file: true,
+      },
+    });
+    addOnlineLibItem(oItem);
     return;
   }
 
@@ -2472,6 +2484,13 @@ function isLoggedIn() {
     user.value = null;
     return;
   }
+  prisma.hvacObject.findMany({ include: { file: true } }).then((res) => {
+    if (res.length > 0) {
+      res.forEach((oItem) => {
+        addOnlineLibItem(oItem);
+      });
+    }
+  });
   api
     .get("me")
     .then(async (res) => {
@@ -2480,6 +2499,21 @@ function isLoggedIn() {
     .catch((err) => {
       // Not logged in
     });
+}
+
+function addOnlineLibItem(oItem) {
+  const iIndex = library.value.images.findIndex(
+    (obj) => obj.id === "IMG-" + oItem.id
+  );
+  if (iIndex !== -1) {
+    library.value.images.splice(iIndex, 1);
+  }
+  library.value.images.push({
+    id: "IMG-" + oItem.id,
+    name: oItem.name,
+    path: process.env.API_URL + "/file/" + oItem.file.path,
+    online: true,
+  });
 }
 </script>
 <style>

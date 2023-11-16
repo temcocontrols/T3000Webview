@@ -159,7 +159,7 @@
                       >
                         <div
                           v-for="image in images"
-                          :key="image.name"
+                          :key="image.id"
                           class="relative"
                         >
                           <div class="tool-wrapper">
@@ -190,7 +190,7 @@
                               <div
                                 class="flex flex-col items-center justify-center h-full"
                               >
-                                <img :src="image.path" />
+                                <img :src="image.path + '?w=95&h=95'" />
                               </div>
                             </div>
                           </div>
