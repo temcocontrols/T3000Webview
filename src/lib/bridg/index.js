@@ -1,4 +1,19 @@
 "use strict";
+var __assign =
+  (this && this.__assign) ||
+  function () {
+    __assign =
+      Object.assign ||
+      function (t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+          s = arguments[i];
+          for (var p in s)
+            if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+        }
+        return t;
+      };
+    return __assign.apply(this, arguments);
+  };
 var __awaiter =
   (this && this.__awaiter) ||
   function (thisArg, _arguments, P, generator) {
@@ -135,33 +150,36 @@ var __generator =
 let exports = {};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.exec = void 0;
-var exec = function (_a) {
-  var model = _a.model,
-    args = _a.args,
-    _b = _a.func,
-    func = _b === void 0 ? "findMany" : _b;
-  return fetch("https://user-lib.temcocontrols.com/prisma", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: model, args: args, func: func }),
-  }).then(function (res) {
-    return __awaiter(void 0, void 0, void 0, function () {
-      var json;
-      return __generator(this, function (_a) {
-        switch (_a.label) {
-          case 0:
-            return [4 /*yield*/, res.json()];
-          case 1:
-            json = _a.sent();
-            if (res.status !== 200)
-              throw new Error(
-                (json === null || json === void 0 ? void 0 : json.error) || ""
-              );
-            return [2 /*return*/, json];
-        }
+var bridg_config_1 = require("./bridg.config");
+var exec = function (request, subscriptionCallback) {
+  if (!bridg_config_1.default.apiIsWebsocket) {
+    return fetch(bridg_config_1.default.api, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    }).then(function (res) {
+      return __awaiter(void 0, void 0, void 0, function () {
+        var json;
+        return __generator(this, function (_a) {
+          switch (_a.label) {
+            case 0:
+              return [4 /*yield*/, res.json()];
+            case 1:
+              json = _a.sent();
+              if (res.status !== 200)
+                throw new Error(
+                  (json === null || json === void 0 ? void 0 : json.error) || ""
+                );
+              return [2 /*return*/, json];
+          }
+        });
       });
     });
-  });
+  } else {
+    return request.func === "subscribe" && subscriptionCallback
+      ? websocketListener(request, subscriptionCallback)
+      : websocketPromiseReq(request);
+  }
 };
 exports.exec = exec;
 var generateClient = function (model) {
@@ -228,15 +246,149 @@ var generateClient = function (model) {
     upsert: function (args) {
       return (0, exports.exec)({ func: "upsert", model: model, args: args });
     },
+    // pulse-only
+    subscribe: function (args) {
+      var que = new AsyncBlockingQueue();
+      que.stop = (0, exports.exec)(
+        { func: "subscribe", model: model, args: args },
+        function (event) {
+          return que.enqueue(event);
+        }
+      );
+      return que;
+    },
   };
 };
+// Websocket helpers, needed for Pulse enabled projects
+var messageCallbacks = {};
+var ws;
+var getWebsocket = function () {
+  return new Promise(function (resolve) {
+    if (ws && ws.OPEN) resolve(ws);
+    else if (ws && ws.CONNECTING) {
+      ws.addEventListener("open", function () {
+        return ws && resolve(ws);
+      });
+    } else {
+      ws = new WebSocket(bridg_config_1.default.api);
+      ws.addEventListener("message", function (event) {
+        var _a;
+        var data = JSON.parse(event.data || "{}");
+        (_a = messageCallbacks[data.id]) === null || _a === void 0
+          ? void 0
+          : _a.call(messageCallbacks, data.payload);
+      });
+      ws.addEventListener("open", function () {
+        return ws && resolve(ws);
+      });
+    }
+  });
+};
+var WsMessage = /** @class */ (function () {
+  function WsMessage(payload, type) {
+    this.id = crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
+    this.payload = payload;
+    this.type = type;
+  }
+  return WsMessage;
+})();
+var sendWsMsg = function (msg) {
+  return getWebsocket().then(function (ws) {
+    return ws.send(JSON.stringify(msg));
+  });
+};
+// subscription, with callback
+var websocketListener = function (msg, cb) {
+  var message = new WsMessage(msg, "subscribe");
+  messageCallbacks[message.id] = cb;
+  sendWsMsg(message);
+  return function () {
+    return sendWsMsg({ id: message.id, payload: { func: "unsubscribe" } });
+  };
+};
+// 1 time http-esque request
+var websocketPromiseReq = function (msg) {
+  return new Promise(function (resolve, reject) {
+    var message = new WsMessage(msg);
+    messageCallbacks[message.id] = function (_a) {
+      var data = _a.data,
+        status = _a.status;
+      status === 200 ? resolve(data) : reject(data);
+      delete messageCallbacks[message.id];
+    };
+    sendWsMsg(message);
+  });
+};
+// needed for .subscribe AsyncIterable
+// https://stackoverflow.com/a/47157577/6791815
+var AsyncBlockingQueue = /** @class */ (function () {
+  function AsyncBlockingQueue() {
+    this.resolvers = [];
+    this.promises = [];
+  }
+  AsyncBlockingQueue.prototype._add = function () {
+    var _this = this;
+    this.promises.push(
+      new Promise(function (resolve) {
+        _this.resolvers.push(resolve);
+      })
+    );
+  };
+  AsyncBlockingQueue.prototype.stop = function () {};
+  AsyncBlockingQueue.prototype.enqueue = function (t) {
+    if (!this.resolvers.length) this._add();
+    this.resolvers.shift()(t);
+  };
+  AsyncBlockingQueue.prototype.dequeue = function () {
+    if (!this.promises.length) this._add();
+    return this.promises.shift();
+  };
+  AsyncBlockingQueue.prototype.isEmpty = function () {
+    return !this.promises.length;
+  };
+  AsyncBlockingQueue.prototype.isBlocked = function () {
+    return !!this.resolvers.length;
+  };
+  Object.defineProperty(AsyncBlockingQueue.prototype, "length", {
+    get: function () {
+      return this.promises.length - this.resolvers.length;
+    },
+    enumerable: false,
+    configurable: true,
+  });
+  AsyncBlockingQueue.prototype[Symbol.asyncIterator] = function () {
+    var _a;
+    var _this = this;
+    return (
+      (_a = {
+        next: function () {
+          return _this.dequeue().then(function (value) {
+            return { done: false, value: value };
+          });
+        },
+      }),
+      (_a[Symbol.asyncIterator] = function () {
+        return this;
+      }),
+      _a
+    );
+  };
+  return AsyncBlockingQueue;
+})();
 var userClient = generateClient("user");
 var fileClient = generateClient("file");
 var hvacObjectClient = generateClient("hvacObject");
-var bridg = {
-  user: userClient,
-  file: fileClient,
-  hvacObject: hvacObjectClient,
-};
-exports.default = bridg; //kekw
+var wsTypedObj = bridg_config_1.default.apiIsWebsocket
+  ? {
+      $sendWebsocketMessage: function (data) {
+        return (0, exports.exec)(data);
+      },
+    }
+  : {};
+var bridg = __assign(
+  { user: userClient, file: fileClient, hvacObject: hvacObjectClient },
+  wsTypedObj
+);
+exports.default = bridg;
+
 export default bridg;

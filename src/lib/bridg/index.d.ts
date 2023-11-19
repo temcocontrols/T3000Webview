@@ -1,25 +1,12 @@
-import { Prisma } from "@prisma/client";
-export declare const exec: ({
-  model,
-  args,
-  func,
-}: {
-  model: string;
-  args?: {};
-  func: string;
-}) => Promise<any>;
-type BridgModel<PrismaDelegate> = Omit<PrismaDelegate, "createMany" | "fields">;
+import { Prisma } from '@prisma/client';
+export declare const exec: (request: {
+    model: string;
+    args?: {};
+    func: string;
+}, subscriptionCallback?: (e: any) => void) => Promise<any> | (() => Promise<void>);
 declare const bridg: {
-  user: BridgModel<
-    Prisma.UserDelegate<import("@prisma/client/runtime/library").DefaultArgs>
-  >;
-  file: BridgModel<
-    Prisma.FileDelegate<import("@prisma/client/runtime/library").DefaultArgs>
-  >;
-  hvacObject: BridgModel<
-    Prisma.HvacObjectDelegate<
-      import("@prisma/client/runtime/library").DefaultArgs
-    >
-  >;
+    user: Omit<Prisma.UserDelegate<import("@prisma/client/runtime/library").DefaultArgs>, "createMany" | "fields">;
+    file: Omit<Prisma.FileDelegate<import("@prisma/client/runtime/library").DefaultArgs>, "createMany" | "fields">;
+    hvacObject: Omit<Prisma.HvacObjectDelegate<import("@prisma/client/runtime/library").DefaultArgs>, "createMany" | "fields">;
 };
 export default bridg;
