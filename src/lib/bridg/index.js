@@ -1,4 +1,6 @@
 "use strict";
+import { Cookies } from "quasar";
+const token = Cookies.get("token");
 var __assign =
   (this && this.__assign) ||
   function () {
@@ -150,12 +152,15 @@ var __generator =
 let exports = {};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.exec = void 0;
-var bridg_config_1 = require("./bridg.config");
+import bridg_config_1 from "./bridg.config";
 var exec = function (request, subscriptionCallback) {
-  if (!bridg_config_1.default.apiIsWebsocket) {
-    return fetch(bridg_config_1.default.api, {
+  if (!bridg_config_1.apiIsWebsocket) {
+    return fetch(bridg_config_1.api, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        auth: Cookies.get("token"),
+      },
       body: JSON.stringify(request),
     }).then(function (res) {
       return __awaiter(void 0, void 0, void 0, function () {
@@ -270,7 +275,7 @@ var getWebsocket = function () {
         return ws && resolve(ws);
       });
     } else {
-      ws = new WebSocket(bridg_config_1.default.api);
+      ws = new WebSocket(bridg_config_1.api);
       ws.addEventListener("message", function (event) {
         var _a;
         var data = JSON.parse(event.data || "{}");
@@ -378,7 +383,7 @@ var AsyncBlockingQueue = /** @class */ (function () {
 var userClient = generateClient("user");
 var fileClient = generateClient("file");
 var hvacObjectClient = generateClient("hvacObject");
-var wsTypedObj = bridg_config_1.default.apiIsWebsocket
+var wsTypedObj = bridg_config_1.apiIsWebsocket
   ? {
       $sendWebsocketMessage: function (data) {
         return (0, exports.exec)(data);
