@@ -71,10 +71,14 @@
                 <q-tab name="lib" icon="library_books" label="Library" />
                 <q-tab name="imgs" icon="collections" label="Images" />
               </q-tabs>
-
               <q-separator />
-
-              <q-tab-panels v-model="libTab" animated dark>
+              <q-tab-panels
+                v-model="libTab"
+                animated
+                dark
+                style="max-height: 350px"
+                class="scroll"
+              >
                 <q-tab-panel name="lib">
                   <div
                     v-if="objectLib?.length > 0"
@@ -82,7 +86,7 @@
                   >
                     <div
                       v-for="item in objectLib"
-                      :key="item.name"
+                      :key="item.id"
                       class="relative"
                     >
                       <div class="tool-wrapper">

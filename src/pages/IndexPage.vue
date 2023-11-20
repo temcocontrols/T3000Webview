@@ -1441,7 +1441,7 @@ function onSelectoDragEnd(e) {
   }
 
   const item = drawObject(size, pos);
-  if (continuesObjectTypes.includes(item.type)) {
+  if (item && continuesObjectTypes.includes(item.type)) {
     setTimeout(() => {
       isDrawing.value = true;
       appState.value.selectedTargets = [];
@@ -1888,7 +1888,7 @@ function readFile(file) {
 
 async function saveLibImage(file) {
   if (user.value) {
-    const oItem = await prisma.hvacObject.create({
+    const oItem = await prisma.hvacTool.create({
       data: {
         name: file.name,
         fileId: file.id,
@@ -2289,7 +2289,7 @@ function addToLibrary() {
   );
   library.value.objLibItemsCount++;
   library.value.objLib.push({
-    name: "libItem-" + library.value.objLibItemsCount,
+    id: "libItem-" + library.value.objLibItemsCount,
     label: "Item " + library.value.objLibItemsCount,
     items: cloneDeep(selectedItems),
   });
@@ -2372,7 +2372,7 @@ function pasteFromClipboard() {
 function saveLib() {
   window.chrome?.webview?.postMessage({
     action: 10, // SAVE_LIBRARY_DATA
-    data: toRaw(library.value),
+    data: toRaw(library.value.filter((item) => !item.online)),
   });
 }
 
@@ -2401,18 +2401,23 @@ function renameLibItem(item, name) {
 }
 
 function deleteLibImage(item) {
+  if (item.online) {
+    prisma.hvacTool.delete({ where: { id: item.dbId || item.id.slice(4) } });
+  }
   const itemIndex = library.value.images.findIndex(
     (obj) => obj.name === item.name
   );
   if (itemIndex !== -1) {
-    const imagePath = cloneDeep(library.value.images[itemIndex].path);
-    window.chrome?.webview?.postMessage({
-      action: 11, // DELETE_IMAGE
-      data: toRaw(imagePath),
-    });
     library.value.images.splice(itemIndex, 1);
+    if (!item.online) {
+      const imagePath = cloneDeep(library.value.images[itemIndex].path);
+      window.chrome?.webview?.postMessage({
+        action: 11, // DELETE_IMAGE
+        data: toRaw(imagePath),
+      });
+      saveLib();
+    }
   }
-  saveLib();
 }
 
 function changeEntryValue(refItem, newVal, control) {
@@ -2484,7 +2489,7 @@ function isLoggedIn() {
     user.value = null;
     return;
   }
-  prisma.hvacObject.findMany({ include: { file: true } }).then((res) => {
+  prisma.hvacTool.findMany({ include: { file: true } }).then((res) => {
     if (res.length > 0) {
       res.forEach((oItem) => {
         addOnlineLibItem(oItem);
@@ -2510,6 +2515,7 @@ function addOnlineLibItem(oItem) {
   }
   library.value.images.push({
     id: "IMG-" + oItem.id,
+    dbId: oItem.id,
     name: oItem.name,
     path: process.env.API_URL + "/file/" + oItem.file.path,
     online: true,
