@@ -1897,7 +1897,7 @@ async function saveLibImage(file) {
         file: true,
       },
     });
-    addOnlineLibItem(oItem);
+    addOnlineLibImage(oItem);
     return;
   }
 
@@ -2280,18 +2280,45 @@ function objectSettingsUnchanged() {
   undoHistory.value.shift();
 }
 
-function addToLibrary() {
-  if (appState.value.selectedTargets.length < 2 || locked.value) return;
+async function addToLibrary() {
+  if (appState.value.selectedTargets.length < 1 || locked.value) return;
   const selectedItems = appState.value.items.filter((i) =>
     appState.value.selectedTargets.some(
       (ii) => ii.id === `moveable-item-${i.id}`
     )
   );
+  let isOnline = false;
+  const libItems = cloneDeep(selectedItems);
   library.value.objLibItemsCount++;
+  let createdItem = null;
+  if (user.value) {
+    isOnline = true;
+    createdItem = await prisma.hvacObjectLib
+      .create({
+        data: {
+          label: "Item " + library.value.objLibItemsCount,
+        },
+      })
+      .then((res) => {
+        if (!res) return res;
+
+        libItems.forEach((i) => {
+          delete i.id;
+          prisma.hvacObjectLib.update({
+            where: { id: res.id },
+            data: {
+              items: { create: i },
+            },
+          });
+        });
+        return res;
+      });
+  }
   library.value.objLib.push({
-    id: "libItem-" + library.value.objLibItemsCount,
+    id: createdItem?.id || library.value.objLibItemsCount,
     label: "Item " + library.value.objLibItemsCount,
-    items: cloneDeep(selectedItems),
+    items: libItems,
+    online: isOnline,
   });
   saveLib();
 }
@@ -2370,9 +2397,11 @@ function pasteFromClipboard() {
 }
 
 function saveLib() {
+  const libImages = toRaw(library.value.images.filter((item) => !item.online));
+  const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
   window.chrome?.webview?.postMessage({
     action: 10, // SAVE_LIBRARY_DATA
-    data: toRaw(library.value.filter((item) => !item.online)),
+    data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
   });
 }
 
@@ -2382,6 +2411,9 @@ function autoManualToggle(item) {
   T3UpdateEntryField("auto_manual", item);
 }
 function deleteLibItem(item) {
+  if (user.value && item.online) {
+    prisma.hvacObjectLib.delete({ where: { id: item.id } });
+  }
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
   );
@@ -2391,6 +2423,12 @@ function deleteLibItem(item) {
   saveLib();
 }
 function renameLibItem(item, name) {
+  if (user.value && item.online) {
+    prisma.hvacObjectLib.update({
+      where: { id: item.id },
+      data: { label: name },
+    });
+  }
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
   );
@@ -2492,7 +2530,19 @@ function isLoggedIn() {
   prisma.hvacTool.findMany({ include: { file: true } }).then((res) => {
     if (res.length > 0) {
       res.forEach((oItem) => {
-        addOnlineLibItem(oItem);
+        addOnlineLibImage(oItem);
+      });
+    }
+  });
+  prisma.hvacObjectLib.findMany({ include: { items: true } }).then((res) => {
+    if (res.length > 0) {
+      res.forEach((oItem) => {
+        library.value.objLib.push({
+          id: oItem.id,
+          label: oItem.label,
+          items: oItem.items,
+          online: true,
+        });
       });
     }
   });
@@ -2506,7 +2556,7 @@ function isLoggedIn() {
     });
 }
 
-function addOnlineLibItem(oItem) {
+function addOnlineLibImage(oItem) {
   const iIndex = library.value.images.findIndex(
     (obj) => obj.id === "IMG-" + oItem.id
   );

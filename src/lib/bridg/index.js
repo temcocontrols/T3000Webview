@@ -383,6 +383,8 @@ var AsyncBlockingQueue = /** @class */ (function () {
 var userClient = generateClient("user");
 var fileClient = generateClient("file");
 var hvacToolClient = generateClient("hvacTool");
+var hvacObjectClient = generateClient("hvacObject");
+var hvacObjectLibClient = generateClient("hvacObjectLib");
 var wsTypedObj = bridg_config_1.apiIsWebsocket
   ? {
       $sendWebsocketMessage: function (data) {
@@ -391,7 +393,13 @@ var wsTypedObj = bridg_config_1.apiIsWebsocket
     }
   : {};
 var bridg = __assign(
-  { user: userClient, file: fileClient, hvacTool: hvacToolClient },
+  {
+    user: userClient,
+    file: fileClient,
+    hvacTool: hvacToolClient,
+    hvacObject: hvacObjectClient,
+    hvacObjectLib: hvacObjectLibClient,
+  },
   wsTypedObj
 );
 exports.default = bridg;

@@ -22,5 +22,17 @@ declare const bridg: {
     >,
     "createMany" | "fields"
   >;
+  hvacObject: Omit<
+    Prisma.HvacObjectDelegate<
+      import("@prisma/client/runtime/library").DefaultArgs
+    >,
+    "createMany" | "fields"
+  >;
+  hvacObjectLib: Omit<
+    Prisma.HvacObjectLibDelegate<
+      import("@prisma/client/runtime/library").DefaultArgs
+    >,
+    "createMany" | "fields"
+  >;
 };
 export default bridg;

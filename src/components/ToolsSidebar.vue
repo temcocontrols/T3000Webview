@@ -142,7 +142,11 @@
                     </div>
                   </div>
                   <div class="flex p-4 items-center justify-center" v-else>
-                    The library is empty.
+                    <p class="text-center">
+                      The library is empty. <br /><br />
+                      You can select some objects and save them<br />
+                      to the library to easily reuse them.
+                    </p>
                   </div>
                 </q-tab-panel>
 
