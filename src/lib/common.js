@@ -1498,3 +1498,9 @@ export function getObjectActiveValue(item) {
 }
 
 export const user = ref(null);
+
+export const demoDeviceData = () => {
+  return import("./demo-data").then((exps) => {
+    return exps.default;
+  });
+};

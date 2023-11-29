@@ -385,6 +385,15 @@ var fileClient = generateClient("file");
 var hvacToolClient = generateClient("hvacTool");
 var hvacObjectClient = generateClient("hvacObject");
 var hvacObjectLibClient = generateClient("hvacObjectLib");
+var t3AppClient = generateClient("t3App");
+var inputClient = generateClient("input");
+var outputClient = generateClient("output");
+var variableClient = generateClient("variable");
+var programClient = generateClient("program");
+var pidClient = generateClient("pid");
+var graphicClient = generateClient("graphic");
+var scheduleClient = generateClient("schedule");
+var holidayClient = generateClient("holiday");
 var wsTypedObj = bridg_config_1.apiIsWebsocket
   ? {
       $sendWebsocketMessage: function (data) {
@@ -399,6 +408,15 @@ var bridg = __assign(
     hvacTool: hvacToolClient,
     hvacObject: hvacObjectClient,
     hvacObjectLib: hvacObjectLibClient,
+    t3App: t3AppClient,
+    input: inputClient,
+    output: outputClient,
+    variable: variableClient,
+    program: programClient,
+    pid: pidClient,
+    graphic: graphicClient,
+    schedule: scheduleClient,
+    holiday: holidayClient,
   },
   wsTypedObj
 );

@@ -724,19 +724,10 @@ import {
   getObjectActiveValue,
   T3000_Data,
   user,
+  demoDeviceData,
 } from "../lib/common";
 import api from "../lib/api";
 import prisma from "../lib/bridg";
-
-// Dev mode only
-const demoDeviceData = () => {
-  if (process.env.DEV) {
-    return import("../lib/demo-data").then((exps) => {
-      return exps.default;
-    });
-  }
-  return undefined;
-};
 
 const metaData = {
   title: "HVAC Drawer",
