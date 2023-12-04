@@ -9,7 +9,16 @@ const routes = [
         component: () => import("pages/IndexPage.vue"),
       },
       { path: "login", component: () => import("pages/LoginPage.vue") },
-      { path: "apps-library", component: () => import("pages/AppLibrary.vue") },
+    ],
+  },
+  {
+    path: "/",
+    component: () => import("layouts/UserLayout.vue"),
+    children: [
+      {
+        path: "apps-library",
+        component: () => import("pages/AppsLibrary.vue"),
+      },
       {
         path: "save-to-library",
         component: () => import("pages/SaveToLibrary.vue"),
