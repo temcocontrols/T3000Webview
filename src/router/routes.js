@@ -17,11 +17,11 @@ const routes = [
     children: [
       {
         path: "apps-library",
-        component: () => import("pages/AppsLibrary.vue"),
+        component: () => import("pages/AppsLibrary/IndexPage.vue"),
       },
       {
-        path: "save-to-library",
-        component: () => import("pages/SaveToLibrary.vue"),
+        path: "apps-library/create",
+        component: () => import("pages/AppsLibrary/CreatePage.vue"),
       },
     ],
   },

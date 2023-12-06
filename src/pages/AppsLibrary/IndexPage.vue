@@ -9,7 +9,7 @@
               v-if="app.image"
               :src="fileServerUrl + app.image.path + '?w=208&h=205'"
             />
-            <img v-else src="../assets/placeholder.png" />
+            <img v-else src="../../assets/placeholder.png" />
           </div>
           <q-card-section>
             <div class="text-h6">{{ app.name }}</div>
@@ -28,7 +28,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
-import prisma from "../lib/bridg";
+import prisma from "../../lib/bridg";
 
 const $q = useQuasar();
 

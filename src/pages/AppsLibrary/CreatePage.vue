@@ -28,12 +28,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref, toRaw } from "vue";
+import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
-import FileUpload from "../components/FileUploadS3.vue";
-import { user, demoDeviceData } from "../lib/common";
-import prisma from "../lib/bridg";
+import FileUpload from "../../components/FileUploadS3.vue";
+import { user, demoDeviceData } from "../../lib/common";
+import prisma from "../../lib/bridg";
 
 const $q = useQuasar();
 const router = useRouter();
