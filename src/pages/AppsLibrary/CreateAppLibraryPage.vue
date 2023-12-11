@@ -33,7 +33,7 @@ import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
 import { user, demoDeviceData } from "../../lib/common";
-import prisma from "../../lib/bridg";
+import api from "../../lib/api";
 
 const $q = useQuasar();
 const router = useRouter();
@@ -84,46 +84,22 @@ function formatDeviceData(data) {
   const createManyData = (entries, filterFn) => {
     const filteredData = entries.filter(filterFn);
     return filteredData.length
-      ? { createMany: { data: filteredData.map(entryRemoveExtraData) } }
+      ? filteredData.map(entryRemoveExtraData)
       : undefined;
   };
 
   const { panel_id, ranges, data: deviceData } = data;
 
-  const inputs = createManyData(
-    deviceData,
-    (i) => i.type === "INPUT" && i.range !== 0
-  );
-  const outputs = createManyData(
-    deviceData,
-    (o) => o.type === "OUTPUT" && o.range !== 0
-  );
-  const variables = createManyData(
-    deviceData,
-    (v) => v.type === "VARIABLE" && v.unused === 0
-  );
-  const graphics = createManyData(
-    deviceData,
-    (g) => g.type === "GRP" && g.mode === 1
-  );
-  const pids = createManyData(
-    deviceData,
-    (p) => p.type === "PID" && p.range !== 0
-  );
-  const schedules = createManyData(
-    deviceData,
-    (s) => s.type === "SCHEDULE" && s.unused === 0
-  );
-  const programs = createManyData(
-    deviceData,
-    (p) => p.type === "PROGRAM" && p.unused === 0
-  );
-  const holidays = createManyData(
-    deviceData,
-    (h) => h.type === "HOLIDAY" && h.unused === 0
-  );
+  const inputs = createManyData(deviceData, (i) => i.type === "INPUT");
+  const outputs = createManyData(deviceData, (o) => o.type === "OUTPUT");
+  const variables = createManyData(deviceData, (v) => v.type === "VARIABLE");
+  const graphics = createManyData(deviceData, (g) => g.type === "GRP");
+  const pids = createManyData(deviceData, (p) => p.type === "PID");
+  const schedules = createManyData(deviceData, (s) => s.type === "SCHEDULE");
+  const programs = createManyData(deviceData, (p) => p.type === "PROGRAM");
+  const holidays = createManyData(deviceData, (h) => h.type === "HOLIDAY");
 
-  const prismaCreateQuery = {
+  const createData = {
     panelId: panel_id || 0,
     inputs,
     outputs,
@@ -136,9 +112,9 @@ function formatDeviceData(data) {
     ranges,
   };
 
-  console.log("prismaCreateQuery", prismaCreateQuery);
+  console.log("create data", createData);
 
-  return prismaCreateQuery;
+  return createData;
 }
 
 function handleUploaded(event) {
@@ -159,13 +135,19 @@ async function SaveApp() {
   saveToDB();
 }
 
-async function saveToDB() {
-  await prisma.t3App.create({ data: appData.value }).then((res) => {
-    router.push({ path: "/apps-library" });
-    $q.notify({
-      type: "positive",
-      message: "Application saved",
+function saveToDB() {
+  return api
+    .post("t3Apps", { json: appData.value })
+    .then(async (res) => {
+      router.push({ path: "/apps-library" });
+      $q.notify({
+        type: "positive",
+        message: "Application saved",
+      });
+      await res.json();
+    })
+    .catch((err) => {
+      // Not logged in
     });
-  });
 }
 </script>

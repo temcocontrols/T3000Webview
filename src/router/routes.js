@@ -21,7 +21,7 @@ const routes = [
       },
       {
         path: "apps-library/create",
-        component: () => import("pages/AppsLibrary/CreatePage.vue"),
+        component: () => import("pages/AppsLibrary/CreateAppLibraryPage.vue"),
       },
     ],
   },
