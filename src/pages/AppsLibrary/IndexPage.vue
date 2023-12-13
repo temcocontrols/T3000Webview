@@ -13,7 +13,7 @@
           </div>
           <q-card-section>
             <div class="text-h6">{{ app.name }}</div>
-            <div class="text-subtitle2">by {{ app.User.name }}</div>
+            <div class="text-subtitle2">by {{ app.user.name }}</div>
           </q-card-section>
 
           <q-card-section class="q-pt-none">
@@ -28,7 +28,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
-import prisma from "../../lib/bridg";
+import api from "../../lib/api";
 
 const $q = useQuasar();
 
@@ -37,11 +37,14 @@ const libData = ref([]);
 const fileServerUrl = process.env.API_URL + "/file/";
 
 onMounted(async () => {
-  await prisma.t3App
-    .findMany({ include: { image: true, User: true } })
-    .then((data) => {
+  api
+    .get("t3Apps")
+    .then(async (res) => {
+      const data = await res.json();
       libData.value = data;
-      console.log(data);
+    })
+    .catch((err) => {
+      // Not logged in
     });
 });
 </script>

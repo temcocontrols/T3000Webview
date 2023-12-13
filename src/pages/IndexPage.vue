@@ -727,7 +727,6 @@ import {
   demoDeviceData,
 } from "../lib/common";
 import api from "../lib/api";
-import prisma from "../lib/bridg";
 
 const metaData = {
   title: "HVAC Drawer",
@@ -1879,16 +1878,28 @@ function readFile(file) {
 
 async function saveLibImage(file) {
   if (user.value) {
-    const oItem = await prisma.hvacTool.create({
-      data: {
-        name: file.name,
-        fileId: file.id,
-      },
-      include: {
-        file: true,
-      },
-    });
-    addOnlineLibImage(oItem);
+    api
+      .post("hvacTools", {
+        json: {
+          name: file.name,
+          fileId: file.id,
+        },
+      })
+      .then(async (res) => {
+        $q.notify({
+          color: "positive",
+          message: "Image successfully saved",
+        });
+        const oItem = await res.json();
+        addOnlineLibImage(oItem);
+      })
+      .catch((err) => {
+        $q.notify({
+          color: "negative",
+          message: err.message,
+        });
+      });
+
     return;
   }
 
@@ -2284,25 +2295,36 @@ async function addToLibrary() {
   let createdItem = null;
   if (user.value) {
     isOnline = true;
-    createdItem = await prisma.hvacObjectLib
-      .create({
-        data: {
+    api
+      .post("hvacObjectLibs", {
+        json: {
           label: "Item " + library.value.objLibItemsCount,
+          items: libItems.map((i) => {
+            delete i.id;
+            return i;
+          }),
         },
       })
-      .then((res) => {
-        if (!res) return res;
-
-        libItems.forEach((i) => {
-          delete i.id;
-          prisma.hvacObjectLib.update({
-            where: { id: res.id },
-            data: {
-              items: { create: i },
-            },
-          });
+      .then(async (res) => {
+        createdItem = await res.json();
+        $q.notify({
+          type: "positive",
+          message: "Successfully saved to library",
         });
-        return res;
+
+        library.value.objLib.push({
+          id: createdItem?.id || library.value.objLibItemsCount,
+          label: "Item " + library.value.objLibItemsCount,
+          items: createdItem.items,
+          online: isOnline,
+        });
+        saveLib();
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
       });
   }
   library.value.objLib.push({
@@ -2403,7 +2425,20 @@ function autoManualToggle(item) {
 }
 function deleteLibItem(item) {
   if (user.value && item.online) {
-    prisma.hvacObjectLib.delete({ where: { id: item.id } });
+    api
+      .delete("hvacObjectLibs/" + item.id)
+      .then(async () => {
+        $q.notify({
+          type: "positive",
+          message: "Successfully deleted",
+        });
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
+      });
   }
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
@@ -2415,10 +2450,24 @@ function deleteLibItem(item) {
 }
 function renameLibItem(item, name) {
   if (user.value && item.online) {
-    prisma.hvacObjectLib.update({
-      where: { id: item.id },
-      data: { label: name },
-    });
+    api
+      .patch("hvacObjectLibs/" + item.id, {
+        json: {
+          label: name,
+        },
+      })
+      .then(async () => {
+        $q.notify({
+          type: "positive",
+          message: "Successfully updated",
+        });
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
+      });
   }
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
@@ -2431,7 +2480,20 @@ function renameLibItem(item, name) {
 
 function deleteLibImage(item) {
   if (item.online) {
-    prisma.hvacTool.delete({ where: { id: item.dbId || item.id.slice(4) } });
+    api
+      .delete("hvacTools/" + item.dbId || item.id.slice(4))
+      .then(async () => {
+        $q.notify({
+          type: "positive",
+          message: "Successfully deleted",
+        });
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
+      });
   }
   const itemIndex = library.value.images.findIndex(
     (obj) => obj.name === item.name
@@ -2518,25 +2580,37 @@ function isLoggedIn() {
     user.value = null;
     return;
   }
-  prisma.hvacTool.findMany({ include: { file: true } }).then((res) => {
-    if (res.length > 0) {
-      res.forEach((oItem) => {
-        addOnlineLibImage(oItem);
-      });
-    }
-  });
-  prisma.hvacObjectLib.findMany({ include: { items: true } }).then((res) => {
-    if (res.length > 0) {
-      res.forEach((oItem) => {
-        library.value.objLib.push({
-          id: oItem.id,
-          label: oItem.label,
-          items: oItem.items,
-          online: true,
+  api
+    .get("hvacTools")
+    .then(async (res) => {
+      const data = await res.json();
+      if (data.length > 0) {
+        data?.forEach((oItem) => {
+          addOnlineLibImage(oItem);
         });
-      });
-    }
-  });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  api
+    .get("hvacObjectLibs")
+    .then(async (res) => {
+      const data = await res.json();
+      if (data.length > 0) {
+        data.forEach((oItem) => {
+          library.value.objLib.push({
+            id: oItem.id,
+            label: oItem.label,
+            items: oItem.items,
+            online: true,
+          });
+        });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });
   api
     .get("me")
     .then(async (res) => {

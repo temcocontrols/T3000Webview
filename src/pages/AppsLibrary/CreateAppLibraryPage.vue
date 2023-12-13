@@ -136,18 +136,17 @@ async function SaveApp() {
 }
 
 function saveToDB() {
-  return api
+  api
     .post("t3Apps", { json: appData.value })
-    .then(async (res) => {
+    .then(async () => {
       router.push({ path: "/apps-library" });
       $q.notify({
         type: "positive",
         message: "Application saved",
       });
-      await res.json();
     })
     .catch((err) => {
-      // Not logged in
+      console.error(err);
     });
 }
 </script>
