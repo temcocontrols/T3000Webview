@@ -139,7 +139,7 @@ function saveToDB() {
   api
     .post("t3Apps", { json: appData.value })
     .then(async () => {
-      router.push({ path: "/apps-library" });
+      router.push({ path: "/user/apps" });
       $q.notify({
         type: "positive",
         message: "Application saved",

@@ -17,7 +17,7 @@ const libData = ref([]);
 
 onMounted(async () => {
   api
-    .get("t3Apps?limit=12")
+    .get("user/t3Apps")
     .then(async (res) => {
       libData.value = await res.json();
     })

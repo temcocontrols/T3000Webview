@@ -23,6 +23,10 @@ const routes = [
         path: "apps-library/create",
         component: () => import("pages/AppsLibrary/CreateAppLibraryPage.vue"),
       },
+      {
+        path: "user/apps",
+        component: () => import("pages/AppsLibrary/UserApps.vue"),
+      },
     ],
   },
   // Always leave this as last one,
