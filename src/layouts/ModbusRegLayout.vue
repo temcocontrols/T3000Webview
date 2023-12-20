@@ -7,18 +7,14 @@
   </q-layout>
 </template>
 
-<script>
-import { defineComponent } from "vue";
+<script setup>
+import { onMounted } from "vue";
+import { globalNav } from "../lib/common";
 import UserTopBar from "../components/UserTopBar.vue";
 
-export default defineComponent({
-  name: "MainLayout",
-  components: {
-    UserTopBar,
-  },
-
-  setup() {
-    return {};
-  },
+onMounted(() => {
+  globalNav.value.title = "Modbus Register";
+  globalNav.value.back = null;
+  globalNav.value.home = "/modbus-register";
 });
 </script>

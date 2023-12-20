@@ -2,7 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
-import { user } from "../lib/common";
+import { user, globalNav } from "../lib/common";
 import api from "../lib/api";
 
 export default {
@@ -23,7 +23,8 @@ export default {
     });
     function logout() {
       $q.cookies.remove("token");
-      router.push({ path: "/apps-library" });
+      user.value = null;
+      router.replace({ path: globalNav.value.home });
     }
     function isLoggedIn() {
       const hasToken = $q.cookies.has("token");
@@ -44,6 +45,7 @@ export default {
       logout,
       search,
       user,
+      globalNav,
     };
   },
 };
@@ -52,18 +54,26 @@ export default {
 <template>
   <q-toolbar class="toolbar bg-primary text-white">
     <div class="flex-1 flex justify-start flex-nowrap">
+      <q-btn
+        v-if="globalNav.back"
+        flat
+        round
+        dense
+        icon="arrow_back"
+        :to="globalNav.back"
+      />
       <q-toolbar-title class="toolbar-title flex items-center">
-        <router-link to="/" exact-active-class="exact-active">
+        <router-link :to="globalNav.home" exact-active-class="exact-active">
           <div class="toolbar-title-wrapper">
             <img class="logo" src="../assets/logo.png" alt="Temco Controls" />
             <div class="leading-text">
-              <div class="name">Application Library</div>
+              <div class="name">{{ globalNav.title }}</div>
             </div>
           </div>
         </router-link>
       </q-toolbar-title>
     </div>
-    <q-btn flat round dense class="mx-2">
+    <q-btn v-if="user" flat round dense class="mx-2">
       <q-avatar size="35px">
         <img src="../assets/user-none.png" />
       </q-avatar>
@@ -79,6 +89,7 @@ export default {
         </q-list>
       </q-menu>
     </q-btn>
+    <q-btn v-else flat label="Login" to="/login" />
   </q-toolbar>
 </template>
 

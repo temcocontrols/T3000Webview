@@ -16,7 +16,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
-import { user } from "../lib/common";
+import { user, globalNav } from "../lib/common";
 
 const router = useRouter();
 const $q = useQuasar();
@@ -53,9 +53,7 @@ onMounted(() => {
         sameSite: "Strict",
         secure: true,
       });
-      router.push({
-        name: "home",
-      });
+      router.push({ path: globalNav.value.home });
     }
   };
 });

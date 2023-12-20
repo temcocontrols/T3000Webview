@@ -1504,3 +1504,9 @@ export const demoDeviceData = () => {
     return exps.default;
   });
 };
+
+export const globalNav = ref({
+  title: "Application Library",
+  home: "/apps-library",
+  back: null,
+});

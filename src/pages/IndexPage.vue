@@ -724,6 +724,7 @@ import {
   getObjectActiveValue,
   T3000_Data,
   user,
+  globalNav,
   demoDeviceData,
 } from "../lib/common";
 import api from "../lib/api";
@@ -808,6 +809,9 @@ let lastAction = null;
 const cursorIconPos = ref({ x: 0, y: 0 });
 const objectsRef = ref(null);
 onMounted(() => {
+  globalNav.value.title = "HVAC Drawer";
+  globalNav.value.back = null;
+  globalNav.value.home = "/";
   isLoggedIn();
   if (!window.chrome?.webview?.postMessage) {
     const localState = localStorage.getItem("appState");

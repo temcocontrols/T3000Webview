@@ -12,20 +12,34 @@ const routes = [
     ],
   },
   {
-    path: "/",
-    component: () => import("layouts/UserLayout.vue"),
+    path: "/apps-library",
+    component: () => import("layouts/AppsLibLayout.vue"),
     children: [
       {
-        path: "apps-library",
+        path: "",
         component: () => import("pages/AppsLibrary/IndexPage.vue"),
       },
       {
-        path: "apps-library/create",
-        component: () => import("pages/AppsLibrary/CreateAppLibraryPage.vue"),
+        path: "create",
+        component: () => import("pages/AppsLibrary/CreateApp.vue"),
+      },
+      {
+        path: ":id/edit",
+        component: () => import("pages/AppsLibrary/EditApp.vue"),
       },
       {
         path: "user/apps",
         component: () => import("pages/AppsLibrary/UserApps.vue"),
+      },
+    ],
+  },
+  {
+    path: "/modbus-register",
+    component: () => import("layouts/ModbusRegLayout.vue"),
+    children: [
+      {
+        path: "",
+        component: () => import("pages/ModbusRegister/IndexPage.vue"),
       },
     ],
   },
