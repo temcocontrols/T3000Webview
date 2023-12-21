@@ -73,6 +73,7 @@ export default {
         </router-link>
       </q-toolbar-title>
     </div>
+    <slot name="search-input"></slot>
     <q-btn v-if="user" flat round dense class="mx-2">
       <q-avatar size="35px">
         <img src="../assets/user-none.png" />
@@ -95,7 +96,6 @@ export default {
 
 <style lang="scss" scoped>
 .toolbar {
-  flex: 1 1 0%;
   justify-items: stretch;
   justify-content: space-between;
 }

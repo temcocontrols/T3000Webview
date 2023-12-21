@@ -1,23 +1,60 @@
 <template>
-  <q-page class="flex justify-center p-4">
-    <div class="flex flex-col w-full mx-2">
+  <div class="flex flex-col flex-nowrap h-screen overflow-hidden">
+    <user-top-bar class="flex-none">
+      <template v-slot:search-input>
+        <q-input
+          class="toolbar-input mr-2"
+          dense
+          standout="bg-grey-2 text-black"
+          v-model="filter"
+          placeholder="Search"
+        >
+          <template #prepend>
+            <q-icon v-if="filter === ''" name="search" color="white" />
+            <q-icon
+              v-else
+              name="clear"
+              color="white"
+              class="cursor-pointer"
+              @click="filter = ''"
+            />
+          </template>
+        </q-input>
+      </template>
+    </user-top-bar>
+    <q-page
+      class="flex justify-center p-3 flex-1 overflow-hidden"
+      :style-fn="() => {}"
+    >
       <q-table
+        ref="tableRef"
+        flat
+        bordered
         :rows="data"
         :columns="columns"
         row-key="id"
         :wrap-cells="true"
         table-header-style="white-space: nowrap;"
-        :pagination="pagination"
-      />
-    </div>
-  </q-page>
+        v-model:pagination="pagination"
+        :filter="filter"
+        binary-state-sort
+        :loading="loading"
+        @request="onRequest"
+        class="data-table w-full h-full"
+      >
+      </q-table>
+    </q-page>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
 import api from "../../lib/api";
 import { globalNav } from "../../lib/common";
+import UserTopBar from "../../components/UserTopBar.vue";
 
+const tableRef = ref();
+const loading = ref(false);
 const data = ref([]);
 const pagination = ref({
   sortBy: "id",
@@ -26,6 +63,7 @@ const pagination = ref({
   rowsPerPage: 30,
   rowsNumber: 30,
 });
+const filter = ref("");
 const columns = [
   {
     label: "#",
@@ -88,14 +126,59 @@ const columns = [
 onMounted(async () => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
+  tableRef.value.requestServerInteraction();
+});
+function onRequest(props) {
+  const { page, rowsPerPage, sortBy, descending } = props.pagination;
+  const filter = props.filter;
+
+  loading.value = true;
+  const fetchCount =
+    rowsPerPage === 0 ? pagination.value.rowsNumber : rowsPerPage;
   api
-    .get("modbusRegisters?limit=30")
+    .get(
+      "modbusRegisters?limit=" +
+        fetchCount +
+        "&offset=" +
+        (page - 1) * rowsPerPage +
+        "&orderBy=" +
+        sortBy +
+        "&orderDir=" +
+        (descending ? "desc" : "asc") +
+        (filter ? "&filter=" + filter : "")
+    )
     .then(async (res) => {
       res = await res.json();
       data.value = res.data;
       pagination.value.rowsNumber = res.page.count;
+      data.value.splice(0, data.value.length, ...res.data);
+
+      // don't forget to update local pagination object
+      pagination.value.page = page;
+      pagination.value.rowsPerPage = rowsPerPage;
+      pagination.value.sortBy = sortBy;
+      pagination.value.descending = descending;
     })
-    .catch((err) => {});
-});
+    .catch((err) => {})
+    .finally(() => {
+      loading.value = false;
+    });
+}
 </script>
-<style></style>
+<style>
+.toolbar-input {
+  color: white;
+  width: 30%;
+}
+.toolbar-input input {
+  color: white;
+}
+.q-field--focused.toolbar-input input,
+.q-field--focused.toolbar-input .q-icon {
+  color: black !important;
+}
+
+.data-table {
+  max-height: 100%;
+}
+</style>

@@ -53,7 +53,7 @@ onMounted(() => {
         sameSite: "Strict",
         secure: true,
       });
-      router.push({ path: globalNav.value.home });
+      router.replace({ path: globalNav.value.home });
     }
   };
 });
