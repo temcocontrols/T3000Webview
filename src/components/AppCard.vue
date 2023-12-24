@@ -15,7 +15,7 @@
         @update:model-value="actionMenuToggle('app-card-action-btn-' + app.id)"
       >
         <q-list style="min-width: 70px">
-          <q-item disabled dense :to="'user/apps/' + app.id + '/edit'">
+          <q-item dense :to="'/apps-library/' + app.id + '/edit'">
             <q-item-section avatar>
               <q-icon name="edit" />
             </q-item-section>

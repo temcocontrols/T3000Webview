@@ -32,7 +32,7 @@ import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
-import { user, demoDeviceData } from "../../lib/common";
+import { user, demoDeviceData, globalNav } from "../../lib/common";
 import api from "../../lib/api";
 
 const $q = useQuasar();
@@ -43,6 +43,8 @@ const appData = ref({});
 const fileUploaderRef = ref(null);
 
 onMounted(() => {
+  globalNav.value.title = "Create Application";
+  globalNav.value.back = "/apps-library";
   window.chrome?.webview?.postMessage({
     action: 1, // GET_INITIAL_DATA
   });
@@ -112,8 +114,6 @@ function formatDeviceData(data) {
     ranges,
   };
 
-  console.log("create data", createData);
-
   return createData;
 }
 
@@ -128,7 +128,6 @@ async function SaveApp() {
   }
   console.log("fileUploaderRef.value", fileUploaderRef.value);
   if (fileUploaderRef.value?.uppy.getFiles()?.length > 0) {
-    console.log(fileUploaderRef.value?.uppy.getFiles());
     fileUploaderRef.value.upload();
     return;
   }
