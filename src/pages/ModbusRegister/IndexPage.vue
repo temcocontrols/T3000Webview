@@ -8,6 +8,8 @@
           standout="bg-grey-2 text-black"
           v-model="filter"
           placeholder="Search"
+          @update:model-value="() => gridApi.onFilterChanged()"
+          @change="() => gridApi.onFilterChanged()"
         >
           <template #prepend>
             <q-icon v-if="filter === ''" name="search" color="white" />
@@ -22,149 +24,99 @@
         </q-input>
       </template>
     </user-top-bar>
-    <q-page
-      class="flex justify-center p-3 flex-1 overflow-hidden"
-      :style-fn="() => {}"
-    >
-      <q-table
-        ref="tableRef"
-        flat
-        bordered
-        :rows="data"
-        :columns="columns"
-        row-key="id"
-        :wrap-cells="true"
-        table-header-style="white-space: nowrap;"
-        v-model:pagination="pagination"
-        :filter="filter"
-        binary-state-sort
-        :loading="loading"
-        @request="onRequest"
-        class="data-table w-full h-full"
-      >
-      </q-table>
+    <q-page class="flex justify-center p-2 flex-1 overflow-hidden">
+      <ag-grid-vue
+        style="width: 100%; height: 100%"
+        class="data-table ag-theme-quartz"
+        :columnDefs="modbusRegColumns"
+        @grid-ready="onGridReady"
+        :defaultColDef="defaultColDef"
+        :rowModelType="rowModelType"
+      ></ag-grid-vue>
     </q-page>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import "ag-grid-enterprise/styles/ag-grid.css";
+import "ag-grid-enterprise/styles/ag-theme-quartz.css";
+import "ag-grid-enterprise";
+import { ref, onBeforeMount, onMounted } from "vue";
+import { AgGridVue } from "ag-grid-vue3";
+import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import api from "../../lib/api";
-import { globalNav } from "../../lib/common";
+import { globalNav, modbusRegColumns } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
-const tableRef = ref();
-const loading = ref(false);
-const data = ref([]);
-const pagination = ref({
-  sortBy: "id",
-  descending: true,
-  page: 1,
-  rowsPerPage: 30,
-  rowsNumber: 30,
-});
+ModuleRegistry.registerModules([ServerSideRowModelModule]);
+
 const filter = ref("");
-const columns = [
-  {
-    label: "#",
-    name: "id",
-    field: "id",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Register Address",
-    name: "register_address",
-    field: "register_address",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Operation",
-    name: "operation",
-    field: "id",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Register Length",
-    name: "register_length",
-    field: "register_length",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Register Name",
-    name: "register_name",
-    field: "register_name",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Data Format",
-    name: "data_format",
-    field: "data_format",
-    align: "left",
-    sortable: true,
-  },
-  {
-    label: "Description",
-    name: "description",
-    field: "description",
-    align: "left",
-    sortable: false,
-  },
-  {
-    label: "Device Type",
-    name: "device_name",
-    field: "device_name",
-    align: "left",
-    sortable: true,
-  },
-];
+
+const gridApi = ref();
+const defaultColDef = ref({
+  minWidth: 70,
+  suppressMenu: true,
+});
+const rowModelType = ref(null);
+
+onBeforeMount(() => {
+  rowModelType.value = "serverSide";
+});
 
 onMounted(async () => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
-  tableRef.value.requestServerInteraction();
 });
-function onRequest(props) {
-  const { page, rowsPerPage, sortBy, descending } = props.pagination;
-  const filter = props.filter;
 
-  loading.value = true;
-  const fetchCount =
-    rowsPerPage === 0 ? pagination.value.rowsNumber : rowsPerPage;
-  api
-    .get(
-      "modbusRegisters?limit=" +
-        fetchCount +
-        "&offset=" +
-        (page - 1) * rowsPerPage +
-        "&orderBy=" +
-        sortBy +
-        "&orderDir=" +
-        (descending ? "desc" : "asc") +
-        (filter ? "&filter=" + filter : "")
-    )
-    .then(async (res) => {
-      res = await res.json();
-      data.value = res.data;
-      pagination.value.rowsNumber = res.page.count;
-      data.value.splice(0, data.value.length, ...res.data);
+const onGridReady = (params) => {
+  gridApi.value = params.api;
 
-      // don't forget to update local pagination object
-      pagination.value.page = page;
-      pagination.value.rowsPerPage = rowsPerPage;
-      pagination.value.sortBy = sortBy;
-      pagination.value.descending = descending;
-    })
-    .catch((err) => {})
-    .finally(() => {
-      loading.value = false;
-    });
+  var datasource = getServerSideDatasource();
+  // register the datasource with the grid
+  params.api.setGridOption("serverSideDatasource", datasource);
+};
+
+function autoSizeAll(params) {
+  params.api.autoSizeAllColumns(false);
+  params.api.setDomLayout("autoHeight");
+}
+
+function getServerSideDatasource() {
+  return {
+    getRows: (params) => {
+      const request = params.request;
+      if (request.endRow == undefined || request.startRow == undefined) {
+        return "";
+      }
+      var limit = request.endRow - request.startRow;
+      const sortCol = params.api.getColumn(request.sortModel[0]?.colId || 1);
+      api
+        .get(
+          "modbusRegisters?limit=" +
+            limit +
+            "&offset=" +
+            request.startRow +
+            "&orderBy=" +
+            sortCol.colDef.field +
+            "&orderDir=" +
+            (request.sortModel[0]?.sort || "desc") +
+            (filter.value ? "&filter=" + filter.value : "")
+        )
+        .then(async (res) => {
+          res = await res.json();
+          params.success({
+            rowData: res.data,
+            rowCount: res.page.count,
+          });
+        })
+        .catch((err) => {
+          params.fail();
+        });
+    },
+  };
 }
 </script>
+
 <style>
 .toolbar-input {
   color: white;

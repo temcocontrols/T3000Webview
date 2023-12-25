@@ -1470,6 +1470,67 @@ export const ranges = {
   },
 };
 
+const requiredClassRules = {
+  "bg-red-800": (params) => params.value === null || params.value === "",
+};
+export const modbusRegColumns = [
+  {
+    colId: 1,
+    headerName: "#",
+    sortable: true,
+    field: "id",
+    editable: false,
+  },
+  {
+    colId: 2,
+    headerName: "Register Address",
+    cellEditor: "NumericEditor",
+    sortable: true,
+    field: "register_address",
+    cellClassRules: requiredClassRules,
+  },
+  {
+    colId: 3,
+    headerName: "Operation",
+    sortable: true,
+    field: "operation",
+  },
+  {
+    colId: 4,
+    headerName: "Register Length",
+    cellEditor: "NumericEditor",
+    sortable: true,
+    field: "register_length",
+    cellClassRules: requiredClassRules,
+  },
+  {
+    colId: 5,
+    headerName: "Register Name",
+    sortable: true,
+    field: "register_name",
+  },
+  {
+    colId: 6,
+    headerName: "Data Format",
+    sortable: true,
+    field: "data_format",
+    cellClassRules: requiredClassRules,
+  },
+  {
+    colId: 7,
+    headerName: "Description",
+    sortable: false,
+    field: "description",
+  },
+  {
+    colId: 8,
+    headerName: "Device Type",
+    sortable: true,
+    field: "device_name",
+    cellClassRules: requiredClassRules,
+  },
+];
+
 export function getObjectActiveValue(item) {
   let active = false;
   if (!item.t3Entry || item.settings?.active === undefined) return false;
