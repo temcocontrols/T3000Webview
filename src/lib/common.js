@@ -1494,6 +1494,7 @@ export const modbusRegColumns = [
     headerName: "Operation",
     sortable: true,
     field: "operation",
+    tooltipField: "operation",
   },
   {
     colId: 4,
@@ -1508,12 +1509,14 @@ export const modbusRegColumns = [
     headerName: "Register Name",
     sortable: true,
     field: "register_name",
+    tooltipField: "register_name",
   },
   {
     colId: 6,
     headerName: "Data Format",
     sortable: true,
     field: "data_format",
+    tooltipField: "data_format",
     cellClassRules: requiredClassRules,
   },
   {
@@ -1521,6 +1524,7 @@ export const modbusRegColumns = [
     headerName: "Description",
     sortable: false,
     field: "description",
+    tooltipField: "description",
   },
   {
     colId: 8,

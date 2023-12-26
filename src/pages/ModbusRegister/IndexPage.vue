@@ -30,8 +30,10 @@
         class="data-table ag-theme-quartz"
         :columnDefs="modbusRegColumns"
         @grid-ready="onGridReady"
+        :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
-        :rowModelType="rowModelType"
+        rowModelType="serverSide"
+        :enableBrowserTooltips="true"
       ></ag-grid-vue>
     </q-page>
   </div>
@@ -41,7 +43,7 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onBeforeMount, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import api from "../../lib/api";
@@ -57,11 +59,6 @@ const defaultColDef = ref({
   minWidth: 70,
   suppressMenu: true,
 });
-const rowModelType = ref(null);
-
-onBeforeMount(() => {
-  rowModelType.value = "serverSide";
-});
 
 onMounted(async () => {
   globalNav.value.title = "Modbus Register";
@@ -76,10 +73,32 @@ const onGridReady = (params) => {
   params.api.setGridOption("serverSideDatasource", datasource);
 };
 
-function autoSizeAll(params) {
-  params.api.autoSizeAllColumns(false);
-  params.api.setDomLayout("autoHeight");
-}
+const autoSizeStrategy = {
+  type: "fitGridWidth",
+  defaultMinWidth: 100,
+  columnLimits: [
+    {
+      colId: "1",
+      maxWidth: 100,
+    },
+    {
+      colId: "2",
+      maxWidth: 150,
+    },
+    {
+      colId: "4",
+      maxWidth: 150,
+    },
+    {
+      colId: "6",
+      maxWidth: 180,
+    },
+    {
+      colId: "8",
+      maxWidth: 150,
+    },
+  ],
+};
 
 function getServerSideDatasource() {
   return {
