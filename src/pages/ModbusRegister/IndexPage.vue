@@ -30,10 +30,13 @@
         class="data-table ag-theme-quartz"
         :columnDefs="modbusRegColumns"
         @grid-ready="onGridReady"
+        @firstDataRendered="onFirstDataRendered"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
         rowModelType="serverSide"
         :enableBrowserTooltips="true"
+        :suppressCsvExport="true"
+        :suppressExcelExport="true"
       ></ag-grid-vue>
     </q-page>
   </div>
@@ -43,7 +46,7 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import api from "../../lib/api";
@@ -58,20 +61,39 @@ const gridApi = ref();
 const defaultColDef = ref({
   minWidth: 70,
   suppressMenu: true,
+  editable: true,
 });
 
-onMounted(async () => {
+window.onbeforeunload = () => {
+  const state = gridApi.value.getColumnState();
+  localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
+};
+
+onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
 });
 
-const onGridReady = (params) => {
+function onGridReady(params) {
   gridApi.value = params.api;
-
   var datasource = getServerSideDatasource();
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
-};
+}
+function onFirstDataRendered(params) {
+  const localState = localStorage.getItem("modbusRegisterGridState");
+  if (localState) {
+    params.api.applyColumnState({
+      state: JSON.parse(localState),
+      applyOrder: true,
+    });
+  }
+}
+
+onBeforeUnmount(() => {
+  const state = gridApi.value.getColumnState();
+  localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
+});
 
 const autoSizeStrategy = {
   type: "fitGridWidth",
