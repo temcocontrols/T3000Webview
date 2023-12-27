@@ -1480,6 +1480,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "id",
     editable: false,
+    width: 95,
   },
   {
     colId: 2,
@@ -1488,6 +1489,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "register_address",
     cellClassRules: requiredClassRules,
+    width: 150,
   },
   {
     colId: 3,
@@ -1503,6 +1505,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "register_length",
     cellClassRules: requiredClassRules,
+    width: 150,
   },
   {
     colId: 5,
@@ -1518,6 +1521,7 @@ export const modbusRegColumns = [
     field: "data_format",
     tooltipField: "data_format",
     cellClassRules: requiredClassRules,
+    width: 180,
   },
   {
     colId: 7,
@@ -1532,6 +1536,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "device_name",
     cellClassRules: requiredClassRules,
+    width: 150,
   },
 ];
 

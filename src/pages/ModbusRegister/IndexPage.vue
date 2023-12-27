@@ -24,7 +24,10 @@
         </q-input>
       </template>
     </user-top-bar>
-    <q-page class="flex justify-center p-2 flex-1 overflow-hidden">
+    <q-page
+      class="flex justify-center p-2 flex-1 overflow-hidden"
+      :style-fn="() => {}"
+    >
       <ag-grid-vue
         style="width: 100%; height: 100%"
         class="data-table ag-theme-quartz"
@@ -97,29 +100,7 @@ onBeforeUnmount(() => {
 
 const autoSizeStrategy = {
   type: "fitGridWidth",
-  defaultMinWidth: 100,
-  columnLimits: [
-    {
-      colId: "1",
-      maxWidth: 100,
-    },
-    {
-      colId: "2",
-      maxWidth: 150,
-    },
-    {
-      colId: "4",
-      maxWidth: 150,
-    },
-    {
-      colId: "6",
-      maxWidth: 180,
-    },
-    {
-      colId: "8",
-      maxWidth: 150,
-    },
-  ],
+  defaultMinWidth: 90,
 };
 
 function getServerSideDatasource() {
