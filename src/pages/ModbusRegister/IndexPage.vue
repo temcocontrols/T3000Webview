@@ -8,8 +8,7 @@
           standout="bg-grey-2 text-black"
           v-model="filter"
           placeholder="Search"
-          @update:model-value="() => gridApi.onFilterChanged()"
-          @change="() => gridApi.onFilterChanged()"
+          @update:model-value="triggerFilterChanged()"
         >
           <template #prepend>
             <q-icon v-if="filter === ''" name="search" color="white" />
@@ -18,7 +17,12 @@
               name="clear"
               color="white"
               class="cursor-pointer"
-              @click="filter = ''"
+              @click="
+                () => {
+                  filter = '';
+                  gridApi.onFilterChanged();
+                }
+              "
             />
           </template>
         </q-input>
@@ -34,6 +38,7 @@
         :columnDefs="modbusRegColumns"
         @grid-ready="onGridReady"
         @firstDataRendered="onFirstDataRendered"
+        @cell-value-changed="updateRow"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
         rowModelType="serverSide"
@@ -52,20 +57,24 @@ import "ag-grid-enterprise";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
+import { useQuasar, debounce } from "quasar";
 import api from "../../lib/api";
-import { globalNav, modbusRegColumns } from "../../lib/common";
+import { globalNav, modbusRegColumns, user } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
 ModuleRegistry.registerModules([ServerSideRowModelModule]);
 
+const $q = useQuasar();
 const filter = ref("");
 
 const gridApi = ref();
 const defaultColDef = ref({
   minWidth: 70,
   suppressMenu: true,
-  editable: true,
+  editable: () => !!user.value,
 });
+
+const triggerFilterChanged = debounce(onFilterChanged, 500);
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -76,6 +85,10 @@ onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
 });
+
+function onFilterChanged() {
+  gridApi.value.onFilterChanged();
+}
 
 function onGridReady(params) {
   gridApi.value = params.api;
@@ -136,6 +149,33 @@ function getServerSideDatasource() {
         });
     },
   };
+}
+
+function updateRow(event) {
+  if (!user.value) {
+    return;
+  }
+  const updateData = {
+    [event.colDef.field]: event.newValue,
+  };
+  api
+    .patch("modbusRegisters/" + event.data.id, { json: updateData })
+    .then(async (res) => {
+      res = await res.json();
+      if (res) {
+        $q.notify({
+          type: "positive",
+          message: "Successfully updated",
+        });
+      }
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Update failed! " + err.message,
+      });
+      console.log(err);
+    });
 }
 </script>
 

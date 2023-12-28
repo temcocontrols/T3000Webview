@@ -1580,3 +1580,10 @@ export const globalNav = ref({
   home: "/apps-library",
   back: null,
 });
+
+export function isAdmin(user) {
+  if (!user) return false;
+  return (
+    user.roles.admin || user.roles.administrator || user.roles.restricted_admin
+  );
+}
