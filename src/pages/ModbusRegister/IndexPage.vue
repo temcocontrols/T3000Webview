@@ -45,6 +45,7 @@
         :enableBrowserTooltips="true"
         :suppressCsvExport="true"
         :suppressExcelExport="true"
+        :columnTypes="columnTypes"
       ></ag-grid-vue>
     </q-page>
   </div>
@@ -59,7 +60,13 @@ import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
 import api from "../../lib/api";
-import { globalNav, modbusRegColumns, user } from "../../lib/common";
+import {
+  globalNav,
+  isAdmin,
+  modbusRegColumns,
+  cellClassRules,
+  user,
+} from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
 ModuleRegistry.registerModules([ServerSideRowModelModule]);
@@ -71,8 +78,13 @@ const gridApi = ref();
 const defaultColDef = ref({
   minWidth: 70,
   suppressMenu: true,
+  cellClassRules: cellClassRules,
   editable: () => !!user.value,
 });
+
+const columnTypes = {
+  REQUIRED: {},
+};
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
@@ -139,6 +151,18 @@ function getServerSideDatasource() {
         )
         .then(async (res) => {
           res = await res.json();
+          if (user.value && !isAdmin(user.value)) {
+            res.data = res.data.map((oItem) => {
+              if (
+                oItem.revisions &&
+                oItem.revisions.length > 0 &&
+                ["UNDER_REVIEW", "REVISION"].includes(oItem.revisions[0].status)
+              ) {
+                return { ...oItem.revisions[0], id: oItem.id };
+              }
+              return oItem;
+            });
+          }
           params.success({
             rowData: res.data,
             rowCount: res.page.count,
