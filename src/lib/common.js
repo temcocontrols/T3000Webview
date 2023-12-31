@@ -1471,14 +1471,15 @@ export const ranges = {
 };
 
 export const cellClassRules = {
-  "bg-yellow-400": (params) => {
-    return ["REVISION", "UNDER_REVIEW"].includes(params.data.status);
-  },
-  "bg-red-800": (params) => {
-    return (
-      params.colDef.type?.includes("REQUIRED") &&
-      (params.value === null || params.value === "")
-    );
+  "bg-yellow-400": (params) =>
+    ["REVISION", "UNDER_REVIEW"].includes(params.data.status),
+};
+
+export const columnTypes = {
+  required: {
+    cellClassRules: {
+      "bg-red-800": (params) => params.value === null || params.value === "",
+    },
   },
 };
 export const modbusRegColumns = [
@@ -1497,7 +1498,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "register_address",
     width: 150,
-    type: ["REQUIRED"],
+    type: ["required"],
   },
   {
     colId: 3,
@@ -1513,7 +1514,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "register_length",
     width: 150,
-    type: ["REQUIRED"],
+    type: ["required"],
   },
   {
     colId: 5,
@@ -1529,7 +1530,7 @@ export const modbusRegColumns = [
     field: "data_format",
     tooltipField: "data_format",
     width: 180,
-    type: ["REQUIRED"],
+    type: ["required"],
   },
   {
     colId: 7,
@@ -1544,7 +1545,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "device_name",
     width: 150,
-    type: ["REQUIRED"],
+    type: ["required"],
   },
 ];
 

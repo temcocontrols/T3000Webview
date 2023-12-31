@@ -65,6 +65,7 @@ import {
   isAdmin,
   modbusRegColumns,
   cellClassRules,
+  columnTypes,
   user,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
@@ -81,10 +82,6 @@ const defaultColDef = ref({
   cellClassRules: cellClassRules,
   editable: () => !!user.value,
 });
-
-const columnTypes = {
-  REQUIRED: {},
-};
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
