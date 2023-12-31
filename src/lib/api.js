@@ -10,6 +10,13 @@ const api = ky.create({
         request.headers.set("auth", Cookies.get("token"));
       },
     ],
+    afterResponse: [
+      (request) => {
+        if (request.status === 401) {
+          Cookies.remove("token");
+        }
+      },
+    ],
   },
 });
 
