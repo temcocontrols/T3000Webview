@@ -1490,6 +1490,7 @@ export const modbusRegColumns = [
     field: "id",
     editable: false,
     width: 95,
+    cellRenderer: "RowActionsRenderer",
   },
   {
     colId: 2,

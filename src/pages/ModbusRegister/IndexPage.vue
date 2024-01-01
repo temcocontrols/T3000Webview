@@ -46,6 +46,9 @@
         :suppressCsvExport="true"
         :suppressExcelExport="true"
         :columnTypes="columnTypes"
+        :components="{
+          RowActionsRenderer,
+        }"
       ></ag-grid-vue>
     </q-page>
   </div>
@@ -69,6 +72,8 @@ import {
   user,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
+
+import RowActionsRenderer from "../../components/grid/RowActionsRenderer.vue";
 
 ModuleRegistry.registerModules([ServerSideRowModelModule]);
 
@@ -215,5 +220,11 @@ function updateRow(event) {
 
 .data-table {
   max-height: 100%;
+}
+.ag-row .status-message-btn {
+  display: none;
+}
+.ag-row:hover .status-message-btn {
+  display: block;
 }
 </style>
