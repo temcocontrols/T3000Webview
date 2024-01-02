@@ -40,7 +40,7 @@ import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
-import { user, globalNav } from "../../lib/common";
+import { user, globalNav, isAdmin } from "../../lib/common";
 import api from "../../lib/api";
 import ky from "ky";
 
@@ -64,6 +64,13 @@ onMounted(() => {
     .then(async (res) => {
       const data = await res.json();
       saveBtnDisabled.value = false;
+      if (!isAdmin(user.value) && user.id !== data.userId) {
+        router.push({ path: "/apps-library/user/apps" });
+        $q.notify({
+          type: "negative",
+          message: "Permission denied!",
+        });
+      }
       appData.value = {
         name: data.name,
         description: data.description,
@@ -127,6 +134,10 @@ function saveToDB() {
     })
     .catch((err) => {
       console.error(err);
+      $q.notify({
+        type: "negative",
+        message: "Application not updated! " + err.message,
+      });
     });
 }
 </script>
