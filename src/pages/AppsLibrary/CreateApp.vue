@@ -20,8 +20,9 @@
         type="textarea"
         autogrow
       />
-      <div>
+      <div class="flex grid-cols-4 gap-4">
         <q-btn label="Save" color="primary" icon="save" @click="SaveApp" />
+        <q-btn label="Cancel" icon="cancel" to="/apps-library" />
       </div>
     </div>
   </q-page>
@@ -138,7 +139,7 @@ function saveToDB() {
   api
     .post("t3Apps", { json: appData.value })
     .then(async () => {
-      router.push({ path: "/user/apps" });
+      router.push({ path: "/apps-library/user/apps" });
       $q.notify({
         type: "positive",
         message: "Application saved",

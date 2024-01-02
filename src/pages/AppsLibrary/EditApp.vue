@@ -29,7 +29,7 @@
           @click="SaveApp"
           :disable="saveBtnDisabled"
         />
-        <q-btn label="Cancel" icon="cancel" to="/user/apps" />
+        <q-btn label="Cancel" icon="cancel" to="/apps-library" />
       </div>
     </div>
   </q-page>
@@ -64,8 +64,8 @@ onMounted(() => {
     .then(async (res) => {
       const data = await res.json();
       saveBtnDisabled.value = false;
-      if (!isAdmin(user.value) && user.id !== data.userId) {
-        router.push({ path: "/apps-library/user/apps" });
+      if (!isAdmin(user.value) && user.value.id !== data.userId) {
+        router.push({ path: "/apps-library" });
         $q.notify({
           type: "negative",
           message: "Permission denied!",
