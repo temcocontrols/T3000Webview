@@ -53,7 +53,7 @@ export default {
 
 <template>
   <q-toolbar class="toolbar bg-primary text-white">
-    <div class="flex-1 flex justify-start flex-nowrap">
+    <div class="flex justify-start flex-nowrap">
       <q-btn
         v-if="globalNav.back"
         flat
@@ -73,6 +73,7 @@ export default {
         </router-link>
       </q-toolbar-title>
     </div>
+    <div class="flex-1 flex ml-4"><slot name="action-btns"></slot></div>
     <slot name="search-input"></slot>
     <q-btn v-if="user" flat round dense class="mx-2">
       <q-avatar size="35px">

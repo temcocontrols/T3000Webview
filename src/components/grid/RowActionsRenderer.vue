@@ -7,26 +7,48 @@ const props = defineProps({
     type: Object,
   },
 });
-function openEditor() {
-  props.params.api.startEditingCell({
-    rowIndex: props.params.node.rowIndex,
-    colKey: props.params.colKey,
+function cancelChanges() {
+  $q.dialog({
+    title: "Cancel changes",
+    message: "Are you sure you want to cancel your changes for this row?",
+    cancel: { label: "No" },
+    ok: { label: "Yes", color: "negative" },
+  }).onOk(() => {
+    props.params.api.dispatchEvent({
+      type: "cancelChanges",
+      data: { id: props.params.data.id },
+    });
   });
 }
 </script>
 
 <template>
-  <div>
+  <div class="relative">
     {{ props.params.value }}
-    <q-btn
+    <div
       v-if="['UNDER_REVIEW', 'REVISION'].includes(props.params.data.status)"
-      class="status-message-btn"
-      round
-      dense
-      flat
-      size="sm"
-      color="primary"
-      icon="question_mark"
-    />
+      class="row-actions"
+    >
+      <q-btn
+        class="status-message-btn"
+        round
+        dense
+        flat
+        size="sm"
+        color="primary"
+        icon="question_mark"
+      >
+        <q-tooltip>Your changes are under review.</q-tooltip></q-btn
+      >
+      <q-btn round dense flat size="sm" color="primary" icon="more_vert">
+        <q-menu>
+          <q-list style="min-width: 100px">
+            <q-item clickable v-close-popup @click="cancelChanges()">
+              <q-item-section>Cancel changes</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
+    </div>
   </div>
 </template>

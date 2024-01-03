@@ -1,6 +1,9 @@
 <template>
   <div class="flex flex-col flex-nowrap h-screen overflow-hidden">
     <user-top-bar class="flex-none">
+      <template v-slot:action-btns>
+        <q-btn icon="add_circle" label="Add new Row" @click="addNewRow"></q-btn
+      ></template>
       <template v-slot:search-input>
         <q-input
           class="toolbar-input mr-2"
@@ -39,6 +42,7 @@
         @grid-ready="onGridReady"
         @firstDataRendered="onFirstDataRendered"
         @cell-value-changed="updateRow"
+        :getRowId="getRowId"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
         rowModelType="serverSide"
@@ -58,14 +62,13 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, onBeforeMount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
 import api from "../../lib/api";
 import {
   globalNav,
-  isAdmin,
   modbusRegColumns,
   cellClassRules,
   columnTypes,
@@ -81,6 +84,7 @@ const $q = useQuasar();
 const filter = ref("");
 
 const gridApi = ref();
+const getRowId = ref();
 const defaultColDef = ref({
   minWidth: 70,
   suppressMenu: true,
@@ -94,6 +98,10 @@ window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
 };
+
+onBeforeMount(() => {
+  getRowId.value = (params) => `${params.data.id}`;
+});
 
 onMounted(() => {
   globalNav.value.title = "Modbus Register";
@@ -109,6 +117,17 @@ function onGridReady(params) {
   var datasource = getServerSideDatasource();
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
+  params.api.addEventListener("cancelChanges", async (ev) => {
+    await api
+      .patch("modbusRegisters/" + ev.data.id + "/cancel", {})
+      .then(async (res) => {
+        gridApi.value.refreshServerSide();
+        $q.notify({
+          type: "positive",
+          message: "The row changes has been cancelled successfully",
+        });
+      });
+  });
 }
 function onFirstDataRendered(params) {
   const localState = localStorage.getItem("modbusRegisterGridState");
@@ -153,18 +172,6 @@ function getServerSideDatasource() {
         )
         .then(async (res) => {
           res = await res.json();
-          if (user.value && !isAdmin(user.value)) {
-            res.data = res.data.map((oItem) => {
-              if (
-                oItem.revisions &&
-                oItem.revisions.length > 0 &&
-                ["UNDER_REVIEW", "REVISION"].includes(oItem.revisions[0].status)
-              ) {
-                return { ...oItem.revisions[0], id: oItem.id };
-              }
-              return oItem;
-            });
-          }
           params.success({
             rowData: res.data,
             rowCount: res.page.count,
@@ -189,6 +196,7 @@ function updateRow(event) {
     .then(async (res) => {
       res = await res.json();
       if (res) {
+        gridApi.value.refreshServerSide();
         $q.notify({
           type: "positive",
           message: "Successfully updated",
@@ -202,6 +210,16 @@ function updateRow(event) {
       });
       console.log(err);
     });
+}
+
+function addNewRow() {
+  if (!user.value) {
+    return;
+  }
+  gridApi.value.applyServerSideTransaction({
+    addIndex: 0,
+    add: [{ id: 0 }],
+  });
 }
 </script>
 
@@ -221,10 +239,13 @@ function updateRow(event) {
 .data-table {
   max-height: 100%;
 }
-.ag-row .status-message-btn {
-  display: none;
+.ag-row .row-actions {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
-.ag-row:hover .status-message-btn {
-  display: block;
+.ag-row:hover .row-actions {
+  visibility: visible;
 }
 </style>
