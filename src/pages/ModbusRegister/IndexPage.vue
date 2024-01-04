@@ -1,8 +1,74 @@
 <template>
+  <q-dialog v-model="createItemDialog" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Add new row</div>
+      </q-card-section>
+
+      <q-form ref="form" class="q-gutter-md" @submit="saveNewRow">
+        <q-card-section class="grid grid-cols-2 gap-4">
+          <q-input
+            v-model="newItem.register_address"
+            label="Register address"
+            type="number"
+            :rules="[
+              (val) => (val && val > 0) || 'Please enter a positive number',
+            ]"
+          />
+          <q-input v-model="newItem.operation" label="Operation" />
+          <q-input
+            v-model="newItem.register_length"
+            label="Register length"
+            type="number"
+            :rules="[
+              (val) => (val && val > 0) || 'Please enter a positive number',
+            ]"
+          />
+          <q-input v-model="newItem.register_name" label="Register name" />
+          <q-input
+            v-model="newItem.data_format"
+            label="Data format"
+            :rules="[
+              (val) => (val && val.length > 0) || 'Please enter a data format',
+            ]"
+          />
+          <q-input
+            v-model="newItem.device_name"
+            label="Device name"
+            :rules="[
+              (val) => (val && val.length > 0) || 'Please enter a device name',
+            ]"
+          />
+          <q-input
+            v-model="newItem.description"
+            label="Description"
+            type="textarea"
+            class="col-span-2"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="createItemDialog = false"
+          />
+          <q-btn label="Submit" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
   <div class="flex flex-col flex-nowrap h-screen overflow-hidden">
     <user-top-bar class="flex-none">
       <template v-slot:action-btns>
-        <q-btn icon="add_circle" label="Add new Row" @click="addNewRow"></q-btn
+        <q-btn
+          icon="add_circle"
+          label="Add New Row"
+          @click="createItemDialog = true"
+        ></q-btn
       ></template>
       <template v-slot:search-input>
         <q-input
@@ -62,7 +128,7 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted, onBeforeUnmount, onBeforeMount } from "vue";
+import { ref, onMounted, onBeforeUnmount, onBeforeMount, toRaw } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
@@ -91,6 +157,19 @@ const defaultColDef = ref({
   cellClassRules: cellClassRules,
   editable: () => !!user.value,
 });
+
+const createItemDialog = ref(false);
+
+const emptyNewItem = {
+  register_address: null,
+  operation: null,
+  register_length: null,
+  register_name: null,
+  data_format: null,
+  description: null,
+  device_name: null,
+};
+const newItem = ref({ ...emptyNewItem });
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
@@ -127,6 +206,16 @@ function onGridReady(params) {
           message: "The row changes has been cancelled successfully",
         });
       });
+  });
+
+  params.api.addEventListener("deleteRow", async (ev) => {
+    await api.delete("modbusRegisters/" + ev.data.id).then(async (res) => {
+      gridApi.value.refreshServerSide();
+      $q.notify({
+        type: "positive",
+        message: "The row has been deleted successfully",
+      });
+    });
   });
 }
 function onFirstDataRendered(params) {
@@ -212,14 +301,32 @@ function updateRow(event) {
     });
 }
 
-function addNewRow() {
+function saveNewRow() {
   if (!user.value) {
     return;
   }
-  gridApi.value.applyServerSideTransaction({
-    addIndex: 0,
-    add: [{ id: 0 }],
-  });
+  api
+    .post("modbusRegisters", { json: newItem.value })
+    .then(async (res) => {
+      res = await res.json();
+      gridApi.value.applyServerSideTransaction({
+        addIndex: 0,
+        add: [res],
+      });
+      $q.notify({
+        type: "positive",
+        message: "Successfully added",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Save failed! " + err.message,
+      });
+    });
+
+  newItem.value = { ...emptyNewItem };
+  createItemDialog.value = false;
 }
 </script>
 
