@@ -75,6 +75,7 @@ export default {
     </div>
     <div class="flex-1 flex ml-4"><slot name="action-btns"></slot></div>
     <slot name="search-input"></slot>
+    <slot name="buttons"></slot>
     <q-btn v-if="user" flat round dense class="mx-2">
       <q-avatar size="35px">
         <img src="../assets/user-none.png" />

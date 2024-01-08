@@ -4,9 +4,12 @@
       <q-card-section>
         <div class="text-h6">Add new row</div>
       </q-card-section>
-
+      <q-separator />
       <q-form ref="form" class="q-gutter-md" @submit="saveNewRow">
-        <q-card-section class="grid grid-cols-2 gap-4">
+        <q-card-section
+          class="grid grid-cols-2 gap-4 scroll"
+          style="max-height: 50vh"
+        >
           <q-input
             v-model="newItem.register_address"
             label="Register address"
@@ -46,8 +49,9 @@
             class="col-span-2"
           />
         </q-card-section>
+        <q-separator />
 
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="mt-0">
           <q-btn
             label="Cancel"
             color="primary"
@@ -68,6 +72,11 @@
           icon="add_circle"
           label="Add New Row"
           @click="createItemDialog = true"
+          color="white"
+          text-color="grey-8"
+          size="0.7rem"
+          dense
+          class="ml-2"
         ></q-btn
       ></template>
       <template v-slot:search-input>
@@ -95,6 +104,74 @@
             />
           </template>
         </q-input>
+      </template>
+      <template v-slot:buttons>
+        <q-btn flat round dense icon="notifications" class="ml-4 mr-2">
+          <q-menu>
+            <q-list v-if="notifications.length > 0">
+              <q-item
+                v-for="notification in notifications"
+                :key="notification.id"
+                clickable
+                class="pt-4 pb-3"
+              >
+                <q-item-section avatar>
+                  <q-avatar>
+                    <q-icon
+                      name="check_circle"
+                      size="lg"
+                      v-if="notification.type === 'USER_CHANGES_APPOROVED'"
+                    />
+                    <q-icon
+                      name="cancel"
+                      size="lg"
+                      v-else-if="notification.type === 'USER_CHANGES_REJECTED'"
+                    />
+                    <q-badge
+                      color="red"
+                      rounded
+                      floating
+                      v-if="notification.status === 'UNREAD'"
+                    />
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label
+                    :class="{ 'text-gray-400': notification.status === 'READ' }"
+                    >{{ notification.message }}</q-item-label
+                  >
+                  <q-item-label caption>{{
+                    new Date(notification.createdAt).toLocaleString()
+                  }}</q-item-label>
+                  <div class="flex justify-end mt-1">
+                    <q-btn
+                      v-if="notification.status === 'UNREAD'"
+                      flat
+                      color="primary"
+                      size="0.7rem"
+                      label="Mark as read"
+                      @click="notificationstatusChange(notification, 'READ')"
+                    />
+                    <q-btn
+                      v-else-if="notification.status === 'READ'"
+                      flat
+                      size="0.7rem"
+                      label="Mark as unread"
+                      @click="notificationstatusChange(notification, 'UNREAD')"
+                    />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else class="p-4 min-w-52">You have no notifications.</div>
+          </q-menu>
+          <q-badge
+            color="red"
+            rounded
+            floating
+            v-if="notifications.find((n) => n.status === 'UNREAD')"
+          />
+        </q-btn>
       </template>
     </user-top-bar>
     <q-page
@@ -169,7 +246,9 @@ const emptyNewItem = {
   description: null,
   device_name: null,
 };
-const newItem = ref({ ...emptyNewItem });
+const newItem = ref(structuredClone(emptyNewItem));
+
+const notifications = ref([]);
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
@@ -185,6 +264,10 @@ onBeforeMount(() => {
 onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
+
+  getNotifications().then((res) => {
+    notifications.value = res;
+  });
 });
 
 function onFilterChanged() {
@@ -325,8 +408,37 @@ function saveNewRow() {
       });
     });
 
-  newItem.value = { ...emptyNewItem };
+  newItem.value = structuredClone(emptyNewItem);
   createItemDialog.value = false;
+}
+
+function getNotifications() {
+  return api
+    .get("modbusRegisterNotifications")
+    .then(async (res) => {
+      const data = await res.json();
+      return data;
+    })
+    .catch((err) => {
+      console.log(err);
+      return [];
+    });
+}
+function notificationstatusChange(notification, status) {
+  api
+    .patch("modbusRegisterNotifications" + "/" + notification.id + "/status", {
+      json: { status: status },
+    })
+    .then(async (res) => {
+      notification.status = status;
+    })
+    .catch((err) => {
+      console.log(err);
+      $q.notify({
+        type: "negative",
+        message: err.message,
+      });
+    });
 }
 </script>
 
