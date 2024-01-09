@@ -65,9 +65,143 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="reviewRowChangesDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Review user row changes</div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="scroll" style="max-height: 50vh">
+        <q-markup-table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left">Column</th>
+              <th class="text-left">Original value</th>
+              <th class="text-left">New value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template
+              v-for="col in [
+                'register_address',
+                'operation',
+                'register_length',
+                'register_name',
+                'data_format',
+                'description',
+                'device_name',
+              ]"
+              :key="col"
+            >
+              <tr
+                v-if="
+                  reviewRowChangesDialog.notification.entry[col] !==
+                  reviewRowChangesDialog.notification.entry.parent[col]
+                "
+              >
+                <th class="text-left">{{ col }}</th>
+                <td class="text-left">
+                  {{ reviewRowChangesDialog.notification.entry.parent[col] }}
+                </td>
+                <td class="text-left">
+                  {{ reviewRowChangesDialog.notification.entry[col] }}
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+      <q-separator />
+
+      <q-card-actions align="right" class="mt-0">
+        <q-btn
+          label="Cancel"
+          color="primary"
+          flat
+          class="q-ml-sm"
+          @click="reviewRowChangesDialog.active = false"
+        />
+        <q-btn
+          label="Reject"
+          color="negative"
+          @click="rejectEntryChanges(reviewRowChangesDialog.notification)"
+        />
+        <q-btn
+          label="Approve"
+          color="primary"
+          @click="approveEntryChanges(reviewRowChangesDialog.notification)"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="reviewRowAddedDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Review user new row</div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="scroll" style="max-height: 50vh">
+        <q-markup-table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left">Register Address</th>
+              <th class="text-left">Operation</th>
+              <th class="text-left">Register Length</th>
+              <th class="text-left">Register Name</th>
+              <th class="text-left">Data Format</th>
+              <th class="text-left">Description</th>
+              <th class="text-left">Device Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                class="text-left"
+                v-for="col in [
+                  'register_address',
+                  'operation',
+                  'register_length',
+                  'register_name',
+                  'data_format',
+                  'description',
+                  'device_name',
+                ]"
+                :key="col"
+              >
+                {{ reviewRowAddedDialog.notification.entry[col] }}
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+      <q-separator />
+
+      <q-card-actions align="right" class="mt-0">
+        <q-btn
+          label="Cancel"
+          color="primary"
+          flat
+          class="q-ml-sm"
+          @click="reviewRowAddedDialog.active = false"
+        />
+        <q-btn
+          label="Reject"
+          color="negative"
+          @click="rejectEntryChanges(reviewRowAddedDialog.notification)"
+        />
+        <q-btn
+          label="Approve"
+          color="primary"
+          @click="approveEntryChanges(reviewRowAddedDialog.notification)"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <div class="flex flex-col flex-nowrap h-screen overflow-hidden">
     <user-top-bar class="flex-none">
-      <template v-slot:action-btns>
+      <template v-slot:action-btns v-if="user">
         <q-btn
           icon="add_circle"
           label="Add New Row"
@@ -105,65 +239,143 @@
           </template>
         </q-input>
       </template>
-      <template v-slot:buttons>
+      <template v-slot:buttons v-if="user">
         <q-btn flat round dense icon="notifications" class="ml-4 mr-2">
           <q-menu>
-            <q-list v-if="notifications.length > 0">
-              <q-item
-                v-for="notification in notifications"
-                :key="notification.id"
-                clickable
-                class="pt-4 pb-3"
-              >
-                <q-item-section avatar>
-                  <q-avatar>
-                    <q-icon
-                      name="check_circle"
-                      size="lg"
-                      v-if="notification.type === 'USER_CHANGES_APPOROVED'"
-                    />
-                    <q-icon
-                      name="cancel"
-                      size="lg"
-                      v-else-if="notification.type === 'USER_CHANGES_REJECTED'"
-                    />
-                    <q-badge
-                      color="red"
-                      rounded
-                      floating
-                      v-if="notification.status === 'UNREAD'"
-                    />
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label
-                    :class="{ 'text-gray-400': notification.status === 'READ' }"
-                    >{{ notification.message }}</q-item-label
-                  >
-                  <q-item-label caption>{{
-                    new Date(notification.createdAt).toLocaleString()
-                  }}</q-item-label>
-                  <div class="flex justify-end mt-1">
-                    <q-btn
-                      v-if="notification.status === 'UNREAD'"
-                      flat
-                      color="primary"
-                      size="0.7rem"
-                      label="Mark as read"
-                      @click="notificationstatusChange(notification, 'READ')"
-                    />
-                    <q-btn
-                      v-else-if="notification.status === 'READ'"
-                      flat
-                      size="0.7rem"
-                      label="Mark as unread"
-                      @click="notificationstatusChange(notification, 'UNREAD')"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="p-4 min-w-52">You have no notifications.</div>
+            <q-infinite-scroll @load="loadMoreNotifications" :offset="100">
+              <q-list v-if="notifications.length > 0">
+                <q-item
+                  v-for="notification in notifications"
+                  :key="notification.id"
+                  clickable
+                  class="pt-4 pb-3"
+                >
+                  <q-item-section avatar>
+                    <q-avatar>
+                      <q-icon
+                        name="check_circle"
+                        size="lg"
+                        v-if="notification.type === 'USER_CHANGES_APPOROVED'"
+                      />
+                      <q-icon
+                        name="cancel"
+                        size="lg"
+                        v-else-if="
+                          notification.type === 'USER_CHANGES_REJECTED'
+                        "
+                      />
+                      <q-icon
+                        name="account_circle"
+                        size="lg"
+                        v-else-if="notification.type.startsWith('ADMIN_')"
+                      />
+                      <q-badge
+                        color="red"
+                        rounded
+                        floating
+                        v-if="notification.status === 'UNREAD'"
+                      />
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label
+                      :class="{
+                        'text-gray-400': notification.status !== 'UNREAD',
+                      }"
+                      >{{ notification.message }}</q-item-label
+                    >
+                    <q-item-label caption>{{
+                      new Date(notification.createdAt).toLocaleString()
+                    }}</q-item-label>
+                    <div class="flex justify-end mt-1">
+                      <q-btn
+                        v-if="
+                          notification.status === 'UNREAD' &&
+                          !notification.type.startsWith('ADMIN_')
+                        "
+                        flat
+                        color="primary"
+                        size="0.7rem"
+                        label="Mark as read"
+                        @click="notificationstatusChange(notification, 'READ')"
+                      />
+                      <template
+                        v-else-if="
+                          notification.status === 'UNREAD' &&
+                          notification.type.startsWith('ADMIN_')
+                        "
+                      >
+                        <q-btn
+                          v-if="notification.type === 'ADMIN_ENTRY_CHANGED'"
+                          flat
+                          size="0.7rem"
+                          label="Review"
+                          @click="notificationChangesReviewAction(notification)"
+                        />
+                        <q-btn
+                          v-else-if="notification.type === 'ADMIN_ENTRY_ADDED'"
+                          flat
+                          size="0.7rem"
+                          label="Review"
+                          @click="notificationChangesReviewAction(notification)"
+                        />
+                      </template>
+                      <template
+                        v-else-if="
+                          notification.status !== 'UNREAD' &&
+                          notification.type.startsWith('ADMIN_')
+                        "
+                      >
+                        <q-chip
+                          v-if="notification.status === 'ADMIN_APPROVED'"
+                          dense
+                          color="primary"
+                          text-color="white"
+                          icon="check_circle"
+                          size="0.7rem"
+                        >
+                          Approved
+                        </q-chip>
+                        <q-chip
+                          v-else-if="notification.status === 'ADMIN_REJECTED'"
+                          dense
+                          color="negative"
+                          text-color="white"
+                          icon="cancel"
+                          size="0.7rem"
+                        >
+                          Rejected
+                        </q-chip>
+                        <q-btn
+                          flat
+                          color="primary"
+                          size="0.7rem"
+                          label="Archive"
+                          @click="
+                            notificationstatusChange(notification, 'ARCHIVED')
+                          "
+                        />
+                      </template>
+                      <q-btn
+                        v-else-if="notification.status === 'READ'"
+                        flat
+                        size="0.7rem"
+                        label="Mark as unread"
+                        @click="
+                          notificationstatusChange(notification, 'UNREAD')
+                        "
+                      />
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="p-4 min-w-52">You have no notifications.</div>
+              <template v-slot:loading>
+                <div class="row justify-center q-my-md">
+                  <q-spinner-dots color="primary" size="40px" />
+                </div>
+              </template>
+            </q-infinite-scroll>
           </q-menu>
           <q-badge
             color="red"
@@ -250,6 +462,10 @@ const newItem = ref(structuredClone(emptyNewItem));
 
 const notifications = ref([]);
 
+const reviewRowChangesDialog = ref({ active: false, notification: null });
+
+const reviewRowAddedDialog = ref({ active: false, notification: null });
+
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
 window.onbeforeunload = () => {
@@ -282,7 +498,7 @@ function onGridReady(params) {
   params.api.addEventListener("cancelChanges", async (ev) => {
     await api
       .patch("modbusRegisters/" + ev.data.id + "/cancel", {})
-      .then(async (res) => {
+      .then(async (_res) => {
         gridApi.value.refreshServerSide();
         $q.notify({
           type: "positive",
@@ -292,7 +508,7 @@ function onGridReady(params) {
   });
 
   params.api.addEventListener("deleteRow", async (ev) => {
-    await api.delete("modbusRegisters/" + ev.data.id).then(async (res) => {
+    await api.delete("modbusRegisters/" + ev.data.id).then(async (_res) => {
       gridApi.value.refreshServerSide();
       $q.notify({
         type: "positive",
@@ -349,7 +565,7 @@ function getServerSideDatasource() {
             rowCount: res.page.count,
           });
         })
-        .catch((err) => {
+        .catch((_err) => {
           params.fail();
         });
     },
@@ -412,24 +628,24 @@ function saveNewRow() {
   createItemDialog.value = false;
 }
 
-function getNotifications() {
-  return api
-    .get("modbusRegisterNotifications")
-    .then(async (res) => {
-      const data = await res.json();
-      return data;
-    })
-    .catch((err) => {
-      console.log(err);
-      return [];
-    });
+async function getNotifications(offset = 0, limit = 10) {
+  try {
+    const res = await api.get(
+      "modbusRegisterNotifications?offset=" + offset + "&limit=" + limit
+    );
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.log(err);
+    return [];
+  }
 }
 function notificationstatusChange(notification, status) {
   api
     .patch("modbusRegisterNotifications" + "/" + notification.id + "/status", {
       json: { status: status },
     })
-    .then(async (res) => {
+    .then(async (_res) => {
       notification.status = status;
     })
     .catch((err) => {
@@ -439,6 +655,64 @@ function notificationstatusChange(notification, status) {
         message: err.message,
       });
     });
+}
+
+function notificationChangesReviewAction(notification) {
+  if (notification.type === "ADMIN_ENTRY_CHANGED") {
+    reviewRowChangesDialog.value = { active: true, notification };
+  } else if (notification.type === "ADMIN_ENTRY_ADDED") {
+    reviewRowAddedDialog.value = { active: true, notification };
+  }
+}
+
+function loadMoreNotifications(_index, done) {
+  getNotifications(notifications.value.length, 10).then((data) => {
+    if (data.length > 0) {
+      notifications.value = notifications.value.concat(data);
+      done();
+    } else {
+      done(true);
+    }
+  });
+}
+function rejectEntryChanges(notification) {
+  api
+    .patch("modbusRegisters/" + notification.entryId + "/reject")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully rejected",
+      });
+    });
+  reviewRowAddedDialog.value.active = false;
+  reviewRowChangesDialog.value.active = false;
+  notificationChangeStatus(notification, "ADMIN_REJECTED");
+}
+
+function approveEntryChanges(notification) {
+  console.log(notification);
+  api
+    .patch("modbusRegisters/" + notification.entryId + "/approve")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully approved",
+      });
+    });
+  reviewRowAddedDialog.value.active = false;
+  reviewRowChangesDialog.value.active = false;
+  notificationChangeStatus(notification, "ADMIN_APPROVED");
+}
+
+async function notificationChangeStatus(notification, status) {
+  const res = await api.patch(
+    "modbusRegisterNotifications/" + notification.id + "/status",
+    {
+      json: { status },
+    }
+  );
+  notification.status = status;
+  return await res.json();
 }
 </script>
 
