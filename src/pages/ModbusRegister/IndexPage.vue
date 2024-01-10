@@ -18,7 +18,18 @@
               (val) => (val && val > 0) || 'Please enter a positive number',
             ]"
           />
-          <q-input v-model="newItem.operation" label="Operation" />
+          <q-select
+            v-model="newItem.operation"
+            use-input
+            hide-selected
+            fill-input
+            clearable
+            new-value-mode="add-unique"
+            input-debounce="0"
+            :options="selectOperationOptions"
+            @filter="selectOperationFilter"
+            label="Operation"
+          />
           <q-input
             v-model="newItem.register_length"
             label="Register length"
@@ -28,8 +39,15 @@
             ]"
           />
           <q-input v-model="newItem.register_name" label="Register name" />
-          <q-input
+          <q-select
             v-model="newItem.data_format"
+            use-input
+            hide-selected
+            fill-input
+            new-value-mode="add-unique"
+            input-debounce="0"
+            :options="selectDataFormatOptions"
+            @filter="selectDataFormatFilter"
             label="Data format"
             :rules="[
               (val) => (val && val.length > 0) || 'Please enter a data format',
@@ -99,7 +117,11 @@
                   reviewRowChangesDialog.notification.entry.parent[col]
                 "
               >
-                <th class="text-left">{{ col }}</th>
+                <th class="text-left">
+                  {{
+                    modbusRegColumns.find((c) => c.field === col)?.headerName
+                  }}
+                </th>
                 <td class="text-left">
                   {{ reviewRowChangesDialog.notification.entry.parent[col] }}
                 </td>
@@ -269,6 +291,7 @@
                         size="lg"
                         v-else-if="notification.type.startsWith('ADMIN_')"
                       />
+                      <q-icon name="chat" size="lg" v-else />
                       <q-badge
                         color="red"
                         rounded
@@ -397,6 +420,7 @@
         @grid-ready="onGridReady"
         @firstDataRendered="onFirstDataRendered"
         @cell-value-changed="updateRow"
+        @store-refreshed="gridApi.refreshCells({ force: true })"
         :getRowId="getRowId"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
@@ -417,7 +441,7 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted, onBeforeUnmount, onBeforeMount, toRaw } from "vue";
+import { ref, onMounted, onBeforeUnmount, onBeforeMount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
@@ -451,11 +475,11 @@ const createItemDialog = ref(false);
 
 const emptyNewItem = {
   register_address: null,
-  operation: null,
+  operation: "",
   register_length: null,
-  register_name: null,
+  register_name: "",
   data_format: null,
-  description: null,
+  description: "",
   device_name: null,
 };
 const newItem = ref(structuredClone(emptyNewItem));
@@ -467,6 +491,48 @@ const reviewRowChangesDialog = ref({ active: false, notification: null });
 const reviewRowAddedDialog = ref({ active: false, notification: null });
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
+
+const dataFormatOptions = [
+  "8 Bit Unsigned Integer",
+  "8 Bit Signed Integer",
+  "16 Bit Unsigned Integer",
+  "16 Bit Signed Integer",
+  "16 Bit Unsigned Integer/10",
+  "16 Bit Signed Integer/10",
+  "16 Bit Unsigned Integer/100",
+  "16 Bit Signed Integer/100",
+  "32 Bit Unsigned Integer HI_LO",
+  "32 Bit Unsigned Integer LO_HI",
+  "32 Bit Signed Integer HI_LO",
+  "32 Bit Signed Integer LO_HI",
+  "Floating HI_LO/10",
+  "Floating LO_HI/10",
+  "Floating HI_LO/100",
+  "Floating LO_HI/100",
+  "Floating HI_LO/1000",
+  "Floating LO_HI/1000",
+  "Character String LO_HI",
+  "Character String HI_LO",
+  "32 Bit Float_ABCD",
+  "32 Bit Float_CDAB",
+  "32 Bit Float_BADC",
+  "32 Bit Float_DCBA",
+];
+const selectDataFormatOptions = ref(dataFormatOptions);
+
+const operationOptions = [
+  "03 Read Holding Registers (4x)",
+  "06 Read Write Single Register",
+  "16 Read Write Multiple Registers",
+  "03_06 Read Holding and Write Single",
+  "03_16 Read Holding and Write Multiple",
+  "01 Read Coils (0x)",
+  "02 Read Discrete Inputs (1x)",
+  "04 Read Input Registers (3x)",
+  "05 Write Single Coil",
+  "15 Write Multiple Coil",
+];
+const selectOperationOptions = ref(operationOptions);
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -647,6 +713,11 @@ function notificationstatusChange(notification, status) {
     })
     .then(async (_res) => {
       notification.status = status;
+      if (status === "ARCHIVED") {
+        notifications.value = notifications.value.filter(
+          (n) => n.id !== notification.id
+        );
+      }
     })
     .catch((err) => {
       console.log(err);
@@ -713,6 +784,24 @@ async function notificationChangeStatus(notification, status) {
   );
   notification.status = status;
   return await res.json();
+}
+
+function selectDataFormatFilter(val, update, abort) {
+  update(() => {
+    const keyword = val.toLowerCase();
+    selectDataFormatOptions.value = dataFormatOptions.filter(
+      (v) => v.toLowerCase().indexOf(keyword) > -1
+    );
+  });
+}
+
+function selectOperationFilter(val, update, abort) {
+  update(() => {
+    const keyword = val.toLowerCase();
+    selectOperationOptions.value = operationOptions.filter(
+      (v) => v.toLowerCase().indexOf(keyword) > -1
+    );
+  });
 }
 </script>
 
