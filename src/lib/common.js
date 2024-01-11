@@ -1482,6 +1482,45 @@ export const columnTypes = {
     },
   },
 };
+export const operationOptions = [
+  "03 Read Holding Registers (4x)",
+  "06 Read Write Single Register",
+  "16 Read Write Multiple Registers",
+  "03_06 Read Holding and Write Single",
+  "03_16 Read Holding and Write Multiple",
+  "01 Read Coils (0x)",
+  "02 Read Discrete Inputs (1x)",
+  "04 Read Input Registers (3x)",
+  "05 Write Single Coil",
+  "15 Write Multiple Coil",
+];
+
+export const dataFormatOptions = [
+  "8 Bit Unsigned Integer",
+  "8 Bit Signed Integer",
+  "16 Bit Unsigned Integer",
+  "16 Bit Signed Integer",
+  "16 Bit Unsigned Integer/10",
+  "16 Bit Signed Integer/10",
+  "16 Bit Unsigned Integer/100",
+  "16 Bit Signed Integer/100",
+  "32 Bit Unsigned Integer HI_LO",
+  "32 Bit Unsigned Integer LO_HI",
+  "32 Bit Signed Integer HI_LO",
+  "32 Bit Signed Integer LO_HI",
+  "Floating HI_LO/10",
+  "Floating LO_HI/10",
+  "Floating HI_LO/100",
+  "Floating LO_HI/100",
+  "Floating HI_LO/1000",
+  "Floating LO_HI/1000",
+  "Character String LO_HI",
+  "Character String HI_LO",
+  "32 Bit Float_ABCD",
+  "32 Bit Float_CDAB",
+  "32 Bit Float_BADC",
+  "32 Bit Float_DCBA",
+];
 export const modbusRegColumns = [
   {
     colId: 1,
@@ -1495,7 +1534,7 @@ export const modbusRegColumns = [
   {
     colId: 2,
     headerName: "Register Address",
-    cellEditor: "NumericEditor",
+    cellEditor: "agNumberCellEditor",
     sortable: true,
     field: "register_address",
     width: 150,
@@ -1507,11 +1546,16 @@ export const modbusRegColumns = [
     sortable: true,
     field: "operation",
     tooltipField: "operation",
+    cellEditor: "SelectEditor",
+    cellEditorParams: {
+      clearable: true,
+      options: operationOptions,
+    },
   },
   {
     colId: 4,
     headerName: "Register Length",
-    cellEditor: "NumericEditor",
+    cellEditor: "agNumberCellEditor",
     sortable: true,
     field: "register_length",
     width: 150,
@@ -1532,6 +1576,11 @@ export const modbusRegColumns = [
     tooltipField: "data_format",
     width: 180,
     type: ["required"],
+    cellEditor: "SelectEditor",
+    cellEditorParams: {
+      clearable: false,
+      options: dataFormatOptions,
+    },
   },
   {
     colId: 7,
