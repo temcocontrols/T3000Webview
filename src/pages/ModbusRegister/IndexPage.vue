@@ -224,6 +224,28 @@
   <div class="flex flex-col flex-nowrap h-screen overflow-hidden">
     <user-top-bar class="flex-none">
       <template v-slot:action-btns v-if="user">
+        <q-separator vertical color="white" spaced inset />
+        <template v-if="user && isAdmin(user)">
+          <q-btn-toggle
+            v-model="activeTab"
+            @update:model-value="triggerFilterChanged()"
+            no-caps
+            rounded
+            unelevated
+            dense
+            size="0.8rem"
+            toggle-color="white"
+            color="blue-6"
+            text-color="white"
+            toggle-text-color="black"
+            padding="2px 10px"
+            :options="[
+              { label: 'All Entries', value: 'all' },
+              { label: 'User Pending Changes', value: 'changes' },
+            ]"
+          />
+          <q-separator vertical color="white" spaced inset />
+        </template>
         <q-btn
           icon="add_circle"
           label="Add New Row"
@@ -231,10 +253,11 @@
           color="white"
           text-color="grey-8"
           size="0.7rem"
+          no-caps
           dense
-          class="ml-2"
-        ></q-btn
-      ></template>
+          padding="3px 5px"
+        ></q-btn>
+      </template>
       <template v-slot:search-input>
         <q-input
           class="toolbar-input mr-2"
@@ -455,6 +478,7 @@ import {
   user,
   operationOptions,
   dataFormatOptions,
+  isAdmin,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
@@ -499,6 +523,8 @@ const triggerFilterChanged = debounce(onFilterChanged, 500);
 const selectDataFormatOptions = ref(dataFormatOptions);
 
 const selectOperationOptions = ref(operationOptions);
+
+const activeTab = ref("all");
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -588,7 +614,8 @@ function getServerSideDatasource() {
             sortCol.colDef.field +
             "&orderDir=" +
             (request.sortModel[0]?.sort || "desc") +
-            (filter.value ? "&filter=" + filter.value : "")
+            (filter.value ? "&filter=" + filter.value : "") +
+            (activeTab.value === "changes" ? "&hasChanges=1" : "")
         )
         .then(async (res) => {
           res = await res.json();
