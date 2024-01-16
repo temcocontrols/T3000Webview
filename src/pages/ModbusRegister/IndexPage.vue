@@ -113,8 +113,8 @@
             >
               <tr
                 v-if="
-                  reviewRowChangesDialog.notification.entry[col] !==
-                  reviewRowChangesDialog.notification.entry.parent[col]
+                  reviewRowChangesDialog.entry[col] !==
+                  reviewRowChangesDialog.entry.parent[col]
                 "
               >
                 <th class="text-left">
@@ -123,10 +123,10 @@
                   }}
                 </th>
                 <td class="text-left">
-                  {{ reviewRowChangesDialog.notification.entry.parent[col] }}
+                  {{ reviewRowChangesDialog.entry.parent[col] }}
                 </td>
                 <td class="text-left">
-                  {{ reviewRowChangesDialog.notification.entry[col] }}
+                  {{ reviewRowChangesDialog.entry[col] }}
                 </td>
               </tr>
             </template>
@@ -146,12 +146,12 @@
         <q-btn
           label="Reject"
           color="negative"
-          @click="rejectEntryChanges(reviewRowChangesDialog.notification)"
+          @click="rejectEntryChanges(reviewRowChangesDialog.entry)"
         />
         <q-btn
           label="Approve"
           color="primary"
-          @click="approveEntryChanges(reviewRowChangesDialog.notification)"
+          @click="approveEntryChanges(reviewRowChangesDialog.entry)"
         />
       </q-card-actions>
     </q-card>
@@ -191,7 +191,7 @@
                 ]"
                 :key="col"
               >
-                {{ reviewRowAddedDialog.notification.entry[col] }}
+                {{ reviewRowAddedDialog.entry[col] }}
               </td>
             </tr>
           </tbody>
@@ -210,12 +210,12 @@
         <q-btn
           label="Reject"
           color="negative"
-          @click="rejectEntryChanges(reviewRowAddedDialog.notification)"
+          @click="rejectEntryChanges(reviewRowAddedDialog.entry)"
         />
         <q-btn
           label="Approve"
           color="primary"
-          @click="approveEntryChanges(reviewRowAddedDialog.notification)"
+          @click="approveEntryChanges(reviewRowAddedDialog.entry)"
         />
       </q-card-actions>
     </q-card>
@@ -256,7 +256,7 @@
           no-caps
           dense
           padding="3px 5px"
-        ></q-btn>
+        />
       </template>
       <template v-slot:search-input>
         <q-input
@@ -343,7 +343,7 @@
                         color="primary"
                         size="0.7rem"
                         label="Mark as read"
-                        @click="notificationstatusChange(notification, 'READ')"
+                        @click="notificationStatusChange(notification, 'READ')"
                       />
                       <template
                         v-else-if="
@@ -356,14 +356,24 @@
                           flat
                           size="0.7rem"
                           label="Review"
-                          @click="notificationChangesReviewAction(notification)"
+                          @click="
+                            notificationChangesReviewAction(
+                              notification.entry,
+                              notification.type
+                            )
+                          "
                         />
                         <q-btn
                           v-else-if="notification.type === 'ADMIN_ENTRY_ADDED'"
                           flat
                           size="0.7rem"
                           label="Review"
-                          @click="notificationChangesReviewAction(notification)"
+                          @click="
+                            notificationChangesReviewAction(
+                              notification.entry,
+                              notification.type
+                            )
+                          "
                         />
                       </template>
                       <template
@@ -398,7 +408,7 @@
                           size="0.7rem"
                           label="Archive"
                           @click="
-                            notificationstatusChange(notification, 'ARCHIVED')
+                            notificationStatusChange(notification, 'ARCHIVED')
                           "
                         />
                       </template>
@@ -408,7 +418,7 @@
                         size="0.7rem"
                         label="Mark as unread"
                         @click="
-                          notificationstatusChange(notification, 'UNREAD')
+                          notificationStatusChange(notification, 'UNREAD')
                         "
                       />
                     </div>
@@ -456,6 +466,7 @@
           RowActionsRenderer,
           SelectEditor,
         }"
+        :context="gridContext"
       ></ag-grid-vue>
     </q-page>
   </div>
@@ -526,6 +537,8 @@ const selectOperationOptions = ref(operationOptions);
 
 const activeTab = ref("all");
 
+const gridContext = ref({ activeTab });
+
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
@@ -592,7 +605,7 @@ onBeforeUnmount(() => {
 
 const autoSizeStrategy = {
   type: "fitGridWidth",
-  defaultMinWidth: 90,
+  defaultMinWidth: 50,
 };
 
 function getServerSideDatasource() {
@@ -699,7 +712,7 @@ async function getNotifications(offset = 0, limit = 10) {
     return [];
   }
 }
-function notificationstatusChange(notification, status) {
+function notificationStatusChange(notification, status) {
   api
     .patch("modbusRegisterNotifications" + "/" + notification.id + "/status", {
       json: { status: status },
@@ -721,11 +734,11 @@ function notificationstatusChange(notification, status) {
     });
 }
 
-function notificationChangesReviewAction(notification) {
-  if (notification.type === "ADMIN_ENTRY_CHANGED") {
-    reviewRowChangesDialog.value = { active: true, notification };
-  } else if (notification.type === "ADMIN_ENTRY_ADDED") {
-    reviewRowAddedDialog.value = { active: true, notification };
+function notificationChangesReviewAction(entry, type) {
+  if (type === "ADMIN_ENTRY_CHANGED") {
+    reviewRowChangesDialog.value = { active: true, entry };
+  } else if (type === "ADMIN_ENTRY_ADDED") {
+    reviewRowAddedDialog.value = { active: true, entry };
   }
 }
 
@@ -739,44 +752,28 @@ function loadMoreNotifications(_index, done) {
     }
   });
 }
-function rejectEntryChanges(notification) {
-  api
-    .patch("modbusRegisters/" + notification.entryId + "/reject")
-    .then(async (_res) => {
-      $q.notify({
-        type: "positive",
-        message: "Successfully rejected",
-      });
+function rejectEntryChanges(entry) {
+  api.patch("modbusRegisters/" + entry.id + "/reject").then(async (_res) => {
+    $q.notify({
+      type: "positive",
+      message: "Successfully rejected",
     });
+  });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
-  notificationChangeStatus(notification, "ADMIN_REJECTED");
+  updateEntryRelatedNotificationStatus(entry, "ADMIN_REJECTED");
 }
 
-function approveEntryChanges(notification) {
-  console.log(notification);
-  api
-    .patch("modbusRegisters/" + notification.entryId + "/approve")
-    .then(async (_res) => {
-      $q.notify({
-        type: "positive",
-        message: "Successfully approved",
-      });
+function approveEntryChanges(entry) {
+  api.patch("modbusRegisters/" + entry.id + "/approve").then(async (_res) => {
+    $q.notify({
+      type: "positive",
+      message: "Successfully approved",
     });
+  });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
-  notificationChangeStatus(notification, "ADMIN_APPROVED");
-}
-
-async function notificationChangeStatus(notification, status) {
-  const res = await api.patch(
-    "modbusRegisterNotifications/" + notification.id + "/status",
-    {
-      json: { status },
-    }
-  );
-  notification.status = status;
-  return await res.json();
+  updateEntryRelatedNotificationStatus(entry, "ADMIN_APPROVED");
 }
 
 function selectDataFormatFilter(val, update, abort) {
@@ -795,6 +792,19 @@ function selectOperationFilter(val, update, abort) {
       (v) => v.toLowerCase().indexOf(keyword) > -1
     );
   });
+}
+
+function updateEntryRelatedNotificationStatus(entry, status) {
+  const notification = notifications.value.find(
+    (n) =>
+      n.entryId === entry.id &&
+      n.userRefId === entry.userId &&
+      n.group === "ADMINS" &&
+      n.status === "UNREAD"
+  );
+  if (notification) {
+    notification.status = status;
+  }
 }
 </script>
 

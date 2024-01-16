@@ -1472,7 +1472,8 @@ export const ranges = {
 
 export const cellClassRules = {
   "bg-yellow-400": (params) =>
-    ["REVISION", "UNDER_REVIEW"].includes(params.data.status),
+    ["REVISION", "UNDER_REVIEW"].includes(params.data.status) &&
+    user.value?.id === params.data.userId,
 };
 
 export const columnTypes = {
@@ -1528,7 +1529,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "id",
     editable: false,
-    width: 95,
+    width: 90,
     cellRenderer: "RowActionsRenderer",
   },
   {
@@ -1537,7 +1538,7 @@ export const modbusRegColumns = [
     cellEditor: "agNumberCellEditor",
     sortable: true,
     field: "register_address",
-    width: 150,
+    width: 120,
     type: ["required"],
   },
   {
@@ -1547,6 +1548,7 @@ export const modbusRegColumns = [
     field: "operation",
     tooltipField: "operation",
     cellEditor: "SelectEditor",
+    width: 230,
     cellEditorParams: {
       clearable: true,
       options: operationOptions,
@@ -1558,7 +1560,7 @@ export const modbusRegColumns = [
     cellEditor: "agNumberCellEditor",
     sortable: true,
     field: "register_length",
-    width: 150,
+    width: 130,
     type: ["required"],
   },
   {
@@ -1574,7 +1576,7 @@ export const modbusRegColumns = [
     sortable: true,
     field: "data_format",
     tooltipField: "data_format",
-    width: 180,
+    width: 160,
     type: ["required"],
     cellEditor: "SelectEditor",
     cellEditorParams: {
@@ -1594,7 +1596,7 @@ export const modbusRegColumns = [
     headerName: "Device Type",
     sortable: true,
     field: "device_name",
-    width: 150,
+    width: 100,
     type: ["required"],
   },
 ];
