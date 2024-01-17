@@ -2,7 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
-import { user, globalNav } from "../lib/common";
+import { user, globalNav, isAdmin } from "../lib/common";
 import api from "../lib/api";
 
 export default {
@@ -46,6 +46,7 @@ export default {
       search,
       user,
       globalNav,
+      isAdmin,
     };
   },
 };
@@ -83,7 +84,17 @@ export default {
       <q-menu>
         <q-list style="min-width: 200px">
           <q-item disable v-close-popup>
-            <q-item-section>{{ user?.name }}</q-item-section>
+            <q-item-section>{{ user?.name }} </q-item-section>
+            <q-item-section class="items-end"
+              ><q-chip
+                v-if="isAdmin(user)"
+                class="px-2"
+                dense
+                size="sm"
+                icon="verified_user"
+                >Admin</q-chip
+              ></q-item-section
+            >
           </q-item>
           <q-separator />
           <q-item clickable v-close-popup @click="logout()">
