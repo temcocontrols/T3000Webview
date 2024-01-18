@@ -96,7 +96,7 @@ function reviewNewRow() {
               <q-item-section>Cancel changes</q-item-section>
             </q-item>
             <q-item v-else clickable v-close-popup @click="deleteRow()">
-              <q-item-section>Delete</q-item-section>
+              <q-item-section>Delete row</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
@@ -120,7 +120,7 @@ function reviewNewRow() {
               </q-item>
             </template>
             <q-item v-else clickable v-close-popup @click="deleteRow()">
-              <q-item-section>Delete</q-item-section>
+              <q-item-section>Delete row</q-item-section>
             </q-item>
           </q-list>
         </q-menu>

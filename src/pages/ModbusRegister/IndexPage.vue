@@ -453,7 +453,7 @@
         @grid-ready="onGridReady"
         @firstDataRendered="onFirstDataRendered"
         @cell-value-changed="updateRow"
-        @store-refreshed="gridApi.refreshCells({ force: true })"
+        :enableCellChangeFlash="true"
         :getRowId="getRowId"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
@@ -657,6 +657,14 @@ function updateRow(event) {
       res = await res.json();
       if (res) {
         gridApi.value.refreshServerSide();
+        setTimeout(() => {
+          gridApi.value.refreshCells({
+            force: true,
+            rowNodes: [event.node],
+            suppressFlash: true,
+          });
+        }, 500);
+
         $q.notify({
           type: "positive",
           message: "Successfully updated",
