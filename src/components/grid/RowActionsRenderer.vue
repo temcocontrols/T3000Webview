@@ -37,24 +37,16 @@ function deleteRow() {
 }
 
 function reviewChanges() {
-  $q.dialog({
-    title: "Review changes",
-    message: "Not handeled yet",
-  });
   props.params.api.dispatchEvent({
-    type: "reviewChanges",
-    data: { id: props.params.data.id },
+    type: "reviewAllRowChanges",
+    data: props.params.data,
   });
 }
 
 function reviewNewRow() {
-  $q.dialog({
-    title: "Review changes",
-    message: "Not handeled yet",
-  });
   props.params.api.dispatchEvent({
     type: "reviewNewRow",
-    data: { id: props.params.data.id },
+    data: props.params.data,
   });
 }
 </script>

@@ -157,6 +157,124 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="reviewAllRowChangesDialog.active" persistent>
+    <q-card style="width: 1000px">
+      <q-card-section>
+        <div class="text-h6">Review row changes</div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="scroll" style="max-height: 50vh">
+        <q-markup-table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left">Actions</th>
+              <th class="text-left">User</th>
+              <th
+                class="text-left"
+                v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')"
+                :key="col.field"
+              >
+                {{ col.headerName }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left"></td>
+              <td class="text-left font-bold">Original</td>
+              <td
+                class="text-left font-bold"
+                v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')"
+                :key="col.field"
+              >
+                {{ reviewAllRowChangesDialog.entry[col.field] }}
+              </td>
+            </tr>
+            <template
+              v-for="rev in reviewAllRowChangesDialog.entry.revisions"
+              :key="rev.id"
+            >
+              <tr>
+                <td class="text-left">
+                  <div class="flex flex-nowrap gap-2" v-if="!rev.action">
+                    <q-btn
+                      color="primary"
+                      size="sm"
+                      dense
+                      no-caps
+                      label="Approve"
+                      class="px-1"
+                      @click="approveEntryChanges(rev)"
+                    />
+                    <q-btn
+                      color="negative"
+                      size="sm"
+                      dense
+                      no-caps
+                      label="Reject"
+                      class="px-1"
+                      @click="rejectEntryChanges(rev)"
+                    />
+                  </div>
+                  <div v-else>
+                    <q-chip
+                      v-if="rev.action === 'APPROVED'"
+                      dense
+                      color="primary"
+                      text-color="white"
+                      icon="check_circle"
+                      size="0.7rem"
+                    >
+                      Approved
+                    </q-chip>
+                    <q-chip
+                      v-else
+                      dense
+                      color="negative"
+                      text-color="white"
+                      icon="cancel"
+                      size="0.7rem"
+                    >
+                      Rejected
+                    </q-chip>
+                  </div>
+                </td>
+                <td class="text-left font-bold text-sky-500">
+                  {{ rev.user.name }}
+                </td>
+                <td
+                  class="text-left"
+                  v-for="col in modbusRegColumns.filter(
+                    (c) => c.field !== 'id'
+                  )"
+                  :key="col.field"
+                  :class="{
+                    'bg-yellow-2':
+                      rev[col.field] !==
+                      reviewAllRowChangesDialog.entry[col.field],
+                  }"
+                >
+                  {{ rev[col.field] }}
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+      <q-separator />
+
+      <q-card-actions align="right" class="mt-0">
+        <q-btn
+          label="Close"
+          color="primary"
+          flat
+          class="q-ml-sm"
+          @click="reviewAllRowChangesDialog.active = false"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <q-dialog v-model="reviewRowAddedDialog.active" persistent>
     <q-card style="width: 700px">
       <q-card-section>
@@ -286,7 +404,7 @@
       </template>
       <template v-slot:buttons v-if="user">
         <q-btn flat round dense icon="notifications" class="ml-4 mr-2">
-          <q-menu>
+          <q-menu @show="loadNotifications()">
             <q-infinite-scroll @load="loadMoreNotifications" :offset="100">
               <q-list v-if="notifications.length > 0">
                 <q-item
@@ -525,9 +643,11 @@ const newItem = ref(structuredClone(emptyNewItem));
 
 const notifications = ref([]);
 
-const reviewRowChangesDialog = ref({ active: false, notification: null });
+const reviewRowChangesDialog = ref({ active: false, entry: null });
 
-const reviewRowAddedDialog = ref({ active: false, notification: null });
+const reviewRowAddedDialog = ref({ active: false, entry: null });
+
+const reviewAllRowChangesDialog = ref({ active: false, entry: null });
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
@@ -552,10 +672,14 @@ onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
 
+  loadNotifications();
+});
+
+function loadNotifications() {
   getNotifications().then((res) => {
     notifications.value = res;
   });
-});
+}
 
 function onFilterChanged() {
   gridApi.value.onFilterChanged();
@@ -586,6 +710,14 @@ function onGridReady(params) {
         message: "The row has been deleted successfully",
       });
     });
+  });
+
+  params.api.addEventListener("reviewNewRow", async (ev) => {
+    reviewRowAddedDialog.value = { active: true, entry: ev.data };
+  });
+
+  params.api.addEventListener("reviewAllRowChanges", async (ev) => {
+    reviewAllRowChangesDialog.value = { active: true, entry: ev.data };
   });
 }
 function onFirstDataRendered(params) {
@@ -751,6 +883,7 @@ function notificationChangesReviewAction(entry, type) {
 }
 
 function loadMoreNotifications(_index, done) {
+  if (notifications.value.length < 10) return done(true);
   getNotifications(notifications.value.length, 10).then((data) => {
     if (data.length > 0) {
       notifications.value = notifications.value.concat(data);
@@ -766,9 +899,11 @@ function rejectEntryChanges(entry) {
       type: "positive",
       message: "Successfully rejected",
     });
+    gridApi.value.refreshServerSide();
   });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
+  entry.action = "REJECTED";
   updateEntryRelatedNotificationStatus(entry, "ADMIN_REJECTED");
 }
 
@@ -778,6 +913,8 @@ function approveEntryChanges(entry) {
       type: "positive",
       message: "Successfully approved",
     });
+    gridApi.value.refreshServerSide();
+    entry.action = "APPROVED";
   });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
