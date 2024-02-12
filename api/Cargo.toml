@@ -15,6 +15,7 @@ tracing-subscriber = "0.3.18"
 dotenvy = "0.15.7"
 strum_macros = "0.26.1"
 sqlx = { version = "0.7", features = [ "runtime-tokio", "sqlite" ] }
+serde_with = "3.6.1"
 
 [profile.release]
 strip = true

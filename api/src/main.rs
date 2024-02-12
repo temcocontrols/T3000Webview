@@ -7,10 +7,13 @@ use axum::{
 use modbus_register_api::{
     db_connection::establish_connection,
     error::{Error, Result},
-    models::{ModbusRegister, ModbusRegisterColumns, ModbusRegisterPagination, OrderByDirection},
-    // queries::{
-    //     create_modbus_register_item, delete_modbus_register_item, update_modbus_register_item
-    // },
+    models::{
+        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns,
+        ModbusRegisterPagination, OrderByDirection, UpdateModbusRegisterItemInput,
+    },
+    queries::{
+        create_modbus_register_item, delete_modbus_register_item, update_modbus_register_item,
+    },
 };
 use tokio::net::TcpListener;
 
@@ -20,11 +23,9 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = Router::new().route(
-        "/",
-        get(list), /* .post(create) )
-                   // .route("/:id", patch(update).delete(delete)*/
-    );
+    let app = Router::new()
+        .route("/modbus-register", get(list).post(create))
+        .route("/modbus-register/:id", patch(update).delete(delete));
 
     // run our app with hyper, listening globally on port 3000
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -42,28 +43,23 @@ async fn list(pagination: Query<ModbusRegisterPagination>) -> Result<Json<Vec<Mo
 
         let filter_num = filter.parse::<i32>();
         sql_query = format!(
-            "{sql_query} WHERE register_name LIKE '%{filter}%'
-            OR operation LIKE '%{filter}%'
-            OR description LIKE '%{filter}%'
-            OR device_name LIKE '%{filter}%'
-            OR unit LIKE '%{filter}%'",
-            filter = filter,
-            sql_query = sql_query
+            "{sql_query} WHERE register_name LIKE '%' || $1 || '%'
+            OR operation LIKE '%' || $1 || '%'
+            OR description LIKE '%' || $1 || '%'
+            OR device_name LIKE '%' || $1 || '%'
+            OR unit LIKE '%' || $1 || '%'"
         );
 
         if filter_num.is_ok() {
-            let filter_num = filter_num.unwrap();
             sql_query = format!(
-                "{sql_query} OR id LIKE {filter_num}
-                OR register_address LIKE {filter_num}",
-                filter_num = filter_num,
-                sql_query = sql_query
+                "{sql_query} OR id LIKE $1
+                OR register_address LIKE $1"
             );
         }
     }
 
     sql_query = format!(
-        "{} ORDER BY {:?} {:?} LIMIT ? OFFSET ?",
+        "{} ORDER BY {:?} {:?} LIMIT $2 OFFSET $3",
         sql_query,
         pagination
             .order_by
@@ -75,8 +71,8 @@ async fn list(pagination: Query<ModbusRegisterPagination>) -> Result<Json<Vec<Mo
             .unwrap_or(&OrderByDirection::Desc)
     );
 
-    println!("query: {:?}", sql_query);
     let results = sqlx::query_as::<_, ModbusRegister>(&sql_query)
+        .bind(&pagination.filter.clone().unwrap_or("".to_string()))
         .bind(&pagination.limit.clone().unwrap_or(100))
         .bind(&pagination.offset.clone().unwrap_or(0))
         .fetch_all(&mut conn)
@@ -88,31 +84,31 @@ async fn list(pagination: Query<ModbusRegisterPagination>) -> Result<Json<Vec<Mo
     }
 }
 
-// async fn create(
-//     Json(payload): Json<CreateModbusRegisterInput>,
-// ) -> Result<Json<ModbusRegister>> {
-//     let connection = &mut establish_connection();
+async fn create(
+    Json(payload): Json<CreateModbusRegisterItemInput>,
+) -> Result<Json<ModbusRegister>> {
+    let connection = establish_connection().await;
 
-//     let item = create_modbus_register_item(connection, payload)?;
+    let item = create_modbus_register_item(connection, payload).await?;
 
-//     Ok(Json(item))
-// }
+    Ok(Json(item))
+}
 
-// async fn update(
-//     Path(id): Path<i32>,
-//     Json(payload): Json<UpdateModbusRegisterInput>,
-// ) -> Result<Json<ModbusRegister>> {
-//     let connection = &mut establish_connection();
+async fn update(
+    Path(id): Path<i32>,
+    Json(payload): Json<UpdateModbusRegisterItemInput>,
+) -> Result<Json<ModbusRegister>> {
+    let connection = establish_connection().await;
 
-//     let item = update_modbus_register_item(connection, id, payload)?;
+    let item = update_modbus_register_item(connection, id, payload).await?;
 
-//     Ok(Json(item))
-// }
+    Ok(Json(item))
+}
 
-// async fn delete(Path(id): Path<i32>) -> Result<Json<ModbusRegister>> {
-//     let connection = &mut establish_connection();
+async fn delete(Path(id): Path<i32>) -> Result<Json<ModbusRegister>> {
+    let connection = establish_connection().await;
 
-//     let item = delete_modbus_register_item(connection, id)?;
+    let item = delete_modbus_register_item(connection, id).await?;
 
-//     Ok(Json(item))
-// }
+    Ok(Json(item))
+}
