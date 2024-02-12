@@ -8,15 +8,6 @@ use diesel::prelude::*;
 use models::ModbusRegisterItem;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
-pub struct Pagination {
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-    pub order_by: Option<String>,
-    pub order_dir: Option<String>,
-    pub filter: Option<String>,
-}
-
 pub fn create_modbus_register_item(
     conn: &mut SqliteConnection,
     item: CreateModbusRegisterItemInput,
@@ -41,7 +32,6 @@ pub fn update_modbus_register_item(
         return Err(Error::NotFound);
     }
 
-   
     diesel::update(modbus_register_items.find(id))
         .set(&item)
         .returning(ModbusRegisterItem::as_returning())

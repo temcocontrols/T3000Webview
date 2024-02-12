@@ -1,4 +1,3 @@
--- Your SQL goes here
 CREATE TABLE modbus_register_items (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     register_address INTEGER NOT NULL,

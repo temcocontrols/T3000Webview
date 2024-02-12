@@ -3,15 +3,10 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 
-use diesel::{Queryable, Selectable};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use crate::schema::modbus_register_items;
-
-
-#[derive(Queryable, Selectable, Serialize, Debug)]
-#[diesel(table_name = modbus_register_items)]
-pub struct ModbusRegisterItem {
+#[derive(sqlx::FromRow, Serialize, Debug)]
+pub struct ModbusRegister {
     pub id: i32,
     pub register_address: i32,
     pub operation: Option<String>,
@@ -26,3 +21,35 @@ pub struct ModbusRegisterItem {
     pub updated_at: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct ModbusRegisterPagination {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub order_by: Option<ModbusRegisterColumns>,
+    pub order_dir: Option<OrderByDirection>,
+    pub filter: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum OrderByDirection {
+    Asc,
+    Desc,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum ModbusRegisterColumns {
+    Id,
+    RegisterAddress,
+    Operation,
+    RegisterLength,
+    RegisterName,
+    DataFormat,
+    Description,
+    DeviceName,
+    Status,
+    Unit,
+    CreatedAt,
+    UpdatedAt,
+}
