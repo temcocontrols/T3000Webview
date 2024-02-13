@@ -8,11 +8,11 @@ use crate::{
     },
 };
 
-pub async fn list_modbus_register_item(
+pub async fn list_modbus_register_items(
     conn: &Pool<Sqlite>,
     pagination: ModbusRegisterPagination,
 ) -> Result<Vec<ModbusRegister>> {
-    let mut sql_query = "SELECT * FROM modbus_register_items".to_string();
+    let mut sql_query = "SELECT * FROM modbus_register".to_string();
 
     if pagination.filter.is_some() {
         let filter = pagination.filter.clone().unwrap();
@@ -66,7 +66,7 @@ pub async fn create_modbus_register_item(
 ) -> Result<ModbusRegister> {
     let item = sqlx::query_as::<_, ModbusRegister>(
     r#"
-    INSERT INTO modbus_register_items (register_address, operation, register_length, register_name, data_format, description, device_name, unit)
+    INSERT INTO modbus_register (register_address, operation, register_length, register_name, data_format, description, device_name, unit)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
     "#,
@@ -94,7 +94,7 @@ pub async fn update_modbus_register_item(
     //check if the item exists
     let existing_item = sqlx::query_as::<_, ModbusRegister>(
         r#"
-    SELECT * FROM modbus_register_items
+    SELECT * FROM modbus_register
     WHERE id = $1
     "#,
     )
@@ -106,7 +106,7 @@ pub async fn update_modbus_register_item(
         return Err(Error::NotFound);
     }
 
-    let mut query = QueryBuilder::<Sqlite>::new("UPDATE modbus_register_items SET ");
+    let mut query = QueryBuilder::<Sqlite>::new("UPDATE modbus_register SET ");
     if item.operation.is_some() {
         if item.register_address.is_some() {
             query
@@ -150,7 +150,7 @@ pub async fn delete_modbus_register_item(conn: &Pool<Sqlite>, id: i32) -> Result
     //check if the item exists
     let item = sqlx::query_as::<_, ModbusRegister>(
         r#"
-      SELECT * FROM modbus_register_items
+      SELECT * FROM modbus_register
       WHERE id = $1
       "#,
     )
@@ -164,7 +164,7 @@ pub async fn delete_modbus_register_item(conn: &Pool<Sqlite>, id: i32) -> Result
     }
     sqlx::query_as::<_, ModbusRegister>(
         r#"
-      DELETE FROM modbus_register_items
+      DELETE FROM modbus_register
       WHERE id = $1
       RETURNING *
       "#,

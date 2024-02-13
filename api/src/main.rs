@@ -14,7 +14,7 @@ use modbus_register_api::{
         UpdateModbusRegisterItemInput,
     },
     queries::{
-        create_modbus_register_item, delete_modbus_register_item, list_modbus_register_item,
+        create_modbus_register_item, delete_modbus_register_item, list_modbus_register_items,
         update_modbus_register_item,
     },
 };
@@ -42,7 +42,7 @@ async fn list(
     State(conn): State<Pool<Sqlite>>,
     Query(pagination): Query<ModbusRegisterPagination>,
 ) -> Result<Json<Vec<ModbusRegister>>> {
-    let items = list_modbus_register_item(&conn, pagination).await?;
+    let items = list_modbus_register_items(&conn, pagination).await?;
 
     Ok(Json(items))
 }
