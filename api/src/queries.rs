@@ -1,13 +1,67 @@
-use sqlx::{QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{Pool, QueryBuilder, Sqlite};
 
 use crate::{
-    error::Error,
-    error::Result,
-    models::{CreateModbusRegisterItemInput, ModbusRegister, UpdateModbusRegisterItemInput},
+    error::{Error, Result},
+    models::{
+        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns,
+        ModbusRegisterPagination, OrderByDirection, UpdateModbusRegisterItemInput,
+    },
 };
 
+pub async fn list_modbus_register_item(
+    conn: &Pool<Sqlite>,
+    pagination: ModbusRegisterPagination,
+) -> Result<Vec<ModbusRegister>> {
+    let mut sql_query = "SELECT * FROM modbus_register_items".to_string();
+
+    if pagination.filter.is_some() {
+        let filter = pagination.filter.clone().unwrap();
+
+        let filter_num = filter.parse::<i32>();
+        sql_query = format!(
+            "{sql_query} WHERE register_name LIKE '%' || $1 || '%'
+          OR operation LIKE '%' || $1 || '%'
+          OR description LIKE '%' || $1 || '%'
+          OR device_name LIKE '%' || $1 || '%'
+          OR unit LIKE '%' || $1 || '%'"
+        );
+
+        if filter_num.is_ok() {
+            sql_query = format!(
+                "{sql_query} OR id LIKE $1
+              OR register_address LIKE $1"
+            );
+        }
+    }
+
+    sql_query = format!(
+        "{} ORDER BY {:?} {:?} LIMIT $2 OFFSET $3",
+        sql_query,
+        pagination
+            .order_by
+            .as_ref()
+            .unwrap_or(&ModbusRegisterColumns::Id),
+        pagination
+            .order_dir
+            .as_ref()
+            .unwrap_or(&OrderByDirection::Desc)
+    );
+
+    let results = sqlx::query_as::<_, ModbusRegister>(&sql_query)
+        .bind(&pagination.filter.clone().unwrap_or("".to_string()))
+        .bind(&pagination.limit.clone().unwrap_or(100))
+        .bind(&pagination.offset.clone().unwrap_or(0))
+        .fetch_all(conn)
+        .await;
+
+    match results {
+        Ok(items) => Ok(items),
+        Err(error) => Err(Error::DbError(error.to_string())),
+    }
+}
+
 pub async fn create_modbus_register_item(
-    mut conn: SqliteConnection,
+    conn: &Pool<Sqlite>,
     item: CreateModbusRegisterItemInput,
 ) -> Result<ModbusRegister> {
     let item = sqlx::query_as::<_, ModbusRegister>(
@@ -25,14 +79,14 @@ pub async fn create_modbus_register_item(
   .bind(item.description)
   .bind(item.device_name)
   .bind(item.unit)
-  .fetch_one(&mut conn)
+  .fetch_one(conn)
   .await;
 
     item.map_err(|error| Error::DbError(error.to_string()))
 }
 
 pub async fn update_modbus_register_item(
-    mut conn: SqliteConnection,
+    conn: &Pool<Sqlite>,
     id: i32,
     item: UpdateModbusRegisterItemInput,
 ) -> Result<ModbusRegister> {
@@ -45,7 +99,7 @@ pub async fn update_modbus_register_item(
     "#,
     )
     .bind(id)
-    .fetch_one(&mut conn)
+    .fetch_one(conn)
     .await;
 
     if existing_item.is_err() {
@@ -88,14 +142,11 @@ pub async fn update_modbus_register_item(
     let query = query.build_query_as::<ModbusRegister>();
 
     // update the item
-    let updated_item = query.fetch_one(&mut conn).await;
+    let updated_item = query.fetch_one(conn).await;
     updated_item.map_err(|error| Error::DbError(error.to_string()))
 }
 
-pub async fn delete_modbus_register_item(
-    mut conn: SqliteConnection,
-    id: i32,
-) -> Result<ModbusRegister> {
+pub async fn delete_modbus_register_item(conn: &Pool<Sqlite>, id: i32) -> Result<ModbusRegister> {
     //check if the item exists
     let item = sqlx::query_as::<_, ModbusRegister>(
         r#"
@@ -104,7 +155,7 @@ pub async fn delete_modbus_register_item(
       "#,
     )
     .bind(id)
-    .fetch_one(&mut conn)
+    .fetch_one(conn)
     .await;
     if item.is_err() {
         return Err(Error::NotFound);
@@ -119,7 +170,7 @@ pub async fn delete_modbus_register_item(
       "#,
     )
     .bind(id)
-    .fetch_one(&mut conn)
+    .fetch_one(conn)
     .await
     .map_err(|error| Error::DbError(error.to_string()))
 }
