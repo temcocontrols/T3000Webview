@@ -30,3 +30,4 @@ yarn-error.log*
 src/components/grid
 src/components/GridEditor.vue
 src/components/AppEditor.vue
+.env

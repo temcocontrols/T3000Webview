@@ -65,8 +65,7 @@ module.exports = configure(function (/* ctx */) {
       // analyze: true,
       env: {
         VERSION: process.env.npm_package_version,
-        API_URL: "https://user-lib.temcocontrols.com",
-        API_WS_URL: "wss://user-lib.temcocontrols.com/ws",
+        ...require("dotenv").config().parsed,
       },
       // rawDefine: {}
       // ignorePublicFolder: true,

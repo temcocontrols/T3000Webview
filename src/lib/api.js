@@ -20,4 +20,23 @@ const api = ky.create({
   },
 });
 
+export const localApi = ky.create({
+  prefixUrl: process.env.LOCAL_API_URL,
+  headers: { secret_key: process.env.LOCAL_API_SECRET_KEY },
+  hooks: {
+    beforeRequest: [
+      (request) => {
+        request.headers.set("secret_key", process.env.LOCAL_API_SECRET_KEY);
+      },
+    ],
+    afterResponse: [
+      (request) => {
+        if (request.status === 401) {
+          Cookies.remove("secret_key");
+        }
+      },
+    ],
+  },
+});
+
 export default api;

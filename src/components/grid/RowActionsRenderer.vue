@@ -118,5 +118,46 @@ function reviewNewRow() {
         </q-menu>
       </q-btn>
     </div>
+    <div
+      v-else-if="['NEW', 'UPDATED'].includes(props.params.data.status)"
+      class="row-actions"
+    >
+      <q-btn
+        class="status-message-btn"
+        round
+        dense
+        flat
+        size="sm"
+        color="primary"
+        icon="question_mark"
+      >
+        <q-tooltip v-if="props.params.data.status === 'UPDATED'"
+          >This row is updated on the local database, but not on the remote one
+          yet.</q-tooltip
+        >
+        <q-tooltip v-else
+          >This item is only in the local database and not synchronized with the
+          remote one yet.</q-tooltip
+        ></q-btn
+      >
+
+      <q-btn
+        round
+        dense
+        flat
+        size="sm"
+        color="primary"
+        icon="more_vert"
+        v-if="props.params.data.status === 'NEW'"
+      >
+        <q-menu>
+          <q-list style="min-width: 100px">
+            <q-item clickable v-close-popup @click="deleteRow()">
+              <q-item-section>Delete row</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
+    </div>
   </div>
 </template>
