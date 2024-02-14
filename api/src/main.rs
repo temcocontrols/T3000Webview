@@ -1,76 +1,64 @@
+use std::env;
+
 use axum::{
-    extract::{Path, Query, State},
-    routing::{get, patch},
-    Json, Router,
+    http::{Method, StatusCode},
+    routing::get_service,
+    Router,
 };
-use sqlx::{Pool, Sqlite};
+use dotenvy::dotenv;
 use tokio::net::TcpListener;
+use tower_http::{
+    cors::{Any, CorsLayer},
+    services::ServeDir,
+};
 
 use modbus_register_api::{
-    db_connection::establish_connection,
-    error::Result,
-    models::{
-        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterPagination,
-        UpdateModbusRegisterItemInput,
-    },
-    queries::{
-        create_modbus_register_item, delete_modbus_register_item, list_modbus_register_items,
-        update_modbus_register_item,
-    },
+    db_connection::establish_connection, modbus_register::routes::modbus_register_routes,
 };
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     // initialize tracing
     tracing_subscriber::fmt::init();
 
     let conn = establish_connection().await;
 
+    let cors = CorsLayer::new()
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers(Any)
+        // allow requests from any origin
+        .allow_origin(Any);
+
     // build our application with a route
     let app = Router::new()
-        .route("/modbus-register", get(list).post(create))
-        .route("/modbus-register/:id", patch(update).delete(delete))
-        .with_state(conn);
+        .nest("/api", modbus_register_routes())
+        .layer(cors)
+        .with_state(conn)
+        .fallback_service(routes_static());
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let server_port = env::var("PORT").unwrap_or("9013".to_string());
+
+    // run our app with hyper
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port))
+        .await
+        .unwrap();
     println!("->> LISTENING on {:?}\n", listener.local_addr());
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn list(
-    State(conn): State<Pool<Sqlite>>,
-    Query(pagination): Query<ModbusRegisterPagination>,
-) -> Result<Json<Vec<ModbusRegister>>> {
-    let items = list_modbus_register_items(&conn, pagination).await?;
-
-    Ok(Json(items))
-}
-
-async fn create(
-    State(conn): State<Pool<Sqlite>>,
-    Json(payload): Json<CreateModbusRegisterItemInput>,
-) -> Result<Json<ModbusRegister>> {
-    let item = create_modbus_register_item(&conn, payload).await?;
-
-    Ok(Json(item))
-}
-
-async fn update(
-    State(conn): State<Pool<Sqlite>>,
-    Path(id): Path<i32>,
-    Json(payload): Json<UpdateModbusRegisterItemInput>,
-) -> Result<Json<ModbusRegister>> {
-    let item = update_modbus_register_item(&conn, id, payload).await?;
-
-    Ok(Json(item))
-}
-
-async fn delete(
-    State(conn): State<Pool<Sqlite>>,
-    Path(id): Path<i32>,
-) -> Result<Json<ModbusRegister>> {
-    let item = delete_modbus_register_item(&conn, id).await?;
-
-    Ok(Json(item))
+fn routes_static() -> Router {
+    let spa_dir = env::var("SPA_DIR").unwrap_or("./www".to_string());
+    Router::new().nest_service(
+        "/",
+        get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
+            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }),
+    )
 }

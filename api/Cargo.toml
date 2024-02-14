@@ -16,6 +16,7 @@ dotenvy = "0.15.7"
 strum_macros = "0.26.1"
 sqlx = { version = "0.7", features = [ "runtime-tokio", "sqlite" ] }
 serde_with = "3.6.1"
+tower-http = {version = "0.5.1", features = ["cors", "fs"]}
 
 [profile.release]
 strip = true

@@ -1,18 +1,16 @@
-use sqlx::{Pool, QueryBuilder, Sqlite};
-
-use crate::{
-    error::{Error, Result},
-    models::{
-        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns,
-        ModbusRegisterPagination, OrderByDirection, UpdateModbusRegisterItemInput,
-    },
+use super::models::{
+    CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns, ModbusRegisterPagination,
+    ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
 };
+use crate::error::{Error, Result};
+use sqlx::{Pool, QueryBuilder, Sqlite};
 
 pub async fn list_modbus_register_items(
     conn: &Pool<Sqlite>,
     pagination: ModbusRegisterPagination,
-) -> Result<Vec<ModbusRegister>> {
+) -> Result<ModbusRegisterResponse> {
     let mut sql_query = "SELECT * FROM modbus_register".to_string();
+    let mut count_query = "SELECT COUNT(*) FROM modbus_register".to_string();
 
     if pagination.filter.is_some() {
         let filter = pagination.filter.clone().unwrap();
@@ -24,6 +22,14 @@ pub async fn list_modbus_register_items(
           OR description LIKE '%' || $1 || '%'
           OR device_name LIKE '%' || $1 || '%'
           OR unit LIKE '%' || $1 || '%'"
+        );
+
+        count_query = format!(
+            "{count_query} WHERE register_name LIKE '%' || $1 || '%'
+        OR operation LIKE '%' || $1 || '%'
+        OR description LIKE '%' || $1 || '%'
+        OR device_name LIKE '%' || $1 || '%'
+        OR unit LIKE '%' || $1 || '%'"
         );
 
         if filter_num.is_ok() {
@@ -47,6 +53,12 @@ pub async fn list_modbus_register_items(
             .unwrap_or(&OrderByDirection::Desc)
     );
 
+    let count = sqlx::query_scalar::<_, i64>(&count_query)
+        .bind(&pagination.filter.clone().unwrap_or("".to_string()))
+        .fetch_one(conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
     let results = sqlx::query_as::<_, ModbusRegister>(&sql_query)
         .bind(&pagination.filter.clone().unwrap_or("".to_string()))
         .bind(&pagination.limit.clone().unwrap_or(100))
@@ -55,7 +67,7 @@ pub async fn list_modbus_register_items(
         .await;
 
     match results {
-        Ok(items) => Ok(items),
+        Ok(items) => Ok(ModbusRegisterResponse { data: items, count }),
         Err(error) => Err(Error::DbError(error.to_string())),
     }
 }

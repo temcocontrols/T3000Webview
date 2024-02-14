@@ -87,3 +87,9 @@ pub struct UpdateModbusRegisterItemInput {
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub unit: Option<Option<String>>,
 }
+
+#[derive(Serialize, Debug)]
+pub struct ModbusRegisterResponse {
+    pub data: Vec<ModbusRegister>,
+    pub count: i64,
+}
