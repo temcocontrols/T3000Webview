@@ -6,25 +6,31 @@ jobs:
   tag:
     name: New release
     runs-on: ubuntu-latest
+    environment: build
+    env:
+      API_URL: ${{ vars.API_URL }}
+      API_WS_URL: ${{ vars.API_WS_URL }}
+      LOCAL_API_URL: ${{ vars.LOCAL_API_URL }}
+      LOCAL_API_SECRET_KEY: ${{ vars.LOCAL_API_SECRET_KEY }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Build
-      run: |
-        npm install
-        npm run build
-    - name: 📦 Zip dist files
-      id: zip
-      uses: Roslovets-Inc/zip-npm-files@v1
-      with:
-        files: ./*
-        cwd: "dist/spa/"
-    - name: Upload release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{ steps.zip.outputs.archive }}
-        asset_name: ${{ github.event.repository.name }}.zip
-        asset_content_type: application/zip
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build
+        run: |
+          npm install
+          npm run build
+      - name: 📦 Zip dist files
+        id: zip
+        uses: Roslovets-Inc/zip-npm-files@v1
+        with:
+          files: ./*
+          cwd: "dist/spa/"
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ steps.zip.outputs.archive }}
+          asset_name: ${{ github.event.repository.name }}.zip
+          asset_content_type: application/zip
