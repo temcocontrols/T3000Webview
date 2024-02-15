@@ -1,24 +1,19 @@
-use std::env;
-
 use axum::{
     http::{Method, StatusCode},
     routing::get_service,
     Router,
 };
-use dotenvy::dotenv;
+use dotenvy_macro::dotenv;
+
 use tokio::net::TcpListener;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
 
-use modbus_register_api::{
-    db_connection::establish_connection, modbus_register::routes::modbus_register_routes,
-};
+use super::{db_connection::establish_connection, modbus_register::routes::modbus_register_routes};
 
-#[tokio::main]
-async fn main() {
-    dotenv().ok();
+pub async fn server_start() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -43,7 +38,7 @@ async fn main() {
         .with_state(conn)
         .fallback_service(routes_static());
 
-    let server_port = env::var("PORT").unwrap_or("9013".to_string());
+    let server_port = dotenv!("PORT", "9013");
 
     // run our app with hyper
     let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port))
@@ -54,7 +49,7 @@ async fn main() {
 }
 
 fn routes_static() -> Router {
-    let spa_dir = env::var("SPA_DIR").unwrap_or("./www".to_string());
+    let spa_dir = dotenv!("SPA_DIR", "./www");
     Router::new().nest_service(
         "/",
         get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {

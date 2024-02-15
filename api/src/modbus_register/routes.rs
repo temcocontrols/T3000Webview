@@ -1,8 +1,13 @@
 use axum::{
+    body::Body,
     extract::{Path, Query, State},
-    routing::{get, patch},
+    http::{self, Request},
+    middleware::{self, Next},
+    response::Response,
+    routing::{get, patch, post},
     Json, Router,
 };
+use dotenvy_macro::dotenv;
 use sqlx::{Pool, Sqlite};
 
 use super::{
@@ -15,12 +20,17 @@ use super::{
         update_modbus_register_item,
     },
 };
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 pub fn modbus_register_routes() -> Router<Pool<Sqlite>> {
-    Router::new()
-        .route("/modbus-registers", get(list).post(create))
+    let open_routes = Router::new().route("/modbus-registers", get(list));
+
+    let protected_routes = Router::new()
+        .route("/modbus-registers", post(create))
         .route("/modbus-registers/:id", patch(update).delete(delete))
+        .route_layer(middleware::from_fn(require_auth));
+
+    open_routes.merge(protected_routes)
 }
 
 async fn list(
@@ -58,4 +68,18 @@ async fn delete(
     let item = delete_modbus_register_item(&conn, id).await?;
 
     Ok(Json(item))
+}
+
+pub async fn require_auth(req: Request<Body>, next: Next) -> Result<Response> {
+    let auth_header = req
+        .headers()
+        .get(http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok())
+        .unwrap_or("");
+    let secret = dotenv!("API_SECRET_KEY");
+    if auth_header != secret {
+        return Err(Error::Unauthorized);
+    }
+
+    Ok(next.run(req).await)
 }

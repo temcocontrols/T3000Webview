@@ -102,7 +102,6 @@ pub async fn update_modbus_register_item(
     id: i32,
     item: UpdateModbusRegisterItemInput,
 ) -> Result<ModbusRegister> {
-    println!("item: {:?}", item);
     //check if the item exists
     let existing_item = sqlx::query_as::<_, ModbusRegister>(
         r#"
