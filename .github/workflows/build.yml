@@ -4,6 +4,7 @@ jobs:
   tag:
     name: Build & upload artifacts
     runs-on: ubuntu-latest
+    environment: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
