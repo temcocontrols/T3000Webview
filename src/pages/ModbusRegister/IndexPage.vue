@@ -766,9 +766,9 @@ function getServerSideDatasource() {
             limit +
             "&offset=" +
             request.startRow +
-            "&orderBy=" +
+            "&order_by=" +
             sortCol.colDef.field +
-            "&orderDir=" +
+            "&order_dir=" +
             (request.sortModel[0]?.sort || "desc") +
             (filter.value ? "&filter=" + filter.value : "") +
             (activeTab.value === "changes" ? "&hasChanges=1" : "")

@@ -26,13 +26,13 @@ export const localApi = ky.create({
   hooks: {
     beforeRequest: [
       (request) => {
-        request.headers.set("secret_key", process.env.LOCAL_API_SECRET_KEY);
+        request.headers.set("Authorization", process.env.LOCAL_API_SECRET_KEY);
       },
     ],
     afterResponse: [
       (request) => {
         if (request.status === 401) {
-          Cookies.remove("secret_key");
+          Cookies.remove("Authorization");
         }
       },
     ],
