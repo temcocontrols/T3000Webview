@@ -1,3 +1,5 @@
+use std::env;
+
 use axum::{
     body::Body,
     extract::{Path, Query, State},
@@ -7,7 +9,6 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
-use dotenvy_macro::dotenv;
 use sqlx::{Pool, Sqlite};
 
 use super::{
@@ -76,7 +77,7 @@ pub async fn require_auth(req: Request<Body>, next: Next) -> Result<Response> {
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
         .unwrap_or("");
-    let secret = dotenv!("API_SECRET_KEY");
+    let secret = env::var("API_SECRET_KEY").expect("API_SECRET_KEY is not set");
     if auth_header != secret {
         return Err(Error::Unauthorized);
     }

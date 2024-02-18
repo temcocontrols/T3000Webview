@@ -1,9 +1,10 @@
+use std::env;
+
 use axum::{
     http::{Method, StatusCode},
     routing::get_service,
     Router,
 };
-use dotenvy_macro::dotenv;
 
 use tokio::{net::TcpListener, signal};
 use tower_http::{
@@ -16,6 +17,8 @@ use super::{db_connection::establish_connection, modbus_register::routes::modbus
 pub async fn server_start() {
     // initialize tracing
     tracing_subscriber::fmt::init();
+
+    let _ = dotenvy::dotenv();
 
     let conn = establish_connection().await;
 
@@ -38,7 +41,7 @@ pub async fn server_start() {
         .with_state(conn)
         .fallback_service(routes_static());
 
-    let server_port = dotenv!("PORT");
+    let server_port = env::var("PORT").unwrap_or("9103".to_string());
 
     // run our app with hyper
     let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port))
@@ -76,7 +79,7 @@ async fn shutdown_signal() {
 }
 
 fn routes_static() -> Router {
-    let spa_dir = dotenv!("SPA_DIR");
+    let spa_dir = env::var("SPA_DIR").unwrap_or("./ResourceFile/webview/www".to_string());
     Router::new().nest_service(
         "/",
         get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
