@@ -11,6 +11,7 @@ pub enum Error {
     DbError(String),
     Unauthorized,
     PermissionDenied,
+    BadRequest,
 }
 
 // region:    --- Error Boilerplate
@@ -26,45 +27,14 @@ impl std::error::Error for Error {}
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         println!("->> {:<12} - {self:?}", "INTO_RES");
+        let response = match self {
+            Self::NotFound => (StatusCode::NOT_FOUND, "Not Found"),
+            Self::DbError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database Error"),
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied"),
+            Self::BadRequest => (StatusCode::BAD_REQUEST, "Bad Request"),
+        };
 
-        // Create a placeholder Axum reponse.
-        let mut response = StatusCode::INTERNAL_SERVER_ERROR.into_response();
-
-        // Insert the Error into the reponse.
-        response.extensions_mut().insert(self);
-
-        response
+        response.into_response()
     }
-}
-
-impl Error {
-    pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
-        #[allow(unreachable_patterns)]
-        match self {
-            // -- Model.
-            Self::NotFound { .. } => (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS),
-
-            Self::PermissionDenied { .. } => {
-                (StatusCode::FORBIDDEN, ClientError::PERMISSION_DENIED)
-            }
-
-            Self::Unauthorized { .. } => (StatusCode::UNAUTHORIZED, ClientError::NO_AUTH),
-
-            // -- Fallback.
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ClientError::SERVICE_ERROR,
-            ),
-        }
-    }
-}
-
-#[derive(Debug, strum_macros::AsRefStr)]
-#[allow(non_camel_case_types)]
-pub enum ClientError {
-    LOGIN_FAIL,
-    NO_AUTH,
-    INVALID_PARAMS,
-    SERVICE_ERROR,
-    PERMISSION_DENIED,
 }

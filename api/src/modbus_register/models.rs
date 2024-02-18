@@ -1,5 +1,8 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
+use strum_macros::Display;
 
 fn deserialize_option_option<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
@@ -35,14 +38,14 @@ pub struct ModbusRegisterPagination {
     pub filter: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Display, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderByDirection {
     Asc,
     Desc,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ModbusRegisterColumns {
     Id,
@@ -57,6 +60,16 @@ pub enum ModbusRegisterColumns {
     Unit,
     CreatedAt,
     UpdatedAt,
+}
+
+impl Display for ModbusRegisterColumns {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).unwrap().trim_matches('"')
+        )
+    }
 }
 
 #[derive(Deserialize, Debug)]

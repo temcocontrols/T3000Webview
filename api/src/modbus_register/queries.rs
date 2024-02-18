@@ -41,7 +41,7 @@ pub async fn list_modbus_register_items(
     }
 
     sql_query = format!(
-        "{} ORDER BY {:?} {:?} LIMIT $2 OFFSET $3",
+        "{} ORDER BY {} {} LIMIT $2 OFFSET $3",
         sql_query,
         pagination
             .order_by

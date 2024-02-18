@@ -859,22 +859,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "modbus_register_api"
-version = "0.1.0"
-dependencies = [
- "axum",
- "dotenvy_macro",
- "serde",
- "serde_json",
- "serde_with",
- "sqlx",
- "strum_macros",
- "tokio",
- "tower-http",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "nix"
 version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1444,6 +1428,22 @@ name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
+
+[[package]]
+name = "t3_webview_api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "dotenvy_macro",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sqlx",
+ "strum_macros",
+ "tokio",
+ "tower-http",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "tempfile"
