@@ -1,5 +1,3 @@
-use std::env;
-
 use axum::{
     body::Body,
     extract::{Path, Query, State},
@@ -77,7 +75,7 @@ pub async fn require_auth(req: Request<Body>, next: Next) -> Result<Response> {
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
         .unwrap_or("");
-    let secret = env::var("API_SECRET_KEY").expect("API_SECRET_KEY is not set");
+    let secret = option_env!("API_SECRET_KEY").unwrap_or("secret");
     if auth_header != secret {
         return Err(Error::Unauthorized);
     }

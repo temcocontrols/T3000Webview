@@ -18,7 +18,7 @@ pub async fn server_start() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
-    let _ = dotenvy::dotenv();
+    dotenvy::dotenv().ok();
 
     let conn = establish_connection().await;
 
