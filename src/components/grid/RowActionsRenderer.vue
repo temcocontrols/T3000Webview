@@ -71,9 +71,12 @@ function reviewNewRow() {
         icon="question_mark"
       >
         <q-tooltip v-if="props.params.data.status === 'UNDER_REVIEW'"
-          >Your changes are under review.</q-tooltip
+          >Your changes to this item are under review.</q-tooltip
         >
-        <q-tooltip v-else>Your item is under review.</q-tooltip></q-btn
+        <q-tooltip v-else
+          >This item is under review and not published to the cloud database
+          yet.</q-tooltip
+        ></q-btn
       >
 
       <q-btn round dense flat size="sm" color="primary" icon="more_vert">
@@ -118,11 +121,9 @@ function reviewNewRow() {
         </q-menu>
       </q-btn>
     </div>
-    <div
-      v-else-if="['NEW', 'UPDATED'].includes(props.params.data.status)"
-      class="row-actions"
-    >
+    <div class="row-actions">
       <q-btn
+        v-if="['UPDATED', 'NEW'].includes(props.params.data.status)"
         class="status-message-btn"
         round
         dense
@@ -132,24 +133,16 @@ function reviewNewRow() {
         icon="question_mark"
       >
         <q-tooltip v-if="props.params.data.status === 'UPDATED'"
-          >This row is updated on the local database, but not on the remote one
-          yet.</q-tooltip
+          >This row is updated on the local database, but not on the cloud
+          database yet.</q-tooltip
         >
-        <q-tooltip v-else
+        <q-tooltip v-else-if="props.params.data.status === 'NEW'"
           >This item is only in the local database and not synchronized with the
-          remote one yet.</q-tooltip
+          cloud database yet.</q-tooltip
         ></q-btn
       >
 
-      <q-btn
-        round
-        dense
-        flat
-        size="sm"
-        color="primary"
-        icon="more_vert"
-        v-if="props.params.data.status === 'NEW'"
-      >
+      <q-btn round dense flat size="sm" color="primary" icon="more_vert">
         <q-menu>
           <q-list style="min-width: 100px">
             <q-item clickable v-close-popup @click="deleteRow()">

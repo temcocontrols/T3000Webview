@@ -670,8 +670,9 @@ onBeforeMount(() => {
 onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
-
-  loadNotifications();
+  if (user.value) {
+    loadNotifications();
+  }
 });
 
 function loadNotifications() {
