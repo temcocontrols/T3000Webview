@@ -5,52 +5,54 @@ use super::models::{
 use crate::error::{Error, Result};
 use sqlx::{Pool, QueryBuilder, Sqlite};
 
+fn generate_filter_query(filter: Option<String>, base_query: String) -> String {
+    match filter {
+        Some(filter) => {
+            let filter_num = filter.parse::<i32>();
+            let mut query = format!(
+                "{base_query} WHERE ( register_name LIKE '%' || $1 || '%'
+            OR operation LIKE '%' || $1 || '%'
+            OR description LIKE '%' || $1 || '%'
+            OR device_name LIKE '%' || $1 || '%'
+            OR unit LIKE '%' || $1 || '%'"
+            );
+
+            if filter_num.is_ok() {
+                query = format!(
+                    "{query} OR id LIKE $1
+                OR register_address LIKE $1 )"
+                );
+            } else {
+                query = format!("{query} )");
+            }
+            format!("{query} AND status NOT LIKE 'DELETED'", query = query)
+        }
+        None => base_query,
+    }
+}
+
 pub async fn list_modbus_register_items(
     conn: &Pool<Sqlite>,
     pagination: ModbusRegisterPagination,
 ) -> Result<ModbusRegisterResponse> {
-    let mut sql_query = "SELECT * FROM modbus_register".to_string();
-    let mut count_query = "SELECT COUNT(*) FROM modbus_register".to_string();
+    let base_sql_query = "SELECT * FROM modbus_register".to_string();
+    let base_count_query = "SELECT COUNT(*) FROM modbus_register".to_string();
 
-    if pagination.filter.is_some() {
-        let filter = pagination.filter.clone().unwrap();
+    let sql_query = generate_filter_query(pagination.filter.clone(), base_sql_query);
+    let count_query = generate_filter_query(pagination.filter.clone(), base_count_query);
 
-        let filter_num = filter.parse::<i32>();
-        sql_query = format!(
-            "{sql_query} WHERE register_name LIKE '%' || $1 || '%'
-          OR operation LIKE '%' || $1 || '%'
-          OR description LIKE '%' || $1 || '%'
-          OR device_name LIKE '%' || $1 || '%'
-          OR unit LIKE '%' || $1 || '%'"
-        );
+    let order_by = pagination
+        .order_by
+        .as_ref()
+        .unwrap_or(&ModbusRegisterColumns::Id);
+    let order_dir = pagination
+        .order_dir
+        .as_ref()
+        .unwrap_or(&OrderByDirection::Desc);
 
-        count_query = format!(
-            "{count_query} WHERE register_name LIKE '%' || $1 || '%'
-        OR operation LIKE '%' || $1 || '%'
-        OR description LIKE '%' || $1 || '%'
-        OR device_name LIKE '%' || $1 || '%'
-        OR unit LIKE '%' || $1 || '%'"
-        );
-
-        if filter_num.is_ok() {
-            sql_query = format!(
-                "{sql_query} OR id LIKE $1
-              OR register_address LIKE $1"
-            );
-        }
-    }
-
-    sql_query = format!(
+    let sql_query = format!(
         "{} ORDER BY {} {} LIMIT $2 OFFSET $3",
-        sql_query,
-        pagination
-            .order_by
-            .as_ref()
-            .unwrap_or(&ModbusRegisterColumns::Id),
-        pagination
-            .order_dir
-            .as_ref()
-            .unwrap_or(&OrderByDirection::Desc)
+        sql_query, order_by, order_dir
     );
 
     let count = sqlx::query_scalar::<_, i64>(&count_query)
@@ -163,6 +165,7 @@ pub async fn delete_modbus_register_item(conn: &Pool<Sqlite>, id: i32) -> Result
         r#"
       SELECT * FROM modbus_register
       WHERE id = $1
+      AND status NOT LIKE 'DELETED'
       "#,
     )
     .bind(id)
@@ -170,15 +173,27 @@ pub async fn delete_modbus_register_item(conn: &Pool<Sqlite>, id: i32) -> Result
     .await;
     if item.is_err() {
         return Err(Error::NotFound);
-    } else if item.is_ok() && item.as_ref().unwrap().status != "NEW" {
-        return Err(Error::PermissionDenied);
+    }
+
+    if item.is_ok() && item.as_ref().unwrap().status == "NEW" {
+        return sqlx::query_as::<_, ModbusRegister>(
+            r#"
+        DELETE FROM modbus_register
+        WHERE id = $1
+        RETURNING *
+        "#,
+        )
+        .bind(id)
+        .fetch_one(conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()));
     }
     sqlx::query_as::<_, ModbusRegister>(
         r#"
-      DELETE FROM modbus_register
-      WHERE id = $1
-      RETURNING *
-      "#,
+    UPDATE modbus_register SET status = 'DELETED'
+    WHERE id = $1
+    RETURNING *
+    "#,
     )
     .bind(id)
     .fetch_one(conn)
