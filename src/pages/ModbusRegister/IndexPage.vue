@@ -3,8 +3,29 @@
     <user-top-bar class="flex-none">
       <template v-slot:action-btns>
         <q-separator vertical color="white" spaced inset />
-        <template v-if="user && isAdmin(user)">
+        <template v-if="isOnline">
           <q-btn-toggle
+            v-model="liveMode"
+            no-caps
+            rounded
+            unelevated
+            dense
+            size="0.8rem"
+            toggle-color="white"
+            color="blue-6"
+            text-color="white"
+            toggle-text-color="black"
+            padding="2px 10px"
+            :options="[
+              { label: 'Offline Mode', value: false },
+              { label: 'Live Mode', value: true },
+            ]"
+          />
+          <q-separator vertical color="white" spaced inset />
+        </template>
+        <template v-if="isOnline && user && isAdmin(user)">
+          <q-btn-toggle
+            v-if="liveMode"
             v-model="activeTab"
             @update:model-value="triggerFilterChanged()"
             no-caps
@@ -622,7 +643,7 @@ const gridApi = ref();
 const getRowId = ref();
 const defaultColDef = ref({
   minWidth: 70,
-  suppressMenu: true,
+  suppressHeaderMenuButton: true,
   cellClassRules: cellClassRules,
   editable: () => true,
 });
@@ -658,6 +679,11 @@ const activeTab = ref("all");
 
 const gridContext = ref({ activeTab });
 
+const isOnline = ref(null);
+const liveMode = ref(false);
+let qOfflineNotify = null;
+let intervalIsOnline = null;
+
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
@@ -668,12 +694,61 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
+  heathCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
   if (user.value) {
     loadNotifications();
   }
 });
+
+function heathCheck() {
+  const socket = new WebSocket(process.env.API_WS_URL + "/heartbeat");
+  socket.onopen = function () {
+    if (qOfflineNotify) {
+      qOfflineNotify();
+    }
+    intervalIsOnline = setInterval(() => {
+      socket.send("statusCheck");
+    }, 5000);
+    if (isOnline.value === false) {
+      $q.notify({
+        icon: "wifi",
+        type: "positive",
+        message: "You are online!",
+      });
+    }
+    isOnline.value = true;
+  };
+
+  socket.onclose = function (e) {
+    clearInterval(intervalIsOnline);
+    if (isOnline.value) {
+      if (qOfflineNotify) qOfflineNotify();
+      qOfflineNotify = $q.notify({
+        icon: "wifi_off",
+        type: "negative",
+        message: "You are offline!",
+        timeout: 0,
+        actions: [{ label: "Close", color: "white", handler: heathCheck }],
+      });
+    }
+    console.log(
+      "Socket is closed. Reconnect will be attempted in 5 seconds.",
+      e.reason
+    );
+    isOnline.value = false;
+
+    setTimeout(function () {
+      heathCheck();
+    }, 5000);
+  };
+
+  socket.onerror = function (err) {
+    console.error("Socket encountered error: ", err.message, "Closing socket");
+    socket.close();
+  };
+}
 
 function loadNotifications() {
   getNotifications().then((res) => {
