@@ -14,6 +14,7 @@ fn generate_filter_query(filter: Option<String>, base_query: String) -> String {
             OR operation LIKE '%' || $1 || '%'
             OR description LIKE '%' || $1 || '%'
             OR device_name LIKE '%' || $1 || '%'
+            OR data_format LIKE '%' || $1 || '%'
             OR unit LIKE '%' || $1 || '%'"
             );
 
