@@ -18,13 +18,13 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import api from "../../lib/api";
+import { liveApi } from "../../lib/api";
 import AppCard from "src/components/AppCard.vue";
 
 const libData = ref([]);
 
 function loadApps() {
-  api
+  liveApi
     .get("user/t3Apps")
     .then(async (res) => {
       libData.value = await res.json();

@@ -727,7 +727,7 @@ import {
   globalNav,
   demoDeviceData,
 } from "../lib/common";
-import api from "../lib/api";
+import { liveApi } from "../lib/api";
 
 const metaData = {
   title: "HVAC Drawer",
@@ -1882,7 +1882,7 @@ function readFile(file) {
 
 async function saveLibImage(file) {
   if (user.value) {
-    api
+    liveApi
       .post("hvacTools", {
         json: {
           name: file.name,
@@ -2299,7 +2299,7 @@ async function addToLibrary() {
   let createdItem = null;
   if (user.value) {
     isOnline = true;
-    api
+    liveApi
       .post("hvacObjectLibs", {
         json: {
           label: "Item " + library.value.objLibItemsCount,
@@ -2429,7 +2429,7 @@ function autoManualToggle(item) {
 }
 function deleteLibItem(item) {
   if (user.value && item.online) {
-    api
+    liveApi
       .delete("hvacObjectLibs/" + item.id)
       .then(async () => {
         $q.notify({
@@ -2454,7 +2454,7 @@ function deleteLibItem(item) {
 }
 function renameLibItem(item, name) {
   if (user.value && item.online) {
-    api
+    liveApi
       .patch("hvacObjectLibs/" + item.id, {
         json: {
           label: name,
@@ -2484,7 +2484,7 @@ function renameLibItem(item, name) {
 
 function deleteLibImage(item) {
   if (item.online) {
-    api
+    liveApi
       .delete("hvacTools/" + item.dbId || item.id.slice(4))
       .then(async () => {
         $q.notify({
@@ -2584,7 +2584,7 @@ function isLoggedIn() {
     user.value = null;
     return;
   }
-  api
+  liveApi
     .get("hvacTools")
     .then(async (res) => {
       const data = await res.json();
@@ -2597,7 +2597,7 @@ function isLoggedIn() {
     .catch((err) => {
       console.log(err);
     });
-  api
+  liveApi
     .get("hvacObjectLibs")
     .then(async (res) => {
       const data = await res.json();
@@ -2615,7 +2615,7 @@ function isLoggedIn() {
     .catch((err) => {
       console.log(err);
     });
-  api
+  liveApi
     .get("me")
     .then(async (res) => {
       user.value = await res.json();

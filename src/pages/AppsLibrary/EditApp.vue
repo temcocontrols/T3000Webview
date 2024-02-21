@@ -41,7 +41,7 @@ import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
 import { user, globalNav, isAdmin } from "../../lib/common";
-import api from "../../lib/api";
+import { liveApi } from "../../lib/api";
 import ky from "ky";
 
 const $q = useQuasar();
@@ -59,7 +59,7 @@ const fileServerUrl = process.env.API_URL + "/file/";
 onMounted(() => {
   globalNav.value.title = "Edit Application";
   globalNav.value.back = "/apps-library";
-  api
+  liveApi
     .get("t3Apps/" + route.params.id)
     .then(async (res) => {
       const data = await res.json();
@@ -123,7 +123,7 @@ async function SaveApp() {
 }
 
 function saveToDB() {
-  api
+  liveApi
     .patch("t3Apps/" + route.params.id, { json: appData.value })
     .then(async () => {
       router.push({ path: "/user/apps" });

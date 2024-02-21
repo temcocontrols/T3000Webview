@@ -3,7 +3,7 @@ import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import { user, globalNav, isAdmin } from "../lib/common";
-import api from "../lib/api";
+import { liveApi } from "../lib/api";
 
 export default {
   props: {
@@ -32,7 +32,7 @@ export default {
         user.value = null;
         return;
       }
-      api
+      liveApi
         .get("me")
         .then(async (res) => {
           user.value = await res.json();

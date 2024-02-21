@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import api from "../lib/api";
+import { liveApi } from "../lib/api";
 import { useQuasar } from "quasar";
 
 const props = defineProps({
@@ -118,7 +118,7 @@ function deleteAppAction(app) {
   })
     .onOk(() => {
       $q.loading.show();
-      api
+      liveApi
         .delete(`t3Apps/${app.id}`)
         .then(() => {
           $q.loading.hide();
@@ -148,7 +148,7 @@ function deleteAppAction(app) {
     });
 }
 function updateApp(app, data) {
-  api
+  liveApi
     .patch(`t3Apps/${app.id}`, { json: data })
     .then(() => {
       $q.loading.hide();

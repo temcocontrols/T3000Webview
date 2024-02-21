@@ -1,7 +1,7 @@
 import { Cookies } from "quasar";
 import ky from "ky";
 
-const api = ky.create({
+export const liveApi = ky.create({
   prefixUrl: process.env.API_URL,
   headers: { auth: Cookies.get("token") },
   hooks: {
@@ -38,5 +38,3 @@ export const localApi = ky.create({
     ],
   },
 });
-
-export default api;

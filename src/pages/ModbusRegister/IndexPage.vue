@@ -3,7 +3,7 @@
     <user-top-bar class="flex-none">
       <template v-slot:action-btns>
         <q-separator vertical color="white" spaced inset />
-        <template v-if="isOnline">
+        <template v-if="user && isAdmin(user)">
           <q-btn-toggle
             v-model="liveMode"
             no-caps
@@ -18,32 +18,31 @@
             padding="2px 10px"
             :options="[
               { label: 'Offline Mode', value: false },
-              { label: 'Live Mode', value: true },
+              { label: 'Live Mode', value: true, disable: !isOnline },
             ]"
           />
           <q-separator vertical color="white" spaced inset />
-        </template>
-        <template v-if="isOnline && user && isAdmin(user)">
-          <q-btn-toggle
-            v-if="liveMode"
-            v-model="activeTab"
-            @update:model-value="triggerFilterChanged()"
-            no-caps
-            rounded
-            unelevated
-            dense
-            size="0.8rem"
-            toggle-color="white"
-            color="blue-6"
-            text-color="white"
-            toggle-text-color="black"
-            padding="2px 10px"
-            :options="[
-              { label: 'All Entries', value: 'all' },
-              { label: 'User Pending Changes', value: 'changes' },
-            ]"
-          />
-          <q-separator vertical color="white" spaced inset />
+          <template v-if="liveMode">
+            <q-btn-toggle
+              v-model="activeTab"
+              @update:model-value="triggerFilterChanged()"
+              no-caps
+              rounded
+              unelevated
+              dense
+              size="0.8rem"
+              toggle-color="white"
+              color="blue-6"
+              text-color="white"
+              toggle-text-color="black"
+              padding="2px 10px"
+              :options="[
+                { label: 'All Entries', value: 'all' },
+                { label: 'User Pending Changes', value: 'changes' },
+              ]"
+            />
+            <q-separator vertical color="white" spaced inset />
+          </template>
         </template>
         <q-btn
           icon="add_circle"
@@ -614,11 +613,11 @@
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted, onBeforeUnmount, onBeforeMount } from "vue";
+import { ref, onMounted, onBeforeUnmount, onBeforeMount, watch } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
-import api, { localApi } from "../../lib/api";
+import { liveApi, localApi } from "../../lib/api";
 import {
   globalNav,
   modbusRegColumns,
@@ -681,7 +680,7 @@ const gridContext = ref({ activeTab });
 
 const isOnline = ref(null);
 const liveMode = ref(false);
-let qOfflineNotify = null;
+let dismissOfflineNotif = null;
 let intervalIsOnline = null;
 
 window.onbeforeunload = () => {
@@ -703,10 +702,10 @@ onMounted(() => {
 });
 
 function heathCheck() {
-  const socket = new WebSocket(process.env.API_WS_URL + "/heartbeat");
+  const socket = new WebSocket(process.env.API_WS_URL);
   socket.onopen = function () {
-    if (qOfflineNotify) {
-      qOfflineNotify();
+    if (dismissOfflineNotif) {
+      dismissOfflineNotif();
     }
     intervalIsOnline = setInterval(() => {
       socket.send("statusCheck");
@@ -724,8 +723,8 @@ function heathCheck() {
   socket.onclose = function (e) {
     clearInterval(intervalIsOnline);
     if (isOnline.value) {
-      if (qOfflineNotify) qOfflineNotify();
-      qOfflineNotify = $q.notify({
+      if (dismissOfflineNotif) dismissOfflineNotif();
+      dismissOfflineNotif = $q.notify({
         icon: "wifi_off",
         type: "negative",
         message: "You are offline!",
@@ -733,10 +732,6 @@ function heathCheck() {
         actions: [{ label: "Close", color: "white", handler: heathCheck }],
       });
     }
-    console.log(
-      "Socket is closed. Reconnect will be attempted in 5 seconds.",
-      e.reason
-    );
     isOnline.value = false;
 
     setTimeout(function () {
@@ -745,7 +740,6 @@ function heathCheck() {
   };
 
   socket.onerror = function (err) {
-    console.error("Socket encountered error: ", err.message, "Closing socket");
     socket.close();
   };
 }
@@ -766,8 +760,15 @@ function onGridReady(params) {
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
   params.api.addEventListener("cancelChanges", async (ev) => {
-    await api
-      .patch("modbusRegisters/" + ev.data.id + "/cancel", {})
+    if (isOnline.value === false && liveMode.value) {
+      $q.notify({
+        type: "negative",
+        message: "You are offline!",
+      });
+      return;
+    }
+    await liveApi
+      .patch("modbus-registers/" + ev.data.id + "/cancel", {})
       .then(async (_res) => {
         gridApi.value.refreshServerSide();
         $q.notify({
@@ -778,25 +779,14 @@ function onGridReady(params) {
   });
 
   params.api.addEventListener("deleteRow", async (ev) => {
-    if (user.value && ev.data.status === "REVISION") {
-      await api.delete("modbusRegisters/" + ev.data.id).then(async (_res) => {
-        gridApi.value.refreshServerSide();
-        $q.notify({
-          type: "positive",
-          message: "The row has been deleted successfully",
-        });
+    const api = liveMode.value ? liveApi : localApi;
+    await api.delete("modbus-registers/" + ev.data.id).then(async (_res) => {
+      gridApi.value.refreshServerSide();
+      $q.notify({
+        type: "positive",
+        message: "The row has been deleted successfully",
       });
-    } else {
-      await localApi
-        .delete("modbus-registers/" + ev.data.id)
-        .then(async (_res) => {
-          gridApi.value.refreshServerSide();
-          $q.notify({
-            type: "positive",
-            message: "The row has been deleted successfully",
-          });
-        });
-    }
+    });
   });
 
   params.api.addEventListener("reviewNewRow", async (ev) => {
@@ -809,7 +799,7 @@ function onGridReady(params) {
 }
 function onFirstDataRendered(params) {
   const localState = localStorage.getItem("modbusRegisterGridState");
-  if (localState) {
+  if (localState && localState !== "undefined") {
     params.api.applyColumnState({
       state: JSON.parse(localState),
       applyOrder: true,
@@ -828,6 +818,7 @@ const autoSizeStrategy = {
 };
 
 function getServerSideDatasource() {
+  const api = liveMode.value ? liveApi : localApi;
   return {
     getRows: (params) => {
       const request = params.request;
@@ -836,7 +827,7 @@ function getServerSideDatasource() {
       }
       var limit = request.endRow - request.startRow;
       const sortCol = params.api.getColumn(request.sortModel[0]?.colId || 1);
-      localApi
+      api
         .get(
           "modbus-registers?limit=" +
             limit +
@@ -864,10 +855,18 @@ function getServerSideDatasource() {
 }
 
 function updateRow(event) {
+  if (isOnline.value === false && liveMode.value) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
+  let api = liveMode.value ? liveApi : localApi;
   const updateData = {
     [event.colDef.field]: event.newValue,
   };
-  localApi
+  api
     .patch("modbus-registers/" + event.data.id, { json: updateData })
     .then(async (res) => {
       res = await res.json();
@@ -897,7 +896,15 @@ function updateRow(event) {
 }
 
 function saveNewRow() {
-  localApi
+  if (isOnline.value === false && liveMode.value) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
+  let api = liveMode.value ? liveApi : localApi;
+  api
     .post("modbus-registers", { json: newItem.value })
     .then(async (res) => {
       res = await res.json();
@@ -922,9 +929,16 @@ function saveNewRow() {
 }
 
 async function getNotifications(offset = 0, limit = 10) {
+  if (isOnline.value === false) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
   try {
-    const res = await api.get(
-      "modbusRegisterNotifications?offset=" + offset + "&limit=" + limit
+    const res = await liveApi.get(
+      "modbus-register-notifications?offset=" + offset + "&limit=" + limit
     );
     const data = await res.json();
     return data;
@@ -934,10 +948,20 @@ async function getNotifications(offset = 0, limit = 10) {
   }
 }
 function notificationStatusChange(notification, status) {
-  api
-    .patch("modbusRegisterNotifications" + "/" + notification.id + "/status", {
-      json: { status: status },
-    })
+  if (isOnline.value === false) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
+  liveApi
+    .patch(
+      "modbus-register-notifications" + "/" + notification.id + "/status",
+      {
+        json: { status: status },
+      }
+    )
     .then(async (_res) => {
       notification.status = status;
       if (status === "ARCHIVED") {
@@ -964,6 +988,13 @@ function notificationChangesReviewAction(entry, type) {
 }
 
 function loadMoreNotifications(_index, done) {
+  if (isOnline.value === false) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
   if (notifications.value.length < 10) return done(true);
   getNotifications(notifications.value.length, 10).then((data) => {
     if (data.length > 0) {
@@ -975,13 +1006,22 @@ function loadMoreNotifications(_index, done) {
   });
 }
 function rejectEntryChanges(entry) {
-  api.patch("modbusRegisters/" + entry.id + "/reject").then(async (_res) => {
+  if (isOnline.value === false) {
     $q.notify({
-      type: "positive",
-      message: "Successfully rejected",
+      type: "negative",
+      message: "You are offline!",
     });
-    gridApi.value.refreshServerSide();
-  });
+    return;
+  }
+  liveApi
+    .patch("modbus-registers/" + entry.id + "/reject")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully rejected",
+      });
+      gridApi.value.refreshServerSide();
+    });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
   entry.action = "REJECTED";
@@ -989,14 +1029,23 @@ function rejectEntryChanges(entry) {
 }
 
 function approveEntryChanges(entry) {
-  api.patch("modbusRegisters/" + entry.id + "/approve").then(async (_res) => {
+  if (isOnline.value === false) {
     $q.notify({
-      type: "positive",
-      message: "Successfully approved",
+      type: "negative",
+      message: "You are offline!",
     });
-    gridApi.value.refreshServerSide();
-    entry.action = "APPROVED";
-  });
+    return;
+  }
+  liveApi
+    .patch("modbus-registers/" + entry.id + "/approve")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully approved",
+      });
+      gridApi.value.refreshServerSide();
+      entry.action = "APPROVED";
+    });
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
   updateEntryRelatedNotificationStatus(entry, "ADMIN_APPROVED");
@@ -1032,6 +1081,15 @@ function updateEntryRelatedNotificationStatus(entry, status) {
     notification.status = status;
   }
 }
+
+watch(liveMode, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    var datasource = getServerSideDatasource();
+    // register the datasource with the grid
+    gridApi.value.setGridOption("serverSideDatasource", datasource);
+    onFilterChanged();
+  }
+});
 </script>
 
 <style>

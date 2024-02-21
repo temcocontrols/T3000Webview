@@ -10,7 +10,7 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import api from "../../lib/api";
+import { liveApi } from "../../lib/api";
 import { globalNav } from "../../lib/common";
 import AppCard from "src/components/AppCard.vue";
 
@@ -19,7 +19,7 @@ const libData = ref([]);
 onMounted(async () => {
   globalNav.value.title = "Application Library";
   globalNav.value.back = null;
-  api
+  liveApi
     .get("t3Apps?limit=12")
     .then(async (res) => {
       libData.value = await res.json();

@@ -34,7 +34,7 @@ import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
 import { user, demoDeviceData, globalNav } from "../../lib/common";
-import api from "../../lib/api";
+import { liveApi } from "../../lib/api";
 
 const $q = useQuasar();
 const router = useRouter();
@@ -136,7 +136,7 @@ async function SaveApp() {
 }
 
 function saveToDB() {
-  api
+  liveApi
     .post("t3Apps", { json: appData.value })
     .then(async () => {
       router.push({ path: "/apps-library/user/apps" });
