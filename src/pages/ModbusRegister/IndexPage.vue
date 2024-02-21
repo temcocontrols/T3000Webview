@@ -710,38 +710,41 @@ function heathCheck() {
     intervalIsOnline = setInterval(() => {
       socket.send("statusCheck");
     }, 5000);
-    if (isOnline.value === false) {
-      $q.notify({
-        icon: "wifi",
-        type: "positive",
-        message: "You are online!",
-      });
-    }
     isOnline.value = true;
   };
 
   socket.onclose = function (e) {
-    clearInterval(intervalIsOnline);
-    if (isOnline.value) {
-      if (dismissOfflineNotif) dismissOfflineNotif();
-      dismissOfflineNotif = $q.notify({
-        icon: "wifi_off",
-        type: "negative",
-        message: "You are offline!",
-        timeout: 0,
-        actions: [{ label: "Close", color: "white", handler: heathCheck }],
-      });
-    }
-    isOnline.value = false;
-
+    clearisOnlineState();
     setTimeout(function () {
       heathCheck();
     }, 5000);
   };
 
   socket.onerror = function (err) {
+    if (socket.readyState === WebSocket.CLOSED) {
+      clearisOnlineState();
+      setTimeout(function () {
+        heathCheck();
+      }, 5000);
+      return;
+    }
     socket.close();
   };
+}
+
+function clearisOnlineState() {
+  if (intervalIsOnline) clearInterval(intervalIsOnline);
+  if (isOnline.value) {
+    if (dismissOfflineNotif) dismissOfflineNotif();
+    dismissOfflineNotif = $q.notify({
+      icon: "wifi_off",
+      type: "negative",
+      message: "You are offline!",
+      timeout: 0,
+      actions: [{ label: "Close", color: "white", handler: heathCheck }],
+    });
+  }
+  isOnline.value = false;
 }
 
 function loadNotifications() {
