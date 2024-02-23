@@ -30,12 +30,13 @@ pub struct ModbusRegister {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ModbusRegisterPagination {
+pub struct ModbusRegisterQueryParams {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub order_by: Option<ModbusRegisterColumns>,
     pub order_dir: Option<OrderByDirection>,
     pub filter: Option<String>,
+    pub local_only: Option<bool>,
 }
 
 #[derive(Deserialize, Display, Debug)]

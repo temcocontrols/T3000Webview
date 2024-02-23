@@ -11,7 +11,7 @@ use sqlx::{Pool, Sqlite};
 
 use super::{
     models::{
-        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterPagination,
+        CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterQueryParams,
         ModbusRegisterResponse, UpdateModbusRegisterItemInput,
     },
     queries::{
@@ -34,9 +34,9 @@ pub fn modbus_register_routes() -> Router<Pool<Sqlite>> {
 
 async fn list(
     State(conn): State<Pool<Sqlite>>,
-    Query(pagination): Query<ModbusRegisterPagination>,
+    Query(filters): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let res = list_modbus_register_items(&conn, pagination).await?;
+    let res = list_modbus_register_items(&conn, filters).await?;
 
     Ok(Json(res))
 }

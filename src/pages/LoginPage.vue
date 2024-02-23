@@ -42,10 +42,6 @@ onMounted(() => {
     } else if (data.type === "token") {
       loginWindow.value?.close();
       loginWindow.value = null;
-      window.chrome?.webview?.postMessage({
-        action: 12, // SAVE_USER_LOGIN
-        data: { user: data.user, token: data.token },
-      });
       loggedIn.value = true;
       user.value = data.user;
       $q.cookies.set("token", data.token, {

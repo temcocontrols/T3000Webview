@@ -1,52 +1,64 @@
 use super::models::{
-    CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns, ModbusRegisterPagination,
-    ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
+    CreateModbusRegisterItemInput, ModbusRegister, ModbusRegisterColumns,
+    ModbusRegisterQueryParams, ModbusRegisterResponse, OrderByDirection,
+    UpdateModbusRegisterItemInput,
 };
 use crate::error::{Error, Result};
 use sqlx::{Pool, QueryBuilder, Sqlite};
 
-fn generate_filter_query(filter: Option<String>, base_query: String) -> String {
-    match filter {
-        Some(filter) => {
-            let filter_num = filter.parse::<i32>();
-            let mut query = format!(
-                "{base_query} WHERE ( register_name LIKE '%' || $1 || '%'
-            OR operation LIKE '%' || $1 || '%'
-            OR description LIKE '%' || $1 || '%'
-            OR device_name LIKE '%' || $1 || '%'
-            OR data_format LIKE '%' || $1 || '%'
-            OR unit LIKE '%' || $1 || '%'"
-            );
+fn generate_filter_query(filter: &Option<String>, base_query: String) -> String {
+    let fields = [
+        "register_name",
+        "operation",
+        "description",
+        "device_name",
+        "data_format",
+        "unit",
+    ];
 
-            if filter_num.is_ok() {
-                query = format!(
-                    "{query} OR id LIKE $1
-                OR register_address LIKE $1 )"
-                );
-            } else {
-                query = format!("{query} )");
+    let final_query = match filter {
+        Some(filter) => {
+            let filter_num = filter.parse::<i32>().is_ok();
+            let mut query = base_query.to_owned() + " AND ( ";
+            for field in &fields {
+                query += &format!("{} LIKE '%' || $1 || '%' OR ", field);
             }
-            format!("{query} AND status NOT LIKE 'DELETED'", query = query)
+            if filter_num {
+                query += "id LIKE $1 OR register_address LIKE $1 )";
+            } else {
+                query = query.trim_end_matches(" OR ").to_owned() + " )";
+            }
+            query
         }
         None => base_query,
-    }
+    };
+    final_query
 }
 
 pub async fn list_modbus_register_items(
     conn: &Pool<Sqlite>,
-    pagination: ModbusRegisterPagination,
+    filters: ModbusRegisterQueryParams,
 ) -> Result<ModbusRegisterResponse> {
     let base_sql_query = "SELECT * FROM modbus_register".to_string();
     let base_count_query = "SELECT COUNT(*) FROM modbus_register".to_string();
 
-    let sql_query = generate_filter_query(pagination.filter.clone(), base_sql_query);
-    let count_query = generate_filter_query(pagination.filter.clone(), base_count_query);
+    let sql_query = match filters.local_only {
+        Some(true) => format!("{} WHERE status IN ( 'NEW', 'UPDATED' )", base_sql_query),
+        _ => format!("{} WHERE status NOT LIKE 'DELETED'", base_sql_query),
+    };
+    let count_query = match filters.local_only {
+        Some(true) => format!("{} WHERE status IN ( 'NEW', 'UPDATED' )", base_count_query),
+        _ => format!("{} WHERE status NOT LIKE 'DELETED'", base_count_query),
+    };
+    let filter = filters.filter.clone();
+    let sql_query = generate_filter_query(&filter, sql_query);
+    let count_query = generate_filter_query(&filter, count_query);
 
-    let order_by = pagination
+    let order_by = filters
         .order_by
         .as_ref()
         .unwrap_or(&ModbusRegisterColumns::Id);
-    let order_dir = pagination
+    let order_dir = filters
         .order_dir
         .as_ref()
         .unwrap_or(&OrderByDirection::Desc);
@@ -57,15 +69,15 @@ pub async fn list_modbus_register_items(
     );
 
     let count = sqlx::query_scalar::<_, i64>(&count_query)
-        .bind(&pagination.filter.clone().unwrap_or("".to_string()))
+        .bind(&filters.filter.clone().unwrap_or("".to_string()))
         .fetch_one(conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
     let results = sqlx::query_as::<_, ModbusRegister>(&sql_query)
-        .bind(&pagination.filter.clone().unwrap_or("".to_string()))
-        .bind(&pagination.limit.clone().unwrap_or(100))
-        .bind(&pagination.offset.clone().unwrap_or(0))
+        .bind(&filters.filter.clone().unwrap_or("".to_string()))
+        .bind(&filters.limit.clone().unwrap_or(100))
+        .bind(&filters.offset.clone().unwrap_or(0))
         .fetch_all(conn)
         .await;
 
