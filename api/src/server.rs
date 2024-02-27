@@ -12,15 +12,15 @@ use tower_http::{
     services::ServeDir,
 };
 
-use super::{db_connection::establish_connection, modbus_register::routes::modbus_register_routes};
+use crate::app_state;
+
+use super::modbus_register::routes::modbus_register_routes;
 
 pub async fn server_start() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
-
-    let conn = establish_connection().await;
 
     let cors = CorsLayer::new()
         .allow_methods([
@@ -38,7 +38,7 @@ pub async fn server_start() {
     let app = Router::new()
         .nest("/api", modbus_register_routes())
         .layer(cors)
-        .with_state(conn)
+        .with_state(app_state::app_state().await)
         .fallback_service(routes_static());
 
     let server_port = env::var("PORT").unwrap_or("9103".to_string());

@@ -1,4 +1,4 @@
-CREATE TABLE modbus_register_items (
+CREATE TABLE modbus_register (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     register_address INTEGER NOT NULL,
     operation TEXT,
@@ -14,16 +14,16 @@ CREATE TABLE modbus_register_items (
 );
 
 CREATE TRIGGER update_timestamp
-AFTER UPDATE ON modbus_register_items
+AFTER UPDATE ON modbus_register
 FOR EACH ROW
 BEGIN
-    UPDATE modbus_register_items SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
+    UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
 END;
 
 CREATE TRIGGER update_status
-AFTER UPDATE ON modbus_register_items
+AFTER UPDATE ON modbus_register
 FOR EACH ROW
 WHEN OLD.status = 'PUBLISHED'
 BEGIN
-    UPDATE modbus_register_items SET status = 'UPDATED' WHERE id = OLD.id;
+    UPDATE modbus_register SET status = 'UPDATED' WHERE id = OLD.id;
 END;

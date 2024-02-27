@@ -7,7 +7,6 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
-use sqlx::{Pool, Sqlite};
 
 use super::{
     models::{
@@ -18,11 +17,17 @@ use super::{
         create_modbus_register_item, delete_modbus_register_item, list_modbus_register_items,
         update_modbus_register_item,
     },
+    settings_queries,
 };
-use crate::error::{Error, Result};
+use crate::{
+    app_state::AppState,
+    error::{Error, Result},
+};
 
-pub fn modbus_register_routes() -> Router<Pool<Sqlite>> {
-    let open_routes = Router::new().route("/modbus-registers", get(list));
+pub fn modbus_register_routes() -> Router<AppState> {
+    let open_routes = Router::new()
+        .route("/modbus-registers", get(list))
+        .route("/modbus_register_settings", get(settings_queries::get_all));
 
     let protected_routes = Router::new()
         .route("/modbus-registers", post(create))
@@ -33,38 +38,38 @@ pub fn modbus_register_routes() -> Router<Pool<Sqlite>> {
 }
 
 async fn list(
-    State(conn): State<Pool<Sqlite>>,
+    State(state): State<AppState>,
     Query(filters): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let res = list_modbus_register_items(&conn, filters).await?;
+    let res = list_modbus_register_items(&state.conn, filters).await?;
 
     Ok(Json(res))
 }
 
 async fn create(
-    State(conn): State<Pool<Sqlite>>,
+    State(state): State<AppState>,
     Json(payload): Json<CreateModbusRegisterItemInput>,
 ) -> Result<Json<ModbusRegister>> {
-    let item = create_modbus_register_item(&conn, payload).await?;
+    let item = create_modbus_register_item(&state.conn, payload).await?;
 
     Ok(Json(item))
 }
 
 async fn update(
-    State(conn): State<Pool<Sqlite>>,
+    State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateModbusRegisterItemInput>,
 ) -> Result<Json<ModbusRegister>> {
-    let item = update_modbus_register_item(&conn, id, payload).await?;
+    let item = update_modbus_register_item(&state.conn, id, payload).await?;
 
     Ok(Json(item))
 }
 
 async fn delete(
-    State(conn): State<Pool<Sqlite>>,
+    State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<ModbusRegister>> {
-    let item = delete_modbus_register_item(&conn, id).await?;
+    let item = delete_modbus_register_item(&state.conn, id).await?;
 
     Ok(Json(item))
 }

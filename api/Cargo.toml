@@ -22,6 +22,16 @@ serde_with = "3.6.1"
 tower-http = {version = "0.5.1", features = ["cors", "fs"]}
 dotenvy = "0.15.7"
 
+[dependencies.sea-orm]
+version = "1.0.0-rc.1" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio",
+    # "sqlx-postgres",
+    # "sqlx-mysql",
+    "sqlx-sqlite",
+]
+
 [profile.release]
 strip = true
 opt-level = "z"

@@ -1,4 +1,6 @@
+pub mod app_state;
 pub mod db_connection;
+pub mod entity;
 pub mod error;
 pub mod modbus_register;
 pub mod server;
