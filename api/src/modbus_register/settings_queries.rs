@@ -1,63 +1,100 @@
+use axum::extract::Path;
 use axum::extract::State;
 use axum::Json;
 use sea_orm::entity::prelude::*;
+use sea_orm::ActiveValue::NotSet;
+use sea_orm::Set;
 
 use crate::app_state::AppState;
-use crate::entity::modbus_register_settings::Entity as Setting;
-use crate::entity::modbus_register_settings::Model as SettingModel;
+use crate::entity::modbus_register_settings as Setting;
 use crate::error::{Error, Result};
 
+use super::models::UpdateSettingModel;
+
 // Handler to get all records
-pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<SettingModel>>> {
-    let results = Setting::find().all(&state.sea_orm_conn).await;
+pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<Setting::Model>>> {
+    let results = Setting::Entity::find().all(&state.sea_orm_conn).await;
     match results {
         Ok(items) => Ok(Json(items)),
         Err(error) => Err(Error::DbError(error.to_string())),
     }
 }
 
-// // Handler to get a specific record
-// async fn get_one(
-//     Path(name): Path<String>,
-//     db: Extension<Database>,
-// ) -> Result<Json<Setting>, http::StatusCode> {
-//     let result = Setting::find_by_id(name)
-//         .one(&db.0)
-//         .await
-//         .map_err(|_| http::StatusCode::INTERNAL_SERVER_ERROR)?;
-//     match result {
-//         Some(model) => Ok(Json(model)),
-//         None => Err(http::StatusCode::NOT_FOUND),
-//     }
-// }
+pub async fn get_by_name(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Setting::Model>> {
+    let result = Setting::Entity::find_by_id(name)
+        .one(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))
+        .unwrap();
+    match result {
+        Some(item) => Ok(Json(item)),
+        None => Err(Error::NotFound),
+    }
+}
 
-// // Handler to create a new record
-// async fn create(
-//     new_model: Json<Setting>,
-//     db: Extension<Database>,
-// ) -> Result<Json<Setting>, http::StatusCode> {
-//     let mut model = new_model.into_inner();
-//     model
-//         .save(&db.0)
-//         .await
-//         .map_err(|_| http::StatusCode::INTERNAL_SERVER_ERROR)?;
-//     Ok(Json(model))
-// }
+pub async fn create(
+    State(state): State<AppState>,
+    Json(item): Json<Setting::Model>,
+) -> Result<Json<Setting::Model>> {
+    let result = Setting::Entity::insert(Setting::ActiveModel::from(item))
+        .exec_with_returning(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))
+        .unwrap();
 
-// // Handler to delete a record
-// async fn delete(Path(name): Path<String>, db: Extension<Database>) -> Result<(), http::StatusCode> {
-//     let model = Setting::find_by_id(name)
-//         .one(&db.0)
-//         .await
-//         .map_err(|_| http::StatusCode::INTERNAL_SERVER_ERROR)?;
-//     match model {
-//         Some(mut model) => {
-//             model
-//                 .delete(&db.0)
-//                 .await
-//                 .map_err(|_| http::StatusCode::INTERNAL_SERVER_ERROR)?;
-//             Ok(())
-//         }
-//         None => Err(http::StatusCode::NOT_FOUND),
-//     }
-// }
+    Ok(Json(result))
+}
+
+pub async fn update(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(item): Json<UpdateSettingModel>,
+) -> Result<Json<Setting::Model>> {
+    let setting: Setting::ActiveModel = Setting::Entity::find_by_id(name)
+        .one(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?
+        .ok_or(Error::NotFound)
+        .map(Into::into)?;
+
+    let result = Setting::ActiveModel {
+        name: setting.name,
+        value: match item.value {
+            Some(value) => Set(value),
+            None => NotSet,
+        },
+        json_value: match item.json_value {
+            Some(json_value) => Set(json_value),
+            None => NotSet,
+        },
+    }
+    .update(&state.sea_orm_conn)
+    .await
+    .map_err(|error| Error::DbError(error.to_string()))
+    .unwrap();
+
+    Ok(Json(result))
+}
+
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Setting::Model>> {
+    let setting = Setting::Entity::find_by_id(&name)
+        .one(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?
+        .ok_or(Error::NotFound)
+        .map(Into::into)?;
+
+    Setting::Entity::delete_by_id(&name)
+        .exec(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))
+        .unwrap();
+
+    Ok(Json(setting))
+}

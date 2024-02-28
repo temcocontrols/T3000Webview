@@ -107,3 +107,12 @@ pub struct ModbusRegisterResponse {
     pub data: Vec<ModbusRegister>,
     pub count: i64,
 }
+
+#[derive(Debug, Deserialize)]
+#[skip_serializing_none]
+pub struct UpdateSettingModel {
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub value: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub json_value: Option<Option<serde_json::Value>>,
+}

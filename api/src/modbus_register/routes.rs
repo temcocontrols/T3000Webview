@@ -27,11 +27,20 @@ use crate::{
 pub fn modbus_register_routes() -> Router<AppState> {
     let open_routes = Router::new()
         .route("/modbus-registers", get(list))
-        .route("/modbus_register_settings", get(settings_queries::get_all));
+        .route("/modbus-register-settings", get(settings_queries::get_all))
+        .route(
+            "/modbus-register-settings/:name",
+            get(settings_queries::get_by_name),
+        );
 
     let protected_routes = Router::new()
         .route("/modbus-registers", post(create))
         .route("/modbus-registers/:id", patch(update).delete(delete))
+        .route("/modbus-register-settings", post(settings_queries::create))
+        .route(
+            "/modbus-register-settings/:name",
+            patch(settings_queries::update).delete(settings_queries::delete),
+        )
         .route_layer(middleware::from_fn(require_auth));
 
     open_routes.merge(protected_routes)
@@ -39,9 +48,9 @@ pub fn modbus_register_routes() -> Router<AppState> {
 
 async fn list(
     State(state): State<AppState>,
-    Query(filters): Query<ModbusRegisterQueryParams>,
+    Query(params): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let res = list_modbus_register_items(&state.conn, filters).await?;
+    let res = list_modbus_register_items(&state.conn, params).await?;
 
     Ok(Json(res))
 }
