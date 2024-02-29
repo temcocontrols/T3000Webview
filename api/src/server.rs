@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fs, path::Path};
 
 use axum::{
     http::{Method, StatusCode},
@@ -22,6 +22,27 @@ pub async fn server_start() {
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
+
+    /* Check if the database file exists in Database/webview_database.db and if it's not then
+    copy it from ResourceFile/webview_database.db */
+    let database_url =
+        env::var("DATABASE_URL").unwrap_or("sqlite://Database/webview_database.db".to_string());
+    let source_db_path = "ResourceFile/webview_database.db";
+    let destination_db_path = database_url
+        .strip_prefix("sqlite://")
+        .expect("Invalid database url");
+
+    println!("destination_db_path: {:?}", destination_db_path);
+
+    let destination_dir = Path::new(destination_db_path).parent().unwrap();
+
+    if !destination_dir.exists() {
+        fs::create_dir_all(destination_dir).expect("Failed to create directory");
+    }
+
+    if !Path::new(destination_db_path).exists() {
+        fs::copy(source_db_path, destination_db_path).expect("Failed to copy database file");
+    }
 
     let cors = CorsLayer::new()
         .allow_methods([
