@@ -2,3 +2,4 @@
 
 pub use super::modbus_register::Entity as ModbusRegister;
 pub use super::modbus_register_settings::Entity as ModbusRegisterSettings;
+pub use super::user::Entity as User;

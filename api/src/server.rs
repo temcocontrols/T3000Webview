@@ -15,6 +15,7 @@ use tower_http::{
 use crate::app_state;
 
 use super::modbus_register::routes::modbus_register_routes;
+use super::user::routes::user_routes;
 
 pub async fn server_start() {
     // initialize tracing
@@ -36,7 +37,7 @@ pub async fn server_start() {
 
     // build our application with a route
     let app = Router::new()
-        .nest("/api", modbus_register_routes())
+        .nest("/api", modbus_register_routes().merge(user_routes()))
         .layer(cors)
         .with_state(app_state::app_state().await)
         .fallback_service(routes_static());

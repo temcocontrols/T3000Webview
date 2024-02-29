@@ -4,3 +4,4 @@ pub mod prelude;
 
 pub mod modbus_register;
 pub mod modbus_register_settings;
+pub mod user;

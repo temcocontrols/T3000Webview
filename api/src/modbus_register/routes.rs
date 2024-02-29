@@ -1,9 +1,6 @@
 use axum::{
-    body::Body,
     extract::{Path, Query, State},
-    http::{self, Request},
-    middleware::{self, Next},
-    response::Response,
+    middleware,
     routing::{get, patch, post},
     Json, Router,
 };
@@ -19,10 +16,7 @@ use super::{
     },
     settings_queries,
 };
-use crate::{
-    app_state::AppState,
-    error::{Error, Result},
-};
+use crate::{app_state::AppState, auth::require_auth, error::Result};
 
 pub fn modbus_register_routes() -> Router<AppState> {
     let open_routes = Router::new()
@@ -81,18 +75,4 @@ async fn delete(
     let item = delete_modbus_register_item(&state.conn, id).await?;
 
     Ok(Json(item))
-}
-
-pub async fn require_auth(req: Request<Body>, next: Next) -> Result<Response> {
-    let auth_header = req
-        .headers()
-        .get(http::header::AUTHORIZATION)
-        .and_then(|header| header.to_str().ok())
-        .unwrap_or("");
-    let secret = option_env!("API_SECRET_KEY").unwrap_or("secret");
-    if auth_header != secret {
-        return Err(Error::Unauthorized);
-    }
-
-    Ok(next.run(req).await)
 }
