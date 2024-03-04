@@ -2,7 +2,7 @@ use std::env;
 
 use axum::{
     http::{Method, StatusCode},
-    routing::{get, get_service},
+    routing::get_service,
     Router,
 };
 
@@ -17,6 +17,7 @@ use crate::{app_state, utils::copy_database_if_not_exists};
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
+// This function returns your Router
 pub async fn create_app() -> Router {
     let cors = CorsLayer::new()
         .allow_methods([
@@ -30,7 +31,6 @@ pub async fn create_app() -> Router {
         .allow_origin(Any);
 
     Router::new()
-        .route("/api", get(|| async { (StatusCode::OK, "API") }))
         .nest("/api", modbus_register_routes().merge(user_routes()))
         .layer(cors)
         .with_state(app_state::app_state().await)
