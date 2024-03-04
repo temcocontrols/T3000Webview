@@ -6,6 +6,7 @@ pub mod error;
 pub mod modbus_register;
 pub mod server;
 pub mod user;
+pub mod utils;
 
 #[repr(C)]
 pub enum RustError {

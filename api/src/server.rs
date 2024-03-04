@@ -1,8 +1,8 @@
-use std::{env, fs, path::Path};
+use std::env;
 
 use axum::{
     http::{Method, StatusCode},
-    routing::get_service,
+    routing::{get, get_service},
     Router,
 };
 
@@ -12,37 +12,12 @@ use tower_http::{
     services::ServeDir,
 };
 
-use crate::app_state;
+use crate::{app_state, utils::copy_database_if_not_exists};
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
-pub async fn server_start() -> Result<(), Box<dyn std::error::Error>> {
-    // initialize tracing
-    tracing_subscriber::fmt::init();
-
-    dotenvy::dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://Database/webview_database.db".to_string());
-
-    let source_db_path = "ResourceFile/webview_database.db";
-    let destination_db_path = database_url
-        .strip_prefix("sqlite://")
-        .ok_or("Invalid database url")?;
-
-    let destination_dir = Path::new(destination_db_path)
-        .parent()
-        .ok_or("Invalid destination database path")?;
-
-    if !destination_dir.exists() {
-        fs::create_dir_all(destination_dir)?;
-    }
-
-    if !Path::new(destination_db_path).exists() {
-        fs::copy(source_db_path, destination_db_path)?;
-    }
-
+pub async fn create_app() -> Router {
     let cors = CorsLayer::new()
         .allow_methods([
             Method::GET,
@@ -54,11 +29,23 @@ pub async fn server_start() -> Result<(), Box<dyn std::error::Error>> {
         .allow_headers(Any)
         .allow_origin(Any);
 
-    let app = Router::new()
+    Router::new()
+        .route("/api", get(|| async { (StatusCode::OK, "API") }))
         .nest("/api", modbus_register_routes().merge(user_routes()))
         .layer(cors)
         .with_state(app_state::app_state().await)
-        .fallback_service(routes_static());
+        .fallback_service(routes_static())
+}
+
+pub async fn server_start() -> Result<(), Box<dyn std::error::Error>> {
+    // initialize tracing
+    tracing_subscriber::fmt::init();
+
+    dotenvy::dotenv().ok();
+
+    copy_database_if_not_exists()?;
+
+    let app = create_app().await;
 
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
 
