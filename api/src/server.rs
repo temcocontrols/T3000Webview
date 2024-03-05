@@ -17,7 +17,6 @@ use crate::{app_state, utils::copy_database_if_not_exists};
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
-// This function returns your Router
 pub async fn create_app() -> Router {
     let cors = CorsLayer::new()
         .allow_methods([

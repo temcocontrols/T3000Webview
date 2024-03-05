@@ -7,20 +7,12 @@ lazy_static! {
 }
 
 pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
-        let source_db_path = Path::new("ResourceFile/webview_database.db");
+    let source_db_path = Path::new("ResourceFile/webview_database.db");
     let destination_db_path = Path::new(
-      DATABASE_URL
+        DATABASE_URL
             .strip_prefix("sqlite://")
             .ok_or("Invalid database url")?,
     );
-
-    // Check if the source database file exists
-    if !source_db_path.exists() {
-        return Err(From::from(format!(
-            "Source database file does not exist: {:?}",
-            source_db_path
-        )));
-    }
 
     let destination_dir = destination_db_path
         .parent()
@@ -34,6 +26,13 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 
     // Copy the database file if it doesn't exist in the destination directory
     if !destination_db_path.exists() {
+        // Check if the source database file exists
+        if !source_db_path.exists() {
+            return Err(From::from(format!(
+                "Source database file does not exist: {:?}",
+                source_db_path
+            )));
+        }
         fs::copy(&source_db_path, &destination_db_path)?;
         println!(
             "Copied database file from {:?} to {:?}",
