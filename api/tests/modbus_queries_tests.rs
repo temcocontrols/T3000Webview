@@ -2,13 +2,17 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use serde_json::Value;
 use t3_webview_api::{
     app_state::app_state,
+    entity::modbus_register_settings,
     modbus_register::{
         models::{
-            CreateModbusRegisterItemInput, ModbusRegisterQueryParams, UpdateModbusRegisterItemInput,
+            CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
+            UpdateModbusRegisterItemInput, UpdateSettingModel,
         },
         queries::{create, delete, generate_filter_query, list, update},
+        settings_queries,
     },
 };
 
@@ -91,7 +95,6 @@ async fn test_modbus_register_update() {
         unit: Some(Some("updated".to_string())),
     };
     let result = update(State(app_state().await), id, Json(payload)).await;
-    println!("Result: {:?}", result);
     assert!(result.is_ok());
 }
 
@@ -118,6 +121,39 @@ async fn test_modbus_register_delete() {
 
     let id = Path(item.id);
     let result = delete(State(app_state().await), id).await;
-    println!("Result: {:?}", result);
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_modbus_register_settings_crud() {
+    dotenvy::from_filename("./tests/.test.env").ok();
+
+    let conn = t3_webview_api::db_connection::establish_connection().await;
+    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    let result = settings_queries::get_all(State(app_state().await)).await;
+    assert!(result.is_ok());
+
+    let payload = modbus_register_settings::Model {
+        name: "test".to_string(),
+        value: Some("test".to_string()),
+        json_value: Some(Value::String("test".to_string())),
+    };
+    let result = settings_queries::create(State(app_state().await), Json(payload)).await;
+    assert!(result.is_ok());
+
+    let name = Path("test".to_string());
+    let result = settings_queries::get_by_name(State(app_state().await), name).await;
+    assert!(result.is_ok());
+
+    let name = Path("test".to_string());
+    let payload = UpdateSettingModel {
+        value: Some(Some("updated".to_string())),
+        json_value: Some(Some(Value::String("updated".to_string()))),
+    };
+    let result = settings_queries::update(State(app_state().await), name, Json(payload)).await;
+    assert!(result.is_ok());
+
+    let name = Path("test".to_string());
+    let result = settings_queries::delete(State(app_state().await), name).await;
     assert!(result.is_ok());
 }

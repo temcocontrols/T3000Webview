@@ -98,11 +98,11 @@ pub async fn create(
     Json(payload): Json<CreateModbusRegisterItemInput>,
 ) -> Result<Json<ModbusRegisterModel>> {
     let item = sqlx::query_as::<_, ModbusRegisterModel>(
-  r#"
-  INSERT INTO modbus_register (register_address, operation, register_length, register_name, data_format, description, device_name, unit)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-  RETURNING *
-  "#,
+      r#"
+      INSERT INTO modbus_register (register_address, operation, register_length, register_name, data_format, description, device_name, unit)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+      "#,
 )
 .bind(payload.register_address)
 .bind(payload.operation)
@@ -170,10 +170,10 @@ pub async fn delete(
 ) -> Result<Json<ModbusRegisterModel>> {
     let item = sqlx::query_as::<_, ModbusRegisterModel>(
         r#"
-  SELECT * FROM modbus_register
-  WHERE id = $1
-  AND status NOT LIKE 'DELETED'
-  "#,
+        SELECT * FROM modbus_register
+        WHERE id = $1
+        AND status NOT LIKE 'DELETED'
+        "#,
     )
     .bind(id)
     .fetch_one(&state.conn)
@@ -185,10 +185,10 @@ pub async fn delete(
     if item.is_ok() && item.as_ref().unwrap().status == "NEW" {
         return sqlx::query_as::<_, ModbusRegisterModel>(
             r#"
-    DELETE FROM modbus_register
-    WHERE id = $1
-    RETURNING *
-    "#,
+            DELETE FROM modbus_register
+            WHERE id = $1
+            RETURNING *
+            "#,
         )
         .bind(id)
         .fetch_one(&state.conn)
@@ -198,10 +198,10 @@ pub async fn delete(
     }
     sqlx::query_as::<_, ModbusRegisterModel>(
         r#"
-  UPDATE modbus_register SET status = 'DELETED'
-  WHERE id = $1
-  RETURNING *
-  "#,
+        UPDATE modbus_register SET status = 'DELETED'
+        WHERE id = $1
+        RETURNING *
+        "#,
     )
     .bind(id)
     .fetch_one(&state.conn)
