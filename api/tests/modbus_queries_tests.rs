@@ -26,11 +26,25 @@ async fn test_modbus_register_generate_filter_query() {
 }
 
 #[tokio::test]
-async fn test_modbus_register_list() {
+async fn test_modbus_register_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
     let conn = t3_webview_api::db_connection::establish_connection().await;
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    let payload = CreateModbusRegisterItemInput {
+        register_name: Some("test".to_string()),
+        register_address: 1,
+        operation: Some("test".to_string()),
+        description: Some("test".to_string()),
+        device_name: "test".to_string(),
+        data_format: "test".to_string(),
+        unit: Some("test".to_string()),
+        register_length: 1,
+    };
+    let item = create(State(app_state().await), Json(payload)).await;
+    assert!(item.is_ok());
+    let item = item.unwrap();
+
     let params = ModbusRegisterQueryParams {
         local_only: None,
         filter: None,
@@ -41,47 +55,8 @@ async fn test_modbus_register_list() {
     };
     let result = list(State(app_state().await), Query(params)).await;
     assert!(result.is_ok());
-}
 
-#[tokio::test]
-async fn test_modbus_register_create() {
-    dotenvy::from_filename("./tests/.test.env").ok();
-
-    let conn = t3_webview_api::db_connection::establish_connection().await;
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-    let payload = CreateModbusRegisterItemInput {
-        register_name: Some("test".to_string()),
-        register_address: 1,
-        operation: Some("test".to_string()),
-        description: Some("test".to_string()),
-        device_name: "test".to_string(),
-        data_format: "test".to_string(),
-        unit: Some("test".to_string()),
-        register_length: 1,
-    };
-    let result = create(State(app_state().await), Json(payload)).await;
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_modbus_register_update() {
-    dotenvy::from_filename("./tests/.test.env").ok();
-
-    let conn = t3_webview_api::db_connection::establish_connection().await;
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-    let payload = CreateModbusRegisterItemInput {
-        register_name: Some("test".to_string()),
-        register_address: 1,
-        operation: Some("test".to_string()),
-        description: Some("test".to_string()),
-        device_name: "test".to_string(),
-        data_format: "test".to_string(),
-        unit: Some("test".to_string()),
-        register_length: 1,
-    };
-    let item = create(State(app_state().await), Json(payload))
-        .await
-        .unwrap();
+    assert_eq!(result.unwrap().0.data[0].id, item.id);
 
     let id = Path(item.id);
     let payload = UpdateModbusRegisterItemInput {
@@ -96,28 +71,7 @@ async fn test_modbus_register_update() {
     };
     let result = update(State(app_state().await), id, Json(payload)).await;
     assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_modbus_register_delete() {
-    dotenvy::from_filename("./tests/.test.env").ok();
-
-    let conn = t3_webview_api::db_connection::establish_connection().await;
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-
-    let payload = CreateModbusRegisterItemInput {
-        register_name: Some("test".to_string()),
-        register_address: 1,
-        operation: Some("test".to_string()),
-        description: Some("test".to_string()),
-        device_name: "test".to_string(),
-        data_format: "test".to_string(),
-        unit: Some("test".to_string()),
-        register_length: 1,
-    };
-    let item = create(State(app_state().await), Json(payload))
-        .await
-        .unwrap();
+    assert_ne!(result.unwrap().data_format, item.data_format);
 
     let id = Path(item.id);
     let result = delete(State(app_state().await), id).await;
@@ -130,8 +84,6 @@ async fn test_modbus_register_settings_crud() {
 
     let conn = t3_webview_api::db_connection::establish_connection().await;
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-    let result = settings_queries::get_all(State(app_state().await)).await;
-    assert!(result.is_ok());
 
     let payload = modbus_register_settings::Model {
         name: "test".to_string(),
@@ -140,6 +92,10 @@ async fn test_modbus_register_settings_crud() {
     };
     let result = settings_queries::create(State(app_state().await), Json(payload)).await;
     assert!(result.is_ok());
+
+    let result = settings_queries::get_all(State(app_state().await)).await;
+    assert!(result.is_ok());
+    assert!(result.unwrap().len() == 1);
 
     let name = Path("test".to_string());
     let result = settings_queries::get_by_name(State(app_state().await), name).await;
@@ -152,6 +108,7 @@ async fn test_modbus_register_settings_crud() {
     };
     let result = settings_queries::update(State(app_state().await), name, Json(payload)).await;
     assert!(result.is_ok());
+    assert_eq!(result.unwrap().value, Some("updated".to_string()));
 
     let name = Path("test".to_string());
     let result = settings_queries::delete(State(app_state().await), name).await;
