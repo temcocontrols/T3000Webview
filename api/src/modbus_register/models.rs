@@ -73,7 +73,7 @@ impl Display for ModbusRegisterColumns {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModbusRegisterItemInput {
     pub register_address: i32,
     pub operation: Option<String>,

@@ -28,7 +28,6 @@ async fn test_modbus_register_generate_filter_query() {
 #[tokio::test]
 async fn test_modbus_register_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-
     let conn = t3_webview_api::db_connection::establish_connection().await;
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
     let payload = CreateModbusRegisterItemInput {

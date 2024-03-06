@@ -96,27 +96,25 @@ pub async fn list(
 pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateModbusRegisterItemInput>,
-) -> Result<Json<ModbusRegisterModel>> {
-    let item = sqlx::query_as::<_, ModbusRegisterModel>(
-      r#"
-      INSERT INTO modbus_register (register_address, operation, register_length, register_name, data_format, description, device_name, unit)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-      "#,
-)
-.bind(payload.register_address)
-.bind(payload.operation)
-.bind(payload.register_length)
-.bind(payload.register_name)
-.bind(payload.data_format)
-.bind(payload.description)
-.bind(payload.device_name)
-.bind(payload.unit)
-.fetch_one(&state.conn)
-.await;
+) -> Result<Json<modbus_register::Model>> {
+    let model = modbus_register::ActiveModel {
+        register_address: Set(payload.register_address),
+        operation: Set(payload.operation),
+        register_length: Set(payload.register_length),
+        register_name: Set(payload.register_name),
+        data_format: Set(payload.data_format),
+        description: Set(payload.description),
+        device_name: Set(payload.device_name),
+        unit: Set(payload.unit),
+        ..Default::default()
+    };
 
-    item.map(|item| Json(item))
-        .map_err(|error| Error::DbError(error.to_string()))
+    let res = model
+        .save(&state.sea_orm_conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(res.try_into_model().unwrap()))
 }
 
 pub async fn update(
@@ -167,45 +165,29 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<Json<ModbusRegisterModel>> {
-    let item = sqlx::query_as::<_, ModbusRegisterModel>(
-        r#"
-        SELECT * FROM modbus_register
-        WHERE id = $1
-        AND status NOT LIKE 'DELETED'
-        "#,
-    )
-    .bind(id)
-    .fetch_one(&state.conn)
-    .await;
-    if item.is_err() {
-        return Err(Error::NotFound);
-    }
+) -> Result<Json<modbus_register::Model>> {
+    let item = ModbusRegister::find_by_id(id)
+        .one(&state.sea_orm_conn)
+        .await;
 
-    if item.is_ok() && item.as_ref().unwrap().status == "NEW" {
-        return sqlx::query_as::<_, ModbusRegisterModel>(
-            r#"
-            DELETE FROM modbus_register
-            WHERE id = $1
-            RETURNING *
-            "#,
-        )
-        .bind(id)
-        .fetch_one(&state.conn)
-        .await
-        .map(|item| Json(item)) // Wrap ModbusRegisterModel in Json
-        .map_err(|error| Error::DbError(error.to_string()));
+    match item {
+        Ok(Some(mut item)) => {
+            if item.status == "NEW" {
+                ModbusRegister::delete_by_id(id)
+                    .exec(&state.sea_orm_conn)
+                    .await
+                    .map_err(|error| Error::DbError(error.to_string()))?;
+                Ok(Json(item))
+            } else {
+                item.status = "DELETED".to_string();
+                let updated_item = modbus_register::ActiveModel::from(item)
+                    .save(&state.sea_orm_conn)
+                    .await
+                    .map_err(|error| Error::DbError(error.to_string()))?;
+                Ok(Json(updated_item.try_into_model().unwrap()))
+            }
+        }
+        Ok(None) => Err(Error::NotFound),
+        Err(error) => Err(Error::DbError(error.to_string())),
     }
-    sqlx::query_as::<_, ModbusRegisterModel>(
-        r#"
-        UPDATE modbus_register SET status = 'DELETED'
-        WHERE id = $1
-        RETURNING *
-        "#,
-    )
-    .bind(id)
-    .fetch_one(&state.conn)
-    .await
-    .map(|item| Json(item)) // Wrap ModbusRegister in Json
-    .map_err(|error| Error::DbError(error.to_string()))
 }

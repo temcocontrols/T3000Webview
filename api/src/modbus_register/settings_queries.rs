@@ -44,8 +44,7 @@ pub async fn create(
     let result = ModbusRegisterSettings::insert(settings::ActiveModel::from(item))
         .exec_with_returning(&state.sea_orm_conn)
         .await
-        .map_err(|error| Error::DbError(error.to_string()))
-        .unwrap();
+        .map_err(|error| Error::DbError(error.to_string()))?;
 
     Ok(Json(result))
 }
