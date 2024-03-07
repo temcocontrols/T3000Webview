@@ -2,14 +2,17 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use t3_webview_api::server::create_app; // Assuming you've modified server_start to create_app
+use sqlx::SqlitePool;
+use t3_webview_api::{server::create_app, utils::DATABASE_URL}; // Assuming you've modified server_start to create_app
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
 #[tokio::test]
 async fn test_server_start() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    let conn = t3_webview_api::db_connection::establish_connection().await;
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 
     // Call the function with the mock

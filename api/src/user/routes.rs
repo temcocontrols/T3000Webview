@@ -17,7 +17,7 @@ pub fn user_routes() -> Router<AppState> {
 
 pub async fn get_user(State(state): State<AppState>) -> Result<Json<user::Model>> {
     let result = User::find()
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
@@ -32,18 +32,18 @@ pub async fn save_user(
     Json(item): Json<user::Model>,
 ) -> Result<Json<user::Model>> {
     let the_user = User::find()
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
     if let Some(user) = the_user {
         User::delete_by_id(user.id)
-            .exec(&state.sea_orm_conn)
+            .exec(&state.conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
     }
     let result = User::insert(user::ActiveModel::from(item))
-        .exec_with_returning(&state.sea_orm_conn)
+        .exec_with_returning(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
     Ok(Json(result))
@@ -51,13 +51,13 @@ pub async fn save_user(
 
 pub async fn delete_user(State(state): State<AppState>) -> Result<Json<user::Model>> {
     let the_user = User::find()
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)?;
 
     User::delete_by_id(the_user.id)
-        .exec(&state.sea_orm_conn)
+        .exec(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();

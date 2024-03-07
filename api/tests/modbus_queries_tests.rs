@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde_json::Value;
+use sqlx::SqlitePool;
 use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
@@ -11,24 +12,18 @@ use t3_webview_api::{
             CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
             UpdateModbusRegisterItemInput, UpdateSettingModel,
         },
-        queries::{create, delete, generate_filter_query, list, update},
+        queries::{create, delete, list, update},
         settings_queries,
     },
+    utils::DATABASE_URL,
 };
-
-#[tokio::test]
-async fn test_modbus_register_generate_filter_query() {
-    let base_query = "SELECT * FROM modbus_register".to_string();
-    let filter = Some("test".to_string());
-    let result = generate_filter_query(&filter, base_query.clone());
-    println!("Result: {}", result);
-    assert!(result.contains(base_query.as_str()));
-}
 
 #[tokio::test]
 async fn test_modbus_register_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-    let conn = t3_webview_api::db_connection::establish_connection().await;
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
     let payload = CreateModbusRegisterItemInput {
         register_name: Some("test".to_string()),
@@ -81,7 +76,9 @@ async fn test_modbus_register_crud() {
 async fn test_modbus_register_settings_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    let conn = t3_webview_api::db_connection::establish_connection().await;
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 
     let payload = modbus_register_settings::Model {

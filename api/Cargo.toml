@@ -17,7 +17,6 @@ tokio = { version = "1.0", features = ["full"] }
 
 tracing-subscriber = "0.3.18"
 strum_macros = "0.26.1"
-sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio", "sqlite"] }
 serde_with = "3.6.1"
 tower-http = {version = "0.5.1", features = ["cors", "fs"]}
 dotenvy = "0.15.7"
@@ -35,6 +34,7 @@ features = [
 [dev-dependencies]
 mockall = "0.12.1"
 tower = { version = "0.4", features = ["util"] }
+sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio", "sqlite"] }
 sqlx-cli = "0.7.3"
 
 [profile.release]

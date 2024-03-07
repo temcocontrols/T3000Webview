@@ -4,6 +4,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use strum_macros::Display;
 
+use crate::entity::modbus_register;
+
 fn deserialize_option_option<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     D: Deserializer<'de>,
@@ -13,7 +15,7 @@ where
     Ok(Some(opt))
 }
 
-#[derive(sqlx::FromRow, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct ModbusRegister {
     pub id: i32,
     pub register_address: i32,
@@ -31,8 +33,8 @@ pub struct ModbusRegister {
 
 #[derive(Deserialize, Debug)]
 pub struct ModbusRegisterQueryParams {
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
+    pub limit: Option<u64>,
+    pub offset: Option<u64>,
     pub order_by: Option<ModbusRegisterColumns>,
     pub order_dir: Option<OrderByDirection>,
     pub filter: Option<String>,
@@ -44,6 +46,15 @@ pub struct ModbusRegisterQueryParams {
 pub enum OrderByDirection {
     Asc,
     Desc,
+}
+
+impl Into<sea_orm::Order> for OrderByDirection {
+    fn into(self) -> sea_orm::Order {
+        match self {
+            OrderByDirection::Asc => sea_orm::Order::Asc,
+            OrderByDirection::Desc => sea_orm::Order::Desc,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -61,6 +72,25 @@ pub enum ModbusRegisterColumns {
     Unit,
     CreatedAt,
     UpdatedAt,
+}
+
+impl Into<modbus_register::Column> for ModbusRegisterColumns {
+    fn into(self) -> modbus_register::Column {
+        match self {
+            ModbusRegisterColumns::Id => modbus_register::Column::Id,
+            ModbusRegisterColumns::RegisterAddress => modbus_register::Column::RegisterAddress,
+            ModbusRegisterColumns::Operation => modbus_register::Column::Operation,
+            ModbusRegisterColumns::RegisterLength => modbus_register::Column::RegisterLength,
+            ModbusRegisterColumns::RegisterName => modbus_register::Column::RegisterName,
+            ModbusRegisterColumns::DataFormat => modbus_register::Column::DataFormat,
+            ModbusRegisterColumns::Description => modbus_register::Column::Description,
+            ModbusRegisterColumns::DeviceName => modbus_register::Column::DeviceName,
+            ModbusRegisterColumns::Status => modbus_register::Column::Status,
+            ModbusRegisterColumns::Unit => modbus_register::Column::Unit,
+            ModbusRegisterColumns::CreatedAt => modbus_register::Column::CreatedAt,
+            ModbusRegisterColumns::UpdatedAt => modbus_register::Column::UpdatedAt,
+        }
+    }
 }
 
 impl Display for ModbusRegisterColumns {
@@ -104,8 +134,8 @@ pub struct UpdateModbusRegisterItemInput {
 
 #[derive(Serialize, Debug)]
 pub struct ModbusRegisterResponse {
-    pub data: Vec<ModbusRegister>,
-    pub count: i64,
+    pub data: Vec<modbus_register::Model>,
+    pub count: u64,
 }
 
 #[derive(Debug, Deserialize)]

@@ -13,9 +13,7 @@ use crate::error::{Error, Result};
 use super::models::UpdateSettingModel;
 
 pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<settings::Model>>> {
-    let results = ModbusRegisterSettings::find()
-        .all(&state.sea_orm_conn)
-        .await;
+    let results = ModbusRegisterSettings::find().all(&state.conn).await;
     match results {
         Ok(items) => Ok(Json(items)),
         Err(error) => Err(Error::DbError(error.to_string())),
@@ -27,7 +25,7 @@ pub async fn get_by_name(
     Path(name): Path<String>,
 ) -> Result<Json<settings::Model>> {
     let result = ModbusRegisterSettings::find_by_id(name)
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
@@ -42,7 +40,7 @@ pub async fn create(
     Json(item): Json<settings::Model>,
 ) -> Result<Json<settings::Model>> {
     let result = ModbusRegisterSettings::insert(settings::ActiveModel::from(item))
-        .exec_with_returning(&state.sea_orm_conn)
+        .exec_with_returning(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -55,7 +53,7 @@ pub async fn update(
     Json(item): Json<UpdateSettingModel>,
 ) -> Result<Json<settings::Model>> {
     let setting: settings::ActiveModel = ModbusRegisterSettings::find_by_id(name)
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
@@ -72,7 +70,7 @@ pub async fn update(
             None => NotSet,
         },
     }
-    .update(&state.sea_orm_conn)
+    .update(&state.conn)
     .await
     .map_err(|error| Error::DbError(error.to_string()))
     .unwrap();
@@ -85,14 +83,14 @@ pub async fn delete(
     Path(name): Path<String>,
 ) -> Result<Json<settings::Model>> {
     let setting = ModbusRegisterSettings::find_by_id(&name)
-        .one(&state.sea_orm_conn)
+        .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
         .map(Into::into)?;
 
     ModbusRegisterSettings::delete_by_id(&name)
-        .exec(&state.sea_orm_conn)
+        .exec(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();

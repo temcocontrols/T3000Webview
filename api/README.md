@@ -4,30 +4,34 @@ Welcome to the backend server for the webview client application. This server is
 
 Before diving into the code, please ensure that you have the latest versions of Rust and Cargo. This will not only facilitate a smoother setup but also guarantee that you're utilizing the most recent features and optimizations offered by the Rust ecosystem.
 
+# Run tests
+
+bash`cargo test`
+
 # Bulid command for smaller size
 
-bash`cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target x86_64-pc-windows-msvc --release`
+bash`cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target i686-pc-windows-msvc --release`
 
 # Run server example
 
-cargo run --example run_server --release
+bash`cargo run --example run_server --release`
 
-# Database & Migration
+# Migration
 
-We have a mixed approach for database queries in this project. Some of them are handled by Sea ORM, while others are done with Sqlx. In this section, we will explain how to work with both of these libraries.
+Database queries handled by Sea ORM, while migration are done with Sqlx. In this section, we will explain how to work with migrations.
 
 ## Create database
 
-sqlx database create
+bash`sqlx database create`
 
 ## Run migration
 
-sqlx migrate run
+bash`sqlx migrate run`
 
 ## Add migration
 
-sqlx migrate add -r <migration_name>
+bash`sqlx migrate add -r <migration_name>`
 
-## Generate the Sea-ORM entities
+# Generate the Sea-ORM entities
 
-sea-orm-cli generate entity -o src/entity
+bash`sea-orm-cli generate entity -o src/entity`

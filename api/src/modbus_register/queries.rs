@@ -2,12 +2,11 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use sea_orm::{prelude::*, Set, TryIntoModel};
+use sea_orm::{prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, Set, TryIntoModel};
 
 use super::models::{
-    CreateModbusRegisterItemInput, ModbusRegister as ModbusRegisterModel, ModbusRegisterColumns,
-    ModbusRegisterQueryParams, ModbusRegisterResponse, OrderByDirection,
-    UpdateModbusRegisterItemInput,
+    CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterQueryParams,
+    ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
 };
 use crate::{
     app_state::AppState,
@@ -15,82 +14,79 @@ use crate::{
     error::{Error, Result},
 };
 
-pub fn generate_filter_query(filter: &Option<String>, base_query: String) -> String {
-    let fields = [
-        "register_name",
-        "operation",
-        "description",
-        "device_name",
-        "data_format",
-        "unit",
-    ];
+pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Select<ModbusRegister> {
+    let mut query = ModbusRegister::find();
 
-    let final_query = match filter {
-        Some(filter) => {
-            let filter_num = filter.parse::<i32>().is_ok();
-            let mut query = base_query.to_owned() + " AND ( ";
-            for field in &fields {
-                query += &format!("{} LIKE '%' || $1 || '%' OR ", field);
-            }
-            if filter_num {
-                query += "id LIKE $1 OR register_address LIKE $1 )";
-            } else {
-                query = query.trim_end_matches(" OR ").to_owned() + " )";
-            }
-            query
+    if let Some(filter) = filter {
+        let fields = vec![
+            modbus_register::Column::RegisterName,
+            modbus_register::Column::Operation,
+            modbus_register::Column::Description,
+            modbus_register::Column::DeviceName,
+            modbus_register::Column::DataFormat,
+            modbus_register::Column::Unit,
+        ];
+        let like_expr = format!("%{}%", filter);
+        let mut or_filters = vec![];
+        for field in fields {
+            or_filters.push(field.like(like_expr.clone()));
         }
-        None => base_query,
-    };
-    final_query
+        if let Ok(filter_num) = filter.parse::<i32>() {
+            query = query.filter(
+                modbus_register::Column::RegisterLength
+                    .eq(filter_num)
+                    .or(modbus_register::Column::RegisterAddress.eq(filter_num))
+                    .or(modbus_register::Column::Id.eq(filter_num))
+                    .or(or_filters
+                        .drain(..)
+                        .reduce(|l, r| l.or(r))
+                        .map(|c| c)
+                        .unwrap()),
+            );
+        } else {
+            query = query.filter(
+                or_filters
+                    .drain(..)
+                    .reduce(|l, r| l.or(r))
+                    .map(|c| c.into_condition())
+                    .unwrap(),
+            );
+        }
+    }
+
+    query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
+    if local_only {
+        query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
+    }
+
+    query
 }
 
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let base_sql_query = "SELECT * FROM modbus_register".to_string();
-    let base_count_query = "SELECT COUNT(*) FROM modbus_register".to_string();
+    let mut query = generate_filter_query(&params.filter, params.local_only.unwrap_or(false));
 
-    let sql_query = match params.local_only {
-        Some(true) => format!("{} WHERE status IN ( 'NEW', 'UPDATED' )", base_sql_query),
-        _ => format!("{} WHERE status NOT LIKE 'DELETED'", base_sql_query),
-    };
-    let count_query = match params.local_only {
-        Some(true) => format!("{} WHERE status IN ( 'NEW', 'UPDATED' )", base_count_query),
-        _ => format!("{} WHERE status NOT LIKE 'DELETED'", base_count_query),
-    };
-    let filter = params.filter.clone();
-    let sql_query = generate_filter_query(&filter, sql_query);
-    let count_query = generate_filter_query(&filter, count_query);
-
-    let order_by = params
-        .order_by
-        .as_ref()
-        .unwrap_or(&ModbusRegisterColumns::Id);
-    let order_dir = params.order_dir.as_ref().unwrap_or(&OrderByDirection::Desc);
-
-    let sql_query = format!(
-        "{} ORDER BY {} {} LIMIT $2 OFFSET $3",
-        sql_query, order_by, order_dir
+    query = query.order_by(
+        Into::<modbus_register::Column>::into(params.order_by.unwrap_or(ModbusRegisterColumns::Id)),
+        params.order_dir.unwrap_or(OrderByDirection::Desc).into(),
     );
+    query = query
+        .limit(params.limit.unwrap_or(100))
+        .offset(params.offset.unwrap_or(0));
 
-    let count = sqlx::query_scalar::<_, i64>(&count_query)
-        .bind(&params.filter.clone().unwrap_or("".to_string()))
-        .fetch_one(&state.conn)
+    let count = query
+        .clone()
+        .count(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+    let items = query
+        .all(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
-    let results = sqlx::query_as::<_, ModbusRegisterModel>(&sql_query)
-        .bind(&params.filter.clone().unwrap_or("".to_string()))
-        .bind(&params.limit.clone().unwrap_or(100))
-        .bind(&params.offset.clone().unwrap_or(0))
-        .fetch_all(&state.conn)
-        .await;
-
-    match results {
-        Ok(items) => Ok(Json(ModbusRegisterResponse { data: items, count })),
-        Err(error) => Err(Error::DbError(error.to_string())),
-    }
+    Ok(Json(ModbusRegisterResponse { data: items, count }))
 }
 
 pub async fn create(
@@ -110,7 +106,7 @@ pub async fn create(
     };
 
     let res = model
-        .save(&state.sea_orm_conn)
+        .save(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -124,7 +120,7 @@ pub async fn update(
 ) -> Result<Json<modbus_register::Model>> {
     let mut model = Into::<modbus_register::ActiveModel>::into(
         ModbusRegister::find_by_id(id)
-            .one(&state.sea_orm_conn)
+            .one(&state.conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))
             .unwrap()
@@ -155,7 +151,7 @@ pub async fn update(
     }
 
     let updated_item = model
-        .save(&state.sea_orm_conn)
+        .save(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -166,22 +162,20 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<modbus_register::Model>> {
-    let item = ModbusRegister::find_by_id(id)
-        .one(&state.sea_orm_conn)
-        .await;
+    let item = ModbusRegister::find_by_id(id).one(&state.conn).await;
 
     match item {
         Ok(Some(mut item)) => {
             if item.status == "NEW" {
                 ModbusRegister::delete_by_id(id)
-                    .exec(&state.sea_orm_conn)
+                    .exec(&state.conn)
                     .await
                     .map_err(|error| Error::DbError(error.to_string()))?;
                 Ok(Json(item))
             } else {
                 item.status = "DELETED".to_string();
                 let updated_item = modbus_register::ActiveModel::from(item)
-                    .save(&state.sea_orm_conn)
+                    .save(&state.conn)
                     .await
                     .map_err(|error| Error::DbError(error.to_string()))?;
                 Ok(Json(updated_item.try_into_model().unwrap()))
