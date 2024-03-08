@@ -13,14 +13,14 @@ CREATE TABLE IF NOT EXISTS modbus_register (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TRIGGER update_timestamp
+CREATE TRIGGER IF NOT EXISTS update_timestamp
 AFTER UPDATE ON modbus_register
 FOR EACH ROW
 BEGIN
     UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
 END;
 
-CREATE TRIGGER update_status
+CREATE TRIGGER IF NOT EXISTS update_status
 AFTER UPDATE ON modbus_register
 FOR EACH ROW
 WHEN OLD.status = 'PUBLISHED'
