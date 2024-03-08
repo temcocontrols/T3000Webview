@@ -1,4 +1,4 @@
-CREATE TABLE modbus_register (
+CREATE TABLE IF NOT EXISTS modbus_register (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     register_address INTEGER NOT NULL,
     operation TEXT,
