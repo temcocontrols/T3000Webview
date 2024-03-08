@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, error::Error};
 
 use axum::{
     http::{Method, StatusCode},
@@ -17,7 +17,17 @@ use crate::{app_state, utils::copy_database_if_not_exists};
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
-pub async fn create_app() -> Router {
+fn routes_static() -> Router {
+    let spa_dir = env::var("SPA_DIR").unwrap_or("./ResourceFile/webview/www".to_string());
+    Router::new().nest_service(
+        "/",
+        get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
+            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }),
+    )
+}
+
+pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods([
             Method::GET,
@@ -29,14 +39,16 @@ pub async fn create_app() -> Router {
         .allow_headers(Any)
         .allow_origin(Any);
 
-    Router::new()
+    let app_state = app_state::app_state().await?;
+
+    Ok(Router::new()
         .nest("/api", modbus_register_routes().merge(user_routes()))
         .layer(cors)
-        .with_state(app_state::app_state().await)
-        .fallback_service(routes_static())
+        .with_state(app_state)
+        .fallback_service(routes_static()))
 }
 
-pub async fn server_start() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn server_start() -> Result<(), Box<dyn Error>> {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -44,7 +56,7 @@ pub async fn server_start() -> Result<(), Box<dyn std::error::Error>> {
 
     copy_database_if_not_exists()?;
 
-    let app = create_app().await;
+    let app = create_app().await?;
 
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
 
@@ -80,14 +92,4 @@ async fn shutdown_signal() {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
-}
-
-fn routes_static() -> Router {
-    let spa_dir = env::var("SPA_DIR").unwrap_or("./ResourceFile/webview/www".to_string());
-    Router::new().nest_service(
-        "/",
-        get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
-            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        }),
-    )
 }

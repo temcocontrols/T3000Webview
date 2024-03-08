@@ -25,7 +25,9 @@ async fn test_user_crud() {
         .await
         .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-    let res = get_user(State(app_state().await)).await;
+
+    let conn = app_state().await.unwrap();
+    let res = get_user(State(conn.clone())).await;
     assert!(matches!(res, Err(Error::NotFound)));
 
     let user = user::Model {
@@ -34,14 +36,14 @@ async fn test_user_crud() {
         token: Some("test".to_string()),
     };
 
-    let res = save_user(State(app_state().await), Json(user)).await;
+    let res = save_user(State(conn.clone()), Json(user)).await;
     assert!(res.is_ok());
 
-    let res = get_user(State(app_state().await)).await;
+    let res = get_user(State(conn.clone())).await;
     assert!(res.is_ok());
     assert!(res.unwrap().id == 1);
 
-    let res = delete_user(State(app_state().await)).await;
+    let res = delete_user(State(conn.clone())).await;
     assert!(res.is_ok());
 }
 
@@ -54,7 +56,7 @@ async fn test_user_auth() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 
-    let app = create_app().await;
+    let app = create_app().await.unwrap();
 
     let request = Request::builder()
         .uri("/api/user")

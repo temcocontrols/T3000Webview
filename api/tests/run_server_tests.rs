@@ -25,7 +25,7 @@ async fn test_server_start() {
         .unwrap();
 
     // Call the app with the request
-    let response = app.oneshot(request).await.unwrap();
+    let response = app.unwrap().oneshot(request).await.unwrap();
 
     // Check the response
     assert_eq!(response.status(), StatusCode::OK);

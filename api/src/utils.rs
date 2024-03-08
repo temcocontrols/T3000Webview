@@ -38,8 +38,6 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
             "Copied database file from {:?} to {:?}",
             source_db_path, destination_db_path
         );
-    } else {
-        println!("Database file already exists at {:?}", destination_db_path);
     }
 
     Ok(())

@@ -16,11 +16,26 @@ pub enum RustError {
 
 #[no_mangle]
 pub extern "C" fn run_server() -> RustError {
-    match tokio::runtime::Runtime::new() {
-        Ok(runtime) => match runtime.block_on(server::server_start()) {
+    // Create a new tokio runtime for this function
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(_) => return RustError::Error,
+    };
+
+    // Run the server logic in a blocking thread
+    let result = runtime.block_on(async {
+        match server::server_start().await {
             Ok(_) => RustError::Ok,
-            Err(_) => RustError::Error,
-        },
-        Err(_) => RustError::Error,
-    }
+            Err(err) => {
+                // Handle server errors here (log, convert to RustError)
+                eprintln!("Server error: {:?}", err);
+                RustError::Error
+            }
+        }
+    });
+
+    // Free the runtime resources
+    drop(runtime);
+
+    result
 }

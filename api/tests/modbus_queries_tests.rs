@@ -35,7 +35,8 @@ async fn test_modbus_register_crud() {
         unit: Some("test".to_string()),
         register_length: 1,
     };
-    let item = create(State(app_state().await), Json(payload)).await;
+    let conn = app_state().await.unwrap();
+    let item = create(State(conn.clone()), Json(payload)).await;
     assert!(item.is_ok());
     let item = item.unwrap();
 
@@ -47,7 +48,7 @@ async fn test_modbus_register_crud() {
         offset: None,
         order_dir: None,
     };
-    let result = list(State(app_state().await), Query(params)).await;
+    let result = list(State(conn.clone()), Query(params)).await;
     assert!(result.is_ok());
 
     assert_eq!(result.unwrap().0.data[0].id, item.id);
@@ -63,12 +64,12 @@ async fn test_modbus_register_crud() {
         device_name: Some("updated".to_string()),
         unit: Some(Some("updated".to_string())),
     };
-    let result = update(State(app_state().await), id, Json(payload)).await;
+    let result = update(State(conn.clone()), id, Json(payload)).await;
     assert!(result.is_ok());
     assert_ne!(result.unwrap().data_format, item.data_format);
 
     let id = Path(item.id);
-    let result = delete(State(app_state().await), id).await;
+    let result = delete(State(conn.clone()), id).await;
     assert!(result.is_ok());
 }
 
@@ -81,20 +82,22 @@ async fn test_modbus_register_settings_crud() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 
+    let conn = app_state().await.unwrap();
+
     let payload = modbus_register_settings::Model {
         name: "test".to_string(),
         value: Some("test".to_string()),
         json_value: Some(Value::String("test".to_string())),
     };
-    let result = settings_queries::create(State(app_state().await), Json(payload)).await;
+    let result = settings_queries::create(State(conn.clone()), Json(payload)).await;
     assert!(result.is_ok());
 
-    let result = settings_queries::get_all(State(app_state().await)).await;
+    let result = settings_queries::get_all(State(conn.clone())).await;
     assert!(result.is_ok());
     assert!(result.unwrap().len() == 1);
 
     let name = Path("test".to_string());
-    let result = settings_queries::get_by_name(State(app_state().await), name).await;
+    let result = settings_queries::get_by_name(State(conn.clone()), name).await;
     assert!(result.is_ok());
 
     let name = Path("test".to_string());
@@ -102,11 +105,11 @@ async fn test_modbus_register_settings_crud() {
         value: Some(Some("updated".to_string())),
         json_value: Some(Some(Value::String("updated".to_string()))),
     };
-    let result = settings_queries::update(State(app_state().await), name, Json(payload)).await;
+    let result = settings_queries::update(State(conn.clone()), name, Json(payload)).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap().value, Some("updated".to_string()));
 
     let name = Path("test".to_string());
-    let result = settings_queries::delete(State(app_state().await), name).await;
+    let result = settings_queries::delete(State(conn.clone()), name).await;
     assert!(result.is_ok());
 }

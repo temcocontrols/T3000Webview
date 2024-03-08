@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use sea_orm::DatabaseConnection;
 
 use crate::db_connection::establish_connection;
@@ -7,7 +9,7 @@ pub struct AppState {
     pub conn: DatabaseConnection,
 }
 
-pub async fn app_state() -> AppState {
-    let conn = establish_connection().await;
-    AppState { conn }
+pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
+    let conn = establish_connection().await?;
+    Ok(AppState { conn })
 }
