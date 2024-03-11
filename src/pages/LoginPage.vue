@@ -17,6 +17,7 @@ import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
 import { user, globalNav } from "../lib/common";
+import { localApi } from "../lib/api";
 
 const router = useRouter();
 const $q = useQuasar();
@@ -31,19 +32,20 @@ onMounted(() => {
     if (data.type === "hello") {
       cid.value = data.cid;
       const loginUrl = process.env.API_URL + "/login?cid=" + cid.value;
-      // if (!window.chrome?.webview?.postMessage) {
       loginWindow.value = window.open(loginUrl, "_blank");
       return;
-      // }
-      // window.chrome.webview.postMessage({
-      //   action: 13, // OPEN_URL_ON_BROWSER
-      //   url: loginUrl,
-      // });
     } else if (data.type === "token") {
       loginWindow.value?.close();
       loginWindow.value = null;
       loggedIn.value = true;
       user.value = data.user;
+      localApi.post("user", {
+        json: {
+          token: data.token,
+          id: data.user.id,
+          name: data.user.name,
+        },
+      });
       $q.cookies.set("token", data.token, {
         expires: 360, // in 360 days
         sameSite: "Strict",

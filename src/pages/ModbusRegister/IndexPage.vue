@@ -759,6 +759,13 @@ function onFilterChanged() {
 
 function onGridReady(params) {
   gridApi.value = params.api;
+  const localState = localStorage.getItem("modbusRegisterGridState");
+  if (localState && localState !== "undefined") {
+    params.api.applyColumnState({
+      state: JSON.parse(localState),
+      applyOrder: true,
+    });
+  }
   var datasource = getServerSideDatasource();
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
@@ -800,15 +807,7 @@ function onGridReady(params) {
     reviewAllRowChangesDialog.value = { active: true, entry: ev.data };
   });
 }
-function onFirstDataRendered(params) {
-  const localState = localStorage.getItem("modbusRegisterGridState");
-  if (localState && localState !== "undefined") {
-    params.api.applyColumnState({
-      state: JSON.parse(localState),
-      applyOrder: true,
-    });
-  }
-}
+function onFirstDataRendered(params) {}
 
 onBeforeUnmount(() => {
   const state = gridApi.value.getColumnState();
