@@ -283,7 +283,7 @@
           no-caps
           stretch
           :icon="item.t3Entry ? 'dataset_linked' : undefined"
-          class="text-white w-full"
+          class="text-white w-full link-t3-entry"
           :label="
             !item.t3Entry
               ? 'Link with an entry'
