@@ -13,8 +13,11 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Run client tests
+        run: |
+          npm install
+          npm run test
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
