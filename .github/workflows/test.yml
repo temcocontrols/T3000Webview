@@ -17,7 +17,7 @@ jobs:
       - name: Run client tests
         run: |
           npm install
-          npm run test
+          npm run test:unit
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
