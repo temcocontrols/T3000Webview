@@ -6,10 +6,16 @@
       stretch
       flat
       content-class="menu-dropdown"
+      class="file-menu"
       label="File"
     >
       <q-list>
-        <q-item clickable v-close-popup @click="menuActionEmit('newProject')">
+        <q-item
+          clickable
+          v-close-popup
+          class="new-project-menu-item"
+          @click="menuActionEmit('newProject')"
+        >
           <q-item-section avatar>
             <q-avatar
               size="sm"
@@ -578,6 +584,7 @@ export default defineComponent({
   background: transparent;
   width: 27px;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .zoom-input::-webkit-outer-spin-button,

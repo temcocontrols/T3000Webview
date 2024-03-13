@@ -254,155 +254,125 @@
   </div>
 </template>
 
-<script>
-import { defineComponent, ref } from "vue";
+<script setup>
+import { ref } from "vue";
 import { useQuasar } from "quasar";
 import FileUpload from "./FileUploadS3.vue";
 import { tools, toolsCategories, user } from "../lib/common";
-export default defineComponent({
-  name: "ToolsSidebar",
-  components: {
-    FileUpload,
+const props = defineProps({
+  selectedTool: {
+    type: Object,
+    required: true,
   },
-  props: {
-    selectedTool: {
-      type: Object,
-      required: true,
-    },
-    images: {
-      type: Array,
-      required: false,
-      default() {
-        return [];
-      },
-    },
-    objectLib: {
-      type: Array,
-      required: false,
-      default() {
-        return [];
-      },
-    },
+  images: {
+    type: Array,
+    default: () => [],
   },
-  emits: [
-    "selectTool",
-    "saveLibImage",
-    "deleteLibItem",
-    "renameLibItem",
-    "deleteLibImage",
-    "toolDropped",
-  ],
-  setup(_props, { emit }) {
-    const $q = useQuasar();
-    const fileUploaderRef = ref(null);
-    const libTab = ref("lib");
-    function selectTool(tool, type = "default") {
-      emit("selectTool", tool, type);
-    }
-
-    function deleteLibItem(item) {
-      $q.dialog({
-        title: "Confirm",
-        message: "Are you sure you want to delete this library item?",
-        cancel: true,
-      })
-        .onOk(() => {
-          emit("deleteLibItem", item);
-        })
-        .onCancel(() => {})
-        .onDismiss(() => {});
-    }
-
-    function deleteLibImage(item) {
-      $q.dialog({
-        title: "Confirm",
-        message: "Are you sure you want to delete this image?",
-        cancel: true,
-      })
-        .onOk(() => {
-          emit("deleteLibImage", item);
-        })
-        .onCancel(() => {})
-        .onDismiss(() => {});
-    }
-
-    function renameLibItem(item) {
-      $q.dialog({
-        title: "Rename",
-        message: "Type the new name",
-        prompt: {
-          model: item.label,
-          type: "text", // optional
-        },
-        cancel: true,
-        persistent: true,
-      })
-        .onOk((data) => {
-          if (!data) return;
-          emit("renameLibItem", item, data);
-        })
-        .onCancel(() => {
-          // console.log('>>>> Cancel')
-        })
-        .onDismiss(() => {
-          // console.log('I am triggered on both OK and Cancel')
-        });
-    }
-
-    const imgTab = ref("list");
-
-    const imgTabUploader = ref({
-      uploadBtnDisabled: true,
-      uploadBtnLoading: false,
-      file: null,
-    });
-
-    function imageFileAdded(file) {
-      console.log("file", file);
-      imgTabUploader.value.uploadBtnDisabled = false;
-      imgTabUploader.value.file = file;
-    }
-
-    function saveLibImage() {
-      if (user.value) {
-        fileUploaderRef.value.upload();
-      } else {
-        saveLibImageEmit(imgTabUploader.value.file);
-      }
-    }
-
-    function handleUploaded(event) {
-      saveLibImageEmit(event.body);
-    }
-
-    function saveLibImageEmit(data) {
-      emit("saveLibImage", data);
-      imgTab.value = "list";
-      imgTabUploader.value.file = null;
-    }
-
-    function toolDropped(event, tool) {
-      emit("toolDropped", event, tool);
-    }
-
-    return {
-      tools,
-      toolsCategories,
-      selectTool,
-      libTab,
-      deleteLibItem,
-      renameLibItem,
-      deleteLibImage,
-      imgTab,
-      imgTabUploader,
-      saveLibImage,
-      imageFileAdded,
-      toolDropped,
-      fileUploaderRef,
-      handleUploaded,
-    };
+  objectLib: {
+    type: Array,
+    default: () => [],
   },
 });
+
+const emit = defineEmits([
+  "selectTool",
+  "saveLibImage",
+  "deleteLibItem",
+  "renameLibItem",
+  "deleteLibImage",
+  "toolDropped",
+]);
+const $q = useQuasar();
+const fileUploaderRef = ref(null);
+const libTab = ref("lib");
+function selectTool(tool, type = "default") {
+  emit("selectTool", tool, type);
+}
+
+function deleteLibItem(item) {
+  $q.dialog({
+    title: "Confirm",
+    message: "Are you sure you want to delete this library item?",
+    cancel: true,
+  })
+    .onOk(() => {
+      emit("deleteLibItem", item);
+    })
+    .onCancel(() => {})
+    .onDismiss(() => {});
+}
+
+function deleteLibImage(item) {
+  $q.dialog({
+    title: "Confirm",
+    message: "Are you sure you want to delete this image?",
+    cancel: true,
+  })
+    .onOk(() => {
+      emit("deleteLibImage", item);
+    })
+    .onCancel(() => {})
+    .onDismiss(() => {});
+}
+
+function renameLibItem(item) {
+  $q.dialog({
+    title: "Rename",
+    message: "Type the new name",
+    prompt: {
+      model: item.label,
+      type: "text", // optional
+    },
+    cancel: true,
+    persistent: true,
+  })
+    .onOk((data) => {
+      if (!data) return;
+      emit("renameLibItem", item, data);
+    })
+    .onCancel(() => {
+      // console.log('>>>> Cancel')
+    })
+    .onDismiss(() => {
+      // console.log('I am triggered on both OK and Cancel')
+    });
+}
+
+const imgTab = ref("list");
+
+const imgTabUploader = ref({
+  uploadBtnDisabled: true,
+  uploadBtnLoading: false,
+  file: null,
+});
+
+function imageFileAdded(file) {
+  console.log("file", file);
+  imgTabUploader.value.uploadBtnDisabled = false;
+  imgTabUploader.value.file = file;
+}
+
+function saveLibImage() {
+  if (user.value) {
+    fileUploaderRef.value.upload();
+  } else {
+    saveLibImageEmit(imgTabUploader.value.file);
+  }
+}
+
+function handleUploaded(event) {
+  saveLibImageEmit(event.body);
+}
+
+function saveLibImageEmit(data) {
+  emit("saveLibImage", data);
+  imgTab.value = "list";
+  imgTabUploader.value.file = null;
+}
+
+function toolDropped(event, tool) {
+  emit("toolDropped", event, tool);
+}
 </script>
 
 <style scoped>
