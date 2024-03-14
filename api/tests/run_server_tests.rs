@@ -3,27 +3,11 @@ use axum::{
     http::{Request, StatusCode},
 };
 use sqlx::SqlitePool;
-use std::sync::Once;
 use t3_webview_api::{server::create_app, utils::DATABASE_URL}; // Assuming you've modified server_start to create_app
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
-static INIT: Once = Once::new();
-
-pub fn initialize() {
-    INIT.call_once(|| {
-        dotenvy::from_filename("./tests/.test.env").ok();
-        let _a = tokio::task::spawn_blocking(|| async move {
-            let conn = SqlitePool::connect(DATABASE_URL.as_str())
-                .await
-                .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-            sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-        });
-    });
-}
-
 #[tokio::test]
 async fn test_server_start() {
-    initialize();
     dotenvy::from_filename("./tests/.test.env").ok();
 
     let conn = SqlitePool::connect(DATABASE_URL.as_str())

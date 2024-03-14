@@ -7,7 +7,6 @@ use axum::{
     Json,
 };
 use sqlx::SqlitePool;
-use std::sync::Once;
 use t3_webview_api::{
     app_state::app_state,
     entity::user,
@@ -18,23 +17,13 @@ use t3_webview_api::{
 };
 use tower::ServiceExt;
 
-static INIT: Once = Once::new();
-
-pub fn initialize() {
-    INIT.call_once(|| {
-        dotenvy::from_filename("./tests/.test.env").ok();
-        let _a = tokio::task::spawn_blocking(|| async move {
-            let conn = SqlitePool::connect(DATABASE_URL.as_str())
-                .await
-                .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-            sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-        });
-    });
-}
-
 #[tokio::test]
 async fn test_user_crud() {
-    initialize();
+    dotenvy::from_filename("./tests/.test.env").ok();
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
+    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 
     let conn = app_state().await.unwrap();
     let res = get_user(State(conn.clone())).await;

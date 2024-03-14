@@ -4,7 +4,6 @@ use axum::{
 };
 use serde_json::Value;
 use sqlx::SqlitePool;
-use std::sync::Once;
 use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
@@ -19,23 +18,13 @@ use t3_webview_api::{
     utils::DATABASE_URL,
 };
 
-static INIT: Once = Once::new();
-
-pub fn initialize() {
-    INIT.call_once(|| {
-        dotenvy::from_filename("./tests/.test.env").ok();
-        let _a = tokio::task::spawn_blocking(|| async move {
-            let conn = SqlitePool::connect(DATABASE_URL.as_str())
-                .await
-                .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-            sqlx::migrate!("./migrations").run(&conn).await.unwrap();
-        });
-    });
-}
-
 #[tokio::test]
 async fn test_modbus_register_crud() {
-    initialize();
+    dotenvy::from_filename("./tests/.test.env").ok();
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
+    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
     let payload = CreateModbusRegisterItemInput {
         register_name: Some("test".to_string()),
         register_address: 1,
@@ -48,6 +37,7 @@ async fn test_modbus_register_crud() {
     };
     let conn = app_state().await.unwrap();
     let item = create(State(conn.clone()), Json(payload)).await;
+    println!("item {:?}", item);
     assert!(item.is_ok());
     let item = item.unwrap();
 
