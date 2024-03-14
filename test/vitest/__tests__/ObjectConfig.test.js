@@ -1,10 +1,7 @@
 import ObjectConfig from "../../../src/components/ObjectConfig.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, beforeEach } from "vitest";
 import { cloneDeep } from "lodash";
-import { nextTick } from "vue";
-installQuasarPlugin();
 
 describe("ObjectConfig.vue", () => {
   let wrapper;

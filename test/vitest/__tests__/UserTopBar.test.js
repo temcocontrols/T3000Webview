@@ -1,9 +1,7 @@
 import UserTopBar from "../../../src/components/UserTopBar.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { Quasar } from "quasar";
-installQuasarPlugin();
 
 describe("UserTopBar.vue", () => {
   vi.mock("quasar", async (importOriginal) => {

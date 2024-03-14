@@ -1,8 +1,6 @@
 import FileUploadS3 from "../../../src/components/FileUploadS3.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-installQuasarPlugin();
 
 describe("FileUploadS3.vue", () => {
   vi.mock("quasar", async (importOriginal) => {

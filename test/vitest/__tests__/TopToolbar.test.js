@@ -1,12 +1,14 @@
 import TopToolbar from "../../../src/components/TopToolbar.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount, DOMWrapper } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";
-installQuasarPlugin();
 
 describe("TopToolbar.vue", () => {
   const wrapper = mount(TopToolbar, {
+    props: {
+      zoom: 100,
+      selectedCount: 1,
+    },
     global: {
       plugins: [Quasar],
     },
@@ -27,7 +29,6 @@ describe("TopToolbar.vue", () => {
     const domWrapper = new DOMWrapper(document.body);
     const newProjectBtn = domWrapper.find(".new-project-menu-item");
     await newProjectBtn.trigger("click");
-    console.log(wrapper.emitted(), "wrapper.emitted()");
     expect(wrapper.emitted().menuAction[0]).toEqual(["newProject", null]);
   });
 });

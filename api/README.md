@@ -4,9 +4,9 @@ Welcome to the backend server for the webview client application. This server is
 
 Before diving into the code, please ensure that you have the latest versions of Rust and Cargo. This will not only facilitate a smoother setup but also guarantee that you're utilizing the most recent features and optimizations offered by the Rust ecosystem.
 
-# Run tests
+# Run the unit tests
 
-bash`cargo test`
+bash`cargo test -- --test-threads 1`
 
 # Bulid command for smaller size
 

@@ -1,10 +1,8 @@
 import ToolsSidebar from "../../../src/components/ToolsSidebar.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";
 import { nextTick } from "vue";
-installQuasarPlugin();
 
 describe("ToolsSidebar.vue", () => {
   const wrapper = mount(ToolsSidebar, {

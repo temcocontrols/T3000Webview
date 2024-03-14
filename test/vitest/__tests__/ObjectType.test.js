@@ -1,8 +1,6 @@
 // import ObjectType from "../../../src/components/ObjectType.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, beforeEach } from "vitest";
-installQuasarPlugin();
 
 // Disabled because of a problem with importing vue3-moveable package that is used inside Duct.vue component
 describe("ObjectType.vue", () => {

@@ -1,8 +1,6 @@
 import FileUpload from "../../../src/components/FileUpload.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-installQuasarPlugin();
 
 describe("FileUpload.vue", () => {
   it("renders correctly", () => {

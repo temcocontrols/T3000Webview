@@ -1,10 +1,7 @@
 import { mount, DOMWrapper } from "@vue/test-utils";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { describe, expect, it } from "vitest";
 import { Quasar } from "quasar";
 import GaugeSettingsDialog from "../../../src/components/GaugeSettingsDialog.vue";
-
-installQuasarPlugin();
 
 describe("GaugeSettingsDialog.vue", () => {
   it("renders dialog with initial data", async () => {

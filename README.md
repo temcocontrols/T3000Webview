@@ -2,7 +2,6 @@
 
 This repo contains the webview componets that we used in T3000, currently there is one main component, the T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings,used inside T3000 to provide a way to make HVAC drawings for buildings.
 
-
 ## Install the dependencies
 
 ```bash
@@ -15,6 +14,20 @@ npm install
 
 ```bash
 npm run dev
+```
+
+### Unit test
+
+We utilize Vitest for unit testing, with all test files located within the test directory.
+
+Tests are automatically executed by GitHub Actions upon the creation of a pull request or when new changes are pushed to the repository.
+
+To manually run the unit tests, execute one of the following commands:
+
+```bash
+yarn test:unit
+# or
+npm run test:unit
 ```
 
 ### Lint the files
@@ -71,6 +84,5 @@ To facilitate communication, the JavaScript side communicates with the C++ webvi
 
     String input_data = L"{\"SetInput\":{\"id\":\"IN1\",\"value\":\"On\"}}");
     webview->PostWebMessageAsJson(input_data);
-
 
 To learn more about webview communication between JS and C++, check this [Interop of native-side and web-side code](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/communicate-btwn-web-native)

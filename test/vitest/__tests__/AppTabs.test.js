@@ -1,9 +1,6 @@
 import AppTabs from "../../../src/components/AppTabs.vue";
-import { installQuasarPlugin } from "@quasar/quasar-app-extension-testing-unit-vitest";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-
-installQuasarPlugin();
 
 describe("AppTabs.vue", () => {
   it("renders tabs with correct props and emits update event", async () => {
