@@ -4,6 +4,10 @@ use std::{env, fs, path::Path};
 lazy_static! {
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite://Database/webview_database.db".to_string());
+    pub static ref REMOTE_API_URL: String = env::var("REMOTE_API_URL")
+        .unwrap_or_else(|_| "https://user-lib.temcocontrols.com".to_string());
+    pub static ref REMOTE_API_WS_URL: String = env::var("REMOTE_API_WS_URL")
+        .unwrap_or_else(|_| "wss://user-lib.temcocontrols.com/ws".to_string());
 }
 
 pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {

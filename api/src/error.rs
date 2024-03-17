@@ -11,7 +11,7 @@ pub enum Error {
     DbError(String),
     Unauthorized,
     PermissionDenied,
-    BadRequest,
+    BadRequest(String),
 }
 
 // region:    --- Error Boilerplate
@@ -32,7 +32,7 @@ impl IntoResponse for Error {
             Self::DbError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database Error"),
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied"),
-            Self::BadRequest => (StatusCode::BAD_REQUEST, "Bad Request"),
+            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "Bad Request"),
         };
 
         response.into_response()
