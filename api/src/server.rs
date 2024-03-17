@@ -1,10 +1,6 @@
 use std::{env, error::Error};
 
-use axum::{
-    http::{Method, StatusCode},
-    routing::get_service,
-    Router,
-};
+use axum::{http::StatusCode, routing::get_service, Router};
 
 use tokio::{net::TcpListener, signal};
 use tower_http::{
@@ -29,13 +25,7 @@ fn routes_static() -> Router {
 
 pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PATCH,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
+        .allow_methods(Any)
         .allow_headers(Any)
         .allow_origin(Any);
 
@@ -43,9 +33,9 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
 
     Ok(Router::new()
         .nest("/api", modbus_register_routes().merge(user_routes()))
-        .layer(cors)
         .with_state(app_state)
-        .fallback_service(routes_static()))
+        .fallback_service(routes_static())
+        .layer(cors))
 }
 
 pub async fn server_start() -> Result<(), Box<dyn Error>> {

@@ -3,7 +3,7 @@
     <q-inner-loading
       v-if="!loggedIn"
       :showing="true"
-      label="Waiting for the login in the auth window..."
+      label="Waiting for the login in the browser window..."
       label-class="text-teal"
       label-style="font-size: 1.1em"
     />
@@ -32,7 +32,11 @@ onMounted(() => {
     if (data.type === "hello") {
       cid.value = data.cid;
       const loginUrl = process.env.API_URL + "/login?cid=" + cid.value;
-      loginWindow.value = window.open(loginUrl, "_blank");
+      localApi.post("login", {
+        json: {
+          url: loginUrl,
+        },
+      });
       return;
     } else if (data.type === "token") {
       loginWindow.value?.close();
