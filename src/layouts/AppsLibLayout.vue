@@ -11,7 +11,9 @@
 import { onMounted } from "vue";
 import { globalNav } from "../lib/common";
 import UserTopBar from "../components/UserTopBar.vue";
+import { useMeta } from "quasar";
 
+useMeta({ title: "Application Library" });
 onMounted(() => {
   globalNav.value.title = "Application Library";
   globalNav.value.back = null;

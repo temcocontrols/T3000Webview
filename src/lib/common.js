@@ -1648,3 +1648,9 @@ export function isAdmin(user) {
     user.roles.admin || user.roles.administrator || user.roles.restricted_admin
   );
 }
+
+export function getModbusRegisterSettings() {
+  return localStorage.getItem("modbusRegisterSettings")
+    ? JSON.parse(localStorage.getItem("modbusRegisterSettings")) || null
+    : null;
+}

@@ -6,4 +6,8 @@
   </q-layout>
 </template>
 
-<script setup></script>
+<script setup>
+import { useMeta } from "quasar";
+
+useMeta({ title: "HVAC Drawer" });
+</script>

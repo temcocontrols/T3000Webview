@@ -16,7 +16,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
-import { user, globalNav } from "../lib/common";
+import { user, globalNav, getModbusRegisterSettings } from "../lib/common";
 import { localApi } from "../lib/api";
 
 const router = useRouter();
@@ -55,6 +55,18 @@ onMounted(() => {
         sameSite: "Strict",
         secure: true,
       });
+
+      // Disable for now
+      /* if (getModbusRegisterSettings()?.syncData === "OFFLINE") {
+        $q.notify({
+          message:
+            "Offline mode enabled, data will not be synced, you can change that from settings.",
+          color: "warning",
+          timeout: 0,
+          actions: [{ label: "Dismiss", color: "white", handler: () => {} }],
+        });
+      } */
+
       router.replace({ path: globalNav.value.home });
     }
   };

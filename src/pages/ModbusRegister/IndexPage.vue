@@ -237,7 +237,19 @@
             floating
             v-if="notifications.find((n) => n.status === 'UNREAD')"
           />
+          <q-tooltip>Notifications</q-tooltip>
         </q-btn>
+        <!-- Disable for now -->
+        <!-- <q-btn
+          flat
+          round
+          dense
+          icon="settings"
+          class="mr-2"
+          @click="openSettingsDialog"
+        >
+          <q-tooltip>Settings</q-tooltip>
+        </q-btn> -->
       </template>
     </user-top-bar>
     <q-page
@@ -607,13 +619,79 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+  <!-- Settings dialog -->
+  <q-dialog v-model="settingsDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Settings</div>
+      </q-card-section>
+      <q-separator />
+      <q-form ref="form" class="flex flex-col" @submit="saveSettings">
+        <q-card-section class="scroll">
+          <q-list bordered class="rounded-borders">
+            <q-expansion-item
+              expand-separator
+              icon="perm_identity"
+              label="Sync Data"
+              caption="Pull & push data to the public modbus registry"
+              default-opened
+            >
+              <q-card>
+                <q-card-section>
+                  <q-option-group
+                    v-model="settingsDialog.settings.syncData"
+                    :options="[
+                      { label: 'Offline Only', value: 'OFFLINE' },
+                      { label: 'Sync Data', value: 'SYNC' },
+                    ]"
+                  />
+                  <div
+                    v-if="settingsDialog.settings.syncData === 'SYNC'"
+                    class="flex flex-col ml-4"
+                  >
+                    <q-toggle
+                      v-model="settingsDialog.settings.push"
+                      label="Push my changes to the public registry"
+                    />
+                    <q-toggle
+                      v-model="settingsDialog.settings.pull"
+                      label="Pull data from the public registry"
+                    />
+                  </div>
+                </q-card-section>
+              </q-card>
+            </q-expansion-item>
+          </q-list>
+        </q-card-section>
+        <q-separator />
+
+        <q-card-actions align="right" class="mt-0">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="settingsDialog.active = false"
+          />
+          <q-btn label="Save" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
 import "ag-grid-enterprise/styles/ag-grid.css";
 import "ag-grid-enterprise/styles/ag-theme-quartz.css";
 import "ag-grid-enterprise";
-import { ref, onMounted, onBeforeUnmount, onBeforeMount, watch } from "vue";
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  onBeforeMount,
+  watch,
+  toRaw,
+} from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
 import { useQuasar, debounce } from "quasar";
@@ -627,6 +705,7 @@ import {
   operationOptions,
   dataFormatOptions,
   isAdmin,
+  getModbusRegisterSettings,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
@@ -683,6 +762,17 @@ const liveMode = ref(false);
 let dismissOfflineNotif = null;
 let intervalIsOnline = null;
 
+const settings = ref({
+  syncData: "OFFLINE",
+  push: false,
+  pull: false,
+});
+
+const settingsDialog = ref({
+  active: false,
+  settings: structuredClone(toRaw(settings.value)),
+});
+
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
@@ -696,9 +786,6 @@ onMounted(() => {
   heathCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
-  if (user.value) {
-    loadNotifications();
-  }
 });
 
 function heathCheck() {
@@ -1092,6 +1179,31 @@ watch(liveMode, (newVal, oldVal) => {
     onFilterChanged();
   }
 });
+
+watch(user, (newVal, oldVal) => {
+  if (newVal) {
+    loadNotifications();
+    settings.value = getModbusRegisterSettings() || settings.value;
+  }
+});
+
+function openSettingsDialog() {
+  settingsDialog.value.active = true;
+  settingsDialog.value.settings = structuredClone(toRaw(settings.value));
+}
+
+function saveSettings() {
+  settingsDialog.value.active = false;
+  settings.value = structuredClone(toRaw(settingsDialog.value.settings));
+  localStorage.setItem(
+    "modbusRegisterSettings",
+    JSON.stringify(toRaw(settings.value))
+  );
+  $q.notify({
+    type: "positive",
+    message: "Settings saved successfully",
+  });
+}
 </script>
 
 <style>
