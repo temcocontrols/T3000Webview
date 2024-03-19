@@ -55,6 +55,7 @@ pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Selec
     }
 
     query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
+    query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     if local_only {
         query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
     }
@@ -158,27 +159,25 @@ pub async fn update(
     Ok(Json(updated_item.try_into_model().unwrap()))
 }
 
-pub async fn delete(
-    State(state): State<AppState>,
-    Path(id): Path<i32>,
-) -> Result<Json<modbus_register::Model>> {
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<String>> {
     let item = ModbusRegister::find_by_id(id).one(&state.conn).await;
 
     match item {
-        Ok(Some(mut item)) => {
+        Ok(Some(item)) => {
             if item.status == "NEW" {
                 ModbusRegister::delete_by_id(id)
                     .exec(&state.conn)
                     .await
                     .map_err(|error| Error::DbError(error.to_string()))?;
-                Ok(Json(item))
+                Ok(Json("Deleted successfully".to_string()))
             } else {
-                item.status = "DELETED".to_string();
-                let updated_item = modbus_register::ActiveModel::from(item)
+                let mut updated_item = modbus_register::ActiveModel::from(item);
+                updated_item.status = Set("DELETED".to_string());
+                updated_item
                     .save(&state.conn)
                     .await
                     .map_err(|error| Error::DbError(error.to_string()))?;
-                Ok(Json(updated_item.try_into_model().unwrap()))
+                Ok(Json("Deleted successfully".to_string()))
             }
         }
         Ok(None) => Err(Error::NotFound),
