@@ -50,7 +50,7 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     copy_database_if_not_exists()?;
 
-    start_data_sync_scheduler().await?;
+    // start_data_sync_scheduler().await?;
 
     run_migrations().await;
 
