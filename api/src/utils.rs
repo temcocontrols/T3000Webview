@@ -1,9 +1,12 @@
 use lazy_static::lazy_static;
+use sqlx::SqlitePool;
 use std::{env, fs, path::Path};
 
 lazy_static! {
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite://Database/webview_database.db".to_string());
+    pub static ref REMOTE_API_URL: String = env::var("REMOTE_API_URL")
+        .unwrap_or_else(|_| "https://user-lib.temcocontrols.com".to_string());
 }
 
 pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,4 +44,11 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+pub async fn run_migrations() {
+    let conn = SqlitePool::connect(DATABASE_URL.as_str())
+        .await
+        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
+    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
 }

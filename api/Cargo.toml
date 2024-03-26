@@ -22,6 +22,9 @@ tower-http = {version = "0.5.1", features = ["cors", "fs"]}
 dotenvy = "0.15.7"
 lazy_static = "1.4.0"
 open = "5.1.2"
+tokio-cron-scheduler = "0.10.0"
+sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio-native-tls", "sqlite", "migrate"] }
+reqwest = "0.12.1"
 
 [dependencies.sea-orm]
 version = "1.0.0-rc.1" # sea-orm version
@@ -35,8 +38,6 @@ features = [
 [dev-dependencies]
 mockall = "0.12.1"
 tower = { version = "0.4", features = ["util"] }
-sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio-native-tls", "sqlite"] }
-sqlx-cli = "0.7.3"
 
 [profile.release]
 strip = true
