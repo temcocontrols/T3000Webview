@@ -10,7 +10,6 @@ use sqlx::SqlitePool;
 use t3_webview_api::{
     app_state::app_state,
     entity::user,
-    error::Error,
     server::create_app,
     user::routes::{delete_user, get_user, save_user},
     utils::DATABASE_URL,
@@ -27,7 +26,7 @@ async fn test_user_crud() {
 
     let conn = app_state().await.unwrap();
     let res = get_user(State(conn.clone())).await;
-    assert!(matches!(res, Err(Error::NotFound)));
+    assert!(res.is_ok() && res.unwrap().is_none());
 
     let user = user::Model {
         id: 1,
@@ -40,7 +39,7 @@ async fn test_user_crud() {
 
     let res = get_user(State(conn.clone())).await;
     assert!(res.is_ok());
-    assert!(res.unwrap().id == 1);
+    assert!(res.unwrap().as_ref().unwrap().id == 1);
 
     let res = delete_user(State(conn.clone())).await;
     assert!(res.is_ok());
