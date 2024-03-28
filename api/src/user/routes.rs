@@ -45,13 +45,20 @@ pub async fn save_user(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    let mut last_pull = Some("2024-02-10 00:00:00".to_string());
+
     if let Some(user) = the_user {
+        if user.last_modbus_register_pull.is_some() {
+            last_pull = user.last_modbus_register_pull;
+        }
         User::delete_by_id(user.id)
             .exec(&state.conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
     }
-    let result = User::insert(user::ActiveModel::from(item))
+    let mut new_user = item.clone();
+    new_user.last_modbus_register_pull = last_pull;
+    let result = User::insert(user::ActiveModel::from(new_user))
         .exec_with_returning(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;

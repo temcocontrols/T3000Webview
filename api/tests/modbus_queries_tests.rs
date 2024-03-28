@@ -26,6 +26,7 @@ async fn test_modbus_register_crud() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
     sqlx::migrate!("./migrations").run(&conn).await.unwrap();
     let payload = CreateModbusRegisterItemInput {
+        id: None,
         register_name: Some("test".to_string()),
         register_address: 1,
         operation: Some("test".to_string()),
@@ -33,7 +34,10 @@ async fn test_modbus_register_crud() {
         device_name: "test".to_string(),
         data_format: "test".to_string(),
         unit: Some("test".to_string()),
+        status: None,
         register_length: 1,
+        created_at: None,
+        updated_at: None,
     };
     let conn = app_state().await.unwrap();
     let item = create(State(conn.clone()), Json(payload)).await;

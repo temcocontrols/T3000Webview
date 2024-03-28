@@ -105,6 +105,7 @@ impl Display for ModbusRegisterColumns {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModbusRegisterItemInput {
+    pub id: Option<i32>,
     pub register_address: i32,
     pub operation: Option<String>,
     pub register_length: i32,
@@ -113,6 +114,9 @@ pub struct CreateModbusRegisterItemInput {
     pub description: Option<String>,
     pub device_name: String,
     pub unit: Option<String>,
+    pub status: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

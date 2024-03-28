@@ -239,8 +239,7 @@
           />
           <q-tooltip>Notifications</q-tooltip>
         </q-btn>
-        <!-- Disable for now -->
-        <!-- <q-btn
+        <q-btn
           flat
           round
           dense
@@ -249,7 +248,7 @@
           @click="openSettingsDialog"
         >
           <q-tooltip>Settings</q-tooltip>
-        </q-btn> -->
+        </q-btn>
       </template>
     </user-top-bar>
     <q-page
@@ -783,27 +782,30 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
-  heathCheck();
+  healthCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
 });
 
-function heathCheck() {
+function healthCheck() {
   const socket = new WebSocket(process.env.API_WS_URL);
   socket.onopen = function () {
     if (dismissOfflineNotif) {
       dismissOfflineNotif();
     }
-    intervalIsOnline = setInterval(() => {
+    let debounceStatusCheck = debounce(() => {
       socket.send("statusCheck");
-    }, 5000);
+    }, 2000);
+    intervalIsOnline = setInterval(() => {
+      debounceStatusCheck();
+    }, 3000);
     isOnline.value = true;
   };
 
   socket.onclose = function (e) {
     clearisOnlineState();
     setTimeout(function () {
-      heathCheck();
+      healthCheck();
     }, 5000);
   };
 
@@ -811,7 +813,7 @@ function heathCheck() {
     if (socket.readyState === WebSocket.CLOSED) {
       clearisOnlineState();
       setTimeout(function () {
-        heathCheck();
+        healthCheck();
       }, 5000);
       return;
     }
@@ -828,7 +830,7 @@ function clearisOnlineState() {
       type: "negative",
       message: "You are offline!",
       timeout: 0,
-      actions: [{ label: "Close", color: "white", handler: heathCheck }],
+      actions: [{ label: "Close", color: "white", handler: healthCheck }],
     });
   }
   isOnline.value = false;
@@ -927,7 +929,7 @@ function getServerSideDatasource() {
             "&order_dir=" +
             (request.sortModel[0]?.sort || "desc") +
             (filter.value ? "&filter=" + filter.value : "") +
-            (activeTab.value === "changes" ? "&hasChanges=1" : "")
+            (activeTab.value === "changes" ? "&has_changes=1" : "")
         )
         .then(async (res) => {
           res = await res.json();
@@ -1180,10 +1182,11 @@ watch(liveMode, (newVal, oldVal) => {
   }
 });
 
-watch(user, (newVal, oldVal) => {
+watch(user, (newVal, _oldVal) => {
   if (newVal) {
     loadNotifications();
     settings.value = getModbusRegisterSettings() || settings.value;
+    sync_data();
   }
 });
 
@@ -1203,6 +1206,122 @@ function saveSettings() {
     type: "positive",
     message: "Settings saved successfully",
   });
+}
+
+async function sync_data() {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  if (settings.value.syncData === "SYNC") {
+    pullRemoteChanges();
+    pushLocalChanges();
+  }
+}
+
+async function pushLocalChanges() {
+  if (isOnline.value === false || !settings.value.push) {
+    return;
+  }
+  const localChanges = await localApi
+    .get("modbus-registers?local_only=true&limit=50")
+    .json();
+  if (localChanges?.data?.length > 0) {
+    for await (const item of localChanges.data) {
+      const change = structuredClone(item);
+      delete change.created_at;
+      delete change.updated_at;
+      delete change.status;
+      if (item.status === "UPDATED") {
+        delete change.id;
+        const res = await liveApi
+          .patch("modbus-registers/" + item.id, {
+            json: change,
+          })
+          .json();
+        if (res) {
+          await localApi.patch("modbus-registers/" + item.id, {
+            json: { status: res.status },
+          });
+        }
+      } else if (item.status === "NEW") {
+        delete change.id;
+        const res = await liveApi.post("modbus-registers", {
+          json: change,
+        });
+        if (res) {
+          await localApi.delete("modbus-registers/" + item.id);
+          delete res.revisions;
+          delete res.user;
+          delete res.userId;
+          delete res.parentId;
+          delete res.parent;
+          delete res.ModbusRegisterNotification;
+          await localApi.post("modbus-registers", {
+            json: res,
+          });
+        }
+      }
+    }
+  }
+  gridApi.value.refreshServerSide();
+}
+
+async function pullRemoteChanges(limit = 50, offset = 0) {
+  if (isOnline.value === false || !settings.value.pull) {
+    return;
+  }
+  const user = await localApi.get("user").json();
+  if (!user) {
+    return;
+  }
+  const remoteChanges = await liveApi
+    .get(
+      `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
+        user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
+      ).toISOString()}`
+    )
+    .json();
+
+  if (remoteChanges?.data?.length > 0) {
+    for await (const item of remoteChanges.data) {
+      const change = structuredClone(item);
+      delete change.revisions;
+      delete change.user;
+      delete change.userId;
+      delete change.parentId;
+      delete change.parent;
+      delete change.ModbusRegisterNotification;
+      const existing_item = await localApi
+        .get("modbus-registers/" + item.id)
+        .json();
+      if (existing_item && existing_item.id) {
+        const remoteUpdated = new Date(item.updated_at);
+        const localUpdated = new Date(existing_item.updated_at);
+        if (
+          ["NEW", "UPDATED"].includes(existing_item.status) ||
+          remoteUpdated <= localUpdated
+        )
+          return;
+        delete change.id;
+        await localApi
+          .patch("modbus-registers/" + item.id, {
+            json: change,
+          })
+          .json();
+      } else {
+        await localApi.post("modbus-registers", {
+          json: change,
+        });
+      }
+    }
+    if (remoteChanges?.data?.length > 49) {
+      await pullRemoteChanges(limit, offset + 50);
+    } else {
+      await localApi.post("user/update_last_modbus_register_pull");
+      gridApi.value.refreshServerSide();
+    }
+  } else {
+    await localApi.post("user/update_last_modbus_register_pull");
+    gridApi.value.refreshServerSide();
+  }
 }
 </script>
 

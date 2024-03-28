@@ -27,7 +27,7 @@ sqlx = { version = "0.7", default-features = false, features = ["macros", "runti
 reqwest = "0.12.1"
 
 [dependencies.sea-orm]
-version = "1.0.0-rc.1" # sea-orm version
+version = "1.0.0-rc.3" # sea-orm version
 features = [
     "runtime-tokio-native-tls",
     # "sqlx-postgres",

@@ -10,6 +10,7 @@ use crate::{app_state::AppState, auth::require_auth};
 pub fn modbus_register_routes() -> Router<AppState> {
     let open_routes = Router::new()
         .route("/modbus-registers", get(queries::list))
+        .route("/modbus-registers/:id", get(queries::get_one))
         .route("/modbus-register-settings", get(settings_queries::get_all))
         .route(
             "/modbus-register-settings/:name",

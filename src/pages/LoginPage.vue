@@ -22,7 +22,6 @@ import { localApi } from "../lib/api";
 const router = useRouter();
 const $q = useQuasar();
 const cid = ref(null);
-const loginWindow = ref(null);
 const loggedIn = ref(false);
 onMounted(() => {
   // Connect to the WebSocket server
@@ -37,10 +36,7 @@ onMounted(() => {
           url: loginUrl,
         },
       });
-      return;
     } else if (data.type === "token") {
-      loginWindow.value?.close();
-      loginWindow.value = null;
       loggedIn.value = true;
       user.value = data.user;
       localApi.post("user", {
@@ -56,8 +52,7 @@ onMounted(() => {
         secure: true,
       });
 
-      // Disable for now
-      /* if (getModbusRegisterSettings()?.syncData === "OFFLINE") {
+      if (getModbusRegisterSettings()?.syncData === "OFFLINE") {
         $q.notify({
           message:
             "Offline mode enabled, data will not be synced, you can change that from settings.",
@@ -65,7 +60,7 @@ onMounted(() => {
           timeout: 0,
           actions: [{ label: "Dismiss", color: "white", handler: () => {} }],
         });
-      } */
+      }
 
       router.replace({ path: globalNav.value.home });
     }

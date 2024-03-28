@@ -91,11 +91,23 @@ pub async fn list(
     Ok(Json(ModbusRegisterResponse { data: items, count }))
 }
 
+pub async fn get_one(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<Json<Option<modbus_register::Model>>> {
+    let item = ModbusRegister::find_by_id(id)
+        .one(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(item))
+}
+
 pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateModbusRegisterItemInput>,
 ) -> Result<Json<modbus_register::Model>> {
-    let model = modbus_register::ActiveModel {
+    let mut model = modbus_register::ActiveModel {
         register_address: Set(payload.register_address),
         operation: Set(payload.operation),
         register_length: Set(payload.register_length),
@@ -107,8 +119,24 @@ pub async fn create(
         ..Default::default()
     };
 
-    let res = model
-        .save(&state.conn)
+    if payload.id.is_some() {
+        model.id = Set(payload.id.unwrap());
+    }
+
+    if payload.status.is_some() {
+        model.status = Set(payload.status.unwrap());
+    }
+
+    if payload.created_at.is_some() {
+        model.created_at = Set(payload.created_at.unwrap());
+    }
+
+    if payload.updated_at.is_some() {
+        model.updated_at = Set(payload.updated_at.unwrap());
+    }
+
+    let res = ModbusRegister::insert(model.clone())
+        .exec_with_returning(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -129,6 +157,14 @@ pub async fn update(
             .ok_or(Error::NotFound)
             .unwrap(),
     );
+
+    if None == payload.status
+        && (model.status.clone().unwrap() == "PUBLISHED".to_string()
+            || model.status.clone().unwrap() == "UNDER_REVIEW".to_string()
+            || model.status.clone().unwrap() == "REVISION".to_string())
+    {
+        model.status = Set("UPDATED".to_string());
+    }
 
     if let Some(operation) = payload.operation {
         model.operation = Set(operation);
