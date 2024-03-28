@@ -56,6 +56,7 @@ pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Selec
 
     query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
+    query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
     if local_only {
         query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
     }
@@ -146,6 +147,9 @@ pub async fn update(
     }
     if let Some(device_name) = payload.device_name {
         model.device_name = Set(device_name);
+    }
+    if let Some(status) = payload.status {
+        model.status = Set(status);
     }
     if let Some(unit) = payload.unit {
         model.unit = Set(unit);

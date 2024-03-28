@@ -10,6 +10,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub token: Option<String>,
+    pub last_modbus_register_pull: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

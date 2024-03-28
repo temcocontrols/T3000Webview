@@ -32,6 +32,7 @@ async fn test_user_crud() {
         id: 1,
         name: "test".to_string(),
         token: Some("test".to_string()),
+        last_modbus_register_pull: None,
     };
 
     let res = save_user(State(conn.clone()), Json(user)).await;

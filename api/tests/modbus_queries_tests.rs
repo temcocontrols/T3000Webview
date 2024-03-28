@@ -64,6 +64,7 @@ async fn test_modbus_register_crud() {
         description: Some(Some("updated".to_string())),
         device_name: Some("updated".to_string()),
         unit: Some(Some("updated".to_string())),
+        status: None,
     };
     let result = update(State(conn.clone()), id, Json(payload)).await;
     assert!(result.is_ok());

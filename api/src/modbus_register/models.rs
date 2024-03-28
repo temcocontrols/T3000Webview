@@ -130,6 +130,7 @@ pub struct UpdateModbusRegisterItemInput {
     pub device_name: Option<String>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub unit: Option<Option<String>>,
+    pub status: Option<String>,
 }
 
 #[derive(Serialize, Debug)]

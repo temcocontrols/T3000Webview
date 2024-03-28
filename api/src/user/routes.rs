@@ -4,8 +4,9 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
 use serde::Deserialize;
+use sqlx::types::chrono;
 
 use crate::entity::user;
 use crate::{auth::require_auth, entity::prelude::*};
@@ -19,6 +20,10 @@ pub fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/user", get(get_user).post(save_user).delete(delete_user))
         .route("/login", post(login))
+        .route(
+            "/user/update_last_modbus_register_pull",
+            post(update_user_last_modbus_register_pull),
+        )
         .route_layer(middleware::from_fn(require_auth))
 }
 
@@ -51,6 +56,29 @@ pub async fn save_user(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
     Ok(Json(result))
+}
+
+pub async fn update_user_last_modbus_register_pull(
+    State(state): State<AppState>,
+) -> Result<Json<String>> {
+    let the_user = User::find()
+        .one(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    if the_user.is_none() {
+        return Err(Error::NotFound);
+    }
+
+    let mut the_user = the_user.unwrap().into_active_model();
+    the_user.last_modbus_register_pull = Set(Some(
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    ));
+    the_user
+        .save(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+    Ok(Json("Updated".to_string()))
 }
 
 pub async fn delete_user(State(state): State<AppState>) -> Result<Json<user::Model>> {

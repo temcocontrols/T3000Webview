@@ -10,7 +10,7 @@ use tower_http::{
 
 use crate::{
     app_state,
-    data_sync::start_data_sync_scheduler,
+    // data_sync::start_data_sync_scheduler,
     utils::{copy_database_if_not_exists, run_migrations},
 };
 
