@@ -10,7 +10,6 @@ use tower_http::{
 
 use crate::{
     app_state,
-    // data_sync::start_data_sync_scheduler,
     utils::{copy_database_if_not_exists, run_migrations},
 };
 
@@ -50,9 +49,7 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     copy_database_if_not_exists()?;
 
-    // start_data_sync_scheduler().await?;
-
-    run_migrations().await;
+    run_migrations().await?;
 
     let app = create_app().await?;
 

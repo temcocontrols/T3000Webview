@@ -46,9 +46,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub async fn run_migrations() {
-    let conn = SqlitePool::connect(DATABASE_URL.as_str())
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+pub async fn run_migrations() -> Result<(), sqlx::Error> {
+    let conn = SqlitePool::connect(DATABASE_URL.as_str()).await?;
+    Ok(sqlx::migrate!("./migrations").run(&conn).await?)
 }
