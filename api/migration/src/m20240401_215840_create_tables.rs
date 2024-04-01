@@ -137,6 +137,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(User::Name).string().not_null())
                     .col(ColumnDef::new(User::Token).string())
+                    .col(ColumnDef::new(User::LastModbusRegisterPull).string())
                     .to_owned(),
             )
             .await?;
