@@ -22,12 +22,12 @@ tower-http = {version = "0.5.1", features = ["cors", "fs"]}
 dotenvy = "0.15.7"
 lazy_static = "1.4.0"
 open = "5.1.2"
-sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlite", "migrate"] }
+sqlx = { version = "0.7", default-features = false, features = ["macros", "runtime-tokio", "sqlite", "migrate"] }
 
 [dependencies.sea-orm]
 version = "1.0.0-rc.3" # sea-orm version
 features = [
-    "runtime-tokio-rustls",
+    "runtime-tokio",
     # "sqlx-postgres",
     # "sqlx-mysql",
     "sqlx-sqlite",
