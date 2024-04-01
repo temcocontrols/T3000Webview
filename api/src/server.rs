@@ -10,7 +10,7 @@ use tower_http::{
 
 use crate::{
     app_state,
-    utils::{copy_database_if_not_exists, run_migrations},
+    utils::{copy_database_if_not_exists /* run_migrations */},
 };
 
 use super::modbus_register::routes::modbus_register_routes;
@@ -49,7 +49,7 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     copy_database_if_not_exists()?;
 
-    run_migrations().await?;
+    // run_migrations().await?;
 
     let app = create_app().await?;
 
