@@ -3,7 +3,6 @@ use axum::{
     Json,
 };
 use serde_json::Value;
-use sqlx::SqlitePool;
 use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
@@ -15,16 +14,13 @@ use t3_webview_api::{
         queries::{create, delete, list, update},
         settings_queries,
     },
-    utils::DATABASE_URL,
+    utils::run_migrations,
 };
 
 #[tokio::test]
 async fn test_modbus_register_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-    let conn = SqlitePool::connect(DATABASE_URL.as_str())
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    run_migrations().await.unwrap();
     let payload = CreateModbusRegisterItemInput {
         id: None,
         register_name: Some("test".to_string()),
@@ -83,10 +79,7 @@ async fn test_modbus_register_crud() {
 async fn test_modbus_register_settings_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    let conn = SqlitePool::connect(DATABASE_URL.as_str())
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    run_migrations().await.unwrap();
 
     let conn = app_state().await.unwrap();
 

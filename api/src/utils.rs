@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
-use sqlx::SqlitePool;
+use migration::{Migrator, MigratorTrait};
 use std::{env, fs, path::Path};
+
+use crate::db_connection::establish_connection;
 
 lazy_static! {
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL")
@@ -47,7 +49,7 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = SqlitePool::connect(DATABASE_URL.as_str()).await?;
-    sqlx::migrate!("./migrations").run(&conn).await?;
+    let conn = establish_connection().await?;
+    Migrator::up(&conn, None).await?;
     Ok(())
 }

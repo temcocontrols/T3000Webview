@@ -6,7 +6,6 @@ use axum::{
 };
 use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
 use serde::Deserialize;
-use sqlx::types::chrono;
 
 use crate::entity::user;
 use crate::{auth::require_auth, entity::prelude::*};

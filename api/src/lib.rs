@@ -1,4 +1,4 @@
-use utils::{copy_database_if_not_exists, run_migrations};
+use utils::copy_database_if_not_exists;
 
 pub mod app_state;
 pub mod auth;
@@ -14,7 +14,6 @@ pub mod utils;
 pub enum RustError {
     Ok = 0,
     Error = 1,
-    MigrationError = 2,
 }
 
 #[no_mangle]
@@ -28,16 +27,7 @@ pub extern "C" fn run_server() -> RustError {
     // Run the server logic in a blocking thread
     let result = runtime.block_on(async {
         dotenvy::dotenv().ok();
-
         copy_database_if_not_exists().ok();
-        match run_migrations().await {
-            Ok(_) => (),
-            Err(err) => {
-                // Handle migration errors here (log, convert to RustError)
-                eprintln!("Migration error: {:?}", err);
-                return RustError::MigrationError;
-            }
-        };
         match server::server_start().await {
             Ok(_) => RustError::Ok,
             Err(err) => {

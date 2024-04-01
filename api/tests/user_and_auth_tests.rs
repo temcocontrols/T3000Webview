@@ -6,23 +6,19 @@ use axum::{
     http::{self, Request, StatusCode},
     Json,
 };
-use sqlx::SqlitePool;
 use t3_webview_api::{
     app_state::app_state,
     entity::user,
     server::create_app,
     user::routes::{delete_user, get_user, save_user},
-    utils::DATABASE_URL,
+    utils::run_migrations,
 };
 use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_user_crud() {
     dotenvy::from_filename("./tests/.test.env").ok();
-    let conn = SqlitePool::connect(DATABASE_URL.as_str())
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    run_migrations().await.unwrap();
 
     let conn = app_state().await.unwrap();
     let res = get_user(State(conn.clone())).await;
@@ -50,10 +46,7 @@ async fn test_user_crud() {
 async fn test_user_auth() {
     dotenvy::from_filename("./tests/.test.env").ok();
 
-    let conn = SqlitePool::connect(DATABASE_URL.as_str())
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to {}", DATABASE_URL.as_str()));
-    sqlx::migrate!("./migrations").run(&conn).await.unwrap();
+    run_migrations().await.unwrap();
 
     let app = create_app().await.unwrap();
 
