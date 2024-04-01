@@ -46,7 +46,7 @@ jobs:
 
       - name: Build webview api
         run: |
-          cd T3000Webview/api
+          cd api
           cargo build --target=i686-pc-windows-msvc --release
 
       - name: Upload artifacts
