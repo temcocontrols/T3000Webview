@@ -8,7 +8,7 @@ use tower_http::{
     services::ServeDir,
 };
 
-use crate::{app_state, utils::copy_database_if_not_exists};
+use crate::app_state;
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
@@ -43,8 +43,6 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
-
-    copy_database_if_not_exists()?;
 
     let app = create_app().await?;
 
