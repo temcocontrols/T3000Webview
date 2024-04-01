@@ -2,7 +2,7 @@ name: Build & upload artifacts
 on: workflow_dispatch
 jobs:
   build_ui:
-    name: Build & upload artifacts
+    name: Build UI
     runs-on: ubuntu-latest
     environment: build
     env:
@@ -24,6 +24,7 @@ jobs:
           path: dist/spa/*
 
   build_api:
+    name: Build API
     runs-on: windows-latest
     environment: build
     env:
