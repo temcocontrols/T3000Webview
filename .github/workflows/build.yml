@@ -18,7 +18,7 @@ jobs:
           npm install
           npm run build
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: webview-ui
           path: dist/spa/*
@@ -54,7 +54,7 @@ jobs:
           cargo build --target=i686-pc-windows-msvc --release
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: webview-api
           path: |
