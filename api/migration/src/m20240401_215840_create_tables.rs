@@ -168,7 +168,7 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // Drop the old sqlx migration table
+        // Drop update status trigger
         db.execute_unprepared(
             r#"
               DROP TRIGGER IF EXISTS update_status;
@@ -176,7 +176,7 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // Drop update status trigger
+        // Drop the old sqlx migration table
         db.execute_unprepared(
             r#"
           DROP TABLE IF EXISTS _sqlx_migrations;
