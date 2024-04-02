@@ -558,6 +558,7 @@ export default defineComponent({
     function logout() {
       $q.cookies.remove("token");
       user.value = null;
+      localStorage.removeItem("user");
     }
 
     return {

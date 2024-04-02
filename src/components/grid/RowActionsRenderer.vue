@@ -1,12 +1,19 @@
 <script setup>
+import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
-import { user, isAdmin } from "../../lib/common";
+import { user, isAdmin, getModbusRegisterSettings } from "../../lib/common";
 
 const $q = useQuasar();
 const props = defineProps({
   params: {
     type: Object,
   },
+});
+
+const modbusRegisterSettings = ref(null);
+
+onMounted(() => {
+  modbusRegisterSettings.value = getModbusRegisterSettings();
 });
 function cancelChanges() {
   $q.dialog({
@@ -31,6 +38,21 @@ function deleteRow() {
   }).onOk(() => {
     props.params.api.dispatchEvent({
       type: "deleteRow",
+      data: { id: props.params.data.id },
+    });
+  });
+}
+
+function cancelUpdate() {
+  $q.dialog({
+    title: "Cancel Update",
+    message:
+      "Are you sure you want to restore the original row and cancel your changes?",
+    cancel: { label: "No" },
+    ok: { label: "Yes", color: "negative" },
+  }).onOk(() => {
+    props.params.api.dispatchEvent({
+      type: "cancelUpdateRow",
       data: { id: props.params.data.id },
     });
   });
@@ -88,7 +110,7 @@ function reviewNewRow() {
               v-close-popup
               @click="cancelChanges()"
             >
-              <q-item-section>Cancel changes</q-item-section>
+              <q-item-section>Cancel update</q-item-section>
             </q-item>
             <q-item v-else clickable v-close-popup @click="deleteRow()">
               <q-item-section>Delete row</q-item-section>
@@ -121,9 +143,12 @@ function reviewNewRow() {
         </q-menu>
       </q-btn>
     </div>
-    <div class="row-actions">
+    <div v-else class="row-actions">
       <q-btn
-        v-if="['UPDATED', 'NEW'].includes(props.params.data.status)"
+        v-if="
+          modbusRegisterSettings?.push &&
+          ['UPDATED', 'NEW'].includes(props.params.data.status)
+        "
         class="status-message-btn"
         round
         dense
@@ -145,6 +170,14 @@ function reviewNewRow() {
       <q-btn round dense flat size="sm" color="primary" icon="more_vert">
         <q-menu>
           <q-list style="min-width: 100px">
+            <q-item
+              v-if="props.params.data.status === 'UPDATED'"
+              clickable
+              v-close-popup
+              @click="cancelUpdate()"
+            >
+              <q-item-section>Cancel update</q-item-section>
+            </q-item>
             <q-item clickable v-close-popup @click="deleteRow()">
               <q-item-section>Delete row</q-item-section>
             </q-item>

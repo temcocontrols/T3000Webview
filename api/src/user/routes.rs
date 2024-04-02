@@ -1,7 +1,7 @@
 use axum::{
     extract::State,
     middleware,
-    routing::{get, post},
+    routing::{get, patch, post},
     Json, Router,
 };
 use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
@@ -21,7 +21,7 @@ pub fn user_routes() -> Router<AppState> {
         .route("/login", post(login))
         .route(
             "/user/update_last_modbus_register_pull",
-            post(update_user_last_modbus_register_pull),
+            patch(update_user_last_modbus_register_pull),
         )
         .route_layer(middleware::from_fn(require_auth))
 }
@@ -64,8 +64,14 @@ pub async fn save_user(
     Ok(Json(result))
 }
 
+#[derive(Deserialize)]
+pub struct ServerTimeInput {
+    pub time: String,
+}
+
 pub async fn update_user_last_modbus_register_pull(
     State(state): State<AppState>,
+    Json(payload): Json<ServerTimeInput>,
 ) -> Result<Json<String>> {
     let the_user = User::find()
         .one(&state.conn)
@@ -77,14 +83,12 @@ pub async fn update_user_last_modbus_register_pull(
     }
 
     let mut the_user = the_user.unwrap().into_active_model();
-    the_user.last_modbus_register_pull = Set(Some(
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-    ));
+    the_user.last_modbus_register_pull = Set(Some(payload.time.clone()));
     the_user
         .save(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
-    Ok(Json("Updated".to_string()))
+    Ok(Json("Time updated".to_string()))
 }
 
 pub async fn delete_user(State(state): State<AppState>) -> Result<Json<user::Model>> {

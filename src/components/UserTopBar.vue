@@ -19,16 +19,21 @@ export default {
     const $q = useQuasar();
     const search = ref("");
     onMounted(() => {
+      user.value = localStorage.getItem("user")
+        ? JSON.parse(localStorage.getItem("user")) || null
+        : null;
       isLoggedIn();
     });
     function logout() {
       $q.cookies.remove("token");
       user.value = null;
+      localStorage.removeItem("user");
       router.replace({ path: globalNav.value.home });
     }
     function isLoggedIn() {
       const hasToken = $q.cookies.has("token");
       if (!hasToken) {
+        localStorage.removeItem("user");
         user.value = null;
         return;
       }
@@ -36,6 +41,7 @@ export default {
         .get("me")
         .then(async (res) => {
           user.value = await res.json();
+          localStorage.setItem("user", JSON.stringify(user.value));
         })
         .catch((err) => {
           // Not logged in

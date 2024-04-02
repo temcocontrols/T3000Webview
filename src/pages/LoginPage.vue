@@ -39,6 +39,7 @@ onMounted(() => {
     } else if (data.type === "token") {
       loggedIn.value = true;
       user.value = data.user;
+      localStorage.setItem("user", JSON.stringify(user.value));
       localApi.post("user", {
         json: {
           token: data.token,

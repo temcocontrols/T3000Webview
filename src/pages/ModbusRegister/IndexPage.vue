@@ -785,6 +785,7 @@ onMounted(() => {
   healthCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
+  settings.value = getModbusRegisterSettings() || settings.value;
 });
 
 function healthCheck() {
@@ -885,6 +886,39 @@ function onGridReady(params) {
         type: "positive",
         message: "The row has been deleted successfully",
       });
+    });
+  });
+
+  params.api.addEventListener("cancelUpdateRow", async (ev) => {
+    if (isOnline.value === false) {
+      $q.notify({
+        type: "negative",
+        message:
+          "You are offline, you have to be online to restore the original row!",
+      });
+      return;
+    }
+    await liveApi.get("modbus-registers/" + ev.data.id).then(async (res) => {
+      const item = await res.json();
+      delete item.id;
+      delete item.created_at;
+      delete item.updated_at;
+      delete item.revisions;
+      delete item.user;
+      delete item.userId;
+      delete item.parentId;
+      delete item.parent;
+      delete item.ModbusRegisterNotification;
+
+      localApi
+        .patch("modbus-registers/" + ev.data.id, { json: item })
+        .then(async (_res) => {
+          gridApi.value.refreshServerSide();
+          $q.notify({
+            type: "positive",
+            message: "The row has been restored successfully",
+          });
+        });
     });
   });
 
@@ -1021,10 +1055,6 @@ function saveNewRow() {
 
 async function getNotifications(offset = 0, limit = 10) {
   if (isOnline.value === false) {
-    $q.notify({
-      type: "negative",
-      message: "You are offline!",
-    });
     return;
   }
   try {
@@ -1182,11 +1212,12 @@ watch(liveMode, (newVal, oldVal) => {
   }
 });
 
-watch(user, (newVal, _oldVal) => {
-  if (newVal) {
-    loadNotifications();
-    settings.value = getModbusRegisterSettings() || settings.value;
-    sync_data();
+watch(isOnline, (newVal, _oldVal) => {
+  if (newVal === true) {
+    if (user.value) {
+      loadNotifications();
+      sync_data();
+    }
   }
 });
 
@@ -1210,6 +1241,9 @@ function saveSettings() {
 
 async function sync_data() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
+  if (!user.value?.id || isOnline.value === false) {
+    return;
+  }
   if (settings.value.syncData === "SYNC") {
     pullRemoteChanges();
     pushLocalChanges();
@@ -1217,7 +1251,7 @@ async function sync_data() {
 }
 
 async function pushLocalChanges() {
-  if (isOnline.value === false || !settings.value.push) {
+  if (!settings.value.push) {
     return;
   }
   const localChanges = await localApi
@@ -1229,6 +1263,7 @@ async function pushLocalChanges() {
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
+
       if (item.status === "UPDATED") {
         delete change.id;
         const res = await liveApi
@@ -1247,16 +1282,20 @@ async function pushLocalChanges() {
           json: change,
         });
         if (res) {
-          await localApi.delete("modbus-registers/" + item.id);
           delete res.revisions;
           delete res.user;
           delete res.userId;
           delete res.parentId;
           delete res.parent;
           delete res.ModbusRegisterNotification;
-          await localApi.post("modbus-registers", {
-            json: res,
-          });
+          const localCreated = await localApi
+            .post("modbus-registers", {
+              json: res,
+            })
+            .json();
+          if (localCreated?.id) {
+            await localApi.delete("modbus-registers/" + item.id);
+          }
         }
       }
     }
@@ -1265,13 +1304,15 @@ async function pushLocalChanges() {
 }
 
 async function pullRemoteChanges(limit = 50, offset = 0) {
-  if (isOnline.value === false || !settings.value.pull) {
+  if (!settings.value.pull) {
     return;
   }
   const user = await localApi.get("user").json();
   if (!user) {
     return;
   }
+  const serverTime = await liveApi.get("serverTime").json();
+  console.log("serverTime", serverTime);
   const remoteChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
@@ -1279,6 +1320,12 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
       ).toISOString()}`
     )
     .json();
+
+  if (remoteChanges) {
+    await localApi.patch("user/update_last_modbus_register_pull", {
+      json: { time: serverTime.time },
+    });
+  }
 
   if (remoteChanges?.data?.length > 0) {
     for await (const item of remoteChanges.data) {
@@ -1293,6 +1340,9 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
         .get("modbus-registers/" + item.id)
         .json();
       if (existing_item && existing_item.id) {
+        if (existing_item.status === "DELETED") {
+          continue;
+        }
         const remoteUpdated = new Date(item.updated_at);
         const localUpdated = new Date(existing_item.updated_at);
         if (
@@ -1307,6 +1357,15 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
           })
           .json();
       } else {
+        // Format the date as YYYY-MM-DD HH:MM:SS to store in Sqlite
+        change.created_at = new Date(change.created_at)
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
+        change.updated_at = new Date(change.updated_at)
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
         await localApi.post("modbus-registers", {
           json: change,
         });
@@ -1315,11 +1374,9 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     if (remoteChanges?.data?.length > 49) {
       await pullRemoteChanges(limit, offset + 50);
     } else {
-      await localApi.post("user/update_last_modbus_register_pull");
       gridApi.value.refreshServerSide();
     }
   } else {
-    await localApi.post("user/update_last_modbus_register_pull");
     gridApi.value.refreshServerSide();
   }
 }
