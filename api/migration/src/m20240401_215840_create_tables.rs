@@ -188,7 +188,7 @@ impl MigrationTrait for Migration {
         // Reset the sqlite_sequence for modbus_register table
         db.execute_unprepared(
             r#"
-          UPDATE sqlite_sequence SET seq = 1 WHERE name = 'modbus_register';
+          UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
           "#,
         )
         .await?;
