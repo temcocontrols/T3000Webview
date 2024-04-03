@@ -888,6 +888,13 @@ function onGridReady(params) {
         message: "The row has been deleted successfully",
       });
     });
+    if (ev.data.status === "REVISION" && isOnline.value === true) {
+      await liveApi
+        .delete("modbus-registers/" + ev.data.id)
+        .then(async (_res) => {
+          gridApi.value.refreshServerSide();
+        });
+    }
   });
 
   params.api.addEventListener("cancelUpdateRow", async (ev) => {
@@ -1289,9 +1296,11 @@ async function pushLocalChanges() {
         }
       } else if (item.status === "NEW") {
         delete change.id;
-        const res = await liveApi.post("modbus-registers", {
-          json: change,
-        });
+        const res = await liveApi
+          .post("modbus-registers", {
+            json: change,
+          })
+          .json();
         if (res) {
           delete res.revisions;
           delete res.user;
@@ -1323,7 +1332,6 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     return;
   }
   const serverTime = await liveApi.get("serverTime").json();
-  console.log("serverTime", serverTime);
   const remoteChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(

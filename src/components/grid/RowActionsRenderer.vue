@@ -24,7 +24,7 @@ function cancelChanges() {
   }).onOk(() => {
     props.params.api.dispatchEvent({
       type: "cancelChanges",
-      data: { id: props.params.data.id },
+      data: props.params.data,
     });
   });
 }
@@ -38,7 +38,7 @@ function deleteRow() {
   }).onOk(() => {
     props.params.api.dispatchEvent({
       type: "deleteRow",
-      data: { id: props.params.data.id },
+      data: props.params.data,
     });
   });
 }
@@ -53,7 +53,7 @@ function cancelUpdate() {
   }).onOk(() => {
     props.params.api.dispatchEvent({
       type: "cancelUpdateRow",
-      data: { id: props.params.data.id },
+      data: props.params.data,
     });
   });
 }
@@ -75,7 +75,7 @@ function reviewNewRow() {
 
 <template>
   <div class="relative">
-    {{ props.params.value }}
+    {{ props.params.data.status === "NEW" ? "" : props.params.value }}
     <div
       v-if="
         ['UNDER_REVIEW', 'REVISION'].includes(props.params.data.status) &&
