@@ -870,6 +870,7 @@ function onGridReady(params) {
     await liveApi
       .patch("modbus-registers/" + ev.data.id + "/cancel", {})
       .then(async (_res) => {
+        await cancelUpdate(ev.data.id);
         gridApi.value.refreshServerSide();
         $q.notify({
           type: "positive",
@@ -898,28 +899,7 @@ function onGridReady(params) {
       });
       return;
     }
-    await liveApi.get("modbus-registers/" + ev.data.id).then(async (res) => {
-      const item = await res.json();
-      delete item.id;
-      delete item.created_at;
-      delete item.updated_at;
-      delete item.revisions;
-      delete item.user;
-      delete item.userId;
-      delete item.parentId;
-      delete item.parent;
-      delete item.ModbusRegisterNotification;
-
-      localApi
-        .patch("modbus-registers/" + ev.data.id, { json: item })
-        .then(async (_res) => {
-          gridApi.value.refreshServerSide();
-          $q.notify({
-            type: "positive",
-            message: "The row has been restored successfully",
-          });
-        });
-    });
+    cancelUpdate(ev.data.id);
   });
 
   params.api.addEventListener("reviewNewRow", async (ev) => {
@@ -941,6 +921,37 @@ const autoSizeStrategy = {
   type: "fitGridWidth",
   defaultMinWidth: 50,
 };
+
+async function cancelUpdate(id) {
+  await liveApi.get("modbus-registers/" + id).then(async (res) => {
+    const item = await res.json();
+    delete item.id;
+    delete item.created_at;
+    delete item.updated_at;
+    delete item.revisions;
+    delete item.user;
+    delete item.userId;
+    delete item.parentId;
+    delete item.parent;
+    delete item.ModbusRegisterNotification;
+
+    const localItem = await localApi.patch("modbus-registers/" + id, {
+      json: item,
+    });
+    if (localItem.ok) {
+      gridApi.value.refreshServerSide();
+      $q.notify({
+        type: "positive",
+        message: "The row has been restored successfully",
+      });
+    } else {
+      $q.notify({
+        type: "negative",
+        message: "Failed to restore the original row!",
+      });
+    }
+  });
+}
 
 function getServerSideDatasource() {
   const api = liveMode.value ? liveApi : localApi;

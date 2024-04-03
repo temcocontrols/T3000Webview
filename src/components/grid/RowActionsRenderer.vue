@@ -178,6 +178,14 @@ function reviewNewRow() {
             >
               <q-item-section>Cancel update</q-item-section>
             </q-item>
+            <q-item
+              v-else-if="props.params.data.status === 'UNDER_REVIEW'"
+              clickable
+              v-close-popup
+              @click="cancelChanges()"
+            >
+              <q-item-section>Cancel update</q-item-section>
+            </q-item>
             <q-item clickable v-close-popup @click="deleteRow()">
               <q-item-section>Delete row</q-item-section>
             </q-item>
