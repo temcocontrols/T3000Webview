@@ -1637,8 +1637,8 @@ export const demoDeviceData = () => {
 };
 
 export const globalNav = ref({
-  title: "Application Library",
-  home: "/apps-library",
+  title: "Modbus Register",
+  home: "/modbus-register",
   back: null,
 });
 
