@@ -76,31 +76,27 @@ impl MigrationTrait for Migration {
             )
             .await?;
         let db = manager.get_connection();
-        db.execute_unprepared(
-              "INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at) SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at FROM modbus_register"
-          ).await?;
-        db.execute_unprepared("DROP TABLE modbus_register").await?;
-        db.execute_unprepared("ALTER TABLE temp_modbus_register RENAME TO modbus_register")
-            .await?;
 
-        // Create triggers for modbus_register table (using raw SQL for now)
+        // Alter the table to add the new columns
         db.execute_unprepared(
             r#"
+            INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at)
+            SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at
+            FROM modbus_register;
+
+            DROP TABLE IF EXISTS modbus_register;
+
+            ALTER TABLE temp_modbus_register RENAME TO modbus_register;
+
             CREATE TRIGGER IF NOT EXISTS update_timestamp
             AFTER UPDATE ON modbus_register
             FOR EACH ROW
             BEGIN
                 UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
-        "#,
-        )
-        .await?;
 
-        // Reset the sqlite_sequence for modbus_register table
-        db.execute_unprepared(
-            r#"
-      UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
-      "#,
+            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
+        "#,
         )
         .await?;
 
@@ -163,31 +159,26 @@ impl MigrationTrait for Migration {
             )
             .await?;
         let db = manager.get_connection();
-        db.execute_unprepared(
-              "INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at) SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at FROM modbus_register"
-          ).await?;
-        db.execute_unprepared("DROP TABLE modbus_register").await?;
-        db.execute_unprepared("ALTER TABLE temp_modbus_register RENAME TO modbus_register")
-            .await?;
-
-        // Create triggers for modbus_register table (using raw SQL for now)
+        // Alter the table to add the new columns
         db.execute_unprepared(
             r#"
+            INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at)
+            SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at
+            FROM modbus_register;
+
+            DROP TABLE IF EXISTS modbus_register;
+
+            ALTER TABLE temp_modbus_register RENAME TO modbus_register;
+
             CREATE TRIGGER IF NOT EXISTS update_timestamp
             AFTER UPDATE ON modbus_register
             FOR EACH ROW
             BEGIN
                 UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
-        "#,
-        )
-        .await?;
 
-        // Reset the sqlite_sequence for modbus_register table
-        db.execute_unprepared(
-            r#"
-      UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
-      "#,
+            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
+        "#,
         )
         .await?;
 
