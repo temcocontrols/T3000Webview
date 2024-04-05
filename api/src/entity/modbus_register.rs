@@ -6,18 +6,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "modbus_register")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = true)]
+    #[sea_orm(primary_key)]
     pub id: i32,
-    pub register_address: i32,
+    pub register_address: Option<i32>,
     pub operation: Option<String>,
     pub register_length: i32,
     pub register_name: Option<String>,
-    pub data_format: String,
+    pub data_format: Option<String>,
     pub description: Option<String>,
-    pub device_name: String,
+    pub device_name: Option<String>,
     pub status: String,
     pub unit: Option<String>,
+    pub private: Option<bool>,
+    #[sea_orm(column_type = "Text")]
     pub created_at: String,
+    #[sea_orm(column_type = "Text")]
     pub updated_at: String,
 }
 

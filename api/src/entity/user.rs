@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i32,
+    #[sea_orm(column_type = "Text")]
     pub name: String,
+    #[sea_orm(column_type = "Text", nullable)]
     pub token: Option<String>,
     pub last_modbus_register_pull: Option<String>,
 }

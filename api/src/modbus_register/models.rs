@@ -106,13 +106,13 @@ impl Display for ModbusRegisterColumns {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModbusRegisterItemInput {
     pub id: Option<i32>,
-    pub register_address: i32,
+    pub register_address: Option<i32>,
     pub operation: Option<String>,
     pub register_length: i32,
     pub register_name: Option<String>,
-    pub data_format: String,
+    pub data_format: Option<String>,
     pub description: Option<String>,
-    pub device_name: String,
+    pub device_name: Option<String>,
     pub unit: Option<String>,
     pub status: Option<String>,
     pub created_at: Option<String>,
@@ -128,10 +128,12 @@ pub struct UpdateModbusRegisterItemInput {
     pub register_length: Option<i32>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub register_name: Option<Option<String>>,
-    pub data_format: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub data_format: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub description: Option<Option<String>>,
-    pub device_name: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub device_name: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub unit: Option<Option<String>>,
     pub status: Option<String>,
