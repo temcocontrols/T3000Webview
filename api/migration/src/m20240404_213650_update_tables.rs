@@ -101,7 +101,7 @@ impl MigrationTrait for Migration {
         .await?;
 
         // Vacuum the database
-        db.execute_unprepared("VACUUM").await?;
+        db.execute_unprepared("VACUUM;").await?;
 
         Ok(())
     }
@@ -183,7 +183,7 @@ impl MigrationTrait for Migration {
         .await?;
 
         // Vacuum the database
-        db.execute_unprepared("VACUUM").await?;
+        db.execute_unprepared("VACUUM;").await?;
 
         Ok(())
     }
