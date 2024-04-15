@@ -1281,7 +1281,10 @@ async function pushLocalChanges() {
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
-
+      if (change.private) {
+        continue;
+      }
+      delete change.private;
       if (item.status === "UPDATED") {
         delete change.id;
         const res = await liveApi
