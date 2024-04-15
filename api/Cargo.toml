@@ -1,6 +1,6 @@
 [package]
 name = "t3_webview_api"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -24,7 +24,7 @@ lazy_static = "1.4.0"
 open = "5.1.2"
 chrono = "0.4.37"
 
-migration = { path = "migration", version = "0.1.0" }
+migration = { path = "migration" }
 
 [dependencies.sea-orm]
 version = "1.0.0-rc.3"
