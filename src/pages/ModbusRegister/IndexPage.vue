@@ -650,7 +650,7 @@
                   >
                     <q-toggle
                       v-model="settingsDialog.settings.push"
-                      label="Push my changes to the public registry"
+                      label="Push my changes to the public registry ( except private rows )"
                     />
                     <q-toggle
                       v-model="settingsDialog.settings.pull"
@@ -754,8 +754,6 @@ const selectOperationOptions = ref(operationOptions);
 
 const activeTab = ref("all");
 
-const gridContext = ref({ activeTab });
-
 const isOnline = ref(null);
 const liveMode = ref(false);
 let dismissOfflineNotif = null;
@@ -771,6 +769,8 @@ const settingsDialog = ref({
   active: false,
   settings: structuredClone(toRaw(settings.value)),
 });
+
+const gridContext = ref({ activeTab, liveMode });
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -868,7 +868,7 @@ function onGridReady(params) {
       return;
     }
     await liveApi
-      .patch("modbus-registers/" + ev.data.id + "/cancel", {})
+      .patch("modbus-registers/" + ev.data.id + "/cancel")
       .then(async (_res) => {
         await cancelUpdate(ev.data.id);
         gridApi.value.refreshServerSide();
@@ -915,6 +915,28 @@ function onGridReady(params) {
 
   params.api.addEventListener("reviewAllRowChanges", async (ev) => {
     reviewAllRowChangesDialog.value = { active: true, entry: ev.data };
+  });
+
+  params.api.addEventListener("togglePrivate", async (ev) => {
+    await localApi
+      .patch("modbus-registers/" + ev.data.id, {
+        json: { private: !ev.data.private },
+      })
+      .then(async (_res) => {
+        gridApi.value.refreshServerSide();
+        setTimeout(() => {
+          gridApi.value.refreshCells({
+            force: true,
+            rowNodes: [ev.node],
+            suppressFlash: true,
+          });
+        }, 100);
+
+        $q.notify({
+          type: "positive",
+          message: "The row has been updated successfully",
+        });
+      });
   });
 }
 function onFirstDataRendered(params) {}

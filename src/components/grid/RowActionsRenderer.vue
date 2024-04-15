@@ -71,72 +71,50 @@ function reviewNewRow() {
     data: props.params.data,
   });
 }
+
+function togglePrivate() {
+  props.params.api.dispatchEvent({
+    type: "togglePrivate",
+    data: props.params.data,
+    node: props.params.node,
+  });
+}
 </script>
 
 <template>
   <div class="relative">
-    {{ props.params.data.status === "NEW" ? "" : props.params.value }}
+    <span>
+      <q-icon
+        :name="!props.params.data.private ? 'visibility' : 'visibility_off'"
+        class="text-grey-8 pr-1"
+      />
+    </span>
+    <span>{{
+      props.params.data.status === "NEW" ? "" : props.params.value
+    }}</span>
     <div
       v-if="
-        ['UNDER_REVIEW', 'REVISION'].includes(props.params.data.status) &&
-        user?.id === props.params.data.userId
+        isAdmin(user) &&
+        props.params.context?.activeTab === 'changes' &&
+        props.params.context?.liveMode
       "
       class="row-actions"
     >
-      <q-btn
-        class="status-message-btn"
-        round
-        dense
-        flat
-        size="sm"
-        color="primary"
-        icon="question_mark"
-      >
-        <q-tooltip v-if="props.params.data.status === 'UNDER_REVIEW'"
-          >Your changes to this item are under review.</q-tooltip
-        >
-        <q-tooltip v-else
-          >This item is under review and not published to the cloud database
-          yet.</q-tooltip
-        ></q-btn
-      >
-
       <q-btn round dense flat size="sm" color="primary" icon="more_vert">
         <q-menu>
           <q-list style="min-width: 100px">
             <q-item
-              v-if="props.params.data.status === 'UNDER_REVIEW'"
+              v-if="props.params.data.status === 'REVISION'"
               clickable
               v-close-popup
-              @click="cancelChanges()"
+              @click="reviewNewRow()"
             >
-              <q-item-section>Cancel update</q-item-section>
+              <q-item-section>Review the new row</q-item-section>
             </q-item>
-            <q-item v-else clickable v-close-popup @click="deleteRow()">
-              <q-item-section>Delete row</q-item-section>
+            <q-item v-else clickable v-close-popup @click="reviewChanges()">
+              <q-item-section>Review changes</q-item-section>
             </q-item>
-          </q-list>
-        </q-menu>
-      </q-btn>
-    </div>
-    <div v-else-if="isAdmin(user)" class="row-actions">
-      <q-btn round dense flat size="sm" color="primary" icon="more_vert">
-        <q-menu>
-          <q-list style="min-width: 100px">
-            <template v-if="props.params.context?.activeTab === 'changes'">
-              <q-item
-                v-if="props.params.data.status === 'REVISION'"
-                clickable
-                v-close-popup
-                @click="reviewNewRow()"
-              >
-                <q-item-section>Review the new row</q-item-section>
-              </q-item>
-              <q-item v-else clickable v-close-popup @click="reviewChanges()">
-                <q-item-section>Review changes</q-item-section>
-              </q-item>
-            </template>
-            <q-item v-else clickable v-close-popup @click="deleteRow()">
+            <q-item clickable v-close-popup @click="deleteRow()">
               <q-item-section>Delete row</q-item-section>
             </q-item>
           </q-list>
@@ -147,6 +125,7 @@ function reviewNewRow() {
       <q-btn
         v-if="
           modbusRegisterSettings?.push &&
+          !props.params.data.private &&
           ['UPDATED', 'NEW'].includes(props.params.data.status)
         "
         class="status-message-btn"
@@ -185,6 +164,17 @@ function reviewNewRow() {
               @click="cancelChanges()"
             >
               <q-item-section>Cancel update</q-item-section>
+            </q-item>
+            <q-item
+              v-if="!props.params.context?.liveMode"
+              clickable
+              v-close-popup
+              @click="togglePrivate()"
+            >
+              <q-item-section v-if="!props.params.data.private"
+                >Make private</q-item-section
+              >
+              <q-item-section v-else>Make public</q-item-section>
             </q-item>
             <q-item clickable v-close-popup @click="deleteRow()">
               <q-item-section>Delete row</q-item-section>

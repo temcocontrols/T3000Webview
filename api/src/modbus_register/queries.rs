@@ -126,6 +126,9 @@ pub async fn create(
     if payload.status.is_some() {
         model.status = Set(payload.status.unwrap());
     }
+    if payload.private.is_some() {
+        model.private = Set(payload.private);
+    }
 
     if payload.created_at.is_some() {
         model.created_at = Set(payload.created_at.unwrap());
@@ -159,6 +162,7 @@ pub async fn update(
     );
 
     if None == payload.status
+        && model.private.clone().unwrap().is_none()
         && (model.status.clone().unwrap() == "PUBLISHED".to_string()
             || model.status.clone().unwrap() == "UNDER_REVIEW".to_string()
             || model.status.clone().unwrap() == "REVISION".to_string())
@@ -189,6 +193,10 @@ pub async fn update(
     }
     if let Some(unit) = payload.unit {
         model.unit = Set(unit);
+    }
+
+    if let Some(private) = payload.private {
+        model.private = Set(private);
     }
 
     let updated_item = model

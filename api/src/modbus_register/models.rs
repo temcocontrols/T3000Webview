@@ -117,6 +117,7 @@ pub struct CreateModbusRegisterItemInput {
     pub status: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+    pub private: Option<bool>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -137,6 +138,8 @@ pub struct UpdateModbusRegisterItemInput {
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub unit: Option<Option<String>>,
     pub status: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub private: Option<Option<bool>>,
 }
 
 #[derive(Serialize, Debug)]
