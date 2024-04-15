@@ -1550,9 +1550,10 @@ export const modbusRegColumns = [
     cellEditor: "SelectEditor",
     width: 230,
     cellEditorParams: {
-      clearable: true,
+      clearable: false,
       options: operationOptions,
     },
+    type: ["required"],
   },
   {
     colId: 4,

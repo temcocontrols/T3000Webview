@@ -47,7 +47,7 @@
         <q-btn
           icon="add_circle"
           label="Add New Row"
-          @click="createItemDialog = true"
+          @click="addNewRow"
           color="white"
           text-color="grey-8"
           size="0.7rem"
@@ -279,90 +279,6 @@
       ></ag-grid-vue>
     </q-page>
   </div>
-  <q-dialog v-model="createItemDialog" persistent>
-    <q-card style="width: 700px">
-      <q-card-section>
-        <div class="text-h6">Add new row</div>
-      </q-card-section>
-      <q-separator />
-      <q-form ref="form" class="q-gutter-md" @submit="saveNewRow">
-        <q-card-section
-          class="grid grid-cols-2 gap-4 scroll"
-          style="max-height: 50vh"
-        >
-          <q-input
-            v-model.number="newItem.register_address"
-            label="Register address"
-            type="number"
-            :rules="[
-              (val) => (val && val > 0) || 'Please enter a positive number',
-            ]"
-          />
-          <q-select
-            v-model="newItem.operation"
-            use-input
-            hide-selected
-            fill-input
-            clearable
-            new-value-mode="add-unique"
-            input-debounce="0"
-            :options="selectOperationOptions"
-            @filter="selectOperationFilter"
-            label="Operation"
-          />
-          <q-input
-            v-model.number="newItem.register_length"
-            label="Register length"
-            type="number"
-            :rules="[
-              (val) => (val && val > 0) || 'Please enter a positive number',
-            ]"
-          />
-          <q-input v-model="newItem.register_name" label="Register name" />
-          <q-select
-            v-model="newItem.data_format"
-            use-input
-            hide-selected
-            fill-input
-            new-value-mode="add-unique"
-            input-debounce="0"
-            :options="selectDataFormatOptions"
-            @filter="selectDataFormatFilter"
-            label="Data format"
-            :rules="[
-              (val) => (val && val.length > 0) || 'Please enter a data format',
-            ]"
-          />
-          <q-input
-            v-model="newItem.device_name"
-            label="Device name"
-            :rules="[
-              (val) => (val && val.length > 0) || 'Please enter a device name',
-            ]"
-          />
-          <q-input
-            v-model="newItem.description"
-            label="Description"
-            type="textarea"
-            class="col-span-2"
-          />
-        </q-card-section>
-        <q-separator />
-
-        <q-card-actions align="right" class="mt-0">
-          <q-btn
-            label="Cancel"
-            color="primary"
-            flat
-            class="q-ml-sm"
-            @click="createItemDialog = false"
-          />
-          <q-btn label="Submit" type="submit" color="primary" />
-        </q-card-actions>
-      </q-form>
-    </q-card>
-  </q-dialog>
-
   <q-dialog v-model="reviewRowChangesDialog.active" persistent>
     <q-card style="width: 700px">
       <q-card-section>
@@ -725,18 +641,15 @@ const defaultColDef = ref({
   editable: () => true,
 });
 
-const createItemDialog = ref(false);
-
 const emptyNewItem = {
   register_address: null,
   operation: "",
-  register_length: null,
+  register_length: 1,
   register_name: "",
   data_format: null,
   description: "",
   device_name: null,
 };
-const newItem = ref(structuredClone(emptyNewItem));
 
 const notifications = ref([]);
 
@@ -1060,17 +973,10 @@ function updateRow(event) {
     });
 }
 
-function saveNewRow() {
-  if (isOnline.value === false && liveMode.value) {
-    $q.notify({
-      type: "negative",
-      message: "You are offline!",
-    });
-    return;
-  }
-  let api = liveMode.value ? liveApi : localApi;
+function addNewRow() {
+  let api = localApi;
   api
-    .post("modbus-registers", { json: newItem.value })
+    .post("modbus-registers", { json: emptyNewItem })
     .then(async (res) => {
       res = await res.json();
       gridApi.value.applyServerSideTransaction({
@@ -1088,9 +994,6 @@ function saveNewRow() {
         message: "Save failed! " + err.message,
       });
     });
-
-  newItem.value = structuredClone(emptyNewItem);
-  createItemDialog.value = false;
 }
 
 async function getNotifications(offset = 0, limit = 10) {
@@ -1303,7 +1206,14 @@ async function pushLocalChanges() {
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
-      if (change.private) {
+      // Skip private & uncompleted rows
+      if (
+        change.private ||
+        !change.register_address ||
+        !change.operation ||
+        !change.data_format ||
+        !change.device_name
+      ) {
         continue;
       }
       delete change.private;

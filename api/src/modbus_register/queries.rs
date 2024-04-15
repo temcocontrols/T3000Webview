@@ -179,6 +179,9 @@ pub async fn update(
     if let Some(register_name) = payload.register_name {
         model.register_name = Set(register_name);
     }
+    if let Some(register_address) = payload.register_address {
+        model.register_address = Set(Some(register_address));
+    }
     if let Some(data_format) = payload.data_format {
         model.data_format = Set(data_format);
     }

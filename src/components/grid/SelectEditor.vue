@@ -33,10 +33,12 @@ export default {
     }
 
     const getValue = () => {
+      if (!value.value) return "";
       return toRaw(value.value);
     };
 
     const stopEditing = () => {
+      if (value.value === props.params.value) return;
       props.params.api.stopEditing();
     };
 
@@ -52,7 +54,12 @@ export default {
           selectRef.value?.updateInputValue(params.eventKey);
         }, 100);
       } else if (params.eventKey === KEY_F2) {
-        // if a letter was pressed, we show select popup
+        // if F2 was pressed, we show select popup
+        setTimeout(() => {
+          selectRef.value?.showPopup();
+        }, 100);
+      } else {
+        // if any other key was pressed, we show select popup
         setTimeout(() => {
           selectRef.value?.showPopup();
         }, 100);
