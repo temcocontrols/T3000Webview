@@ -262,7 +262,6 @@
         @grid-ready="onGridReady"
         @firstDataRendered="onFirstDataRendered"
         @cell-value-changed="updateRow"
-        :enableCellChangeFlash="true"
         :getRowId="getRowId"
         :autoSizeStrategy="autoSizeStrategy"
         :defaultColDef="defaultColDef"
@@ -637,6 +636,7 @@ const getRowId = ref();
 const defaultColDef = ref({
   minWidth: 70,
   suppressHeaderMenuButton: true,
+  enableCellChangeFlash: true,
   cellClassRules: cellClassRules,
   editable: () => true,
 });
