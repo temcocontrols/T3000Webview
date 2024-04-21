@@ -103,7 +103,8 @@ impl MigrationTrait for Migration {
                             .from_tbl(ModbusRegisterDeviceNameIdMapping::Table)
                             .from_col(ModbusRegisterDeviceNameIdMapping::Name)
                             .to_tbl(ModbusRegisterDevices::Table)
-                            .to_col(ModbusRegisterDevices::Name),
+                            .to_col(ModbusRegisterDevices::Name)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -139,7 +140,8 @@ impl MigrationTrait for Migration {
                             .from_tbl(TempModbusRegister::Table)
                             .from_col(TempModbusRegister::DeviceName)
                             .to_tbl(ModbusRegisterDevices::Table)
-                            .to_col(ModbusRegisterDevices::Name),
+                            .to_col(ModbusRegisterDevices::Name)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .col(
                         ColumnDef::new(TempModbusRegister::Status)
@@ -234,7 +236,7 @@ impl MigrationTrait for Migration {
           ('T3_8AI13O', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
           ('T3_32I', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
           ('Pressure', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('CS', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00');
+          ('CS', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
           ('SPM1', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00');
 
     "#,
