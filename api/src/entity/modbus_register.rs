@@ -25,6 +25,21 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::modbus_register_devices::Entity",
+        from = "Column::DeviceName",
+        to = "super::modbus_register_devices::Column::Name",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    ModbusRegisterDevices,
+}
+
+impl Related<super::modbus_register_devices::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModbusRegisterDevices.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}

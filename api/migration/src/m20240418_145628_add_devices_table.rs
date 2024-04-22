@@ -90,6 +90,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(ModbusRegisterDeviceNameIdMapping::Id)
                             .integer()
+                            .not_null()
                             .primary_key(),
                     )
                     .col(
