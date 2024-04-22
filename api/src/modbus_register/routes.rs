@@ -4,18 +4,20 @@ use axum::{
     Router,
 };
 
-use super::{queries, settings};
+use super::{devices, queries, settings};
 use crate::{app_state::AppState, auth::require_auth};
 
 pub fn modbus_register_routes() -> Router<AppState> {
     let open_routes = Router::new()
         .route("/modbus-registers", get(queries::list))
         .route("/modbus-registers/:id", get(queries::get_one))
-        .route("/modbus-register-settings", get(settings::get_all))
+        .route("/modbus-register/settings", get(settings::get_all))
         .route(
-            "/modbus-register-settings/:name",
+            "/modbus-register/settings/:name",
             get(settings::get_by_name),
-        );
+        )
+        .route("/modbus-register/devices", get(devices::get_all))
+        .route("/modbus-register/devices/:name", get(devices::get_by_name));
 
     let protected_routes = Router::new()
         .route("/modbus-registers", post(queries::create))
@@ -23,10 +25,15 @@ pub fn modbus_register_routes() -> Router<AppState> {
             "/modbus-registers/:id",
             patch(queries::update).delete(queries::delete),
         )
-        .route("/modbus-register-settings", post(settings::create))
+        .route("/modbus-register/settings", post(settings::create))
         .route(
-            "/modbus-register-settings/:name",
+            "/modbus-register/settings/:name",
             patch(settings::update).delete(settings::delete),
+        )
+        .route("/modbus-register/devices", post(devices::create))
+        .route(
+            "/modbus-register/devices/:name",
+            patch(devices::update).delete(devices::delete),
         )
         .route_layer(middleware::from_fn(require_auth));
 

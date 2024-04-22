@@ -28,11 +28,14 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         println!("->> {:<12} - {self:?}", "INTO_RES");
         let response = match self {
-            Self::NotFound => (StatusCode::NOT_FOUND, "Not Found"),
-            Self::DbError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database Error"),
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied"),
-            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "Bad Request"),
+            Self::NotFound => (StatusCode::NOT_FOUND, "Not Found".to_string()),
+            Self::DbError(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Db Error: {}", err),
+            ),
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
+            Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied".to_string()),
+            Self::BadRequest(err) => (StatusCode::BAD_REQUEST, format!("Bad Request: {err}")),
         };
 
         response.into_response()

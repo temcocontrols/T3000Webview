@@ -1,4 +1,5 @@
-pub mod models;
+pub mod devices;
+pub mod inputs;
 pub mod queries;
 pub mod routes;
 pub mod settings;

@@ -150,9 +150,29 @@ pub struct ModbusRegisterResponse {
 
 #[derive(Debug, Deserialize)]
 #[skip_serializing_none]
-pub struct UpdateSettingModel {
+pub struct UpdateSettingInput {
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub value: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub json_value: Option<Option<serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateDeviceInput {
+    pub name: String,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub private: Option<bool>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[skip_serializing_none]
+pub struct UpdateDeviceInput {
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub description: Option<Option<String>>,
+    pub status: Option<String>,
+    pub private: Option<bool>,
 }

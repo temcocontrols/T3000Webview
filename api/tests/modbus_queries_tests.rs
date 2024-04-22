@@ -7,9 +7,9 @@ use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
     modbus_register::{
-        models::{
+        inputs::{
             CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
-            UpdateModbusRegisterItemInput, UpdateSettingModel,
+            UpdateModbusRegisterItemInput, UpdateSettingInput,
         },
         queries::{create, delete, list, update},
         settings,
@@ -102,7 +102,7 @@ async fn test_modbus_register_settings_crud() {
     assert!(result.is_ok());
 
     let name = Path("test".to_string());
-    let payload = UpdateSettingModel {
+    let payload = UpdateSettingInput {
         value: Some(Some("updated".to_string())),
         json_value: Some(Some(Value::String("updated".to_string()))),
     };

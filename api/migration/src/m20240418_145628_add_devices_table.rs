@@ -64,6 +64,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(ModbusRegisterDevices::Private)
                             .boolean()
+                            .not_null()
                             .default(false),
                     )
                     .col(
@@ -178,6 +179,19 @@ impl MigrationTrait for Migration {
             r#"
             DELETE FROM modbus_register WHERE status = 'REJECTED';
         "#,
+        )
+        .await?;
+
+        // Create triggers for modbus_register_devices table
+        db.execute_unprepared(
+            r#"
+          CREATE TRIGGER IF NOT EXISTS update_device_timestamp
+          AFTER UPDATE ON modbus_register_devices
+          FOR EACH ROW
+          BEGIN
+              UPDATE modbus_register_devices SET updated_at = CURRENT_TIMESTAMP WHERE name = OLD.name;
+          END;
+      "#,
         )
         .await?;
 

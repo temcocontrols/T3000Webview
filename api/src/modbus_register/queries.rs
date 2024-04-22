@@ -4,7 +4,7 @@ use axum::{
 };
 use sea_orm::{prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, Set, TryIntoModel};
 
-use super::models::{
+use super::inputs::{
     CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterQueryParams,
     ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
 };
