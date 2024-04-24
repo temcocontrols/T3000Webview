@@ -978,7 +978,9 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         }
       });
 
-      selectPanelOptions.value = T3000_Data.value.panelsData;
+      if (!linkT3EntryDialog.value.active) {
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+      }
       refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
       if (arg.data.data?.status === true) {
