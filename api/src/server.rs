@@ -1,6 +1,10 @@
 use std::{env, error::Error};
 
-use axum::{http::StatusCode, routing::get_service, Router};
+use axum::{
+    http::StatusCode,
+    routing::{get, get_service},
+    Router,
+};
 
 use tokio::{net::TcpListener, signal};
 use tower_http::{
@@ -23,6 +27,11 @@ fn routes_static() -> Router {
     )
 }
 
+async fn health_check_handler() -> &'static str {
+    println!("->> Health check");
+    "OK"
+}
+
 pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -32,7 +41,12 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let app_state = app_state::app_state().await?;
 
     Ok(Router::new()
-        .nest("/api", modbus_register_routes().merge(user_routes()))
+        .nest(
+            "/api",
+            modbus_register_routes()
+                .merge(user_routes())
+                .route("/health", get(health_check_handler)),
+        )
         .with_state(app_state)
         .fallback_service(routes_static())
         .layer(cors))

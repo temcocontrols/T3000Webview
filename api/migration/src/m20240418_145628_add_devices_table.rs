@@ -222,6 +222,7 @@ impl MigrationTrait for Migration {
             BEGIN
                 UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
+            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
         "#,
         )
         .await?;
@@ -375,6 +376,7 @@ impl MigrationTrait for Migration {
             BEGIN
                 UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
+            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
         "#,
         )
         .await?;
