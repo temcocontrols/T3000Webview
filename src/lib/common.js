@@ -1605,7 +1605,7 @@ export const modbusRegColumns = [
 export function getObjectActiveValue(item) {
   let active = false;
   if (!item.t3Entry || item.settings?.active === undefined) return false;
-  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status !== 1) {
+  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status === 1) {
     active = !!item.t3Entry.hw_switch_status;
   } else if (item.t3Entry.range) {
     const analog = item.t3Entry.digital_analog;
