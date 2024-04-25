@@ -176,3 +176,9 @@ pub struct UpdateDeviceInput {
     pub status: Option<String>,
     pub private: Option<bool>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateDeviceNameIdMappingInput {
+    pub name: String,
+    pub id: i32,
+}
