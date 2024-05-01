@@ -14,7 +14,11 @@ use crate::{
     error::{Error, Result},
 };
 
-pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Select<ModbusRegister> {
+pub fn generate_filter_query(
+    filter: &Option<String>,
+    device_name: &Option<String>,
+    local_only: bool,
+) -> Select<ModbusRegister> {
     let mut query = ModbusRegister::find();
 
     if let Some(filter) = filter {
@@ -57,6 +61,10 @@ pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Selec
     query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
+
+    if device_name.is_some() {
+        query = query.filter(modbus_register::Column::DeviceName.eq(device_name.clone().unwrap()));
+    }
     if local_only {
         query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
     }
@@ -68,7 +76,11 @@ pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let mut query = generate_filter_query(&params.filter, params.local_only.unwrap_or(false));
+    let mut query = generate_filter_query(
+        &params.filter,
+        &params.device_name,
+        params.local_only.unwrap_or(false),
+    );
 
     query = query.order_by(
         Into::<modbus_register::Column>::into(params.order_by.unwrap_or(ModbusRegisterColumns::Id)),

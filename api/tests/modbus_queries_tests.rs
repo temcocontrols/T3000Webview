@@ -38,7 +38,6 @@ async fn test_modbus_register_crud() {
     };
     let conn = app_state().await.unwrap();
     let item = create(State(conn.clone()), Json(payload)).await;
-    println!("item {:?}", item);
     assert!(item.is_ok());
     let item = item.unwrap();
 
@@ -48,6 +47,7 @@ async fn test_modbus_register_crud() {
         order_by: None,
         limit: Some(1),
         offset: None,
+        device_name: None,
         order_dir: None,
     };
     let result = list(State(conn.clone()), Query(params)).await;
