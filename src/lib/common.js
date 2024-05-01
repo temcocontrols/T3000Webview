@@ -1594,7 +1594,7 @@ export const modbusRegColumns = [
   },
   {
     colId: 8,
-    headerName: "Device Type",
+    headerName: "Device Name",
     sortable: true,
     field: "device_name",
     width: 100,

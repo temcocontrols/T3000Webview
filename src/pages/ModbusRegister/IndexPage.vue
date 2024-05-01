@@ -252,30 +252,112 @@
       </template>
     </user-top-bar>
     <q-page
-      class="flex justify-center p-2 flex-1 overflow-hidden"
+      class="flex flex-col justify-center p-2 flex-1 overflow-hidden"
       :style-fn="() => {}"
     >
-      <ag-grid-vue
-        style="width: 100%; height: 100%"
-        class="data-table ag-theme-quartz"
-        :columnDefs="modbusRegColumns"
-        @grid-ready="onGridReady"
-        @firstDataRendered="onFirstDataRendered"
-        @cell-value-changed="updateRow"
-        :getRowId="getRowId"
-        :autoSizeStrategy="autoSizeStrategy"
-        :defaultColDef="defaultColDef"
-        rowModelType="serverSide"
-        :enableBrowserTooltips="true"
-        :suppressCsvExport="true"
-        :suppressExcelExport="true"
-        :columnTypes="columnTypes"
-        :components="{
-          RowActionsRenderer,
-          SelectEditor,
-        }"
-        :context="gridContext"
-      ></ag-grid-vue>
+      <div class="flex justify-center">
+        <q-select
+          ref="deviceSelectRef"
+          class="grow max-w-3xl mb-2 select-device"
+          options-selected-class="bg-gray-300 text-primary"
+          v-model="selectedDevice"
+          input-debounce="200"
+          option-value="name"
+          option-label="name"
+          filled
+          dense
+          hide-bottom-space
+          popup-content-class="!max-w-min"
+          :options="selectDeviceOptions"
+          @filter="selectDeviceFilterFn"
+          @popup-hide="onSelectDeviceHide"
+          @update:model-value="onSelectDeviceUpdate"
+        >
+          <!-- <template #selected-item="opt">
+            <q-item>
+              <q-item-section avatar>
+                <q-avatar
+                  square
+                  size="80px"
+                  v-if="opt.opt.name !== 'All Devices'"
+                >
+                  <img src="../../assets/placeholder.png" />
+                </q-avatar>
+                <q-avatar
+                  icon="devices"
+                  square
+                  size="80px"
+                  font-size="70px"
+                  v-else
+                />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ opt.opt.name }}</q-item-label>
+                <q-item-label caption lines="2">{{
+                  opt.opt.description
+                }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template> -->
+          <template #option="opt">
+            <q-item v-bind="opt.itemProps" class="flex">
+              <q-item-section avatar>
+                <q-avatar
+                  square
+                  size="80px"
+                  font-size="70px"
+                  text-color="cyan-8"
+                  icon="image"
+                  v-if="!opt.opt.image && opt.label !== 'All Devices'"
+                />
+                <q-avatar
+                  square
+                  size="80px"
+                  v-else-if="opt.label !== 'All Devices'"
+                >
+                  <img :src="opt.opt.image" />
+                </q-avatar>
+                <q-avatar
+                  icon="devices"
+                  square
+                  size="80px"
+                  font-size="70px"
+                  v-else
+                />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ opt.label }}</q-item-label>
+                <q-item-label caption lines="2">{{
+                  opt.opt.description
+                }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </div>
+      <div class="flex flex-col flex-1 flex-nowrap">
+        <ag-grid-vue
+          style="width: 100%; height: 100%"
+          class="data-table ag-theme-quartz"
+          :columnDefs="modbusRegColumns"
+          @grid-ready="onGridReady"
+          @firstDataRendered="onFirstDataRendered"
+          @cell-value-changed="updateRow"
+          :getRowId="getRowId"
+          :autoSizeStrategy="autoSizeStrategy"
+          :defaultColDef="defaultColDef"
+          rowModelType="serverSide"
+          :enableBrowserTooltips="true"
+          :suppressCsvExport="true"
+          :suppressExcelExport="true"
+          :columnTypes="columnTypes"
+          :components="{
+            RowActionsRenderer,
+            SelectEditor,
+          }"
+          :context="gridContext"
+        ></ag-grid-vue>
+      </div>
     </q-page>
   </div>
   <q-dialog v-model="reviewRowChangesDialog.active" persistent>
@@ -685,6 +767,27 @@ const settingsDialog = ref({
 
 const gridContext = ref({ activeTab, liveMode });
 
+const deviceSelectRef = ref(null);
+const devices = ref([]);
+const selectDeviceOptions = ref(devices.value);
+
+const selectDeviceFilterFn = (val, update, abort) => {
+  if (val === "") {
+    update(() => {
+      selectDeviceOptions.value = devices.value;
+    });
+    return;
+  }
+  update(() => {
+    const keyword = val.toLowerCase();
+    selectDeviceOptions.value = devices.value.filter(
+      (v) => v.toLowerCase().indexOf(keyword) > -1
+    );
+  });
+};
+
+const selectedDevice = ref({ name: "All Devices" });
+
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
@@ -695,6 +798,7 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
+  getDeviceList();
   healthCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
@@ -916,7 +1020,11 @@ function getServerSideDatasource() {
             "&order_dir=" +
             (request.sortModel[0]?.sort || "desc") +
             (filter.value ? "&filter=" + filter.value : "") +
-            (activeTab.value === "changes" ? "&has_changes=1" : "")
+            (activeTab.value === "changes" ? "&has_changes=1" : "") +
+            (selectedDevice.value.name &&
+            selectedDevice.value.name !== "All Devices"
+              ? "&device_name=" + selectedDevice.value.name
+              : "")
         )
         .then(async (res) => {
           res = await res.json();
@@ -1113,24 +1221,6 @@ function approveEntryChanges(entry) {
   reviewRowAddedDialog.value.active = false;
   reviewRowChangesDialog.value.active = false;
   updateEntryRelatedNotificationStatus(entry, "ADMIN_APPROVED");
-}
-
-function selectDataFormatFilter(val, update, abort) {
-  update(() => {
-    const keyword = val.toLowerCase();
-    selectDataFormatOptions.value = dataFormatOptions.filter(
-      (v) => v.toLowerCase().indexOf(keyword) > -1
-    );
-  });
-}
-
-function selectOperationFilter(val, update, abort) {
-  update(() => {
-    const keyword = val.toLowerCase();
-    selectOperationOptions.value = operationOptions.filter(
-      (v) => v.toLowerCase().indexOf(keyword) > -1
-    );
-  });
 }
 
 function updateEntryRelatedNotificationStatus(entry, status) {
@@ -1334,6 +1424,25 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     gridApi.value.refreshServerSide();
   }
 }
+function onSelectDeviceHide(e) {
+  deviceSelectRef.value.blur();
+}
+function onSelectDeviceUpdate(e) {
+  // if (e.name === "All Devices") {
+  //   gridApi.value.setColumnsVisible(["8"], true);
+  // } else {
+  //   gridApi.value.setColumnsVisible(["8"], false);
+  // }
+  onFilterChanged();
+}
+
+function getDeviceList() {
+  localApi.get("modbus-register/devices").then(async (res) => {
+    const dev = await res.json();
+    devices.value = [{ name: "All Devices" }, ...dev];
+    selectDeviceOptions.value = devices.value;
+  });
+}
 </script>
 
 <style>
@@ -1360,5 +1469,14 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
 }
 .ag-row:hover .row-actions {
   visibility: visible;
+}
+.select-device.q-field--auto-height.q-field--dense .q-field__control {
+  align-items: center;
+}
+
+@media (min-width: 1001px) {
+  .select-device {
+    min-width: 800px;
+  }
 }
 </style>
