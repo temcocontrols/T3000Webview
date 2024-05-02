@@ -11,6 +11,7 @@ enum TempModbusRegister {
     DataFormat,
     Description,
     DeviceName,
+    DeviceId,
     Status,
     Unit,
     Private,
@@ -21,19 +22,30 @@ enum TempModbusRegister {
 #[derive(DeriveIden)]
 enum ModbusRegisterDevices {
     Table,
+    Id,
     Name,
     Description,
     Private,
     Status,
+    ImageId,
     CreatedAt,
     UpdatedAt,
 }
 
 #[derive(DeriveIden)]
-enum ModbusRegisterDeviceNameIdMapping {
+enum ModbusRegisterProductDeviceMapping {
+    Table,
+    ProductId,
+    DeviceId,
+}
+
+#[derive(DeriveIden)]
+enum Files {
     Table,
     Id,
     Name,
+    MimeType,
+    Path,
 }
 
 #[derive(DeriveMigrationName)]
@@ -49,10 +61,16 @@ impl MigrationTrait for Migration {
                     .table(ModbusRegisterDevices::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ModbusRegisterDevices::Name)
-                            .string()
+                        ColumnDef::new(ModbusRegisterDevices::Id)
+                            .integer()
+                            .auto_increment()
                             .not_null()
                             .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ModbusRegisterDevices::Name)
+                            .string()
+                            .not_null(),
                     )
                     .col(ColumnDef::new(ModbusRegisterDevices::Description).string())
                     .col(
@@ -67,6 +85,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(false),
                     )
+                    .col(ColumnDef::new(ModbusRegisterDevices::ImageId).integer())
                     .col(
                         ColumnDef::new(ModbusRegisterDevices::CreatedAt)
                             .timestamp()
@@ -79,6 +98,15 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(SimpleExpr::Keyword(Keyword::CurrentTimestamp)),
                     )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("device_image_id_fk")
+                            .from_tbl(ModbusRegisterDevices::Table)
+                            .from_col(ModbusRegisterDevices::ImageId)
+                            .to_tbl(Files::Table)
+                            .to_col(Files::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -86,28 +114,47 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ModbusRegisterDeviceNameIdMapping::Table)
+                    .table(ModbusRegisterProductDeviceMapping::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ModbusRegisterDeviceNameIdMapping::Id)
+                        ColumnDef::new(ModbusRegisterProductDeviceMapping::ProductId)
                             .integer()
                             .not_null()
                             .primary_key(),
                     )
                     .col(
-                        ColumnDef::new(ModbusRegisterDeviceNameIdMapping::Name)
+                        ColumnDef::new(ModbusRegisterProductDeviceMapping::DeviceId)
                             .string()
                             .not_null(),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("device__mapping_name_fk")
-                            .from_tbl(ModbusRegisterDeviceNameIdMapping::Table)
-                            .from_col(ModbusRegisterDeviceNameIdMapping::Name)
+                            .name("device_id_fk")
+                            .from_tbl(ModbusRegisterProductDeviceMapping::Table)
+                            .from_col(ModbusRegisterProductDeviceMapping::DeviceId)
                             .to_tbl(ModbusRegisterDevices::Table)
-                            .to_col(ModbusRegisterDevices::Name)
+                            .to_col(ModbusRegisterDevices::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(Files::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Files::Id)
+                            .integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Files::Name).string().not_null())
+                    .col(ColumnDef::new(Files::MimeType).string().not_null())
+                    .col(ColumnDef::new(Files::Path).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -136,13 +183,14 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(TempModbusRegister::DataFormat).string())
                     .col(ColumnDef::new(TempModbusRegister::Description).string())
                     .col(ColumnDef::new(TempModbusRegister::DeviceName).string())
+                    .col(ColumnDef::new(TempModbusRegister::DeviceId).integer())
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("device_name_fk")
+                            .name("device_id_fk")
                             .from_tbl(TempModbusRegister::Table)
-                            .from_col(TempModbusRegister::DeviceName)
+                            .from_col(TempModbusRegister::DeviceId)
                             .to_tbl(ModbusRegisterDevices::Table)
-                            .to_col(ModbusRegisterDevices::Name)
+                            .to_col(ModbusRegisterDevices::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .col(
@@ -195,107 +243,123 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // Insert the devices into the modbus_register_devices table
-        db.execute_unprepared(
-            r#"
-            INSERT INTO modbus_register_devices (name, status, created_at, updated_at)
-            SELECT DISTINCT device_name, 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'
-            FROM modbus_register;
-        "#,
-        )
-        .await?;
-
         // Alter the table to add the new columns
         db.execute_unprepared(
+                r#"
+                INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at)
+                SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at
+                FROM modbus_register;
+                DROP TABLE IF EXISTS modbus_register;
+
+                ALTER TABLE temp_modbus_register RENAME TO modbus_register;
+
+                CREATE TRIGGER IF NOT EXISTS update_timestamp
+                AFTER UPDATE ON modbus_register
+                FOR EACH ROW
+                BEGIN
+                    UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
+                END;
+                UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
+            "#,
+            )
+            .await?;
+
+        // Insert the temco devices into the modbus_register_devices table
+        db.execute_unprepared(
+                r#"
+            INSERT INTO "modbus_register_devices" ("id", "name","description","status","private","created_at","updated_at")
+            VALUES
+            (1, 'BTU Meter','A BTU meter, also as an energy meter, is a device used to measure the heat energy generated or consumed in a heating or cooling system.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:19:08'),
+            (2, 'T322AI','Multi-Channel Temperature Monitoring Device.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:21:36'),
+            (3, 'CO2','The CO2 sensor with Humidity & Temp transmitters are designed for environmental monitoring and controlling in industrial, commercial and other buildings. These transmitters can be used for indoor C02, temperature and humidity monitoring. The modbus interface provides easy setup and integration into large systems.Supports Modbus RTU over both the Ethernet port and the RS485 port,supports Bacnet over both the Ethernet port (IP) and the RS485 port (MSTP).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:22:20'),
+            (4, 'FAN_MODULE','Fan Speed Control Module.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:44'),
+            (5, 'AFS','The air flow switch is used to prove air flow in ducts. It has an adjustable trip point with a range from 200 to 1800 FPM (1 to 9.2 m/sec).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:24'),
+            (6, 'PM2_5','The PM2.5/10 Particle Counter is designed for environmental monitoring in industrial, commercial and institutional buildings,which provides accurate readings of particle counts in five important sizes, 0.5μm,1.0μm,2.5μm,4μm and 10μm.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:25:18'),
+            (7, 'HUM','Humidity Sensor','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:26:19'),
+            (8, 'Pressure','Single Ended Pressure Transmitter is a kind of standard and most popular transmitter applied in air and liquid pressure measuring,since a high sensitivity silicon pressure chip is employed in the sensor.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:27:04'),
+            (9, 'T38I8O6DO','Advanced Temperature Control System.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:28:24'),
+            (10, 'TSTAT8','This full-featured thermostat is designed for cooling and heating systems in residential and commercial buildings.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:16:23'),
+            (11, 'ZIGBEE_REPEATER',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (12, 'T3_8AI13O',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (13, 'Transducer2',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (14, 'T3PT12',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (15, 'CO2_Node',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (16, 'PM5E_ARM',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (17, 'T3BB',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (18, 'T3_32I',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (19, 'CM5',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (20, 'MultipleSensor',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (21, 'T36CTA',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (22, 'AirLab',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (23, 'CS',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (24, 'SPM1',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00');
+
+        "#,
+            )
+            .await?;
+
+        // Insert the device mappings into the modbus_register_product_device_mapping table
+        db.execute_unprepared(
             r#"
-            INSERT INTO temp_modbus_register (id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at)
-            SELECT id, register_address, operation, register_length, register_name, data_format, description, device_name, status, unit, created_at, updated_at
-            FROM modbus_register;
+            INSERT INTO modbus_register_product_device_mapping (product_id, device_id)
+            VALUES
+              (9, 10),
+              (35, 17),
+              (74, 17),
+              (216, 15),
+              (44, 9),
+              (43, 2),
+              (46, 14),
+              (121, 1),
+              (95, 21),
+              (52, 6),
+              (50, 17),
+              (63, 11),
+              (51, 16),
+              (60, 22),
+              (62, 22),
+              (10, 17),
+              (90, 13),
+              (210, 3),
+              (211, 3),
+              (212, 7),
+              (213, 7),
+              (96, 5),
+              (97, 4),
+              (36, 23),
+              (37, 23),
+              (20, 12),
+              (22, 18),
+              (88, 17),
+              (24, 24);
 
-            DROP TABLE IF EXISTS modbus_register;
-
-            ALTER TABLE temp_modbus_register RENAME TO modbus_register;
-
-            CREATE TRIGGER IF NOT EXISTS update_timestamp
-            AFTER UPDATE ON modbus_register
-            FOR EACH ROW
-            BEGIN
-                UPDATE modbus_register SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
-            END;
-            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register';
         "#,
         )
         .await?;
 
-        // Insert the device mappings into the modbus_register_devices table
+        // Insert the missing devices into the modbus_register_devices table
         db.execute_unprepared(
             r#"
-        INSERT OR IGNORE INTO modbus_register_devices (name, status, created_at, updated_at)
-        VALUES
-          ('TSTAT8', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T3BB', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('CO2_Node', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T38I8O6DO', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T322AI', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T3PT12', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('BTU Meter', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T36CTA', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('PM2_5', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('ZIGBEE_REPEATER', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('PM5E_ARM', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('AirLab', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('Transducer2', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('CO2', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('HUM', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('AFS', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('FAN_MODULE', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T3_8AI13O', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('T3_32I', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('Pressure', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('CS', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00'),
-          ('SPM1', 'PUBLISHED', '2024-02-10 00:00:00', '2024-02-10 00:00:00');
-
-    "#,
+            INSERT OR IGNORE INTO modbus_register_devices (name, status, created_at, updated_at)
+            SELECT DISTINCT device_name, 'NEW', '2024-02-10 00:00:00', '2024-02-10 00:00:00'
+            FROM modbus_register;
+        "#,
         )
         .await?;
 
-        // Insert the device mappings into the modbus_register_device_name_id_mapping table
+        // Map devices IDs from modbus_register_devices into the modbus_register table
         db.execute_unprepared(
             r#"
-            INSERT INTO modbus_register_device_name_id_mapping (id, name)
-            VALUES
-              (9, 'TSTAT8'),
-              (35, 'T3BB'),
-              (74, 'T3BB'),
-              (216, 'CO2_Node'),
-              (44, 'T38I8O6DO'),
-              (43, 'T322AI'),
-              (46, 'T3PT12'),
-              (121, 'BTU Meter'),
-              (95, 'T36CTA'),
-              (52, 'PM2_5'),
-              (50, 'T3BB'),
-              (63, 'ZIGBEE_REPEATER'),
-              (51, 'PM5E_ARM'),
-              (60, 'AirLab'),
-              (62, 'AirLab'),
-              (10, 'T3BB'),
-              (90, 'Transducer2'),
-              (210, 'CO2'),
-              (211, 'CO2'),
-              (212, 'HUM'),
-              (213, 'HUM'),
-              (96, 'AFS'),
-              (97, 'FAN_MODULE'),
-              (36, 'CS'),
-              (37, 'CS'),
-              (20, 'T3_8AI13O'),
-              (22, 'T3_32I'),
-              (88, 'T3BB'),
-              (7, 'TSTAT8'),
-              (93, 'TSTAT8'),
-              (214, 'Pressure'),
-              (215, 'Pressure');
+            UPDATE modbus_register
+            SET device_id = (
+              SELECT id
+              FROM modbus_register_devices
+              WHERE name = modbus_register.device_name
+            )
+            WHERE device_name IS NOT NULL;
+
+            ALTER TABLE modbus_register
+            DROP COLUMN device_name;
         "#,
         )
         .await?;
@@ -384,7 +448,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(ModbusRegisterDeviceNameIdMapping::Table)
+                    .table(ModbusRegisterProductDeviceMapping::Table)
                     .if_exists()
                     .to_owned(),
             )
@@ -397,6 +461,10 @@ impl MigrationTrait for Migration {
                     .if_exists()
                     .to_owned(),
             )
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Files::Table).to_owned())
             .await?;
 
         // Vacuum the database
