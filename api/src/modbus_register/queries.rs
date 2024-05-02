@@ -169,8 +169,7 @@ pub async fn update(
             .await
             .map_err(|error| Error::DbError(error.to_string()))
             .unwrap()
-            .ok_or(Error::NotFound)
-            .unwrap(),
+            .ok_or(Error::NotFound)?,
     );
 
     if None == payload.status

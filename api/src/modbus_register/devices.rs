@@ -2,7 +2,6 @@ use axum::extract::Path;
 use axum::extract::State;
 use axum::Json;
 use sea_orm::entity::prelude::*;
-use sea_orm::ActiveValue::NotSet;
 use sea_orm::Set;
 use sea_orm::TryIntoModel;
 
@@ -66,37 +65,48 @@ pub async fn create(
 pub async fn update(
     State(state): State<AppState>,
     Path(name): Path<String>,
-    Json(item): Json<UpdateDeviceInput>,
+    Json(payload): Json<UpdateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
-    let device: devices::ActiveModel = ModbusRegisterDevices::find_by_id(name)
-        .one(&state.conn)
-        .await
-        .map_err(|error| Error::DbError(error.to_string()))?
-        .ok_or(Error::NotFound)
-        .map(Into::into)?;
+    let mut model = Into::<devices::ActiveModel>::into(
+        ModbusRegisterDevices::find_by_id(name)
+            .one(&state.conn)
+            .await
+            .map_err(|error| Error::DbError(error.to_string()))
+            .unwrap()
+            .ok_or(Error::NotFound)?,
+    );
 
-    let result = devices::ActiveModel {
-        name: device.name,
-        status: match item.status {
-            Some(status) => Set(status),
-            None => NotSet,
-        },
-        private: match item.private {
-            Some(private) => Set(private),
-            None => NotSet,
-        },
-        description: match item.description {
-            Some(description) => Set(description),
-            None => NotSet,
-        },
-        ..Default::default()
+    if None == payload.status
+        && model.private.clone().unwrap() == false
+        && (model.status.clone().unwrap() == "PUBLISHED".to_string()
+            || model.status.clone().unwrap() == "UNDER_REVIEW".to_string()
+            || model.status.clone().unwrap() == "REVISION".to_string())
+    {
+        model.status = Set("UPDATED".to_string());
     }
-    .update(&state.conn)
-    .await
-    .map_err(|error| Error::DbError(error.to_string()))
-    .unwrap();
 
-    Ok(Json(result))
+    // if let Some(name) = payload.name {
+    //     model.name = Set(name);
+    // }
+
+    if let Some(description) = payload.description {
+        model.description = Set(description);
+    }
+
+    if let Some(status) = payload.status {
+        model.status = Set(status);
+    }
+
+    if let Some(private) = payload.private {
+        model.private = Set(private);
+    }
+
+    let updated_item = model
+        .save(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(updated_item.try_into_model().unwrap()))
 }
 
 pub async fn delete(
@@ -113,8 +123,7 @@ pub async fn delete(
     ModbusRegisterDevices::delete_by_id(&name)
         .exec(&state.conn)
         .await
-        .map_err(|error| Error::DbError(error.to_string()))
-        .unwrap();
+        .map_err(|error| Error::DbError(error.to_string()))?;
 
     Ok(Json(setting))
 }

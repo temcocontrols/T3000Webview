@@ -15,8 +15,12 @@ export default {
     const value = ref(props.params.value);
 
     const selectRef = ref(null);
+    const options =
+      typeof props.params.options === "function"
+        ? props.params.options()
+        : props.params.options;
 
-    const selectOptions = ref(props.params.options);
+    const selectOptions = ref(options);
     const clearable = ref(props.params.clearable);
 
     onMounted(() => {
@@ -26,7 +30,7 @@ export default {
     function selectFilter(val, update, abort) {
       update(() => {
         const keyword = val.toLowerCase();
-        selectOptions.value = props.params.options.filter(
+        selectOptions.value = options.filter(
           (v) => v.toLowerCase().indexOf(keyword) > -1
         );
       });

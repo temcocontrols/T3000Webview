@@ -255,15 +255,18 @@
       class="flex flex-col justify-center p-2 flex-1 overflow-hidden"
       :style-fn="() => {}"
     >
-      <div class="flex justify-center">
+      <div class="flex justify-center mb-2">
         <q-select
           ref="deviceSelectRef"
-          class="grow max-w-3xl mb-2 select-device"
+          class="grow max-w-3xl select-device"
           options-selected-class="bg-gray-300 text-primary"
           v-model="selectedDevice"
           input-debounce="200"
           option-value="name"
           option-label="name"
+          fill-input
+          use-input
+          hide-selected
           filled
           dense
           hide-bottom-space
@@ -273,34 +276,8 @@
           @popup-hide="onSelectDeviceHide"
           @update:model-value="onSelectDeviceUpdate"
         >
-          <!-- <template #selected-item="opt">
-            <q-item>
-              <q-item-section avatar>
-                <q-avatar
-                  square
-                  size="80px"
-                  v-if="opt.opt.name !== 'All Devices'"
-                >
-                  <img src="../../assets/placeholder.png" />
-                </q-avatar>
-                <q-avatar
-                  icon="devices"
-                  square
-                  size="80px"
-                  font-size="70px"
-                  v-else
-                />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ opt.opt.name }}</q-item-label>
-                <q-item-label caption lines="2">{{
-                  opt.opt.description
-                }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template> -->
           <template #option="opt">
-            <q-item v-bind="opt.itemProps" class="flex">
+            <q-item v-bind="opt.itemProps" class="flex device-list-item">
               <q-item-section avatar>
                 <q-avatar
                   square
@@ -330,10 +307,68 @@
                 <q-item-label caption lines="2">{{
                   opt.opt.description
                 }}</q-item-label>
+                <q-btn
+                  v-if="opt.label !== 'All Devices'"
+                  class="device-action-btn hidden absolute right-2.5 top-8"
+                  :id="'device-action-btn-' + opt.opt.name.replace(/\s/g, '-')"
+                  dense
+                  flat
+                  size="md"
+                  round
+                  color="primary"
+                  icon="more_vert"
+                  @click.stop
+                >
+                  <q-menu
+                    @update:model-value="
+                      actionMenuToggle(
+                        'device-action-btn-' + opt.opt.name.replace(/\s/g, '-')
+                      )
+                    "
+                  >
+                    <q-list style="min-width: 70px">
+                      <q-item
+                        dense
+                        clickable
+                        v-close-popup
+                        @click="updateDeviceAction(opt.opt)"
+                      >
+                        <q-item-section avatar>
+                          <q-icon name="edit" />
+                        </q-item-section>
+                        <q-item-section>Edit</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item
+                        clickable
+                        v-close-popup
+                        dense
+                        @click="deleteDeviceAction(opt.opt)"
+                      >
+                        <q-item-section avatar>
+                          <q-icon name="delete" />
+                        </q-item-section>
+                        <q-item-section>Delete</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
               </q-item-section>
             </q-item>
           </template>
         </q-select>
+        <div class="flex items-center ml-2">
+          <q-btn
+            icon="add_circle"
+            label="Create New Device"
+            @click="createNewDeviceAction"
+            color="white"
+            text-color="grey-8"
+            size="0.7rem"
+            no-caps
+            dense
+          />
+        </div>
       </div>
       <div class="flex flex-col flex-1 flex-nowrap">
         <ag-grid-vue
@@ -674,6 +709,98 @@
       </q-form>
     </q-card>
   </q-dialog>
+  <!-- Create new device dialog -->
+  <q-dialog v-model="createDeviceDialog" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Create new Device</div>
+      </q-card-section>
+      <q-separator />
+      <q-form ref="form" class="q-gutter-md" @submit="createNewDevice">
+        <q-card-section
+          class="flex flex-col flex-nowrap gap-4 scroll"
+          style="max-height: 50vh"
+        >
+          <div>
+            <q-checkbox v-model="newDevice.private" label="Private" />
+          </div>
+          <q-input
+            v-model="newDevice.name"
+            label="Name"
+            :rules="[
+              (val) =>
+                (val && val.length > 0) || 'Please enter the new device name',
+            ]"
+          />
+          <q-input
+            v-model="newDevice.description"
+            label="Description"
+            type="textarea"
+          />
+        </q-card-section>
+        <q-separator />
+
+        <q-card-actions align="right" class="mt-0">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="createDeviceDialog = false"
+          />
+          <q-btn label="Submit" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
+  <!-- Update device dialog -->
+  <q-dialog v-model="updateDeviceDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Update Device</div>
+      </q-card-section>
+      <q-separator />
+      <q-form ref="form" class="q-gutter-md" @submit="updateDevice">
+        <q-card-section
+          class="flex flex-col flex-nowrap gap-4 scroll"
+          style="max-height: 50vh"
+        >
+          <div>
+            <q-checkbox
+              v-model="updateDeviceDialog.data.private"
+              label="Private"
+            />
+          </div>
+          <q-input
+            v-model="updateDeviceDialog.data.name"
+            label="Name"
+            :disable="true"
+            :rules="[
+              (val) =>
+                (val && val.length > 0) || 'The device name cannot be empty',
+            ]"
+          />
+          <q-input
+            v-model="updateDeviceDialog.data.description"
+            label="Description"
+            type="textarea"
+          />
+        </q-card-section>
+        <q-separator />
+
+        <q-card-actions align="right" class="mt-0">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="updateDeviceDialog = false"
+          />
+          <q-btn label="Submit" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
@@ -698,10 +825,9 @@ import {
   cellClassRules,
   columnTypes,
   user,
-  operationOptions,
-  dataFormatOptions,
   isAdmin,
   getModbusRegisterSettings,
+  devices,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
@@ -743,13 +869,9 @@ const reviewAllRowChangesDialog = ref({ active: false, entry: null });
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
-const selectDataFormatOptions = ref(dataFormatOptions);
-
-const selectOperationOptions = ref(operationOptions);
-
 const activeTab = ref("all");
 
-const isOnline = ref(null);
+const isOnline = ref(navigator.onLine);
 const liveMode = ref(false);
 let dismissOfflineNotif = null;
 let intervalIsOnline = null;
@@ -767,8 +889,12 @@ const settingsDialog = ref({
 
 const gridContext = ref({ activeTab, liveMode });
 
+const newDevice = ref({ name: "", description: "", private: false });
+const createDeviceDialog = ref(false);
+
+const updateDeviceDialog = ref({ active: false, name: null, data: {} });
+
 const deviceSelectRef = ref(null);
-const devices = ref([]);
 const selectDeviceOptions = ref(devices.value);
 
 const selectDeviceFilterFn = (val, update, abort) => {
@@ -781,7 +907,8 @@ const selectDeviceFilterFn = (val, update, abort) => {
   update(() => {
     const keyword = val.toLowerCase();
     selectDeviceOptions.value = devices.value.filter(
-      (v) => v.toLowerCase().indexOf(keyword) > -1
+      (v) => v.name.toLowerCase().indexOf(keyword) > -1 /* ||
+        v.description?.toLowerCase().indexOf(keyword) > -1 */
     );
   });
 };
@@ -799,7 +926,8 @@ onBeforeMount(() => {
 
 onMounted(() => {
   getDeviceList();
-  healthCheck();
+  // Disable for now because it's not working properly
+  // healthCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
   settings.value = getModbusRegisterSettings() || settings.value;
@@ -1083,6 +1211,10 @@ function updateRow(event) {
 
 function addNewRow() {
   let api = localApi;
+  emptyNewItem.device_name =
+    selectedDevice.value.name === "All Devices"
+      ? null
+      : selectedDevice.value.name;
   api
     .post("modbus-registers", { json: emptyNewItem })
     .then(async (res) => {
@@ -1438,10 +1570,106 @@ function onSelectDeviceUpdate(e) {
 
 function getDeviceList() {
   localApi.get("modbus-register/devices").then(async (res) => {
-    const dev = await res.json();
-    devices.value = [{ name: "All Devices" }, ...dev];
+    const devs = await res.json();
+    devices.value = [{ name: "All Devices" }, ...devs];
     selectDeviceOptions.value = devices.value;
   });
+}
+
+function createNewDeviceAction() {
+  newDevice.value = { name: "", description: "", private: false };
+  createDeviceDialog.value = true;
+}
+
+function createNewDevice() {
+  let api = localApi;
+
+  api
+    .post("modbus-register/devices", { json: newDevice.value })
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      createDeviceDialog.value = false;
+      $q.notify({
+        type: "positive",
+        message: "Successfully created",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Create device failed! " + err.message,
+      });
+    });
+}
+
+function updateDeviceAction(data) {
+  updateDeviceDialog.value = {
+    active: true,
+    name: structuredClone(data.name),
+    data,
+  };
+}
+
+function updateDevice() {
+  let api = localApi;
+  api
+    .patch("modbus-register/devices/" + updateDeviceDialog.value.name, {
+      json: updateDeviceDialog.value.data,
+    })
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      updateDeviceDialog.value.active = false;
+      $q.notify({
+        type: "positive",
+        message: "Successfully updated",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Update device failed! " + err.message,
+      });
+    });
+}
+
+function deleteDeviceAction(data) {
+  $q.dialog({
+    title: "Delete Device",
+    message: "Are you sure you want to delete this device?",
+    ok: {
+      label: "Yes",
+      color: "negative",
+    },
+    cancel: "No",
+  }).onOk(() => {
+    deleteDevice(data);
+  });
+}
+
+function deleteDevice(data) {
+  let api = localApi;
+  api
+    .delete("modbus-register/devices/" + data.name)
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      $q.notify({
+        type: "positive",
+        message: "Successfully deleted",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Delete device failed! " + err.message,
+      });
+    });
+}
+
+function actionMenuToggle(id) {
+  document.getElementById(id).classList.toggle("active");
 }
 </script>
 
@@ -1472,6 +1700,12 @@ function getDeviceList() {
 }
 .select-device.q-field--auto-height.q-field--dense .q-field__control {
   align-items: center;
+}
+
+.device-list-item:hover .device-action-btn,
+.device-list-item .device-action-btn.active {
+  z-index: 1;
+  display: inline-flex !important;
 }
 
 @media (min-width: 1001px) {

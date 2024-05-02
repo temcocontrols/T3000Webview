@@ -1522,6 +1522,7 @@ export const dataFormatOptions = [
   "32 Bit Float_BADC",
   "32 Bit Float_DCBA",
 ];
+export const devices = ref([]);
 export const modbusRegColumns = [
   {
     colId: 1,
@@ -1599,6 +1600,14 @@ export const modbusRegColumns = [
     field: "device_name",
     width: 100,
     type: ["required"],
+    cellEditor: "SelectEditor",
+    cellEditorParams: {
+      clearable: false,
+      options: () =>
+        devices.value
+          .filter((d) => d.name !== "All Devices")
+          .map((d) => d.name),
+    },
   },
 ];
 

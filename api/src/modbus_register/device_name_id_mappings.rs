@@ -68,8 +68,7 @@ pub async fn delete(
     ModbusRegisterDeviceNameIdMapping::delete_by_id(id)
         .exec(&state.conn)
         .await
-        .map_err(|error| Error::DbError(error.to_string()))
-        .unwrap();
+        .map_err(|error| Error::DbError(error.to_string()))?;
 
     Ok(Json(setting))
 }
