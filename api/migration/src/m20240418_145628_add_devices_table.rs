@@ -124,7 +124,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(ModbusRegisterProductDeviceMapping::DeviceId)
-                            .string()
+                            .integer()
                             .not_null(),
                     )
                     .foreign_key(

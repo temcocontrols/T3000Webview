@@ -2,8 +2,9 @@
 
 pub mod prelude;
 
+pub mod files;
 pub mod modbus_register;
-pub mod modbus_register_device_name_id_mapping;
 pub mod modbus_register_devices;
+pub mod modbus_register_product_device_mapping;
 pub mod modbus_register_settings;
 pub mod user;

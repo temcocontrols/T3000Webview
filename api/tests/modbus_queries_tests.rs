@@ -27,7 +27,7 @@ async fn test_modbus_register_crud() {
         register_address: Some(1),
         operation: Some("test".to_string()),
         description: Some("test".to_string()),
-        device_name: Some("test".to_string()),
+        device_id: None,
         data_format: Some("test".to_string()),
         unit: Some("test".to_string()),
         status: None,
@@ -47,7 +47,7 @@ async fn test_modbus_register_crud() {
         order_by: None,
         limit: Some(1),
         offset: None,
-        device_name: None,
+        device_id: None,
         order_dir: None,
     };
     let result = list(State(conn.clone()), Query(params)).await;
@@ -63,7 +63,7 @@ async fn test_modbus_register_crud() {
         register_name: Some(Some("updated".to_string())),
         data_format: Some(Some("updated".to_string())),
         description: Some(Some("updated".to_string())),
-        device_name: Some(Some("updated".to_string())),
+        device_id: None,
         unit: Some(Some("updated".to_string())),
         status: None,
         private: None,

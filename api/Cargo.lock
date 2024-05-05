@@ -2925,7 +2925,7 @@ checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
 
 [[package]]
 name = "t3_webview_api"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "axum",
  "chrono",

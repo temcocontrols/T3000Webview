@@ -2,31 +2,35 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use sea_orm::{prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, Set, TryIntoModel};
+use sea_orm::{
+    prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, SelectTwo, Set, TryIntoModel,
+};
 
 use super::inputs::{
-    CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterQueryParams,
-    ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
+    CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterModel,
+    ModbusRegisterQueryParams, ModbusRegisterResponse, OrderByDirection,
+    UpdateModbusRegisterItemInput,
 };
 use crate::{
     app_state::AppState,
     entity::modbus_register::{self, Entity as ModbusRegister},
+    entity::modbus_register_devices::Entity as ModbusRegisterDevices,
     error::{Error, Result},
 };
 
 pub fn generate_filter_query(
     filter: &Option<String>,
-    device_name: &Option<String>,
+    device_id: &Option<i32>,
     local_only: bool,
-) -> Select<ModbusRegister> {
-    let mut query = ModbusRegister::find();
+) -> SelectTwo<ModbusRegister, ModbusRegisterDevices> {
+    let mut query = ModbusRegister::find().find_also_related(ModbusRegisterDevices);
 
     if let Some(filter) = filter {
         let fields = vec![
             modbus_register::Column::RegisterName,
             modbus_register::Column::Operation,
             modbus_register::Column::Description,
-            modbus_register::Column::DeviceName,
+            modbus_register::Column::DeviceId,
             modbus_register::Column::DataFormat,
             modbus_register::Column::Unit,
         ];
@@ -62,8 +66,8 @@ pub fn generate_filter_query(
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
 
-    if device_name.is_some() {
-        query = query.filter(modbus_register::Column::DeviceName.eq(device_name.clone().unwrap()));
+    if device_id.is_some() {
+        query = query.filter(modbus_register::Column::DeviceId.eq(device_id.clone().unwrap()));
     }
     if local_only {
         query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
@@ -78,7 +82,7 @@ pub async fn list(
 ) -> Result<Json<ModbusRegisterResponse>> {
     let mut query = generate_filter_query(
         &params.filter,
-        &params.device_name,
+        &params.device_id,
         params.local_only.unwrap_or(false),
     );
 
@@ -100,17 +104,55 @@ pub async fn list(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    let items = items
+        .iter()
+        .map(|item| ModbusRegisterModel {
+            id: item.0.id,
+            register_address: item.0.register_address,
+            operation: item.0.operation.clone(),
+            register_length: item.0.register_length,
+            register_name: item.0.register_name.clone(),
+            data_format: item.0.data_format.clone(),
+            description: item.0.description.clone(),
+            device_id: item.0.device_id,
+            device: item.1.clone(),
+            status: item.0.status.clone(),
+            unit: item.0.unit.clone(),
+            private: item.0.private,
+            created_at: item.0.created_at.clone(),
+            updated_at: item.0.updated_at.clone(),
+        })
+        .collect();
+
     Ok(Json(ModbusRegisterResponse { data: items, count }))
 }
 
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<Json<Option<modbus_register::Model>>> {
+) -> Result<Json<Option<ModbusRegisterModel>>> {
     let item = ModbusRegister::find_by_id(id)
+        .find_also_related(ModbusRegisterDevices)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
+
+    let item = item.map(|item| ModbusRegisterModel {
+        id: item.0.id,
+        register_address: item.0.register_address,
+        operation: item.0.operation.clone(),
+        register_length: item.0.register_length,
+        register_name: item.0.register_name.clone(),
+        data_format: item.0.data_format.clone(),
+        description: item.0.description.clone(),
+        device_id: item.0.device_id,
+        device: item.1.clone(),
+        status: item.0.status.clone(),
+        unit: item.0.unit.clone(),
+        private: item.0.private,
+        created_at: item.0.created_at.clone(),
+        updated_at: item.0.updated_at.clone(),
+    });
 
     Ok(Json(item))
 }
@@ -126,7 +168,7 @@ pub async fn create(
         register_name: Set(payload.register_name),
         data_format: Set(payload.data_format),
         description: Set(payload.description),
-        device_name: Set(payload.device_name),
+        device_id: Set(payload.device_id),
         unit: Set(payload.unit),
         ..Default::default()
     };
@@ -199,8 +241,8 @@ pub async fn update(
     if let Some(description) = payload.description {
         model.description = Set(description);
     }
-    if let Some(device_name) = payload.device_name {
-        model.device_name = Set(device_name);
+    if let Some(device_id) = payload.device_id {
+        model.device_id = Set(device_id);
     }
     if let Some(status) = payload.status {
         model.status = Set(status);

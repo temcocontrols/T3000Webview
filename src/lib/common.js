@@ -1597,16 +1597,19 @@ export const modbusRegColumns = [
     colId: 8,
     headerName: "Device Name",
     sortable: true,
-    field: "device_name",
+    field: "device_id",
     width: 100,
     type: ["required"],
+    valueFormatter: (params) => {
+      if (params.data.device_id === null) return "";
+      return params.data.device.name;
+    },
     cellEditor: "SelectEditor",
     cellEditorParams: {
       clearable: false,
-      options: () =>
-        devices.value
-          .filter((d) => d.name !== "All Devices")
-          .map((d) => d.name),
+      options: () => devices.value.filter((d) => d.name !== "All Devices"),
+      optionValue: "id",
+      optionLabel: "name",
     },
   },
 ];

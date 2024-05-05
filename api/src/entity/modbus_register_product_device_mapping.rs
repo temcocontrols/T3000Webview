@@ -4,19 +4,19 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "modbus_register_device_name_id_mapping")]
+#[sea_orm(table_name = "modbus_register_product_device_mapping")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: i32,
-    pub name: String,
+    pub product_id: i32,
+    pub device_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::modbus_register_devices::Entity",
-        from = "Column::Name",
-        to = "super::modbus_register_devices::Column::Name",
+        from = "Column::DeviceId",
+        to = "super::modbus_register_devices::Column::Id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]

@@ -30,8 +30,10 @@ export default {
     function selectFilter(val, update, abort) {
       update(() => {
         const keyword = val.toLowerCase();
-        selectOptions.value = options.filter(
-          (v) => v.toLowerCase().indexOf(keyword) > -1
+        selectOptions.value = options.filter((v) =>
+          props.params.optionLabel
+            ? v[props.params.optionLabel].toLowerCase().indexOf(keyword) > -1
+            : v.toLowerCase().indexOf(keyword) > -1
         );
       });
     }
@@ -89,11 +91,12 @@ export default {
     dense
     use-input
     hide-selected
-    fill-input
     :clearable="clearable"
     new-value-mode="add-unique"
     input-debounce="0"
     :options="selectOptions"
+    :option-value="params.optionValue || 'value'"
+    :option-label="params.optionLabel || 'label'"
     @filter="selectFilter"
     @update:model-value="stopEditing()"
     @popup-hide="stopEditing()"

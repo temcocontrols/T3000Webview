@@ -14,7 +14,7 @@ pub struct Model {
     pub register_name: Option<String>,
     pub data_format: Option<String>,
     pub description: Option<String>,
-    pub device_name: Option<String>,
+    pub device_id: Option<i32>,
     pub status: String,
     pub unit: Option<String>,
     pub private: Option<bool>,
@@ -28,8 +28,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::modbus_register_devices::Entity",
-        from = "Column::DeviceName",
-        to = "super::modbus_register_devices::Column::Name",
+        from = "Column::DeviceId",
+        to = "super::modbus_register_devices::Column::Id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]

@@ -262,7 +262,7 @@
           options-selected-class="bg-gray-300 text-primary"
           v-model="selectedDevice"
           input-debounce="200"
-          option-value="name"
+          option-value="id"
           option-label="name"
           fill-input
           use-input
@@ -310,7 +310,7 @@
                 <q-btn
                   v-if="opt.label !== 'All Devices'"
                   class="device-action-btn hidden absolute right-2.5 top-8"
-                  :id="'device-action-btn-' + opt.opt.name.replace(/\s/g, '-')"
+                  :id="'device-action-btn-' + opt.opt.id"
                   dense
                   flat
                   size="md"
@@ -321,9 +321,7 @@
                 >
                   <q-menu
                     @update:model-value="
-                      actionMenuToggle(
-                        'device-action-btn-' + opt.opt.name.replace(/\s/g, '-')
-                      )
+                      actionMenuToggle('device-action-btn-' + opt.opt.id)
                     "
                   >
                     <q-list style="min-width: 70px">
@@ -419,7 +417,7 @@
                 'register_name',
                 'data_format',
                 'description',
-                'device_name',
+                'device_id',
               ]"
               :key="col"
             >
@@ -617,7 +615,7 @@
                   'register_name',
                   'data_format',
                   'description',
-                  'device_name',
+                  'device_id',
                 ]"
                 :key="col"
               >
@@ -774,7 +772,6 @@
           <q-input
             v-model="updateDeviceDialog.data.name"
             label="Name"
-            :disable="true"
             :rules="[
               (val) =>
                 (val && val.length > 0) || 'The device name cannot be empty',
@@ -856,7 +853,7 @@ const emptyNewItem = {
   register_name: "",
   data_format: null,
   description: "",
-  device_name: null,
+  device_id: null,
 };
 
 const notifications = ref([]);
@@ -892,7 +889,7 @@ const gridContext = ref({ activeTab, liveMode });
 const newDevice = ref({ name: "", description: "", private: false });
 const createDeviceDialog = ref(false);
 
-const updateDeviceDialog = ref({ active: false, name: null, data: {} });
+const updateDeviceDialog = ref({ active: false, id: null, data: {} });
 
 const deviceSelectRef = ref(null);
 const selectDeviceOptions = ref(devices.value);
@@ -1151,7 +1148,7 @@ function getServerSideDatasource() {
             (activeTab.value === "changes" ? "&has_changes=1" : "") +
             (selectedDevice.value.name &&
             selectedDevice.value.name !== "All Devices"
-              ? "&device_name=" + selectedDevice.value.name
+              ? "&device_id=" + selectedDevice.value.id
               : "")
         )
         .then(async (res) => {
@@ -1178,7 +1175,8 @@ function updateRow(event) {
   }
   let api = liveMode.value ? liveApi : localApi;
   const updateData = {
-    [event.colDef.field]: event.newValue,
+    [event.colDef.field]:
+      typeof event.newValue === "object" ? event.newValue.id : event.newValue,
   };
   api
     .patch("modbus-registers/" + event.data.id, { json: updateData })
@@ -1211,10 +1209,10 @@ function updateRow(event) {
 
 function addNewRow() {
   let api = localApi;
-  emptyNewItem.device_name =
+  emptyNewItem.device_id =
     selectedDevice.value.name === "All Devices"
       ? null
-      : selectedDevice.value.name;
+      : selectedDevice.value.id;
   api
     .post("modbus-registers", { json: emptyNewItem })
     .then(async (res) => {
@@ -1434,7 +1432,7 @@ async function pushLocalChanges() {
         !change.register_address ||
         !change.operation ||
         !change.data_format ||
-        !change.device_name
+        !change.device_id
       ) {
         continue;
       }
@@ -1571,7 +1569,7 @@ function onSelectDeviceUpdate(e) {
 function getDeviceList() {
   localApi.get("modbus-register/devices").then(async (res) => {
     const devs = await res.json();
-    devices.value = [{ name: "All Devices" }, ...devs];
+    devices.value = [{ name: "All Devices", id: null }, ...devs];
     selectDeviceOptions.value = devices.value;
   });
 }
@@ -1606,15 +1604,19 @@ function createNewDevice() {
 function updateDeviceAction(data) {
   updateDeviceDialog.value = {
     active: true,
-    name: structuredClone(data.name),
-    data,
+    id: data.id,
+    data: {
+      name: data.name,
+      description: data.description,
+      private: data.private,
+    },
   };
 }
 
 function updateDevice() {
   let api = localApi;
   api
-    .patch("modbus-register/devices/" + updateDeviceDialog.value.name, {
+    .patch("modbus-register/devices/" + updateDeviceDialog.value.id, {
       json: updateDeviceDialog.value.data,
     })
     .then(async (res) => {
@@ -1651,7 +1653,7 @@ function deleteDeviceAction(data) {
 function deleteDevice(data) {
   let api = localApi;
   api
-    .delete("modbus-register/devices/" + data.name)
+    .delete("modbus-register/devices/" + data.id)
     .then(async (res) => {
       res = await res.json();
       getDeviceList();

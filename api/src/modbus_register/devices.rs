@@ -21,11 +21,11 @@ pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<devices::
     }
 }
 
-pub async fn get_by_name(
+pub async fn get_by_id(
     State(state): State<AppState>,
-    Path(name): Path<String>,
+    Path(id): Path<i32>,
 ) -> Result<Json<devices::Model>> {
-    let result = ModbusRegisterDevices::find_by_id(name)
+    let result = ModbusRegisterDevices::find_by_id(id)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
@@ -64,11 +64,11 @@ pub async fn create(
 
 pub async fn update(
     State(state): State<AppState>,
-    Path(name): Path<String>,
+    Path(id): Path<i32>,
     Json(payload): Json<UpdateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
     let mut model = Into::<devices::ActiveModel>::into(
-        ModbusRegisterDevices::find_by_id(name)
+        ModbusRegisterDevices::find_by_id(id)
             .one(&state.conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))
@@ -85,9 +85,9 @@ pub async fn update(
         model.status = Set("UPDATED".to_string());
     }
 
-    // if let Some(name) = payload.name {
-    //     model.name = Set(name);
-    // }
+    if let Some(name) = payload.name {
+        model.name = Set(name);
+    }
 
     if let Some(description) = payload.description {
         model.description = Set(description);
@@ -111,16 +111,16 @@ pub async fn update(
 
 pub async fn delete(
     State(state): State<AppState>,
-    Path(name): Path<String>,
+    Path(id): Path<i32>,
 ) -> Result<Json<devices::Model>> {
-    let setting = ModbusRegisterDevices::find_by_id(&name)
+    let setting = ModbusRegisterDevices::find_by_id(id)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
         .map(Into::into)?;
 
-    ModbusRegisterDevices::delete_by_id(&name)
+    ModbusRegisterDevices::delete_by_id(id)
         .exec(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
