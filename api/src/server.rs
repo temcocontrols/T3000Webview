@@ -12,16 +12,19 @@ use tower_http::{
     services::ServeDir,
 };
 
-use crate::{app_state, utils::run_migrations};
+use crate::{
+    app_state,
+    file::routes::file_routes,
+    utils::{run_migrations, SPA_DIR},
+};
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
 fn routes_static() -> Router {
-    let spa_dir = env::var("SPA_DIR").unwrap_or("./ResourceFile/webview/www".to_string());
     Router::new().nest_service(
         "/",
-        get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
+        get_service(ServeDir::new(SPA_DIR.as_str())).handle_error(|_| async move {
             (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }),
     )
@@ -45,6 +48,7 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
             "/api",
             modbus_register_routes()
                 .merge(user_routes())
+                .merge(file_routes())
                 .route("/health", get(health_check_handler)),
         )
         .with_state(app_state)

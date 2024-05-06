@@ -12,6 +12,7 @@ pub enum Error {
     Unauthorized,
     PermissionDenied,
     BadRequest(String),
+    ServerError(String),
 }
 
 // region:    --- Error Boilerplate
@@ -36,6 +37,10 @@ impl IntoResponse for Error {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
             Self::PermissionDenied => (StatusCode::FORBIDDEN, "Permission Denied".to_string()),
             Self::BadRequest(err) => (StatusCode::BAD_REQUEST, format!("Bad Request: {err}")),
+            Self::ServerError(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Server Error: {}", err),
+            ),
         };
 
         response.into_response()
