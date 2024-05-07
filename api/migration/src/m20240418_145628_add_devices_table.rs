@@ -46,6 +46,9 @@ enum Files {
     Name,
     MimeType,
     Path,
+    Status,
+    CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveMigrationName)]
@@ -155,6 +158,24 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Files::Name).string().not_null())
                     .col(ColumnDef::new(Files::MimeType).string().not_null())
                     .col(ColumnDef::new(Files::Path).string().not_null())
+                    .col(
+                        ColumnDef::new(Files::Status)
+                            .string()
+                            .not_null()
+                            .default("NEW"),
+                    )
+                    .col(
+                        ColumnDef::new(Files::CreatedAt)
+                            .timestamp()
+                            .not_null()
+                            .default(SimpleExpr::Keyword(Keyword::CurrentTimestamp)),
+                    )
+                    .col(
+                        ColumnDef::new(Files::UpdatedAt)
+                            .timestamp()
+                            .not_null()
+                            .default(SimpleExpr::Keyword(Keyword::CurrentTimestamp)),
+                    )
                     .to_owned(),
             )
             .await?;

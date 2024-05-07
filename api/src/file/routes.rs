@@ -30,7 +30,7 @@ pub fn file_routes() -> Router<AppState> {
         .route("/files/:id", get(get_file_by_id).delete(delete_file))
         .route(
             "/upload",
-            post(upload_file).layer(DefaultBodyLimit::max(1024 * 1000 * 20)),
+            post(upload_file).layer(DefaultBodyLimit::max(1024 * 1000 * 300) /* 300 MB */),
         )
         .route_layer(middleware::from_fn(require_auth))
 }
@@ -72,18 +72,35 @@ async fn upload_file(
     if !fs_path.exists() {
         fs::create_dir_all(fs_path).map_err(|error| Error::ServerError(error.to_string()))?;
     }
-    let fs_path = Path::new(&path_str).join(&filename);
+    let mut new_filename = filename.clone();
+    let mut i = 1;
+    // Check if the file already exists and add a number to the end of the filename if it does
+    while fs_path.join(&new_filename).exists() {
+        let extension = match new_filename.rsplit('.').next() {
+            Some(ext) => format!(".{}", ext),
+            None => "".to_string(),
+        };
+        new_filename = format!(
+            "{}-{}{}",
+            filename.trim_end_matches(extension.as_str()),
+            i,
+            extension
+        );
+        i += 1;
+    }
+    let fs_path = Path::new(&path_str).join(&new_filename);
     let mut file = File::create(&fs_path).map_err(|error| Error::ServerError(error.to_string()))?;
     file.write_all(&data)
         .map_err(|error| Error::ServerError(error.to_string()))?;
 
-    file_path.push_str(&filename);
+    file_path.push_str(&new_filename);
 
     let model = Files::insert(files::ActiveModel {
         id: Default::default(),
         name: Set(filename.clone()),
         path: Set(file_path.clone()),
         mime_type: Set(mime_type.to_string()),
+        ..Default::default()
     });
 
     let results = model
