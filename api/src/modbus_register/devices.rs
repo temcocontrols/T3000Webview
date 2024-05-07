@@ -13,10 +13,23 @@ use crate::error::{Error, Result};
 use super::inputs::CreateDeviceInput;
 use super::inputs::UpdateDeviceInput;
 
-pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<devices::Model>>> {
-    let results = ModbusRegisterDevices::find().all(&state.conn).await;
+pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<serde_json::Value>>> {
+    let results = ModbusRegisterDevices::find()
+        .find_also_related(Files)
+        .all(&state.conn)
+        .await;
     match results {
-        Ok(items) => Ok(Json(items)),
+        Ok(items) => Ok(Json(
+            items
+                .iter()
+                .map(|item| {
+                    let mut device: serde_json::Value =
+                        serde_json::to_value(&item.0).unwrap_or_default();
+                    device["image"] = serde_json::to_value(&item.1).unwrap_or_default();
+                    device
+                })
+                .collect(),
+        )),
         Err(error) => Err(Error::DbError(error.to_string())),
     }
 }
@@ -24,14 +37,19 @@ pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<devices::
 pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<Json<devices::Model>> {
+) -> Result<Json<serde_json::Value>> {
     let result = ModbusRegisterDevices::find_by_id(id)
+        .find_also_related(Files)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
     match result {
-        Some(item) => Ok(Json(item)),
+        Some(item) => {
+            let mut device: serde_json::Value = serde_json::to_value(&item.0).unwrap_or_default();
+            device["image"] = serde_json::to_value(&item.1).unwrap_or_default();
+            Ok(Json(device))
+        }
         None => Err(Error::NotFound),
     }
 }
@@ -43,6 +61,7 @@ pub async fn create(
     let mut model = devices::ActiveModel {
         name: Set(payload.name),
         description: Set(payload.description),
+        image_id: Set(payload.image_id),
         ..Default::default()
     };
 
@@ -99,6 +118,10 @@ pub async fn update(
 
     if let Some(private) = payload.private {
         model.private = Set(private);
+    }
+
+    if let Some(image_id) = payload.image_id {
+        model.image_id = Set(image_id);
     }
 
     let updated_item = model

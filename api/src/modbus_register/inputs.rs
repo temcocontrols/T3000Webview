@@ -183,6 +183,7 @@ pub struct CreateDeviceInput {
     pub description: Option<String>,
     pub status: Option<String>,
     pub private: Option<bool>,
+    pub image_id: Option<i32>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
@@ -195,6 +196,8 @@ pub struct UpdateDeviceInput {
     pub description: Option<Option<String>>,
     pub status: Option<String>,
     pub private: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub image_id: Option<Option<i32>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
