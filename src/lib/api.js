@@ -22,7 +22,7 @@ export const liveApi = ky.create({
 
 export const localApi = ky.create({
   prefixUrl: process.env.LOCAL_API_URL,
-  headers: { secret_key: process.env.LOCAL_API_SECRET_KEY || "secret" },
+  headers: { Authorization: process.env.LOCAL_API_SECRET_KEY || "secret" },
   hooks: {
     beforeRequest: [
       (request) => {

@@ -292,7 +292,7 @@
                   size="80px"
                   v-else-if="opt.label !== 'All Devices'"
                 >
-                  <img :src="opt.opt.image" />
+                  <img :src="opt.opt.image.path" />
                 </q-avatar>
                 <q-avatar
                   icon="devices"
@@ -709,7 +709,7 @@
   </q-dialog>
   <!-- Create new device dialog -->
   <q-dialog v-model="createDeviceDialog" persistent>
-    <q-card style="width: 700px">
+    <q-card style="width: 700px; max-width: 700px">
       <q-card-section>
         <div class="text-h6">Create new Device</div>
       </q-card-section>
@@ -719,17 +719,35 @@
           class="flex flex-col flex-nowrap gap-4 scroll"
           style="max-height: 50vh"
         >
+          <div class="flex items-center">
+            <div class="image-container relative w-52">
+              <file-upload
+                ref="createDeviceFileUploaderRef"
+                :endpoint="fileUploadEndpoint"
+                :headers="{
+                  Authorization: fileUploadSecret,
+                }"
+                path="modbus-register/devices"
+                :types="['image/*']"
+                :height="150"
+                @uploaded="newDeviceImageUploaded"
+              />
+            </div>
+            <div class="grow ml-4">
+              <q-input
+                v-model="newDevice.name"
+                label="Name"
+                :rules="[
+                  (val) =>
+                    (val && val.length > 0) ||
+                    'Please enter the new device name',
+                ]"
+              />
+            </div>
+          </div>
           <div>
             <q-checkbox v-model="newDevice.private" label="Private" />
           </div>
-          <q-input
-            v-model="newDevice.name"
-            label="Name"
-            :rules="[
-              (val) =>
-                (val && val.length > 0) || 'Please enter the new device name',
-            ]"
-          />
           <q-input
             v-model="newDevice.description"
             label="Description"
@@ -753,7 +771,7 @@
   </q-dialog>
   <!-- Update device dialog -->
   <q-dialog v-model="updateDeviceDialog.active" persistent>
-    <q-card style="width: 700px">
+    <q-card style="width: 700px; max-width: 700px">
       <q-card-section>
         <div class="text-h6">Update Device</div>
       </q-card-section>
@@ -763,20 +781,58 @@
           class="flex flex-col flex-nowrap gap-4 scroll"
           style="max-height: 50vh"
         >
+          <div class="flex items-center">
+            <div class="image-container relative w-52">
+              <file-upload
+                v-if="!updateDeviceDialog.data.image"
+                ref="updateDeviceFileUploaderRef"
+                :endpoint="fileUploadEndpoint"
+                :headers="{
+                  Authorization: fileUploadSecret,
+                }"
+                path="modbus-register/devices"
+                :types="['image/*']"
+                :height="150"
+                @uploaded="updateDeviceImageUploaded"
+              />
+              <q-avatar v-else square size="180px">
+                <img :src="updateDeviceDialog.data.image.path" />
+                <div class="image-actions">
+                  <q-btn
+                    class="absolute right-0 top-0"
+                    flat
+                    size="sm"
+                    color="primary"
+                    icon="delete"
+                    @click="
+                      updateDeviceDialog.data.image_id = null;
+                      updateDeviceDialog.data.image = null;
+                    "
+                  >
+                    <q-tooltip> Delete image </q-tooltip>
+                  </q-btn>
+                </div>
+              </q-avatar>
+            </div>
+            <div class="grow ml-4">
+              <q-input
+                v-model="updateDeviceDialog.data.name"
+                label="Name"
+                :rules="[
+                  (val) =>
+                    (val && val.length > 0) ||
+                    'The device name cannot be empty',
+                ]"
+              />
+            </div>
+          </div>
+
           <div>
             <q-checkbox
               v-model="updateDeviceDialog.data.private"
               label="Private"
             />
           </div>
-          <q-input
-            v-model="updateDeviceDialog.data.name"
-            label="Name"
-            :rules="[
-              (val) =>
-                (val && val.length > 0) || 'The device name cannot be empty',
-            ]"
-          />
           <q-input
             v-model="updateDeviceDialog.data.description"
             label="Description"
@@ -830,6 +886,7 @@ import UserTopBar from "../../components/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/grid/RowActionsRenderer.vue";
 import SelectEditor from "../../components/grid/SelectEditor.vue";
+import FileUpload from "../../components/FileUploadS3.vue";
 
 ModuleRegistry.registerModules([ServerSideRowModelModule]);
 
@@ -911,6 +968,10 @@ const selectDeviceFilterFn = (val, update, abort) => {
 };
 
 const selectedDevice = ref({ name: "All Devices" });
+const createDeviceFileUploaderRef = ref(null);
+const updateDeviceFileUploaderRef = ref(null);
+const fileUploadEndpoint = ref(process.env.LOCAL_API_URL + "/file");
+const fileUploadSecret = ref(process.env.LOCAL_API_SECRET_KEY || "secret");
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -1580,6 +1641,14 @@ function createNewDeviceAction() {
 }
 
 function createNewDevice() {
+  if (createDeviceFileUploaderRef.value?.uppy.getFiles()?.length > 0) {
+    createDeviceFileUploaderRef.value.upload();
+    return;
+  }
+  createNewDeviceSaveToDB();
+}
+
+function createNewDeviceSaveToDB() {
   let api = localApi;
 
   api
@@ -1609,11 +1678,22 @@ function updateDeviceAction(data) {
       name: data.name,
       description: data.description,
       private: data.private,
+      image_id: data.image_id,
+      image: data.image,
     },
   };
 }
 
 function updateDevice() {
+  if (updateDeviceFileUploaderRef.value?.uppy.getFiles()?.length > 0) {
+    updateDeviceFileUploaderRef.value.upload();
+    return;
+  }
+  updateDeviceSaveToDB();
+}
+
+function updateDeviceSaveToDB() {
+  delete updateDeviceDialog.value.data.image;
   let api = localApi;
   api
     .patch("modbus-register/devices/" + updateDeviceDialog.value.id, {
@@ -1634,6 +1714,12 @@ function updateDevice() {
         message: "Update device failed! " + err.message,
       });
     });
+}
+
+function updateDeviceImageUploaded(event) {
+  const file = event.body;
+  updateDeviceDialog.value.data.image_id = file.id;
+  updateDeviceSaveToDB();
 }
 
 function deleteDeviceAction(data) {
@@ -1672,6 +1758,11 @@ function deleteDevice(data) {
 
 function actionMenuToggle(id) {
   document.getElementById(id).classList.toggle("active");
+}
+function newDeviceImageUploaded(event) {
+  const file = event.body;
+  newDevice.value.image_id = file.id;
+  createNewDeviceSaveToDB();
 }
 </script>
 
