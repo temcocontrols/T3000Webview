@@ -19,6 +19,10 @@ pub fn modbus_register_routes() -> Router<AppState> {
         .route("/modbus-register/devices", get(devices::get_all))
         .route("/modbus-register/devices/:id", get(devices::get_by_id))
         .route(
+            "/modbus-register/devices/remote_id/:id",
+            get(devices::get_by_remote_id),
+        )
+        .route(
             "/modbus-register/device_id_name_mappings",
             get(product_device_mappings::get_all),
         )

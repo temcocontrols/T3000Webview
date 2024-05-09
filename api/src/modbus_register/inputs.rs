@@ -179,18 +179,20 @@ pub struct UpdateSettingInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateDeviceInput {
+    pub id: Option<i32>,
+    pub remote_id: Option<i32>,
     pub name: String,
     pub description: Option<String>,
     pub status: Option<String>,
     pub private: Option<bool>,
     pub image_id: Option<i32>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[skip_serializing_none]
 pub struct UpdateDeviceInput {
+    #[serde(default, deserialize_with = "deserialize_option_option")]
+    pub remote_id: Option<Option<i32>>,
     pub name: Option<String>,
     #[serde(default, deserialize_with = "deserialize_option_option")]
     pub description: Option<Option<String>>,
@@ -204,4 +206,9 @@ pub struct UpdateDeviceInput {
 pub struct CreateDeviceNameIdMappingInput {
     pub product_id: i32,
     pub device_id: i32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ModbusRegisterDevicesQueryParams {
+    pub local_only: Option<bool>,
 }

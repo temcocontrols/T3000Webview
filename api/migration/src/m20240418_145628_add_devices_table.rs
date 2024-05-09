@@ -23,6 +23,7 @@ enum TempModbusRegister {
 enum ModbusRegisterDevices {
     Table,
     Id,
+    RemoteId,
     Name,
     Description,
     Private,
@@ -69,6 +70,11 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .not_null()
                             .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ModbusRegisterDevices::RemoteId)
+                            .integer()
+                            .unique_key(),
                     )
                     .col(
                         ColumnDef::new(ModbusRegisterDevices::Name)
@@ -288,32 +294,34 @@ impl MigrationTrait for Migration {
         // Insert the temco devices into the modbus_register_devices table
         db.execute_unprepared(
                 r#"
-            INSERT INTO "modbus_register_devices" ("id", "name","description","status","private","created_at","updated_at")
+            INSERT INTO "modbus_register_devices" ("id", remote_id, "name","description","status","private","created_at","updated_at")
             VALUES
-            (1, 'BTU Meter','A BTU meter, also as an energy meter, is a device used to measure the heat energy generated or consumed in a heating or cooling system.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:19:08'),
-            (2, 'T322AI','Multi-Channel Temperature Monitoring Device.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:21:36'),
-            (3, 'CO2','The CO2 sensor with Humidity & Temp transmitters are designed for environmental monitoring and controlling in industrial, commercial and other buildings. These transmitters can be used for indoor C02, temperature and humidity monitoring. The modbus interface provides easy setup and integration into large systems.Supports Modbus RTU over both the Ethernet port and the RS485 port,supports Bacnet over both the Ethernet port (IP) and the RS485 port (MSTP).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:22:20'),
-            (4, 'FAN_MODULE','Fan Speed Control Module.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:44'),
-            (5, 'AFS','The air flow switch is used to prove air flow in ducts. It has an adjustable trip point with a range from 200 to 1800 FPM (1 to 9.2 m/sec).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:24'),
-            (6, 'PM2_5','The PM2.5/10 Particle Counter is designed for environmental monitoring in industrial, commercial and institutional buildings,which provides accurate readings of particle counts in five important sizes, 0.5μm,1.0μm,2.5μm,4μm and 10μm.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:25:18'),
-            (7, 'HUM','Humidity Sensor','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:26:19'),
-            (8, 'Pressure','Single Ended Pressure Transmitter is a kind of standard and most popular transmitter applied in air and liquid pressure measuring,since a high sensitivity silicon pressure chip is employed in the sensor.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:27:04'),
-            (9, 'T38I8O6DO','Advanced Temperature Control System.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:28:24'),
-            (10, 'TSTAT8','This full-featured thermostat is designed for cooling and heating systems in residential and commercial buildings.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:16:23'),
-            (11, 'ZIGBEE_REPEATER',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (12, 'T3_8AI13O',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (13, 'Transducer2',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (14, 'T3PT12',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (15, 'CO2_Node',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (16, 'PM5E_ARM',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (17, 'T3BB',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (18, 'T3_32I',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (19, 'CM5',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (20, 'MultipleSensor',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (21, 'T36CTA',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (22, 'AirLab',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (23, 'CS',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
-            (24, 'SPM1',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00');
+            (1, 1, 'BTU Meter','A BTU meter, also as an energy meter, is a device used to measure the heat energy generated or consumed in a heating or cooling system.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:19:08'),
+            (2, 2, 'T322AI','Multi-Channel Temperature Monitoring Device.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:21:36'),
+            (3, 3, 'CO2','The CO2 sensor with Humidity & Temp transmitters are designed for environmental monitoring and controlling in industrial, commercial and other buildings. These transmitters can be used for indoor C02, temperature and humidity monitoring. The modbus interface provides easy setup and integration into large systems.Supports Modbus RTU over both the Ethernet port and the RS485 port,supports Bacnet over both the Ethernet port (IP) and the RS485 port (MSTP).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:22:20'),
+            (4, 4, 'FAN_MODULE','Fan Speed Control Module.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:44'),
+            (5, 5,'AFS','The air flow switch is used to prove air flow in ducts. It has an adjustable trip point with a range from 200 to 1800 FPM (1 to 9.2 m/sec).','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:24:24'),
+            (6, 6, 'PM2_5','The PM2.5/10 Particle Counter is designed for environmental monitoring in industrial, commercial and institutional buildings,which provides accurate readings of particle counts in five important sizes, 0.5μm,1.0μm,2.5μm,4μm and 10μm.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:25:18'),
+            (7, 7, 'HUM','Humidity Sensor','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:26:19'),
+            (8, 8, 'Pressure','Single Ended Pressure Transmitter is a kind of standard and most popular transmitter applied in air and liquid pressure measuring,since a high sensitivity silicon pressure chip is employed in the sensor.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:27:04'),
+            (9, 9, 'T38I8O6DO','Advanced Temperature Control System.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:28:24'),
+            (10, 10, 'TSTAT8','This full-featured thermostat is designed for cooling and heating systems in residential and commercial buildings.','PUBLISHED',0,'2024-02-10 00:00:00','2024-04-29 15:16:23'),
+            (11, 11, 'ZIGBEE_REPEATER',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (12, 12, 'T3_8AI13O',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (13, 13, 'Transducer2',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (14, 14, 'T3PT12',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (15, 15, 'CO2_Node',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (16, 16, 'PM5E_ARM',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (17, 17, 'T3BB',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (18, 18, 'T3_32I',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (19, 19, 'CM5',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (20, 20, 'MultipleSensor',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (21, 21, 'T36CTA',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (22, 22, 'AirLab',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (23, 23, 'CS',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00'),
+            (24, 24, 'SPM1',NULL,'PUBLISHED',0,'2024-02-10 00:00:00','2024-02-10 00:00:00');
+
+            UPDATE sqlite_sequence SET seq = 900000 WHERE name = 'modbus_register_devices';
 
         "#,
             )
@@ -358,13 +366,16 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // Insert the missing devices into the modbus_register_devices table
+        // Insert only missing devices into the modbus_register_devices table
         db.execute_unprepared(
             r#"
-            INSERT OR IGNORE INTO modbus_register_devices (name, status, created_at, updated_at)
+            INSERT INTO modbus_register_devices (name, status, created_at, updated_at)
             SELECT DISTINCT device_name, 'NEW', '2024-02-10 00:00:00', '2024-02-10 00:00:00'
-            FROM modbus_register;
-        "#,
+            FROM modbus_register
+            WHERE device_name NOT IN (
+                SELECT name FROM modbus_register_devices
+            );
+            "#,
         )
         .await?;
 
