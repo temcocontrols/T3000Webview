@@ -1602,7 +1602,11 @@ export const modbusRegColumns = [
     type: ["required"],
     valueFormatter: (params) => {
       if (params.data.device_id === null) return "";
-      return params.data.device.name;
+      return (
+        params.data.device?.name ||
+        devices.value.find((d) => d.id === params.data.device_id)?.name ||
+        ""
+      );
     },
     cellEditor: "SelectEditor",
     cellEditorParams: {

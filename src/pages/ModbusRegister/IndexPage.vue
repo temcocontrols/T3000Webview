@@ -656,7 +656,7 @@
       </q-card-section>
       <q-separator />
       <q-form ref="form" class="flex flex-col" @submit="saveSettings">
-        <q-card-section class="scroll">
+        <q-card-section class="scroll" style="max-height: 50vh">
           <q-list bordered class="rounded-borders">
             <q-expansion-item
               expand-separator
@@ -989,6 +989,9 @@ onMounted(() => {
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
   settings.value = getModbusRegisterSettings() || settings.value;
+
+  loadNotifications();
+  sync_data();
 });
 
 function healthCheck() {
@@ -1435,7 +1438,7 @@ watch(liveMode, (newVal, oldVal) => {
     onFilterChanged();
   }
 });
-
+/*
 watch(isOnline, (newVal, _oldVal) => {
   if (newVal === true) {
     if (user.value) {
@@ -1444,7 +1447,7 @@ watch(isOnline, (newVal, _oldVal) => {
     }
   }
 });
-
+ */
 function openSettingsDialog() {
   settingsDialog.value.active = true;
   settingsDialog.value.settings = structuredClone(toRaw(settings.value));
@@ -1469,12 +1472,19 @@ async function sync_data() {
     return;
   }
   if (settings.value.syncData === "SYNC") {
-    pullRemoteChanges();
-    pushLocalChanges();
+    await pullRemoteDevicesChanges();
+    await pushLocalDevicesChanges();
+    await pullRemoteEntriesChanges();
+    await pushLocalEntriesChanges();
+
+    const serverTime = await liveApi.get("serverTime").json();
+    await localApi.patch("user/update_last_modbus_register_pull", {
+      json: { time: serverTime.time },
+    });
   }
 }
 
-async function pushLocalChanges() {
+async function pushLocalDevicesChanges() {
   if (!settings.value.push) {
     return;
   }
@@ -1485,19 +1495,21 @@ async function pushLocalChanges() {
   if (devices?.length > 0) {
     for await (const item of devices) {
       const change = structuredClone(item);
+      delete change.id;
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
       delete change.image_id;
       delete change.image;
       delete change.remote_id;
+
       // Skip private rows
       if (change.private) {
         continue;
       }
       delete change.private;
       if (item.status === "UPDATED") {
-        delete change.id;
+        if (!item.remote_id) continue;
         const res = await liveApi
           .patch("modbus-register/devices/" + item.remote_id, {
             json: change,
@@ -1509,7 +1521,6 @@ async function pushLocalChanges() {
           });
         }
       } else if (item.status === "NEW") {
-        delete change.id;
         const res = await liveApi
           .post("modbus-register/devices", {
             json: change,
@@ -1528,69 +1539,9 @@ async function pushLocalChanges() {
       }
     }
   }
-
-  const entries = await localApi
-    .get("modbus-registers?local_only=true&limit=50")
-    .json();
-  if (entries?.data?.length > 0) {
-    for await (const item of entries.data) {
-      const change = structuredClone(item);
-      delete change.created_at;
-      delete change.updated_at;
-      delete change.status;
-      // Skip private & uncompleted rows
-      if (
-        change.private ||
-        !change.register_address ||
-        !change.operation ||
-        !change.data_format ||
-        !change.device_id
-      ) {
-        continue;
-      }
-      delete change.private;
-      if (item.status === "UPDATED") {
-        delete change.id;
-        const res = await liveApi
-          .patch("modbus-registers/" + item.id, {
-            json: change,
-          })
-          .json();
-        if (res) {
-          await localApi.patch("modbus-registers/" + item.id, {
-            json: { status: res.status },
-          });
-        }
-      } else if (item.status === "NEW") {
-        delete change.id;
-        const res = await liveApi
-          .post("modbus-registers", {
-            json: change,
-          })
-          .json();
-        if (res) {
-          delete res.revisions;
-          delete res.user;
-          delete res.userId;
-          delete res.parentId;
-          delete res.parent;
-          delete res.ModbusRegisterNotification;
-          const localCreated = await localApi
-            .post("modbus-registers", {
-              json: res,
-            })
-            .json();
-          if (localCreated?.id) {
-            await localApi.delete("modbus-registers/" + item.id);
-          }
-        }
-      }
-    }
-  }
-  gridApi.value.refreshServerSide();
 }
 
-async function pullRemoteChanges(limit = 50, offset = 0) {
+async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
   if (!settings.value.pull) {
     return;
   }
@@ -1598,7 +1549,6 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
   if (!user) {
     return;
   }
-  const serverTime = await liveApi.get("serverTime").json();
   const devicesChanges = await liveApi
     .get(
       `modbus-register/devices?limit=${limit}&offset=${offset}&after_date=${new Date(
@@ -1606,12 +1556,6 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
       ).toISOString()}`
     )
     .json();
-
-  if (devicesChanges) {
-    await localApi.patch("user/update_last_modbus_register_pull", {
-      json: { time: serverTime.time },
-    });
-  }
 
   if (devicesChanges?.length > 0) {
     for await (const item of devicesChanges) {
@@ -1655,15 +1599,98 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
         });
       }
     }
-    if (devicesChanges?.data?.length > 49) {
-      await pullRemoteChanges(limit, offset + 50);
+    if (devicesChanges?.length > 49) {
+      await pullRemoteDevicesChanges(limit, offset + 50);
     } else {
       getDeviceList();
     }
   } else {
     getDeviceList();
   }
+}
 
+async function pushLocalEntriesChanges() {
+  if (!settings.value.push) {
+    return;
+  }
+  const entries = await localApi
+    .get("modbus-registers?local_only=true&limit=50")
+    .json();
+  if (entries?.data?.length > 0) {
+    for await (const item of entries.data) {
+      const change = structuredClone(item);
+      delete change.created_at;
+      delete change.updated_at;
+      delete change.status;
+      delete change.device;
+      // Skip private & uncompleted rows
+      if (
+        change.private ||
+        !change.register_address ||
+        !change.operation ||
+        !change.data_format ||
+        !change.device_id
+      ) {
+        continue;
+      }
+
+      delete change.private;
+
+      change.device_id = item.device?.remote_id || null;
+
+      if (item.status === "UPDATED") {
+        delete change.id;
+        const res = await liveApi
+          .patch("modbus-registers/" + item.id, {
+            json: change,
+          })
+          .json();
+        if (res) {
+          await localApi.patch("modbus-registers/" + item.id, {
+            json: { status: res.status },
+          });
+        }
+      } else if (item.status === "NEW") {
+        delete change.id;
+        const res = await liveApi
+          .post("modbus-registers", {
+            json: change,
+          })
+          .json();
+        if (res) {
+          delete res.revisions;
+          delete res.user;
+          delete res.userId;
+          delete res.parentId;
+          delete res.parent;
+          delete res.ModbusRegisterNotification;
+          delete res.device;
+
+          res.device_id = item.device?.id || null;
+
+          const localCreated = await localApi
+            .post("modbus-registers", {
+              json: res,
+            })
+            .json();
+          if (localCreated?.id) {
+            await localApi.delete("modbus-registers/" + item.id);
+          }
+        }
+      }
+    }
+  }
+  gridApi.value.refreshServerSide();
+}
+
+async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
+  if (!settings.value.pull) {
+    return;
+  }
+  const user = await localApi.get("user").json();
+  if (!user) {
+    return;
+  }
   const entriesChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
@@ -1671,12 +1698,6 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
       ).toISOString()}`
     )
     .json();
-
-  if (entriesChanges) {
-    await localApi.patch("user/update_last_modbus_register_pull", {
-      json: { time: serverTime.time },
-    });
-  }
 
   if (entriesChanges?.data?.length > 0) {
     for await (const item of entriesChanges.data) {
@@ -1687,6 +1708,8 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
       delete change.parentId;
       delete change.parent;
       delete change.ModbusRegisterNotification;
+      delete change.device;
+      delete change.device_id;
       const existing_item = await localApi
         .get("modbus-registers/" + item.id)
         .json();
@@ -1702,7 +1725,12 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
         )
           return;
         delete change.id;
-        change.device_id = existing_item.device_id;
+        const device = await localApi
+          .get("modbus-register/devices/remote_id/" + item.device_id)
+          .json();
+        if (device?.id) {
+          change.device_id = device.id;
+        }
         await localApi
           .patch("modbus-registers/" + item.id, {
             json: change,
@@ -1720,19 +1748,18 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
           .replace("T", " ");
 
         const device = await localApi
-          .get("modbus-register/devices/remote_id/" + change.device_id)
+          .get("modbus-register/devices/remote_id/" + item.device_id)
           .json();
-        if (!device?.id) {
-          continue;
+        if (device?.id) {
+          change.device_id = device.id;
         }
-        change.device_id = device.id;
         await localApi.post("modbus-registers", {
           json: change,
         });
       }
     }
     if (entriesChanges?.data?.length > 49) {
-      await pullRemoteChanges(limit, offset + 50);
+      await pullRemoteEntriesChanges(limit, offset + 50);
     } else {
       gridApi.value.refreshServerSide();
     }
@@ -1740,6 +1767,7 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     gridApi.value.refreshServerSide();
   }
 }
+
 function onSelectDeviceHide(e) {
   deviceSelectRef.value.blur();
 }
