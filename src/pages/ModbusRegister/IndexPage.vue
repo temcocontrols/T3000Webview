@@ -1478,11 +1478,62 @@ async function pushLocalChanges() {
   if (!settings.value.push) {
     return;
   }
-  const localChanges = await localApi
+
+  const devices = await localApi
+    .get("modbus-register/devices?local_only=true")
+    .json();
+  if (devices?.length > 0) {
+    for await (const item of devices) {
+      const change = structuredClone(item);
+      delete change.created_at;
+      delete change.updated_at;
+      delete change.status;
+      delete change.image_id;
+      delete change.image;
+      delete change.remote_id;
+      // Skip private rows
+      if (change.private) {
+        continue;
+      }
+      delete change.private;
+      if (item.status === "UPDATED") {
+        delete change.id;
+        const res = await liveApi
+          .patch("modbus-register/devices/" + item.remote_id, {
+            json: change,
+          })
+          .json();
+        if (res) {
+          await localApi.patch("modbus-register/devices/" + item.id, {
+            json: { status: res.status },
+          });
+        }
+      } else if (item.status === "NEW") {
+        delete change.id;
+        const res = await liveApi
+          .post("modbus-register/devices", {
+            json: change,
+          })
+          .json();
+        if (res) {
+          await localApi
+            .patch("modbus-register/devices/" + +item.id, {
+              json: {
+                status: res.status,
+                remote_id: res.id,
+              },
+            })
+            .json();
+        }
+      }
+    }
+  }
+
+  const entries = await localApi
     .get("modbus-registers?local_only=true&limit=50")
     .json();
-  if (localChanges?.data?.length > 0) {
-    for await (const item of localChanges.data) {
+  if (entries?.data?.length > 0) {
+    for await (const item of entries.data) {
       const change = structuredClone(item);
       delete change.created_at;
       delete change.updated_at;
@@ -1548,7 +1599,72 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     return;
   }
   const serverTime = await liveApi.get("serverTime").json();
-  const remoteChanges = await liveApi
+  const devicesChanges = await liveApi
+    .get(
+      `modbus-register/devices?limit=${limit}&offset=${offset}&after_date=${new Date(
+        user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
+      ).toISOString()}`
+    )
+    .json();
+
+  if (devicesChanges) {
+    await localApi.patch("user/update_last_modbus_register_pull", {
+      json: { time: serverTime.time },
+    });
+  }
+
+  if (devicesChanges?.length > 0) {
+    for await (const item of devicesChanges) {
+      const change = structuredClone(item);
+      delete change.revisions;
+      delete change.user;
+      delete change.userId;
+      delete change.parentId;
+      delete change.parent;
+      delete change.ModbusRegisterNotification;
+      delete change.ModbusRegisterProductDeviceMapping;
+      delete change.image;
+      delete change.image_id;
+      delete change.entries;
+
+      const existing_item = await localApi
+        .get("modbus-register/devices/remote_id/" + item.id)
+        .json();
+      if (existing_item && existing_item.id) {
+        if (existing_item.status === "DELETED") {
+          continue;
+        }
+        const remoteUpdated = new Date(item.updated_at);
+        const localUpdated = new Date(existing_item.updated_at);
+        if (
+          ["NEW", "UPDATED"].includes(existing_item.status) ||
+          remoteUpdated <= localUpdated
+        )
+          return;
+        delete change.id;
+        delete change.created_at;
+        delete change.updated_at;
+        await localApi
+          .patch("modbus-register/devices/" + existing_item.id, {
+            json: change,
+          })
+          .json();
+      } else {
+        await localApi.post("modbus-register/devices", {
+          json: change,
+        });
+      }
+    }
+    if (devicesChanges?.data?.length > 49) {
+      await pullRemoteChanges(limit, offset + 50);
+    } else {
+      getDeviceList();
+    }
+  } else {
+    getDeviceList();
+  }
+
+  const entriesChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
         user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
@@ -1556,14 +1672,14 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     )
     .json();
 
-  if (remoteChanges) {
+  if (entriesChanges) {
     await localApi.patch("user/update_last_modbus_register_pull", {
       json: { time: serverTime.time },
     });
   }
 
-  if (remoteChanges?.data?.length > 0) {
-    for await (const item of remoteChanges.data) {
+  if (entriesChanges?.data?.length > 0) {
+    for await (const item of entriesChanges.data) {
       const change = structuredClone(item);
       delete change.revisions;
       delete change.user;
@@ -1586,6 +1702,7 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
         )
           return;
         delete change.id;
+        change.device_id = existing_item.device_id;
         await localApi
           .patch("modbus-registers/" + item.id, {
             json: change,
@@ -1601,12 +1718,20 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
           .toISOString()
           .slice(0, 19)
           .replace("T", " ");
+
+        const device = await localApi
+          .get("modbus-register/devices/remote_id/" + change.device_id)
+          .json();
+        if (!device?.id) {
+          continue;
+        }
+        change.device_id = device.id;
         await localApi.post("modbus-registers", {
           json: change,
         });
       }
     }
-    if (remoteChanges?.data?.length > 49) {
+    if (entriesChanges?.data?.length > 49) {
       await pullRemoteChanges(limit, offset + 50);
     } else {
       gridApi.value.refreshServerSide();
