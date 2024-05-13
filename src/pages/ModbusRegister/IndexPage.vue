@@ -25,7 +25,7 @@
           <template v-if="liveMode">
             <q-btn-toggle
               v-model="activeTab"
-              @update:model-value="triggerFilterChanged()"
+              @update:model-value="reloadData"
               no-caps
               rounded
               unelevated
@@ -292,7 +292,16 @@
                   size="80px"
                   v-else-if="opt.label !== 'All Devices'"
                 >
-                  <img :src="opt.opt.image.path" />
+                  <img
+                    :src="
+                      liveMode
+                        ? fileUploadEndpoint +
+                          '/' +
+                          opt.opt.image.path +
+                          '?w=80'
+                        : opt.opt.image.path
+                    "
+                  />
                 </q-avatar>
                 <q-avatar
                   icon="devices"
@@ -724,9 +733,7 @@
               <file-upload
                 ref="createDeviceFileUploaderRef"
                 :endpoint="fileUploadEndpoint"
-                :headers="{
-                  Authorization: fileUploadSecret,
-                }"
+                :headers="fileUploadHeaders"
                 path="modbus-register/devices"
                 :types="['image/*']"
                 :height="150"
@@ -787,9 +794,7 @@
                 v-if="!updateDeviceDialog.data.image"
                 ref="updateDeviceFileUploaderRef"
                 :endpoint="fileUploadEndpoint"
-                :headers="{
-                  Authorization: fileUploadSecret,
-                }"
+                :headers="fileUploadHeaders"
                 path="modbus-register/devices"
                 :types="['image/*']"
                 :height="150"
@@ -867,6 +872,7 @@ import {
   onBeforeMount,
   watch,
   toRaw,
+  computed,
 } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
@@ -970,8 +976,24 @@ const selectDeviceFilterFn = (val, update, abort) => {
 const selectedDevice = ref({ name: "All Devices" });
 const createDeviceFileUploaderRef = ref(null);
 const updateDeviceFileUploaderRef = ref(null);
-const fileUploadEndpoint = ref(process.env.LOCAL_API_URL + "/file");
-const fileUploadSecret = ref(process.env.LOCAL_API_SECRET_KEY || "secret");
+
+const fileUploadEndpoint = computed(() => {
+  if (liveMode.value) {
+    return process.env.API_URL + "/file";
+  } else {
+    return process.env.LOCAL_API_URL + "/file";
+  }
+});
+
+const fileUploadHeaders = computed(() => {
+  if (liveMode.value) {
+    return undefined;
+  } else {
+    return {
+      Authorization: process.env.LOCAL_API_SECRET_KEY || "secret",
+    };
+  }
+});
 
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
@@ -1435,7 +1457,7 @@ watch(liveMode, (newVal, oldVal) => {
     var datasource = getServerSideDatasource();
     // register the datasource with the grid
     gridApi.value.setGridOption("serverSideDatasource", datasource);
-    onFilterChanged();
+    reloadData();
   }
 });
 /*
@@ -1468,7 +1490,7 @@ function saveSettings() {
 
 async function sync_data() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  if (!user.value?.id || isOnline.value === false) {
+  if (!user.value?.id || !isOnline.value) {
     return;
   }
   if (settings.value.syncData === "SYNC") {
@@ -1514,7 +1536,11 @@ async function pushLocalDevicesChanges() {
           .patch("modbus-register/devices/" + item.remote_id, {
             json: change,
           })
-          .json();
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
         if (res) {
           await localApi.patch("modbus-register/devices/" + item.id, {
             json: { status: res.status },
@@ -1525,7 +1551,11 @@ async function pushLocalDevicesChanges() {
           .post("modbus-register/devices", {
             json: change,
           })
-          .json();
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
         if (res) {
           await localApi
             .patch("modbus-register/devices/" + +item.id, {
@@ -1573,7 +1603,8 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
 
       const existing_item = await localApi
         .get("modbus-register/devices/remote_id/" + item.id)
-        .json();
+        .then((res) => res.json())
+        .catch(() => null);
       if (existing_item && existing_item.id) {
         if (existing_item.status === "DELETED") {
           continue;
@@ -1712,7 +1743,8 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
       delete change.device_id;
       const existing_item = await localApi
         .get("modbus-registers/" + item.id)
-        .json();
+        .then((res) => res.json())
+        .catch(() => null);
       if (existing_item && existing_item.id) {
         if (existing_item.status === "DELETED") {
           continue;
@@ -1781,7 +1813,8 @@ function onSelectDeviceUpdate(e) {
 }
 
 function getDeviceList() {
-  localApi.get("modbus-register/devices").then(async (res) => {
+  const api = liveMode.value ? liveApi : localApi;
+  api.get("modbus-register/devices?limit=1000").then(async (res) => {
     const devs = await res.json();
     devices.value = [{ name: "All Devices", id: null }, ...devs];
     selectDeviceOptions.value = devices.value;
@@ -1802,7 +1835,10 @@ function createNewDevice() {
 }
 
 function createNewDeviceSaveToDB() {
-  let api = localApi;
+  let api = liveMode.value ? liveApi : localApi;
+  if (liveMode.value) {
+    delete newDevice.value.private;
+  }
 
   api
     .post("modbus-register/devices", { json: newDevice.value })
@@ -1847,7 +1883,10 @@ function updateDevice() {
 
 function updateDeviceSaveToDB() {
   delete updateDeviceDialog.value.data.image;
-  let api = localApi;
+  if (liveMode.value) {
+    delete updateDeviceDialog.value.data.private;
+  }
+  let api = liveMode.value ? liveApi : localApi;
   api
     .patch("modbus-register/devices/" + updateDeviceDialog.value.id, {
       json: updateDeviceDialog.value.data,
@@ -1890,7 +1929,7 @@ function deleteDeviceAction(data) {
 }
 
 function deleteDevice(data) {
-  let api = localApi;
+  let api = liveMode.value ? liveApi : localApi;
   api
     .delete("modbus-register/devices/" + data.id)
     .then(async (res) => {
@@ -1916,6 +1955,11 @@ function newDeviceImageUploaded(event) {
   const file = event.body;
   newDevice.value.image_id = file.id;
   createNewDeviceSaveToDB();
+}
+
+function reloadData() {
+  getDeviceList();
+  gridApi.value.refreshServerSide();
 }
 </script>
 
