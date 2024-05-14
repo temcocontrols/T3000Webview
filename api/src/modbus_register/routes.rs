@@ -23,11 +23,11 @@ pub fn modbus_register_routes() -> Router<AppState> {
             get(devices::get_by_remote_id),
         )
         .route(
-            "/modbus-register/device_id_name_mappings",
+            "/modbus-register/product_device_mappings",
             get(product_device_mappings::get_all),
         )
         .route(
-            "/modbus-register/device_id_name_mappings/:id",
+            "/modbus-register/product_device_mappings/:id",
             get(product_device_mappings::get_by_id),
         );
 
@@ -48,11 +48,11 @@ pub fn modbus_register_routes() -> Router<AppState> {
             patch(devices::update).delete(devices::delete),
         )
         .route(
-            "/modbus-register/device_id_name_mappings",
+            "/modbus-register/product_device_mappings",
             post(product_device_mappings::create),
         )
         .route(
-            "/modbus-register/device_id_name_mappings/:id",
+            "/modbus-register/product_device_mappings/:id",
             delete(product_device_mappings::delete),
         )
         .route_layer(middleware::from_fn(require_auth));
