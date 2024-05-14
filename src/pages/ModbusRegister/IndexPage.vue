@@ -949,6 +949,7 @@ const settingsDialog = ref({
 
 const gridContext = ref({ activeTab, liveMode });
 
+const productDeviceMappings = ref([]);
 const newDevice = ref({ name: "", description: "", private: false });
 const createDeviceDialog = ref(false);
 
@@ -1005,7 +1006,6 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
-  getDeviceList();
   // Disable for now because it's not working properly
   // healthCheck();
   globalNav.value.title = "Modbus Register";
@@ -1014,6 +1014,25 @@ onMounted(() => {
 
   loadNotifications();
   sync_data();
+});
+
+window.chrome?.webview?.addEventListener("message", (arg) => {
+  console.log("Recieved a message from webview", arg.data);
+  if ("action" in arg.data) {
+    if (arg.data.action === "GET_SELECTED_DEVICE_INFO_RES") {
+      const productDeviceMapping = productDeviceMappings.value.find(
+        (p) => p.product_id === arg.data.data.product_id
+      );
+      if (productDeviceMapping) {
+        const device = devices.value.find(
+          (d) => d.id === productDeviceMapping.device_id
+        );
+        if (device) {
+          selectedDevice.value = device;
+        }
+      }
+    }
+  }
 });
 
 function healthCheck() {
@@ -1075,7 +1094,7 @@ function onFilterChanged() {
   gridApi.value.onFilterChanged();
 }
 
-function onGridReady(params) {
+async function onGridReady(params) {
   gridApi.value = params.api;
   const localState = localStorage.getItem("modbusRegisterGridState");
   if (localState && localState !== "undefined") {
@@ -1084,6 +1103,11 @@ function onGridReady(params) {
       applyOrder: true,
     });
   }
+  await getDeviceList();
+  window.chrome?.webview?.postMessage({
+    action: 12, // GET_SELECTED_DEVICE_INFO
+  });
+
   var datasource = getServerSideDatasource();
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
@@ -1321,19 +1345,17 @@ function addNewRow() {
 }
 
 async function getNotifications(offset = 0, limit = 10) {
-  if (isOnline.value === false) {
+  if (isOnline.value === false || !user.value) {
     return;
   }
-  try {
-    const res = await liveApi.get(
-      "modbus-register-notifications?offset=" + offset + "&limit=" + limit
-    );
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.log(err);
-    return [];
-  }
+
+  return await liveApi
+    .get("modbus-register-notifications?offset=" + offset + "&limit=" + limit)
+    .then((res) => res.json())
+    .catch((err) => {
+      console.log(err);
+      return [];
+    });
 }
 function notificationStatusChange(notification, status) {
   if (isOnline.value === false) {
@@ -1812,13 +1834,28 @@ function onSelectDeviceUpdate(e) {
   onFilterChanged();
 }
 
-function getDeviceList() {
+async function getDeviceList() {
   const api = liveMode.value ? liveApi : localApi;
-  api.get("modbus-register/devices?limit=1000").then(async (res) => {
-    const devs = await res.json();
+
+  try {
+    const [devicesResponse, mappingsResponse] = await Promise.all([
+      api.get("modbus-register/devices?limit=1000"),
+      api.get("modbus-register/product_device_mappings"),
+    ]);
+
+    const devs = await devicesResponse.json();
+    const mappings = await mappingsResponse.json();
+
     devices.value = [{ name: "All Devices", id: null }, ...devs];
     selectDeviceOptions.value = devices.value;
-  });
+    productDeviceMappings.value = mappings;
+
+    return { devices, mappings }; // Return an object with both data sets
+  } catch (error) {
+    // Handle errors here (optional)
+    console.error("Error fetching device list:", error);
+    throw error; // Re-throw the error for further handling (optional)
+  }
 }
 
 function createNewDeviceAction() {
