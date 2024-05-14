@@ -28,7 +28,7 @@ mime_guess = "2.0.4"
 migration = { path = "migration" }
 
 [dependencies.sea-orm]
-version = "1.0.0-rc.3"
+version = "1.0.0-rc.4"
 features = [
   "runtime-tokio",
   # "sqlx-postgres",
