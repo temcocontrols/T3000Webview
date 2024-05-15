@@ -2,27 +2,36 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use sea_orm::{prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, Set, TryIntoModel};
+use sea_orm::{
+    prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, SelectTwo, Set, TryIntoModel,
+};
+use serde_json::json;
 
-use super::models::{
-    CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterQueryParams,
-    ModbusRegisterResponse, OrderByDirection, UpdateModbusRegisterItemInput,
+use super::inputs::{
+    CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterModel,
+    ModbusRegisterQueryParams, ModbusRegisterResponse, OrderByDirection,
+    UpdateModbusRegisterItemInput,
 };
 use crate::{
     app_state::AppState,
     entity::modbus_register::{self, Entity as ModbusRegister},
+    entity::modbus_register_devices::Entity as ModbusRegisterDevices,
     error::{Error, Result},
 };
 
-pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Select<ModbusRegister> {
-    let mut query = ModbusRegister::find();
+pub fn generate_filter_query(
+    filter: &Option<String>,
+    device_id: &Option<i32>,
+    local_only: bool,
+) -> SelectTwo<ModbusRegister, ModbusRegisterDevices> {
+    let mut query = ModbusRegister::find().find_also_related(ModbusRegisterDevices);
 
     if let Some(filter) = filter {
         let fields = vec![
             modbus_register::Column::RegisterName,
             modbus_register::Column::Operation,
             modbus_register::Column::Description,
-            modbus_register::Column::DeviceName,
+            modbus_register::Column::DeviceId,
             modbus_register::Column::DataFormat,
             modbus_register::Column::Unit,
         ];
@@ -57,6 +66,10 @@ pub fn generate_filter_query(filter: &Option<String>, local_only: bool) -> Selec
     query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
+
+    if device_id.is_some() {
+        query = query.filter(modbus_register::Column::DeviceId.eq(device_id.clone().unwrap()));
+    }
     if local_only {
         query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
     }
@@ -68,7 +81,11 @@ pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
-    let mut query = generate_filter_query(&params.filter, params.local_only.unwrap_or(false));
+    let mut query = generate_filter_query(
+        &params.filter,
+        &params.device_id,
+        params.local_only.unwrap_or(false),
+    );
 
     query = query.order_by(
         Into::<modbus_register::Column>::into(params.order_by.unwrap_or(ModbusRegisterColumns::Id)),
@@ -88,17 +105,55 @@ pub async fn list(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    let items = items
+        .iter()
+        .map(|item| ModbusRegisterModel {
+            id: item.0.id,
+            register_address: item.0.register_address,
+            operation: item.0.operation.clone(),
+            register_length: item.0.register_length,
+            register_name: item.0.register_name.clone(),
+            data_format: item.0.data_format.clone(),
+            description: item.0.description.clone(),
+            device_id: item.0.device_id,
+            device: item.1.clone(),
+            status: item.0.status.clone(),
+            unit: item.0.unit.clone(),
+            private: item.0.private,
+            created_at: item.0.created_at.clone(),
+            updated_at: item.0.updated_at.clone(),
+        })
+        .collect();
+
     Ok(Json(ModbusRegisterResponse { data: items, count }))
 }
 
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<i32>,
-) -> Result<Json<Option<modbus_register::Model>>> {
+) -> Result<Json<Option<ModbusRegisterModel>>> {
     let item = ModbusRegister::find_by_id(id)
+        .find_also_related(ModbusRegisterDevices)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
+
+    let item = item.map(|item| ModbusRegisterModel {
+        id: item.0.id,
+        register_address: item.0.register_address,
+        operation: item.0.operation.clone(),
+        register_length: item.0.register_length,
+        register_name: item.0.register_name.clone(),
+        data_format: item.0.data_format.clone(),
+        description: item.0.description.clone(),
+        device_id: item.0.device_id,
+        device: item.1.clone(),
+        status: item.0.status.clone(),
+        unit: item.0.unit.clone(),
+        private: item.0.private,
+        created_at: item.0.created_at.clone(),
+        updated_at: item.0.updated_at.clone(),
+    });
 
     Ok(Json(item))
 }
@@ -114,7 +169,7 @@ pub async fn create(
         register_name: Set(payload.register_name),
         data_format: Set(payload.data_format),
         description: Set(payload.description),
-        device_name: Set(payload.device_name),
+        device_id: Set(payload.device_id),
         unit: Set(payload.unit),
         ..Default::default()
     };
@@ -146,6 +201,55 @@ pub async fn create(
     Ok(Json(res.try_into_model().unwrap()))
 }
 
+pub async fn create_many(
+    State(state): State<AppState>,
+    Json(payload): Json<Vec<CreateModbusRegisterItemInput>>,
+) -> Result<Json<serde_json::Value>> {
+    let mut models = Vec::new();
+    for item in payload {
+        let mut model = modbus_register::ActiveModel {
+            register_address: Set(item.register_address),
+            operation: Set(item.operation),
+            register_length: Set(item.register_length),
+            register_name: Set(item.register_name),
+            data_format: Set(item.data_format),
+            description: Set(item.description),
+            device_id: Set(item.device_id),
+            unit: Set(item.unit),
+            ..Default::default()
+        };
+
+        if item.id.is_some() {
+            model.id = Set(item.id.unwrap());
+        }
+
+        if item.status.is_some() {
+            model.status = Set(item.status.unwrap());
+        }
+        if item.private.is_some() {
+            model.private = Set(item.private);
+        }
+
+        if item.created_at.is_some() {
+            model.created_at = Set(item.created_at.unwrap());
+        }
+
+        if item.updated_at.is_some() {
+            model.updated_at = Set(item.updated_at.unwrap());
+        }
+
+        models.push(model);
+    }
+    let count = models.len();
+
+    ModbusRegister::insert_many(models)
+        .exec(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(json!({"created_rows_count": count})))
+}
+
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<i32>,
@@ -157,8 +261,7 @@ pub async fn update(
             .await
             .map_err(|error| Error::DbError(error.to_string()))
             .unwrap()
-            .ok_or(Error::NotFound)
-            .unwrap(),
+            .ok_or(Error::NotFound)?,
     );
 
     if None == payload.status
@@ -188,8 +291,8 @@ pub async fn update(
     if let Some(description) = payload.description {
         model.description = Set(description);
     }
-    if let Some(device_name) = payload.device_name {
-        model.device_name = Set(device_name);
+    if let Some(device_id) = payload.device_id {
+        model.device_id = Set(device_id);
     }
     if let Some(status) = payload.status {
         model.status = Set(status);

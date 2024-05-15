@@ -10,7 +10,7 @@ use crate::entity::modbus_register_settings as settings;
 use crate::entity::prelude::*;
 use crate::error::{Error, Result};
 
-use super::models::UpdateSettingModel;
+use super::inputs::UpdateSettingInput;
 
 pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<settings::Model>>> {
     let results = ModbusRegisterSettings::find().all(&state.conn).await;
@@ -50,7 +50,7 @@ pub async fn create(
 pub async fn update(
     State(state): State<AppState>,
     Path(name): Path<String>,
-    Json(item): Json<UpdateSettingModel>,
+    Json(item): Json<UpdateSettingInput>,
 ) -> Result<Json<settings::Model>> {
     let setting: settings::ActiveModel = ModbusRegisterSettings::find_by_id(name)
         .one(&state.conn)
@@ -92,8 +92,7 @@ pub async fn delete(
     ModbusRegisterSettings::delete_by_id(&name)
         .exec(&state.conn)
         .await
-        .map_err(|error| Error::DbError(error.to_string()))
-        .unwrap();
+        .map_err(|error| Error::DbError(error.to_string()))?;
 
     Ok(Json(setting))
 }

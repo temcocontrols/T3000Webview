@@ -1522,6 +1522,7 @@ export const dataFormatOptions = [
   "32 Bit Float_BADC",
   "32 Bit Float_DCBA",
 ];
+export const devices = ref([]);
 export const modbusRegColumns = [
   {
     colId: 1,
@@ -1594,11 +1595,26 @@ export const modbusRegColumns = [
   },
   {
     colId: 8,
-    headerName: "Device Type",
+    headerName: "Device Name",
     sortable: true,
-    field: "device_name",
+    field: "device_id",
     width: 100,
     type: ["required"],
+    valueFormatter: (params) => {
+      if (params.data.device_id === null) return "";
+      return (
+        params.data.device?.name ||
+        devices.value.find((d) => d.id === params.data.device_id)?.name ||
+        ""
+      );
+    },
+    cellEditor: "SelectEditor",
+    cellEditorParams: {
+      clearable: false,
+      options: () => devices.value.filter((d) => d.name !== "All Devices"),
+      optionValue: "id",
+      optionLabel: "name",
+    },
   },
 ];
 

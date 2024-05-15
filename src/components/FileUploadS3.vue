@@ -1,7 +1,7 @@
 <script>
 import { onUnmounted } from "vue";
 import { Dashboard } from "@uppy/vue";
-import { useQuasar } from "quasar";
+import { Cookies } from "quasar";
 
 import "@uppy/core/dist/style.css";
 import "@uppy/dashboard/dist/style.css";
@@ -16,6 +16,16 @@ export default {
     Dashboard,
   },
   props: {
+    endpoint: {
+      type: String,
+      default: () => process.env.API_URL + `/file`,
+    },
+    headers: {
+      type: Object,
+      default: () => ({
+        auth: Cookies.get("token"),
+      }),
+    },
     types: {
       type: Array,
       default: null,
@@ -35,7 +45,6 @@ export default {
   },
   emits: ["uploaded", "fileAdded", "fileRemoved"],
   setup(props, ctx) {
-    const $q = useQuasar();
     const uppy = new Uppy({
       autoProceed: false,
       restrictions: {
@@ -45,12 +54,10 @@ export default {
     });
 
     uppy.use(XHRUpload, {
-      endpoint: process.env.API_URL + `/file?path=${props.path}`,
+      endpoint: props.endpoint + `?path=${props.path}`,
       fieldName: "file",
       method: "post",
-      headers: {
-        auth: $q.cookies.get("token"),
-      },
+      headers: props.headers,
     });
     uppy.use(ImageEditor, {
       quality: 1,

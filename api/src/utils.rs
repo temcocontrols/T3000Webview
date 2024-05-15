@@ -9,6 +9,8 @@ lazy_static! {
         .unwrap_or_else(|_| "sqlite://Database/webview_database.db".to_string());
     pub static ref REMOTE_API_URL: String = env::var("REMOTE_API_URL")
         .unwrap_or_else(|_| "https://user-lib.temcocontrols.com".to_string());
+    pub static ref SPA_DIR: String =
+        env::var("SPA_DIR").unwrap_or_else(|_| "./ResourceFile/webview/www".to_string());
 }
 
 pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {

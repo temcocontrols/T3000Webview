@@ -7,12 +7,12 @@ use t3_webview_api::{
     app_state::app_state,
     entity::modbus_register_settings,
     modbus_register::{
-        models::{
+        inputs::{
             CreateModbusRegisterItemInput, ModbusRegisterQueryParams,
-            UpdateModbusRegisterItemInput, UpdateSettingModel,
+            UpdateModbusRegisterItemInput, UpdateSettingInput,
         },
         queries::{create, delete, list, update},
-        settings_queries,
+        settings,
     },
     utils::run_migrations,
 };
@@ -27,7 +27,7 @@ async fn test_modbus_register_crud() {
         register_address: Some(1),
         operation: Some("test".to_string()),
         description: Some("test".to_string()),
-        device_name: Some("test".to_string()),
+        device_id: None,
         data_format: Some("test".to_string()),
         unit: Some("test".to_string()),
         status: None,
@@ -38,7 +38,6 @@ async fn test_modbus_register_crud() {
     };
     let conn = app_state().await.unwrap();
     let item = create(State(conn.clone()), Json(payload)).await;
-    println!("item {:?}", item);
     assert!(item.is_ok());
     let item = item.unwrap();
 
@@ -48,6 +47,7 @@ async fn test_modbus_register_crud() {
         order_by: None,
         limit: Some(1),
         offset: None,
+        device_id: None,
         order_dir: None,
     };
     let result = list(State(conn.clone()), Query(params)).await;
@@ -63,7 +63,7 @@ async fn test_modbus_register_crud() {
         register_name: Some(Some("updated".to_string())),
         data_format: Some(Some("updated".to_string())),
         description: Some(Some("updated".to_string())),
-        device_name: Some(Some("updated".to_string())),
+        device_id: None,
         unit: Some(Some("updated".to_string())),
         status: None,
         private: None,
@@ -90,27 +90,27 @@ async fn test_modbus_register_settings_crud() {
         value: Some("test".to_string()),
         json_value: Some(Value::String("test".to_string())),
     };
-    let result = settings_queries::create(State(conn.clone()), Json(payload)).await;
+    let result = settings::create(State(conn.clone()), Json(payload)).await;
     assert!(result.is_ok());
 
-    let result = settings_queries::get_all(State(conn.clone())).await;
+    let result = settings::get_all(State(conn.clone())).await;
     assert!(result.is_ok());
     assert!(result.unwrap().len() == 1);
 
     let name = Path("test".to_string());
-    let result = settings_queries::get_by_name(State(conn.clone()), name).await;
+    let result = settings::get_by_name(State(conn.clone()), name).await;
     assert!(result.is_ok());
 
     let name = Path("test".to_string());
-    let payload = UpdateSettingModel {
+    let payload = UpdateSettingInput {
         value: Some(Some("updated".to_string())),
         json_value: Some(Some(Value::String("updated".to_string()))),
     };
-    let result = settings_queries::update(State(conn.clone()), name, Json(payload)).await;
+    let result = settings::update(State(conn.clone()), name, Json(payload)).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap().value, Some("updated".to_string()));
 
     let name = Path("test".to_string());
-    let result = settings_queries::delete(State(conn.clone()), name).await;
+    let result = settings::delete(State(conn.clone()), name).await;
     assert!(result.is_ok());
 }

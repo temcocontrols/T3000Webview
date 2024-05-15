@@ -25,7 +25,7 @@
           <template v-if="liveMode">
             <q-btn-toggle
               v-model="activeTab"
-              @update:model-value="triggerFilterChanged()"
+              @update:model-value="reloadData"
               no-caps
               rounded
               unelevated
@@ -252,30 +252,154 @@
       </template>
     </user-top-bar>
     <q-page
-      class="flex justify-center p-2 flex-1 overflow-hidden"
+      class="flex flex-col justify-center p-2 flex-1 overflow-hidden"
       :style-fn="() => {}"
     >
-      <ag-grid-vue
-        style="width: 100%; height: 100%"
-        class="data-table ag-theme-quartz"
-        :columnDefs="modbusRegColumns"
-        @grid-ready="onGridReady"
-        @firstDataRendered="onFirstDataRendered"
-        @cell-value-changed="updateRow"
-        :getRowId="getRowId"
-        :autoSizeStrategy="autoSizeStrategy"
-        :defaultColDef="defaultColDef"
-        rowModelType="serverSide"
-        :enableBrowserTooltips="true"
-        :suppressCsvExport="true"
-        :suppressExcelExport="true"
-        :columnTypes="columnTypes"
-        :components="{
-          RowActionsRenderer,
-          SelectEditor,
-        }"
-        :context="gridContext"
-      ></ag-grid-vue>
+      <div class="flex justify-center mb-2">
+        <q-select
+          ref="deviceSelectRef"
+          class="grow max-w-3xl select-device"
+          options-selected-class="bg-gray-300 text-primary"
+          v-model="selectedDevice"
+          input-debounce="200"
+          option-value="id"
+          option-label="name"
+          fill-input
+          use-input
+          hide-selected
+          filled
+          dense
+          hide-bottom-space
+          popup-content-class="!max-w-min"
+          :options="selectDeviceOptions"
+          @filter="selectDeviceFilterFn"
+          @popup-hide="onSelectDeviceHide"
+          @update:model-value="onSelectDeviceUpdate"
+        >
+          <template #option="opt">
+            <q-item v-bind="opt.itemProps" class="flex device-list-item">
+              <q-item-section avatar>
+                <q-avatar
+                  square
+                  size="80px"
+                  font-size="70px"
+                  text-color="cyan-8"
+                  icon="image"
+                  v-if="!opt.opt.image && opt.label !== 'All Devices'"
+                />
+                <q-avatar
+                  square
+                  size="80px"
+                  v-else-if="opt.label !== 'All Devices'"
+                >
+                  <img
+                    :src="
+                      liveMode
+                        ? fileUploadEndpoint +
+                          '/' +
+                          opt.opt.image.path +
+                          '?w=80'
+                        : opt.opt.image.path
+                    "
+                  />
+                </q-avatar>
+                <q-avatar
+                  icon="devices"
+                  square
+                  size="80px"
+                  font-size="70px"
+                  v-else
+                />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ opt.label }}</q-item-label>
+                <q-item-label caption lines="2">{{
+                  opt.opt.description
+                }}</q-item-label>
+                <q-btn
+                  v-if="opt.label !== 'All Devices'"
+                  class="device-action-btn hidden absolute right-2.5 top-8"
+                  :id="'device-action-btn-' + opt.opt.id"
+                  dense
+                  flat
+                  size="md"
+                  round
+                  color="primary"
+                  icon="more_vert"
+                  @click.stop
+                >
+                  <q-menu
+                    @update:model-value="
+                      actionMenuToggle('device-action-btn-' + opt.opt.id)
+                    "
+                  >
+                    <q-list style="min-width: 70px">
+                      <q-item
+                        dense
+                        clickable
+                        v-close-popup
+                        @click="updateDeviceAction(opt.opt)"
+                      >
+                        <q-item-section avatar>
+                          <q-icon name="edit" />
+                        </q-item-section>
+                        <q-item-section>Edit</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item
+                        clickable
+                        v-close-popup
+                        dense
+                        @click="deleteDeviceAction(opt.opt)"
+                      >
+                        <q-item-section avatar>
+                          <q-icon name="delete" />
+                        </q-item-section>
+                        <q-item-section>Delete</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <div class="flex items-center ml-2">
+          <q-btn
+            icon="add_circle"
+            label="Create New Device"
+            @click="createNewDeviceAction"
+            color="white"
+            text-color="grey-8"
+            size="0.7rem"
+            no-caps
+            dense
+          />
+        </div>
+      </div>
+      <div class="flex flex-col flex-1 flex-nowrap">
+        <ag-grid-vue
+          style="width: 100%; height: 100%"
+          class="data-table ag-theme-quartz"
+          :columnDefs="modbusRegColumns"
+          @grid-ready="onGridReady"
+          @firstDataRendered="onFirstDataRendered"
+          @cell-value-changed="updateRow"
+          :getRowId="getRowId"
+          :autoSizeStrategy="autoSizeStrategy"
+          :defaultColDef="defaultColDef"
+          rowModelType="serverSide"
+          :enableBrowserTooltips="true"
+          :suppressCsvExport="true"
+          :suppressExcelExport="true"
+          :columnTypes="columnTypes"
+          :components="{
+            RowActionsRenderer,
+            SelectEditor,
+          }"
+          :context="gridContext"
+        ></ag-grid-vue>
+      </div>
     </q-page>
   </div>
   <q-dialog v-model="reviewRowChangesDialog.active" persistent>
@@ -302,7 +426,7 @@
                 'register_name',
                 'data_format',
                 'description',
-                'device_name',
+                'device_id',
               ]"
               :key="col"
             >
@@ -500,7 +624,7 @@
                   'register_name',
                   'data_format',
                   'description',
-                  'device_name',
+                  'device_id',
                 ]"
                 :key="col"
               >
@@ -541,7 +665,7 @@
       </q-card-section>
       <q-separator />
       <q-form ref="form" class="flex flex-col" @submit="saveSettings">
-        <q-card-section class="scroll">
+        <q-card-section class="scroll" style="max-height: 50vh">
           <q-list bordered class="rounded-borders">
             <q-expansion-item
               expand-separator
@@ -592,6 +716,149 @@
       </q-form>
     </q-card>
   </q-dialog>
+  <!-- Create new device dialog -->
+  <q-dialog v-model="createDeviceDialog" persistent>
+    <q-card style="width: 700px; max-width: 700px">
+      <q-card-section>
+        <div class="text-h6">Create new Device</div>
+      </q-card-section>
+      <q-separator />
+      <q-form ref="form" class="q-gutter-md" @submit="createNewDevice">
+        <q-card-section
+          class="flex flex-col flex-nowrap gap-4 scroll"
+          style="max-height: 50vh"
+        >
+          <div class="flex items-center">
+            <div class="image-container relative w-52">
+              <file-upload
+                ref="createDeviceFileUploaderRef"
+                :endpoint="fileUploadEndpoint"
+                :headers="fileUploadHeaders"
+                path="modbus-register/devices"
+                :types="['image/*']"
+                :height="150"
+                @uploaded="newDeviceImageUploaded"
+              />
+            </div>
+            <div class="grow ml-4">
+              <q-input
+                v-model="newDevice.name"
+                label="Name"
+                :rules="[
+                  (val) =>
+                    (val && val.length > 0) ||
+                    'Please enter the new device name',
+                ]"
+              />
+            </div>
+          </div>
+          <div>
+            <q-checkbox v-model="newDevice.private" label="Private" />
+          </div>
+          <q-input
+            v-model="newDevice.description"
+            label="Description"
+            type="textarea"
+          />
+        </q-card-section>
+        <q-separator />
+
+        <q-card-actions align="right" class="mt-0">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="createDeviceDialog = false"
+          />
+          <q-btn label="Submit" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
+  <!-- Update device dialog -->
+  <q-dialog v-model="updateDeviceDialog.active" persistent>
+    <q-card style="width: 700px; max-width: 700px">
+      <q-card-section>
+        <div class="text-h6">Update Device</div>
+      </q-card-section>
+      <q-separator />
+      <q-form ref="form" class="q-gutter-md" @submit="updateDevice">
+        <q-card-section
+          class="flex flex-col flex-nowrap gap-4 scroll"
+          style="max-height: 50vh"
+        >
+          <div class="flex items-center">
+            <div class="image-container relative w-52">
+              <file-upload
+                v-if="!updateDeviceDialog.data.image"
+                ref="updateDeviceFileUploaderRef"
+                :endpoint="fileUploadEndpoint"
+                :headers="fileUploadHeaders"
+                path="modbus-register/devices"
+                :types="['image/*']"
+                :height="150"
+                @uploaded="updateDeviceImageUploaded"
+              />
+              <q-avatar v-else square size="180px">
+                <img :src="updateDeviceDialog.data.image.path" />
+                <div class="image-actions">
+                  <q-btn
+                    class="absolute right-0 top-0"
+                    flat
+                    size="sm"
+                    color="primary"
+                    icon="delete"
+                    @click="
+                      updateDeviceDialog.data.image_id = null;
+                      updateDeviceDialog.data.image = null;
+                    "
+                  >
+                    <q-tooltip> Delete image </q-tooltip>
+                  </q-btn>
+                </div>
+              </q-avatar>
+            </div>
+            <div class="grow ml-4">
+              <q-input
+                v-model="updateDeviceDialog.data.name"
+                label="Name"
+                :rules="[
+                  (val) =>
+                    (val && val.length > 0) ||
+                    'The device name cannot be empty',
+                ]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <q-checkbox
+              v-model="updateDeviceDialog.data.private"
+              label="Private"
+            />
+          </div>
+          <q-input
+            v-model="updateDeviceDialog.data.description"
+            label="Description"
+            type="textarea"
+          />
+        </q-card-section>
+        <q-separator />
+
+        <q-card-actions align="right" class="mt-0">
+          <q-btn
+            label="Cancel"
+            color="primary"
+            flat
+            class="q-ml-sm"
+            @click="updateDeviceDialog = false"
+          />
+          <q-btn label="Submit" type="submit" color="primary" />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
@@ -605,6 +872,7 @@ import {
   onBeforeMount,
   watch,
   toRaw,
+  computed,
 } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { ServerSideRowModelModule, ModuleRegistry } from "ag-grid-enterprise";
@@ -616,15 +884,15 @@ import {
   cellClassRules,
   columnTypes,
   user,
-  operationOptions,
-  dataFormatOptions,
   isAdmin,
   getModbusRegisterSettings,
+  devices,
 } from "../../lib/common";
 import UserTopBar from "../../components/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/grid/RowActionsRenderer.vue";
 import SelectEditor from "../../components/grid/SelectEditor.vue";
+import FileUpload from "../../components/FileUploadS3.vue";
 
 ModuleRegistry.registerModules([ServerSideRowModelModule]);
 
@@ -648,7 +916,7 @@ const emptyNewItem = {
   register_name: "",
   data_format: null,
   description: "",
-  device_name: null,
+  device_id: null,
 };
 
 const notifications = ref([]);
@@ -661,13 +929,9 @@ const reviewAllRowChangesDialog = ref({ active: false, entry: null });
 
 const triggerFilterChanged = debounce(onFilterChanged, 500);
 
-const selectDataFormatOptions = ref(dataFormatOptions);
-
-const selectOperationOptions = ref(operationOptions);
-
 const activeTab = ref("all");
 
-const isOnline = ref(null);
+const isOnline = ref(navigator.onLine);
 const liveMode = ref(false);
 let dismissOfflineNotif = null;
 let intervalIsOnline = null;
@@ -685,6 +949,53 @@ const settingsDialog = ref({
 
 const gridContext = ref({ activeTab, liveMode });
 
+const productDeviceMappings = ref([]);
+const newDevice = ref({ name: "", description: "", private: false });
+const createDeviceDialog = ref(false);
+
+const updateDeviceDialog = ref({ active: false, id: null, data: {} });
+
+const deviceSelectRef = ref(null);
+const selectDeviceOptions = ref(devices.value);
+
+const selectDeviceFilterFn = (val, update, abort) => {
+  if (val === "") {
+    update(() => {
+      selectDeviceOptions.value = devices.value;
+    });
+    return;
+  }
+  update(() => {
+    const keyword = val.toLowerCase();
+    selectDeviceOptions.value = devices.value.filter(
+      (v) => v.name.toLowerCase().indexOf(keyword) > -1 /* ||
+        v.description?.toLowerCase().indexOf(keyword) > -1 */
+    );
+  });
+};
+
+const selectedDevice = ref({ name: "All Devices" });
+const createDeviceFileUploaderRef = ref(null);
+const updateDeviceFileUploaderRef = ref(null);
+
+const fileUploadEndpoint = computed(() => {
+  if (liveMode.value) {
+    return process.env.API_URL + "/file";
+  } else {
+    return process.env.LOCAL_API_URL + "/file";
+  }
+});
+
+const fileUploadHeaders = computed(() => {
+  if (liveMode.value) {
+    return undefined;
+  } else {
+    return {
+      Authorization: process.env.LOCAL_API_SECRET_KEY || "secret",
+    };
+  }
+});
+
 window.onbeforeunload = () => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
@@ -695,10 +1006,33 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
-  healthCheck();
+  // Disable for now because it's not working properly
+  // healthCheck();
   globalNav.value.title = "Modbus Register";
   globalNav.value.back = null;
   settings.value = getModbusRegisterSettings() || settings.value;
+
+  loadNotifications();
+  sync_data();
+});
+
+window.chrome?.webview?.addEventListener("message", (arg) => {
+  console.log("Recieved a message from webview", arg.data);
+  if ("action" in arg.data) {
+    if (arg.data.action === "GET_SELECTED_DEVICE_INFO_RES") {
+      const productDeviceMapping = productDeviceMappings.value.find(
+        (p) => p.product_id === arg.data.data.product_id
+      );
+      if (productDeviceMapping) {
+        const device = devices.value.find(
+          (d) => d.id === productDeviceMapping.device_id
+        );
+        if (device) {
+          selectedDevice.value = device;
+        }
+      }
+    }
+  }
 });
 
 function healthCheck() {
@@ -760,7 +1094,7 @@ function onFilterChanged() {
   gridApi.value.onFilterChanged();
 }
 
-function onGridReady(params) {
+async function onGridReady(params) {
   gridApi.value = params.api;
   const localState = localStorage.getItem("modbusRegisterGridState");
   if (localState && localState !== "undefined") {
@@ -769,6 +1103,11 @@ function onGridReady(params) {
       applyOrder: true,
     });
   }
+  await getDeviceList();
+  window.chrome?.webview?.postMessage({
+    action: 12, // GET_SELECTED_DEVICE_INFO
+  });
+
   var datasource = getServerSideDatasource();
   // register the datasource with the grid
   params.api.setGridOption("serverSideDatasource", datasource);
@@ -916,7 +1255,11 @@ function getServerSideDatasource() {
             "&order_dir=" +
             (request.sortModel[0]?.sort || "desc") +
             (filter.value ? "&filter=" + filter.value : "") +
-            (activeTab.value === "changes" ? "&has_changes=1" : "")
+            (activeTab.value === "changes" ? "&has_changes=1" : "") +
+            (selectedDevice.value.name &&
+            selectedDevice.value.name !== "All Devices"
+              ? "&device_id=" + selectedDevice.value.id
+              : "")
         )
         .then(async (res) => {
           res = await res.json();
@@ -942,7 +1285,8 @@ function updateRow(event) {
   }
   let api = liveMode.value ? liveApi : localApi;
   const updateData = {
-    [event.colDef.field]: event.newValue,
+    [event.colDef.field]:
+      typeof event.newValue === "object" ? event.newValue.id : event.newValue,
   };
   api
     .patch("modbus-registers/" + event.data.id, { json: updateData })
@@ -975,6 +1319,10 @@ function updateRow(event) {
 
 function addNewRow() {
   let api = localApi;
+  emptyNewItem.device_id =
+    selectedDevice.value.name === "All Devices"
+      ? null
+      : selectedDevice.value.id;
   api
     .post("modbus-registers", { json: emptyNewItem })
     .then(async (res) => {
@@ -997,19 +1345,17 @@ function addNewRow() {
 }
 
 async function getNotifications(offset = 0, limit = 10) {
-  if (isOnline.value === false) {
+  if (isOnline.value === false || !user.value) {
     return;
   }
-  try {
-    const res = await liveApi.get(
-      "modbus-register-notifications?offset=" + offset + "&limit=" + limit
-    );
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.log(err);
-    return [];
-  }
+
+  return await liveApi
+    .get("modbus-register-notifications?offset=" + offset + "&limit=" + limit)
+    .then((res) => res.json())
+    .catch((err) => {
+      console.log(err);
+      return [];
+    });
 }
 function notificationStatusChange(notification, status) {
   if (isOnline.value === false) {
@@ -1115,24 +1461,6 @@ function approveEntryChanges(entry) {
   updateEntryRelatedNotificationStatus(entry, "ADMIN_APPROVED");
 }
 
-function selectDataFormatFilter(val, update, abort) {
-  update(() => {
-    const keyword = val.toLowerCase();
-    selectDataFormatOptions.value = dataFormatOptions.filter(
-      (v) => v.toLowerCase().indexOf(keyword) > -1
-    );
-  });
-}
-
-function selectOperationFilter(val, update, abort) {
-  update(() => {
-    const keyword = val.toLowerCase();
-    selectOperationOptions.value = operationOptions.filter(
-      (v) => v.toLowerCase().indexOf(keyword) > -1
-    );
-  });
-}
-
 function updateEntryRelatedNotificationStatus(entry, status) {
   const notification = notifications.value.find(
     (n) =>
@@ -1151,10 +1479,10 @@ watch(liveMode, (newVal, oldVal) => {
     var datasource = getServerSideDatasource();
     // register the datasource with the grid
     gridApi.value.setGridOption("serverSideDatasource", datasource);
-    onFilterChanged();
+    reloadData();
   }
 });
-
+/*
 watch(isOnline, (newVal, _oldVal) => {
   if (newVal === true) {
     if (user.value) {
@@ -1163,7 +1491,7 @@ watch(isOnline, (newVal, _oldVal) => {
     }
   }
 });
-
+ */
 function openSettingsDialog() {
   settingsDialog.value.active = true;
   settingsDialog.value.settings = structuredClone(toRaw(settings.value));
@@ -1184,39 +1512,185 @@ function saveSettings() {
 
 async function sync_data() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  if (!user.value?.id || isOnline.value === false) {
+  if (!user.value?.id || !isOnline.value) {
     return;
   }
   if (settings.value.syncData === "SYNC") {
-    pullRemoteChanges();
-    pushLocalChanges();
+    await pullRemoteDevicesChanges();
+    await pushLocalDevicesChanges();
+    await pullRemoteEntriesChanges();
+    await pushLocalEntriesChanges();
+
+    const serverTime = await liveApi.get("serverTime").json();
+    await localApi.patch("user/update_last_modbus_register_pull", {
+      json: { time: serverTime.time },
+    });
   }
 }
 
-async function pushLocalChanges() {
+async function pushLocalDevicesChanges() {
   if (!settings.value.push) {
     return;
   }
-  const localChanges = await localApi
+
+  const devices = await localApi
+    .get("modbus-register/devices?local_only=true")
+    .json();
+  if (devices?.length > 0) {
+    for await (const item of devices) {
+      const change = structuredClone(item);
+      delete change.id;
+      delete change.created_at;
+      delete change.updated_at;
+      delete change.status;
+      delete change.image_id;
+      delete change.image;
+      delete change.remote_id;
+
+      // Skip private rows
+      if (change.private) {
+        continue;
+      }
+      delete change.private;
+      if (item.status === "UPDATED") {
+        if (!item.remote_id) continue;
+        const res = await liveApi
+          .patch("modbus-register/devices/" + item.remote_id, {
+            json: change,
+          })
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
+        if (res) {
+          await localApi.patch("modbus-register/devices/" + item.id, {
+            json: { status: res.status },
+          });
+        }
+      } else if (item.status === "NEW") {
+        const res = await liveApi
+          .post("modbus-register/devices", {
+            json: change,
+          })
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
+        if (res) {
+          await localApi
+            .patch("modbus-register/devices/" + +item.id, {
+              json: {
+                status: res.status,
+                remote_id: res.id,
+              },
+            })
+            .json();
+        }
+      }
+    }
+  }
+}
+
+async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
+  if (!settings.value.pull) {
+    return;
+  }
+  const user = await localApi.get("user").json();
+  if (!user) {
+    return;
+  }
+  const devicesChanges = await liveApi
+    .get(
+      `modbus-register/devices?limit=${limit}&offset=${offset}&after_date=${new Date(
+        user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
+      ).toISOString()}`
+    )
+    .json();
+
+  if (devicesChanges?.length > 0) {
+    for await (const item of devicesChanges) {
+      const change = structuredClone(item);
+      delete change.revisions;
+      delete change.user;
+      delete change.userId;
+      delete change.parentId;
+      delete change.parent;
+      delete change.ModbusRegisterNotification;
+      delete change.ModbusRegisterProductDeviceMapping;
+      delete change.image;
+      delete change.image_id;
+      delete change.entries;
+
+      const existing_item = await localApi
+        .get("modbus-register/devices/remote_id/" + item.id)
+        .then((res) => res.json())
+        .catch(() => null);
+      if (existing_item && existing_item.id) {
+        if (existing_item.status === "DELETED") {
+          continue;
+        }
+        const remoteUpdated = new Date(item.updated_at);
+        const localUpdated = new Date(existing_item.updated_at);
+        if (
+          ["NEW", "UPDATED"].includes(existing_item.status) ||
+          remoteUpdated <= localUpdated
+        )
+          return;
+        delete change.id;
+        delete change.created_at;
+        delete change.updated_at;
+        await localApi
+          .patch("modbus-register/devices/" + existing_item.id, {
+            json: change,
+          })
+          .json();
+      } else {
+        await localApi.post("modbus-register/devices", {
+          json: change,
+        });
+      }
+    }
+    if (devicesChanges?.length > 49) {
+      await pullRemoteDevicesChanges(limit, offset + 50);
+    } else {
+      getDeviceList();
+    }
+  } else {
+    getDeviceList();
+  }
+}
+
+async function pushLocalEntriesChanges() {
+  if (!settings.value.push) {
+    return;
+  }
+  const entries = await localApi
     .get("modbus-registers?local_only=true&limit=50")
     .json();
-  if (localChanges?.data?.length > 0) {
-    for await (const item of localChanges.data) {
+  if (entries?.data?.length > 0) {
+    for await (const item of entries.data) {
       const change = structuredClone(item);
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
+      delete change.device;
       // Skip private & uncompleted rows
       if (
         change.private ||
         !change.register_address ||
         !change.operation ||
         !change.data_format ||
-        !change.device_name
+        !change.device_id
       ) {
         continue;
       }
+
       delete change.private;
+
+      change.device_id = item.device?.remote_id || null;
+
       if (item.status === "UPDATED") {
         delete change.id;
         const res = await liveApi
@@ -1243,6 +1717,10 @@ async function pushLocalChanges() {
           delete res.parentId;
           delete res.parent;
           delete res.ModbusRegisterNotification;
+          delete res.device;
+
+          res.device_id = item.device?.id || null;
+
           const localCreated = await localApi
             .post("modbus-registers", {
               json: res,
@@ -1258,7 +1736,7 @@ async function pushLocalChanges() {
   gridApi.value.refreshServerSide();
 }
 
-async function pullRemoteChanges(limit = 50, offset = 0) {
+async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
   if (!settings.value.pull) {
     return;
   }
@@ -1266,8 +1744,7 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
   if (!user) {
     return;
   }
-  const serverTime = await liveApi.get("serverTime").json();
-  const remoteChanges = await liveApi
+  const entriesChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
         user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
@@ -1275,14 +1752,8 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
     )
     .json();
 
-  if (remoteChanges) {
-    await localApi.patch("user/update_last_modbus_register_pull", {
-      json: { time: serverTime.time },
-    });
-  }
-
-  if (remoteChanges?.data?.length > 0) {
-    for await (const item of remoteChanges.data) {
+  if (entriesChanges?.data?.length > 0) {
+    for await (const item of entriesChanges.data) {
       const change = structuredClone(item);
       delete change.revisions;
       delete change.user;
@@ -1290,9 +1761,12 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
       delete change.parentId;
       delete change.parent;
       delete change.ModbusRegisterNotification;
+      delete change.device;
+      delete change.device_id;
       const existing_item = await localApi
         .get("modbus-registers/" + item.id)
-        .json();
+        .then((res) => res.json())
+        .catch(() => null);
       if (existing_item && existing_item.id) {
         if (existing_item.status === "DELETED") {
           continue;
@@ -1305,6 +1779,12 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
         )
           return;
         delete change.id;
+        const device = await localApi
+          .get("modbus-register/devices/remote_id/" + item.device_id)
+          .json();
+        if (device?.id) {
+          change.device_id = device.id;
+        }
         await localApi
           .patch("modbus-registers/" + item.id, {
             json: change,
@@ -1320,19 +1800,203 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
           .toISOString()
           .slice(0, 19)
           .replace("T", " ");
+
+        const device = await localApi
+          .get("modbus-register/devices/remote_id/" + item.device_id)
+          .json();
+        if (device?.id) {
+          change.device_id = device.id;
+        }
         await localApi.post("modbus-registers", {
           json: change,
         });
       }
     }
-    if (remoteChanges?.data?.length > 49) {
-      await pullRemoteChanges(limit, offset + 50);
+    if (entriesChanges?.data?.length > 49) {
+      await pullRemoteEntriesChanges(limit, offset + 50);
     } else {
       gridApi.value.refreshServerSide();
     }
   } else {
     gridApi.value.refreshServerSide();
   }
+}
+
+function onSelectDeviceHide(e) {
+  deviceSelectRef.value.blur();
+}
+function onSelectDeviceUpdate(e) {
+  // if (e.name === "All Devices") {
+  //   gridApi.value.setColumnsVisible(["8"], true);
+  // } else {
+  //   gridApi.value.setColumnsVisible(["8"], false);
+  // }
+  onFilterChanged();
+}
+
+async function getDeviceList() {
+  const api = liveMode.value ? liveApi : localApi;
+
+  try {
+    const [devicesResponse, mappingsResponse] = await Promise.all([
+      api.get("modbus-register/devices?limit=1000"),
+      api.get("modbus-register/product_device_mappings"),
+    ]);
+
+    const devs = await devicesResponse.json();
+    const mappings = await mappingsResponse.json();
+
+    devices.value = [{ name: "All Devices", id: null }, ...devs];
+    selectDeviceOptions.value = devices.value;
+    productDeviceMappings.value = mappings;
+
+    return { devices, mappings }; // Return an object with both data sets
+  } catch (error) {
+    // Handle errors here (optional)
+    console.error("Error fetching device list:", error);
+    throw error; // Re-throw the error for further handling (optional)
+  }
+}
+
+function createNewDeviceAction() {
+  newDevice.value = { name: "", description: "", private: false };
+  createDeviceDialog.value = true;
+}
+
+function createNewDevice() {
+  if (createDeviceFileUploaderRef.value?.uppy.getFiles()?.length > 0) {
+    createDeviceFileUploaderRef.value.upload();
+    return;
+  }
+  createNewDeviceSaveToDB();
+}
+
+function createNewDeviceSaveToDB() {
+  let api = liveMode.value ? liveApi : localApi;
+  if (liveMode.value) {
+    delete newDevice.value.private;
+  }
+
+  api
+    .post("modbus-register/devices", { json: newDevice.value })
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      createDeviceDialog.value = false;
+      $q.notify({
+        type: "positive",
+        message: "Successfully created",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Create device failed! " + err.message,
+      });
+    });
+}
+
+function updateDeviceAction(data) {
+  updateDeviceDialog.value = {
+    active: true,
+    id: data.id,
+    data: {
+      name: data.name,
+      description: data.description,
+      private: data.private,
+      image_id: data.image_id,
+      image: data.image,
+    },
+  };
+}
+
+function updateDevice() {
+  if (updateDeviceFileUploaderRef.value?.uppy.getFiles()?.length > 0) {
+    updateDeviceFileUploaderRef.value.upload();
+    return;
+  }
+  updateDeviceSaveToDB();
+}
+
+function updateDeviceSaveToDB() {
+  delete updateDeviceDialog.value.data.image;
+  if (liveMode.value) {
+    delete updateDeviceDialog.value.data.private;
+  }
+  let api = liveMode.value ? liveApi : localApi;
+  api
+    .patch("modbus-register/devices/" + updateDeviceDialog.value.id, {
+      json: updateDeviceDialog.value.data,
+    })
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      updateDeviceDialog.value.active = false;
+      $q.notify({
+        type: "positive",
+        message: "Successfully updated",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Update device failed! " + err.message,
+      });
+    });
+}
+
+function updateDeviceImageUploaded(event) {
+  const file = event.body;
+  updateDeviceDialog.value.data.image_id = file.id;
+  updateDeviceSaveToDB();
+}
+
+function deleteDeviceAction(data) {
+  $q.dialog({
+    title: "Delete Device",
+    message: "Are you sure you want to delete this device?",
+    ok: {
+      label: "Yes",
+      color: "negative",
+    },
+    cancel: "No",
+  }).onOk(() => {
+    deleteDevice(data);
+  });
+}
+
+function deleteDevice(data) {
+  let api = liveMode.value ? liveApi : localApi;
+  api
+    .delete("modbus-register/devices/" + data.id)
+    .then(async (res) => {
+      res = await res.json();
+      getDeviceList();
+      $q.notify({
+        type: "positive",
+        message: "Successfully deleted",
+      });
+    })
+    .catch((err) => {
+      $q.notify({
+        type: "negative",
+        message: "Delete device failed! " + err.message,
+      });
+    });
+}
+
+function actionMenuToggle(id) {
+  document.getElementById(id).classList.toggle("active");
+}
+function newDeviceImageUploaded(event) {
+  const file = event.body;
+  newDevice.value.image_id = file.id;
+  createNewDeviceSaveToDB();
+}
+
+function reloadData() {
+  getDeviceList();
+  gridApi.value.refreshServerSide();
 }
 </script>
 
@@ -1360,5 +2024,20 @@ async function pullRemoteChanges(limit = 50, offset = 0) {
 }
 .ag-row:hover .row-actions {
   visibility: visible;
+}
+.select-device.q-field--auto-height.q-field--dense .q-field__control {
+  align-items: center;
+}
+
+.device-list-item:hover .device-action-btn,
+.device-list-item .device-action-btn.active {
+  z-index: 1;
+  display: inline-flex !important;
+}
+
+@media (min-width: 1001px) {
+  .select-device {
+    min-width: 800px;
+  }
 }
 </style>

@@ -5,6 +5,7 @@ pub mod auth;
 pub mod db_connection;
 pub mod entity;
 pub mod error;
+pub mod file;
 pub mod modbus_register;
 pub mod server;
 pub mod user;

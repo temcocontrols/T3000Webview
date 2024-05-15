@@ -1,6 +1,10 @@
 use std::{env, error::Error};
 
-use axum::{http::StatusCode, routing::get_service, Router};
+use axum::{
+    http::StatusCode,
+    routing::{get, get_service},
+    Router,
+};
 
 use tokio::{net::TcpListener, signal};
 use tower_http::{
@@ -8,19 +12,27 @@ use tower_http::{
     services::ServeDir,
 };
 
-use crate::{app_state, utils::run_migrations};
+use crate::{
+    app_state,
+    file::routes::file_routes,
+    utils::{run_migrations, SPA_DIR},
+};
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
 fn routes_static() -> Router {
-    let spa_dir = env::var("SPA_DIR").unwrap_or("./ResourceFile/webview/www".to_string());
     Router::new().nest_service(
         "/",
-        get_service(ServeDir::new(&spa_dir)).handle_error(|_| async move {
+        get_service(ServeDir::new(SPA_DIR.as_str())).handle_error(|_| async move {
             (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }),
     )
+}
+
+async fn health_check_handler() -> &'static str {
+    println!("->> Health check");
+    "OK"
 }
 
 pub async fn create_app() -> Result<Router, Box<dyn Error>> {
@@ -32,7 +44,13 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let app_state = app_state::app_state().await?;
 
     Ok(Router::new()
-        .nest("/api", modbus_register_routes().merge(user_routes()))
+        .nest(
+            "/api",
+            modbus_register_routes()
+                .merge(user_routes())
+                .merge(file_routes())
+                .route("/health", get(health_check_handler)),
+        )
         .with_state(app_state)
         .fallback_service(routes_static())
         .layer(cors))
