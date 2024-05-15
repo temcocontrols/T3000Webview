@@ -5,6 +5,7 @@ use axum::{
 use sea_orm::{
     prelude::*, sea_query::IntoCondition, QueryOrder, QuerySelect, SelectTwo, Set, TryIntoModel,
 };
+use serde_json::json;
 
 use super::inputs::{
     CreateModbusRegisterItemInput, ModbusRegisterColumns, ModbusRegisterModel,
@@ -198,6 +199,55 @@ pub async fn create(
         .map_err(|error| Error::DbError(error.to_string()))?;
 
     Ok(Json(res.try_into_model().unwrap()))
+}
+
+pub async fn create_many(
+    State(state): State<AppState>,
+    Json(payload): Json<Vec<CreateModbusRegisterItemInput>>,
+) -> Result<Json<serde_json::Value>> {
+    let mut models = Vec::new();
+    for item in payload {
+        let mut model = modbus_register::ActiveModel {
+            register_address: Set(item.register_address),
+            operation: Set(item.operation),
+            register_length: Set(item.register_length),
+            register_name: Set(item.register_name),
+            data_format: Set(item.data_format),
+            description: Set(item.description),
+            device_id: Set(item.device_id),
+            unit: Set(item.unit),
+            ..Default::default()
+        };
+
+        if item.id.is_some() {
+            model.id = Set(item.id.unwrap());
+        }
+
+        if item.status.is_some() {
+            model.status = Set(item.status.unwrap());
+        }
+        if item.private.is_some() {
+            model.private = Set(item.private);
+        }
+
+        if item.created_at.is_some() {
+            model.created_at = Set(item.created_at.unwrap());
+        }
+
+        if item.updated_at.is_some() {
+            model.updated_at = Set(item.updated_at.unwrap());
+        }
+
+        models.push(model);
+    }
+    let count = models.len();
+
+    ModbusRegister::insert_many(models)
+        .exec(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(json!({"created_rows_count": count})))
 }
 
 pub async fn update(

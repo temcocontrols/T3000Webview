@@ -33,6 +33,7 @@ pub fn modbus_register_routes() -> Router<AppState> {
 
     let protected_routes = Router::new()
         .route("/modbus-registers", post(queries::create))
+        .route("/modbus-registers/create_many", post(queries::create_many))
         .route(
             "/modbus-registers/:id",
             patch(queries::update).delete(queries::delete),
