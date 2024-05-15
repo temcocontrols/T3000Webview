@@ -396,6 +396,18 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
+        // Delete old data
+        db.execute_unprepared(
+            r#"
+        DELETE FROM modbus_register WHERE id > 8070 AND id < 12725;
+    "#,
+        )
+        .await?;
+
+        // Insert new data
+        db.execute_unprepared(include_str!("../sql/modbus_register.sql"))
+            .await?;
+
         // Vacuum the database
         db.execute_unprepared("VACUUM;").await?;
 
