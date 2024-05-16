@@ -265,7 +265,7 @@ pub async fn update(
     );
 
     if None == payload.status
-        && model.private.clone().unwrap().is_none()
+        && model.private.clone().unwrap().unwrap_or(true) == false
         && (model.status.clone().unwrap() == "PUBLISHED".to_string()
             || model.status.clone().unwrap() == "UNDER_REVIEW".to_string()
             || model.status.clone().unwrap() == "REVISION".to_string())

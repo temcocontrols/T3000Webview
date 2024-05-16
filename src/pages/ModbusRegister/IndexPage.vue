@@ -98,14 +98,12 @@
                       <q-icon
                         name="check_circle"
                         size="lg"
-                        v-if="notification.type === 'USER_CHANGES_APPOROVED'"
+                        v-if="notification.type.endsWith('_APPOROVED')"
                       />
                       <q-icon
                         name="cancel"
                         size="lg"
-                        v-else-if="
-                          notification.type === 'USER_CHANGES_REJECTED'
-                        "
+                        v-else-if="notification.type.endsWith('_REJECTED')"
                       />
                       <q-icon
                         name="account_circle"
@@ -150,7 +148,12 @@
                         "
                       >
                         <q-btn
-                          v-if="notification.type === 'ADMIN_ENTRY_CHANGED'"
+                          v-if="
+                            [
+                              'ADMIN_ENTRY_CHANGED',
+                              'ADMIN_ENTRY_ADDED',
+                            ].includes(notification.type)
+                          "
                           flat
                           size="0.7rem"
                           label="Review"
@@ -162,13 +165,18 @@
                           "
                         />
                         <q-btn
-                          v-else-if="notification.type === 'ADMIN_ENTRY_ADDED'"
+                          v-else-if="
+                            [
+                              'ADMIN_DEVICE_ADDED',
+                              'ADMIN_DEVICE_CHANGED',
+                            ].includes(notification.type)
+                          "
                           flat
                           size="0.7rem"
                           label="Review"
                           @click="
                             notificationChangesReviewAction(
-                              notification.entry,
+                              notification.device,
                               notification.type
                             )
                           "
@@ -409,7 +417,7 @@
       </q-card-section>
       <q-separator />
       <q-card-section class="scroll" style="max-height: 50vh">
-        <q-markup-table class="w-full">
+        <q-markup-table wrap-cells class="w-full">
           <thead>
             <tr>
               <th class="text-left">Column</th>
@@ -483,7 +491,7 @@
       </q-card-section>
       <q-separator />
       <q-card-section class="scroll" style="max-height: 50vh">
-        <q-markup-table class="w-full">
+        <q-markup-table wrap-cells class="w-full">
           <thead>
             <tr>
               <th class="text-left">Actions</th>
@@ -601,7 +609,7 @@
       </q-card-section>
       <q-separator />
       <q-card-section class="scroll" style="max-height: 50vh">
-        <q-markup-table class="w-full">
+        <q-markup-table wrap-cells class="w-full">
           <thead>
             <tr>
               <th class="text-left">Register Address</th>
@@ -859,6 +867,120 @@
       </q-form>
     </q-card>
   </q-dialog>
+
+  <!-- Device added review dialog -->
+  <q-dialog v-model="reviewDeviceAddedDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Review user new device</div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="scroll" style="max-height: 50vh">
+        <q-markup-table wrap-cells class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left">Name</th>
+              <th class="text-left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                class="text-left"
+                v-for="col in ['name', 'description']"
+                :key="col"
+              >
+                {{ reviewDeviceAddedDialog.data[col] }}
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+      <q-separator />
+
+      <q-card-actions align="right" class="mt-0">
+        <q-btn
+          label="Cancel"
+          color="primary"
+          flat
+          class="q-ml-sm"
+          @click="reviewDeviceAddedDialog.active = false"
+        />
+        <q-btn
+          label="Reject"
+          color="negative"
+          @click="rejectDeviceChanges(reviewDeviceAddedDialog.data)"
+        />
+        <q-btn
+          label="Approve"
+          color="primary"
+          @click="approveDeviceChanges(reviewDeviceAddedDialog.data)"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <!-- Device changed dialog -->
+  <q-dialog v-model="reviewDeviceChangesDialog.active" persistent>
+    <q-card style="width: 700px">
+      <q-card-section>
+        <div class="text-h6">Review user device changes</div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="scroll" style="max-height: 50vh">
+        <q-markup-table wrap-cells class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left">Column</th>
+              <th class="text-left">Original value</th>
+              <th class="text-left">New value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="col in ['name', 'description']" :key="col">
+              <tr
+                v-if="
+                  reviewDeviceChangesDialog.data[col] !==
+                  reviewDeviceChangesDialog.data.parent[col]
+                "
+              >
+                <th class="text-left capitalize">
+                  {{ col }}
+                </th>
+                <td class="text-left">
+                  {{ reviewDeviceChangesDialog.data.parent[col] }}
+                </td>
+                <td class="text-left">
+                  {{ reviewDeviceChangesDialog.data[col] }}
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </q-markup-table>
+      </q-card-section>
+      <q-separator />
+
+      <q-card-actions align="right" class="mt-0">
+        <q-btn
+          label="Cancel"
+          color="primary"
+          flat
+          class="q-ml-sm"
+          @click="reviewDeviceChangesDialog.active = false"
+        />
+        <q-btn
+          label="Reject"
+          color="negative"
+          @click="rejectDeviceChanges(reviewDeviceChangesDialog.data)"
+        />
+        <q-btn
+          label="Approve"
+          color="primary"
+          @click="approveDeviceChanges(reviewDeviceChangesDialog.data)"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
@@ -924,6 +1046,8 @@ const notifications = ref([]);
 const reviewRowChangesDialog = ref({ active: false, entry: null });
 
 const reviewRowAddedDialog = ref({ active: false, entry: null });
+const reviewDeviceAddedDialog = ref({ active: false, data: null });
+const reviewDeviceChangesDialog = ref({ active: false, data: null });
 
 const reviewAllRowChangesDialog = ref({ active: false, entry: null });
 
@@ -1389,11 +1513,15 @@ function notificationStatusChange(notification, status) {
     });
 }
 
-function notificationChangesReviewAction(entry, type) {
+function notificationChangesReviewAction(data, type) {
   if (type === "ADMIN_ENTRY_CHANGED") {
-    reviewRowChangesDialog.value = { active: true, entry };
+    reviewRowChangesDialog.value = { active: true, entry: data };
   } else if (type === "ADMIN_ENTRY_ADDED") {
-    reviewRowAddedDialog.value = { active: true, entry };
+    reviewRowAddedDialog.value = { active: true, entry: data };
+  } else if (type === "ADMIN_DEVICE_ADDED") {
+    reviewDeviceAddedDialog.value = { active: true, data };
+  } else if (type === "ADMIN_DEVICE_CHANGED") {
+    reviewDeviceChangesDialog.value = { active: true, data };
   }
 }
 
@@ -1461,11 +1589,12 @@ function approveEntryChanges(entry) {
   updateEntryRelatedNotificationStatus(entry, "ADMIN_APPROVED");
 }
 
-function updateEntryRelatedNotificationStatus(entry, status) {
+function updateEntryRelatedNotificationStatus(data, status, type = "ENTRY") {
   const notification = notifications.value.find(
     (n) =>
-      n.entryId === entry.id &&
-      n.userRefId === entry.userId &&
+      n.entryId === (type === "ENTRY" ? data.id : null) &&
+      n.deviceId === (type === "DEVICE" ? data.id : null) &&
+      n.userRefId === data.userId &&
       n.group === "ADMINS" &&
       n.status === "UNREAD"
   );
@@ -1997,6 +2126,54 @@ function newDeviceImageUploaded(event) {
 function reloadData() {
   getDeviceList();
   gridApi.value.refreshServerSide();
+}
+
+function approveDeviceChanges(device) {
+  if (isOnline.value === false) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
+  liveApi
+    .patch("modbus-register/devices/" + device.id + "/approve")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully approved",
+      });
+      getDeviceList();
+      device.action = "APPROVED";
+    });
+  reviewDeviceAddedDialog.value.active = false;
+  reviewDeviceChangesDialog.value.active = false;
+  device.action = "APPROVED";
+  updateEntryRelatedNotificationStatus(device, "ADMIN_APPROVED", "DEVICE");
+}
+
+function rejectDeviceChanges(device) {
+  if (isOnline.value === false) {
+    $q.notify({
+      type: "negative",
+      message: "You are offline!",
+    });
+    return;
+  }
+  liveApi
+    .patch("modbus-register/devices/" + device.id + "/reject")
+    .then(async (_res) => {
+      $q.notify({
+        type: "positive",
+        message: "Successfully rejected",
+      });
+      getDeviceList();
+      device.action = "REJECTED";
+    });
+  reviewDeviceAddedDialog.value.active = false;
+  reviewDeviceChangesDialog.value.active = false;
+  device.action = "REJECTED";
+  updateEntryRelatedNotificationStatus(device, "ADMIN_REJECTED", "DEVICE");
 }
 </script>
 
