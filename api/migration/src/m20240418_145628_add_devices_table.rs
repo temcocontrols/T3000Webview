@@ -407,6 +407,10 @@ impl MigrationTrait for Migration {
         // Insert new data
         db.execute_unprepared(include_str!("../sql/modbus_register.sql"))
             .await?;
+        db.execute_unprepared(
+            "UPDATE user SET last_modbus_register_pull = '2024-05-15T00:00:00.000Z';",
+        )
+        .await?;
 
         // Vacuum the database
         db.execute_unprepared("VACUUM;").await?;
