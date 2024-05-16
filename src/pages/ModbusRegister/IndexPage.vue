@@ -1346,7 +1346,7 @@ function addNewRow() {
 
 async function getNotifications(offset = 0, limit = 10) {
   if (isOnline.value === false || !user.value) {
-    return;
+    return [];
   }
 
   return await liveApi
@@ -1516,10 +1516,10 @@ async function sync_data() {
     return;
   }
   if (settings.value.syncData === "SYNC") {
-    await pullRemoteDevicesChanges();
     await pushLocalDevicesChanges();
-    await pullRemoteEntriesChanges();
+    await pullRemoteDevicesChanges();
     await pushLocalEntriesChanges();
+    await pullRemoteEntriesChanges();
 
     const serverTime = await liveApi.get("serverTime").json();
     await localApi.patch("user/update_last_modbus_register_pull", {
@@ -1604,7 +1604,7 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
   const devicesChanges = await liveApi
     .get(
       `modbus-register/devices?limit=${limit}&offset=${offset}&after_date=${new Date(
-        user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
+        user.last_modbus_register_pull || "2024-05-15T00:00:00.000Z"
       ).toISOString()}`
     )
     .json();
