@@ -1747,7 +1747,7 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
   const entriesChanges = await liveApi
     .get(
       `modbus-registers?limit=${limit}&offset=${offset}&after_date=${new Date(
-        user.last_modbus_register_pull || "2024-02-11T00:00:00.000Z"
+        user.last_modbus_register_pull || "2024-05-15T00:00:00.000Z"
       ).toISOString()}`
     )
     .json();
