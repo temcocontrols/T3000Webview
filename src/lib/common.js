@@ -1472,8 +1472,9 @@ export const ranges = {
 
 export const cellClassRules = {
   "bg-yellow-400": (params) =>
-    ["REVISION", "UNDER_REVIEW"].includes(params.data.status) &&
-    user.value?.id === params.data.userId,
+    (["REVISION", "UNDER_REVIEW"].includes(params.data.status) &&
+      params.data.userId === undefined) ||
+    params.data.userId === user.value?.id,
 };
 
 export const columnTypes = {

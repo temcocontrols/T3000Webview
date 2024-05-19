@@ -83,11 +83,10 @@ function togglePrivate() {
 
 <template>
   <div class="relative">
-    <span>
-      <q-icon
-        :name="!props.params.data.private ? 'visibility' : 'visibility_off'"
-        class="text-grey-8 pr-1"
-      />
+    <span v-if="props.params.data.private">
+      <q-icon name="'visibility_off'" class="text-grey-8 pr-1">
+        <q-tooltip>Private</q-tooltip>
+      </q-icon>
     </span>
     <span>{{
       props.params.data.status === "NEW" ? "" : props.params.value
@@ -126,7 +125,9 @@ function togglePrivate() {
         v-if="
           modbusRegisterSettings?.push &&
           !props.params.data.private &&
-          ['UPDATED', 'NEW'].includes(props.params.data.status)
+          ['UPDATED', 'NEW', 'REVISION', 'UNDER_REVIEW'].includes(
+            props.params.data.status
+          )
         "
         class="status-message-btn"
         round
@@ -143,6 +144,14 @@ function togglePrivate() {
         <q-tooltip v-else-if="props.params.data.status === 'NEW'"
           >This item is only in the local database and not synchronized with the
           cloud database yet.</q-tooltip
+        >
+        <q-tooltip v-else-if="props.params.data.status === 'REVISION'"
+          >This item has been pushed to the public cloud database but it's under
+          review so it will show up only for you until it's approved.</q-tooltip
+        ><q-tooltip v-else-if="props.params.data.status === 'UNDER_REVIEW'"
+          >Your changes to this item has been pushed to the public cloud
+          database but it's under review so it will show up only for you until
+          it's approved.</q-tooltip
         ></q-btn
       >
 

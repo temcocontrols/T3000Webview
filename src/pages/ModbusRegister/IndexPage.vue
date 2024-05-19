@@ -1451,6 +1451,10 @@ function addNewRow() {
     .post("modbus-registers", { json: emptyNewItem })
     .then(async (res) => {
       res = await res.json();
+      gridApi.value.applyColumnState({
+        state: [{ colId: "1", sort: "desc" }],
+      });
+
       gridApi.value.applyServerSideTransaction({
         addIndex: 0,
         add: [res],
