@@ -3,7 +3,7 @@ import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import { user, globalNav, isAdmin } from "../lib/common";
-import { liveApi } from "../lib/api";
+import { liveApi, localApi } from "../lib/api";
 
 export default {
   props: {
@@ -28,11 +28,28 @@ export default {
       $q.cookies.remove("token");
       user.value = null;
       localStorage.removeItem("user");
+      localApi.delete("user").catch((err) => {
+        console.log(err);
+      });
       router.replace({ path: globalNav.value.home });
     }
     function isLoggedIn() {
       const hasToken = $q.cookies.has("token");
       if (!hasToken) {
+        localApi
+          .get("user")
+          .then(async (res) => {
+            if (res.status === 200) {
+              const localUser = await res.json();
+              if (localUser?.token) {
+                $q.cookies.set("token", localUser.token);
+                isLoggedIn();
+              }
+            }
+          })
+          .catch((err) => {
+            // Not logged in
+          });
         localStorage.removeItem("user");
         user.value = null;
         return;
@@ -40,11 +57,17 @@ export default {
       liveApi
         .get("me")
         .then(async (res) => {
-          user.value = await res.json();
-          localStorage.setItem("user", JSON.stringify(user.value));
+          if (res.status === 200) {
+            user.value = await res.json();
+            localStorage.setItem("user", JSON.stringify(user.value));
+          } else if (res.status === 401) {
+            logout();
+          }
         })
         .catch((err) => {
-          // Not logged in
+          if (err.response.status === 401) {
+            logout();
+          }
         });
     }
     return {
