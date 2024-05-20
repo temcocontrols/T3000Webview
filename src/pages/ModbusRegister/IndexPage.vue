@@ -1059,6 +1059,8 @@ const isOnline = ref(navigator.onLine);
 const liveMode = ref(false);
 let dismissOfflineNotif = null;
 let intervalIsOnline = null;
+const intervalSync = ref(null);
+const intervalGetNotifications = ref(null);
 
 const settings = ref({
   syncData: "OFFLINE",
@@ -1138,6 +1140,12 @@ onMounted(() => {
 
   loadNotifications();
   sync_data();
+  notifyUserToEnableSync();
+  intervalSync.value = setInterval(sync_data, 10 * 60 * 1000);
+  intervalGetNotifications.value = setInterval(
+    loadNotifications,
+    5 * 60 * 1000
+  );
 });
 
 window.chrome?.webview?.addEventListener("message", (arg) => {
@@ -1320,6 +1328,8 @@ function onFirstDataRendered(params) {}
 onBeforeUnmount(() => {
   const state = gridApi.value.getColumnState();
   localStorage.setItem("modbusRegisterGridState", JSON.stringify(state));
+  clearInterval(intervalSync.value);
+  clearInterval(intervalGetNotifications.value);
 });
 
 const autoSizeStrategy = {
@@ -1643,6 +1653,47 @@ function saveSettings() {
   });
 }
 
+function notifyUserToEnableSync() {
+  if (
+    isOnline.value &&
+    user.value?.id &&
+    (settings.value.syncData === "OFFLINE" ||
+      (!settings.value.push && !settings.value.pull))
+  ) {
+    const sync_noticiation_dissmissed = $q.cookies.get(
+      "sync_noticiation_dissmissed"
+    );
+    if (sync_noticiation_dissmissed !== "true") {
+      $q.notify({
+        message:
+          "We noticed that the syncing option in the settings isn't enabled on your account, you can synchronize your data with the public registry by activating the option in the settings.",
+        timeout: 0,
+        multiLine: true,
+        actions: [
+          {
+            label: "Go to Settings",
+            color: "primary",
+            flat: false,
+            style: "margin-right: 10px",
+            handler: () => {
+              openSettingsDialog();
+            },
+          },
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              $q.cookies.set("sync_noticiation_dissmissed", "true", {
+                expires: "10d",
+              });
+            },
+          },
+        ],
+      });
+    }
+  }
+}
+
 async function sync_data() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   if (!user.value?.id || !isOnline.value) {
@@ -1666,11 +1717,33 @@ async function pushLocalDevicesChanges() {
     return;
   }
 
-  const devices = await localApi
+  let devices = await localApi
     .get("modbus-register/devices?local_only=true")
     .json();
+  devices = devices.filter((d) => d.private !== true);
   if (devices?.length > 0) {
+    let index = 0;
+    const notif = $q.notify({
+      group: false, // required to be updatable
+      timeout: 0, // we want to be in control when it gets dismissed
+      spinner: true,
+      message: "Pushing local devices changes...",
+      caption: "0%",
+    });
     for await (const item of devices) {
+      index++;
+      const progress = Math.round((index / devices.length) * 100);
+      notif({
+        caption: `${progress}%`,
+      });
+      if (progress === 100) {
+        notif({
+          icon: "done",
+          spinner: false,
+          message: "Pushing local devices changes done!",
+          timeout: 2500,
+        });
+      }
       const change = structuredClone(item);
       delete change.id;
       delete change.created_at;
@@ -1679,11 +1752,6 @@ async function pushLocalDevicesChanges() {
       delete change.image_id;
       delete change.image;
       delete change.remote_id;
-
-      // Skip private rows
-      if (change.private) {
-        continue;
-      }
       delete change.private;
       if (item.status === "UPDATED") {
         if (!item.remote_id) continue;
@@ -1743,7 +1811,28 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
     .json();
 
   if (devicesChanges?.length > 0) {
+    let index = 0;
+    const notif = $q.notify({
+      group: false,
+      timeout: 0,
+      spinner: true,
+      message: "Pulling remote devices changes...",
+      caption: "0%",
+    });
     for await (const item of devicesChanges) {
+      index++;
+      const progress = Math.round((index / devicesChanges.length) * 100);
+      notif({
+        caption: `${progress}%`,
+      });
+      if (progress === 100) {
+        notif({
+          icon: "done",
+          spinner: false,
+          message: "Pulling remote devices changes done!",
+          timeout: 2500,
+        });
+      }
       const change = structuredClone(item);
       delete change.revisions;
       delete change.user;
@@ -1799,19 +1888,42 @@ async function pushLocalEntriesChanges() {
   if (!settings.value.push) {
     return;
   }
-  const entries = await localApi
+  let entries = await localApi
     .get("modbus-registers?local_only=true&limit=50")
-    .json();
+    .then(async (res) => await res.json());
+
+  entries.data = entries?.data?.filter((e) => e.private !== true);
   if (entries?.data?.length > 0) {
+    let index = 0;
+    const notif = $q.notify({
+      group: false,
+      timeout: 0,
+      spinner: true,
+      message: "Pushing local entries changes...",
+      caption: "0%",
+    });
     for await (const item of entries.data) {
+      index++;
+      const progress = Math.round((index / entries.data.length) * 100);
+      notif({
+        caption: `${progress}%`,
+      });
+      if (progress === 100) {
+        notif({
+          icon: "done",
+          spinner: false,
+          message: "Pushing local entries changes done!",
+          timeout: 2500,
+        });
+      }
       const change = structuredClone(item);
       delete change.created_at;
       delete change.updated_at;
       delete change.status;
       delete change.device;
-      // Skip private & uncompleted rows
+      delete change.private;
+      // Skip uncompleted rows
       if (
-        change.private ||
         !change.register_address ||
         !change.operation ||
         !change.data_format ||
@@ -1819,9 +1931,6 @@ async function pushLocalEntriesChanges() {
       ) {
         continue;
       }
-
-      delete change.private;
-
       change.device_id = item.device?.remote_id || null;
 
       if (item.status === "UPDATED") {
@@ -1886,7 +1995,28 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
     .json();
 
   if (entriesChanges?.data?.length > 0) {
+    let index = 0;
+    const notif = $q.notify({
+      group: false,
+      timeout: 0,
+      spinner: true,
+      message: "Pulling remote entries changes...",
+      caption: "0%",
+    });
     for await (const item of entriesChanges.data) {
+      index++;
+      const progress = Math.round((index / entriesChanges.data.length) * 100);
+      notif({
+        caption: `${progress}%`,
+      });
+      if (progress === 100) {
+        notif({
+          icon: "done",
+          spinner: false,
+          message: "Pulling remote entries changes done!",
+          timeout: 2500,
+        });
+      }
       const change = structuredClone(item);
       delete change.revisions;
       delete change.user;

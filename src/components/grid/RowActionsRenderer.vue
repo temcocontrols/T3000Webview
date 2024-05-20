@@ -138,20 +138,22 @@ function togglePrivate() {
         icon="question_mark"
       >
         <q-tooltip v-if="props.params.data.status === 'UPDATED'"
-          >This row is updated on the local database, but not on the cloud
-          database yet.</q-tooltip
+          >This row is updated on the local database, but not on the public
+          modbus register yet, waiting for syncing data to run.</q-tooltip
         >
         <q-tooltip v-else-if="props.params.data.status === 'NEW'"
-          >This item is only in the local database and not synchronized with the
-          cloud database yet.</q-tooltip
+          >This item is only exists in the local database and not synchronized
+          with the public modbus register yet, waiting for syncing data to
+          run.</q-tooltip
         >
         <q-tooltip v-else-if="props.params.data.status === 'REVISION'"
-          >This item has been pushed to the public cloud database but it's under
-          review so it will show up only for you until it's approved.</q-tooltip
+          >This item has been pushed to the public modbus register but it's
+          under review so it will show up only for you until it's
+          approved.</q-tooltip
         ><q-tooltip v-else-if="props.params.data.status === 'UNDER_REVIEW'"
-          >Your changes to this item has been pushed to the public cloud
-          database but it's under review so it will show up only for you until
-          it's approved.</q-tooltip
+          >Your changes to this item has been pushed to the public modbus
+          register database but it's under review so it will show up only for
+          you until it's approved.</q-tooltip
         ></q-btn
       >
 
