@@ -703,6 +703,14 @@
                       v-model="settingsDialog.settings.pull"
                       label="Pull data from the public registry"
                     />
+                    <div v-if="settings.pull || settings.push" class="mt-4">
+                      <q-btn
+                        class="q-mt-sm"
+                        label="Sync
+                    Now"
+                        @click="triggerSyncData"
+                      />
+                    </div>
                   </div>
                 </q-card-section>
               </q-card>
@@ -1139,9 +1147,9 @@ onMounted(() => {
   settings.value = getModbusRegisterSettings() || settings.value;
 
   loadNotifications();
-  sync_data();
+  syncData();
   notifyUserToEnableSync();
-  intervalSync.value = setInterval(sync_data, 10 * 60 * 1000);
+  intervalSync.value = setInterval(syncData, 10 * 60 * 1000);
   intervalGetNotifications.value = setInterval(
     loadNotifications,
     5 * 60 * 1000
@@ -1630,7 +1638,7 @@ watch(isOnline, (newVal, _oldVal) => {
   if (newVal === true) {
     if (user.value) {
       loadNotifications();
-      sync_data();
+      syncData();
     }
   }
 });
@@ -1694,7 +1702,20 @@ function notifyUserToEnableSync() {
   }
 }
 
-async function sync_data() {
+async function triggerSyncData() {
+  $q.notify({
+    message: "Syncing data...",
+    timeout: 2000,
+    spinner: true,
+  });
+  await syncData();
+  $q.notify({
+    message: "Syncing data done!",
+    timeout: 2000,
+  });
+}
+
+async function syncData() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   if (!user.value?.id || !isOnline.value) {
     return;
