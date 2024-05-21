@@ -28,7 +28,7 @@ export default {
       $q.cookies.remove("token");
       user.value = null;
       localStorage.removeItem("user");
-      localApi.delete("user").catch((err) => {
+      localApi.post("logout").catch((err) => {
         console.log(err);
       });
       router.replace({ path: globalNav.value.home });

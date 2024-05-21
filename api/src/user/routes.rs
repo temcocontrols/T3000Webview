@@ -4,7 +4,7 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
-use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
+use sea_orm::{entity::prelude::*, IntoActiveModel, Set, TryIntoModel};
 use serde::Deserialize;
 
 use crate::entity::user;
@@ -19,6 +19,7 @@ pub fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/user", get(get_user).post(save_user).delete(delete_user))
         .route("/login", post(login))
+        .route("/logout", post(logout))
         .route(
             "/user/update_last_modbus_register_pull",
             patch(update_user_last_modbus_register_pull),
@@ -44,7 +45,7 @@ pub async fn save_user(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
-    let mut last_pull = Some("2024-02-10 00:00:00".to_string());
+    let mut last_pull = Some("2024-05-15 00:00:00".to_string());
 
     if let Some(user) = the_user {
         if user.last_modbus_register_pull.is_some() {
@@ -117,4 +118,22 @@ pub async fn login(Json(params): Json<LoginParams>) -> Result<Json<String>> {
         .unwrap();
 
     Ok(Json("Logging in...".to_string()))
+}
+
+pub async fn logout(State(state): State<AppState>) -> Result<Json<user::Model>> {
+    let mut model = Into::<user::ActiveModel>::into(
+        User::find()
+            .one(&state.conn)
+            .await
+            .map_err(|error| Error::DbError(error.to_string()))?
+            .ok_or(Error::NotFound)?,
+    );
+
+    model.token = Set(None);
+    let updated_item = model
+        .save(&state.conn)
+        .await
+        .map_err(|error| Error::DbError(error.to_string()))?;
+
+    Ok(Json(updated_item.try_into_model().unwrap()))
 }

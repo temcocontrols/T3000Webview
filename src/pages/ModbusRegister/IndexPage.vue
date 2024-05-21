@@ -1740,13 +1740,17 @@ async function pushLocalDevicesChanges() {
 
   let devices = await localApi
     .get("modbus-register/devices?local_only=true")
-    .json();
+    .then((res) => res.json())
+    .catch((err) => {
+      console.log(err);
+      return [];
+    });
   devices = devices.filter((d) => d.private !== true);
   if (devices?.length > 0) {
     let index = 0;
     const notif = $q.notify({
-      group: false, // required to be updatable
-      timeout: 0, // we want to be in control when it gets dismissed
+      group: false,
+      timeout: 0,
       spinner: true,
       message: "Pushing local devices changes...",
       caption: "0%",
@@ -1786,9 +1790,13 @@ async function pushLocalDevicesChanges() {
             return null;
           });
         if (res) {
-          await localApi.patch("modbus-register/devices/" + item.id, {
-            json: { status: res.status },
-          });
+          await localApi
+            .patch("modbus-register/devices/" + item.id, {
+              json: { status: res.status },
+            })
+            .catch((err) => {
+              console.log(err);
+            });
         }
       } else if (item.status === "NEW") {
         const res = await liveApi
@@ -1808,7 +1816,9 @@ async function pushLocalDevicesChanges() {
                 remote_id: res.id,
               },
             })
-            .json();
+            .catch((err) => {
+              console.log(err);
+            });
         }
       }
     }
@@ -1819,7 +1829,13 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
   if (!settings.value.pull) {
     return;
   }
-  const user = await localApi.get("user").json();
+  const user = await localApi
+    .get("user")
+    .then((res) => res.json())
+    .catch((err) => {
+      console.log(err);
+      return null;
+    });
   if (!user) {
     return;
   }
@@ -1880,7 +1896,7 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
           ["NEW", "UPDATED"].includes(existing_item.status) ||
           remoteUpdated <= localUpdated
         )
-          return;
+          continue;
         delete change.id;
         delete change.created_at;
         delete change.updated_at;
@@ -1888,11 +1904,17 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
           .patch("modbus-register/devices/" + existing_item.id, {
             json: change,
           })
-          .json();
+          .catch((err) => {
+            console.log(err);
+          });
       } else {
-        await localApi.post("modbus-register/devices", {
-          json: change,
-        });
+        await localApi
+          .post("modbus-register/devices", {
+            json: change,
+          })
+          .catch((err) => {
+            console.log(err);
+          });
       }
     }
     if (devicesChanges?.length > 49) {
@@ -1960,7 +1982,11 @@ async function pushLocalEntriesChanges() {
           .patch("modbus-registers/" + item.id, {
             json: change,
           })
-          .json();
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
         if (res) {
           await localApi.patch("modbus-registers/" + item.id, {
             json: { status: res.status },
@@ -1972,7 +1998,11 @@ async function pushLocalEntriesChanges() {
           .post("modbus-registers", {
             json: change,
           })
-          .json();
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+            return null;
+          });
         if (res) {
           delete res.revisions;
           delete res.user;
@@ -1988,9 +2018,17 @@ async function pushLocalEntriesChanges() {
             .post("modbus-registers", {
               json: res,
             })
-            .json();
+            .then((res) => res.json())
+            .catch((err) => {
+              console.log(err);
+              return null;
+            });
           if (localCreated?.id) {
-            await localApi.delete("modbus-registers/" + item.id);
+            await localApi
+              .delete("modbus-registers/" + item.id)
+              .catch((err) => {
+                console.log(err);
+              });
           }
         }
       }
@@ -2028,7 +2066,7 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
       index++;
       const progress = Math.round((index / entriesChanges.data.length) * 100);
       notif({
-        caption: `${progress}%`,
+        caption: `${progress}% index ${index} of ${entriesChanges.data.length}`,
       });
       if (progress === 100) {
         notif({
@@ -2061,11 +2099,12 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
           ["NEW", "UPDATED"].includes(existing_item.status) ||
           remoteUpdated <= localUpdated
         )
-          return;
+          continue;
         delete change.id;
         const device = await localApi
           .get("modbus-register/devices/remote_id/" + item.device_id)
-          .json();
+          .then((res) => res.json())
+          .catch(() => null);
         if (device?.id) {
           change.device_id = device.id;
         }
@@ -2073,7 +2112,10 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
           .patch("modbus-registers/" + item.id, {
             json: change,
           })
-          .json();
+          .then((res) => res.json())
+          .catch((err) => {
+            console.log(err);
+          });
       } else {
         // Format the date as YYYY-MM-DD HH:MM:SS to store in Sqlite
         change.created_at = new Date(change.created_at)
