@@ -2066,7 +2066,7 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
       index++;
       const progress = Math.round((index / entriesChanges.data.length) * 100);
       notif({
-        caption: `${progress}% index ${index} of ${entriesChanges.data.length}`,
+        caption: `${progress}% ${index} of ${entriesChanges.data.length}`,
       });
       if (progress === 100) {
         notif({
