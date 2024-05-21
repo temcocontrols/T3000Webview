@@ -1881,6 +1881,9 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
       delete change.image;
       delete change.image_id;
       delete change.entries;
+      delete change.id;
+      delete change.created_at;
+      delete change.updated_at;
 
       const existing_item = await localApi
         .get("modbus-register/devices/remote_id/" + item.id)
@@ -1890,16 +1893,6 @@ async function pullRemoteDevicesChanges(limit = 50, offset = 0) {
         if (existing_item.status === "DELETED") {
           continue;
         }
-        const remoteUpdated = new Date(item.updated_at);
-        const localUpdated = new Date(existing_item.updated_at);
-        if (
-          ["NEW", "UPDATED"].includes(existing_item.status) ||
-          remoteUpdated <= localUpdated
-        )
-          continue;
-        delete change.id;
-        delete change.created_at;
-        delete change.updated_at;
         await localApi
           .patch("modbus-register/devices/" + existing_item.id, {
             json: change,
@@ -2085,6 +2078,7 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
       delete change.ModbusRegisterNotification;
       delete change.device;
       delete change.device_id;
+      delete change.id;
       const existing_item = await localApi
         .get("modbus-registers/" + item.id)
         .then((res) => res.json())
@@ -2093,14 +2087,6 @@ async function pullRemoteEntriesChanges(limit = 50, offset = 0) {
         if (existing_item.status === "DELETED") {
           continue;
         }
-        const remoteUpdated = new Date(item.updated_at);
-        const localUpdated = new Date(existing_item.updated_at);
-        if (
-          ["NEW", "UPDATED"].includes(existing_item.status) ||
-          remoteUpdated <= localUpdated
-        )
-          continue;
-        delete change.id;
         const device = await localApi
           .get("modbus-register/devices/remote_id/" + item.device_id)
           .then((res) => res.json())
