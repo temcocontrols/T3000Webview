@@ -1821,7 +1821,6 @@ async function pushLocalDevicesChanges() {
             });
         }
       } else if (item.status === "DELETED") {
-        console.log("delete", item);
         if (isAdmin(user.value)) {
           if (item.remote_id) {
             await liveApi
