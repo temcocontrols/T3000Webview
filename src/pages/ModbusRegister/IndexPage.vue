@@ -1810,7 +1810,7 @@ async function pushLocalDevicesChanges() {
           });
         if (res) {
           await localApi
-            .patch("modbus-register/devices/" + +item.id, {
+            .patch("modbus-register/devices/" + item.id, {
               json: {
                 status: res.status,
                 remote_id: res.id,
