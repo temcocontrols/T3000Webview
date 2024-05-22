@@ -16,7 +16,9 @@ pub async fn get_all(
 ) -> Result<Json<Vec<serde_json::Value>>> {
     let mut query = ModbusRegisterDevices::find();
     if Some(true) == params.local_only {
-        query = query.filter(devices::Column::Status.is_in(vec!["NEW", "UPDATED"]));
+        query = query.filter(devices::Column::Status.is_in(vec!["NEW", "UPDATED", "DELETED"]));
+    } else {
+        query = query.filter(devices::Column::Status.not_like("DELETED"));
     }
     let results = query.find_also_related(Files).all(&state.conn).await;
     match results {
@@ -162,21 +164,27 @@ pub async fn update(
     Ok(Json(updated_item.try_into_model().unwrap()))
 }
 
-pub async fn delete(
-    State(state): State<AppState>,
-    Path(id): Path<i32>,
-) -> Result<Json<devices::Model>> {
-    let setting = ModbusRegisterDevices::find_by_id(id)
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<String>> {
+    let item: devices::Model = ModbusRegisterDevices::find_by_id(id)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
         .map(Into::into)?;
 
-    ModbusRegisterDevices::delete_by_id(id)
-        .exec(&state.conn)
-        .await
-        .map_err(|error| Error::DbError(error.to_string()))?;
-
-    Ok(Json(setting))
+    if item.status == "NEW" || item.status == "DELETED" {
+        ModbusRegisterDevices::delete_by_id(id)
+            .exec(&state.conn)
+            .await
+            .map_err(|error| Error::DbError(error.to_string()))?;
+        Ok(Json("Deleted successfully".to_string()))
+    } else {
+        let mut updated_item = devices::ActiveModel::from(item.clone());
+        updated_item.status = Set("DELETED".to_string());
+        updated_item
+            .save(&state.conn)
+            .await
+            .map_err(|error| Error::DbError(error.to_string()))?;
+        Ok(Json("Deleted successfully".to_string()))
+    }
 }

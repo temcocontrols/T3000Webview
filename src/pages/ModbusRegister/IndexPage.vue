@@ -1820,6 +1820,24 @@ async function pushLocalDevicesChanges() {
               console.log(err);
             });
         }
+      } else if (item.status === "DELETED") {
+        console.log("delete", item);
+        if (isAdmin(user.value)) {
+          if (item.remote_id) {
+            await liveApi
+              .delete("modbus-register/devices/" + item.remote_id)
+              .catch((err) => {
+                console.log(err);
+              });
+          }
+
+          await localApi
+            .delete("modbus-register/devices/" + item.id)
+            .catch((err) => {
+              console.log(err);
+            });
+          getDeviceList();
+        }
       }
     }
   }
