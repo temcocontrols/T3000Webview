@@ -2024,6 +2024,16 @@ async function pushLocalEntriesChanges() {
               });
           }
         }
+      } else if (item.status === "DELETED") {
+        if (isAdmin(user.value)) {
+          await liveApi.delete("modbus-registers/" + item.id).catch((err) => {
+            console.log(err);
+          });
+          await localApi.delete("modbus-registers/" + item.id).catch((err) => {
+            console.log(err);
+          });
+          gridApi.value.refreshServerSide();
+        }
       }
     }
   }

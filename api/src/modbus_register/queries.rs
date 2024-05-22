@@ -63,7 +63,6 @@ pub fn generate_filter_query(
         }
     }
 
-    query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
 
@@ -71,7 +70,10 @@ pub fn generate_filter_query(
         query = query.filter(modbus_register::Column::DeviceId.eq(device_id.clone().unwrap()));
     }
     if local_only {
-        query = query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED"]));
+        query =
+            query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED", "DELETED"]));
+    } else {
+        query = query.filter(modbus_register::Column::Status.not_like("DELETED"));
     }
 
     query
@@ -318,7 +320,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
 
     match item {
         Ok(Some(item)) => {
-            if item.status == "NEW" {
+            if item.status == "NEW" || item.status == "DELETED" {
                 ModbusRegister::delete_by_id(id)
                     .exec(&state.conn)
                     .await
