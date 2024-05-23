@@ -1,6 +1,9 @@
-# T3000 Webview User Interface
+# T3000 Webview
 
-This repo contains the webview componets that we used in T3000, currently there is one main component, the T3000 HVAC drawer is a web based tool to make and visualize HVAC drawings,used inside T3000 to provide a way to make HVAC drawings for buildings.
+This repository stores the webview components used in the T3000 software. There are two primary components:
+
+ - *T3000 HVAC Drawer*: This web-based tool allows users to create and visualize HVAC system drawings for buildings.
+ - *Modbus Register Tool*: This tool enables users to add, edit, and manage Modbus register lists for Modbus devices. Additionally, it includes a Rust-based API for managing Modbus register data interaction with the SQLite database. The tool can also synchronize the local SQLite database data with the [T3 User Library API](https://github.com/temcocontrols/T3000_ApplicationLibrary_API), if the user enables data syncing in their settings.
 
 ## Install the dependencies
 
