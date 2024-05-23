@@ -59,29 +59,9 @@ npm run build
 
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
 
-## How to run this tool in C++ webview2
-
-1- Build the package as you see above
-
-2- get the result files from `dist/spa/` and serve them using a http lib like [cpp-httplib](https://github.com/yhirose/cpp-httplib), as you see in this C++ example:
-
-https://github.com/yhirose/cpp-httplib/blob/master/example/simplesvr.cc
-
-3- Use the url you got from the previous step in webview2 like this example from Microsoft:
-
-https://github.com/MicrosoftEdge/WebView2Samples/tree/main/GettingStartedGuides/Win32_GettingStarted
-
-Just replace "https://bing.com" with your url from step #2 and run the example. that's it, you have the HVAC drawer running in the webview.
-
-> And don't forget to delete the following three lines from the example to allow non-ssl http urls:
-
-    if (source.substr(0, 5) != L"https") {
-        args->put_Cancel(true);
-    }
-
 ## T3000 Cpp integration
 
-We've seamlessly integrated our Quasar application with the T3000 software's C++ code, allowing us to utilize data obtained from T3000 devices for rendering animated drawings. Furthermore, the T3000 software can now exert control over the drawing's status; for instance, if a fan is in the "On" state, it can trigger motion in the corresponding fan object.
+This repository is used as a sub-module inside the [T3000_Building_Automation_System](https://github.com/temcocontrols/T3000_Building_Automation_System) repository with the T3000 software's C++ code, allowing us to utilize data obtained from T3000 devices for rendering animated drawings. Furthermore, the T3000 software can now exert control over the drawing's status; for instance, if a fan is in the "On" state, it can trigger motion in the corresponding fan object.
 
 To facilitate communication, the JavaScript side communicates with the C++ webview through the `window.chrome.webview.postMessage` function. Here's an example of how to send a message from the C++ side back to our JavaScript component:
 
