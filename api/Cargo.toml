@@ -7,7 +7,7 @@ edition = "2021"
 
 [lib]
 name = "t3_webview_api"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axum = { version = "0.7.5", features = ["multipart"] }
