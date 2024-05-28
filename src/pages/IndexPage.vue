@@ -1,6 +1,7 @@
 <template>
   <q-page>
     <div>
+      <!-- Tools Sidebar -->
       <ToolsSidebar
         v-if="!locked"
         :selected-tool="selectedTool"
@@ -14,6 +15,7 @@
         @tool-dropped="toolDropped"
       />
       <div class="viewport-wrapper">
+        <!-- Top Toolbar -->
         <top-toolbar
           @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]"
@@ -23,10 +25,12 @@
           :disable-paste="locked || !clipboardFull"
           :zoom="zoom"
         />
+        <!-- Navigation Buttons -->
         <div
           class="flex fixed top-10 z-50 nav-btns"
           :class="{ locked: locked }"
         >
+          <!-- Go Back Button -->
           <q-btn
             v-if="grpNav?.length > 1"
             icon="arrow_back"
@@ -41,6 +45,7 @@
               <strong>Go back</strong>
             </q-tooltip>
           </q-btn>
+          <!-- Lock/Unlock Button -->
           <q-btn
             :icon="locked ? 'lock_outline' : 'lock_open'"
             class="lock-btn"
@@ -57,6 +62,7 @@
             </q-tooltip>
           </q-btn>
         </div>
+        <!-- Viewport Area -->
         <div
           class="viewport"
           tabindex="0"
@@ -68,6 +74,7 @@
             }
           "
         >
+          <!-- Cursor Icon -->
           <q-icon
             class="cursor-icon"
             v-if="!locked && selectedTool.name !== 'Pointer'"
@@ -84,6 +91,7 @@
               top: cursorIconPos.y + 'px',
             }"
           />
+          <!-- Vue Selecto for Selectable Items -->
           <vue-selecto
             ref="selecto"
             dragContainer=".viewport"
@@ -101,6 +109,7 @@
             :dragCondition="selectoDragCondition"
           >
           </vue-selecto>
+          <!-- Moveable Component for Draggable/Resizable Items -->
           <div ref="viewport">
             <vue-moveable
               ref="moveable"
@@ -157,7 +166,7 @@
               @rotateGroupEnd="onRotateGroupEnd"
             >
             </vue-moveable>
-
+            <!-- Context Menu -->
             <q-menu
               v-if="contextMenuShow"
               touch-position
@@ -165,6 +174,7 @@
               context-menu
             >
               <q-list>
+                <!-- Copy Option -->
                 <q-item
                   dense
                   clickable
@@ -187,6 +197,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Duplicate Option -->
                 <q-item
                   dense
                   clickable
@@ -209,6 +220,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Group Option -->
                 <q-item dense clickable v-close-popup @click="groupSelected">
                   <q-item-section avatar>
                     <q-avatar
@@ -242,6 +254,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Add to Library Option -->
                 <q-item dense clickable v-close-popup @click="addToLibrary">
                   <q-item-section avatar>
                     <q-avatar
@@ -259,6 +272,7 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Bring to Front Option -->
                 <q-item
                   dense
                   clickable
@@ -275,6 +289,7 @@
                   </q-item-section>
                   <q-item-section class="py-2">Bring to front</q-item-section>
                 </q-item>
+                <!-- Send to Back Option -->
                 <q-item
                   dense
                   clickable
@@ -292,6 +307,7 @@
                   <q-item-section class="py-2">Send to Back</q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Rotate 90 Degrees Option -->
                 <q-item
                   dense
                   clickable
@@ -308,6 +324,7 @@
                   </q-item-section>
                   <q-item-section>Rotate 90°</q-item-section>
                 </q-item>
+                <!-- Rotate -90 Degrees Option -->
                 <q-item
                   dense
                   clickable
@@ -325,6 +342,7 @@
                   <q-item-section>Rotate -90°</q-item-section>
                 </q-item>
                 <q-separator />
+                <!-- Delete Option -->
                 <q-item dense clickable v-close-popup @click="deleteSelected">
                   <q-item-section avatar>
                     <q-avatar
@@ -576,6 +594,7 @@
           </div>
         </div>
       </div>
+      <!-- Object config sidebar -->
       <ObjectConfig
         :object="appState.items[appState.activeItemIndex]"
         v-if="
@@ -729,38 +748,45 @@ import {
 } from "../lib/common";
 import { liveApi } from "../lib/api";
 
+// Meta information for the application
 const metaData = {
   title: "HVAC Drawer",
 };
-useMeta(metaData);
-const keycon = new KeyController();
-const $q = useQuasar();
-const moveable = ref(null);
-const selecto = ref(null);
-const viewport = ref(null);
-const targets = ref([]);
-const selectedTool = ref({ ...tools[0], type: "default" });
-const linkT3EntryDialog = ref({ active: false, data: null });
+useMeta(metaData); // Set the meta information
 
+const keycon = new KeyController(); // Initialize key controller for handling keyboard events
+const $q = useQuasar(); // Access Quasar framework instance
+const moveable = ref(null); // Reference to the moveable component instance
+const selecto = ref(null); // Reference to the selecto component instance
+const viewport = ref(null); // Reference to the viewport element
+const targets = ref([]); // Array of selected targets
+const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
+const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+
+// State variables for drawing and transformations
 const isDrawing = ref(false);
 const startTransform = ref([0, 0]);
-const snappable = ref(true);
-const keepRatio = ref(false);
+const snappable = ref(true); // Enable snapping for moveable components
+const keepRatio = ref(false); // Maintain aspect ratio for resizing
 
+// List of continuous object types
 const continuesObjectTypes = ["Duct", "Wall"];
 
+// State of the import JSON dialog
 const importJsonDialog = ref({
   addedCount: 0,
   active: false,
   uploadBtnLoading: false,
   data: null,
 });
-const savedNotify = ref(false);
-const contextMenuShow = ref(false);
+const savedNotify = ref(false); // Notification state for saving
+const contextMenuShow = ref(false); // State of the context menu visibility
 
+// Panel options for selection
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
-let getPanelsInterval = null;
+let getPanelsInterval = null; // Interval for fetching panel data
 
+// Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
   if (T3000_Data.value.loadingPanel === null) return 100;
   return parseInt(
@@ -769,7 +795,7 @@ const loadingPanelsProgress = computed(() => {
   );
 });
 
-const clipboardFull = ref(false);
+const clipboardFull = ref(false); // State of the clipboard
 
 // Dev mode only
 if (process.env.DEV) {
@@ -780,6 +806,7 @@ if (process.env.DEV) {
   });
 }
 
+// Initialization of empty project and library structures
 let panzoomInstance = null;
 const emptyProject = {
   version: process.env.VERSION,
@@ -799,30 +826,39 @@ const emptyLib = {
   objLib: [],
 };
 
+// State references for the library and application state
 const library = ref(cloneDeep(emptyLib));
 const appState = ref(cloneDeep(emptyProject));
-const undoHistory = ref([]);
-const redoHistory = ref([]);
-const locked = ref(false);
-const grpNav = ref([]);
-let lastAction = null;
-const cursorIconPos = ref({ x: 0, y: 0 });
-const objectsRef = ref(null);
+const undoHistory = ref([]); // History for undo actions
+const redoHistory = ref([]); // History for redo actions
+const locked = ref(false); // State to lock or unlock the interface
+const grpNav = ref([]); // Navigation history for grouped elements
+let lastAction = null; // Store the last action performed
+const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
+const objectsRef = ref(null); // Reference to objects
+
+// Lifecycle hook for component mount
 onMounted(() => {
+  // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
   globalNav.value.back = null;
   globalNav.value.home = "/";
-  isLoggedIn();
+  isLoggedIn(); // Check if user is logged in
+
+  // Restore app state from local storage if not in a webview
   if (!window.chrome?.webview?.postMessage) {
     const localState = localStorage.getItem("appState");
     if (localState) {
       appState.value = JSON.parse(localState);
     }
   }
+
+  // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
-    // event.returnValue = "Not saved!";
     save();
   });
+
+  // Initialize panzoom for viewport
   panzoomInstance = panzoom(viewport.value, {
     maxZoom: 4,
     minZoom: 0.1,
@@ -837,17 +873,22 @@ onMounted(() => {
       return shouldIgnore;
     },
   });
+
+  // Update the viewport transform on panzoom transform event
   panzoomInstance.on("transform", function (e) {
     appState.value.viewportTransform = e.getTransform();
     triggerRef(appState);
   });
 
+  // Request initial data and panels list if in a webview
   window.chrome?.webview?.postMessage({
     action: 1, // GET_INITIAL_DATA
   });
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
+
+  // Set intervals for fetching panel and entry data if in a webview
   if (window.chrome?.webview?.postMessage) {
     getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
       action: 4, // GET_PANELS_LIST
@@ -867,18 +908,24 @@ onMounted(() => {
       });
     }, 10000);
   }
+
+  // Refresh moveable guides after a short delay
   setTimeout(() => {
     refreshMoveableGuides();
   }, 100);
 });
+
+// Lifecycle hook for component unmount
 onUnmounted(() => {
   if (panzoomInstance?.dispose) return;
   panzoomInstance.dispose();
 });
 
+// Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("Recieved a message from webview", arg.data);
+  console.log("Received a message from webview", arg.data);
   if ("action" in arg.data) {
+    // Handle various actions based on message data
     if (arg.data.action === "GET_PANELS_LIST_RES") {
       if (arg.data.data?.length) {
         T3000_Data.value.panelsList = arg.data.data;
@@ -889,6 +936,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
         });
       }
     } else if (arg.data.action === "UPDATE_ENTRY_RES") {
+      // Handle update entry response
     } else if (arg.data.action === "GET_INITIAL_DATA_RES") {
       if (arg.data.data) {
         arg.data.data = JSON.parse(arg.data.data);
@@ -1067,7 +1115,7 @@ function viewportMouseMoved(e) {
     refreshObjects();
   }
 }
-
+// Refreshes the guidelines for the moveable elements
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
   const lines = document.querySelectorAll(
@@ -1078,6 +1126,7 @@ function refreshMoveableGuides() {
   });
 }
 
+// Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
   if (!objectsRef.value) return;
   for (const obj of objectsRef.value) {
@@ -1086,35 +1135,41 @@ function refreshObjects() {
   }
 }
 
+// Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    console.log(title);
+    console.log(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      save();
-      refreshObjects();
+      save(); // Save the current state
+      refreshObjects(); // Refresh objects
     }, 200);
   }
 
-  redoHistory.value = [];
+  redoHistory.value = []; // Clear redo history
   undoHistory.value.unshift({
     title,
     state: cloneDeep(appState.value),
   });
 
+  // Maintain a maximum of 20 actions in the undo history
   if (undoHistory.value.length > 20) {
     undoHistory.value.pop();
   }
 }
 
+// Handles click events on group elements
 function onClickGroup(e) {
   selecto.value.clickTarget(e.inputEvent, e.inputTarget);
 }
 
+// Starts dragging an element
 function onDragStart(e) {
   addActionToHistory("Move Object");
 }
+
+// Handles dragging of an element
 function onDrag(e) {
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
@@ -1123,19 +1178,21 @@ function onDrag(e) {
   e.target.style.transform = e.transform;
 }
 
+// Ends the dragging of an element
 function onDragEnd(e) {
   if (!e.lastEvent) {
-    undoHistory.value.shift();
+    undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
     const item = appState.value.items.find(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    save();
-    refreshObjects();
+    save(); // Save the state after drag end
+    refreshObjects(); // Refresh objects
   }
 }
 
+// Starts dragging a group of elements
 function onDragGroupStart(e) {
   addActionToHistory("Move Group");
   e.events.forEach((ev, i) => {
@@ -1145,6 +1202,8 @@ function onDragGroupStart(e) {
     ev.set(appState.value.items[itemIndex].translate);
   });
 }
+
+// Handles dragging of a group of elements
 function onDragGroup(e) {
   e.events.forEach((ev, i) => {
     const itemIndex = appState.value.items.findIndex(
@@ -1153,13 +1212,17 @@ function onDragGroup(e) {
     appState.value.items[itemIndex].translate = ev.beforeTranslate;
   });
 }
+
+// Ends the dragging of a group of elements
 function onDragGroupEnd(e) {
   if (!e.lastEvent) {
-    undoHistory.value.shift();
+    undoHistory.value.shift(); // Remove the last action if dragging was not completed
   } else {
-    refreshObjects();
+    refreshObjects(); // Refresh objects
   }
 }
+
+// Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
   const target = e.inputEvent.target;
   if (
@@ -1171,6 +1234,8 @@ function onSelectoDragStart(e) {
     e.stop();
   }
 }
+
+// Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
   appState.value.selectedTargets = e.selected;
   if (e.selected && !e.inputEvent.ctrlKey) {
@@ -1211,9 +1276,10 @@ function onSelectoSelectEnd(e) {
   } else {
     contextMenuShow.value = false;
   }
-  refreshMoveableGuides();
+  refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 }
 
+// Selects a group of elements by their group ID
 function selectGroup(id) {
   const targets = [];
   appState.value.items
@@ -1234,6 +1300,7 @@ function selectGroup(id) {
   selecto.value.setSelectedTargets(appState.value.selectedTargets);
 }
 
+// Starts resizing an element
 function onResizeStart(e) {
   addActionToHistory("Resize object");
   const itemIndex = appState.value.items.findIndex(
@@ -1243,6 +1310,7 @@ function onResizeStart(e) {
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
 }
 
+// Handles resizing of an element
 function onResize(e) {
   // appState.value.items[itemIndex].width = e.width
   // appState.value.items[itemIndex].height = e.height
@@ -1254,6 +1322,8 @@ function onResize(e) {
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
 }
+
+// Ends the resizing of an element
 function onResizeEnd(e) {
   const itemIndex = appState.value.items.findIndex(
     (item) => `moveable-item-${item.id}` === e.lastEvent.target.id
@@ -1261,11 +1331,15 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
-  refreshObjects();
+  refreshObjects(); // Refresh objects after resizing
 }
+
+// Starts rotating an element
 function onRotateStart(e) {
   addActionToHistory("Rotate object");
 }
+
+// Handles rotating of an element
 function onRotate(e) {
   // e.target.style.transform = e.drag.transform;
   const item = appState.value.items.find(
@@ -1274,17 +1348,22 @@ function onRotate(e) {
   item.rotate = e.rotate;
 }
 
+// Refreshes objects on rotate end
 function onRotateEnd(e) {
   refreshObjects();
 }
 
+// refreshes objects on rotate group end
 function onRotateGroupEnd(e) {
   refreshObjects();
 }
 
+// Maintaining aspect ratio on resize group start
 function onResizeGroupStart(e) {
   keepRatio.value = true;
 }
+
+// Handles resizing of a group of elements
 function onResizeGroup(e) {
   e.events.forEach((ev, i) => {
     ev.target.style.width = `${ev.width}px`;
@@ -1292,6 +1371,8 @@ function onResizeGroup(e) {
     ev.target.style.transform = ev.drag.transform;
   });
 }
+
+// Ends the resizing of a group of elements and updates the app state
 function onResizeGroupEnd(e) {
   e.events.forEach((ev) => {
     const itemIndex = appState.value.items.findIndex(
@@ -1306,6 +1387,7 @@ function onResizeGroupEnd(e) {
   keepRatio.value = false;
 }
 
+// Starts rotating a group of elements and adds the action to the history
 function onRotateGroupStart(e) {
   addActionToHistory("Rotate Group");
   e.events.forEach((ev) => {
@@ -1316,6 +1398,8 @@ function onRotateGroupStart(e) {
     ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
   });
 }
+
+// Handles rotating of a group of elements and updates their state
 function onRotateGroup(e) {
   e.events.forEach((ev, i) => {
     const itemIndex = appState.value.items.findIndex(
@@ -1326,6 +1410,7 @@ function onRotateGroup(e) {
   });
 }
 
+// Adds a new object to the app state and updates guidelines
 function addObject(item, group = undefined, addToHistory = true) {
   if (addToHistory) {
     addActionToHistory(`Add ${item.type}`);
@@ -1359,6 +1444,7 @@ const viewportMargins = {
   left: 0,
 };
 
+// Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
   const elements = [];
   const addedItems = [];
@@ -1412,6 +1498,7 @@ function addLibItem(items, size, pos) {
   }, 60); */
 }
 
+// Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
@@ -1447,6 +1534,7 @@ function onSelectoDragEnd(e) {
   }
 }
 
+// Draws an object based on the provided size, position, and tool settings
 function drawObject(size, pos, tool) {
   tool = tool || selectedTool.value;
 
@@ -1506,6 +1594,7 @@ function drawObject(size, pos, tool) {
   return item;
 }
 
+// Select a tool and set its type
 function selectTool(tool, type = "default") {
   selectedTool.value = tool;
   if (typeof tool === "string") {
@@ -1514,6 +1603,7 @@ function selectTool(tool, type = "default") {
   selectedTool.value.type = type;
 }
 
+// Refresh the moveable object's rectangle after a short delay
 function refreshMoveable() {
   // const targetsCache = cloneDeep(appState.value.selectedTargets);
   // appState.value.selectedTargets = [];
@@ -1522,6 +1612,7 @@ function refreshMoveable() {
   }, 1);
 }
 
+// Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
   if (!item) return;
   addActionToHistory("Rotate object");
@@ -1532,6 +1623,8 @@ function rotate90(item, minues = false) {
   }
   refreshMoveable();
 }
+
+// Flip an item horizontally
 function flipH(item) {
   addActionToHistory("Flip object H");
   if (item.scaleX === 1) {
@@ -1541,6 +1634,8 @@ function flipH(item) {
   }
   refreshMoveable();
 }
+
+// Flip an item vertically
 function flipV(item) {
   addActionToHistory("Flip object V");
   if (item.scaleY === 1) {
@@ -1551,15 +1646,19 @@ function flipV(item) {
   refreshMoveable();
 }
 
+// Bring an item to the front by increasing its z-index
 function bringToFront(item) {
   addActionToHistory("Bring object to front");
   item.zindex = item.zindex + 1;
 }
+
+// Send an item to the back by decreasing its z-index
 function sendToBack(item) {
   addActionToHistory("Send object to back");
   item.zindex = item.zindex - 1;
 }
 
+// Remove an item from the app state
 function removeObject(item) {
   addActionToHistory("Remove object");
   const index = appState.value.items.findIndex((i) => i.id === item.id);
@@ -1568,6 +1667,8 @@ function removeObject(item) {
 
   appState.value.selectedTargets = [];
 }
+
+// Duplicate an item and select the new copy
 function duplicateObject(i) {
   addActionToHistory(`Duplicate ${i.type}`);
   appState.value.activeItemIndex = null;
@@ -1578,6 +1679,7 @@ function duplicateObject(i) {
   }, 10);
 }
 
+// Clone an object and adjust its position slightly
 function cloneObject(i, group = undefined) {
   const dubItem = cloneDeep(i);
   dubItem.translate[0] = dubItem.translate[0] + 5;
@@ -1586,6 +1688,7 @@ function cloneObject(i, group = undefined) {
   return item;
 }
 
+// Select an object and update the app state
 function selectObject(item) {
   const target = document.querySelector(`#moveable-item-${item.id}`);
   appState.value.selectedTargets = [target];
@@ -1594,10 +1697,12 @@ function selectObject(item) {
   );
 }
 
+// Handle right-click selection
 function selectByRightClick(e) {
   // selecto.value.clickTarget(e);
 }
 
+// Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
@@ -1614,10 +1719,12 @@ function T3UpdateEntryField(key, obj) {
   });
 }
 
+// Define a condition for drag events in Selecto
 function selectoDragCondition(e) {
   return !e.inputEvent.altKey;
 }
 
+// Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
   addActionToHistory("Link object to T3000 entry");
   if (
@@ -1658,6 +1765,7 @@ function linkT3EntrySave() {
   linkT3EntryDialog.value.active = false;
 }
 
+// Refresh the status of an object based on its T3 entry
 function refreshObjectStatus(item) {
   if (item.t3Entry && item.settings?.active !== undefined) {
     item.settings.active = getObjectActiveValue(item);
@@ -1672,6 +1780,7 @@ function refreshObjectStatus(item) {
   }
 }
 
+// Save the current app state, optionally displaying a notification
 function save(notify = false) {
   savedNotify.value = notify;
   const data = cloneDeep(toRaw(appState.value));
@@ -1686,6 +1795,7 @@ function save(notify = false) {
   }
 }
 
+// Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
   if (appState.value.items?.length > 0) {
     $q.dialog({
@@ -1716,28 +1826,37 @@ function newProject() {
   }
 }
 
+// Handle keyup event for keyboard control
 keycon.keyup((e) => {
+  // Enable snapping when the "ctrl" key is released
   if (e.key === "ctrl") {
     snappable.value = true;
   }
 });
 
+// Handle keydown event for keyboard control
 keycon.keydown((e) => {
   if (e.key === "esc") {
+    // Select the default tool and navigate back if applicable
     selectTool(tools[0]);
     if (grpNav.value.length > 1) {
       navGoBack();
     }
+    // Stop drawing and undo the last action if currently drawing
     if (isDrawing.value) {
       isDrawing.value = false;
       undoAction();
     }
   }
+  // Disable snapping when the "ctrl" key is pressed
   if (e.key === "ctrl") {
     snappable.value = false;
   }
+
+  // If no targets are selected, exit the function
   if (appState.value.selectedTargets.length < 1) return;
 
+  // Check for arrow keys to move objects
   if (["up", "down", "left", "right"].includes(e.key)) {
     addActionToHistory("Move object");
   }
@@ -1752,56 +1871,71 @@ keycon.keydown((e) => {
   } else if (e.key === "delete") {
     deleteSelected();
   }
+  // Refresh the moveable object after movement
   if (["up", "down", "left", "right"].includes(e.key)) {
     refreshMoveable();
   }
 });
 
+// Save the current state when "Ctrl + S" is pressed
 keycon.keydown(["ctrl", "s"], (e) => {
   e.inputEvent.preventDefault();
   save(true);
 });
 
+// Undo the last action when "Ctrl + Z" is pressed
 keycon.keydown(["ctrl", "z"], (e) => {
   e.inputEvent.preventDefault();
   if (locked.value) return;
   undoAction();
 });
+
+// Redo the last undone action when "Ctrl + Y" is pressed
 keycon.keydown(["ctrl", "y"], (e) => {
   e.inputEvent.preventDefault();
   if (locked.value) return;
   redoAction();
 });
 
+// Create a new project when "Ctrl + R" is pressed
 keycon.keydown(["ctrl", "r"], (e) => {
   e.inputEvent.preventDefault();
   newProject();
 });
+
+// Duplicate the selected object when "Ctrl + D" is pressed
 keycon.keydown(["ctrl", "d"], (e) => {
   e.inputEvent.preventDefault();
   duplicateSelected();
 });
+
+// Group selected objects when "Ctrl + G" is pressed
 keycon.keydown(["ctrl", "g"], (e) => {
   e.inputEvent.preventDefault();
   groupSelected();
 });
+
+// Ungroup selected objects when "Ctrl + Shift + G" is pressed
 keycon.keydown(["ctrl", "shift", "g"], (e) => {
   e.inputEvent.preventDefault();
   ungroupSelected();
 });
 
+// Copy selected objects to clipboard when "Ctrl + C" is pressed
 keycon.keydown(["ctrl", "c"], (e) => {
   if (!document.activeElement.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   saveSelectedToClipboard();
 });
 
+// Paste objects from clipboard when "Ctrl + V" is pressed
 keycon.keydown(["ctrl", "v"], (e) => {
   if (!document.activeElement.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   pasteFromClipboard();
 });
 
+// Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
@@ -1810,6 +1944,7 @@ function linkT3EntryDialogAction() {
   );
 }
 
+// Delete selected objects from the app state
 function deleteSelected() {
   addActionToHistory("Remove selected objects");
   if (appState.value.selectedTargets.length > 0) {
@@ -1826,6 +1961,7 @@ function deleteSelected() {
   }
 }
 
+// Filter function for selecting panels in the UI
 function selectPanelFilterFn(val, update) {
   if (val === "") {
     update(() => {
@@ -1847,6 +1983,8 @@ function selectPanelFilterFn(val, update) {
     );
   });
 }
+
+// Undo the last action
 function undoAction() {
   if (undoHistory.value.length < 1) return;
   redoHistory.value.unshift({
@@ -1858,6 +1996,7 @@ function undoAction() {
   refreshMoveable();
 }
 
+// Redo the last undone action
 function redoAction() {
   if (redoHistory.value.length < 1) return;
   undoHistory.value.unshift({
@@ -1869,8 +2008,10 @@ function redoAction() {
   refreshMoveable();
 }
 
+// Handle file upload (empty function, add implementation as needed)
 function handleFileUploaded(data) {}
 
+// Read a file and return its data as a promise
 function readFile(file) {
   return new Promise((resolve, reject) => {
     var fr = new FileReader();
@@ -1882,6 +2023,7 @@ function readFile(file) {
   });
 }
 
+// Save an image to the library or online storage
 async function saveLibImage(file) {
   if (user.value) {
     liveApi
@@ -1926,11 +2068,13 @@ const gaugeSettingsDialog = ref({
   data: { settings: tools.find((tool) => tool.name === "Gauge")?.settings },
 });
 
+// Open the gauge settings dialog with the provided item data
 function gaugeSettingsDialogAction(item) {
   gaugeSettingsDialog.value.active = true;
   gaugeSettingsDialog.value.data = item;
 }
 
+// Save the gauge settings and update the app state
 function gaugeSettingsSave(item) {
   const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
   appState.value.items[itemIndex] = item;
@@ -1938,10 +2082,12 @@ function gaugeSettingsSave(item) {
   gaugeSettingsDialog.value.data = {};
 }
 
+// Open the import JSON dialog
 function importJsonAction() {
   importJsonDialog.value.active = true;
 }
 
+// Export the current app state to a JSON file
 function exportToJsonAction() {
   const content = cloneDeep(toRaw(appState.value));
   content.selectedTargets = [];
@@ -1956,18 +2102,21 @@ function exportToJsonAction() {
   a.click();
 }
 
+// Get all items linked to a T3 entry
 function getLinkedEntries() {
   const items = appState.value.items;
   if (items.length === 0) return [];
   return toRaw(appState.value).items.filter((i) => i.t3Entry);
 }
 
+// Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
   const blob = await file.data.text();
   importJsonDialog.value.data = blob;
   executeImportFromJson();
 }
 
+// Execute the import of the JSON data into the app state
 function executeImportFromJson() {
   const importedState = JSON.parse(importJsonDialog.value.data);
   if (!importedState.items?.[0].type) {
@@ -2024,11 +2173,13 @@ function executeImportFromJson() {
   refreshMoveable();
 }
 
+// Computed property for zoom control
 const zoom = computed({
+  // Getter for zoom value
   get() {
     return parseInt(appState.value.viewportTransform.scale * 100);
   },
-  // setter
+  // Setter for zoom value
   set(newValue) {
     if (!newValue) return;
     appState.value.viewportTransform.scale = newValue / 100;
@@ -2040,6 +2191,7 @@ const zoom = computed({
   },
 });
 
+// Duplicate the selected items in the app state
 function duplicateSelected() {
   if (appState.value.selectedTargets.length < 1) return;
   addActionToHistory("Duplicate the selected objects");
@@ -2075,6 +2227,7 @@ function duplicateSelected() {
   }, 20);
 }
 
+// Group the selected items together
 function groupSelected() {
   if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Group the selected objects");
@@ -2091,6 +2244,7 @@ function groupSelected() {
   }
 }
 
+// Ungroup the selected items
 function ungroupSelected() {
   if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Ungroup the selected objects");
@@ -2106,6 +2260,7 @@ function ungroupSelected() {
   }
 }
 
+// Control zoom actions for the app
 function zoomAction(action = "in", val = null) {
   if (action === "out") {
     zoom.value -= 10;
@@ -2116,6 +2271,7 @@ function zoomAction(action = "in", val = null) {
   }
 }
 
+// Handle the menu action for the top toolbar
 function handleMenuAction(action, val) {
   const item = appState.value.items[appState.value.activeItemIndex];
   switch (action) {
@@ -2202,6 +2358,7 @@ function handleMenuAction(action, val) {
   }
 }
 
+// Reload panel data by requesting the panels list
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
   window.chrome?.webview?.postMessage({
@@ -2209,6 +2366,7 @@ function reloadPanelsData() {
   });
 }
 
+// Refresh linked entries with updated panel data
 function refreshLinkedEntries(panelData) {
   appState.value.items
     .filter((i) => i.t3Entry?.type)
@@ -2225,6 +2383,8 @@ function refreshLinkedEntries(panelData) {
       }
     });
 }
+
+// Create a label for an entry with optional prefix
 function entryLabel(option) {
   let prefix =
     (option.description && option.id !== option.description) ||
@@ -2235,6 +2395,7 @@ function entryLabel(option) {
   return prefix + (option.description || option.label || "");
 }
 
+// Toggle the lock state of the application
 function lockToggle() {
   appState.value.activeItemIndex = null;
   appState.value.selectedTargets = [];
@@ -2244,6 +2405,7 @@ function lockToggle() {
   }
 }
 
+// Handle object click events based on t3Entry type
 function objectClicked(item) {
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
@@ -2269,6 +2431,7 @@ function objectClicked(item) {
   }
 }
 
+// Navigate back in the group navigation history
 function navGoBack() {
   if (grpNav.value.length > 1) {
     const item = grpNav.value[grpNav.value.length - 2];
@@ -2284,10 +2447,12 @@ function navGoBack() {
   }
 }
 
+// Remove the latest undo history entry
 function objectSettingsUnchanged() {
   undoHistory.value.shift();
 }
 
+// Add selected items to the library
 async function addToLibrary() {
   if (appState.value.selectedTargets.length < 1 || locked.value) return;
   const selectedItems = appState.value.items.filter((i) =>
@@ -2342,6 +2507,7 @@ async function addToLibrary() {
   saveLib();
 }
 
+// Bring selected objects to the front by increasing their z-index
 function bringSelectedToFront() {
   addActionToHistory("Bring selected objects to front");
   const selectedItems = appState.value.items.filter((i) =>
@@ -2354,6 +2520,7 @@ function bringSelectedToFront() {
   });
 }
 
+// Send selected objects to the back by decreasing their z-index
 function sendSelectedToBack() {
   addActionToHistory("Send selected objects to back");
   const selectedItems = appState.value.items.filter((i) =>
@@ -2366,6 +2533,7 @@ function sendSelectedToBack() {
   });
 }
 
+// Rotate selected objects by 90 degrees
 function rotate90Selected(minues = false) {
   moveable.value.request(
     "rotatable",
@@ -2377,6 +2545,7 @@ function rotate90Selected(minues = false) {
   refreshMoveable();
 }
 
+// Save selected items to the clipboard
 function saveSelectedToClipboard() {
   if (locked.value) return;
   if (appState.value.selectedTargets.length === 0) return;
@@ -2390,6 +2559,7 @@ function saveSelectedToClipboard() {
   clipboardFull.value = true;
 }
 
+// Paste items from the clipboard into the application state
 function pasteFromClipboard() {
   if (locked.value) return;
   let items = [];
@@ -2415,22 +2585,30 @@ function pasteFromClipboard() {
   }, 10);
 }
 
+// Saves the library data to the webview
 function saveLib() {
+  // Filter out online images and objects from the library
   const libImages = toRaw(library.value.images.filter((item) => !item.online));
   const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
+
+  // Post a message to the webview with the saved data
   window.chrome?.webview?.postMessage({
     action: 10, // SAVE_LIBRARY_DATA
     data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
   });
 }
 
+// Toggles the auto/manual mode of an item
 function autoManualToggle(item) {
   if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
 }
+
+// Deletes a library item
 function deleteLibItem(item) {
   if (user.value && item.online) {
+    // Delete the item from the API
     liveApi
       .delete("hvacObjectLibs/" + item.id)
       .then(async () => {
@@ -2446,6 +2624,8 @@ function deleteLibItem(item) {
         });
       });
   }
+
+  // Remove the item from the local library
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
   );
@@ -2454,8 +2634,11 @@ function deleteLibItem(item) {
   }
   saveLib();
 }
+
+// Renames a library item
 function renameLibItem(item, name) {
   if (user.value && item.online) {
+    // Update the item on the API
     liveApi
       .patch("hvacObjectLibs/" + item.id, {
         json: {
@@ -2475,6 +2658,8 @@ function renameLibItem(item, name) {
         });
       });
   }
+
+  // Update the local library
   const itemIndex = library.value.objLib.findIndex(
     (obj) => obj.name === item.name
   );
@@ -2484,8 +2669,10 @@ function renameLibItem(item, name) {
   saveLib();
 }
 
+// Deletes a library image
 function deleteLibImage(item) {
   if (item.online) {
+    // Delete the image from the API
     liveApi
       .delete("hvacTools/" + item.dbId || item.id.slice(4))
       .then(async () => {
@@ -2501,12 +2688,15 @@ function deleteLibImage(item) {
         });
       });
   }
+
+  // Remove the image from the local library
   const itemIndex = library.value.images.findIndex(
     (obj) => obj.name === item.name
   );
   if (itemIndex !== -1) {
     library.value.images.splice(itemIndex, 1);
     if (!item.online) {
+      // Delete the image from the webview
       const imagePath = cloneDeep(library.value.images[itemIndex].path);
       window.chrome?.webview?.postMessage({
         action: 11, // DELETE_IMAGE
@@ -2517,24 +2707,31 @@ function deleteLibImage(item) {
   }
 }
 
+// Updates an entry value
 function changeEntryValue(refItem, newVal, control) {
   const key = control ? "control" : "value";
   const item = appState.value.items.find((i) => i.id === refItem.id);
   item.t3Entry[key] = newVal;
   T3UpdateEntryField(key, item);
 }
+
+// Converts an object to a different type
 function convertObjectType(item, type) {
   if (!item) {
     item = appState.value.items[appState.value.activeItemIndex];
   }
   if (!item) return;
   addActionToHistory("Convert object to " + type);
+
+  // Get the default settings for the new type
   const toolSettings =
     cloneDeep(tools.find((tool) => tool.name === type)?.settings) || {};
   const defaultSettings = Object.keys(toolSettings).reduce((acc, key) => {
     acc[key] = toolSettings[key].value;
     return acc;
   }, {});
+
+  // Merge the default settings with the item's current settings
   const newSettings = {};
   for (const key in defaultSettings) {
     if (Object.hasOwnProperty.call(defaultSettings, key)) {
@@ -2555,6 +2752,7 @@ function convertObjectType(item, type) {
   item.settings = newSettings;
 }
 
+// Handles a tool being dropped
 function toolDropped(ev, tool) {
   drawObject(
     { width: 60, height: 60 },
@@ -2568,6 +2766,7 @@ function toolDropped(ev, tool) {
   );
 }
 
+// Handles a right-click event on the viewport
 function viewportRightClick(ev) {
   ev.preventDefault();
   selectTool(tools[0]);
@@ -2580,12 +2779,15 @@ function viewportRightClick(ev) {
   }
 }
 
+// Checks if the user is logged in
 function isLoggedIn() {
   const hasToken = $q.cookies.has("token");
   if (!hasToken) {
     user.value = null;
     return;
   }
+
+  // Get the user's data from the API
   liveApi
     .get("hvacTools")
     .then(async (res) => {
@@ -2599,6 +2801,7 @@ function isLoggedIn() {
     .catch((err) => {
       console.log(err);
     });
+
   liveApi
     .get("hvacObjectLibs")
     .then(async (res) => {
@@ -2627,6 +2830,7 @@ function isLoggedIn() {
     });
 }
 
+// Adds the online images to the library
 function addOnlineLibImage(oItem) {
   const iIndex = library.value.images.findIndex(
     (obj) => obj.id === "IMG-" + oItem.id
