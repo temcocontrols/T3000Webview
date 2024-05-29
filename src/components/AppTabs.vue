@@ -1,3 +1,10 @@
+<!-- Component: AppTabs -->
+<!--
+  This component represents a set of tabs for navigating different sections of an application. It uses the Quasar framework for UI components.
+  The `modelValue` prop is used to bind the currently active tab.
+  The component emits the `update:modelValue` event when the active tab is changed. The event is emitted with the name of the selected tab as the payload.
+  The component includes several tabs, including "Inputs", "Outputs", "Variables", "Programs", "PIDs", "Graphics", "Holidays", "Schedules". Each tab has an associated icon and label.
+-->
 <script>
 export default {
   props: {

@@ -1,3 +1,15 @@
+<!-- Component: AppCard -->
+<!--
+  This component represents an application card. It displays an image, name, description, and user information.
+  The image is loaded from a file server using the `fileServerUrl` prop. The `app` prop is used to display the application's details.
+  The `showPrivateStatus` prop determines whether to show the private status of the application.
+  The component emits the `viewApp` event when the card is clicked. The event is emitted with the `app.id` as the payload.
+  The component emits the `deleteApp` event when the delete button is clicked. The event is emitted with the `app.id` as the payload.
+  The component emits the `editApp` event when the edit button is clicked. The event is emitted with the `app.id` as the payload.
+  The component emits the `showApp` event when the show button is clicked. The event is emitted with the `app.id` as the payload.
+  The component emits the `shareApp` event when the share button is clicked. The event is emitted with the `app.id` as the payload.
+  The component emits the `duplicateApp` event when the duplicate button is clicked. The event is emitted with the `app.id` as the payload.
+-->
 <template>
   <q-card class="app-card">
     <q-btn

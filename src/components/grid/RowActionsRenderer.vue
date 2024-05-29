@@ -1,3 +1,14 @@
+<!--
+  This is a custom cell renderer for ag-grid for Vue. It renders a set of actions for each row in the grid.
+  The actions displayed depend on the status of the row and the user's permissions.
+  The actions available are:
+  - Cancel update: Only displayed if the row's status is 'UPDATED'.
+  - Cancel update: Only displayed if the row's status is 'UNDER_REVIEW'.
+  - Make private/Make public: Only displayed if the user is not in live mode.
+  - Delete row: Always displayed.
+  The actions are displayed in a dropdown menu when the user clicks on the ellipsis button.
+  The dropdown menu is displayed using Quasar's QMenu component.
+-->
 <script setup>
 import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";

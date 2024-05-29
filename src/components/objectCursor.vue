@@ -1,3 +1,11 @@
+<!--
+  Component: ObjectCursor
+  Description: A component that displays the selected HVAC object thumbnail and moves it based on mouse movements.
+  Props:
+    - imageSrc: The source URL of the image to be displayed.
+  Events:
+    - moveImage: Moves the image based on mouse movements.
+-->
 <template>
   <div class="container" @mousemove="moveImage">
     <img :src="imageSrc" :style="{ left: x + 'px', top: y + 'px' }" />

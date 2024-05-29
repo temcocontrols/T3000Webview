@@ -1,3 +1,23 @@
+<!--
+  The `TopToolbar` component is a toolbar that appears at the top of the HVAC drawer. It contains various actions that can be performed on the current selection of objects.
+
+  - The `FileMenu` section contains actions related to the current file, such as saving, exporting, and logging out.
+    - The `save` method saves the current file.
+    - The `export` method exports the current file in a specific format.
+    - The `logout` method logs the user out of the application.
+  - The `EditMenu` section contains actions related to the current selection of objects, such as copying, pasting, and undoing actions.
+    - The `copy` method copies the current selection of objects to the clipboard.
+    - The `paste` method pastes the contents of the clipboard onto the current selection of objects.
+    - The `undo` method undoes the last action performed on the current selection of objects.
+  - The `ObjectMenu` section contains actions related to the current selection of objects, such as grouping, ungrouping, and deleting objects.
+    - The `group` method groups the current selection of objects into a single object.
+    - The `ungroup` method ungroups the current selection of objects into individual objects.
+    - The `delete` method deletes the current selection of objects.
+  - The `ViewMenu` section contains actions related to the view mode of the application, such as switching between dark and light mode.
+    - The `toggleDarkMode` method toggles the view mode of the application between dark and light mode.
+    - The `toggleFullScreen` method toggles the full screen mode of the application.
+
+-->
 <template>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->

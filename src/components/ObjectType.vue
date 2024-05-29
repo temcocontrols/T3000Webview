@@ -1,3 +1,22 @@
+<!--
+  This component is a custom cell editor for ag-Grid, utilizing the Quasar `q-select` component to allow users to edit
+  cell values with a dropdown select interface.
+
+  Props:
+  - params: An object containing various parameters for the cell editor, this prop is atumatically passed from ag-Grid.
+
+  Methods:
+  - selectFilter: Filters the select options based on the user's input.
+  - getValue: Returns the current value of the editor.
+  - stopEditing: Stops the editing process and commits the value if it has changed.
+  - setInitialState: Sets the initial state of the editor based on the key event that triggered the editor.
+
+  Component Structure:
+  - It handles different key events (Backspace, Delete, F2, and alphanumeric keys) to initialize the editor state and display the select dropdown.
+  - The `q-select` component from Quasar is used to provide a searchable, filterable dropdown interface for selecting values.
+  - The options for the select dropdown can be provided as a static array or a function.
+  - The component manages the editing lifecycle by integrating with ag-Grid's API to stop editing when necessary.
+-->
 <template>
   <div
     class="moveable-item"

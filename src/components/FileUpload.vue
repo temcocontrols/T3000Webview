@@ -1,3 +1,20 @@
+<!--
+  The FileUpload component allows users to upload files to a specified path. It uses the Uppy library to handle the file upload process.
+
+  Props:
+  - types: An array of file types to allow for upload. Defaults to null, which allows all file types.
+  - path: The path to upload the files to. Defaults to "files".
+  - maxNumberOfFiles: The maximum number of files allowed to be uploaded at once. Defaults to 1.
+  - height: The height of the Uppy dashboard. Defaults to 400.
+
+  Events:
+  - uploaded: Emitted when a file has been uploaded. The event payload contains the file object.
+  - file-removed: Emitted when a file has been removed from the upload queue. The event payload contains the file object.
+
+  Slots:
+  - default: The content to display inside the FileUpload component.
+-->
+
 <script>
 import { onUnmounted } from "vue";
 import { Dashboard } from "@uppy/vue";

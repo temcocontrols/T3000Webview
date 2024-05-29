@@ -1,3 +1,23 @@
+<!--
+  Component: ObjectConfig
+
+  This component is responsible for configuring a HVAC object. It allows the user to modify various settings of the object,
+  such as its type, settings, and T3 entry. The component provides a form with input fields and selectors for different settings.
+  It also handles the updating of the object's properties when the user makes changes.
+
+  Props:
+    - object: The object to be configured.
+    - tools: An array of tools available for configuring the object.
+    - noChange: A flag indicating whether the object's properties should be updated when the user makes changes.
+
+  Emits:
+    - refreshMoveable: Emitted when the moveable refreshes.
+    - T3UpdateEntryField: Emitted when the T3 entry field is updated. The updated entry field is passed as the event payload.
+    - linkT3Entry: Emitted when the T3 entry is linked. The linked entry is passed as the event payload.
+    - gaugeSettings: Emitted when the gauge settings are updated. The updated gauge settings are passed as the event payload.
+    - mounted: Emitted when the component is mounted.
+    - noChange: Emitted when the object's properties should not be updated when the user makes changes.
+-->
 <template>
   <div class="item-config flex flex-nowrap column" v-if="item">
     <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>

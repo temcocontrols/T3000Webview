@@ -1,3 +1,4 @@
+// Import the necessary dependencies
 import { ref } from "vue";
 
 export const T3000_Data = ref({
@@ -7,13 +8,18 @@ export const T3000_Data = ref({
   loadingPanel: null,
 });
 
+// Define a function to get the entry range based on the item
 export const getEntryRange = (item) => {
+  // Check if the item has a range
   if (item?.range) {
+    // Determine the range type based on the item type
     const rangeType = item.type.toLowerCase();
+    // Find the range based on the item's range ID
     let range = !item.digital_analog
       ? ranges.digital.find((i) => i.id === item.range)
       : ranges.analog[rangeType].find((i) => i.id === item.range);
 
+    // If the range is not found, check for custom ranges
     if (!range) {
       const customRanges = T3000_Data.value.panelsRanges.filter(
         (i) => i.pid === item.pid
@@ -26,6 +32,7 @@ export const getEntryRange = (item) => {
             (i) => i.type === "analog" && i.index === item.range
           );
 
+      // If the range is still not found and the range ID is greater than 100, assume it is a custom range
       if (!range && item.range > 100) {
         range = customRanges.find(
           (i) => i.type === "MSV" && i.index === item.range
@@ -33,9 +40,11 @@ export const getEntryRange = (item) => {
       }
     }
 
+    // Return the range if found
     if (range) return range;
   }
 
+  // Return a default range if no range is found
   return { label: "Unused", unit: "" };
 };
 
@@ -1617,15 +1626,24 @@ export const modbusRegColumns = [
   },
 ];
 
+// Define a function to get the active value of an object based on its settings and T3 entry
 export function getObjectActiveValue(item) {
+  // Initialize the active value to false
   let active = false;
+
+  // Check if the item has a T3 entry and its settings have an active property
   if (!item.t3Entry || item.settings?.active === undefined) return false;
+
+  // Check if the item is an output with a hardware switch status
   if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status === 1) {
     active = !!item.t3Entry.hw_switch_status;
-  } else if (item.t3Entry.range) {
+  }
+  // Check if the item has a range
+  else if (item.t3Entry.range) {
     const analog = item.t3Entry.digital_analog;
     const range = getEntryRange(item.t3Entry);
     if (range) {
+      // Determine the active value based on the item's type and value
       active =
         (!analog &&
           ((item.t3Entry?.control === 1 && !range.direct) ||
@@ -1634,13 +1652,21 @@ export function getObjectActiveValue(item) {
           ? true
           : false;
     }
-  } else if (item.t3Entry.type === "PROGRAM") {
+  }
+  // Check if the item is a program
+  else if (item.t3Entry.type === "PROGRAM") {
     active = !!item.t3Entry.status;
-  } else if (item.t3Entry.type === "SCHEDULE") {
+  }
+  // Check if the item is a schedule
+  else if (item.t3Entry.type === "SCHEDULE") {
     active = !!item.t3Entry.output;
-  } else if (item.t3Entry.type === "HOLIDAY") {
+  }
+  // Check if the item is a holiday
+  else if (item.t3Entry.type === "HOLIDAY") {
     active = !!item.t3Entry.value;
   }
+
+  // Return the active value
   return active;
 }
 

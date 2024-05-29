@@ -1,20 +1,25 @@
-import { ranges } from "src/lib/common";
+// This file contains the column definitions for the ag-Grid component
 
+// Define the required class rules
 const requiredClassRules = {
+  // Apply the "bg-red-800" class if the value is falsy
   "bg-red-800": (params) => !params.value,
 };
+
+// Export the column definitions
 export default {
+  // Define the inputs column
   inputs: [
     {
-      colId: 0,
-      headerName: "",
-      sortable: false,
-      editable: false,
-      // filter: false,
-      field: "id",
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      width: 50,
+      colId: 0, // The column ID
+      headerName: "", // The header name
+      sortable: false, // Whether the column is sortable
+      editable: false, // Whether the column is editable
+      // filter: false, // Whether the column has a filter
+      field: "id", // The field name
+      checkboxSelection: true, // Whether the column has checkbox selection
+      headerCheckboxSelection: true, // Whether the column has header checkbox selection
+      width: 50, // The width of the column
       valueFormatter: () => {
         return "";
       },

@@ -1,3 +1,20 @@
+<!--
+  The FileUploadS3 component allows users to upload files to an S3 bucket. It uses the Uppy library to handle the file upload process.
+
+  Props:
+  - endpoint: The URL of the S3 bucket endpoint. Defaults to the API_URL environment variable plus "/file".
+  - headers: Additional headers to include in the upload request. Defaults to an object with an "auth" property set to the value of the "token" cookie.
+  - types: An array of file types to allow for upload. Defaults to null, which allows all file types.
+  - path: The path to upload the files to. Defaults to "files".
+  - maxNumberOfFiles: The maximum number of files allowed to be uploaded at once. Defaults to 1.
+
+  Events:
+  - uploaded: Emitted when a file has been uploaded. The event payload contains the file object.
+  - file-removed: Emitted when a file has been removed from the upload queue. The event payload contains the file object.
+
+  Slots:
+  - default: The content to display inside the FileUploadS3 component.
+-->
 <script>
 import { onUnmounted } from "vue";
 import { Dashboard } from "@uppy/vue";

@@ -1,3 +1,16 @@
+<!--
+  The `UserTopBar` component is a top navigation bar that appears on all pages.
+  It contains various actions that can be performed by the user, such as logging out, searching, and navigating to different pages.
+
+  - The `search` input field allows the user to search for objects in the application.
+  - The `logout` button logs the user out of the application.
+  - The `navItems` prop is an array of objects that define the navigation items to be displayed in the top navigation bar.
+  Each navigation item has a `label` and a `link` property.
+  - The `mobileMenuBtnClicked` event is emitted when the mobile menu button is clicked.
+
+  The component uses the `useQuasar` and `useRouter` composables from the Quasar framework to interact with the Vue Router and
+  Quasar components.
+-->
 <script>
 import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";

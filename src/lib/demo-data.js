@@ -1,3 +1,4 @@
+// Some data taken from a real T3 Nano device for demo purposes
 export default {
   data: [
     {

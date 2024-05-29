@@ -1,3 +1,13 @@
+<!-- Component: GaugeSettingsDialog -->
+<!--
+  This component is a dialog for configuring gauge settings. It allows the user to select a chart type and set the minimum and maximum values for the gauge.
+  The available chart types are provided through the `chartTypes` prop. The selected chart type is bound to the `dialog.type` data property.
+  The minimum and maximum values are bound to the `dialog.settings.min` and `dialog.settings.max` data properties respectively.
+  The dialog is displayed when the `active` prop is true. The `dialog` data property is used to store the current state of the dialog.
+  The dialog emits the `update:active` event when it is closed. The `update:active` event is bound to the `active` prop.
+  The dialog emits the `update` event when the settings are updated. The `update` event is emitted with the `dialog.settings` object as the payload.
+ -->
+
 <template>
   <q-dialog
     :model-value="active"

@@ -1,3 +1,21 @@
+<!--
+  The ToolsSidebar component is a sidebar that displays various HVAC tools for the user to draw on the viewport.
+  It uses the `q-expansion-item` component to create expandable categories for the tools.
+  Each category contains a list of tools that the user can select from.
+  The `toolsCategories` data property is used to dynamically generate the categories and their corresponding tools.
+  The `tools` data property contains the list of all available tools.
+  The `tool` slot is used to display the tool's icon and name.
+  When a tool is selected, the `selectTool` method is called with the selected tool's `id` as an argument.
+  The `selectTool` method emits a `tool-selected` event with the selected tool's `id` as the payload.
+  The `tool-selected` event can be listened to by the parent component to perform any necessary actions when a tool is selected.
+  The `selectedTool` data property is used to keep track of the currently selected tool.
+  When a tool is selected, its `id` is assigned to the `selectedTool` property.
+  The `selectedTool` property is used to highlight the currently selected tool in the sidebar.
+  The `selectedTool` property is also used to display the selected tool's name in the header of the sidebar.
+  The `header` slot is used to display a custom header for the sidebar.
+  The `header` slot is passed the `selectedTool` property as a prop, which can be used to display the selected tool's name.
+  The `header` slot is also passed the `selectTool` method as a prop, which can be used to select a different tool.
+-->
 <template>
   <div class="tools flex column">
     <q-expansion-item
