@@ -1,3 +1,11 @@
+<!--
+This Vue component is a custom cell editor for ag-Grid, using the Quasar `q-select` component.
+It allows users to edit cell values with a dropdown select interface.
+The component handles various key events to initiate editing, including Backspace, Delete, F2, and alphanumeric keys.
+It supports filtering options, is optionally clearable, and ensures the grid's editing state is managed properly by
+calling `stopEditing` when appropriate. The options for the select are either provided directly or as a function, and
+the component updates its internal state and the displayed options list based on user input.
+-->
 <script>
 import { ref, toRaw, onMounted } from "vue";
 
