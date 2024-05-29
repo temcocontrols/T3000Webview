@@ -731,12 +731,12 @@ import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
 import panzoom from "panzoom";
-import ObjectType from "../components/ObjectType.vue";
-import GaugeSettingsDialog from "../components/GaugeSettingsDialog.vue";
-import FileUpload from "../components/FileUpload.vue";
-import TopToolbar from "../components/TopToolbar.vue";
-import ToolsSidebar from "../components/ToolsSidebar.vue";
-import ObjectConfig from "../components/ObjectConfig.vue";
+import ObjectType from "../../components/ObjectType.vue";
+import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
+import FileUpload from "../../components/FileUpload.vue";
+import TopToolbar from "../../components/TopToolbar.vue";
+import ToolsSidebar from "../../components/ToolsSidebar.vue";
+import ObjectConfig from "../../components/ObjectConfig.vue";
 import {
   tools,
   T3_Types,
@@ -745,8 +745,8 @@ import {
   user,
   globalNav,
   demoDeviceData,
-} from "../lib/common";
-import { liveApi } from "../lib/api";
+} from "../../lib/common";
+import { liveApi } from "../../lib/api";
 
 // Meta information for the application
 const metaData = {
