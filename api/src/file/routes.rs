@@ -19,11 +19,13 @@ use crate::{
     error::{Error, Result},
 };
 
+/// Struct to hold query parameters for file routes
 #[derive(Deserialize, Serialize, Debug)]
 pub struct QueryParams {
     pub path: Option<String>,
 }
 
+/// Function to define file routes
 pub fn file_routes() -> Router<AppState> {
     Router::new()
         .route("/files", get(get_files))
@@ -35,6 +37,7 @@ pub fn file_routes() -> Router<AppState> {
         .route_layer(middleware::from_fn(require_auth))
 }
 
+/// Async function to handle file uploads
 async fn upload_file(
     State(state): State<AppState>,
     Query(query_params): Query<QueryParams>,
@@ -112,45 +115,54 @@ async fn upload_file(
     Err(Error::BadRequest("No file field found".to_string()))
 }
 
+// Asynchronously fetches all files from the database and returns them as JSON.
 pub async fn get_files(State(state): State<AppState>) -> Result<Json<Vec<files::Model>>> {
+    // Perform a query to find all files in the database.
     let result = Files::find()
-        .all(&state.conn)
+        .all(&state.conn) // Use the database connection from the application state.
         .await
-        .map_err(|error| Error::DbError(error.to_string()))?;
+        .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
+    // Return the result as JSON.
     Ok(Json(result))
 }
 
+// Asynchronously fetches a specific file by its ID and returns it as JSON.
 pub async fn get_file_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i32>,
 ) -> Result<Json<files::Model>> {
+    // Perform a query to find the file by its ID.
     let the_file = Files::find_by_id(id)
-        .one(&state.conn)
+        .one(&state.conn) // Use the database connection from the application state.
         .await
-        .map_err(|error| Error::DbError(error.to_string()))?
-        .ok_or(Error::NotFound)?;
+        .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
+        .ok_or(Error::NotFound)?; // Return a NotFound error if the file does not exist.
 
+    // Return the found file as JSON.
     Ok(Json(the_file))
 }
 
+// Asynchronously deletes a file from the database and the filesystem.
 pub async fn delete_file(State(state): State<AppState>) -> Result<Json<files::Model>> {
+    // Perform a query to find the first file in the database.
     let the_file = Files::find()
-        .one(&state.conn)
+        .one(&state.conn) // Use the database connection from the application state.
         .await
-        .map_err(|error| Error::DbError(error.to_string()))?
-        .ok_or(Error::NotFound)?;
+        .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
+        .ok_or(Error::NotFound)?; // Return a NotFound error if the file does not exist.
 
-    // delete the file from disk
-    let path_str: String = SPA_DIR.clone();
-    let path = Path::new(&path_str).join(&the_file.path);
-    fs::remove_file(&path).map_err(|error| Error::ServerError(error.to_string()))?;
+    // Construct the file path to delete from the filesystem.
+    let path_str: String = SPA_DIR.clone(); // Get the directory path as a string.
+    let path = Path::new(&path_str).join(&the_file.path); // Join the directory path with the file path.
+    fs::remove_file(&path).map_err(|error| Error::ServerError(error.to_string()))?; // Delete the file and handle any filesystem errors.
 
+    // Delete the file entry from the database by its ID.
     Files::delete_by_id(the_file.id)
-        .exec(&state.conn)
+        .exec(&state.conn) // Use the database connection from the application state.
         .await
-        .map_err(|error| Error::DbError(error.to_string()))
-        .unwrap();
+        .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
+    // Return the deleted file as JSON.
     Ok(Json(the_file))
 }

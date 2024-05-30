@@ -10,17 +10,27 @@ use axum::{
 };
 use sea_orm::{entity::prelude::*, Set, TryIntoModel};
 
+// Fetch all modbus register devices, optionally filtering based on their status.
 pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterDevicesQueryParams>,
 ) -> Result<Json<Vec<serde_json::Value>>> {
+    // Start building the query to fetch devices.
     let mut query = ModbusRegisterDevices::find();
+
+    // Apply filters based on query parameters.
     if Some(true) == params.local_only {
+        // Filter devices with specific statuses if local_only is true.
         query = query.filter(devices::Column::Status.is_in(vec!["NEW", "UPDATED", "DELETED"]));
     } else {
+        // Exclude devices with status "DELETED" if local_only is not true.
         query = query.filter(devices::Column::Status.not_like("DELETED"));
     }
+
+    // Execute the query and fetch related files.
     let results = query.find_also_related(Files).all(&state.conn).await;
+
+    // Process the results and return JSON response.
     match results {
         Ok(items) => Ok(Json(
             items
@@ -37,6 +47,7 @@ pub async fn get_all(
     }
 }
 
+// Fetch a single modbus register device by its ID, including related file data.
 pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
@@ -47,6 +58,8 @@ pub async fn get_by_id(
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
+
+    // Process and return the result, or handle not found error.
     match result {
         Some(item) => {
             let mut device: serde_json::Value = serde_json::to_value(&item.0).unwrap_or_default();
@@ -57,6 +70,7 @@ pub async fn get_by_id(
     }
 }
 
+// Fetch a single modbus register device by its remote ID, including related file data.
 pub async fn get_by_remote_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
@@ -68,6 +82,8 @@ pub async fn get_by_remote_id(
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
+
+    // Process and return the result, or handle not found error.
     match result {
         Some(item) => {
             let mut device: serde_json::Value = serde_json::to_value(&item.0).unwrap_or_default();
@@ -78,10 +94,12 @@ pub async fn get_by_remote_id(
     }
 }
 
+// Create a new modbus register device with the provided input data.
 pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
+    // Initialize the device model with input data.
     let mut model = devices::ActiveModel {
         name: Set(payload.name),
         description: Set(payload.description),
@@ -90,6 +108,7 @@ pub async fn create(
         ..Default::default()
     };
 
+    // Optionally set fields if they are provided in the input.
     if payload.id.is_some() {
         model.id = Set(payload.id.unwrap());
     }
@@ -102,6 +121,7 @@ pub async fn create(
         model.private = Set(payload.private.unwrap());
     }
 
+    // Insert the new device into the database and return the result.
     let res = ModbusRegisterDevices::insert(model.clone())
         .exec_with_returning(&state.conn)
         .await
@@ -110,11 +130,13 @@ pub async fn create(
     Ok(Json(res.try_into_model().unwrap()))
 }
 
+// Update an existing modbus register device by its ID with the provided input data.
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
+    // Fetch the existing device and convert it to an active model.
     let mut model = Into::<devices::ActiveModel>::into(
         ModbusRegisterDevices::find_by_id(id)
             .one(&state.conn)
@@ -124,6 +146,7 @@ pub async fn update(
             .ok_or(Error::NotFound)?,
     );
 
+    // Update the status if necessary.
     if None == payload.status
         && model.private.clone().unwrap() == false
         && (model.status.clone().unwrap() == "PUBLISHED".to_string()
@@ -133,6 +156,7 @@ pub async fn update(
         model.status = Set("UPDATED".to_string());
     }
 
+    // Apply updates from the input data to the model.
     if let Some(name) = payload.name {
         model.name = Set(name);
     }
@@ -156,6 +180,7 @@ pub async fn update(
         model.remote_id = Set(remote_id);
     }
 
+    // Save the updated model to the database and return the result.
     let updated_item = model
         .save(&state.conn)
         .await
@@ -164,7 +189,9 @@ pub async fn update(
     Ok(Json(updated_item.try_into_model().unwrap()))
 }
 
+// Delete a modbus register device by its ID.
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<String>> {
+    // Fetch the device to be deleted.
     let item: devices::Model = ModbusRegisterDevices::find_by_id(id)
         .one(&state.conn)
         .await
@@ -172,6 +199,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
         .ok_or(Error::NotFound)
         .map(Into::into)?;
 
+    // If the device is "NEW" or "DELETED", remove it from the database.
     if item.status == "NEW" || item.status == "DELETED" {
         ModbusRegisterDevices::delete_by_id(id)
             .exec(&state.conn)
@@ -179,6 +207,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
             .map_err(|error| Error::DbError(error.to_string()))?;
         Ok(Json("Deleted successfully".to_string()))
     } else {
+        // Otherwise, update its status to "DELETED".
         let mut updated_item = devices::ActiveModel::from(item.clone());
         updated_item.status = Set("DELETED".to_string());
         updated_item

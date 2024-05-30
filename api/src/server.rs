@@ -35,6 +35,7 @@ async fn health_check_handler() -> &'static str {
     "OK"
 }
 
+// This function creates the application state and returns a router with all of the routes for the API.
 pub async fn create_app() -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -57,20 +58,28 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
 }
 
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
-    // initialize tracing
+    // Initialize tracing
     tracing_subscriber::fmt::init();
 
+    // Load environment variables from .env file
     dotenvy::dotenv().ok();
 
+    // Run database migrations
     run_migrations().await?;
 
+    // Create the application state
     let app = create_app().await?;
 
+    // Get the server port from environment variable or default to 9103
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
 
+    // Bind the server to the specified port
     let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await?;
 
+    // Print the server address
     println!("->> LISTENING on {:?}\n", listener.local_addr());
+
+    // Start the server with graceful shutdown
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;

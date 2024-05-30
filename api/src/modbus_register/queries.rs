@@ -19,6 +19,7 @@ use crate::{
     error::{Error, Result},
 };
 
+/// Generates a filter query based on optional filter criteria.
 pub fn generate_filter_query(
     filter: &Option<String>,
     device_id: &Option<i32>,
@@ -26,6 +27,7 @@ pub fn generate_filter_query(
 ) -> SelectTwo<ModbusRegister, ModbusRegisterDevices> {
     let mut query = ModbusRegister::find().find_also_related(ModbusRegisterDevices);
 
+    // Apply text-based filters if a filter string is provided.
     if let Some(filter) = filter {
         let fields = vec![
             modbus_register::Column::RegisterName,
@@ -40,6 +42,8 @@ pub fn generate_filter_query(
         for field in fields {
             or_filters.push(field.like(like_expr.clone()));
         }
+
+        // Apply numeric filters if the filter can be parsed as an integer.
         if let Ok(filter_num) = filter.parse::<i32>() {
             query = query.filter(
                 modbus_register::Column::RegisterLength
@@ -63,12 +67,16 @@ pub fn generate_filter_query(
         }
     }
 
+    // Exclude records with specific statuses.
     query = query.filter(modbus_register::Column::Status.not_like("REJECTED"));
     query = query.filter(modbus_register::Column::Status.not_like("APPROVED"));
 
+    // Filter by device ID if provided.
     if device_id.is_some() {
         query = query.filter(modbus_register::Column::DeviceId.eq(device_id.clone().unwrap()));
     }
+
+    // Apply local-only filters if specified.
     if local_only {
         query =
             query.filter(modbus_register::Column::Status.is_in(vec!["NEW", "UPDATED", "DELETED"]));
@@ -79,16 +87,19 @@ pub fn generate_filter_query(
     query
 }
 
+/// Handler to list Modbus registers with optional query parameters.
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterQueryParams>,
 ) -> Result<Json<ModbusRegisterResponse>> {
+    // Generate the base query with filters.
     let mut query = generate_filter_query(
         &params.filter,
         &params.device_id,
         params.local_only.unwrap_or(false),
     );
 
+    // Apply ordering, limit, and offset to the query.
     query = query.order_by(
         Into::<modbus_register::Column>::into(params.order_by.unwrap_or(ModbusRegisterColumns::Id)),
         params.order_dir.unwrap_or(OrderByDirection::Desc).into(),
@@ -97,6 +108,7 @@ pub async fn list(
         .limit(params.limit.unwrap_or(100))
         .offset(params.offset.unwrap_or(0));
 
+    // Execute the query and fetch the results.
     let count = query
         .clone()
         .count(&state.conn)
@@ -107,6 +119,7 @@ pub async fn list(
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    // Map the results to the response model.
     let items = items
         .iter()
         .map(|item| ModbusRegisterModel {
@@ -127,19 +140,23 @@ pub async fn list(
         })
         .collect();
 
+    // Return the response with the items and count.
     Ok(Json(ModbusRegisterResponse { data: items, count }))
 }
 
+/// Handler to get a single Modbus register by its ID.
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<Option<ModbusRegisterModel>>> {
+    // Fetch the item by ID and related device.
     let item = ModbusRegister::find_by_id(id)
         .find_also_related(ModbusRegisterDevices)
         .one(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    // Map the result to the response model.
     let item = item.map(|item| ModbusRegisterModel {
         id: item.0.id,
         register_address: item.0.register_address,
@@ -157,13 +174,16 @@ pub async fn get_one(
         updated_at: item.0.updated_at.clone(),
     });
 
+    // Return the item as a JSON response.
     Ok(Json(item))
 }
 
+/// Handler to create a new Modbus register.
 pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateModbusRegisterItemInput>,
 ) -> Result<Json<modbus_register::Model>> {
+    // Create an active model from the payload.
     let mut model = modbus_register::ActiveModel {
         register_address: Set(payload.register_address),
         operation: Set(payload.operation),
@@ -176,6 +196,7 @@ pub async fn create(
         ..Default::default()
     };
 
+    // Set optional fields if provided.
     if payload.id.is_some() {
         model.id = Set(payload.id.unwrap());
     }
@@ -195,6 +216,7 @@ pub async fn create(
         model.updated_at = Set(payload.updated_at.unwrap());
     }
 
+    // Insert the model into the database and return the created item.
     let res = ModbusRegister::insert(model.clone())
         .exec_with_returning(&state.conn)
         .await
@@ -203,11 +225,14 @@ pub async fn create(
     Ok(Json(res.try_into_model().unwrap()))
 }
 
+/// Handler to create multiple Modbus registers.
 pub async fn create_many(
     State(state): State<AppState>,
     Json(payload): Json<Vec<CreateModbusRegisterItemInput>>,
 ) -> Result<Json<serde_json::Value>> {
     let mut models = Vec::new();
+
+    // Create active models from the payload items.
     for item in payload {
         let mut model = modbus_register::ActiveModel {
             register_address: Set(item.register_address),
@@ -221,6 +246,7 @@ pub async fn create_many(
             ..Default::default()
         };
 
+        // Set optional fields if provided.
         if item.id.is_some() {
             model.id = Set(item.id.unwrap());
         }
@@ -244,19 +270,23 @@ pub async fn create_many(
     }
     let count = models.len();
 
+    // Insert multiple models into the database.
     ModbusRegister::insert_many(models)
         .exec(&state.conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
+    // Return the count of created rows.
     Ok(Json(json!({"created_rows_count": count})))
 }
 
+/// Handler to update an existing Modbus register by its ID.
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateModbusRegisterItemInput>,
 ) -> Result<Json<modbus_register::Model>> {
+    // Fetch the existing model by ID and convert it to an active model.
     let mut model = Into::<modbus_register::ActiveModel>::into(
         ModbusRegister::find_by_id(id)
             .one(&state.conn)
@@ -266,6 +296,7 @@ pub async fn update(
             .ok_or(Error::NotFound)?,
     );
 
+    // Update the status if conditions are met.
     if None == payload.status
         && model.private.clone().unwrap().unwrap_or(true) == false
         && (model.status.clone().unwrap() == "PUBLISHED".to_string()
@@ -275,6 +306,7 @@ pub async fn update(
         model.status = Set("UPDATED".to_string());
     }
 
+    // Update fields with the values from the payload if provided.
     if let Some(operation) = payload.operation {
         model.operation = Set(operation);
     }
@@ -307,6 +339,7 @@ pub async fn update(
         model.private = Set(private);
     }
 
+    // Save the updated model to the database and return the updated item.
     let updated_item = model
         .save(&state.conn)
         .await
@@ -315,10 +348,12 @@ pub async fn update(
     Ok(Json(updated_item.try_into_model().unwrap()))
 }
 
+/// Handler to delete a Modbus register by its ID.
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<String>> {
     let item = ModbusRegister::find_by_id(id).one(&state.conn).await;
 
     match item {
+        // If the item is found and its status is "NEW" or "DELETED", delete it from the database.
         Ok(Some(item)) => {
             if item.status == "NEW" || item.status == "DELETED" {
                 ModbusRegister::delete_by_id(id)
@@ -327,6 +362,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
                     .map_err(|error| Error::DbError(error.to_string()))?;
                 Ok(Json("Deleted successfully".to_string()))
             } else {
+                // Otherwise, update its status to "DELETED".
                 let mut updated_item = modbus_register::ActiveModel::from(item);
                 updated_item.status = Set("DELETED".to_string());
                 updated_item
@@ -336,7 +372,9 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
                 Ok(Json("Deleted successfully".to_string()))
             }
         }
+        // If the item is not found, return an error.
         Ok(None) => Err(Error::NotFound),
+        // Handle any database errors.
         Err(error) => Err(Error::DbError(error.to_string())),
     }
 }
