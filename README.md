@@ -7,6 +7,36 @@ This repository stores the webview components used in the T3000 software. There 
 
 ## Install the dependencies
 
+Requires a Node installation to function. Please refer to https://nodejs.org/en/download/package-manager, You can install one with:
+
+For linux
+```bash
+sudo apt-get install nodejs npm
+```
+For windows, download Windows Installer MSI from https://nodejs.org and run.
+
+For mac
+```bash
+brew install node
+```
+
+To install yarn, please refer to https://yarnpkg.com/getting-started/install
+
+For linux
+```bash
+sudo apt-get install yarn
+```
+For windows (run in command window)
+```bash
+npm install -g yarn
+```
+For mac
+```bash
+brew install yarn
+```
+
+(Execute the following commands in the project root directory)
+
 ```bash
 yarn
 # or
@@ -16,8 +46,11 @@ npm install
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 
 ```bash
+yarn dev
+# or
 npm run dev
 ```
+You can find App URL (http://localhost:3003 or else) from cmd output, and open this link in your browser.
 
 ### Unit test
 
@@ -52,6 +85,8 @@ npm run format
 ### Build the app for production
 
 ```bash
+yarn build
+# or
 npm run build
 ```
 
