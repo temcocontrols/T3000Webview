@@ -302,15 +302,6 @@ This project welcomes contributions and suggestions.
       - Navigate to the main repository and open a Pull Request from your fork.
       - Provide a clear description of the changes and any relevant issues.
 
----
-
-By incorporating the scripts from your `package.json`, contributors can more effectively navigate the development workflow. Encourage contributors to use these scripts to maintain consistency and streamline development tasks.
-
-- **Helpful Tips**
-  - Regularly pull changes from the main repository to keep your fork up-to-date.
-  - Engage with the community by reviewing other Pull Requests and participating in discussions.
-  - If you're unsure about a feature or change, feel free to open an issue for clarification.
-
 ## T3000 HVAC Drawer C++ Integration - Developer Notes
 
 This repository serves as a sub-module within the [T3000 Building Automation System](https://github.com/temcocontrols/T3000_Building_Automation_System) repository. The integration allows T3000 software’s C++ code to interact with the HVAC drawer to render animated drawings using data from T3000 devices. The software also controls the state of these drawings, such as animating a fan object when the fan is turned on.
