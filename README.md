@@ -10,6 +10,8 @@ This repository stores the webview components used in the T3000 software. There 
 
 ---
 
+![Screenshot of Modbus Register Tool](./screenshots/Modbus-Register.png)
+
 ### Overview
 
 The **Modbus Register Tool** is a user-friendly interface designed to manage, edit, and synchronize Modbus register lists for various Modbus devices. It allows interaction with a local SQLite database and provides options for syncing data with the T3 User Library API. This tool is enhanced with a Rust-based API that facilitates seamless Modbus register data management.
@@ -113,6 +115,26 @@ The tool uses a **Rust-based API** for Modbus register data interaction, providi
 
 This example illustrates how a typical Modbus register entry is structured. Users can interact with each column to configure or manage the register details as needed.
 
+## HVAC Drawer
+
+---
+
+![Screenshot of HVAC Drawer](./screenshots/HVAC-Drawer.png)
+
+### Overview
+
+This project is a web-based HVAC (Heating, Ventilation, and Air Conditioning) drawer, developed using the Quasar framework. It is designed to provide a dynamic and user-friendly interface for creating and manipulating HVAC system diagrams.
+
+### Key Features
+
+**Vue3 Moveable and Vue3 Selecto Integration**: These libraries handle the movement, resizing, and selection of objects, which are primarily SVGs representing HVAC components like ducts, pipes, and more.
+
+**T3000 Software Integration**: The HVAC Drawer communicates directly with the T3000 software, written in C++, through WebView and JavaScript WebView messages. This enables real-time data exchange between the drawer interface and the underlying control systems.
+
+**SVG-Based Object Handling**: The components are drawn and manipulated as SVG elements, ensuring high scalability and flexibility in representing HVAC systems.
+
+**Modern Vue3 Design**: Built with Vue3 for reactivity and modern JavaScript features, ensuring a seamless user experience.
+
 ## Contributing
 
 This project welcomes contributions and suggestions.
@@ -122,7 +144,6 @@ This project welcomes contributions and suggestions.
 - **Frontend**: Quasar Framework (Vue.js-based)
 - **Languages**: TypeScript, JavaScript, HTML, CSS
 - **Backend API**: Rust
-- **T3000 Software**: C++
 - **Testing**: Vitest (frontend), Rust's built-in testing framework
 - **CI/CD**: GitHub Actions
 
@@ -142,7 +163,7 @@ This project welcomes contributions and suggestions.
      npm install
      ```
 
-3. **Available Scripts**
+3. **Available NPM Scripts**
 
    The project includes several NPM scripts defined in the `package.json` file to streamline development tasks:
 
