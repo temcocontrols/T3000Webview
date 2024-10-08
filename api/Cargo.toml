@@ -10,15 +10,15 @@ name = "t3_webview_api"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axum = { version = "0.7.5", features = ["multipart"] }
+axum = { version = "0.7.7", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.68"
 tokio = { version = "1.0", features = ["full"] }
 
 tracing-subscriber = "0.3.18"
 strum_macros = "0.26.1"
-serde_with = "3.6.1"
-tower-http = { version = "0.5.1", features = ["cors", "fs"] }
+serde_with = "3.11.0"
+tower-http = { version = "0.6.1", features = ["cors", "fs"] }
 dotenvy = "0.15.7"
 lazy_static = "1.4.0"
 open = "5.1.2"
@@ -37,10 +37,9 @@ features = [
 ]
 
 [dev-dependencies]
-tower = { version = "0.4", features = ["util"] }
+tower = { version = "0.5.1", features = ["util"] }
 
 [profile.release]
 strip = true
 opt-level = "z"
 lto = true
-panic = "abort"
