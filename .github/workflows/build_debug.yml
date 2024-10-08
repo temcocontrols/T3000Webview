@@ -57,4 +57,4 @@ jobs:
           path: |
             api/target\i686-pc-windows-msvc\debug\t3_webview_api.dll
             api/target\i686-pc-windows-msvc\debug\t3_webview_api.dll.lib
-            api/target\i686-pc-windows-msvc\debug\t3_webview_api.dll.pdb
+            api/target\i686-pc-windows-msvc\debug\t3_webview_api.pdb
