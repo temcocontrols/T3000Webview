@@ -1,6 +1,7 @@
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 
 use sea_orm::DatabaseConnection;
+use tokio::sync::Mutex;
 
 use crate::db_connection::establish_connection;
 
@@ -8,7 +9,7 @@ use crate::db_connection::establish_connection;
 /// The `conn` field is a `DatabaseConnection` which is used to interact with the database.
 #[derive(Clone)]
 pub struct AppState {
-    pub conn: DatabaseConnection,
+    pub conn: Arc<Mutex<DatabaseConnection>>,
 }
 
 /// Asynchronously establishes a database connection and returns an `AppState` struct.
@@ -19,6 +20,8 @@ pub struct AppState {
 pub async fn app_state() -> Result<AppState, Box<dyn Error>> {
     // Establish a database connection
     let conn = establish_connection().await?;
-    // Return an `AppState` struct with the connection
-    Ok(AppState { conn })
+    // Wrap the connection in Arc and Mutex for shared access
+    let shared_conn = Arc::new(Mutex::new(conn));
+    // Return an `AppState` struct with the shared connection
+    Ok(AppState { conn: shared_conn })
 }

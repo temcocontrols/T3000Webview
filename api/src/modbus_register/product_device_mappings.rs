@@ -13,9 +13,8 @@ use crate::error::{Error, Result};
 use super::inputs::CreateDeviceNameIdMappingInput;
 
 pub async fn get_all(State(state): State<AppState>) -> Result<Json<Vec<device_mappings::Model>>> {
-    let results = ModbusRegisterProductDeviceMapping::find()
-        .all(&state.conn)
-        .await;
+    let conn = state.conn.lock().await;
+    let results = ModbusRegisterProductDeviceMapping::find().all(&*conn).await;
     match results {
         Ok(items) => Ok(Json(items)),
         Err(error) => Err(Error::DbError(error.to_string())),
@@ -26,8 +25,9 @@ pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<device_mappings::Model>> {
+    let conn = state.conn.lock().await;
     let result = ModbusRegisterProductDeviceMapping::find_by_id(id)
-        .one(&state.conn)
+        .one(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
@@ -41,13 +41,14 @@ pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateDeviceNameIdMappingInput>,
 ) -> Result<Json<device_mappings::Model>> {
+    let conn = state.conn.lock().await;
     let model = device_mappings::ActiveModel {
         product_id: Set(payload.product_id),
         device_id: Set(payload.device_id),
     };
 
     let res = ModbusRegisterProductDeviceMapping::insert(model.clone())
-        .exec_with_returning(&state.conn)
+        .exec_with_returning(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -58,15 +59,16 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<device_mappings::Model>> {
+    let conn = state.conn.lock().await;
     let setting = ModbusRegisterProductDeviceMapping::find_by_id(id)
-        .one(&state.conn)
+        .one(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
         .map(Into::into)?;
 
     ModbusRegisterProductDeviceMapping::delete_by_id(id)
-        .exec(&state.conn)
+        .exec(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 

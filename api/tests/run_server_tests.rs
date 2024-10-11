@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use t3_webview_api::{server::create_app, utils::run_migrations}; // Assuming you've modified server_start to create_app
+use t3_webview_api::{app_state, server::create_app, utils::run_migrations}; // Assuming you've modified server_start to create_app
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
 #[tokio::test]
@@ -11,8 +11,10 @@ async fn test_server_start() {
 
     run_migrations().await.unwrap();
 
+    let state = app_state::app_state().await.unwrap();
+
     // Call the function with the mock
-    let app = create_app().await;
+    let app = create_app(state).await;
 
     // Create a request
     let request = Request::builder()

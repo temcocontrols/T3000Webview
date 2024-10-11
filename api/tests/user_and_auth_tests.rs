@@ -7,7 +7,7 @@ use axum::{
     Json,
 };
 use t3_webview_api::{
-    app_state::app_state,
+    app_state::{self, app_state},
     entity::user,
     server::create_app,
     user::routes::{delete_user, get_user, save_user},
@@ -48,7 +48,10 @@ async fn test_user_auth() {
 
     run_migrations().await.unwrap();
 
-    let app = create_app().await.unwrap();
+    let state = app_state::app_state().await.unwrap();
+
+    // Call the function with the mock
+    let app = create_app(state).await.unwrap();
 
     let request = Request::builder()
         .uri("/api/user")

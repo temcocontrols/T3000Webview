@@ -60,5 +60,6 @@ pub fn copy_database_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
     let conn = establish_connection().await?; // Establish a database connection.
     Migrator::up(&conn, None).await?; // Run the migrations.
+    drop(conn);
     Ok(())
 }
