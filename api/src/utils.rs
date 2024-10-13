@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use migration::{Migrator, MigratorTrait};
-use std::{env, fs, path::Path};
+use std::{env, fs, path::Path, sync::Arc};
+use tokio::sync::{mpsc, Mutex};
 
 use crate::db_connection::establish_connection;
 
@@ -15,6 +16,8 @@ lazy_static! {
     // SPA_DIR is set from environment variable or defaults to a local directory.
     pub static ref SPA_DIR: String =
         env::var("SPA_DIR").unwrap_or_else(|_| "./ResourceFile/webview/www".to_string());
+
+    pub static ref SHUTDOWN_CHANNEL: Arc<Mutex<mpsc::Sender<()>>> = Arc::new(Mutex::new(mpsc::channel(1).0));
 }
 
 // Copies the database file to the destination if it does not already exist.

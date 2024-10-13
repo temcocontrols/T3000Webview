@@ -1,5 +1,5 @@
 use std::panic;
-use utils::copy_database_if_not_exists;
+use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 
 pub mod app_state;
 pub mod auth;
@@ -16,6 +16,20 @@ pub mod utils;
 pub enum RustError {
     Ok = 0,
     Error = 1,
+}
+
+// Externally callable function to shut down the server for using from C++.
+#[no_mangle]
+pub extern "C" fn shutdown_server() {
+    // Send a shutdown signal to the server
+    let _ = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            let sender = SHUTDOWN_CHANNEL.lock().await;
+            sender.send(()).await.ok();
+        });
 }
 
 // Externally callable function to run the server for using from C++, returning a RustError.
