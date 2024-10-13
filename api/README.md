@@ -22,12 +22,6 @@ bash`cargo build --target i686-pc-windows-msvc --release`
 
 You will find the compiled binary in the `target/i686-pc-windows-msvc/release` directory.
 
-# Bulid command for smaller size
-
-bash`cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target i686-pc-windows-msvc --release`
-
-You will find the compiled binary in the `target/i686-pc-windows-msvc/release` directory.
-
 # Run the server example
 
 You can use this example to test the API before you ship it as a dll file.
@@ -44,7 +38,7 @@ Database migrations are handled by Sea ORM.
 
 ## Install Sea ORM CLI
 
-bash`cargo install sea-orm-cli@1.0.0-rc.5`
+bash`cargo install sea-orm-cli`
 
 ## Run migration
 
