@@ -6,16 +6,16 @@ use axum::{
     Router,
 };
 
-use tokio::{net::TcpListener, signal};
+use tokio::{net::TcpListener, signal, sync::mpsc};
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
 
 use crate::{
-    app_state,
+    app_state::{self, AppState},
     file::routes::file_routes,
-    utils::{run_migrations, SPA_DIR},
+    utils::{run_migrations, SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
 use super::modbus_register::routes::modbus_register_routes;
@@ -36,13 +36,11 @@ async fn health_check_handler() -> &'static str {
 }
 
 // This function creates the application state and returns a router with all of the routes for the API.
-pub async fn create_app() -> Result<Router, Box<dyn Error>> {
+pub async fn create_app(app_state: AppState) -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
         .allow_origin(Any);
-
-    let app_state = app_state::app_state().await?;
 
     Ok(Router::new()
         .nest(
@@ -59,7 +57,9 @@ pub async fn create_app() -> Result<Router, Box<dyn Error>> {
 
 pub async fn server_start() -> Result<(), Box<dyn Error>> {
     // Initialize tracing
-    tracing_subscriber::fmt::init();
+    if let Err(_) = tracing_subscriber::fmt().try_init() {
+        // Handle the error or ignore it if reinitialization is not needed
+    }
 
     // Load environment variables from .env file
     dotenvy::dotenv().ok();
@@ -68,7 +68,10 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     run_migrations().await?;
 
     // Create the application state
-    let app = create_app().await?;
+    let state = app_state::app_state().await?;
+
+    // Create the application state
+    let app = create_app(state.clone()).await?;
 
     // Get the server port from environment variable or default to 9103
     let server_port = env::var("PORT").unwrap_or_else(|_| "9103".to_string());
@@ -81,13 +84,18 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Start the server with graceful shutdown
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(state))
         .await?;
 
     Ok(())
 }
 
-async fn shutdown_signal() {
+async fn shutdown_signal(state: AppState) {
+    let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
+
+    // Store the sender in the SHUTDOWN_CHANNEL
+    *SHUTDOWN_CHANNEL.lock().await = shutdown_tx;
+
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -108,5 +116,10 @@ async fn shutdown_signal() {
     tokio::select! {
         _ = ctrl_c => {},
         _ = terminate => {},
+        _ = shutdown_rx.recv() => {}, // Listen for the shutdown signal
     }
+
+    // Drop the database connection gracefully
+    println!("->> SHUTTING DOWN: Closing database connection...");
+    let _ = state.conn.lock().await; // Lock and drop the connection
 }

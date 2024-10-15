@@ -1,0 +1,60 @@
+name: Build Debug
+on: workflow_dispatch
+jobs:
+  build_ui:
+    name: Build UI
+    runs-on: ubuntu-latest
+    environment: build
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      API_WS_URL: ${{ secrets.API_WS_URL }}
+      LOCAL_API_URL: ${{ vars.LOCAL_API_URL }}
+      LOCAL_API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          npm install
+          npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-ui
+          path: dist/spa/*
+
+  build_api:
+    name: Build API
+    runs-on: windows-latest
+    environment: build
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      API_WS_URL: ${{ secrets.API_WS_URL }}
+      LOCAL_API_URL: ${{ vars.LOCAL_API_URL }}
+      LOCAL_API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+      API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-pc-windows-msvc
+
+      - name: Build webview api
+        run: |
+          cd api
+          cargo build --target=i686-pc-windows-msvc
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-api
+          path: |
+            api/target\i686-pc-windows-msvc\debug\t3_webview_api.dll
+            api/target\i686-pc-windows-msvc\debug\t3_webview_api.dll.lib
+            api/target\i686-pc-windows-msvc\debug\t3_webview_api.pdb

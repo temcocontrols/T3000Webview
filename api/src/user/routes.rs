@@ -30,8 +30,9 @@ pub fn user_routes() -> Router<AppState> {
 
 // Asynchronously fetches a user from the database and returns it as JSON.
 pub async fn get_user(State(state): State<AppState>) -> Result<Json<Option<user::Model>>> {
+    let conn = state.conn.lock().await;
     let result = User::find()
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
@@ -43,8 +44,9 @@ pub async fn save_user(
     State(state): State<AppState>,
     Json(item): Json<user::Model>,
 ) -> Result<Json<user::Model>> {
+    let conn = state.conn.lock().await;
     let the_user = User::find()
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
@@ -56,7 +58,7 @@ pub async fn save_user(
             last_pull = user.last_modbus_register_pull;
         }
         User::delete_by_id(user.id)
-            .exec(&state.conn)
+            .exec(&*conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
     }
@@ -65,7 +67,7 @@ pub async fn save_user(
     let mut new_user = item.clone();
     new_user.last_modbus_register_pull = last_pull;
     let result = User::insert(user::ActiveModel::from(new_user))
-        .exec_with_returning(&state.conn)
+        .exec_with_returning(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -83,8 +85,9 @@ pub async fn update_user_last_modbus_register_pull(
     State(state): State<AppState>,
     Json(payload): Json<ServerTimeInput>,
 ) -> Result<Json<String>> {
+    let conn = state.conn.lock().await;
     let the_user = User::find()
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
@@ -96,7 +99,7 @@ pub async fn update_user_last_modbus_register_pull(
     let mut the_user = the_user.unwrap().into_active_model();
     the_user.last_modbus_register_pull = Set(Some(payload.time.clone()));
     the_user
-        .save(&state.conn)
+        .save(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -105,15 +108,16 @@ pub async fn update_user_last_modbus_register_pull(
 
 // Asynchronously deletes a user from the database and returns the deleted user as JSON.
 pub async fn delete_user(State(state): State<AppState>) -> Result<Json<user::Model>> {
+    let conn = state.conn.lock().await;
     let the_user = User::find()
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
         .ok_or(Error::NotFound)?; // Return a NotFound error if the user does not exist.
 
     // Delete the user by their ID.
     User::delete_by_id(the_user.id)
-        .exec(&state.conn)
+        .exec(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -135,9 +139,10 @@ pub async fn login(Json(params): Json<LoginParams>) -> Result<Json<String>> {
 
 // Asynchronously handles user logout by clearing the user's token and returns the updated user as JSON.
 pub async fn logout(State(state): State<AppState>) -> Result<Json<user::Model>> {
+    let conn = state.conn.lock().await;
     let mut model = Into::<user::ActiveModel>::into(
         User::find()
-            .one(&state.conn) // Use the database connection from the application state.
+            .one(&*conn) // Use the database connection from the application state.
             .await
             .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
             .ok_or(Error::NotFound)?, // Return a NotFound error if the user does not exist.
@@ -145,7 +150,7 @@ pub async fn logout(State(state): State<AppState>) -> Result<Json<user::Model>> 
 
     model.token = Set(None); // Clear the user's token.
     let updated_item = model
-        .save(&state.conn)
+        .save(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 

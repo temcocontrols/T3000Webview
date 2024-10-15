@@ -15,6 +15,7 @@ pub async fn get_all(
     State(state): State<AppState>,
     Query(params): Query<ModbusRegisterDevicesQueryParams>,
 ) -> Result<Json<Vec<serde_json::Value>>> {
+    let conn = state.conn.lock().await;
     // Start building the query to fetch devices.
     let mut query = ModbusRegisterDevices::find();
 
@@ -28,7 +29,7 @@ pub async fn get_all(
     }
 
     // Execute the query and fetch related files.
-    let results = query.find_also_related(Files).all(&state.conn).await;
+    let results = query.find_also_related(Files).all(&*conn).await;
 
     // Process the results and return JSON response.
     match results {
@@ -52,9 +53,10 @@ pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<serde_json::Value>> {
+    let conn = state.conn.lock().await;
     let result = ModbusRegisterDevices::find_by_id(id)
         .find_also_related(Files)
-        .one(&state.conn)
+        .one(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
@@ -75,10 +77,11 @@ pub async fn get_by_remote_id(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<serde_json::Value>> {
+    let conn = state.conn.lock().await;
     let result = ModbusRegisterDevices::find()
         .filter(devices::Column::RemoteId.eq(id))
         .find_also_related(Files)
-        .one(&state.conn)
+        .one(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))
         .unwrap();
@@ -99,6 +102,7 @@ pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CreateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
+    let conn = state.conn.lock().await;
     // Initialize the device model with input data.
     let mut model = devices::ActiveModel {
         name: Set(payload.name),
@@ -123,7 +127,7 @@ pub async fn create(
 
     // Insert the new device into the database and return the result.
     let res = ModbusRegisterDevices::insert(model.clone())
-        .exec_with_returning(&state.conn)
+        .exec_with_returning(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -136,10 +140,11 @@ pub async fn update(
     Path(id): Path<i32>,
     Json(payload): Json<UpdateDeviceInput>,
 ) -> Result<Json<devices::Model>> {
+    let conn = state.conn.lock().await;
     // Fetch the existing device and convert it to an active model.
     let mut model = Into::<devices::ActiveModel>::into(
         ModbusRegisterDevices::find_by_id(id)
-            .one(&state.conn)
+            .one(&*conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))
             .unwrap()
@@ -182,7 +187,7 @@ pub async fn update(
 
     // Save the updated model to the database and return the result.
     let updated_item = model
-        .save(&state.conn)
+        .save(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -191,9 +196,10 @@ pub async fn update(
 
 // Delete a modbus register device by its ID.
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<String>> {
+    let conn = state.conn.lock().await;
     // Fetch the device to be deleted.
     let item: devices::Model = ModbusRegisterDevices::find_by_id(id)
-        .one(&state.conn)
+        .one(&*conn)
         .await
         .map_err(|error| Error::DbError(error.to_string()))?
         .ok_or(Error::NotFound)
@@ -202,7 +208,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
     // If the device is "NEW" or "DELETED", remove it from the database.
     if item.status == "NEW" || item.status == "DELETED" {
         ModbusRegisterDevices::delete_by_id(id)
-            .exec(&state.conn)
+            .exec(&*conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
         Ok(Json("Deleted successfully".to_string()))
@@ -211,7 +217,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i32>) -> Resul
         let mut updated_item = devices::ActiveModel::from(item.clone());
         updated_item.status = Set("DELETED".to_string());
         updated_item
-            .save(&state.conn)
+            .save(&*conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
         Ok(Json("Deleted successfully".to_string()))

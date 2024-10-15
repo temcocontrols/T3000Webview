@@ -43,6 +43,7 @@ async fn upload_file(
     Query(query_params): Query<QueryParams>,
     mut multipart: Multipart,
 ) -> Result<Json<files::Model>> {
+    let conn = state.conn.lock().await;
     while let Some(field) = multipart
         .next_field()
         .await
@@ -106,7 +107,7 @@ async fn upload_file(
         });
 
         let results = model
-            .exec_with_returning(&state.conn)
+            .exec_with_returning(&*conn)
             .await
             .map_err(|error| Error::DbError(error.to_string()))?;
 
@@ -117,9 +118,10 @@ async fn upload_file(
 
 // Asynchronously fetches all files from the database and returns them as JSON.
 pub async fn get_files(State(state): State<AppState>) -> Result<Json<Vec<files::Model>>> {
+    let conn = state.conn.lock().await;
     // Perform a query to find all files in the database.
     let result = Files::find()
-        .all(&state.conn) // Use the database connection from the application state.
+        .all(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
@@ -132,9 +134,10 @@ pub async fn get_file_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i32>,
 ) -> Result<Json<files::Model>> {
+    let conn = state.conn.lock().await;
     // Perform a query to find the file by its ID.
     let the_file = Files::find_by_id(id)
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
         .ok_or(Error::NotFound)?; // Return a NotFound error if the file does not exist.
@@ -145,9 +148,10 @@ pub async fn get_file_by_id(
 
 // Asynchronously deletes a file from the database and the filesystem.
 pub async fn delete_file(State(state): State<AppState>) -> Result<Json<files::Model>> {
+    let conn = state.conn.lock().await;
     // Perform a query to find the first file in the database.
     let the_file = Files::find()
-        .one(&state.conn) // Use the database connection from the application state.
+        .one(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))? // Handle any database errors.
         .ok_or(Error::NotFound)?; // Return a NotFound error if the file does not exist.
@@ -159,7 +163,7 @@ pub async fn delete_file(State(state): State<AppState>) -> Result<Json<files::Mo
 
     // Delete the file entry from the database by its ID.
     Files::delete_by_id(the_file.id)
-        .exec(&state.conn) // Use the database connection from the application state.
+        .exec(&*conn) // Use the database connection from the application state.
         .await
         .map_err(|error| Error::DbError(error.to_string()))?; // Handle any database errors.
 
