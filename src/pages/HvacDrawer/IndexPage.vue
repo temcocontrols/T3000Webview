@@ -1935,6 +1935,12 @@ keycon.keydown(["ctrl", "v"], (e) => {
   pasteFromClipboard();
 });
 
+// Weld selected objects when "Ctrl + W" is pressed
+keycon.keydown(["ctrl", "b"], (e) => {
+  e.inputEvent.preventDefault();
+  weldSelected();
+});
+
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
@@ -1959,6 +1965,47 @@ function deleteSelected() {
     appState.value.selectedTargets = [];
     appState.value.activeItemIndex = null;
   }
+}
+
+// Weld selected objects into a single object
+function weldSelected() {
+  console.log("double=>", "Start to weld selected objects");
+
+  if (appState.value.selectedTargets.length < 2) return;
+  addActionToHistory("Weld the selected ducts");
+
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  const [duct1, duct2] = selectedItems;
+
+  // Calculate the new merged duct properties
+  const mergedDuct = {
+    ...duct1,
+    width: Math.max(duct1.width, duct2.width),
+    height: Math.max(duct1.height, duct2.height),
+    translate: [
+      Math.min(duct1.translate[0], duct2.translate[0]),
+      Math.min(duct1.translate[1], duct2.translate[1]),
+    ],
+  };
+
+  // Remove the original ducts
+  appState.value.items = appState.value.items.filter(
+    (item) => item.id !== duct1.id && item.id !== duct2.id
+  );
+
+  // Add the new merged duct
+  addObject(mergedDuct);
+
+  // Clear the selection
+  appState.value.selectedTargets = [];
+  appState.value.activeItemIndex = null;
+
+  refreshMoveable();
 }
 
 // Filter function for selecting panels in the UI
@@ -2307,6 +2354,9 @@ function handleMenuAction(action, val) {
       break;
     case "deleteSelected":
       deleteSelected();
+      break;
+    case "weldSelected":
+      weldSelected();
       break;
     case "duplicateObject":
       duplicateObject(item);

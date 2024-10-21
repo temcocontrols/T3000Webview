@@ -291,6 +291,28 @@
             <q-chip>Delete</q-chip>
           </q-item-section>
         </q-item>
+        <q-item
+          dense
+          clickable
+          v-close-popup
+          @click="menuActionEmit('weldSelected')"
+          :disable="selectedCount < 2"
+        >
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="splitscreen"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Weld selected</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + B</q-chip>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-btn-dropdown>
     <!-- Object menu -->
@@ -587,6 +609,23 @@
           <!-- <span class="toolbar-btn-label">Delete</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Delete selected</strong><em> (Delete)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="splitscreen"
+          @click="menuActionEmit('weldSelected')"
+          :disable="selectedCount < 1"
+        >
+          <!-- <span class="toolbar-btn-label">Delete</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Weld selected</strong><em> (Ctrl + B)</em>
           </q-tooltip>
         </q-btn>
       </div>
