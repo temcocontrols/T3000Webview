@@ -359,6 +359,21 @@
                     <q-chip>Delete</q-chip>
                   </q-item-section>
                 </q-item>
+                <!-- Weld Option -->
+                <q-item dense clickable v-close-popup @click="weldSelected">
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="splitscreen"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>Weld Selected</q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + B</q-chip>
+                  </q-item-section>
+                </q-item>
               </q-list>
             </q-menu>
 
@@ -1969,8 +1984,6 @@ function deleteSelected() {
 
 // Weld selected objects into a single object
 function weldSelected() {
-  console.log("double=>", "Start to weld selected objects");
-
   if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Weld the selected ducts");
 

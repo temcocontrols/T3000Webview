@@ -296,7 +296,7 @@
           clickable
           v-close-popup
           @click="menuActionEmit('weldSelected')"
-          :disable="selectedCount < 2"
+          :disable="!(selectedCount >= 2)"
         >
           <q-item-section avatar>
             <q-avatar
@@ -621,7 +621,7 @@
           no-caps
           icon="splitscreen"
           @click="menuActionEmit('weldSelected')"
-          :disable="selectedCount < 1"
+          :disable="!(selectedCount >= 2)"
         >
           <!-- <span class="toolbar-btn-label">Delete</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
