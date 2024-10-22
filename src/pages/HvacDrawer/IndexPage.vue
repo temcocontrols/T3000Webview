@@ -762,6 +762,7 @@ import {
   demoDeviceData,
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
+import paper from "paper";
 
 // Meta information for the application
 const metaData = {
@@ -1982,10 +1983,10 @@ function deleteSelected() {
   }
 }
 
-// Weld selected objects into a single object
+// Weld selected objects into one
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
-  addActionToHistory("Weld the selected ducts");
+  addActionToHistory("Weld selected objects");
 
   const selectedItems = appState.value.items.filter((i) =>
     appState.value.selectedTargets.some(
@@ -1993,31 +1994,74 @@ function weldSelected() {
     )
   );
 
-  const [duct1, duct2] = selectedItems;
+  // Create a new paper.js project
+  const project = new paper.Project();
+  const combinedPath = new paper.CompoundPath();
 
-  // Calculate the new merged duct properties
-  const mergedDuct = {
-    ...duct1,
-    width: Math.max(duct1.width, duct2.width),
-    height: Math.max(duct1.height, duct2.height),
-    translate: [
-      Math.min(duct1.translate[0], duct2.translate[0]),
-      Math.min(duct1.translate[1], duct2.translate[1]),
-    ],
+  selectedItems.forEach((item) => {
+    if (item.type === "SVG") {
+      const svgElement = document.querySelector(
+        `#moveable-item-${item.id} svg`
+      );
+      if (svgElement) {
+        const pathElements = svgElement.querySelectorAll("path");
+        pathElements.forEach((pathElement) => {
+          const pathData = pathElement.getAttribute("d");
+          if (pathData) {
+            const path = new paper.Path(pathData);
+            combinedPath.addChild(path);
+          }
+        });
+      }
+    }
+  });
+
+  // Perform union operation on the combined path
+  const weldedPath = combinedPath.unite();
+
+  // Remove overlapping parts
+  weldedPath?.children?.forEach((child) => {
+    if (child.intersects(weldedPath)) {
+      child.remove();
+    }
+  });
+
+  // Convert the welded path back to SVG
+  const weldedSVG = weldedPath.exportSVG({ asString: true });
+
+  console.log(weldedSVG);
+
+  // Create a new item with the welded SVG
+  const weldedItem = {
+    id: appState.value.itemsCount + 1,
+    type: "Boiler",
+    translate: [150, 60],
+    width: 100,
+    height: 100,
+    rotate: 0,
+    scaleX: 1,
+    scaleY: 1,
+    settings: {},
+    zindex: 1,
+    t3Entry: null,
+    background: "red",
+    svg: weldedSVG,
   };
 
-  // Remove the original ducts
-  appState.value.items = appState.value.items.filter(
-    (item) => item.id !== duct1.id && item.id !== duct2.id
-  );
+  appState.value.items.push(weldedItem);
+  appState.value.itemsCount++;
 
-  // Add the new merged duct
-  addObject(mergedDuct);
+  console.log("select items", selectedItems);
 
-  // Clear the selection
+  // Remove the original items
+  selectedItems.forEach((item) => {
+    const index = appState.value.items.findIndex((i) => i.id === item.id);
+    if (index !== -1) {
+      appState.value.items.splice(index, 1);
+    }
+  });
+
   appState.value.selectedTargets = [];
-  appState.value.activeItemIndex = null;
-
   refreshMoveable();
 }
 

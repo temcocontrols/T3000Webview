@@ -38,6 +38,7 @@
     "lodash": "^4.17.21",
     "overlap-area": "^1.1.0",
     "panzoom": "^9.4.3",
+    "paper": "^0.12.18",
     "quasar": "^2.6.0",
     "vue": "^3.0.0",
     "vue-echarts": "^6.5.2",
