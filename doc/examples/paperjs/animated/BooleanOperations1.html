@@ -36,8 +36,8 @@
     }
 
     .controls {
-      /* display: flex; */
-      /* justify-content: space-between; */
+      display: flex;
+      justify-content: space-between;
       width: 100vw;
       padding: 10px;
     }
@@ -48,11 +48,14 @@
   <div class="controls">
     <input type="file" id="fileInput1" accept=".svg">
     <input type="file" id="fileInput2" accept=".svg">
+    <textarea id="svgStringInput1" class="svg-input" placeholder="Enter SVG string 1"></textarea>
+    <textarea id="svgStringInput2" class="svg-input" placeholder="Enter SVG string 2"></textarea>
     <br>
     <button id="unionButton">Union</button>
     <button id="differenceButton">Difference</button>
     <button id="xorButton">XOR</button>
     <button id="intersectionButton">Intersection</button>
+    <button id="clearButton">Clear</button>
   </div>
   <div class="canvas-container">
     <canvas id="myCanvas" resize></canvas>
@@ -79,6 +82,33 @@
       });
     };
 
+
+    // Function to load SVG from string
+    const loadSVGFromString = (svgString) => {
+      return new Promise((resolve) => {
+        paper.project.importSVG(svgString, item => {
+          resolve(item);
+        });
+      });
+    };
+
+
+    // // Function to load SVG from FileReader
+    // const loadSVGFromFile = (file) => {
+    //   return new Promise((resolve, reject) => {
+    //     const reader = new FileReader();
+    //     reader.onload = (e) => {
+    //       const svgContent = e.target.result;
+    //       // paper.project.importSVG(svgContent, item => {
+    //       //   resolve({ item, svgContent });
+    //       // });
+    //       loadSVGFromString(svgContent).then(result => resolve(result));
+    //     };
+    //     reader.onerror = (e) => reject(e);
+    //     reader.readAsText(file);
+    //   });
+    // };
+
     // Function to display original SVG in the container
     const displayOriginalSVG = (svgContent, containerId) => {
       const container = document.getElementById(containerId);
@@ -102,8 +132,30 @@
     const performBooleanOperation = (operation) => async () => {
       const fileInput1 = document.getElementById('fileInput1').files[0];
       const fileInput2 = document.getElementById('fileInput2').files[0];
+      const svgString1 = document.getElementById('svgStringInput1').value;
+      const svgString2 = document.getElementById('svgStringInput2').value;
 
-      if (fileInput1 && fileInput2) {
+      let svgItem1, svgItem2, svgContent1, svgContent2;
+
+      if (fileInput1) {
+        const result1 = await loadSVGFromFile(fileInput1);
+        svgItem1 = result1.item;
+        svgContent1 = result1.svgContent;
+      } else if (svgString1) {
+        svgItem1 = await loadSVGFromString(svgString1);
+        svgContent1 = svgString1;
+      }
+
+      if (fileInput2) {
+        const result2 = await loadSVGFromFile(fileInput2);
+        svgItem2 = result2.item;
+        svgContent2 = result2.svgContent;
+      } else if (svgString2) {
+        svgItem2 = await loadSVGFromString(svgString2);
+        svgContent2 = svgString2;
+      }
+
+      if (svgItem1 && svgItem2) {
         try {
           const { item: svgItem1, svgContent: svgContent1 } = await loadSVGFromFile(fileInput1);
           const { item: svgItem2, svgContent: svgContent2 } = await loadSVGFromFile(fileInput2);
@@ -142,8 +194,6 @@
             }
           });
 
-          // combinedPath.removeChildren();
-          combinedPath.fillColor = null;
           combinedPath.strokeColor = 'black';
           combinedPath.strokeWidth = 2;
 
@@ -161,10 +211,25 @@
       }
     };
 
+    // Clear function
+    const clearInputs = () => {
+      console.log("clearing inputs");
+      document.getElementById('fileInput1').value = '';
+      document.getElementById('fileInput2').value = '';
+      // document.getElementById('svgString1').value = '';
+      // document.getElementById('svgString2').value = '';
+      document.getElementById('svgDisplay1').innerHTML = '';
+      document.getElementById('svgDisplay2').innerHTML = '';
+      paper.project.clear();
+      paper.view.draw();
+    };
+
+
     document.getElementById('unionButton').onclick = performBooleanOperation('union');
     document.getElementById('differenceButton').onclick = performBooleanOperation('difference');
     document.getElementById('xorButton').onclick = performBooleanOperation('xor');
     document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
+    document.getElementById('clearButton').onclick = clearInputs();
   </script>
 </body>
 

@@ -16,12 +16,34 @@
 
         var originals = new Group({ insert: false }); // Don't insert in DOM.
 
-        var square = new Path.Rectangle({
-            position: view.center,
-            size: 300,
-            parent: originals,
-            fillColor: 'white'
+        // Define the SVG string for the rectangle
+        var svgString = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="white"/></svg>';
+
+        // Import the SVG string as a Paper.js item
+        paper.project.importSVG(svgString, function(item) {
+            item.position = view.center;
+            item.parent = originals;
         });
+
+        var square = new Path.Rectangle({
+          position: view.center,
+          size: 300,
+          parent: originals,
+          fillColor: '#b95757'
+      });
+
+        // Load the SVG file and extract the path data for the square
+        var squareSVGString = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><path d="M10 80 C 40 10, 65 10, 95 80 S 150 150, 180 80" fill="none" stroke="black"/></svg>';
+
+        // Import the SVG string as a Paper.js item
+        paper.project.importSVG(squareSVGString, function(item) {
+          item.position = view.center;
+          item.parent = originals;
+          square.pathData = item.children[0].pathData;
+          item.remove(); // Remove the imported item as we only need the path data
+        });
+
+
 
         // Make a ring using subtraction of two circles:
         var inner = new Path.Circle({
@@ -55,7 +77,7 @@
             curIndex++;
             if (curIndex == operations.length * 2)
                 curIndex = 0;
-            operation = operations[curIndex % operations.length];
+            operation ='unite';// operations[curIndex % operations.length];
         }
 
         function onMouseDown(event) {
@@ -95,7 +117,7 @@
                 text.content = 'ring.' + operation + '(square)';
             }
             result.selected = true;
-            <!-- result.fillColor = colors[curIndex % colors.length]; -->
+            result.fillColor ='gray';// colors[curIndex % colors.length];
             result.moveBelow(text);
 
             // If the result is a group, color each of its children differently:
