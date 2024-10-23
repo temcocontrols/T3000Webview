@@ -357,6 +357,8 @@
         return;
       }
 
+      console.log("Paths to Process:", paths);
+
       clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
 
       switch (operation) {

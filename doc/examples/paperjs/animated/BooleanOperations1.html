@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boolean Operations with Paper.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-container {
+      display: flex;
+      justify-content: space-between;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      border: 1px solid black;
+      width: 50vw;
+      height: 100vh;
+    }
+
+    #svgContainer {
+      width: 40vw;
+      height: 90vh;
+      overflow: auto;
+      border-left: 1px solid black;
+    }
+
+    .controls {
+      /* display: flex; */
+      /* justify-content: space-between; */
+      width: 100vw;
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <input type="file" id="fileInput1" accept=".svg">
+    <input type="file" id="fileInput2" accept=".svg">
+    <br>
+    <button id="unionButton">Union</button>
+    <button id="differenceButton">Difference</button>
+    <button id="xorButton">XOR</button>
+    <button id="intersectionButton">Intersection</button>
+  </div>
+  <div class="canvas-container">
+    <canvas id="myCanvas" resize></canvas>
+    <div id="svgContainer">
+      <div id="svgDisplay1"></div>
+      <div id="svgDisplay2"></div>
+    </div>
+  </div>
+  <script>
+    paper.setup('myCanvas');
+
+    // Function to load SVG from FileReader
+    const loadSVGFromFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const svgContent = e.target.result;
+          paper.project.importSVG(svgContent, item => {
+            resolve({ item, svgContent });
+          });
+        };
+        reader.onerror = (e) => reject(e);
+        reader.readAsText(file);
+      });
+    };
+
+    // Function to display original SVG in the container
+    const displayOriginalSVG = (svgContent, containerId) => {
+      const container = document.getElementById(containerId);
+      container.innerHTML = svgContent;
+    };
+
+    // Function to extract paths from SVG item
+    const extractPaths = (item) => {
+      let paths = [];
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+        paths.push(item);
+      } else if (item.children) {
+        item.children.forEach(child => {
+          paths = paths.concat(extractPaths(child));
+        });
+      }
+      return paths;
+    };
+
+    // Function to perform boolean operations
+    const performBooleanOperation = (operation) => async () => {
+      const fileInput1 = document.getElementById('fileInput1').files[0];
+      const fileInput2 = document.getElementById('fileInput2').files[0];
+
+      if (fileInput1 && fileInput2) {
+        try {
+          const { item: svgItem1, svgContent: svgContent1 } = await loadSVGFromFile(fileInput1);
+          const { item: svgItem2, svgContent: svgContent2 } = await loadSVGFromFile(fileInput2);
+
+          // Display original SVGs
+          displayOriginalSVG(svgContent1, 'svgDisplay1');
+          displayOriginalSVG(svgContent2, 'svgDisplay2');
+
+          // Extract paths
+          const paths1 = extractPaths(svgItem1);
+          const paths2 = extractPaths(svgItem2);
+
+          if (paths1.length === 0 || paths2.length === 0) {
+            throw new Error("No valid paths found in one or both SVG files.");
+          }
+
+          // Perform the boolean operation on each path
+          let combinedPath = paths1[0];
+          paths1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+          paths2.forEach(path => {
+            switch (operation) {
+              case 'union':
+                combinedPath = combinedPath.unite(path);
+                break;
+              case 'difference':
+                combinedPath = combinedPath.subtract(path);
+                break;
+              case 'xor':
+                combinedPath = combinedPath.exclude(path);
+                break;
+              case 'intersection':
+                combinedPath = combinedPath.intersect(path);
+                break;
+              default:
+                throw new Error("Unknown operation");
+            }
+          });
+
+          // combinedPath.removeChildren();
+          combinedPath.fillColor = null;
+          combinedPath.strokeColor = 'black';
+          combinedPath.strokeWidth = 2;
+
+
+          console.log('Combined path:', combinedPath);
+
+          // Add the combined path to the canvas
+          paper.project.activeLayer.addChild(combinedPath);
+          paper.view.draw();
+        } catch (error) {
+          console.error('Error loading SVG files:', error);
+        }
+      } else {
+        alert("Please select two SVG files.");
+      }
+    };
+
+    document.getElementById('unionButton').onclick = performBooleanOperation('union');
+    document.getElementById('differenceButton').onclick = performBooleanOperation('difference');
+    document.getElementById('xorButton').onclick = performBooleanOperation('xor');
+    document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
+  </script>
+</body>
+
+</html>
