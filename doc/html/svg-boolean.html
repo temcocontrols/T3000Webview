@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Boolean Operations</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/js-clipper/6.4.2/clipper.min.js"></script> -->
+  <script src="doc/html/Javascript_Clipper_6.4.2.2/clipper_unminified.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    canvas {
+      border: 1px solid black;
+      margin-top: 10px;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    textarea {
+      width: 300px;
+      height: 100px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>SVG Boolean Operations</h1>
+  <input type="file" id="upload" accept=".svg" />
+  <textarea id="svgString" placeholder="Paste SVG here"></textarea>
+  <button id="loadSvg">Load SVG</button>
+  <button id="union">Union</button>
+  <button id="difference">Difference</button>
+  <button id="intersection">Intersection</button>
+  <button id="subtraction">Subtraction</button>
+  <canvas id="canvas" resize></canvas>
+
+  <script>
+    paper.setup('canvas');
+    const polygons = [];
+
+
+    document.getElementById('upload').addEventListener('change', (event) => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        loadSvg(e.target.result);
+      };
+      reader.readAsText(event.target.files[0]);
+    });
+
+    document.getElementById('loadSvg').addEventListener('click', () => {
+      const svgData = document.getElementById('svgString').value;
+      loadSvg(svgData);
+    });
+
+    // function loadSvg(svg) {
+    //   const item = paper.project.importSVG(svg);
+    //   polygons.push(item);
+    //   item.visible = true;
+    // }
+
+    function loadSvg(svg) {
+      const item = paper.project.importSVG(svg);
+      if (item instanceof paper.Path) {
+        polygons.push(item);
+        item.visible = true;
+      } else if (item instanceof paper.Group) {
+        item.children.forEach(child => {
+          if (child instanceof paper.Path) {
+            polygons.push(child);
+            child.visible = true;
+          }
+        });
+      }
+    }
+
+    function performBooleanOperation(operation) {
+      const clipper = new ClipperLib.Clipper();
+      const solution = new ClipperLib.Paths();
+
+      const paths = polygons.map(item => {
+        return item.segments.map(seg => new ClipperLib.IntPoint(seg.point.x, seg.point.y));
+      });
+
+      clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
+
+      switch (operation) {
+        case 'union':
+          clipper.Execute(ClipperLib.ClipType.ctUnion, solution, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
+          break;
+        case 'difference':
+          clipper.Execute(ClipperLib.ClipType.ctDifference, solution, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
+          break;
+        case 'intersection':
+          clipper.Execute(ClipperLib.ClipType.ctIntersection, solution, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
+          break;
+        case 'subtraction':
+          clipper.Execute(ClipperLib.ClipType.ctDifference, solution, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
+          break;
+      }
+
+      paper.project.activeLayer.removeChildren();
+      solution.forEach(path => {
+        const newPath = new paper.Path();
+        path.forEach(point => newPath.add(new paper.Point(point.X, point.Y)));
+        newPath.closed = true;
+        newPath.fillColor = new paper.Color(Math.random(), Math.random(), Math.random());
+      });
+    }
+
+    document.getElementById('union').addEventListener('click', () => performBooleanOperation('union'));
+    document.getElementById('difference').addEventListener('click', () => performBooleanOperation('difference'));
+    document.getElementById('intersection').addEventListener('click', () => performBooleanOperation('intersection'));
+    document.getElementById('subtraction').addEventListener('click', () => performBooleanOperation('subtraction'));
+  </script>
+</body>
+
+</html>
