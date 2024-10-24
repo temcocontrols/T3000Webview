@@ -8,3 +8,4 @@
 2024-10-23
 1. try to use clipper.js and paper.js to do Boolean operations on SVG files.
 2. add some examples
+3. fix bugs for 'Weld Selected' tool, trying to use third part libary to do the boolean operations for selected items.

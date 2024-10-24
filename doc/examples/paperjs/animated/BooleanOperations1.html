@@ -168,6 +168,9 @@
           const paths1 = extractPaths(svgItem1);
           const paths2 = extractPaths(svgItem2);
 
+          console.log('Paths 1:', paths1);
+          console.log('Paths 2:', paths2);
+
           if (paths1.length === 0 || paths2.length === 0) {
             throw new Error("No valid paths found in one or both SVG files.");
           }

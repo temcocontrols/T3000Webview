@@ -1994,73 +1994,82 @@ function weldSelected() {
     )
   );
 
+  console.log("selectedItems", selectedItems);
+
+  const svgNodes = [];
+  selectedItems.forEach((item) => {
+    const svgElement = document.querySelector(`#moveable-item-${item.id} svg`);
+    if (svgElement) {
+      svgNodes.push(svgElement.outerHTML);
+    }
+  });
+
+  console.log("svgNodes", svgNodes);
+
   // Create a new paper.js project
   const project = new paper.Project();
-  const combinedPath = new paper.CompoundPath();
 
-  selectedItems.forEach((item) => {
-    if (item.type === "SVG") {
-      const svgElement = document.querySelector(
-        `#moveable-item-${item.id} svg`
-      );
-      if (svgElement) {
-        const pathElements = svgElement.querySelectorAll("path");
-        pathElements.forEach((pathElement) => {
-          const pathData = pathElement.getAttribute("d");
-          if (pathData) {
-            const path = new paper.Path(pathData);
-            combinedPath.addChild(path);
-          }
-        });
-      }
+  // Function to extract paths from SVG item
+  const extractPaths = (item) => {
+    let paths = [];
+    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+      paths.push(item);
+    } else if (item.children) {
+      item.children.forEach((child) => {
+        paths = paths.concat(extractPaths(child));
+      });
     }
+    return paths;
+  };
+
+  // Function to load SVG from string
+  const allSvgItems = svgNodes.map((svgString) => {
+    return paper.project.importSVG(svgString, { applyMatrix: false });
   });
 
-  // Perform union operation on the combined path
-  const weldedPath = combinedPath.unite();
-
-  // Remove overlapping parts
-  weldedPath?.children?.forEach((child) => {
-    if (child.intersects(weldedPath)) {
-      child.remove();
-    }
+  const allSvgPaths = allSvgItems.map((item) => {
+    return extractPaths(item);
   });
 
-  // Convert the welded path back to SVG
-  const weldedSVG = weldedPath.exportSVG({ asString: true });
+  console.log("allSvgPaths", allSvgPaths);
 
-  console.log(weldedSVG);
+  const firstSvgPaths = allSvgPaths.map((paths) => paths[0]);
 
-  // Create a new item with the welded SVG
-  const weldedItem = {
-    id: appState.value.itemsCount + 1,
+  console.log("firstSvgPaths", firstSvgPaths);
+
+  const allPaths = firstSvgPaths.flat();
+  const unionPath = allPaths.reduce((acc, path) => {
+    if (!acc) return path;
+    return acc.unite(path);
+  }, null);
+
+  const svgString = project.exportSVG({ asString: true });
+
+  console.log("svgString", svgString);
+
+  const newItem = {
+    title: null,
+    active: false,
     type: "Boiler",
-    translate: [150, 60],
-    width: 100,
-    height: 100,
+    translate: [0, 0],
+    width: unionPath.bounds.width,
+    height: unionPath.bounds.height,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
     settings: {},
     zindex: 1,
     t3Entry: null,
-    background: "red",
-    svg: weldedSVG,
+    svg: svgString,
   };
 
-  appState.value.items.push(weldedItem);
-  appState.value.itemsCount++;
-
-  console.log("select items", selectedItems);
-
-  // Remove the original items
+  addObject(newItem);
   selectedItems.forEach((item) => {
     const index = appState.value.items.findIndex((i) => i.id === item.id);
     if (index !== -1) {
       appState.value.items.splice(index, 1);
     }
   });
-
   appState.value.selectedTargets = [];
   refreshMoveable();
 }
