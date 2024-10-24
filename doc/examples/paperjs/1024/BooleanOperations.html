@@ -25,12 +25,12 @@
     canvas {
       border: 1px solid black;
       width: 50vw;
-      height: 50vh;
+      height: 70vh;
     }
 
     #log {
       width: 80vw;
-      height: 80vh;
+      height: 30vh;
       border: 1px solid black;
       overflow-y: scroll;
       margin-top: 10px;
@@ -78,6 +78,77 @@
 
     /**/
 
+    const unitePathsFromArray = (shapesArray) => {
+      let combinedPath = null;
+
+      const processShape = (shape) => {
+        if (shape instanceof paper.Path) {
+          if (combinedPath) {
+            combinedPath = combinedPath.unite(shape);
+          } else {
+            combinedPath = shape;
+          }
+        } else if (shape instanceof paper.Group) {
+          shape.children.forEach(child => processShape(child));
+        }
+      };
+
+      shapesArray.forEach(shape => processShape(shape));
+
+      if (combinedPath) {
+        combinedPath.fillColor = '#659dc5';
+        combinedPath.strokeColor = 'black';
+        combinedPath.strokeWidth = 2;
+      }
+
+      return combinedPath;
+    };
+
+    const getCombinedPath = (shapes) => {
+      let combinedPath = shapes[0];
+      console.log('shapes', shapes);
+
+      shapes.map(shape => {
+        console.log('shape', shape);
+        console.log('shape', shape.pathData);
+      });
+
+      var rest1 = shapes.slice(1);
+      console.log('shapes.slice(1)', rest1);
+
+      rest1.forEach(shape => {
+        if (shape instanceof paper.Path) {
+          combinedPath = combinedPath.unite(shape);
+        } else
+          if (shape instanceof paper.Group) {
+            console.log('shape is a group',shape);
+
+            // all united
+            // shape.children.forEach(item => {
+            //   console.log('item', item);
+            //   combinedPath = combinedPath.unite(item);
+            // });
+
+            /*
+            // not working for the group shape
+            //  combinedPath = combinedPath.reduce((acc, item) => acc.unite(item), combinedPath.firstChild);
+
+            // only merge the first child
+            combinedPath = combinedPath.unite(shape.firstChild);
+
+            // only merge the last child
+            combinedPath=combinedPath.unite(shape.lastChild);
+            */
+          }
+      });
+
+      combinedPath.fillColor = '#659dc5';
+      combinedPath.strokeColor = 'black';
+      combinedPath.strokeWidth = 2;
+
+      return combinedPath;
+    };
+
     const createShapes = () => {
       const shapes = [];
       var operations = ['unite', 'intersect', 'subtract', 'exclude', 'divide'];
@@ -86,7 +157,7 @@
       const shape1 = new paper.Path.Circle({
         center: [150, 150],
         radius: 50,
-        fillColor: 'red'
+        fillColor: '#659dc5'
       });
 
       const shape2 = new paper.Path.Rectangle({
@@ -137,21 +208,17 @@
       // project1.activeLayer.addChild(originals);
       // project1.view.draw();
 
-      shapes.push(shape1, shape2, shape3,originals);
+      shapes.push(shape1, shape2, shape3, originals);
 
       // Add shapes to the canvas
       shapes.forEach(shape => project1.activeLayer.addChild(shape));
 
       // Function to perform boolean operations dynamically
       const performDynamicBooleanOperation = () => {
-        let combinedPath = shapes[0];
-        shapes.slice(1).forEach(shape => {
-          combinedPath = combinedPath.unite(shape);
-        });
 
-        combinedPath.fillColor = '#659dc5';
-        combinedPath.strokeColor = 'black';
-        combinedPath.strokeWidth = 2;
+        // let combinedPath = getCombinedPath(shapes);
+        let combinedPath = unitePathsFromArray(shapes);
+
         combinedPath.onMouseDrag = function (event) {
           this.position = this.position.add(event.delta);
           // performDynamicBooleanOperation();
@@ -181,14 +248,6 @@
     createShapes();
 
     /**/
-
-    /** dynamic boolean operations */
-
-
-
-
-
-    /** dynamic boolean operations */
 
     let shapes = [];
 
@@ -443,7 +502,7 @@
     document.getElementById('xorButton').onclick = performBooleanOperation('xor');
     document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
     document.getElementById('clearButton').onclick = clearInputs;
-    document.getElementById('custom').onclick = createCustom;
+    document.getElementById('custom').onclick = createShapes;
   </script>
 </body>
 
