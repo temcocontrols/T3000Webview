@@ -131,12 +131,17 @@
                     logDetails(`Loaded SVG2: ${svgContent2}`);
 
                     //test to set the same properties as T3000 user selected
-                    svgItem1.position = new paper.Point(225, 100);
+                    svgItem1.position = new paper.Point(200,200);
+                    // svgItem1.width=152.31666564941406;
+                    // svgItem1.height=152.31666564941406;
                     svgItem1.rotate(61.00519680642214);
-                    svgItem1.scale(5);
+                    svgItem1.scale(0.3);
 
-                    svgItem2.position=new paper.Point(278, 150);
-                    svgItem2.scale(0.2);
+                    svgItem2.position=new paper.Point(220, 220);
+                    svgItem2.width=67;
+                    svgItem2.height=67;
+                    svgItem2.rotate(-277.1476441551531);
+                    svgItem2.scale(0.3);
 
                     // Extract paths
                     const paths1 = extractPaths(svgItem1);
