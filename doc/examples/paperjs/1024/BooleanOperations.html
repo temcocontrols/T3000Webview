@@ -1,222 +1,320 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boolean Operations with Paper.js</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .controls {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-        }
-        canvas {
-            border: 1px solid black;
-            width: 80vw;
-            height: 70vh;
-        }
-        #log {
-            width: 80vw;
-            height: 20vh;
-            border: 1px solid black;
-            overflow-y: scroll;
-            margin-top: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boolean Operations with Paper.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+
+    canvas {
+      border: 1px solid black;
+      width: 80vw;
+      height: 70vh;
+    }
+
+    #log {
+      width: 80vw;
+      height: 20vh;
+      border: 1px solid black;
+      overflow-y: scroll;
+      margin-top: 10px;
+    }
+  </style>
 </head>
+
 <body>
-    <div class="controls">
+  <div class="controls">
+    <div style="display: flex; flex-direction: column;">
+      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
         <input type="file" id="fileInput1" accept=".svg">
         <input type="file" id="fileInput2" accept=".svg">
         <textarea id="svgString1" placeholder="Paste SVG string here..."></textarea>
         <textarea id="svgString2" placeholder="Paste SVG string here..."></textarea>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
         <button id="unionButton">Union</button>
         <button id="differenceButton">Difference</button>
         <button id="xorButton">XOR</button>
         <button id="intersectionButton">Intersection</button>
         <button id="clearButton">Clear</button>
+      </div>
     </div>
-    <canvas id="myCanvas"></canvas>
-    <div id="log"></div>
-    <script>
-        paper.setup('myCanvas');
+  </div>
+  <canvas id="myCanvas"></canvas>
+  <div id="log"></div>
+  <script>
+    paper.setup('myCanvas');
 
-        let shapes = [];
+    let shapes = [];
 
-        // Function to log details
-        const logDetails = (message) => {
-            const log = document.getElementById('log');
-            log.innerHTML += `<p>${message}</p>`;
-            log.scrollTop = log.scrollHeight;
+    // Function to log details
+    const logDetails = (message) => {
+      const log = document.getElementById('log');
+      log.innerHTML += `<p>${message}</p>`;
+      log.scrollTop = log.scrollHeight;
+    };
+
+    // Function to load SVG from FileReader
+    const loadSVGFromFile = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const svgContent = e.target.result;
+          paper.project.importSVG(svgContent, item => {
+            // console.log('item', item);
+            resolve({ item, svgContent });
+          });
         };
+        reader.onerror = (e) => reject(e);
+        reader.readAsText(file);
+      });
+    };
 
-        // Function to load SVG from FileReader
-        const loadSVGFromFile = (file) => {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const svgContent = e.target.result;
-                    paper.project.importSVG(svgContent, item => {
+    // Function to load SVG from string
+    const loadSVGFromString = (svgContent) => {
+      return new Promise((resolve) => {
+        paper.project.importSVG(svgContent, item => {
+          resolve({ item, svgContent });
+        });
+      });
+    };
 
-                        resolve({ item, svgContent });
-                    });
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsText(file);
-            });
-        };
+    // Function to extract all properties of an SVG item
+    const extractSVGProperties = (item) => {
+      const properties = {};
 
-        // Function to load SVG from string
-        const loadSVGFromString = (svgContent) => {
-            return new Promise((resolve) => {
-                paper.project.importSVG(svgContent, item => {
-                    resolve({ item, svgContent });
-                });
-            });
-        };
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+        properties.type = 'path';
+        properties.pathData = item.pathData;
+      } else if (item instanceof paper.Shape) {
+        properties.type = 'shape';
+        if (item.shape === 'rectangle') {
+          properties.shape = 'rectangle';
+          properties.size = item.size;
+          properties.radius = item.radius;
+        } else if (item.shape === 'circle') {
+          properties.shape = 'circle';
+          properties.radius = item.radius;
+        } else if (item.shape === 'ellipse') {
+          properties.shape = 'ellipse';
+          properties.size = item.size;
+        }
+      } else if (item instanceof paper.Group) {
+        properties.type = 'group';
+        properties.children = item.children.map(child => extractSVGProperties(child));
+      } else if (item instanceof paper.Raster) {
+        properties.type = 'raster';
+        properties.source = item.source;
+      }
 
-        // Function to extract paths from SVG item
-        const extractPaths = (item) => {
-            let paths = [];
-            if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-                paths.push(item);
-            } else if (item.children) {
-                item.children.forEach(child => {
-                    paths = paths.concat(extractPaths(child));
-                });
+      properties.position = item.position;
+      properties.rotation = item.rotation;
+      properties.scaling = item.scaling;
+      properties.strokeColor = item.strokeColor;
+      properties.fillColor = item.fillColor;
+
+      return properties;
+    };
+
+
+    // Function to load all paths from an item suitable for Paper.js format
+    const loadAllPathsFromItem = (item) => {
+      let paths = [];
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+      paths.push(item);
+      } else if (item instanceof paper.Group) {
+      item.children.forEach(child => {
+        paths = paths.concat(loadAllPathsFromItem(child));
+      });
+      } else if (item.children) {
+      item.children.forEach(child => {
+        paths = paths.concat(loadAllPathsFromItem(child));
+      });
+      }
+      return paths;
+    };
+
+    // Function to extract paths from SVG item
+    const extractPaths1 = (item) => {
+      let paths = [];
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+        paths.push(item);
+      } else if (item.children) {
+        item.children.forEach(child => {
+          paths = paths.concat(extractPaths1(child));
+        });
+      }
+      return paths;
+    };
+
+
+
+    // Function to perform boolean operations
+    const performBooleanOperation = (operation) => async () => {
+      const fileInput1 = document.getElementById('fileInput1').files[0];
+      const fileInput2 = document.getElementById('fileInput2').files[0];
+      const svgString1 = document.getElementById('svgString1').value;
+      const svgString2 = document.getElementById('svgString2').value;
+
+      try {
+        let svgItem1, svgContent1, svgItem2, svgContent2;
+
+        if (fileInput1) {
+          const result = await loadSVGFromFile(fileInput1);
+          svgItem1 = result.item;
+          svgContent1 = result.svgContent;
+        } else if (svgString1) {
+          const result = await loadSVGFromString(svgString1);
+          svgItem1 = result.item;
+          svgContent1 = result.svgContent;
+        }
+
+        if (fileInput2) {
+          const result = await loadSVGFromFile(fileInput2);
+          svgItem2 = result.item;
+          svgContent2 = result.svgContent;
+        } else if (svgString2) {
+          const result = await loadSVGFromString(svgString2);
+          svgItem2 = result.item;
+          svgContent2 = result.svgContent;
+        }
+
+        if (svgItem1 && svgItem2) {
+          logDetails(`Loaded SVG1: ${svgContent1}`);
+          logDetails(`Loaded SVG2: ${svgContent2}`);
+
+          //test to set the same properties as T3000 user selected
+          console.log('svgItem1', svgItem1);
+          console.log('svgItem2', svgItem2);
+
+          /*
+          var item = paper.project.activeLayer.children[0];
+          var rotation = item.matrix.values[0];
+          var angle = Math.acos(rotation) * (180 / Math.PI);
+
+          var cx = item.matrix.values[4];
+          var cy = item.matrix.values[5];
+
+          console.log('rotation angle:', angle, 'rotation center:', cx, cy);
+          */
+
+          //rest the rotation and scale and position manually
+
+          svgItem1.position = new paper.Point(100, 100);
+          svgItem1.width = 152.31666564941406;
+          svgItem1.height = 152.31666564941406;
+          svgItem1.rotate(61.00519680642214);
+          svgItem1.scale(1);
+
+          svgItem2.position = new paper.Point(120, 120);
+          svgItem2.width = 67;
+          svgItem2.height = 67;
+          svgItem2.rotate(-277.1476441551531);
+          svgItem2.scale(1);
+
+          // Extract paths
+          const paths1 = loadAllPathsFromItem(svgItem1);
+          const paths2 = loadAllPathsFromItem(svgItem2);
+
+          const paths1c=extractPaths1(svgItem1);
+          const paths2c=extractPaths1(svgItem2);
+
+          // console.log('paths1-n', paths1);
+          // console.log('paths2-n', paths2);
+
+          console.log('paths1-c', paths1c);
+          console.log('paths2-c', paths2c);
+
+          if (paths1.length === 0 || paths2.length === 0) {
+            throw new Error("No valid paths found in one or both SVG files.");
+          }
+
+
+
+
+          // Perform the boolean operation on each path
+          let combinedPath = paths1c[0];
+          paths1c.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+          paths2c.forEach(path => {
+            switch (operation) {
+              case 'union':
+                combinedPath = combinedPath.unite(path);
+                break;
+              case 'difference':
+                combinedPath = combinedPath.subtract(path);
+                break;
+              case 'xor':
+                combinedPath = combinedPath.exclude(path);
+                break;
+              case 'intersection':
+                combinedPath = combinedPath.intersect(path);
+                break;
+              default:
+                throw new Error("Unknown operation");
             }
-            return paths;
-        };
+          });
 
-        // Function to perform boolean operations
-        const performBooleanOperation = (operation) => async () => {
-            const fileInput1 = document.getElementById('fileInput1').files[0];
-            const fileInput2 = document.getElementById('fileInput2').files[0];
-            const svgString1 = document.getElementById('svgString1').value;
-            const svgString2 = document.getElementById('svgString2').value;
+          // combinedPath.fillColor = null;
+          // combinedPath.strokeColor = 'black';
+          // combinedPath.strokeWidth = 2;
 
-            try {
-                let svgItem1, svgContent1, svgItem2, svgContent2;
+          shapes.push(combinedPath);
 
-                if (fileInput1) {
-                    const result = await loadSVGFromFile(fileInput1);
-                    svgItem1 = result.item;
-                    svgContent1 = result.svgContent;
-                } else if (svgString1) {
-                    const result = await loadSVGFromString(svgString1);
-                    svgItem1 = result.item;
-                    svgContent1 = result.svgContent;
-                }
+          // Enable dragging for the combined path
+          combinedPath.onMouseDrag = function (event) {
+            this.position = this.position.add(event.delta);
+          };
 
-                if (fileInput2) {
-                    const result = await loadSVGFromFile(fileInput2);
-                    svgItem2 = result.item;
-                    svgContent2 = result.svgContent;
-                } else if (svgString2) {
-                    const result = await loadSVGFromString(svgString2);
-                    svgItem2 = result.item;
-                    svgContent2 = result.svgContent;
-                }
+          // Add the combined path to the canvas
+          paper.project.activeLayer.addChild(combinedPath);
+          paper.view.draw();
 
-                if (svgItem1 && svgItem2) {
-                    logDetails(`Loaded SVG1: ${svgContent1}`);
-                    logDetails(`Loaded SVG2: ${svgContent2}`);
+          logDetails(`Operation: ${operation}`);
+          logDetails(`Combined Path: ${combinedPath.pathData}`);
+        } else {
+          alert("Please provide two SVG files or strings.");
+        }
+      } catch (error) {
+        console.error('Error loading SVG files:', error);
+        logDetails(`Error: ${error.message}`);
+      }
+    };
 
-                    //test to set the same properties as T3000 user selected
-                    svgItem1.position = new paper.Point(200,200);
-                    // svgItem1.width=152.31666564941406;
-                    // svgItem1.height=152.31666564941406;
-                    svgItem1.rotate(61.00519680642214);
-                    svgItem1.scale(0.3);
+    // Clear function
+    const clearInputs = () => {
+      document.getElementById('fileInput1').value = '';
+      document.getElementById('fileInput2').value = '';
+      document.getElementById('svgString1').value = '';
+      document.getElementById('svgString2').value = '';
+      document.getElementById('log').innerHTML = '';
+      shapes.forEach(shape => shape.remove());
+      shapes = [];
+      paper.project.clear();
+      paper.view.draw();
+    };
 
-                    svgItem2.position=new paper.Point(220, 220);
-                    svgItem2.width=67;
-                    svgItem2.height=67;
-                    svgItem2.rotate(-277.1476441551531);
-                    svgItem2.scale(0.3);
-
-                    // Extract paths
-                    const paths1 = extractPaths(svgItem1);
-                    const paths2 = extractPaths(svgItem2);
-
-                    if (paths1.length === 0 || paths2.length === 0) {
-                        throw new Error("No valid paths found in one or both SVG files.");
-                    }
-
-                    // Perform the boolean operation on each path
-                    let combinedPath = paths1[0];
-                    paths1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
-                    paths2.forEach(path => {
-                        switch(operation) {
-                            case 'union':
-                                combinedPath = combinedPath.unite(path);
-                                break;
-                            case 'difference':
-                                combinedPath = combinedPath.subtract(path);
-                                break;
-                            case 'xor':
-                                combinedPath = combinedPath.exclude(path);
-                                break;
-                            case 'intersection':
-                                combinedPath = combinedPath.intersect(path);
-                                break;
-                            default:
-                                throw new Error("Unknown operation");
-                        }
-                    });
-
-                    // combinedPath.fillColor = null;
-                    // combinedPath.strokeColor = 'black';
-                    // combinedPath.strokeWidth = 2;
-
-                    shapes.push(combinedPath);
-
-                    // Enable dragging for the combined path
-                    combinedPath.onMouseDrag = function(event) {
-                        this.position = this.position.add(event.delta);
-                    };
-
-                    // Add the combined path to the canvas
-                    paper.project.activeLayer.addChild(combinedPath);
-                    paper.view.draw();
-
-                    logDetails(`Operation: ${operation}`);
-                    logDetails(`Combined Path: ${combinedPath.pathData}`);
-                } else {
-                    alert("Please provide two SVG files or strings.");
-                }
-            } catch (error) {
-                console.error('Error loading SVG files:', error);
-                logDetails(`Error: ${error.message}`);
-            }
-        };
-
-        // Clear function
-        const clearInputs = () => {
-            document.getElementById('fileInput1').value = '';
-            document.getElementById('fileInput2').value = '';
-            document.getElementById('svgString1').value = '';
-            document.getElementById('svgString2').value = '';
-            document.getElementById('log').innerHTML = '';
-            shapes.forEach(shape => shape.remove());
-            shapes = [];
-            paper.project.clear();
-            paper.view.draw();
-        };
-
-        document.getElementById('unionButton').onclick = performBooleanOperation('union');
-        document.getElementById('differenceButton').onclick = performBooleanOperation('difference');
-        document.getElementById('xorButton').onclick = performBooleanOperation('xor');
-        document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
-        document.getElementById('clearButton').onclick = clearInputs;
-    </script>
+    document.getElementById('unionButton').onclick = performBooleanOperation('union');
+    document.getElementById('differenceButton').onclick = performBooleanOperation('difference');
+    document.getElementById('xorButton').onclick = performBooleanOperation('xor');
+    document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
+    document.getElementById('clearButton').onclick = clearInputs;
+  </script>
 </body>
+
 </html>
