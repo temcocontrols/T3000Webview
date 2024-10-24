@@ -86,9 +86,19 @@
     // Function to load SVG from string
     const loadSVGFromString = (svgString) => {
       return new Promise((resolve) => {
+        // paper.project.importSVG(svgString, item => {
+        //   resolve(item);
+        // }) ;
+
         paper.project.importSVG(svgString, item => {
+          item.position = paper.view.center;
+          item.applyMatrix = true;
+
           resolve(item);
         });
+
+        paper.view.draw();
+
       });
     };
 

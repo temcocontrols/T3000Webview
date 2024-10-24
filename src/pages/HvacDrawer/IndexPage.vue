@@ -1983,6 +1983,77 @@ function deleteSelected() {
   }
 }
 
+// Weld two ducts into one duct and if they are connected, merge them, if they are not connected keep the position and rotate
+function weldSelected1() {
+  if (appState.value.selectedTargets.length !== 2) return;
+  addActionToHistory("Weld selected ducts");
+
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  // if (selectedItems[0].type !== "Pipe" || selectedItems[1].type !== "Pipe") {
+  //   $q.notify({
+  //     type: "negative",
+  //     message: "Only Pipes can be welded",
+  //   });
+  //   return;
+  // }
+
+  const [duct1, duct2] = selectedItems;
+
+  console.log("duct1", duct1);
+  console.log("duct2", duct2);
+
+  const selectedSvgs = [];
+  selectedItems.forEach((item) => {
+    const svgElement = document.querySelector(`#moveable-item-${item.id} svg`);
+    if (svgElement) {
+      selectedSvgs.push(svgElement.outerHTML);
+
+      var clientRect = svgElement.getBoundingClientRect();
+      console.log("duct item", item);
+      console.log("svgItem", svgElement);
+      console.log("clientRect", clientRect);
+      // svgElement.getBox();
+    }
+  });
+
+  const end1 = {
+    x:
+      duct1.translate[0] +
+      duct1.width * Math.cos((duct1.rotate * Math.PI) / 180),
+    y:
+      duct1.translate[1] +
+      duct1.width * Math.sin((duct1.rotate * Math.PI) / 180),
+  };
+
+  const start2 = {
+    x: duct2.translate[0],
+    y: duct2.translate[1],
+  };
+
+  const distance = Math.sqrt(
+    Math.pow(end1.x - start2.x, 2) + Math.pow(end1.y - start2.y, 2)
+  );
+
+  if (distance < 10) {
+    // Merge ducts
+    duct1.width += duct2.width;
+    const index = appState.value.items.findIndex((i) => i.id === duct2.id);
+    appState.value.items.splice(index, 1);
+  } else {
+    // Keep position and rotate
+    const angle = Math.atan2(start2.y - end1.y, start2.x - end1.x);
+    duct2.rotate = (angle * 180) / Math.PI;
+  }
+
+  appState.value.selectedTargets = [];
+  refreshMoveable();
+}
+
 // Weld selected objects into one
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
@@ -1996,36 +2067,43 @@ function weldSelected() {
 
   console.log("selectedItems", selectedItems);
 
-  const svgNodes = [];
+  const selectedSvgs = [];
   selectedItems.forEach((item) => {
     const svgElement = document.querySelector(`#moveable-item-${item.id} svg`);
-    if (svgElement) {
-      svgNodes.push(svgElement.outerHTML);
-    }
+
+    var outerHTML = svgElement.outerHTML;
+    outerHTML = outerHTML.replace("currentcolor", item.settings.fillColor);
+    outerHTML = outerHTML.replace("currentColor", item.settings.fillColor);
+
+    console.log("outerHTML", outerHTML);
+
+    var transRoate = `translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg)`;
+    outerHTML = outerHTML.replace(
+      /style="/,
+      `style="transform: ${transRoate}; `
+    );
+
+    selectedSvgs.push(outerHTML);
+    console.log("fillcolor", item.settings.fillColor);
   });
 
-  console.log("svgNodes", svgNodes);
+  console.log("selected svgs", selectedSvgs);
 
   // Create a new paper.js project
   const project = new paper.Project();
 
-  // Function to extract paths from SVG item
-  const extractPaths = (item) => {
-    let paths = [];
-    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-      paths.push(item);
-    } else if (item.children) {
-      item.children.forEach((child) => {
-        paths = paths.concat(extractPaths(child));
-      });
-    }
-    return paths;
-  };
-
   // Function to load SVG from string
-  const allSvgItems = svgNodes.map((svgString) => {
+  const selectedSvgItems = selectedSvgs.map((svgString) => {
     return paper.project.importSVG(svgString, { applyMatrix: false });
+
+    // Set the position and rotation for the imported SVG
+    item.position = new paper.Point(item.translate[0], item.translate[1]);
+    item.rotation = item.rotate;
   });
+
+  console.log("selected svg items", selectedSvgItems);
+
+  return;
 
   const allSvgPaths = allSvgItems.map((item) => {
     return extractPaths(item);
@@ -2072,6 +2150,19 @@ function weldSelected() {
   });
   appState.value.selectedTargets = [];
   refreshMoveable();
+
+  // Function to extract paths from SVG item
+  const extractPaths = (item) => {
+    let paths = [];
+    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+      paths.push(item);
+    } else if (item.children) {
+      item.children.forEach((child) => {
+        paths = paths.concat(extractPaths(child));
+      });
+    }
+    return paths;
+  };
 }
 
 // Filter function for selecting panels in the UI
