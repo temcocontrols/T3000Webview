@@ -58,8 +58,8 @@
     </div>
   </div>
   <div style="display: flex; gap: 10px; margin-left: 120px;margin-right: 120px;">
-  <canvas id="myCanvas1"></canvas>
-  <canvas id="myCanvas"></canvas>
+    <canvas id="myCanvas1" resize stats></canvas>
+    <canvas id="myCanvas"></canvas>
   </div>
   <div id="log"></div>
   <script>
@@ -72,80 +72,123 @@
     const project1 = new paper.Project(canvas1);
     const project2 = new paper.Project(canvas2);
 
-    const createCustom = () => {
-      createBoiler(project1);
-      createPump(project1);
-    };
+    console.log('project1', project1);
+    console.log('project2', project2);
 
-    const shapes1 = [];
 
-    const booleanOperation=()=>{
-      // Perform the boolean operation on each path
+    /**/
 
-      const combinedPath = shapes1[0];
-      shapes1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+    const createShapes = () => {
+      const shapes = [];
+      var operations = ['unite', 'intersect', 'subtract', 'exclude', 'divide'];
 
-      // combinedPath.fillColor = null;
-      // combinedPath.strokeColor = 'black';
-      // combinedPath.strokeWidth = 2;
-
-      // // Enable dragging for the combined path
-      // combinedPath.onMouseDrag = function (event) {
-      //   this.position = this.position.add(event.delta);
-      // };
-
-      // Add the combined path to the canvas
-      paper.project.activeLayer.addChild(combinedPath);
-      paper.view.draw();
-
-      logDetails(`Operation: ${operation}`);
-      logDetails(`Combined Path: ${combinedPath.pathData}`);
-    }
-
-    const createBoiler = (project) => {
-      const path = new paper.Path.Rectangle({
-        point: [100, 100],
-        size: [100, 100],
-        fillColor: 'red',
-        strokeColor: 'black',
-        strokeWidth: 2
-      });
-
-      shapes1.push(path);
-
-      // Enable dragging for the path
-      path.onMouseMove = function (event) {
-        this.position = this.position.add(event.delta);
-        booleanOperation();
-      };
-
-      // Add the path to the canvas
-      project.activeLayer.addChild(path);
-      project.view.draw();
-    };
-
-    const createPump = (project) => {
-      const path = new paper.Path.Circle({
-        center: [100, 100],
+      // Create three different shapes with different colors
+      const shape1 = new paper.Path.Circle({
+        center: [150, 150],
         radius: 50,
-        fillColor: 'red',
-        strokeColor: 'black',
-        strokeWidth: 2
+        fillColor: 'red'
       });
 
-      shapes1.push(path);
+      const shape2 = new paper.Path.Rectangle({
+        point: [200, 100],
+        size: [100, 100],
+        fillColor: 'green'
+      });
 
-      // Enable dragging for the path
-      path.onMouseMove = function (event) {
-        this.position = this.position.add(event.delta);
-        booleanOperation();
+      const shape3 = new paper.Path.Ellipse({
+        point: [250, 150],
+        size: [150, 100],
+        fillColor: 'blue'
+      });
+
+      var originals = new paper.Group({ insert: false }); // Don't insert in DOM.
+
+      console.log('originals', originals);
+
+      var square = new paper.Path.Rectangle({
+        center: [380, 80],
+        size: 100,
+        parent: originals,
+        fillColor: '#191313'
+      });
+
+      console.log('square', square);
+
+      // Make a ring using subtraction of two circles:
+      var inner = new paper.Path.Circle({
+        center: [420, 30],
+        radius: 50,
+        parent: originals,
+        fillColor: '#c94949'
+      });
+
+      console.log('inner', inner);
+
+      var outer = new paper.Path.Circle({
+        center: [420, 30],
+        radius: 30,
+        parent: originals,
+        fillColor: '#b49595'
+      });
+
+      console.log('outer', outer);
+
+      // // Add the path to the canvas
+      // project1.activeLayer.addChild(originals);
+      // project1.view.draw();
+
+      shapes.push(shape1, shape2, shape3,originals);
+
+      // Add shapes to the canvas
+      shapes.forEach(shape => project1.activeLayer.addChild(shape));
+
+      // Function to perform boolean operations dynamically
+      const performDynamicBooleanOperation = () => {
+        let combinedPath = shapes[0];
+        shapes.slice(1).forEach(shape => {
+          combinedPath = combinedPath.unite(shape);
+        });
+
+        combinedPath.fillColor = '#659dc5';
+        combinedPath.strokeColor = 'black';
+        combinedPath.strokeWidth = 2;
+        combinedPath.onMouseDrag = function (event) {
+          this.position = this.position.add(event.delta);
+          // performDynamicBooleanOperation();
+        };
+
+        project1.activeLayer.addChild(combinedPath);
+        project1.view.draw();
       };
 
-      // Add the path to the canvas
-      project.activeLayer.addChild(path);
-      project.view.draw();
+      // Enable dragging for each shape and perform boolean operations dynamically
+      shapes.forEach(shape => {
+
+        shape.onMouseDrag = function (event) {
+          this.position = this.position.add(event.delta);
+          // performDynamicBooleanOperation();
+        };
+
+        shape.onMouseUp = function (event) {
+          // this.position = this.position.add(event.delta);
+          performDynamicBooleanOperation();
+        };
+      });
+
+      // performDynamicBooleanOperation();
     };
 
+    createShapes();
+
+    /**/
+
+    /** dynamic boolean operations */
+
+
+
+
+
+    /** dynamic boolean operations */
 
     let shapes = [];
 
