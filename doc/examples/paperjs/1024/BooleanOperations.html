@@ -121,7 +121,7 @@
           combinedPath = combinedPath.unite(shape);
         } else
           if (shape instanceof paper.Group) {
-            console.log('shape is a group',shape);
+            console.log('shape is a group', shape);
 
             // all united
             // shape.children.forEach(item => {
@@ -426,20 +426,17 @@
           // console.log('paths1-n', paths1);
           // console.log('paths2-n', paths2);
 
-          console.log('paths1-c', paths1c);
-          console.log('paths2-c', paths2c);
+          console.log('paths1', paths1);
+          console.log('paths2', paths2);
 
           if (paths1.length === 0 || paths2.length === 0) {
             throw new Error("No valid paths found in one or both SVG files.");
           }
 
-
-
-
           // Perform the boolean operation on each path
-          let combinedPath = paths1c[0];
-          paths1c.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
-          paths2c.forEach(path => {
+          let combinedPath = paths1[0];
+          paths1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+          paths2.forEach(path => {
             switch (operation) {
               case 'union':
                 combinedPath = combinedPath.unite(path);
@@ -457,6 +454,78 @@
                 throw new Error("Unknown operation");
             }
           });
+
+          // Handle groups in paths1
+          paths1.forEach(path => {
+            if (path instanceof paper.Group) {
+              path.children.forEach(child => {
+                switch (operation) {
+                  case 'union':
+                    combinedPath = combinedPath.unite(child);
+                    break;
+                  case 'difference':
+                    combinedPath = combinedPath.subtract(child);
+                    break;
+                  case 'xor':
+                    combinedPath = combinedPath.exclude(child);
+                    break;
+                  case 'intersection':
+                    combinedPath = combinedPath.intersect(child);
+                    break;
+                  default:
+                    throw new Error("Unknown operation");
+                }
+              });
+            }
+          });
+
+          // Handle groups in paths2
+          paths2.forEach(path => {
+            if (path instanceof paper.Group) {
+              path.children.forEach(child => {
+                switch (operation) {
+                  case 'union':
+                    combinedPath = combinedPath.unite(child);
+                    break;
+                  case 'difference':
+                    combinedPath = combinedPath.subtract(child);
+                    break;
+                  case 'xor':
+                    combinedPath = combinedPath.exclude(child);
+                    break;
+                  case 'intersection':
+                    combinedPath = combinedPath.intersect(child);
+                    break;
+                  default:
+                    throw new Error("Unknown operation");
+                }
+              });
+            }
+          });
+
+          /*
+          // Perform the boolean operation on each path
+          let combinedPath = paths1[0];
+          paths1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+          paths2.forEach(path => {
+            switch (operation) {
+              case 'union':
+                combinedPath = combinedPath.unite(path);
+                break;
+              case 'difference':
+                combinedPath = combinedPath.subtract(path);
+                break;
+              case 'xor':
+                combinedPath = combinedPath.exclude(path);
+                break;
+              case 'intersection':
+                combinedPath = combinedPath.intersect(path);
+                break;
+              default:
+                throw new Error("Unknown operation");
+            }
+          });
+          */
 
           // combinedPath.fillColor = null;
           // combinedPath.strokeColor = 'black';
