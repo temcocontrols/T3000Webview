@@ -24,13 +24,13 @@
 
     canvas {
       border: 1px solid black;
-      width: 80vw;
-      height: 70vh;
+      width: 50vw;
+      height: 50vh;
     }
 
     #log {
       width: 80vw;
-      height: 20vh;
+      height: 80vh;
       border: 1px solid black;
       overflow-y: scroll;
       margin-top: 10px;
@@ -48,6 +48,7 @@
         <textarea id="svgString2" placeholder="Paste SVG string here..."></textarea>
       </div>
       <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button id="custom">Custom</button>
         <button id="unionButton">Union</button>
         <button id="differenceButton">Difference</button>
         <button id="xorButton">XOR</button>
@@ -56,10 +57,95 @@
       </div>
     </div>
   </div>
+  <div style="display: flex; gap: 10px; margin-left: 120px;margin-right: 120px;">
+  <canvas id="myCanvas1"></canvas>
   <canvas id="myCanvas"></canvas>
+  </div>
   <div id="log"></div>
   <script>
     paper.setup('myCanvas');
+    paper.setup('myCanvas1');
+
+    const canvas1 = document.getElementById('myCanvas1');
+    const canvas2 = document.getElementById('myCanvas');
+
+    const project1 = new paper.Project(canvas1);
+    const project2 = new paper.Project(canvas2);
+
+    const createCustom = () => {
+      createBoiler(project1);
+      createPump(project1);
+    };
+
+    const shapes1 = [];
+
+    const booleanOperation=()=>{
+      // Perform the boolean operation on each path
+
+      const combinedPath = shapes1[0];
+      shapes1.slice(1).forEach(path => combinedPath = combinedPath.unite(path));
+
+      // combinedPath.fillColor = null;
+      // combinedPath.strokeColor = 'black';
+      // combinedPath.strokeWidth = 2;
+
+      // // Enable dragging for the combined path
+      // combinedPath.onMouseDrag = function (event) {
+      //   this.position = this.position.add(event.delta);
+      // };
+
+      // Add the combined path to the canvas
+      paper.project.activeLayer.addChild(combinedPath);
+      paper.view.draw();
+
+      logDetails(`Operation: ${operation}`);
+      logDetails(`Combined Path: ${combinedPath.pathData}`);
+    }
+
+    const createBoiler = (project) => {
+      const path = new paper.Path.Rectangle({
+        point: [100, 100],
+        size: [100, 100],
+        fillColor: 'red',
+        strokeColor: 'black',
+        strokeWidth: 2
+      });
+
+      shapes1.push(path);
+
+      // Enable dragging for the path
+      path.onMouseMove = function (event) {
+        this.position = this.position.add(event.delta);
+        booleanOperation();
+      };
+
+      // Add the path to the canvas
+      project.activeLayer.addChild(path);
+      project.view.draw();
+    };
+
+    const createPump = (project) => {
+      const path = new paper.Path.Circle({
+        center: [100, 100],
+        radius: 50,
+        fillColor: 'red',
+        strokeColor: 'black',
+        strokeWidth: 2
+      });
+
+      shapes1.push(path);
+
+      // Enable dragging for the path
+      path.onMouseMove = function (event) {
+        this.position = this.position.add(event.delta);
+        booleanOperation();
+      };
+
+      // Add the path to the canvas
+      project.activeLayer.addChild(path);
+      project.view.draw();
+    };
+
 
     let shapes = [];
 
@@ -137,15 +223,15 @@
     const loadAllPathsFromItem = (item) => {
       let paths = [];
       if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-      paths.push(item);
+        paths.push(item);
       } else if (item instanceof paper.Group) {
-      item.children.forEach(child => {
-        paths = paths.concat(loadAllPathsFromItem(child));
-      });
+        item.children.forEach(child => {
+          paths = paths.concat(loadAllPathsFromItem(child));
+        });
       } else if (item.children) {
-      item.children.forEach(child => {
-        paths = paths.concat(loadAllPathsFromItem(child));
-      });
+        item.children.forEach(child => {
+          paths = paths.concat(loadAllPathsFromItem(child));
+        });
       }
       return paths;
     };
@@ -232,8 +318,8 @@
           const paths1 = loadAllPathsFromItem(svgItem1);
           const paths2 = loadAllPathsFromItem(svgItem2);
 
-          const paths1c=extractPaths1(svgItem1);
-          const paths2c=extractPaths1(svgItem2);
+          const paths1c = extractPaths1(svgItem1);
+          const paths2c = extractPaths1(svgItem2);
 
           // console.log('paths1-n', paths1);
           // console.log('paths2-n', paths2);
@@ -314,6 +400,7 @@
     document.getElementById('xorButton').onclick = performBooleanOperation('xor');
     document.getElementById('intersectionButton').onclick = performBooleanOperation('intersection');
     document.getElementById('clearButton').onclick = clearInputs;
+    document.getElementById('custom').onclick = createCustom;
   </script>
 </body>
 
