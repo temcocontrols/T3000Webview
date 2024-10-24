@@ -76,6 +76,24 @@
     console.log('project2', project2);
 
 
+    // Function to load all paths from an item suitable for Paper.js format
+    const loadAllPathsFromItem = (item) => {
+      let paths = [];
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+        paths.push(item);
+      } else if (item instanceof paper.Group) {
+        item.children.forEach(child => {
+          paths = paths.concat(loadAllPathsFromItem(child));
+        });
+      } else if (item.children) {
+        item.children.forEach(child => {
+          paths = paths.concat(loadAllPathsFromItem(child));
+        });
+      }
+      return paths;
+    };
+
+
     /**/
 
     const unitePathsFromArray = (shapesArray) => {
@@ -89,6 +107,8 @@
             combinedPath = shape;
           }
         } else if (shape instanceof paper.Group) {
+          shape.children.forEach(child => processShape(child));
+        } else if (shape instanceof paper.CompoundPath) {
           shape.children.forEach(child => processShape(child));
         }
       };
@@ -124,10 +144,10 @@
             console.log('shape is a group', shape);
 
             // all united
-            // shape.children.forEach(item => {
-            //   console.log('item', item);
-            //   combinedPath = combinedPath.unite(item);
-            // });
+            shape.children.forEach(item => {
+              console.log('item', item);
+              combinedPath = combinedPath.unite(item);
+            });
 
             /*
             // not working for the group shape
@@ -149,9 +169,75 @@
       return combinedPath;
     };
 
+
+    const svgStringToPath = (svgString) => {
+
+      // get pump d data and transfer it to path
+      svgString = `
+      <svg data-v-f50b06a6="" data-v-633ad4c9="" viewBox="0 0 20.921802 20.921802" version="1.1"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
+        xmlns:svg="http://www.w3.org/2000/svg" height="40" width="50" class="object-svg heatpump" titleColor="inherit"
+        bgColor="inherit" textColor="inherit" fontSize="16"
+        style="transform: translate(10px, 40px) rotate(-277.1476441551531deg); --f50b06a6-fillColor: #659dc5;">
+        <g fill="#659dc5" transform="translate(-5.4940996,-5.5390997)" data-v-f50b06a6="">
+          <g class="pump" data-v-f50b06a6="">
+            <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003" class="pump-background" data-v-f50b06a6=""></circle>
+            <g transform="translate(16,16)" data-v-f50b06a6="">
+              <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="#000000" stroke-width="0.96719"
+                data-v-f50b06a6=""></path>
+            </g>
+          </g>
+        </g>
+      </svg>
+      `;
+
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+      const pathElements = svgDoc.querySelectorAll('path');
+      const paths = [];
+
+      pathElements.forEach(pathElement => {
+        const pathData = pathElement.getAttribute('d');
+        if (pathData) {
+          const path = new paper.Path(pathData);
+          paths.push(path);
+        }
+      });
+
+      return paths;
+    };
+
+    const loadSVGFromStringToPath = (svgString) => {
+
+      svgString = `
+      <svg data-v-f50b06a6="" data-v-633ad4c9="" viewBox="0 0 20.921802 20.921802" version="1.1"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
+        xmlns:svg="http://www.w3.org/2000/svg" height="40" width="50" class="object-svg heatpump" titleColor="inherit"
+        bgColor="inherit" textColor="inherit" fontSize="16"
+        style="transform: translate(10px, 40px) rotate(-277.1476441551531deg); --f50b06a6-fillColor: #659dc5;">
+        <g fill="#659dc5" transform="translate(-5.4940996,-5.5390997)" data-v-f50b06a6="">
+          <g class="pump" data-v-f50b06a6="">
+            <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003" class="pump-background" data-v-f50b06a6=""></circle>
+            <g transform="translate(16,16)" data-v-f50b06a6="">
+              <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="#000000" stroke-width="0.96719"
+                data-v-f50b06a6=""></path>
+            </g>
+          </g>
+        </g>
+      </svg>
+      `;
+
+      const item = paper.project.importSVG(svgString);
+      // const paths = loadAllPathsFromItem(item);
+      return item;
+    };
+
     const createShapes = () => {
       const shapes = [];
       var operations = ['unite', 'intersect', 'subtract', 'exclude', 'divide'];
+
+      pumpLastD = svgStringToPath("");
+      console.log('pumpLastD', pumpLastD);
 
       // Create three different shapes with different colors
       const shape1 = new paper.Path.Circle({
@@ -187,7 +273,7 @@
 
       // Make a ring using subtraction of two circles:
       var inner = new paper.Path.Circle({
-        center: [420, 30],
+        center: [420, 60],
         radius: 50,
         parent: originals,
         fillColor: '#c94949'
@@ -196,7 +282,7 @@
       console.log('inner', inner);
 
       var outer = new paper.Path.Circle({
-        center: [420, 30],
+        center: [420, 60],
         radius: 30,
         parent: originals,
         fillColor: '#b49595'
@@ -204,11 +290,13 @@
 
       console.log('outer', outer);
 
-      // // Add the path to the canvas
-      // project1.activeLayer.addChild(originals);
-      // project1.view.draw();
 
-      shapes.push(shape1, shape2, shape3, originals);
+      // load pump svg from string
+      var pumpSvg = loadSVGFromStringToPath("");
+
+      //originals
+
+      shapes.push(shape1, shape2, shape3, pumpSvg);
 
       // Add shapes to the canvas
       shapes.forEach(shape => project1.activeLayer.addChild(shape));
@@ -318,24 +406,6 @@
       properties.fillColor = item.fillColor;
 
       return properties;
-    };
-
-
-    // Function to load all paths from an item suitable for Paper.js format
-    const loadAllPathsFromItem = (item) => {
-      let paths = [];
-      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-        paths.push(item);
-      } else if (item instanceof paper.Group) {
-        item.children.forEach(child => {
-          paths = paths.concat(loadAllPathsFromItem(child));
-        });
-      } else if (item.children) {
-        item.children.forEach(child => {
-          paths = paths.concat(loadAllPathsFromItem(child));
-        });
-      }
-      return paths;
     };
 
     // Function to extract paths from SVG item
