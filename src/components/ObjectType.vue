@@ -278,6 +278,11 @@
         class="room-temperature"
         v-bind="item.settings"
       />
+      <Weld
+        v-else-if="item.type === 'Weld'"
+        class="weld"
+        v-bind="item.settings"
+      />
       <img
         class="img-object"
         v-else-if="item.type.startsWith('IMG-')"
@@ -321,6 +326,7 @@ import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
 import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
 import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
 import Wall from "./ObjectTypes/Wall.vue";
+import Weld from "./ObjectTypes/Weld.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -355,6 +361,7 @@ export default defineComponent({
     RoomHumidity,
     RoomTemperature,
     Wall,
+    Weld,
   },
   props: {
     item: {

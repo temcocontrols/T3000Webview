@@ -2032,6 +2032,7 @@ function weldSelected() {
 
     console.log("Actual Size:", actualSize);
 
+    /*
     const blob = new Blob([outerHTML], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2041,7 +2042,21 @@ function weldSelected() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    */
   });
+
+  // Function to extract paths from SVG item
+  const extractPaths = (item) => {
+    let paths = [];
+    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+      paths.push(item);
+    } else if (item.children) {
+      item.children.forEach((child) => {
+        paths = paths.concat(extractPaths(child));
+      });
+    }
+    return paths;
+  };
 
   console.log("selected svgs", selectedSvgs);
 
@@ -2049,13 +2064,11 @@ function weldSelected() {
   const project = new paper.Project();
 
   // Function to load SVG from string
-  const selectedSvgItems = selectedSvgs.map((svgString) => {
-    return paper.project.importSVG(svgString, { applyMatrix: false });
+  const allSvgItems = selectedSvgs.map((svgString) => {
+    return paper.project.importSVG(svgString, { applyMatrix: true });
   });
 
-  console.log("selected svg items", selectedSvgItems);
-
-  return;
+  console.log("selected svg items", allSvgItems);
 
   const allSvgPaths = allSvgItems.map((item) => {
     return extractPaths(item);
@@ -2074,17 +2087,19 @@ function weldSelected() {
   }, null);
 
   const svgString = project.exportSVG({ asString: true });
-
   console.log("svgString", svgString);
 
+  const firstItem = selectedItems?.[0];
+
   const newItem = {
+    id: appState.value.itemsCount + 1,
     title: null,
     active: false,
-    type: "Boiler",
-    translate: [0, 0],
-    width: unionPath.bounds.width,
-    height: unionPath.bounds.height,
-    rotate: 0,
+    type: "Weld",
+    translate: firstItem.translate, // [0, 0],
+    width: firstItem.width, // unionPath.bounds.width,
+    height: firstItem.height, // unionPath.bounds.height,
+    rotate: firstItem.rotate, //0
     scaleX: 1,
     scaleY: 1,
     settings: {},
@@ -2100,21 +2115,11 @@ function weldSelected() {
       appState.value.items.splice(index, 1);
     }
   });
-  appState.value.selectedTargets = [];
-  refreshMoveable();
 
-  // Function to extract paths from SVG item
-  const extractPaths = (item) => {
-    let paths = [];
-    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-      paths.push(item);
-    } else if (item.children) {
-      item.children.forEach((child) => {
-        paths = paths.concat(extractPaths(child));
-      });
-    }
-    return paths;
-  };
+  // const target = document.querySelector(`#moveable-item-${newItem.id}`);
+  // appState.value.selectedTargets = [target];
+
+  refreshMoveable();
 }
 
 // Filter function for selecting panels in the UI
@@ -2398,6 +2403,12 @@ function groupSelected() {
       }
     });
   }
+
+  console.log("group-start");
+  console.log(appState.value);
+  console.log(appState.value.groupCount);
+  console.log(appState.value.selectedTargets);
+  console.log(appState.value.items);
 }
 
 // Ungroup the selected items
@@ -2414,6 +2425,12 @@ function ungroupSelected() {
       }
     });
   }
+
+  console.log("group-start");
+  console.log(appState.value);
+  console.log(appState.value.groupCount);
+  console.log(appState.value.selectedTargets);
+  console.log(appState.value.items);
 }
 
 // Control zoom actions for the app
