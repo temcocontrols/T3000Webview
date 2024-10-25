@@ -79,7 +79,9 @@
     // Function to load all paths from an item suitable for Paper.js format
     const loadAllPathsFromItem = (item) => {
       let paths = [];
-      if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
+
+      console.log('item', item);
+      if (item instanceof paper.Path || item instanceof paper.CompoundPath || item instanceof paper.Circle) {
         paths.push(item);
       } else if (item instanceof paper.Group) {
         item.children.forEach(child => {
@@ -100,14 +102,34 @@
       let combinedPath = null;
 
       const processShape = (shape) => {
-        if (shape instanceof paper.Path) {
+
+        // console.log('shape is a clippath', shape.isClipMask());
+        // console.log('shape-id-type-outer', shape.id, shape.type);
+
+        if (shape.type == "circle") {
+          console.log('shape is a circle outer', shape.id, shape);
+        }
+
+        if (shape instanceof paper.Path || paper.ClipPath || paper.type == 'circle') {
+          console.log('any output',shape.id, shape)
+          if (shape.type == "circle") {
+            console.log('shape is a circle outer', shape.id, shape);
+          }
+
           if (combinedPath) {
+
             combinedPath = combinedPath.unite(shape);
           } else {
             combinedPath = shape;
           }
         } else if (shape instanceof paper.Group) {
-          shape.children.forEach(child => processShape(child));
+          // combinedPath = combinedPath.unite(shape);
+          // shape.children.forEach(child => processShape(child));
+
+          //only unite the first object
+          // shape.children[0].strokeColor = 'red';
+          combinedPath = combinedPath.unite(shape.lastChild);
+
         } else if (shape instanceof paper.CompoundPath) {
           shape.children.forEach(child => processShape(child));
         }
@@ -116,9 +138,9 @@
       shapesArray.forEach(shape => processShape(shape));
 
       if (combinedPath) {
-        combinedPath.fillColor = '#659dc5';
-        combinedPath.strokeColor = 'black';
-        combinedPath.strokeWidth = 2;
+        // combinedPath.fillColor = '#659dc5';
+        // combinedPath.strokeColor = 'black';
+        // combinedPath.strokeWidth = 2;
       }
 
       return combinedPath;
@@ -139,7 +161,11 @@
       rest1.forEach(shape => {
         if (shape instanceof paper.Path) {
           combinedPath = combinedPath.unite(shape);
-        } else
+        } else if (shape instanceof paper.Circle) {
+          console.log('getCombinedPath shape is a circle', shape);
+          combinedPath = combinedPath.unite(shape);
+        }
+        else
           if (shape instanceof paper.Group) {
             console.log('shape is a group', shape);
 
@@ -162,9 +188,9 @@
           }
       });
 
-      combinedPath.fillColor = '#659dc5';
-      combinedPath.strokeColor = 'black';
-      combinedPath.strokeWidth = 2;
+      // combinedPath.fillColor = '#659dc5';
+      // combinedPath.strokeColor = 'black';
+      // combinedPath.strokeWidth = 2;
 
       return combinedPath;
     };
@@ -227,10 +253,73 @@
       </svg>
       `;
 
-      const item = paper.project.importSVG(svgString);
-      // const paths = loadAllPathsFromItem(item);
+      //use the standard string that paperjs transformed
+      svgString = `
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="771.20001"
+  height="246.8" viewBox="0,0,771.20001,246.8">
+  <defs>
+    <clipPath id="clip-1">
+      <rect x="0" y="0" transform="scale(2.38985,1.91188)" width="20.9218" height="20.9218" fill="none" stroke="none"
+        stroke-width="1" />
+    </clipPath>
+  </defs>
+  <g fill="none" fill-rule="nonzero" stroke="none" stroke-width="none" stroke-linecap="butt" stroke-linejoin="miter"
+    stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none"
+    font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+    <g clip-path="url(#clip-1)">
+      <g fill="#659dc5" stroke="#000000">
+        <g>
+          <circle cx="10.4609" cy="10.4609" transform="scale(2.38985,1.91188)" r="9.9609" stroke-width="1" />
+          <g stroke-width="0.96719">
+            <path d="M13.15828,35.55678v-31.07954l33.64433,15.54015z" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+      `;
+
+      const item = paper.project.importSVG(svgString,{applyMatrix:true});
+
+      console.log('the pump item loaded from svg string', item);
+
       return item;
     };
+
+    // test load from svg string and export it to svg without boolean, to check if the import functionality is working
+    const loadAndExportSVGFromString = (svgString) => {
+
+      //single self test
+      svgString = `
+      <svg data-v-f50b06a6="" data-v-633ad4c9="" viewBox="0 0 20.921802 20.921802" version="1.1"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
+        xmlns:svg="http://www.w3.org/2000/svg" height="40" width="50" class="object-svg heatpump" titleColor="inherit"
+        bgColor="inherit" textColor="inherit" fontSize="16"
+        style="transform: translate(10px, 40px) rotate(-277.1476441551531deg); --f50b06a6-fillColor: #659dc5;">
+        <g fill="#659dc5" transform="translate(-5.4940996,-5.5390997)" data-v-f50b06a6="">
+          <g class="pump" data-v-f50b06a6="">
+            <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003" class="pump-background" data-v-f50b06a6=""></circle>
+            <g transform="translate(16,16)" data-v-f50b06a6="">
+              <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="#000000" stroke-width="0.96719"
+                data-v-f50b06a6=""></path>
+            </g>
+          </g>
+        </g>
+      </svg>
+      `;
+
+      const item = paper.project.importSVG(svgString);
+      const svg = paper.project.exportSVG({ asString: true });
+
+      console.log('loadAndExportSVGFromString', svg);
+      return svg;
+    };
+
+
+    //svg import and export
+    loadAndExportSVGFromString("");
+
 
     const createShapes = () => {
       const shapes = [];
@@ -243,7 +332,7 @@
       const shape1 = new paper.Path.Circle({
         center: [150, 150],
         radius: 50,
-        fillColor: '#659dc5'
+        fillColor: '#7f5ea7'
       });
 
       const shape2 = new paper.Path.Rectangle({
@@ -266,14 +355,14 @@
         center: [380, 80],
         size: 100,
         parent: originals,
-        fillColor: '#191313'
+        fillColor: '#f2d3d3'
       });
 
       console.log('square', square);
 
       // Make a ring using subtraction of two circles:
       var inner = new paper.Path.Circle({
-        center: [420, 60],
+        center: [380, 80],
         radius: 50,
         parent: originals,
         fillColor: '#c94949'
@@ -282,7 +371,7 @@
       console.log('inner', inner);
 
       var outer = new paper.Path.Circle({
-        center: [420, 60],
+        center: [380, 60],
         radius: 30,
         parent: originals,
         fillColor: '#b49595'
@@ -294,7 +383,7 @@
       // load pump svg from string
       var pumpSvg = loadSVGFromStringToPath("");
 
-      //originals
+      //originals pumpSvg
 
       shapes.push(shape1, shape2, shape3, pumpSvg);
 
