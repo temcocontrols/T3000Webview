@@ -9,3 +9,7 @@
 1. try to use clipper.js and paper.js to do Boolean operations on SVG files.
 2. add some examples
 3. fix bugs for 'Weld Selected' tool, trying to use third part libary to do the boolean operations for selected items.
+
+2024-10-24
+1. continue to implement the weld function,
+2. rewrite the merge logic with paperjs, add a new demo to do boolean operations for some sample shapes
