@@ -4,7 +4,8 @@
 </template>
 
 <script>
-import { defineComponent } from "vue";
+import { defineComponent, onMounted } from "vue";
+import { cloneDeep, isEqual } from "lodash";
 
 export default defineComponent({
   name: "WeldEl",
@@ -24,7 +25,13 @@ export default defineComponent({
       default: "#659dc5",
     },
   },
-  setup() {
+  setup(props, { emit }) {
+    console.log("weld element setup", props);
+    let initialObject = {};
+    onMounted(() => {
+      initialObject = cloneDeep(props.object);
+      // emit("mounted");
+    });
     return {};
   },
 });

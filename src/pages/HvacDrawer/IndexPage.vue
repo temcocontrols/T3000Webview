@@ -2102,7 +2102,7 @@ function weldSelected() {
     rotate: firstItem.rotate, //0
     scaleX: 1,
     scaleY: 1,
-    settings: {},
+    settings: { fillColor: "red" },
     zindex: 1,
     t3Entry: null,
     svg: svgString,
