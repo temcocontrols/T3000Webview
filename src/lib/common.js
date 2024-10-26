@@ -1,4 +1,6 @@
 // Import the necessary dependencies
+import { last } from "lodash";
+import { settings } from "paper/dist/paper-core";
 import { ref } from "vue";
 
 export const T3000_Data = ref({
@@ -26,11 +28,11 @@ export const getEntryRange = (item) => {
       );
       range = !item.digital_analog
         ? customRanges.find(
-            (i) => i.type === "digital" && i.index === item.range
-          )
+          (i) => i.type === "digital" && i.index === item.range
+        )
         : customRanges.find(
-            (i) => i.type === "analog" && i.index === item.range
-          );
+          (i) => i.type === "analog" && i.index === item.range
+        );
 
       // If the range is still not found and the range ID is greater than 100, assume it is a custom range
       if (!range && item.range > 100) {
@@ -822,6 +824,32 @@ export const tools = [
       },
     },
   },
+  {
+    name: "Weld",
+    label: "Weld",
+    icon: "svguse:icons.svg#weld",
+    cat: [""],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+      active: {
+        value: false,
+        type: "boolean",
+        label: "Active",
+        id: 2,
+      },
+      inAlarm: {
+        value: false,
+        type: "boolean",
+        label: "In alarm",
+        id: 3,
+      },
+    }
+  }
 ];
 
 export const icons = [
@@ -1648,7 +1676,7 @@ export function getObjectActiveValue(item) {
         (!analog &&
           ((item.t3Entry?.control === 1 && !range.direct) ||
             (item.t3Entry?.control === 0 && range.direct))) ||
-        (analog && item.t3Entry?.value > 0)
+          (analog && item.t3Entry?.value > 0)
           ? true
           : false;
     }

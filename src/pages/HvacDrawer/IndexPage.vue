@@ -1983,6 +1983,101 @@ function deleteSelected() {
   }
 }
 
+function drawWeldObject(selectedItems) {
+  // tool = tool || selectedTool.value;
+
+  // if (tool.type === "libItem") {
+  //   addLibItem(tool.items, size, pos);
+  //   return;
+  // }
+
+  // const size = { width: e.rect.width, height: e.rect.height };
+  // const pos = {
+  //   clientX: e.clientX,
+  //   clientY: e.clientY,
+  //   top: e.rect.top,
+  //   left: e.rect.left,
+  // };
+
+  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+  // const toolSettings =
+  //   cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
+  // const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+  //   acc[key] = toolSettings[key].value;
+  //   return acc;
+  // }, {});
+
+  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
+  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
+  const maxW = Math.max(...selectedItems.map((item) => item.width));
+  const maxH = Math.max(...selectedItems.map((item) => item.height));
+
+  selectedItems.map((itx) => {
+    console.log(
+      "--",
+      itx.type,
+      itx.translate[0],
+      itx.translate[1],
+      itx.width,
+      itx.height,
+      itx.fillColor
+    );
+  });
+
+  console.log("x,y,w,h", minX, minY, maxW, maxH);
+
+  // const toolSettings =
+  //   cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
+  // const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+  //   acc[key] = toolSettings[key].value;
+  //   return acc;
+  // }, {});
+
+  // console.log("draw weld object - toolsettings", objectSettings);
+
+  const tempItem = {
+    title: "Weld + (xx and yy)",
+    active: false,
+    type: "Weld",
+    translate: [minX * scalPercentage, minY * scalPercentage],
+    width: maxW * scalPercentage,
+    height: maxH * scalPercentage,
+    rotate: 0,
+    scaleX: 1,
+    scaleY: 1,
+    settings: {
+      active: false,
+      // bgColor: "inherit",
+      fillColor: "#659dc5",
+      fontSize: 16,
+      inAlarm: false,
+      textColor: "inherit",
+      titleColor: "inherit",
+      weldItems: cloneDeep(selectedItems),
+    },
+    zindex: 1,
+    t3Entry: null,
+    id: appState.value.itemsCount + 1,
+  };
+
+  // const item = addObject(tempItem);
+  addObject(tempItem);
+
+  // setTimeout(() => {
+  //   if (locked.value) return;
+  //   appState.value.activeItemIndex = appState.value.items.findIndex(
+  //     (i) => i.id === item.id
+  //   );
+  // }, 10);
+  // setTimeout(() => {
+  //   if (locked.value) return;
+  //   const target = document.querySelector(`#moveable-item-${item.id}`);
+  //   appState.value.selectedTargets = [target];
+  //   selecto.value.setSelectedTargets([target]);
+  // }, 100);
+}
+
 // Weld selected objects into one
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
@@ -1994,43 +2089,43 @@ function weldSelected() {
     )
   );
 
-  console.log("selectedItems", selectedItems);
+  // console.log("selectedItems", selectedItems);
 
   const selectedSvgs = [];
   selectedItems.forEach((item) => {
     const svgElement = document.querySelector(`#moveable-item-${item.id} svg`);
 
-    var outerHTML = svgElement.outerHTML;
-    outerHTML = outerHTML.replace("currentcolor", item.settings.fillColor);
-    outerHTML = outerHTML.replace("currentColor", item.settings.fillColor);
+    var outerHTML = svgElement?.outerHTML;
+    outerHTML = outerHTML?.replace("currentcolor", item.settings.fillColor);
+    outerHTML = outerHTML?.replace("currentColor", item.settings.fillColor);
 
-    console.log("outerHTML", outerHTML);
+    // console.log("outerHTML", outerHTML ?? "");
 
     var transRoate = `translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg)`;
-    outerHTML = outerHTML.replace(
+    outerHTML = outerHTML?.replace(
       /style="/,
       `style="transform: ${transRoate}; `
     );
 
-    selectedSvgs.push(outerHTML);
-    console.log("fillcolor", item.settings.fillColor);
+    selectedSvgs.push(outerHTML ?? "");
+    // console.log("fillcolor", item.settings.fillColor);
 
-    var clientRect = svgElement.getBoundingClientRect();
-    console.log("duct item", item);
-    console.log("svgItem", svgElement);
-    console.log("clientRect", clientRect);
+    var clientRect = svgElement?.getBoundingClientRect();
+    // console.log("duct item", item);
+    // console.log("svgItem", svgElement);
+    // console.log("clientRect", clientRect);
 
-    const boundingBox = svgElement.getBBox();
+    const boundingBox = svgElement?.getBBox();
     const actualSize = {
-      width: boundingBox.width,
-      height: boundingBox.height,
+      width: boundingBox?.width,
+      height: boundingBox?.height,
     };
     const actualPosition = {
-      x: boundingBox.x,
-      y: boundingBox.y,
+      x: boundingBox?.x,
+      y: boundingBox?.y,
     };
 
-    console.log("Actual Size:", actualSize);
+    // console.log("Actual Size:", actualSize);
 
     /*
     const blob = new Blob([outerHTML], { type: "image/svg+xml" });
@@ -2048,6 +2143,9 @@ function weldSelected() {
   // Function to extract paths from SVG item
   const extractPaths = (item) => {
     let paths = [];
+    if (item == null) {
+      return paths;
+    }
     if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
       paths.push(item);
     } else if (item.children) {
@@ -2058,7 +2156,7 @@ function weldSelected() {
     return paths;
   };
 
-  console.log("selected svgs", selectedSvgs);
+  // console.log("selected svgs", selectedSvgs);
 
   // Create a new paper.js project
   const project = new paper.Project();
@@ -2068,17 +2166,17 @@ function weldSelected() {
     return paper.project.importSVG(svgString, { applyMatrix: true });
   });
 
-  console.log("selected svg items", allSvgItems);
+  // console.log("selected svg items", allSvgItems);
 
   const allSvgPaths = allSvgItems.map((item) => {
     return extractPaths(item);
   });
 
-  console.log("allSvgPaths", allSvgPaths);
+  // console.log("allSvgPaths", allSvgPaths);
 
   const firstSvgPaths = allSvgPaths.map((paths) => paths[0]);
 
-  console.log("firstSvgPaths", firstSvgPaths);
+  // console.log("firstSvgPaths", firstSvgPaths);
 
   const allPaths = firstSvgPaths.flat();
   const unionPath = allPaths.reduce((acc, path) => {
@@ -2087,28 +2185,42 @@ function weldSelected() {
   }, null);
 
   const svgString = project.exportSVG({ asString: true });
-  console.log("svgString", svgString);
+  // console.log("svgString", svgString);
 
   const firstItem = selectedItems?.[0];
 
+  //should caluate following , max width, max height, rotate=0, translate=min x
+
   const newItem = {
     id: appState.value.itemsCount + 1,
-    title: null,
-    active: false,
+    title: "Weld (----)",
+    active: true,
     type: "Weld",
     translate: firstItem.translate, // [0, 0],
     width: firstItem.width, // unionPath.bounds.width,
     height: firstItem.height, // unionPath.bounds.height,
-    rotate: firstItem.rotate, //0
+    rotate: 0, // do not set the rotate when weldfirstItem.rotate, //0
     scaleX: 1,
     scaleY: 1,
-    settings: { fillColor: "red" },
+    settings: {
+      fillColor: "inherit",
+      weldItems: selectedItems,
+    },
     zindex: 1,
     t3Entry: null,
     svg: svgString,
+    // weldItems: selectedItems,
   };
 
-  addObject(newItem);
+  console.log("log the objects before weld");
+  selectedItems.map((ix) => {
+    console.log(ix);
+  });
+
+  // addObject(newItem);
+
+  drawWeldObject(selectedItems);
+
   selectedItems.forEach((item) => {
     const index = appState.value.items.findIndex((i) => i.id === item.id);
     if (index !== -1) {
