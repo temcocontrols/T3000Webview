@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import { computed, defineComponent } from "vue";
+import { computed, defineComponent, onMounted } from "vue";
 import { cloneDeep } from "lodash";
 import WeldType from "../WeldType.vue";
 
@@ -38,7 +38,6 @@ export default defineComponent({
       default: () => {},
     },
   },
-
   setup(props) {
     const weldData = computed(() => props.weldModel);
     const defaultWidth = cloneDeep(weldData.value.width);
@@ -55,6 +54,7 @@ export default defineComponent({
 
     const recalculateWHAndTranslate = () => {
       const items = cloneDeep(props.weldModel.settings.weldItems);
+      // console.log("weld item with new props", items);
 
       if (items.length === 0) return items;
 
@@ -82,7 +82,15 @@ export default defineComponent({
       });
     };
 
-    const itemList = computed(() => recalculateWHAndTranslate());
+    const itemList = computed(() => {
+      var newWeldChild = recalculateWHAndTranslate();
+      console.log("weld-item-list", newWeldChild);
+      return newWeldChild;
+    });
+
+    onMounted(() => {
+      // console.log("weld mounted", itemList);
+    });
 
     return {
       itemList,

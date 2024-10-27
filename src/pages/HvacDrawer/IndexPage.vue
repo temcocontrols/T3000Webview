@@ -764,6 +764,7 @@ import {
 import { liveApi } from "../../lib/api";
 import paper from "paper";
 import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
+import { transform } from "lodash";
 
 // Meta information for the application
 const metaData = {
@@ -1325,6 +1326,9 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+
+  // console.log("on resize start (e.target)", e.target);
+  // console.log("on resize start (current)", appState.value.items[itemIndex]);
 }
 
 // Handles resizing of an element
@@ -1338,6 +1342,8 @@ function onResize(e) {
   e.target.style.width = `${e.width}px`;
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
+
+  // console.log("on resize (e.target)", e.target);
 }
 
 // Ends the resizing of an element
@@ -1349,6 +1355,60 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+
+  if (!appState.value.items[itemIndex].type.startsWith("Weld")) {
+    return;
+  }
+
+  /*
+  const newWeldStyles = Array.from(
+    e.target.querySelectorAll("[id^='weld-item']")
+  ).map((item) => {
+    return {
+      id: item.id,
+      width: item.style.width.includes("px")
+        ? parseFloat(item.style.width.replace("px", ""))
+        : parseFloat(item.style.width),
+      height: item.style.height.includes("px")
+        ? parseFloat(item.style.height.replace("px", ""))
+        : parseFloat(item.style.height),
+      transform: item.style.transform,
+      translate: [
+        parseFloat(item.style.transform.split("(")[1].split(",")[0]) || 0,
+        parseFloat(item.style.transform.split(",")[1]) || 0,
+      ],
+      rotate: parseFloat(item.style.transform.match(/rotate\(([^)]+)\)/)[1]),
+      scaleX: parseFloat(item.style.transform.match(/scaleX\(([^)]+)\)/)[1]),
+      scaleY: parseFloat(item.style.transform.match(/scaleY\(([^)]+)\)/)[1]),
+    };
+  });
+
+  appState.value.items[itemIndex].settings.weldItems.map((item, index) => {
+    const weldItem = newWeldStyles.find(
+      (weld) => weld.id === `weld-item-${item.id}`
+    );
+
+    if (weldItem) {
+      item.width = weldItem.width;
+      item.height = weldItem.height;
+      item.translate[0] = weldItem.translate[0];
+      item.translate[1] = weldItem.translate[1];
+      item.rotate = weldItem.rotate;
+      item.scaleX = weldItem.scaleX;
+      item.scaleY = weldItem.scaleY;
+
+      console.log("on resize end re set the value", weldItem, item);
+    }
+
+    return item;
+  });
+
+  console.log(
+    "on resize end ",
+    appState.value.items[itemIndex].settings.weldItems
+  );
+  */
+
   refreshObjects(); // Refresh objects after resizing
 }
 
@@ -1999,15 +2059,22 @@ function drawWeldObject(selectedItems) {
   );
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
-  // console.log(title);
+
+  let previous = selectedItems[0].zindex;
+  selectedItems.forEach((item) => {
+    item.zindex = previous - 1;
+    previous = item.zindex;
+  });
 
   const tempItem = {
     title: `Weld-${title}`,
     active: false,
     type: "Weld",
     translate: [minX, minY],
-    width: (maxX - minX) * scalPercentage,
-    height: (maxY - minY) * scalPercentage,
+    // width: (maxX - minX) * scalPercentage,
+    // height: (maxY - minY) * scalPercentage,
+    width: maxX - minX,
+    height: maxY - minY,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
