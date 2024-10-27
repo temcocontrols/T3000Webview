@@ -375,7 +375,6 @@ export default defineComponent({
   },
   emits: ["autoManualToggle", "objectClicked", "changeValue"],
   setup(props, { emit }) {
-    console.log("object type props", props.item.settings);
     const range = computed(() => {
       return getEntryRange(props.item?.t3Entry);
     });

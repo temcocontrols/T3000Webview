@@ -1,16 +1,14 @@
 <template>
-  <div class="weld-element flex justify-center object-container">
-    <!-- <a>this is a weld element</a> -->
-    <!-- <br />
-    {{ propsData.settings.active }}{{ propsData.settings.inAlarm
-    }}{{ propsData.settings.fillColor }}
-    <span
-      >id:{{ propsData.id }}, x:{{ propsData.translate[0] }}, y:{{
-        propsData.translate[1]
-      }}, rotate:{{ propsData.rotate }}, width:{{ propsData.width }}, height:{{
-        propsData.height
+  <!-- <div>
+    <a>this is a weld element</a>
+    <br />
+    {{ weldData.settings.active }},{{ weldData.settings.inAlarm }},{{ weldData.settings.fillColor }}
+    <span>id:{{ weldData.id }},x:{{ weldData.translate[0] }},y:{{ weldData.translate[1] }}, rotate:{{ weldData.rotate
       }},
-    </span> -->
+      width:{{ weldData.width }},height:{{ weldData.height }}
+    </span>
+  </div> -->
+  <div class="weld-element flex justify-center object-container">
     <div
       v-for="(item, index) in itemList"
       :key="item.id"
@@ -27,49 +25,40 @@
 </template>
 
 <script>
-import { ref, computed, defineComponent, onMounted } from "vue";
-import { cloneDeep, isEqual } from "lodash";
+import { computed, defineComponent } from "vue";
+import { cloneDeep } from "lodash";
 import WeldType from "../WeldType.vue";
-import { get } from "lodash";
 
 export default defineComponent({
   name: "WeldEl",
-  components: {
-    "weld-type": WeldType,
-  },
+  components: { WeldType },
   props: {
-    // active: {
-    //   type: Boolean,
-    //   required: false,
-    //   default: false,
-    // },
-    // inAlarm: {
-    //   type: Boolean,
-    //   required: false,
-    //   default: false,
-    // },
-    // fillColor: {
-    //   type: String,
-    //   default: "#659dc5",
-    // },
-    // weldItems: {
-    //   type: Array,
-    //   default: new Array(),
-    // },
     weldModel: {
       type: Object,
       default: () => {},
     },
   },
 
-  setup(props, { emit }) {
-    console.log("Weld Parent", props);
-    const propsData = computed(() => props.weldModel);
-    const settings = computed(() => props.weldModel.settings);
+  setup(props) {
+    const weldData = computed(() => props.weldModel);
+    const defaultWidth = cloneDeep(weldData.value.width);
+    const defaultHeight = cloneDeep(weldData.value.height);
+    // console.log(weldData.value, defaultWidth, defaultHeight);
 
-    const recalculateTranslations = () => {
+    const recalculateScale = () => {
+      const widthScale = weldData.value.width / defaultWidth;
+      const heightScale = weldData.value.height / defaultHeight;
+      const tranXScale = weldData.value.translate[0] / defaultWidth;
+      const tranYScale = weldData.value.translate[1] / defaultHeight;
+      return { widthScale, heightScale, tranXScale, tranYScale };
+    };
+
+    const recalculateWHAndTranslate = () => {
       const items = cloneDeep(props.weldModel.settings.weldItems);
+
       if (items.length === 0) return items;
+
+      var changed = recalculateScale();
 
       const firstItem = items[0];
       const firstX = firstItem.translate[0];
@@ -77,31 +66,27 @@ export default defineComponent({
 
       return items.map((item, index) => {
         if (index === 0) {
+          item.width = item.width * changed.widthScale;
+          item.height = item.height * changed.heightScale;
           item.translate[0] = 0;
           item.translate[1] = 0;
         } else {
-          item.translate[0] -= firstX;
-          item.translate[1] -= firstY;
+          item.width = item.width * changed.widthScale;
+          item.height = item.height * changed.heightScale;
+          item.translate[0] *= changed.widthScale;
+          item.translate[1] *= changed.heightScale;
+          item.translate[0] -= firstX * changed.widthScale;
+          item.translate[1] -= firstY * changed.heightScale;
         }
         return item;
       });
     };
 
-    const getWeldModelDimensions = () => {
-      const { width, height } = props.weldModel;
-      return { width, height };
-    };
-
-    console.log("Weld Model", props.weldModel, getWeldModelDimensions());
-
-    const itemList = computed(() => recalculateTranslations());
-    const dimension = computed(() => getWeldModelDimensions());
+    const itemList = computed(() => recalculateWHAndTranslate());
 
     return {
       itemList,
-      propsData,
-      settings,
-      dimension,
+      weldData,
     };
   },
 });

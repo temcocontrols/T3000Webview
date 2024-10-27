@@ -1342,26 +1342,9 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
-  console.log("on resize end", e);
   const itemIndex = appState.value.items.findIndex(
     (item) => `moveable-item-${item.id}` === e.lastEvent.target.id
   );
-
-  console.log("itemIndex", itemIndex);
-  console.log("appState.value.items", appState.value.items[itemIndex]);
-  console.log(
-    "appState.value.items[itemIndex].settings.weldItems",
-    appState.value.items[itemIndex].settings.weldItems
-  );
-
-  /*
-  //reset the items settings weldItems width height tanslate
-  appState.value.items[itemIndex].settings.weldItems.map((p) => {
-    p.width = e.lastEvent.width;
-    p.height = e.lastEvent.height;
-    p.translate = e.lastEvent.drag.beforeTranslate;
-  });
-  */
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
@@ -2003,29 +1986,7 @@ function deleteSelected() {
 }
 
 function drawWeldObject(selectedItems) {
-  // tool = tool || selectedTool.value;
-
-  // if (tool.type === "libItem") {
-  //   addLibItem(tool.items, size, pos);
-  //   return;
-  // }
-
-  // const size = { width: e.rect.width, height: e.rect.height };
-  // const pos = {
-  //   clientX: e.clientX,
-  //   clientY: e.clientY,
-  //   top: e.rect.top,
-  //   left: e.rect.left,
-  // };
-
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-  // const toolSettings =
-  //   cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
-  // const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
-  //   acc[key] = toolSettings[key].value;
-  //   return acc;
-  // }, {});
 
   // Calculate the bounding box for the selected items
   const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
@@ -2037,43 +1998,14 @@ function drawWeldObject(selectedItems) {
     ...selectedItems.map((item) => item.translate[1] + item.height)
   );
 
-  /*
-  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
-  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
-  const maxW = Math.max(...selectedItems.map((item) => item.width));
-  const maxH = Math.max(...selectedItems.map((item) => item.height));
-
-  selectedItems.map((itx) => {
-    console.log(
-      "--",
-      itx.type,
-      itx.translate[0],
-      itx.translate[1],
-      itx.width,
-      itx.height,
-      itx.fillColor
-    );
-  });
-
-  console.log("x,y,w,h", minX, minY, maxW, maxH);
-  */
-
-  // const toolSettings =
-  //   cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
-  // const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
-  //   acc[key] = toolSettings[key].value;
-  //   return acc;
-  // }, {});
-
-  // console.log("draw weld object - toolsettings", objectSettings);
+  const title = selectedItems.map((item) => item?.type ?? "").join("-");
+  // console.log(title);
 
   const tempItem = {
-    title: "Weld + (xx and yy)",
+    title: `Weld-${title}`,
     active: false,
     type: "Weld",
-    translate: [minX * scalPercentage, minY * scalPercentage],
-    // width: maxW * scalPercentage,
-    // height: maxH * scalPercentage,
+    translate: [minX, minY],
     width: (maxX - minX) * scalPercentage,
     height: (maxY - minY) * scalPercentage,
     rotate: 0,
@@ -2081,7 +2013,6 @@ function drawWeldObject(selectedItems) {
     scaleY: 1,
     settings: {
       active: false,
-      bgColor: "#659dc5",
       fillColor: "#659dc5",
       fontSize: 16,
       inAlarm: false,
@@ -2094,24 +2025,10 @@ function drawWeldObject(selectedItems) {
     id: appState.value.itemsCount + 1,
   };
 
-  // const item = addObject(tempItem);
   addObject(tempItem);
-
-  // setTimeout(() => {
-  //   if (locked.value) return;
-  //   appState.value.activeItemIndex = appState.value.items.findIndex(
-  //     (i) => i.id === item.id
-  //   );
-  // }, 10);
-  // setTimeout(() => {
-  //   if (locked.value) return;
-  //   const target = document.querySelector(`#moveable-item-${item.id}`);
-  //   appState.value.selectedTargets = [target];
-  //   selecto.value.setSelectedTargets([target]);
-  // }, 100);
 }
 
-// Weld selected objects into one
+// Weld selected objects into one shape
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
   addActionToHistory("Weld selected objects");
@@ -2122,136 +2039,6 @@ function weldSelected() {
     )
   );
 
-  // console.log("selectedItems", selectedItems);
-
-  const selectedSvgs = [];
-  selectedItems.forEach((item) => {
-    const svgElement = document.querySelector(`#moveable-item-${item.id} svg`);
-
-    var outerHTML = svgElement?.outerHTML;
-    outerHTML = outerHTML?.replace("currentcolor", item.settings.fillColor);
-    outerHTML = outerHTML?.replace("currentColor", item.settings.fillColor);
-
-    // console.log("outerHTML", outerHTML ?? "");
-
-    var transRoate = `translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg)`;
-    outerHTML = outerHTML?.replace(
-      /style="/,
-      `style="transform: ${transRoate}; `
-    );
-
-    selectedSvgs.push(outerHTML ?? "");
-    // console.log("fillcolor", item.settings.fillColor);
-
-    var clientRect = svgElement?.getBoundingClientRect();
-    // console.log("duct item", item);
-    // console.log("svgItem", svgElement);
-    // console.log("clientRect", clientRect);
-
-    const boundingBox = svgElement?.getBBox();
-    const actualSize = {
-      width: boundingBox?.width,
-      height: boundingBox?.height,
-    };
-    const actualPosition = {
-      x: boundingBox?.x,
-      y: boundingBox?.y,
-    };
-
-    // console.log("Actual Size:", actualSize);
-
-    /*
-    const blob = new Blob([outerHTML], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${item.type}-${item.id}-${new Date().toISOString()}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    */
-  });
-
-  // Function to extract paths from SVG item
-  const extractPaths = (item) => {
-    let paths = [];
-    if (item == null) {
-      return paths;
-    }
-    if (item instanceof paper.Path || item instanceof paper.CompoundPath) {
-      paths.push(item);
-    } else if (item.children) {
-      item.children.forEach((child) => {
-        paths = paths.concat(extractPaths(child));
-      });
-    }
-    return paths;
-  };
-
-  // console.log("selected svgs", selectedSvgs);
-
-  // Create a new paper.js project
-  const project = new paper.Project();
-
-  // Function to load SVG from string
-  const allSvgItems = selectedSvgs.map((svgString) => {
-    return paper.project.importSVG(svgString, { applyMatrix: true });
-  });
-
-  // console.log("selected svg items", allSvgItems);
-
-  const allSvgPaths = allSvgItems.map((item) => {
-    return extractPaths(item);
-  });
-
-  // console.log("allSvgPaths", allSvgPaths);
-
-  const firstSvgPaths = allSvgPaths.map((paths) => paths[0]);
-
-  // console.log("firstSvgPaths", firstSvgPaths);
-
-  const allPaths = firstSvgPaths.flat();
-  const unionPath = allPaths.reduce((acc, path) => {
-    if (!acc) return path;
-    return acc.unite(path);
-  }, null);
-
-  const svgString = project.exportSVG({ asString: true });
-  // console.log("svgString", svgString);
-
-  const firstItem = selectedItems?.[0];
-
-  //should caluate following , max width, max height, rotate=0, translate=min x
-
-  const newItem = {
-    id: appState.value.itemsCount + 1,
-    title: "Weld (----)",
-    active: true,
-    type: "Weld",
-    translate: firstItem.translate, // [0, 0],
-    width: firstItem.width, // unionPath.bounds.width,
-    height: firstItem.height, // unionPath.bounds.height,
-    rotate: 0, // do not set the rotate when weldfirstItem.rotate, //0
-    scaleX: 1,
-    scaleY: 1,
-    settings: {
-      fillColor: "inherit",
-      weldItems: selectedItems,
-    },
-    zindex: 1,
-    t3Entry: null,
-    svg: svgString,
-    // weldItems: selectedItems,
-  };
-
-  console.log("log the objects before weld");
-  selectedItems.map((ix) => {
-    console.log(ix);
-  });
-
-  // addObject(newItem);
-
   drawWeldObject(selectedItems);
 
   selectedItems.forEach((item) => {
@@ -2260,9 +2047,6 @@ function weldSelected() {
       appState.value.items.splice(index, 1);
     }
   });
-
-  // const target = document.querySelector(`#moveable-item-${newItem.id}`);
-  // appState.value.selectedTargets = [target];
 
   refreshMoveable();
 }
@@ -2548,12 +2332,6 @@ function groupSelected() {
       }
     });
   }
-
-  console.log("group-start");
-  console.log(appState.value);
-  console.log(appState.value.groupCount);
-  console.log(appState.value.selectedTargets);
-  console.log(appState.value.items);
 }
 
 // Ungroup the selected items
@@ -2570,12 +2348,6 @@ function ungroupSelected() {
       }
     });
   }
-
-  console.log("group-start");
-  console.log(appState.value);
-  console.log(appState.value.groupCount);
-  console.log(appState.value.selectedTargets);
-  console.log(appState.value.items);
 }
 
 // Control zoom actions for the app
@@ -3197,9 +2969,11 @@ function addOnlineLibImage(oItem) {
   transition: transform 0.3s;
   transform-style: preserve-3d;
 }
+
 .moveable-item-wrapper:has(.Duct) {
   transform-origin: 20px center;
 }
+
 .moveable-item-wrapper:has(.Wall) {
   transform-origin: 10px center;
 }
@@ -3215,9 +2989,11 @@ function addOnlineLibImage(oItem) {
 .nav-btns {
   left: 7rem;
 }
+
 .nav-btns.locked {
   left: 1rem;
 }
+
 .cursor-icon {
   position: absolute;
   z-index: 1;
