@@ -87,7 +87,12 @@ export default defineComponent({
         }
 
         if (weldData.value.settings.fillColor !== defaultColor) {
-          item.settings.bgColor = weldData.value.settings.fillColor;
+          // console.log("weld color changed", item);
+          if (item.type === "Duct") {
+            item.settings.bgColor = weldData.value.settings.fillColor;
+          } else {
+            item.settings.fillColor = weldData.value.settings.fillColor;
+          }
         }
 
         return item;
