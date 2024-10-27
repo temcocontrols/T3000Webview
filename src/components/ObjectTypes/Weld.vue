@@ -2,10 +2,15 @@
   <!-- <div>
     <a>this is a weld element</a>
     <br />
-    {{ weldData.settings.active }},{{ weldData.settings.inAlarm }},{{ weldData.settings.fillColor }}
-    <span>id:{{ weldData.id }},x:{{ weldData.translate[0] }},y:{{ weldData.translate[1] }}, rotate:{{ weldData.rotate
-      }},
-      width:{{ weldData.width }},height:{{ weldData.height }}
+    {{ weldData.settings.active }},{{ weldData.settings.inAlarm }},{{
+      weldData.settings.fillColor
+    }}
+    <span
+      >id:{{ weldData.id }},x:{{ weldData.translate[0] }},y:{{
+        weldData.translate[1]
+      }}, rotate:{{ weldData.rotate }}, width:{{ weldData.width }},height:{{
+        weldData.height
+      }}
     </span>
   </div> -->
   <div class="weld-element flex justify-center object-container">
@@ -16,9 +21,10 @@
       :class="`weld-item-index-${index}`"
       :id="`weld-item-${item.id}`"
     >
-      <!-- {{ item.name }}
-      x:{{ item.translate[0] }}, y:{{ item.translate[1] }}, w:{{ item.width }},
-      h:{{ item.height }}, r:{{ item.rotate }} -->
+      <!-- {{ item.name }}, x:{{ item.translate[0] }}, y:{{ item.translate[1] }},
+      w:{{ item.width }}, h:{{ item.height }}, r:{{ item.rotate }}, col{{
+        item
+      }} -->
       <weld-type ref="objectsRef" :item="item" :key="item.id + item.type" />
     </div>
   </div>
@@ -42,7 +48,8 @@ export default defineComponent({
     const weldData = computed(() => props.weldModel);
     const defaultWidth = cloneDeep(weldData.value.width);
     const defaultHeight = cloneDeep(weldData.value.height);
-    // console.log(weldData.value, defaultWidth, defaultHeight);
+    const defaultColor = cloneDeep(weldData.value.settings.fillColor);
+    console.log(weldData.value, defaultWidth, defaultHeight, defaultColor);
 
     const recalculateScale = () => {
       const widthScale = weldData.value.width / defaultWidth;
@@ -78,13 +85,18 @@ export default defineComponent({
           item.translate[0] -= firstX * changed.widthScale;
           item.translate[1] -= firstY * changed.heightScale;
         }
+
+        if (weldData.value.settings.fillColor !== defaultColor) {
+          item.settings.bgColor = weldData.value.settings.fillColor;
+        }
+
         return item;
       });
     };
 
     const itemList = computed(() => {
       var newWeldChild = recalculateWHAndTranslate();
-      console.log("weld-item-list", newWeldChild);
+      // console.log("weld-item-list", newWeldChild);
       return newWeldChild;
     });
 
