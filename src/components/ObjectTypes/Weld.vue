@@ -1,7 +1,7 @@
 <template>
-  <div class="weld-element">
-    <a>this is a weld element</a>
-    <br />
+  <div class="weld-element flex justify-center object-container">
+    <!-- <a>this is a weld element</a> -->
+    <!-- <br />
     {{ propsData.settings.active }}{{ propsData.settings.inAlarm
     }}{{ propsData.settings.fillColor }}
     <span
@@ -10,7 +10,7 @@
       }}, rotate:{{ propsData.rotate }}, width:{{ propsData.width }}, height:{{
         propsData.height
       }},
-    </span>
+    </span> -->
     <div
       v-for="(item, index) in itemList"
       :key="item.id"
@@ -18,9 +18,9 @@
       :class="`weld-item-index-${index}`"
       :id="`weld-item-${item.id}`"
     >
-      {{ item.name }}
+      <!-- {{ item.name }}
       x:{{ item.translate[0] }}, y:{{ item.translate[1] }}, w:{{ item.width }},
-      h:{{ item.height }}, r:{{ item.rotate }}
+      h:{{ item.height }}, r:{{ item.rotate }} -->
       <weld-type ref="objectsRef" :item="item" :key="item.id + item.type" />
     </div>
   </div>
@@ -30,6 +30,7 @@
 import { ref, computed, defineComponent, onMounted } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import WeldType from "../WeldType.vue";
+import { get } from "lodash";
 
 export default defineComponent({
   name: "WeldEl",
@@ -64,10 +65,43 @@ export default defineComponent({
   setup(props, { emit }) {
     console.log("Weld Parent", props);
     const propsData = computed(() => props.weldModel);
-    const itemList = ref(cloneDeep(props.weldModel.settings.weldItems));
+    const settings = computed(() => props.weldModel.settings);
+
+    const recalculateTranslations = () => {
+      const items = cloneDeep(props.weldModel.settings.weldItems);
+      if (items.length === 0) return items;
+
+      const firstItem = items[0];
+      const firstX = firstItem.translate[0];
+      const firstY = firstItem.translate[1];
+
+      return items.map((item, index) => {
+        if (index === 0) {
+          item.translate[0] = 0;
+          item.translate[1] = 0;
+        } else {
+          item.translate[0] -= firstX;
+          item.translate[1] -= firstY;
+        }
+        return item;
+      });
+    };
+
+    const getWeldModelDimensions = () => {
+      const { width, height } = props.weldModel;
+      return { width, height };
+    };
+
+    console.log("Weld Model", props.weldModel, getWeldModelDimensions());
+
+    const itemList = computed(() => recalculateTranslations());
+    const dimension = computed(() => getWeldModelDimensions());
+
     return {
       itemList,
       propsData,
+      settings,
+      dimension,
     };
   },
 });
@@ -75,6 +109,13 @@ export default defineComponent({
 
 <style scoped>
 .weld-element {
-  background-color: v-bind("bgColor");
+  height: 100%;
+  border-radius: 5px;
+  background-color: v-bind("settings?.bgColor");
+  color: v-bind("settings?.textColor");
+  font-size: v-bind("settings?.fontSize + 'px'");
+
+  display: flex;
+  justify-content: flex-start;
 }
 </style>

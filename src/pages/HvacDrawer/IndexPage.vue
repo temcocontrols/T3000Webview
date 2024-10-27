@@ -763,6 +763,7 @@ import {
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import paper from "paper";
+import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 
 // Meta information for the application
 const metaData = {
@@ -1341,9 +1342,27 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
+  console.log("on resize end", e);
   const itemIndex = appState.value.items.findIndex(
     (item) => `moveable-item-${item.id}` === e.lastEvent.target.id
   );
+
+  console.log("itemIndex", itemIndex);
+  console.log("appState.value.items", appState.value.items[itemIndex]);
+  console.log(
+    "appState.value.items[itemIndex].settings.weldItems",
+    appState.value.items[itemIndex].settings.weldItems
+  );
+
+  /*
+  //reset the items settings weldItems width height tanslate
+  appState.value.items[itemIndex].settings.weldItems.map((p) => {
+    p.width = e.lastEvent.width;
+    p.height = e.lastEvent.height;
+    p.translate = e.lastEvent.drag.beforeTranslate;
+  });
+  */
+
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
@@ -2008,6 +2027,17 @@ function drawWeldObject(selectedItems) {
   //   return acc;
   // }, {});
 
+  // Calculate the bounding box for the selected items
+  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
+  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
+  const maxX = Math.max(
+    ...selectedItems.map((item) => item.translate[0] + item.width)
+  );
+  const maxY = Math.max(
+    ...selectedItems.map((item) => item.translate[1] + item.height)
+  );
+
+  /*
   const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
   const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
   const maxW = Math.max(...selectedItems.map((item) => item.width));
@@ -2026,6 +2056,7 @@ function drawWeldObject(selectedItems) {
   });
 
   console.log("x,y,w,h", minX, minY, maxW, maxH);
+  */
 
   // const toolSettings =
   //   cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
@@ -2041,14 +2072,16 @@ function drawWeldObject(selectedItems) {
     active: false,
     type: "Weld",
     translate: [minX * scalPercentage, minY * scalPercentage],
-    width: maxW * scalPercentage,
-    height: maxH * scalPercentage,
+    // width: maxW * scalPercentage,
+    // height: maxH * scalPercentage,
+    width: (maxX - minX) * scalPercentage,
+    height: (maxY - minY) * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
     settings: {
       active: false,
-      // bgColor: "inherit",
+      bgColor: "#659dc5",
       fillColor: "#659dc5",
       fontSize: 16,
       inAlarm: false,
