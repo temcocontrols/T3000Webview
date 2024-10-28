@@ -14,7 +14,8 @@
         @save-lib-image="saveLibImage"
         @tool-dropped="toolDropped"
       />
-      <div class="viewport-wrapper">
+      <div>
+        <canvas id="myCanvas" class="viewport-wrapper" resize stats></canvas>
         <!-- Top Toolbar -->
         <top-toolbar
           @menu-action="handleMenuAction"
@@ -92,6 +93,7 @@
               top: cursorIconPos.y + 'px',
             }"
           />
+
           <!-- Vue Selecto for Selectable Items -->
           <vue-selecto
             ref="selecto"
@@ -594,6 +596,7 @@
                   </q-item>
                 </q-list>
               </q-menu>
+
               <object-type
                 ref="objectsRef"
                 :item="item"
@@ -607,6 +610,8 @@
                 @change-value="changeEntryValue"
               />
             </div>
+
+            <vue-moveable :target="generalShapes"> </vue-moveable>
           </div>
         </div>
       </div>
@@ -763,7 +768,6 @@ import {
   demoDeviceData,
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
-import paper from "paper";
 import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 import { transform } from "lodash";
 import * as Paper from "paper";
@@ -857,9 +861,14 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-const paperInstance = new Paper.PaperScope(); // Paper.js instance for drawing
-let project = null; // Paper.js project instance
-const tool = new Paper.Tool(); // Paper.js tool instance
+const generalShapes = ref([]);
+const pproject = ref(null);
+// Prevent automatic drawing of objects on the canvas if the path has been defined
+Paper.settings.insertItems = false;
+
+// const paperInstance = new Paper.PaperScope(); // Paper.js instance for drawing
+// let project = null; // Paper.js project instance
+// const tool = new Paper.Tool(); // Paper.js tool instance
 
 // Lifecycle hook for component mount
 onMounted(() => {
@@ -938,17 +947,22 @@ onMounted(() => {
     refreshMoveableGuides();
   }, 100);
 
-  paperInstance.setup(document.getElementById("myCanvas")); // Setup paper.js instance
-  project = new Paper.Project(document.getElementById("myCanvas")); // Create a new paper.js project
-  tool.activate();
+  // paperInstance.setup(document.getElementById("myCanvas")); // Setup paper.js instance
+  // project = new Paper.Project(document.getElementById("myCanvas")); // Create a new paper.js project
+  // tool.activate();
 
-  const circle = new Paper.Path.Circle({
-    center: [500, 100],
-    radius: 50,
-    fillColor: "red",
-  });
+  const myCanvas = document.getElementById("myCanvas");
+  pproject.value = new Paper.Project(myCanvas);
 
-  circle.strokeWidth = 2;
+  // Paper.setup(document.getElementById("myCanvas"));
+
+  // const circle = new Paper.Path.Circle({
+  //   center: [500, 100],
+  //   radius: 50,
+  //   fillColor: "red",
+  // });
+
+  // circle.strokeWidth = 2;
 });
 
 // Lifecycle hook for component unmount
@@ -2945,14 +2959,31 @@ function convertObjectType(item, type) {
 }
 
 // Draw a rectangle using Paper.js when the Rectangle tool is selected
-function drawRectangle(ev) {
-  const rect = new paper.Path.Rectangle({
+function drawGeneralObject(ev) {
+  const rect = new Paper.Path.Rectangle({
     point: [ev.clientX, ev.clientY],
     size: [100, 100],
     fillColor: "blue",
   });
   rect.strokeWidth = 2;
   rect.strokeColor = "black";
+
+  const shape1 = new Paper.Path.Circle({
+    center: [150, 150],
+    radius: 50,
+    fillColor: "#7f5ea7",
+    name: "shape1-Circle",
+  });
+
+  const ellipse = new Paper.Path.Ellipse({
+    point: [200, 200],
+    size: [100, 50],
+    fillColor: "red",
+  });
+
+  generalShapes.value.push(rect);
+
+  pproject.value.activeLayer.addChild(ellipse);
 }
 
 // Handles a tool being dropped
@@ -2961,7 +2992,7 @@ function toolDropped(ev, tool) {
 
   if (tool.name === "Rectangle") {
     //draw rectangle with papaer.js to myCanvas
-    drawRectangle(ev);
+    drawGeneralObject(ev);
   } else {
     drawObject(
       { width: 60, height: 60 },
