@@ -63,6 +63,7 @@
           </q-btn>
         </div>
         <!-- Viewport Area -->
+
         <div
           class="viewport"
           tabindex="0"
@@ -765,6 +766,7 @@ import { liveApi } from "../../lib/api";
 import paper from "paper";
 import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 import { transform } from "lodash";
+import * as Paper from "paper";
 
 // Meta information for the application
 const metaData = {
@@ -855,6 +857,10 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
+const paperInstance = new Paper.PaperScope(); // Paper.js instance for drawing
+let project = null; // Paper.js project instance
+const tool = new Paper.Tool(); // Paper.js tool instance
+
 // Lifecycle hook for component mount
 onMounted(() => {
   // Set global navigation properties
@@ -931,6 +937,18 @@ onMounted(() => {
   setTimeout(() => {
     refreshMoveableGuides();
   }, 100);
+
+  paperInstance.setup(document.getElementById("myCanvas")); // Setup paper.js instance
+  project = new Paper.Project(document.getElementById("myCanvas")); // Create a new paper.js project
+  tool.activate();
+
+  const circle = new Paper.Path.Circle({
+    center: [500, 100],
+    radius: 50,
+    fillColor: "red",
+  });
+
+  circle.strokeWidth = 2;
 });
 
 // Lifecycle hook for component unmount
@@ -1578,6 +1596,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
+  console.log("onSelectoDragEnd", e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -2925,18 +2944,36 @@ function convertObjectType(item, type) {
   item.settings = newSettings;
 }
 
+// Draw a rectangle using Paper.js when the Rectangle tool is selected
+function drawRectangle(ev) {
+  const rect = new paper.Path.Rectangle({
+    point: [ev.clientX, ev.clientY],
+    size: [100, 100],
+    fillColor: "blue",
+  });
+  rect.strokeWidth = 2;
+  rect.strokeColor = "black";
+}
+
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  drawObject(
-    { width: 60, height: 60 },
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
-    tool
-  );
+  console.log("toolDropped", ev, tool);
+
+  if (tool.name === "Rectangle") {
+    //draw rectangle with papaer.js to myCanvas
+    drawRectangle(ev);
+  } else {
+    drawObject(
+      { width: 60, height: 60 },
+      {
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        top: ev.clientY,
+        left: ev.clientX,
+      },
+      tool
+    );
+  }
 }
 
 // Handles a right-click event on the viewport

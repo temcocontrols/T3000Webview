@@ -66,7 +66,7 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "Pipe", "Duct", "Room", "Metrics"];
+export const toolsCategories = ["Basic", "General", "Pipe", "Duct", "Room", "Metrics"];
 
 export const tools = [
   {
@@ -114,6 +114,48 @@ export const tools = [
       },
     },
   },
+  {
+    name: "Rectangle",
+    label: "Rectangle",
+    icon: "rectangle",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Circle",
+    label: "Circle",
+    icon: "circle",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  // {
+  //   name: "Ellipse",
+  //   label: "Ellipse",
+  //   icon: "ellipse",
+  //   cat: ["General"],
+  //   settings: {
+  //     bgColor: {
+  //       value: "#659dc5",
+  //       type: "color",
+  //       label: "Background Color",
+  //       id: 1,
+  //     },
+  //   },
+  // },
   {
     name: "Duct",
     label: "Duct",
