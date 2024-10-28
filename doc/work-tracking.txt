@@ -16,3 +16,6 @@
 
 2024-10-25
 1. implement the weld tool function, try to weld some complex shapes.
+
+2024-10-26/2024-10-27 (4 hours total)
+1. fix bugs and make some improvements for resizing and repositioning

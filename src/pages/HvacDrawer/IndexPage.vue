@@ -2049,6 +2049,8 @@ function drawWeldObject(selectedItems) {
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   // Calculate the bounding box for the selected items
+  const firstX = selectedItems[0].translate[0];
+  const firstY = selectedItems[0].translate[1];
   const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
   const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
   const maxX = Math.max(
@@ -2056,6 +2058,17 @@ function drawWeldObject(selectedItems) {
   );
   const maxY = Math.max(
     ...selectedItems.map((item) => item.translate[1] + item.height)
+  );
+
+  const transX = firstX < minX ? firstX : minX;
+
+  console.log(
+    "index-page.drawweldobject",
+    selectedItems,
+    minX,
+    minY,
+    maxX,
+    maxY
   );
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
@@ -2070,11 +2083,11 @@ function drawWeldObject(selectedItems) {
     title: `Weld-${title}`,
     active: false,
     type: "Weld",
-    translate: [minX, minY],
-    // width: (maxX - minX) * scalPercentage,
-    // height: (maxY - minY) * scalPercentage,
-    width: maxX - minX,
-    height: maxY - minY,
+    translate: [transX, minY],
+    width: (maxX - minX) * scalPercentage,
+    height: (maxY - minY) * scalPercentage,
+    // width: maxX - minX,
+    // height: maxY - minY,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,

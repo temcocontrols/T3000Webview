@@ -49,7 +49,7 @@ export default defineComponent({
     const defaultWidth = cloneDeep(weldData.value.width);
     const defaultHeight = cloneDeep(weldData.value.height);
     const defaultColor = cloneDeep(weldData.value.settings.fillColor);
-    console.log(weldData.value, defaultWidth, defaultHeight, defaultColor);
+    // console.log(weldData.value, defaultWidth, defaultHeight, defaultColor);
 
     const recalculateScale = () => {
       const widthScale = weldData.value.width / defaultWidth;
