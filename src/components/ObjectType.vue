@@ -282,6 +282,7 @@
         v-else-if="item.type === 'Weld'"
         class="weld"
         v-bind:weldModel="item"
+        @update-weld-model="updateWeldModel"
       />
       <img
         class="img-object"
@@ -373,7 +374,12 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: ["autoManualToggle", "objectClicked", "changeValue"],
+  emits: [
+    "autoManualToggle",
+    "objectClicked",
+    "changeValue",
+    "updateWeldModel",
+  ],
   setup(props, { emit }) {
     const range = computed(() => {
       return getEntryRange(props.item?.t3Entry);
@@ -486,6 +492,15 @@ export default defineComponent({
       }
     }
 
+    const updateWeldModel = (weldModel, itemList) => {
+      // console.log(
+      //   "ObjectType.vue -> updateWeldModel | recieve from child",
+      //   weldModel,
+      //   itemList
+      // );
+      emit("updateWeldModel", weldModel, itemList);
+    };
+
     return {
       range,
       dispalyText,
@@ -493,6 +508,7 @@ export default defineComponent({
       changeValue,
       refresh,
       objectRef,
+      updateWeldModel,
     };
   },
 });

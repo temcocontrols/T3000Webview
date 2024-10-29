@@ -608,6 +608,7 @@
                 @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)"
                 @change-value="changeEntryValue"
+                @update-weld-model="updateWeldModel"
               />
             </div>
 
@@ -1388,58 +1389,58 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  if (!appState.value.items[itemIndex].type.startsWith("Weld")) {
-    return;
-  }
-
   /*
-  const newWeldStyles = Array.from(
-    e.target.querySelectorAll("[id^='weld-item']")
-  ).map((item) => {
-    return {
-      id: item.id,
-      width: item.style.width.includes("px")
-        ? parseFloat(item.style.width.replace("px", ""))
-        : parseFloat(item.style.width),
-      height: item.style.height.includes("px")
-        ? parseFloat(item.style.height.replace("px", ""))
-        : parseFloat(item.style.height),
-      transform: item.style.transform,
-      translate: [
-        parseFloat(item.style.transform.split("(")[1].split(",")[0]) || 0,
-        parseFloat(item.style.transform.split(",")[1]) || 0,
-      ],
-      rotate: parseFloat(item.style.transform.match(/rotate\(([^)]+)\)/)[1]),
-      scaleX: parseFloat(item.style.transform.match(/scaleX\(([^)]+)\)/)[1]),
-      scaleY: parseFloat(item.style.transform.match(/scaleY\(([^)]+)\)/)[1]),
-    };
-  });
+  if (appState.value.items[itemIndex].type.startsWith("Weld")) {
+    const newWeldStyles = Array.from(
+      e.target.querySelectorAll("[id^='weld-item']")
+    ).map((item) => {
+      return {
+        id: item.id,
+        width: item.style.width.includes("px")
+          ? parseFloat(item.style.width.replace("px", ""))
+          : parseFloat(item.style.width),
+        height: item.style.height.includes("px")
+          ? parseFloat(item.style.height.replace("px", ""))
+          : parseFloat(item.style.height),
+        transform: item.style.transform,
+        translate: [
+          parseFloat(item.style.transform.split("(")[1].split(",")[0]) || 0,
+          parseFloat(item.style.transform.split(",")[1]) || 0,
+        ],
+        rotate: parseFloat(item.style.transform.match(/rotate\(([^)]+)\)/)[1]),
+        scaleX: parseFloat(item.style.transform.match(/scaleX\(([^)]+)\)/)[1]),
+        scaleY: parseFloat(item.style.transform.match(/scaleY\(([^)]+)\)/)[1]),
+      };
+    });
 
-  appState.value.items[itemIndex].settings.weldItems.map((item, index) => {
-    const weldItem = newWeldStyles.find(
-      (weld) => weld.id === `weld-item-${item.id}`
+    console.log("IndexPage.vue -> onResizeEnd -> newWeldStyles", newWeldStyles);
+
+    appState.value.items[itemIndex].settings.weldItems.map((item, index) => {
+      const weldItem = newWeldStyles.find(
+        (weld) => weld.id === `weld-item-${item.id}`
+      );
+
+      if (weldItem) {
+        item.width = weldItem.width;
+        item.height = weldItem.height;
+        item.translate[0] = weldItem.translate[0];
+        item.translate[1] = weldItem.translate[1];
+        item.rotate = weldItem.rotate;
+        item.scaleX = weldItem.scaleX;
+        item.scaleY = weldItem.scaleY;
+
+        console.log("on resize end re set the value", weldItem, item);
+      }
+
+      return item;
+    });
+
+    console.log(
+      "on resize end ",
+      appState.value.items[itemIndex].settings.weldItems
     );
-
-    if (weldItem) {
-      item.width = weldItem.width;
-      item.height = weldItem.height;
-      item.translate[0] = weldItem.translate[0];
-      item.translate[1] = weldItem.translate[1];
-      item.rotate = weldItem.rotate;
-      item.scaleX = weldItem.scaleX;
-      item.scaleY = weldItem.scaleY;
-
-      console.log("on resize end re set the value", weldItem, item);
-    }
-
-    return item;
-  });
-
-  console.log(
-    "on resize end ",
-    appState.value.items[itemIndex].settings.weldItems
-  );
-  */
+  }
+    */
 
   refreshObjects(); // Refresh objects after resizing
 }
@@ -1610,7 +1611,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  console.log("onSelectoDragEnd", e);
+  // console.log("onSelectoDragEnd", e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -2095,14 +2096,14 @@ function drawWeldObject(selectedItems) {
 
   const transX = firstX < minX ? firstX : minX;
 
-  console.log(
-    "index-page.drawweldobject",
-    selectedItems,
-    minX,
-    minY,
-    maxX,
-    maxY
-  );
+  // console.log(
+  //   "index-page.drawweldobject",
+  //   selectedItems,
+  //   minX,
+  //   minY,
+  //   maxX,
+  //   maxY
+  // );
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
 
@@ -2988,7 +2989,7 @@ function drawGeneralObject(ev) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  console.log("toolDropped", ev, tool);
+  // console.log("toolDropped", ev, tool);
 
   if (tool.name === "Rectangle") {
     //draw rectangle with papaer.js to myCanvas
@@ -3006,6 +3007,25 @@ function toolDropped(ev, tool) {
     );
   }
 }
+
+const updateWeldModel = (weldModel, itemList) => {
+  // console.log(
+  //   "IndexPage.vue -> updateWeldModel | recieve from child",
+  //   weldModel,
+  //   itemList
+  // );
+
+  // console.log(
+  //   "IndexPage.vue -> updateWeldModel | origin appState",
+  //   appState.value.items
+  // );
+
+  appState.value.items.map((item) => {
+    if (item.type === "Weld" && item.id === weldModel.id) {
+      item.settings.weldItems = itemList;
+    }
+  });
+};
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {

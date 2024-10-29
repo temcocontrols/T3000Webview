@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import { computed, defineComponent, onMounted } from "vue";
+import { computed, defineComponent, onMounted, onUpdated } from "vue";
 import { cloneDeep } from "lodash";
 import WeldType from "../WeldType.vue";
 
@@ -44,24 +44,47 @@ export default defineComponent({
       default: () => {},
     },
   },
-  setup(props) {
+  emits: ["updateWeldModel"],
+  setup(props, { emit }) {
     const weldData = computed(() => props.weldModel);
-    const defaultWidth = cloneDeep(weldData.value.width);
-    const defaultHeight = cloneDeep(weldData.value.height);
-    const defaultColor = cloneDeep(weldData.value.settings.fillColor);
-    // console.log(weldData.value, defaultWidth, defaultHeight, defaultColor);
+    let defaultWidth = weldData.value.width;
+    let defaultHeight = weldData.value.height;
+    const defaultColor = weldData.value.settings.fillColor;
+    const items = weldData.value.settings.weldItems;
 
     const recalculateScale = () => {
       const widthScale = weldData.value.width / defaultWidth;
       const heightScale = weldData.value.height / defaultHeight;
       const tranXScale = weldData.value.translate[0] / defaultWidth;
       const tranYScale = weldData.value.translate[1] / defaultHeight;
+
+      // console.log(
+      //   "Weld.vue -> setup -> recalculateScale",
+      //   "orgin-(w,h)",
+      //   defaultWidth,
+      //   defaultHeight,
+      //   "changed-(w,h)",
+      //   weldData.value.width,
+      //   weldData.value.height,
+      //   "dw",
+      //   defaultWidth,
+      //   "dh",
+      //   defaultHeight,
+      //   "sw",
+      //   widthScale,
+      //   "sh",
+      //   heightScale,
+      //   "tx",
+      //   tranXScale,
+      //   "ty",
+      //   tranYScale
+      // );
+
       return { widthScale, heightScale, tranXScale, tranYScale };
     };
 
     const recalculateWHAndTranslate = () => {
-      const items = cloneDeep(props.weldModel.settings.weldItems);
-      // console.log("weld item with new props", items);
+      // console.log("Weld.vue -> recalculateWHAndTranslate | items", items);
 
       if (items.length === 0) return items;
 
@@ -101,13 +124,30 @@ export default defineComponent({
 
     const itemList = computed(() => {
       var newWeldChild = recalculateWHAndTranslate();
-      // console.log("weld-item-list", newWeldChild);
+      // console.log(
+      //   "Weld.vue -> setup -> recalculateWHAndTranslate | send to parent",
+      //   weldData.value.width,
+      //   weldData.value.height,
+      //   newWeldChild
+      // );
+      emit("updateWeldModel", weldData.value, newWeldChild);
+      defaultWidth = weldData.value.width;
+      defaultHeight = weldData.value.height;
       return newWeldChild;
     });
 
     onMounted(() => {
       // console.log("weld mounted", itemList);
     });
+
+    // onUpdated(() => {
+    //   console.log(
+    //     "Weld.vue -> onUpdated | emit to parent",
+    //     weldData.value,
+    //     itemList.value
+    //   );
+    //   emit("updateWeldModel", weldData.value, itemList.value);
+    // });
 
     return {
       itemList,
