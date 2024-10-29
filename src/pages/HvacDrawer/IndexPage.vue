@@ -2648,6 +2648,8 @@ function lockToggle() {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+  console.log("IndexPage.vue -> objectClicked -> item", item);
+
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({

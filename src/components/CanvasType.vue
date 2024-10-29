@@ -4,7 +4,7 @@
 -->
 <template>
   <div
-    class="moveable-item"
+    class="moveable-item-canvas"
     :class="{
       'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
         item.type
@@ -17,7 +17,14 @@
         (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
     }"
   >
-    <canvas id="mvCanvas" class="canvas-viewport-wrapper" resize stats></canvas>
+    <canvas
+      :id="`myCanvas${item.id}`"
+      class="canvas-viewport-wrapper"
+      resize
+      stats
+      onclick="console.log('Canvas clicked')"
+    ></canvas>
+    <!-- @click="$emit('objectClicked')" -->
 
     <!-- <div
       class="object-title"
@@ -317,10 +324,6 @@ import * as Paper from "paper";
 // import Wall from "./ObjectTypes/Wall.vue";
 // import Weld from "./ObjectTypes/Weld.vue";
 
-const project = ref(null);
-// Prevent automatic drawing of objects on the canvas if the path has been defined
-// Paper.settings.insertItems = false;
-
 export default defineComponent({
   name: "CanvasType",
   components: {
@@ -494,8 +497,10 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      const canvas = document.getElementById("mvCanvas");
-      project.value = new Paper.Project(canvas);
+      const canvas = document.getElementById(`myCanvas${props.item.id}`);
+      // Prevent automatic drawing of objects on the canvas if the path has been defined
+      Paper.settings.insertItems = false;
+      const project = new Paper.Project(canvas);
 
       // Paper.setup(canvas);
 
@@ -507,16 +512,71 @@ export default defineComponent({
         project
       );
 
-      // Example of drawing a simple circle
-      const circle = new Paper.Path.Circle({
-        center: Paper.view.center,
-        radius: 20,
-        fillColor: "red",
-      });
+      console.log("item", props.item);
 
-      project.value.activeLayer.addChild(circle);
-      // paper.view.draw();
+      if (props.item.type === "G_Circle") {
+        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+
+        // Example of drawing a simple circle
+        const circle = new Paper.Path.Circle({
+          center: Paper.view.center,
+          radius: 20,
+          fillColor: "red",
+        });
+
+        project.activeLayer.addChild(circle);
+        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+      }
+
+      if (props.item.type === "G_Rectangle") {
+        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+
+        // Example of drawing a simple circle
+        var square = new Paper.Path.Rectangle({
+          center: [0, 0],
+          size: 100,
+          fillColor: "#f2d3d3",
+          name: "originals-Square-Rectangle",
+        });
+
+        square.onMouseDown = function (event) {
+          if (event.stopPropagation) {
+            event.stopPropagation();
+          } else {
+            event.cancelBubble = true;
+          }
+          console.log("CanvasType.vue -> onMounted | Square clicked", event);
+          this.fillColor = "red";
+          square.dragging = true;
+        };
+
+        Paper.view.onMouseMove = function (event) {
+          if (event.stopPropagation) {
+            event.stopPropagation();
+          } else {
+            event.cancelBubble = true;
+          }
+          if (square.dragging) {
+            square.position = event.point;
+          }
+        };
+
+        Paper.view.onMouseUp = function (event) {
+          if (event.stopPropagation) {
+            event.stopPropagation();
+          } else {
+            event.cancelBubble = true;
+          }
+          square.dragging = false;
+        };
+
+        project.activeLayer.addChild(square);
+        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+      }
+      //Paper.view.draw();
     });
+
+    // const item = computed(() => props.item);
 
     return {
       range,
@@ -538,7 +598,7 @@ export default defineComponent({
   /* overflow: hidden;
   position: absolute;
   top: 0; */
-  position: absolute;
+  /* position: absolute; */
   background-color: rgb(75, 184, 199);
 }
 
