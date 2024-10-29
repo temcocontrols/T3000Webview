@@ -19,3 +19,7 @@
 
 2024-10-26/2024-10-27 (4 hours total)
 1. fix bugs and make some improvements for resizing and repositioning
+
+2024-10-28
+1. fix bugs: when page reloads, can not save the objects status
+2. start to implement new functions to welded object
