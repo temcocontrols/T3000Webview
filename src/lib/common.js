@@ -115,7 +115,7 @@ export const tools = [
     },
   },
   {
-    name: "Rectangle",
+    name: "G_Rectangle",
     label: "Rectangle",
     icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
     cat: ["General"],
@@ -129,7 +129,7 @@ export const tools = [
     },
   },
   {
-    name: "Circle",
+    name: "G_Circle",
     label: "Circle",
     icon: "svguse:icons.svg#g_circle|0 0 24 24",
     cat: ["General"],
@@ -143,7 +143,7 @@ export const tools = [
     },
   },
   {
-    name: "Step",
+    name: "G_Step",
     label: "Step",
     icon: "svguse:icons.svg#g_step|0 0 24 24",
     cat: ["General"],
@@ -157,7 +157,7 @@ export const tools = [
     },
   },
   {
-    name: "Hexagon",
+    name: "G_Hexagon",
     label: "Hexagon",
     icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
     cat: ["General"],

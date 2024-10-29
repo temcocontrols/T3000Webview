@@ -598,6 +598,7 @@
               </q-menu>
 
               <object-type
+                v-if="item.cat !== 'General'"
                 ref="objectsRef"
                 :item="item"
                 :key="item.id + item.type"
@@ -610,6 +611,21 @@
                 @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel"
               />
+              <canvas-type
+                v-if="item.cat === 'General'"
+                ref="objectsRef"
+                :item="item"
+                :key="item.id + item.type"
+                :class="{
+                  link: locked && item.t3Entry,
+                }"
+                :show-arrows="locked && !!item.t3Entry?.range"
+                @object-clicked="objectClicked(item)"
+                @auto-manual-toggle="autoManualToggle(item)"
+                @change-value="changeEntryValue"
+                @update-weld-model="updateWeldModel"
+              >
+              </canvas-type>
             </div>
 
             <vue-moveable :target="generalShapes"> </vue-moveable>
@@ -772,6 +788,7 @@ import { liveApi } from "../../lib/api";
 import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 import { transform } from "lodash";
 import * as Paper from "paper";
+import CanvasType from "src/components/CanvasType.vue";
 
 // Meta information for the application
 const metaData = {
@@ -954,6 +971,8 @@ onMounted(() => {
 
   const myCanvas = document.getElementById("myCanvas");
   pproject.value = new Paper.Project(myCanvas);
+
+  console.log("IndexPage.vue -> onMounted -> appState", appState.value);
 
   // Paper.setup(document.getElementById("myCanvas"));
 
@@ -1547,6 +1566,12 @@ function addObject(item, group = undefined, addToHistory = true) {
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });
+
+  console.log(
+    "IndexPage.vue -> addObject | system will draw the objects to '.viewport'"
+  );
+  console.log("current=>", item);
+  console.log("appState=>", appState.value.items);
   return item;
 }
 
@@ -1650,6 +1675,8 @@ function onSelectoDragEnd(e) {
 function drawObject(size, pos, tool) {
   tool = tool || selectedTool.value;
 
+  // console.log("IndexPage.vue -> drawObject -> tool", tool);
+
   if (tool.type === "libItem") {
     addLibItem(tool.items, size, pos);
     return;
@@ -1686,6 +1713,13 @@ function drawObject(size, pos, tool) {
     tempItem.image = tool;
     tempItem.type = tool.id;
   }
+
+  // copy the first category from tool.cat to item.cat
+  if (tool.cat) {
+    const [first] = tool.cat;
+    tempItem.cat = first;
+  }
+
   const item = addObject(tempItem);
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;
@@ -2960,7 +2994,7 @@ function convertObjectType(item, type) {
 }
 
 // Draw a rectangle using Paper.js when the Rectangle tool is selected
-function drawGeneralObject(ev) {
+function drawGeneralObject(ev, tool) {
   const rect = new Paper.Path.Rectangle({
     point: [ev.clientX, ev.clientY],
     size: [100, 100],
@@ -2989,11 +3023,19 @@ function drawGeneralObject(ev) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  // console.log("toolDropped", ev, tool);
-
   if (tool.name === "Rectangle") {
-    //draw rectangle with papaer.js to myCanvas
-    drawGeneralObject(ev);
+    //draw general shapes to myCanvas
+    // drawGeneralObject(ev, tool);
+    drawObject(
+      { width: 60, height: 60 },
+      {
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        top: ev.clientY,
+        left: ev.clientX,
+      },
+      tool
+    );
   } else {
     drawObject(
       { width: 60, height: 60 },
