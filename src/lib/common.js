@@ -117,7 +117,7 @@ export const tools = [
   {
     name: "Rectangle",
     label: "Rectangle",
-    icon: "rectangle",
+    icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
     cat: ["General"],
     settings: {
       bgColor: {
@@ -131,7 +131,7 @@ export const tools = [
   {
     name: "Circle",
     label: "Circle",
-    icon: "circle",
+    icon: "svguse:icons.svg#g_circle|0 0 24 24",
     cat: ["General"],
     settings: {
       bgColor: {
@@ -142,20 +142,34 @@ export const tools = [
       },
     },
   },
-  // {
-  //   name: "Ellipse",
-  //   label: "Ellipse",
-  //   icon: "ellipse",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
+  {
+    name: "Step",
+    label: "Step",
+    icon: "svguse:icons.svg#g_step|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Hexagon",
+    label: "Hexagon",
+    icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
   {
     name: "Duct",
     label: "Duct",
