@@ -1392,7 +1392,7 @@ function onResize(e) {
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
 
-  console.log("IndexPage.vue -> onResize -> e", e);
+  console.log("IndexPage.vue -> onResize -> e", e.target);
   console.log(
     "IndexPage.vue -> onResize -> transform",
     e.drag.beforeTranslate[0],

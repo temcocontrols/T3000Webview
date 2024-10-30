@@ -3,7 +3,7 @@
 
 -->
 <template>
-  <!-- <div
+  <div
     class="moveable-item-canvas"
     :class="{
       'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
@@ -16,33 +16,19 @@
         item.settings.title ||
         (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
     }"
-  > -->
-  <!-- <div
-    class="moveable-item-canvas"
-    :class="{
-      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-        item.type
-      ),
-      'overflow-hidden': item.type === 'Text',
-      [item.type]: item.type,
-      'with-bg': item.settings.bgColor,
-      'with-title':
-        item.settings.title ||
-        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
-    }"
-  > -->
-  <canvas
-    :id="`myCanvas${item.id}`"
-    class="canvas-viewport-wrapper"
-    resize
-    stats
-    v-on:click="canvasClicked"
-  ></canvas>
-  <!-- </div> -->
-
-  <div style="width: 100vw">
-    {{ item }}
+  >
+    {{ item.width }} x {{ item.height }}
+    <canvas
+      :id="`myCanvas${item.id}`"
+      class="canvas-viewport-wrapper"
+      v-on:click="canvasClicked"
+      :width="item.width"
+      :height="item.height"
+    ></canvas>
   </div>
+  <!-- <div style="width: 100vw">
+    {{ item }}
+  </div> -->
 
   <!-- @click="$emit('objectClicked')" -->
 
@@ -312,6 +298,7 @@ import { defineComponent, computed, onMounted, ref } from "vue";
 import { getEntryRange } from "src/lib/common";
 import * as Paper from "paper";
 import { iteratee } from "lodash";
+import { store } from "quasar/wrappers";
 
 // import DuctEl from "./ObjectTypes/Duct.vue";
 // import FanEl from "./ObjectTypes/Fan.vue";
@@ -527,6 +514,7 @@ export default defineComponent({
       console.log("CanvasType.vue -> onMounted | item", item);
 
       const canvas = document.getElementById(`myCanvas${props.item.id}`);
+
       // Prevent automatic drawing of objects on the canvas if the path has been defined
       Paper.settings.insertItems = false;
       const project = new Paper.Project(canvas);
@@ -548,7 +536,7 @@ export default defineComponent({
 
         // Example of drawing a simple circle
         const circle = new Paper.Path.Circle({
-          center: Paper.view.center,
+          point: [0, 0],
           radius: 20,
           fillColor: "red",
           selected: true,
@@ -563,12 +551,16 @@ export default defineComponent({
 
         // Example of drawing a simple circle
         var square = new Paper.Path.Rectangle({
-          point: [10, 10],
-          size: [props.item.width, props.item.height],
+          point: [0, 0],
+          // size: [props.item.width, props.item.height],
           fillColor: "#f2d3d3",
+          strokeColor: "yellow",
+          strokeWidth: 5,
           name: "originals-Square-Rectangle",
           selected: true,
         });
+
+        console.log("width,height", props.item.width, props.item.height);
 
         square.onMouseDown = function (event) {
           // if (event.stopPropagation) {
@@ -577,8 +569,8 @@ export default defineComponent({
           //   event.cancelBubble = true;
           // }
           console.log("CanvasType.vue -> onMounted | Square clicked", event);
-          this.fillColor = "red";
-          square.dragging = true;
+          square.fillColor = "red";
+          // square.dragging = true;
         };
 
         square.onDoubleClick = function (event) {
@@ -588,34 +580,7 @@ export default defineComponent({
           //   event.cancelBubble = true;
           // }
           console.log("CanvasType.vue -> onMounted | square clicked", event);
-          square.fillColor = "yellow";
-        };
-
-        // 动态更新图像大小和位置
-        function updateShapes() {
-          // var bounds = rect.bounds;
-          //image.position = bounds.center;
-          console.log("CanvasType.vue -> onMounted | updateShapes", square);
-          square.size = [props.item.width, props.item.height];
-        }
-
-        Paper.view.onFrame = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          // console.log("CanvasType.vue -> onMounted | Frame event", event);
-          console.log(
-            "CanvasType.vue -> onMounted | Frame event",
-            props.item.width,
-            props.item.height
-          );
-          if (square.dragging) {
-            square.position = event.point;
-          }
-
-          updateShapes();
+          // square.fillColor = "yellow";
         };
 
         Paper.view.onDoubleClick = function (event) {
@@ -625,7 +590,7 @@ export default defineComponent({
           //   event.cancelBubble = true;
           // }
           console.log("CanvasType.vue -> onMounted | Double clicked", event);
-          square.fillColor = "yellow";
+          // square.fillColor = "yellow";
         };
 
         Paper.view.onMouseMove = function (event) {
@@ -634,9 +599,9 @@ export default defineComponent({
           // } else {
           //   event.cancelBubble = true;
           // }
-          if (square.dragging) {
-            square.position = event.point;
-          }
+          // if (square.dragging) {
+          //   square.position = event.point;
+          // }
         };
 
         Paper.view.onMouseUp = function (event) {
@@ -645,13 +610,46 @@ export default defineComponent({
           // } else {
           //   event.cancelBubble = true;
           // }
-          square.dragging = false;
+          // square.dragging = false;
         };
 
         project.activeLayer.addChild(square);
         console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
       }
       //Paper.view.draw();
+
+      // 动态更新图像大小和位置
+      function updateShapes() {
+        // var bounds = rect.bounds;
+        //image.position = bounds.center;
+        console.log("CanvasType.vue -> onMounted | updateShapes", square);
+
+        square.fillColor = props.item.settings.bgColor;
+        project.view.draw();
+      }
+
+      Paper.view.onFrame = function (event) {
+        // if (event.stopPropagation) {
+        //   event.stopPropagation();
+        // } else {
+        //   event.cancelBubble = true;
+        // }
+        // console.log("CanvasType.vue -> onMounted | Frame event", event);
+        // console.log(
+        //   "CanvasType.vue -> onMounted | Frame event",
+        //   props.item.width,
+        //   props.item.height
+        // );
+        // if (square.dragging) {
+        //   square.position = event.point;
+        // }
+        // updateShapes();
+        // console.log(
+        //   "CanvasType.vue -> onMounted | Frame event",
+        //   project.layers,
+        //   project.layers[0].children
+        // );
+      };
     });
 
     const canvasClicked = (event) => {
@@ -680,9 +678,7 @@ export default defineComponent({
   position: absolute;
   top: 0; */
   /* position: absolute; */
-  background-color: rgb(75, 184, 199);
-  width: v-bind("item.width + 'px'");
-  height: v-bind("item.height + 'px'");
+  background-color: rgb(136, 80, 197);
 }
 
 .moveable-item-canvas {
