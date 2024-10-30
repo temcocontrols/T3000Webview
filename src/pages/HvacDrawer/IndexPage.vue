@@ -15,7 +15,6 @@
         @tool-dropped="toolDropped"
       />
       <div>
-        <canvas id="myCanvas" class="viewport-wrapper" resize stats></canvas>
         <!-- Top Toolbar -->
         <top-toolbar
           @menu-action="handleMenuAction"
@@ -64,7 +63,6 @@
           </q-btn>
         </div>
         <!-- Viewport Area -->
-
         <div
           class="viewport"
           tabindex="0"
@@ -93,7 +91,7 @@
               top: cursorIconPos.y + 'px',
             }"
           />
-
+          <!-- <canvas id="myCanvas" class="viewport-wrapper" resize stats> </canvas> -->
           <!-- Vue Selecto for Selectable Items -->
           <vue-selecto
             ref="selecto"
@@ -880,7 +878,7 @@ const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
 const generalShapes = ref([]);
-const pproject = ref(null);
+const project = ref(null);
 // Prevent automatic drawing of objects on the canvas if the path has been defined
 Paper.settings.insertItems = false;
 
@@ -970,7 +968,7 @@ onMounted(() => {
   // tool.activate();
 
   const myCanvas = document.getElementById("myCanvas");
-  pproject.value = new Paper.Project(myCanvas);
+  project.value = new Paper.Project(myCanvas);
 
   console.log("IndexPage.vue -> onMounted -> appState", appState.value);
 
@@ -1379,8 +1377,7 @@ function onResizeStart(e) {
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
 
-  // console.log("on resize start (e.target)", e.target);
-  // console.log("on resize start (current)", appState.value.items[itemIndex]);
+  console.log("IndexPage.vue -> onResizeStart -> e", e);
 }
 
 // Handles resizing of an element
@@ -1395,7 +1392,15 @@ function onResize(e) {
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
 
-  // console.log("on resize (e.target)", e.target);
+  console.log("IndexPage.vue -> onResize -> e", e);
+  console.log(
+    "IndexPage.vue -> onResize -> transform",
+    e.drag.beforeTranslate[0],
+    e.drag.beforeTranslate[1],
+    item.rotate,
+    item.scaleX,
+    item.scaleY
+  );
 }
 
 // Ends the resizing of an element
@@ -1408,60 +1413,15 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  /*
-  if (appState.value.items[itemIndex].type.startsWith("Weld")) {
-    const newWeldStyles = Array.from(
-      e.target.querySelectorAll("[id^='weld-item']")
-    ).map((item) => {
-      return {
-        id: item.id,
-        width: item.style.width.includes("px")
-          ? parseFloat(item.style.width.replace("px", ""))
-          : parseFloat(item.style.width),
-        height: item.style.height.includes("px")
-          ? parseFloat(item.style.height.replace("px", ""))
-          : parseFloat(item.style.height),
-        transform: item.style.transform,
-        translate: [
-          parseFloat(item.style.transform.split("(")[1].split(",")[0]) || 0,
-          parseFloat(item.style.transform.split(",")[1]) || 0,
-        ],
-        rotate: parseFloat(item.style.transform.match(/rotate\(([^)]+)\)/)[1]),
-        scaleX: parseFloat(item.style.transform.match(/scaleX\(([^)]+)\)/)[1]),
-        scaleY: parseFloat(item.style.transform.match(/scaleY\(([^)]+)\)/)[1]),
-      };
-    });
-
-    console.log("IndexPage.vue -> onResizeEnd -> newWeldStyles", newWeldStyles);
-
-    appState.value.items[itemIndex].settings.weldItems.map((item, index) => {
-      const weldItem = newWeldStyles.find(
-        (weld) => weld.id === `weld-item-${item.id}`
-      );
-
-      if (weldItem) {
-        item.width = weldItem.width;
-        item.height = weldItem.height;
-        item.translate[0] = weldItem.translate[0];
-        item.translate[1] = weldItem.translate[1];
-        item.rotate = weldItem.rotate;
-        item.scaleX = weldItem.scaleX;
-        item.scaleY = weldItem.scaleY;
-
-        console.log("on resize end re set the value", weldItem, item);
-      }
-
-      return item;
-    });
-
-    console.log(
-      "on resize end ",
-      appState.value.items[itemIndex].settings.weldItems
-    );
-  }
-    */
-
   refreshObjects(); // Refresh objects after resizing
+
+  console.log("IndexPage.vue -> onResizeEnd -> e", e);
+  console.log(
+    "IndexPage.vue -> onResizeEnd -> w,h,trs",
+    e.lastEvent.width,
+    e.lastEvent.height,
+    e.lastEvent.drag.beforeTranslate
+  );
 }
 
 // Starts rotating an element
@@ -3017,6 +2977,7 @@ function drawGeneralObject(ev, tool) {
     point: [ev.clientX, ev.clientY],
     size: [100, 100],
     fillColor: "blue",
+    selected: true,
   });
   rect.strokeWidth = 2;
   rect.strokeColor = "black";
@@ -3026,26 +2987,85 @@ function drawGeneralObject(ev, tool) {
     radius: 50,
     fillColor: "#7f5ea7",
     name: "shape1-Circle",
+    selected: true,
   });
 
   const ellipse = new Paper.Path.Ellipse({
     point: [200, 200],
     size: [100, 50],
     fillColor: "red",
+    selected: true,
   });
 
-  generalShapes.value.push(rect);
+  const svgString = `
+    <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+     <path d="M 1.6 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 1.6 24.6 L 6.4 15 Z" fill="rgb(241, 243, 244)" stroke="#000"
+      stroke-width="2" stroke-miterlimit="10"></path>
+    </svg>
+  `;
 
-  pproject.value.activeLayer.addChild(ellipse);
+  const svgItem = new Paper.Group();
+  const svg = new Paper.Path.Rectangle({
+    point: [ev.clientX, ev.clientY],
+    size: [100, 100],
+    fillColor: "blue",
+    selected: true,
+  });
+  svg.strokeWidth = 2;
+  svg.strokeColor = "black";
+
+  const parser = new DOMParser();
+  const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
+  const svgElement = svgDoc.documentElement;
+
+  const importedSvg = Paper.project.importSVG(svgElement);
+  importedSvg.position = new Paper.Point(ev.clientX, ev.clientY);
+
+  svgItem.addChild(importedSvg);
+
+  ellipse.onMouseDown = function (event) {
+    if (event.stopPropagation) {
+      event.stopPropagation();
+    } else {
+      event.cancelBubble = true;
+    }
+    console.log("CanvasType.vue -> onMounted | ellipse clicked", event);
+    this.fillColor = "red";
+    ellipse.dragging = true;
+  };
+
+  Paper.view.onMouseMove = function (event) {
+    if (event.stopPropagation) {
+      event.stopPropagation();
+    } else {
+      event.cancelBubble = true;
+    }
+    if (ellipse.dragging) {
+      ellipse.position = event.point;
+    }
+  };
+
+  Paper.view.onMouseUp = function (event) {
+    if (event.stopPropagation) {
+      event.stopPropagation();
+    } else {
+      event.cancelBubble = true;
+    }
+    ellipse.dragging = false;
+  };
+
+  // generalShapes.value.push(rect);
+
+  project.value.activeLayer.addChild(ellipse);
 }
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  if (tool.name === "Rectangle") {
+  if (tool.name.startsWith("G_")) {
     //draw general shapes to myCanvas
     // drawGeneralObject(ev, tool);
     drawObject(
-      { width: 60, height: 60 },
+      { width: 100, height: 100 },
       {
         clientX: ev.clientX,
         clientY: ev.clientY,

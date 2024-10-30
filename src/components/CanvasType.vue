@@ -3,7 +3,7 @@
 
 -->
 <template>
-  <div
+  <!-- <div
     class="moveable-item-canvas"
     :class="{
       'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
@@ -16,17 +16,37 @@
         item.settings.title ||
         (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
     }"
-  >
-    <canvas
-      :id="`myCanvas${item.id}`"
-      class="canvas-viewport-wrapper"
-      resize
-      stats
-      onclick="console.log('Canvas clicked')"
-    ></canvas>
-    <!-- @click="$emit('objectClicked')" -->
+  > -->
+  <!-- <div
+    class="moveable-item-canvas"
+    :class="{
+      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
+        item.type
+      ),
+      'overflow-hidden': item.type === 'Text',
+      [item.type]: item.type,
+      'with-bg': item.settings.bgColor,
+      'with-title':
+        item.settings.title ||
+        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+    }"
+  > -->
+  <canvas
+    :id="`myCanvas${item.id}`"
+    class="canvas-viewport-wrapper"
+    resize
+    stats
+    v-on:click="canvasClicked"
+  ></canvas>
+  <!-- </div> -->
 
-    <!-- <div
+  <div style="width: 100vw">
+    {{ item }}
+  </div>
+
+  <!-- @click="$emit('objectClicked')" -->
+
+  <!-- <div
       class="object-title"
       :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
       v-if="item.settings.title"
@@ -284,13 +304,14 @@
         :src="item.image.path"
       />
     </div> -->
-  </div>
+  <!-- </div> -->
 </template>
 
 <script>
 import { defineComponent, computed, onMounted, ref } from "vue";
 import { getEntryRange } from "src/lib/common";
 import * as Paper from "paper";
+import { iteratee } from "lodash";
 
 // import DuctEl from "./ObjectTypes/Duct.vue";
 // import FanEl from "./ObjectTypes/Fan.vue";
@@ -496,7 +517,15 @@ export default defineComponent({
       emit("updateWeldModel", weldModel, itemList);
     };
 
+    const item = computed(() => {
+      return props.item;
+    });
+
     onMounted(() => {
+      console.log("CanvasType.vue -> onMounted | props.item", props.item);
+      console.log("CanvasType.vue -> onMounted | props", props);
+      console.log("CanvasType.vue -> onMounted | item", item);
+
       const canvas = document.getElementById(`myCanvas${props.item.id}`);
       // Prevent automatic drawing of objects on the canvas if the path has been defined
       Paper.settings.insertItems = false;
@@ -522,6 +551,7 @@ export default defineComponent({
           center: Paper.view.center,
           radius: 20,
           fillColor: "red",
+          selected: true,
         });
 
         project.activeLayer.addChild(circle);
@@ -533,40 +563,88 @@ export default defineComponent({
 
         // Example of drawing a simple circle
         var square = new Paper.Path.Rectangle({
-          center: [0, 0],
-          size: 100,
+          point: [10, 10],
+          size: [props.item.width, props.item.height],
           fillColor: "#f2d3d3",
           name: "originals-Square-Rectangle",
+          selected: true,
         });
 
         square.onMouseDown = function (event) {
-          if (event.stopPropagation) {
-            event.stopPropagation();
-          } else {
-            event.cancelBubble = true;
-          }
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
           console.log("CanvasType.vue -> onMounted | Square clicked", event);
           this.fillColor = "red";
           square.dragging = true;
         };
 
-        Paper.view.onMouseMove = function (event) {
-          if (event.stopPropagation) {
-            event.stopPropagation();
-          } else {
-            event.cancelBubble = true;
+        square.onDoubleClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log("CanvasType.vue -> onMounted | square clicked", event);
+          square.fillColor = "yellow";
+        };
+
+        // 动态更新图像大小和位置
+        function updateShapes() {
+          // var bounds = rect.bounds;
+          //image.position = bounds.center;
+          console.log("CanvasType.vue -> onMounted | updateShapes", square);
+          square.size = [props.item.width, props.item.height];
+        }
+
+        Paper.view.onFrame = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          // console.log("CanvasType.vue -> onMounted | Frame event", event);
+          console.log(
+            "CanvasType.vue -> onMounted | Frame event",
+            props.item.width,
+            props.item.height
+          );
+          if (square.dragging) {
+            square.position = event.point;
           }
+
+          updateShapes();
+        };
+
+        Paper.view.onDoubleClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log("CanvasType.vue -> onMounted | Double clicked", event);
+          square.fillColor = "yellow";
+        };
+
+        Paper.view.onMouseMove = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
           if (square.dragging) {
             square.position = event.point;
           }
         };
 
         Paper.view.onMouseUp = function (event) {
-          if (event.stopPropagation) {
-            event.stopPropagation();
-          } else {
-            event.cancelBubble = true;
-          }
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
           square.dragging = false;
         };
 
@@ -576,7 +654,9 @@ export default defineComponent({
       //Paper.view.draw();
     });
 
-    // const item = computed(() => props.item);
+    const canvasClicked = (event) => {
+      console.log("Canvas Type -> canvasClicked | event", event);
+    };
 
     return {
       range,
@@ -586,6 +666,7 @@ export default defineComponent({
       refresh,
       objectRef,
       updateWeldModel,
+      canvasClicked,
     };
   },
 });
@@ -600,6 +681,11 @@ export default defineComponent({
   top: 0; */
   /* position: absolute; */
   background-color: rgb(75, 184, 199);
+  width: v-bind("item.width + 'px'");
+  height: v-bind("item.height + 'px'");
+}
+
+.moveable-item-canvas {
 }
 
 .object-title {
