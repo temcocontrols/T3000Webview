@@ -2179,6 +2179,22 @@ function drawWeldObject(selectedItems) {
 // Weld selected objects into one shape
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
+
+  const selectedItems1 = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  if (selectedItems1.some((item) => item.type === "Weld")) {
+    $q.notify({
+      type: "warning",
+      message:
+        "Currently not support to weld items that already contain a welded item.",
+    });
+    return;
+  }
+
   addActionToHistory("Weld selected objects");
 
   const selectedItems = appState.value.items.filter((i) =>
