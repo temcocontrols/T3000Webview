@@ -518,6 +518,34 @@ export default defineComponent({
 
       const canvas = document.getElementById(`myCanvas${props.item.id}`);
 
+      canvas.addEventListener("click", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas clicked", event);
+        emit("objectClicked", event);
+      });
+
+      canvas.addEventListener("dblclick", (event) => {
+        console.log(
+          "CanvasType.vue -> onMounted | canvas double clicked",
+          event
+        );
+      });
+
+      canvas.addEventListener("mousemove", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse move", event);
+      });
+
+      canvas.addEventListener("mouseup", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse up", event);
+      });
+
+      canvas.addEventListener("mousedown", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse down", event);
+      });
+
+      canvas.addEventListener("resize", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas resize", event);
+      });
+
       console.log("canvas", canvas);
 
       // Prevent automatic drawing of objects on the canvas if the path has been defined
@@ -627,11 +655,10 @@ export default defineComponent({
           // if (square.dragging) {
           //   square.position = event.point;
           // }
-
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view Mouse Move event",
-            event
-          );
+          // console.log(
+          //   "CanvasType.vue -> onMounted | Paper.view Mouse Move event",
+          //   event
+          // );
         };
 
         Paper.view.onMouseUp = function (event) {
