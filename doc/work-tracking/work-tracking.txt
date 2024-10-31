@@ -27,3 +27,8 @@
 2024-10-29
 1. continue to implement new functions
 2. small fix for resizing welded objects
+
+2024-10-30
+1. continue working on the new functions
+2. try to add a new vue component for canvas drawing, integrate it into vue-moveable and vue-selecto,
+the existing components (moveable,selecto) may not suitable for transfering the shapes into lines and points.

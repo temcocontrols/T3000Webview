@@ -167,6 +167,7 @@
               @rotateGroupEnd="onRotateGroupEnd"
             >
             </vue-moveable>
+
             <!-- Context Menu -->
             <q-menu
               v-if="contextMenuShow"
