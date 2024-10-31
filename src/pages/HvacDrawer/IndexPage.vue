@@ -597,6 +597,7 @@
 
               <object-type
                 ref="objectsRef"
+                v-if="item.cat !== 'General'"
                 :item="item"
                 :key="item.id + item.type"
                 :class="{
@@ -608,6 +609,21 @@
                 @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel"
               />
+              <CanvasShape
+                v-if="item.cat === 'General'"
+                ref="objectsRef"
+                :item="item"
+                :key="item.id + item.type"
+                :class="{
+                  link: locked && item.t3Entry,
+                }"
+                :show-arrows="locked && !!item.t3Entry?.range"
+                @object-clicked="objectClicked(item)"
+                @auto-manual-toggle="autoManualToggle(item)"
+                @change-value="changeEntryValue"
+                @update-weld-model="updateWeldModel"
+              >
+              </CanvasShape>
             </div>
           </div>
         </div>
@@ -765,6 +781,8 @@ import {
   demoDeviceData,
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
+import CanvasType from "src/components/CanvasType.vue";
+import CanvasShape from "src/components/CanvasShape.vue";
 
 // Meta information for the application
 const metaData = {

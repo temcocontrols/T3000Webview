@@ -64,7 +64,7 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "Pipe", "Duct", "Room", "Metrics"];
+export const toolsCategories = ["Basic", "General", "Pipe", "Duct", "Room", "Metrics"];
 
 export const tools = [
   {
@@ -112,62 +112,62 @@ export const tools = [
       },
     },
   },
-  // {
-  //   name: "G_Rectangle",
-  //   label: "Rectangle",
-  //   icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Circle",
-  //   label: "Circle",
-  //   icon: "svguse:icons.svg#g_circle|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Step",
-  //   label: "Step",
-  //   icon: "svguse:icons.svg#g_step|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Hexagon",
-  //   label: "Hexagon",
-  //   icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
+  {
+    name: "G_Rectangle",
+    label: "Rectangle",
+    icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "G_Circle",
+    label: "Circle",
+    icon: "svguse:icons.svg#g_circle|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "G_Step",
+    label: "Step",
+    icon: "svguse:icons.svg#g_step|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "G_Hexagon",
+    label: "Hexagon",
+    icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+    },
+  },
   {
     name: "Duct",
     label: "Duct",
