@@ -14,7 +14,7 @@
         @save-lib-image="saveLibImage"
         @tool-dropped="toolDropped"
       />
-      <div>
+      <div class="viewport-wrapper">
         <!-- Top Toolbar -->
         <top-toolbar
           @menu-action="handleMenuAction"
@@ -91,7 +91,6 @@
               top: cursorIconPos.y + 'px',
             }"
           />
-          <!-- <canvas id="myCanvas" class="viewport-wrapper" resize stats> </canvas> -->
           <!-- Vue Selecto for Selectable Items -->
           <vue-selecto
             ref="selecto"
@@ -610,7 +609,6 @@
                 @update-weld-model="updateWeldModel"
               />
             </div>
-            <vue-moveable :target="generalShapes"> </vue-moveable>
           </div>
         </div>
       </div>
@@ -767,7 +765,6 @@ import {
   demoDeviceData,
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
-import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 
 // Meta information for the application
 const metaData = {
