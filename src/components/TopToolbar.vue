@@ -98,7 +98,7 @@
         </q-item>
       </q-list>
     </q-btn-dropdown>
-    <!--  Edit menu -->
+    <!-- Edit menu -->
     <q-btn-dropdown
       no-caps
       stretch
@@ -291,6 +291,28 @@
             <q-chip>Delete</q-chip>
           </q-item-section>
         </q-item>
+        <q-item
+          dense
+          clickable
+          v-close-popup
+          @click="menuActionEmit('weldSelected')"
+          :disable="!(selectedCount >= 2)"
+        >
+          <q-item-section avatar>
+            <q-avatar
+              size="sm"
+              icon="splitscreen"
+              color="grey-7"
+              text-color="white"
+            />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Weld selected</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-chip>Ctrl + B</q-chip>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-btn-dropdown>
     <!-- Object menu -->
@@ -465,6 +487,358 @@
         </q-item>
       </q-list>
     </q-btn-dropdown>
+    <q-separator dark vertical />
+
+    <div class="flex gap-1 sticky-top-tool-bar">
+      <!-- move Edit menu's items along to the top horizontally -->
+      <div class="flex gap-1">
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="undo"
+          @click="menuActionEmit('undoAction')"
+          :disable="disableUndo"
+        >
+          <!-- <span class="toolbar-btn-label">Undo</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Undo</strong><em> (Ctrl + Z)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="redo"
+          @click="menuActionEmit('redoAction')"
+          :disable="disableRedo"
+        >
+          <!-- <span class="toolbar-btn-label">Redo</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Redo</strong><em> (Ctrl + Y)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="content_copy"
+          @click="menuActionEmit('duplicateSelected')"
+          :disable="selectedCount < 1"
+        >
+          <!-- <span class="toolbar-btn-label">Duplicate</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Duplicate selected</strong><em> (Ctrl + D)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="join_full"
+          @click="menuActionEmit('groupSelected')"
+          :disable="selectedCount < 2"
+        >
+          <!-- <span class="toolbar-btn-label">Group</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Group selected</strong><em> (Ctrl + G)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="join_inner"
+          @click="menuActionEmit('ungroupSelected')"
+          :disable="selectedCount < 2"
+        >
+          <!-- <span class="toolbar-btn-label">Ungroup</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Ungroup selected</strong><em> (Ctrl + Shift + G)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="library_books"
+          @click="menuActionEmit('addToLibrary')"
+          :disable="selectedCount < 2"
+        >
+          <!-- <span class="toolbar-btn-label">Add Library</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Add selected to library</strong><em> (Ctrl + L)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="delete"
+          @click="menuActionEmit('deleteSelected')"
+          :disable="selectedCount < 1"
+        >
+          <!-- <span class="toolbar-btn-label">Delete</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Delete selected</strong><em> (Delete)</em>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="splitscreen"
+          @click="menuActionEmit('weldSelected')"
+          :disable="!(selectedCount >= 2)"
+        >
+          <!-- <span class="toolbar-btn-label">Delete</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Weld selected</strong><em> (Ctrl + B)</em>
+          </q-tooltip>
+        </q-btn>
+      </div>
+      <q-separator dark vertical />
+
+      <!-- move Object menu's items along to the top horizontally -->
+      <div class="flex gap-1">
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="link"
+          @click="menuActionEmit('link')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Link</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Link</strong>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="file_copy"
+          @click="menuActionEmit('duplicateObject')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Duplicate</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Duplicate</strong>
+          </q-tooltip>
+        </q-btn>
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="autorenew"
+          @click="menuActionEmit('rotate90')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Rotate 90°</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Rotate 90°</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="sync"
+          @click="menuActionEmit('rotate-90')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Rotate -90°</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Rotate -90°</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="flip"
+          @click="menuActionEmit('flipH')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Flip horizontal</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Flip horizontal</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="flip"
+          @click="menuActionEmit('flipV')"
+          style="transform: rotate(90deg)"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Flip vertical</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Flip vertical</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="flip_to_front"
+          @click="menuActionEmit('bringToFront')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Bring to front</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Bring to front</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="flip_to_back"
+          @click="menuActionEmit('sendToBack')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Send to Back</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Send to Back</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="transform"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Convert to</span> -->
+          <q-menu anchor="top end" self="top start" auto-close>
+            <q-list>
+              <q-item
+                v-for="t in tools.filter(
+                  (i) =>
+                    i.name !== object.type &&
+                    !['Duct', 'Pointer', 'Text'].includes(i.name)
+                )"
+                :key="t.name"
+                dense
+                clickable
+                v-close-popup
+                @click="menuActionEmit('convertObjectType', t.name)"
+              >
+                <q-item-section avatar>
+                  <q-avatar
+                    size="sm"
+                    :icon="t.icon"
+                    color="grey-7"
+                    text-color="white"
+                  />
+                </q-item-section>
+                <q-item-section>{{ t.name }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Convert to</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <q-btn
+          dense
+          flat
+          round
+          outline
+          stack
+          v-close-popup
+          no-caps
+          icon="remove"
+          @click="menuActionEmit('removeObject')"
+          :disable="!selectedCount || selectedCount > 1"
+        >
+          <!-- <span class="toolbar-btn-label">Remove</span> -->
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong>Remove</strong>
+          </q-tooltip>
+        </q-btn>
+      </div>
+    </div>
+
     <q-space />
     <div class="flex">
       <q-btn
@@ -612,5 +986,14 @@ export default defineComponent({
 .zoom-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.toolbar-btn-label {
+  font-size: 8px;
+  margin-top: -6px;
+}
+
+.sticky-top-tool-bar .q-btn {
+  font-size: 11px;
 }
 </style>

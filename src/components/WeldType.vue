@@ -24,33 +24,35 @@
       'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
         item.type
       ),
-      'overflow-hidden': item.type === 'Text',
-      [item.type]: item.type,
-      'with-bg': item.settings.bgColor,
+      'overflow-hidden': item?.type === 'Text',
+      [item.type]: item?.type,
+      'with-bg': item?.settings?.bgColor,
       'with-title':
-        item.settings.title ||
-        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+        item?.settings?.title ||
+        (item?.t3Entry && item?.settings?.t3EntryDisplayField !== 'none'),
     }"
   >
     <div
       class="object-title"
-      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
-      v-if="item.settings.title"
+      :class="{ grow: ['Icon', 'Switch'].includes(item?.type) }"
+      v-if="item?.settings?.title"
       @click="$emit('objectClicked')"
     >
-      {{ item.settings.title }}
+      {{ item?.settings?.title }}
     </div>
     <div
       class="object-title"
-      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
+      :class="{ grow: ['Icon', 'Switch'].includes(item?.type) }"
+      v-else-if="
+        item?.t3Entry && item?.settings?.t3EntryDisplayField !== 'none'
+      "
     >
       <div class="relative">
         <q-btn
           v-if="
             showArrows &&
             item.type !== 'Switch' &&
-            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
+            ['value', 'control'].includes(item?.settings?.t3EntryDisplayField)
           "
           class="up-btn absolute"
           size="sm"
@@ -58,19 +60,22 @@
           color="grey-4"
           text-color="black"
           dense
-          :disable="item.t3Entry?.auto_manual === 0"
+          :disable="item?.t3Entry?.auto_manual === 0"
           @click="changeValue('increase')"
         />
         <div>
           <span @click="$emit('objectClicked')">{{
-            dispalyText || item.t3Entry.id
+            dispalyText || item?.t3Entry?.id
           }}</span>
           <span
-            v-if="item.t3Entry.auto_manual !== undefined"
+            v-if="item?.t3Entry?.auto_manual !== undefined"
             class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')"
           >
-            <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+            <q-icon
+              v-if="!item?.t3Entry?.auto_manual"
+              name="motion_photos_auto"
+            >
               <q-tooltip anchor="top middle" self="center middle">
                 In auto mode
               </q-tooltip>
@@ -86,7 +91,7 @@
           v-if="
             showArrows &&
             item.type !== 'Switch' &&
-            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
+            ['value', 'control'].includes(item?.settings?.t3EntryDisplayField)
           "
           class="down-btn absolute"
           size="sm"
@@ -101,153 +106,153 @@
     </div>
     <div
       class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }"
+      :class="{ grow: !['Icon', 'Switch'].includes(item?.type) }"
       @click="$emit('objectClicked')"
     >
-      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
+      <fan v-if="item?.type === 'Fan'" class="fan" v-bind="item?.settings" />
       <duct
-        v-else-if="item.type === 'Duct'"
+        v-else-if="item?.type === 'Duct'"
         class="duct"
-        v-bind="item.settings"
+        v-bind="item?.settings"
         ref="objectRef"
       />
       <cooling-coil
-        v-else-if="item.type === 'CoolingCoil'"
+        v-else-if="item?.type === 'CoolingCoil'"
         class="cooling-coil"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <heating-coil
-        v-else-if="item.type === 'HeatingCoil'"
+        v-else-if="item?.type === 'HeatingCoil'"
         class="heating-coil"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <filter-el
-        v-else-if="item.type === 'Filter'"
+        v-else-if="item?.type === 'Filter'"
         class="filter"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <humidifier
-        v-else-if="item.type === 'Humidifier'"
+        v-else-if="item?.type === 'Humidifier'"
         class="humidifier"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <humidity
-        v-else-if="item.type === 'Humidity'"
+        v-else-if="item?.type === 'Humidity'"
         class="humidity"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <Pressure
-        v-else-if="item.type === 'Pressure'"
+        v-else-if="item?.type === 'Pressure'"
         class="pressure"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <ThermalWheel
-        v-else-if="item.type === 'ThermalWheel'"
+        v-else-if="item?.type === 'ThermalWheel'"
         class="thermal-wheel"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <damper
-        v-else-if="item.type === 'Damper'"
+        v-else-if="item?.type === 'Damper'"
         class="damper"
         :item="item"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <boiler
-        v-else-if="item.type === 'Boiler'"
+        v-else-if="item?.type === 'Boiler'"
         class="boiler"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <heatpump
-        v-else-if="item.type === 'Heatpump'"
+        v-else-if="item?.type === 'Heatpump'"
         class="heatpump"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <pump
-        v-else-if="item.type === 'Pump'"
+        v-else-if="item?.type === 'Pump'"
         class="heatpump"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <ValveThreeWay
-        v-else-if="item.type === 'ValveThreeWay'"
+        v-else-if="item?.type === 'ValveThreeWay'"
         class="valve-threeway"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <ValveTwoWay
-        v-else-if="item.type === 'ValveTwoWay'"
+        v-else-if="item?.type === 'ValveTwoWay'"
         class="valve-threeway"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <enthalpy
-        v-else-if="item.type === 'Enthalpy'"
+        v-else-if="item?.type === 'Enthalpy'"
         class="enthalpy"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <flow
-        v-else-if="item.type === 'Flow'"
+        v-else-if="item?.type === 'Flow'"
         class="flow"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <text-el
-        v-else-if="item.type === 'Text'"
+        v-else-if="item?.type === 'Text'"
         class="text"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <box-el
-        v-else-if="item.type === 'Box'"
+        v-else-if="item?.type === 'Box'"
         class="box"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <icon-value
-        v-else-if="item.type === 'Icon'"
+        v-else-if="item?.type === 'Icon'"
         class="icon-value"
         :item="item"
         :show-arrows="showArrows"
-        v-bind="item.settings"
+        v-bind="item?.settings"
         @change-value="changeValue"
       />
       <icon-basic
-        v-else-if="item.type === 'IconBasic'"
+        v-else-if="item?.type === 'IconBasic'"
         class="icon-basic"
         :item="item"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <icon-switch
-        v-else-if="item.type === 'Switch'"
+        v-else-if="item?.type === 'Switch'"
         class="icon-switch"
         :item="item"
         :show-arrows="showArrows"
-        v-bind="item.settings"
+        v-bind="item?.settings"
         @change-value="changeValue"
       />
       <led-el
-        v-else-if="item.type === 'LED'"
+        v-else-if="item?.type === 'LED'"
         class="led-el"
         :item="item"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <value-el
-        v-else-if="item.type === 'Value'"
+        v-else-if="item?.type === 'Value'"
         class="value"
         :item="item"
         :show-arrows="showArrows"
-        v-bind="item.settings"
+        v-bind="item?.settings"
         @change-value="changeValue"
       />
       <temperature
-        v-else-if="item.type === 'Temperature'"
+        v-else-if="item?.type === 'Temperature'"
         class="temperature"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <gauge-chart
-        v-else-if="item.type === 'Gauge'"
+        v-else-if="item?.type === 'Gauge'"
         class="gauge-object gauge"
-        v-bind="item.settings"
-        :unit="range.unit"
+        v-bind="item?.settings"
+        :unit="range?.unit"
         :colors="processedColors"
         :value="item.t3Entry?.value / 1000 || 0"
       />
       <div
-        v-else-if="item.type === 'Dial'"
+        v-else-if="item?.type === 'Dial'"
         class="flex flex-col flex-nowrap justify-center"
       >
         <dial-chart
@@ -264,30 +269,29 @@
         </div>
       </div>
       <RoomHumidity
-        v-else-if="item.type === 'RoomHumidity'"
+        v-else-if="item?.type === 'RoomHumidity'"
         class="room-humidity"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <RoomTemperature
-        v-else-if="item.type === 'RoomTemperature'"
+        v-else-if="item?.type === 'RoomTemperature'"
         class="room-temperature"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
       <Wall
-        v-else-if="item.type === 'Wall'"
+        v-else-if="item?.type === 'Wall'"
         class="room-temperature"
-        v-bind="item.settings"
+        v-bind="item?.settings"
       />
-      <Weld
+      <!-- <Weld
         v-else-if="item.type === 'Weld'"
         class="weld"
         v-bind:weldModel="item"
-        @update-weld-model="updateWeldModel"
-      />
+      /> -->
       <img
         class="img-object"
-        v-else-if="item.type.startsWith('IMG-')"
-        :src="item.image.path"
+        v-else-if="item?.type?.startsWith('IMG-')"
+        :src="item?.image?.path"
       />
     </div>
   </div>
@@ -327,10 +331,10 @@ import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
 import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
 import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
 import Wall from "./ObjectTypes/Wall.vue";
-import Weld from "./ObjectTypes/Weld.vue";
+// import Weld from "./ObjectTypes/Weld.vue";
 
 export default defineComponent({
-  name: "ObjectType",
+  name: "WeldType",
   components: {
     Duct: DuctEl,
     Fan: FanEl,
@@ -362,7 +366,7 @@ export default defineComponent({
     RoomHumidity,
     RoomTemperature,
     Wall,
-    Weld,
+    // Weld,
   },
   props: {
     item: {
@@ -374,43 +378,39 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: [
-    "autoManualToggle",
-    "objectClicked",
-    "changeValue",
-    "updateWeldModel",
-  ],
+  emits: ["autoManualToggle", "objectClicked", "changeValue"],
   setup(props, { emit }) {
+    // console.log("item", props.item);
     const range = computed(() => {
-      return getEntryRange(props.item?.t3Entry);
+      return getEntryRange(props?.item?.t3Entry);
     });
     const dispalyText = computed(() => {
-      if (!props.item.t3Entry) {
+      if (!props?.item?.t3Entry) {
         return "";
       }
-      const range = getEntryRange(props.item.t3Entry);
+      const range = getEntryRange(props?.item?.t3Entry);
       if (
-        props.item.settings.t3EntryDisplayField === "value" ||
-        props.item.settings.t3EntryDisplayField === "control"
+        props?.item?.settings?.t3EntryDisplayField === "value" ||
+        props?.item?.settings?.t3EntryDisplayField === "control"
       ) {
         if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.range > 100
+          props?.item?.t3Entry?.value !== undefined &&
+          props?.item?.t3Entry?.range > 100
         ) {
-          const rangeValue = range.options?.find(
-            (item) => item.value * 1000 === props.item.t3Entry.value
+          const rangeValue = range?.options?.find(
+            (item) => item?.value * 1000 === props?.item?.t3Entry?.value
           );
           return rangeValue?.name;
         } else if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.digital_analog === 1
+          props?.item?.t3Entry?.value !== undefined &&
+          props?.item?.t3Entry?.digital_analog === 1
         ) {
-          return props.item.t3Entry.value / 1000 + " " + range.unit;
+          return props?.item?.t3Entry?.value / 1000 + " " + range.unit;
         } else if (
-          props.item.t3Entry.control !== undefined &&
-          props.item.t3Entry.digital_analog === 0
+          props?.item?.t3Entry?.control !== undefined &&
+          props?.item?.t3Entry?.digital_analog === 0
         ) {
-          if (props.item.t3Entry.control) {
+          if (props?.item?.t3Entry?.control) {
             return range.on;
           } else {
             return range.off;
@@ -418,19 +418,21 @@ export default defineComponent({
         }
       }
 
-      return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
+      return (
+        props?.item?.t3Entry[props?.item?.settings?.t3EntryDisplayField] || ""
+      );
     });
 
     const processedColors = computed(() => {
-      const item = props.item;
+      const item = props?.item;
       if (!["Gauge", "Dial"].includes(item.type)) {
         return null;
       }
       return item.type === "Gauge"
-        ? item.settings.colors.map((i) => [i.offset / 100, i.color])
-        : item.settings.colors.map((i, index) => {
+        ? item?.settings?.colors?.map((i) => [i.offset / 100, i.color])
+        : item?.settings?.colors?.map((i, index) => {
             return {
-              from: index ? item.settings.colors[index - 1].offset : 0,
+              from: index ? item?.settings?.colors[index - 1].offset : 0,
               to: i.offset,
               color: [i.color],
             };
@@ -438,20 +440,22 @@ export default defineComponent({
     });
 
     function changeValue(type) {
-      if (props.item.t3Entry.auto_manual === 0) return;
+      if (props?.item?.t3Entry?.auto_manual === 0) return;
       let control = false;
-      let newVal = props.item.t3Entry.value;
-      const range = getEntryRange(props.item?.t3Entry);
+      let newVal = props?.item?.t3Entry?.value;
+      const range = getEntryRange(props?.item?.t3Entry);
       if (
-        props.item.t3Entry.value !== undefined &&
-        props.item.t3Entry.range > 100
+        props?.item?.t3Entry?.value !== undefined &&
+        props?.item?.t3Entry?.range > 100
       ) {
-        const rangeOptions = range.options?.filter((item) => item.status === 1);
+        const rangeOptions = range?.options?.filter(
+          (item) => item.status === 1
+        );
         const rangeIndex = rangeOptions.findIndex(
-          (item) => item.value * 1000 === props.item.t3Entry.value
+          (item) => item.value * 1000 === props?.item?.t3Entry?.value
         );
 
-        if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
+        if (type === "decrease" && rangeIndex < rangeOptions?.length - 1) {
           newVal = rangeOptions[rangeIndex + 1].value * 1000;
         } else if (type === "increase" && rangeIndex > 0) {
           newVal = rangeOptions[rangeIndex - 1].value * 1000;
@@ -459,47 +463,38 @@ export default defineComponent({
           return;
         }
       } else if (
-        props.item.t3Entry.value !== undefined &&
-        props.item.t3Entry.digital_analog === 1
+        props?.item?.t3Entry?.value !== undefined &&
+        props?.item?.t3Entry?.digital_analog === 1
       ) {
         if (type === "increase") {
-          newVal = props.item.t3Entry.value + 1000;
+          newVal = props?.item?.t3Entry?.value + 1000;
         } else {
-          newVal = props.item.t3Entry.value - 1000;
+          newVal = props?.item?.t3Entry?.value - 1000;
         }
       } else if (
-        props.item.t3Entry.control !== undefined &&
-        props.item.t3Entry.digital_analog === 0
+        props?.item?.t3Entry?.control !== undefined &&
+        props?.item?.t3Entry?.digital_analog === 0
       ) {
         control = true;
-        if (type === "decrease" && props.item.t3Entry.control === 0) {
+        if (type === "decrease" && props?.item?.t3Entry?.control === 0) {
           newVal = 1;
-        } else if (type === "increase" && props.item.t3Entry.control === 1) {
+        } else if (type === "increase" && props?.item?.t3Entry?.control === 1) {
           newVal = 0;
         } else {
           return;
         }
       }
-      emit("changeValue", props.item, newVal, control);
+      emit("changeValue", props?.item, newVal, control);
     }
 
     const objectRef = ref(null);
 
     function refresh() {
       if (!objectRef.value) return;
-      if (props.item?.type === "Duct") {
-        objectRef.value.refresh();
+      if (props?.item?.type === "Duct") {
+        objectRef?.value?.refresh();
       }
     }
-
-    const updateWeldModel = (weldModel, itemList) => {
-      // console.log(
-      //   "ObjectType.vue -> updateWeldModel | recieve from child",
-      //   weldModel,
-      //   itemList
-      // );
-      emit("updateWeldModel", weldModel, itemList);
-    };
 
     return {
       range,
@@ -508,7 +503,6 @@ export default defineComponent({
       changeValue,
       refresh,
       objectRef,
-      updateWeldModel,
     };
   },
 });
@@ -520,7 +514,7 @@ export default defineComponent({
   min-width: 100%;
   white-space: nowrap;
   line-height: 2.5em;
-  color: v-bind("item.settings.titleColor");
+  color: v-bind("item?.settings?.titleColor");
 }
 
 .with-bg .object-title {
@@ -530,10 +524,11 @@ export default defineComponent({
 .moveable-item {
   height: 100%;
   border-radius: 5px;
-  background-color: v-bind("item.settings.bgColor");
-  color: v-bind("item.settings.textColor");
-  font-size: v-bind("item.settings.fontSize + 'px'");
+  background-color: v-bind("item?.settings?.bgColor");
+  color: v-bind("item?.settings?.textColor");
+  font-size: v-bind("item?.settings?.fontSize + 'px'");
 }
+
 .moveable-item.Duct {
   background-color: transparent;
 }
@@ -574,7 +569,7 @@ export default defineComponent({
 
 .moveable-item.Value .object-container {
   flex-grow: 1;
-  justify-content: v-bind("item.settings.justifyContent");
+  justify-content: v-bind("item?.settings?.justifyContent");
   padding: 10px;
 }
 
@@ -598,7 +593,7 @@ export default defineComponent({
 .moveable-item.Icon.with-title .object-title,
 .moveable-item.Switch.with-title .object-title {
   flex-grow: 1;
-  justify-content: v-bind("item.settings.justifyContent");
+  justify-content: v-bind("item?.settings?.justifyContent");
 }
 
 .moveable-item.Value.with-title .object-title .mode-icon,
@@ -611,18 +606,22 @@ export default defineComponent({
 .moveable-item.Switch.with-bg .object-title {
   background-color: transparent;
 }
+
 .moveable-item.link {
   cursor: pointer;
 }
+
 .img-object {
   max-width: none;
   width: 100%;
 }
+
 .up-btn {
   display: none;
   bottom: 100%;
   z-index: 1;
 }
+
 .down-btn {
   display: none;
   top: 100%;
@@ -633,10 +632,12 @@ export default defineComponent({
 .moveable-item.Switch .up-btn {
   bottom: calc(100% + 5px);
 }
+
 .moveable-item.Icon .down-btn,
 .moveable-item.Switch .down-btn {
   top: calc(100% + 3px);
 }
+
 .object-title:hover .up-btn,
 .object-title:hover .down-btn {
   display: inline-flex;

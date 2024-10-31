@@ -14,7 +14,7 @@
         @save-lib-image="saveLibImage"
         @tool-dropped="toolDropped"
       />
-      <div class="viewport-wrapper">
+      <div>
         <!-- Top Toolbar -->
         <top-toolbar
           @menu-action="handleMenuAction"
@@ -91,6 +91,7 @@
               top: cursorIconPos.y + 'px',
             }"
           />
+          <!-- <canvas id="myCanvas" class="viewport-wrapper" resize stats> </canvas> -->
           <!-- Vue Selecto for Selectable Items -->
           <vue-selecto
             ref="selecto"
@@ -166,6 +167,7 @@
               @rotateGroupEnd="onRotateGroupEnd"
             >
             </vue-moveable>
+
             <!-- Context Menu -->
             <q-menu
               v-if="contextMenuShow"
@@ -357,6 +359,21 @@
                   </q-item-section>
                   <q-item-section side>
                     <q-chip>Delete</q-chip>
+                  </q-item-section>
+                </q-item>
+                <!-- Weld Option -->
+                <q-item dense clickable v-close-popup @click="weldSelected">
+                  <q-item-section avatar>
+                    <q-avatar
+                      size="sm"
+                      icon="splitscreen"
+                      color="grey-7"
+                      text-color="white"
+                    />
+                  </q-item-section>
+                  <q-item-section>Weld Selected</q-item-section>
+                  <q-item-section side>
+                    <q-chip>Ctrl + B</q-chip>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -578,6 +595,7 @@
                   </q-item>
                 </q-list>
               </q-menu>
+
               <object-type
                 ref="objectsRef"
                 :item="item"
@@ -589,8 +607,10 @@
                 @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)"
                 @change-value="changeEntryValue"
+                @update-weld-model="updateWeldModel"
               />
             </div>
+            <vue-moveable :target="generalShapes"> </vue-moveable>
           </div>
         </div>
       </div>
@@ -747,6 +767,7 @@ import {
   demoDeviceData,
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
+import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
 
 // Meta information for the application
 const metaData = {
@@ -1308,6 +1329,8 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+
+  // console.log("IndexPage.vue -> onResizeStart -> e", e);
 }
 
 // Handles resizing of an element
@@ -1328,9 +1351,11 @@ function onResizeEnd(e) {
   const itemIndex = appState.value.items.findIndex(
     (item) => `moveable-item-${item.id}` === e.lastEvent.target.id
   );
+
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+
   refreshObjects(); // Refresh objects after resizing
 }
 
@@ -1574,6 +1599,13 @@ function drawObject(size, pos, tool) {
     tempItem.image = tool;
     tempItem.type = tool.id;
   }
+
+  // copy the first category from tool.cat to item.cat
+  if (tool.cat) {
+    const [first] = tool.cat;
+    tempItem.cat = first;
+  }
+
   const item = addObject(tempItem);
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;
@@ -1935,6 +1967,12 @@ keycon.keydown(["ctrl", "v"], (e) => {
   pasteFromClipboard();
 });
 
+// Weld selected objects when "Ctrl + W" is pressed
+keycon.keydown(["ctrl", "b"], (e) => {
+  e.inputEvent.preventDefault();
+  weldSelected();
+});
+
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
@@ -1959,6 +1997,96 @@ function deleteSelected() {
     appState.value.selectedTargets = [];
     appState.value.activeItemIndex = null;
   }
+}
+
+function drawWeldObject(selectedItems) {
+  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+  // Calculate the bounding box for the selected items
+  const firstX = selectedItems[0].translate[0];
+  const firstY = selectedItems[0].translate[1];
+  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
+  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
+  const maxX = Math.max(
+    ...selectedItems.map((item) => item.translate[0] + item.width)
+  );
+  const maxY = Math.max(
+    ...selectedItems.map((item) => item.translate[1] + item.height)
+  );
+
+  const transX = firstX < minX ? firstX : minX;
+
+  const title = selectedItems.map((item) => item?.type ?? "").join("-");
+
+  let previous = selectedItems[0].zindex;
+  selectedItems.forEach((item) => {
+    item.zindex = previous - 1;
+    previous = item.zindex;
+  });
+
+  const tempItem = {
+    title: `Weld-${title}`,
+    active: false,
+    type: "Weld",
+    translate: [transX, minY],
+    width: (maxX - minX) * scalPercentage,
+    height: (maxY - minY) * scalPercentage,
+    rotate: 0,
+    scaleX: 1,
+    scaleY: 1,
+    settings: {
+      active: false,
+      fillColor: "#659dc5",
+      fontSize: 16,
+      inAlarm: false,
+      textColor: "inherit",
+      titleColor: "inherit",
+      weldItems: cloneDeep(selectedItems),
+    },
+    zindex: 1,
+    t3Entry: null,
+    id: appState.value.itemsCount + 1,
+  };
+
+  addObject(tempItem);
+}
+
+// Weld selected objects into one shape
+function weldSelected() {
+  if (appState.value.selectedTargets.length < 2) return;
+
+  const selectedItems1 = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  if (selectedItems1.some((item) => item.type === "Weld")) {
+    $q.notify({
+      type: "warning",
+      message: "Currently not supported!",
+    });
+    return;
+  }
+
+  addActionToHistory("Weld selected objects");
+
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+
+  drawWeldObject(selectedItems);
+
+  selectedItems.forEach((item) => {
+    const index = appState.value.items.findIndex((i) => i.id === item.id);
+    if (index !== -1) {
+      appState.value.items.splice(index, 1);
+    }
+  });
+
+  refreshMoveable();
 }
 
 // Filter function for selecting panels in the UI
@@ -2308,6 +2436,9 @@ function handleMenuAction(action, val) {
     case "deleteSelected":
       deleteSelected();
       break;
+    case "weldSelected":
+      weldSelected();
+      break;
     case "duplicateObject":
       duplicateObject(item);
       break;
@@ -2407,6 +2538,8 @@ function lockToggle() {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+  // console.log("IndexPage.vue -> objectClicked -> item", item);
+
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({
@@ -2766,6 +2899,14 @@ function toolDropped(ev, tool) {
   );
 }
 
+const updateWeldModel = (weldModel, itemList) => {
+  appState.value.items.map((item) => {
+    if (item.type === "Weld" && item.id === weldModel.id) {
+      item.settings.weldItems = itemList;
+    }
+  });
+};
+
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
   ev.preventDefault();
@@ -2876,9 +3017,11 @@ function addOnlineLibImage(oItem) {
   transition: transform 0.3s;
   transform-style: preserve-3d;
 }
+
 .moveable-item-wrapper:has(.Duct) {
   transform-origin: 20px center;
 }
+
 .moveable-item-wrapper:has(.Wall) {
   transform-origin: 10px center;
 }
@@ -2894,9 +3037,11 @@ function addOnlineLibImage(oItem) {
 .nav-btns {
   left: 7rem;
 }
+
 .nav-btns.locked {
   left: 1rem;
 }
+
 .cursor-icon {
   position: absolute;
   z-index: 1;

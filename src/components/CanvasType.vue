@@ -1,25 +1,10 @@
 <!--
-  This component is a custom cell editor for ag-Grid, utilizing the Quasar `q-select` component to allow users to edit
-  cell values with a dropdown select interface.
+  This component is a canvas type component that is used to render the objects on the canvas.
 
-  Props:
-  - params: An object containing various parameters for the cell editor, this prop is atumatically passed from ag-Grid.
-
-  Methods:
-  - selectFilter: Filters the select options based on the user's input.
-  - getValue: Returns the current value of the editor.
-  - stopEditing: Stops the editing process and commits the value if it has changed.
-  - setInitialState: Sets the initial state of the editor based on the key event that triggered the editor.
-
-  Component Structure:
-  - It handles different key events (Backspace, Delete, F2, and alphanumeric keys) to initialize the editor state and display the select dropdown.
-  - The `q-select` component from Quasar is used to provide a searchable, filterable dropdown interface for selecting values.
-  - The options for the select dropdown can be provided as a static array or a function.
-  - The component manages the editing lifecycle by integrating with ag-Grid's API to stop editing when necessary.
 -->
 <template>
   <div
-    class="moveable-item"
+    class="moveable-item-canvas flex justify-center object-container"
     :class="{
       'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
         item.type
@@ -32,7 +17,25 @@
         (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
     }"
   >
-    <div
+    {{ item.width }} x {{ item.height }}
+    <canvas
+      :id="`myCanvas${item.id}`"
+      class="canvas-viewport-wrapper"
+      v-bind:width="item.width"
+      v-bind:height="item.height"
+      resize
+      stats
+    ></canvas>
+  </div>
+  <!-- <div style="width: 100vw">
+    {{ item }}
+           v-on:click="canvasClicked"
+
+  </div> -->
+
+  <!-- @click="$emit('objectClicked')" -->
+
+  <!-- <div
       class="object-title"
       :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
       v-if="item.settings.title"
@@ -289,80 +292,83 @@
         v-else-if="item.type.startsWith('IMG-')"
         :src="item.image.path"
       />
-    </div>
-  </div>
+    </div> -->
+  <!-- </div> -->
 </template>
 
 <script>
-import { defineComponent, computed, ref } from "vue";
+import { defineComponent, computed, onMounted, ref } from "vue";
 import { getEntryRange } from "src/lib/common";
+import * as Paper from "paper";
+import { iteratee } from "lodash";
+import { store } from "quasar/wrappers";
 
-import DuctEl from "./ObjectTypes/Duct.vue";
-import FanEl from "./ObjectTypes/Fan.vue";
-import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
-import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
-import FilterEl from "./ObjectTypes/Filter.vue";
-import HumidifierEl from "./ObjectTypes/Humidifier.vue";
-import Damper from "./ObjectTypes/Damper.vue";
-import TextEl from "./ObjectTypes/Text.vue";
-import BoxEl from "./ObjectTypes/Box.vue";
-import IconBasic from "./ObjectTypes/IconBasic.vue";
-import IconValue from "./ObjectTypes/IconValue.vue";
-import IconSwitch from "./ObjectTypes/IconSwitch.vue";
-import ValueEl from "./ObjectTypes/Value.vue";
-import Temperature from "./ObjectTypes/Temperature.vue";
-import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
-import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
-import LedEl from "./ObjectTypes/Led.vue";
-import Boiler from "./ObjectTypes/Boiler.vue";
-import Enthalpy from "./ObjectTypes/Enthalpy.vue";
-import Flow from "./ObjectTypes/Flow.vue";
-import Heatpump from "./ObjectTypes/Heatpump.vue";
-import Pump from "./ObjectTypes/Pump.vue";
-import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
-import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
-import Humidity from "./ObjectTypes/Humidity.vue";
-import Pressure from "./ObjectTypes/Pressure.vue";
-import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
-import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
-import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
-import Wall from "./ObjectTypes/Wall.vue";
-import Weld from "./ObjectTypes/Weld.vue";
+// import DuctEl from "./ObjectTypes/Duct.vue";
+// import FanEl from "./ObjectTypes/Fan.vue";
+// import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
+// import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
+// import FilterEl from "./ObjectTypes/Filter.vue";
+// import HumidifierEl from "./ObjectTypes/Humidifier.vue";
+// import Damper from "./ObjectTypes/Damper.vue";
+// import TextEl from "./ObjectTypes/Text.vue";
+// import BoxEl from "./ObjectTypes/Box.vue";
+// import IconBasic from "./ObjectTypes/IconBasic.vue";
+// import IconValue from "./ObjectTypes/IconValue.vue";
+// import IconSwitch from "./ObjectTypes/IconSwitch.vue";
+// import ValueEl from "./ObjectTypes/Value.vue";
+// import Temperature from "./ObjectTypes/Temperature.vue";
+// import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
+// import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
+// import LedEl from "./ObjectTypes/Led.vue";
+// import Boiler from "./ObjectTypes/Boiler.vue";
+// import Enthalpy from "./ObjectTypes/Enthalpy.vue";
+// import Flow from "./ObjectTypes/Flow.vue";
+// import Heatpump from "./ObjectTypes/Heatpump.vue";
+// import Pump from "./ObjectTypes/Pump.vue";
+// import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
+// import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
+// import Humidity from "./ObjectTypes/Humidity.vue";
+// import Pressure from "./ObjectTypes/Pressure.vue";
+// import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
+// import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
+// import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
+// import Wall from "./ObjectTypes/Wall.vue";
+// import Weld from "./ObjectTypes/Weld.vue";
 
 export default defineComponent({
-  name: "ObjectType",
+  name: "CanvasType",
   components: {
-    Duct: DuctEl,
-    Fan: FanEl,
-    CoolingCoil,
-    HeatingCoil,
-    FilterEl,
-    Humidifier: HumidifierEl,
-    Damper,
-    TextEl,
-    BoxEl,
-    IconBasic,
-    IconValue,
-    IconSwitch,
-    ValueEl,
-    Temperature,
-    GaugeChart,
-    DialChart: AnyChartDial,
-    LedEl,
-    Boiler,
-    Enthalpy,
-    Flow,
-    Heatpump,
-    Pump,
-    ValveThreeWay,
-    ValveTwoWay,
-    Humidity,
-    Pressure,
-    ThermalWheel,
-    RoomHumidity,
-    RoomTemperature,
-    Wall,
-    Weld,
+    // Duct: DuctEl,
+    // Fan: FanEl,
+    // CoolingCoil,
+    // HeatingCoil,
+    // FilterEl,
+    // Humidifier: HumidifierEl,
+    // Damper,
+    // TextEl,
+    // BoxEl,
+    // IconBasic,
+    // IconValue,
+    // IconSwitch,
+    // ValueEl,
+    // Temperature,
+    // GaugeChart,
+    // DialChart: AnyChartDial,
+    // LedEl,
+    // Boiler,
+    // Enthalpy,
+    // Flow,
+    // Heatpump,
+    // Pump,
+    // ValveThreeWay,
+    // ValveTwoWay,
+    // Humidity,
+    // Pressure,
+    // ThermalWheel,
+    // RoomHumidity,
+    // RoomTemperature,
+    // Wall,
+    // Weld,
   },
   props: {
     item: {
@@ -501,6 +507,289 @@ export default defineComponent({
       emit("updateWeldModel", weldModel, itemList);
     };
 
+    const item = computed(() => {
+      return props.item;
+    });
+
+    onMounted(() => {
+      console.log("CanvasType.vue -> onMounted | props.item", props.item);
+      console.log("CanvasType.vue -> onMounted | props", props);
+      console.log("CanvasType.vue -> onMounted | item", item);
+
+      const canvas = document.getElementById(`myCanvas${props.item.id}`);
+
+      canvas.addEventListener("click", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas clicked", event);
+        emit("objectClicked", event);
+      });
+
+      canvas.addEventListener("dblclick", (event) => {
+        console.log(
+          "CanvasType.vue -> onMounted | canvas double clicked",
+          event
+        );
+      });
+
+      canvas.addEventListener("mousemove", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse move", event);
+      });
+
+      canvas.addEventListener("mouseup", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse up", event);
+      });
+
+      canvas.addEventListener("mousedown", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas mouse down", event);
+      });
+
+      canvas.addEventListener("resize", (event) => {
+        console.log("CanvasType.vue -> onMounted | canvas resize", event);
+      });
+
+      console.log("canvas", canvas);
+
+      // Prevent automatic drawing of objects on the canvas if the path has been defined
+      Paper.settings.insertItems = false;
+      const project = new Paper.Project(canvas);
+      const tool = new Paper.Tool();
+
+      // Paper.setup(canvas);
+
+      console.log("CanvasType.vue -> onMounted | props", props);
+
+      console.log(
+        "CanvasType.vue -> onMounted | paper,project",
+        Paper,
+        project
+      );
+
+      console.log("item", props.item);
+
+      if (props.item.type === "G_Circle") {
+        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+
+        // Example of drawing a simple circle
+        const circle = new Paper.Path.Circle({
+          point: [0, 0],
+          radius: 20,
+          fillColor: "red",
+          selected: true,
+        });
+
+        project.activeLayer.addChild(circle);
+        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+      }
+
+      if (props.item.type === "G_Rectangle") {
+        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+
+        // Example of drawing a simple circle
+        var square = new Paper.Path.Rectangle({
+          point: [0, 0],
+          size: [props.item.width - 10, props.item.height - 10],
+          fillColor: "#f2d3d3",
+          strokeColor: "yellow",
+          strokeWidth: 5,
+          name: "originals-Square-Rectangle",
+          selected: true,
+        });
+
+        console.log("width,height", props.item.width, props.item.height);
+
+        square.onMouseDown = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log(
+            "CanvasType.vue -> onMounted | square.onMouseDown",
+            event
+          );
+          square.fillColor = "red";
+          // square.dragging = true;
+        };
+
+        square.onDoubleClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log(
+            "CanvasType.vue -> onMounted | square.onDoubleClick",
+            event
+          );
+          // square.fillColor = "yellow";
+        };
+
+        square.onClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log("CanvasType.vue -> onMounted | square.onClick", event);
+          // square.fillColor = "yellow";
+        };
+
+        Paper.view.onDoubleClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log(
+            "CanvasType.vue -> onMounted | Paper.view Double clicked",
+            event
+          );
+          // square.fillColor = "yellow";
+        };
+
+        Paper.view.onMouseMove = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          // if (square.dragging) {
+          //   square.position = event.point;
+          // }
+          // console.log(
+          //   "CanvasType.vue -> onMounted | Paper.view Mouse Move event",
+          //   event
+          // );
+        };
+
+        Paper.view.onMouseUp = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          // square.dragging = false;
+          console.log(
+            "CanvasType.vue -> onMounted | Paper.view Mouse Up event",
+            event
+          );
+        };
+
+        Paper.view.onClick = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          console.log(
+            "CanvasType.vue -> onMounted | Paper.view Click event",
+            event
+          );
+        };
+
+        Paper.view.onResize = function (event) {
+          console.log(
+            "CanvasType.vue -> onMounted | Paper.view.onResize event",
+            event
+          );
+        };
+
+        Paper.view.on("resize", function (event) {
+          console.log(
+            "CanvasType.vue -> onMounted | Paper.view Resize event",
+            event
+          );
+        });
+
+        project.view.on("resize", function (event) {
+          console.log(
+            "CanvasType.vue -> onMounted | project Resize event",
+            event
+          );
+        });
+
+        Paper.view.onFrame = function (event) {
+          // if (event.stopPropagation) {
+          //   event.stopPropagation();
+          // } else {
+          //   event.cancelBubble = true;
+          // }
+          // console.log("CanvasType.vue -> onMounted | Frame event", event);
+          // console.log(
+          //   "CanvasType.vue -> onMounted | Frame event",
+          //   props.item.width,
+          //   props.item.height
+          // );
+          // if (square.dragging) {
+          //   square.position = event.point;
+          // }
+          // updateShapes();
+          // console.log(
+          //   "CanvasType.vue -> onMounted | Frame event",
+          //   project.layers,
+          //   project.layers[0].children
+          // );
+        };
+
+        project.activeLayer.addChild(square);
+        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+      }
+      //Paper.view.draw();
+
+      // // 动态更新图像大小和位置
+      // function updateShapes() {
+      //   // var bounds = rect.bounds;
+      //   //image.position = bounds.center;
+      //   console.log("CanvasType.vue -> onMounted | updateShapes", square);
+
+      //   square.fillColor = props.item.settings.bgColor;
+      //   // square.scale(1, 1);
+      //   // project.view.draw();
+      // }
+
+      // project.view.on("resize", function (event) {
+      //   console.log(
+      //     "CanvasType.vue -> onMounted | project Resize event",
+      //     event
+      //   );
+      //   updateShapes();
+      // });
+
+      // Paper.view.onResize = function (event) {
+      //   console.log(
+      //     "CanvasType.vue -> onMounted | Paper.view.onResize event",
+      //     event
+      //   );
+      //   updateShapes();
+      // };
+
+      //   Paper.view.onFrame = function (event) {
+      //     // if (event.stopPropagation) {
+      //     //   event.stopPropagation();
+      //     // } else {
+      //     //   event.cancelBubble = true;
+      //     // }
+      //     // console.log("CanvasType.vue -> onMounted | Frame event", event);
+      //     // console.log(
+      //     //   "CanvasType.vue -> onMounted | Frame event",
+      //     //   props.item.width,
+      //     //   props.item.height
+      //     // );
+      //     // if (square.dragging) {
+      //     //   square.position = event.point;
+      //     // }
+      //     updateShapes();
+      //     // console.log(
+      //     //   "CanvasType.vue -> onMounted | Frame event",
+      //     //   project.layers,
+      //     //   project.layers[0].children
+      //     // );
+      //   };
+    });
+
+    const canvasClicked = (event) => {
+      console.log("Canvas Type -> canvasClicked | event", event);
+    };
+
     return {
       range,
       dispalyText,
@@ -509,12 +798,25 @@ export default defineComponent({
       refresh,
       objectRef,
       updateWeldModel,
+      canvasClicked,
     };
   },
 });
 </script>
 
 <style scoped>
+.canvas-viewport-wrapper {
+  /* width: 100vw;
+  height: 100vh; */
+  /* overflow: hidden;
+  position: absolute;
+  top: 0; */
+  /* position: absolute; */
+  background-color: rgb(136, 80, 197);
+  width: v-bind("item.width + 'px'");
+  height: v-bind("item.height + 'px'");
+}
+
 .object-title {
   text-align: center;
   min-width: 100%;
