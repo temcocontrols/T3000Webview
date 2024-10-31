@@ -66,7 +66,7 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "General", "Pipe", "Duct", "Room", "Metrics"];
+export const toolsCategories = ["Basic", "Pipe", "Duct", "Room", "Metrics"];
 
 export const tools = [
   {

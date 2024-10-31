@@ -597,7 +597,6 @@
               </q-menu>
 
               <object-type
-                v-if="item.cat !== 'General'"
                 ref="objectsRef"
                 :item="item"
                 :key="item.id + item.type"
@@ -610,7 +609,7 @@
                 @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel"
               />
-              <canvas-type
+              <!-- <canvas-type
                 v-if="item.cat === 'General'"
                 ref="objectsRef"
                 :item="item"
@@ -624,7 +623,7 @@
                 @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel"
               >
-              </canvas-type>
+              </canvas-type> -->
             </div>
 
             <vue-moveable :target="generalShapes"> </vue-moveable>
@@ -971,7 +970,7 @@ onMounted(() => {
   const myCanvas = document.getElementById("myCanvas");
   project.value = new Paper.Project(myCanvas);
 
-  console.log("IndexPage.vue -> onMounted -> appState", appState.value);
+  // console.log("IndexPage.vue -> onMounted -> appState", appState.value);
 
   // Paper.setup(document.getElementById("myCanvas"));
 
@@ -1378,7 +1377,7 @@ function onResizeStart(e) {
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
 
-  console.log("IndexPage.vue -> onResizeStart -> e", e);
+  // console.log("IndexPage.vue -> onResizeStart -> e", e);
 }
 
 // Handles resizing of an element
@@ -1393,15 +1392,15 @@ function onResize(e) {
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
 
-  console.log("IndexPage.vue -> onResize -> e", e.target);
-  console.log(
-    "IndexPage.vue -> onResize -> transform",
-    e.drag.beforeTranslate[0],
-    e.drag.beforeTranslate[1],
-    item.rotate,
-    item.scaleX,
-    item.scaleY
-  );
+  // console.log("IndexPage.vue -> onResize -> e", e.target);
+  // console.log(
+  //   "IndexPage.vue -> onResize -> transform",
+  //   e.drag.beforeTranslate[0],
+  //   e.drag.beforeTranslate[1],
+  //   item.rotate,
+  //   item.scaleX,
+  //   item.scaleY
+  // );
 }
 
 // Ends the resizing of an element
@@ -1416,13 +1415,13 @@ function onResizeEnd(e) {
 
   refreshObjects(); // Refresh objects after resizing
 
-  console.log("IndexPage.vue -> onResizeEnd -> e", e);
-  console.log(
-    "IndexPage.vue -> onResizeEnd -> w,h,trs",
-    e.lastEvent.width,
-    e.lastEvent.height,
-    e.lastEvent.drag.beforeTranslate
-  );
+  // console.log("IndexPage.vue -> onResizeEnd -> e", e);
+  // console.log(
+  //   "IndexPage.vue -> onResizeEnd -> w,h,trs",
+  //   e.lastEvent.width,
+  //   e.lastEvent.height,
+  //   e.lastEvent.drag.beforeTranslate
+  // );
 }
 
 // Starts rotating an element
@@ -1528,11 +1527,11 @@ function addObject(item, group = undefined, addToHistory = true) {
     appState.value.elementGuidelines.push(el);
   });
 
-  console.log(
-    "IndexPage.vue -> addObject | system will draw the objects to '.viewport'"
-  );
-  console.log("current=>", item);
-  console.log("appState=>", appState.value.items);
+  // console.log(
+  //   "IndexPage.vue -> addObject | system will draw the objects to '.viewport'"
+  // );
+  // console.log("current=>", item);
+  // console.log("appState=>", appState.value.items);
   return item;
 }
 
@@ -2150,8 +2149,7 @@ function weldSelected() {
   if (selectedItems1.some((item) => item.type === "Weld")) {
     $q.notify({
       type: "warning",
-      message:
-        "Currently not support to weld items that already contain a welded item.",
+      message: "Currently not supported!",
     });
     return;
   }
@@ -2625,7 +2623,7 @@ function lockToggle() {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-  console.log("IndexPage.vue -> objectClicked -> item", item);
+  // console.log("IndexPage.vue -> objectClicked -> item", item);
 
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
@@ -3030,7 +3028,7 @@ function drawGeneralObject(ev, tool) {
     } else {
       event.cancelBubble = true;
     }
-    console.log("CanvasType.vue -> onMounted | ellipse clicked", event);
+    // console.log("CanvasType.vue -> onMounted | ellipse clicked", event);
     this.fillColor = "red";
     ellipse.dragging = true;
   };
