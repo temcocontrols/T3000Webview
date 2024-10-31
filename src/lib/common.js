@@ -1,6 +1,5 @@
 // Import the necessary dependencies
 import { last } from "lodash";
-import { settings } from "paper/dist/paper-core";
 import { ref } from "vue";
 
 export const T3000_Data = ref({
