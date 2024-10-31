@@ -609,23 +609,7 @@
                 @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel"
               />
-              <!-- <canvas-type
-                v-if="item.cat === 'General'"
-                ref="objectsRef"
-                :item="item"
-                :key="item.id + item.type"
-                :class="{
-                  link: locked && item.t3Entry,
-                }"
-                :show-arrows="locked && !!item.t3Entry?.range"
-                @object-clicked="objectClicked(item)"
-                @auto-manual-toggle="autoManualToggle(item)"
-                @change-value="changeEntryValue"
-                @update-weld-model="updateWeldModel"
-              >
-              </canvas-type> -->
             </div>
-
             <vue-moveable :target="generalShapes"> </vue-moveable>
           </div>
         </div>
@@ -784,9 +768,6 @@ import {
 } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import AppsLibLayout from "src/layouts/AppsLibLayout.vue";
-import { transform } from "lodash";
-import * as Paper from "paper";
-import CanvasType from "src/components/CanvasType.vue";
 
 // Meta information for the application
 const metaData = {
@@ -877,15 +858,6 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-const generalShapes = ref([]);
-const project = ref(null);
-// Prevent automatic drawing of objects on the canvas if the path has been defined
-Paper.settings.insertItems = false;
-
-// const paperInstance = new Paper.PaperScope(); // Paper.js instance for drawing
-// let project = null; // Paper.js project instance
-// const tool = new Paper.Tool(); // Paper.js tool instance
-
 // Lifecycle hook for component mount
 onMounted(() => {
   // Set global navigation properties
@@ -962,25 +934,6 @@ onMounted(() => {
   setTimeout(() => {
     refreshMoveableGuides();
   }, 100);
-
-  // paperInstance.setup(document.getElementById("myCanvas")); // Setup paper.js instance
-  // project = new Paper.Project(document.getElementById("myCanvas")); // Create a new paper.js project
-  // tool.activate();
-
-  const myCanvas = document.getElementById("myCanvas");
-  project.value = new Paper.Project(myCanvas);
-
-  // console.log("IndexPage.vue -> onMounted -> appState", appState.value);
-
-  // Paper.setup(document.getElementById("myCanvas"));
-
-  // const circle = new Paper.Path.Circle({
-  //   center: [500, 100],
-  //   radius: 50,
-  //   fillColor: "red",
-  // });
-
-  // circle.strokeWidth = 2;
 });
 
 // Lifecycle hook for component unmount
@@ -1391,16 +1344,6 @@ function onResize(e) {
   e.target.style.width = `${e.width}px`;
   e.target.style.height = `${e.height}px`;
   e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
-
-  // console.log("IndexPage.vue -> onResize -> e", e.target);
-  // console.log(
-  //   "IndexPage.vue -> onResize -> transform",
-  //   e.drag.beforeTranslate[0],
-  //   e.drag.beforeTranslate[1],
-  //   item.rotate,
-  //   item.scaleX,
-  //   item.scaleY
-  // );
 }
 
 // Ends the resizing of an element
@@ -1414,14 +1357,6 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   refreshObjects(); // Refresh objects after resizing
-
-  // console.log("IndexPage.vue -> onResizeEnd -> e", e);
-  // console.log(
-  //   "IndexPage.vue -> onResizeEnd -> w,h,trs",
-  //   e.lastEvent.width,
-  //   e.lastEvent.height,
-  //   e.lastEvent.drag.beforeTranslate
-  // );
 }
 
 // Starts rotating an element
@@ -1526,12 +1461,6 @@ function addObject(item, group = undefined, addToHistory = true) {
   Array.from(lines).forEach(function (el) {
     appState.value.elementGuidelines.push(el);
   });
-
-  // console.log(
-  //   "IndexPage.vue -> addObject | system will draw the objects to '.viewport'"
-  // );
-  // console.log("current=>", item);
-  // console.log("appState=>", appState.value.items);
   return item;
 }
 
@@ -1596,7 +1525,6 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  // console.log("onSelectoDragEnd", e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -1634,8 +1562,6 @@ function onSelectoDragEnd(e) {
 // Draws an object based on the provided size, position, and tool settings
 function drawObject(size, pos, tool) {
   tool = tool || selectedTool.value;
-
-  // console.log("IndexPage.vue -> drawObject -> tool", tool);
 
   if (tool.type === "libItem") {
     addLibItem(tool.items, size, pos);
@@ -2090,15 +2016,6 @@ function drawWeldObject(selectedItems) {
 
   const transX = firstX < minX ? firstX : minX;
 
-  // console.log(
-  //   "index-page.drawweldobject",
-  //   selectedItems,
-  //   minX,
-  //   minY,
-  //   maxX,
-  //   maxY
-  // );
-
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
 
   let previous = selectedItems[0].zindex;
@@ -2114,8 +2031,6 @@ function drawWeldObject(selectedItems) {
     translate: [transX, minY],
     width: (maxX - minX) * scalPercentage,
     height: (maxY - minY) * scalPercentage,
-    // width: maxX - minX,
-    // height: maxY - minY,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
@@ -2970,135 +2885,21 @@ function convertObjectType(item, type) {
   item.settings = newSettings;
 }
 
-// Draw a rectangle using Paper.js when the Rectangle tool is selected
-function drawGeneralObject(ev, tool) {
-  const rect = new Paper.Path.Rectangle({
-    point: [ev.clientX, ev.clientY],
-    size: [100, 100],
-    fillColor: "blue",
-    selected: true,
-  });
-  rect.strokeWidth = 2;
-  rect.strokeColor = "black";
-
-  const shape1 = new Paper.Path.Circle({
-    center: [150, 150],
-    radius: 50,
-    fillColor: "#7f5ea7",
-    name: "shape1-Circle",
-    selected: true,
-  });
-
-  const ellipse = new Paper.Path.Ellipse({
-    point: [200, 200],
-    size: [100, 50],
-    fillColor: "red",
-    selected: true,
-  });
-
-  const svgString = `
-    <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-     <path d="M 1.6 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 1.6 24.6 L 6.4 15 Z" fill="rgb(241, 243, 244)" stroke="#000"
-      stroke-width="2" stroke-miterlimit="10"></path>
-    </svg>
-  `;
-
-  const svgItem = new Paper.Group();
-  const svg = new Paper.Path.Rectangle({
-    point: [ev.clientX, ev.clientY],
-    size: [100, 100],
-    fillColor: "blue",
-    selected: true,
-  });
-  svg.strokeWidth = 2;
-  svg.strokeColor = "black";
-
-  const parser = new DOMParser();
-  const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
-  const svgElement = svgDoc.documentElement;
-
-  const importedSvg = Paper.project.importSVG(svgElement);
-  importedSvg.position = new Paper.Point(ev.clientX, ev.clientY);
-
-  svgItem.addChild(importedSvg);
-
-  ellipse.onMouseDown = function (event) {
-    if (event.stopPropagation) {
-      event.stopPropagation();
-    } else {
-      event.cancelBubble = true;
-    }
-    // console.log("CanvasType.vue -> onMounted | ellipse clicked", event);
-    this.fillColor = "red";
-    ellipse.dragging = true;
-  };
-
-  Paper.view.onMouseMove = function (event) {
-    if (event.stopPropagation) {
-      event.stopPropagation();
-    } else {
-      event.cancelBubble = true;
-    }
-    if (ellipse.dragging) {
-      ellipse.position = event.point;
-    }
-  };
-
-  Paper.view.onMouseUp = function (event) {
-    if (event.stopPropagation) {
-      event.stopPropagation();
-    } else {
-      event.cancelBubble = true;
-    }
-    ellipse.dragging = false;
-  };
-
-  // generalShapes.value.push(rect);
-
-  project.value.activeLayer.addChild(ellipse);
-}
-
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  if (tool.name.startsWith("G_")) {
-    //draw general shapes to myCanvas
-    // drawGeneralObject(ev, tool);
-    drawObject(
-      { width: 100, height: 100 },
-      {
-        clientX: ev.clientX,
-        clientY: ev.clientY,
-        top: ev.clientY,
-        left: ev.clientX,
-      },
-      tool
-    );
-  } else {
-    drawObject(
-      { width: 60, height: 60 },
-      {
-        clientX: ev.clientX,
-        clientY: ev.clientY,
-        top: ev.clientY,
-        left: ev.clientX,
-      },
-      tool
-    );
-  }
+  drawObject(
+    { width: 60, height: 60 },
+    {
+      clientX: ev.clientX,
+      clientY: ev.clientY,
+      top: ev.clientY,
+      left: ev.clientX,
+    },
+    tool
+  );
 }
 
 const updateWeldModel = (weldModel, itemList) => {
-  // console.log(
-  //   "IndexPage.vue -> updateWeldModel | recieve from child",
-  //   weldModel,
-  //   itemList
-  // );
-
-  // console.log(
-  //   "IndexPage.vue -> updateWeldModel | origin appState",
-  //   appState.value.items
-  // );
-
   appState.value.items.map((item) => {
     if (item.type === "Weld" && item.id === weldModel.id) {
       item.settings.weldItems = itemList;
