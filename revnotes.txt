@@ -1,0 +1,3 @@
+[2024-11-01]
+1.add a toolbar along the top with menu [Edit] and [Object]'s all options.
+2.add a new option "Weld Selected" to menu [Edit] and top toolbar. Allow user to weld two selected ducts into one duct.
