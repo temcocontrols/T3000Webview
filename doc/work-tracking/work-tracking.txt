@@ -32,3 +32,7 @@
 1. continue working on the new functions
 2. try to add a new vue component for canvas drawing, integrate it into vue-moveable and vue-selecto,
 the existing components (moveable,selecto) may not suitable for transfering the shapes into lines and points.
+
+2024-10-31
+1. working on the new function, try to use another library to implement the logic
+2. merge 'top toolbar','weld selected' code to main branch for releasing new version
