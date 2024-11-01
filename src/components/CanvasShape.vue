@@ -11,6 +11,8 @@ export default {
   mounted() {
     paper.setup(this.$refs.myCanvas);
 
+    paper.settings.insertItems = true;
+
     const points = [
       new paper.Point(100, 150),
       new paper.Point(200, 250),
@@ -47,29 +49,27 @@ export default {
       });
 
       function makePreviousContinue() {
-        // if (index === 0) {
-        //   const lastLine = lineObjects[lineObjects.length - 1];
-        //   lastLine.endPoint.position = startCircle.position;
-        //   lastLine.path.segments[1].point = startCircle.position;
-
-        //   console.log("current line is first line");
-        //   console.log("found last line", lastLine);
-        // }
-
         if (index > 0) {
           const previousLine = lineObjects[index - 1];
           previousLine.endPoint.position = startCircle.position;
           previousLine.path.segments[1].point = startCircle.position;
-
-          console.log("current line is not first line");
-          console.log("found previous line", previousLine);
+        } else {
+          const lastLine = lineObjects[lineObjects.length - 1];
+          lastLine.endPoint.position = startCircle.position;
+          lastLine.path.segments[1].point = startCircle.position;
         }
       }
 
       function makeNextContinue() {
-        const nextLine = lineObjects[index + 1];
-        nextLine.startPoint.position = endCircle.position;
-        nextLine.path.segments[0].point = endCircle.position;
+        if (index === lineObjects.length - 1) {
+          const firstLine = lineObjects[0];
+          firstLine.startPoint.position = endCircle.position;
+          firstLine.path.segments[0].point = endCircle.position;
+        } else {
+          const nextLine = lineObjects[index + 1];
+          nextLine.startPoint.position = endCircle.position;
+          nextLine.path.segments[0].point = endCircle.position;
+        }
       }
 
       function updateShapes() {
@@ -82,6 +82,10 @@ export default {
           const previousLine = lineObjects[index - 1];
           previousLine.endPoint.position = newLocation;
           previousLine.path.segments[1].point = newLocation;
+        } else {
+          const lastLine = lineObjects[lineObjects.length - 1];
+          lastLine.endPoint.position = newLocation;
+          lastLine.path.segments[1].point = newLocation;
         }
       }
 
@@ -187,14 +191,27 @@ export default {
     });
     */
 
+    /*
+    // Ensure the paths are closed to fill the inner color
+    lineObjects.forEach((lineObj) => {
+      lineObj.path.closed = true;
+      console.log("lineObj", lineObj);
+    });
+
     const cp1 = new paper.CompoundPath({
       children: lineObjects.map((lineObj) => lineObj.path),
-      // children: childrenTest,
-      // children: [path1, path2, path3, path4, path5, path6, path7],
       strokeColor: "#90ff",
       strokeWidth: 20,
       fillColor: "#f0f",
     });
+
+    // cp1.simplify();
+    cp1.setClosed(true);
+
+    // Check if the compound path is closed
+    const isClosed = cp1.children.every((child) => child.closed);
+    console.log("Is compound path closed?", isClosed);
+    console.log("the closed path is ", cp1.closePath());
 
     console.log("compoundPath", cp1);
 
@@ -214,6 +231,9 @@ export default {
     var path22 = new paper.Path.Rectangle([50, 50], [200, 200]);
     var path33 = new paper.Path.Rectangle([0, 0], [400, 400]);
     // var cp2 = new paper.CompoundPath(path11, path22, path33);
+    */
+
+    // paper.project.activeLayer.addChild();
 
     // cp2.fillColor = "#f0f";
 
@@ -265,7 +285,7 @@ export default {
     // };
 
     // console.log("path", path);
-    paper.view.draw();
+    //paper.view.draw();
     // paper.view.draw();
 
     // function drawLine(startPoint, endPoint) {
