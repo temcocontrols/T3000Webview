@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { fill } from "lodash";
 import paper from "paper";
 
 export default {
@@ -20,9 +21,8 @@ export default {
       new paper.Point(100, 150), // Closing the shape by connecting back to the first point
     ];
 
-    const lines = [];
-
-    const lineObjects = points.slice(0, -1).map((point, index) => {
+    let lineObjects = [];
+    lineObjects = points.slice(0, -1).map((point, index) => {
       const startPoint = point;
       const endPoint = points[index + 1];
 
@@ -43,50 +43,41 @@ export default {
         to: endPoint,
         strokeColor: "black",
         strokeWidth: 8,
+        fillColor: "green",
       });
 
-      function makeLineClosed() {
-        if (index === 0) {
-          const lastLine = lineObjects[lineObjects.length - 1];
-          lastLine.endPoint.position = startCircle.position;
-          lastLine.path.segments[1].point = startCircle.position;
-
-          console.log("current line is first line");
-          console.log("found last line", lastLine);
-        }
-        // if (index === lineObjects.length - 1) {
-        //   const firstLine = lineObjects[0];
-        //   firstLine.startPoint.position = endCircle.position;
-        //   firstLine.path.segments[0].point = endCircle.position;
-        // }
+      function makePreviousContinue() {
         // if (index === 0) {
-        //   startCircle.onMouseDrag = function (event) {
-        //     this.position = this.position.add(event.delta);
-        //     updateShapes();
-        //     const lastLine = lineObjects[lineObjects.length - 1];
-        //     lastLine.endPoint.position = this.position;
-        //     lastLine.path.segments[1].point = this.position;
-        //   };
+        //   const lastLine = lineObjects[lineObjects.length - 1];
+        //   lastLine.endPoint.position = startCircle.position;
+        //   lastLine.path.segments[1].point = startCircle.position;
+
+        //   console.log("current line is first line");
+        //   console.log("found last line", lastLine);
         // }
-        // if (index === lineObjects.length - 1) {
-        //   endCircle.onMouseDrag = function (event) {
-        //     this.position = this.position.add(event.delta);
-        //     updateShapes();
-        //     const firstLine = lineObjects[0];
-        //     firstLine.startPoint.position = this.position;
-        //     firstLine.path.segments[0].point = this.position;
-        //   };
-        // }
+
+        if (index > 0) {
+          const previousLine = lineObjects[index - 1];
+          previousLine.endPoint.position = startCircle.position;
+          previousLine.path.segments[1].point = startCircle.position;
+
+          console.log("current line is not first line");
+          console.log("found previous line", previousLine);
+        }
+      }
+
+      function makeNextContinue() {
+        const nextLine = lineObjects[index + 1];
+        nextLine.startPoint.position = endCircle.position;
+        nextLine.path.segments[0].point = endCircle.position;
       }
 
       function updateShapes() {
         line.segments[0].point = startCircle.position;
         line.segments[1].point = endCircle.position;
-
-        makeLineClosed();
       }
 
-      function updatePreviousLine(newDelta, newLocation) {
+      function updatePreviousLine(newLocation) {
         if (index > 0) {
           const previousLine = lineObjects[index - 1];
           previousLine.endPoint.position = newLocation;
@@ -94,8 +85,12 @@ export default {
         }
       }
 
-      function updateNextLine(newDelta, newLocation) {
-        if (index < lineObjects.length - 1) {
+      function updateNextLine(newLocation) {
+        if (index === lineObjects.length - 1) {
+          const firstLine = lineObjects[0];
+          firstLine.startPoint.position = newLocation;
+          firstLine.path.segments[0].point = newLocation;
+        } else {
           const nextLine = lineObjects[index + 1];
           nextLine.startPoint.position = newLocation;
           nextLine.path.segments[0].point = newLocation;
@@ -105,11 +100,13 @@ export default {
       startCircle.onMouseDrag = function (event) {
         this.position = this.position.add(event.delta);
         updateShapes();
+        makePreviousContinue();
       };
 
       endCircle.onMouseDrag = function (event) {
         this.position = this.position.add(event.delta);
         updateShapes();
+        makeNextContinue();
       };
 
       line.onMouseDrag = function (event) {
@@ -117,8 +114,9 @@ export default {
         startCircle.position = startCircle.position.add(delta);
         endCircle.position = endCircle.position.add(delta);
         updateShapes();
-        updatePreviousLine(delta, startCircle.position);
-        updateNextLine(delta, endCircle.position);
+
+        updatePreviousLine(startCircle.position);
+        updateNextLine(endCircle.position);
       };
 
       return {
@@ -131,7 +129,144 @@ export default {
 
     console.log(lineObjects);
 
+    /*
+    const path1 = new paper.Path({
+      segments: [points[0], points[1]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path2 = new paper.Path({
+      segments: [points[1], points[2]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path3 = new paper.Path({
+      segments: [points[2], points[3]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path4 = new paper.Path({
+      segments: [points[3], points[4]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path5 = new paper.Path({
+      segments: [points[4], points[5]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path6 = new paper.Path({
+      segments: [points[5], points[6]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    const path7 = new paper.Path({
+      segments: [points[6], points[0]],
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+    */
+
+    const cp1 = new paper.CompoundPath({
+      children: lineObjects.map((lineObj) => lineObj.path),
+      // children: childrenTest,
+      // children: [path1, path2, path3, path4, path5, path6, path7],
+      strokeColor: "#90ff",
+      strokeWidth: 20,
+      fillColor: "#f0f",
+    });
+
+    console.log("compoundPath", cp1);
+
+    cp1.onMouseDrag = function (event) {
+      console.log("compoundPath dragged");
+      const delta = event.delta;
+      lineObjects.forEach((lineObj) => {
+        console.log("lineObj in compoundPath", lineObj);
+        // lineObj.startPoint.position = lineObj.startPoint.position.add(delta);
+        // lineObj.endPoint.position = lineObj.endPoint.position.add(delta);
+        // lineObj.path.segments[0].point = lineObj.startPoint.position;
+        // lineObj.path.segments[1].point = lineObj.endPoint.position;
+      });
+    };
+
+    var path11 = new paper.Path.Rectangle([100, 20], [100, 100]);
+    var path22 = new paper.Path.Rectangle([50, 50], [200, 200]);
+    var path33 = new paper.Path.Rectangle([0, 0], [400, 400]);
+    // var cp2 = new paper.CompoundPath(path11, path22, path33);
+
+    // cp2.fillColor = "#f0f";
+
+    // const path = new paper.Path({
+    //   segments: points,
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // path.onMouseDrag = function (event) {
+    //   const delta = event.delta;
+    //   points.forEach((point, index) => {
+    //     point.x += delta.x;
+    //     point.y += delta.y;
+    //     path.segments[index].point = point;
+    //   });
+    //   path.position = path.position.add(delta);
+    // };
+
+    // points.forEach((point, index) => {
+    //   const circle = new paper.Path.Circle({
+    //     center: point,
+    //     radius: 10,
+    //     fillColor: "yellow",
+    //   });
+
+    //   circle.onMouseDrag = function (event) {
+    //     this.position = this.position.add(event.delta);
+    //     path.segments[index].point = this.position;
+    //   };
+    // });
+
+    // path.segments.forEach((segment, index) => {
+    //   console.log("segment", segment);
+    //   segment.onMouseDrag = function (event) {
+    //     console.log("segment point", this.point);
+    //     this.point = this.point.add(event.delta);
+    //     path.segments[index].point = this.point;
+    //   };
+    // });
+
+    // path.onMouseDrag = function (event) {
+    //   const delta = event.delta;
+    //   path.segments.forEach((segment) => {
+    //     segment.point = segment.point.add(delta);
+    //   });
+    // };
+
+    // console.log("path", path);
     paper.view.draw();
+    // paper.view.draw();
 
     // function drawLine(startPoint, endPoint) {
     //   // Create the circle shapes for the points
