@@ -44,14 +44,14 @@
               top: cursorIconPos.y + 'px',
             }" />
           <!-- Vue Selecto for Selectable Items -->
-          <!-- <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []" :hitRate="20"
+          <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []" :hitRate="20"
             :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']" :ratio="0"
             :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
             @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-          </vue-selecto> -->
+          </vue-selecto>
           <!-- Moveable Component for Draggable/Resizable Items -->
           <div ref="viewport">
-            <!-- <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
+            <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
               :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
               :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
                 top: true,
@@ -72,7 +72,7 @@
               @rotate="onRotate" @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart"
               @resizeGroup="onResizeGroup" @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
               @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd">
-            </vue-moveable> -->
+            </vue-moveable>
 
             <!-- Context Menu -->
             <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
@@ -419,13 +419,23 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData, } from "../../lib/common";
+import {
+  tools,
+  T3_Types,
+  getObjectActiveValue,
+  T3000_Data,
+  user,
+  globalNav,
+  demoDeviceData,
+} from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 
 // Meta information for the application
-const metaData = { title: "HVAC Drawer", };
+const metaData = {
+  title: "HVAC Drawer",
+};
 useMeta(metaData); // Set the meta information
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -447,7 +457,12 @@ const keepRatio = ref(false); // Maintain aspect ratio for resizing
 const continuesObjectTypes = ["Duct", "Wall"];
 
 // State of the import JSON dialog
-const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null, });
+const importJsonDialog = ref({
+  addedCount: 0,
+  active: false,
+  uploadBtnLoading: false,
+  data: null,
+});
 const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
@@ -487,7 +502,13 @@ const emptyProject = {
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
 };
-const emptyLib = { version: process.env.VERSION, imagesCount: 0, objLibItemsCount: 0, images: [], objLib: [], };
+const emptyLib = {
+  version: process.env.VERSION,
+  imagesCount: 0,
+  objLibItemsCount: 0,
+  images: [],
+  objLib: [],
+};
 
 // State references for the library and application state
 const library = ref(cloneDeep(emptyLib));

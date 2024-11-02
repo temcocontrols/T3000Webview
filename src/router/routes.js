@@ -17,8 +17,13 @@ const routes = [
     children: [
       {
         path: "",
-        name: "hvac-new",
+        name: "hvac1",
         component: () => import("pages/HvacDrawer/IndexPage2.vue"),
+      },
+      {
+        path: "t2",
+        name: "hvac2",
+        component: () => import("pages/HvacDrawer/IndexPage3.vue"),
       },
     ],
   },
