@@ -1,5 +1,11 @@
 <template>
-  <canvas id="myCanvas" ref="myCanvas" width="1000" height="1000"></canvas>
+  <canvas
+    id="myCanvas"
+    ref="myCanvas"
+    width="1000"
+    height="1000"
+    resize
+  ></canvas>
   <div class="buttons">
     <button @click="performUnion">Union</button>
     <button @click="performDifference">Difference</button>
@@ -8,7 +14,6 @@
 </template>
 
 <script>
-import { fill } from "lodash";
 import paper from "paper";
 
 let path1 = null;
@@ -16,6 +21,12 @@ let path2 = null;
 
 export default {
   name: "CanvasShape",
+  props: {
+    item: {
+      type: Object,
+      required: true,
+    },
+  },
   mounted() {
     paper.setup(this.$refs.myCanvas);
 

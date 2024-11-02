@@ -92,11 +92,30 @@
             }"
           />
           <!-- Vue Selecto for Selectable Items -->
-
+          <vue-selecto
+            ref="selecto"
+            dragContainer=".viewport"
+            :selectableTargets="!locked ? targets : []"
+            :hitRate="20"
+            :selectByClick="!locked"
+            :selectFromInside="true"
+            :toggleContinueSelect="['shift']"
+            :ratio="0"
+            :boundContainer="true"
+            :getElementRect="getElementInfo"
+            @dragStart="onSelectoDragStart"
+            @selectEnd="onSelectoSelectEnd"
+            @dragEnd="onSelectoDragEnd"
+            :dragCondition="selectoDragCondition"
+          >
+          </vue-selecto>
           <!-- Moveable Component for Draggable/Resizable Items -->
           <div ref="viewport">
             <vue-moveable
               ref="moveable"
+              :draggable="!locked"
+              :resizable="!locked"
+              :rotatable="!locked"
               :keepRatio="keepRatio"
               :target="appState.selectedTargets"
               :snappable="snappable && !locked"
