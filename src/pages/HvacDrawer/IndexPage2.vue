@@ -29,10 +29,10 @@
           </q-btn>
         </div>
         <!-- Viewport Area -->
-        <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick" @dragover="($event) => {
-          $event.preventDefault();
-        }
-          ">
+        <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
+          @dragover="($event) => { $event.preventDefault(); }">
+          <!-- <div class="viewport"> -->
+          <canvas id="hvacCanvas" resize stats></canvas>
           <!-- Cursor Icon -->
           <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
             ? selectedTool.icon
@@ -423,9 +423,10 @@ import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, dem
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
+import * as fabric from 'fabric';
 
 // Meta information for the application
-const metaData = { title: "HVAC Drawer", };
+const metaData = { title: "HVAC Drawer" };
 useMeta(metaData); // Set the meta information
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -447,7 +448,12 @@ const keepRatio = ref(false); // Maintain aspect ratio for resizing
 const continuesObjectTypes = ["Duct", "Wall"];
 
 // State of the import JSON dialog
-const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null, });
+const importJsonDialog = ref({
+  addedCount: 0,
+  active: false,
+  uploadBtnLoading: false,
+  data: null,
+});
 const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
@@ -487,7 +493,13 @@ const emptyProject = {
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
 };
-const emptyLib = { version: process.env.VERSION, imagesCount: 0, objLibItemsCount: 0, images: [], objLib: [], };
+const emptyLib = {
+  version: process.env.VERSION,
+  imagesCount: 0,
+  objLibItemsCount: 0,
+  images: [],
+  objLib: [],
+};
 
 // State references for the library and application state
 const library = ref(cloneDeep(emptyLib));
@@ -499,6 +511,8 @@ const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
+
+let hvacCanvas = null;
 
 // Lifecycle hook for component mount
 onMounted(() => {
@@ -576,6 +590,8 @@ onMounted(() => {
   setTimeout(() => {
     refreshMoveableGuides();
   }, 100);
+
+  initCanvas();
 });
 
 // Lifecycle hook for component unmount
@@ -583,6 +599,69 @@ onUnmounted(() => {
   if (panzoomInstance?.dispose) return;
   panzoomInstance.dispose();
 });
+
+////////////////////////////////////////////////////////////////////
+
+function initCanvas() {
+  var canvasEl = document.getElementById('hvacCanvas');
+
+  hvacCanvas = new fabric.Canvas(canvasEl, {
+    // fireRightClick: true,
+    width: canvasEl.parentNode.offsetWidth,
+    height: canvasEl.parentNode.offsetHeight,
+  });
+
+  const circle = new fabric.Circle({
+    radius: 50,
+    fill: 'red',
+    left: 150,
+    top: 100,
+  });
+
+  const rectangle = new fabric.Rect({
+    left: 100,
+    top: 100,
+    fill: 'blue',
+    width: 200,
+    height: 100,
+  });
+
+  hvacCanvas.add(rectangle);
+
+  // hvacCanvas.value.add(circle);
+  hvacCanvas.add(circle);
+}
+
+
+////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
@@ -2631,12 +2710,22 @@ function addOnlineLibImage(oItem) {
 }
 </script>
 <style>
+#hvacCanvas {
+  /* background-color: red; */
+  width: 100vw;
+  height: 100vh;
+  /* background-color: aquamarine; */
+  /* background: transparent; */
+}
+
+/** ------------------------------------ */
 .viewport-wrapper {
   width: 100%;
   height: 100vh;
   overflow: hidden;
   position: absolute;
   top: 0;
+  /* background-color: #f8f; */
 }
 
 .viewport {
