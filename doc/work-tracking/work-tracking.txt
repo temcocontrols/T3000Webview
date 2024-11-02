@@ -36,3 +36,7 @@ the existing components (moveable,selecto) may not suitable for transfering the 
 2024-10-31
 1. working on the new function, try to use another library to implement the logic
 2. merge 'top toolbar','weld selected' code to main branch for releasing new version
+
+2024-11-01
+1. trying to use a different way to deal with the shapes,
+use paperjs to redraw the shapes as lines and points, make them controlable.

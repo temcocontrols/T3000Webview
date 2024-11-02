@@ -23,6 +23,7 @@ export default {
       new paper.Point(100, 150), // Closing the shape by connecting back to the first point
     ];
 
+    /*
     let lineObjects = [];
     lineObjects = points.slice(0, -1).map((point, index) => {
       const startPoint = point;
@@ -133,6 +134,8 @@ export default {
 
     console.log(lineObjects);
 
+    */
+
     /*
     const path1 = new paper.Path({
       segments: [points[0], points[1]],
@@ -195,7 +198,6 @@ export default {
     // Ensure the paths are closed to fill the inner color
     lineObjects.forEach((lineObj) => {
       lineObj.path.closed = true;
-      console.log("lineObj", lineObj);
     });
 
     const cp1 = new paper.CompoundPath({
@@ -205,37 +207,16 @@ export default {
       fillColor: "#f0f",
     });
 
-    // cp1.simplify();
-    cp1.setClosed(true);
-
-    // Check if the compound path is closed
-    const isClosed = cp1.children.every((child) => child.closed);
-    console.log("Is compound path closed?", isClosed);
-    console.log("the closed path is ", cp1.closePath());
-
-    console.log("compoundPath", cp1);
-
     cp1.onMouseDrag = function (event) {
-      console.log("compoundPath dragged");
-      const delta = event.delta;
-      lineObjects.forEach((lineObj) => {
-        console.log("lineObj in compoundPath", lineObj);
-        // lineObj.startPoint.position = lineObj.startPoint.position.add(delta);
-        // lineObj.endPoint.position = lineObj.endPoint.position.add(delta);
-        // lineObj.path.segments[0].point = lineObj.startPoint.position;
-        // lineObj.path.segments[1].point = lineObj.endPoint.position;
-      });
+      // const delta = event.delta;
+      // lineObjects.forEach((lineObj) => {
+      //   lineObj.startPoint.position = lineObj.startPoint.position.add(delta);
+      //   lineObj.endPoint.position = lineObj.endPoint.position.add(delta);
+      //   lineObj.path.segments[0].point = lineObj.startPoint.position;
+      //   lineObj.path.segments[1].point = lineObj.endPoint.position;
+      // });
     };
-
-    var path11 = new paper.Path.Rectangle([100, 20], [100, 100]);
-    var path22 = new paper.Path.Rectangle([50, 50], [200, 200]);
-    var path33 = new paper.Path.Rectangle([0, 0], [400, 400]);
-    // var cp2 = new paper.CompoundPath(path11, path22, path33);
     */
-
-    // paper.project.activeLayer.addChild();
-
-    // cp2.fillColor = "#f0f";
 
     // const path = new paper.Path({
     //   segments: points,
@@ -244,16 +225,6 @@ export default {
     //   fillColor: "#f2f5",
     //   closed: true,
     // });
-
-    // path.onMouseDrag = function (event) {
-    //   const delta = event.delta;
-    //   points.forEach((point, index) => {
-    //     point.x += delta.x;
-    //     point.y += delta.y;
-    //     path.segments[index].point = point;
-    //   });
-    //   path.position = path.position.add(delta);
-    // };
 
     // points.forEach((point, index) => {
     //   const circle = new paper.Path.Circle({
@@ -269,24 +240,144 @@ export default {
     // });
 
     // path.segments.forEach((segment, index) => {
-    //   console.log("segment", segment);
     //   segment.onMouseDrag = function (event) {
-    //     console.log("segment point", this.point);
+    //     console.log("path.segments", path.segments);
+
     //     this.point = this.point.add(event.delta);
+    //     points[index] = this.point;
     //     path.segments[index].point = this.point;
     //   };
     // });
 
-    // path.onMouseDrag = function (event) {
+    // const path1 = new paper.Path({
+    //   segments: [
+    //     lineObjects[0].startPoint.position,
+    //     lineObjects[1].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const path2 = new paper.Path({
+    //   segments: [
+    //     lineObjects[1].startPoint.position,
+    //     lineObjects[2].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const path3 = new paper.Path({
+    //   segments: [
+    //     lineObjects[2].startPoint.position,
+    //     lineObjects[3].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const path4 = new paper.Path({
+    //   segments: [
+    //     lineObjects[3].startPoint.position,
+    //     lineObjects[4].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const path5 = new paper.Path({
+    //   segments: [
+    //     lineObjects[4].startPoint.position,
+    //     lineObjects[5].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const path6 = new paper.Path({
+    //   segments: [
+    //     lineObjects[5].startPoint.position,
+    //     lineObjects[0].startPoint.position,
+    //   ],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    //   closed: true,
+    // });
+
+    // const compoundPath = new paper.CompoundPath({
+    //   children: [path1, path2, path3, path4, path5, path6],
+    //   strokeColor: "black",
+    //   strokeWidth: 8,
+    //   fillColor: "#f2f5",
+    // });
+
+    // compoundPath.closed = true;
+    // compoundPath.setClosed(true);
+    // compoundPath.fillColor = "#f2f5";
+
+    // compoundPath.children.forEach((path, index) => {
+    //   path.onClick = function (event) {
+    //     console.log("path clicked", index);
+    //   };
+
+    //   path.onMouseDrag = function (event) {
+    //     const delta = event.delta;
+    //     lineObjects[index].startPoint.position =
+    //       lineObjects[index].startPoint.position.add(delta);
+    //     lineObjects[index].endPoint.position =
+    //       lineObjects[index].endPoint.position.add(delta);
+    //     lineObjects[index].path.segments[0].point =
+    //       lineObjects[index].startPoint.position;
+    //     lineObjects[index].path.segments[1].point =
+    //       lineObjects[index].endPoint.position;
+    //   };
+    // });
+
+    const polygon = new paper.Path({
+      segments: points,
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "#f2f5",
+      closed: true,
+    });
+
+    // Enable dragging for each point in the polygon
+    points.forEach((point, index) => {
+      const circle = new paper.Path.Circle({
+        center: point,
+        radius: 10,
+        fillColor: "yellow",
+      });
+
+      circle.onMouseDrag = function (event) {
+        this.position = this.position.add(event.delta);
+        polygon.segments[index].point = this.position;
+      };
+    });
+
+    // Draw the shapes on the canvas
+    paper.view.draw();
+
+    // compoundPath.onMouseDrag = function (event) {
     //   const delta = event.delta;
-    //   path.segments.forEach((segment) => {
-    //     segment.point = segment.point.add(delta);
+    //   lineObjects.forEach((lineObj) => {
+    //     lineObj.startPoint.position = lineObj.startPoint.position.add(delta);
+    //     lineObj.endPoint.position = lineObj.endPoint.position.add(delta);
+    //     lineObj.path.segments[0].point = lineObj.startPoint.position;
+    //     lineObj.path.segments[1].point = lineObj.endPoint.position;
     //   });
     // };
-
-    // console.log("path", path);
-    //paper.view.draw();
-    // paper.view.draw();
 
     // function drawLine(startPoint, endPoint) {
     //   // Create the circle shapes for the points
