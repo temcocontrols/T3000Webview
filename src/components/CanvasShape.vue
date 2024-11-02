@@ -1,11 +1,5 @@
 <template>
-  <canvas
-    id="myCanvas"
-    ref="myCanvas"
-    width="1000"
-    height="1000"
-    resize
-  ></canvas>
+  <canvas id="myCanvas" ref="myCanvas" width="1000" height="800"></canvas>
   <div class="buttons">
     <button @click="performUnion">Union</button>
     <button @click="performDifference">Difference</button>
