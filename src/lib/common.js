@@ -119,10 +119,16 @@ export const tools = [
     cat: ["General"],
     settings: {
       bgColor: {
-        value: "#659dc5",
+        value: "#000",
         type: "color",
         label: "Background Color",
         id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
       },
     },
   },
@@ -133,10 +139,16 @@ export const tools = [
     cat: ["General"],
     settings: {
       bgColor: {
-        value: "#659dc5",
+        value: "#000",
         type: "color",
         label: "Background Color",
         id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
       },
     },
   },
@@ -147,10 +159,16 @@ export const tools = [
     cat: ["General"],
     settings: {
       bgColor: {
-        value: "#659dc5",
+        value: "#000",
         type: "color",
         label: "Background Color",
         id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
       },
     },
   },
@@ -161,10 +179,16 @@ export const tools = [
     cat: ["General"],
     settings: {
       bgColor: {
-        value: "#659dc5",
+        value: "#000",
         type: "color",
         label: "Background Color",
         id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
       },
     },
   },
