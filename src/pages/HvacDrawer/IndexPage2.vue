@@ -300,19 +300,19 @@
                 </q-list>
               </q-menu>
 
-              <object-type ref="objectsRef" v-if="item.cat !== 'General'" :item="item" :key="item.id + item.type"
+              <!-- <object-type ref="objectsRef" v-if="item.cat !== 'General'" :item="item" :key="item.id + item.type"
                 :class="{
                   link: locked && item.t3Entry,
                 }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                @update-weld-model="updateWeldModel" />
-              <CanvasShape v-if="item.cat === 'General'" ref="objectsRef" :item="item" :key="item.id + item.type"
+                @update-weld-model="updateWeldModel" /> -->
+              <!-- <CanvasShape v-if="item.cat === 'General'" ref="objectsRef" :item="item" :key="item.id + item.type"
                 :class="{
                   link: locked && item.t3Entry,
                 }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel">
-              </CanvasShape>
+              </CanvasShape> -->
             </div>
           </div>
         </div>
@@ -424,6 +424,7 @@ import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 import * as fabric from 'fabric';
+import paper from 'paper';
 
 // Meta information for the application
 const metaData = { title: "HVAC Drawer" };
@@ -605,31 +606,678 @@ onUnmounted(() => {
 function initCanvas() {
   var canvasEl = document.getElementById('hvacCanvas');
 
-  hvacCanvas = new fabric.Canvas(canvasEl, {
-    // fireRightClick: true,
-    width: canvasEl.parentNode.offsetWidth,
-    height: canvasEl.parentNode.offsetHeight,
+  // hvacCanvas = new fabric.Canvas(canvasEl, {
+  //   // fireRightClick: true,
+  //   width: canvasEl.parentNode.offsetWidth,
+  //   height: canvasEl.parentNode.offsetHeight,
+  // });
+
+  // Initialize Paper.js
+  paper.setup(canvasEl);
+  paper.settings.insertItems = true;
+
+  console.log('the paper is', paper);
+}
+
+function clearCanvas() {
+  hvacCanvas?.clear();
+}
+
+function renderCanvasObjects() {
+  console.log('start to render canvas objects', appState.value.items);
+
+  clearCanvas();
+
+  // appState.value.items.map((item, index) => {
+
+  //   const circle = new fabric.Circle({
+  //     radius: 50,
+  //     fill: 'red',
+  //     left: 150,
+  //     top: 100,
+  //   });
+
+  //   const rectangle = new fabric.Rect({
+  //     left: 100,
+  //     top: 100,
+  //     fill: 'blue',
+  //     width: 200,
+  //     height: 100,
+  //   });
+
+  //   hvacCanvas.add(rectangle);
+
+  //   // hvacCanvas.value.add(circle);
+  //   hvacCanvas.add(circle);
+  // });
+
+  // const p1 = drawPolygon();
+  // const p2 = drawPolygonWith7Points();
+  // const pts = checkIntersectionPoints(p1, p2);
+  // console.log('the intersection points', pts);
+
+
+  // Example usage:
+  const points = [
+    { x: 500, y: 100 },
+    { x: 550, y: 150 },
+    { x: 600, y: 200 },
+    { x: 650, y: 150 },
+    { x: 700, y: 200 },
+    { x: 750, y: 150 },
+    { x: 800, y: 200 },
+  ];
+
+  //drawLinesWithPoints(points);
+
+
+  // // Example usage:
+  // const points = [
+  //   { x: 100, y: 100 },
+  //   { x: 150, y: 150 },
+  //   { x: 200, y: 100 },
+  //   { x: 150, y: 50 }
+  // ];
+  // drawShapeWithPaperJS(points);
+  drawPjShapes();
+}
+
+function drawPjShapes() {
+  const points1 = [
+    // new paper.Point(100, 150),
+    // new paper.Point(200, 250),
+    // new paper.Point(300, 200),
+    // new paper.Point(400, 300),
+    // new paper.Point(300, 400),
+    // new paper.Point(200, 350),
+    // new paper.Point(100, 150), // Closing the shape by connecting back to the first point
+    new paper.Point(80, 150),
+    new paper.Point(200, 250),
+    new paper.Point(80, 350),
+    new paper.Point(600, 350),
+    new paper.Point(700, 250),
+    new paper.Point(600, 150),
+    new paper.Point(80, 150),
+  ];
+
+  let lineObjects = [];
+  lineObjects = points1.slice(0, -1).map((point, index) => {
+    const startPoint = point;
+    const endPoint = points1[index + 1];
+
+    const startCircle = new paper.Path.Circle({
+      center: startPoint,
+      radius: 20,
+      fillColor: "blue",
+    });
+
+    const endCircle = new paper.Path.Circle({
+      center: endPoint,
+      radius: 20,
+      fillColor: "red",
+    });
+
+    const line = new paper.Path.Line({
+      from: startPoint,
+      to: endPoint,
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "green",
+    });
+
+    function makePreviousContinue() {
+      if (index > 0) {
+        const previousLine = lineObjects[index - 1];
+        previousLine.endPoint.position = startCircle.position;
+        previousLine.path.segments[1].point = startCircle.position;
+      } else {
+        const lastLine = lineObjects[lineObjects.length - 1];
+        lastLine.endPoint.position = startCircle.position;
+        lastLine.path.segments[1].point = startCircle.position;
+      }
+    }
+
+    function makeNextContinue() {
+      if (index === lineObjects.length - 1) {
+        const firstLine = lineObjects[0];
+        firstLine.startPoint.position = endCircle.position;
+        firstLine.path.segments[0].point = endCircle.position;
+      } else {
+        const nextLine = lineObjects[index + 1];
+        nextLine.startPoint.position = endCircle.position;
+        nextLine.path.segments[0].point = endCircle.position;
+      }
+    }
+
+    function updateShapes() {
+      line.segments[0].point = startCircle.position;
+      line.segments[1].point = endCircle.position;
+    }
+
+    function updatePreviousLine(newLocation) {
+      if (index > 0) {
+        const previousLine = lineObjects[index - 1];
+        previousLine.endPoint.position = newLocation;
+        previousLine.path.segments[1].point = newLocation;
+      } else {
+        const lastLine = lineObjects[lineObjects.length - 1];
+        lastLine.endPoint.position = newLocation;
+        lastLine.path.segments[1].point = newLocation;
+      }
+    }
+
+    function updateNextLine(newLocation) {
+      if (index === lineObjects.length - 1) {
+        const firstLine = lineObjects[0];
+        firstLine.startPoint.position = newLocation;
+        firstLine.path.segments[0].point = newLocation;
+      } else {
+        const nextLine = lineObjects[index + 1];
+        nextLine.startPoint.position = newLocation;
+        nextLine.path.segments[0].point = newLocation;
+      }
+    }
+
+    startCircle.onMouseDrag = function (event) {
+      this.position = this.position.add(event.delta);
+      updateShapes();
+      makePreviousContinue();
+    };
+
+    endCircle.onMouseDrag = function (event) {
+      this.position = this.position.add(event.delta);
+      updateShapes();
+      makeNextContinue();
+    };
+
+    line.onMouseDrag = function (event) {
+      const delta = event.delta;
+      startCircle.position = startCircle.position.add(delta);
+      endCircle.position = endCircle.position.add(delta);
+      updateShapes();
+
+      updatePreviousLine(startCircle.position);
+      updateNextLine(endCircle.position);
+    };
+
+    return {
+      name: `Line ${index + 1}`,
+      path: line,
+      startPoint: startCircle,
+      endPoint: endCircle,
+    };
   });
 
-  const circle = new fabric.Circle({
-    radius: 50,
-    fill: 'red',
-    left: 150,
-    top: 100,
+  console.log(lineObjects);
+
+  const points2 = [
+    new paper.Point(400, 300),
+    new paper.Point(400, 550),
+    new paper.Point(580, 650),
+    new paper.Point(760, 550),
+    new paper.Point(760, 300),
+    new paper.Point(400, 300),
+    // new paper.Point(100, 150),
+  ];
+
+  let lineObjects2 = [];
+  lineObjects2 = points2.slice(0, -1).map((point, index) => {
+    const startPoint = point;
+    const endPoint = points2[index + 1];
+
+    const startCircle = new paper.Path.Circle({
+      center: startPoint,
+      radius: 20,
+      fillColor: "blue",
+    });
+
+    const endCircle = new paper.Path.Circle({
+      center: endPoint,
+      radius: 20,
+      fillColor: "red",
+    });
+
+    const line = new paper.Path.Line({
+      from: startPoint,
+      to: endPoint,
+      strokeColor: "black",
+      strokeWidth: 8,
+      fillColor: "green",
+    });
+
+    function makePreviousContinue() {
+      if (index > 0) {
+        const previousLine = lineObjects2[index - 1];
+        previousLine.endPoint.position = startCircle.position;
+        previousLine.path.segments[1].point = startCircle.position;
+      } else {
+        const lastLine = lineObjects2[lineObjects2.length - 1];
+        lastLine.endPoint.position = startCircle.position;
+        lastLine.path.segments[1].point = startCircle.position;
+      }
+    }
+
+    function makeNextContinue() {
+      if (index === lineObjects2.length - 1) {
+        const firstLine = lineObjects2[0];
+        firstLine.startPoint.position = endCircle.position;
+        firstLine.path.segments[0].point = endCircle.position;
+      } else {
+        const nextLine = lineObjects2[index + 1];
+        nextLine.startPoint.position = endCircle.position;
+        nextLine.path.segments[0].point = endCircle.position;
+      }
+    }
+
+    function updateShapes() {
+      line.segments[0].point = startCircle.position;
+      line.segments[1].point = endCircle.position;
+    }
+
+    function updatePreviousLine(newLocation) {
+      if (index > 0) {
+        const previousLine = lineObjects2[index - 1];
+        previousLine.endPoint.position = newLocation;
+        previousLine.path.segments[1].point = newLocation;
+      } else {
+        const lastLine = lineObjects2[lineObjects2.length - 1];
+        lastLine.endPoint.position = newLocation;
+        lastLine.path.segments[1].point = newLocation;
+      }
+    }
+
+    function updateNextLine(newLocation) {
+      if (index === lineObjects2.length - 1) {
+        const firstLine = lineObjects2[0];
+        firstLine.startPoint.position = newLocation;
+        firstLine.path.segments[0].point = newLocation;
+      } else {
+        const nextLine = lineObjects2[index + 1];
+        nextLine.startPoint.position = newLocation;
+        nextLine.path.segments[0].point = newLocation;
+      }
+    }
+
+    startCircle.onMouseDrag = function (event) {
+      this.position = this.position.add(event.delta);
+      updateShapes();
+      makePreviousContinue();
+    };
+
+    endCircle.onMouseDrag = function (event) {
+      this.position = this.position.add(event.delta);
+      updateShapes();
+      makeNextContinue();
+    };
+
+    line.onMouseDrag = function (event) {
+      const delta = event.delta;
+      startCircle.position = startCircle.position.add(delta);
+      endCircle.position = endCircle.position.add(delta);
+      updateShapes();
+
+      updatePreviousLine(startCircle.position);
+      updateNextLine(endCircle.position);
+    };
+
+    return {
+      name: `Line ${index + 1}`,
+      path: line,
+      startPoint: startCircle,
+      endPoint: endCircle,
+    };
   });
 
-  const rectangle = new fabric.Rect({
-    left: 100,
-    top: 100,
-    fill: 'blue',
-    width: 200,
-    height: 100,
+  console.log(lineObjects2);
+
+  path1 = new paper.Path({
+    segments: points1,
+    closed: true,
+    fillColor: "blue",
   });
 
-  hvacCanvas.add(rectangle);
+  // points1.forEach((point, index) => {
+  //   const circle = new paper.Path.Circle({
+  //     center: point,
+  //     radius: 10,
+  //     fillColor: "yellow",
+  //   });
+  //   circle.onMouseDrag = function (event) {
+  //     this.position = this.position.add(event.delta);
+  //     path1.segments[index].point = this.position;
+  //   };
+  // });
+  // path1.segments.forEach((segment, index) => {
+  //   segment.onMouseDrag = function (event) {
+  //     console.log("path.segments", path.segments);
+  //     this.point = this.point.add(event.delta);
+  //     points[index] = this.point;
+  //     path1.segments[index].point = this.point;
+  //   };
+  // });
 
-  // hvacCanvas.value.add(circle);
-  hvacCanvas.add(circle);
+  path2 = new paper.Path({
+    segments: points2,
+    closed: true,
+    fillColor: "red",
+  });
+}
+
+function drawShapeWithPaperJS(points) {
+
+  // Create a new path
+  const path = new paper.Path();
+  path.strokeColor = 'black';
+  path.strokeWidth = 2;
+
+  // Add points to the path
+  points.forEach(point => {
+    path.add(new paper.Point(point.x, point.y));
+  });
+
+  // Close the path to form a shape
+  path.closed = true;
+
+  // Draw the shape
+  paper.view.draw();
+}
+
+
+function drawLinesWithPoints(points) {
+  const lines = [];
+
+  points.forEach((point, index) => {
+
+    if (index > 0) {
+      const prevPoint = points[index - 1];
+      const line = new fabric.Line([prevPoint.x, prevPoint.y, point.x, point.y], {
+        stroke: 'black',
+        strokeWidth: 2,
+        selectable: true,
+        hasControls: false,
+        hasBorders: false,
+      });
+
+      line.on('mousedown', function (e) {
+        line.on('mousemove', function (moveEvent) {
+          const pointer = hvacCanvas.getPointer(moveEvent.e);
+          const deltaX = pointer.x - line.x1;
+
+          const deltaY = pointer.y - line.y1;
+
+          line.set({
+            x1: pointer.x,
+            y1: pointer.y,
+            x2: line.x2 + deltaX,
+            y2: line.y2 + deltaY,
+          });
+
+          const startCircle = hvacCanvas.getObjects('circle')[index];
+          const endCircle = hvacCanvas.getObjects('circle')[index + 1];
+
+          startCircle.set({
+            left: line.x1 - startCircle.radius,
+            top: line.y1 - startCircle.radius,
+          });
+
+          endCircle.set({
+            left: line.x2 - endCircle.radius,
+            top: line.y2 - endCircle.radius,
+          });
+
+          hvacCanvas.renderAll();
+        });
+
+        line.on('mouseup', function () {
+          line.off('mousemove');
+        });
+      });
+      lines.push(line);
+      hvacCanvas.add(line);
+    }
+
+
+    const circle = new fabric.Circle({
+      radius: 15,
+      fill: 'red',
+      left: point.x - 5,
+      top: point.y - 5,
+      selectable: true,
+      hasControls: false,
+      hasBorders: false,
+    });
+
+    circle.on('mousedown', function (e) {
+      circle.on('mousemove', function (moveEvent) {
+        const pointer = hvacCanvas.getPointer(moveEvent.e);
+        circle.set({
+          left: pointer.x - circle.radius,
+          top: pointer.y - circle.radius,
+        });
+        hvacCanvas.renderAll();
+        updateLines();
+      });
+
+      circle.on('mouseup', function () {
+        circle.off('mousemove');
+      });
+    });
+
+    hvacCanvas.add(circle);
+  });
+
+  function updateLines() {
+    lines.forEach((line, index) => {
+      const startCircle = hvacCanvas.getObjects('circle')[index];
+      const endCircle = hvacCanvas.getObjects('circle')[index + 1];
+
+      line.set({
+        x1: startCircle.left + startCircle.radius,
+        y1: startCircle.top + startCircle.radius,
+        x2: endCircle.left + endCircle.radius,
+        y2: endCircle.top + endCircle.radius,
+      });
+    });
+    hvacCanvas.renderAll();
+  }
+}
+
+function drawPolygon() {
+  const points = [
+    { x: 500, y: 150 },
+    { x: 550, y: 200 },
+    { x: 600, y: 150 },
+    { x: 550, y: 100 },
+  ];
+
+  const polygon = new fabric.Polygon(points, {
+    fill: 'rgba(0,0,0,0)',
+    stroke: 'blue',
+    strokeWidth: 2,
+  });
+
+  hvacCanvas.add(polygon);
+  return polygon;
+}
+
+function drawPolygonWith7Points() {
+  const points = [
+    { x: 450, y: 160 },
+    { x: 500, y: 210 },
+    { x: 550, y: 160 },
+    { x: 600, y: 210 },
+    { x: 650, y: 160 },
+    { x: 700, y: 210 },
+    { x: 750, y: 160 }
+  ];
+
+  const polygon = new fabric.Polygon(points, {
+    fill: 'rgba(0,0,0,0)',
+    stroke: 'green',
+    strokeWidth: 2,
+  });
+
+  hvacCanvas.add(polygon);
+  return polygon;
+}
+
+function checkIntersectionPoints(polygon1, polygon2) {
+  const intersectedPoints = [];
+
+  function getLineSegments(points) {
+    const segments = [];
+    for (let i = 0; i < points.length; i++) {
+      const start = points[i];
+      const end = points[(i + 1) % points.length];
+      segments.push([start, end]);
+    }
+    return segments;
+  }
+
+  function getIntersection(segment1, segment2) {
+    const [p1, p2] = segment1;
+    const [p3, p4] = segment2;
+
+    const s1_x = p2.x - p1.x;
+    const s1_y = p2.y - p1.y;
+    const s2_x = p4.x - p3.x;
+    const s2_y = p4.y - p3.y;
+
+    const s = (-s1_y * (p1.x - p3.x) + s1_x * (p1.y - p3.y)) / (-s2_x * s1_y + s1_x * s2_y);
+    const t = (s2_x * (p1.y - p3.y) - s2_y * (p1.x - p3.x)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
+      return {
+        x: p1.x + (t * s1_x),
+        y: p1.y + (t * s1_y)
+      };
+    }
+
+    return null;
+  }
+
+  const segments1 = getLineSegments(polygon1.points);
+  const segments2 = getLineSegments(polygon2.points);
+
+  for (const segment1 of segments1) {
+    for (const segment2 of segments2) {
+      const intersection = getIntersection(segment1, segment2);
+      if (intersection) {
+        intersectedPoints.push(intersection);
+      }
+    }
+  }
+
+  // if (intersectedPoints.length > 0) {
+  //   return {
+  //     polygon1: polygon1.points,
+  //     polygon2: polygon2.points,
+  //     intersections: intersectedPoints
+  //   };
+  // } else {
+  //   return {
+  //     polygon1: polygon1.points,
+  //     polygon2: polygon2.points,
+  //     intersections: []
+  //   };
+  // }
+
+  const combinedPoints = [...polygon1.points, ...polygon2.points, ...intersectedPoints];
+
+  // Clear the original polygons
+  hvacCanvas.remove(polygon1);
+  hvacCanvas.remove(polygon2);
+
+  // Draw the new polygon with combined points
+  const combinedPolygon = new fabric.Polygon(combinedPoints, {
+    fill: 'rgba(0,0,0,0)',
+    stroke: 'red',
+    strokeWidth: 2,
+  });
+
+  // Add the combined polygon to the canvas
+  hvacCanvas.add(combinedPolygon);
+
+  // Draw small circles for each point
+  combinedPoints.forEach(point => {
+    const circle = new fabric.Circle({
+      radius: 5,
+      fill: 'red',
+      left: point.x - 5,
+      top: point.y - 5,
+      selectable: true,
+      hasControls: false,
+      hasBorders: false,
+    });
+
+    circle.on('mousedown', function (e) {
+      circle.on('mousemove', function (moveEvent) {
+        const pointer = hvacCanvas.getPointer(moveEvent.e);
+        circle.set({
+          left: pointer.x - circle.radius,
+          top: pointer.y - circle.radius,
+        });
+        hvacCanvas.renderAll();
+      });
+
+      circle.on('mouseup', function () {
+        circle.off('mousemove');
+        updateLines();
+      });
+    });
+
+    function updateLines() {
+      hvacCanvas.getObjects('line').forEach(line => {
+        if (line.x1 === circle.left + circle.radius && line.y1 === circle.top + circle.radius) {
+          line.set({ x1: circle.left + circle.radius, y1: circle.top + circle.radius });
+        }
+        if (line.x2 === circle.left + circle.radius && line.y2 === circle.top + circle.radius) {
+          line.set({ x2: circle.left + circle.radius, y2: circle.top + circle.radius });
+        }
+      });
+      hvacCanvas.renderAll();
+    }
+
+    hvacCanvas.add(circle);
+  });
+
+  // Add moveable event for the lines between each two points
+  for (let i = 0; i < combinedPoints.length; i++) {
+    const start = combinedPoints[i];
+    const end = combinedPoints[(i + 1) % combinedPoints.length];
+
+    const line = new fabric.Line([start.x, start.y, end.x, end.y], {
+      stroke: 'black',
+      strokeWidth: 2,
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      fillColor: 'red'
+    });
+
+    line.on('moving', function (e) {
+      console.log('Line moved from', start, 'to', end);
+      const newStart = { x: line.x1, y: line.y1 };
+      const newEnd = { x: line.x2, y: line.y2 };
+
+      // Update the start and end points of the line
+      start.x = newStart.x;
+      start.y = newStart.y;
+      end.x = newEnd.x;
+      end.y = newEnd.y;
+
+      console.log('Line moved to new start point:', newStart, 'and new end point:', newEnd);
+    });
+
+    hvacCanvas.add(line);
+  }
+
+  return {
+    polygon1: polygon1.points,
+    polygon2: polygon2.points,
+    intersections: intersectedPoints,
+    combinedPoints: combinedPoints
+  };
 }
 
 
@@ -1344,6 +1992,10 @@ function drawObject(size, pos, tool) {
     appState.value.selectedTargets = [target];
     selecto.value.setSelectedTargets([target]);
   }, 100);
+
+  //Render all canvas objects
+  renderCanvasObjects();
+
   return item;
 }
 
@@ -1718,6 +2370,10 @@ function deleteSelected() {
     appState.value.selectedTargets = [];
     appState.value.activeItemIndex = null;
   }
+
+  //refresh the canvas objects
+  console.log('before remove', appState.value.items);
+  renderCanvasObjects();
 }
 
 function drawWeldObject(selectedItems) {
