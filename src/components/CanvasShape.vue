@@ -164,8 +164,8 @@ export default {
 
     // Recalculate the shapes' translate and size
     const itemData = computed(() => props.item);
-    let defaultWidth = itemData.value.width;
-    let defaultHeight = itemData.value.height;
+    const defaultWidth = itemData.value.width;
+    const defaultHeight = itemData.value.height;
     const defaultColor = itemData.value.settings.fillColor;
 
     const reCalculateScale = () => {
@@ -180,6 +180,7 @@ export default {
 
       const scaleWHXY = reCalculateScale();
       console.log('CanvasShape.vue->getWeldPathItems|scaleWHXY', scaleWHXY);
+      console.log('CanvasShape.vue->reCalculateScale|default w h c', defaultWidth, defaultHeight, defaultColor);
 
       // First shape's translate & add 2 pixels for stroke width
       let firstTrsX = weldItems.length > 1 ? weldItems[0].translate[0] : 0;
@@ -187,18 +188,6 @@ export default {
 
       const minX = Math.min(...weldItems.map(item => item.translate[0]));
       const minY = Math.min(...weldItems.map(item => item.translate[1]));
-
-      /*
-      if (firstTrsX > minX) {
-        firstTrsX = (firstTrsX - minX) / itemData.value.width;
-        console.log('CanvasShape.vue->getWeldPathItems|firstTrsX', firstTrsX);
-      }
-
-      if (firstTrsY > minY) {
-        firstTrsY = (firstTrsY - minY) / itemData.value.height;
-        console.log('CanvasShape.vue->getWeldPathItems|firstTrsY', firstTrsY);
-      }
-      */
 
       const pathItemList = weldItems?.map((item, index) => {
         let { width, height, cat, type, translate } = item;
@@ -546,49 +535,64 @@ export default {
     const renderWeldedShape = (weldSegments) => {
 
       let weldPath = null;
+      const check = weldSegments !== null && weldSegments != undefined && weldSegments.length > 0;
 
-      if (weldSegments !== null && weldSegments != undefined && weldSegments.length > 0) {
-        // weldSegments.push(weldSegments[0]);
-
-        weldPath = new paper.Path({
-          segments: weldSegments,
-          closed: true,
-          fillColor: "#f36dc5",
-        });
-
-        console.log('CanvasShape.vue->weldPath', weldPath);
-
-        // const weldedLinePoints = getWeldedLinePointObjects(weldPath, weldSegments);
-        const weldedLinePoints = getLinePointObjects(weldPath, weldSegments);
-        console.log('CanvasShape.vue->weldedLinePoints', weldedLinePoints);
-
-        project.value.activeLayer.addChild(weldPath);
-
-        weldedLinePoints.map((itm, index) => {
-          // console.log(`CanvasShape.vue->weldedLinePoints|itm ${itm.name}`, itm.startPoint, itm.endPoint, itm.path);
-          project.value.activeLayer.addChild(itm.path);
-          project.value.activeLayer.addChild(itm.startPoint);
-          project.value.activeLayer.addChild(itm.endPoint);
-        });
+      if (!check) {
+        console.log('CanvasShape.vue->weld segments is null or undefined');
+        return;
       }
-      else {
-        console.log('CanvasShape.vue->weldSegments is null or empty');
-        // if the selected shapes cannot be welded, render the shapes separately
-        const weldItems = getWeldPathItems(props.item.weldItems);
-        weldItems.map((itm, index) => {
-          project.value.activeLayer.addChild(itm.pathItem);
-        });
-      }
+
+      weldPath = new paper.Path({
+        segments: weldSegments,
+        closed: true,
+        fillColor: "#f36dc5",
+      });
+
+      console.log('CanvasShape.vue->weldPath', weldPath);
+
+      // const weldedLinePoints = getWeldedLinePointObjects(weldPath, weldSegments);
+      const weldedLinePoints = getLinePointObjects(weldPath, weldSegments);
+      console.log('CanvasShape.vue->weldedLinePoints', weldedLinePoints);
+
+      project.value.activeLayer.addChild(weldPath);
+
+      weldedLinePoints.map((itm, index) => {
+        // console.log(`CanvasShape.vue->weldedLinePoints|itm ${itm.name}`, itm.startPoint, itm.endPoint, itm.path);
+        project.value.activeLayer.addChild(itm.path);
+        project.value.activeLayer.addChild(itm.startPoint);
+        project.value.activeLayer.addChild(itm.endPoint);
+      });
 
       return weldPath;
     };
 
+    const checkIfShapesCross = (allPaPoints) => {
+      let previousMaxX = -Infinity;
+      let previousMaxY = -Infinity;
+
+      for (const item of allPaPoints) {
+        const currentMinX = Math.min(...item.points.map(point => point.x));
+        const currentMinY = Math.min(...item.points.map(point => point.y));
+
+        if (currentMinX > previousMaxX || currentMinY > previousMaxY) {
+          previousMaxX = Math.max(...item.points.map(point => point.x));
+          previousMaxY = Math.max(...item.points.map(point => point.y));
+        } else {
+          return true; // Shapes are crossed
+        }
+      }
+
+      return false; // Shapes are not crossed
+    };
+
     // Render weld or multiple shapes
     const renderWeldShapes = () => {
+      const { weldItems } = props.item;
+
       console.log('CanvasShape.vue->start to render welded shapes', props.item, props.item.width, props.item.height);
       console.log('CanvasShape.vue->props.item.weldItems', props.item.weldItems);
 
-      const pathItemList = getWeldPathItems(props.item.weldItems);
+      const pathItemList = getWeldPathItems(weldItems);
       console.log('CanvasShape.vue->paItemList', pathItemList);
 
       emit("updateWeldModel", props.item, pathItemList);
@@ -596,9 +600,24 @@ export default {
       const allPaPoints = transferToLinePoints(pathItemList);
       console.log('CanvasShape.vue->allPaPoints', allPaPoints);
 
+      // Check whether the selected shapes can be welded
+      const isOverLapped = checkIfShapesCross(allPaPoints);
+
+      if (!isOverLapped) {
+        console.log('CanvasShape.vue->Shapes are not crossed');
+
+        // if the selected shapes cannot be welded, render the shapes separately
+        pathItemList.map((itm, index) => {
+          project.value.activeLayer.addChild(itm.pathItem);
+        });
+
+        return;
+      }
+
       // Redraw the shapes need to be welded, and make the lines and points moveable
       // Only for debugging
 
+      /*
       allPaPoints.map((itm, index) => {
         const lpos = getLinePointObjects(null, itm.points);
         console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
@@ -612,6 +631,7 @@ export default {
       });
 
       return;
+      */
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
@@ -636,9 +656,6 @@ export default {
       console.log('CanvasShape.vue->boolOptSegments', boolOptSegments);
 
       const rwd = renderWeldedShape(boolOptSegments);
-
-      //
-      emit("updateWeldModel", props.item, props.item.weldItems);
     };
 
     const booleanOperation = (operation, pathList) => {
@@ -683,6 +700,8 @@ export default {
       initCanvas();
       watch(() => [props.item.width, props.item.height, props.item.settings], resizeCanvas, { deep: true });
       window.addEventListener('resize', resizeCanvas);
+
+
     });
 
     onBeforeUnmount(() => {

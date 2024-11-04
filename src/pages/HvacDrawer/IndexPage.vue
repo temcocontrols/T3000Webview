@@ -2673,13 +2673,14 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {
     if (item.type === "Weld_General" && item.id === weldModel.id) {
 
-      // Update the weld items new width, height, translate
+      // Update the weld items's new width, height, translate
       const firstTrsx = item?.weldItems[0]?.translate[0];
       const firstTrsy = item?.weldItems[0]?.translate[1];
 
-      item.weldItems.forEach((weldItem) => {
-        const pathItem = pathItemList.find((itx) => itx.item.id === weldItem.id);
+      item?.weldItems?.forEach((weldItem) => {
+        const pathItem = pathItemList?.find((itx) => itx?.item?.id === weldItem?.id);
         console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
           weldItem.width = pathItem.newPos.width;
           weldItem.height = pathItem.newPos.height;
