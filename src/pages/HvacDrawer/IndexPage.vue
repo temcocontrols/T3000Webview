@@ -1729,6 +1729,7 @@ function drawWeldObjectCanvas(selectedItems) {
   const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
   const maxX = Math.max(...selectedItems.map((item) => item.translate[0] + item.width));
   const maxY = Math.max(...selectedItems.map((item) => item.translate[1] + item.height));
+  const newMinX = firstX < minX ? firstX : minX;
 
   const boundingBox = selectedItems.reduce(
     (acc, item) => {
@@ -1762,7 +1763,6 @@ function drawWeldObjectCanvas(selectedItems) {
 
   console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
 
-  const newMinX = firstX < minX ? firstX : minX;
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
   let previous = selectedItems[0].zindex;
 
@@ -1776,12 +1776,12 @@ function drawWeldObjectCanvas(selectedItems) {
     active: false,
     cat: 'General',
     type: "Weld_General",
-    // translate: [newMinX, minY],
-    // width: (maxX - minX) * scalPercentage,
-    // height: (maxY - minY) * scalPercentage,
-    translate: [transX, minY],
-    width: width * scalPercentage,
-    height: height * scalPercentage,
+    translate: [newMinX, minY],
+    width: (maxX - minX) * scalPercentage,
+    height: (maxY - minY) * scalPercentage,
+    // translate: [transX, minY],
+    // width: width * scalPercentage,
+    // height: height * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
