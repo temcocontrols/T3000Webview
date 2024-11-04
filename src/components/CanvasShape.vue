@@ -151,7 +151,7 @@ export default {
       const paItemList = weldItems?.map((item, index) => {
         const { width, height, cat, type, translate } = item;
         const [trsx, trsy] = translate;
-        console.log('CanvasShape.vue->getPaperItems|w,h,trx,try', width, height, trsx, trsy, cat, type);
+        // console.log('CanvasShape.vue->getPaperItems|w,h,trx,try', width, height, trsx, trsy, cat, type);
 
         // Mins 2 pixels for stroke width
         const newTrsX = trsx - firstTrsX + 2;
@@ -171,7 +171,7 @@ export default {
           paItem = gHexagon(width, height, item.settings, [newTrsX, newTrsY]);
         }
 
-        console.log(`CanvasShape.vue->getPaperItems| ${type}`, paItem);
+        // console.log(`CanvasShape.vue->getPaperItems| ${type}`, paItem);
         return { type: type, pathItem: paItem, item: item }
       });
       return paItemList;
@@ -179,8 +179,6 @@ export default {
 
     const loadAllPathsFromItem = (item) => {
       let paths = [];
-
-      console.log('loadAllPathsFromItem-item', item);
       if (item instanceof paper.Path || item instanceof paper.CompoundPath || item instanceof paper.Path.Circle) {
         paths.push(item);
       } else if (item instanceof paper.Group) {
@@ -195,41 +193,24 @@ export default {
       return paths;
     };
 
-    const unitePathsFromArray = (shapesArray) => {
+    const uniteArrayPaths = (shapesArray) => {
       let combinedPath = null;
-
       const processShape = (shape) => {
-        if (shape.type == "circle") {
-          console.log('shape is a circle outer', shape.id, shape);
-        }
-
-        if (shape instanceof paper.Path || paper.ClipPath || paper.type == 'circle') {
-          console.log('any output', shape.id, shape)
-          if (shape.type == "circle") {
-            console.log('shape is a circle outer', shape.id, shape);
-          }
+        if (shape instanceof paper.Path || paper.ClipPath) {
 
           if (combinedPath) {
-
             combinedPath = combinedPath.unite(shape, { insert: true });
           } else {
             combinedPath = shape;
           }
         } else if (shape instanceof paper.Group) {
-          // combinedPath = combinedPath.unite(shape);
           shape.children.forEach(child => processShape(child));
-
-          //only unite the first object
-          // shape.children[0].strokeColor = 'red';
-          // combinedPath = combinedPath.unite(shape.lastChild);
-
         } else if (shape instanceof paper.CompoundPath) {
           shape.children.forEach(child => processShape(child));
         }
       };
 
       shapesArray.forEach(shape => processShape(shape));
-
       return combinedPath;
     };
 
@@ -245,7 +226,7 @@ export default {
         const points = paths.flatMap(path => path.segments.map(segment => segment.point));
         const paperPoints = points.map(point => new paper.Point(point));
 
-        //make line closed
+        // make line closed
         paperPoints.push(paperPoints[0]);
 
         return { type: item.type, points: paperPoints }
@@ -256,15 +237,16 @@ export default {
     // Draw shape base on paper points
     // weldPath was used for controlling the lines's moveable events to dynamically fill the updated shape's inner color
     const getLinePointObjects = (weldPath, points) => {
+      console.log('CanvasShape.vue->updateWeldPath|weldPath.default', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
       let lpos = [];
       lpos = points.slice(0, -1).map((point, index) => {
-
-        console.log('xxxxxxxxxxxxxxx', point, index);
 
         const startPoint = point;
         const endPoint = points[index + 1];
         const radius = 4;
         const strokeWidth = 2;
+
+        console.log(`CanvasShape.vue->getLinePointObjects|point, Path Line ${index + 1}`, startPoint, endPoint);
 
         const startCircle = new paper.Path.Circle({
           center: startPoint,
@@ -281,9 +263,9 @@ export default {
         const line = new paper.Path.Line({
           from: startPoint,
           to: endPoint,
-          strokeColor: "black",
+          strokeColor: "#000",
           strokeWidth: strokeWidth,
-          fillColor: "green",
+          fillColor: "#f36dc5",
         });
 
         function makePreviousContinue() {
@@ -310,16 +292,40 @@ export default {
           }
         }
 
+        function updateWeldPath(itemType) {
+          if (weldPath !== null) {
+
+            /*
+            console.log(`---------------start--${itemType}--------------------------`);
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
+            console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
+            console.log(`---------------end--${itemType}----------------------------`);
+            */
+
+            weldPath.segments[index].point = startCircle.position;
+            weldPath.segments[index + 1].point = endCircle.position;
+
+            // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
+
+            // Make the welded path's start point move along with the end position of the last line
+            if (index + 2 == weldPath.segments.length) {
+              // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
+              weldPath.segments[0].point = endCircle.position;
+            }
+
+            if (index == 0) {
+              weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
+            }
+          }
+        }
+
         function updateShapes() {
           line.segments[0].point = startCircle.position;
           line.segments[1].point = endCircle.position;
-
-          if (weldPath !== null) {
-            // weldPath.segments[index].point = startCircle.position;
-            // weldPath.segments[index + 1].point = endCircle.position;
-
-            console.log('yyyyyyyyyyyyyyyyyy', weldPath.segments.length, index);
-          }
         }
 
         function updatePreviousLine(newLocation) {
@@ -350,12 +356,14 @@ export default {
           this.position = this.position.add(event.delta);
           updateShapes();
           makePreviousContinue();
+          updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
         };
 
         endCircle.onMouseDrag = function (event) {
           this.position = this.position.add(event.delta);
           updateShapes();
           makeNextContinue();
+          updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
         };
 
         line.onMouseDrag = function (event) {
@@ -363,9 +371,9 @@ export default {
           startCircle.position = startCircle.position.add(delta);
           endCircle.position = endCircle.position.add(delta);
           updateShapes();
-
           updatePreviousLine(startCircle.position);
           updateNextLine(endCircle.position);
+          updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
         };
 
         return {
@@ -446,14 +454,13 @@ export default {
     }
     */
 
-    // Make new path
     const makeNewPath = (allPaPoints) => {
       const newPathList = allPaPoints.map((itm, index) => {
         const path = new paper.Path({
           segments: itm.points,
           closed: true,
-          strokeColor: 'black',
-          fillColor: 'red',
+          strokeColor: '#000',
+          fillColor: '#f36dc5',
         });
         return path;
       });
@@ -465,14 +472,13 @@ export default {
 
       let weldPath = null;
 
-      // Make the weld paths closed
       if (weldSegments !== null && weldSegments != undefined && weldSegments.length > 0) {
-        weldSegments.push(weldSegments[0]);
+        // weldSegments.push(weldSegments[0]);
 
         weldPath = new paper.Path({
           segments: weldSegments,
           closed: true,
-          fillColor: "#659dc5",// "#659dc5",
+          fillColor: "#f36dc5",
         });
 
         console.log('CanvasShape.vue->weldPath', weldPath);
@@ -484,6 +490,7 @@ export default {
         project.value.activeLayer.addChild(weldPath);
 
         weldedLinePoints.map((itm, index) => {
+          // console.log(`CanvasShape.vue->weldedLinePoints|itm ${itm.name}`, itm.startPoint, itm.endPoint, itm.path);
           project.value.activeLayer.addChild(itm.path);
           project.value.activeLayer.addChild(itm.startPoint);
           project.value.activeLayer.addChild(itm.endPoint);
@@ -491,7 +498,6 @@ export default {
       }
       else {
         console.log('CanvasShape.vue->weldSegments is null or empty');
-
         // if the selected shapes cannot be welded, render the shapes separately
         const weldItems = getPaperItems(props.item.weldItems);
         weldItems.map((itm, index) => {
@@ -515,24 +521,34 @@ export default {
       const allPaPoints = transferToLinePoints(pathItemList);
       console.log('CanvasShape.vue->allPaPoints', allPaPoints);
 
-      allPaPoints.map((itm, index) => {
-        console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
-      });
+      // Redraw the shapes need to be welded, and make the lines and points moveable
+      // Only for debugging
 
-      // Render the shapes on the canvas based on the all paper points
+      /*
       allPaPoints.map((itm, index) => {
         const lpos = getLinePointObjects(null, itm.points);
+        console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
         console.log('CanvasShape.vue->lpos', lpos);
 
-        // lpos.map((lpo, index) => {
-        //   project.value.activeLayer.addChild(lpo.path);
-        //   project.value.activeLayer.addChild(lpo.startPoint);
-        //   project.value.activeLayer.addChild(lpo.endPoint);
-        // });
-      });
+        lpos.map((lpo, index) => {
+          project.value.activeLayer.addChild(lpo.path);
+          project.value.activeLayer.addChild(lpo.startPoint);
+          project.value.activeLayer.addChild(lpo.endPoint);
+        });
 
-      // Make new path
+      });
+      */
+
+      // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
+
+      // Only for debugging
+
+      /*
+      newPathList.map((path, index) => {
+        project.value.activeLayer.addChild(path);
+      });
+      */
 
       // Perform boolean operation
       const boolOptPath = booleanOperation('union', newPathList);
@@ -540,12 +556,18 @@ export default {
 
       // Get new path points from boolean operation
       const boolOptSegments = boolOptPath?.segments?.map((segment) => segment.point);
+
+      // Add the first point to the end to make the path closed
+      boolOptSegments.push(boolOptSegments[0]);
       console.log('CanvasShape.vue->boolOptSegments', boolOptSegments);
 
       const rwd = renderWeldedShape(boolOptSegments);
+
+
     };
 
     const booleanOperation = (operation, pathList) => {
+      if (pathList.length === 0) return [];
       if (pathList.length < 2) return pathList[0];
 
       let boolOptPath = pathList[0];
@@ -619,7 +641,7 @@ canvas {
 }
 
 .canvas-normal {
-  /* background-color: aqua; */
+  background-color: aqua;
 }
 
 .canvas-hid {
