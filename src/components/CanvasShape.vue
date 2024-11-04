@@ -315,13 +315,13 @@ export default {
         const startCircle = new paper.Path.Circle({
           center: startPoint,
           radius: radius,
-          fillColor: "blue",
+          fillColor: "aqua",// "#4af",// "#000",// "blue",
         });
 
         const endCircle = new paper.Path.Circle({
           center: endPoint,
           radius: radius,
-          fillColor: "red",
+          fillColor: "aqua",//"#4af",//"#000",// "red",
         });
 
         const line = new paper.Path.Line({
@@ -330,6 +330,7 @@ export default {
           strokeColor: "#000",
           strokeWidth: strokeWidth,
           fillColor: "#f36dc5",
+          // dashArray: [5, 2],
         });
 
         function makePreviousContinue() {
@@ -545,7 +546,7 @@ export default {
       weldPath = new paper.Path({
         segments: weldSegments,
         closed: true,
-        fillColor: "#f36dc5",
+        fillColor: "#659dc5",// "#f36dc5",
       });
 
       console.log('CanvasShape.vue->weldPath', weldPath);
@@ -734,7 +735,8 @@ canvas {
 }
 
 .canvas-normal {
-  background-color: aqua;
+  /* background-color: aqua; */
+  background-color: #f36dc5;
 }
 
 .canvas-hid {
