@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import paper from 'paper';
 import { first } from 'lodash';
 
@@ -46,10 +46,11 @@ export default {
       draw();
     };
 
-    const gRectangle = (width, height, settings, trsXY) => {
+    const gRectangle = (rdType, width, height, settings, trsXY) => {
+      const factor = rdType == "weld" ? 8 : 4;
       const rectangle = new paper.Path.Rectangle({
         point: trsXY,// [2, 2],
-        size: [width - 4, height - 4],
+        size: [width - factor, height - factor],//[width - 4, height - 4],
         strokeColor: settings.bgColor || '#000',
         strokeWidth: 2,
         fillColor: settings.fillColor
@@ -57,12 +58,14 @@ export default {
       return rectangle;
     }
 
-    const gCircle = (width, height, settings, trsXY) => {
+    const gCircle = (rdType, width, height, settings, trsXY) => {
+      const factor = rdType == "weld" ? 8 : 4;
       const centerX = (width / 2) + trsXY[0];
       const centerY = (height / 2) + trsXY[1];
+
       const circle = new paper.Path.Circle({
         center: [centerX, centerY],
-        radius: Math.min(width - 4, height - 4) / 2,
+        radius: Math.min(width - factor, height - factor) / 2,
         strokeColor: settings.bgColor || '#000',
         strokeWidth: 2,
         fillColor: settings.fillColor,
@@ -71,7 +74,7 @@ export default {
       return circle;
     }
 
-    const gStep = (width, height, settings, trsXY) => {
+    const gStep = (rdType, width, height, settings, trsXY) => {
       const strokeWidth = 1;
       const svgStr =
         `<svg
@@ -89,7 +92,7 @@ export default {
       return step;
     }
 
-    const gHexagon = (width, height, settings, trsXY) => {
+    const gHexagon = (rdType, width, height, settings, trsXY) => {
       const strokeWidth = 1;
       const svgStr =
         `<svg
@@ -123,16 +126,16 @@ export default {
 
         switch (type) {
           case "G_Rectangle":
-            shapes.push(gRectangle(width, height, settings, [2, 2]));
+            shapes.push(gRectangle('', width, height, settings, [2, 2]));
             break;
           case "G_Circle":
-            shapes.push(gCircle(width, height, settings, [2, 2]));
+            shapes.push(gCircle('', width, height, settings, [2, 2]));
             break;
           case "G_Step":
-            shapes.push(gStep(width, height, settings, [2, 2]));
+            shapes.push(gStep('', width, height, settings, [2, 2]));
             break;
           case "G_Hexagon":
-            shapes.push(gHexagon(width, height, settings, [2, 2]));
+            shapes.push(gHexagon('', width, height, settings, [2, 2]));
             break;
         }
 
@@ -142,39 +145,73 @@ export default {
       });
     };
 
-    const getPaperItems = (weldItems) => {
+    // Recalculate the shapes' translate and size
+    const itemData = computed(() => props.item);
+    let defaultWidth = itemData.value.width;
+    let defaultHeight = itemData.value.height;
+    const defaultColor = itemData.value.settings.fillColor;
 
-      // first shape's translate
+    const reCalculateScale = () => {
+      const widthScale = itemData.value.width / defaultWidth;
+      const heightScale = itemData.value.height / defaultHeight;
+      const tranXScale = itemData.value.translate[0] / defaultWidth;
+      const tranYScale = itemData.value.translate[1] / defaultHeight;
+      return { widthScale, heightScale, tranXScale, tranYScale };
+    }
+
+    const getWeldPathItems = (weldItems) => {
+
+      const scaleWHXY = reCalculateScale();
+      console.log('CanvasShape.vue->getWeldPathItems|scaleWHXY', scaleWHXY);
+
+      // First shape's translate & add 2 pixels for stroke width
       let firstTrsX = weldItems.length > 1 ? weldItems[0].translate[0] : 0;
       let firstTrsY = weldItems.length > 1 ? weldItems[0].translate[1] : 0;
 
-      const paItemList = weldItems?.map((item, index) => {
-        const { width, height, cat, type, translate } = item;
-        const [trsx, trsy] = translate;
-        // console.log('CanvasShape.vue->getPaperItems|w,h,trx,try', width, height, trsx, trsy, cat, type);
+      const pathItemList = weldItems?.map((item, index) => {
+        let { width, height, cat, type, translate } = item;
+        let [trsx, trsy] = translate;
+        // console.log('CanvasShape.vue->getWeldPathItems|w,h,trx,try', width, height, trsx, trsy, cat, type);
 
-        // Mins 2 pixels for stroke width
-        const newTrsX = trsx - firstTrsX + 2;
-        const newTrsY = trsy - firstTrsY + 2;
+        let currentTrsx = trsx - firstTrsX + 4;
+        let currentTrsy = trsy - firstTrsY + 4;
 
-        let paItem = null;
+        let pathItem = null;
         if (type === 'G_Rectangle') {
-          paItem = gRectangle(width, height, item.settings, [newTrsX, newTrsY]);
+          // Resize the width and height
+          width = width * scaleWHXY.widthScale;
+          height = height * scaleWHXY.heightScale;
+
+          // currentTrsx = currentTrsx * scaleWHXY.widthScale + 4;
+          // currentTrsy = currentTrsy * scaleWHXY.heightScale + 4;
+
+          trsx *= scaleWHXY.widthScale;
+          trsy *= scaleWHXY.heightScale;
+          trsx -= firstTrsX * scaleWHXY.widthScale;
+          trsy -= firstTrsY * scaleWHXY.heightScale;
+
+          currentTrsx = trsx + 4;
+          currentTrsy = trsy + 4;
+
+          pathItem = gRectangle('weld', width, height, item.settings, [currentTrsx, currentTrsy]);
         }
         if (type === 'G_Circle') {
-          paItem = gCircle(width, height, item.settings, [newTrsX, newTrsY]);
+          width = width * scaleWHXY.widthScale;
+          height = height * scaleWHXY.heightScale;
+          pathItem = gCircle('weld', width, height, item.settings, [currentTrsx, currentTrsy]);
         }
         if (type === 'G_Step') {
-          paItem = gStep(width, height, item.settings, [newTrsX, newTrsY]);
+          pathItem = gStep('weld', width, height, item.settings, [currentTrsx, currentTrsy]);
         }
         if (type === 'G_Hexagon') {
-          paItem = gHexagon(width, height, item.settings, [newTrsX, newTrsY]);
+          pathItem = gHexagon('weld', width, height, item.settings, [currentTrsx, currentTrsy]);
         }
 
-        // console.log(`CanvasShape.vue->getPaperItems| ${type}`, paItem);
-        return { type: type, pathItem: paItem, item: item }
+        // console.log(`CanvasShape.vue->getWeldPathItems| ${type}`, paItem);
+        return { type: type, pathItem: pathItem, item: item }
       });
-      return paItemList;
+
+      return pathItemList;
     }
 
     const loadAllPathsFromItem = (item) => {
@@ -237,7 +274,7 @@ export default {
     // Draw shape base on paper points
     // weldPath was used for controlling the lines's moveable events to dynamically fill the updated shape's inner color
     const getLinePointObjects = (weldPath, points) => {
-      console.log('CanvasShape.vue->updateWeldPath|weldPath.default', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
+      console.log('CanvasShape.vue->updateWeldPath|weldPath.default', weldPath?.segments.map(segment => [segment.point.x, segment.point.y]));
       let lpos = [];
       lpos = points.slice(0, -1).map((point, index) => {
 
@@ -499,7 +536,7 @@ export default {
       else {
         console.log('CanvasShape.vue->weldSegments is null or empty');
         // if the selected shapes cannot be welded, render the shapes separately
-        const weldItems = getPaperItems(props.item.weldItems);
+        const weldItems = getWeldPathItems(props.item.weldItems);
         weldItems.map((itm, index) => {
           project.value.activeLayer.addChild(itm.pathItem);
         });
@@ -510,12 +547,10 @@ export default {
 
     // Render weld or multiple shapes
     const renderWeldShapes = () => {
-      const { weldItems } = props.item;
-
       console.log('CanvasShape.vue->start to render welded shapes', props.item, props.item.width, props.item.height);
-      console.log('CanvasShape.vue->weldItems', weldItems);
+      console.log('CanvasShape.vue->props.item.weldItems', props.item.weldItems);
 
-      const pathItemList = getPaperItems(weldItems);
+      const pathItemList = getWeldPathItems(props.item.weldItems);
       console.log('CanvasShape.vue->paItemList', pathItemList);
 
       const allPaPoints = transferToLinePoints(pathItemList);
@@ -524,7 +559,7 @@ export default {
       // Redraw the shapes need to be welded, and make the lines and points moveable
       // Only for debugging
 
-      /*
+
       allPaPoints.map((itm, index) => {
         const lpos = getLinePointObjects(null, itm.points);
         console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
@@ -537,7 +572,8 @@ export default {
         });
 
       });
-      */
+
+      return;
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
@@ -558,12 +594,10 @@ export default {
       const boolOptSegments = boolOptPath?.segments?.map((segment) => segment.point);
 
       // Add the first point to the end to make the path closed
-      boolOptSegments.push(boolOptSegments[0]);
+      boolOptSegments?.push(boolOptSegments[0]);
       console.log('CanvasShape.vue->boolOptSegments', boolOptSegments);
 
       const rwd = renderWeldedShape(boolOptSegments);
-
-
     };
 
     const booleanOperation = (operation, pathList) => {
@@ -605,7 +639,6 @@ export default {
     };
 
     onMounted(() => {
-      // console.log('CanvasShape.vue->props', props.item);
       initCanvas();
       watch(() => [props.item.width, props.item.height, props.item.settings], resizeCanvas, { deep: true });
       window.addEventListener('resize', resizeCanvas);
