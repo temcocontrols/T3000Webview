@@ -258,6 +258,9 @@ export default {
     const getLinePointObjects = (weldPath, points) => {
       let lpos = [];
       lpos = points.slice(0, -1).map((point, index) => {
+
+        console.log('xxxxxxxxxxxxxxx', point, index);
+
         const startPoint = point;
         const endPoint = points[index + 1];
         const radius = 4;
@@ -312,8 +315,10 @@ export default {
           line.segments[1].point = endCircle.position;
 
           if (weldPath !== null) {
-            weldPath.segments[index].point = startCircle.position;
-            weldPath.segments[index + 1].point = endCircle.position;
+            // weldPath.segments[index].point = startCircle.position;
+            // weldPath.segments[index + 1].point = endCircle.position;
+
+            console.log('yyyyyyyyyyyyyyyyyy', weldPath.segments.length, index);
           }
         }
 
@@ -467,7 +472,7 @@ export default {
         weldPath = new paper.Path({
           segments: weldSegments,
           closed: true,
-          fillColor: "red",
+          fillColor: "#659dc5",// "#659dc5",
         });
 
         console.log('CanvasShape.vue->weldPath', weldPath);
