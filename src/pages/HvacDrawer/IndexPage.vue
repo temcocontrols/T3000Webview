@@ -1730,7 +1730,39 @@ function drawWeldObjectCanvas(selectedItems) {
   const maxX = Math.max(...selectedItems.map((item) => item.translate[0] + item.width));
   const maxY = Math.max(...selectedItems.map((item) => item.translate[1] + item.height));
 
-  const transX = firstX < minX ? firstX : minX;
+  const boundingBox = selectedItems.reduce(
+    (acc, item) => {
+      const rad = (item.rotate * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const corners = [
+        { x: item.translate[0], y: item.translate[1] },
+        { x: item.translate[0] + item.width * cos, y: item.translate[1] + item.width * sin },
+        { x: item.translate[0] - item.height * sin, y: item.translate[1] + item.height * cos },
+        { x: item.translate[0] + item.width * cos - item.height * sin, y: item.translate[1] + item.width * sin + item.height * cos },
+      ];
+
+      corners.forEach((corner) => {
+        acc.minX = Math.min(acc.minX, corner.x);
+        acc.minY = Math.min(acc.minY, corner.y);
+        acc.maxX = Math.max(acc.maxX, corner.x);
+        acc.maxY = Math.max(acc.maxY, corner.y);
+      });
+
+      return acc;
+    },
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+  );
+
+  const transX = boundingBox.minX;
+  const transY = boundingBox.minY;
+  const width = boundingBox.maxX - boundingBox.minX;
+  const height = boundingBox.maxY - boundingBox.minY;
+
+  console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
+
+  const newMinX = firstX < minX ? firstX : minX;
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
   let previous = selectedItems[0].zindex;
 
@@ -1744,9 +1776,12 @@ function drawWeldObjectCanvas(selectedItems) {
     active: false,
     cat: 'General',
     type: "Weld_General",
+    // translate: [newMinX, minY],
+    // width: (maxX - minX) * scalPercentage,
+    // height: (maxY - minY) * scalPercentage,
     translate: [transX, minY],
-    width: (maxX - minX) * scalPercentage,
-    height: (maxY - minY) * scalPercentage,
+    width: width * scalPercentage,
+    height: height * scalPercentage,
     rotate: 0,
     scaleX: 1,
     scaleY: 1,
