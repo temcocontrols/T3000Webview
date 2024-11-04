@@ -311,7 +311,7 @@
                   link: locked && item.t3Entry,
                 }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                @update-weld-model="updateWeldModel">
+                @update-weld-model="updateWeldModelCanvas">
               </CanvasShape>
             </div>
           </div>
@@ -2663,6 +2663,30 @@ const updateWeldModel = (weldModel, itemList) => {
   appState.value.items.map((item) => {
     if (item.type === "Weld" && item.id === weldModel.id) {
       item.settings.weldItems = itemList;
+    }
+  });
+};
+
+const updateWeldModelCanvas = (weldModel, pathItemList) => {
+  console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
+
+  appState.value.items.map((item) => {
+    if (item.type === "Weld_General" && item.id === weldModel.id) {
+
+      // Update the weld items new width, height, translate
+      const firstTrsx = item?.weldItems[0]?.translate[0];
+      const firstTrsy = item?.weldItems[0]?.translate[1];
+
+      item.weldItems.forEach((weldItem) => {
+        const pathItem = pathItemList.find((itx) => itx.item.id === weldItem.id);
+        console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        if (pathItem) {
+          weldItem.width = pathItem.newPos.width;
+          weldItem.height = pathItem.newPos.height;
+          weldItem.translate[0] = firstTrsx + pathItem.newPos.trsx;
+          weldItem.translate[1] = firstTrsy + pathItem.newPos.trsy;
+        }
+      });
     }
   });
 };

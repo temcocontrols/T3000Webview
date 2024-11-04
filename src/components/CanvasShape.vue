@@ -18,7 +18,8 @@ export default {
       required: true
     }
   },
-  setup(props) {
+  emits: ["updateWeldModel"],
+  setup(props, { emit }) {
     const canvasContainer = ref(null);
     const canvas = ref(null);
     const project = ref(null);
@@ -29,6 +30,7 @@ export default {
     const initCanvas = () => {
       const canvasEl = document.getElementById(`canvas${props.item.id}`);
       project.value = new paper.Project(canvasEl);
+      project?.value?.clear();
 
       paper.settings.insertItems = false;
       resizeCanvas();
@@ -244,7 +246,7 @@ export default {
         }
 
         // console.log(`CanvasShape.vue->getWeldPathItems| ${type}`, paItem);
-        return { type: type, pathItem: pathItem, item: item }
+        return { type: type, pathItem: pathItem, item: item, newPos: { width: width, height: height, trsx: currentTrsx - 4, trsy: currentTrsy - 4 } }
       });
 
       return pathItemList;
@@ -589,25 +591,27 @@ export default {
       const pathItemList = getWeldPathItems(props.item.weldItems);
       console.log('CanvasShape.vue->paItemList', pathItemList);
 
+      emit("updateWeldModel", props.item, pathItemList);
+
       const allPaPoints = transferToLinePoints(pathItemList);
       console.log('CanvasShape.vue->allPaPoints', allPaPoints);
 
       // Redraw the shapes need to be welded, and make the lines and points moveable
       // Only for debugging
 
-      // allPaPoints.map((itm, index) => {
-      //   const lpos = getLinePointObjects(null, itm.points);
-      //   console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
-      //   console.log('CanvasShape.vue->lpos', lpos);
+      allPaPoints.map((itm, index) => {
+        const lpos = getLinePointObjects(null, itm.points);
+        console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
+        console.log('CanvasShape.vue->lpos', lpos);
 
-      //   lpos.map((lpo, index) => {
-      //     project.value.activeLayer.addChild(lpo.path);
-      //     project.value.activeLayer.addChild(lpo.startPoint);
-      //     project.value.activeLayer.addChild(lpo.endPoint);
-      //   });
-      // });
+        lpos.map((lpo, index) => {
+          project.value.activeLayer.addChild(lpo.path);
+          project.value.activeLayer.addChild(lpo.startPoint);
+          project.value.activeLayer.addChild(lpo.endPoint);
+        });
+      });
 
-      //return;
+      return;
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
@@ -632,6 +636,9 @@ export default {
       console.log('CanvasShape.vue->boolOptSegments', boolOptSegments);
 
       const rwd = renderWeldedShape(boolOptSegments);
+
+      //
+      emit("updateWeldModel", props.item, props.item.weldItems);
     };
 
     const booleanOperation = (operation, pathList) => {
