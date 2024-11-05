@@ -419,18 +419,11 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import {
-  tools,
-  T3_Types,
-  getObjectActiveValue,
-  T3000_Data,
-  user,
-  globalNav,
-  demoDeviceData,
-} from "../../lib/common";
+import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData, } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
+import { getOverlapSize } from "overlap-area";
 
 // Meta information for the application
 const metaData = {
@@ -1802,6 +1795,57 @@ function drawWeldObjectCanvas(selectedItems) {
   addObject(tempItem);
 }
 
+function getDuctPoints(info) {
+  const { left, top, pos1, pos2, pos3, pos4 } = info;
+  return [pos1, pos2, pos4, pos3].map((pos) => [
+    left + pos[0],
+    top + pos[1],
+  ]);
+}
+
+function isDuctOverlap(partEl) {
+  const parentDuct = partEl.closest(".moveable-item.Duct");
+  const element1Rect = getElementInfo(partEl);
+  const elements = document.querySelectorAll(".moveable-item.Duct");
+  for (const el of Array.from(elements)) {
+    if (parentDuct.isSameNode(el)) continue;
+    const element2Rect = getElementInfo(el);
+
+    const points1 = getDuctPoints(element1Rect);
+    const points2 = getDuctPoints(element2Rect);
+    const overlapSize = getOverlapSize(points1, points2);
+    if (overlapSize > 0) return true;
+  }
+  return false;
+}
+
+function getDuctItemPos(selectedItems) {
+
+  selectedItems.map((item) => {
+
+    const { width, height, translate, rotate } = item;
+
+    const element = document.querySelector(`#moveable-item-${item.id}`);
+    const elRect = element.getBoundingClientRect();
+    const elInfo = getElementInfo(element);
+
+    const startEl = document.querySelector(`#moveable-item-${item.id} .duct-start`);
+    const endEl = document.querySelector(`#moveable-item-${item.id} .duct-end`);
+
+    const isStartOverlap = isDuctOverlap(startEl);
+    const isEndOverlap = isDuctOverlap(endEl);
+
+    console.log(`IndexPage.vue->getDuctItemPos->--#moveable-item-${item.id}-----`);
+    console.log(`IndexPage.vue->getDuctItemPos->--w,h,trx,try,r`, [width, height, translate[0], translate[1], rotate]);
+    console.log(`IndexPage.vue->getDuctItemPos->--element-Rect`, elRect);
+    console.log(`IndexPage.vue->getDuctItemPos->--element-Info`, elInfo);
+    console.log(`IndexPage.vue->getDuctItemPos->--isStartOverlap`, isStartOverlap);
+    console.log(`IndexPage.vue->getDuctItemPos->--isEndOverlap`, isEndOverlap);
+    console.log('IndexPage.vue->getDuctItemPos->------------------------------------------------');
+  });
+  return [0, 0];
+}
+
 // Weld selected objects into one shape
 function weldSelected() {
   if (appState.value.selectedTargets.length < 2) return;
@@ -1830,12 +1874,13 @@ function weldSelected() {
 
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
-  console.log('IndexPage.vue->weldSelected->selectedItems', selectedItems, isAllGeneral);
+  // console.log('IndexPage.vue->weldSelected->selectedItems', selectedItems, isAllGeneral);
 
   if (isAllGeneral) {
     drawWeldObjectCanvas(selectedItems);
   }
   else {
+    const newPos = getDuctItemPos(selectedItems);
     drawWeldObject(selectedItems);
   }
 
