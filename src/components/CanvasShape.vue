@@ -174,17 +174,16 @@ export default {
     };
 
     // Recalculate the shapes' translate and size
-    const itemData = computed(() => props.item);
-    const defaultWidth = itemData.value.width;
-    const defaultHeight = itemData.value.height;
-    const defaultColor = itemData.value.settings.fillColor;
+    const defaultWidth = ref(props.item.width);
+    const defaultHeight = ref(props.item.height);
+    const defaultColor = ref(props.item.settings.fillColor);
 
     const calculateScale = () => {
-      const widthScale = itemData.value.width / defaultWidth;
-      const heightScale = itemData.value.height / defaultHeight;
-      const tranXScale = itemData.value.translate[0] / defaultWidth;
-      const tranYScale = itemData.value.translate[1] / defaultHeight;
-      return { widthScale, heightScale, tranXScale, tranYScale };
+      const widthScale = props.item.width / defaultWidth.value;
+      const heightScale = props.item.height / defaultHeight.value;
+      const trsXScale = props.item.translate[0] / defaultWidth.value;
+      const trsYScale = props.item.translate[1] / defaultHeight.value;
+      return { widthScale, heightScale, trsXScale, trsYScale };
     }
 
     // Calculate the new size of the shape when canvas or parent div client rect changed
@@ -197,7 +196,7 @@ export default {
       // Calculate the scale of the shapes
       const scaleWHXY = calculateScale();
 
-      console.log('CanvasShape.vue->calculateNewSize|default w h c', defaultWidth, defaultHeight, defaultColor);
+      console.log('CanvasShape.vue->calculateNewSize|default w h c', defaultWidth.value, defaultHeight.value, defaultColor.value, props.item.width, props.item.height);
       console.log('CanvasShape.vue->calculateNewSize|min x y', minX, minY);
 
       let { width, height, cat, type, translate } = currentItem;
@@ -694,6 +693,10 @@ export default {
       console.log('CanvasShape.vue->paItemList', pathItemList);
 
       emit("updateWeldModel", props.item, pathItemList);
+
+      // Remerber the previous width and height
+      defaultWidth.value = props.item.width;
+      defaultHeight.value = props.item.height;
 
       const allPaPoints = transferToLinePoints(pathItemList);
       console.log('CanvasShape.vue->allPaPoints', allPaPoints);
