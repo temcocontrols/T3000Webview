@@ -139,6 +139,30 @@ export default {
       return step;
     }
 
+    const gDuct = (rdType, item, width, height, trsXY) => {
+      const { settings, rotate, points } = item;
+
+      /*
+      const factor = rdType == "weld" ? 8 : 4;
+      const centerX = (width / 2) + trsXY[0];
+      const centerY = (height / 2) + trsXY[1];
+      */
+
+      const path = new paper.Path({
+        segments: points,
+        closed: true,
+        strokeColor: settings.bgColor || '#000',
+        strokeWidth: 2,
+        fillColor: settings.fillColor,
+      });
+
+      if (rotate) {
+        path.rotate(rotate);
+      }
+
+      return path;
+    }
+
     const loadSvgString = (svgString) => {
       return paper.project.importSVG(svgString, { applyMatrix: false });
     };
@@ -221,11 +245,39 @@ export default {
       return { width, height, trsx: currentTrsx, trsy: currentTrsy };
     }
 
+    // Calcuate the duct new points data
+    const calculatePointPos = (weldItems, currentItem) => {
+      const minX = Math.min(...weldItems.map(item => item.translate[0]));
+      const minY = Math.min(...weldItems.map(item => item.translate[1]));
+
+      const scaleWHXY = calculateScale();
+
+      let { width, height, cat, type, translate } = currentItem;
+      let [trsx, trsy] = translate;
+
+      // 4 pixels for drawing the start and end points circle
+      let currentTrsx = trsx - minX + 4;
+      let currentTrsy = trsy - minY + 4;
+
+      // Resize the width and height
+      width = width * scaleWHXY.widthScale;
+      height = height * scaleWHXY.heightScale;
+
+      trsx *= scaleWHXY.widthScale;
+      trsy *= scaleWHXY.heightScale;
+      trsx -= minX * scaleWHXY.widthScale;
+      trsy -= minY * scaleWHXY.heightScale;
+
+      currentTrsx = trsx + 4;
+      currentTrsy = trsy + 4;
+
+      return { width, height, trsx: currentTrsx, trsy: currentTrsy };
+    }
+
     const getWeldPathItems = (weldItems) => {
       const pathItemList = weldItems?.map((item, index) => {
         let pathItem = null;
-
-        const newSize = calculateNewSize(weldItems, item);
+        let newSize = calculateNewSize(weldItems, item);
 
         switch (item.type) {
           case "G_Rectangle":
@@ -239,6 +291,10 @@ export default {
             break;
           case "G_Hexagon":
             pathItem = gHexagon('weld', item, newSize.width, newSize.height, [newSize.trsx, newSize.trsy]);
+            break;
+          case "Duct":
+            const newPoint = calculatePointPos(weldItems, item);
+            pathItem = gDuct('weld', item, newSize.width, newSize.height, [newSize.trsx, newSize.trsy]);
             break;
         }
 
@@ -462,158 +518,6 @@ export default {
       return lpos;
     }
 
-    // const getLinePointObjectsWeld = (weldPath, points) => {
-    //   console.log('CanvasShape.vue->updateWeldPath|weldPath.default', weldPath?.segments.map(segment => [segment.point.x, segment.point.y]));
-    //   let lpos = [];
-    //   lpos = points.slice(0, -1).map((point, index) => {
-
-    //     const startPoint = point;
-    //     const endPoint = points[index + 1];
-    //     const radius = 4;
-    //     const strokeWidth = 2;
-
-    //     console.log(`CanvasShape.vue->getLinePointObjects|point, Path Line ${index + 1}`, startPoint, endPoint);
-
-    //     const startCircle = new paper.Path.Circle({
-    //       center: startPoint,
-    //       radius: radius,
-    //       fillColor: "aqua",// "#4af",// "#000",// "blue",
-    //     });
-
-    //     const endCircle = new paper.Path.Circle({
-    //       center: endPoint,
-    //       radius: radius,
-    //       fillColor: "aqua",//"#4af",//"#000",// "red",
-    //     });
-
-    //     const line = new paper.Path.Line({
-    //       from: startPoint,
-    //       to: endPoint,
-    //       strokeColor: "#000",
-    //       strokeWidth: strokeWidth,
-    //       fillColor: "#f36dc5",
-    //       // dashArray: [5, 2],
-    //     });
-
-    //     function makePreviousContinue() {
-    //       if (index > 0) {
-    //         const previousLine = lpos[index - 1];
-    //         previousLine.endPoint.position = startCircle.position;
-    //         previousLine.path.segments[1].point = startCircle.position;
-    //       } else {
-    //         const lastLine = lpos[lpos.length - 1];
-    //         lastLine.endPoint.position = startCircle.position;
-    //         lastLine.path.segments[1].point = startCircle.position;
-    //       }
-    //     }
-
-    //     function makeNextContinue() {
-    //       if (index === lpos.length - 1) {
-    //         const firstLine = lpos[0];
-    //         firstLine.startPoint.position = endCircle.position;
-    //         firstLine.path.segments[0].point = endCircle.position;
-    //       } else {
-    //         const nextLine = lpos[index + 1];
-    //         nextLine.startPoint.position = endCircle.position;
-    //         nextLine.path.segments[0].point = endCircle.position;
-    //       }
-    //     }
-
-    //     function updateWeldPath(itemType) {
-    //       if (weldPath !== null) {
-
-    //         /*
-    //         console.log(`---------------start--${itemType}--------------------------`);
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
-    //         console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
-    //         console.log(`---------------end--${itemType}----------------------------`);
-    //         */
-
-    //         weldPath.segments[index].point = startCircle.position;
-    //         weldPath.segments[index + 1].point = endCircle.position;
-
-    //         // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
-
-    //         // Make the welded path's start point move along with the end position of the last line
-    //         if (index + 2 == weldPath.segments.length) {
-    //           // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
-    //           weldPath.segments[0].point = endCircle.position;
-    //         }
-
-    //         if (index == 0) {
-    //           weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
-    //         }
-    //       }
-    //     }
-
-    //     function updateShapes() {
-    //       line.segments[0].point = startCircle.position;
-    //       line.segments[1].point = endCircle.position;
-    //     }
-
-    //     function updatePreviousLine(newLocation) {
-    //       if (index > 0) {
-    //         const previousLine = lpos[index - 1];
-    //         previousLine.endPoint.position = newLocation;
-    //         previousLine.path.segments[1].point = newLocation;
-    //       } else {
-    //         const lastLine = lpos[lpos.length - 1];
-    //         lastLine.endPoint.position = newLocation;
-    //         lastLine.path.segments[1].point = newLocation;
-    //       }
-    //     }
-
-    //     function updateNextLine(newLocation) {
-    //       if (index === lpos.length - 1) {
-    //         const firstLine = lpos[0];
-    //         firstLine.startPoint.position = newLocation;
-    //         firstLine.path.segments[0].point = newLocation;
-    //       } else {
-    //         const nextLine = lpos[index + 1];
-    //         nextLine.startPoint.position = newLocation;
-    //         nextLine.path.segments[0].point = newLocation;
-    //       }
-    //     }
-
-    //     startCircle.onMouseDrag = function (event) {
-    //       this.position = this.position.add(event.delta);
-    //       updateShapes();
-    //       updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
-    //       makePreviousContinue();
-    //     };
-
-    //     endCircle.onMouseDrag = function (event) {
-    //       this.position = this.position.add(event.delta);
-    //       updateShapes();
-    //       updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
-    //       makeNextContinue();
-    //     };
-
-    //     line.onMouseDrag = function (event) {
-    //       console.log("new line moveable event", event, line);
-    //       const delta = event.delta;
-    //       startCircle.position = startCircle.position.add(delta);
-    //       endCircle.position = endCircle.position.add(delta);
-    //       updateShapes();
-    //       updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
-    //       updateNextLine(endCircle.position);
-    //       updatePreviousLine(startCircle.position);
-    //     };
-
-    //     return {
-    //       name: `Path Line ${index + 1}`,
-    //       path: line,
-    //       startPoint: startCircle,
-    //       endPoint: endCircle,
-    //     };
-    //   });
-    //   return lpos;
-    // }
-
     const makeNewPath = (allPaPoints) => {
       const newPathList = allPaPoints.map((itm, index) => {
         const path = new paper.Path({
@@ -718,7 +622,7 @@ export default {
       // Redraw the shapes need to be welded, and make the lines and points moveable
       // Only for debugging
 
-      /*
+
       allPaPoints.map((itm, index) => {
         const lpos = getLinePointObjects(null, itm.points);
         console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
@@ -732,7 +636,7 @@ export default {
       });
 
       return;
-      */
+
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
@@ -786,10 +690,11 @@ export default {
     };
 
     const draw = () => {
+
       const { width, height, weldModel, cat, type, settings } = props.item;
       project?.value?.clear();
 
-      if (type === "Weld_General") {
+      if (type === "Weld_General" || type === "Weld_Duct") {
         renderWeldShapes();
       }
       else {

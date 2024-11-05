@@ -306,8 +306,8 @@
                 }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                 @update-weld-model="updateWeldModel" />
-              <CanvasShape v-if="item.cat === 'General' || item.type === 'Weld_General'" ref="objectsRef" :item="item"
-                :key="item.id + item.type" :class="{
+              <CanvasShape v-if="item.cat === 'General' || item.type === 'Weld_General' || item.type === 'Weld_Duct'"
+                ref="objectsRef" :item="item" :key="item.id + item.type" :class="{
                   link: locked && item.t3Entry,
                 }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                 @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
@@ -424,6 +424,7 @@ import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
+import { startsWith } from "lodash";
 
 // Meta information for the application
 const metaData = {
@@ -1719,10 +1720,10 @@ function drawWeldObjectCanvas(selectedItems) {
   const firstX = selectedItems[0].translate[0];
   const firstY = selectedItems[0].translate[1];
   const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
-  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
+  let minY = Math.min(...selectedItems.map((item) => item.translate[1]));
   const maxX = Math.max(...selectedItems.map((item) => item.translate[0] + item.width));
   const maxY = Math.max(...selectedItems.map((item) => item.translate[1] + item.height));
-  const newMinX = firstX < minX ? firstX : minX;
+  let newMinX = firstX < minX ? firstX : minX;
 
   const boundingBox = selectedItems.reduce(
     (acc, item) => {
@@ -1764,11 +1765,25 @@ function drawWeldObjectCanvas(selectedItems) {
     previous = item.zindex;
   });
 
+  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+
+  if (isAllDuct) {
+    // Get the new pos for all ducts
+    const ductPosList = getDuctItemPos(selectedItems);
+
+    selectedItems.forEach((item) => {
+      const ductPos = ductPosList.find((pos) => pos.id === item.id);
+      if (ductPos) {
+        item.points = ductPos.points;
+      }
+    });
+  }
+
   const tempItem = {
     title: `Weld-${title}`,
     active: false,
     cat: 'General',
-    type: "Weld_General",
+    type: isAllDuct ? "Weld_Duct" : "Weld_General",
     translate: [newMinX, minY],
     width: (maxX - minX) * scalPercentage,
     height: (maxY - minY) * scalPercentage,
@@ -1821,6 +1836,8 @@ function isDuctOverlap(partEl) {
 
 function getDuctItemPos(selectedItems) {
 
+  const itemPosList = [];
+
   selectedItems.map((item) => {
 
     const { width, height, translate, rotate } = item;
@@ -1835,15 +1852,100 @@ function getDuctItemPos(selectedItems) {
     const isStartOverlap = isDuctOverlap(startEl);
     const isEndOverlap = isDuctOverlap(endEl);
 
+    const pointArray = [];
+
+    // Calculate the start svg and end svg width
+    const getArrowSvgWidth = () => {
+
+      let startW = 25;
+      let endW = 25;
+      let middle = 0;
+
+      if (width > 50) {
+        if (width < 80) {
+          startW = endW = width / 2;
+        }
+        else {
+          startW = 40;
+          endW = 40;
+          middle = (width - 80);
+        }
+      }
+
+      return { startW, middle, endW };
+    }
+
+    const startX = translate[0];
+    const startY = translate[1];
+    const svgWidth = getArrowSvgWidth();
+
+    // 1st
+    const p1 = [startX, startY];
+    pointArray.push(p1);
+
+    // 2nd
+    const p21 = [startX + svgWidth.startW, startY + (height / 2)];
+    const p22 = [startX, startY + height];
+
+    if (isStartOverlap) {
+      pointArray.push(p22);
+    }
+    else {
+      pointArray.push(p21);
+      pointArray.push(p22);
+    }
+
+    // 3rd
+    const p31 = [startX + svgWidth.startW + svgWidth.middle, startY + height];
+    const p32 = [startX + width, startY + height];
+
+    if (isEndOverlap) {
+      pointArray.push(p32);
+    }
+    else {
+      pointArray.push(p31);
+    }
+
+    // 4th
+    const p4 = [startX + width, startY + (height / 2)];
+
+    if (!isEndOverlap) {
+      pointArray.push(p4);
+    }
+
+    // 5th
+    const p51 = [startX + width, startY];
+    const p52 = [startX + svgWidth.startW + svgWidth.middle, startY];
+
+    if (isEndOverlap) {
+      pointArray.push(p51);
+    }
+    else {
+      pointArray.push(p52);
+    }
+
     console.log(`IndexPage.vue->getDuctItemPos->--#moveable-item-${item.id}-----`);
+    console.log(`IndexPage.vue->getDuctItemPos->--isStartOverlap`, isStartOverlap);
+    console.log(`IndexPage.vue->getDuctItemPos->--isEndOverlap`, isEndOverlap);
+    console.log('IndexPage.vue->getDuctItemPos->--pointArray', pointArray);
     console.log(`IndexPage.vue->getDuctItemPos->--w,h,trx,try,r`, [width, height, translate[0], translate[1], rotate]);
     console.log(`IndexPage.vue->getDuctItemPos->--element-Rect`, elRect);
     console.log(`IndexPage.vue->getDuctItemPos->--element-Info`, elInfo);
-    console.log(`IndexPage.vue->getDuctItemPos->--isStartOverlap`, isStartOverlap);
-    console.log(`IndexPage.vue->getDuctItemPos->--isEndOverlap`, isEndOverlap);
     console.log('IndexPage.vue->getDuctItemPos->------------------------------------------------');
+
+    itemPosList.push({
+      id: item.id,
+      points: pointArray,
+      width: width,
+      height: height,
+      translate: translate,
+      rotate: rotate,
+      isStartOverlap: isStartOverlap,
+      isEndOverlap: isEndOverlap,
+    });
   });
-  return [0, 0];
+
+  return itemPosList;
 }
 
 // Weld selected objects into one shape
@@ -1874,13 +1976,13 @@ function weldSelected() {
 
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
-  // console.log('IndexPage.vue->weldSelected->selectedItems', selectedItems, isAllGeneral);
+  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  // console.log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
-  if (isAllGeneral) {
+  if (isAllGeneral || isAllDuct) {
     drawWeldObjectCanvas(selectedItems);
   }
   else {
-    const newPos = getDuctItemPos(selectedItems);
     drawWeldObject(selectedItems);
   }
 
