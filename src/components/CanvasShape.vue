@@ -37,6 +37,8 @@ export default {
 
     const resizeCanvas = () => {
       const canvasEl = canvas.value;
+      // const canvasEl = document.getElementById(`canvas${props.item.id}`);
+
       // const hidCanvasEl = hidCanvas.value;
 
       if (canvasEl) {
@@ -53,7 +55,7 @@ export default {
         // hidCanvasEl.style.width = `${width}px`;
         // hidCanvasEl.style.height = `${height}px`;
 
-        paper.view.viewSize = new paper.Size(canvasEl.width, canvasEl.height);
+        // paper.view.viewSize = new paper.Size(canvasEl.width, canvasEl.height);
         draw();
       }
     };
