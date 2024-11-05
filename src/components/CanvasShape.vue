@@ -139,8 +139,8 @@ export default {
       return step;
     }
 
-    const gDuct = (rdType, item, width, height, trsXY) => {
-      const { settings, rotate, points } = item;
+    const gDuct = (rdType, item, pathPoints, width, height, trsXY) => {
+      const { settings, rotate } = item;
 
       /*
       const factor = rdType == "weld" ? 8 : 4;
@@ -149,7 +149,7 @@ export default {
       */
 
       const path = new paper.Path({
-        segments: points,
+        segments: pathPoints,
         closed: true,
         strokeColor: settings.bgColor || '#000',
         strokeWidth: 2,
@@ -246,14 +246,100 @@ export default {
     }
 
     // Calcuate the duct new points data
-    const calculatePointPos = (weldItems, currentItem) => {
+    const calculateDuctPathPoints = (weldItems, currentItem) => {
+
+      let { width, height, cat, type, translate, rotate, overlap } = currentItem;
+      let [trsx, trsy] = translate;
+      const { isStartOverlap, isEndOverlap } = overlap;
+
+      // Calculate the start svg and end svg width
+      const getArrowSvgWidth = () => {
+
+        let startW = 25;
+        let endW = 25;
+        let middle = 0;
+
+        if (width > 50) {
+          if (width < 80) {
+            startW = endW = width / 2;
+          }
+          else {
+            startW = 40;
+            endW = 40;
+            middle = (width - 80);
+          }
+        }
+
+        return { startW, middle, endW };
+      }
+
+      const getPathPoints = (startX, startY) => {
+        const pointArray = [];
+
+        // const startX = translate[0];
+        // const startY = translate[1];
+        const svgWidth = getArrowSvgWidth();
+
+        // 1st
+        const p1 = [startX, startY];
+        pointArray.push(p1);
+
+        // 2nd
+        const p21 = [startX + svgWidth.startW, startY + (height / 2)];
+        const p22 = [startX, startY + height];
+
+        if (isStartOverlap) {
+          pointArray.push(p22);
+        }
+        else {
+          pointArray.push(p21);
+          pointArray.push(p22);
+        }
+
+        // 3rd
+        const p31 = [startX + svgWidth.startW + svgWidth.middle, startY + height];
+        const p32 = [startX + width, startY + height];
+
+        if (isEndOverlap) {
+          pointArray.push(p32);
+        }
+        else {
+          pointArray.push(p31);
+        }
+
+        // 4th
+        const p4 = [startX + width, startY + (height / 2)];
+
+        if (!isEndOverlap) {
+          pointArray.push(p4);
+        }
+
+        // 5th
+        const p51 = [startX + width, startY];
+        const p52 = [startX + svgWidth.startW + svgWidth.middle, startY];
+
+        if (isEndOverlap) {
+          pointArray.push(p51);
+        }
+        else {
+          pointArray.push(p52);
+        }
+
+        console.log(`IndexPage.vue->calculateDuctPathPoints->--#moveable-item-${currentItem.id}-----`);
+        console.log(`IndexPage.vue->calculateDuctPathPoints->--isStartOverlap,isEndOverlap`, isStartOverlap, isEndOverlap);
+        console.log('IndexPage.vue->calculateDuctPathPoints->--pointArray', pointArray);
+        console.log('IndexPage.vue->calculateDuctPathPoints->------------------------------------------------');
+
+        // Make the shape closed
+        pointArray.push(p1);
+
+        return pointArray;
+      }
+
       const minX = Math.min(...weldItems.map(item => item.translate[0]));
       const minY = Math.min(...weldItems.map(item => item.translate[1]));
 
       const scaleWHXY = calculateScale();
-
-      let { width, height, cat, type, translate } = currentItem;
-      let [trsx, trsy] = translate;
 
       // 4 pixels for drawing the start and end points circle
       let currentTrsx = trsx - minX + 4;
@@ -271,7 +357,9 @@ export default {
       currentTrsx = trsx + 4;
       currentTrsy = trsy + 4;
 
-      return { width, height, trsx: currentTrsx, trsy: currentTrsy };
+      const pts = getPathPoints(currentTrsx, currentTrsy);
+
+      return { pathPoints: pts, width, height, trsx: currentTrsx, trsy: currentTrsy };
     }
 
     const getWeldPathItems = (weldItems) => {
@@ -293,8 +381,8 @@ export default {
             pathItem = gHexagon('weld', item, newSize.width, newSize.height, [newSize.trsx, newSize.trsy]);
             break;
           case "Duct":
-            const newPoint = calculatePointPos(weldItems, item);
-            pathItem = gDuct('weld', item, newSize.width, newSize.height, [newSize.trsx, newSize.trsy]);
+            const pts = calculateDuctPathPoints(weldItems, item);
+            pathItem = gDuct('weld', item, pts.pathPoints, newSize.width, newSize.height, [newSize.trsx, newSize.trsy]);
             break;
         }
 
@@ -623,20 +711,17 @@ export default {
       // Only for debugging
 
 
-      allPaPoints.map((itm, index) => {
-        const lpos = getLinePointObjects(null, itm.points);
-        console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
-        console.log('CanvasShape.vue->lpos', lpos);
+      // allPaPoints.map((itm, index) => {
+      //   const lpos = getLinePointObjects(null, itm.points);
+      //   console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
+      //   console.log('CanvasShape.vue->lpos', lpos);
 
-        lpos.map((lpo, index) => {
-          project.value.activeLayer.addChild(lpo.path);
-          project.value.activeLayer.addChild(lpo.startPoint);
-          project.value.activeLayer.addChild(lpo.endPoint);
-        });
-      });
-
-      return;
-
+      //   lpos.map((lpo, index) => {
+      //     project.value.activeLayer.addChild(lpo.path);
+      //     project.value.activeLayer.addChild(lpo.startPoint);
+      //     project.value.activeLayer.addChild(lpo.endPoint);
+      //   });
+      // });
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);

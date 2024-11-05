@@ -1769,12 +1769,15 @@ function drawWeldObjectCanvas(selectedItems) {
 
   if (isAllDuct) {
     // Get the new pos for all ducts
-    const ductPosList = getDuctItemPos(selectedItems);
+    const overlapList = checkIsOverlap(selectedItems);
 
     selectedItems.forEach((item) => {
-      const ductPos = ductPosList.find((pos) => pos.id === item.id);
-      if (ductPos) {
-        item.points = ductPos.points;
+      const overlapItem = overlapList.find((pos) => pos.id === item.id);
+      if (overlapItem) {
+        item.overlap = {
+          isStartOverlap: overlapItem.isStartOverlap,
+          isEndOverlap: overlapItem.isEndOverlap,
+        }
       }
     });
   }
@@ -1834,17 +1837,17 @@ function isDuctOverlap(partEl) {
   return false;
 }
 
-function getDuctItemPos(selectedItems) {
+function checkIsOverlap(selectedItems) {
 
-  const itemPosList = [];
+  const itemList = [];
 
   selectedItems.map((item) => {
 
     const { width, height, translate, rotate } = item;
 
-    const element = document.querySelector(`#moveable-item-${item.id}`);
-    const elRect = element.getBoundingClientRect();
-    const elInfo = getElementInfo(element);
+    // const element = document.querySelector(`#moveable-item-${item.id}`);
+    // const elRect = element.getBoundingClientRect();
+    // const elInfo = getElementInfo(element);
 
     const startEl = document.querySelector(`#moveable-item-${item.id} .duct-start`);
     const endEl = document.querySelector(`#moveable-item-${item.id} .duct-end`);
@@ -1852,100 +1855,14 @@ function getDuctItemPos(selectedItems) {
     const isStartOverlap = isDuctOverlap(startEl);
     const isEndOverlap = isDuctOverlap(endEl);
 
-    const pointArray = [];
-
-    // Calculate the start svg and end svg width
-    const getArrowSvgWidth = () => {
-
-      let startW = 25;
-      let endW = 25;
-      let middle = 0;
-
-      if (width > 50) {
-        if (width < 80) {
-          startW = endW = width / 2;
-        }
-        else {
-          startW = 40;
-          endW = 40;
-          middle = (width - 80);
-        }
-      }
-
-      return { startW, middle, endW };
-    }
-
-    const startX = translate[0];
-    const startY = translate[1];
-    const svgWidth = getArrowSvgWidth();
-
-    // 1st
-    const p1 = [startX, startY];
-    pointArray.push(p1);
-
-    // 2nd
-    const p21 = [startX + svgWidth.startW, startY + (height / 2)];
-    const p22 = [startX, startY + height];
-
-    if (isStartOverlap) {
-      pointArray.push(p22);
-    }
-    else {
-      pointArray.push(p21);
-      pointArray.push(p22);
-    }
-
-    // 3rd
-    const p31 = [startX + svgWidth.startW + svgWidth.middle, startY + height];
-    const p32 = [startX + width, startY + height];
-
-    if (isEndOverlap) {
-      pointArray.push(p32);
-    }
-    else {
-      pointArray.push(p31);
-    }
-
-    // 4th
-    const p4 = [startX + width, startY + (height / 2)];
-
-    if (!isEndOverlap) {
-      pointArray.push(p4);
-    }
-
-    // 5th
-    const p51 = [startX + width, startY];
-    const p52 = [startX + svgWidth.startW + svgWidth.middle, startY];
-
-    if (isEndOverlap) {
-      pointArray.push(p51);
-    }
-    else {
-      pointArray.push(p52);
-    }
-
-    console.log(`IndexPage.vue->getDuctItemPos->--#moveable-item-${item.id}-----`);
-    console.log(`IndexPage.vue->getDuctItemPos->--isStartOverlap`, isStartOverlap);
-    console.log(`IndexPage.vue->getDuctItemPos->--isEndOverlap`, isEndOverlap);
-    console.log('IndexPage.vue->getDuctItemPos->--pointArray', pointArray);
-    console.log(`IndexPage.vue->getDuctItemPos->--w,h,trx,try,r`, [width, height, translate[0], translate[1], rotate]);
-    console.log(`IndexPage.vue->getDuctItemPos->--element-Rect`, elRect);
-    console.log(`IndexPage.vue->getDuctItemPos->--element-Info`, elInfo);
-    console.log('IndexPage.vue->getDuctItemPos->------------------------------------------------');
-
-    itemPosList.push({
+    itemList.push({
       id: item.id,
-      points: pointArray,
-      width: width,
-      height: height,
-      translate: translate,
-      rotate: rotate,
       isStartOverlap: isStartOverlap,
       isEndOverlap: isEndOverlap,
     });
   });
 
-  return itemPosList;
+  return itemList;
 }
 
 // Weld selected objects into one shape
