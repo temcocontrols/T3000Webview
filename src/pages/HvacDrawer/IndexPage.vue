@@ -1782,14 +1782,17 @@ function drawWeldObjectCanvas(selectedItems) {
     });
   }
 
+  const newWidth = (maxX - minX) * scalPercentage + 8;
+  const newHeight = (maxY - minY) * scalPercentage + 8;
+
   const tempItem = {
     title: `Weld-${title}`,
     active: false,
     cat: 'General',
     type: isAllDuct ? "Weld_Duct" : "Weld_General",
     translate: [newMinX, minY],
-    width: (maxX - minX) * scalPercentage,
-    height: (maxY - minY) * scalPercentage,
+    width: newWidth,
+    height: newHeight,
     // translate: [transX, minY],
     // width: width * scalPercentage,
     // height: height * scalPercentage,
@@ -2735,7 +2738,7 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
   console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
 
   appState.value.items.map((item) => {
-    if (item.type === "Weld_General" && item.id === weldModel.id) {
+    if ((item.type === "Weld_General" || item.type === "Weld_Duct") && item.id === weldModel.id) {
 
       // Update the weld items's new width, height, translate
       const firstTrsx = item?.weldItems[0]?.translate[0];

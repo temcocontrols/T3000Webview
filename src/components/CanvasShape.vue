@@ -148,12 +148,14 @@ export default {
       const centerY = (height / 2) + trsXY[1];
       */
 
+      console.log('CanvasShape.vue->gDuct|settings', settings.bgColor, settings.fillColor);
+
       const path = new paper.Path({
         segments: pathPoints,
         closed: true,
-        strokeColor: settings.bgColor || '#000',
+        strokeColor: '#000',// settings.bgColor || '#000',
         strokeWidth: 2,
-        fillColor: settings.fillColor,
+        fillColor: "#659dc5",//settings.fillColor || "#659dc5",
       });
 
       if (rotate) {
@@ -365,7 +367,7 @@ export default {
     const getWeldPathItems = (weldItems) => {
       const pathItemList = weldItems?.map((item, index) => {
         let pathItem = null;
-        let newSize = calculateNewSize(weldItems, item);
+        const newSize = calculateNewSize(weldItems, item);
 
         switch (item.type) {
           case "G_Rectangle":
