@@ -212,12 +212,15 @@ export default {
       return { widthScale, heightScale, trsXScale, trsYScale };
     }
 
+    const minX = ref(Math.min(...props.item.weldItems.map(item => item.translate[0])));
+    const minY = ref(Math.min(...props.item.weldItems.map(item => item.translate[1])));
+
     // Calculate the new size of the shape when canvas or parent div client rect changed
     const calculateNewSize = (weldItems, currentItem) => {
 
       // Find the min x and y of the shapes
-      const minX = Math.min(...weldItems.map(item => item.translate[0]));
-      const minY = Math.min(...weldItems.map(item => item.translate[1]));
+      // const minX = Math.min(...weldItems.map(item => item.translate[0]));
+      // const minY = Math.min(...weldItems.map(item => item.translate[1]));
 
       // Calculate the scale of the shapes
       const scaleWHXY = calculateScale();
@@ -229,8 +232,8 @@ export default {
       let [trsx, trsy] = translate;
 
       // 4 pixels for drawing the start and end points circle
-      let currentTrsx = trsx - minX + 4;
-      let currentTrsy = trsy - minY + 4;
+      let currentTrsx = trsx - minX.value + 4;
+      let currentTrsy = trsy - minY.value + 4;
 
       // Resize the width and height
       width = width * scaleWHXY.widthScale;
@@ -238,8 +241,8 @@ export default {
 
       trsx *= scaleWHXY.widthScale;
       trsy *= scaleWHXY.heightScale;
-      trsx -= minX * scaleWHXY.widthScale;
-      trsy -= minY * scaleWHXY.heightScale;
+      trsx -= minX.value * scaleWHXY.widthScale;
+      trsy -= minY.value * scaleWHXY.heightScale;
 
       currentTrsx = trsx + 4;
       currentTrsy = trsy + 4;
@@ -691,6 +694,9 @@ export default {
       // Remerber the previous width and height
       defaultWidth.value = props.item.width;
       defaultHeight.value = props.item.height;
+
+      minX.value = Math.min(...props.item.weldItems.map(item => item.translate[0]));
+      minY.value = Math.min(...props.item.weldItems.map(item => item.translate[1]))
 
       const allPaPoints = transferToLinePoints(pathItemList);
       console.log('CanvasShape.vue->allPaPoints', allPaPoints);
