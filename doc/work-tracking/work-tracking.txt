@@ -54,5 +54,10 @@ the origin duct was combined with 2 svgs and divs, not easy to extract the lines
 3. i also add a new IndexPage page to perform some checking for the new library, to see if it is possible to replace
 vue-movable and vue-selecto in further development.
 
-4. completed the most part of the function, but found some issues when resizing and roating the outer div.
+4. completed the most part of the function, but found some issues when resizing and rotating the outer div.
 i will continue to do more tests and fix them.
+
+2024-11-05
+1. fixed some small bugs
+2. applied the new logic to ducts, make the new shape's lines and points can be modified after welding.
+3. i will continue to implement more functions for the welded item, like rotating, reloading, resizing.
