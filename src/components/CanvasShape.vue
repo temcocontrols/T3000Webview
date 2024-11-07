@@ -8,8 +8,6 @@
 <script>
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import paper from 'paper';
-import { cloneDeep } from 'lodash';
-import { update } from 'lodash';
 
 export default {
   name: 'CanvasShape',
@@ -26,7 +24,6 @@ export default {
     const project = ref(null);
     // const hidCanvas = ref(null);
     // const hidProject = ref(null);
-
 
     const initCanvas = () => {
       const canvasEl = document.getElementById(`canvas${props.item.id}`);
@@ -227,8 +224,8 @@ export default {
       // Calculate the scale of the shapes
       const scaleWHXY = calculateScale();
 
-      console.log('CanvasShape.vue->calculateNewSize|default w h c', defaultWidth.value, defaultHeight.value, defaultColor.value, props.item.width, props.item.height);
-      console.log('CanvasShape.vue->calculateNewSize|min x y', minX, minY);
+      // console.log('CanvasShape.vue->calculateNewSize|default w h c', defaultWidth.value, defaultHeight.value, defaultColor.value, props.item.width, props.item.height);
+      // console.log('CanvasShape.vue->calculateNewSize|min x y', minX, minY);
 
       let { width, height, cat, type, translate } = currentItem;
       let [trsx, trsy] = translate;
@@ -332,10 +329,10 @@ export default {
           pointArray.push(p52);
         }
 
-        console.log(`IndexPage.vue->calculateDuctPathPoints->--#moveable-item-${currentItem.id}-----`);
-        console.log(`IndexPage.vue->calculateDuctPathPoints->--isStartOverlap,isEndOverlap`, isStartOverlap, isEndOverlap);
-        console.log('IndexPage.vue->calculateDuctPathPoints->--pointArray', pointArray);
-        console.log('IndexPage.vue->calculateDuctPathPoints->------------------------------------------------');
+        // console.log(`IndexPage.vue->calculateDuctPathPoints->--#moveable-item-${currentItem.id}-----`);
+        // console.log(`IndexPage.vue->calculateDuctPathPoints->--isStartOverlap,isEndOverlap`, isStartOverlap, isEndOverlap);
+        // console.log('IndexPage.vue->calculateDuctPathPoints->--pointArray', pointArray);
+        // console.log('IndexPage.vue->calculateDuctPathPoints->------------------------------------------------');
 
         // Make the shape closed
         pointArray.push(p1);
@@ -470,18 +467,16 @@ export default {
         const radius = 4;
         const strokeWidth = 2;
 
-        console.log(`CanvasShape.vue->getLinePointObjects|point, Path Line ${index + 1}`, startPoint, endPoint);
-
         const startCircle = new paper.Path.Circle({
           center: startPoint,
           radius: radius,
-          fillColor: "#4af",// "aqua",// "#4af",// "#000",// "blue",
+          fillColor: "#4af",// aqua, #4af, "#000", "red"
         });
 
         const endCircle = new paper.Path.Circle({
           center: endPoint,
           radius: radius,
-          fillColor: "#000",// "aqua",//"#4af",//"#000",// "red",
+          fillColor: "#4af",// aqua, #4af, "#000", "red"
         });
 
         const line = new paper.Path.Line({
@@ -492,8 +487,6 @@ export default {
           fillColor: "#f36dc5",
           // dashArray: [5, 2],
         });
-
-
 
         lpos.push({
           name: `Path Line ${index + 1}`,
@@ -510,8 +503,6 @@ export default {
       const startCircle = item.startPoint;
       const endCircle = item.endPoint;
       const line = item.path;
-
-
 
       function makePreviousContinue() {
         if (index > 0) {
@@ -596,87 +587,29 @@ export default {
           nextLine.path.segments[0].point = newLocation;
         }
       }
-      console.log('AAAAAAAAAAAAA item', item);
+
       function updateCrossLine(type) {
-
-
         if (crossItemList === null) {
           return;
         }
 
-
         // Find the related point index from the cross path
         const { crossStartIndex, crossEndIndex } = item.crossPathIndex;
         const { crossedStartIndex, crossedEndIndex } = item.crossedPathIndex;
-        const { previousEndIndex } = item.previousEndIndex;
-
-        // if (crossedEndIndex == -1) {
-        //   return;
-        // }
 
         crossItemList.forEach((crossItem, crossIndex) => {
           const { crossPath, crossLinePoints } = crossItem;
 
-          // console.log('AAAAAAAAAAAAA crossPath', crossItem.crossPath);
+          /*
+          console.log('AAAAAAAAAAAAA crossPath', crossItem.crossPath);
+          console.log('AAAAAAAAAAAAA cross start path', crossPath.segments[crossStartIndex].point);
+          console.log('AAAAAAAAAAAAA cross end path', crossPath.segments[crossEndIndex].point);
+          console.log('AAAAAAAAAAAAA cross start point', crossLinePoints[crossedStartIndex]);
+          console.log('AAAAAAAAAAAAA cross end point', crossLinePoints[crossedEndIndex]);
+          console.log('AAAAAAAAAAAAA cross crossStartIndex，crossEndIndex', crossStartIndex, crossEndIndex);
+          */
 
-          // console.log('AAAAAAAAAAAAA cross start path', crossPath.segments[crossStartIndex].point);
-          // console.log('AAAAAAAAAAAAA cross end path', crossPath.segments[crossEndIndex].point);
-
-          // console.log('AAAAAAAAAAAAA cross start point', crossLinePoints[crossedStartIndex]);
-          // console.log('AAAAAAAAAAAAA cross end point', crossLinePoints[crossedEndIndex]);
-          // console.log('AAAAAAAAAAAAA cross crossStartIndex，crossEndIndex', crossStartIndex, crossEndIndex,);
-
-          crossLinePoints.forEach((itx, idx) => {
-            console.log('AAAAAAAAAAAAA itx', itx, idx,);
-
-
-            if (idx == 0) {
-              if (itx != null) {
-                itx.startPoint.fillColor = "green";
-
-                // itx.startPoint.position = startCircle.position;
-                // itx.path.segments[0].point = startCircle.position;
-
-                itx.endPoint.fillColor = "aqua";
-                //[1,0,1,3,5]
-                console.log('AAAAAAAAAAAAA the index=0', [crossStartIndex, crossEndIndex, crossedStartIndex, crossedEndIndex, previousEndIndex]);
-              }
-
-            }
-
-            if (idx == 1) {
-              if (itx != null) {
-                itx.startPoint.fillColor = "blue";
-                itx.endPoint.fillColor = "indigo";
-              }
-
-            }
-
-            if (idx == 2) {
-              if (itx != null) {
-                itx.startPoint.fillColor = "black";
-                itx.endPoint.fillColor = "chartreuse";
-              }
-            }
-
-            if (idx == 3) {
-              if (itx != null) {
-                itx.startPoint.fillColor = "orange";
-                itx.endPoint.fillColor = "antiquewhite";
-
-                //[ 0, -1, 0, -1, 6 ]
-                // itx.endPoint.position = endCircle.position;
-                // itx.path.segments[1].point = endCircle.position;
-                console.log('AAAAAAAAAAAAA the index=3', [crossStartIndex, crossEndIndex, crossedStartIndex, crossedEndIndex, previousEndIndex]);
-
-              }
-
-            }
-            // if (idx == crossLinePoints.length - 1) {
-            //   itx.endPoint.fillColor = "blue";
-            // }
-          });
-
+          // path
           if (crossPath.segments[crossStartIndex] !== null && crossPath.segments[crossStartIndex] !== undefined) {
             crossPath.segments[crossStartIndex].point = startCircle.position;
           }
@@ -685,13 +618,12 @@ export default {
             crossPath.segments[crossEndIndex].point = endCircle.position;
           }
 
+          crossPath.segments[crossPath.segments.length - 1].point = crossPath.segments[0].point;
 
-
+          // point list
           if (crossLinePoints[crossedStartIndex] !== null && crossLinePoints[crossedStartIndex] !== undefined) {
             crossLinePoints[crossedStartIndex].startPoint.position = startCircle.position;
             crossLinePoints[crossedStartIndex].path.segments[0].point = startCircle.position;
-
-
           }
 
           if (crossLinePoints[crossedEndIndex] !== null && crossLinePoints[crossedEndIndex] !== undefined) {
@@ -699,124 +631,26 @@ export default {
             crossLinePoints[crossedEndIndex].path.segments[1].point = endCircle.position;
           }
 
+          // Set the previous end point move along with the current start position
           if (crossLinePoints[crossedStartIndex - 1] != null && crossLinePoints[crossedStartIndex - 1] != undefined) {
             crossLinePoints[crossedStartIndex - 1].endPoint.position = startCircle.position;
+            crossLinePoints[crossedStartIndex - 1].path.segments[1].point = startCircle.position;
           }
 
-          if (crossLinePoints[crossedEndIndex + 1] != null && crossLinePoints[crossedEndIndex + 1] != undefined) {
-            crossLinePoints[crossedEndIndex + 1].startPoint.position = endCircle.position;
+          if (crossEndIndex !== -1) {
+            if (crossLinePoints[crossedEndIndex + 1] != null && crossLinePoints[crossedEndIndex + 1] != undefined) {
+              crossLinePoints[crossedEndIndex + 1].startPoint.position = endCircle.position;
+            }
           }
 
-          if (crossEndIndex == 0) {
-            //start 4 end 3
-            // Make the end point move along with the start position
-            crossPath.segments[crossPath.segments.length - 1].point = endCircle.position;
-
-            // crossLinePoints[crossedStartIndex].startPoint.position = startCircle.position;
-            // crossLinePoints[crossedStartIndex].path.segments[0].point = startCircle.position;
-
-            // itx.startPoint.position = startCircle.position;
-            // itx.path.segments[0].point = startCircle.position;
-          }
-
-          if (crossStartIndex == 0) {
-            //start 0 end 1
-            // Make the start point move along with the end position
-            crossPath.segments[crossPath.segments.length - 1].point = startCircle.position;
-          }
-
-          // if (crossedEndIndex == -1) {
-
-          //   crossLinePoints[crossedEndIndex].startPoint.position = startCircle.position;
-          //   crossLinePoints[crossedEndIndex].path.segments[0].point = startCircle.position;
-
-
-          //   itx.startPoint.position = startCircle.position;
-          //   itx.path.segments[0].point = startCircle.position;
-
-
-          //   itx.endPoint.position = endCircle.position;
-          //   itx.path.segments[1].point = endCircle.position;
-          // }
-
-          if (type === "startCircle") {
-            console.log('AAAAAAAAAAAAA startCircle', [startCircle.x, startCircle.y]);
-          }
-
-          if (type === "endCircle") {
-            console.log('AAAAAAAAAAAAA endCircle', [endCircle.x, endCircle.y]);
-          }
-
-          if (type === "line") {
-            console.log('AAAAAAAAAAAAA line', item.name, [line.segments[0].point.x, line.segments[0].point.y], [line.segments[1].point.x, line.segments[1].point.y]);
-
-            // const startCircle = item.startPoint;
-            // const endCircle = item.endPoint;
-            // const line = item.path;
-
-
-
-
+          // always make the last point move along with the first point
+          if (crossLinePoints[crossLinePoints.length - 1] !== null && crossLinePoints[crossLinePoints.length - 1] !== undefined) {
+            crossLinePoints[crossLinePoints.length - 1].endPoint.position = crossLinePoints[0].startPoint.position;
           }
         })
-
-
-
-        //   crossItemList.forEach((itx, idx1) => {
-
-
-
-        //     if (itx.crossPath.segments[crossStartIndex] !== null && itx.crossPath.segments[crossStartIndex] !== undefined) {
-        //       itx.crossPath.segments[crossStartIndex].point = item.startPoint.position;
-        //     }
-
-        //     if (itx.crossPath.segments[crossEndIndex] !== null && itx.crossPath.segments[crossEndIndex] !== undefined) {
-        //       itx.crossPath.segments[crossEndIndex].point = item.endPoint.position;
-        //     }
-
-        //     if (crossEndIndex == 0) {
-        //       //start 4 end 3
-        //       // Make the end point move along with the start position
-        //       itx.crossPath.segments[itx.crossPath.segments.length - 1].point = item.endPoint.position;
-        //     }
-
-        //     if (crossStartIndex == 0) {
-        //       //start 0 end 1
-        //       // Make the start point move along with the end position
-        //       itx.crossPath.segments[itx.crossPath.segments.length - 1].point = item.startPoint.position;
-        //     }
-
-        //     if (itx.crossLinePoints[crossedStartIndex] !== null && itx.crossLinePoints[crossedStartIndex] !== undefined) {
-        //       itx.crossLinePoints[crossedStartIndex].startPoint.position = item.startPoint.position;
-        //       itx.crossLinePoints[crossedStartIndex].path.segments[0].point = item.startPoint.position;
-        //     }
-
-        //     if (itx.crossLinePoints[crossedEndIndex] !== null && itx.crossLinePoints[crossedEndIndex] !== undefined) {
-        //       itx.crossLinePoints[crossedEndIndex].endPoint.position = item.endPoint.position;
-        //       itx.crossLinePoints[crossedEndIndex].path.segments[1].point = item.endPoint.position;
-        //     }
-
-        //     // if (itx.crossLinePoints[crossedStartIndex - 1] != null && itx.crossLinePoints[crossedStartIndex - 1] != undefined) {
-        //     //   itx.crossLinePoints[crossedStartIndex - 1].endPoint.position = item.startPoint.position;
-        //     // }
-
-        //     // if (itx.crossLinePoints[crossedEndIndex + 1] != null && itx.crossLinePoints[crossedEndIndex + 1] != undefined) {
-        //     //   itx.crossLinePoints[crossedEndIndex + 1].startPoint.position = item.endPoint.position;
-        //     // }
-
-        //     itx.crossLinePoints[itx.crossLinePoints.length - 1].endPoint.fillColor = "yellow";
-        //     // itx.crossLinePoints[itx.crossLinePoints.length - 1].endPoint.position = item.startPoint.position;
-
-        //     // itx.crossLinePoints[0].endPoint.fillColor = "#000";
-        //     // itx.crossLinePoints[0].position = item.startPoint.position;
-        //   });
-        // }
       }
 
-
-
       startCircle.onMouseDrag = function (event) {
-        console.log('weld startCircle.onMouseDrag', event);
         this.position = this.position.add(event.delta);
         updateShapes();
         updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
@@ -825,7 +659,6 @@ export default {
       };
 
       endCircle.onMouseDrag = function (event) {
-        console.log('weld endCircle.onMouseDrag', event);
         this.position = this.position.add(event.delta);
         updateShapes();
         updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
@@ -834,7 +667,6 @@ export default {
       };
 
       line.onMouseDrag = function (event) {
-        console.log("cross new line moveable event -----------", event, line);
         const delta = event.delta;
         startCircle.position = startCircle.position.add(delta);
         endCircle.position = endCircle.position.add(delta);
@@ -842,47 +674,11 @@ export default {
         updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
         updatePreviousLine(startCircle.position);
         updateNextLine(endCircle.position);
-
-        // Cross path moveable events
         updateCrossLine("line");
       };
     }
 
-    const logInfo = (weldPath, crossPath, points, weldedLinePoints) => {
-      const weldPathPoints = weldPath.segments.map(segment => ({
-        x: segment.point.x,
-        y: segment.point.y
-      }));
-
-      const crossPathPoints = crossPath.segments.map(segment => ({
-        x: segment.point.x,
-        y: segment.point.y
-      }));
-
-      const allPoints = points.map(point => ({
-        x: point.x,
-        y: point.y
-      }));
-
-      const weldedLinePointsXY = weldedLinePoints.map(weldedLinePoint => ({
-        startPoint: {
-          x: weldedLinePoint.startPoint.position.x,
-          y: weldedLinePoint.startPoint.position.y
-        },
-        endPoint: {
-          x: weldedLinePoint.endPoint.position.x,
-          y: weldedLinePoint.endPoint.position.y
-        }
-      }));
-      console.log('//////|weldPathPoints', weldPathPoints, weldPath);
-      console.log('//////|crossPath', crossPathPoints, crossPath);
-      console.log('//////|points', allPoints, allPoints);
-      console.log('//////|weldedLinePoints', weldedLinePointsXY, weldedLinePointsXY);
-      console.log('//////|-------------------------------');
-
-    }
-
-    const addLinePointCrossObjectsEvent = (item, lpos, index, weldPath, crossPath, crossPoints, weldedLinePoints) => {
+    const addLinePointCrossObjectsEvent = (item, lpos, index, weldPath, crossPath, weldedLinePoints) => {
       function makePreviousContinue() {
         if (index > 0) {
           const previousLine = lpos[index - 1];
@@ -986,7 +782,6 @@ export default {
       };
 
       line.onMouseDrag = function (event) {
-        console.log("new line moveable event", event, line);
         const delta = event.delta;
         startCircle.position = startCircle.position.add(delta);
         endCircle.position = endCircle.position.add(delta);
@@ -996,45 +791,18 @@ export default {
         updateNextLine(endCircle.position);
       };
 
-      console.log('Corss Path Points:', crossPath.segments.map(segment => ({
-        x: segment.point.x,
-        y: segment.point.y
-      })));
-
-      lpos.map((item, index) => {
-        console.log('Cross Line Points:', [item.startPoint.position.x,
-        item.startPoint.position.y],
-          [item.endPoint.position.x,
-          item.endPoint.position.y],
-          item.name)
-      })
-
-      console.log('Weld Path Points:', weldPath.segments.map(segment => ({
-        x: segment.point.x,
-        y: segment.point.y
-      })));
-
-      weldedLinePoints.map((item, index) => {
-        console.log('Welded Line Points:', [item.startPoint.position.x,
-        item.startPoint.position.y],
-          [item.endPoint.position.x,
-          item.endPoint.position.y],
-          item.name)
-      })
-
       // Cross path moveable events
       crossPath.onMouseDrag = function (event) {
 
         const delta = event.delta;
         crossPath.position.x += delta.x;
 
-        console.log('CCCCCC 1 cross-current', [item.startPoint.position.x, item.startPoint.position.y], [item.endPoint.position.x, item.endPoint.position.y]);
+        // console.log('CCCCCC 1 cross-current', [item.startPoint.position.x, item.startPoint.position.y], [item.endPoint.position.x, item.endPoint.position.y]);
 
         lpos.map((itm, index) => {
 
-          console.log(`CCCCCC -------${index} start------------------`)
-          console.log(`CCCCCC 2 cross-${index}`, [itm.startPoint.position.x, itm.startPoint.position.y], [itm.endPoint.position.x, itm.endPoint.position.y]);
-
+          // console.log(`CCCCCC -------${index} start------------------`)
+          // console.log(`CCCCCC 2 cross-${index}`, [itm.startPoint.position.x, itm.startPoint.position.y], [itm.endPoint.position.x, itm.endPoint.position.y]);
 
           itm.startPoint.position.x += delta.x;
           itm.endPoint.position.x += delta.x;
@@ -1043,8 +811,8 @@ export default {
 
           const { weldStartIndex, weldEndIndex } = itm.weldPathIndex;
           const { weldedStartIndex, weldedEndIndex } = itm.weldedPathIndex;
-          const { previousEndIndex } = itm.previousEndIndex;
 
+          /*
           console.log('CCCCCC 3 weld',
             [weldPath.segments[weldStartIndex].point.x, weldPath.segments[weldStartIndex].point.y],
             [weldPath.segments[weldEndIndex].point.x, weldPath.segments[weldEndIndex].point.y]
@@ -1056,6 +824,8 @@ export default {
           );
 
           console.log(`CCCCCC -------${index} end------------------`)
+          */
+
           if (weldPath.segments[weldStartIndex] !== null && weldPath.segments[weldStartIndex] !== undefined) {
             weldPath.segments[weldStartIndex].point = itm.startPoint.position;
           }
@@ -1077,7 +847,6 @@ export default {
     }
 
     const setRelatedIndex = (crossLinePoints, weldedLinePoints, weldPath, crossPath) => {
-
       crossLinePoints.map((lp, index) => {
 
         const startCircle = lp.startPoint;
@@ -1093,16 +862,6 @@ export default {
           segment.point.y.toFixed(4) === endCircle.position.y.toFixed(4)
         );
 
-        const crossStartIndex = crossPath.segments.findIndex(segment =>
-          segment.point.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
-          segment.point.y.toFixed(4) === startCircle.position.y.toFixed(4)
-        );
-
-        const crossEndIndex = crossPath.segments.findIndex(segment =>
-          segment.point.x.toFixed(4) === endCircle.position.x.toFixed(4) &&
-          segment.point.y.toFixed(4) === endCircle.position.y.toFixed(4)
-        );
-
         const weldedStartIndex = weldedLinePoints.findIndex(weldedLinePoint =>
           weldedLinePoint.startPoint.position.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
           weldedLinePoint.startPoint.position.y.toFixed(4) === startCircle.position.y.toFixed(4)
@@ -1113,14 +872,7 @@ export default {
           weldedLinePoint.endPoint.position.y.toFixed(4) === endCircle.position.y.toFixed(4)
         );
 
-        const previousIndex = weldedLinePoints.findIndex(weldedLinePoint =>
-          weldedLinePoint.endPoint.position.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
-          weldedLinePoint.endPoint.position.y.toFixed(4) === startCircle.position.y.toFixed(4)
-        );
-
-        lp.previousEndIndex = { previousEndIndex: previousIndex };
         lp.weldPathIndex = { weldStartIndex: weldStartIndex, weldEndIndex: weldEndIndex };
-        lp.crossPathIndex = { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex };
         lp.weldedPathIndex = { weldedStartIndex: weldedStartIndex, weldedEndIndex: weldedEndIndex };
       });
 
@@ -1148,17 +900,8 @@ export default {
           crossLinePoint.endPoint.position.y.toFixed(4) === endCircle.position.y.toFixed(4)
         );
 
-        const previousIndex = weldedLinePoints.findIndex(weldedLinePoint =>
-          weldedLinePoint.endPoint.position.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
-          weldedLinePoint.endPoint.position.y.toFixed(4) === startCircle.position.y.toFixed(4)
-        );
-
-        lp.previousEndIndex = { previousEndIndex: previousIndex };
         lp.crossPathIndex = { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex };
         lp.crossedPathIndex = { crossedStartIndex: crossedStartIndex, crossedEndIndex: crossedEndIndex };
-
-        console.log('CanvasShape.vue->setRelatedIndex|lp', { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex });
-        console.log('CanvasShape.vue->setRelatedIndex|lp startCircle,endCircle', [startCircle.position.x, startCircle.position.y], [endCircle.position.x, endCircle.position.y]);
       })
     }
 
@@ -1174,13 +917,13 @@ export default {
         const startCircle = new paper.Path.Circle({
           center: startPoint,
           radius: radius,
-          fillColor: "red",// "aqua",// "#4af",// "#000",// "blue",
+          fillColor: "#4af",// #4af, aqua, #000,
         });
 
         const endCircle = new paper.Path.Circle({
           center: endPoint,
           radius: radius,
-          fillColor: "blue",// "aqua",//"#4af",//"#000",// "red",
+          fillColor: "#4af",// #4af, aqua, #000,
         });
 
         const line = new paper.Path.Line({
@@ -1188,7 +931,7 @@ export default {
           to: endPoint,
           strokeColor: "#000",
           strokeWidth: strokeWidth,
-          fillColor: "green",// "#f36dc5",
+          fillColor: "green",// #f36dc5
           // dashArray: [5, 2],
         });
 
@@ -1222,47 +965,33 @@ export default {
       const check = weldSegments !== null && weldSegments != undefined && weldSegments.length > 0;
 
       if (!check) {
-        console.log('CanvasShape.vue->weld segments is null or undefined');
         return;
       }
 
       const weldPath = new paper.Path({
         segments: weldSegments,
         closed: true,
-        fillColor: "#659dc5",// "#f36dc5",
+        fillColor: "#659dc5",// #f36dc5
       });
 
 
       const weldedLinePoints = getLinePointObjects(weldSegments);
 
-      // const crossItemList = crossPointList.map((cpt, index) => {
-      //   return renderCrossShape(weldPath, cpt.pts, weldedLinePoints);
-      // });
-
-
-
       const crossItemList = crossPointList.map((cpt, index) => {
-
-        console.log('CanvasShape.vue->weldSegments', weldSegments, cpt.pts);
-
-
         const crossPath = new paper.Path({
           segments: cpt.pts,
           closed: true,
-          fillColor: "aqua",// "#f36dc5",// ,
+          fillColor: "aqua",// #f36dc5
         });
 
         const crossLinePoints = getLinePointCrossObjects(cpt.pts);
-
-
         setRelatedIndex(crossLinePoints, weldedLinePoints, weldPath, crossPath);
 
         crossLinePoints.map((item, index) => {
-          addLinePointCrossObjectsEvent(item, crossLinePoints, index, weldPath, crossPath, cpt.pts, weldedLinePoints);
+          addLinePointCrossObjectsEvent(item, crossLinePoints, index, weldPath, crossPath, weldedLinePoints);
         });
 
         return { crossPath: crossPath, crossLinePoints: crossLinePoints };
-
       });
 
       weldedLinePoints.map((item, index) => {
@@ -1274,57 +1003,20 @@ export default {
       crossItemList.map((item, index) => {
         project?.value?.activeLayer?.addChild(item.crossPath);
 
+        /*
         item.crossLinePoints.map((pt, idx) => {
           project?.value?.activeLayer?.addChild(pt.startPoint);
           project?.value?.activeLayer?.addChild(pt.endPoint);
         });
-      })
-
-
+        */
+      });
 
       weldedLinePoints.map((itm, index) => {
-        // console.log(`CanvasShape.vue->weldedLinePoints|itm ${itm.name}`, itm.startPoint, itm.endPoint, itm.path);
         project?.value?.activeLayer?.addChild(itm.path);
         project?.value?.activeLayer?.addChild(itm.startPoint);
         project?.value?.activeLayer?.addChild(itm.endPoint);
       });
     };
-
-    const renderCrossShape = (weldPath, crossSegments, weldedLinePoints) => {
-      const check = crossSegments !== null && crossSegments != undefined && crossSegments.length > 0;
-
-      if (!check) {
-        console.log('CanvasShape.vue->weld segments is null or undefined');
-        return;
-      }
-
-      const crossPath = new paper.Path({
-        segments: crossSegments,
-        closed: true,
-        fillColor: "aqua",// "#f36dc5",// ,
-      });
-
-      console.log('CanvasShape.vue->crossPath', crossPath);
-
-      // const crossLinePoints = getLinePointObjects(crossPath, crossSegments);
-      const crossLinePoints = getLinePointCrossObjects(weldPath, crossPath, crossSegments, weldedLinePoints);
-      console.log('CanvasShape.vue->crossLinePoints', crossLinePoints);
-
-      crossLinePoints.map((item, index) => {
-        addLinePointCrossObjectsEvent(item, crossLinePoints, index, weldPath, crossPath, crossSegments, weldedLinePoints);
-      });
-
-      // project.value.activeLayer.addChild(crossPath);
-
-      // crossLinePoints.map((itm, index) => {
-      //   // console.log(`CanvasShape.vue->weldedLinePoints|itm ${itm.name}`, itm.startPoint, itm.endPoint, itm.path);
-      //   project?.value?.activeLayer?.addChild(itm.path);
-      //   project?.value?.activeLayer?.addChild(itm.startPoint);
-      //   project?.value?.activeLayer?.addChild(itm.endPoint);
-      // });
-
-      return { crossPath: crossPath, crossLinePoints: crossLinePoints };
-    }
 
     const checkIfShapesCross = (allPaPoints) => {
       let previousMaxX = -Infinity;
@@ -1338,26 +1030,21 @@ export default {
           previousMaxX = Math.max(...item.points.map(point => point?.x));
           previousMaxY = Math.max(...item.points.map(point => point?.y));
         } else {
-          return true; // Shapes are crossed
+          return true;
         }
       }
 
-      return false; // Shapes are not crossed
+      return false;
     };
 
     // Render weld or multiple shapes
     const renderWeldShapes = () => {
       const { weldItems } = props.item;
 
-      console.log('CanvasShape.vue->start to render welded shapes', props.item, props.item.width, props.item.height);
-      console.log('CanvasShape.vue->props.item.weldItems', props.item.weldItems);
-
       const pathItemList = getWeldPathItems(weldItems);
-      console.log('CanvasShape.vue->paItemList', pathItemList);
-
       emit("updateWeldModel", props.item, pathItemList);
 
-      // Remerber the previous width and height
+      // remerber the previous width and height
       defaultWidth.value = props.item.width;
       defaultHeight.value = props.item.height;
 
@@ -1365,14 +1052,11 @@ export default {
       minY.value = Math.min(...props.item.weldItems.map(item => item.translate[1]))
 
       const allPaPoints = transferToLinePoints(pathItemList);
-      console.log('CanvasShape.vue->allPaPoints', allPaPoints);
 
       // Check whether the selected shapes can be welded
       const isOverLapped = checkIfShapesCross(allPaPoints);
 
       if (!isOverLapped) {
-        console.log('CanvasShape.vue->Shapes are not crossed');
-
         // if the selected shapes cannot be welded, render the shapes separately
         pathItemList.map((itm, index) => {
           project.value.activeLayer.addChild(itm.pathItem);
@@ -1383,25 +1067,26 @@ export default {
 
       // Redraw the shapes need to be welded, and make the lines and points moveable
       // Only for debugging
-      // allPaPoints.map((itm, index) => {
-      //   const lpos = getLinePointObjects(null, itm.points);
-      //   console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
-      //   console.log('CanvasShape.vue->lpos', lpos);
+      /*
+      allPaPoints.map((itm, index) => {
+        const lpos = getLinePointObjects(null, itm.points);
+        console.log('CanvasShape.vue->allPaPoints detail ----------', itm.type, itm.points);
+        console.log('CanvasShape.vue->lpos', lpos);
 
-      //   lpos.map((lpo, index) => {
-      //     project.value.activeLayer.addChild(lpo.path);
-      //     project.value.activeLayer.addChild(lpo.startPoint);
-      //     project.value.activeLayer.addChild(lpo.endPoint);
-      //   });
-      // });
+        lpos.map((lpo, index) => {
+          project.value.activeLayer.addChild(lpo.path);
+          project.value.activeLayer.addChild(lpo.startPoint);
+          project.value.activeLayer.addChild(lpo.endPoint);
+        });
+      });
 
-      // return;
+      return;
+      */
 
       // Make new path for boolean operations like union, difference, xor, intersection
       const newPathList = makeNewPath(allPaPoints);
 
       // Only for debugging
-
       /*
       newPathList.map((path, index) => {
         project.value.activeLayer.addChild(path);
@@ -1410,17 +1095,14 @@ export default {
 
       // Perform boolean operation
       const boolOptPath = booleanOperation('union', newPathList);
-      console.log('CanvasShape.vue->boolOptPath', boolOptPath, newPathList);
 
       // Get new path points from boolean operation
       const boolOptSegments = boolOptPath?.segments?.map((segment) => segment.point);
 
       // Add the first point to the end to make the path closed
       boolOptSegments?.push(boolOptSegments[0]);
-      console.log('CanvasShape.vue->boolOptSegments', boolOptSegments);
 
       const crossPointList = findCrossRelatedPoints(newPathList, boolOptSegments);
-      console.log('CanvasShape.vue->crossPointList', newPathList, boolOptSegments, crossPointList);
 
       renderWeldedShape(boolOptSegments, crossPointList);
     };
@@ -1443,7 +1125,6 @@ export default {
       };
 
       const crossPoints = findCrossPoints(newPathList);
-      console.log('CanvasShape.vue->crossPoints', crossPoints, boolOptSegments);
 
       const findCrossPointIndices = (crossPoints, boolOptSegments) => {
         const indices = crossPoints.map(crossPoint => {
@@ -1468,9 +1149,7 @@ export default {
         }
 
         // make the path closed
-        segment.reverse();
         segment.push(segment[0]);
-
         segmentsBetweenCrossPoints.push({ idx: `${startIndex}-${endIndex}`, pts: segment });
       }
 
@@ -1519,12 +1198,12 @@ export default {
     onMounted(() => {
       initCanvas();
       watch(() => [props.item.width, props.item.height, props.item.settings], resizeCanvas, { deep: true });
-      // window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', resizeCanvas);
     });
 
     onBeforeUnmount(() => {
       project.value?.clear();
-      // window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', resizeCanvas);
     });
 
     return {
