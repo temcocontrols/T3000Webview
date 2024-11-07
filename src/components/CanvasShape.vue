@@ -172,8 +172,6 @@ export default {
     // Selected items from IndexPage.vue
     const renderSingleShape = (items) => {
       items?.map((item, index) => {
-        console.log('CanvasShape.vue->renderSingleShape|item', item);
-
         const { width, height, weldModel, cat, type, settings } = item;
         const shapes = [];
 
@@ -1134,15 +1132,19 @@ export default {
           );
           return { crossPoint, index };
         });
-        return indices;
+        return indices.sort((a, b) => b.index - a.index);
       };
 
       const crossPointIndices = findCrossPointIndices(crossPoints, boolOptSegments);
+
+      console.log('CanvasShape.vue->findCrossRelatedPoints|crossPointIndices', crossPointIndices);
 
       const segmentsBetweenCrossPoints = [];
       for (let i = crossPointIndices.length - 1; i > 0; i -= 2) {
         const startIndex = crossPointIndices[i].index;
         const endIndex = crossPointIndices[i - 1].index;
+
+        console.log('CanvasShape.vue->findCrossRelatedPoints|startIndex, endIndex', startIndex, endIndex);
         const segment = [];
         for (let k = startIndex; k <= endIndex; k++) {
           segment.push(boolOptSegments[k]);
@@ -1233,7 +1235,7 @@ canvas {
 
 .canvas-normal {
   /* background-color: aqua; */
-  background-color: #f36dc5;
+  /* background-color: #f36dc5; */
 }
 
 .canvas-hid {

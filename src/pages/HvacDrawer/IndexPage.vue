@@ -1006,7 +1006,7 @@ function onResize(e) {
 // Ends the resizing of an element
 function onResizeEnd(e) {
   const itemIndex = appState.value.items.findIndex(
-    (item) => `moveable-item-${item.id}` === e.lastEvent.target.id
+    (item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id
   );
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
@@ -1755,7 +1755,7 @@ function drawWeldObjectCanvas(selectedItems) {
   const width = boundingBox.maxX - boundingBox.minX;
   const height = boundingBox.maxY - boundingBox.minY;
 
-  console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
+  // console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
   let previous = selectedItems[0].zindex;
@@ -2735,7 +2735,7 @@ const updateWeldModel = (weldModel, itemList) => {
 };
 
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
-  console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
+  // console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
 
   appState.value.items.map((item) => {
     if ((item.type === "Weld_General" || item.type === "Weld_Duct") && item.id === weldModel.id) {
@@ -2746,8 +2746,8 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 
       item?.weldItems?.forEach((weldItem) => {
         const pathItem = pathItemList?.find((itx) => itx?.item?.id === weldItem?.id);
-        console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
-        console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+        // console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        // console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
           weldItem.width = pathItem.newPos.width;
           weldItem.height = pathItem.newPos.height;
