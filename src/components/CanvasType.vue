@@ -3,30 +3,20 @@
 
 -->
 <template>
-  <div
-    class="moveable-item-canvas flex justify-center object-container"
-    :class="{
-      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-        item.type
-      ),
-      'overflow-hidden': item.type === 'Text',
-      [item.type]: item.type,
-      'with-bg': item.settings.bgColor,
-      'with-title':
-        item.settings.title ||
-        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
-    }"
-  >
+  <div class="moveable-item-canvas flex justify-center object-container" :class="{
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
+      item.type
+    ),
+    'overflow-hidden': item.type === 'Text',
+    [item.type]: item.type,
+    'with-bg': item.settings.bgColor,
+    'with-title':
+      item.settings.title ||
+      (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+  }">
     {{ item.width }} x {{ item.height }}
-    <canvas
-      ref="canvas"
-      :id="`myCanvas${item.id}`"
-      class="canvas-viewport-wrapper"
-      :width="item.width"
-      :height="item.height"
-      resize
-      stats
-    ></canvas>
+    <canvas ref="canvas" :id="`myCanvas${item.id}`" class="canvas-viewport-wrapper" :width="item.width"
+      :height="item.height" resize stats></canvas>
   </div>
   <!-- <div style="width: 100vw">
     {{ item }}
@@ -434,12 +424,12 @@ export default defineComponent({
       return item.type === "Gauge"
         ? item.settings.colors.map((i) => [i.offset / 100, i.color])
         : item.settings.colors.map((i, index) => {
-            return {
-              from: index ? item.settings.colors[index - 1].offset : 0,
-              to: i.offset,
-              color: [i.color],
-            };
-          });
+          return {
+            from: index ? item.settings.colors[index - 1].offset : 0,
+            to: i.offset,
+            color: [i.color],
+          };
+        });
     });
 
     function changeValue(type) {
@@ -849,6 +839,7 @@ export default defineComponent({
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
 }
+
 .moveable-item.Duct {
   background-color: transparent;
 }
@@ -926,18 +917,22 @@ export default defineComponent({
 .moveable-item.Switch.with-bg .object-title {
   background-color: transparent;
 }
+
 .moveable-item.link {
   cursor: pointer;
 }
+
 .img-object {
   max-width: none;
   width: 100%;
 }
+
 .up-btn {
   display: none;
   bottom: 100%;
   z-index: 1;
 }
+
 .down-btn {
   display: none;
   top: 100%;
@@ -948,10 +943,12 @@ export default defineComponent({
 .moveable-item.Switch .up-btn {
   bottom: calc(100% + 5px);
 }
+
 .moveable-item.Icon .down-btn,
 .moveable-item.Switch .down-btn {
   top: calc(100% + 3px);
 }
+
 .object-title:hover .up-btn,
 .object-title:hover .down-btn {
   display: inline-flex;
