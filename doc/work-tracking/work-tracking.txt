@@ -61,3 +61,7 @@ i will continue to do more tests and fix them.
 1. fixed some small bugs
 2. applied the new logic to ducts, make the new shape's lines and points can be modified after welding.
 3. i will continue to implement more functions for the welded item, like rotating, reloading, resizing.
+
+2024-11-06 (OT 2)
+1. do more test for the new functions, and fix some bugs.
+2. add new logic to handle the rotating event for the weld item after resizing and repositioning.

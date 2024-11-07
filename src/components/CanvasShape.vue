@@ -9,6 +9,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import paper from 'paper';
 import { cloneDeep } from 'lodash';
+import { update } from 'lodash';
 
 export default {
   name: 'CanvasShape',
@@ -460,8 +461,7 @@ export default {
 
     // Draw shape base on paper points
     // weldPath was used for controlling the lines's moveable events to dynamically fill the updated shape's inner color
-    const getLinePointObjects = (weldPath, points, crossItemList) => {
-      console.log('CanvasShape.vue->updateWeldPath|weldPath.default', weldPath?.segments.map(segment => [segment.point.x, segment.point.y]));
+    const getLinePointObjects = (points) => {
       let lpos = [];
       points.slice(0, -1).map((point, index) => {
 
@@ -493,114 +493,7 @@ export default {
           // dashArray: [5, 2],
         });
 
-        function makePreviousContinue() {
-          if (index > 0) {
-            const previousLine = lpos[index - 1];
-            previousLine.endPoint.position = startCircle.position;
-            previousLine.path.segments[1].point = startCircle.position;
-          } else {
-            const lastLine = lpos[lpos.length - 1];
-            lastLine.endPoint.position = startCircle.position;
-            lastLine.path.segments[1].point = startCircle.position;
-          }
-        }
 
-        function makeNextContinue() {
-          if (index === lpos.length - 1) {
-            const firstLine = lpos[0];
-            firstLine.startPoint.position = endCircle.position;
-            firstLine.path.segments[0].point = endCircle.position;
-          } else {
-            const nextLine = lpos[index + 1];
-            nextLine.startPoint.position = endCircle.position;
-            nextLine.path.segments[0].point = endCircle.position;
-          }
-        }
-
-        function updateWeldPath(itemType) {
-          if (weldPath !== null) {
-
-            /*
-            console.log(`---------------start--${itemType}--------------------------`);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
-            console.log(`---------------end--${itemType}----------------------------`);
-            */
-
-            weldPath.segments[index].point = startCircle.position;
-            weldPath.segments[index + 1].point = endCircle.position;
-
-            // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
-
-            // Make the welded path's start point move along with the end position of the last line
-            if (index + 2 == weldPath.segments.length) {
-              // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
-              weldPath.segments[0].point = endCircle.position;
-            }
-
-            if (index == 0) {
-              weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
-            }
-          }
-        }
-
-        function updateShapes() {
-          line.segments[0].point = startCircle.position;
-          line.segments[1].point = endCircle.position;
-        }
-
-        function updatePreviousLine(newLocation) {
-          if (index > 0) {
-            const previousLine = lpos[index - 1];
-            previousLine.endPoint.position = newLocation;
-            previousLine.path.segments[1].point = newLocation;
-          } else {
-            const lastLine = lpos[lpos.length - 1];
-            lastLine.endPoint.position = newLocation;
-            lastLine.path.segments[1].point = newLocation;
-          }
-        }
-
-        function updateNextLine(newLocation) {
-          if (index === lpos.length - 1) {
-            const firstLine = lpos[0];
-            firstLine.startPoint.position = newLocation;
-            firstLine.path.segments[0].point = newLocation;
-          } else {
-            const nextLine = lpos[index + 1];
-            nextLine.startPoint.position = newLocation;
-            nextLine.path.segments[0].point = newLocation;
-          }
-        }
-
-        startCircle.onMouseDrag = function (event) {
-          this.position = this.position.add(event.delta);
-          updateShapes();
-          updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
-          makePreviousContinue();
-        };
-
-        endCircle.onMouseDrag = function (event) {
-          this.position = this.position.add(event.delta);
-          updateShapes();
-          updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
-          makeNextContinue();
-        };
-
-        line.onMouseDrag = function (event) {
-          console.log("new line moveable event", event, line);
-          const delta = event.delta;
-          startCircle.position = startCircle.position.add(delta);
-          endCircle.position = endCircle.position.add(delta);
-          updateShapes();
-          updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
-          updatePreviousLine(startCircle.position);
-          updateNextLine(endCircle.position);
-        };
 
         lpos.push({
           name: `Path Line ${index + 1}`,
@@ -610,6 +503,204 @@ export default {
         });
       });
       return lpos;
+    }
+
+    const addLinePointObjectsEvent = (item, lpos, index, weldPath, crossItemList) => {
+
+      const startCircle = item.startPoint;
+      const endCircle = item.endPoint;
+      const line = item.path;
+
+
+
+      function makePreviousContinue() {
+        if (index > 0) {
+          const previousLine = lpos[index - 1];
+          previousLine.endPoint.position = startCircle.position;
+          previousLine.path.segments[1].point = startCircle.position;
+        } else {
+          const lastLine = lpos[lpos.length - 1];
+          lastLine.endPoint.position = startCircle.position;
+          lastLine.path.segments[1].point = startCircle.position;
+        }
+      }
+
+      function makeNextContinue() {
+        if (index === lpos.length - 1) {
+          const firstLine = lpos[0];
+          firstLine.startPoint.position = endCircle.position;
+          firstLine.path.segments[0].point = endCircle.position;
+        } else {
+          const nextLine = lpos[index + 1];
+          nextLine.startPoint.position = endCircle.position;
+          nextLine.path.segments[0].point = endCircle.position;
+        }
+      }
+
+      function updateWeldPath(itemType) {
+        if (weldPath !== null) {
+
+          /*
+          console.log(`---------------start--${itemType}--------------------------`);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
+          console.log(`---------------end--${itemType}----------------------------`);
+          */
+
+          weldPath.segments[index].point = startCircle.position;
+          weldPath.segments[index + 1].point = endCircle.position;
+
+          // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
+
+          // Make the welded path's start point move along with the end position of the last line
+          if (index + 2 == weldPath.segments.length) {
+            // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
+            weldPath.segments[0].point = endCircle.position;
+          }
+
+          if (index == 0) {
+            weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
+          }
+        }
+      }
+
+      function updateShapes() {
+        line.segments[0].point = startCircle.position;
+        line.segments[1].point = endCircle.position;
+      }
+
+      function updatePreviousLine(newLocation) {
+        if (index > 0) {
+          const previousLine = lpos[index - 1];
+          previousLine.endPoint.position = newLocation;
+          previousLine.path.segments[1].point = newLocation;
+        } else {
+          const lastLine = lpos[lpos.length - 1];
+          lastLine.endPoint.position = newLocation;
+          lastLine.path.segments[1].point = newLocation;
+        }
+      }
+
+      function updateNextLine(newLocation) {
+        if (index === lpos.length - 1) {
+          const firstLine = lpos[0];
+          firstLine.startPoint.position = newLocation;
+          firstLine.path.segments[0].point = newLocation;
+        } else {
+          const nextLine = lpos[index + 1];
+          nextLine.startPoint.position = newLocation;
+          nextLine.path.segments[0].point = newLocation;
+        }
+      }
+
+      function updateCrossLine() {
+
+        if (crossItemList === null) {
+          return;
+        }
+
+
+
+        /*
+        console.log(`---------------start--${itemType}--------------------------`);
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
+        console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
+        console.log(`---------------end--${itemType}----------------------------`);
+        */
+
+        crossItemList.forEach((itx, idx1) => {
+
+          const { crossStartIndex, crossEndIndex } = item.crossPathIndex;
+          const { crossedStartIndex, crossedEndIndex } = item.crossedPathIndex;
+
+          if (itx.crossPath.segments[crossStartIndex] !== null && itx.crossPath.segments[crossStartIndex] !== undefined) {
+            itx.crossPath.segments[crossStartIndex].point = item.startPoint.position;
+          }
+
+          if (itx.crossPath.segments[crossEndIndex] !== null && itx.crossPath.segments[crossEndIndex] !== undefined) {
+            itx.crossPath.segments[crossEndIndex].point = item.endPoint.position;
+          }
+
+          if (crossEndIndex == 0) {
+            //start 4 end 3
+            // Make the end point move along with the start position
+            itx.crossPath.segments[itx.crossPath.segments.length - 1].point = item.endPoint.position;
+          }
+
+          if (crossStartIndex == 0) {
+            //start 0 end 1
+            // Make the start point move along with the end position
+            itx.crossPath.segments[itx.crossPath.segments.length - 1].point = item.startPoint.position;
+          }
+
+          if (itx.crossLinePoints[crossedStartIndex] !== null && itx.crossLinePoints[crossedStartIndex] !== undefined) {
+            itx.crossLinePoints[crossedStartIndex].startPoint.position = item.startPoint.position;
+            itx.crossLinePoints[crossedStartIndex].path.segments[0].point = item.startPoint.position;
+          }
+
+          if (itx.crossLinePoints[crossedEndIndex] !== null && itx.crossLinePoints[crossedEndIndex] !== undefined) {
+            itx.crossLinePoints[crossedEndIndex].endPoint.position = item.endPoint.position;
+            itx.crossLinePoints[crossedEndIndex].path.segments[1].point = item.endPoint.position;
+          }
+
+          if (itx.crossLinePoints[crossedStartIndex - 1] != null && itx.crossLinePoints[crossedStartIndex - 1] != undefined) {
+            itx.crossLinePoints[crossedStartIndex - 1].endPoint.position = item.startPoint.position;
+          }
+
+          if (itx.crossLinePoints[crossedEndIndex + 1] != null && itx.crossLinePoints[crossedEndIndex + 1] != undefined) {
+            itx.crossLinePoints[crossedEndIndex + 1].startPoint.position = item.endPoint.position;
+          }
+
+
+
+          console.log('AAAAAAAAAAAAA 1', { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex, crossedStartIndex: crossedStartIndex, crossedEndIndex: crossedEndIndex });
+          console.log('AAAAAAAAAAAAA 2', [startCircle.position.x, startCircle.position.y], [endCircle.position.x, endCircle.position.y]);
+          console.log('AAAAAAAAAAAAA 3', itx.crossLinePoints[itx.crossLinePoints.length - 1].startPoint.position, itx.crossLinePoints[itx.crossLinePoints.length - 1].endPoint.position);
+
+        });
+      }
+
+
+
+      startCircle.onMouseDrag = function (event) {
+        this.position = this.position.add(event.delta);
+        updateShapes();
+        updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
+        makePreviousContinue();
+        updateCrossLine();
+
+      };
+
+      endCircle.onMouseDrag = function (event) {
+        this.position = this.position.add(event.delta);
+        updateShapes();
+        updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
+        makeNextContinue();
+
+        updateCrossLine();
+      };
+
+      line.onMouseDrag = function (event) {
+        console.log("cross new line moveable event -----------", event, line);
+        const delta = event.delta;
+        startCircle.position = startCircle.position.add(delta);
+        endCircle.position = endCircle.position.add(delta);
+        updateShapes();
+        updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
+        updatePreviousLine(startCircle.position);
+        updateNextLine(endCircle.position);
+
+        // Cross path moveable events
+        updateCrossLine();
+      };
     }
 
     const logInfo = (weldPath, crossPath, points, weldedLinePoints) => {
@@ -646,150 +737,181 @@ export default {
 
     }
 
-    const getLinePointCrossObjects = (weldPath, crossPath, crossPoints, weldedLinePoints) => {
+    const addLinePointCrossObjectsEvent = (item, lpos, index, weldPath, crossPath, crossPoints, weldedLinePoints) => {
+      function makePreviousContinue() {
+        if (index > 0) {
+          const previousLine = lpos[index - 1];
+          previousLine.endPoint.position = startCircle.position;
+          previousLine.path.segments[1].point = startCircle.position;
+        } else {
+          const lastLine = lpos[lpos.length - 1];
+          lastLine.endPoint.position = startCircle.position;
+          lastLine.path.segments[1].point = startCircle.position;
+        }
+      }
 
-      logInfo(weldPath, crossPath, crossPoints, weldedLinePoints);
+      function makeNextContinue() {
+        if (index === lpos.length - 1) {
+          const firstLine = lpos[0];
+          firstLine.startPoint.position = endCircle.position;
+          firstLine.path.segments[0].point = endCircle.position;
+        } else {
+          const nextLine = lpos[index + 1];
+          nextLine.startPoint.position = endCircle.position;
+          nextLine.path.segments[0].point = endCircle.position;
+        }
+      }
+
+      function updateWeldPath(itemType) {
+        if (weldPath !== null) {
+
+          /*
+          console.log(`---------------start--${itemType}--------------------------`);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
+          console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
+          console.log(`---------------end--${itemType}----------------------------`);
+          */
+
+          weldPath.segments[index].point = startCircle.position;
+          weldPath.segments[index + 1].point = endCircle.position;
+
+          // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
+
+          // Make the welded path's start point move along with the end position of the last line
+          if (index + 2 == weldPath.segments.length) {
+            // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
+            weldPath.segments[0].point = endCircle.position;
+          }
+
+          if (index == 0) {
+            weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
+          }
+        }
+      }
+
+      function updateShapes() {
+        line.segments[0].point = startCircle.position;
+        line.segments[1].point = endCircle.position;
+      }
+
+      function updatePreviousLine(newLocation) {
+        if (index > 0) {
+          const previousLine = lpos[index - 1];
+          previousLine.endPoint.position = newLocation;
+          previousLine.path.segments[1].point = newLocation;
+        } else {
+          const lastLine = lpos[lpos.length - 1];
+          lastLine.endPoint.position = newLocation;
+          lastLine.path.segments[1].point = newLocation;
+        }
+      }
+
+      function updateNextLine(newLocation) {
+        if (index === lpos.length - 1) {
+          const firstLine = lpos[0];
+          firstLine.startPoint.position = newLocation;
+          firstLine.path.segments[0].point = newLocation;
+        } else {
+          const nextLine = lpos[index + 1];
+          nextLine.startPoint.position = newLocation;
+          nextLine.path.segments[0].point = newLocation;
+        }
+      }
+
+      const startCircle = item.startPoint;
+      const endCircle = item.endPoint;
+      const line = item.path;
+
+      startCircle.onMouseDrag = function (event) {
+        this.position = this.position.add(event.delta);
+        updateShapes();
+        updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
+        makePreviousContinue();
+      };
+
+      endCircle.onMouseDrag = function (event) {
+        this.position = this.position.add(event.delta);
+        updateShapes();
+        updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
+        makeNextContinue();
+      };
+
+      line.onMouseDrag = function (event) {
+        console.log("new line moveable event", event, line);
+        const delta = event.delta;
+        startCircle.position = startCircle.position.add(delta);
+        endCircle.position = endCircle.position.add(delta);
+        updateShapes();
+        updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
+        updatePreviousLine(startCircle.position);
+        updateNextLine(endCircle.position);
+      };
+
+      // Cross path moveable events
+      crossPath.onMouseDrag = function (event) {
 
 
-      let lpos = [];
-      crossPoints.slice(0, -1).map((point, index) => {
+        const delta = event.delta;
+        // crossPath.position = crossPath.position.add(delta);
+        crossPath.position.x += delta.x;
 
-        const startPoint = point;
-        const endPoint = crossPoints[index + 1];
-        const radius = 4;
-        const strokeWidth = 2;
+        // lpos.forEach((itm, index) => {
+        //   console.log(`CanvasShape.vue->crossPath.onMouseDrag|lpos ${itm.name} [x=${itm.startPoint.position.x}, y=${itm.startPoint.position.y}] [x=${itm.endPoint.position.x}, y=${itm.endPoint.position.y}]`, itm.path);
+        // });
 
-        console.log(`CanvasShape.vue->getLinePointObjects|point, Path Line ${index + 1}`, startPoint, endPoint);
+        lpos.map((itm, index) => {
+          console.log('CanvasShape.vue->crossPath.onMouseDrag|itm---------', itm);
 
-        const startCircle = new paper.Path.Circle({
-          center: startPoint,
-          radius: radius,
-          fillColor: "aqua",// "#4af",// "#000",// "blue",
+          itm.startPoint.position.x += delta.x;
+          itm.endPoint.position.x += delta.x;
+          itm.path.segments[0].point.x = itm.startPoint.position.x;
+          itm.path.segments[1].point.x = itm.endPoint.position.x;
+
+          const { weldStartIndex, weldEndIndex } = itm.weldPathIndex;
+          const { weldedStartIndex, weldedEndIndex } = itm.weldedPathIndex;
+
+          // if (weldStartIndex == 6) {
+          //   return;
+          // }
+
+          console.log('BBBBBBBBBBBBBBB 1', { weldStartIndex: weldStartIndex, weldEndIndex: weldEndIndex, weldedStartIndex: weldedStartIndex, weldedEndIndex: weldedEndIndex });
+          console.log('BBBBBBBBBBBBBBB 2', [itm.startPoint.position.x, itm.startPoint.position.y], [itm.endPoint.position.x, itm.endPoint.position.y]);
+          // console.log('BBBBBBBBBBBBBBB 3', [itm.path.segments[0].point.x, itm.path.segments[0].point.y], [itm.path.segments[1].point.x, itm.path.segments[1].point.y]);
+          console.log('BBBBBBBBBBBBBBB 3', [startCircle.position.x, startCircle.position.y], [endCircle.position.x, endCircle.position.y]);
+          console.log('BBBBBBBBBBBBBBB 4', lpos);
+
+          if (weldPath.segments[weldStartIndex] !== null && weldPath.segments[weldStartIndex] !== undefined) {
+            weldPath.segments[weldStartIndex].point = itm.startPoint.position;
+          }
+
+          if (weldPath.segments[weldEndIndex] !== null && weldPath.segments[weldEndIndex] !== undefined) {
+            weldPath.segments[weldEndIndex].point = itm.endPoint.position;
+          }
+
+          if (weldedLinePoints[weldedStartIndex] !== null && weldedLinePoints[weldedStartIndex] !== undefined) {
+            weldedLinePoints[weldedStartIndex].startPoint.position = itm.startPoint.position;
+            weldedLinePoints[weldedStartIndex].path.segments[0].point = itm.startPoint.position;
+          }
+          if (weldedLinePoints[weldedEndIndex] !== null && weldedLinePoints[weldedEndIndex] !== undefined) {
+            weldedLinePoints[weldedEndIndex].endPoint.position = itm.endPoint.position;
+            weldedLinePoints[weldedEndIndex].path.segments[1].point = itm.endPoint.position;
+          }
+
+
         });
+      };
+    }
 
-        const endCircle = new paper.Path.Circle({
-          center: endPoint,
-          radius: radius,
-          fillColor: "aqua",//"#4af",//"#000",// "red",
-        });
+    const setRelatedIndex = (crossLinePoints, weldedLinePoints, weldPath, crossPath) => {
 
-        const line = new paper.Path.Line({
-          from: startPoint,
-          to: endPoint,
-          strokeColor: "#000",
-          strokeWidth: strokeWidth,
-          fillColor: "#f36dc5",
-          // dashArray: [5, 2],
-        });
+      crossLinePoints.map((lp, index) => {
 
-        function makePreviousContinue() {
-          if (index > 0) {
-            const previousLine = lpos[index - 1];
-            previousLine.endPoint.position = startCircle.position;
-            previousLine.path.segments[1].point = startCircle.position;
-          } else {
-            const lastLine = lpos[lpos.length - 1];
-            lastLine.endPoint.position = startCircle.position;
-            lastLine.path.segments[1].point = startCircle.position;
-          }
-        }
-
-        function makeNextContinue() {
-          if (index === lpos.length - 1) {
-            const firstLine = lpos[0];
-            firstLine.startPoint.position = endCircle.position;
-            firstLine.path.segments[0].point = endCircle.position;
-          } else {
-            const nextLine = lpos[index + 1];
-            nextLine.startPoint.position = endCircle.position;
-            nextLine.path.segments[0].point = endCircle.position;
-          }
-        }
-
-        function updateWeldPath(itemType) {
-          if (weldPath !== null) {
-
-            /*
-            console.log(`---------------start--${itemType}--------------------------`);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.segments', weldPath.segments.map(segment => [segment.point.x, segment.point.y]));
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.index , index + 1', index, index + 1, points.length, weldPath.segments.length);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index].point', [weldPath.segments[index].point.x, weldPath.segments[index].point.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.startCircle.position', [startCircle.position.x, startCircle.position.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.[index + 1].point', [weldPath.segments[index + 1].point.x, weldPath.segments[index + 1].point.y]);
-            console.log('CanvasShape.vue->updateWeldPath|weldPath.endCircle.position', [endCircle.position.x, endCircle.position.y]);
-            console.log(`---------------end--${itemType}----------------------------`);
-            */
-
-            weldPath.segments[index].point = startCircle.position;
-            weldPath.segments[index + 1].point = endCircle.position;
-
-            // console.log('**************', index + 2, index + 2 == weldPath.segments.length);
-
-            // Make the welded path's start point move along with the end position of the last line
-            if (index + 2 == weldPath.segments.length) {
-              // console.log('|||||||||||||||||||||||||||||', weldPath.segments[0].point.x, weldPath.segments[0].point.y);
-              weldPath.segments[0].point = endCircle.position;
-            }
-
-            if (index == 0) {
-              weldPath.segments[weldPath.segments.length - 1].point = startCircle.position;
-            }
-          }
-        }
-
-        function updateShapes() {
-          line.segments[0].point = startCircle.position;
-          line.segments[1].point = endCircle.position;
-        }
-
-        function updatePreviousLine(newLocation) {
-          if (index > 0) {
-            const previousLine = lpos[index - 1];
-            previousLine.endPoint.position = newLocation;
-            previousLine.path.segments[1].point = newLocation;
-          } else {
-            const lastLine = lpos[lpos.length - 1];
-            lastLine.endPoint.position = newLocation;
-            lastLine.path.segments[1].point = newLocation;
-          }
-        }
-
-        function updateNextLine(newLocation) {
-          if (index === lpos.length - 1) {
-            const firstLine = lpos[0];
-            firstLine.startPoint.position = newLocation;
-            firstLine.path.segments[0].point = newLocation;
-          } else {
-            const nextLine = lpos[index + 1];
-            nextLine.startPoint.position = newLocation;
-            nextLine.path.segments[0].point = newLocation;
-          }
-        }
-
-        startCircle.onMouseDrag = function (event) {
-          this.position = this.position.add(event.delta);
-          updateShapes();
-          updateWeldPath(`startCircle=>[x=${this.position.x},y=${this.position.y}]`);
-          makePreviousContinue();
-        };
-
-        endCircle.onMouseDrag = function (event) {
-          this.position = this.position.add(event.delta);
-          updateShapes();
-          updateWeldPath(`endCircle=>[x=${this.position.x},y=${this.position.y}]`);
-          makeNextContinue();
-        };
-
-        line.onMouseDrag = function (event) {
-          console.log("new line moveable event", event, line);
-          const delta = event.delta;
-          startCircle.position = startCircle.position.add(delta);
-          endCircle.position = endCircle.position.add(delta);
-          updateShapes();
-          updateWeldPath(`line=>[x=${startCircle.position.x},y=${startCircle.position.y}], [x=${endCircle.position.x},y=${endCircle.position.y}]`);
-          updatePreviousLine(startCircle.position);
-          updateNextLine(endCircle.position);
-        };
+        const startCircle = lp.startPoint;
+        const endCircle = lp.endPoint;
 
         const weldStartIndex = weldPath.segments.findIndex(segment =>
           segment.point.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
@@ -821,59 +943,80 @@ export default {
           weldedLinePoint.endPoint.position.y.toFixed(4) === endCircle.position.y.toFixed(4)
         );
 
-        console.log('CanvasShape.vue->crossPath.onMouseDrag|weldedStartIndex, weldedEndIndex', weldedStartIndex, weldedEndIndex);
+        lp.weldPathIndex = { weldStartIndex: weldStartIndex, weldEndIndex: weldEndIndex };
+        lp.crossPathIndex = { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex };
+        lp.weldedPathIndex = { weldedStartIndex: weldedStartIndex, weldedEndIndex: weldedEndIndex };
+      });
+
+      weldedLinePoints.map((lp, index) => {
+        const startCircle = lp.startPoint;
+        const endCircle = lp.endPoint;
+
+        const crossStartIndex = crossPath.segments.findIndex(segment =>
+          segment.point.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
+          segment.point.y.toFixed(4) === startCircle.position.y.toFixed(4)
+        );
+
+        const crossEndIndex = crossPath.segments.findIndex(segment =>
+          segment.point.x.toFixed(4) === endCircle.position.x.toFixed(4) &&
+          segment.point.y.toFixed(4) === endCircle.position.y.toFixed(4)
+        );
+
+        const crossedStartIndex = crossLinePoints.findIndex(crossLinePoint =>
+          crossLinePoint.startPoint.position.x.toFixed(4) === startCircle.position.x.toFixed(4) &&
+          crossLinePoint.startPoint.position.y.toFixed(4) === startCircle.position.y.toFixed(4)
+        );
+
+        const crossedEndIndex = crossLinePoints.findIndex(crossLinePoint =>
+          crossLinePoint.endPoint.position.x.toFixed(4) === endCircle.position.x.toFixed(4) &&
+          crossLinePoint.endPoint.position.y.toFixed(4) === endCircle.position.y.toFixed(4)
+        );
+
+        lp.crossPathIndex = { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex };
+        lp.crossedPathIndex = { crossedStartIndex: crossedStartIndex, crossedEndIndex: crossedEndIndex };
+
+        console.log('CanvasShape.vue->setRelatedIndex|lp', { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex });
+        console.log('CanvasShape.vue->setRelatedIndex|lp startCircle,endCircle', [startCircle.position.x, startCircle.position.y], [endCircle.position.x, endCircle.position.y]);
+      })
+    }
+
+    const getLinePointCrossObjects = (crossPoints) => {
+
+      let lpos = [];
+      crossPoints.slice(0, -1).map((point, index) => {
+        const startPoint = point;
+        const endPoint = crossPoints[index + 1];
+        const radius = 4;
+        const strokeWidth = 2;
+
+        const startCircle = new paper.Path.Circle({
+          center: startPoint,
+          radius: radius,
+          fillColor: "aqua",// "#4af",// "#000",// "blue",
+        });
+
+        const endCircle = new paper.Path.Circle({
+          center: endPoint,
+          radius: radius,
+          fillColor: "aqua",//"#4af",//"#000",// "red",
+        });
+
+        const line = new paper.Path.Line({
+          from: startPoint,
+          to: endPoint,
+          strokeColor: "#000",
+          strokeWidth: strokeWidth,
+          fillColor: "#f36dc5",
+          // dashArray: [5, 2],
+        });
 
         lpos.push({
           name: `Cross Path Line ${index + 1}`,
           path: line,
           startPoint: startCircle,
-          endPoint: endCircle,
-          weldPathIndex: { weldStartIndex: weldStartIndex, weldEndIndex: weldEndIndex },
-          crossPathIndex: { crossStartIndex: crossStartIndex, crossEndIndex: crossEndIndex },
-          weldedPathIndex: { weldedStartIndex: weldedStartIndex, weldedEndIndex: weldedEndIndex }
+          endPoint: endCircle
         });
       });
-
-      // Cross path moveable events
-      crossPath.onMouseDrag = function (event) {
-
-
-        const delta = event.delta;
-        // crossPath.position = crossPath.position.add(delta);
-        crossPath.position.x += delta.x;
-
-        // lpos.forEach((itm, index) => {
-        //   console.log(`CanvasShape.vue->crossPath.onMouseDrag|lpos ${itm.name} [x=${itm.startPoint.position.x}, y=${itm.startPoint.position.y}] [x=${itm.endPoint.position.x}, y=${itm.endPoint.position.y}]`, itm.path);
-        // });
-
-        lpos.map((itm, index) => {
-          console.log('CanvasShape.vue->crossPath.onMouseDrag|itm---------', itm);
-
-          itm.startPoint.position.x += delta.x;
-          itm.endPoint.position.x += delta.x;
-          itm.path.segments[0].point.x = itm.startPoint.position.x;
-          itm.path.segments[1].point.x = itm.endPoint.position.x;
-
-          const { weldStartIndex, weldEndIndex } = itm.weldPathIndex;
-          const { weldedStartIndex, weldedEndIndex } = itm.weldedPathIndex;
-
-          if (weldStartIndex !== -1) {
-            weldPath.segments[weldStartIndex].point = itm.startPoint.position;
-          }
-          if (weldEndIndex !== -1) {
-            weldPath.segments[weldEndIndex].point = itm.endPoint.position;
-          }
-
-          if (weldedStartIndex !== -1) {
-            weldedLinePoints[weldedStartIndex].startPoint.position = itm.startPoint.position;
-            weldedLinePoints[weldedStartIndex].path.segments[0].point = itm.startPoint.position;
-          }
-          if (weldedEndIndex !== -1) {
-            weldedLinePoints[weldedEndIndex].endPoint.position = itm.endPoint.position;
-            weldedLinePoints[weldedEndIndex].path.segments[1].point = itm.endPoint.position;
-          }
-        });
-      };
 
       return lpos;
     }
@@ -907,15 +1050,42 @@ export default {
         fillColor: "#659dc5",// "#f36dc5",
       });
 
-      console.log('CanvasShape.vue->weldPath', weldPath);
 
-      // const weldedLinePoints = getLinePointObjectsWeld(weldPath, weldSegments);
-      const weldedLinePoints = getLinePointObjects(weldPath, weldSegments, []);
-      console.log('CanvasShape.vue->weldedLinePoints', weldedLinePoints);
+      const weldedLinePoints = getLinePointObjects(weldSegments);
+
+      // const crossItemList = crossPointList.map((cpt, index) => {
+      //   return renderCrossShape(weldPath, cpt.pts, weldedLinePoints);
+      // });
+
+
 
       const crossItemList = crossPointList.map((cpt, index) => {
-        return renderCrossShape(weldPath, cpt.pts, weldedLinePoints);
+
+        console.log('CanvasShape.vue->weldSegments', weldSegments, cpt.pts);
+
+
+        const crossPath = new paper.Path({
+          segments: cpt.pts,
+          closed: true,
+          fillColor: "aqua",// "#f36dc5",// ,
+        });
+
+        const crossLinePoints = getLinePointCrossObjects(cpt.pts);
+
+
+        setRelatedIndex(crossLinePoints, weldedLinePoints, weldPath, crossPath);
+
+        crossLinePoints.map((item, index) => {
+          addLinePointCrossObjectsEvent(item, crossLinePoints, index, weldPath, crossPath, cpt.pts, weldedLinePoints);
+        });
+
+        return { crossPath: crossPath, crossLinePoints: crossLinePoints };
+
       });
+
+      weldedLinePoints.map((item, index) => {
+        addLinePointObjectsEvent(item, weldedLinePoints, index, weldPath, crossItemList);
+      })
 
       project.value.activeLayer.addChild(weldPath);
 
@@ -950,6 +1120,10 @@ export default {
       // const crossLinePoints = getLinePointObjects(crossPath, crossSegments);
       const crossLinePoints = getLinePointCrossObjects(weldPath, crossPath, crossSegments, weldedLinePoints);
       console.log('CanvasShape.vue->crossLinePoints', crossLinePoints);
+
+      crossLinePoints.map((item, index) => {
+        addLinePointCrossObjectsEvent(item, crossLinePoints, index, weldPath, crossPath, crossSegments, weldedLinePoints);
+      });
 
       // project.value.activeLayer.addChild(crossPath);
 
