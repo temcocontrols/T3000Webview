@@ -17,20 +17,20 @@ onMounted(() => {
     // paper.project.activeLayer.removeChildren();
 
     if (shape === 'ellipse') {
-      new paper.Path.Ellipse({
+      new paper.paper.Path.Ellipse({
         point: event.point,
         size: [100, 50],
         fillColor: color
       });
     }
     else if (shape === 'circle') {
-      new paper.Path.Circle({
+      new paper.paper.Path.Circle({
         center: event.point,
         radius: 50,
         fillColor: color
       });
     } else if (shape === 'rectangle') {
-      new paper.Path.Rectangle({
+      new paper.paper.Path.Rectangle({
         point: event.point,
         size: [100, 50],
         fillColor: color
@@ -38,7 +38,10 @@ onMounted(() => {
     }
   }
 
-  const values = {
+  ////////////////////////////////////////////////////////////////////////////////
+  // Interface
+
+  var values = {
     fixLength: false,
     fixAngle: false,
     showCircle: false,
@@ -46,88 +49,79 @@ onMounted(() => {
     showCoordinates: false
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
   // Vector
-  const vectorStart = ref({});
-  const vector = ref({});
-  const vectorPrevious = ref({});
-  const vectorItem = ref({});
-  const items = ref([]);
-  const dashedItems = ref([]);
+
+  var vectorStart = new paper.Point(0, 0), vector = new paper.Point(0, 0), vectorPrevious = new paper.Point(0, 0);
+  var vectorItem, items, dashedItems;
 
   function processVector(event, drag) {
-    vector.value = event.point - vectorStart.value;
-    console.log('event.point', event.point);
-    console.log('vectorStart.value', vectorStart.value);
-
-    var pt = { x: event.point.x - vectorStart.value.x, y: event.point.y - vectorStart.value.y };
-    // vector.value = pt;
-
-    console.log('vector.value', vector.value);
-
-    if (vectorPrevious.value) {
+    // vector = new paper.Point(event.point.x - vectorStart.x, event.point.y - vectorStart.y);
+    vector = event.point.subtract(vectorStart);
+    if (vectorPrevious) {
       if (values.fixLength && values.fixAngle) {
-        vector.value = vectorPrevious;
+        vector = vectorPrevious;
       } else if (values.fixLength) {
-        vector.value.length = vectorPrevious.value.length;
+        vector.length = vectorPrevious.length;
       } else if (values.fixAngle) {
-        vector.value = vector.value.project(vectorPrevious);
+        vector = vector.project(vectorPrevious);
       }
     }
     drawVector(drag);
   }
 
   function drawVector(drag) {
-    if (items.value) {
-      for (var i = 0, l = items.value.length; i < l; i++) {
+    if (items) {
+      for (var i = 0, l = items.length; i < l; i++) {
         items[i].remove();
       }
     }
-    if (vectorItem.value) {
-      // vectorItem.value.remove();
-    }
-    items.value = [];
-    var arrowVector = vector;//vector.value.normalize(10);
-    var end = vectorStart.value + vector.value;
-    vectorItem.value = new paper.Group(
+    if (vectorItem)
+      vectorItem.remove();
+    items = [];
+    var arrowVector = vector.normalize(10);
+    // var end = new paper.Point(vectorStart.x + vector.x, vectorStart.y + vector.y);
+    var end = vectorStart.add(vector);
+    vectorItem = new paper.Group(
       new paper.Path(vectorStart, end),
       new paper.Path(
-        end,//+ arrowVector.value.rotate(135),
+        end.add(arrowVector.rotate(135)),
         end,
-        end //+ arrowVector.value.rotate(-135)
+        end.add(arrowVector.rotate(-135))
       )
     );
-    vectorItem.value.strokeWidth = 0.75;
-    vectorItem.value.strokeColor = '#e4141b';
+    vectorItem.strokeWidth = 0.75;
+    vectorItem.strokeColor = '#e4141b';
     // Display:
-    dashedItems.value = [];
+    dashedItems = [];
     // Draw Circle
     if (values.showCircle) {
-      dashedItems.value.push(new Path.Circle(vectorStart, vector.value.length));
+      dashedItems.push(new paper.Path.Circle(vectorStart, vector.length));
     }
     // Draw Labels
     if (values.showAngleLength) {
       drawAngle(vectorStart, vector, !drag);
       if (!drag)
-        drawLength(vectorStart, end, vector.value.angle < 0 ? -1 : 1, true);
+        drawLength(vectorStart, end, vector.angle < 0 ? -1 : 1, true);
     }
-    var quadrant = vector.value.quadrant;
+    var quadrant = vector.quadrant;
     if (values.showCoordinates && !drag) {
-      drawLength(vectorStart, vectorStart.value + [vector.value.x, 0],
-        [1, 3].indexOf(quadrant) != -1 ? -1 : 1, true, vector.value.x, 'x: ');
-      drawLength(vectorStart, vectorStart.value + [0, vector.value.y],
-        [1, 3].indexOf(quadrant) != -1 ? 1 : -1, true, vector.value.y, 'y: ');
+      drawLength(vectorStart, vectorStart + [vector.x, 0],
+        [1, 3].indexOf(quadrant) != -1 ? -1 : 1, true, vector.x, 'x: ');
+      drawLength(vectorStart, vectorStart + [0, vector.y],
+        [1, 3].indexOf(quadrant) != -1 ? 1 : -1, true, vector.y, 'y: ');
     }
-    for (var i = 0, l = dashedItems.value.length; i < l; i++) {
+    for (var i = 0, l = dashedItems.length; i < l; i++) {
       var item = dashedItems[i];
       item.strokeColor = 'black';
       item.dashArray = [1, 2];
-      items.value.push(item);
+      items.push(item);
     }
     // Update palette
-    values.x = vector.value.x;
-    values.y = vector.value.y;
-    values.length = vector.value.length;
-    values.angle = vector.value.angle;
+    values.x = vector.x;
+    values.y = vector.y;
+    values.length = vector.length;
+    values.angle = vector.angle;
   }
 
   function drawAngle(center, vector, label) {
@@ -137,37 +131,38 @@ onMounted(() => {
     var from = new paper.Point(radius, 0);
     var through = from.rotate(vector.angle / 2);
     var to = from.rotate(vector.angle);
-    var end = center + to;
-    dashedItems.value.push(new paper.Path.Line(center,
-      center + new paper.Point(radius + threshold, 0)));
-    dashedItems.value.push(new paper.Path.Arc(center + from, center + through, end));
+    var end = center.add(to);
+    dashedItems.push(new paper.Path.Line(center,
+      center.add(new paper.Point(radius + threshold, 0))));
+    dashedItems.push(new paper.Path.Arc(center.add(from), center.add(through), end));
     var arrowVector = to.normalize(7.5).rotate(vector.angle < 0 ? -90 : 90);
-    dashedItems.value.push(new paper.Path([
-      end + arrowVector.rotate(135),
+    dashedItems.push(new paper.Path([
+      end.add(arrowVector.rotate(135)),
       end,
-      end + arrowVector.rotate(-135)
+      end.add(arrowVector.rotate(-135))
     ]));
     if (label) {
       // Angle Label
       var text = new paper.PointText(center
-        + through.normalize(radius + 10) + new paper.Point(0, 3));
+        .add(through.normalize(radius + 10)).add(new paper.Point(0, 3)));
       text.content = Math.floor(vector.angle * 100) / 100 + '\xb0';
-      items.value.push(text);
+      items.push(text);
     }
   }
 
   function drawLength(from, to, sign, label, value, prefix) {
     var lengthSize = 5;
-    if ((to - from).length < lengthSize * 4)
+    if ((to.subtract(from)).length < lengthSize * 4)
       return;
-    var vector = to - from;
+    // var vector = new paper.Point(to.x - from.x, to.y - from.y);;
+    var vector = to.subtract(from);
     var awayVector = vector.normalize(lengthSize).rotate(90 * sign);
     var upVector = vector.normalize(lengthSize).rotate(45 * sign);
     var downVector = upVector.rotate(-90 * sign);
     var lengthVector = vector.normalize(
       vector.length / 2 - lengthSize * Math.SQRT2);
-    var line = new Path();
-    line.add(from + awayVector);
+    var line = new paper.Path();
+    line.add(from.add(awayVector));
     line.lineBy(upVector);
     line.lineBy(lengthVector);
     line.lineBy(upVector);
@@ -175,7 +170,7 @@ onMounted(() => {
     line.lineBy(downVector);
     line.lineBy(lengthVector);
     line.lineBy(downVector);
-    dashedItems.value.push(line);
+    dashedItems.push(line);
     if (label) {
       // Length Label
       var textAngle = Math.abs(vector.angle) > 90
@@ -184,52 +179,53 @@ onMounted(() => {
       // vector's quadrant:
       var away = (sign >= 0 ? [1, 4] : [2, 3]).indexOf(vector.quadrant) != -1
         ? 8 : 0;
-      var text = new PointText(middle + awayVector.normalize(away + lengthSize));
+      var text = new paper.PointText(middle.add(awayVector.normalize(away + lengthSize)));
       text.rotate(textAngle);
       text.justification = 'center';
       value = value || vector.length;
       text.content = (prefix || '') + Math.floor(value * 1000) / 1000;
-      items.value.push(text);
+      items.push(text);
     }
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   // Mouse Handling
 
-  const dashItem = ref(null);
+  var dashItem;
 
   function onMouseDown(event) {
-    var end = vectorStart.value + vector.value;
+    // var end = new paper.Point(vectorStart.x + vector.x, vectorStart.y + vector.y);
+    var end = vectorStart.add(vector);
     var create = false;
     if (event.modifiers.shift && vectorItem) {
-      vectorStart.value = end;
+      vectorStart = end;
       create = true;
-    } else if (vector.value && (event.modifiers.option
-      || end /*&& end.getDistance(event.point) < 10*/)) {
+    } else if (vector && (event.modifiers.option
+      || end && end.getDistance(event.point) < 10)) {
       create = false;
     } else {
-      vectorStart.value = event.point;
+      vectorStart = event.point;
     }
     if (create) {
-      dashItem.value = vectorItem;
-      vectorItem.value = null;
+      dashItem = vectorItem;
+      vectorItem = null;
     }
     processVector(event, true);
   }
 
   function onMouseDrag(event) {
     if (!event.modifiers.shift && values.fixLength && values.fixAngle)
-      vectorStart.value = event.point;
+      vectorStart = event.point;
     processVector(event, event.modifiers.shift);
   }
 
   function onMouseUp(event) {
     processVector(event, false);
-    if (dashItem.value) {
-      dashItem.value.dashArray = [1, 2];
-      dashItem.value = null;
+    if (dashItem) {
+      dashItem.dashArray = [1, 2];
+      dashItem = null;
     }
-    vectorPrevious.value = vector;
+    vectorPrevious = vector;
   }
 
   // Create a tool
@@ -245,7 +241,6 @@ onMounted(() => {
     // Clear the canvas
     // drawShape(event, 'rectangle', 'blue');
 
-    console.log('onMouseDown', event.point);
     onMouseDown(event);
   };
 
