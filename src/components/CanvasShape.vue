@@ -1235,7 +1235,7 @@ canvas {
 
 .canvas-normal {
   /* background-color: aqua; */
-  /* background-color: #f36dc5; */
+  background-color: #f36dc5;
 }
 
 .canvas-hid {
