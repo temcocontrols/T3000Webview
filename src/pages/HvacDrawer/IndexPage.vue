@@ -1,331 +1,346 @@
 <template>
   <q-page>
-    <div>
-      <!-- Tools Sidebar -->
-      <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images" :object-lib="library.objLib"
-        @select-tool="selectTool" @delete-lib-item="deleteLibItem" @rename-lib-item="renameLibItem"
-        @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage" @tool-dropped="toolDropped" />
-      <div class="viewport-wrapper">
+    <div class="main-container">
+      <div class="top-bar">
         <!-- Top Toolbar -->
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
-        <!-- Navigation Buttons -->
-        <div class="flex fixed top-10 z-50 nav-btns" :class="{ locked: locked }">
-          <!-- Go Back Button -->
-          <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="lg" color="primary"
-            @click="navGoBack">
-            <q-tooltip anchor="top middle" self="bottom middle">
-              <strong>Go back</strong>
-            </q-tooltip>
-          </q-btn>
-          <!-- Lock/Unlock Button -->
-          <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="lg"
-            :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-            <q-tooltip anchor="top middle" self="bottom middle">
-              <strong v-if="!locked">Lock</strong>
-              <strong v-else>Unlock</strong>
-            </q-tooltip>
-          </q-btn>
+      </div>
+      <div class="main-content">
+        <div class="side-bar" v-if="!locked">
+          <!-- Tools Sidebar -->
+          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+            @tool-dropped="toolDropped" />
         </div>
-        <!-- Viewport Area -->
-        <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick" @dragover="($event) => {
-          $event.preventDefault();
-        }
-          ">
-          <!-- Cursor Icon -->
-          <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
-            ? selectedTool.icon
-            : selectedTool.type === 'libItem'
-              ? 'space_dashboard'
-              : 'photo'
-            " size="sm" :style="{
-              left: cursorIconPos.x + 10 + 'px',
-              top: cursorIconPos.y + 'px',
-            }" />
-          <!-- Vue Selecto for Selectable Items -->
-          <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []" :hitRate="20"
-            :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']" :ratio="0"
-            :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
-            @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-          </vue-selecto>
-          <!-- Moveable Component for Draggable/Resizable Items -->
-          <div ref="viewport">
-            <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
-              :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
-              :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
-                top: true,
-                right: true,
-                bottom: true,
-                left: true,
-              }" :elementSnapDirections="{
-                top: true,
-                right: true,
-                bottom: true,
-                left: true,
-              }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
-              :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
-              :defaultGroupRotate="0" defaultGroupOrigin="50% 50%" :padding="{ left: 0, top: 0, right: 0, bottom: 0 }"
-              @clickGroup="onClickGroup" @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd"
-              @dragGroupStart="onDragGroupStart" @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd"
-              @resizeStart="onResizeStart" @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart"
-              @rotate="onRotate" @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart"
-              @resizeGroup="onResizeGroup" @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
-              @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd">
-            </vue-moveable>
+        <div class="work-area">
+          <div class="viewport-wrapper">
+            <!-- Navigation Buttons -->
+            <div class="flex fixed top-10 z-50 nav-btns" :class="{ locked: locked }">
+              <!-- Go Back Button -->
+              <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="lg"
+                color="primary" @click="navGoBack">
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  <strong>Go back</strong>
+                </q-tooltip>
+              </q-btn>
+              <!-- Lock/Unlock Button -->
+              <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="lg"
+                :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  <strong v-if="!locked">Lock</strong>
+                  <strong v-else>Unlock</strong>
+                </q-tooltip>
+              </q-btn>
+            </div>
+            <!-- Viewport Area -->
+            <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
+              @dragover="($event) => {
+                $event.preventDefault();
+              }
+                ">
+              <!-- Cursor Icon -->
+              <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
+                ? selectedTool.icon
+                : selectedTool.type === 'libItem'
+                  ? 'space_dashboard'
+                  : 'photo'
+                " size="sm" :style="{
+                  left: cursorIconPos.x + 10 + 'px',
+                  top: cursorIconPos.y + 'px',
+                }" />
+              <!-- Vue Selecto for Selectable Items -->
+              <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
+                :hitRate="20" :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']"
+                :ratio="0" :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
+                @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
+              </vue-selecto>
+              <!-- Moveable Component for Draggable/Resizable Items -->
+              <div ref="viewport">
+                <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
+                  :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
+                  :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
+                    top: true,
+                    right: true,
+                    bottom: true,
+                    left: true,
+                  }" :elementSnapDirections="{
+                    top: true,
+                    right: true,
+                    bottom: true,
+                    left: true,
+                  }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+                  :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
+                  :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
+                  :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
+                  @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
+                  @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"
+                  @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart" @rotate="onRotate"
+                  @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
+                  @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart" @rotateGroup="onRotateGroup"
+                  @rotateGroupEnd="onRotateGroupEnd">
+                </vue-moveable>
 
-            <!-- Context Menu -->
-            <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
-              <q-list>
-                <!-- Copy Option -->
-                <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Copy</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + C</q-chip>
-                  </q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Duplicate Option -->
-                <q-item dense clickable v-close-popup @click="duplicateSelected">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Duplicate</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + D</q-chip>
-                  </q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Group Option -->
-                <q-item dense clickable v-close-popup @click="groupSelected">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Group</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + G</q-chip>
-                  </q-item-section>
-                </q-item>
-                <q-item dense clickable v-close-popup @click="ungroupSelected">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Ungroup</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + Shift + G</q-chip>
-                  </q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Add to Library Option -->
-                <q-item dense clickable v-close-popup @click="addToLibrary">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Add to Library</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + L</q-chip>
-                  </q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Bring to Front Option -->
-                <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section class="py-2">Bring to front</q-item-section>
-                </q-item>
-                <!-- Send to Back Option -->
-                <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section class="py-2">Send to Back</q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Rotate 90 Degrees Option -->
-                <q-item dense clickable v-close-popup @click="rotate90Selected()">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>Rotate 90°</q-item-section>
-                </q-item>
-                <!-- Rotate -90 Degrees Option -->
-                <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>Rotate -90°</q-item-section>
-                </q-item>
-                <q-separator />
-                <!-- Delete Option -->
-                <q-item dense clickable v-close-popup @click="deleteSelected">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Delete</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-chip>Delete</q-chip>
-                  </q-item-section>
-                </q-item>
-                <!-- Weld Option -->
-                <q-item dense clickable v-close-popup @click="weldSelected">
-                  <q-item-section avatar>
-                    <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
-                  </q-item-section>
-                  <q-item-section>Weld Selected</q-item-section>
-                  <q-item-section side>
-                    <q-chip>Ctrl + B</q-chip>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
+                <!-- Context Menu -->
+                <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
+                  <q-list>
+                    <!-- Copy Option -->
+                    <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Copy</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + C</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Duplicate Option -->
+                    <q-item dense clickable v-close-popup @click="duplicateSelected">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Duplicate</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + D</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Group Option -->
+                    <q-item dense clickable v-close-popup @click="groupSelected">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Group</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + G</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <q-item dense clickable v-close-popup @click="ungroupSelected">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Ungroup</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + Shift + G</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Add to Library Option -->
+                    <q-item dense clickable v-close-popup @click="addToLibrary">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Add to Library</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + L</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Bring to Front Option -->
+                    <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section class="py-2">Bring to front</q-item-section>
+                    </q-item>
+                    <!-- Send to Back Option -->
+                    <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section class="py-2">Send to Back</q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Rotate 90 Degrees Option -->
+                    <q-item dense clickable v-close-popup @click="rotate90Selected()">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>Rotate 90°</q-item-section>
+                    </q-item>
+                    <!-- Rotate -90 Degrees Option -->
+                    <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>Rotate -90°</q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <!-- Delete Option -->
+                    <q-item dense clickable v-close-popup @click="deleteSelected">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Delete</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-chip>Delete</q-chip>
+                      </q-item-section>
+                    </q-item>
+                    <!-- Weld Option -->
+                    <q-item dense clickable v-close-popup @click="weldSelected">
+                      <q-item-section avatar>
+                        <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
+                      </q-item-section>
+                      <q-item-section>Weld Selected</q-item-section>
+                      <q-item-section side>
+                        <q-chip>Ctrl + B</q-chip>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
 
-            <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
-              :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-              :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
-              :class="`moveable-item-index-${index}`">
-              <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
-                <q-list>
-                  <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Link</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label>Copy</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-chip>Ctrl + C</q-chip>
-                    </q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="duplicateObject(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Duplicate</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="rotate90(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Rotate 90°</q-item-section>
-                  </q-item>
-                  <q-item dense clickable v-close-popup @click="rotate90(item, true)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Rotate -90°</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="flipH(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Flip horizontal</q-item-section>
-                  </q-item>
-                  <q-item dense clickable v-close-popup @click="flipV(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
-                        style="transform: rotate(90deg)" />
-                    </q-item-section>
-                    <q-item-section>Flip vertical</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="bringToFront(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Bring to front</q-item-section>
-                  </q-item>
-                  <q-item dense clickable v-close-popup @click="sendToBack(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Send to Back</q-item-section>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable>
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Convert to</q-item-section>
-                    <q-item-section side>
-                      <q-icon name="keyboard_arrow_right" />
-                    </q-item-section>
-                    <q-menu anchor="top end" self="top start" auto-close>
-                      <q-list>
-                        <q-item v-for="t in tools.filter(
-                          (i) =>
-                            i.name !== item.type &&
-                            !['Duct', 'Pointer', 'Text'].includes(i.name)
-                        )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>{{ t.name }}</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-                  </q-item>
-                  <q-separator />
-                  <q-item dense clickable v-close-popup @click="removeObject(item)">
-                    <q-item-section avatar>
-                      <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
-                    </q-item-section>
-                    <q-item-section>Remove</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-menu>
+                <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
+                  :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
+                  :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
+                  :class="`moveable-item-index-${index}`">
+                  <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
+                    <q-list>
+                      <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Link</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>
+                          <q-item-label>Copy</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                          <q-chip>Ctrl + C</q-chip>
+                        </q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="duplicateObject(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Duplicate</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="rotate90(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Rotate 90°</q-item-section>
+                      </q-item>
+                      <q-item dense clickable v-close-popup @click="rotate90(item, true)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Rotate -90°</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="flipH(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Flip horizontal</q-item-section>
+                      </q-item>
+                      <q-item dense clickable v-close-popup @click="flipV(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
+                            style="transform: rotate(90deg)" />
+                        </q-item-section>
+                        <q-item-section>Flip vertical</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="bringToFront(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Bring to front</q-item-section>
+                      </q-item>
+                      <q-item dense clickable v-close-popup @click="sendToBack(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Send to Back</q-item-section>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable>
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Convert to</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="keyboard_arrow_right" />
+                        </q-item-section>
+                        <q-menu anchor="top end" self="top start" auto-close>
+                          <q-list>
+                            <q-item v-for="t in tools.filter(
+                              (i) =>
+                                i.name !== item.type &&
+                                !['Duct', 'Pointer', 'Text'].includes(i.name)
+                            )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
+                              <q-item-section avatar>
+                                <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
+                              </q-item-section>
+                              <q-item-section>{{ t.name }}</q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-menu>
+                      </q-item>
+                      <q-separator />
+                      <q-item dense clickable v-close-popup @click="removeObject(item)">
+                        <q-item-section avatar>
+                          <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
+                        </q-item-section>
+                        <q-item-section>Remove</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
 
-              <object-type ref="objectsRef" v-if="item.cat !== 'General'" :item="item" :key="item.id + item.type"
-                :class="{
-                  link: locked && item.t3Entry,
-                }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                @update-weld-model="updateWeldModel" />
-              <CanvasShape v-if="item.cat === 'General' || item.type === 'Weld_General' || item.type === 'Weld_Duct'"
-                ref="objectsRef" :item="item" :key="item.id + item.type" :class="{
-                  link: locked && item.t3Entry,
-                }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                @update-weld-model="updateWeldModelCanvas">
-              </CanvasShape>
+                  <object-type ref="objectsRef" v-if="item.cat !== 'General'" :item="item" :key="item.id + item.type"
+                    :class="{
+                      link: locked && item.t3Entry,
+                    }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                    @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                    @update-weld-model="updateWeldModel" />
+                  <CanvasShape v-if="
+                    item.cat === 'General' ||
+                    item.type === 'Weld_General' ||
+                    item.type === 'Weld_Duct'
+                  " ref="objectsRef" :item="item" :key="item.id + item.type" :class="{
+                    link: locked && item.t3Entry,
+                  }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                    @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                    @update-weld-model="updateWeldModelCanvas">
+                  </CanvasShape>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <!-- Object config sidebar -->
-      <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
-        !locked &&
-        appState.items[appState.activeItemIndex] &&
-        (appState.activeItemIndex || appState.activeItemIndex === 0)
-      " @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
-        @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-        @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
     </div>
+
+    <!-- Object config sidebar -->
+    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
+      !locked &&
+      appState.items[appState.activeItemIndex] &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0)
+    " @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+      @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
@@ -419,7 +434,15 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData, } from "../../lib/common";
+import {
+  tools,
+  T3_Types,
+  getObjectActiveValue,
+  T3000_Data,
+  user,
+  globalNav,
+  demoDeviceData,
+} from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -1721,8 +1744,12 @@ function drawWeldObjectCanvas(selectedItems) {
   const firstY = selectedItems[0].translate[1];
   const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
   let minY = Math.min(...selectedItems.map((item) => item.translate[1]));
-  const maxX = Math.max(...selectedItems.map((item) => item.translate[0] + item.width));
-  const maxY = Math.max(...selectedItems.map((item) => item.translate[1] + item.height));
+  const maxX = Math.max(
+    ...selectedItems.map((item) => item.translate[0] + item.width)
+  );
+  const maxY = Math.max(
+    ...selectedItems.map((item) => item.translate[1] + item.height)
+  );
   let newMinX = firstX < minX ? firstX : minX;
 
   const boundingBox = selectedItems.reduce(
@@ -1733,9 +1760,18 @@ function drawWeldObjectCanvas(selectedItems) {
 
       const corners = [
         { x: item.translate[0], y: item.translate[1] },
-        { x: item.translate[0] + item.width * cos, y: item.translate[1] + item.width * sin },
-        { x: item.translate[0] - item.height * sin, y: item.translate[1] + item.height * cos },
-        { x: item.translate[0] + item.width * cos - item.height * sin, y: item.translate[1] + item.width * sin + item.height * cos },
+        {
+          x: item.translate[0] + item.width * cos,
+          y: item.translate[1] + item.width * sin,
+        },
+        {
+          x: item.translate[0] - item.height * sin,
+          y: item.translate[1] + item.height * cos,
+        },
+        {
+          x: item.translate[0] + item.width * cos - item.height * sin,
+          y: item.translate[1] + item.width * sin + item.height * cos,
+        },
       ];
 
       corners.forEach((corner) => {
@@ -1777,7 +1813,7 @@ function drawWeldObjectCanvas(selectedItems) {
         item.overlap = {
           isStartOverlap: overlapItem.isStartOverlap,
           isEndOverlap: overlapItem.isEndOverlap,
-        }
+        };
       }
     });
   }
@@ -1788,7 +1824,7 @@ function drawWeldObjectCanvas(selectedItems) {
   const tempItem = {
     title: `Weld-${title}`,
     active: false,
-    cat: 'General',
+    cat: "General",
     type: isAllDuct ? "Weld_Duct" : "Weld_General",
     translate: [newMinX, minY],
     width: newWidth,
@@ -1818,10 +1854,7 @@ function drawWeldObjectCanvas(selectedItems) {
 
 function getDuctPoints(info) {
   const { left, top, pos1, pos2, pos3, pos4 } = info;
-  return [pos1, pos2, pos4, pos3].map((pos) => [
-    left + pos[0],
-    top + pos[1],
-  ]);
+  return [pos1, pos2, pos4, pos3].map((pos) => [left + pos[0], top + pos[1]]);
 }
 
 function isDuctOverlap(partEl) {
@@ -1841,18 +1874,18 @@ function isDuctOverlap(partEl) {
 }
 
 function checkIsOverlap(selectedItems) {
-
   const itemList = [];
 
   selectedItems.map((item) => {
-
     const { width, height, translate, rotate } = item;
 
     // const element = document.querySelector(`#moveable-item-${item.id}`);
     // const elRect = element.getBoundingClientRect();
     // const elInfo = getElementInfo(element);
 
-    const startEl = document.querySelector(`#moveable-item-${item.id} .duct-start`);
+    const startEl = document.querySelector(
+      `#moveable-item-${item.id} .duct-start`
+    );
     const endEl = document.querySelector(`#moveable-item-${item.id} .duct-end`);
 
     const isStartOverlap = isDuctOverlap(startEl);
@@ -1901,8 +1934,7 @@ function weldSelected() {
 
   if (isAllGeneral || isAllDuct) {
     drawWeldObjectCanvas(selectedItems);
-  }
-  else {
+  } else {
     drawWeldObject(selectedItems);
   }
 
@@ -2738,14 +2770,18 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
   // console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
 
   appState.value.items.map((item) => {
-    if ((item.type === "Weld_General" || item.type === "Weld_Duct") && item.id === weldModel.id) {
-
+    if (
+      (item.type === "Weld_General" || item.type === "Weld_Duct") &&
+      item.id === weldModel.id
+    ) {
       // Update the weld items's new width, height, translate
       const firstTrsx = item?.weldItems[0]?.translate[0];
       const firstTrsy = item?.weldItems[0]?.translate[1];
 
       item?.weldItems?.forEach((weldItem) => {
-        const pathItem = pathItemList?.find((itx) => itx?.item?.id === weldItem?.id);
+        const pathItem = pathItemList?.find(
+          (itx) => itx?.item?.id === weldItem?.id
+        );
         // console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
         // console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
@@ -2841,11 +2877,47 @@ function addOnlineLibImage(oItem) {
 }
 </script>
 <style>
+.main-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-bar {
+  /* background-color: #333;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 1; */
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  /* margin-top: 28px; */
+  /* Adjust based on topbar height */
+}
+
+.side-bar {
+  background-color: #f4f4f4;
+  /* width: 200px;
+  padding: 15px; */
+  width: 100px;
+}
+
+.work-area {
+  flex: 1;
+  padding: 0px;
+}
+
 .viewport-wrapper {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  position: absolute;
+  /* position: absolute; */
   top: 0;
 }
 
@@ -2856,7 +2928,8 @@ function addOnlineLibImage(oItem) {
   position: relative;
   background-image: repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
     repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
-  background-size: 71px 71px;
+  background-size: 20px 20px;
+  /* background-color: aqua; */
 }
 
 .viewport .selected {

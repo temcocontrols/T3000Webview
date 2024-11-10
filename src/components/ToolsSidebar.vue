@@ -398,7 +398,7 @@ function toolDropped(event, tool) {
   background-color: #2a2a2a;
   padding: 0 4px;
   align-self: stretch;
-  margin-top: 34px;
+  margin-top: 1px;
   position: absolute;
   height: 100%;
   overflow-y: auto;
@@ -420,6 +420,7 @@ function toolDropped(event, tool) {
 .tool-wrapper {
   position: relative;
 }
+
 .tool-wrapper button {
   visibility: hidden;
   position: absolute;
@@ -427,6 +428,7 @@ function toolDropped(event, tool) {
   top: 2px;
   z-index: 1;
 }
+
 .tool-wrapper:hover button {
   visibility: visible;
 }

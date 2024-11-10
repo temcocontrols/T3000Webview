@@ -596,8 +596,8 @@ export default defineComponent({
   padding-top: 0;
   position: absolute;
   right: 0;
-  top: 36px;
-  height: calc(100% - 36px);
+  top: 37px;
+  height: calc(100% - 37px);
   color: #ffffff99;
 }
 
