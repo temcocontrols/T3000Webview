@@ -15,19 +15,26 @@
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
             @tool-dropped="toolDropped" />
         </div>
+        <!-- <HRuler :scale="zoom" style="margin-left: 130px" /> -->
+        <!-- <VRuler :scale="zoom" style="margin-left: 120px" /> -->
         <div class="work-area">
+
+          <!-- <div class="c-ruler"></div>
+          <HRuler class="h-ruler"></HRuler>
+          <VRuler class="v-ruler"></VRuler> -->
+
           <div class="viewport-wrapper">
             <!-- Navigation Buttons -->
-            <div class="flex fixed top-10 z-50 nav-btns" :class="{ locked: locked }">
+            <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
               <!-- Go Back Button -->
-              <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="lg"
+              <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
                 color="primary" @click="navGoBack">
                 <q-tooltip anchor="top middle" self="bottom middle">
                   <strong>Go back</strong>
                 </q-tooltip>
               </q-btn>
               <!-- Lock/Unlock Button -->
-              <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="lg"
+              <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                 :color="locked ? 'primary' : 'normal'" @click="lockToggle">
                 <q-tooltip anchor="top middle" self="bottom middle">
                   <strong v-if="!locked">Lock</strong>
@@ -448,6 +455,8 @@ import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
 import { getOverlapSize } from "overlap-area";
 import { startsWith } from "lodash";
+import HRuler from "src/components/HRuler.vue";
+import VRuler from "src/components/VRuler.vue";
 
 // Meta information for the application
 const metaData = {
@@ -2880,52 +2889,67 @@ function addOnlineLibImage(oItem) {
   height: 100%;
 }
 
-.top-bar {
-  /* background-color: #333;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  position: fixed;
-  width: 100%;
-  top: 0;
-  z-index: 1; */
-}
-
 .main-content {
   display: flex;
   flex: 1;
   /* margin-top: 28px; */
-  /* Adjust based on topbar height */
 }
 
 .side-bar {
   background-color: #f4f4f4;
   /* width: 200px;
   padding: 15px; */
-  width: 100px;
+  width: 105px;
 }
 
 .work-area {
   flex: 1;
-  padding-left: 1px;
-  padding-top: 1px;
+  /* padding-left: 1px; */
+  /* padding-top: 1px; */
+  /* background-color: aquamarine; */
+  /* margin-left: 50px; */
+  margin-left: 1px;
+}
+
+.c-ruler {
+  width: 20px;
+  height: 20px;
+  background-color: #ebeced;
+}
+
+.h-ruler {
+  /* margin-top: 20px; */
+  margin-left: 21px;
+  position: relative;
+  overflow: hidden;
+  background-color: #ebeced;
+  margin-top: -20px;
+}
+
+.v-ruler {
+  margin-top: 1px;
+  position: relative;
+  overflow: hidden;
+  background-color: #ebeced;
 }
 
 .viewport-wrapper {
   width: 100%;
-  height: 100vh;
+  /* height: 100vh; */
   overflow: hidden;
   /* position: absolute; */
-  top: 0;
+  /* background-color: antiquewhite; */
+  margin-top: 0px;
+  /* margin-left: 20px; */
 }
 
 .viewport {
   width: 100%;
   height: calc(100vh - 36px);
-  overflow: hidden;
+  overflow: scroll;
   position: relative;
-  background-image: repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
-    repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px;
   /* background-color: aqua; */
 }
