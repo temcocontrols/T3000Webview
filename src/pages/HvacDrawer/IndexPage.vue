@@ -793,12 +793,8 @@ function viewportMouseMoved(e) {
     // Check if the Ctrl key is pressed
     const isCtrlPressed = e.ctrlKey;
     // Calculate the distance and angle between the initial point and mouse cursor
-    const mouseX =
-      (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage;
-    const mouseY =
-      (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage;
+    const mouseX = (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) * scalPercentage;
+    const mouseY = (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) * scalPercentage;
     const dx = mouseX - startTransform.value[0];
     const dy = mouseY - startTransform.value[1];
     let angle = Math.atan2(dy, dx) * (180 / Math.PI);
@@ -1145,8 +1141,9 @@ function addObject(item, group = undefined, addToHistory = true) {
 }
 
 const viewportMargins = {
-  top: 36,
-  left: 0,
+  // top: 36,
+  top: 45,
+  left: 120,
 };
 
 // Adds a library item to the app state and updates selection
@@ -2910,7 +2907,8 @@ function addOnlineLibImage(oItem) {
 
 .work-area {
   flex: 1;
-  padding: 0px;
+  padding-left: 1px;
+  padding-top: 1px;
 }
 
 .viewport-wrapper {
