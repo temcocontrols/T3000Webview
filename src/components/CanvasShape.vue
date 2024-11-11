@@ -979,7 +979,7 @@ export default {
         const crossPath = new paper.Path({
           segments: cpt.pts,
           closed: true,
-          fillColor: "aqua",// #f36dc5
+          fillColor: "#659dc5",// #f36dc5
         });
 
         const crossLinePoints = getLinePointCrossObjects(cpt.pts);
@@ -1235,7 +1235,7 @@ canvas {
 
 .canvas-normal {
   /* background-color: aqua; */
-  background-color: #f36dc5;
+  /* background-color: #f36dc5; */
 }
 
 .canvas-hid {
