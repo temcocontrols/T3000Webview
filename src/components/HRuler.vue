@@ -1,5 +1,5 @@
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="20" width="2000"
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="20" width="15460"
     xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink" class="cur-default">
     <defs></defs>
     <g transform="scale(1,1) translate(0,0)" no-export="1" opacity="0"></g>

@@ -1,28 +1,199 @@
+<style>
+.leftpanel {
+  position: fixed;
+  top: 36px;
+  z-index: 1;
+  bottom: 0;
+  left: 1px;
+  right: 0;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  width: 106px;
+  border-right: 1px solid #ddd;
+  z-index: 4;
+}
+
+#workarea {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 109px;
+  margin-top: 37px;
+  width: auto;
+  background-color: red;
+}
+
+.main-panel {
+  margin-left: 0px;
+}
+
+#document-area {
+  position: relative;
+  background-color: #e3e4e5;
+  height: 100%;
+}
+
+
+.document-ruler-left,
+.document-ruler-corner {
+  width: 20px;
+}
+
+.document-ruler-top,
+.document-ruler-corner {
+  height: 20px;
+}
+
+.document-ruler-top,
+.document-ruler-left,
+.document-ruler-corner {
+  background-color: #ebeced;
+  overflow: hidden;
+}
+
+.document-toolbar,
+.document-ruler-left,
+.document-ruler-top,
+.document-ruler-corner {
+  position: absolute;
+  left: 0;
+  z-index: 99;
+}
+
+.document-ruler-top,
+.document-ruler-corner {
+  height: 20px;
+}
+
+.document-ruler-top,
+.document-ruler-left,
+.document-ruler-corner {
+  background-color: #ebeced;
+  overflow: hidden;
+}
+
+.document-toolbar,
+.document-ruler-left,
+.document-ruler-top,
+.document-ruler-corner {
+  position: absolute;
+  left: 0;
+}
+
+.document-ruler-top,
+.document-ruler-corner {
+  height: 20px;
+}
+
+.document-ruler-top,
+.document-ruler-left,
+.document-ruler-corner {
+  background-color: #ebeced;
+  overflow: hidden;
+}
+
+.document-toolbar,
+.document-ruler-left,
+.document-ruler-top,
+.document-ruler-corner {
+  position: absolute;
+  left: 0;
+}
+
+#svgarea {
+  scrollbar-width: thin;
+}
+
+#svgarea {
+  position: absolute;
+  background-color: #fff;
+
+  /* width: 1000vw;
+  height: 536.2px; */
+}
+
+.viewport-wrapper {
+  /* width: 100%; */
+  /* height: 100vh; */
+  /* overflow: hidden; */
+  /* position: absolute; */
+  /* background-color: antiquewhite; */
+  /* margin-top: 0px; */
+  /* margin-left: 20px; */
+
+  height: calc(100vh - 36px);
+  overflow: auto;
+}
+
+.viewport {
+  /* width: 100%; */
+  /* height: calc(100vh - 36px); */
+  /* overflow: scroll; */
+  /* position: relative; */
+  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%); */
+  /* background-size: 20px 20px; */
+  /* background-color: aqua; */
+
+  /* position: relative;
+  inset: 20px 0px 0px 20px;
+  height: calc(100vh - 36px);
+  overflow: scroll; */
+  background-image: repeating-linear-gradient(#b76666 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
+  background-color: aqua;
+  position: relative;
+  inset: 20px 0px 0px 20px;
+  width: 146vw;
+  height: 280vh;
+}
+</style>
+
 <template>
   <q-page>
-    <div class="main-container">
-      <div class="top-bar">
-        <!-- Top Toolbar -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
-          :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
+
+
+
+    <!-- Top Toolbar -->
+    <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+      :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
+      :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
+
+
+
+    <div class="row">
+
+
+      <div class="leftpanel">
+
+        <!-- Tools Sidebar -->
+        <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images" :object-lib="library.objLib"
+          @select-tool="selectTool" @delete-lib-item="deleteLibItem" @rename-lib-item="renameLibItem"
+          @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage" @tool-dropped="toolDropped" />
       </div>
-      <div class="main-content">
-        <div class="side-bar" v-if="!locked">
-          <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
-            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" />
-        </div>
-        <div class="work-area">
-          <div class="c-ruler"></div>
-          <div class="h-ruler">
-            <HRuler class="h-ruler"></HRuler>
+
+
+
+      <div id="workarea" class="main-panel">
+
+        <div id="document-area">
+          <div class="document-ruler-corner" id="c-ruler" style="visibility: visible;  left: 0px; top: 0px;"></div>
+
+          <div class="document-ruler-top" id="h-ruler"
+            style="visibility: visible; left: 20px; top: 0px; width: 2328.6px; height: 20px;">
+
+            <HRuler></HRuler>
           </div>
-          <div class="v-ruler">
-            <VRuler class="v-ruler"></VRuler>
+
+          <div class="document-ruler-left" id="v-ruler"
+            style="visibility: visible; left: 0px; top: 20px; width: 20px; height: 2536.2px;">
+            <VRuler></VRuler>
           </div>
+
+
+          <!-- <HVGrid></HVGrid> -->
           <div class="viewport-wrapper">
             <!-- Navigation Buttons -->
             <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
@@ -336,18 +507,41 @@
               </div>
             </div>
           </div>
+
+          <!-- <div id="svgarea" style="inset: 20px 0px 0px 20px; touch-action: none;  overflow: scroll;">
+          </div> -->
+
         </div>
       </div>
+
     </div>
 
-    <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
-      !locked &&
-      appState.items[appState.activeItemIndex] &&
-      (appState.activeItemIndex || appState.activeItemIndex === 0)
-    " @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
-      @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
@@ -457,6 +651,7 @@ import { getOverlapSize } from "overlap-area";
 import { startsWith } from "lodash";
 import HRuler from "src/components/HRuler.vue";
 import VRuler from "src/components/VRuler.vue";
+import HVGrid from "src/components/HVGrid.vue";
 
 // Meta information for the application
 const metaData = {
@@ -2891,53 +3086,59 @@ function addOnlineLibImage(oItem) {
 
 .main-content {
   display: flex;
-  /* flex: 1; */
+  flex: 1;
+  /* margin-top: 28px; */
 }
 
 .side-bar {
   background-color: #f4f4f4;
+  /* width: 200px;
+  padding: 15px; */
   width: 105px;
 }
 
 .work-area {
   flex: 1;
+  /* padding-left: 1px; */
+  /* padding-top: 1px; */
+  /* background-color: aquamarine; */
+  /* margin-left: 50px; */
   margin-left: 1px;
-  flex-grow: 1;
-  /* max-width: calc(100% - 105px);
-  max-height: calc(100% - 36px); */
-  width: auto;
 }
 
 .c-ruler {
   width: 20px;
   height: 20px;
   background-color: #ebeced;
-  position: absolute;
 }
 
 .h-ruler {
-  position: absolute;
+  /* margin-top: 20px; */
+  margin-left: 21px;
+  position: relative;
+  overflow: hidden;
   background-color: #ebeced;
-  margin-left: 10px;
-  /* max-width: calc(100vw - 100px); */
+  margin-top: -20px;
 }
 
 .v-ruler {
-  position: absolute;
-  background-color: #ebeced;
-  margin-top: 10px;
-  /* height: calc(100vh - 36px); */
-}
-
-.viewport-wrapper {
-  width: 100%;
+  margin-top: 1px;
+  position: relative;
   overflow: hidden;
-  margin-top: 0px;
-  padding-top: 20px;
-  padding-left: 20px;
+  background-color: #ebeced;
 }
 
-.viewport {
+/* .viewport-wrapper {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: absolute;
+ background-color: antiquewhite;
+  margin-top: 0px;
+  margin-left: 20px;
+} */
+
+/* .viewport {
   width: 100%;
   height: calc(100vh - 36px);
   overflow: scroll;
@@ -2945,7 +3146,8 @@ function addOnlineLibImage(oItem) {
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%),
     repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px;
-}
+  background-color: aqua;
+} */
 
 .viewport .selected {
   color: #fff;
