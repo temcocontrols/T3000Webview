@@ -69,3 +69,10 @@ i will continue to do more tests and fix them.
 2024-11-07
 1. fix bugs and refactor the code
 2. learn how to draw a wall in revit way, compare it to alaa's code
+
+2024-11-08
+1. try to update the layout of viewport to draw rulers and guide lines on the new page
+
+2024-11-10
+1. continue to update the layout of new page, draw rulers and guidelines, handle mouse move and click events.
+
