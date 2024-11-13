@@ -22,7 +22,7 @@
   left: 0px;
   right: 0px;
   width: auto;
-  background-color: aquamarine;
+  /* background-color: aquamarine; */
   /*
    padding-left: v-bind("documentAreaPosition.workAreaPadding");
    position: fixed;
@@ -37,7 +37,7 @@
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  background: red;
+  /* background: red; */
   height: calc(100vh - 38px);
 }
 
@@ -45,7 +45,7 @@
   width: 20px;
   height: 20px;
   background-color: #ebeced;
-  background-color: blue;
+  /* background-color: blue; */
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -56,7 +56,7 @@
   position: absolute;
   overflow: hidden;
   background-color: #ebeced;
-  background-color: #416990;
+  /* background-color: #416990; */
   overflow: hidden;
   top: 1px;
   left: 22px;
@@ -68,7 +68,7 @@
   position: absolute;
   overflow: hidden;
   background-color: #ebeced;
-  background-color: #0f77de;
+  /* background-color: #0f77de; */
   width: 20px;
   left: 1px;
   top: 22px;
@@ -90,7 +90,7 @@
 .hv-grid {
   position: absolute;
   background-color: #fff;
-  background-color: #b25b5b;
+  /* background-color: #b25b5b; */
   inset: 22px 0px 0px 22px;
   /* width: calc(100vw - 166px); */
   /* height: calc(100vh - 97px); */
@@ -99,7 +99,7 @@
 
 .viewport-wrapper {
   position: relative;
-  background-color: #fff;
+  background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
   width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
@@ -118,34 +118,17 @@
 
   /* width: calc(100vw - 166px); */
   /* height: calc(100vh - 97px); */
-  background-color: aqua;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
+
+  /* height: 1000px; */
+
+  /* background-color: aqua; */
+  width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 60px);
-  overflow: hidden;
 }
 </style>
 
 <template>
   <q-page>
-    <!-- Navigation Buttons -->
-    <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-      <!-- Go Back Button -->
-      <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md" color="primary"
-        @click="navGoBack">
-        <q-tooltip anchor="top middle" self="bottom middle">
-          <strong>Go back</strong>
-        </q-tooltip>
-      </q-btn>
-      <!-- Lock/Unlock Button -->
-      <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-        :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-        <q-tooltip anchor="top middle" self="bottom middle">
-          <strong v-if="!locked">Lock</strong>
-          <strong v-else>Unlock</strong>
-        </q-tooltip>
-      </q-btn>
-    </div>
-
     <div class="full-area">
 
       <div class="top-area">
@@ -175,6 +158,24 @@
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
             <div class="viewport-wrapper" @scroll="handleScroll">
+              <!-- Navigation Buttons -->
+              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
+                <!-- Go Back Button -->
+                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
+                  color="primary" @click="navGoBack">
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    <strong>Go back</strong>
+                  </q-tooltip>
+                </q-btn>
+                <!-- Lock/Unlock Button -->
+                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                  :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    <strong v-if="!locked">Lock</strong>
+                    <strong v-else>Unlock</strong>
+                  </q-tooltip>
+                </q-btn>
+              </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
                 @dragover="($event) => {
@@ -2546,12 +2547,18 @@ function lockToggle() {
   if (locked.value) {
     selectTool("Pointer");
   }
-  documentAreaPosition.value = {
-    workAreaPadding: locked.value ? "0px" : "110px",
-    hRulerWOffset: locked.value ? "42px" : "128px",
-    wpwWOffset: locked.value ? "42px" : "128px",
-    wpWOffset: locked.value ? "42px" : "128px",
-  };
+
+  // Update the document area position based on the lock state
+  const div = document.querySelector('.full-area');
+  documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
+  documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
+  documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
+  documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "128px";
+  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+  console.log("IndexPage.vue -> lockToggle -> documentAreaPosition [full-area]", documentAreaPosition.value);
 }
 
 // Handle object click events based on t3Entry type

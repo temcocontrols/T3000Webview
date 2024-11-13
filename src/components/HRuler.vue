@@ -1,7 +1,7 @@
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="position:relative;overflow:hidden;"
-    xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink" class="cur-default"
-    :width="documentArea.hRuler.width" :height="documentArea.hRuler.height">
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"
+    xlink="http://www.w3.org/1999/xlink" style="position:relative;overflow:hidden;" :width="documentArea.hRuler.width"
+    :height="documentArea.hRuler.height">
     <defs></defs>
     <g transform="scale(1,1) translate(0,0)" no-export="1" opacity="0"></g>
     <g transform="scale(1,1) translate(0,0)" fill="#000" stroke="#000">
@@ -32,42 +32,42 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="5">8</tspan>
+          text-anchor="start" y="8.8" textLength="5">2</tspan>
       </text>
       <g width="5" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(194,1)">
+    <g width="5" height="11.199999809265137" transform="scale(1,1) translate(194,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
+        width="5" height="11.199999809265137"></rect><text width="5" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">16</tspan>
+          text-anchor="start" y="8.8" textLength="5">4</tspan>
       </text>
-      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="5" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(290,1)">
+    <g width="5" height="11.199999809265137" transform="scale(1,1) translate(290,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
+        width="5" height="11.199999809265137"></rect><text width="5" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">24</tspan>
+          text-anchor="start" y="8.8" textLength="5">6</tspan>
       </text>
-      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="5" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(386,1)">
+    <g width="5" height="11.199999809265137" transform="scale(1,1) translate(386,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
+        width="5" height="11.199999809265137"></rect><text width="5" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">32</tspan>
+          text-anchor="start" y="8.8" textLength="5">8</tspan>
       </text>
-      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="5" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
     <g width="10" height="11.199999809265137" transform="scale(1,1) translate(482,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
@@ -76,7 +76,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">40</tspan>
+          text-anchor="start" y="8.8" textLength="10">10</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -87,7 +87,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">48</tspan>
+          text-anchor="start" y="8.8" textLength="10">12</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -98,7 +98,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">56</tspan>
+          text-anchor="start" y="8.8" textLength="10">14</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -109,7 +109,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">64</tspan>
+          text-anchor="start" y="8.8" textLength="10">16</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -120,7 +120,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">72</tspan>
+          text-anchor="start" y="8.8" textLength="10">18</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -131,7 +131,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">80</tspan>
+          text-anchor="start" y="8.8" textLength="10">20</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -142,7 +142,7 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">88</tspan>
+          text-anchor="start" y="8.8" textLength="10">22</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
@@ -153,103 +153,103 @@
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="10">96</tspan>
+          text-anchor="start" y="8.8" textLength="10">24</tspan>
       </text>
       <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1250,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1250,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">104</tspan>
+          text-anchor="start" y="8.8" textLength="10">26</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="14.633333206176758" height="11.199999809265137" transform="scale(1,1) translate(1346,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1346,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="14.633333206176758" height="11.199999809265137"></rect><text width="14.633333206176758"
-        height="11.199999809265137" transform="scale(1,1) translate(0,0)" xml:space="preserve">
-        <tspan xml:space="preserve" text-rendering="optimizeSpeed"
-          style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
-          font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="14.633333206176758">112</tspan>
-      </text>
-      <g width="14.633333206176758" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
-    </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1442,1)">
-      <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">120</tspan>
+          text-anchor="start" y="8.8" textLength="10">28</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1538,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1442,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">128</tspan>
+          text-anchor="start" y="8.8" textLength="10">30</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1634,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1538,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">136</tspan>
+          text-anchor="start" y="8.8" textLength="10">32</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1730,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1634,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">144</tspan>
+          text-anchor="start" y="8.8" textLength="10">34</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1826,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1730,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">152</tspan>
+          text-anchor="start" y="8.8" textLength="10">36</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
-    <g width="15" height="11.199999809265137" transform="scale(1,1) translate(1922,1)">
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1826,1)">
       <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-        width="15" height="11.199999809265137"></rect><text width="15" height="11.199999809265137"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
         transform="scale(1,1) translate(0,0)" xml:space="preserve">
         <tspan xml:space="preserve" text-rendering="optimizeSpeed"
           style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
           font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
-          text-anchor="start" y="8.8" textLength="15">160</tspan>
+          text-anchor="start" y="8.8" textLength="10">38</tspan>
       </text>
-      <g width="15" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
+    </g>
+    <g width="10" height="11.199999809265137" transform="scale(1,1) translate(1922,1)">
+      <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
+        width="10" height="11.199999809265137"></rect><text width="10" height="11.199999809265137"
+        transform="scale(1,1) translate(0,0)" xml:space="preserve">
+        <tspan xml:space="preserve" text-rendering="optimizeSpeed"
+          style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;" font-size="10"
+          font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1" x="0"
+          text-anchor="start" y="8.8" textLength="10">40</tspan>
+      </text>
+      <g width="10" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
     </g>
   </svg>
 </template>
 
 <script>
-import { defineComponent } from "vue";
+import { defineComponent, onMounted } from "vue";
 
 export default defineComponent({
   name: "HRuler",
@@ -263,14 +263,13 @@ export default defineComponent({
       default: () => { }
     }
   },
-  setup() {
+  setup(props) {
+    onMounted(() => {
+      console.log("HRuler mounted with props", props.documentArea);
+    });
     return {};
   },
 });
 </script>
 
-<style scoped>
-.box-element {
-  background-color: v-bind("bgColor");
-}
-</style>
+<style scoped></style>
