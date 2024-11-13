@@ -1,6 +1,7 @@
 <template>
   <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="20" height="121060"
-    xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink" class="cur-default">
+    style="position:relative;overflow:hidden;" xmlns:xlink="http://www.w3.org/1999/xlink"
+    xlink="http://www.w3.org/1999/xlink" class="cur-default">
     <defs></defs>
     <g transform="scale(1,1) translate(0,0)" no-export="1" opacity="0"></g>
     <g transform="scale(1,1) translate(0,0)" fill="#000" stroke="#000">
