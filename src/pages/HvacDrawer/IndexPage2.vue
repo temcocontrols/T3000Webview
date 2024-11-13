@@ -75,21 +75,9 @@
   height: calc(100vh - 60px);
 }
 
-#svgarea {
-  position: absolute;
-  background-color: #fff;
-  scrollbar-width: thin;
-  inset: 20px 0px 0px 359.1px;
-  touch-action: none;
-  width: calc(100vw - 166px);
-  height: calc(100vh - 97px);
-  overflow: hidden scroll;
-  user-select: none;
-}
-
 .hv-grid {
   position: absolute;
-  background-color: #fff;
+  background-color: #ebeced;
   /* background-color: #b25b5b; */
   inset: 22px 0px 0px 22px;
   /* width: calc(100vw - 166px); */
@@ -116,14 +104,11 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
-
-  /* height: 1000px; */
-
   /* background-color: aqua; */
-  width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 60px);
+  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
+  height: calc(100vh - 68px); */
+  width: v-bind("documentAreaPosition.wiewPortWH.width");
+  height: v-bind("documentAreaPosition.wiewPortWH.height");
 }
 </style>
 
@@ -595,10 +580,14 @@ useMeta(metaData);
 // Ruler & Grid default value
 const documentAreaPosition = ref(
   {
-    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "128px",
+    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
     hRuler: { width: 0, height: 20 },
     vRuler: { width: 20, height: 0 },
-    hvGrid: { width: 0, height: 0 }
+    hvGrid: { width: 0, height: 0 },
+
+    //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
+    //height: calc(100vh - 68px);
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" }
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -723,8 +712,16 @@ onMounted(() => {
 
   // Update the viewport transform on panzoom transform event
   panzoomInstance.on("transform", function (e) {
+
+    const pzTrs = e.getTransform();
+    // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+    // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+
     appState.value.viewportTransform = e.getTransform();
     triggerRef(appState);
+
+    console.log('Panzoom transform:', e.getTransform(), pzTrs);
+    restDocumentAreaPosition(e.getTransform());
   });
 
   // Request initial data and panels list if in a webview
@@ -2549,16 +2546,23 @@ function lockToggle() {
   }
 
   // Update the document area position based on the lock state
+  restDocumentAreaPosition();
+}
+
+function restDocumentAreaPosition(pzXY) {
   const div = document.querySelector('.full-area');
   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "128px";
+  documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
+  documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
   console.log("IndexPage.vue -> lockToggle -> documentAreaPosition [full-area]", documentAreaPosition.value);
+  console.log('IndexPage.vue -> lockToggle -> pzXY', pzXY);
 }
 
 // Handle object click events based on t3Entry type
