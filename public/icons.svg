@@ -742,18 +742,18 @@
     <path d="M12 8V4l8 8-8 8v-4H4V8z" />
   </symbol>
   <symbol id="g_step" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-    <path d="M 1.6 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 1.6 24.6 L 6.4 15 Z" stroke="#000" stroke-width="2"
+    <path d="M 1.6 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 1.6 24.6 L 6.4 15 Z" stroke="#000" stroke-width="1"
       stroke-miterlimit="10"></path>
   </symbol>
   <symbol id="g_rectangle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-    <rect x="1.6" y="7.8" width="29" height="17" stroke="#000" stroke-width="2">
+    <rect x="1.6" y="7.8" width="29" height="17" stroke="#000" stroke-width="1">
     </rect>
   </symbol>
   <symbol id="g_circle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-    <circle cx="16" cy="16" r="13" stroke="#000" stroke-width="2" />
+    <circle cx="16" cy="16" r="13" stroke="#000" stroke-width="1" />
   </symbol>
   <symbol id="g_hexagon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-    <path d="M 6.4 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 6.4 24.6 L 1.6 15 Z" stroke="#000" stroke-width="2"
+    <path d="M 6.4 5.4 L 25.6 5.4 L 30.4 15 L 25.6 24.6 L 6.4 24.6 L 1.6 15 Z" stroke="#000" stroke-width="1"
       stroke-miterlimit="10">
     </path>
   </symbol>
