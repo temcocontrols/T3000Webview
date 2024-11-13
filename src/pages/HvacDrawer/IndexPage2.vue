@@ -90,105 +90,63 @@
 .hv-grid {
   position: absolute;
   background-color: #fff;
-
-  inset: 20px 0px 0px 359.1px;
-
+  background-color: #b25b5b;
+  inset: 22px 0px 0px 22px;
   /* width: calc(100vw - 166px); */
   /* height: calc(100vh - 97px); */
-  width: 496.8px;
-  height: 287.4px;
-  /* overflow: hidden scroll; */
   overflow: hidden;
 }
 
 .viewport-wrapper {
-  /* position: absolute; */
-  /* background-color: antiquewhite; */
-  /* height: 100vh; */
-  /* margin-left: 20px; */
-
-  /* margin-top: 0px;
-  width: 200px;
-  height: 200px;
-  width: 100%;
-  overflow: hidden; */
-
   position: relative;
   background-color: #fff;
   scrollbar-width: thin;
-
-  inset: 20px 0px 0px 359.1px;
-  touch-action: none;
-
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
-  width: 496.8px;
-  height: 287.4px;
+  inset: 22px 0px 0px 22px;
+  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
+  height: calc(100vh - 60px);
   /* overflow: hidden scroll; */
-  overflow: hidden scroll;
-  user-select: none;
+  overflow: scroll;
 }
 
 .viewport {
   /* width: 100%;
-  height: calc(100vh - 37px); */
-  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%),
-    repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%); */
-
-  /* width: 496.8px;
-  height: 287.4px;
-
-  overflow: hidden scroll;
+  height: calc(100vh - 36px);
+  overflow: scroll;
   position: relative;
-
-  background-size: 20px 20px;
-  background-color: aqua;
-  inset: 0px 20px 0px 20px; */
-
-  /* background-color: #fff; */
+  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
+  background-size: 20px 20px; */
 
   /* width: calc(100vw - 166px); */
   /* height: calc(100vh - 97px); */
-
-  /* position: relative;
-
-  background: transparent;
-  scrollbar-width: thin;
-
-  inset: 20px 0px 0px 359.1px;
-  touch-action: none;
-  width: 496.8px;
-  height: 287.4px;
-  overflow: hidden scroll;
-  user-select: none; */
-
   background-color: aqua;
-  width: 100%;
-  height: 100vh;
+  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
+  height: calc(100vh - 60px);
+  overflow: hidden;
 }
 </style>
 
 <template>
   <q-page>
+    <!-- Navigation Buttons -->
+    <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
+      <!-- Go Back Button -->
+      <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md" color="primary"
+        @click="navGoBack">
+        <q-tooltip anchor="top middle" self="bottom middle">
+          <strong>Go back</strong>
+        </q-tooltip>
+      </q-btn>
+      <!-- Lock/Unlock Button -->
+      <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+        :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+        <q-tooltip anchor="top middle" self="bottom middle">
+          <strong v-if="!locked">Lock</strong>
+          <strong v-else>Unlock</strong>
+        </q-tooltip>
+      </q-btn>
+    </div>
+
     <div class="full-area">
-      <!-- Navigation Buttons -->
-      <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-        <!-- Go Back Button -->
-        <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md" color="primary"
-          @click="navGoBack">
-          <q-tooltip anchor="top middle" self="bottom middle">
-            <strong>Go back</strong>
-          </q-tooltip>
-        </q-btn>
-        <!-- Lock/Unlock Button -->
-        <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-          :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-          <q-tooltip anchor="top middle" self="bottom middle">
-            <strong v-if="!locked">Lock</strong>
-            <strong v-else>Unlock</strong>
-          </q-tooltip>
-        </q-btn>
-      </div>
 
       <div class="top-area">
         <!-- Top Toolbar -->
@@ -208,17 +166,15 @@
           <div class="document-area">
             <div class="c-ruler"></div>
             <div class="h-ruler">
-              <HRuler></HRuler>
+              <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
             </div>
             <div class="v-ruler">
-              <VRuler id="v-ruler"></VRuler>
+              <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
             </div>
             <div class="hv-grid">
-              <HVGrid id="hv-grid"></HVGrid>
+              <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
-
             <div class="viewport-wrapper" @scroll="handleScroll">
-
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
                 @dragover="($event) => {
@@ -619,15 +575,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import {
-  tools,
-  T3_Types,
-  getObjectActiveValue,
-  T3000_Data,
-  user,
-  globalNav,
-  demoDeviceData,
-} from "../../lib/common";
+import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -639,13 +587,18 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 
 // Meta information for the application
-const metaData = {
-  title: "HVAC Drawer",
-};
-useMeta(metaData); // Set the meta information
+// Set the meta information
+const metaData = { title: "HVAC Drawer" };
+useMeta(metaData);
 
-// Double
-const documentAreaPosition = ref({ workAreaPadding: "110px", hRulerWOffset: "128px" });
+// Ruler & Grid default value
+const documentAreaPosition = ref(
+  {
+    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "128px",
+    hRuler: { width: 0, height: 20 },
+    vRuler: { width: 20, height: 0 },
+    hvGrid: { width: 0, height: 0 }
+  });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
@@ -666,12 +619,7 @@ const keepRatio = ref(false); // Maintain aspect ratio for resizing
 const continuesObjectTypes = ["Duct", "Wall"];
 
 // State of the import JSON dialog
-const importJsonDialog = ref({
-  addedCount: 0,
-  active: false,
-  uploadBtnLoading: false,
-  data: null,
-});
+const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
 const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
@@ -730,14 +678,9 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-
 const handleScroll = (event) => {
-  // 处理滚动事件
-  console.log(event.target.scrollTop, event.target.scrollY); // 输出滚动的距离
-
-  // document.querySelector('.v-ruler').style.top = `${event.target.scrollTop}px`;
-  console.log(document.querySelector('.v-ruler'));
-  document.querySelector('.v-ruler').scroll(0, event.target.scrollTop)
+  document.querySelector('#v-ruler').scroll(0, event.target.scrollTop);
+  document.querySelector('#h-ruler').scroll(event.target.scrollLeft, 0);
 };
 
 // Lifecycle hook for component mount
@@ -817,10 +760,16 @@ onMounted(() => {
     refreshMoveableGuides();
   }, 100);
 
-
-  // 获取div元素并添加事件监听器
+  // Viewport wrapper scroll event listener
   const div = document.querySelector('.viewport-wrapper');
   div.addEventListener('scroll', handleScroll);
+
+  // Init ruler and grid default value
+  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+  console.log('Document Area Position:', documentAreaPosition.value);
 });
 
 // Lifecycle hook for component unmount
@@ -2600,6 +2549,8 @@ function lockToggle() {
   documentAreaPosition.value = {
     workAreaPadding: locked.value ? "0px" : "110px",
     hRulerWOffset: locked.value ? "42px" : "128px",
+    wpwWOffset: locked.value ? "42px" : "128px",
+    wpWOffset: locked.value ? "42px" : "128px",
   };
 }
 

@@ -1,7 +1,7 @@
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1200" height="1200"
-    xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
-    style="position:relative;overflow:hidden;" class="cur-default">
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"
+    xlink="http://www.w3.org/1999/xlink" style="position:relative;overflow:hidden;" :width="documentArea.hvGrid.width"
+    :height="documentArea.hvGrid.height" class="cur-default">
     <defs>
       <filter id="sFX_GLW.4#FFD64AMS" x="-0.25" y="-0.5" width="1.5" height="2">
         <feFlood flood-color="#FFD64A" result="flood"></feFlood>
@@ -5516,6 +5516,10 @@ export default defineComponent({
       type: String,
       default: "black",
     },
+    documentArea: {
+      type: Object,
+      default: () => { }
+    }
   },
   setup() {
     return {};
