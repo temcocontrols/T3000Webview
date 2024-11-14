@@ -875,6 +875,33 @@ export const tools = [
     },
   },
   {
+    name: "Int_Ext_Wall",
+    label: "Interior / Exterior Wall",
+    icon: "svguse:icons.svg#int_ext_wall",
+    cat: ["Room"],
+    height: 20,
+    settings: {
+      bgColor: {
+        value: "#0000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      strokeColor: {
+        value: "#0000",
+        type: "color",
+        label: "Stroke Color",
+        id: 2,
+      },
+      strokeWidth: {
+        value: 19.5,
+        type: "number",
+        label: "Stroke width",
+        id: 3,
+      }
+    },
+  },
+  {
     name: "RoomHumidity",
     label: "Room Humidity",
     icon: "svguse:icons.svg#room-humidity",

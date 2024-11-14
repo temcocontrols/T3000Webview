@@ -103,7 +103,7 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  background-color: aqua;
+  /* background-color: aqua; */
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
   width: v-bind("documentAreaPosition.wiewPortWH.width");
@@ -450,6 +450,7 @@
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
+                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" :item="item" :key="item.id + item.type" />
                   </div>
                 </div>
               </div>
@@ -570,6 +571,7 @@ import HRuler from "src/components/HRuler.vue";
 import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
+import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 
 // Meta information for the application
 // Set the meta information
@@ -946,6 +948,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
+  console.log('IndexPage2.vue->viewportMouseMoved:', e);
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
@@ -1370,6 +1373,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
+  console.log('IndexPage2.vue->onSelectoDragEnd:', e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -1444,6 +1448,9 @@ function drawObject(size, pos, tool) {
     zindex: 1,
     t3Entry: null,
   };
+
+  console.log('IndexPage2.vue->drawObject:', tempItem);
+
   if (tool.type === "Image") {
     tempItem.image = tool;
     tempItem.type = tool.id;
@@ -2981,6 +2988,7 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
+  console.log('IndexPage.vue->viewportRightClick->ev', ev);
   ev.preventDefault();
   selectTool(tools[0]);
   if (isDrawing.value) {

@@ -757,4 +757,7 @@
       stroke-miterlimit="10">
     </path>
   </symbol>
+  <symbol id="int_ext_wall" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+    <path d="M0,16 L60,16" stroke-width="13.5" stroke="#000"></path>
+  </symbol>
 </svg>
