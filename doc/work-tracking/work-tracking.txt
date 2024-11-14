@@ -73,9 +73,13 @@ i will continue to do more tests and fix them.
 2024-11-08
 1. try to update the layout of viewport to draw rulers and guide lines on the new page
 
-2024-11-10
+2024-11-11
 1. continue to update the layout of new page, draw rulers and guidelines, handle mouse move and click events.
 
-2024-11-11
+2024-11-12
 1. continue work on the new layout of draw area, handle compatibility of existing libraries.
 
+2024-11-13
+1. make the rulers scrollable when the content area been zoomed in or out.
+2. move the origin of coordinate to new location, besides the left side bar, and update related logic.
+3. try to start to update the logic of drawing walls today.
