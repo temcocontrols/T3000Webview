@@ -57,7 +57,6 @@
   overflow: hidden;
   background-color: #ebeced;
   /* background-color: #416990; */
-  overflow: hidden;
   top: 1px;
   left: 22px;
   width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
@@ -104,7 +103,7 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  /* background-color: aqua; */
+  background-color: aqua;
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
   width: v-bind("documentAreaPosition.wiewPortWH.width");
@@ -669,8 +668,21 @@ const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
 const handleScroll = (event) => {
-  document.querySelector('#v-ruler').scroll(0, event.target.scrollTop);
-  document.querySelector('#h-ruler').scroll(event.target.scrollLeft, 0);
+  console.log('Scroll event:', event.target.scrollTop, event.target.scrollLeft);
+
+  // Reset the h,v ruler's width for scrolling
+  documentAreaPosition.value.vRuler.height += event.target.scrollTop;
+  documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
+
+  documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+  documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+
+  // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+  document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
+  document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+
+  console.log('documentAreaPosition:', documentAreaPosition.value);
 };
 
 // Lifecycle hook for component mount
@@ -708,6 +720,8 @@ onMounted(() => {
       var shouldIgnore = !e.altKey;
       return shouldIgnore;
     },
+    // Add the focal point for zooming to be the center of the viewport
+    transformOrigin: { x: 0.5, y: 0.5 },
   });
 
   // Update the viewport transform on panzoom transform event
