@@ -83,3 +83,6 @@ i will continue to do more tests and fix them.
 1. make the rulers scrollable when the content area been zoomed in or out.
 2. move the origin of coordinate to new location, besides the left side bar, and update related logic.
 3. try to start to update the logic of drawing walls today.
+
+2024-11-14
+1. try to add a new type of wall, update related drawing logic.
