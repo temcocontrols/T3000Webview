@@ -103,7 +103,7 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  /* background-color: aqua; */
+  background-color: rgb(7, 115, 115);
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
   width: v-bind("documentAreaPosition.wiewPortWH.width");
@@ -333,6 +333,7 @@
                     :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
                     :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
                     :class="`moveable-item-index-${index}`">
+
                     <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
                       <q-list>
                         <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
@@ -434,23 +435,28 @@
                       </q-list>
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.cat !== 'General'" :item="item" :key="item.id + item.type"
-                      :class="{
-                        link: locked && item.t3Entry,
-                      }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                    <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
+                      :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" />
+
                     <CanvasShape v-if="
                       item.cat === 'General' ||
                       item.type === 'Weld_General' ||
-                      item.type === 'Weld_Duct'
-                    " ref="objectsRef" :item="item" :key="item.id + item.type" :class="{
-                      link: locked && item.t3Entry,
-                    }" :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                      item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
+                      :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
+                      @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
+                      @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                    </CanvasShape>
+
+                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
+                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModelCanvas">
-                    </CanvasShape>
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" :item="item" :key="item.id + item.type" />
+                    </WallExterior>
+
                   </div>
                 </div>
               </div>
@@ -607,7 +613,7 @@ const snappable = ref(true); // Enable snapping for moveable components
 const keepRatio = ref(false); // Maintain aspect ratio for resizing
 
 // List of continuous object types
-const continuesObjectTypes = ["Duct", "Wall"];
+const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
@@ -676,8 +682,8 @@ const handleScroll = (event) => {
   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
 
-  documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
-  documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+  // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+  // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
 
   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
 
@@ -948,7 +954,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
-  console.log('IndexPage2.vue->viewportMouseMoved:', e);
+  // console.log('IndexPage2.vue->viewportMouseMoved:', e);
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
@@ -1449,8 +1455,6 @@ function drawObject(size, pos, tool) {
     t3Entry: null,
   };
 
-  console.log('IndexPage2.vue->drawObject:', tempItem);
-
   if (tool.type === "Image") {
     tempItem.image = tool;
     tempItem.type = tool.id;
@@ -1463,6 +1467,9 @@ function drawObject(size, pos, tool) {
   }
 
   const item = addObject(tempItem);
+
+  console.log('IndexPage2.vue->drawObject:', item, appState.value.items);
+
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;
   }

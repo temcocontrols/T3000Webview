@@ -64,7 +64,7 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "General", "Pipe", "Duct", "Room", "Metrics"];
+export const toolsCategories = ["Basic", "Room", "General", "Pipe", "Duct", "Metrics"];
 
 export const tools = [
   {
@@ -882,13 +882,13 @@ export const tools = [
     height: 20,
     settings: {
       bgColor: {
-        value: "#0000",
+        value: "#000",
         type: "color",
         label: "Background Color",
         id: 1,
       },
       strokeColor: {
-        value: "#0000",
+        value: "#000",
         type: "color",
         label: "Stroke Color",
         id: 2,
