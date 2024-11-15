@@ -16,7 +16,6 @@
 
 <script>
 import panzoom from 'panzoom';
-import * as d3 from 'd3';
 
 export default {
   data() {

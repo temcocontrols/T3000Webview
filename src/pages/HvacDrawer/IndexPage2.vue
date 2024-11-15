@@ -103,7 +103,7 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  background-color: rgb(7, 115, 115);
+  /* background-color: rgb(7, 115, 115); */
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
   width: v-bind("documentAreaPosition.wiewPortWH.width");
@@ -1439,12 +1439,13 @@ function drawObject(size, pos, tool) {
     title: null,
     active: false,
     type: tool.name,
-    translate: [
-      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage,
-      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
-    ],
+    // translate: [
+    //   (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+    //   scalPercentage,
+    //   (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+    //   scalPercentage,
+    // ],
+    translate: [pos.left - viewportMargins.left, pos.top - viewportMargins.top],
     width: size.width * scalPercentage,
     height: size.height * scalPercentage,
     rotate: 0,
