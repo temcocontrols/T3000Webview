@@ -86,3 +86,6 @@ i will continue to do more tests and fix them.
 
 2024-11-14
 1. try to add a new type of wall, update related drawing logic.
+
+2024-11-15
+1. continue to implement the new drawing logic for wall, try to add some guidelines when mouse move.

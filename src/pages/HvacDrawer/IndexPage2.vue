@@ -109,6 +109,12 @@
   width: v-bind("documentAreaPosition.wiewPortWH.width");
   height: v-bind("documentAreaPosition.wiewPortWH.height");
 }
+
+.default-svg {
+  width: 100%;
+  height: 100%;
+  /* background-color: #0d09ec; */
+}
 </style>
 
 <template>
@@ -173,7 +179,7 @@
                     ? 'space_dashboard'
                     : 'photo'
                   " size="sm" :style="{
-                    left: cursorIconPos.x + 10 + 'px',
+                    left: cursorIconPos.x + 0 + 'px',
                     top: cursorIconPos.y + 'px',
                   }" />
                 <!-- Vue Selecto for Selectable Items -->
@@ -184,6 +190,32 @@
                 </vue-selecto>
                 <!-- Moveable Component for Draggable/Resizable Items -->
                 <div ref="viewport">
+
+                  <div id="svg-area">
+                    <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
+                      xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
+                      style="position:relative;overflow:hidden;" class="default-svg">
+                      <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
+                        ref="objectsRef" :item="item" :key="item.id + item.type + index"
+                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
+                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
+                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                      </WallExterior>
+                    </svg>
+
+                    <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
+                      <WallExterior
+                        ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
+                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
+                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
+                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                      </WallExterior>
+                    </div> -->
+                  </div>
+
+
+
+
                   <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
                     :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
                     :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
@@ -329,7 +361,8 @@
                     </q-list>
                   </q-menu>
 
-                  <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
+                  <div v-for="(item, index) in appState.items.filter(x => x.type !== 'Int_Ext_Wall')" :key="item.id"
+                    ref="targets"
                     :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
                     :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
                     :class="`moveable-item-index-${index}`">
@@ -450,14 +483,10 @@
                       @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModelCanvas">
-                    </WallExterior>
-
                   </div>
+
+
+
                 </div>
               </div>
             </div>
@@ -959,6 +988,10 @@ function viewportMouseMoved(e) {
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
+  console.log('Viewport mouse moved cursorIconPos:', "mouse",
+    [e.clientX, e.clientY], "cursor", [cursorIconPos.value.x, cursorIconPos.value.y], "vm", [viewportMargins.left, viewportMargins.top],
+    'appState.vp', [appState.value.viewportTransform.x, appState.value.viewportTransform.y]);
+
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
   // process drawing ducts
@@ -981,7 +1014,10 @@ function viewportMouseMoved(e) {
       angle = Math.round(angle / 5) * 5;
     }
 
-    const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
+    // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    console.log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
 
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
@@ -1319,8 +1355,8 @@ function addObject(item, group = undefined, addToHistory = true) {
 
 const viewportMargins = {
   // top: 36,
-  top: 45,
-  left: 120,
+  top: 38 + 20 + 2,
+  left: 106 + 20 + 2,
 };
 
 // Adds a library item to the app state and updates selection
@@ -1439,13 +1475,12 @@ function drawObject(size, pos, tool) {
     title: null,
     active: false,
     type: tool.name,
-    // translate: [
-    //   (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-    //   scalPercentage,
-    //   (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-    //   scalPercentage,
-    // ],
-    translate: [pos.left - viewportMargins.left, pos.top - viewportMargins.top],
+    translate: [
+      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+      scalPercentage,
+      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+      scalPercentage,
+    ],
     width: size.width * scalPercentage,
     height: size.height * scalPercentage,
     rotate: 0,
