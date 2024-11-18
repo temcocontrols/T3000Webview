@@ -59,6 +59,7 @@
 <script>
 import { defineComponent, onMounted, computed, ref, watch } from "vue";
 import { SVG } from '@svgdotjs/svg.js';
+import { color } from "echarts";
 
 export default defineComponent({
   name: "WallExteriorEl",
@@ -76,14 +77,15 @@ export default defineComponent({
       let trsX = props.item.translate[0];
       let trsY = props.item.translate[1];
       let Mx = 0;
-      let My = 0;
+      let My = props.item.height;
       let Lx = props.item.width;
-      let Ly = 0;//height != 0 ? height : 0;
-      let strokeWidth = props.item.height * 2;
+      let Ly = props.item.height;//height != 0 ? height : 0;
+      let strokeWidth = props.item.settings.strokeWidth;// props.item.height * 2;
+      let rotate = props.item.rotate;
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
 
-      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth };
+      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate };
     });
 
     onMounted(() => {
@@ -92,33 +94,61 @@ export default defineComponent({
       // svgRef.value.path(svgData.value.path).fill('none').stroke({ color: '#000', width: svgData.value.strokeWidth });
       // console.log('svgRef default', svgData.value.path);
 
-      // Path group
-      const fullGroup = svgRef.value.group();
+      const renderSvg = (data) => {
+        const allGroup = svgRef.value.group();
 
-      const pathGroup = fullGroup.group();
-      const guidGroup = fullGroup.group();
-      const textGroup = fullGroup.group();
+        const pathGroup = allGroup.group();
+        const guidGroup = allGroup.group();
+        const textGroup = allGroup.group();
 
-      pathGroup.path(svgData.value.path).fill('none').stroke({ color: '#000', width: svgData.value.strokeWidth });
+        // Path data
+        pathGroup.path(data.path).fill('none').stroke({ color: '#000', width: data.strokeWidth });
 
-      let guidPath = `M0,-15.5 L0,-43.1 L50.958,-43.1 M76.125,-43.1 L127.083,-43.1 L127.083,-15.5`;
-      guidGroup.path(guidPath).fill('none').stroke({ color: '#9999FF', width: 5 });
+        // Guid data
+        const leftRight = 5;
+        const topBottom = 15;
+        const leftMiddle = (data.width / 2 - 20 - leftRight) < leftRight ? leftRight : (data.width / 2 - 20 - leftRight);
+        const rightMiddle = (data.width / 2 - leftRight + 3 * 20) > (data.width - leftRight) ? (data.width - leftRight) : (data.width / 2 - leftRight + 3 * 20);
 
-      let textPath = `5'&nbsp;1"`;
-      textGroup.text(textPath).font({ family: 'Arial', size: 10, anchor: 'start', fill: '#fff' }).move(0, 8.8);
+        let guidPath = `M${leftRight},${data.My - topBottom} L${leftRight},${data.My - topBottom - 35} L${leftMiddle},${data.My - topBottom - 35}
+                        M${rightMiddle},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom}`;
+        guidGroup.path(guidPath).fill('none').stroke({ color: '#0e1114', width: 1 })
+          .fill('none').stroke({ width: 1, color: '#0e1114' });
 
+        // Text data
+        const rectWidth = 80;
+        const rectHeight = 12;
+        const rectX = (data.width - 2 * leftRight - 20) / 2;
+        const rectY = data.My - topBottom - 40;
 
-      watch(svgData, (newData) => {
-        console.log('origin:[width, height]', [props.item.width, props.item.height], 'new:[width, height]', [newData.width, newData.height]);
-        svgRef.value.clear();
-        svgRef.value.size(newData.width, newData.height);
+        textGroup.rect(rectWidth, rectHeight)
+          .move(rectX, rectY)
+          .fill('none')
+          .stroke({ width: 0 })
+          .attr({ visibility: 'hidden', 'no-export': 1 });
 
+        const formattedWidth = data.width.toFixed(2);
+        const formattedHeight = data.rotate.toFixed(2);
+        let textPath = `${formattedWidth}' ${formattedHeight}"`;
+
+        textGroup.text(textPath)
+          .font({ family: 'Arial', size: 10, anchor: 'start', fill: '#000' })
+          .move(rectX, rectY);
+      }
+
+      const refreshSvg = (newData) => {
+        // console.log('origin:[width, height]', [props.item.width, props.item.height], 'new:[width, height]', [newData.width, newData.height]);
         // console.log('svgRef new', newData.path);
 
-        const newGroup = svgRef.value.group();
-        newGroup.path(newData.path).fill('none').stroke({ color: '#000', width: newData.strokeWidth });
+        svgRef.value.clear();
+        svgRef.value.size(props.item.width, props.item.height);
+        renderSvg(newData);
+      }
 
-        // svgRef.value.path(newData.path).fill('none').stroke({ color: '#000', width: newData.strokeWidth });
+      renderSvg(svgData.value);
+
+      watch(svgData, (newData) => {
+        refreshSvg(newData);
       }, { deep: true });
     });
 
@@ -130,6 +160,6 @@ export default defineComponent({
 <style scoped>
 .wall-exterior {
   background-color: v-bind("props?.item?.settings?.bgColor");
-  border: 1px solid #000;
+  /* border: 1px solid #000; */
 }
 </style>

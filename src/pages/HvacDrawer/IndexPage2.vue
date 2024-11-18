@@ -3034,7 +3034,7 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
-  console.log('IndexPage.vue->viewportRightClick->ev', ev);
+  console.log('viewportRightClick=>ev', ev);
   ev.preventDefault();
   selectTool(tools[0]);
   if (isDrawing.value) {
@@ -3043,6 +3043,9 @@ function viewportRightClick(ev) {
     setTimeout(() => {
       refreshObjects();
     }, 10);
+
+    //clear empty drawing object
+    appState.value.items = appState.value.items.filter((item) => !(item.type === "Int_Ext_Wall" && item.width === 0));
   }
 }
 
@@ -3135,7 +3138,7 @@ function addOnlineLibImage(oItem) {
 }
 
 .moveable-item-wrapper:has(.Int_Ext_Wall) {
-  transform-origin: 0 0;
+  transform-origin: 0 100%;
 }
 
 .menu-dropdown {

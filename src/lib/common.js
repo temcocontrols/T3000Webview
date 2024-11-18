@@ -26,11 +26,11 @@ export const getEntryRange = (item) => {
       );
       range = !item.digital_analog
         ? customRanges.find(
-          (i) => i.type === "digital" && i.index === item.range
-        )
+            (i) => i.type === "digital" && i.index === item.range
+          )
         : customRanges.find(
-          (i) => i.type === "analog" && i.index === item.range
-        );
+            (i) => i.type === "analog" && i.index === item.range
+          );
 
       // If the range is still not found and the range ID is greater than 100, assume it is a custom range
       if (!range && item.range > 100) {
@@ -64,7 +64,14 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "Room", "General", "Pipe", "Duct", "Metrics"];
+export const toolsCategories = [
+  "Basic",
+  "Room",
+  "General",
+  "Pipe",
+  "Duct",
+  "Metrics",
+];
 
 export const tools = [
   {
@@ -879,7 +886,7 @@ export const tools = [
     label: "Interior / Exterior Wall",
     icon: "svguse:icons.svg#int_ext_wall",
     cat: ["Room"],
-    height: 20,
+    height: 60,
     settings: {
       bgColor: {
         value: "#000",
@@ -898,7 +905,7 @@ export const tools = [
         type: "number",
         label: "Stroke width",
         id: 3,
-      }
+      },
     },
   },
   {
@@ -953,8 +960,8 @@ export const tools = [
         label: "In alarm",
         id: 3,
       },
-    }
-  }
+    },
+  },
 ];
 
 export const icons = [
@@ -1781,7 +1788,7 @@ export function getObjectActiveValue(item) {
         (!analog &&
           ((item.t3Entry?.control === 1 && !range.direct) ||
             (item.t3Entry?.control === 0 && range.direct))) ||
-          (analog && item.t3Entry?.value > 0)
+        (analog && item.t3Entry?.value > 0)
           ? true
           : false;
     }
