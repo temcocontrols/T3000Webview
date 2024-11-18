@@ -192,7 +192,7 @@
                 <div ref="viewport">
 
                   <div id="svg-area">
-                    <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
+                    <!-- <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
                       xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
                       style="position:relative;overflow:hidden;" class="default-svg">
                       <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
@@ -201,7 +201,7 @@
                         @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
                         @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
                       </WallExterior>
-                    </svg>
+                    </svg> -->
 
                     <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
                       <WallExterior
@@ -361,8 +361,7 @@
                     </q-list>
                   </q-menu>
 
-                  <div v-for="(item, index) in appState.items.filter(x => x.type !== 'Int_Ext_Wall')" :key="item.id"
-                    ref="targets"
+                  <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
                     :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
                     :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
                     :class="`moveable-item-index-${index}`">
@@ -483,10 +482,14 @@
                       @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
+                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
+                      :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                      @update-weld-model="updateWeldModelCanvas">
+                    </WallExterior>
+
                   </div>
-
-
-
                 </div>
               </div>
             </div>
@@ -988,9 +991,9 @@ function viewportMouseMoved(e) {
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
-  console.log('Viewport mouse moved cursorIconPos:', "mouse",
-    [e.clientX, e.clientY], "cursor", [cursorIconPos.value.x, cursorIconPos.value.y], "vm", [viewportMargins.left, viewportMargins.top],
-    'appState.vp', [appState.value.viewportTransform.x, appState.value.viewportTransform.y]);
+  // console.log('Viewport mouse moved cursorIconPos:', "mouse",
+  //   [e.clientX, e.clientY], "cursor", [cursorIconPos.value.x, cursorIconPos.value.y], "vm", [viewportMargins.left, viewportMargins.top],
+  //   'appState.vp', [appState.value.viewportTransform.x, appState.value.viewportTransform.y]);
 
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
@@ -1017,7 +1020,7 @@ function viewportMouseMoved(e) {
     // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    console.log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
+    // console.log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
 
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
@@ -3129,6 +3132,10 @@ function addOnlineLibImage(oItem) {
 
 .moveable-item-wrapper:has(.Wall) {
   transform-origin: 10px center;
+}
+
+.moveable-item-wrapper:has(.Int_Ext_Wall) {
+  transform-origin: 0 0;
 }
 
 .menu-dropdown {
