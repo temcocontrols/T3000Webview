@@ -120,16 +120,21 @@
 <template>
   <q-page>
 
-    <NewTopBar />
 
-    <div style="margin-top: 400px"></div>
+
 
     <div id="mainPanel" class="main-panel">
       <div class="container-fluid">
         <div id="mainToolBar" class="navbar-inner">
+          <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
         </div>
         <div class="row">
-          <div id="leftpanel" class="leftpanel" activetab="smartpanel"></div>
+          <div id="leftpanel" class="leftpanel">
+            <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+              @tool-dropped="toolDropped" />
+          </div>
           <div id="workarea" class="main-panel">
             <div id="document-area">
               <div class="document-ruler-corner" id="c-ruler"></div>
@@ -148,17 +153,17 @@
 
       <div class="top-area">
         <!-- Top Toolbar -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
+          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" /> -->
       </div>
       <div class="main-area">
         <div class="side-bar" v-if="!locked">
           <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+          <!-- <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
             :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" />
+            @tool-dropped="toolDropped" /> -->
         </div>
         <div class="work-area">
           <div class="document-area">
@@ -176,20 +181,20 @@
               <!-- Navigation Buttons -->
               <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
                 <!-- Go Back Button -->
-                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
+                <!-- <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
                   color="primary" @click="navGoBack">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong>Go back</strong>
                   </q-tooltip>
-                </q-btn>
+                </q-btn> -->
                 <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                <!-- <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                   :color="locked ? 'primary' : 'normal'" @click="lockToggle">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong v-if="!locked">Lock</strong>
                     <strong v-else>Unlock</strong>
                   </q-tooltip>
-                </q-btn>
+                </q-btn> -->
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
@@ -253,9 +258,9 @@
                       right: true,
                       bottom: true,
                       left: true,
-                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
-                    :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
-                    :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
+                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true"
+                    :throttleResize="0" :throttleRotate="0" rotationPosition="top" :originDraggable="true"
+                    :originRelative="true" :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
                     :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
                     @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
                     @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"

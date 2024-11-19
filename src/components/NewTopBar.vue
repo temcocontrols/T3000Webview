@@ -108,7 +108,34 @@
       </div>
       <div class="tool-btns">
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
-        <q-btn dense flat round icon="lock" @click="toggleLeftDrawer" />
+        <!-- <q-btn dense flat round icon="lock" @click="toggleLeftDrawer" /> -->
+        <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+          :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+          <q-tooltip anchor="top middle" self="bottom middle">
+            <strong v-if="!locked">Lock</strong>
+            <strong v-else>Unlock</strong>
+          </q-tooltip>
+        </q-btn>
+
+        <!-- <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
+
+          <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md" color="primary"
+            @click="navGoBack">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Go back</strong>
+            </q-tooltip>
+          </q-btn>
+
+          <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+            :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong v-if="!locked">Lock</strong>
+              <strong v-else>Unlock</strong>
+            </q-tooltip>
+          </q-btn>
+
+        </div> -->
+
       </div>
     </div>
     <div class="right-panel">
@@ -118,8 +145,10 @@
             narrow-indicator>
             <q-tab name="home" no-caps label="Home" />
             <q-tab name="file" no-caps label="File" />
+
             <!-- <q-tab name="edit" label="Edit" />
             <q-tab name="object" label="Object" /> -->
+
             <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
           </q-tabs>
           <q-separator />
@@ -260,9 +289,31 @@ import { defineComponent, ref } from 'vue';
 
 export default defineComponent({
   name: 'NewTopBar',
-  setup() {
+  props: {
+    locked: {
+      type: Boolean,
+      default: false
+    },
+    grpNav: {
+      type: Array,
+      default: () => []
+    }
+  },
+  emits: ["navGoBack", "lockToggle"],
+  setup(props, { emit }) {
     const leftDrawerOpen = ref(false)
     const rightDrawerOpen = ref(false)
+
+    const navGoBack = () => {
+      // Emit event to parent to navigate back
+      emit('navGoBack');
+    };
+
+    const lockToggle = () => {
+      // Emit event to parent to toggle lock
+      console.log('NewTopBar -> lockToggle');
+      emit('lockToggle');
+    };
 
     return {
       tab: ref('home'),
@@ -274,7 +325,9 @@ export default defineComponent({
       rightDrawerOpen,
       toggleRightDrawer() {
         rightDrawerOpen.value = !rightDrawerOpen.value
-      }
+      },
+      navGoBack,
+      lockToggle
     };
   },
 });
