@@ -89,3 +89,7 @@ i will continue to do more tests and fix them.
 
 2024-11-15
 1. continue to implement the new drawing logic for wall, try to add some guidelines when mouse move.
+
+2024-11-18
+1. fixed some small bugs.
+2. continue working on the wall function.
