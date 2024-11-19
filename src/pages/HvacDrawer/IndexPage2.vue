@@ -119,6 +119,31 @@
 
 <template>
   <q-page>
+
+    <NewTopBar />
+
+    <div style="margin-top: 400px"></div>
+
+    <div id="mainPanel" class="main-panel">
+      <div class="container-fluid">
+        <div id="mainToolBar" class="navbar-inner">
+        </div>
+        <div class="row">
+          <div id="leftpanel" class="leftpanel" activetab="smartpanel"></div>
+          <div id="workarea" class="main-panel">
+            <div id="document-area">
+              <div class="document-ruler-corner" id="c-ruler"></div>
+              <div class="document-ruler-top" id="h-ruler"></div>
+              <div class="document-ruler-left" id="v-ruler"></div>
+              <div id="svgarea"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
     <div class="full-area">
 
       <div class="top-area">
@@ -193,24 +218,24 @@
 
                   <div id="svg-area">
                     <!-- <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
-                      xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
-                      style="position:relative;overflow:hidden;" class="default-svg">
-                      <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
-                        ref="objectsRef" :item="item" :key="item.id + item.type + index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </svg> -->
+                xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
+                style="position:relative;overflow:hidden;" class="default-svg">
+                <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
+                  ref="objectsRef" :item="item" :key="item.id + item.type + index"
+                  :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
+                  @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
+                  @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                </WallExterior>
+              </svg> -->
 
                     <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
-                      <WallExterior
-                        ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </div> -->
+                <WallExterior
+                  ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
+                  :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
+                  @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
+                  @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
+                </WallExterior>
+              </div> -->
                   </div>
 
 
@@ -228,9 +253,9 @@
                       right: true,
                       bottom: true,
                       left: true,
-                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true"
-                    :throttleResize="0" :throttleRotate="0" rotationPosition="top" :originDraggable="true"
-                    :originRelative="true" :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
+                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true" :throttleResize="0"
+                    :throttleRotate="0" rotationPosition="top" :originDraggable="true" :originRelative="true"
+                    :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
                     :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
                     @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
                     @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"
@@ -610,6 +635,7 @@ import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
+import NewTopBar from "src/components/NewTopBar.vue";
 
 // Meta information for the application
 // Set the meta information
