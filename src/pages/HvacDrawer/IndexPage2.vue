@@ -120,82 +120,35 @@
 <template>
   <q-page>
 
-
-
-
-    <div id="mainPanel" class="main-panel">
-      <div class="container-fluid">
-        <div id="mainToolBar" class="navbar-inner">
-          <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
-        </div>
-        <div class="row">
-          <div id="leftpanel" class="leftpanel">
-            <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
-              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-              @tool-dropped="toolDropped" />
-          </div>
-          <div id="workarea" class="main-panel">
-            <div id="document-area">
-              <div class="document-ruler-corner" id="c-ruler"></div>
-              <div class="document-ruler-top" id="h-ruler"></div>
-              <div class="document-ruler-left" id="v-ruler"></div>
-              <div id="svgarea"></div>
-            </div>
-          </div>
-        </div>
+    <div id="mainPanel" class="full-area">
+      <div id="mainToolBar" class="top-area">
+        <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
       </div>
-    </div>
-
-
-
-    <div class="full-area">
-
-      <div class="top-area">
-        <!-- Top Toolbar -->
-        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
-          :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" /> -->
-      </div>
-      <div class="main-area">
-        <div class="side-bar" v-if="!locked">
-          <!-- Tools Sidebar -->
-          <!-- <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+      <div class="main-area row">
+        <div id="leftpanel" class="side-bar leftpanel">
+          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
             :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" /> -->
+            @tool-dropped="toolDropped" />
         </div>
-        <div class="work-area">
-          <div class="document-area">
-            <div class="c-ruler"></div>
-            <div class="h-ruler">
+        <div id="workarea" class="work-area">
+          <div id="document-area" class="document-area">
+
+            <div class="c-ruler" id="c-ruler"></div>
+
+            <div class="h-ruler" id="h-ruler">
               <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
             </div>
-            <div class="v-ruler">
+
+            <div class="v-ruler" id="v-ruler">
               <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
             </div>
+
             <div class="hv-grid">
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
+
             <div class="viewport-wrapper" @scroll="handleScroll">
-              <!-- Navigation Buttons -->
-              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-                <!-- Go Back Button -->
-                <!-- <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
-                  color="primary" @click="navGoBack">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong>Go back</strong>
-                  </q-tooltip>
-                </q-btn> -->
-                <!-- Lock/Unlock Button -->
-                <!-- <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong v-if="!locked">Lock</strong>
-                    <strong v-else>Unlock</strong>
-                  </q-tooltip>
-                </q-btn> -->
-              </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
                 @dragover="($event) => {
@@ -523,10 +476,18 @@
                 </div>
               </div>
             </div>
+
+            <div id="svgarea">
+
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+
+
+
 
     <!-- Object config sidebar -->
     <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
