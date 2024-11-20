@@ -285,7 +285,7 @@ function toolDropped(event, tool) {
   position: absolute;
   height: 100%;
   overflow-y: auto;
-  max-height: calc(100vh - 93px);
+  max-height: calc(100vh - 37px);
   scrollbar-width: thin;
   z-index: 1;
   flex-wrap: nowrap;

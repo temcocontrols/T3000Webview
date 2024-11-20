@@ -119,11 +119,11 @@
 
 <template>
   <q-page>
-
     <div class="full-area">
 
       <div class="top-area">
         <!-- Top Toolbar -->
+        <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
@@ -611,6 +611,7 @@ import VRuler from "src/components/VRuler.vue";
 import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
+import NewTopBar from "src/components/NewTopBar.vue";
 
 // Meta information for the application
 // Set the meta information
