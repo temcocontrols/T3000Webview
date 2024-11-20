@@ -160,7 +160,7 @@
 
           <div id="doc-toolbar" class="doc-toolbar">
             <!-- bottom tool bar -->
-            <BottomToolbar>
+            <BottomToolbar @slideZoom="slideZoom">
             </BottomToolbar>
           </div>
 
@@ -305,7 +305,7 @@ import BottomToolbar from "src/components/BottomToolbar.vue";
 
 //
 import { T3000 } from "src/lib/T3000";
-import { ResetLeftPanel } from "src/lib/T3000Utils";
+import { HvacLog, ResetLeftPanel } from "src/lib/T3000Utils";
 //
 
 // Meta information for the application
@@ -684,6 +684,8 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     }
   }
 });
+
+
 
 function viewportMouseMoved(e) {
   // console.log('IndexPage2.vue->viewportMouseMoved:', e);
@@ -2315,6 +2317,10 @@ function lockToggle() {
   // Update the document area position based on the lock state
   // restDocumentAreaPosition();
   ResetLeftPanel(locked.value);
+}
+
+function slideZoom(type, val) {
+  HvacLog("slideZoom=>type,val", type, val);
 }
 
 function restDocumentAreaPosition(pzXY) {

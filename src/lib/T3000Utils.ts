@@ -31,3 +31,7 @@ export function ResetLeftPanel(isLocked) {
     `newPaddingLeft=${newPaddingLeft}`
   );
 }
+
+export function ResetZoom() {
+  HvacLog("ResetZoom=>");
+}

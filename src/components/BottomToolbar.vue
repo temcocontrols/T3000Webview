@@ -63,7 +63,7 @@
     </div>
     <div class="doc-slider">
       <q-slider id="qsl" v-model="model" color="grey-2" inner-track-color="white" track-color="grey" :min="25"
-        :max="400" :step="5" selection-color="grey-1" :change="onChange" :pan="onPan" :update="onUpdate" />
+        :max="400" :step="5" selection-color="grey-1" @change="onChange" @pan="onPan" @update="onUpdate" />
       <input id="qslInput" type="text" />
     </div>
   </div>
@@ -72,6 +72,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { QSlider } from 'quasar';
+import { HvacLog } from 'src/lib/T3000Utils';
 
 export default defineComponent({
   name: 'BottomToolbar',
@@ -105,7 +106,7 @@ export default defineComponent({
     const model = ref(25);
 
     const onChange = () => {
-      // Emit event to parent to handle change
+      HvacLog("--------------------------------")
       emit('slideZoom', "change", model.value);
     }
 
