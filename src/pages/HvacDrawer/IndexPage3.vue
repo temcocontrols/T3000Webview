@@ -11,12 +11,11 @@
   left: 0;
   padding-top: 0;
   padding-left: 0px;
-  z-index: 1030;
+  z-index: 1;
   width: 100%;
   max-height: none;
   background-color: #fff;
   height: 93px;
-  /* border: 1px solid #DDDDDD; */
   background-color: antiquewhite;
 }
 
@@ -47,7 +46,7 @@
   left: 0;
   right: 0;
   background-color: none;
-  padding-left: 104px;
+  padding-left: 105px;
   margin-top: 93px;
   width: auto;
   background-color: darkslategray;
@@ -302,12 +301,18 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 
+
+//
+import { T3000 } from "src/lib/T3000";
+import { ResetLeftPanel } from "src/lib/T3000Utils";
+//
+
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-// Ruler & Grid default value
+// Ruler & Grid & Left sidebar default value
 const documentAreaPosition = ref(
   {
     workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
@@ -317,7 +322,8 @@ const documentAreaPosition = ref(
 
     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
     //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" }
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" },
+    leftPanelWidth: "105px",
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -418,6 +424,8 @@ const handleScroll = (event) => {
 
 // Lifecycle hook for component mount
 onMounted(() => {
+
+
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
   globalNav.value.back = null;
@@ -2304,7 +2312,8 @@ function lockToggle() {
   }
 
   // Update the document area position based on the lock state
-  restDocumentAreaPosition();
+  // restDocumentAreaPosition();
+  ResetLeftPanel(locked.value);
 }
 
 function restDocumentAreaPosition(pzXY) {
@@ -2318,6 +2327,8 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+  documentAreaPosition.value.leftPanelWidth = locked.value ? "0px" : "105px";
 
   console.log("IndexPage.vue -> lockToggle -> documentAreaPosition [full-area]", documentAreaPosition.value);
   console.log('IndexPage.vue -> lockToggle -> pzXY', pzXY);
