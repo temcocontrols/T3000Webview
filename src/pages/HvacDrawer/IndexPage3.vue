@@ -1,123 +1,4 @@
 <style scoped>
-.full-area {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.main-area {
-  display: flex;
-  flex: 1;
-}
-
-.side-bar {
-  background-color: #f4f4f4;
-  width: 106px;
-}
-
-.work-area {
-
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
-  flex: 1;
-  margin-top: 1px;
-  position: relative;
-}
-
-.document-area {
-  position: relative;
-  background-color: #e3e4e5;
-  height: 100%;
-  /* background: red; */
-  height: calc(100vh - 38px);
-}
-
-.c-ruler {
-  width: 20px;
-  height: 20px;
-  background-color: #ebeced;
-  /* background-color: blue; */
-  position: absolute;
-  overflow: hidden;
-  left: 1px;
-  top: 1px;
-}
-
-.h-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #416990; */
-  top: 1px;
-  left: 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
-  height: 20px
-}
-
-.v-ruler {
-  position: absolute;
-  overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #0f77de; */
-  width: 20px;
-  left: 1px;
-  top: 22px;
-  height: calc(100vh - 60px);
-}
-
-.hv-grid {
-  position: absolute;
-  background-color: #ebeced;
-  /* background-color: #b25b5b; */
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
-  overflow: hidden;
-}
-
-.viewport-wrapper {
-  position: relative;
-  background-color: transparent;
-  scrollbar-width: thin;
-  inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px);
-  /* overflow: hidden scroll; */
-  overflow: scroll;
-}
-
-.viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height");
-}
-
-.default-svg {
-  width: 100%;
-  height: 100%;
-  /* background-color: #0d09ec; */
-}
-</style>
-
-<style scoped>
 .main-panel {
   margin-left: 0px;
   position: absolute;
@@ -129,19 +10,19 @@
   position: fixed;
   left: 0;
   padding-top: 0;
-  padding-left: 6px;
+  padding-left: 0px;
   z-index: 1030;
   width: 100%;
   max-height: none;
   background-color: #fff;
-  height: 70px;
-  border: 1px solid #DDDDDD;
+  height: 93px;
+  /* border: 1px solid #DDDDDD; */
   background-color: antiquewhite;
 }
 
 .left-panel {
   position: fixed;
-  top: 72px;
+  top: 93px;
   z-index: 1;
   bottom: 0;
   left: 0px;
@@ -167,7 +48,7 @@
   right: 0;
   background-color: none;
   padding-left: 104px;
-  margin-top: 72px;
+  margin-top: 93px;
   width: auto;
   background-color: darkslategray;
 }
@@ -252,11 +133,16 @@
 
     <div id="main-panel" class="main-panel">
       <div id="main-toolbar" class="main-toolbar">
-        top bar
+        <!-- top bar -->
+        <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
       </div>
       <div class="main-area">
         <div id="left-panel" class="left-panel">
-          left bar
+          <!-- left bar -->
+          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+            @tool-dropped="toolDropped" />
         </div>
         <div id="work-area" class="main-panel">
           <div id="document-area">
@@ -269,7 +155,7 @@
             <div id="v-ruler" class="document-ruler-left">
               v-ruler
             </div>
-            <div id="svg-area">
+            <div id="svg-area" class="svg-area">
               svg area
             </div>
           </div>
@@ -551,37 +437,37 @@ onMounted(() => {
     save();
   });
 
-  // Initialize panzoom for viewport
-  panzoomInstance = panzoom(viewport.value, {
-    maxZoom: 4,
-    minZoom: 0.1,
-    zoomDoubleClickSpeed: 1,
-    filterKey: function (/* e, dx, dy, dz */) {
-      // don't let panzoom handle this event:
-      return true;
-    },
-    beforeMouseDown: function (e) {
-      // allow mouse-down panning only if altKey is down. Otherwise - ignore
-      var shouldIgnore = !e.altKey;
-      return shouldIgnore;
-    },
-    // Add the focal point for zooming to be the center of the viewport
-    transformOrigin: { x: 0.5, y: 0.5 },
-  });
+  // // Initialize panzoom for viewport
+  // panzoomInstance = panzoom(viewport.value, {
+  //   maxZoom: 4,
+  //   minZoom: 0.1,
+  //   zoomDoubleClickSpeed: 1,
+  //   filterKey: function (/* e, dx, dy, dz */) {
+  //     // don't let panzoom handle this event:
+  //     return true;
+  //   },
+  //   beforeMouseDown: function (e) {
+  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
+  //     var shouldIgnore = !e.altKey;
+  //     return shouldIgnore;
+  //   },
+  //   // Add the focal point for zooming to be the center of the viewport
+  //   transformOrigin: { x: 0.5, y: 0.5 },
+  // });
 
-  // Update the viewport transform on panzoom transform event
-  panzoomInstance.on("transform", function (e) {
+  // // Update the viewport transform on panzoom transform event
+  // panzoomInstance.on("transform", function (e) {
 
-    const pzTrs = e.getTransform();
-    // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-    // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+  //   const pzTrs = e.getTransform();
+  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
-    appState.value.viewportTransform = e.getTransform();
-    triggerRef(appState);
+  //   appState.value.viewportTransform = e.getTransform();
+  //   triggerRef(appState);
 
-    console.log('Panzoom transform:', e.getTransform(), pzTrs);
-    restDocumentAreaPosition(e.getTransform());
-  });
+  //   console.log('Panzoom transform:', e.getTransform(), pzTrs);
+  //   restDocumentAreaPosition(e.getTransform());
+  // });
 
   // Request initial data and panels list if in a webview
   window.chrome?.webview?.postMessage({
@@ -618,7 +504,7 @@ onMounted(() => {
   }, 100);
 
   // Viewport wrapper scroll event listener
-  const div = document.querySelector('.viewport-wrapper');
+  const div = document.querySelector('.svg-area');//viewport-wrapper
   div.addEventListener('scroll', handleScroll);
 
   // Init ruler and grid default value

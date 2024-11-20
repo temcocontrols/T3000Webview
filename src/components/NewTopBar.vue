@@ -15,7 +15,7 @@
 
 .tool-title {
   width: 105px;
-  height: 37px;
+  height: 36px;
   padding-left: 10px;
   padding-top: 10px;
   color: #fff;
@@ -81,7 +81,7 @@
 
 .right-panel-card {
   box-shadow: none;
-  border: 1px solid #ccc;
+  /* border: 1px solid #ccc; */
   border-radius: 0px;
 }
 
@@ -139,138 +139,138 @@
       </div>
     </div>
     <div class="right-panel">
-      <div class="q-gutter-y-xs">
-        <q-card class="right-panel-card">
-          <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="left"
-            narrow-indicator>
-            <q-tab name="home" no-caps label="Home" />
-            <q-tab name="file" no-caps label="File" />
 
-            <!-- <q-tab name="edit" label="Edit" />
+      <q-card class="right-panel-card">
+        <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="left"
+          narrow-indicator>
+          <q-tab name="home" no-caps label="Home" />
+          <q-tab name="file" no-caps label="File" />
+
+          <!-- <q-tab name="edit" label="Edit" />
             <q-tab name="object" label="Object" /> -->
 
-            <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
-          </q-tabs>
-          <q-separator />
-          <q-tab-panels v-model="tab">
-            <q-tab-panel name="home" class="home-panel">
-              <div class="container">
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="content_copy" no-caps> Copy</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="content_paste" no-caps>Paste</q-btn>
-                  </div>
+          <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
+        </q-tabs>
+        <q-separator />
+        <q-tab-panels v-model="tab">
+          <q-tab-panel name="home" class="home-panel">
+            <div class="container">
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="content_copy" no-caps> Copy</q-btn>
                 </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="undo" no-caps>Undo</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="redo" no-caps>Redo</q-btn>
-                  </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="content_paste" no-caps>Paste</q-btn>
                 </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="delete" no-caps>Delete</q-btn>
-                  </div>
-                </div>
-                <q-separator black vertical />
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="join_full" no-caps>Group</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="join_inner" no-caps>UnGroup</q-btn>
-                  </div>
-                </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="library_books" no-caps>Add to library</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="file_copy" no-caps>Duplicate</q-btn>
-                  </div>
-                </div>
-                <q-separator black vertical />
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="splitscreen" no-caps>Weld</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="splitscreen" no-caps>UnWeld</q-btn>
-                  </div>
-                </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="link" no-caps>Link</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="transform" no-caps>Convert to</q-btn>
-                  </div>
-                </div>
-                <q-separator black vertical />
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="autorenew" no-caps>Rotate 90</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="sync" no-caps>Rotate -90</q-btn>
-                  </div>
-                </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="flip" no-caps>Flip horizontal</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="flip" no-caps>Flip vertical</q-btn>
-                  </div>
-                </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="flip_to_front" no-caps>Bring to front</q-btn>
-                  </div>
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="flip_to_back" no-caps>Send to back</q-btn>
-                  </div>
-                </div>
-                <q-separator black vertical />
               </div>
-            </q-tab-panel>
-            <q-tab-panel name="file" class="file-panel">
-              <div class="container">
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="assignment" no-caps label="New Project" />
-                    <span class="short-cut">Ctrl + R</span>
-                  </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="undo" no-caps>Undo</q-btn>
                 </div>
-                <q-separator black vertical />
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="file_open" no-caps label="Import" />
-                  </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="redo" no-caps>Redo</q-btn>
                 </div>
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="file_open" no-caps label="Export" />
-                  </div>
-                </div>
-                <q-separator black vertical />
-                <div class="sub-div">
-                  <div class="button-row">
-                    <q-btn flat size="sm" icon="save" no-caps label="Save" />
-                    <span class="short-cut">Ctrl + S</span>
-                  </div>
-                </div>
-                <q-separator black vertical />
               </div>
-            </q-tab-panel>
-          </q-tab-panels>
-        </q-card>
-      </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="delete" no-caps>Delete</q-btn>
+                </div>
+              </div>
+              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="join_full" no-caps>Group</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="join_inner" no-caps>UnGroup</q-btn>
+                </div>
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="library_books" no-caps>Add to library</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="file_copy" no-caps>Duplicate</q-btn>
+                </div>
+              </div>
+              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="splitscreen" no-caps>Weld</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="splitscreen" no-caps>UnWeld</q-btn>
+                </div>
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="link" no-caps>Link</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="transform" no-caps>Convert to</q-btn>
+                </div>
+              </div>
+              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="autorenew" no-caps>Rotate 90</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="sync" no-caps>Rotate -90</q-btn>
+                </div>
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip" no-caps>Flip horizontal</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip" no-caps>Flip vertical</q-btn>
+                </div>
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip_to_front" no-caps>Bring to front</q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip_to_back" no-caps>Send to back</q-btn>
+                </div>
+              </div>
+              <q-separator black vertical />
+            </div>
+          </q-tab-panel>
+          <q-tab-panel name="file" class="file-panel">
+            <div class="container">
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="assignment" no-caps label="New Project" />
+                  <span class="short-cut">Ctrl + R</span>
+                </div>
+              </div>
+              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="file_open" no-caps label="Import" />
+                </div>
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="file_open" no-caps label="Export" />
+                </div>
+              </div>
+              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="save" no-caps label="Save" />
+                  <span class="short-cut">Ctrl + S</span>
+                </div>
+              </div>
+              <q-separator black vertical />
+            </div>
+          </q-tab-panel>
+        </q-tab-panels>
+      </q-card>
     </div>
+
   </div>
 
 
