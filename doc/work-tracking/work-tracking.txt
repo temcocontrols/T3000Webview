@@ -93,3 +93,7 @@ i will continue to do more tests and fix them.
 2024-11-18
 1. fixed some small bugs.
 2. continue working on the wall function.
+
+2024-11-19
+1. start to resolve the vue-moveable library's compatibility for further development. try to update the
+mouse select, multiple select, drag events.
