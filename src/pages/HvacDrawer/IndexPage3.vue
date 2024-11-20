@@ -118,7 +118,6 @@
   display: flex;
   align-items: flex-end;
   height: auto;
-  pointer-events: none;
   width: auto;
   position: absolute;
   left: 0;
@@ -160,7 +159,9 @@
           </div>
 
           <div id="doc-toolbar" class="doc-toolbar">
-            bottom tool bar
+            <!-- bottom tool bar -->
+            <BottomToolbar>
+            </BottomToolbar>
           </div>
 
         </div>
@@ -300,7 +301,7 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
-
+import BottomToolbar from "src/components/BottomToolbar.vue";
 
 //
 import { T3000 } from "src/lib/T3000";
