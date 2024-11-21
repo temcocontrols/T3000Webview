@@ -1459,6 +1459,11 @@ function onSelectoDragEnd(e) {
 function drawObject(size, pos, tool) {
   tool = tool || selectedTool.value;
 
+  if (tool.name === "Int_Ext_Wall") {
+    size.width = 200;
+    size.height = 10;
+  }
+
   if (tool.type === "libItem") {
     addLibItem(tool.items, size, pos);
     return;
@@ -1508,8 +1513,6 @@ function drawObject(size, pos, tool) {
   }
 
   const item = addObject(tempItem);
-
-  console.log('IndexPage2.vue->drawObject:', item, appState.value.items);
 
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;

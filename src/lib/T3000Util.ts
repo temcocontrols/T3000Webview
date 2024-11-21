@@ -48,7 +48,7 @@ const UpdateExteriorWallStroke = (appState, itemIndex, resizedHeight) => {
   const newStrokeWidth = GetExteriorWallStrokeWidth(resizedHeight);
   appState.value.items[itemIndex].settings.strokeWidth = newStrokeWidth;
 
-  HvacLog("UpdateExteriorWallStroke=>", `newStrokeWidth=${newStrokeWidth}`);
+  // HvacLog("UpdateExteriorWallStroke=>", `newStrokeWidth=${newStrokeWidth}`);
 };
 
 // Reset the height base on stroke width for exterior wall, to make the selecto outer box cover the stroke width
