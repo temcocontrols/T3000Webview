@@ -97,3 +97,6 @@ i will continue to do more tests and fix them.
 2024-11-19
 1. start to resolve the vue-moveable library's compatibility for further development. try to update the
 mouse select, multiple select, drag events.
+
+2024-11-20
+1. Continue to implement updates to the vue-moveable library.
