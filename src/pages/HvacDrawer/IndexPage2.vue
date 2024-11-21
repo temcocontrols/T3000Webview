@@ -979,6 +979,8 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
+  // T3000Util.HvacLog("Viewport mouse moved", e);
+
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
@@ -1129,6 +1131,7 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
+  T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1142,6 +1145,9 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
+  T3000Util.HvacLog('3 onSelectoSelectEnd', e, e.isDragStart);
+  T3000Util.HvacLog('3 onSelectoSelectEnd', appState.value, appState.value.activeItemIndex);
+
   appState.value.selectedTargets = e.selected;
   if (e.selected && !e.inputEvent.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1213,8 +1219,6 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
-
-  // console.log("IndexPage.vue -> onResizeStart -> e", e);
 }
 
 // Handles resizing of an element
@@ -1412,6 +1416,8 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
+  T3000Util.HvacLog('2 onSelectoDragEnd', e);
+
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -1449,11 +1455,6 @@ function onSelectoDragEnd(e) {
 // Draws an object based on the provided size, position, and tool settings
 function drawObject(size, pos, tool) {
   tool = tool || selectedTool.value;
-
-  if (tool.name === "Int_Ext_Wall") {
-    size.width = 200;
-    size.height = 10;
-  }
 
   if (tool.type === "libItem") {
     addLibItem(tool.items, size, pos);
@@ -2972,8 +2973,10 @@ function convertObjectType(item, type) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
+  const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
   drawObject(
-    { width: 60, height: 60 },
+    //{ width: 60, height: 60 },
+    size,
     {
       clientX: ev.clientX,
       clientY: ev.clientY,
@@ -3031,7 +3034,7 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    appState.value.items = appState.value.items.filter((item) => !(item.type === "Int_Ext_Wall" && item.width === 0));
+    T3000Util.ClearItemsWithZeroWidth(appState);
   }
 }
 

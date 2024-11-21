@@ -1,3 +1,4 @@
+import { cloneDeep } from "lodash";
 import { T3000 } from "./T3000";
 
 const HvacLog = (e, ...t) => {
@@ -68,6 +69,23 @@ const GetExteriorWallStrokeWidth = (newHeight) => {
   return newHeight * ratio;
 };
 
+// Clear appState items with width === 0
+const ClearItemsWithZeroWidth = (appState) => {
+  if (!appState) {
+    return;
+  }
+
+  const newItems = appState.value.items.filter((item) => {
+    return item.width !== 0;
+  });
+
+  appState.value.items = cloneDeep(newItems);
+
+  if (appState.value.activeItemIndex != null) {
+    appState.value.activeItemIndex = appState.value.items.length - 1;
+  }
+};
+
 export const T3000Util = {
   HvacLog: HvacLog,
   ResetLeftPanel: ResetLeftPanel,
@@ -75,4 +93,5 @@ export const T3000Util = {
   UpdateExteriorWallStroke: UpdateExteriorWallStroke,
   GetExteriorWallHeight: GetExteriorWallHeight,
   GetExteriorWallStrokeWidth: GetExteriorWallStrokeWidth,
+  ClearItemsWithZeroWidth: ClearItemsWithZeroWidth,
 };

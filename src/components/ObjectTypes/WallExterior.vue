@@ -114,8 +114,8 @@ export default defineComponent({
 
         let guidPath = `M${leftRight},${data.My - topBottom} L${leftRight},${data.My - topBottom - 35} L${leftMiddle},${data.My - topBottom - 35}
                         M${rightMiddle},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom}`;
-        guidGroup.path(guidPath).fill('none').stroke({ color: '#0e1114', width: 1 })
-          .fill('none').stroke({ width: 1, color: '#0e1114' });
+        guidGroup.path(guidPath).fill('none').stroke({ color: '#848687', width: 1 })
+          .fill('none').stroke({ width: 1, color: '#848687' });
 
         // Text data
         const rectWidth = 80;
@@ -164,6 +164,6 @@ export default defineComponent({
   background-color: v-bind("props?.item?.settings?.bgColor");
   /* border: 1px solid #000; */
   margin-top: -60px;
-  background-color: aqua;
+  /* background-color: aqua; */
 }
 </style>
