@@ -305,7 +305,7 @@ import BottomToolbar from "src/components/BottomToolbar.vue";
 
 //
 import { T3000 } from "src/lib/T3000";
-import { HvacLog, ResetLeftPanel } from "src/lib/T3000Utils";
+import { T3000Util } from "src/lib/T3000Util";
 //
 
 // Meta information for the application
@@ -2320,7 +2320,7 @@ function lockToggle() {
 }
 
 function slideZoom(type, val) {
-  HvacLog("slideZoom=>type,val", type, val);
+  T3000Util.HvacLog("slideZoom=>type,val", type, val);
 }
 
 function restDocumentAreaPosition(pzXY) {

@@ -3,7 +3,7 @@
     'flex flex-col flex-nowrap': true,
     [item.type]: item.type,
     'with-bg': item.settings.bgColor
-  }" :width="item.width" :height="item.height">
+  }" :width="item.width" :height="item.height + 60">
     <!-- <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" :width="item.width"
       :height="item.height">
       <g :transform="`scale(1,1) translate(${svgData.trsX},${svgData.trsY})`">
@@ -77,10 +77,10 @@ export default defineComponent({
       let trsX = props.item.translate[0];
       let trsY = props.item.translate[1];
       let Mx = 0;
-      let My = props.item.height;
+      let My = props.item.height + 60;
       let Lx = props.item.width;
-      let Ly = props.item.height;//height != 0 ? height : 0;
-      let strokeWidth = props.item.settings.strokeWidth;// props.item.height * 2;
+      let Ly = props.item.height + 60;
+      let strokeWidth = props.item.height * 2;// props.item.settings.strokeWidth;
       let rotate = props.item.rotate;
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
@@ -90,7 +90,7 @@ export default defineComponent({
 
     onMounted(() => {
       const svgRef = ref(null);
-      svgRef.value = SVG().addTo(`#wall_${props.item.id}`).size(props.item.width, props.item.height);
+      svgRef.value = SVG().addTo(`#wall_${props.item.id}`).size(props.item.width, props.item.height + 60);
       // svgRef.value.path(svgData.value.path).fill('none').stroke({ color: '#000', width: svgData.value.strokeWidth });
       // console.log('svgRef default', svgData.value.path);
 
@@ -106,7 +106,7 @@ export default defineComponent({
 
         // Guid data
         const leftRight = 5;
-        const topBottom = 15;
+        const topBottom = props.item.height + 5;
         const leftMiddle = (data.width / 2 - 20 - leftRight) < leftRight ? leftRight : (data.width / 2 - 20 - leftRight);
         const rightMiddle = (data.width / 2 - leftRight + 3 * 20) > (data.width - leftRight) ? (data.width - leftRight) : (data.width / 2 - leftRight + 3 * 20);
 
@@ -141,7 +141,7 @@ export default defineComponent({
         // console.log('svgRef new', newData.path);
 
         svgRef.value.clear();
-        svgRef.value.size(props.item.width, props.item.height);
+        svgRef.value.size(props.item.width, props.item.height + 60);
         renderSvg(newData);
       }
 
@@ -161,5 +161,7 @@ export default defineComponent({
 .wall-exterior {
   background-color: v-bind("props?.item?.settings?.bgColor");
   /* border: 1px solid #000; */
+  margin-top: -60px;
+  background-color: aqua;
 }
 </style>

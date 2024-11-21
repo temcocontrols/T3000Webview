@@ -612,6 +612,7 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
+import { T3000Util } from "src/lib/T3000Util";
 
 // Meta information for the application
 // Set the meta information
@@ -1242,15 +1243,16 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
-  const itemIndex = appState.value.items.findIndex(
-    (item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id
-  );
+  const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  refreshObjects(); // Refresh objects after resizing
+  T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
+
+  // Refresh objects after resizing
+  refreshObjects();
 }
 
 // Starts rotating an element

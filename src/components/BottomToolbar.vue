@@ -72,7 +72,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { QSlider } from 'quasar';
-import { HvacLog } from 'src/lib/T3000Utils';
+import { T3000Util } from 'src/lib/T3000Util';
 
 export default defineComponent({
   name: 'BottomToolbar',
@@ -106,7 +106,7 @@ export default defineComponent({
     const model = ref(25);
 
     const onChange = () => {
-      HvacLog("--------------------------------")
+      T3000Util.HvacLog("--------------------------------")
       emit('slideZoom', "change", model.value);
     }
 

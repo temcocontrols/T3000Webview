@@ -886,7 +886,7 @@ export const tools = [
     label: "Interior / Exterior Wall",
     icon: "svguse:icons.svg#int_ext_wall",
     cat: ["Room"],
-    height: 60,
+    height: 10,
     settings: {
       bgColor: {
         value: "#000",
