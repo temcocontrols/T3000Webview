@@ -214,9 +214,6 @@
                     </div> -->
                   </div>
 
-
-
-
                   <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
                     :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
                     :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
@@ -238,7 +235,8 @@
                     @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart" @rotate="onRotate"
                     @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
                     @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
-                    @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd">
+                    @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd"
+                    :renderDirections='["n", "nw", "ne", "s", "se", "sw", "e", "w"]'>
                   </vue-moveable>
 
                   <!-- Context Menu -->
@@ -500,11 +498,9 @@
     </div>
 
     <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
-      !locked &&
-      appState.items[appState.activeItemIndex] &&
-      (appState.activeItemIndex || appState.activeItemIndex === 0)
-    " @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+    <ObjectConfig :object="appState.items[appState.activeItemIndex]"
+      v-if="!locked && appState.items[appState.activeItemIndex] && (appState.activeItemIndex || appState.activeItemIndex === 0)"
+      @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
       @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
   </q-page>
@@ -1044,6 +1040,7 @@ function refreshMoveableGuides() {
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
+  T3000Util.HvacLog('IndexPage2.vue->refreshObjects:', 'objectsRef:', objectsRef.value);
   if (!objectsRef.value) return;
   for (const obj of objectsRef.value) {
     if (!obj.refresh) continue;
@@ -1250,6 +1247,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
+  T3000Util.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();

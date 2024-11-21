@@ -40,8 +40,39 @@ const ResetZoom = () => {
   HvacLog("ResetZoom=>");
 };
 
+const UpdateExteriorWallStroke = (appState, itemIndex, resizedHeight) => {
+  if (!appState) {
+    return;
+  }
+
+  const newStrokeWidth = GetExteriorWallStrokeWidth(resizedHeight);
+  appState.value.items[itemIndex].settings.strokeWidth = newStrokeWidth;
+
+  HvacLog("UpdateExteriorWallStroke=>", `newStrokeWidth=${newStrokeWidth}`);
+};
+
+// Reset the height base on stroke width for exterior wall, to make the selecto outer box cover the stroke width
+const GetExteriorWallHeight = (newStrokeWidth) => {
+  // Default height and stroke width are 10, 19.5
+  const defaultHeight = 10;
+  const defaultStrokeWidth = 19.5;
+  const ratio = defaultHeight / defaultStrokeWidth;
+  return newStrokeWidth * ratio;
+};
+
+const GetExteriorWallStrokeWidth = (newHeight) => {
+  // Default height and stroke width are 10, 19.5
+  const defaultHeight = 10;
+  const defaultStrokeWidth = 19.5;
+  const ratio = defaultStrokeWidth / defaultHeight;
+  return newHeight * ratio;
+};
+
 export const T3000Util = {
   HvacLog: HvacLog,
   ResetLeftPanel: ResetLeftPanel,
   ResetZoom: ResetZoom,
+  UpdateExteriorWallStroke: UpdateExteriorWallStroke,
+  GetExteriorWallHeight: GetExteriorWallHeight,
+  GetExteriorWallStrokeWidth: GetExteriorWallStrokeWidth,
 };

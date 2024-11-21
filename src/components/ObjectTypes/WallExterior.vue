@@ -60,6 +60,8 @@
 import { defineComponent, onMounted, computed, ref, watch } from "vue";
 import { SVG } from '@svgdotjs/svg.js';
 import { color } from "echarts";
+import { T3000 } from "src/lib/T3000";
+import { T3000Util } from "src/lib/T3000Util";
 
 export default defineComponent({
   name: "WallExteriorEl",
@@ -80,7 +82,7 @@ export default defineComponent({
       let My = props.item.height + 60;
       let Lx = props.item.width;
       let Ly = props.item.height + 60;
-      let strokeWidth = props.item.height * 2;// props.item.settings.strokeWidth;
+      let strokeWidth = props.item.settings.strokeWidth;
       let rotate = props.item.rotate;
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
