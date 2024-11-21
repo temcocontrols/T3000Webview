@@ -707,7 +707,6 @@ const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
 const handleScroll = (event) => {
-  console.log('Scroll event:', event.target.scrollTop, event.target.scrollLeft);
 
   // Reset the h,v ruler's width for scrolling
   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
@@ -720,8 +719,6 @@ const handleScroll = (event) => {
 
   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
-
-  console.log('documentAreaPosition:', documentAreaPosition.value);
 };
 
 // Lifecycle hook for component mount
@@ -773,7 +770,6 @@ onMounted(() => {
     appState.value.viewportTransform = e.getTransform();
     triggerRef(appState);
 
-    console.log('Panzoom transform:', e.getTransform(), pzTrs);
     restDocumentAreaPosition(e.getTransform());
   });
 
@@ -819,8 +815,6 @@ onMounted(() => {
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-
-  console.log('Document Area Position:', documentAreaPosition.value);
 });
 
 // Lifecycle hook for component unmount
@@ -985,7 +979,6 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
-  // console.log('IndexPage2.vue->viewportMouseMoved:', e);
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
@@ -1040,7 +1033,6 @@ function refreshMoveableGuides() {
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
-  T3000Util.HvacLog('IndexPage2.vue->refreshObjects:', 'objectsRef:', objectsRef.value);
   if (!objectsRef.value) return;
   for (const obj of objectsRef.value) {
     if (!obj.refresh) continue;
@@ -1051,7 +1043,7 @@ function refreshObjects() {
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    console.log(title); // Log the action title in development mode
+    // console.log(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
@@ -1420,7 +1412,6 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  console.log('IndexPage2.vue->onSelectoDragEnd:', e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -2013,8 +2004,6 @@ function drawWeldObjectCanvas(selectedItems) {
   const transY = boundingBox.minY;
   const width = boundingBox.maxX - boundingBox.minX;
   const height = boundingBox.maxY - boundingBox.minY;
-
-  // console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
   let previous = selectedItems[0].zindex;
@@ -2632,15 +2621,10 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
-
-  console.log("IndexPage.vue -> lockToggle -> documentAreaPosition [full-area]", documentAreaPosition.value);
-  console.log('IndexPage.vue -> lockToggle -> pzXY', pzXY);
 }
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-  // console.log("IndexPage.vue -> objectClicked -> item", item);
-
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({
@@ -3009,8 +2993,6 @@ const updateWeldModel = (weldModel, itemList) => {
 };
 
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
-  // console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
-
   appState.value.items.map((item) => {
     if (
       (item.type === "Weld_General" || item.type === "Weld_Duct") &&
@@ -3039,7 +3021,6 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
-  console.log('viewportRightClick=>ev', ev);
   ev.preventDefault();
   selectTool(tools[0]);
   if (isDrawing.value) {

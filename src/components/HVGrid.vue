@@ -62,7 +62,6 @@ export default defineComponent({
   },
   setup(props) {
     onMounted(() => {
-      console.log("HVGrid mounted with props", props.documentArea);
     });
     return {};
   },

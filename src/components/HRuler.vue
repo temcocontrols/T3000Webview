@@ -485,7 +485,6 @@ export default defineComponent({
   },
   setup(props) {
     onMounted(() => {
-      console.log("HRuler mounted with props", props.documentArea);
     });
     return {};
   },
