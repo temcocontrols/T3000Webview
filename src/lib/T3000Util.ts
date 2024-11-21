@@ -1,5 +1,6 @@
 import { cloneDeep } from "lodash";
 import { T3000 } from "./T3000";
+import { is } from "quasar";
 
 const HvacLog = (e, ...t) => {
   if ("prd" !== T3000.Default.Environment.toLowerCase()) {
@@ -86,6 +87,37 @@ const ClearItemsWithZeroWidth = (appState) => {
   }
 };
 
+// Hide exterior wall guide line
+const SetWallDimensionsVisible = (type, isDrawing, appState, isShow) => {
+  if (type == "all") {
+    appState.value.items.forEach((item) => {
+      if (item.type === "Int_Ext_Wall") {
+        item.showDimensions = isShow;
+      }
+    });
+  }
+
+  if (type === "select") {
+    if (isDrawing) {
+      return;
+    } else {
+      const selectedIndexes = appState.value.selectedTargets.map((target) => {
+        return appState.value.items.findIndex(
+          (item) =>
+            `moveable-item-${item.id}` === target.id &&
+            item.type === "Int_Ext_Wall"
+        );
+      });
+
+      appState.value.items.forEach((item, index) => {
+        if (item.type === "Int_Ext_Wall") {
+          item.showDimensions = selectedIndexes.includes(index);
+        }
+      });
+    }
+  }
+};
+
 export const T3000Util = {
   HvacLog: HvacLog,
   ResetLeftPanel: ResetLeftPanel,
@@ -94,4 +126,5 @@ export const T3000Util = {
   GetExteriorWallHeight: GetExteriorWallHeight,
   GetExteriorWallStrokeWidth: GetExteriorWallStrokeWidth,
   ClearItemsWithZeroWidth: ClearItemsWithZeroWidth,
+  SetWallDimensionsVisible: SetWallDimensionsVisible,
 };

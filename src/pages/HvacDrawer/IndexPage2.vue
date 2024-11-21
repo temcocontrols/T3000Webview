@@ -1131,7 +1131,7 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
-  T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
+  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1145,9 +1145,7 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
-  T3000Util.HvacLog('3 onSelectoSelectEnd', e, e.isDragStart);
-  T3000Util.HvacLog('3 onSelectoSelectEnd', appState.value, appState.value.activeItemIndex);
-
+  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
   if (e.selected && !e.inputEvent.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1187,7 +1185,12 @@ function onSelectoSelectEnd(e) {
   } else {
     contextMenuShow.value = false;
   }
+
   refreshMoveableGuides(); // Refresh the moveable guidelines after selection
+
+  setTimeout(() => {
+    T3000Util.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+  }, 100);
 }
 
 // Selects a group of elements by their group ID
@@ -1242,7 +1245,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
+  // T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
   T3000Util.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
@@ -1416,7 +1419,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  T3000Util.HvacLog('2 onSelectoDragEnd', e);
+  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
 
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
@@ -1491,6 +1494,7 @@ function drawObject(size, pos, tool) {
     settings: objectSettings,
     zindex: 1,
     t3Entry: null,
+    showDimensions: true
   };
 
   if (tool.type === "Image") {
@@ -3035,6 +3039,7 @@ function viewportRightClick(ev) {
 
     //clear empty drawing object
     T3000Util.ClearItemsWithZeroWidth(appState);
+    T3000Util.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 

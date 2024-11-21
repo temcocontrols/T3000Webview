@@ -73,6 +73,8 @@ export default defineComponent({
   },
   setup(props, { emit }) {
     const svgData = computed(() => {
+      // console.log('WallExterior props.item', props.item);
+
       let width = props.item.width;
       // let height = props.item.rotate == 90 ? props.item.width : Math.abs(props.item.width * Math.sin(props.item.rotate * Math.PI / 180));
       let height = props.item.height;
@@ -84,6 +86,7 @@ export default defineComponent({
       let Ly = props.item.height + 60;
       let strokeWidth = props.item.settings.strokeWidth;
       let rotate = props.item.rotate;
+      let showDimensions = props.item.showDimensions;
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
 
@@ -106,41 +109,46 @@ export default defineComponent({
         // Path data
         pathGroup.path(data.path).fill('none').stroke({ color: '#000', width: data.strokeWidth });
 
-        // Guid data
-        const leftRight = 5;
-        const topBottom = props.item.height + 5;
-        const leftMiddle = (data.width / 2 - 20 - leftRight) < leftRight ? leftRight : (data.width / 2 - 20 - leftRight);
-        const rightMiddle = (data.width / 2 - leftRight + 3 * 20) > (data.width - leftRight) ? (data.width - leftRight) : (data.width / 2 - leftRight + 3 * 20);
+        const drawDimensions = () => {
+          // Guid data
+          const leftRight = 5;
+          const topBottom = props.item.height + 5;
+          const leftMiddle = (data.width / 2 - 20 - leftRight) < leftRight ? leftRight : (data.width / 2 - 20 - leftRight);
+          const rightMiddle = (data.width / 2 - leftRight + 3 * 20) > (data.width - leftRight) ? (data.width - leftRight) : (data.width / 2 - leftRight + 3 * 20);
 
-        let guidPath = `M${leftRight},${data.My - topBottom} L${leftRight},${data.My - topBottom - 35} L${leftMiddle},${data.My - topBottom - 35}
+          let guidPath = `M${leftRight},${data.My - topBottom} L${leftRight},${data.My - topBottom - 35} L${leftMiddle},${data.My - topBottom - 35}
                         M${rightMiddle},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom - 35} L${data.width - leftRight},${data.My - topBottom}`;
-        guidGroup.path(guidPath).fill('none').stroke({ color: '#848687', width: 1 })
-          .fill('none').stroke({ width: 1, color: '#848687' });
+          guidGroup.path(guidPath).fill('none').stroke({ color: '#848687', width: 1 })
+            .fill('none').stroke({ width: 1, color: '#848687' });
 
-        // Text data
-        const rectWidth = 80;
-        const rectHeight = 12;
-        const rectX = (data.width - 2 * leftRight - 20) / 2;
-        const rectY = data.My - topBottom - 40;
+          // Text data
+          const rectWidth = 80;
+          const rectHeight = 12;
+          const rectX = (data.width - 2 * leftRight - 20) / 2;
+          const rectY = data.My - topBottom - 40;
 
-        textGroup.rect(rectWidth, rectHeight)
-          .move(rectX, rectY)
-          .fill('none')
-          .stroke({ width: 0 })
-          .attr({ visibility: 'hidden', 'no-export': 1 });
+          textGroup.rect(rectWidth, rectHeight)
+            .move(rectX, rectY)
+            .fill('none')
+            .stroke({ width: 0 })
+            .attr({ visibility: 'hidden', 'no-export': 1 });
 
-        const formattedWidth = data.width.toFixed(2);
-        const formattedHeight = data.rotate.toFixed(2);
-        let textPath = `${formattedWidth}' ${formattedHeight}"`;
+          const formattedWidth = data.width.toFixed(2);
+          const formattedHeight = data.rotate.toFixed(2);
+          let textPath = `${formattedWidth}' ${formattedHeight}"`;
 
-        textGroup.text(textPath)
-          .font({ family: 'Arial', size: 10, anchor: 'start', fill: '#000' })
-          .move(rectX, rectY);
+          textGroup.text(textPath)
+            .font({ family: 'Arial', size: 10, anchor: 'start', fill: '#000' })
+            .move(rectX, rectY);
+        }
+
+        if (props.item.showDimensions) {
+          drawDimensions();
+        }
       }
 
       const refreshSvg = (newData) => {
-        // console.log('origin:[width, height]', [props.item.width, props.item.height], 'new:[width, height]', [newData.width, newData.height]);
-        // console.log('svgRef new', newData.path);
+        // T3000Util.HvacLog('WallExteriorEl', 'refreshSvg', props.item);
 
         svgRef.value.clear();
         svgRef.value.size(props.item.width, props.item.height + 60);
@@ -149,9 +157,7 @@ export default defineComponent({
 
       renderSvg(svgData.value);
 
-      watch(svgData, (newData) => {
-        refreshSvg(newData);
-      }, { deep: true });
+      watch(svgData, (newData) => { refreshSvg(newData); }, { deep: true });
     });
 
     return { svgData };
