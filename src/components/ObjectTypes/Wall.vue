@@ -22,5 +22,6 @@ export default defineComponent({
 <style scoped>
 .wall-element {
   background-color: v-bind("bgColor");
+  /* border: 1px solid #000; */
 }
 </style>

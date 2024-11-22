@@ -31,3 +31,5 @@ yarn-error.log*
 .env
 *.db-shm
 *.db-wal
+
+.vs

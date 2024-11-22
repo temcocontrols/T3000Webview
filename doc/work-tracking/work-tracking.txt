@@ -32,3 +32,76 @@
 1. continue working on the new functions
 2. try to add a new vue component for canvas drawing, integrate it into vue-moveable and vue-selecto,
 the existing components (moveable,selecto) may not suitable for transfering the shapes into lines and points.
+
+2024-10-31
+1. working on the new function, try to use another library to implement the logic
+2. merge 'top toolbar','weld selected' code to main branch for releasing new version
+
+2024-11-01
+1. trying to use a different way to deal with the shapes,
+use paperjs to redraw the shapes as lines and points, make them controlable.
+
+2024-11-03 (4h)
+1. add a child canvas layer for vue-moveable & vue-selecto selected items, perform lines and points extraction, redraw the shape with them.
+
+2024-11-04
+1. use canvas as the inner layer to replace the origin one for selected items,
+extract the lines and points and reshape them into a new item, make lines and points movable and resizable.
+
+2. add new category "General" with some basic shapes to left side bar.
+the origin duct was combined with 2 svgs and divs, not easy to extract the lines and points, so currently i use rectangle instead.
+
+3. i also add a new IndexPage page to perform some checking for the new library, to see if it is possible to replace
+vue-movable and vue-selecto in further development.
+
+4. completed the most part of the function, but found some issues when resizing and rotating the outer div.
+i will continue to do more tests and fix them.
+
+2024-11-05
+1. fixed some small bugs
+2. applied the new logic to ducts, make the new shape's lines and points can be modified after welding.
+3. i will continue to implement more functions for the welded item, like rotating, reloading, resizing.
+
+2024-11-06 (OT 2)
+1. do more test for the new functions, and fix some bugs.
+2. add new logic to handle the rotating event for the weld item after resizing and repositioning.
+
+2024-11-07
+1. fix bugs and refactor the code
+2. learn how to draw a wall in revit way, compare it to alaa's code
+
+2024-11-08
+1. try to update the layout of viewport to draw rulers and guide lines on the new page
+
+2024-11-11
+1. continue to update the layout of new page, draw rulers and guidelines, handle mouse move and click events.
+
+2024-11-12
+1. continue work on the new layout of draw area, handle compatibility of existing libraries.
+
+2024-11-13
+1. make the rulers scrollable when the content area been zoomed in or out.
+2. move the origin of coordinate to new location, besides the left side bar, and update related logic.
+3. try to start to update the logic of drawing walls today.
+
+2024-11-14
+1. try to add a new type of wall, update related drawing logic.
+
+2024-11-15
+1. continue to implement the new drawing logic for wall, try to add some guidelines when mouse move.
+
+2024-11-18
+1. fixed some small bugs.
+2. continue working on the wall function.
+
+2024-11-19
+1. start to resolve the vue-moveable library's compatibility for further development. try to update the
+mouse select, multiple select, drag events.
+
+2024-11-20
+1. Continue to implement updates to the vue-moveable library.
+
+2024-11-21
+1. continue to update the library.
+2. small updates for new wall type.
+3. clean up code and prepare for version release.

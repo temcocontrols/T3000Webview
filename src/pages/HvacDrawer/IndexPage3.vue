@@ -1,506 +1,199 @@
 <style scoped>
-.full-area {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+.main-panel {
+  margin-left: 0px;
+  position: absolute;
+  width: 100%;
+  background-color: red;
 }
 
-.main-area {
-  display: flex;
-  flex: 1;
+#main-toolbar {
+  position: fixed;
+  left: 0;
+  padding-top: 0;
+  padding-left: 0px;
+  z-index: 1;
+  width: 100%;
+  max-height: none;
+  background-color: #fff;
+  height: 93px;
+  background-color: antiquewhite;
 }
 
-.side-bar {
-  background-color: #f4f4f4;
-  width: 106px;
-}
-
-.work-area {
-
-  top: 0px;
-  bottom: 0px;
+.left-panel {
+  position: fixed;
+  top: 93px;
+  z-index: 1;
+  bottom: 0;
   left: 0px;
-  right: 0px;
-  width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
-  flex: 1;
-  margin-top: 1px;
-  position: relative;
+  right: 0;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  width: 105px;
+  border-right: 1px solid #ddd;
+  z-index: 4;
+  background-color: brown;
 }
 
-.document-area {
+.main-panel {
+  margin-left: 0px;
+  background-color: cornsilk;
+}
+
+#work-area {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 105px;
+  margin-top: 93px;
+  width: auto;
+  background-color: darkslategray;
+}
+
+#document-area {
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  /* background: red; */
-  height: calc(100vh - 38px);
+  background-color: hotpink;
 }
 
-.c-ruler {
+.document-ruler-corner {
   width: 20px;
   height: 20px;
+  user-select: none;
+  left: 99.1px;
+  top: 0px;
   background-color: #ebeced;
-  /* background-color: blue; */
-  position: absolute;
   overflow: hidden;
-  left: 1px;
-  top: 1px;
+  position: absolute;
+  background-color: rgb(229, 112, 112);
 }
 
-.h-ruler {
-  position: absolute;
-  overflow: hidden;
+.document-ruler-top {
   background-color: #ebeced;
-  /* background-color: #416990; */
-  top: 1px;
-  left: 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
-  height: 20px
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 119.1px;
+  top: 0px;
+  width: 976.8px;
+  height: 20px;
+  background-color: blue;
 }
 
-.v-ruler {
-  position: absolute;
-  overflow: hidden;
+.document-ruler-left {
   background-color: #ebeced;
-  /* background-color: #0f77de; */
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 99.1px;
+  top: 20px;
   width: 20px;
-  left: 1px;
-  top: 22px;
-  height: calc(100vh - 60px);
+  height: 175.4px;
+  background-color: yellow;
 }
 
-.hv-grid {
-  position: absolute;
-  background-color: #ebeced;
-  /* background-color: #b25b5b; */
-  inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
-  overflow: hidden;
-}
-
-.viewport-wrapper {
-  position: relative;
-  background-color: transparent;
+#svg-area {
   scrollbar-width: thin;
-  inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px);
-  /* overflow: hidden scroll; */
-  overflow: scroll;
+  position: absolute;
+  background-color: #fff;
+  left: 119.1px;
+  top: 20px;
+  width: 976.8px;
+  height: 175.4px;
+  overflow: hidden scroll;
+  user-select: none;
+  background-color: lightseagreen;
 }
 
-.viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height");
-}
-
-.default-svg {
-  width: 100%;
-  height: 100%;
-  /* background-color: #0d09ec; */
+.doc-toolbar {
+  background-color: transparent;
+  bottom: 10px;
+  right: 10px;
+  padding-left: 187px;
+  padding-right: 10px;
+  border: none;
+  display: flex;
+  align-items: flex-end;
+  height: auto;
+  width: auto;
+  position: absolute;
+  left: 0;
+  background-color: aqua;
 }
 </style>
 
 <template>
   <q-page>
-    <div class="full-area">
 
-      <div class="top-area">
-        <!-- Top Toolbar -->
-        <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
-          :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
+
+    <div id="main-panel" class="main-panel">
+      <div id="main-toolbar" class="main-toolbar">
+        <!-- top bar -->
+        <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
       </div>
       <div class="main-area">
-        <div class="side-bar" v-if="!locked">
-          <!-- Tools Sidebar -->
+        <div id="left-panel" class="left-panel">
+          <!-- left bar -->
           <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
             :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
             @tool-dropped="toolDropped" />
         </div>
-        <div class="work-area">
-          <div class="document-area">
-            <div class="c-ruler"></div>
-            <div class="h-ruler">
-              <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
+        <div id="work-area" class="main-panel">
+          <div id="document-area">
+            <div id="c-ruler" class="document-ruler-corner">
+              c-ruler
             </div>
-            <div class="v-ruler">
-              <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
+            <div id="h-ruler" class="document-ruler-top">
+              h-ruler
             </div>
-            <div class="hv-grid">
-              <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
+            <div id="v-ruler" class="document-ruler-left">
+              v-ruler
             </div>
-            <div class="viewport-wrapper" @scroll="handleScroll">
-              <!-- Navigation Buttons -->
-              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-                <!-- Go Back Button -->
-                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
-                  color="primary" @click="navGoBack">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong>Go back</strong>
-                  </q-tooltip>
-                </q-btn>
-                <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong v-if="!locked">Lock</strong>
-                    <strong v-else>Unlock</strong>
-                  </q-tooltip>
-                </q-btn>
-              </div>
-              <!-- Viewport Area -->
-              <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @dragover="($event) => {
-                  $event.preventDefault();
-                }
-                  ">
-                <!-- Cursor Icon -->
-                <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
-                  ? selectedTool.icon
-                  : selectedTool.type === 'libItem'
-                    ? 'space_dashboard'
-                    : 'photo'
-                  " size="sm" :style="{
-                    left: cursorIconPos.x + 0 + 'px',
-                    top: cursorIconPos.y + 'px',
-                  }" />
-                <!-- Vue Selecto for Selectable Items -->
-                <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
-                  :hitRate="20" :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']"
-                  :ratio="0" :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
-                  @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-                </vue-selecto>
-                <!-- Moveable Component for Draggable/Resizable Items -->
-                <div ref="viewport">
-
-                  <div id="svg-area">
-                    <!-- <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
-                      xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
-                      style="position:relative;overflow:hidden;" class="default-svg">
-                      <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
-                        ref="objectsRef" :item="item" :key="item.id + item.type + index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </svg> -->
-
-                    <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
-                      <WallExterior
-                        ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </div> -->
-                  </div>
-
-                  <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
-                    :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
-                    :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :elementSnapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true"
-                    :throttleResize="0" :throttleRotate="0" rotationPosition="top" :originDraggable="true"
-                    :originRelative="true" :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
-                    :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
-                    @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
-                    @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"
-                    @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart" @rotate="onRotate"
-                    @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
-                    @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
-                    @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd"
-                    :renderDirections='["n", "nw", "ne", "s", "se", "sw", "e", "w"]'>
-                  </vue-moveable>
-
-                  <!-- Context Menu -->
-                  <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
-                    <q-list>
-                      <!-- Copy Option -->
-                      <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Copy</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + C</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Duplicate Option -->
-                      <q-item dense clickable v-close-popup @click="duplicateSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Duplicate</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + D</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Group Option -->
-                      <q-item dense clickable v-close-popup @click="groupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Group</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-item dense clickable v-close-popup @click="ungroupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Ungroup</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + Shift + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Add to Library Option -->
-                      <q-item dense clickable v-close-popup @click="addToLibrary">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Add to Library</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + L</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Bring to Front Option -->
-                      <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Bring to front</q-item-section>
-                      </q-item>
-                      <!-- Send to Back Option -->
-                      <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Send to Back</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Rotate 90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate 90°</q-item-section>
-                      </q-item>
-                      <!-- Rotate -90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate -90°</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Delete Option -->
-                      <q-item dense clickable v-close-popup @click="deleteSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Delete</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Delete</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <!-- Weld Option -->
-                      <q-item dense clickable v-close-popup @click="weldSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Weld Selected</q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + B</q-chip>
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-
-                  <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
-                    :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-                    :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
-                    :class="`moveable-item-index-${index}`">
-
-                    <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
-                      <q-list>
-                        <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Link</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label>Copy</q-item-label>
-                          </q-item-section>
-                          <q-item-section side>
-                            <q-chip>Ctrl + C</q-chip>
-                          </q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="duplicateObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Duplicate</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="rotate90(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate 90°</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="rotate90(item, true)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate -90°</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="flipH(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Flip horizontal</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="flipV(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
-                              style="transform: rotate(90deg)" />
-                          </q-item-section>
-                          <q-item-section>Flip vertical</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="bringToFront(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Bring to front</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="sendToBack(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Send to Back</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable>
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Convert to</q-item-section>
-                          <q-item-section side>
-                            <q-icon name="keyboard_arrow_right" />
-                          </q-item-section>
-                          <q-menu anchor="top end" self="top start" auto-close>
-                            <q-list>
-                              <q-item v-for="t in tools.filter(
-                                (i) =>
-                                  i.name !== item.type &&
-                                  !['Duct', 'Pointer', 'Text'].includes(i.name)
-                              )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
-                                <q-item-section avatar>
-                                  <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
-                                </q-item-section>
-                                <q-item-section>{{ t.name }}</q-item-section>
-                              </q-item>
-                            </q-list>
-                          </q-menu>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="removeObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Remove</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-
-                    <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
-                      :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" />
-
-                    <CanvasShape v-if="
-                      item.cat === 'General' ||
-                      item.type === 'Weld_General' ||
-                      item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
-                      :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                      @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                      @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                    </CanvasShape>
-
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModelCanvas">
-                    </WallExterior>
-
-                  </div>
-                </div>
-              </div>
+            <div id="svg-area" class="svg-area">
+              svg area
             </div>
           </div>
+
+          <div id="doc-toolbar" class="doc-toolbar">
+            <!-- bottom tool bar -->
+            <BottomToolbar @slideZoom="slideZoom">
+            </BottomToolbar>
+          </div>
+
         </div>
       </div>
     </div>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]"
-      v-if="!locked && appState.items[appState.activeItemIndex] && (appState.activeItemIndex || appState.activeItemIndex === 0)"
-      @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="
+      !locked &&
+      appState.items[appState.activeItemIndex] &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0)
+    " @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
       @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
   </q-page>
@@ -608,14 +301,19 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
+import BottomToolbar from "src/components/BottomToolbar.vue";
+
+//
+import { T3000 } from "src/lib/T3000";
 import { T3000Util } from "src/lib/T3000Util";
+//
 
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-// Ruler & Grid default value
+// Ruler & Grid & Left sidebar default value
 const documentAreaPosition = ref(
   {
     workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
@@ -625,7 +323,8 @@ const documentAreaPosition = ref(
 
     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
     //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" }
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" },
+    leftPanelWidth: "105px",
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -707,6 +406,7 @@ const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
 const handleScroll = (event) => {
+  console.log('Scroll event:', event.target.scrollTop, event.target.scrollLeft);
 
   // Reset the h,v ruler's width for scrolling
   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
@@ -719,10 +419,14 @@ const handleScroll = (event) => {
 
   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+
+  console.log('documentAreaPosition:', documentAreaPosition.value);
 };
 
 // Lifecycle hook for component mount
 onMounted(() => {
+
+
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
   globalNav.value.back = null;
@@ -742,36 +446,37 @@ onMounted(() => {
     save();
   });
 
-  // Initialize panzoom for viewport
-  panzoomInstance = panzoom(viewport.value, {
-    maxZoom: 4,
-    minZoom: 0.1,
-    zoomDoubleClickSpeed: 1,
-    filterKey: function (/* e, dx, dy, dz */) {
-      // don't let panzoom handle this event:
-      return true;
-    },
-    beforeMouseDown: function (e) {
-      // allow mouse-down panning only if altKey is down. Otherwise - ignore
-      var shouldIgnore = !e.altKey;
-      return shouldIgnore;
-    },
-    // Add the focal point for zooming to be the center of the viewport
-    transformOrigin: { x: 0.5, y: 0.5 },
-  });
+  // // Initialize panzoom for viewport
+  // panzoomInstance = panzoom(viewport.value, {
+  //   maxZoom: 4,
+  //   minZoom: 0.1,
+  //   zoomDoubleClickSpeed: 1,
+  //   filterKey: function (/* e, dx, dy, dz */) {
+  //     // don't let panzoom handle this event:
+  //     return true;
+  //   },
+  //   beforeMouseDown: function (e) {
+  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
+  //     var shouldIgnore = !e.altKey;
+  //     return shouldIgnore;
+  //   },
+  //   // Add the focal point for zooming to be the center of the viewport
+  //   transformOrigin: { x: 0.5, y: 0.5 },
+  // });
 
-  // Update the viewport transform on panzoom transform event
-  panzoomInstance.on("transform", function (e) {
+  // // Update the viewport transform on panzoom transform event
+  // panzoomInstance.on("transform", function (e) {
 
-    const pzTrs = e.getTransform();
-    // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-    // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+  //   const pzTrs = e.getTransform();
+  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
-    appState.value.viewportTransform = e.getTransform();
-    triggerRef(appState);
+  //   appState.value.viewportTransform = e.getTransform();
+  //   triggerRef(appState);
 
-    restDocumentAreaPosition(e.getTransform());
-  });
+  //   console.log('Panzoom transform:', e.getTransform(), pzTrs);
+  //   restDocumentAreaPosition(e.getTransform());
+  // });
 
   // Request initial data and panels list if in a webview
   window.chrome?.webview?.postMessage({
@@ -808,13 +513,15 @@ onMounted(() => {
   }, 100);
 
   // Viewport wrapper scroll event listener
-  const div = document.querySelector('.viewport-wrapper');
+  const div = document.querySelector('.svg-area');//viewport-wrapper
   div.addEventListener('scroll', handleScroll);
 
   // Init ruler and grid default value
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+  console.log('Document Area Position:', documentAreaPosition.value);
 });
 
 // Lifecycle hook for component unmount
@@ -978,9 +685,10 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 });
 
-function viewportMouseMoved(e) {
-  // T3000Util.HvacLog("Viewport mouse moved", e);
 
+
+function viewportMouseMoved(e) {
+  // console.log('IndexPage2.vue->viewportMouseMoved:', e);
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
@@ -1045,7 +753,7 @@ function refreshObjects() {
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    // console.log(title); // Log the action title in development mode
+    console.log(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
@@ -1131,7 +839,6 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
-  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1145,7 +852,6 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
-  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
   if (e.selected && !e.inputEvent.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1185,12 +891,7 @@ function onSelectoSelectEnd(e) {
   } else {
     contextMenuShow.value = false;
   }
-
   refreshMoveableGuides(); // Refresh the moveable guidelines after selection
-
-  setTimeout(() => {
-    T3000Util.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
-  }, 100);
 }
 
 // Selects a group of elements by their group ID
@@ -1222,6 +923,8 @@ function onResizeStart(e) {
   );
   e.setOrigin(["%", "%"]);
   e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+
+  // console.log("IndexPage.vue -> onResizeStart -> e", e);
 }
 
 // Handles resizing of an element
@@ -1239,17 +942,15 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
-  const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
+  const itemIndex = appState.value.items.findIndex(
+    (item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id
+  );
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  // T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000Util.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
-
-  // Refresh objects after resizing
-  refreshObjects();
+  refreshObjects(); // Refresh objects after resizing
 }
 
 // Starts rotating an element
@@ -1419,8 +1120,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
-
+  console.log('IndexPage2.vue->onSelectoDragEnd:', e);
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
     clientX: e.clientX,
@@ -1494,7 +1194,6 @@ function drawObject(size, pos, tool) {
     settings: objectSettings,
     zindex: 1,
     t3Entry: null,
-    showDimensions: true
   };
 
   if (tool.type === "Image") {
@@ -1509,6 +1208,8 @@ function drawObject(size, pos, tool) {
   }
 
   const item = addObject(tempItem);
+
+  console.log('IndexPage2.vue->drawObject:', item, appState.value.items);
 
   if (["Value", "Icon", "Switch"].includes(tool.name)) {
     linkT3EntryDialog.value.active = true;
@@ -2009,6 +1710,8 @@ function drawWeldObjectCanvas(selectedItems) {
   const transY = boundingBox.minY;
   const width = boundingBox.maxX - boundingBox.minX;
   const height = boundingBox.maxY - boundingBox.minY;
+
+  // console.log('IndexPage.vue->drawWeldObjectCanvas->boundingBox', boundingBox, transX, transY, width, height);
 
   const title = selectedItems.map((item) => item?.type ?? "").join("-");
   let previous = selectedItems[0].zindex;
@@ -2612,7 +2315,12 @@ function lockToggle() {
   }
 
   // Update the document area position based on the lock state
-  restDocumentAreaPosition();
+  // restDocumentAreaPosition();
+  ResetLeftPanel(locked.value);
+}
+
+function slideZoom(type, val) {
+  T3000Util.HvacLog("slideZoom=>type,val", type, val);
 }
 
 function restDocumentAreaPosition(pzXY) {
@@ -2626,10 +2334,17 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+  documentAreaPosition.value.leftPanelWidth = locked.value ? "0px" : "105px";
+
+  console.log("IndexPage.vue -> lockToggle -> documentAreaPosition [full-area]", documentAreaPosition.value);
+  console.log('IndexPage.vue -> lockToggle -> pzXY', pzXY);
 }
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+  // console.log("IndexPage.vue -> objectClicked -> item", item);
+
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({
@@ -2977,10 +2692,8 @@ function convertObjectType(item, type) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
   drawObject(
-    //{ width: 60, height: 60 },
-    size,
+    { width: 60, height: 60 },
     {
       clientX: ev.clientX,
       clientY: ev.clientY,
@@ -3000,6 +2713,8 @@ const updateWeldModel = (weldModel, itemList) => {
 };
 
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
+  // console.log('IndexPage.vue->updateWeldModelCanvas->weldModel', weldModel, pathItemList);
+
   appState.value.items.map((item) => {
     if (
       (item.type === "Weld_General" || item.type === "Weld_Duct") &&
@@ -3028,6 +2743,7 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
+  console.log('viewportRightClick=>ev', ev);
   ev.preventDefault();
   selectTool(tools[0]);
   if (isDrawing.value) {
@@ -3038,8 +2754,7 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000Util.ClearItemsWithZeroWidth(appState);
-    T3000Util.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    appState.value.items = appState.value.items.filter((item) => !(item.type === "Int_Ext_Wall" && item.width === 0));
   }
 }
 

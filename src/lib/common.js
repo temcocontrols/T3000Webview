@@ -26,11 +26,11 @@ export const getEntryRange = (item) => {
       );
       range = !item.digital_analog
         ? customRanges.find(
-          (i) => i.type === "digital" && i.index === item.range
-        )
+            (i) => i.type === "digital" && i.index === item.range
+          )
         : customRanges.find(
-          (i) => i.type === "analog" && i.index === item.range
-        );
+            (i) => i.type === "analog" && i.index === item.range
+          );
 
       // If the range is still not found and the range ID is greater than 100, assume it is a custom range
       if (!range && item.range > 100) {
@@ -64,7 +64,14 @@ const gaugeDefautColors = [
   { offset: 100, color: "#fd666d" },
 ];
 
-export const toolsCategories = ["Basic", "Pipe", "Duct", "Room", "Metrics"];
+export const toolsCategories = [
+  "Basic",
+  "General",
+  "Pipe",
+  "Duct",
+  "Room",
+  "Metrics",
+];
 
 export const tools = [
   {
@@ -112,62 +119,86 @@ export const tools = [
       },
     },
   },
-  // {
-  //   name: "G_Rectangle",
-  //   label: "Rectangle",
-  //   icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Circle",
-  //   label: "Circle",
-  //   icon: "svguse:icons.svg#g_circle|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Step",
-  //   label: "Step",
-  //   icon: "svguse:icons.svg#g_step|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
-  // {
-  //   name: "G_Hexagon",
-  //   label: "Hexagon",
-  //   icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
-  //   cat: ["General"],
-  //   settings: {
-  //     bgColor: {
-  //       value: "#659dc5",
-  //       type: "color",
-  //       label: "Background Color",
-  //       id: 1,
-  //     },
-  //   },
-  // },
+  {
+    name: "G_Rectangle",
+    label: "Rectangle",
+    icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "G_Circle",
+    label: "Circle",
+    icon: "svguse:icons.svg#g_circle|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "G_Step",
+    label: "Step",
+    icon: "svguse:icons.svg#g_step|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "G_Hexagon",
+    label: "Hexagon",
+    icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
+    cat: ["General"],
+    settings: {
+      bgColor: {
+        value: "#000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
   {
     name: "Duct",
     label: "Duct",
@@ -851,6 +882,33 @@ export const tools = [
     },
   },
   {
+    name: "Int_Ext_Wall",
+    label: "Interior / Exterior Wall",
+    icon: "svguse:icons.svg#int_ext_wall",
+    cat: ["Room"],
+    height: 10,
+    settings: {
+      bgColor: {
+        value: "#000",
+        type: "color",
+        label: "Background Color",
+        id: 1,
+      },
+      strokeColor: {
+        value: "#000",
+        type: "color",
+        label: "Stroke Color",
+        id: 2,
+      },
+      strokeWidth: {
+        value: 19.5,
+        type: "number",
+        label: "Stroke width",
+        id: 3,
+      },
+    },
+  },
+  {
     name: "RoomHumidity",
     label: "Room Humidity",
     icon: "svguse:icons.svg#room-humidity",
@@ -902,8 +960,8 @@ export const tools = [
         label: "In alarm",
         id: 3,
       },
-    }
-  }
+    },
+  },
 ];
 
 export const icons = [
@@ -1730,7 +1788,7 @@ export function getObjectActiveValue(item) {
         (!analog &&
           ((item.t3Entry?.control === 1 && !range.direct) ||
             (item.t3Entry?.control === 0 && range.direct))) ||
-          (analog && item.t3Entry?.value > 0)
+        (analog && item.t3Entry?.value > 0)
           ? true
           : false;
     }

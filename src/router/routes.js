@@ -12,6 +12,22 @@ const routes = [
     ],
   },
   {
+    path: "/hvac",
+    component: () => import("layouts/MainLayout.vue"),
+    children: [
+      {
+        path: "",
+        name: "hvac1",
+        component: () => import("pages/HvacDrawer/IndexPage2.vue"),
+      },
+      {
+        path: "t2",
+        name: "hvac2",
+        component: () => import("pages/HvacDrawer/IndexPage3.vue"),
+      },
+    ],
+  },
+  {
     path: "/apps-library",
     component: () => import("layouts/AppsLibLayout.vue"),
     children: [

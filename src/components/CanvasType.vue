@@ -3,29 +3,20 @@
 
 -->
 <template>
-  <div
-    class="moveable-item-canvas flex justify-center object-container"
-    :class="{
-      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-        item.type
-      ),
-      'overflow-hidden': item.type === 'Text',
-      [item.type]: item.type,
-      'with-bg': item.settings.bgColor,
-      'with-title':
-        item.settings.title ||
-        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
-    }"
-  >
+  <div class="moveable-item-canvas flex justify-center object-container" :class="{
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
+      item.type
+    ),
+    'overflow-hidden': item.type === 'Text',
+    [item.type]: item.type,
+    'with-bg': item.settings.bgColor,
+    'with-title':
+      item.settings.title ||
+      (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+  }">
     {{ item.width }} x {{ item.height }}
-    <canvas
-      :id="`myCanvas${item.id}`"
-      class="canvas-viewport-wrapper"
-      v-bind:width="item.width"
-      v-bind:height="item.height"
-      resize
-      stats
-    ></canvas>
+    <canvas ref="canvas" :id="`myCanvas${item.id}`" class="canvas-viewport-wrapper" :width="item.width"
+      :height="item.height" resize stats></canvas>
   </div>
   <!-- <div style="width: 100vw">
     {{ item }}
@@ -297,11 +288,9 @@
 </template>
 
 <script>
-import { defineComponent, computed, onMounted, ref } from "vue";
+import { defineComponent, computed, onMounted, watch, ref } from "vue";
 import { getEntryRange } from "src/lib/common";
-import * as Paper from "paper";
-import { iteratee } from "lodash";
-import { store } from "quasar/wrappers";
+import paper from "paper";
 
 // import DuctEl from "./ObjectTypes/Duct.vue";
 // import FanEl from "./ObjectTypes/Fan.vue";
@@ -435,12 +424,12 @@ export default defineComponent({
       return item.type === "Gauge"
         ? item.settings.colors.map((i) => [i.offset / 100, i.color])
         : item.settings.colors.map((i, index) => {
-            return {
-              from: index ? item.settings.colors[index - 1].offset : 0,
-              to: i.offset,
-              color: [i.color],
-            };
-          });
+          return {
+            from: index ? item.settings.colors[index - 1].offset : 0,
+            to: i.offset,
+            color: [i.color],
+          };
+        });
     });
 
     function changeValue(type) {
@@ -507,288 +496,302 @@ export default defineComponent({
       emit("updateWeldModel", weldModel, itemList);
     };
 
-    const item = computed(() => {
-      return props.item;
-    });
+    // const canvasContainer = ref(null);
+    const canvas = ref(null);
+    // const tool = ref(null);
+    paper.settings.insertItems = false;
+    // const project = new Paper.Project(canvas.value);
+
+    const drawObject = () => {
+      // const canvas = document.getElementById(`myCanvas${props.item.id}`);
+
+      const circle = new paper.Path.Circle({
+        center: [80, 50],
+        radius: 30,
+        fillColor: "red",
+      });
+
+      paper.view.draw();
+      // project.activeLayer.addChild(circle);
+    };
 
     onMounted(() => {
-      console.log("CanvasType.vue -> onMounted | props.item", props.item);
-      console.log("CanvasType.vue -> onMounted | props", props);
-      console.log("CanvasType.vue -> onMounted | item", item);
+      paper.setup(canvas.value);
 
-      const canvas = document.getElementById(`myCanvas${props.item.id}`);
+      paper.view.onResize = function (event) {
+        // console.log(
+        //   "CanvasType.vue -> onMounted | Paper.view.onResize event",
+        //   event
+        // );
+      };
 
-      canvas.addEventListener("click", (event) => {
-        console.log("CanvasType.vue -> onMounted | canvas clicked", event);
-        emit("objectClicked", event);
-      });
-
-      canvas.addEventListener("dblclick", (event) => {
-        console.log(
-          "CanvasType.vue -> onMounted | canvas double clicked",
-          event
-        );
-      });
-
-      canvas.addEventListener("mousemove", (event) => {
-        console.log("CanvasType.vue -> onMounted | canvas mouse move", event);
-      });
-
-      canvas.addEventListener("mouseup", (event) => {
-        console.log("CanvasType.vue -> onMounted | canvas mouse up", event);
-      });
-
-      canvas.addEventListener("mousedown", (event) => {
-        console.log("CanvasType.vue -> onMounted | canvas mouse down", event);
-      });
-
-      canvas.addEventListener("resize", (event) => {
-        console.log("CanvasType.vue -> onMounted | canvas resize", event);
-      });
-
-      console.log("canvas", canvas);
-
-      // Prevent automatic drawing of objects on the canvas if the path has been defined
-      Paper.settings.insertItems = false;
-      const project = new Paper.Project(canvas);
-      const tool = new Paper.Tool();
-
-      // Paper.setup(canvas);
-
-      console.log("CanvasType.vue -> onMounted | props", props);
-
-      console.log(
-        "CanvasType.vue -> onMounted | paper,project",
-        Paper,
-        project
-      );
-
-      console.log("item", props.item);
-
-      if (props.item.type === "G_Circle") {
-        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
-
-        // Example of drawing a simple circle
-        const circle = new Paper.Path.Circle({
-          point: [0, 0],
-          radius: 20,
-          fillColor: "red",
-          selected: true,
-        });
-
-        project.activeLayer.addChild(circle);
-        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
-      }
-
-      if (props.item.type === "G_Rectangle") {
-        console.log("CanvasType.vue -> onMounted | Weld item", props.item);
-
-        // Example of drawing a simple circle
-        var square = new Paper.Path.Rectangle({
-          point: [0, 0],
-          size: [props.item.width - 10, props.item.height - 10],
-          fillColor: "#f2d3d3",
-          strokeColor: "yellow",
-          strokeWidth: 5,
-          name: "originals-Square-Rectangle",
-          selected: true,
-        });
-
-        console.log("width,height", props.item.width, props.item.height);
-
-        square.onMouseDown = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          console.log(
-            "CanvasType.vue -> onMounted | square.onMouseDown",
-            event
-          );
-          square.fillColor = "red";
-          // square.dragging = true;
-        };
-
-        square.onDoubleClick = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          console.log(
-            "CanvasType.vue -> onMounted | square.onDoubleClick",
-            event
-          );
-          // square.fillColor = "yellow";
-        };
-
-        square.onClick = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          console.log("CanvasType.vue -> onMounted | square.onClick", event);
-          // square.fillColor = "yellow";
-        };
-
-        Paper.view.onDoubleClick = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view Double clicked",
-            event
-          );
-          // square.fillColor = "yellow";
-        };
-
-        Paper.view.onMouseMove = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          // if (square.dragging) {
-          //   square.position = event.point;
-          // }
-          // console.log(
-          //   "CanvasType.vue -> onMounted | Paper.view Mouse Move event",
-          //   event
-          // );
-        };
-
-        Paper.view.onMouseUp = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          // square.dragging = false;
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view Mouse Up event",
-            event
-          );
-        };
-
-        Paper.view.onClick = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view Click event",
-            event
-          );
-        };
-
-        Paper.view.onResize = function (event) {
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view.onResize event",
-            event
-          );
-        };
-
-        Paper.view.on("resize", function (event) {
-          console.log(
-            "CanvasType.vue -> onMounted | Paper.view Resize event",
-            event
-          );
-        });
-
-        project.view.on("resize", function (event) {
-          console.log(
-            "CanvasType.vue -> onMounted | project Resize event",
-            event
-          );
-        });
-
-        Paper.view.onFrame = function (event) {
-          // if (event.stopPropagation) {
-          //   event.stopPropagation();
-          // } else {
-          //   event.cancelBubble = true;
-          // }
-          // console.log("CanvasType.vue -> onMounted | Frame event", event);
-          // console.log(
-          //   "CanvasType.vue -> onMounted | Frame event",
-          //   props.item.width,
-          //   props.item.height
-          // );
-          // if (square.dragging) {
-          //   square.position = event.point;
-          // }
-          // updateShapes();
-          // console.log(
-          //   "CanvasType.vue -> onMounted | Frame event",
-          //   project.layers,
-          //   project.layers[0].children
-          // );
-        };
-
-        project.activeLayer.addChild(square);
-        console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
-      }
-      //Paper.view.draw();
-
-      // // 动态更新图像大小和位置
-      // function updateShapes() {
-      //   // var bounds = rect.bounds;
-      //   //image.position = bounds.center;
-      //   console.log("CanvasType.vue -> onMounted | updateShapes", square);
-
-      //   square.fillColor = props.item.settings.bgColor;
-      //   // square.scale(1, 1);
-      //   // project.view.draw();
-      // }
-
-      // project.view.on("resize", function (event) {
-      //   console.log(
-      //     "CanvasType.vue -> onMounted | project Resize event",
-      //     event
-      //   );
-      //   updateShapes();
-      // });
-
-      // Paper.view.onResize = function (event) {
-      //   console.log(
-      //     "CanvasType.vue -> onMounted | Paper.view.onResize event",
-      //     event
-      //   );
-      //   updateShapes();
-      // };
-
-      //   Paper.view.onFrame = function (event) {
-      //     // if (event.stopPropagation) {
-      //     //   event.stopPropagation();
-      //     // } else {
-      //     //   event.cancelBubble = true;
-      //     // }
-      //     // console.log("CanvasType.vue -> onMounted | Frame event", event);
-      //     // console.log(
-      //     //   "CanvasType.vue -> onMounted | Frame event",
-      //     //   props.item.width,
-      //     //   props.item.height
-      //     // );
-      //     // if (square.dragging) {
-      //     //   square.position = event.point;
-      //     // }
-      //     updateShapes();
-      //     // console.log(
-      //     //   "CanvasType.vue -> onMounted | Frame event",
-      //     //   project.layers,
-      //     //   project.layers[0].children
-      //     // );
-      //   };
+      drawObject();
     });
 
-    const canvasClicked = (event) => {
-      console.log("Canvas Type -> canvasClicked | event", event);
-    };
+    // const resizeCanvas = () => {
+    //   const ctx = canvas.value.getContext("2d");
+    //   const dpr = window.devicePixelRatio || 1;
+
+    //   canvas.value.width = props.canvasWidth;
+    //   canvas.value.height = props.canvasHeight;
+    //   canvas.value.style.backgroundColor = "#f0f";
+
+    //   ctx.scale(dpr, dpr);
+    //   // Resize the red circle to fill the bounds of the view:
+    //   circle.fitBounds(Paper.view.bounds, true);
+
+    //   console.log(
+    //     "Canvas resized-----------",
+    //     props.canvasWidth * dpr,
+    //     props.canvasHeight * dpr
+    //   );
+    // };
+
+    // watch(
+    //   () => [props.item.width, props.item.height],
+    //   ([newWidth, newHeight], [oldWidth, oldHeight]) => {
+    //     if (newWidth !== oldWidth || newHeight !== oldHeight) {
+    //       resizeCanvas();
+    //     }
+    //   }
+    // );
+
+    // console.log("CanvasType.vue -> onMounted | props.item", props.item);
+    // console.log("CanvasType.vue -> onMounted | props", props);
+    // console.log("CanvasType.vue -> onMounted | item", item);
+    // const canvas = document.getElementById(`myCanvas${props.item.id}`);
+    // canvas.addEventListener("click", (event) => {
+    //   console.log("CanvasType.vue -> onMounted | canvas clicked", event);
+    //   emit("objectClicked", event);
+    // });
+    // canvas.addEventListener("dblclick", (event) => {
+    //   console.log(
+    //     "CanvasType.vue -> onMounted | canvas double clicked",
+    //     event
+    //   );
+    // });
+    // canvas.addEventListener("mousemove", (event) => {
+    //   console.log("CanvasType.vue -> onMounted | canvas mouse move", event);
+    // });
+    // canvas.addEventListener("mouseup", (event) => {
+    //   console.log("CanvasType.vue -> onMounted | canvas mouse up", event);
+    // });
+    // canvas.addEventListener("mousedown", (event) => {
+    //   console.log("CanvasType.vue -> onMounted | canvas mouse down", event);
+    // });
+    // canvas.addEventListener("resize", (event) => {
+    //   console.log("CanvasType.vue -> onMounted | canvas resize", event);
+    // });
+    // console.log("canvas", canvas);
+    // // Prevent automatic drawing of objects on the canvas if the path has been defined
+    // Paper.settings.insertItems = false;
+    // const project = new Paper.Project(canvas);
+    // const tool = new Paper.Tool();
+    // // Paper.setup(canvas);
+    // console.log("CanvasType.vue -> onMounted | props", props);
+    // console.log(
+    //   "CanvasType.vue -> onMounted | paper,project",
+    //   Paper,
+    //   project
+    // );
+    // console.log("item", props.item);
+    // if (props.item.type === "G_Circle") {
+    //   console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+    //   // Example of drawing a simple circle
+    //   const circle = new Paper.Path.Circle({
+    //     point: [0, 0],
+    //     radius: 20,
+    //     fillColor: "red",
+    //     selected: true,
+    //   });
+    //   project.activeLayer.addChild(circle);
+    //   console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+    // }
+    // if (props.item.type === "G_Rectangle") {
+    //   console.log("CanvasType.vue -> onMounted | Weld item", props.item);
+    //   // Example of drawing a simple circle
+    //   var square = new Paper.Path.Rectangle({
+    //     point: [0, 0],
+    //     size: [props.item.width - 10, props.item.height - 10],
+    //     fillColor: "#f2d3d3",
+    //     strokeColor: "yellow",
+    //     strokeWidth: 5,
+    //     name: "originals-Square-Rectangle",
+    //     selected: true,
+    //   });
+    //   console.log("width,height", props.item.width, props.item.height);
+    //   square.onMouseDown = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | square.onMouseDown",
+    //       event
+    //     );
+    //     square.fillColor = "red";
+    //     // square.dragging = true;
+    //   };
+    //   square.onDoubleClick = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | square.onDoubleClick",
+    //       event
+    //     );
+    //     // square.fillColor = "yellow";
+    //   };
+    //   square.onClick = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     console.log("CanvasType.vue -> onMounted | square.onClick", event);
+    //     // square.fillColor = "yellow";
+    //   };
+    //   Paper.view.onDoubleClick = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | Paper.view Double clicked",
+    //       event
+    //     );
+    //     // square.fillColor = "yellow";
+    //   };
+    //   Paper.view.onMouseMove = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     // if (square.dragging) {
+    //     //   square.position = event.point;
+    //     // }
+    //     // console.log(
+    //     //   "CanvasType.vue -> onMounted | Paper.view Mouse Move event",
+    //     //   event
+    //     // );
+    //   };
+    //   Paper.view.onMouseUp = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     // square.dragging = false;
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | Paper.view Mouse Up event",
+    //       event
+    //     );
+    //   };
+    //   Paper.view.onClick = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | Paper.view Click event",
+    //       event
+    //     );
+    //   };
+    //   Paper.view.onResize = function (event) {
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | Paper.view.onResize event",
+    //       event
+    //     );
+    //   };
+    //   Paper.view.on("resize", function (event) {
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | Paper.view Resize event",
+    //       event
+    //     );
+    //   });
+    //   project.view.on("resize", function (event) {
+    //     console.log(
+    //       "CanvasType.vue -> onMounted | project Resize event",
+    //       event
+    //     );
+    //   });
+    //   Paper.view.onFrame = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     // console.log("CanvasType.vue -> onMounted | Frame event", event);
+    //     // console.log(
+    //     //   "CanvasType.vue -> onMounted | Frame event",
+    //     //   props.item.width,
+    //     //   props.item.height
+    //     // );
+    //     // if (square.dragging) {
+    //     //   square.position = event.point;
+    //     // }
+    //     // updateShapes();
+    //     // console.log(
+    //     //   "CanvasType.vue -> onMounted | Frame event",
+    //     //   project.layers,
+    //     //   project.layers[0].children
+    //     // );
+    //   };
+    //   project.activeLayer.addChild(square);
+    //   console.log("CanvasType.vue -> onMounted | Paper.view", Paper.view);
+    // }
+    //Paper.view.draw();
+    // // 动态更新图像大小和位置
+    // function updateShapes() {
+    //   // var bounds = rect.bounds;
+    //   //image.position = bounds.center;
+    //   console.log("CanvasType.vue -> onMounted | updateShapes", square);
+    //   square.fillColor = props.item.settings.bgColor;
+    //   // square.scale(1, 1);
+    //   // project.view.draw();
+    // }
+    // project.view.on("resize", function (event) {
+    //   console.log(
+    //     "CanvasType.vue -> onMounted | project Resize event",
+    //     event
+    //   );
+    //   updateShapes();
+    // });
+    // Paper.view.onResize = function (event) {
+    //   console.log(
+    //     "CanvasType.vue -> onMounted | Paper.view.onResize event",
+    //     event
+    //   );
+    //   updateShapes();
+    // };
+    //   Paper.view.onFrame = function (event) {
+    //     // if (event.stopPropagation) {
+    //     //   event.stopPropagation();
+    //     // } else {
+    //     //   event.cancelBubble = true;
+    //     // }
+    //     // console.log("CanvasType.vue -> onMounted | Frame event", event);
+    //     // console.log(
+    //     //   "CanvasType.vue -> onMounted | Frame event",
+    //     //   props.item.width,
+    //     //   props.item.height
+    //     // );
+    //     // if (square.dragging) {
+    //     //   square.position = event.point;
+    //     // }
+    //     updateShapes();
+    //     // console.log(
+    //     //   "CanvasType.vue -> onMounted | Frame event",
+    //     //   project.layers,
+    //     //   project.layers[0].children
+    //     // );
+    //   };
 
     return {
       range,
@@ -798,7 +801,7 @@ export default defineComponent({
       refresh,
       objectRef,
       updateWeldModel,
-      canvasClicked,
+      canvas,
     };
   },
 });
@@ -836,6 +839,7 @@ export default defineComponent({
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
 }
+
 .moveable-item.Duct {
   background-color: transparent;
 }
@@ -913,18 +917,22 @@ export default defineComponent({
 .moveable-item.Switch.with-bg .object-title {
   background-color: transparent;
 }
+
 .moveable-item.link {
   cursor: pointer;
 }
+
 .img-object {
   max-width: none;
   width: 100%;
 }
+
 .up-btn {
   display: none;
   bottom: 100%;
   z-index: 1;
 }
+
 .down-btn {
   display: none;
   top: 100%;
@@ -935,10 +943,12 @@ export default defineComponent({
 .moveable-item.Switch .up-btn {
   bottom: calc(100% + 5px);
 }
+
 .moveable-item.Icon .down-btn,
 .moveable-item.Switch .down-btn {
   top: calc(100% + 3px);
 }
+
 .object-title:hover .up-btn,
 .object-title:hover .down-btn {
   display: inline-flex;
