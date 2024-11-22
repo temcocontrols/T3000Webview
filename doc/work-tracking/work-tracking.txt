@@ -100,3 +100,8 @@ mouse select, multiple select, drag events.
 
 2024-11-20
 1. Continue to implement updates to the vue-moveable library.
+
+2024-11-21
+1. continue to update the library.
+2. small updates for new wall type.
+3. clean up code and prepare for version release.
