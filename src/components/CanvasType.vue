@@ -519,10 +519,10 @@ export default defineComponent({
       paper.setup(canvas.value);
 
       paper.view.onResize = function (event) {
-        console.log(
-          "CanvasType.vue -> onMounted | Paper.view.onResize event",
-          event
-        );
+        // console.log(
+        //   "CanvasType.vue -> onMounted | Paper.view.onResize event",
+        //   event
+        // );
       };
 
       drawObject();

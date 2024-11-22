@@ -113,7 +113,7 @@ export default {
           </svg>
           `;
       const step = loadSvgString(svgStr);
-      console.log('CanvasShape.vue->gStep', step);
+      // console.log('CanvasShape.vue->gStep', step);
       return step;
     }
 
@@ -134,7 +134,7 @@ export default {
          </svg>
         `;
       const step = loadSvgString(svgStr);
-      console.log('CanvasShape.vue->gStep', step);
+      // console.log('CanvasShape.vue->gStep', step);
       return step;
     }
 
@@ -147,7 +147,7 @@ export default {
       const centerY = (height / 2) + trsXY[1];
       */
 
-      console.log('CanvasShape.vue->gDuct|settings', settings.bgColor, settings.fillColor);
+      // console.log('CanvasShape.vue->gDuct|settings', settings.bgColor, settings.fillColor);
 
       const path = new paper.Path({
         segments: pathPoints,
@@ -1137,14 +1137,14 @@ export default {
 
       const crossPointIndices = findCrossPointIndices(crossPoints, boolOptSegments);
 
-      console.log('CanvasShape.vue->findCrossRelatedPoints|crossPointIndices', crossPointIndices);
+      // console.log('CanvasShape.vue->findCrossRelatedPoints|crossPointIndices', crossPointIndices);
 
       const segmentsBetweenCrossPoints = [];
       for (let i = crossPointIndices.length - 1; i > 0; i -= 2) {
         const startIndex = crossPointIndices[i].index;
         const endIndex = crossPointIndices[i - 1].index;
 
-        console.log('CanvasShape.vue->findCrossRelatedPoints|startIndex, endIndex', startIndex, endIndex);
+        // console.log('CanvasShape.vue->findCrossRelatedPoints|startIndex, endIndex', startIndex, endIndex);
         const segment = [];
         for (let k = startIndex; k <= endIndex; k++) {
           segment.push(boolOptSegments[k]);
