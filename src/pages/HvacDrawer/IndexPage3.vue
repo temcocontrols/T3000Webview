@@ -143,7 +143,7 @@
             @tool-dropped="toolDropped" />
         </div>
         <div id="work-area" class="main-panel">
-          <div id="document-area">
+          <div id="document-area" :onwheel="T3000.App.WorkAreaMouseWheel">
             <div id="c-ruler" class="document-ruler-corner">
               c-ruler
             </div>
@@ -153,14 +153,14 @@
             <div id="v-ruler" class="document-ruler-left">
               v-ruler
             </div>
-            <div id="svg-area" class="svg-area">
+            <div id="svg-area" class="svg-area" :onwheel="T3000.App.WorkAreaMouseWheel">
               svg area
             </div>
           </div>
 
           <div id="doc-toolbar" class="doc-toolbar">
             <!-- bottom tool bar -->
-            <BottomToolbar @slideZoom="slideZoom">
+            <BottomToolbar @bottomSliderbarEvent="T3000.App.BottomSliderbarEvent">
             </BottomToolbar>
           </div>
 
@@ -303,10 +303,9 @@ import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
 
-//
-import { T3000 } from "src/lib/T3000";
-import { T3000Util } from "src/lib/T3000Util";
-//
+
+import T3000 from "src/lib/T3000";
+
 
 // Meta information for the application
 // Set the meta information
@@ -2316,12 +2315,12 @@ function lockToggle() {
 
   // Update the document area position based on the lock state
   // restDocumentAreaPosition();
-  ResetLeftPanel(locked.value);
+  T3000.App.ResetLeftPanel(locked.value);
 }
 
-function slideZoom(type, val) {
-  T3000Util.HvacLog("slideZoom=>type,val", type, val);
-}
+// function slideZoom(type, val) {
+//   T3000.Utils.Log("slideZoom=>type,val", type, val);
+// }
 
 function restDocumentAreaPosition(pzXY) {
   const div = document.querySelector('.full-area');

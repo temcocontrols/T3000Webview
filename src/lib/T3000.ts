@@ -1,19 +1,10 @@
 // T3000
+import Models from "./T3000.Models";
+import Utils from "./T3000.Utils";
+import App from "./T3000.App";
 
-const Default = {
-  Environment: "dev",
-  HvacLog: console.log,
-};
-
-const DocumentAreaModel = {
-  LEFT_PANEL_ID: "left-panel",
-  LEFT_PANEL_WIDTH: 105,
-
-  WORK_AREA_ID: "work-area",
-  WORK_AREA_PADDING_LEFT: 105,
-};
-
-export const T3000 = {
-  Default: Default,
-  DocumentAreaModel: DocumentAreaModel,
+export default {
+  Models,
+  Utils,
+  App,
 };

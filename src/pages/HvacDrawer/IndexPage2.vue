@@ -89,9 +89,12 @@
   background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px);
+  /* width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
+  height: calc(100vh - 60px); */
   /* overflow: hidden scroll; */
+
+  width: 600px;
+  height: 300px;
   overflow: scroll;
 }
 
@@ -103,11 +106,14 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  /* background-color: rgb(7, 115, 115); */
+  background-color: #8db4db;
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
-  width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height");
+  /* width: v-bind("documentAreaPosition.wiewPortWH.width");
+  height: v-bind("documentAreaPosition.wiewPortWH.height"); */
+
+  width: 1000px;
+  height: 1000px;
 }
 
 .default-svg {
@@ -608,7 +614,7 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
-import { T3000Util } from "src/lib/T3000Util";
+import T3000 from "src/lib/T3000";
 
 // Meta information for the application
 // Set the meta information
@@ -757,13 +763,14 @@ onMounted(() => {
       return shouldIgnore;
     },
     // Add the focal point for zooming to be the center of the viewport
-    transformOrigin: { x: 0.5, y: 0.5 },
+    // transformOrigin: { x: 0.5, y: 0.5 },
   });
 
   // Update the viewport transform on panzoom transform event
   panzoomInstance.on("transform", function (e) {
 
     const pzTrs = e.getTransform();
+    T3000.Utils.Log("Panzoom transform", pzTrs);
     // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
     // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
@@ -979,7 +986,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
-  // T3000Util.HvacLog("Viewport mouse moved", e);
+  // T3000.Utils.Log("Viewport mouse moved", e);
 
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
@@ -1131,7 +1138,7 @@ function onDragGroupEnd(e) {
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
-  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
+  // T3000.Utils.Log('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
   const target = e.inputEvent.target;
   if (
     moveable.value.isMoveableElement(target) ||
@@ -1145,7 +1152,7 @@ function onSelectoDragStart(e) {
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
-  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
+  // T3000.Utils.Log('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
   if (e.selected && !e.inputEvent.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
@@ -1189,7 +1196,7 @@ function onSelectoSelectEnd(e) {
   refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
-    T3000Util.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
   }, 100);
 }
 
@@ -1245,8 +1252,8 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].height = e.lastEvent.height;
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
-  // T3000Util.HvacLog('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000Util.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+  // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
+  T3000.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();
@@ -1419,7 +1426,7 @@ function addLibItem(items, size, pos) {
 
 // Ends a selecto drag event and handles object drawing based on tool type
 function onSelectoDragEnd(e) {
-  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
+  // T3000.Utils.Log('2 onSelectoDragEnd', e);
 
   const size = { width: e.rect.width, height: e.rect.height };
   const pos = {
@@ -3038,8 +3045,8 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000Util.ClearItemsWithZeroWidth(appState);
-    T3000Util.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    T3000.App.ClearItemsWithZeroWidth(appState);
+    T3000.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 

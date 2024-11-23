@@ -1,36 +1,27 @@
+import Models from "./T3000.Models";
+import Utils from "./T3000.Utils";
 import { cloneDeep } from "lodash";
-import { T3000 } from "./T3000";
-import { is } from "quasar";
-
-const HvacLog = (e, ...t) => {
-  if ("prd" !== T3000.Default.Environment.toLowerCase()) {
-    if (t == null || t.length === 0) {
-      T3000.Default.HvacLog.apply(console, [e]);
-    } else {
-      T3000.Default.HvacLog.apply(console, [e].concat(t));
-    }
-  }
-};
+import SDJS from "./SDJS";
 
 const ResetLeftPanel = (isLocked) => {
   // Hide or show the left panel based on the isLocked flag
   const leftPanel = document.getElementById(
-    T3000.DocumentAreaModel.LEFT_PANEL_ID
+    Models.DocumentAreaModel.LEFT_PANEL_ID
   );
-  const newWidth = isLocked ? 0 : T3000.DocumentAreaModel.LEFT_PANEL_WIDTH;
+  const newWidth = isLocked ? 0 : Models.DocumentAreaModel.LEFT_PANEL_WIDTH;
 
   leftPanel.setAttribute("style", `width: ${newWidth}px`);
 
   // Expand the document area to fill the space
   const workArea = document.getElementById(
-    T3000.DocumentAreaModel.WORK_AREA_ID
+    Models.DocumentAreaModel.WORK_AREA_ID
   );
   const newPaddingLeft = isLocked
     ? 0
-    : T3000.DocumentAreaModel.WORK_AREA_PADDING_LEFT;
+    : Models.DocumentAreaModel.WORK_AREA_PADDING_LEFT;
   workArea.setAttribute("style", `padding-left: ${newPaddingLeft}px`);
 
-  HvacLog(
+  Utils.Log(
     "ResetLeftPanel=>",
     `isLocked=${isLocked}`,
     `newWidth=${newWidth}`,
@@ -39,7 +30,7 @@ const ResetLeftPanel = (isLocked) => {
 };
 
 const ResetZoom = () => {
-  HvacLog("ResetZoom=>");
+  Utils.Log("ResetZoom=>");
 };
 
 const UpdateExteriorWallStroke = (appState, itemIndex, resizedHeight) => {
@@ -118,13 +109,25 @@ const SetWallDimensionsVisible = (type, isDrawing, appState, isShow) => {
   }
 };
 
-export const T3000Util = {
-  HvacLog: HvacLog,
-  ResetLeftPanel: ResetLeftPanel,
-  ResetZoom: ResetZoom,
-  UpdateExteriorWallStroke: UpdateExteriorWallStroke,
-  GetExteriorWallHeight: GetExteriorWallHeight,
-  GetExteriorWallStrokeWidth: GetExteriorWallStrokeWidth,
-  ClearItemsWithZeroWidth: ClearItemsWithZeroWidth,
-  SetWallDimensionsVisible: SetWallDimensionsVisible,
+// Document onwheel event handler
+const WorkAreaMouseWheel = (e) => {
+  Utils.Log("WorkAreaMouseWheel=>", e);
+  SDJS.App.SDJS_LM_WorkAreaMouseWheel(e);
+};
+
+// Bottom toolbar silder event handler
+const BottomSliderbarEvent = (type, value) => {
+  Utils.Log("BottomSliderbarEvent=>", type, value);
+};
+
+export default {
+  ResetLeftPanel,
+  ResetZoom,
+  UpdateExteriorWallStroke,
+  GetExteriorWallHeight,
+  GetExteriorWallStrokeWidth,
+  ClearItemsWithZeroWidth,
+  SetWallDimensionsVisible,
+  WorkAreaMouseWheel,
+  BottomSliderbarEvent,
 };

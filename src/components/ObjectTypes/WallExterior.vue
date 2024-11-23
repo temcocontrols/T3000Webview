@@ -60,8 +60,7 @@
 import { defineComponent, onMounted, computed, ref, watch } from "vue";
 import { SVG } from '@svgdotjs/svg.js';
 import { color } from "echarts";
-import { T3000 } from "src/lib/T3000";
-import { T3000Util } from "src/lib/T3000Util";
+import T3000 from "src/lib/T3000";
 
 export default defineComponent({
   name: "WallExteriorEl",
@@ -148,7 +147,7 @@ export default defineComponent({
       }
 
       const refreshSvg = (newData) => {
-        // T3000Util.HvacLog('WallExteriorEl', 'refreshSvg', props.item);
+        // T3000.Utils.Log('WallExteriorEl', 'refreshSvg', props.item);
 
         svgRef.value.clear();
         svgRef.value.size(props.item.width, props.item.height + 60);
