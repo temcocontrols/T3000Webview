@@ -105,3 +105,8 @@ mouse select, multiple select, drag events.
 1. continue to update the library.
 2. small updates for new wall type.
 3. clean up code and prepare for version release.
+
+2024-11-22
+1. continued working on upgrading the library.
+2. fixed some bugs.
+3. released a new version.
