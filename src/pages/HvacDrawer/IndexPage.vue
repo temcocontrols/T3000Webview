@@ -608,7 +608,7 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
-import T3000 from "src/lib/T3000";
+import T3000 from "src/lib/T3";
 
 // Meta information for the application
 // Set the meta information

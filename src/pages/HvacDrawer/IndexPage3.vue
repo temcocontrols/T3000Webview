@@ -304,7 +304,7 @@ import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
 
 
-import T3000 from "src/lib/T3000";
+import T3000 from "src/lib/T3";
 
 
 // Meta information for the application

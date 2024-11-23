@@ -60,7 +60,7 @@
 import { defineComponent, onMounted, computed, ref, watch } from "vue";
 import { SVG } from '@svgdotjs/svg.js';
 import { color } from "echarts";
-import T3000 from "src/lib/T3000";
+import T3000 from "src/lib/T3";
 
 export default defineComponent({
   name: "WallExteriorEl",

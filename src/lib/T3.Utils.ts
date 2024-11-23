@@ -1,4 +1,4 @@
-import T3Models from "./T3000.Models";
+import T3Models from "./T3.Models";
 
 const Models = {
   Log: console.log,
