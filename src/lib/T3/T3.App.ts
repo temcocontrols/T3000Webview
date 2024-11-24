@@ -1,7 +1,7 @@
 import Models from "./T3.Models";
 import Utils from "./T3.Utils";
 import { cloneDeep } from "lodash";
-import SDJS from "./T3JS";
+import SDJS from "./JS/T3JS";
 
 const ResetLeftPanel = (isLocked) => {
   // Hide or show the left panel based on the isLocked flag

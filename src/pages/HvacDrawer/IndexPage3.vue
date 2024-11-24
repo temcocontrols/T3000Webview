@@ -304,7 +304,7 @@ import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
 
 
-import T3000 from "src/lib/T3";
+import T3000 from "src/lib/T3/T3";
 
 
 // Meta information for the application
@@ -424,6 +424,13 @@ const handleScroll = (event) => {
 
 // Lifecycle hook for component mount
 onMounted(() => {
+
+
+  // Double Test
+  T3000.T3JS.ListManager.LM.Initialize();
+
+
+
 
 
   // Set global navigation properties

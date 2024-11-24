@@ -1,8 +1,15 @@
+import gListManager from "./ListManager/ListManager";
+
+
+
 const SDJS_LM_WorkAreaMouseWheel = (e) => {
+
+  console.log("SDJS_LM_WorkAreaMouseWheel svgDoc", gListManager.LM.LMModel.svgDoc);
+
   if (!e.ctrlKey) {
-    console.log("SDJS_LM_WorkAreaMouseWheel", e);
     var t = e.clientX,
       a = e.clientY,
+      // r = gListManager.LM.LMModel.svgDoc.ConvertWindowToDocCoords(t, a);
       r = gListManager.svgDoc.ConvertWindowToDocCoords(t, a);
     if (e.deltaY > 0) {
       SDUI.Commands.MainController.Document.ZoomInandOut(false, true);

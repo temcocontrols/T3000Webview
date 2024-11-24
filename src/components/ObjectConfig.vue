@@ -47,7 +47,7 @@
             <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
             <label class="ml-2" for="bg-color-input">{{
               settings.bgColor?.label || "Background color"
-            }}</label>
+              }}</label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
             <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
@@ -77,7 +77,7 @@
                 <input type="color" id="text-color-input" v-model="item.settings[key]" />
                 <label class="ml-2" for="text-color-input">{{
                   setting.label
-                }}</label>
+                  }}</label>
               </div>
               <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
                 <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
@@ -230,7 +230,7 @@
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import { getEntryRange, icons, switchIcons, tools } from "../lib/common";
-import T3000 from "src/lib/T3";
+import T3000 from "src/lib/T3/T3";
 
 export default defineComponent({
   name: "ToolConfig",
