@@ -72,7 +72,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { QSlider } from 'quasar';
-import T3000 from 'src/lib/T3/T3';
+// import T3000 from 'src/lib/T3000';
 
 export default defineComponent({
   name: 'BottomToolbar',

@@ -230,7 +230,7 @@
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import { getEntryRange, icons, switchIcons, tools } from "../lib/common";
-import T3000 from "src/lib/T3/T3";
+import T3000 from "src/lib/T3000/T3000";
 
 export default defineComponent({
   name: "ToolConfig",
@@ -300,7 +300,7 @@ export default defineComponent({
 
     function refreshMoveable() {
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.settings.strokeWidth = T3000.App.GetExteriorWallStrokeWidth(item.value.height);
+        item.value.settings.strokeWidth = T3000.Hvac.App.GetExteriorWallStrokeWidth(item.value.height);
       }
 
       emit("refreshMoveable");
@@ -327,7 +327,7 @@ export default defineComponent({
     function updatePropsValue(key) {
       //T3000.Utils.Log("ObjectConfig=>", "updatePropsValue", "key=", key, "pros.object=", props.object, "item.value=", item.value);
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.height = T3000.App.GetExteriorWallHeight(item.value.settings.strokeWidth);
+        item.value.height = T3000.Hvac.App.GetExteriorWallHeight(item.value.settings.strokeWidth);
         emit("refreshMoveable");
       }
     }

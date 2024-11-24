@@ -1,3 +1,5 @@
+// Global Constants
+
 const Default = {
   Environment: "dev",
 };

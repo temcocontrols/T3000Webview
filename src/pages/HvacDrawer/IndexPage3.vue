@@ -143,7 +143,7 @@
             @tool-dropped="toolDropped" />
         </div>
         <div id="work-area" class="main-panel">
-          <div id="document-area" :onwheel="T3000.App.WorkAreaMouseWheel">
+          <div id="document-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
             <div id="c-ruler" class="document-ruler-corner">
               c-ruler
             </div>
@@ -153,14 +153,14 @@
             <div id="v-ruler" class="document-ruler-left">
               v-ruler
             </div>
-            <div id="svg-area" class="svg-area" :onwheel="T3000.App.WorkAreaMouseWheel">
+            <div id="svg-area" class="svg-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
               svg area
             </div>
           </div>
 
           <div id="doc-toolbar" class="doc-toolbar">
             <!-- bottom tool bar -->
-            <BottomToolbar @bottomSliderbarEvent="T3000.App.BottomSliderbarEvent">
+            <BottomToolbar @bottomSliderbarEvent="T3000.Hvac.App.BottomSliderbarEvent">
             </BottomToolbar>
           </div>
 
@@ -304,7 +304,8 @@ import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
 
 
-import T3000 from "src/lib/T3/T3";
+// import T3000 from "src/lib/T3000";
+import T3000 from 'src/lib/T3000/T3000';
 
 
 // Meta information for the application
@@ -424,14 +425,6 @@ const handleScroll = (event) => {
 
 // Lifecycle hook for component mount
 onMounted(() => {
-
-
-  // Double Test
-  T3000.T3JS.ListManager.LM.Initialize();
-
-
-
-
 
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
@@ -2322,7 +2315,7 @@ function lockToggle() {
 
   // Update the document area position based on the lock state
   // restDocumentAreaPosition();
-  T3000.App.ResetLeftPanel(locked.value);
+  T3000.Hvac.App.ResetLeftPanel(locked.value);
 }
 
 // function slideZoom(type, val) {

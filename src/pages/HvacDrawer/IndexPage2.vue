@@ -614,7 +614,7 @@ import HVGrid from "src/components/HVGrid.vue";
 import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
-import T3000 from "src/lib/T3/T3";
+import T3000 from "src/lib/T3000/T3000";
 
 // Meta information for the application
 // Set the meta information
@@ -770,7 +770,7 @@ onMounted(() => {
   panzoomInstance.on("transform", function (e) {
 
     const pzTrs = e.getTransform();
-    T3000.Utils.Log("Panzoom transform", pzTrs);
+    T3000.Hvac.Utils.Log("Panzoom transform", pzTrs);
     // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
     // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
@@ -1196,7 +1196,7 @@ function onSelectoSelectEnd(e) {
   refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
-    T3000.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
   }, 100);
 }
 
@@ -1253,7 +1253,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+  T3000.Hvac.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();
@@ -3045,8 +3045,8 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000.App.ClearItemsWithZeroWidth(appState);
-    T3000.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    T3000.Hvac.App.ClearItemsWithZeroWidth(appState);
+    T3000.Hvac.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 
