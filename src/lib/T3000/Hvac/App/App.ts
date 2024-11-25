@@ -1,6 +1,7 @@
 import HvacModels from "../Hvac.Models";
 import * as Utils from '../Hvac.Utils';
 import { cloneDeep } from "lodash";
+import Doc from "../Document/DocumentHandler";
 
 class App {
 
@@ -103,6 +104,7 @@ class App {
   WorkAreaMouseWheel = (e) => {
     Utils.Log("WorkAreaMouseWheel=>", e);
     Utils.UtilsTest(1, 2);
+    new Doc().SDJS_LM_WorkAreaMouseWheel(e);
   };
 
   // Bottom toolbar silder event handler

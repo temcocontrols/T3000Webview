@@ -153,7 +153,7 @@
             <div id="v-ruler" class="document-ruler-left">
               v-ruler
             </div>
-            <div id="svg-area" class="svg-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
+            <div id="svgarea" class="svg-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
               svg area
             </div>
           </div>
@@ -425,6 +425,9 @@ const handleScroll = (event) => {
 
 // Lifecycle hook for component mount
 onMounted(() => {
+
+
+  T3000.Hvac.UI.Initialize(); // Initialize the HVAC UI
 
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
