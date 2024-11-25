@@ -426,6 +426,7 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
+  document.addEventListener("wheel", function (event) { if (event.ctrlKey) { event.preventDefault() } }, { passive: false });
 
   T3000.Hvac.UI.Initialize(); // Initialize the HVAC UI
 

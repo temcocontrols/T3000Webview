@@ -1,9 +1,9 @@
 
 import Element from './Element';
 import * as Utils from '../Hvac.Utils';
-import * as SVG from '@svgdotjs/svg.js';
-// import SVG from '../HvacSVG.js';
-// import SVG from '../Hvac.SVG';
+// import * as SVG from '@svgdotjs/svg.js';
+
+import SVG from '../HvacSVG.js';
 
 
 class Rect extends Element {
@@ -11,13 +11,24 @@ class Rect extends Element {
 
 
   CreateElement = (element, parent) => {
+
+    console.log('Rect.CreateElement element', element);
+
     const t1 = SVG.create("g");
-    console.log('CreateElement t1', t1);
-    this.svgObj = t1;
+    console.log('Rect.CreateElement t1', t1);
+
+    const t2 = new SVG.Container(t1);
+    console.log('Rect.CreateElement t2', t2);
+
+    this.svgObj = t2;
+    console.log('Rect.CreateElement svgObj 1', this.svgObj);
+
     this.shapeElem = new SVG.Rect();
-    console.log('SDGraphics.Rect.prototype.CreateElement this.shapeElem ', this.shapeElem);
+    console.log('Rect.CreateElement shapeElem ', this.shapeElem);
+
     this.svgObj.add(this.shapeElem);
-    console.log('SDGraphics.Rect.prototype.CreateElement this.svgObj ', this.svgObj);
+    console.log('Rect.CreateElement svgObj 2', this.svgObj);
+
     this.InitElement(element, parent);
     return this.svgObj;
   }

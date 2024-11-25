@@ -105,6 +105,9 @@ class Document extends Container {
     shape.SetFillOpacity(0);
     shape.SetStrokeWidth(0);
     shape.SetSize('100in', '100in');
+
+    console.log('Document.GetDeviceInfo shape', shape, typeof (shape));
+
     this.AddElement(shape, null);
 
     let bbox = shape.GetBBox();
@@ -181,7 +184,7 @@ class Document extends Container {
     if (!e) {
       for (let i = 0; i < elementCount; i++) {
         const element = this.GetElementByIndex(i);
-        if (element instanceof /*SDGraphics.Layer*/ Layer) {
+        if (element instanceof /*Graphics.Layer*/ Layer) {
           if (element.IsScalingAllowed()) {
             element.svgObj.transform({
               scaleX: this.docInfo.docToScreenScale,

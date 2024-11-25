@@ -25,15 +25,27 @@ class Container extends Element {
     return children[e].SDGObj;
   }
 
-  AddElement = (e, t) => {
-    if (t !== undefined && this.svgObj instanceof /*SVG.Doc*/SVG.Container) {
+  AddElement = (e: any, t: any) => {
+    console.log('Container.AddElement e1 1', e.svgObj, t);
+
+
+    if (t !== undefined && this.svgObj instanceof SVG.Container) {
       t++;
     }
+
+    console.log('Container.AddElement e1 2', e.svgObj, t);
+    console.log('Container.AddElement e1 3', this.svgObj);
+
+    // debugger;
     this.svgObj.add(e.svgObj, t);
+
+    console.log('Container.AddElement e1 4', this.svgObj);
+
     if (e.svgObj.parent === this.svgObj) {
       e.parent = this;
       e.RefreshPaint(true);
     }
+
   }
 
   RemoveElement = (e) => {

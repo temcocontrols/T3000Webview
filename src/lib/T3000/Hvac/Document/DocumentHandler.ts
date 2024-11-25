@@ -72,11 +72,53 @@ class DocumentHandler {
   public rulerGuideWinPos: any;
   public rulerGuideScrollTimer: any;
   public rulerInDrag: boolean;
-  // public gListManager: any;
+  public gListManager: any;
+
+
+  public bIsInitialized: boolean;
+  public theSVGDocumentID: string;
+  public svgObjectLayer: any;
+  public svgOverlayLayer: any;
+  public svgHighlightLayer: any;
+  public svgCollabLayer: any;
+  public MainAppElement: any;
+  public WorkAreaElement: any;
+  public DocumentElement: any;
+  public WorkAreaHammer: any;
+  public DocumentElementHammer: any;
+
+
+
+  public SVGroot: any;
+  public theDragStartX: number;
+  public theDragStartY: number;
+  public theDragDeltaX: number;
+  public theDragDeltaY: number;
+  public theDragTargetID: any;
+  public theDragTargetBBox: any;
+  public theDragGotMove: boolean;
+  public theDragGotAutoResizeRight: boolean;
+  public theDragGotAutoResizeBottom: boolean;
+  public theDragGotAutoResizeOldX: any[];
+  public theDragGotAutoResizeOldY: any[];
+  public theDrawStartX: number;
+  public theDrawStartY: number;
+  public theLineDrawStartX: number;
+  public theLineDrawStartY: number;
+  public LineDrawID: number;
+  public LineDrawLineID: number;
+  public autoScrollTimerID: number;
+  public autoScrollXPos: number;
+  public autoScrollYPos: number;
+  public bInAutoScroll: boolean;
+  public textEntryTimer: any;
+  public TopLeftPastePos: any;
+  public TopLeftPasteScrollPos: any;
+
 
   constructor() {
-    // this.gListManager = new ListManager();
-
+    this.gListManager = new ListManager();
+    this.bIsInitialized = false;
 
     this.documentConfig = {
       enableSnap: true,
@@ -86,7 +128,7 @@ class DocumentHandler {
   }
 
   InitializeWorkArea = (workArea) => {
-    console.log('InitializeWorkArea', workArea);
+    console.log('DocumentHandler, InitializeWorkArea 1', workArea);
 
     // workArea = { svgAreaID: "#svgarea", documentWidth: 1000, documentHeight: 750, documentDPI: 100 }
 
@@ -117,7 +159,7 @@ class DocumentHandler {
     // this.rulerSettings.fractionaldenominator = gListManager.GetFractionDenominator();
     this.UpdateRulerVisibility();
 
-    window.addEventListener.bind("mousemove", new UI().SDJS_LM_MouseMove);
+    window.addEventListener.bind("mousemove", new UI().LM_MouseMove);
 
     this.InitSVGArea(workArea);
     this.UpdateGridVisibility();
@@ -188,21 +230,8 @@ class DocumentHandler {
     console.log('ShowCoordinates');
   }
 
-  // SDJS_LM_MouseMove = (e) => {
-  //   if (
-  //     e.clientX >= this.gListManager.svgDoc.docInfo.dispX &&
-  //     e.clientY >= this.gListManager.svgDoc.docInfo.dispY &&
-  //     e.clientX < this.gListManager.svgDoc.docInfo.dispX + this.gListManager.svgDoc.docInfo.dispWidth &&
-  //     e.clientY < this.gListManager.svgDoc.docInfo.dispY + this.gListManager.svgDoc.docInfo.dispHeight
-  //   ) {
-  //     var t = this.gListManager.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
-  //     this.gListManager.ShowXY(!0),
-  //       this.gListManager.UpdateDisplayCoordinates(null, t, null, null)
-  //   } else this.gListManager.ShowXY(!1)
-  // }
-
   InitSVGArea = (workArea) => {
-    console.log('InitSVGArea');
+    console.log('DocumentHandler, InitSVGArea 2');
 
     var t;
     if (!this.svgDoc) {
@@ -216,12 +245,12 @@ class DocumentHandler {
     this.backgroundElem.SetStrokeColor("none");
     this.backgroundElem.SetFillColor("none");
     this.backgroundElem.ExcludeFromExport(true);
-    t.SetCustomAttribute("sdjs-background", "1");
+    t.SetCustomAttribute("hvac-background", "1");
 
     t = this.svgDoc.AddLayer(this.gridLayer);
     t.AllowScaling(false);
     t.ExcludeFromExport(true);
-    t.SetCustomAttribute("sdjs-grid", "1");
+    t.SetCustomAttribute("hvac-grid", "1");
 
     t = this.svgDoc.AddLayer(this.pageDividerLayer);
     t.AllowScaling(false);
@@ -243,6 +272,372 @@ class DocumentHandler {
 
     this.backgroundElem.SetSize(this.svgDoc.docInfo.docWidth, this.svgDoc.docInfo.docHeight);
     this.svgDoc.ImageLoad_ResetRefCount();
+  }
+
+  InitSVGDocument = () => {
+    // const e = objectStore.GetObject(this.theSEDSessionBlockID).Data;
+    console.log('DocumentHandler, InitSVGDocument 3');
+
+    this.InitializeWorkArea({
+      svgAreaID: this.theSVGDocumentID,
+      documentWidth: 1000,// e.dim.x,
+      documentHeight: 1000,// e.dim.y,
+      documentDPI: 100
+    });
+
+    this.svgDoc = this.DocObject();
+    this.svgObjectLayer = this.svgDoc.AddLayer('svgObjectLayer');
+    this.svgDoc.SetDocumentLayer('svgObjectLayer');
+    this.svgOverlayLayer = this.svgDoc.AddLayer('svgOverlayLayer');
+    this.svgOverlayLayer.ExcludeFromExport(true);
+    this.svgHighlightLayer = this.svgDoc.AddLayer('svgHighlightLayer');
+    this.svgHighlightLayer.ExcludeFromExport(true);
+    this.svgCollabLayer = this.svgDoc.AddLayer('svgCollabLayer');
+    this.svgCollabLayer.ExcludeFromExport(true);
+    this.svgCollabLayer.AllowScaling(false);
+
+    this.MainAppElement = document.getElementById('mainApp');
+    this.WorkAreaElement = document.getElementById('svgarea');
+    this.DocumentElement = document.getElementById('document-area');
+
+    this.WorkAreaHammer = new Hammer(this.WorkAreaElement);
+    this.DocumentElementHammer = new Hammer(this.DocumentElement);
+
+    // this.WorkAreaHammer.on('tap', WorkAreaHammerTap);
+    // this.WorkAreaHammer.on('wheel', WorkAreaMouseWheel);
+    // this.DocumentElementHammer.on('wheel', WorkAreaMouseWheel);
+
+    // if (this.isGestureCapable) {
+    //   this.WorkAreaHammer.on('pinchin', WorkAreaHammerPinchIn);
+    //   this.WorkAreaHammer.on('pinchout', WorkAreaHammerPinchOut);
+    //   this.WorkAreaHammer.on('transformend', WorkAreaHammerPinchEnd);
+    //   this.WorkAreaHammer.on('hold', WorkAreaHold);
+    // }
+
+    // if (this.isMobilePlatform) {
+    //   if (this.isIOS) {
+    //     this.WorkAreaElement.addEventListener('gesturestart', WorkAreaIOSGesture, false);
+    //     this.WorkAreaElement.addEventListener('gesturechange', WorkAreaIOSGesture, false);
+    //     this.WorkAreaElement.addEventListener('gestureend', WorkAreaIOSGesture, false);
+    //     this.WorkAreaElement.addEventListener('orientationchange', WorkAreaOrientationChange, false);
+    //   }
+    //   this.WorkAreaTextInputProxy = $('#SDTS_TouchProxy');
+    // }
+
+    // this.WorkAreaHammer.on('dragstart', WorkAreaHammerDragStart);
+  }
+
+  Initialize = () => {
+    console.log('DocumentHandler, Initialize 4');
+
+    if (!this.bIsInitialized) {
+      this.theSVGDocumentID = '#svgarea';
+      // this.sendstate = 0;
+      // this.theRubberBand = null;
+      // this.theRubberBandStartX = 0;
+      // this.theRubberBandStartY = 0;
+      // this.theRubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
+      // this.theDragBBoxList = [];
+      // this.theDragElementList = [];
+      // this.theDragEnclosingRect = null;
+      this.theDragStartX = 0;
+      this.theDragStartY = 0;
+      this.theDragDeltaX = 0;
+      this.theDragDeltaY = 0;
+      this.theDragTargetID = null;
+      this.theDragTargetBBox = {};
+      this.theDragGotMove = false;
+      this.theDragGotAutoResizeRight = false;
+      this.theDragGotAutoResizeBottom = false;
+      this.theDragGotAutoResizeOldX = [];
+      this.theDragGotAutoResizeOldY = [];
+      // this.theNudgeDelta = 10;
+      // this.NoUndo = false;
+      // this.theActionStoredObjectID = -1;
+      // this.theActionSVGObject = null;
+      // this.theActionTriggerID = 0;
+      // this.theActionTriggerData = 0;
+      // this.theActionStartX = 0;
+      // this.theActionStartY = 0;
+      // this.theActionTableLastX = 0;
+      // this.theActionTableLastY = 0;
+      // this.theActionOldExtra = 0;
+      // this.theActionBBox = {};
+      // this.theActionNewBBox = {};
+      // this.theActionLockAspectRatio = false;
+      // this.theActionAspectRatioWidth = 0;
+      // this.theActionAspectRatioHeight = 0;
+      // this.bUseDefaultStyle = false;
+      // this.NewObjectVisible = false;
+      // this.EmptySymbolList = [];
+      // this.EmptyEMFList = [];
+      // this.AddCount = 0;
+      // this.LineStamp = false;
+      this.theDrawStartX = 0;
+      this.theDrawStartY = 0;
+      this.theLineDrawStartX = 0;
+      this.theLineDrawStartY = 0;
+      // this.FromOverlayLayer = false;
+      this.LineDrawID = -1;
+      this.LineDrawLineID = -1;
+      // this.Dynamic_Guides = null;
+      // this.theRotateKnobCenterDivisor = { x: 2, y: 2 };
+      // this.theRotateStartPoint = {};
+      // this.theRotateEndPoint = {};
+      // this.theRotateStartRotation = 0;
+      // this.theRotateObjectRadians = 0;
+      // this.theRotateEndRotation = 0;
+      // this.theRotatePivotX = 0;
+      // this.theRotatePivotY = 0;
+      // this.theRotateSnap = 5;
+      // this.enhanceRotateSnap = 45;
+      // this.theDrawShape = null;
+      // this.StampTimeout = null;
+      // this.wasClickInShape = false;
+      // this.autoScrollTimer = new GPTimer(this);
+      this.autoScrollTimerID = -1;
+      this.autoScrollXPos = 0;
+      this.autoScrollYPos = 0;
+      this.bInAutoScroll = false;
+      this.textEntryTimer = null;
+
+      this.MainAppElement = null;
+      // this.MainAppHammer = null;
+      this.WorkAreaElement = null;
+      this.WorkAreaHammer = null;
+      // this.WorkAreaTextInputProxy = null;
+      // this.theVirtualKeyboardLifterElementFrame = null;
+      // this.bTouchPanStarted = false;
+      // this.touchPanX = 0;
+      // this.touchPanY = 0;
+      // this.bIsFullScreen = false;
+      // this.TEHammer = null;
+      // this.TEWorkAreaHammer = null;
+      // this.TEClickAreaHammer = null;
+      // this.TEDecAreaHammer = null;
+      // this.TENoteAreaHammer = null;
+      // this.theSelectedListBlockID = -1;
+      // this.theSEDSessionBlockID = -1;
+      // this.theTEDSessionBlockID = -1;
+      // this.theLayersManagerBlockID = -1;
+      // this.stampCompleteCallback = null;
+      // this.stampCompleteUserData = null;
+      // this.stampHCenter = true;
+      // this.stampVCenter = true;
+      // this.stampShapeOffsetX = 0;
+      // this.stampShapeOffsetY = 0;
+      // this.stampSticky = false;
+      // this.LastOpDuplicate = false;
+      // this.NudgeOpen = false;
+      // this.NudgeX = 0;
+      // this.NudgeY = 0;
+      // this.NudgeGrowX = 0;
+      // this.NudgeGrowY = 0;
+      // this.currentModalOperation = ListManager.ModalOperations.NONE;
+      // this.FormatPainterMode = ListManager.FormatPainterModes.NONE;
+      // this.FormatPainterStyle = new UI.Resources.QuickStyle();
+      // this.FormatPainterSticky = false;
+      // this.FormatPainterText = new Graphics.Text.Formatter.DefaultStyle();
+      // this.FormatPainterParaFormat = new Graphics.Text.ParagraphFormat();
+      // this.FormatPainterArrows = null;
+      this.svgDoc = null;
+      this.svgObjectLayer = null;
+      this.svgOverlayLayer = null;
+      this.svgHighlightLayer = null;
+      // this.theEventTimestamp = 0;
+      // this.actionArrowHideTimer = new GPTimer(this);
+      // this.uniqueID = 0;
+      // this.theTextClipboard = null;
+      // this.theHtmlClipboard = null;
+      // this.CutFromButton = false;
+      // this.theImageClipboard = null;
+
+      // const e = objectStore.CreateBlock(Globals.StoredObjectType.SELECTEDLIST_OBJECT, []);
+      // if (e === null) {
+      //   throw new Error({
+      //     source: 'ListManager.LMInitialize',
+      //     message: 'Got null value for theSelectedListBlock'
+      //   });
+      // }
+
+      // this.theSelectedListBlockID = e.ID;
+
+      // let t = {};
+      // if (SDUI.Resources.CurrentTheme) {
+      //   const a = SDUI.Resources.FindStyle(ListManager.Defines.DefaultStyle);
+      //   if (a) {
+      //     t = $.extend(true, {}, a);
+      //   } else if (SDUI.Resources.CurrentTheme.Styles && SDUI.Resources.CurrentTheme.Styles.length) {
+      //     const a = SDUI.Resources.CurrentTheme.Styles[0];
+      //     t = $.extend(true, {}, a);
+      //   }
+      // }
+
+      // this.TextureList = new SDUI.Resources.SDTextureList();
+      // this.NStdTextures = 0;
+      // this.LoadStdTextures();
+      // this.RichGradients = [];
+      // this.HasBlockDirectory = false;
+      // this.FileVersion = SDF.SDF_FVERSION2022;
+      // this.ActiveExpandedView = null;
+      // this.CommentUserIDs = [];
+      // this.theContentHeader = new ListManager.ContentHeader();
+      // this.InitFontList(this.theContentHeader.FontList);
+
+      // const r = new ListManager.SEDSession();
+      // r.def.style = t;
+      // r.def.pen = Editor.DeepCopy(ListManager.Defines.PenStylingDefault);
+      // r.def.highlighter = Editor.DeepCopy(ListManager.Defines.HighlighterStylingDefault);
+      // r.d_sarrow = 0;
+      // r.d_sarrowdisp = false;
+      // r.d_earrow = 0;
+      // r.d_earrowdisp = false;
+      // r.d_arrowsize = 1;
+      // r.CurrentTheme = SDUI.Commands.MainController.Theme.GetCurrentTheme();
+
+      // const i = objectStore.CreateBlock(Globals.StoredObjectType.SED_SESSION_OBJECT, r);
+      // this.theSEDSessionBlockID = i.ID;
+
+      // const n = new ListManager.LayersManager();
+      // const o = new ListManager.Layer();
+      // o.name = ListManager.Defines.DefaultLayerName;
+      // n.layers.push(o);
+      // n.nlayers = 1;
+      // n.activelayer = 0;
+
+      // const s = objectStore.CreateBlock(Globals.StoredObjectType.LAYERS_MANAGER_OBJECT, n);
+      // this.theLayersManagerBlockID = s.ID;
+
+      // this.SelectionState = new ListManager.SelectionAttributes();
+
+      // const l = new ListManager.TEDSession();
+      // const S = objectStore.CreateBlock(Globals.StoredObjectType.TED_SESSION_OBJECT, l);
+      // this.theTEDSessionBlockID = S.ID;
+
+      // const c = objectStore.CreateBlock(Globals.StoredObjectType.LINKLIST_OBJECT, []);
+      // if (c === null) {
+      //   throw new Error({
+      //     source: 'ListManager.LMInitialize',
+      //     message: 'Got null value for theLinksBlock'
+      //   });
+      // }
+      // this.theLinksBlockID = c.ID;
+
+      // this.PreserveUndoState(true);
+      this.InitSVGDocument();
+      this.SVGroot = this.svgDoc.svgObj.node;
+      // this.UpdateSelectionAttributes(null);
+      // this.BuildArrowheadLookupTables();
+      // this.theDirtyList = [];
+      // this.theDirtyListMoveOnly = [];
+      // this.DirtyListReOrder = false;
+      // this.theMoveList = [];
+      // this.theMoveBounds = null;
+      // this.PinRect = null;
+      // this.LinkParams = null;
+      // this.RightClickParams = null;
+      // this.PostMoveSelectID = null;
+      // this.bBuildingSymbols = false;
+      // this.bTokenizeStyle = false;
+      // this.bDrawEffects = true;
+      // this.initialStateID = stateManager.CurrentStateID;
+      // this.nObjectStoreStart = objectStore.StoredObjects.length;
+      // this.cachedHeight = null;
+      // this.cachedWidth = null;
+      // this.bInDimensionEdit = false;
+      // this.curNoteShape = -1;
+      // this.curNoteTableCell = null;
+      // this.curNoteGraphPint = null;
+      // this.bInNoteEdit = false;
+      // this.bNoteChanged = false;
+      // this.OldAllowSave = true;
+      // this.SocketAction = [];
+      // this.PageAction = [];
+      // this.PagesToDelete = [];
+      // this.OldFileMetaData = null;
+      // this.curHiliteShape = -1;
+      // this.SetEditMode(ListManager.EditState.DEFAULT);
+      // this.alternateStateManagerVars = [];
+      // this.alternateStateManagerVars.bHasBeenSaved = false;
+      // this.bitmapImportCanvas = null;
+      // this.bitmapImportCanvasCTX = null;
+      // this.bitmapScaledCanvas = null;
+      // this.bitmapScaledCanvasCTX = null;
+      // this.bitmapImportSourceWidth = 0;
+      // this.bitmapImportSourceHeight = 0;
+      // this.bitmapImportDestWidth = 800;
+      // this.bitmapImportDestHeight = 800;
+      // this.bitmapImportMaxScaledWidth = 1200;
+      // this.bitmapImportMaxScaledHeight = 1200;
+      // this.bitmapImportDPI = 200;
+      // this.bitmapImportMimeType = '';
+      // this.bitmapImportOriginalSize = 0;
+      // this.bitmapImportScaledSize = 0;
+      // this.scaledBitmapCallback = null;
+      // this.bitmapImportEXIFdata = null;
+      // this.bitmapImportFile = null;
+      // this.bitmapImportResult = null;
+      // this.symbolLibraryItemID = -1;
+      this.bIsInitialized = true;
+      this.TopLeftPastePos = { x: 0, y: 0 };
+      this.TopLeftPasteScrollPos = { x: 0, y: 0 };
+      // this.PasteCount = 0;
+      // this.DoubleClickSymbolTimeStamp = 0;
+      // this.ImportContext = null;
+    }
+  }
+
+  IsRightClick = (e) => {
+    let isRightClick = false;
+
+    if (e.gesture) {
+      e = e.gesture.srcEvent;
+    }
+
+    if (e instanceof MouseEvent) {
+      isRightClick = (e.which === 3 || (e.ctrlKey && e.metaKey));
+    } else if ('onpointerdown' in window && e instanceof PointerEvent) {
+      isRightClick = (e.which === 3);
+    }
+
+    return isRightClick;
+  }
+
+  Point = (e, t) => {
+    return { x: e || 0, y: t || 0 };
+  }
+
+  ContentHeader = () => {
+    // this.Page = new ListManager.PageRecord();
+    // this.MaxWorkDim = new ListManager.Point(
+    //   ListManager.Defines.MaxWorkDimX,
+    //   ListManager.Defines.MaxWorkDimY
+    // );
+    // this.DimensionFont = new ListManager.FontRecord();
+    // this.DimensionFontStyle = new Graphics.Text.Formatter.DefaultStyle();
+    // this.flags = ListManager.ContentHeaderFlags.CT_DA_Pages;
+    // this.BusinessModule = '';
+    // this.dateformat = -1;
+    // this.smarthelpname = '';
+    // this.smartpanelname = '';
+    // this.originaltemplate = '';
+    // this.orgcharttable = '';
+    // this.exportpath = '';
+    // this.presentationBackground = '';
+    // this.presentationName = '';
+    // this.importSourcePath = '';
+    // this.defaultlibs = '';
+    // this.lp_list = new ListManager.LibList();
+    // this.ClipboardBuffer = null;
+    // this.ClipboardType = ListManager.ClipboardType.None;
+    // this.nonworkingdays = ListManager.Defines.DEFAULT_NONWORKINGDAYS;
+    // this.holidaymask = 0;
+    // this.DocIsDirty = false;
+    // this.AllowReplace = true;
+    // this.FontList = [];
+    // this.SymbolSearchString = '';
+    // this.Save_HistoryState = -1;
+    // this.ParentPageID = '';
   }
 
   UpdateGridVisibility = () => {
@@ -778,8 +1173,6 @@ class DocumentHandler {
     }
   }
 
-
-
   UpdatePageDividerVisibility = function () {
 
     const pageDividerLayer = this.svgDoc ? this.svgDoc.GetLayer(this.pageDividerLayer) : null;
@@ -799,55 +1192,16 @@ class DocumentHandler {
     this.AdjustScroll(e, t)
   }
 
-  SDJS_LM_WorkAreaMouseWheel = (e) => {
-
-    if (e.ctrlKey) {
-      const clientX = e.clientX;
-      const clientY = e.clientY;
-      const docCoords = this.gListManager.svgDoc.ConvertWindowToDocCoords(clientX, clientY);
-
-      let docController = new DocumentController();
-
-      if (e.deltaY > 0) {
-
-        docController.ZoomInandOut(false, true);
-      } else if (e.deltaY < 0) {
-        docController.ZoomInandOut(true, true);
-      }
-
-      Utils.StopPropagationAndDefaults(e);
-
-      const windowCoords = this.gListManager.svgDoc.ConvertDocToWindowCoords(docCoords.x, docCoords.y);
-      const offsetX = clientX - windowCoords.x;
-      const offsetY = clientY - windowCoords.y;
-
-      const svgArea = document.querySelector('#svgarea');
-      const scrollLeft = svgArea.scrollLeft;
-      const scrollTop = svgArea.scrollTop;
-
-      this.SetScroll(scrollLeft - offsetX, scrollTop - offsetY);
-    }
-  }
-
   GetZoomFactor = () => {
-
-
-
-
-
     let zoomFactor = 1;
     if (this.svgDoc) {
       zoomFactor = this.svgDoc.GetWorkArea().docScale;
     }
     return zoomFactor;
+  }
 
-
-
-
-
-
-
-
+  DocObject = function () {
+    return this.svgDoc
   }
 }
 

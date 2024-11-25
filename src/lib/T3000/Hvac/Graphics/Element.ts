@@ -329,7 +329,7 @@ class Element {
     this.svgObj.attr('stroke-width', e);
 
     if (isNaN(e)) {
-      e = null; //SDGraphics.Symbol.ParsePlaceholder(e, SDGraphics.Symbol.Placeholder.LineThick);
+      e = null; //Graphics.Symbol.ParsePlaceholder(e, Graphics.Symbol.Placeholder.LineThick);
     }
 
     this.strokeWidth = Number(e);
