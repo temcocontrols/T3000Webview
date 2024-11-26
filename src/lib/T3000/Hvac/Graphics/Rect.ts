@@ -2,8 +2,7 @@
 import Element from './Element';
 import * as Utils from '../Hvac.Utils';
 // import * as SVG from '@svgdotjs/svg.js';
-
-import SVG from '../HvacSVG.js';
+import SVG from '../HvacSVG';
 
 
 class Rect extends Element {

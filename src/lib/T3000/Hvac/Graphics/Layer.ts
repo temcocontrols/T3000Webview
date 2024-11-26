@@ -1,12 +1,13 @@
 import Container from "./Container";
-import * as SVG from '@svgdotjs/svg.js';
+// import * as SVG from '@svgdotjs/svg.js';
+import SVG from '../HvacSVG';
 
 class Layer extends Container {
   public scaleOKFlag = true;
   public dpiScaleOnlyFlag = false;
 
   CreateElement = (element, parent) => {
-    this.svgObj = new SVG.Container().add(SVG.create('g'));
+    this.svgObj = new SVG.Container(SVG.create('g'));
     this.InitElement(element, parent);
     return this.svgObj;
   }

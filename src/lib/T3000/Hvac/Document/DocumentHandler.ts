@@ -6,6 +6,7 @@ import * as Utils from '../Hvac.Utils';
 import ListManager from './ListManager';
 import DocumentController from '../UI/DocumentController';
 import UI from '../UI/UI';
+import Path from '../Graphics/Path';
 
 enum RulerUnits {
   SED_UNone = 0,
@@ -130,13 +131,13 @@ class DocumentHandler {
   InitializeWorkArea = (workArea) => {
     console.log('DocumentHandler, InitializeWorkArea 1', workArea);
 
-    // workArea = { svgAreaID: "#svgarea", documentWidth: 1000, documentHeight: 750, documentDPI: 100 }
+    // workArea = { svgAreaID: "svgarea", documentWidth: 1000, documentHeight: 750, documentDPI: 100 }
 
-    this.workAreaID = workArea.workAreaID || '#document-area';
+    this.workAreaID = workArea.workAreaID || 'document-area';
     this.svgAreaID = 'svgarea';//workArea.svgAreaID || 'svgarea';
-    this.hRulerAreaID = workArea.hRulerAreaID || '#h-ruler';
-    this.vRulerAreaID = workArea.vRulerAreaID || '#v-ruler';
-    this.cRulerAreaID = workArea.cRulerAreaID || '#c-ruler';
+    this.hRulerAreaID = workArea.hRulerAreaID || 'h-ruler';
+    this.vRulerAreaID = workArea.vRulerAreaID || 'v-ruler';
+    this.cRulerAreaID = workArea.cRulerAreaID || 'c-ruler';
     this.svgDoc = null;
     this.hRulerDoc = null;
     this.vRulerDoc = null;
@@ -331,7 +332,7 @@ class DocumentHandler {
     console.log('DocumentHandler, Initialize 4');
 
     if (!this.bIsInitialized) {
-      this.theSVGDocumentID = '#svgarea';
+      this.theSVGDocumentID = 'svgarea';
       // this.sendstate = 0;
       // this.theRubberBand = null;
       // this.theRubberBandStartX = 0;
@@ -668,9 +669,15 @@ class DocumentHandler {
 
     if (!this.IsReadOnly()) {
 
-      const hRulerElem = document.getElementById(this.hRulerAreaID)[0];
-      const vRulerElem = document.getElementById(this.vRulerAreaID)[0];
-      const cRulerElem = document.getElementById(this.cRulerAreaID)[0];
+
+
+      const hRulerElem = document.getElementById(this.hRulerAreaID);
+      const vRulerElem = document.getElementById(this.vRulerAreaID);
+      const cRulerElem = document.getElementById(this.cRulerAreaID);
+
+      console.log('this.hRulerAreaID', this.hRulerAreaID, hRulerElem);
+      console.log('this.vRulerElem', this.hRulerAreaID, vRulerElem);
+      console.log('this.cRulerElem', this.hRulerAreaID, cRulerElem);
 
       new Hammer(hRulerElem).on('doubletap', this.RulerTopDoubleClick);
       new Hammer(vRulerElem).on('doubletap', this.RulerLeftDoubleClick);
@@ -994,8 +1001,8 @@ class DocumentHandler {
 
   ResetRulers = function () {
     const workArea = this.svgDoc.GetWorkArea();
-    const vRulerWidth = document.querySelector(this.vRulerAreaID).clientWidth;
-    const hRulerHeight = document.querySelector(this.hRulerAreaID).clientHeight;
+    const vRulerWidth = document.getElementById(this.vRulerAreaID).clientWidth;
+    const hRulerHeight = document.getElementById(this.hRulerAreaID).clientHeight;
 
     this.hRulerDoc.SetDocumentSize(workArea.docScreenWidth + 100, hRulerHeight);
     this.vRulerDoc.SetDocumentSize(vRulerWidth, workArea.docScreenHeight + 100);
@@ -1203,6 +1210,81 @@ class DocumentHandler {
   DocObject = function () {
     return this.svgDoc
   }
+
+
+
+
+  SetRulerContent = (doc, isHorizontal) => {
+    const workArea = this.svgDoc.GetWorkArea();
+
+    const hRulerAreaIDHeight = document.getElementById(this.hRulerAreaID).clientHeight;
+    const vRulerAreaIDWidth = document.getElementById(this.vRulerAreaID).clientWidth;
+
+    // const rulerWidth = isHorizontal ? $(this.hRulerAreaID).height() : $(this.vRulerAreaID).width();
+    const rulerWidth = isHorizontal ? hRulerAreaIDHeight : vRulerAreaIDWidth;
+
+    const scale = this.SD_GetScaledRuler(1);
+    const majorUnit = this.rulerSettings.major / (this.rulerSettings.useInches ? 1 : ListManagerDefines.MetricConv);
+    const scaledMajorUnit = majorUnit / scale;
+    const origin = isHorizontal ? this.rulerSettings.originx : this.rulerSettings.originy;
+    const offset = (origin - Math.floor(origin)) * majorUnit;
+    const numTics = this.rulerSettings.nTics;
+    const numMidTics = this.rulerSettings.nMid;
+    const midTicInterval = Math.round(numTics / (numMidTics + 1));
+    const docSize = isHorizontal ? workArea.docScreenWidth : workArea.docScreenHeight;
+    const ticLength = Math.round(rulerWidth / 4);
+    const midTicLength = Math.round(rulerWidth / 2);
+    const majorTicLength = Math.round(3 * rulerWidth / 4);
+    const labels = [];
+    let pathData = '';
+    let position = offset;
+    let ticIndex = 0;
+
+    while (position * workArea.docToScreenScale < docSize) {
+      const screenPos = Math.round(position * workArea.docToScreenScale);
+      const label = this.rulerSettings.showpixels ? 100 * (ticIndex + offset) : ticIndex + offset;
+      labels.push({
+        label: label.toFixed(1),
+        x: isHorizontal ? screenPos + 2 : 3,
+        y: isHorizontal ? 1 : screenPos + 2
+      });
+      pathData += isHorizontal
+        ? `M${screenPos},${rulerWidth}v-${majorTicLength}`
+        : `M${rulerWidth},${screenPos}h-${majorTicLength}`;
+
+      for (let i = 1; i < numTics; i++) {
+        const ticPos = Math.round((position + i * scaledMajorUnit / numTics) * workArea.docToScreenScale);
+        // const ticLength = i % midTicInterval === 0 ? midTicLength : ticLength;
+        let ticLength = 0;
+        ticLength = i % midTicInterval === 0 ? midTicLength : ticLength;
+
+        pathData += isHorizontal
+          ? `M${ticPos},${rulerWidth}v-${ticLength}`
+          : `M${rulerWidth},${ticPos}h-${ticLength}`;
+      }
+
+      position += majorUnit;
+      ticIndex++;
+    }
+
+    const path = doc.CreateShape(Models.CreateShapeType.PATH);
+
+    console.log('pathData', pathData);
+    path.SetPath(pathData);
+    path.SetFillColor('none');
+    path.SetStrokeColor('#000');
+    path.SetStrokeWidth('.5');
+    doc.AddElement(path);
+
+    labels.forEach(label => {
+      const text = doc.CreateShape(Models.CreateShapeType.TEXT);
+      text.SetText(label.label, { size: 10, color: '#000' });
+      text.SetPos(label.x, label.y);
+      doc.AddElement(text);
+    });
+  }
+
+
 }
 
 export default DocumentHandler;

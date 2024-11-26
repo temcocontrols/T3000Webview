@@ -1,6 +1,6 @@
-var svg = function (e) {
-  return new SVG.Doc(e);
-};
+// var svg = function (e) {
+//   return new SVG.Doc(e);
+// };
 
 var SVG = {
   ns: "http://www.w3.org/2000/svg",
@@ -12,6 +12,10 @@ var SVG = {
   extend: function (e, t) {
     for (var n in t) e.prototype[n] = t[n];
   },
+};
+
+SVG.svg = function (e) {
+  return new SVG.Doc(e);
 };
 
 SVG.Element = function (e) {
@@ -749,28 +753,86 @@ SVG.Doc = function (e) {
 SVG.Doc.prototype = new SVG.Container();
 
 SVG.Doc.prototype.stage = function () {
+  const parentElement = this.parent;
+  const newDiv = document.createElement("div");
+
+  // Set the style for the new div
+  newDiv.style.cssText = "position:relative;height:100%;";
+
+  // Append the new div to the parent element
+  if (parentElement) {
+    parentElement.appendChild(newDiv);
+  } else {
+    this.parent = document.createElement("div");
+    this.parent.appendChild(newDiv);
+  }
+
+  // Append the current node to the new div
+  newDiv.appendChild(this.node);
+
+  // Define a function to handle the document ready state
+  const handleReadyState = () => {
+    if (document.readyState === "complete") {
+      // Set the style for the current node
+      this.attr("style", "position:absolute;overflow:hidden;");
+
+      // Use a timeout to change the style and re-append the node
+      setTimeout(() => {
+        this.attr("style", "position:relative;overflow:hidden;");
+        try {
+          parentElement.removeChild(this.node.parentNode);
+          this.node.parentNode.removeChild(this.node);
+          parentElement.appendChild(this.node);
+        } catch (error) {
+          // Handle any errors that occur during the DOM manipulation
+          console.error(error);
+        }
+      }, 5);
+    } else {
+      // If the document is not ready, check again after 10 milliseconds
+      setTimeout(handleReadyState, 10);
+    }
+  };
+
+  // Immediately invoke the handleReadyState function
+  handleReadyState();
+
+  return this;
+
+  /*
+  console.log("SVG.Doc.prototype.stage", this);
   var e,
     t = this,
     n = document.createElement("div");
-  return (
-    (n.style.cssText = "position:relative;height:100%;"),
-    t.parent.appendChild(n),
-    n.appendChild(t.node),
-    (e = function () {
-      "complete" === document.readyState
-        ? (t.attr("style", "position:absolute;overflow:hidden;"),
-          setTimeout(function () {
-            t.attr("style", "position:relative;overflow:hidden;");
-            try {
-              t.parent.removeChild(t.node.parentNode),
-                t.node.parentNode.removeChild(t.node),
-                t.parent.appendChild(t.node);
-            } catch (e) {}
-          }, 5))
-        : setTimeout(e, 10);
-    })(),
-    this
-  );
+
+  n.style.cssText = "position:relative;height:100%;";
+
+  if (t.parent == null) {
+    t.parent = {};
+  }
+  t.parent.appendChild(n);
+  n.appendChild(t.node);
+
+  e = function () {
+    if (document.readyState === "complete") {
+      t.attr("style", "position:absolute;overflow:hidden;");
+      setTimeout(function () {
+        t.attr("style", "position:relative;overflow:hidden;");
+        try {
+          t.parent.removeChild(t.node.parentNode);
+          t.node.parentNode.removeChild(t.node);
+          t.parent.appendChild(t.node);
+        } catch (e) {}
+      }, 5);
+    } else {
+      setTimeout(e, 10);
+    }
+  };
+
+  e();
+
+  return this;
+  */
 };
 
 SVG.Shape = function (e) {

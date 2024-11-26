@@ -98,7 +98,7 @@ class UI {
       const offsetX = clientX - windowCoords.x;
       const offsetY = clientY - windowCoords.y;
 
-      const svgArea = document.querySelector('#svgarea');
+      const svgArea = document.querySelector('svgarea');
       const scrollLeft = svgArea.scrollLeft;
       const scrollTop = svgArea.scrollTop;
 

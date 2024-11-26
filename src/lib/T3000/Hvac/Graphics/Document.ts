@@ -1,8 +1,11 @@
-import * as SVG from "@svgdotjs/svg.js";
+// import * as SVG from "@svgdotjs/svg.js";
+import SVG from '../HvacSVG';
 import Container from "./Container";
 import Rect from "./Rect";
 import Layer from "./Layer";
 import Models from '../Hvac.Models';
+import Path from './Path';
+import Text from './Text';
 
 interface DocInfo {
   dispX: number;
@@ -44,11 +47,16 @@ class Document extends Container {
   constructor(elementId: string, fontList: any) {
     super();
 
+    console.log('Document.constructor elementId', elementId);
     this.parentElem = elementId;
     if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
-      this.parentElem = '#' + this.parentElem;
+      // this.parentElem = '#' + this.parentElem;
+      this.parentElem = this.parentElem
     }
-    this.svgObj = new SVG.Svg(this.parentElem[0]);
+
+    console.log('Document.constructor this.parentElem', this.parentElem[0]);
+
+    this.svgObj = SVG.svg(/*this.parentElem[0]*/this.parentElem);
     this.InitDocInfo();
     this.fontList = fontList;
     this.activeEdit = null;
@@ -118,6 +126,9 @@ class Document extends Container {
 
     // this.docInfo.dispWidth = $(this.parentElem).innerWidth(),
     // this.docInfo.dispHeight = $(this.parentElem).innerHeight()
+    // debugger;
+
+    console.log('Document.GetDeviceInfo parentElem', this.parentElem, document.getElementById(this.parentElem));
 
     this.docInfo.dispWidth = document.getElementById(this.parentElem).clientWidth;
     this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
@@ -129,6 +140,51 @@ class Document extends Container {
       case Models.CreateShapeType.RECT:
         shape = new Rect();
         break;
+      case Models.CreateShapeType.RRECT:
+        // shape = new RRect;
+        break;
+      case Models.CreateShapeType.OVAL:
+        // shape = new Oval;
+        break;
+      case Models.CreateShapeType.LINE:
+        // shape = new Line;
+        break;
+      case Models.CreateShapeType.POLYLINE:
+        // shape = new PolyLine;
+        break;
+      case Models.CreateShapeType.POLYPOLYLINE:
+        // shape = new PolyPolyLine;
+        break;
+      case Models.CreateShapeType.POLYLINECONTAINER:
+        // shape = new PolyLine;
+        break;
+      case Models.CreateShapeType.POLYGON:
+        // shape = new Polygon;
+        break;
+      case Models.CreateShapeType.PATH:
+        shape = new Path();
+        break;
+      case Models.CreateShapeType.TEXT:
+        shape = new Text();
+        break;
+      case Models.CreateShapeType.IMAGE:
+        // shape = new Image;
+        break;
+      case Models.CreateShapeType.GROUP:
+        // shape = new Group;
+        break;
+      case Models.CreateShapeType.LAYER:
+        shape = new Layer();
+        break;
+      case Models.CreateShapeType.SYMBOL:
+        // shape = new Symbol;
+        break;
+      case Models.CreateShapeType.SHAPECOPY:
+        // shape = new ShapeCopy;
+        break;
+      case Models.CreateShapeType.SHAPECONTAINER:
+        // shape = new ShapeContainer;
+        break;
       default:
         return null;
     }
@@ -138,7 +194,7 @@ class Document extends Container {
 
   CalcWorkArea = () => {
 
-    const parentElem = document.querySelector(this.parentElem);
+    const parentElem = document.getElementById(this.parentElem);
 
     // const offset = parentElem.offset();
     const offset = parentElem.getBoundingClientRect();
@@ -173,18 +229,20 @@ class Document extends Container {
     this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
   }
 
-  ApplyDocumentTransform = (e) => {
-
+  ApplyDocumentTransform = (layerID?: string) => {
     const elementCount = this.ElementCount();
+
+    // Set the SVG object dimensions
     this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
       height: this.docInfo.docScreenHeight
     });
 
-    if (!e) {
+    // If no specific layerID is provided, apply transformations to all layers
+    if (!layerID) {
       for (let i = 0; i < elementCount; i++) {
         const element = this.GetElementByIndex(i);
-        if (element instanceof /*Graphics.Layer*/ Layer) {
+        if (element instanceof Layer) {
           if (element.IsScalingAllowed()) {
             element.svgObj.transform({
               scaleX: this.docInfo.docToScreenScale,
@@ -201,13 +259,23 @@ class Document extends Container {
     }
   }
 
+  SetDocumentSize = (width: number, height: number) => {
+    this.SetDocumentMetrics({
+      width: width,
+      height: height
+    });
+  }
 
+  SetDocumentMetrics = (metrics: { width?: number, height?: number, dpi?: number, scale?: number }) => {
+    this.docInfo.docWidth = metrics.width ?? this.docInfo.docWidth;
+    this.docInfo.docHeight = metrics.height ?? this.docInfo.docHeight;
+    this.docInfo.docDpi = metrics.dpi ?? this.docInfo.docDpi;
+    this.docInfo.docScale = metrics.scale ?? this.docInfo.docScale;
+    this.CalcWorkArea();
+    this.ApplyDocumentTransform();
+  }
 
   GetFormattingLayer = function () {
-
-
-    return null;
-
     let formattingLayer = this.GetLayer('__FORMATTING__');
 
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
@@ -224,10 +292,88 @@ class Document extends Container {
     }
 
     return formattingLayer;
-
-
-
   };
+
+  AddLayer = (e) => {
+    const layer = this.CreateShape(Models.CreateShapeType.LAYER);
+    layer.SetID(e);
+    this.AddElement(layer, null);
+    this.ApplyDocumentTransform(e);
+
+
+    console.log('Document.AddLayer layer', layer.svgObj.node);
+
+    layer.svgObj.node.setAttribute("layerID", e);
+
+    // layer.svgObj.node.data("layerID", e);
+    return layer;
+  }
+
+  GetLayer = (e) => {
+    let layer = null;
+    const elementCount = this.ElementCount();
+    for (let i = 0; i < elementCount; i++) {
+      const element = this.GetElementByIndex(i);
+      if (element instanceof Layer && element.GetID() === e) {
+        layer = element;
+        break;
+      }
+    }
+    return layer;
+  }
+
+  MoveLayer = function (e, t, a) {
+    const layer = this.GetLayer(e);
+    if (!layer) return;
+
+    const currentIndex = this.GetElementIndex(layer);
+    const totalElements = this.ElementCount() - 1;
+    let targetIndex = totalElements;
+    let referenceIndex = 0;
+    let referenceLayer = null;
+
+    if (a) {
+      referenceLayer = this.GetLayer(a);
+      if (referenceLayer) {
+        referenceIndex = this.GetElementIndex(referenceLayer);
+        if (currentIndex < referenceIndex) {
+          referenceIndex--;
+        }
+      }
+    }
+
+    switch (t) {
+      case Models.LayerMoveType.BOTTOM:
+        targetIndex = 0;
+        break;
+      case Models.LayerMoveType.BEFORE:
+        targetIndex = referenceIndex;
+        break;
+      case Models.LayerMoveType.AFTER:
+        targetIndex = referenceIndex + 1;
+        break;
+      case Models.LayerMoveType.TOP:
+        targetIndex = totalElements;
+        break;
+    }
+
+    if (targetIndex !== currentIndex) {
+      this.RemoveElement(layer);
+      this.AddElement(layer, targetIndex);
+    }
+  }
+
+  SetDocumentDPI(dpi: number) {
+    this.SetDocumentMetrics({ dpi });
+  }
+
+  ImageLoad_ResetRefCount = () => {
+    this.imageLoadRefCount = 0;
+  }
+
+  GetWorkArea = () => {
+    return this.docInfo;
+  }
 
 }
 

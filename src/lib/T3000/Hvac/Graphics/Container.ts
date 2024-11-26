@@ -1,5 +1,6 @@
 import Element from './Element';
-import * as SVG from '@svgdotjs/svg.js';
+// import * as SVG from '@svgdotjs/svg.js';
+import SVG from '../HvacSVG';
 
 class Container extends Element {
   constructor() {
@@ -16,7 +17,7 @@ class Container extends Element {
 
   GetElementByIndex = (e) => {
     const children = this.svgObj.children();
-    if (this.svgObj instanceof /*SVG.Doc*/SVG.Container) {
+    if (this.svgObj instanceof SVG.Doc) {
       e++;
     }
     if (e < 0 || e >= children.length) {
@@ -52,6 +53,27 @@ class Container extends Element {
     if (e.svgObj.parent === this.svgObj) {
       this.svgObj.remove(e.svgObj);
       e.parent = null;
+    }
+  }
+
+  GetElementIndex = (e) => {
+    let index = this.svgObj.children().indexOf(e.svgObj);
+    if (index > 0 && this.svgObj instanceof SVG.Doc) {
+      index--;
+    }
+    return index;
+  }
+
+  RemoveAll = () => {
+    let startIndex = 0;
+    const childrenCount = this.svgObj.children().length;
+
+    if (this.svgObj instanceof SVG.Doc) {
+      startIndex++;
+    }
+
+    for (let i = startIndex; i < childrenCount; i++) {
+      this.svgObj.removeAt(startIndex);
     }
   }
 }

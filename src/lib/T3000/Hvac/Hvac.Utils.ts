@@ -72,3 +72,23 @@ export const RoundCoordLP = (e) => {
   var t = Math.round(10 * Number(e)) / 10;
   return isNaN(t) ? e : t
 }
+
+
+export const CalcAngleFromPoints = (point1, point2) => {
+  const deltaX = point2.x - point1.x;
+  const deltaY = point2.y - point1.y;
+  let angle;
+
+  if (deltaX === 0) {
+    angle = deltaY > 0 ? 90 : 270;
+  } else {
+    angle = Math.atan(deltaY / deltaX) * (180 / Math.PI);
+    if (deltaX < 0) {
+      angle += 180;
+    } else if (deltaY < 0) {
+      angle += 360;
+    }
+  }
+
+  return angle;
+}
