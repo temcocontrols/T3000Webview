@@ -80,7 +80,7 @@
   top: 0px;
   width: 976.8px;
   height: 20px;
-  background-color: blue;
+  background-color: rgb(166, 166, 223);
 }
 
 .document-ruler-left {
@@ -95,7 +95,7 @@
   background-color: yellow;
 }
 
-#svg-area {
+#svgarea {
   scrollbar-width: thin;
   position: absolute;
   background-color: #fff;
@@ -105,7 +105,7 @@
   height: 175.4px;
   overflow: hidden scroll;
   user-select: none;
-  background-color: lightseagreen;
+  /* background-color: lightseagreen; */
 }
 
 .doc-toolbar {
@@ -143,17 +143,15 @@
             @tool-dropped="toolDropped" />
         </div>
         <div id="work-area" class="main-panel">
-          <div id="document-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
+          <div id="document-area" :onwheel="T3000.Hvac.UI.LM_WorkAreaMouseWheel">
             <div id="c-ruler" class="document-ruler-corner">
               c-ruler
             </div>
             <div id="h-ruler" class="document-ruler-top">
-              h-ruler
             </div>
             <div id="v-ruler" class="document-ruler-left">
-              v-ruler
             </div>
-            <div id="svgarea" class="svg-area" :onwheel="T3000.Hvac.App.WorkAreaMouseWheel">
+            <div id="svgarea" class="svg-area" :onwheel="T3000.Hvac.UI.LM_WorkAreaMouseWheel">
               svg area
             </div>
           </div>
@@ -517,7 +515,7 @@ onMounted(() => {
 
   // Viewport wrapper scroll event listener
   const div = document.querySelector('.svg-area');//viewport-wrapper
-  div.addEventListener('scroll', handleScroll);
+  // div.addEventListener('scroll', handleScroll);
 
   // Init ruler and grid default value
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };

@@ -67,6 +67,10 @@ class Element {
     return this.svgObj ? this.svgObj.node : null
   }
 
+  SetEventBehavior = (e) => {
+    this.svgObj.attr("pointer-events", e);
+  }
+
   InDocument = () => {
     if (!this.svgObj) return false;
     for (var e = this.svgObj.parent; e;) {

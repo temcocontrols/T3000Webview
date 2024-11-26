@@ -26,6 +26,7 @@ export const RoundCoord = function (number) {
 }
 
 export const StopPropagationAndDefaults = (e) => {
+  console.log('StopPropagationAndDefaults', e);
   e.preventDefault();
   e.stopPropagation();
 
@@ -91,4 +92,9 @@ export const CalcAngleFromPoints = (point1, point2) => {
   }
 
   return angle;
+}
+
+
+export const CopyObj = function (e) {
+  return e ? JSON.parse(JSON.stringify(e)) : null
 }

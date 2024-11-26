@@ -108,6 +108,10 @@ class Document extends Container {
     this.ApplyDocumentTransform(null);
   }
 
+  SetDocumentLayer = (e) => {
+    this.documentLayerID = e;
+  }
+
   GetDeviceInfo = () => {
     let shape = this.CreateShape(Models.CreateShapeType.RECT);
     shape.SetFillOpacity(0);
@@ -227,6 +231,26 @@ class Document extends Container {
     this.docInfo.docVisHeight = Math.min(this.docInfo.dispHeight / this.docInfo.docToScreenScale, this.docInfo.docHeight);
     this.docInfo.docVisX = Math.min(this.docInfo.scrollX / this.docInfo.docToScreenScale, this.docInfo.docWidth - this.docInfo.docVisWidth);
     this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
+  }
+
+  ConvertWindowToDocCoords = (e, t) => {
+    return {
+      x: (e - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
+      y: (t - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
+    }
+  }
+
+  ConvertDocToWindowCoords = (e, t) => {
+    return {
+      x: e * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
+      y: t * this.docInfo.docToScreenScale + this.docInfo.docScreenY
+    }
+  }
+
+  SetDocumentScale = (e) => {
+    this.SetDocumentMetrics({
+      scale: e
+    })
   }
 
   ApplyDocumentTransform = (layerID?: string) => {

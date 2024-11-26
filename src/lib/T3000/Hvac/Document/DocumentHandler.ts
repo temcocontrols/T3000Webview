@@ -4,7 +4,6 @@ import Models from '../Hvac.Models';
 import Hammer from 'hammerjs';
 import * as Utils from '../Hvac.Utils';
 import ListManager from './ListManager';
-import DocumentController from '../UI/DocumentController';
 import UI from '../UI/UI';
 import Path from '../Graphics/Path';
 
@@ -63,7 +62,7 @@ class DocumentHandler {
   public backgroundElem: any;
   public scaleToFit: boolean;
   public scaleToPage: boolean;
-  public scrollWidth: boolean;
+  public scrollWidth: number;
   public rulerSettings: RulerSettings;
   public backgroundLayer: string;
   public gridLayer: any;
@@ -115,6 +114,7 @@ class DocumentHandler {
   public textEntryTimer: any;
   public TopLeftPastePos: any;
   public TopLeftPasteScrollPos: any;
+  public theContentHeader: any;
 
 
   constructor() {
@@ -146,7 +146,7 @@ class DocumentHandler {
     this.backgroundElem = null;
     this.scaleToFit = false;
     this.scaleToPage = false;
-    this.scrollWidth = false;
+    this.scrollWidth = 0;
 
     this.backgroundLayer = '_BACKGROUND';
 
@@ -176,8 +176,230 @@ class DocumentHandler {
     console.log('HandleResizeEvent');
   }
 
+  GetWorkAreaSize = () => {
+    const workAreaElem = document.getElementById(this.workAreaID);
+    return {
+      width: workAreaElem.clientWidth,
+      height: workAreaElem.clientHeight
+    }
+  }
+
+  UpdateDocumentScale = () => {
+    // this.svgDoc && (this.svgDoc.GetActiveEdit() || (this.HideAllSVGSelectionStates(),
+    //   this.RenderAllSVGSelectionStates()),
+    //   IdleZoomControls())
+  }
+
+  IdleZoomUI = () => {
+    this.UpdateDocumentScale()
+  }
+
+  GetScrollBarSize = () => {
+    const outerDiv = document.createElement('div');
+    outerDiv.style.width = '50px';
+    outerDiv.style.height = '50px';
+    outerDiv.style.overflow = 'auto';
+
+    const innerDiv = document.createElement('div');
+    outerDiv.appendChild(innerDiv);
+
+    document.body.appendChild(outerDiv);
+
+    const scrollbarWidth = outerDiv.offsetWidth - innerDiv.clientWidth;
+
+    document.body.removeChild(outerDiv);
+
+    return scrollbarWidth;
+  }
+
   UpdateWorkArea = () => {
     console.log('UpdateWorkArea');
+
+    const vRulerAreaElem = document.getElementById(this.vRulerAreaID);
+    const hRulerAreaElem = document.getElementById(this.hRulerAreaID);
+
+    var e, t, a, r, i;
+    var showRulers = this.documentConfig.showRulers;
+    var workAreaSize = this.GetWorkAreaSize();
+    var vRulerWidth = vRulerAreaElem.clientWidth;
+    var hRulerHeight = hRulerAreaElem.clientHeight;
+    var newSize = { width: 0, height: 0, x: 0, y: 0 };
+    var overflowX = false;
+    var overflowY = false;
+
+    if (!this.scrollWidth) {
+      this.scrollWidth = this.GetScrollBarSize();
+    }
+
+    e = {
+      x: 0,
+      y: 0,
+      width: workAreaSize.width,
+      height: workAreaSize.height
+    };
+
+    if (showRulers) {
+      e.x += vRulerWidth;
+      e.width -= vRulerWidth;
+      e.y += hRulerHeight;
+      e.height -= hRulerHeight;
+    }
+
+    if (this.svgDoc) {
+      if (this.scaleToFit) {
+        if (this.bInAutoScroll) {
+          t = {
+            width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+            height: a.docScreenHeight
+          };
+        } else if (e.width > 0 && e.height > 0) {
+          t = {
+            width: (a = this.svgDoc.CalcScaleToFit(e.width - 20, e.height - 20)).width,
+            height: a.height
+          };
+          if (this.svgDoc.docInfo.docScale != a.scale) {
+            this.svgDoc.SetDocumentScale(a.scale);
+            this.IdleZoomUI();
+            this.UpdateGrid();
+            this.UpdatePageDivider();
+            this.ResetRulers();
+          }
+        } else {
+          t = {
+            width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+            height: a.docScreenHeight
+          };
+        }
+      } else if (this.scaleToPage && e.width > 0 && e.height > 0) {
+        r = this.theContentHeader.Page.papersize.x - (this.theContentHeader.Page.margins.left + this.theContentHeader.Page.margins.right);
+        i = this.theContentHeader.Page.papersize.y - (this.theContentHeader.Page.margins.top + this.theContentHeader.Page.margins.bottom);
+        t = {
+          width: (a = this.svgDoc.CalcScaleToFit(e.width - 20, e.height - 20, r, i)).width,
+          height: a.height
+        };
+        if (!this.bInAutoScroll && this.svgDoc.docInfo.docScale != a.scale) {
+          this.svgDoc.SetDocumentScale(a.scale);
+          this.IdleZoomUI();
+          this.UpdateGrid();
+          this.UpdatePageDivider();
+          this.ResetRulers();
+        }
+      } else {
+        t = {
+          width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+          height: a.docScreenHeight
+        };
+      }
+    } else {
+      t = {
+        width: e.width,
+        height: e.height
+      };
+    }
+
+    newSize.width = Math.min(e.width, t.width);
+    newSize.height = Math.min(e.height, t.height);
+
+    if (newSize.width < t.width) {
+      overflowX = true;
+      newSize.height += this.scrollWidth;
+      if (newSize.height > e.height) {
+        newSize.height = e.height;
+        overflowY = true;
+      }
+    }
+
+    if (newSize.height < t.height) {
+      overflowY = true;
+      newSize.width += this.scrollWidth;
+      if (newSize.width > e.width) {
+        newSize.width = e.width;
+        overflowX = true;
+      }
+    }
+
+    newSize.x = e.x + (e.width - newSize.width) / 2;
+    newSize.y = e.y + (e.height - newSize.height) / 2;
+
+    const svgAreaElem = document.getElementById(this.svgAreaID);
+
+    // $(this.svgAreaID).css({
+    //   left: newSize.x,
+    //   top: newSize.y,
+    //   width: newSize.width,
+    //   height: newSize.height,
+    //   "overflow-x": overflowX ? "scroll" : "hidden",
+    //   "overflow-y": overflowY ? "scroll" : "hidden"
+    // });
+
+    svgAreaElem.style.left = newSize.x + 'px';
+    svgAreaElem.style.top = newSize.y + 'px';
+    svgAreaElem.style.width = newSize.width + 'px';
+    svgAreaElem.style.height = newSize.height + 'px';
+    svgAreaElem.style.overflowX = overflowX ? "scroll" : "hidden";
+    svgAreaElem.style.overflowY = overflowY ? "scroll" : "hidden";
+
+    if (showRulers) {
+
+      const hRulerAreaElem = document.getElementById(this.hRulerAreaID);
+      const vRulerAreaElem = document.getElementById(this.vRulerAreaID);
+      const cRulerAreaElem = document.getElementById(this.cRulerAreaID);
+
+      // $(this.hRulerAreaID).css({
+      //   left: newSize.x,
+      //   top: newSize.y - hRulerHeight,
+      //   width: newSize.width,
+      //   height: hRulerHeight
+      // });
+
+      hRulerAreaElem.style.left = newSize.x + 'px';
+      hRulerAreaElem.style.top = newSize.y - hRulerHeight + 'px';
+      hRulerAreaElem.style.width = newSize.width + 'px';
+      hRulerAreaElem.style.height = hRulerHeight + 'px';
+
+
+      // $(this.vRulerAreaID).css({
+      //   left: newSize.x - vRulerWidth,
+      //   top: newSize.y,
+      //   width: vRulerWidth,
+      //   height: newSize.height
+      // });
+
+      vRulerAreaElem.style.left = newSize.x - vRulerWidth + 'px';
+      vRulerAreaElem.style.top = newSize.y + 'px';
+      vRulerAreaElem.style.width = vRulerWidth + 'px';
+      vRulerAreaElem.style.height = newSize.height + 'px';
+
+      // $(this.cRulerAreaID).css({
+      //   left: newSize.x - vRulerWidth,
+      //   top: newSize.y - hRulerHeight
+      // });
+
+      cRulerAreaElem.style.left = newSize.x - vRulerWidth + 'px';
+      cRulerAreaElem.style.top = newSize.y - hRulerHeight + 'px';
+    }
+
+    if (this.svgDoc) {
+      this.svgDoc.CalcWorkArea();
+      this.AdjustScroll(e, t);
+      this.svgDoc.ApplyDocumentTransform(true);
+    }
+  }
+
+  AdjustScroll = (e, t) => {
+    var a = this.svgDoc.GetWorkArea();
+    var r = Math.min(void 0 !== e ? e : a.scrollX, a.maxScrollX);
+    var i = Math.min(void 0 !== t ? t : a.scrollY, a.maxScrollY);
+
+    const svgAreaElem = document.getElementById(this.svgAreaID);
+    svgAreaElem.scrollLeft = r;
+    svgAreaElem.scrollTop = i;
+
+    // $(this.svgAreaID).scrollLeft(r);
+    // $(this.svgAreaID).scrollTop(i);
+
+    this.svgDoc.CalcWorkArea();
+    this.SyncRulers();
   }
 
   HandleScrollEvent = () => {
@@ -482,7 +704,7 @@ class DocumentHandler {
       // this.FileVersion = SDF.SDF_FVERSION2022;
       // this.ActiveExpandedView = null;
       // this.CommentUserIDs = [];
-      // this.theContentHeader = new ListManager.ContentHeader();
+      this.theContentHeader = new ListManager().ContentHeader;
       // this.InitFontList(this.theContentHeader.FontList);
 
       // const r = new ListManager.SEDSession();
@@ -739,6 +961,10 @@ class DocumentHandler {
     }
   }
 
+  ShowXY = function (e) {
+    this.documentConfig.showRulers = e;
+  }
+
   RulerTopDrag = (e) => {
     if (this.gListManager.IsCtrlClick(e)) {
       Utils.StopPropagationAndDefaults(e);
@@ -866,8 +1092,8 @@ class DocumentHandler {
     const scrollX = Math.min(e !== undefined ? e : workArea.scrollX, workArea.maxScrollX);
     const scrollY = Math.min(t !== undefined ? t : workArea.scrollY, workArea.maxScrollY);
 
-    document.querySelector(this.svgAreaID).scrollLeft = scrollX;
-    document.querySelector(this.svgAreaID).scrollTop = scrollY;
+    document.getElementById(this.svgAreaID).scrollLeft = scrollX;
+    document.getElementById(this.svgAreaID).scrollTop = scrollY;
 
     this.svgDoc.CalcWorkArea();
     this.SyncRulers();
@@ -875,10 +1101,10 @@ class DocumentHandler {
 
 
   SyncRulers = function () {
-    const scrollLeft = document.querySelector(this.svgAreaID).scrollLeft;
-    const scrollTop = document.querySelector(this.svgAreaID).scrollTop;
-    document.querySelector(this.hRulerAreaID).scrollLeft = scrollLeft;
-    document.querySelector(this.vRulerAreaID).scrollTop = scrollTop;
+    const scrollLeft = document.getElementById(this.svgAreaID).scrollLeft;
+    const scrollTop = document.getElementById(this.svgAreaID).scrollTop;
+    document.getElementById(this.hRulerAreaID).scrollLeft = scrollLeft;
+    document.getElementById(this.vRulerAreaID).scrollTop = scrollTop;
   }
 
 
@@ -1032,6 +1258,7 @@ class DocumentHandler {
   }
 
   UpdateGrid = () => {
+    debugger;
     const workArea = this.svgDoc.GetWorkArea();
     const gridLayer = this.svgDoc.GetLayer(this.gridLayer);
     const scale = 1;
@@ -1284,6 +1511,39 @@ class DocumentHandler {
     });
   }
 
+  ZoomInandOut = (e, t) => {
+    var a,
+      r = 0.25,
+      i = this.GetZoomFactor();
+    if (e) {
+      if (i >= 4) return;
+      (a = Math.ceil(i / r) * r) === i &&
+        (a = i + 0.25),
+        a > 4 &&
+        (a = 4)
+    } else {
+      if (i <= 0.25) return;
+      (a = Math.floor(i / r) * r) === i &&
+        (a = i - 0.25),
+        a < 0.25 &&
+        (a = 0.25)
+    }
+    this.SetZoomLevel(100 * a, t)
+  }
+
+  SetZoomLevel = function (e, t) {
+    if (e <= 0 || this.inZoomIdle) {
+      return;
+    }
+
+    this.svgDoc.SetDocumentScale(e / 100, t);
+  }
+
+
+
+  UpdateDisplayCoordinates = function (e, t, a, r) {
+
+  }
 
 }
 
