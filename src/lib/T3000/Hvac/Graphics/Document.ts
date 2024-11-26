@@ -138,9 +138,11 @@ class Document extends Container {
     this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
   }
 
-  CreateShape = (e) => {
+  CreateShape = (shapeType) => {
+
+    console.log('AAAAAAAAAAAA shapeType', shapeType);
     let shape = null;
-    switch (e) {
+    switch (shapeType) {
       case Models.CreateShapeType.RECT:
         shape = new Rect();
         break;
@@ -190,36 +192,33 @@ class Document extends Container {
         // shape = new ShapeContainer;
         break;
       default:
-        return null;
+        break;
     }
+
+
     shape.CreateElement(this, null);
+    console.log('AAAAAAAAAAAA Document.CreateShape shape', shape);
+
     return shape;
   }
 
   CalcWorkArea = () => {
+    // var e = $(this.parentElem).offset();
+    const e = document.getElementById(this.parentElem).getBoundingClientRect();
 
-    const parentElem = document.getElementById(this.parentElem);
+    this.docInfo.dispX = e.left;
+    this.docInfo.dispY = e.top;
 
-    // const offset = parentElem.offset();
-    const offset = parentElem.getBoundingClientRect();
+    // this.docInfo.dispWidth = $(this.parentElem).innerWidth();
+    // this.docInfo.dispHeight = $(this.parentElem).innerHeight();
+    // this.docInfo.scrollX = $(this.parentElem).scrollLeft();
+    // this.docInfo.scrollY = $(this.parentElem).scrollTop();
+    this.docInfo.dispWidth = document.getElementById(this.parentElem).clientWidth;
+    this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
+    this.docInfo.scrollX = document.getElementById(this.parentElem).scrollLeft;
+    this.docInfo.scrollY = document.getElementById(this.parentElem).scrollTop;
 
-    this.docInfo.dispX = offset.left;
-    this.docInfo.dispY = offset.top;
-
-    // this.docInfo.dispWidth = parentElem.innerWidth();
-    // this.docInfo.dispHeight = parentElem.innerHeight();
-
-    this.docInfo.dispWidth = parentElem.clientWidth;
-    this.docInfo.dispHeight = parentElem.clientHeight;
-
-
-    // this.docInfo.scrollX = parentElem.scrollLeft();
-    // this.docInfo.scrollY = parentElem.scrollTop();
-
-    this.docInfo.scrollX = parentElem.scrollLeft;
-    this.docInfo.scrollY = parentElem.scrollTop;
-
-    this.docInfo.docToScreenScale = (this.docInfo.dispDpiX / this.docInfo.docDpi) * this.docInfo.docScale;
+    this.docInfo.docToScreenScale = this.docInfo.dispDpiX / this.docInfo.docDpi * this.docInfo.docScale;
     this.docInfo.docDpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
     this.docInfo.docScreenX = this.docInfo.dispX - this.docInfo.scrollX;
     this.docInfo.docScreenY = this.docInfo.dispY - this.docInfo.scrollY;
@@ -291,10 +290,10 @@ class Document extends Container {
   }
 
   SetDocumentMetrics = (metrics: { width?: number, height?: number, dpi?: number, scale?: number }) => {
-    this.docInfo.docWidth = metrics.width ?? this.docInfo.docWidth;
-    this.docInfo.docHeight = metrics.height ?? this.docInfo.docHeight;
-    this.docInfo.docDpi = metrics.dpi ?? this.docInfo.docDpi;
-    this.docInfo.docScale = metrics.scale ?? this.docInfo.docScale;
+    this.docInfo.docWidth = metrics.width || this.docInfo.docWidth;
+    this.docInfo.docHeight = metrics.height || this.docInfo.docHeight;
+    this.docInfo.docDpi = metrics.dpi || this.docInfo.docDpi;
+    this.docInfo.docScale = metrics.scale || this.docInfo.docScale;
     this.CalcWorkArea();
     this.ApplyDocumentTransform();
   }

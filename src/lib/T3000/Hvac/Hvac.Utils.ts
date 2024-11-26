@@ -26,14 +26,8 @@ export const RoundCoord = function (number) {
 }
 
 export const StopPropagationAndDefaults = (e) => {
-  console.log('StopPropagationAndDefaults', e);
   e.preventDefault();
-  e.stopPropagation();
-
-  if (e.gesture) {
-    e.gesture.preventDefault();
-    e.gesture.stopPropagation();
-  }
+  // e.stopPropagation();
 }
 
 export const DeepCopy = (e) => {

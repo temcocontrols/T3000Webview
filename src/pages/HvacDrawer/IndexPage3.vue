@@ -105,7 +105,7 @@
   height: 175.4px;
   overflow: hidden scroll;
   user-select: none;
-  /* background-color: lightseagreen; */
+  background-color: lightseagreen;
 }
 
 .doc-toolbar {

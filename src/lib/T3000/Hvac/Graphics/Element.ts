@@ -128,6 +128,14 @@ class Element {
     return this.geometryBBox;
   }
 
+  SetCursor = (cursor) => {
+    this.cursor = cursor;
+    if (cursor) {
+      this.svgObj.node.setAttribute("class", cursor);
+    } else {
+      this.svgObj.node.removeAttribute("class");
+    }
+  }
 
   CalcElementFrame = (includeTransforms) => {
     const geometryBBox = this.GetGeometryBBox();

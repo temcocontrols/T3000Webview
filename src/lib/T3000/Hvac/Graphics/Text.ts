@@ -1546,7 +1546,7 @@ class Text extends Element {
   public svgObj: any;
   public textElem: any;
   public selectElem: Path;
-  public cursorElem: SVG.Line;
+  public cursorElem: any;
   public clickAreaElem: Rect;
   public decorationAreaElem: any;
   public cursorTimer: any;
@@ -1568,6 +1568,8 @@ class Text extends Element {
 
 
   CreateElement = (e, t) => {
+
+    console.log('AAAAAAAAAAAA Text CreateElement', e, t);
     this.formatter = new Formatter(this);
     this.editor = new Edit(this);
     this.svgObj = new SVG.Container(SVG.create('g'));

@@ -1,14 +1,11 @@
 
 import DocumentHandler from "../Document/DocumentHandler";
-import ListManager from "../Document/ListManager";
 import * as Utils from '../Hvac.Utils';
 
 class UI {
-
   public gDocumentHandler: DocumentHandler;
 
   constructor() {
-    this.gDocumentHandler = new DocumentHandler();
   }
 
   Initialize = () => {
@@ -18,7 +15,6 @@ class UI {
     // SDUI.Commands.MainController.HTMLLoader.ElementLoaded = SDUI.Initializer.InitializeElement;
     // SDUI.Initializer.AttachWindowEvents();
     // SDUI.Resources.BuildWebFonts();
-    this.init_document_handler();
     // this.init_list_manager();
     // init_business_manager();
     // init_business_manager("FLOORPLAN");
@@ -26,39 +22,21 @@ class UI {
     // window.onkeyup = SDUI.Events.OnKeyUp;
     // window.onkeypress = SDUI.Events.OnKeyPress;
 
+    this.gDocumentHandler = new DocumentHandler();
+    this.gDocumentHandler.Initialize();
+
     window.oncontextmenu = function (e) {
       e.preventDefault()
     };
 
+    window.addEventListener.bind("mousemove", this.LM_MouseMove);
 
     // SDUI.Resources.KeyboardCommand.prototype.BuildCommands();
     this.SetZoomSlider();
-
-    console.log('After initializing UI', this.gDocumentHandler.svgDoc);
   }
-
-  init_document_handler = () => {
-
-    if (!this.gDocumentHandler) {
-      this.gDocumentHandler = new DocumentHandler();
-    }
-
-    this.gDocumentHandler.Initialize();
-  }
-
-  // init_list_manager = () => {
-
-  //   if (!this.gListManager) {
-  //     this.gListManager = new ListManager();
-  //   }
-
-  //   this.gListManager.Initialize();
-  // }
-
 
   SetZoomSlider = () => {
   }
-
 
   LM_MouseMove = (e) => {
     if (
@@ -75,8 +53,6 @@ class UI {
 
 
   LM_WorkAreaMouseWheel = (e) => {
-
-
     console.log('LM_WorkAreaMouseWheel', this.gDocumentHandler.svgDoc);
 
     if (e.ctrlKey) {
