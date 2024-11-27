@@ -1588,7 +1588,7 @@ class Text extends Element {
 
   CreateElement = (e, t) => {
 
-    console.log('AAAAAAAAAAAA Text CreateElement', e, t);
+    // console.log('AAAAAAAAAAAA Text CreateElement', e, t);
     this.formatter = new Formatter(this);
     this.editor = new Edit(this);
     this.svgObj = new SVG.Container(SVG.create('g'));

@@ -1,20 +1,22 @@
-// var svg = function (e) {
-//   return new SVG.Doc(e);
-// };
+import { SVG, Element, extend, create } from "@svgdotjs/svg.js";
 
-import { SVG, extend, create } from "@svgdotjs/svg.js";
+/*
+var svg = function (e) {
+  return new SVG.Doc(e);
+};
 
-// var SVG = {
-//   ns: "http://www.w3.org/2000/svg",
-//   xlink: "http://www.w3.org/1999/xlink",
-//   did: 0,
-//   create: function (e) {
-//     return document.createElementNS(this.ns, e);
-//   },
-//   extend: function (e, t) {
-//     for (var n in t) e.prototype[n] = t[n];
-//   },
-// };
+var SVG = {
+  ns: "http://www.w3.org/2000/svg",
+  xlink: "http://www.w3.org/1999/xlink",
+  did: 0,
+  create: function (e) {
+    return document.createElementNS(this.ns, e);
+  },
+  extend: function (e, t) {
+    for (var n in t) e.prototype[n] = t[n];
+  },
+};
+*/
 
 SVG.create = create;
 
@@ -227,18 +229,11 @@ SVG.Container.prototype = new SVG.Element();
 
 /*SVG.*/ extend(SVG.Container, {
   add: function (e, t) {
-    console.log("SVG.extend(SVG.Container 1", e, t);
-
     if (!this.has(e)) {
       t = t == null ? this.children().length : t;
       this.children().splice(t, 0, e);
-
-      console.log("SVG.extend(SVG.Container 2", this.node);
-      console.log("SVG.extend(SVG.Container 3", e.node);
       this.node.insertBefore(e.node, this.node.childNodes[t] || null);
       e.parent = this;
-
-      console.log("SVG.extend(SVG.Container 4", e);
     }
     return this;
   },
@@ -802,41 +797,6 @@ SVG.Doc.prototype.stage = function () {
   handleReadyState();
 
   return this;
-
-  /*
-  console.log("SVG.Doc.prototype.stage", this);
-  var e,
-    t = this,
-    n = document.createElement("div");
-
-  n.style.cssText = "position:relative;height:100%;";
-
-  if (t.parent == null) {
-    t.parent = {};
-  }
-  t.parent.appendChild(n);
-  n.appendChild(t.node);
-
-  e = function () {
-    if (document.readyState === "complete") {
-      t.attr("style", "position:absolute;overflow:hidden;");
-      setTimeout(function () {
-        t.attr("style", "position:relative;overflow:hidden;");
-        try {
-          t.parent.removeChild(t.node.parentNode);
-          t.node.parentNode.removeChild(t.node);
-          t.parent.appendChild(t.node);
-        } catch (e) {}
-      }, 5);
-    } else {
-      setTimeout(e, 10);
-    }
-  };
-
-  e();
-
-  return this;
-  */
 };
 
 SVG.Shape = function (e) {
@@ -1204,6 +1164,16 @@ SVG.Text &&
   };
 });
 
-// const HvacSVG = SVG;
+extend(Element.prototype, {});
+extend(Element, {
+  t1: function () {
+    console.log(
+      `Hvac.SVG.js extend svg.js Element ${this.type.toString()}---------------------------------------`,
+      this
+    );
+  },
+});
 
-export default SVG;
+const HvacSVG = SVG;
+
+export default HvacSVG;
