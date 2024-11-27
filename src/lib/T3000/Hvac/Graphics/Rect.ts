@@ -1,20 +1,29 @@
 
 import Element from './Element';
 import * as Utils from '../Hvac.Utils';
-// import { SVG, create } from '@svgdotjs/svg.js';
-import HvacSVG from '../HvacSVG';
+import HvacSvg from '../Hvac.SVG';
 
 class Rect extends Element {
   public shapeElem: any;
 
   CreateElement = (element, parent) => {
-    const t1 = HvacSVG.create("g");
-    const t2 = new HvacSVG.Container(t1);
-    this.svgObj = t2;
-    this.shapeElem = new HvacSVG.Rect();
+    this.svgObj = new HvacSvg.Container(HvacSvg.create("g"));
+
+    const test = HvacSvg().rect(100, 100).fill('red');
+    this.svgObj.add(test);
+
+    this.shapeElem = new HvacSvg.Rect();
     this.svgObj.add(this.shapeElem);
     this.InitElement(element, parent);
     return this.svgObj;
+
+    /*
+    this.svgObj = new SVG.Container(SVG.create("g"));
+    this.shapeElem = new SVG.Rect();
+    this.svgObj.add(this.shapeElem);
+    this.InitElement(e, t);
+    return this.svgObj;
+    */
   }
 
   SetSize = (width, height) => {

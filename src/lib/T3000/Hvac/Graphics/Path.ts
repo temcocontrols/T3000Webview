@@ -1,7 +1,7 @@
 
 import Container from './Container';
 import * as Utils from '../Hvac.Utils';
-import SVG from '../HvacSVG';
+import SVG from '../Hvac.SVG';
 import Models from '../Hvac.Models';
 import Symbol from './Symbol';
 import '../pathseg';

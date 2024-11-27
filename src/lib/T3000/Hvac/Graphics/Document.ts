@@ -1,5 +1,5 @@
-// import * as SVG from "@svgdotjs/svg.js";
-import SVG from '../HvacSVG';
+import { SVG, Line, create, Svg } from "@svgdotjs/svg.js";
+import HvacSVG from '../Hvac.SVG';
 import Container from "./Container";
 import Rect from "./Rect";
 import Layer from "./Layer";
@@ -51,7 +51,14 @@ class Document extends Container {
       this.parentElem = this.parentElem
     }
 
-    this.svgObj = SVG.svg(this.parentElem);
+    console.log('Document parentElem', this.parentElem);
+    this.svgObj = HvacSVG.svg(this.parentElem);
+
+    console.log('Document parentElem this.svgObj', this.svgObj);
+
+    const svgT1 = SVG("#" + this.parentElem);
+    console.log('Document parentElem svgT1', svgT1);
+
     this.InitDocInfo();
     this.fontList = fontList;
     this.activeEdit = null;
@@ -278,7 +285,7 @@ class Document extends Container {
     }
 
     return formattingLayer;
-  };
+  }
 
   AddLayer = (e) => {
     const layer = this.CreateShape(Models.CreateShapeType.LAYER);

@@ -1,5 +1,5 @@
 import Container from "./Container";
-import SVG from '../HvacSVG';
+import SVG from '../Hvac.SVG';
 
 class Layer extends Container {
   public scaleOKFlag = true;

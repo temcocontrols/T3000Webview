@@ -1,6 +1,6 @@
 
 import Container from './Container';
-import SVG from '../HvacSVG';
+import SVG from '../Hvac.SVG';
 
 class Group extends Container {
 

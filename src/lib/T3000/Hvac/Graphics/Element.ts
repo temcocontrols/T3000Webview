@@ -1,4 +1,4 @@
-import { utils } from '@svgdotjs/svg.js';
+import { G, utils } from '@svgdotjs/svg.js';
 import * as Utils from '../Hvac.Utils';
 
 class Element {
@@ -23,21 +23,20 @@ class Element {
   public strokeDashArray: any;
   public lineColors: any;
 
-  constructor() {
-  }
+  constructor() { }
 
   public InitElement = (element, parent) => {
     this.doc = element;
     this.parent = parent;
     this.svgObj.SDGObj = this;
-    this.ID = null;
+    this.ID = Utils.GenerateUUID();
     this.style = null;
     this.effects = null;
     this.userData = null;
     this.cursor = null;
     this.strokeWidth = 0;
-    this.mirrored = !1;
-    this.flipped = !1;
+    this.mirrored = false;
+    this.flipped = false;
     this.geometryBBox = {};
     this.geometryBBox.x = 0;
     this.geometryBBox.y = 0;

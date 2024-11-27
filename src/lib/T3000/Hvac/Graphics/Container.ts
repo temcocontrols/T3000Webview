@@ -1,6 +1,6 @@
 import Element from './Element';
 // import * as SVG from '@svgdotjs/svg.js';
-import SVG from '../HvacSVG';
+import SVG from '../Hvac.SVG';
 
 class Container extends Element {
   constructor() {
@@ -32,14 +32,10 @@ class Container extends Element {
     }
 
     this.svgObj.add(e.svgObj, t);
-
-    console.log('Container.AddElement e1 4', this.svgObj);
-
     if (e.svgObj.parent === this.svgObj) {
       e.parent = this;
       e.RefreshPaint(true);
     }
-
   }
 
   RemoveElement = (e) => {

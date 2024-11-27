@@ -2,7 +2,7 @@
 import Element from './Element';
 import * as Utils from '../Hvac.Utils';
 // import * as SVG from '@svgdotjs/svg.js';
-import SVG from '../HvacSVG';
+import SVG from '../Hvac.SVG';
 import Path from './Path';
 import Rect from './Rect';
 

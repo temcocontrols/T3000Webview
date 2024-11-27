@@ -2,17 +2,21 @@
 //   return new SVG.Doc(e);
 // };
 
-var SVG = {
-  ns: "http://www.w3.org/2000/svg",
-  xlink: "http://www.w3.org/1999/xlink",
-  did: 0,
-  create: function (e) {
-    return document.createElementNS(this.ns, e);
-  },
-  extend: function (e, t) {
-    for (var n in t) e.prototype[n] = t[n];
-  },
-};
+import { SVG, extend, create } from "@svgdotjs/svg.js";
+
+// var SVG = {
+//   ns: "http://www.w3.org/2000/svg",
+//   xlink: "http://www.w3.org/1999/xlink",
+//   did: 0,
+//   create: function (e) {
+//     return document.createElementNS(this.ns, e);
+//   },
+//   extend: function (e, t) {
+//     for (var n in t) e.prototype[n] = t[n];
+//   },
+// };
+
+SVG.create = create;
 
 SVG.svg = function (e) {
   return new SVG.Doc(e);
@@ -48,7 +52,7 @@ SVG.Element = function (e) {
     });
 };
 
-SVG.extend(SVG.Element, {
+/*SVG.*/ extend(SVG.Element, {
   move: function (e, t) {
     return this.attr({
       x: e,
@@ -221,7 +225,7 @@ SVG.Container = function (e) {
 
 SVG.Container.prototype = new SVG.Element();
 
-SVG.extend(SVG.Container, {
+/*SVG.*/ extend(SVG.Container, {
   add: function (e, t) {
     console.log("SVG.extend(SVG.Container 1", e, t);
 
@@ -333,7 +337,7 @@ SVG.FX = function (e) {
   this.target = e;
 };
 
-SVG.extend(SVG.FX, {
+/*SVG.*/ extend(SVG.FX, {
   animate: function (e, t) {
     (e = null == e ? 1000 : e), (t = t || "<>");
     var n,
@@ -528,7 +532,7 @@ SVG.extend(SVG.FX, {
   },
 });
 
-SVG.extend(SVG.Element, {
+/*SVG.*/ extend(SVG.Element, {
   animate: function (e, t) {
     return (this._fx || (this._fx = new SVG.FX(this))).stop().animate(e, t);
   },
@@ -549,7 +553,7 @@ SVG.off = function (e, t, n) {
     : e.detachEvent("on" + t, n);
 };
 
-SVG.extend(SVG.Element, {
+/*SVG.*/ extend(SVG.Element, {
   on: function (e, t) {
     return SVG.on(this.node, e, t), this;
   },
@@ -564,13 +568,13 @@ SVG.G = function () {
 
 SVG.G.prototype = new SVG.Container();
 
-SVG.extend(SVG.G, {
+/*SVG.*/ extend(SVG.G, {
   defs: function () {
     return this.doc().defs();
   },
 });
 
-SVG.extend(SVG.Element, {
+/*SVG.*/ extend(SVG.Element, {
   siblings: function () {
     return this.parent.children();
   },
@@ -619,7 +623,7 @@ SVG.Mask = function () {
 
 SVG.Mask.prototype = new SVG.Container();
 
-SVG.extend(SVG.Element, {
+/*SVG.*/ extend(SVG.Element, {
   maskWith: function (e) {
     return (
       (this.mask = e instanceof SVG.Mask ? e : this.parent.mask().add(e)),
@@ -635,13 +639,13 @@ SVG.Pattern = function (e) {
 
 SVG.Pattern.prototype = new SVG.Container();
 
-SVG.extend(SVG.Pattern, {
+/*SVG.*/ extend(SVG.Pattern, {
   fill: function () {
     return "url(#" + this.id + ")";
   },
 });
 
-SVG.extend(SVG.Defs, {
+/*SVG.*/ extend(SVG.Defs, {
   pattern: function (e, t, n) {
     var i = this.put(new SVG.Pattern());
     return (
@@ -665,7 +669,7 @@ SVG.Gradient = function (e) {
 
 SVG.Gradient.prototype = new SVG.Container();
 
-SVG.extend(SVG.Gradient, {
+/*SVG.*/ extend(SVG.Gradient, {
   from: function (e, t) {
     return "radial" == this.type
       ? this.attr({
@@ -708,7 +712,7 @@ SVG.extend(SVG.Gradient, {
   },
 });
 
-SVG.extend(SVG.Defs, {
+/*SVG.*/ extend(SVG.Defs, {
   gradient: function (e, t) {
     var n = this.put(new SVG.Gradient(e));
     return t(n), n;
@@ -721,7 +725,7 @@ SVG.Stop = function (e) {
 
 SVG.Stop.prototype = new SVG.Element();
 
-SVG.extend(SVG.Stop, {
+/*SVG.*/ extend(SVG.Stop, {
   update: function (e) {
     var t,
       n = "",
@@ -850,7 +854,7 @@ SVG.Wrap = function (e) {
 
 SVG.Wrap.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Wrap, {
+/*SVG.*/ extend(SVG.Wrap, {
   move: function (e, t) {
     return this.transform({
       x: e,
@@ -912,7 +916,7 @@ SVG.Ellipse = function () {
 
 SVG.Ellipse.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Ellipse, {
+/*SVG.*/ extend(SVG.Ellipse, {
   move: function (e, t) {
     return (this.attrs.x = e), (this.attrs.y = t), this.center();
   },
@@ -936,7 +940,7 @@ SVG.Line = function () {
 
 SVG.Line.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Line, {
+/*SVG.*/ extend(SVG.Line, {
   move: function (e, t) {
     var n = this.bbox();
     return this.attr({
@@ -959,7 +963,7 @@ SVG.extend(SVG.Line, {
   },
 });
 
-SVG.extend(SVG.Container, {
+/*SVG.*/ extend(SVG.Container, {
   line: function (e, t, n, i) {
     return this.put(
       new SVG.Line().attr({
@@ -984,7 +988,7 @@ SVG.Polyline = function () {
 
 SVG.Polyline.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Polyline, SVG.Poly);
+/*SVG.*/ extend(SVG.Polyline, SVG.Poly);
 
 SVG.Polygon = function () {
   this.constructor.call(this, SVG.create("polygon"));
@@ -992,7 +996,7 @@ SVG.Polygon = function () {
 
 SVG.Polygon.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Polygon, SVG.Poly);
+/*SVG.*/ extend(SVG.Polygon, SVG.Poly);
 
 SVG.Path = function () {
   this.constructor.call(this, SVG.create("path"));
@@ -1000,7 +1004,7 @@ SVG.Path = function () {
 
 SVG.Path.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Path, {
+/*SVG.*/ extend(SVG.Path, {
   move: function (e, t) {
     this.transform({
       x: e,
@@ -1018,7 +1022,7 @@ SVG.Image = function () {
 
 SVG.Image.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Image, {
+/*SVG.*/ extend(SVG.Image, {
   load: function (e) {
     return (this.src = e), e ? this.attr("xlink:href", e, SVG.xlink) : this;
   },
@@ -1042,7 +1046,7 @@ SVG.Text = function () {
 
 SVG.Text.prototype = new SVG.Shape();
 
-SVG.extend(SVG.Text, {
+/*SVG.*/ extend(SVG.Text, {
   text: function (e) {
     (this.content = e = e || "text"), (this.lines = []);
     for (
@@ -1078,7 +1082,7 @@ SVG.extend(SVG.Text, {
 
 t.prototype = new SVG.Shape();
 
-SVG.extend(t, {
+/*SVG.*/ extend(t, {
   text: function (e) {
     return this.node.appendChild(document.createTextNode(e)), this;
   },
@@ -1122,7 +1126,7 @@ var n = function (e, t) {
 
 [(SVG.Element, SVG.FX)].forEach(function (e) {
   e &&
-    SVG.extend(e, {
+    /*SVG.*/ extend(e, {
       rotate: function (e) {
         return this.transform({
           rotation: e || 0,
@@ -1147,7 +1151,7 @@ var n = function (e, t) {
 });
 
 SVG.G &&
-  SVG.extend(SVG.G, {
+  /*SVG.*/ extend(SVG.G, {
     move: function (e, t) {
       return this.transform({
         x: e,
@@ -1157,7 +1161,7 @@ SVG.G &&
   });
 
 SVG.Text &&
-  SVG.extend(SVG.Text, {
+  /*SVG.*/ extend(SVG.Text, {
     font: function (t) {
       var n,
         i = {};
@@ -1199,5 +1203,7 @@ SVG.Text &&
     );
   };
 });
+
+// const HvacSVG = SVG;
 
 export default SVG;
