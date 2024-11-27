@@ -162,7 +162,6 @@ class DocumentHandler {
 
   InitSVGDocument = () => {
     console.log('DocumentHandler, InitSVGDocument');
-
     this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 1000, documentHeight: 750, documentDPI: 100 });
     this.svgDoc = this.DocObject();
     this.svgObjectLayer = this.svgDoc.AddLayer('svgObjectLayer');
@@ -179,57 +178,10 @@ class DocumentHandler {
     this.DocumentElement = document.getElementById('document-area');
     this.WorkAreaHammer = new Hammer(this.WorkAreaElement);
     this.DocumentElementHammer = new Hammer(this.DocumentElement);
-
-    // this.WorkAreaHammer.on('tap', WorkAreaHammerTap);
-    // this.WorkAreaHammer.on('wheel', WorkAreaMouseWheel);
-    // this.DocumentElementHammer.on('wheel', WorkAreaMouseWheel);
-    // this.WorkAreaHammer.on('dragstart', WorkAreaHammerDragStart);
   }
-
-  // WorkAreaHammerDragStart = function (e) {
-
-  //   console.log('SDJS_LM_WorkAreaHammerDragStart', e);
-
-  //   var svgAreaElem = document.getElementById("svgarea");
-  //   var offset = svgAreaElem.getBoundingClientRect();
-  //   var clientX = e.center.clientX - offset.left;
-  //   var clientY = e.center.clientY - offset.top;
-  //   var clientWidth = svgAreaElem.clientWidth;
-  //   var clientHeight = svgAreaElem.clientHeight;
-
-  //   if (!(clientX >= clientWidth || clientY >= clientHeight)) {
-  //     if (gListManager.isMobilePlatform || gListManager.IsWheelClick(e) || SDUI.Resources.DocumentContext.SpacebarDown) {
-  //       if (!gListManager.bTouchPanStarted) {
-  //         gListManager.bTouchPanStarted = true;
-  //         gListManager.touchPanX = e.gesture.center.clientX;
-  //         gListManager.touchPanY = e.gesture.center.clientY;
-  //         gListManager.WorkAreaHammer.on("drag", SDJS_LM_WorkAreaHammerPan);
-  //         gListManager.WorkAreaHammer.on("dragend", SDJS_LM_WorkAreaHammerPanEnd);
-  //         SDJS.Utils.StopPropagationAndDefaults(e);
-  //       }
-  //       return false;
-  //     } else {
-  //       if (gListManager.bTouchPanStarted) {
-  //         SDJS_LM_WorkAreaHammerPanEnd();
-  //       }
-  //       SDJS.Utils.StopPropagationAndDefaults(e);
-  //       gListManager.SetUIAdaptation(e);
-  //       if (gListManager.IsRightClick(e)) {
-  //         e.preventDefault();
-  //         e.stopPropagation();
-  //         return false;
-  //       } else {
-  //         SDUI.Commands.MainController.Dropdowns.HideAllDropdowns();
-  //         gListManager.StartRubberBandSelect(e);
-  //         return false;
-  //       }
-  //     }
-  //   }
-  // }
 
   InitializeWorkArea = (workArea) => {
     console.log('DocumentHandler, InitializeWorkArea 1', workArea);
-    // workArea = { svgAreaID: "svgarea", documentWidth: 1000, documentHeight: 750, documentDPI: 100 }
     this.workAreaID = workArea.workAreaID || 'document-area';
     this.svgAreaID = workArea.svgAreaID || 'svgarea';
     this.hRulerAreaID = workArea.hRulerAreaID || 'h-ruler';
@@ -258,7 +210,6 @@ class DocumentHandler {
     this.UpdateGridVisibility();
     this.SetupRulers();
     this.UpdateGrid();
-    // this.UpdatePageDivider();
     this.UpdateWorkArea();
   }
 
@@ -331,11 +282,9 @@ class DocumentHandler {
 
     const innerDiv = document.createElement('div');
     outerDiv.appendChild(innerDiv);
-
     document.body.appendChild(outerDiv);
 
     const scrollbarWidth = outerDiv.offsetWidth - innerDiv.clientWidth;
-
     document.body.removeChild(outerDiv);
 
     return scrollbarWidth;
@@ -369,9 +318,7 @@ class DocumentHandler {
       height: a.height
     },
       this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
-        // this.IdleZoomUI(),
         this.UpdateGrid(),
-        // this.UpdatePageDivider(),
         this.ResetRulers())) : t = {
           width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
           height: a.docScreenHeight
@@ -382,9 +329,7 @@ class DocumentHandler {
             height: a.height
           },
           this.bInAutoScroll || this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
-            // this.IdleZoomUI(),
             this.UpdateGrid(),
-            // this.UpdatePageDivider(),
             this.ResetRulers())) : t = {
               width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
               height: a.docScreenHeight
@@ -593,7 +538,6 @@ class DocumentHandler {
     if (!this.IsReadOnly()) {
       if (this.IsRightClick(e)) {
         Utils.StopPropagationAndDefaults(e);
-        // Double show dropdown
         return;
       }
       this.rulerInDrag = true;
@@ -1249,19 +1193,15 @@ class DocumentHandler {
     //   this.AdjustScroll(scrollX, scrollY);
     // }
 
-    // this.IdleZoomUI();
     this.ResetRulers();
     this.UpdateGrid();
-    // this.UpdatePageDivider();
     this.UpdateWorkArea();
-
     return true;
   }
 
   UpdateDisplayCoordinates = function (e, t, a, r) {
 
   }
-
 }
 
 export default DocumentHandler;

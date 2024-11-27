@@ -1,7 +1,6 @@
 
 import Container from './Container';
 import * as Utils from '../Hvac.Utils';
-// import * as SVG from '@svgdotjs/svg.js';
 import SVG from '../HvacSVG';
 import Models from '../Hvac.Models';
 import Symbol from './Symbol';

@@ -2,7 +2,6 @@
 enum Defines {
   MaxWorkDimX = 32e4,
   MaxWorkDimY = 32e4,
-
 }
 
 class Point {
@@ -58,44 +57,20 @@ class ContentHeader {
   public smartpanelname: string;
   public originaltemplate: string;
 
-
   constructor() {
     this.Initialize();
   }
 
-
   Initialize = () => {
-
     this.Page = new PageRecord();
     this.MaxWorkDim = new Point(Defines.MaxWorkDimX, Defines.MaxWorkDimY);
-    // this.DimensionFont = new SDJS.ListManager.FontRecord;
-    // this.DimensionFontStyle = new SDGraphics.Text.Formatter.DefaultStyle;
-    this.flags = "";//SDJS.ListManager.ContentHeaderFlags.CT_DA_Pages;
+    this.flags = "";
     this.BusinessModule = "";
     this.dateformat = -1;
     this.smarthelpname = "";
     this.smartpanelname = "";
     this.originaltemplate = "";
-    // this.orgcharttable = "";
-    // this.exportpath = "";
-    // this.presentationBackground = "";
-    // this.presentationName = "";
-    // this.importSourcePath = "";
-    // this.defaultlibs = "";
-    // this.lp_list = new SDJS.ListManager.LibList;
-    // this.ClipboardBuffer = null;
-    // this.ClipboardType = SDJS.ListManager.ClipboardType.None;
-    // this.nonworkingdays = SDJS.ListManager.Defines.DEFAULT_NONWORKINGDAYS;
-    // this.holidaymask = 0;
-    // this.DocIsDirty = !1;
-    // this.AllowReplace = !0;
-    // this.FontList = [];
-    // this.SymbolSearchString = "";
-    // this.Save_HistoryState = -1;
-    // this.ParentPageID = "";
   }
-
-
 }
 
 class ListManager {
@@ -110,4 +85,5 @@ class ListManager {
     this.theContentHeader = new ContentHeader();
   }
 }
+
 export default ListManager;

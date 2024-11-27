@@ -9,7 +9,7 @@ class Container extends Element {
 
   ElementCount = () => {
     const childrenCount = this.svgObj.children().length;
-    if (this.svgObj instanceof /*SVG.Doc*/SVG.Container) {
+    if (this.svgObj instanceof SVG.Container) {
       return childrenCount - 1;
     }
     return childrenCount;
@@ -27,17 +27,10 @@ class Container extends Element {
   }
 
   AddElement = (e: any, t: any) => {
-    console.log('Container.AddElement e1 1', e.svgObj, t);
-
-
     if (t !== undefined && this.svgObj instanceof SVG.Container) {
       t++;
     }
 
-    console.log('Container.AddElement e1 2', e.svgObj, t);
-    console.log('Container.AddElement e1 3', this.svgObj);
-
-    // debugger;
     this.svgObj.add(e.svgObj, t);
 
     console.log('Container.AddElement e1 4', this.svgObj);

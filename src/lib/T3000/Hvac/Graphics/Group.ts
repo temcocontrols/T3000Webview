@@ -1,6 +1,5 @@
 
 import Container from './Container';
-// import * as SVG from '@svgdotjs/svg.js';
 import SVG from '../HvacSVG';
 
 class Group extends Container {

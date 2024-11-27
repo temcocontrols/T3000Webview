@@ -1,7 +1,5 @@
 import { utils } from '@svgdotjs/svg.js';
 import * as Utils from '../Hvac.Utils';
-// import Group from './Group';
-// import Group from './Group';
 
 class Element {
 
@@ -26,7 +24,6 @@ class Element {
   public lineColors: any;
 
   constructor() {
-    // this.InitElement(null, null);
   }
 
   public InitElement = (element, parent) => {
@@ -203,7 +200,6 @@ class Element {
   }
 
   CleanGraphics = () => {
-    // TODO
   }
 
   UpdateImagePattern = (e) => { }
@@ -214,8 +210,8 @@ class Element {
     let patternData;
     if ((patternData = t ? this.fillPatternData : this.strokePatternData) && patternData.ID === e) {
       if (!patternData.patternElem) {
-        patternData.patternElem = null;// new SVG.Pattern();
-        patternData.imageElem = null;// new SVG.Image();
+        patternData.patternElem = null;
+        patternData.imageElem = null;
         patternData.imageElem.load(patternData.url);
         patternData.patternElem.add(patternData.imageElem);
         patternData.patternElem.attr('id', patternData.ID);
@@ -279,11 +275,7 @@ class Element {
     this.svgObj.attr('fill-rule', e)
   }
 
-
   SetStrokeWidth = (e) => {
-
-
-
     this.svgObj.attr('stroke-width', e);
 
     if (isNaN(e)) {
@@ -292,7 +284,6 @@ class Element {
 
     this.strokeWidth = Number(e);
     this.svgObj.attr('stroke-dasharray', this.GetStrokePatternForWidth());
-
   }
 
   SetStrokePattern = (e) => {
@@ -391,8 +382,6 @@ class Element {
     this.svgObj.attr("stroke", color);
     this.ClearColorData(false);
   }
-
-
 
   ClearColorData = (isFill) => {
     let patternData, gradientData;

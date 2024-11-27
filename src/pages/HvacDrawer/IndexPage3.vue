@@ -3,7 +3,7 @@
   margin-left: 0px;
   position: absolute;
   width: 100%;
-  background-color: red;
+  background-color: rgb(223, 178, 178);
 }
 
 #main-toolbar {
@@ -56,7 +56,7 @@
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  background-color: hotpink;
+  background-color: rgb(227, 153, 190);
 }
 
 .document-ruler-corner {

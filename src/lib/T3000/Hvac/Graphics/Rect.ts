@@ -1,33 +1,18 @@
 
 import Element from './Element';
 import * as Utils from '../Hvac.Utils';
-// import * as SVG from '@svgdotjs/svg.js';
-import SVG from '../HvacSVG';
-
+// import { SVG, create } from '@svgdotjs/svg.js';
+import HvacSVG from '../HvacSVG';
 
 class Rect extends Element {
   public shapeElem: any;
 
-
   CreateElement = (element, parent) => {
-
-    console.log('Rect.CreateElement element', element);
-
-    const t1 = SVG.create("g");
-    console.log('Rect.CreateElement t1', t1);
-
-    const t2 = new SVG.Container(t1);
-    console.log('Rect.CreateElement t2', t2);
-
+    const t1 = HvacSVG.create("g");
+    const t2 = new HvacSVG.Container(t1);
     this.svgObj = t2;
-    console.log('Rect.CreateElement svgObj 1', this.svgObj);
-
-    this.shapeElem = new SVG.Rect();
-    console.log('Rect.CreateElement shapeElem ', this.shapeElem);
-
+    this.shapeElem = new HvacSVG.Rect();
     this.svgObj.add(this.shapeElem);
-    console.log('Rect.CreateElement svgObj 2', this.svgObj);
-
     this.InitElement(element, parent);
     return this.svgObj;
   }

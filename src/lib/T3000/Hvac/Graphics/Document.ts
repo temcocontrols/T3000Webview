@@ -36,7 +36,6 @@ interface DocInfo {
 
 class Document extends Container {
   public parentElem: string;
-  // public svgObj: any;
   public docInfo: DocInfo;
   public fontList: any;
   public activeEdit: any;
@@ -47,16 +46,12 @@ class Document extends Container {
   constructor(elementId: string, fontList: any) {
     super();
 
-    console.log('Document.constructor elementId', elementId);
     this.parentElem = elementId;
     if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
-      // this.parentElem = '#' + this.parentElem;
       this.parentElem = this.parentElem
     }
 
-    console.log('Document.constructor this.parentElem', this.parentElem[0]);
-
-    this.svgObj = SVG.svg(/*this.parentElem[0]*/this.parentElem);
+    this.svgObj = SVG.svg(this.parentElem);
     this.InitDocInfo();
     this.fontList = fontList;
     this.activeEdit = null;
@@ -118,8 +113,6 @@ class Document extends Container {
     shape.SetStrokeWidth(0);
     shape.SetSize('100in', '100in');
 
-    console.log('Document.GetDeviceInfo shape', shape, typeof (shape));
-
     this.AddElement(shape, null);
 
     let bbox = shape.GetBBox();
@@ -128,19 +121,12 @@ class Document extends Container {
 
     this.RemoveElement(shape);
 
-    // this.docInfo.dispWidth = $(this.parentElem).innerWidth(),
-    // this.docInfo.dispHeight = $(this.parentElem).innerHeight()
-    // debugger;
-
-    console.log('Document.GetDeviceInfo parentElem', this.parentElem, document.getElementById(this.parentElem));
-
     this.docInfo.dispWidth = document.getElementById(this.parentElem).clientWidth;
     this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
   }
 
   CreateShape = (shapeType) => {
 
-    console.log('AAAAAAAAAAAA shapeType', shapeType);
     let shape = null;
     switch (shapeType) {
       case Models.CreateShapeType.RECT:
@@ -195,9 +181,7 @@ class Document extends Container {
         break;
     }
 
-
     shape.CreateElement(this, null);
-    console.log('AAAAAAAAAAAA Document.CreateShape shape', shape);
 
     return shape;
   }
@@ -245,7 +229,6 @@ class Document extends Container {
   }
 
   ApplyDocumentTransform = (e) => {
-    // TODO
     var t, a, r = this.ElementCount();
     if (this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
@@ -289,7 +272,7 @@ class Document extends Container {
       formattingLayer = this.AddLayer('__FORMATTING__');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', ""/* LayerMoveType.BOTTOM*/);
+      this.MoveLayer('__FORMATTING__', "");
       formattingLayer.SetOpacity(0);
       this.ApplyDocumentTransform();
     }
@@ -303,12 +286,7 @@ class Document extends Container {
     this.AddElement(layer, null);
     this.ApplyDocumentTransform(e);
 
-
-    console.log('Document.AddLayer layer', layer.svgObj.node);
-
     layer.svgObj.node.setAttribute("layerID", e);
-
-    // layer.svgObj.node.data("layerID", e);
     return layer;
   }
 
@@ -390,7 +368,6 @@ class Document extends Container {
       height: this.docInfo.docHeight * i * n
     }
   }
-
 }
 
 export default Document;

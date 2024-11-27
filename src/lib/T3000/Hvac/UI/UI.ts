@@ -9,19 +9,6 @@ class UI {
   }
 
   Initialize = () => {
-    // SDUI.AppSettings.ApplyApplicationSettings();
-    // SDUI.AppSettings.ApplyUI();
-    // SDUI.BackplaneEditorInitializer.Initialize();
-    // SDUI.Commands.MainController.HTMLLoader.ElementLoaded = SDUI.Initializer.InitializeElement;
-    // SDUI.Initializer.AttachWindowEvents();
-    // SDUI.Resources.BuildWebFonts();
-    // this.init_list_manager();
-    // init_business_manager();
-    // init_business_manager("FLOORPLAN");
-    // window.onkeydown = SDUI.Events.OnKeyDown;
-    // window.onkeyup = SDUI.Events.OnKeyUp;
-    // window.onkeypress = SDUI.Events.OnKeyPress;
-
     this.gDocumentHandler = new DocumentHandler();
     this.gDocumentHandler.Initialize();
 
@@ -31,7 +18,6 @@ class UI {
 
     window.addEventListener.bind("mousemove", this.LM_MouseMove);
 
-    // SDUI.Resources.KeyboardCommand.prototype.BuildCommands();
     this.SetZoomSlider();
   }
 
@@ -53,8 +39,6 @@ class UI {
 
 
   LM_WorkAreaMouseWheel = (e) => {
-    // console.log('LM_WorkAreaMouseWheel', this.gDocumentHandler.svgDoc);
-
     if (e.ctrlKey) {
       Utils.StopPropagationAndDefaults(e);
 
@@ -69,7 +53,6 @@ class UI {
       } else if (e.deltaY < 0) {
         this.gDocumentHandler.ZoomInandOut(true, true);
       }
-
 
       const windowCoords = this.gDocumentHandler.svgDoc.ConvertDocToWindowCoords(docCoords.x, docCoords.y);
       const offsetX = clientX - windowCoords.x;
