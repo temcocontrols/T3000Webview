@@ -153,7 +153,7 @@ class DocumentHandler {
     this.svgObjectLayer = null;
     this.svgOverlayLayer = null;
     this.svgHighlightLayer = null;
-    this.theContentHeader = this.gListManager.ContentHeader;
+    this.theContentHeader = this.gListManager.theContentHeader;
     this.InitSVGDocument();
     this.SVGroot = this.svgDoc.svgObj.node;
     this.TopLeftPastePos = { x: 0, y: 0 };
@@ -233,7 +233,6 @@ class DocumentHandler {
     this.UpdateRulerVisibility();
     this.InitSVGArea(workArea);
     this.UpdateGridVisibility();
-    this.UpdatePageDividerVisibility();
     this.SetupRulers();
     this.UpdateGrid();
     this.UpdatePageDivider();
@@ -241,9 +240,7 @@ class DocumentHandler {
   }
 
   InitSVGArea = (config) => {
-    if (!this.svgDoc) {
-      this.svgDoc = new Document(this.svgAreaID, []);
-    }
+    this.svgDoc = this.svgDoc || new Document(this.svgAreaID, []);
 
     const backgroundLayer = this.svgDoc.AddLayer(this.backgroundLayer);
     this.backgroundElem = this.svgDoc.CreateShape(Models.CreateShapeType.RECT);
@@ -295,9 +292,7 @@ class DocumentHandler {
   }
 
   UpdateDocumentScale = () => {
-    // this.svgDoc && (this.svgDoc.GetActiveEdit() || (this.HideAllSVGSelectionStates(),
-    //   this.RenderAllSVGSelectionStates()),
-    //   IdleZoomControls())
+    // Reset all svg items
   }
 
   IdleZoomUI = () => {
@@ -350,9 +345,9 @@ class DocumentHandler {
       height: a.height
     },
       this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
-        this.IdleZoomUI(),
+        // this.IdleZoomUI(),
         this.UpdateGrid(),
-        this.UpdatePageDivider(),
+        // this.UpdatePageDivider(),
         this.ResetRulers())) : t = {
           width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
           height: a.docScreenHeight
@@ -363,9 +358,9 @@ class DocumentHandler {
             height: a.height
           },
           this.bInAutoScroll || this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
-            this.IdleZoomUI(),
+            // this.IdleZoomUI(),
             this.UpdateGrid(),
-            this.UpdatePageDivider(),
+            // this.UpdatePageDivider(),
             this.ResetRulers())) : t = {
               width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
               height: a.docScreenHeight
@@ -404,17 +399,15 @@ class DocumentHandler {
     document.getElementById(this.svgAreaID).style.overflowY = u ? "scroll" : "hidden";
     this.svgDoc && (this.svgDoc.CalcWorkArea(),
       this.AdjustScroll(),
-      this.svgDoc.ApplyDocumentTransform(!0))
+      this.svgDoc.ApplyDocumentTransform(true))
   }
 
   AdjustScroll = (scrollX?: number, scrollY?: number) => {
-    const workArea = this.svgDoc.GetWorkArea();
-    const newScrollX = Math.min(scrollX !== undefined ? scrollX : workArea.scrollX, workArea.maxScrollX);
-    const newScrollY = Math.min(scrollY !== undefined ? scrollY : workArea.scrollY, workArea.maxScrollY);
-
+    var workArea = this.svgDoc.GetWorkArea();
+    var newScrollX = Math.min(scrollY !== undefined ? scrollX : workArea.scrollX, workArea.maxScrollX);
+    var newScrollY = Math.min(scrollY !== undefined ? scrollY : workArea.scrollY, workArea.maxScrollY);
     document.getElementById(this.svgAreaID).scrollLeft = newScrollX;
     document.getElementById(this.svgAreaID).scrollTop = newScrollY;
-
     this.svgDoc.CalcWorkArea();
     this.SyncRulers();
   }
@@ -442,9 +435,6 @@ class DocumentHandler {
   }
 
   UpdateRulerVisibility = () => {
-    this.documentConfig.showRulers = true;
-    this.rulerVis = true;
-
     if (this.documentConfig.showRulers === this.rulerVis) {
       return false;
     }
@@ -703,21 +693,6 @@ class DocumentHandler {
     }
   }
 
-
-
-  AdjustScroll = (e, t) => {
-    const workArea = this.svgDoc.GetWorkArea();
-    const scrollX = Math.min(e !== undefined ? e : workArea.scrollX, workArea.maxScrollX);
-    const scrollY = Math.min(t !== undefined ? t : workArea.scrollY, workArea.maxScrollY);
-
-    document.getElementById(this.svgAreaID).scrollLeft = scrollX;
-    document.getElementById(this.svgAreaID).scrollTop = scrollY;
-
-    this.svgDoc.CalcWorkArea();
-    this.SyncRulers();
-  }
-
-
   SyncRulers = function () {
     const scrollLeft = document.getElementById(this.svgAreaID).scrollLeft;
     const scrollTop = document.getElementById(this.svgAreaID).scrollTop;
@@ -840,7 +815,7 @@ class DocumentHandler {
       }
       this.ResetRulers();
       this.UpdateGrid();
-      this.UpdatePageDivider();
+      // this.UpdatePageDivider();
     }
   }
 
@@ -863,118 +838,106 @@ class DocumentHandler {
     return false;//SDUI.AppSettings.ReadOnly
   }
 
-  SD_GetScaledRuler = (e) => {
-    let scale = Math.floor(this.svgDoc.docInfo.docScale);
-    if (scale === 0) {
-      scale = Math.floor(1 / this.svgDoc.docInfo.docScale);
-      if (scale > 1) {
-        e /= scale;
+  SD_GetScaledRuler = (scale: number): number => {
+    let docScale = Math.floor(this.svgDoc.docInfo.docScale);
+    if (docScale === 0) {
+      docScale = Math.floor(1 / this.svgDoc.docInfo.docScale);
+      if (docScale > 1) {
+        scale /= docScale;
       }
-    } else if (scale > 1) {
-      e *= scale;
+    } else if (docScale > 1) {
+      scale *= docScale;
     }
-    return e;
+    return scale;
   }
 
-  UpdateGrid = () => {
-    // debugger;
+  UpdateGrid = function () {
     const workArea = this.svgDoc.GetWorkArea();
     const gridLayer = this.svgDoc.GetLayer(this.gridLayer);
     const scale = 1;
 
-    if (gridLayer) {
-      const scaledRuler = this.SD_GetScaledRuler(scale);
-      gridLayer.RemoveAll();
+    if (!gridLayer) { return }
 
-      const majorPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
-      const minorPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
+    const scaledRuler = this.SD_GetScaledRuler(scale);
+    gridLayer.RemoveAll();
 
-      const unitConversion = this.rulerSettings.useInches ? 1 : ListManagerDefines.MetricConv;
-      const majorUnit = this.rulerSettings.major / unitConversion;
-      const gridSpacing = this.rulerSettings.nGrid * scaledRuler;
+    const majorGridPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
+    const minorGridPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
 
-      let majorPathData = '';
-      let minorPathData = '';
+    const unitConversion = this.rulerSettings.useInches ? 1 : Defines.MetricConv;
+    const majorUnit = this.rulerSettings.major / unitConversion;
+    const gridSpacing = this.rulerSettings.nGrid * scaledRuler;
 
-      const pageWidth = this.gListManager.theContentHeader.Page.papersize.x -
-        (this.gListManager.theContentHeader.Page.margins.left + this.gListManager.theContentHeader.Page.margins.right) / 2;
-      const pageHeight = this.gListManager.theContentHeader.Page.papersize.y -
-        (this.gListManager.theContentHeader.Page.margins.top + this.gListManager.theContentHeader.Page.margins.bottom) / 2;
+    const pageWidth = this.theContentHeader.Page.papersize.x - (this.theContentHeader.Page.margins.left + this.theContentHeader.Page.margins.right) / 2;
+    const pageHeight = this.theContentHeader.Page.papersize.y - (this.theContentHeader.Page.margins.top + this.theContentHeader.Page.margins.bottom) / 2;
 
-      const docWidth = Utils.RoundCoordLP(workArea.docScreenWidth + 2 * pageWidth * workArea.docToScreenScale);
-      const docHeight = Utils.RoundCoordLP(workArea.docScreenHeight + 2 * pageHeight * workArea.docToScreenScale);
+    const docWidth = Utils.RoundCoordLP(workArea.docScreenWidth + 2 * pageWidth * workArea.docToScreenScale);
+    const docHeight = Utils.RoundCoordLP(workArea.docScreenHeight + 2 * pageHeight * workArea.docToScreenScale);
 
-      const startX = -Utils.RoundCoordLP(pageWidth * workArea.docToScreenScale);
-      const endX = startX + docWidth;
-      const startY = -Utils.RoundCoordLP(pageHeight * workArea.docToScreenScale);
-      const endY = startY + docHeight;
+    const startX = -Utils.RoundCoordLP(pageWidth * workArea.docToScreenScale);
+    const endX = startX + docWidth;
+    const startY = -Utils.RoundCoordLP(pageHeight * workArea.docToScreenScale);
+    const endY = startY + docHeight;
 
-      let originX = this.rulerSettings.originx - Math.floor(this.rulerSettings.originx);
-      if (originX) originX -= 1;
-      originX *= majorUnit;
+    let originX = this.rulerSettings.originx - Math.floor(this.rulerSettings.originx);
+    if (originX) originX -= 1;
+    originX *= majorUnit;
 
-      let originY = this.rulerSettings.originy - Math.floor(this.rulerSettings.originy);
-      if (originY) originY -= 1;
-      originY *= majorUnit;
+    let originY = this.rulerSettings.originy - Math.floor(this.rulerSettings.originy);
+    if (originY) originY -= 1;
+    originY *= majorUnit;
 
-      let offset = -Math.ceil(pageWidth / majorUnit);
-      let position;
+    let majorGridPathData = '';
+    let minorGridPathData = '';
 
-      do {
-        position = originX + offset * this.rulerSettings.major / unitConversion;
-        const x = Utils.RoundCoordLP(position * workArea.docToScreenScale);
-        if (x > endX) break;
+    for (let x = -Math.ceil(pageWidth / majorUnit); ; x++) {
+      const posX = originX + x * this.rulerSettings.major / unitConversion;
+      const coordX = Utils.RoundCoordLP(posX * workArea.docToScreenScale);
+      if (coordX > endX) break;
 
-        majorPathData += `M${x},${startY}v${docHeight}`;
+      majorGridPathData += `M${coordX},${startY}v${docHeight}`;
 
-        for (let i = 1; i < gridSpacing; i++) {
-          position = originX + offset * this.rulerSettings.major / unitConversion + i * (majorUnit / gridSpacing);
-          const minorX = Utils.RoundCoordLP(position * workArea.docToScreenScale);
-          if (minorX > endX) break;
+      for (let i = 1; i < gridSpacing; i++) {
+        const minorPosX = posX + i * (majorUnit / gridSpacing);
+        const minorCoordX = Utils.RoundCoordLP(minorPosX * workArea.docToScreenScale);
+        if (minorCoordX > endX) break;
 
-          minorPathData += `M${minorX},${startY}v${docHeight}`;
-        }
-
-        offset++;
-      } while (position < endX);
-
-      offset = -Math.ceil(pageHeight / majorUnit);
-
-      do {
-        position = originY + offset * this.rulerSettings.major / unitConversion;
-        const y = Utils.RoundCoordLP(position * workArea.docToScreenScale);
-        if (y > endY) break;
-
-        majorPathData += `M${startX},${y}h${docWidth}`;
-
-        for (let i = 1; i < gridSpacing; i++) {
-          position = originY + offset * this.rulerSettings.major / unitConversion + i * (majorUnit / gridSpacing);
-          const minorY = Utils.RoundCoordLP(position * workArea.docToScreenScale);
-          if (minorY > endY) break;
-
-          minorPathData += `M${startX},${minorY}h${docWidth}`;
-        }
-
-        offset++;
-      } while (position < endY);
-
-      majorPath.SetPath(majorPathData);
-      minorPath.SetPath(minorPathData);
-
-      majorPath.SetFillColor('none');
-      majorPath.SetStrokeColor('#000');
-      majorPath.SetStrokeOpacity('.4');
-      majorPath.SetStrokeWidth('.5');
-
-      minorPath.SetFillColor('none');
-      minorPath.SetStrokeColor('#000');
-      minorPath.SetStrokeOpacity('.2');
-      minorPath.SetStrokeWidth('.5');
-
-      gridLayer.AddElement(minorPath);
-      gridLayer.AddElement(majorPath);
-      gridLayer.SetEventBehavior(Models.EventBehavior.NONE);
+        minorGridPathData += `M${minorCoordX},${startY}v${docHeight}`;
+      }
     }
+
+    for (let y = -Math.ceil(pageHeight / majorUnit); ; y++) {
+      const posY = originY + y * this.rulerSettings.major / unitConversion;
+      const coordY = Utils.RoundCoordLP(posY * workArea.docToScreenScale);
+      if (coordY > endY) break;
+
+      majorGridPathData += `M${startX},${coordY}h${docWidth}`;
+
+      for (let i = 1; i < gridSpacing; i++) {
+        const minorPosY = posY + i * (majorUnit / gridSpacing);
+        const minorCoordY = Utils.RoundCoordLP(minorPosY * workArea.docToScreenScale);
+        if (minorCoordY > endY) break;
+
+        minorGridPathData += `M${startX},${minorCoordY}h${docWidth}`;
+      }
+    }
+
+    majorGridPath.SetPath(majorGridPathData);
+    minorGridPath.SetPath(minorGridPathData);
+
+    majorGridPath.SetFillColor('none');
+    majorGridPath.SetStrokeColor('#000');
+    majorGridPath.SetStrokeOpacity('.4');
+    majorGridPath.SetStrokeWidth('.5');
+
+    minorGridPath.SetFillColor('none');
+    minorGridPath.SetStrokeColor('#000');
+    minorGridPath.SetStrokeOpacity('.2');
+    minorGridPath.SetStrokeWidth('.5');
+
+    gridLayer.AddElement(minorGridPath);
+    gridLayer.AddElement(majorGridPath);
+    gridLayer.SetEventBehavior(Models.EventBehavior.NONE);
   }
 
   UpdatePageDivider = () => {
@@ -1024,21 +987,6 @@ class DocumentHandler {
 
       pageDividerLayer.AddElement(path);
     }
-  }
-
-  UpdatePageDividerVisibility = function () {
-
-    const pageDividerLayer = this.svgDoc ? this.svgDoc.GetLayer(this.pageDividerLayer) : null;
-    // const printFlags = this.gListManager.theContentHeader.Page.printflags;
-
-    // Double TODO
-    const shouldShowPageDivider = this.documentConfig.showPageDivider;
-
-    if (pageDividerLayer && shouldShowPageDivider !== pageDividerLayer.GetVisible()) {
-      pageDividerLayer.SetVisible(shouldShowPageDivider);
-      return true;
-    }
-    return false;
   }
 
   SetScroll = (e, t) => {

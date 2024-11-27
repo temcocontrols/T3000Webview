@@ -203,21 +203,13 @@ class Document extends Container {
   }
 
   CalcWorkArea = () => {
-    // var e = $(this.parentElem).offset();
-    const e = document.getElementById(this.parentElem).getBoundingClientRect();
-
-    this.docInfo.dispX = e.left;
-    this.docInfo.dispY = e.top;
-
-    // this.docInfo.dispWidth = $(this.parentElem).innerWidth();
-    // this.docInfo.dispHeight = $(this.parentElem).innerHeight();
-    // this.docInfo.scrollX = $(this.parentElem).scrollLeft();
-    // this.docInfo.scrollY = $(this.parentElem).scrollTop();
-    this.docInfo.dispWidth = document.getElementById(this.parentElem).clientWidth;
-    this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
+    var parentElemRect = document.getElementById(this.parentElem).getBoundingClientRect();
+    this.docInfo.dispX = parentElemRect.left;
+    this.docInfo.dispY = parentElemRect.top;
+    this.docInfo.dispWidth = parentElemRect.width;
+    this.docInfo.dispHeight = parentElemRect.height;
     this.docInfo.scrollX = document.getElementById(this.parentElem).scrollLeft;
     this.docInfo.scrollY = document.getElementById(this.parentElem).scrollTop;
-
     this.docInfo.docToScreenScale = this.docInfo.dispDpiX / this.docInfo.docDpi * this.docInfo.docScale;
     this.docInfo.docDpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
     this.docInfo.docScreenX = this.docInfo.dispX - this.docInfo.scrollX;
@@ -252,34 +244,22 @@ class Document extends Container {
     })
   }
 
-  ApplyDocumentTransform = (layerID?: string) => {
-    const elementCount = this.ElementCount();
-
-    // Set the SVG object dimensions
-    this.svgObj.attr({
+  ApplyDocumentTransform = (e) => {
+    // TODO
+    var t, a, r = this.ElementCount();
+    if (this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
       height: this.docInfo.docScreenHeight
-    });
-
-    // If no specific layerID is provided, apply transformations to all layers
-    if (!layerID) {
-      for (let i = 0; i < elementCount; i++) {
-        const element = this.GetElementByIndex(i);
-        if (element instanceof Layer) {
-          if (element.IsScalingAllowed()) {
-            element.svgObj.transform({
-              scaleX: this.docInfo.docToScreenScale,
-              scaleY: this.docInfo.docToScreenScale
-            });
-          } else if (element.IsDpiScalingAllowed()) {
-            element.svgObj.transform({
-              scaleX: this.docInfo.docDpiScale,
-              scaleY: this.docInfo.docDpiScale
-            });
-          }
-        }
-      }
-    }
+    }),
+      !e)
+      for (a = 0; a < r; a++)
+        (t = this.GetElementByIndex(a)) instanceof Layer && (t.IsScalingAllowed() ? t.svgObj.transform({
+          scaleX: this.docInfo.docToScreenScale,
+          scaleY: this.docInfo.docToScreenScale
+        }) : t.IsDpiScalingAllowed() && t.svgObj.transform({
+          scaleX: this.docInfo.docDpiScale,
+          scaleY: this.docInfo.docDpiScale
+        }))
   }
 
   SetDocumentSize = (width: number, height: number) => {
@@ -289,11 +269,11 @@ class Document extends Container {
     });
   }
 
-  SetDocumentMetrics = (metrics: { width?: number, height?: number, dpi?: number, scale?: number }) => {
-    this.docInfo.docWidth = metrics.width || this.docInfo.docWidth;
-    this.docInfo.docHeight = metrics.height || this.docInfo.docHeight;
-    this.docInfo.docDpi = metrics.dpi || this.docInfo.docDpi;
-    this.docInfo.docScale = metrics.scale || this.docInfo.docScale;
+  SetDocumentMetrics = function (e) {
+    this.docInfo.docWidth = e.width || this.docInfo.docWidth;
+    this.docInfo.docHeight = e.height || this.docInfo.docHeight;
+    this.docInfo.docDpi = e.dpi || this.docInfo.docDpi;
+    this.docInfo.docScale = e.scale || this.docInfo.docScale;
     this.CalcWorkArea();
     this.ApplyDocumentTransform();
   }
@@ -396,6 +376,19 @@ class Document extends Container {
 
   GetWorkArea = () => {
     return this.docInfo;
+  }
+
+  CalcScaleToFit = function (e, t, a, r) {
+    var i, n, o;
+    return a || (a = this.docInfo.docWidth),
+      r || (r = this.docInfo.docHeight),
+      (n = e / (a *= i = this.docInfo.dispDpiX / this.docInfo.docDpi)) > (o = t / (r *= i)) && (n = o),
+      n > 1 && (n = 1),
+    {
+      scale: n,
+      width: this.docInfo.docWidth * i * n,
+      height: this.docInfo.docHeight * i * n
+    }
   }
 
 }
