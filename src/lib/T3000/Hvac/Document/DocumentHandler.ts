@@ -124,14 +124,6 @@ class DocumentHandler {
     console.log('DocumentHandler, Initialize');
 
     this.theSVGDocumentID = 'svgarea';
-    // this.sendstate = 0;
-    // this.theRubberBand = null;
-    // this.theRubberBandStartX = 0;
-    // this.theRubberBandStartY = 0;
-    // this.theRubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
-    // this.theDragBBoxList = [];
-    // this.theDragElementList = [];
-    // this.theDragEnclosingRect = null;
     this.theDragStartX = 0;
     this.theDragStartY = 0;
     this.theDragDeltaX = 0;
@@ -143,245 +135,35 @@ class DocumentHandler {
     this.theDragGotAutoResizeBottom = false;
     this.theDragGotAutoResizeOldX = [];
     this.theDragGotAutoResizeOldY = [];
-    // this.theNudgeDelta = 10;
-    // this.NoUndo = false;
-    // this.theActionStoredObjectID = -1;
-    // this.theActionSVGObject = null;
-    // this.theActionTriggerID = 0;
-    // this.theActionTriggerData = 0;
-    // this.theActionStartX = 0;
-    // this.theActionStartY = 0;
-    // this.theActionTableLastX = 0;
-    // this.theActionTableLastY = 0;
-    // this.theActionOldExtra = 0;
-    // this.theActionBBox = {};
-    // this.theActionNewBBox = {};
-    // this.theActionLockAspectRatio = false;
-    // this.theActionAspectRatioWidth = 0;
-    // this.theActionAspectRatioHeight = 0;
-    // this.bUseDefaultStyle = false;
-    // this.NewObjectVisible = false;
-    // this.EmptySymbolList = [];
-    // this.EmptyEMFList = [];
-    // this.AddCount = 0;
-    // this.LineStamp = false;
     this.theDrawStartX = 0;
     this.theDrawStartY = 0;
     this.theLineDrawStartX = 0;
     this.theLineDrawStartY = 0;
-    // this.FromOverlayLayer = false;
     this.LineDrawID = -1;
     this.LineDrawLineID = -1;
-    // this.Dynamic_Guides = null;
-    // this.theRotateKnobCenterDivisor = { x: 2, y: 2 };
-    // this.theRotateStartPoint = {};
-    // this.theRotateEndPoint = {};
-    // this.theRotateStartRotation = 0;
-    // this.theRotateObjectRadians = 0;
-    // this.theRotateEndRotation = 0;
-    // this.theRotatePivotX = 0;
-    // this.theRotatePivotY = 0;
-    // this.theRotateSnap = 5;
-    // this.enhanceRotateSnap = 45;
-    // this.theDrawShape = null;
-    // this.StampTimeout = null;
-    // this.wasClickInShape = false;
-    // this.autoScrollTimer = new GPTimer(this);
     this.autoScrollTimerID = -1;
     this.autoScrollXPos = 0;
     this.autoScrollYPos = 0;
     this.bInAutoScroll = true;
     this.textEntryTimer = null;
-
     this.MainAppElement = null;
-    // this.MainAppHammer = null;
     this.WorkAreaElement = null;
     this.WorkAreaHammer = null;
-    // this.WorkAreaTextInputProxy = null;
-    // this.theVirtualKeyboardLifterElementFrame = null;
-    // this.bTouchPanStarted = false;
-    // this.touchPanX = 0;
-    // this.touchPanY = 0;
-    // this.bIsFullScreen = false;
-    // this.TEHammer = null;
-    // this.TEWorkAreaHammer = null;
-    // this.TEClickAreaHammer = null;
-    // this.TEDecAreaHammer = null;
-    // this.TENoteAreaHammer = null;
-    // this.theSelectedListBlockID = -1;
-    // this.theSEDSessionBlockID = -1;
-    // this.theTEDSessionBlockID = -1;
-    // this.theLayersManagerBlockID = -1;
-    // this.stampCompleteCallback = null;
-    // this.stampCompleteUserData = null;
-    // this.stampHCenter = true;
-    // this.stampVCenter = true;
-    // this.stampShapeOffsetX = 0;
-    // this.stampShapeOffsetY = 0;
-    // this.stampSticky = false;
-    // this.LastOpDuplicate = false;
-    // this.NudgeOpen = false;
-    // this.NudgeX = 0;
-    // this.NudgeY = 0;
-    // this.NudgeGrowX = 0;
-    // this.NudgeGrowY = 0;
-    // this.currentModalOperation = ListManager.ModalOperations.NONE;
-    // this.FormatPainterMode = ListManager.FormatPainterModes.NONE;
-    // this.FormatPainterStyle = new UI.Resources.QuickStyle();
-    // this.FormatPainterSticky = false;
-    // this.FormatPainterText = new Graphics.Text.Formatter.DefaultStyle();
-    // this.FormatPainterParaFormat = new Graphics.Text.ParagraphFormat();
-    // this.FormatPainterArrows = null;
     this.svgDoc = null;
     this.svgObjectLayer = null;
     this.svgOverlayLayer = null;
     this.svgHighlightLayer = null;
-    // this.theEventTimestamp = 0;
-    // this.actionArrowHideTimer = new GPTimer(this);
-    // this.uniqueID = 0;
-    // this.theTextClipboard = null;
-    // this.theHtmlClipboard = null;
-    // this.CutFromButton = false;
-    // this.theImageClipboard = null;
-
-    // const e = objectStore.CreateBlock(Globals.StoredObjectType.SELECTEDLIST_OBJECT, []);
-    // if (e === null) {
-    //   throw new Error({
-    //     source: 'ListManager.LMInitialize',
-    //     message: 'Got null value for theSelectedListBlock'
-    //   });
-    // }
-
-    // this.theSelectedListBlockID = e.ID;
-
-    // let t = {};
-    // if (SDUI.Resources.CurrentTheme) {
-    //   const a = SDUI.Resources.FindStyle(ListManager.Defines.DefaultStyle);
-    //   if (a) {
-    //     t = $.extend(true, {}, a);
-    //   } else if (SDUI.Resources.CurrentTheme.Styles && SDUI.Resources.CurrentTheme.Styles.length) {
-    //     const a = SDUI.Resources.CurrentTheme.Styles[0];
-    //     t = $.extend(true, {}, a);
-    //   }
-    // }
-
-    // this.TextureList = new SDUI.Resources.SDTextureList();
-    // this.NStdTextures = 0;
-    // this.LoadStdTextures();
-    // this.RichGradients = [];
-    // this.HasBlockDirectory = false;
-    // this.FileVersion = SDF.SDF_FVERSION2022;
-    // this.ActiveExpandedView = null;
-    // this.CommentUserIDs = [];
     this.theContentHeader = this.gListManager.ContentHeader;
-    // this.InitFontList(this.theContentHeader.FontList);
-
-    // const r = new ListManager.SEDSession();
-    // r.def.style = t;
-    // r.def.pen = Editor.DeepCopy(ListManager.Defines.PenStylingDefault);
-    // r.def.highlighter = Editor.DeepCopy(ListManager.Defines.HighlighterStylingDefault);
-    // r.d_sarrow = 0;
-    // r.d_sarrowdisp = false;
-    // r.d_earrow = 0;
-    // r.d_earrowdisp = false;
-    // r.d_arrowsize = 1;
-    // r.CurrentTheme = SDUI.Commands.MainController.Theme.GetCurrentTheme();
-
-    // const i = objectStore.CreateBlock(Globals.StoredObjectType.SED_SESSION_OBJECT, r);
-    // this.theSEDSessionBlockID = i.ID;
-
-    // const n = new ListManager.LayersManager();
-    // const o = new ListManager.Layer();
-    // o.name = ListManager.Defines.DefaultLayerName;
-    // n.layers.push(o);
-    // n.nlayers = 1;
-    // n.activelayer = 0;
-
-    // const s = objectStore.CreateBlock(Globals.StoredObjectType.LAYERS_MANAGER_OBJECT, n);
-    // this.theLayersManagerBlockID = s.ID;
-
-    // this.SelectionState = new ListManager.SelectionAttributes();
-
-    // const l = new ListManager.TEDSession();
-    // const S = objectStore.CreateBlock(Globals.StoredObjectType.TED_SESSION_OBJECT, l);
-    // this.theTEDSessionBlockID = S.ID;
-
-    // const c = objectStore.CreateBlock(Globals.StoredObjectType.LINKLIST_OBJECT, []);
-    // if (c === null) {
-    //   throw new Error({
-    //     source: 'ListManager.LMInitialize',
-    //     message: 'Got null value for theLinksBlock'
-    //   });
-    // }
-    // this.theLinksBlockID = c.ID;
-
-    // this.PreserveUndoState(true);
     this.InitSVGDocument();
     this.SVGroot = this.svgDoc.svgObj.node;
-    // this.UpdateSelectionAttributes(null);
-    // this.BuildArrowheadLookupTables();
-    // this.theDirtyList = [];
-    // this.theDirtyListMoveOnly = [];
-    // this.DirtyListReOrder = false;
-    // this.theMoveList = [];
-    // this.theMoveBounds = null;
-    // this.PinRect = null;
-    // this.LinkParams = null;
-    // this.RightClickParams = null;
-    // this.PostMoveSelectID = null;
-    // this.bBuildingSymbols = false;
-    // this.bTokenizeStyle = false;
-    // this.bDrawEffects = true;
-    // this.initialStateID = stateManager.CurrentStateID;
-    // this.nObjectStoreStart = objectStore.StoredObjects.length;
-    // this.cachedHeight = null;
-    // this.cachedWidth = null;
-    // this.bInDimensionEdit = false;
-    // this.curNoteShape = -1;
-    // this.curNoteTableCell = null;
-    // this.curNoteGraphPint = null;
-    // this.bInNoteEdit = false;
-    // this.bNoteChanged = false;
-    // this.OldAllowSave = true;
-    // this.SocketAction = [];
-    // this.PageAction = [];
-    // this.PagesToDelete = [];
-    // this.OldFileMetaData = null;
-    // this.curHiliteShape = -1;
-    // this.SetEditMode(ListManager.EditState.DEFAULT);
-    // this.alternateStateManagerVars = [];
-    // this.alternateStateManagerVars.bHasBeenSaved = false;
-    // this.bitmapImportCanvas = null;
-    // this.bitmapImportCanvasCTX = null;
-    // this.bitmapScaledCanvas = null;
-    // this.bitmapScaledCanvasCTX = null;
-    // this.bitmapImportSourceWidth = 0;
-    // this.bitmapImportSourceHeight = 0;
-    // this.bitmapImportDestWidth = 800;
-    // this.bitmapImportDestHeight = 800;
-    // this.bitmapImportMaxScaledWidth = 1200;
-    // this.bitmapImportMaxScaledHeight = 1200;
-    // this.bitmapImportDPI = 200;
-    // this.bitmapImportMimeType = '';
-    // this.bitmapImportOriginalSize = 0;
-    // this.bitmapImportScaledSize = 0;
-    // this.scaledBitmapCallback = null;
-    // this.bitmapImportEXIFdata = null;
-    // this.bitmapImportFile = null;
-    // this.bitmapImportResult = null;
-    // this.symbolLibraryItemID = -1;
     this.TopLeftPastePos = { x: 0, y: 0 };
     this.TopLeftPasteScrollPos = { x: 0, y: 0 };
-    // this.PasteCount = 0;
-    // this.DoubleClickSymbolTimeStamp = 0;
-    // this.ImportContext = null;
   }
 
   InitSVGDocument = () => {
-    // const e = objectStore.GetObject(this.theSEDSessionBlockID).Data;
     console.log('DocumentHandler, InitSVGDocument');
 
-    this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 976.8, documentHeight: 175.4, documentDPI: 100 });
+    this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 1000, documentHeight: 750, documentDPI: 100 });
     this.svgDoc = this.DocObject();
     this.svgObjectLayer = this.svgDoc.AddLayer('svgObjectLayer');
     this.svgDoc.SetDocumentLayer('svgObjectLayer');
@@ -424,9 +206,7 @@ class DocumentHandler {
 
   InitializeWorkArea = (workArea) => {
     console.log('DocumentHandler, InitializeWorkArea 1', workArea);
-
     // workArea = { svgAreaID: "svgarea", documentWidth: 1000, documentHeight: 750, documentDPI: 100 }
-
     this.workAreaID = workArea.workAreaID || 'document-area';
     this.svgAreaID = workArea.svgAreaID || 'svgarea';
     this.hRulerAreaID = workArea.hRulerAreaID || 'h-ruler';
@@ -437,24 +217,20 @@ class DocumentHandler {
     this.vRulerDoc = null;
     this.rulerVis = true;
     this.gridVis = true;
+    this.gridLayer = "_DOCGRID";
+    this.pageDividerLayer = "_DOCPAGEDIVIDER";
+    this.backgroundLayer = "_BACKGROUND";
     this.backgroundElem = null;
     this.scaleToFit = false;
     this.scaleToPage = false;
     this.scrollWidth = 0;
 
-    this.backgroundLayer = '_BACKGROUND';
-
     window.addEventListener("resize", this.HandleResizeEvent);
-
-    console.log('document.getElementById(this.svgAreaID)', this.svgAreaID, document.getElementById(this.svgAreaID));
     document.getElementById(this.svgAreaID).addEventListener("scroll", this.HandleScrollEvent);
 
     this.UpdateWorkArea();
     this.InitRulerSettings();
-    // this.rulerSettings.fractionaldenominator = gListManager.GetFractionDenominator();
     this.UpdateRulerVisibility();
-
-
     this.InitSVGArea(workArea);
     this.UpdateGridVisibility();
     this.UpdatePageDividerVisibility();
@@ -462,7 +238,6 @@ class DocumentHandler {
     this.UpdateGrid();
     this.UpdatePageDivider();
     this.UpdateWorkArea();
-    // this.InitSpellCheck();
   }
 
   InitSVGArea = (config) => {
@@ -548,129 +323,88 @@ class DocumentHandler {
   }
 
   UpdateWorkArea = () => {
-    const workAreaSize = this.GetWorkAreaSize();
-
-    console.log('UpdateWorkArea workAreaSize', workAreaSize);
-
-    const vRulerWidth = document.getElementById(this.vRulerAreaID).clientWidth;
-    const hRulerHeight = document.getElementById(this.hRulerAreaID).clientHeight;
-    const showRulers = this.documentConfig.showRulers;
-    const scrollBarSize = this.scrollWidth || this.GetScrollBarSize();
-
-    console.log('UpdateWorkArea vRulerWidth', vRulerWidth, hRulerHeight, showRulers, scrollBarSize);
-
-    let workArea = {
+    var e, t, a, r, i;
+    var n = this.documentConfig.showRulers;
+    var o = this.GetWorkAreaSize();
+    var s = document.getElementById(this.vRulerAreaID).clientWidth;
+    var l = document.getElementById(this.hRulerAreaID).clientHeight;
+    var S = { width: 0, height: 0, x: 0, y: 0 };
+    var c = !1;
+    var u = !1;
+    this.scrollWidth || (this.scrollWidth = this.GetScrollBarSize());
+    e = {
       x: 0,
       y: 0,
-      width: workAreaSize.width,
-      height: workAreaSize.height
+      width: o.width,
+      height: o.height
     };
-
-    if (showRulers) {
-      workArea.x += vRulerWidth;
-      workArea.width -= vRulerWidth;
-      workArea.y += hRulerHeight;
-      workArea.height -= hRulerHeight;
-    }
-
-    console.log('UpdateWorkArea 2', workArea, showRulers);
-
-
-    let docSize;
-    // debugger;
-    if (this.svgDoc) {
-      if (this.scaleToFit) {
-        if (this.bInAutoScroll) {
-          docSize = this.svgDoc.GetWorkArea();
-          console.log('UpdateWorkArea docSize 1', docSize);
-        } else if (workArea.width > 0 && workArea.height > 0) {
-          docSize = this.svgDoc.CalcScaleToFit(workArea.width - 20, workArea.height - 20);
-          if (this.svgDoc.docInfo.docScale !== docSize.docScale) {
-            this.svgDoc.SetDocumentScale(docSize.docScale);
-            this.IdleZoomUI();
-            this.UpdateGrid();
-            this.UpdatePageDivider();
-            this.ResetRulers();
-          }
-        } else {
-          docSize = this.svgDoc.GetWorkArea();
-        }
-      } else if (this.scaleToPage && workArea.width > 0 && workArea.height > 0) {
-        const pageWidth = this.theContentHeader.Page.papersize.x - (this.theContentHeader.Page.margins.left + this.theContentHeader.Page.margins.right);
-        const pageHeight = this.theContentHeader.Page.papersize.y - (this.theContentHeader.Page.margins.top + this.theContentHeader.Page.margins.bottom);
-        docSize = this.svgDoc.CalcScaleToFit(workArea.width - 20, workArea.height - 20, pageWidth, pageHeight);
-        if (!this.bInAutoScroll && this.svgDoc.docInfo.docScale !== docSize.docScale) {
-          this.svgDoc.SetDocumentScale(docSize.docScale);
-          this.IdleZoomUI();
-          this.UpdateGrid();
-          this.UpdatePageDivider();
-          this.ResetRulers();
-        }
-      } else {
-        docSize = this.svgDoc.GetWorkArea();
-      }
-    } else {
-      docSize = {
-        width: workArea.width,
-        height: workArea.height
-      };
-    }
-
-    const displaySize = {
-      width: Math.min(workArea.width, docSize.docWidth),
-      height: Math.min(workArea.height, docSize.docHeight)
-    };
-
-    let overflowX = false;
-    let overflowY = false;
-
-    if (displaySize.width < docSize.docWidth) {
-      overflowX = true;
-      displaySize.height += scrollBarSize;
-      if (displaySize.height > workArea.height) {
-        displaySize.height = workArea.height;
-        overflowY = true;
-      }
-    }
-
-    if (displaySize.height < docSize.docHeight) {
-      overflowY = true;
-      displaySize.width += scrollBarSize;
-      if (displaySize.width > workArea.width) {
-        displaySize.width = workArea.width;
-        overflowX = true;
-      }
-    }
-
-    const svgAreaElem = document.getElementById(this.svgAreaID);
-    svgAreaElem.style.left = `${workArea.x + (workArea.width - displaySize.width) / 2}px`;
-    svgAreaElem.style.top = `${workArea.y + (workArea.height - displaySize.height) / 2}px`;
-    svgAreaElem.style.width = `${displaySize.width}px`;
-    svgAreaElem.style.height = `${displaySize.height}px`;
-
-    if (showRulers) {
-      document.getElementById(this.hRulerAreaID).style.left = `${workArea.x + (workArea.width - displaySize.width) / 2}px`;
-      document.getElementById(this.hRulerAreaID).style.top = `${workArea.y + (workArea.height - displaySize.height) / 2 - hRulerHeight}px`;
-      document.getElementById(this.hRulerAreaID).style.width = `${displaySize.width}px`;
-      document.getElementById(this.hRulerAreaID).style.height = `${hRulerHeight}px`;
-
-      document.getElementById(this.vRulerAreaID).style.left = `${workArea.x + (workArea.width - displaySize.width) / 2 - vRulerWidth}px`;
-      document.getElementById(this.vRulerAreaID).style.top = `${workArea.y + (workArea.height - displaySize.height) / 2}px`;
-      document.getElementById(this.vRulerAreaID).style.width = `${vRulerWidth}px`;
-      document.getElementById(this.vRulerAreaID).style.height = `${displaySize.height}px`;
-
-      document.getElementById(this.cRulerAreaID).style.left = `${workArea.x + (workArea.width - displaySize.width) / 2 - vRulerWidth}px`;
-      document.getElementById(this.cRulerAreaID).style.top = `${workArea.y + (workArea.height - displaySize.height) / 2 - hRulerHeight}px`;
-    }
-
-    svgAreaElem.style.overflowX = overflowX ? "scroll" : "hidden";
-    svgAreaElem.style.overflowY = overflowY ? "scroll" : "hidden";
-
-    if (this.svgDoc) {
-      this.svgDoc.CalcWorkArea();
-      this.AdjustScroll();
-      this.svgDoc.ApplyDocumentTransform(true);
-    }
+    n && (e.x += s,
+      e.width -= s,
+      e.y += l,
+      e.height -= l);
+    this.svgDoc ? this.scaleToFit ? this.bInAutoScroll ? t = {
+      width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+      height: a.docScreenHeight
+    } : e.width > 0 && e.height > 0 ? (t = {
+      width: (a = this.svgDoc.CalcScaleToFit(e.width - 20, e.height - 20)).width,
+      height: a.height
+    },
+      this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
+        this.IdleZoomUI(),
+        this.UpdateGrid(),
+        this.UpdatePageDivider(),
+        this.ResetRulers())) : t = {
+          width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+          height: a.docScreenHeight
+        } : this.scaleToPage && e.width > 0 && e.height > 0 ? (r = this.theContentHeader.Page.papersize.x - (this.theContentHeader.Page.margins.left + this.theContentHeader.Page.margins.right),
+          i = this.theContentHeader.Page.papersize.y - (this.theContentHeader.Page.margins.top + this.theContentHeader.Page.margins.bottom),
+          t = {
+            width: (a = this.svgDoc.CalcScaleToFit(e.width - 20, e.height - 20, r, i)).width,
+            height: a.height
+          },
+          this.bInAutoScroll || this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
+            this.IdleZoomUI(),
+            this.UpdateGrid(),
+            this.UpdatePageDivider(),
+            this.ResetRulers())) : t = {
+              width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
+              height: a.docScreenHeight
+            } : t = {
+              width: e.width,
+              height: e.height
+            },
+      S.width = Math.min(e.width, t.width),
+      S.height = Math.min(e.height, t.height),
+      S.width < t.width && (c = !0,
+        S.height += this.scrollWidth,
+        S.height > e.height && (S.height = e.height,
+          u = !0)),
+      S.height < t.height && (u = !0,
+        S.width += this.scrollWidth,
+        S.width > e.width && (S.width = e.width,
+          c = !0)),
+      S.x = e.x + (e.width - S.width) / 2,
+      S.y = e.y + (e.height - S.height) / 2,
+      document.getElementById(this.svgAreaID).style.left = S.x + "px";
+    document.getElementById(this.svgAreaID).style.top = S.y + "px";
+    document.getElementById(this.svgAreaID).style.width = S.width + "px";
+    document.getElementById(this.svgAreaID).style.height = S.height + "px";
+    n && (
+      document.getElementById(this.hRulerAreaID).style.left = S.x + "px",
+      document.getElementById(this.hRulerAreaID).style.top = (S.y - l) + "px",
+      document.getElementById(this.hRulerAreaID).style.width = S.width + "px",
+      document.getElementById(this.hRulerAreaID).style.height = l + "px",
+      document.getElementById(this.vRulerAreaID).style.left = (S.x - s) + "px",
+      document.getElementById(this.vRulerAreaID).style.top = S.y + "px",
+      document.getElementById(this.vRulerAreaID).style.width = s + "px",
+      document.getElementById(this.vRulerAreaID).style.height = S.height + "px",
+      document.getElementById(this.cRulerAreaID).style.left = (S.x - s) + "px",
+      document.getElementById(this.cRulerAreaID).style.top = (S.y - l) + "px")
+    document.getElementById(this.svgAreaID).style.overflowX = c ? "scroll" : "hidden";
+    document.getElementById(this.svgAreaID).style.overflowY = u ? "scroll" : "hidden";
+    this.svgDoc && (this.svgDoc.CalcWorkArea(),
+      this.AdjustScroll(),
+      this.svgDoc.ApplyDocumentTransform(!0))
   }
 
   AdjustScroll = (scrollX?: number, scrollY?: number) => {
