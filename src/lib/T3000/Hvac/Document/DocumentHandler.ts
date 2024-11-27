@@ -183,26 +183,49 @@ class DocumentHandler {
     // this.WorkAreaHammer.on('tap', WorkAreaHammerTap);
     // this.WorkAreaHammer.on('wheel', WorkAreaMouseWheel);
     // this.DocumentElementHammer.on('wheel', WorkAreaMouseWheel);
-
-    // if (this.isGestureCapable) {
-    //   this.WorkAreaHammer.on('pinchin', WorkAreaHammerPinchIn);
-    //   this.WorkAreaHammer.on('pinchout', WorkAreaHammerPinchOut);
-    //   this.WorkAreaHammer.on('transformend', WorkAreaHammerPinchEnd);
-    //   this.WorkAreaHammer.on('hold', WorkAreaHold);
-    // }
-
-    // if (this.isMobilePlatform) {
-    //   if (this.isIOS) {
-    //     this.WorkAreaElement.addEventListener('gesturestart', WorkAreaIOSGesture, false);
-    //     this.WorkAreaElement.addEventListener('gesturechange', WorkAreaIOSGesture, false);
-    //     this.WorkAreaElement.addEventListener('gestureend', WorkAreaIOSGesture, false);
-    //     this.WorkAreaElement.addEventListener('orientationchange', WorkAreaOrientationChange, false);
-    //   }
-    //   this.WorkAreaTextInputProxy = $('#SDTS_TouchProxy');
-    // }
-
     // this.WorkAreaHammer.on('dragstart', WorkAreaHammerDragStart);
   }
+
+  // WorkAreaHammerDragStart = function (e) {
+
+  //   console.log('SDJS_LM_WorkAreaHammerDragStart', e);
+
+  //   var svgAreaElem = document.getElementById("svgarea");
+  //   var offset = svgAreaElem.getBoundingClientRect();
+  //   var clientX = e.center.clientX - offset.left;
+  //   var clientY = e.center.clientY - offset.top;
+  //   var clientWidth = svgAreaElem.clientWidth;
+  //   var clientHeight = svgAreaElem.clientHeight;
+
+  //   if (!(clientX >= clientWidth || clientY >= clientHeight)) {
+  //     if (gListManager.isMobilePlatform || gListManager.IsWheelClick(e) || SDUI.Resources.DocumentContext.SpacebarDown) {
+  //       if (!gListManager.bTouchPanStarted) {
+  //         gListManager.bTouchPanStarted = true;
+  //         gListManager.touchPanX = e.gesture.center.clientX;
+  //         gListManager.touchPanY = e.gesture.center.clientY;
+  //         gListManager.WorkAreaHammer.on("drag", SDJS_LM_WorkAreaHammerPan);
+  //         gListManager.WorkAreaHammer.on("dragend", SDJS_LM_WorkAreaHammerPanEnd);
+  //         SDJS.Utils.StopPropagationAndDefaults(e);
+  //       }
+  //       return false;
+  //     } else {
+  //       if (gListManager.bTouchPanStarted) {
+  //         SDJS_LM_WorkAreaHammerPanEnd();
+  //       }
+  //       SDJS.Utils.StopPropagationAndDefaults(e);
+  //       gListManager.SetUIAdaptation(e);
+  //       if (gListManager.IsRightClick(e)) {
+  //         e.preventDefault();
+  //         e.stopPropagation();
+  //         return false;
+  //       } else {
+  //         SDUI.Commands.MainController.Dropdowns.HideAllDropdowns();
+  //         gListManager.StartRubberBandSelect(e);
+  //         return false;
+  //       }
+  //     }
+  //   }
+  // }
 
   InitializeWorkArea = (workArea) => {
     console.log('DocumentHandler, InitializeWorkArea 1', workArea);
@@ -235,7 +258,7 @@ class DocumentHandler {
     this.UpdateGridVisibility();
     this.SetupRulers();
     this.UpdateGrid();
-    this.UpdatePageDivider();
+    // this.UpdatePageDivider();
     this.UpdateWorkArea();
   }
 
@@ -281,6 +304,7 @@ class DocumentHandler {
 
   HandleResizeEvent = () => {
     console.log('HandleResizeEvent');
+    this.UpdateWorkArea();
   }
 
   GetWorkAreaSize = () => {
@@ -414,6 +438,13 @@ class DocumentHandler {
 
   HandleScrollEvent = () => {
     console.log('HandleScrollEvent');
+    var e = this.svgDoc.GetWorkArea();
+    var t = e.scrollX;
+    var a = e.scrollY;
+    this.svgDoc.CalcWorkArea();
+    this.SyncRulers();
+    var r = t - (e = this.svgDoc.GetWorkArea()).scrollX;
+    var i = a - e.scrollY;
   }
 
   InitRulerSettings = () => {
@@ -993,19 +1024,12 @@ class DocumentHandler {
     this.AdjustScroll(e, t)
   }
 
-  GetZoomFactor = () => {
-    let zoomFactor = 1;
-    if (this.svgDoc) {
-      zoomFactor = this.svgDoc.GetWorkArea().docScale;
-    }
-    return zoomFactor;
-  }
 
   DocObject = function () {
     return this.svgDoc
   }
 
-  SetRulerContent = function (elem, isHorizontal) {
+  SetRulerContent1 = function (elem, isHorizontal) {
     const workArea = this.svgDoc.GetWorkArea();
     const vRulerWidth = document.getElementById(this.vRulerAreaID).clientWidth;
     const hRulerHeight = document.getElementById(this.hRulerAreaID).clientHeight;
@@ -1063,6 +1087,110 @@ class DocumentHandler {
     });
   }
 
+  SetRulerContent = function (e, t) {
+    var a, r, i, n, o, s, l, S, c, u, p, d, D, g, h, m, C, y, f, L, I, T, b, M, P;
+    var R = this.svgDoc.GetWorkArea();
+    var A = document.getElementById(this.vRulerAreaID).clientWidth;
+    var _ = document.getElementById(this.hRulerAreaID).clientHeight;
+    var E = 1;
+    var w = false;
+    var F = this.SD_GetScaledRuler(E);
+
+    i = e.CreateShape(Models.CreateShapeType.PATH);
+    a = t ? _ : A;
+    r = "";
+    o = Utils.RoundCoordLP(Math.round(3 * a / 4));
+    s = Utils.RoundCoordLP(Math.round(a / 2));
+    l = Utils.RoundCoordLP(Math.round(a / 4));
+    g = 0;
+
+    if (!this.rulerSettings.useInches) {
+      E *= Defines.MetricConv;
+    }
+
+    p = this.rulerSettings.nTics;
+    d = this.rulerSettings.nMid;
+    if (p % 2) {
+      d = 0;
+    }
+    D = Math.round(p / (d + 1));
+    T = t ? R.docScreenWidth : R.docScreenHeight;
+    m = this.rulerSettings.major / E;
+    b = [];
+
+    y = (C = t ? this.rulerSettings.originx : this.rulerSettings.originy) - Math.floor(C);
+    if (y) {
+      y -= 1;
+    }
+    y *= m;
+    f = -Math.ceil(C) * this.rulerSettings.majorScale;
+    m /= F;
+
+    do {
+      L = h = y + g * this.rulerSettings.major / F / E;
+      I = Utils.RoundCoordLP(L * R.docToScreenScale);
+      S = this.rulerSettings.showpixels ? 100 * (f + g * this.rulerSettings.majorScale / F) : f + g * this.rulerSettings.majorScale / F;
+
+      if (t) {
+        b.push({ label: S, x: I + 2, y: 1 });
+        r += "M" + I + "," + a + "v-" + o;
+      } else {
+        b.push({ label: S, x: 3, y: I + 2 });
+        r += "M" + a + "," + I + "h-" + o;
+      }
+
+      for (u = 1; u < p; u++) {
+        L = h + u * (m / p);
+        I = Utils.RoundCoordLP(L * R.docToScreenScale);
+        c = u % D ? l : s;
+        r += t ? "M" + I + "," + a + "v-" + c : "M" + a + "," + I + "h-" + c;
+      }
+      g++;
+    } while (I < T);
+
+    i.SetPath(r);
+    i.SetFillColor("none");
+    i.SetStrokeColor("#000");
+    i.SetStrokeWidth(".5");
+    e.AddElement(i);
+    e.SetCursor('cur-default');
+
+    for (u = 0; u < b.length; u++) {
+      if (b[u].label !== parseInt(b[u].label, 10)) {
+        w = true;
+        break;
+      }
+    }
+
+    if (w) {
+      for (u = 0; u < b.length; u++) {
+        b[u].label = b[u].label.toFixed(1);
+      }
+    }
+
+    M = { size: 10, color: "#000" };
+    P = b.length;
+    var v = Math.floor(P / 250);
+
+    for (u = 0; u < P; u++) {
+      n = e.CreateShape(Models.CreateShapeType.TEXT);
+      n.SetText(b[u].label, M);
+      e.AddElement(n);
+      n.SetPos(b[u].x, b[u].y);
+      u += v;
+      console.log('b[u].label', b[u].label, M)
+    }
+  }
+
+
+  GetZoomFactor = () => {
+    let zoomFactor = 1;
+    if (this.svgDoc) {
+      zoomFactor = this.svgDoc.GetWorkArea().docScale;
+    }
+    return zoomFactor;
+  }
+
   ZoomInandOut = (e, t) => {
     var a,
       r = 0.25,
@@ -1084,14 +1212,51 @@ class DocumentHandler {
   }
 
   SetZoomLevel = function (e, t) {
-    if (e <= 0 || this.inZoomIdle) {
-      return;
-    }
-
-    this.svgDoc.SetDocumentScale(e / 100, t);
+    e <= 0 || this.inZoomIdle || this.SetDocumentScale(e / 100, t)
   }
 
+  SetDocumentScale = function (e, t) {
+    this.svgDoc && this.SetZoomFactor(e, t)
+  }
 
+  SetZoomFactor = function (zoomFactor, adjustScroll) {
+    if (!this.svgDoc) return false;
+
+    const currentZoomFactor = this.GetZoomFactor();
+    if (!this.scaleToFit && !this.scaleToPage && zoomFactor === currentZoomFactor) return false;
+
+    this.scaleToFit = false;
+    this.scaleToPage = false;
+    this.svgDoc.SetDocumentScale(zoomFactor);
+
+    // if (!adjustScroll) {
+    //   console.log('SetZoomFactor', adjustScroll);
+    //   const workArea = this.svgDoc.GetWorkArea();
+    //   const selectedObjects = this.gListManager.GetObjectPtr(this.gListManager.theSelectedListBlockID, false);
+    //   const enclosingRect = selectedObjects.length
+    //     ? this.gListManager.GetListSRect(selectedObjects)
+    //     : this.gListManager.CalcAllObjectEnclosingRect(false);
+
+    //   if (!enclosingRect.width && !enclosingRect.height) {
+    //     enclosingRect.x = 0;
+    //     enclosingRect.y = 0;
+    //     enclosingRect.width = workArea.docWidth;
+    //     enclosingRect.height = workArea.docHeight;
+    //   }
+
+    //   const scrollX = (enclosingRect.x + enclosingRect.width / 2) * workArea.docToScreenScale - workArea.dispWidth / 2;
+    //   const scrollY = (enclosingRect.y + enclosingRect.height / 2) * workArea.docToScreenScale - workArea.dispHeight / 2;
+    //   this.AdjustScroll(scrollX, scrollY);
+    // }
+
+    // this.IdleZoomUI();
+    this.ResetRulers();
+    this.UpdateGrid();
+    // this.UpdatePageDivider();
+    this.UpdateWorkArea();
+
+    return true;
+  }
 
   UpdateDisplayCoordinates = function (e, t, a, r) {
 

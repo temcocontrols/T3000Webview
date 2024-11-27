@@ -53,7 +53,7 @@ class UI {
 
 
   LM_WorkAreaMouseWheel = (e) => {
-    console.log('LM_WorkAreaMouseWheel', this.gDocumentHandler.svgDoc);
+    // console.log('LM_WorkAreaMouseWheel', this.gDocumentHandler.svgDoc);
 
     if (e.ctrlKey) {
       Utils.StopPropagationAndDefaults(e);

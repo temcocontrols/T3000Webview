@@ -2318,6 +2318,7 @@ function lockToggle() {
   // Update the document area position based on the lock state
   // restDocumentAreaPosition();
   T3000.Hvac.App.ResetLeftPanel(locked.value);
+  T3000.Hvac.UI.gDocumentHandler.HandleResizeEvent();
 }
 
 // function slideZoom(type, val) {

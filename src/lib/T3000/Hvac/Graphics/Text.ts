@@ -58,9 +58,9 @@ class Formatter {
 
   DefaultFmtText() {
     return {
-      width: 0,
-      height: 0,
-      fmtWidth: 0,
+      width: 5,
+      height: 11,
+      fmtWidth: 11,
       text: '',
       paragraphs: [],
       styles: [],
@@ -1536,11 +1536,32 @@ class Edit {
       this.inputFocusTimer = undefined;
     }
   }
+
+  SetInsertPos(e: number, t?: any, a?: boolean) {
+    this.selStart = e;
+    this.selEnd = e;
+    this.selAnchor = e;
+    this.UpdateSelection();
+    this.cursorPos = e;
+    this.cursorLine = t ? t.rLine : undefined;
+    this.UpdateCursor();
+    if (!a) {
+      this.UpdateTextEntryField(true);
+    }
+    this.parent.CallEditCallback("select");
+  }
+
+  UpdateCursor() {
+    if (this.cursorPos < 0) {
+      this.DeactivateCursor();
+    } else {
+      const charInfo = this.parent.formatter.GetRenderedCharInfo(this.cursorPos, this.cursorLine);
+      this.parent.ShowInputCursor(charInfo.left, charInfo.top, charInfo.bottom);
+    }
+  }
 }
 
 class Text extends Element {
-
-
   public formatter: Formatter;
   public editor: Edit;
   public svgObj: any;
@@ -1565,8 +1586,6 @@ class Text extends Element {
   public dataStyleOverride: any;
   public lastFmtSize: { width: number; height: number; };
 
-
-
   CreateElement = (e, t) => {
 
     console.log('AAAAAAAAAAAA Text CreateElement', e, t);
@@ -1588,9 +1607,9 @@ class Text extends Element {
     this.clickAreaElem.attr('stroke-width', 0);
     this.clickAreaElem.attr('fill', 'none');
     this.clickAreaElem.attr('visibility', 'hidden');
-    this.clickAreaElem.attr('no-export', '1');
-    this.selectElem.attr('no-export', '1');
-    this.cursorElem.attr('no-export', '1');
+    this.clickAreaElem.node.setAttribute('no-export', '1');
+    this.selectElem.node.setAttribute('no-export', '1');
+    this.cursorElem.node.setAttribute('no-export', '1');
 
     this.svgObj.add(this.clickAreaElem);
     this.svgObj.add(this.textElem);
@@ -1614,10 +1633,10 @@ class Text extends Element {
   }
 
   SetText(e: string, t?: number, a?: number, r?: any, i?: boolean) {
-    const n = a || 0;
-    const o = e.length;
+    const startPos = a || 0;
+    const textLength = e.length;
 
-    if (this.editor.isActive) {
+    if (this.editor.IsActive()) {
       this.editor.ClearSelection();
     }
 
@@ -1629,14 +1648,13 @@ class Text extends Element {
     this.formatter.SetText(e, t, a, r);
     this.UpdateTextObject();
 
-    if (this.editor.isActive) {
-      if (!i) {
+    if (this.editor.IsActive()) {
+      if (i) {
         this.editor.UpdateTextEntryField(false);
       }
-      this.editor.SetInsertPos(n + o, null, i);
+      this.editor.SetInsertPos(startPos + textLength, null, i);
     }
   }
-
 
   UpdateTextObject = () => {
     const textSize = new Formatter().GetTextFormatSize();
