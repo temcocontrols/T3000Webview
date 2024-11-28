@@ -29,7 +29,7 @@ interface RulerSettings {
   fractionaldenominator: number;
 }
 
-class DocumentHandler {
+class DocHandler {
   public documentConfig: DocumentConfig
   public workAreaID: string;
   public svgAreaID: string;
@@ -1121,6 +1121,10 @@ class DocumentHandler {
     this.UpdateWorkArea();
     return true;
   }
+
+  UpdateDisplayCoordinates = function (coords, cursorPos, cursorType, dimensionFlags) {
+
+  }
 }
 
-export default DocumentHandler;
+export default DocHandler;

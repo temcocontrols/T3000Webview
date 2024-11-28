@@ -2,7 +2,7 @@
 import App from './App/App';
 import * as Utils from './Hvac.Utils';
 import Models from './Hvac.Models';
-import Doc from './Document/DocumentHandler';
+import Doc from './Document/DocHandler';
 import UI from './UI/UI';
 
 const Hvac = {

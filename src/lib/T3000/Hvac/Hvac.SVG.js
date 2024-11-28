@@ -18,6 +18,10 @@ var SVG = {
 };
 */
 
+SVG.ns = "http://www.w3.org/2000/svg";
+SVG.xlink = "http://www.w3.org/1999/xlink";
+SVG.did = 0;
+
 SVG.create = create;
 
 SVG.svg = function (e) {
@@ -162,6 +166,8 @@ SVG.Element = function (e) {
     );
   },
   data: function (e, t) {
+    console.log("USE HVAC SVG TO SET DATA", e, t);
+
     if (arguments.length < 2)
       try {
         return JSON.parse(this.attr("data-" + e));

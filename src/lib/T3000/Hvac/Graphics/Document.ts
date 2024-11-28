@@ -44,7 +44,7 @@ class Document extends Container {
   public spellChecker: any;
   public documentLayerID: any;
   public imageLoadRefCount: number;
-  public _TextMetricsCache: any;
+  public textMetricsCache: any;
 
   constructor(elementId: string, fontList: any) {
     super();
@@ -71,7 +71,7 @@ class Document extends Container {
     this.InitElement(this, null);
     this.InitializeContainer();
 
-    this._TextMetricsCache = {};
+    this.textMetricsCache = {};
   }
 
   InitDocInfo = () => {
@@ -400,14 +400,14 @@ class Document extends Container {
 
   GetTextCacheForStyle = (style) => {
     const styleID = new Formatter(null).MakeIDFromStyle(style);
-    let cache = this._TextMetricsCache[styleID];
+    let cache = this.textMetricsCache[styleID];
 
     if (!cache) {
       cache = {
         metrics: new Formatter(null).CalcStyleMetrics(style, this),
         textCache: {}
       };
-      this._TextMetricsCache[styleID] = cache;
+      this.textMetricsCache[styleID] = cache;
     }
 
     return cache;

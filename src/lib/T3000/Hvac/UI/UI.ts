@@ -1,16 +1,16 @@
 
-import DocumentHandler from "../Document/DocumentHandler";
+import DocHandler from "../Document/DocHandler";
 import * as Utils from '../Hvac.Utils';
 
 class UI {
-  public gDocumentHandler: DocumentHandler;
+  public docHandler: DocHandler;
 
   constructor() {
   }
 
   Initialize = () => {
-    this.gDocumentHandler = new DocumentHandler();
-    this.gDocumentHandler.Initialize();
+    this.docHandler = new DocHandler();
+    this.docHandler.Initialize();
 
     window.oncontextmenu = function (e) {
       e.preventDefault()
@@ -26,17 +26,16 @@ class UI {
 
   LM_MouseMove = (e) => {
     if (
-      e.clientX >= this.gDocumentHandler.svgDoc.docInfo.dispX &&
-      e.clientY >= this.gDocumentHandler.svgDoc.docInfo.dispY &&
-      e.clientX < this.gDocumentHandler.svgDoc.docInfo.dispX + this.gDocumentHandler.svgDoc.docInfo.dispWidth &&
-      e.clientY < this.gDocumentHandler.svgDoc.docInfo.dispY + this.gDocumentHandler.svgDoc.docInfo.dispHeight
+      e.clientX >= this.docHandler.svgDoc.docInfo.dispX &&
+      e.clientY >= this.docHandler.svgDoc.docInfo.dispY &&
+      e.clientX < this.docHandler.svgDoc.docInfo.dispX + this.docHandler.svgDoc.docInfo.dispWidth &&
+      e.clientY < this.docHandler.svgDoc.docInfo.dispY + this.docHandler.svgDoc.docInfo.dispHeight
     ) {
-      var t = this.gDocumentHandler.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
-      this.gDocumentHandler.ShowXY(!0),
-        this.gDocumentHandler.UpdateDisplayCoordinates(null, t, null, null)
-    } else this.gDocumentHandler.ShowXY(!1)
+      var t = this.docHandler.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
+      this.docHandler.ShowXY(!0),
+        this.docHandler.UpdateDisplayCoordinates(null, t, null, null)
+    } else this.docHandler.ShowXY(!1)
   }
-
 
   LM_WorkAreaMouseWheel = (e) => {
     if (e.ctrlKey) {
@@ -44,17 +43,17 @@ class UI {
 
       const clientX = e.clientX;
       const clientY = e.clientY;
-      const docCoords = this.gDocumentHandler.svgDoc.ConvertWindowToDocCoords(clientX, clientY);
+      const docCoords = this.docHandler.svgDoc.ConvertWindowToDocCoords(clientX, clientY);
 
 
       if (e.deltaY > 0) {
 
-        this.gDocumentHandler.ZoomInandOut(false, true);
+        this.docHandler.ZoomInandOut(false, true);
       } else if (e.deltaY < 0) {
-        this.gDocumentHandler.ZoomInandOut(true, true);
+        this.docHandler.ZoomInandOut(true, true);
       }
 
-      const windowCoords = this.gDocumentHandler.svgDoc.ConvertDocToWindowCoords(docCoords.x, docCoords.y);
+      const windowCoords = this.docHandler.svgDoc.ConvertDocToWindowCoords(docCoords.x, docCoords.y);
       const offsetX = clientX - windowCoords.x;
       const offsetY = clientY - windowCoords.y;
 
@@ -62,7 +61,7 @@ class UI {
       const scrollLeft = svgArea.scrollLeft;
       const scrollTop = svgArea.scrollTop;
 
-      this.gDocumentHandler.SetScroll(scrollLeft - offsetX, scrollTop - offsetY);
+      this.docHandler.SetScroll(scrollLeft - offsetX, scrollTop - offsetY);
     }
   }
 }

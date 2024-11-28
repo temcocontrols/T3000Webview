@@ -1,7 +1,7 @@
 import HvacModels from "../Hvac.Models";
 import * as Utils from '../Hvac.Utils';
 import { cloneDeep } from "lodash";
-import Doc from "../Document/DocumentHandler";
+import Doc from "../Document/DocHandler";
 import UI from "../UI/UI";
 
 class App {
