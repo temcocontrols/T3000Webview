@@ -6,8 +6,17 @@ class Layer extends Container {
   public dpiScaleOnlyFlag = false;
 
   CreateElement = (element, parent) => {
+
+    console.log('Layer CreateElement 1 element,parent', element, parent);
+
     this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+
+    console.log('Layer CreateElement 2 this.svgObj', this.svgObj);
+
     this.InitElement(element, parent);
+
+    console.log('Document CreateElement 3 this.svgObj', this.svgObj);
+
     return this.svgObj;
   }
 

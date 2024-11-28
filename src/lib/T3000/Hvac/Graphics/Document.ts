@@ -1,4 +1,3 @@
-import { SVG, Line, create, Svg } from "@svgdotjs/svg.js";
 import HvacSVG from '../Hvac.SVG';
 import Container from "./Container";
 import Rect from "./Rect";
@@ -39,38 +38,26 @@ interface DocInfo {
 class Document extends Container {
   public parentElem: string;
   public docInfo: DocInfo;
-  public fontList: any;
   public activeEdit: any;
-  public spellChecker: any;
   public documentLayerID: any;
-  public imageLoadRefCount: number;
   public textMetricsCache: any;
+  public svgObj: any;
 
-  constructor(elementId: string, fontList: any) {
+  constructor(elementId: string) {
     super();
 
     this.parentElem = elementId;
-    if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
-      this.parentElem = this.parentElem
-    }
 
-    console.log('Document parentElem', this.parentElem);
     this.svgObj = HvacSVG.svg(this.parentElem);
 
-    console.log('Document parentElem this.svgObj', this.svgObj);
-
-    const svgT1 = SVG("#" + this.parentElem);
+    const svgT1 = HvacSVG("#" + this.parentElem);
     console.log('Document parentElem svgT1', svgT1);
 
     this.InitDocInfo();
-    this.fontList = fontList;
     this.activeEdit = null;
-    this.spellChecker = null;
     this.documentLayerID = null;
-    this.imageLoadRefCount = 0;
     this.InitElement(this, null);
     this.InitializeContainer();
-
     this.textMetricsCache = {};
   }
 
@@ -121,6 +108,9 @@ class Document extends Container {
 
   GetDeviceInfo = () => {
     let shape = this.CreateShape(Models.CreateShapeType.RECT);
+
+    console.log('Document GetDeviceInfo 1 shape', shape);
+
     shape.SetFillOpacity(0);
     shape.SetStrokeWidth(0);
     shape.SetSize('100in', '100in');
@@ -194,6 +184,9 @@ class Document extends Container {
     }
 
     shape.CreateElement(this, null);
+
+    console.log('Document CreateElement 4 shape', this);
+    console.log('Document CreateElement 5 shape', shape);
 
     return shape;
   }
@@ -280,7 +273,7 @@ class Document extends Container {
     this.docInfo.docDpi = metrics.dpi ?? this.docInfo.docDpi;
     this.docInfo.docScale = metrics.scale ?? this.docInfo.docScale;
     this.CalcWorkArea();
-    this.ApplyDocumentTransform();
+    this.ApplyDocumentTransform(null);
   }
 
   GetFormattingLayer = () => {
@@ -296,7 +289,7 @@ class Document extends Container {
       formattingLayer.ExcludeFromExport(true);
       this.MoveLayer('__FORMATTING__', "");
       formattingLayer.SetOpacity(0);
-      this.ApplyDocumentTransform();
+      this.ApplyDocumentTransform(null);
     }
 
     return formattingLayer;
@@ -304,11 +297,12 @@ class Document extends Container {
 
   AddLayer = (layerID: string) => {
     const layer = this.CreateShape(Models.CreateShapeType.LAYER);
+
     layer.SetID(layerID);
     this.AddElement(layer, null);
     this.ApplyDocumentTransform(layerID);
 
-    layer.svgObj.node.setAttribute("layerID", layerID);
+    layer.svgObj.data("id", Utils.GenerateUUID());
     return layer;
   }
 
@@ -414,26 +408,7 @@ class Document extends Container {
   }
 
   MapFont = (fontName: string, category: string = 'sanserif'): string => {
-    let fallbackFont: string | undefined;
-    let defaultFallback: string | undefined;
-    const fontListLength = this.fontList.length;
-    let fontFamily = `'${fontName}'`;
-
-    for (let i = 0; i < fontListLength; i++) {
-      if (this.fontList[i].name === fontName) {
-        fallbackFont = this.fontList[i].fallback;
-        break;
-      }
-      if (!defaultFallback && this.fontList[i].default && this.fontList[i].category === category) {
-        defaultFallback = this.fontList[i].fallback;
-      }
-    }
-
-    if (fallbackFont) {
-      fontFamily += `,${fallbackFont}`;
-    }
-
-    return fontFamily;
+    return `'${fontName}'`;
   }
 
   GetTextRunCache(style: any, text: any) {

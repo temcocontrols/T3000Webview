@@ -1178,6 +1178,9 @@ extend(Element, {
       this
     );
   },
+  // data: function () {
+  //   console.log("extend Element data", this);
+  // },
 });
 
 const HvacSVG = SVG;

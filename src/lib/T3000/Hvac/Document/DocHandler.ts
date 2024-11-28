@@ -93,13 +93,10 @@ class DocHandler {
   public inZoomIdle: boolean;
 
   constructor() {
-    // this.gListManager = new ListManager();
-    this.documentConfig = { enableSnap: true, showGrid: true, showRulers: true };
+    this.InitDocumentConfig();
   }
 
   Initialize = () => {
-    console.log('DocumentHandler, Initialize');
-
     this.theSVGDocumentID = 'svgarea';
     this.theDragStartX = 0;
     this.theDragStartY = 0;
@@ -130,7 +127,7 @@ class DocHandler {
     this.svgObjectLayer = null;
     this.svgOverlayLayer = null;
     this.svgHighlightLayer = null;
-    this.theContentHeader = new ContentHeader();// this.gListManager.theContentHeader;
+    this.theContentHeader = new ContentHeader();
     this.InitSVGDocument();
     this.SVGroot = this.svgDoc.svgObj.node;
     this.TopLeftPastePos = { x: 0, y: 0 };
@@ -138,9 +135,11 @@ class DocHandler {
   }
 
   InitSVGDocument = () => {
-    console.log('DocumentHandler, InitSVGDocument');
     this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 1000, documentHeight: 750, documentDPI: 100 });
     this.svgDoc = this.DocObject();
+
+    console.log('InitSVGDocument 1 this.svgDoc', this.svgDoc);
+
     this.svgObjectLayer = this.svgDoc.AddLayer('svgObjectLayer');
     this.svgDoc.SetDocumentLayer('svgObjectLayer');
     this.svgOverlayLayer = this.svgDoc.AddLayer('svgOverlayLayer');
@@ -158,7 +157,6 @@ class DocHandler {
   }
 
   InitializeWorkArea = (workArea) => {
-    console.log('DocumentHandler, InitializeWorkArea 1', workArea);
     this.workAreaID = workArea.workAreaID || 'document-area';
     this.svgAreaID = workArea.svgAreaID || 'svgarea';
     this.hRulerAreaID = workArea.hRulerAreaID || 'h-ruler';
@@ -191,7 +189,8 @@ class DocHandler {
   }
 
   InitSVGArea = (config) => {
-    this.svgDoc = this.svgDoc || new Document(this.svgAreaID, []);
+    this.svgDoc = this.svgDoc || new Document(this.svgAreaID);
+    console.log('InitSVGArea 1 this.svgDoc', this.svgDoc);
 
     const backgroundLayer = this.svgDoc.AddLayer(this.backgroundLayer);
     this.backgroundElem = this.svgDoc.CreateShape(Models.CreateShapeType.RECT);
@@ -208,9 +207,9 @@ class DocHandler {
     gridLayer.ExcludeFromExport(true);
     gridLayer.SetCustomAttribute("hvac-grid", "1");
 
-    const pageDividerLayer = this.svgDoc.AddLayer(this.pageDividerLayer);
-    pageDividerLayer.AllowScaling(false);
-    pageDividerLayer.ExcludeFromExport(true);
+    // const pageDividerLayer = this.svgDoc.AddLayer(this.pageDividerLayer);
+    // pageDividerLayer.AllowScaling(false);
+    // pageDividerLayer.ExcludeFromExport(true);
 
     if (Array.isArray(config.layers)) {
       config.layers.forEach(layer => {
@@ -227,6 +226,10 @@ class DocHandler {
     }
 
     this.backgroundElem.SetSize(this.svgDoc.docInfo.docWidth, this.svgDoc.docInfo.docHeight);
+  }
+
+  InitDocumentConfig = () => {
+    this.documentConfig = { enableSnap: true, showGrid: true, showRulers: true };
   }
 
   HandleResizeEvent = () => {
@@ -439,8 +442,8 @@ class DocHandler {
   }
 
   SetupRulers = () => {
-    this.hRulerDoc = this.hRulerDoc || new Document(this.hRulerAreaID, []);
-    this.vRulerDoc = this.vRulerDoc || new Document(this.vRulerAreaID, []);
+    this.hRulerDoc = this.hRulerDoc || new Document(this.hRulerAreaID);
+    this.vRulerDoc = this.vRulerDoc || new Document(this.vRulerAreaID);
 
     this.hRulerGuide = null;
     this.vRulerGuide = null;

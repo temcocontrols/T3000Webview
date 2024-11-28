@@ -8,7 +8,8 @@ class Rect extends Element {
   public shapeElem: any;
 
   CreateElement = (element, parent) => {
-    this.svgObj = new HvacSVG.Container(HvacSVG.create("g"));
+    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.svgObj.data();
 
     this.shapeElem = new HvacSVG.Rect();
     this.svgObj.add(this.shapeElem);
