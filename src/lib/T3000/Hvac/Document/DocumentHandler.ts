@@ -7,24 +7,6 @@ import ContentHeader from './ContentHeader';
 import UI from '../UI/UI';
 import Path from '../Graphics/Path';
 
-enum RulerUnits {
-  SED_UNone = 0,
-  SED_Inches = 1,
-  SED_Feet = 2,
-  SED_Mm = 3,
-  SED_Cm = 4,
-  SED_M = 5
-}
-
-enum Defines {
-  DefaultRulerMajor = 100,
-  MetricConv = 2.54,
-}
-
-enum ListManagerDefines {
-  MetricConv = 2.54,
-}
-
 interface DocumentConfig {
   showRulers: boolean;
   showGrid: boolean;
@@ -34,14 +16,14 @@ interface DocumentConfig {
 interface RulerSettings {
   useInches: boolean;
   majorScale: number;
-  units: RulerUnits;
+  units: any;
   nTics: number;
   nMid: number;
   nGrid: number;
   originx: number;
   originy: number;
-  major: Defines;
-  metricConv: Defines;
+  major: number;
+  metricConv: number;
   dp: number;
   showpixels: boolean;
   fractionaldenominator: number;
@@ -72,8 +54,6 @@ class DocumentHandler {
   public rulerGuideWinPos: any;
   public rulerGuideScrollTimer: any;
   public rulerInDrag: boolean;
-  // public gListManager: any;
-
   public theSVGDocumentID: string;
   public svgObjectLayer: any;
   public svgOverlayLayer: any;
@@ -84,9 +64,6 @@ class DocumentHandler {
   public DocumentElement: any;
   public WorkAreaHammer: any;
   public DocumentElementHammer: any;
-
-
-
   public SVGroot: any;
   public theDragStartX: number;
   public theDragStartY: number;
@@ -113,6 +90,7 @@ class DocumentHandler {
   public TopLeftPastePos: any;
   public TopLeftPasteScrollPos: any;
   public theContentHeader: any;
+  public inZoomIdle: boolean;
 
   constructor() {
     // this.gListManager = new ListManager();
@@ -394,14 +372,14 @@ class DocumentHandler {
     this.rulerSettings = {
       useInches: true,
       majorScale: 1,
-      units: RulerUnits.SED_Inches,
+      units: Models.RulerUnits.SED_Inches,
       nTics: 12,
       nMid: 1,
       nGrid: 12,
       originx: 0,
       originy: 0,
-      major: Defines.DefaultRulerMajor,
-      metricConv: Defines.MetricConv,
+      major: Models.CommonDefines.DefaultRulerMajor,
+      metricConv: Models.CommonDefines.MetricConv,
       dp: 2,
       showpixels: false,
       fractionaldenominator: 1
@@ -434,24 +412,20 @@ class DocumentHandler {
     console.log('ShowCoordinates');
   }
 
-  IsRightClick = (e) => {
+  IsRightClick = (event) => {
     let isRightClick = false;
 
-    if (e.gesture) {
-      e = e.gesture.srcEvent;
-    }
-
-    if (e instanceof MouseEvent) {
-      isRightClick = (e.which === 3 || (e.ctrlKey && e.metaKey));
-    } else if ('onpointerdown' in window && e instanceof PointerEvent) {
-      isRightClick = (e.which === 3);
+    if (event instanceof MouseEvent) {
+      isRightClick = (event.which === 3 || (event.ctrlKey && event.metaKey));
+    } else if ('onpointerdown' in window && event instanceof PointerEvent) {
+      isRightClick = (event.which === 3);
     }
 
     return isRightClick;
   }
 
-  Point = (e, t) => {
-    return { x: e || 0, y: t || 0 };
+  Point = (x: number = 0, y: number = 0): { x: number, y: number } => {
+    return { x, y };
   }
 
   UpdateGridVisibility = () => {
@@ -503,78 +477,77 @@ class DocumentHandler {
     this.ResetRulers();
   }
 
-  RulerDragEnd = (e) => {
-    Utils.StopPropagationAndDefaults(e);
+  RulerDragEnd = (event) => {
+    Utils.StopPropagationAndDefaults(event);
     this.RulerEndGuides();
   }
 
-  RulerCenterDrag = (e) => {
-    if (Utils.StopPropagationAndDefaults(e), this.gListManager.IsCtrlClick(e)) {
-      Utils.StopPropagationAndDefaults(e);
-      this.RulerHandleDoubleClick(e, true, true);
+  RulerCenterDrag = (event) => {
+    Utils.StopPropagationAndDefaults(event);
+    if (this.IsCtrlClick(event)) {
+      this.RulerHandleDoubleClick(event, true, true);
     } else {
-      this.RulerDragGuides(e, true, true);
+      this.RulerDragGuides(event, true, true);
     }
   }
 
-  RulerTopDoubleClick = (e) => {
-    Utils.StopPropagationAndDefaults(e);
-    this.RulerHandleDoubleClick(e, false, true);
+  RulerTopDoubleClick = (event) => {
+    Utils.StopPropagationAndDefaults(event);
+    this.RulerHandleDoubleClick(event, false, true);
   }
 
-  RulerLeftDoubleClick = (e) => {
-    Utils.StopPropagationAndDefaults(e);
-    this.RulerHandleDoubleClick(e, true, false);
+  RulerLeftDoubleClick = (event) => {
+    Utils.StopPropagationAndDefaults(event);
+    this.RulerHandleDoubleClick(event, true, false);
   }
 
-  RulerCenterDoubleClick = (e) => {
-    Utils.StopPropagationAndDefaults(e);
-    this.RulerHandleDoubleClick(e, true, true);
+  RulerCenterDoubleClick = (event) => {
+    Utils.StopPropagationAndDefaults(event);
+    this.RulerHandleDoubleClick(event, true, true);
   }
 
-  RulerDragStart = (e) => {
+  RulerDragStart = (event) => {
     if (!this.IsReadOnly()) {
-      if (this.IsRightClick(e)) {
-        Utils.StopPropagationAndDefaults(e);
+      if (this.IsRightClick(event)) {
+        Utils.StopPropagationAndDefaults(event);
         return;
       }
       this.rulerInDrag = true;
     }
   }
 
-  ShowXY = function (e) {
-    this.documentConfig.showRulers = e;
+  ShowXY = (showRulers: boolean) => {
+    this.documentConfig.showRulers = showRulers;
   }
 
-  IsCtrlClick = (e) => {
+  IsCtrlClick = (event) => {
     let isCtrlClick = false;
 
-    if (e instanceof MouseEvent) {
-      isCtrlClick = e.ctrlKey;
-    } else if ('onpointerdown' in window && e instanceof PointerEvent) {
-      isCtrlClick = e.ctrlKey;
+    if (event instanceof MouseEvent || ('onpointerdown' in window && e instanceof PointerEvent)) {
+      isCtrlClick = event.ctrlKey;
     }
 
     return isCtrlClick;
   }
 
-  RulerTopDrag = (e) => {
-    if (this.IsCtrlClick(e)) {
-      Utils.StopPropagationAndDefaults(e);
-      this.RulerHandleDoubleClick(e, false, true);
-      this.RulerDragGuides(e, false, true);
+  RulerTopDrag = (event) => {
+    if (this.IsCtrlClick(event)) {
+      Utils.StopPropagationAndDefaults(event);
+      this.RulerHandleDoubleClick(event, false, true);
+    } else {
+      this.RulerDragGuides(event, false, true);
     }
   }
 
-  RulerLeftDrag = (e) => {
-    if (Utils.StopPropagationAndDefaults(e), this.IsCtrlClick(e)) {
-      Utils.StopPropagationAndDefaults(e);
-      this.RulerHandleDoubleClick(e, true, false);
-      return;
+  RulerLeftDrag = (event) => {
+    Utils.StopPropagationAndDefaults(event);
+    if (this.IsCtrlClick(event)) {
+      Utils.StopPropagationAndDefaults(event);
+      this.RulerHandleDoubleClick(event, true, false);
+    } else {
+      this.RulerDragGuides(event, true, false);
     }
-    this.RulerDragGuides(e, true, false);
   }
-
 
   RulerEndGuides = () => {
     if (this.rulerGuideScrollTimer) {
@@ -595,24 +568,24 @@ class DocumentHandler {
     this.rulerInDrag = false;
   }
 
-  RulerDragGuides = (e, t, a) => {
+  RulerDragGuides = (e, isVertical, isHorizontal) => {
     const workArea = this.svgDoc.GetWorkArea();
     const scale = 1 / workArea.docScale;
     const pattern = `${4 * scale},${2 * scale}`;
 
     if (this.rulerInDrag) {
       const shouldEndGuides =
-        (this.hRulerGuide && !a) ||
-        (this.vRulerGuide && !t) ||
-        (a && !this.hRulerGuide) ||
-        (t && !this.vRulerGuide);
+        (this.hRulerGuide && !isHorizontal) ||
+        (this.vRulerGuide && !isVertical) ||
+        (isHorizontal && !this.hRulerGuide) ||
+        (isVertical && !this.vRulerGuide);
 
       if (shouldEndGuides) {
         this.RulerEndGuides();
         this.rulerInDrag = true;
       }
 
-      if (t && !this.hRulerGuide) {
+      if (isVertical && !this.hRulerGuide) {
         this.hRulerGuide = this.svgDoc.CreateShape(Models.CreateShapeType.LINE);
         this.hRulerGuide.SetFillColor('none');
         this.hRulerGuide.SetStrokeColor('black');
@@ -621,7 +594,7 @@ class DocumentHandler {
         this.svgOverlayLayer.AddElement(this.hRulerGuide);
       }
 
-      if (a && !this.vRulerGuide) {
+      if (isHorizontal && !this.vRulerGuide) {
         this.vRulerGuide = this.svgDoc.CreateShape(Models.CreateShapeType.LINE);
         this.vRulerGuide.SetFillColor('none');
         this.vRulerGuide.SetStrokeColor('black');
@@ -633,17 +606,17 @@ class DocumentHandler {
       this.rulerGuideWinPos.x = e.gesture.center.clientX;
       this.rulerGuideWinPos.y = e.gesture.center.clientY;
 
-      if (!a) {
+      if (!isHorizontal) {
         this.rulerGuideWinPos.x = workArea.dispX + workArea.dispWidth / 2;
       }
 
-      if (!t) {
+      if (!isVertical) {
         this.rulerGuideWinPos.y = workArea.dispY + workArea.dispHeight / 2;
       }
 
       this.RulerDrawGuides();
 
-      if (!this.rulerGuideScrollTimer && (!t || !a || (this.rulerGuideWinPos.x > workArea.dispX && this.rulerGuideWinPos.y > workArea.dispY))) {
+      if (!this.rulerGuideScrollTimer && (!isVertical || !isHorizontal || (this.rulerGuideWinPos.x > workArea.dispX && this.rulerGuideWinPos.y > workArea.dispY))) {
         this.rulerGuideScrollTimer = setInterval(() => {
           this.RulerAutoScrollGuides();
         }, 100);
@@ -671,41 +644,41 @@ class DocumentHandler {
     }
   }
 
-  ScrollToPosition = (e, t) => {
-    var scrollOffset = this.svgDoc.CalcScrollToVisible(e, t);
+  ScrollToPosition = (x: number, y: number) => {
+    const scrollOffset = this.svgDoc.CalcScrollToVisible(x, y);
     if (scrollOffset) {
       this.AdjustScroll(scrollOffset.xOff, scrollOffset.yOff);
     }
   }
 
-  SyncRulers = function () {
+  SyncRulers = () => {
     const scrollLeft = document.getElementById(this.svgAreaID).scrollLeft;
     const scrollTop = document.getElementById(this.svgAreaID).scrollTop;
     document.getElementById(this.hRulerAreaID).scrollLeft = scrollLeft;
     document.getElementById(this.vRulerAreaID).scrollTop = scrollTop;
   }
 
-
-  SnapToGrid = (e) => {
+  SnapToGrid = (coords) => {
     const workArea = this.svgDoc.GetWorkArea();
-    let scale = 1;
-    let unitConversion = this.rulerSettings.useInches ? 1 : ListManagerDefines.MetricConv;
-    let scaledRuler = this.SD_GetScaledRuler(unitConversion);
+    const unitConversion = this.rulerSettings.useInches ? 1 : Models.CommonDefines.MetricConv;
+    const scaledRuler = this.GetScaledRuler(unitConversion);
+    const majorUnit = this.rulerSettings.major / unitConversion;
+    const gridSpacing = this.rulerSettings.nGrid * scaledRuler;
 
-    let snappedCoords = { x: e.x, y: e.y };
-    let majorUnit = this.rulerSettings.major / unitConversion;
-    let gridSpacing = this.rulerSettings.nGrid * scaledRuler;
+    let snappedCoords = { x: coords.x, y: coords.y };
 
-    let xMajorUnit = Math.floor(snappedCoords.x / majorUnit);
-    let xOffset = xMajorUnit * majorUnit;
+    // Snap X coordinate
+    const xMajorUnit = Math.floor(snappedCoords.x / majorUnit);
+    const xOffset = xMajorUnit * majorUnit;
     snappedCoords.x -= xOffset;
-    let xGridUnit = Math.round(snappedCoords.x / gridSpacing);
+    const xGridUnit = Math.round(snappedCoords.x / gridSpacing);
     snappedCoords.x = xOffset + xGridUnit * gridSpacing;
 
-    let yMajorUnit = Math.floor(snappedCoords.y / majorUnit);
-    let yOffset = yMajorUnit * majorUnit;
+    // Snap Y coordinate
+    const yMajorUnit = Math.floor(snappedCoords.y / majorUnit);
+    const yOffset = yMajorUnit * majorUnit;
     snappedCoords.y -= yOffset;
-    let yGridUnit = Math.round(snappedCoords.y / gridSpacing);
+    const yGridUnit = Math.round(snappedCoords.y / gridSpacing);
     snappedCoords.y = yOffset + yGridUnit * gridSpacing;
 
     return snappedCoords;
@@ -738,9 +711,7 @@ class DocumentHandler {
     }
   }
 
-
-  RulerHandleDoubleClick = (e, t, a) => {
-    console.log('RulerHandleDoubleClick', e, t, a);
+  RulerHandleDoubleClick = (e, isVertical, isHorizontal) => {
     if (!this.IsRightClick(e)) {
       const origin = {
         originx: this.rulerSettings.originx,
@@ -752,18 +723,18 @@ class DocumentHandler {
       this.rulerInDrag = false;
 
       if (!this.IsReadOnly()) {
-        if (t && a) {
+        if (isVertical && isHorizontal) {
           origin.originx = 0;
           origin.originy = 0;
-        } else if (a) {
+        } else if (isHorizontal) {
           origin.originx = coords.x / this.rulerSettings.major;
           if (!this.rulerSettings.useInches) {
-            origin.originx *= ListManagerDefines.MetricConv;
+            origin.originx *= Models.CommonDefines.MetricConv;
           }
-        } else if (t) {
+        } else if (isVertical) {
           origin.originy = coords.y / this.rulerSettings.major;
           if (!this.rulerSettings.useInches) {
-            origin.originy *= ListManagerDefines.MetricConv;
+            origin.originy *= Models.CommonDefines.MetricConv;
           }
         } else {
           return;
@@ -771,40 +742,31 @@ class DocumentHandler {
 
         this.SetRulers(origin, null);
         this.ShowCoordinates(true);
-
-        // const selectedObject = this.GetObjectPtr(this.gListManager.theSelectedListBlockID, false);
-        // this.gListManager.UpdateSelectionAttributes(selectedObject);
       }
     }
   }
 
-  SetRulers = (e, t) => {
-    if (e) {
-      this.rulerSettings.useInches = e.useInches !== undefined ? e.useInches : this.rulerSettings.useInches;
-      this.rulerSettings.units = e.units !== undefined ? e.units : this.rulerSettings.units;
-      this.rulerSettings.major = e.major !== undefined ? e.major : this.rulerSettings.major;
-      this.rulerSettings.majorScale = e.majorScale !== undefined ? e.majorScale : this.rulerSettings.majorScale;
-      this.rulerSettings.nTics = e.nTics !== undefined ? e.nTics : this.rulerSettings.nTics;
-      this.rulerSettings.nMid = e.nMid !== undefined ? e.nMid : this.rulerSettings.nMid;
-      this.rulerSettings.nGrid = e.nGrid !== undefined ? e.nGrid : this.rulerSettings.nGrid;
-      this.rulerSettings.originx = e.originx !== undefined ? e.originx : this.rulerSettings.originx;
-      this.rulerSettings.originy = e.originy !== undefined ? e.originy : this.rulerSettings.originy;
-      this.rulerSettings.dp = e.dp !== undefined ? e.dp : this.rulerSettings.dp;
-      this.rulerSettings.fractionaldenominator = e.fractionaldenominator !== undefined ? e.fractionaldenominator : this.rulerSettings.fractionaldenominator;
-      if (e.showpixels !== null) {
-        this.rulerSettings.showpixels = e.showpixels;
-      }
-      if (!t) {
-        // const sdp = this.gListManager.GetObjectPtr(this.gListManager.theSEDSessionBlockID, true);
-        // sdp.rulerSettings = Utils.DeepCopy(this.rulerSettings);
-      }
+  SetRulers = (settings, updateSession) => {
+    if (settings) {
+      this.rulerSettings.useInches = settings.useInches ?? this.rulerSettings.useInches;
+      this.rulerSettings.units = settings.units ?? this.rulerSettings.units;
+      this.rulerSettings.major = settings.major ?? this.rulerSettings.major;
+      this.rulerSettings.majorScale = settings.majorScale ?? this.rulerSettings.majorScale;
+      this.rulerSettings.nTics = settings.nTics ?? this.rulerSettings.nTics;
+      this.rulerSettings.nMid = settings.nMid ?? this.rulerSettings.nMid;
+      this.rulerSettings.nGrid = settings.nGrid ?? this.rulerSettings.nGrid;
+      this.rulerSettings.originx = settings.originx ?? this.rulerSettings.originx;
+      this.rulerSettings.originy = settings.originy ?? this.rulerSettings.originy;
+      this.rulerSettings.dp = settings.dp ?? this.rulerSettings.dp;
+      this.rulerSettings.fractionaldenominator = settings.fractionaldenominator ?? this.rulerSettings.fractionaldenominator;
+      this.rulerSettings.showpixels = settings.showpixels ?? this.rulerSettings.showpixels;
+
       this.ResetRulers();
       this.UpdateGrid();
-      // this.UpdatePageDivider();
     }
   }
 
-  ResetRulers = function () {
+  ResetRulers = () => {
     const workArea = this.svgDoc.GetWorkArea();
     const vRulerWidth = document.getElementById(this.vRulerAreaID).clientWidth;
     const hRulerHeight = document.getElementById(this.hRulerAreaID).clientHeight;
@@ -823,7 +785,7 @@ class DocumentHandler {
     return false;//SDUI.AppSettings.ReadOnly
   }
 
-  SD_GetScaledRuler = (scale: number): number => {
+  GetScaledRuler = (scale: number): number => {
     let docScale = Math.floor(this.svgDoc.docInfo.docScale);
     if (docScale === 0) {
       docScale = Math.floor(1 / this.svgDoc.docInfo.docScale);
@@ -836,20 +798,20 @@ class DocumentHandler {
     return scale;
   }
 
-  UpdateGrid = function () {
+  UpdateGrid = () => {
     const workArea = this.svgDoc.GetWorkArea();
     const gridLayer = this.svgDoc.GetLayer(this.gridLayer);
     const scale = 1;
 
     if (!gridLayer) { return }
 
-    const scaledRuler = this.SD_GetScaledRuler(scale);
+    const scaledRuler = this.GetScaledRuler(scale);
     gridLayer.RemoveAll();
 
     const majorGridPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
     const minorGridPath = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
 
-    const unitConversion = this.rulerSettings.useInches ? 1 : Defines.MetricConv;
+    const unitConversion = this.rulerSettings.useInches ? 1 : Models.CommonDefines.MetricConv;
     const majorUnit = this.rulerSettings.major / unitConversion;
     const gridSpacing = this.rulerSettings.nGrid * scaledRuler;
 
@@ -974,81 +936,22 @@ class DocumentHandler {
     }
   }
 
-  SetScroll = (e, t) => {
-    this.AdjustScroll(e, t)
+  SetScroll = (scrollX: number, scrollY: number) => {
+    this.AdjustScroll(scrollX, scrollY);
   }
-
 
   DocObject = function () {
     return this.svgDoc
   }
 
-  SetRulerContent1 = function (elem, isHorizontal) {
-    const workArea = this.svgDoc.GetWorkArea();
-    const vRulerWidth = document.getElementById(this.vRulerAreaID).clientWidth;
-    const hRulerHeight = document.getElementById(this.hRulerAreaID).clientHeight;
-    const scale = 1;
-    const scaledRuler = this.SD_GetScaledRuler(scale);
-    const rulerLength = isHorizontal ? hRulerHeight : vRulerWidth;
-    const majorTickLength = Utils.RoundCoordLP(Math.round(3 * rulerLength / 4));
-    const midTickLength = Utils.RoundCoordLP(Math.round(rulerLength / 2));
-    const minorTickLength = Utils.RoundCoordLP(Math.round(rulerLength / 4));
-    const majorUnit = this.rulerSettings.major / (this.rulerSettings.useInches ? 1 : Defines.MetricConv);
-    const gridSpacing = this.rulerSettings.nGrid * scaledRuler;
-    const origin = isHorizontal ? this.rulerSettings.originx : this.rulerSettings.originy;
-    const fractionalOrigin = origin - Math.floor(origin);
-    const offset = -Math.ceil(origin) * this.rulerSettings.majorScale;
-    const docLength = isHorizontal ? workArea.docScreenWidth : workArea.docScreenHeight;
-    const path = elem.CreateShape(Models.CreateShapeType.PATH);
-    let pathData = '';
-    let labels = [];
-    let position = fractionalOrigin * majorUnit;
-
-    for (let i = 0; position < docLength; i++) {
-      const coord = Utils.RoundCoordLP(position * workArea.docToScreenScale);
-      const label = this.rulerSettings.showpixels ? 100 * (offset + i * this.rulerSettings.majorScale / scaledRuler) : offset + i * this.rulerSettings.majorScale / scaledRuler;
-      labels.push({ label, x: isHorizontal ? coord + 2 : 3, y: isHorizontal ? 1 : coord + 2 });
-
-      pathData += isHorizontal ? `M${coord},${rulerLength}v-${majorTickLength}` : `M${rulerLength},${coord}h-${majorTickLength}`;
-
-      for (let j = 1; j < this.rulerSettings.nTics; j++) {
-        const minorCoord = Utils.RoundCoordLP((position + j * (majorUnit / this.rulerSettings.nTics)) * workArea.docToScreenScale);
-        const tickLength = j % Math.round(this.rulerSettings.nTics / (this.rulerSettings.nMid + 1)) ? minorTickLength : midTickLength;
-        pathData += isHorizontal ? `M${minorCoord},${rulerLength}v-${tickLength}` : `M${rulerLength},${minorCoord}h-${tickLength}`;
-      }
-
-      position += this.rulerSettings.major / scaledRuler / (this.rulerSettings.useInches ? 1 : Defines.MetricConv);
-    }
-
-    path.SetPath(pathData);
-    path.SetFillColor("none");
-    path.SetStrokeColor("#000");
-    path.SetStrokeWidth(".5");
-    elem.AddElement(path);
-    elem.SetCursor('cur-default');
-
-    const textStyle = { size: 10, color: "#000" };
-    const labelCount = labels.length;
-    const labelStep = Math.floor(labelCount / 250);
-
-    labels.forEach((label, index) => {
-      if (index % labelStep === 0) {
-        const text = elem.CreateShape(Models.CreateShapeType.TEXT);
-        text.SetText(label.label.toFixed(1), textStyle);
-        elem.AddElement(text);
-        text.SetPos(label.x, label.y);
-      }
-    });
-  }
-
-  SetRulerContent = function (e, t) {
+  SetRulerContent = (e, t) => {
     var a, r, i, n, o, s, l, S, c, u, p, d, D, g, h, m, C, y, f, L, I, T, b, M, P;
     var R = this.svgDoc.GetWorkArea();
     var A = document.getElementById(this.vRulerAreaID).clientWidth;
     var _ = document.getElementById(this.hRulerAreaID).clientHeight;
     var E = 1;
     var w = false;
-    var F = this.SD_GetScaledRuler(E);
+    var F = this.GetScaledRuler(E);
 
     i = e.CreateShape(Models.CreateShapeType.PATH);
     a = t ? _ : A;
@@ -1059,7 +962,7 @@ class DocumentHandler {
     g = 0;
 
     if (!this.rulerSettings.useInches) {
-      E *= Defines.MetricConv;
+      E *= Models.CommonDefines.MetricConv;
     }
 
     p = this.rulerSettings.nTics;
@@ -1132,10 +1035,8 @@ class DocumentHandler {
       e.AddElement(n);
       n.SetPos(b[u].x, b[u].y);
       u += v;
-      console.log('b[u].label', b[u].label, M)
     }
   }
-
 
   GetZoomFactor = () => {
     let zoomFactor = 1;
@@ -1145,32 +1046,43 @@ class DocumentHandler {
     return zoomFactor;
   }
 
-  ZoomInandOut = (e, t) => {
-    var a,
-      r = 0.25,
-      i = this.GetZoomFactor();
-    if (e) {
-      if (i >= 4) return;
-      (a = Math.ceil(i / r) * r) === i &&
-        (a = i + 0.25),
-        a > 4 &&
-        (a = 4)
+  ZoomInandOut = (zoomIn: boolean, adjustScroll: boolean) => {
+    const zoomStep = 0.25;
+    let currentZoomFactor = this.GetZoomFactor();
+    let newZoomFactor;
+
+    if (zoomIn) {
+      if (currentZoomFactor >= 4) return;
+      newZoomFactor = Math.ceil(currentZoomFactor / zoomStep) * zoomStep;
+      if (newZoomFactor === currentZoomFactor) {
+        newZoomFactor += zoomStep;
+      }
+      if (newZoomFactor > 4) {
+        newZoomFactor = 4;
+      }
     } else {
-      if (i <= 0.25) return;
-      (a = Math.floor(i / r) * r) === i &&
-        (a = i - 0.25),
-        a < 0.25 &&
-        (a = 0.25)
+      if (currentZoomFactor <= 0.25) return;
+      newZoomFactor = Math.floor(currentZoomFactor / zoomStep) * zoomStep;
+      if (newZoomFactor === currentZoomFactor) {
+        newZoomFactor -= zoomStep;
+      }
+      if (newZoomFactor < 0.25) {
+        newZoomFactor = 0.25;
+      }
     }
-    this.SetZoomLevel(100 * a, t)
+
+    this.SetZoomLevel(100 * newZoomFactor, adjustScroll);
   }
 
-  SetZoomLevel = function (e, t) {
-    e <= 0 || this.inZoomIdle || this.SetDocumentScale(e / 100, t)
+  SetZoomLevel = (zoomLevel: number, adjustScroll: boolean) => {
+    if (zoomLevel <= 0 || this.inZoomIdle) return;
+    this.SetDocumentScale(zoomLevel / 100, adjustScroll);
   }
 
-  SetDocumentScale = function (e, t) {
-    this.svgDoc && this.SetZoomFactor(e, t)
+  SetDocumentScale = (scale: number, adjustScroll: boolean) => {
+    if (this.svgDoc) {
+      this.SetZoomFactor(scale, adjustScroll);
+    }
   }
 
   SetZoomFactor = function (zoomFactor, adjustScroll) {
@@ -1183,34 +1095,31 @@ class DocumentHandler {
     this.scaleToPage = false;
     this.svgDoc.SetDocumentScale(zoomFactor);
 
-    // if (!adjustScroll) {
-    //   console.log('SetZoomFactor', adjustScroll);
-    //   const workArea = this.svgDoc.GetWorkArea();
-    //   const selectedObjects = this.gListManager.GetObjectPtr(this.gListManager.theSelectedListBlockID, false);
-    //   const enclosingRect = selectedObjects.length
-    //     ? this.gListManager.GetListSRect(selectedObjects)
-    //     : this.gListManager.CalcAllObjectEnclosingRect(false);
+    /*
+    if (!adjustScroll) {
+      const workArea = this.svgDoc.GetWorkArea();
+      const selectedObjects = this.gListManager.GetObjectPtr(this.gListManager.theSelectedListBlockID, false);
+      const enclosingRect = selectedObjects.length
+        ? this.gListManager.GetListSRect(selectedObjects)
+        : this.gListManager.CalcAllObjectEnclosingRect(false);
 
-    //   if (!enclosingRect.width && !enclosingRect.height) {
-    //     enclosingRect.x = 0;
-    //     enclosingRect.y = 0;
-    //     enclosingRect.width = workArea.docWidth;
-    //     enclosingRect.height = workArea.docHeight;
-    //   }
+      if (!enclosingRect.width && !enclosingRect.height) {
+        enclosingRect.x = 0;
+        enclosingRect.y = 0;
+        enclosingRect.width = workArea.docWidth;
+        enclosingRect.height = workArea.docHeight;
+      }
 
-    //   const scrollX = (enclosingRect.x + enclosingRect.width / 2) * workArea.docToScreenScale - workArea.dispWidth / 2;
-    //   const scrollY = (enclosingRect.y + enclosingRect.height / 2) * workArea.docToScreenScale - workArea.dispHeight / 2;
-    //   this.AdjustScroll(scrollX, scrollY);
-    // }
+      const scrollX = (enclosingRect.x + enclosingRect.width / 2) * workArea.docToScreenScale - workArea.dispWidth / 2;
+      const scrollY = (enclosingRect.y + enclosingRect.height / 2) * workArea.docToScreenScale - workArea.dispHeight / 2;
+      this.AdjustScroll(scrollX, scrollY);
+    }
+    */
 
     this.ResetRulers();
     this.UpdateGrid();
     this.UpdateWorkArea();
     return true;
-  }
-
-  UpdateDisplayCoordinates = function (e, t, a, r) {
-
   }
 }
 
