@@ -95,7 +95,7 @@
   background-color: yellow;
 }
 
-#svgarea {
+#svg-area {
   scrollbar-width: thin;
   position: absolute;
   background-color: #fff;
@@ -143,7 +143,7 @@
             @tool-dropped="toolDropped" />
         </div>
         <div id="work-area" class="main-panel">
-          <div id="document-area" :onwheel="T3000.Hvac.UI.LM_WorkAreaMouseWheel">
+          <div id="document-area">
             <div id="c-ruler" class="document-ruler-corner">
               c-ruler
             </div>
@@ -151,7 +151,7 @@
             </div>
             <div id="v-ruler" class="document-ruler-left">
             </div>
-            <div id="svgarea" class="svg-area" :onwheel="T3000.Hvac.UI.LM_WorkAreaMouseWheel">
+            <div id="svg-area" class="svg-area">
               svg area
             </div>
           </div>

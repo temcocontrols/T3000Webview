@@ -97,7 +97,7 @@ class DocHandler {
   }
 
   Initialize = () => {
-    this.theSVGDocumentID = 'svgarea';
+    this.theSVGDocumentID = 'svg-area';
     this.theDragStartX = 0;
     this.theDragStartY = 0;
     this.theDragDeltaX = 0;
@@ -150,15 +150,13 @@ class DocHandler {
     this.svgCollabLayer.ExcludeFromExport(true);
     this.svgCollabLayer.AllowScaling(false);
     this.MainAppElement = document.getElementById('mainApp');
-    this.WorkAreaElement = document.getElementById('svgarea');
+    this.WorkAreaElement = document.getElementById('svg-area');
     this.DocumentElement = document.getElementById('document-area');
-    this.WorkAreaHammer = new Hammer(this.WorkAreaElement);
-    this.DocumentElementHammer = new Hammer(this.DocumentElement);
   }
 
   InitializeWorkArea = (workArea) => {
     this.workAreaID = workArea.workAreaID || 'document-area';
-    this.svgAreaID = workArea.svgAreaID || 'svgarea';
+    this.svgAreaID = workArea.svgAreaID || 'svg-area';
     this.hRulerAreaID = workArea.hRulerAreaID || 'h-ruler';
     this.vRulerAreaID = workArea.vRulerAreaID || 'v-ruler';
     this.cRulerAreaID = workArea.cRulerAreaID || 'c-ruler';
@@ -174,9 +172,6 @@ class DocHandler {
     this.scaleToFit = false;
     this.scaleToPage = false;
     this.scrollWidth = 0;
-
-    window.addEventListener("resize", this.HandleResizeEvent);
-    document.getElementById(this.svgAreaID).addEventListener("scroll", this.HandleScrollEvent);
 
     this.UpdateWorkArea();
     this.InitRulerSettings();
@@ -1128,6 +1123,7 @@ class DocHandler {
   UpdateDisplayCoordinates = function (coords, cursorPos, cursorType, dimensionFlags) {
 
   }
+
 }
 
 export default DocHandler;
