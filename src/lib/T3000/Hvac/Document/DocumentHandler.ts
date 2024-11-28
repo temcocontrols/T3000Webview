@@ -476,31 +476,31 @@ class DocumentHandler {
     this.rulerGuideScrollTimer = null;
     this.rulerInDrag = false;
 
-    if (!this.IsReadOnly()) {
-      const hRulerElem = document.getElementById(this.hRulerAreaID);
-      const vRulerElem = document.getElementById(this.vRulerAreaID);
-      const cRulerElem = document.getElementById(this.cRulerAreaID);
+    // if (!this.IsReadOnly()) {
+    //   const hRulerElem = document.getElementById(this.hRulerAreaID);
+    //   const vRulerElem = document.getElementById(this.vRulerAreaID);
+    //   const cRulerElem = document.getElementById(this.cRulerAreaID);
 
-      const hammerH = new Hammer(hRulerElem);
-      const hammerV = new Hammer(vRulerElem);
-      const hammerC = new Hammer(cRulerElem);
+    //   const hammerH = new Hammer(hRulerElem);
+    //   const hammerV = new Hammer(vRulerElem);
+    //   const hammerC = new Hammer(cRulerElem);
 
-      hammerH.on("doubletap", this.RulerTopDoubleClick);
-      hammerV.on("doubletap", this.RulerLeftDoubleClick);
-      hammerC.on("doubletap", this.RulerCenterDoubleClick);
+    //   hammerH.on("doubletap", this.RulerTopDoubleClick);
+    //   hammerV.on("doubletap", this.RulerLeftDoubleClick);
+    //   hammerC.on("doubletap", this.RulerCenterDoubleClick);
 
-      hammerH.on("dragstart", this.RulerDragStart);
-      hammerV.on("dragstart", this.RulerDragStart);
-      hammerC.on("dragstart", this.RulerDragStart);
+    //   hammerH.on("dragstart", this.RulerDragStart);
+    //   hammerV.on("dragstart", this.RulerDragStart);
+    //   hammerC.on("dragstart", this.RulerDragStart);
 
-      hammerH.on("drag", this.RulerTopDrag);
-      hammerV.on("drag", this.RulerLeftDrag);
-      hammerC.on("drag", this.RulerCenterDrag);
+    //   hammerH.on("drag", this.RulerTopDrag);
+    //   hammerV.on("drag", this.RulerLeftDrag);
+    //   hammerC.on("drag", this.RulerCenterDrag);
 
-      hammerH.on("dragend", this.RulerDragEnd);
-      hammerV.on("dragend", this.RulerDragEnd);
-      hammerC.on("dragend", this.RulerDragEnd);
-    }
+    //   hammerH.on("dragend", this.RulerDragEnd);
+    //   hammerV.on("dragend", this.RulerDragEnd);
+    //   hammerC.on("dragend", this.RulerDragEnd);
+    // }
 
     this.ResetRulers();
   }

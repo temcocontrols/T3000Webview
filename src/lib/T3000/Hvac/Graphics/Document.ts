@@ -6,6 +6,8 @@ import Layer from "./Layer";
 import Models from '../Hvac.Models';
 import Path from './Path';
 import Text from './Text';
+import * as Utils from '../Hvac.Utils';
+import Formatter from './Text.Formatter';
 
 interface DocInfo {
   dispX: number;
@@ -42,6 +44,7 @@ class Document extends Container {
   public spellChecker: any;
   public documentLayerID: any;
   public imageLoadRefCount: number;
+  public _TextMetricsCache: any;
 
   constructor(elementId: string, fontList: any) {
     super();
@@ -67,6 +70,8 @@ class Document extends Container {
     this.imageLoadRefCount = 0;
     this.InitElement(this, null);
     this.InitializeContainer();
+
+    this._TextMetricsCache = {};
   }
 
   InitDocInfo = () => {
@@ -374,6 +379,62 @@ class Document extends Container {
       width: this.docInfo.docWidth * i * n,
       height: this.docInfo.docHeight * i * n
     }
+  }
+
+  CalcStyleMetrics = function (e) {
+    var t = this.GetTextCacheForStyle(e);
+    return Utils.CopyObj(t.metrics)
+  }
+
+  GetTextCacheForStyle = function (e) {
+    var t = new Formatter(null).MakeIDFromStyle(e),
+      a = this._TextMetricsCache[t];
+    a ||
+      (
+        a = {
+          metrics: new Formatter(null).CalcStyleMetrics(e, this),
+          textCache: {
+          }
+        },
+        this._TextMetricsCache[t] = a
+      );
+    return a
+  }
+
+  MapFont = function (e, t) {
+    var a,
+      r,
+      i,
+      n,
+      o = this.fontList.length;
+    for (t || (t = 'sanserif'), n = '\'' + e + '\'', a = 0; a < o; a++) {
+      if (this.fontList[a].name === e) {
+        i = this.fontList[a].fallback;
+        break
+      }
+      !r &&
+        this.fontList[a].default &&
+        this.fontList[a].category === t &&
+        (r = this.fontList[a].fallback)
+    }
+    return i &&
+      (n += ',' + i),
+      n
+  }
+
+  GetTextRunCache = function (e, t) {
+    var a = this.GetTextCacheForStyle(e);
+    "symbol" != typeof t && (t = Symbol.for(t));
+    var r = a.textCache[t];
+    if (!r) {
+      var i = Symbol.keyFor(t).length;
+      r = {
+        startOffsets: new Array(i),
+        endOffsets: new Array(i)
+      },
+        a.textCache[t] = r
+    }
+    return r
   }
 }
 

@@ -236,17 +236,17 @@ class Element {
   }
 
   protected RefreshPaint = (e) => {
-    if (this.fillPatternData) {
-      this.UpdatePattern(this.fillPatternData.ID, true);
-    } else if (this.fillGradientData) {
-      this.UpdateGradient(this.fillGradientData.ID, true);
-    }
+    // if (this.fillPatternData) {
+    //   this.UpdatePattern(this.fillPatternData.ID, true);
+    // } else if (this.fillGradientData) {
+    //   this.UpdateGradient(this.fillGradientData.ID, true);
+    // }
 
-    if (this.strokePatternData) {
-      this.UpdatePattern(this.strokePatternData.ID, false);
-    } else if (this.strokeGradientData) {
-      this.UpdateGradient(this.strokeGradientData.ID, false);
-    }
+    // if (this.strokePatternData) {
+    //   this.UpdatePattern(this.strokePatternData.ID, false);
+    // } else if (this.strokeGradientData) {
+    //   this.UpdateGradient(this.strokeGradientData.ID, false);
+    // }
 
     /*
     if (e && this instanceof Group) {
