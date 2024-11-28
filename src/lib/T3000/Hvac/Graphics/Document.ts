@@ -115,8 +115,8 @@ class Document extends Container {
     this.ApplyDocumentTransform(null);
   }
 
-  SetDocumentLayer = (e) => {
-    this.documentLayerID = e;
+  SetDocumentLayer = (layerID: string) => {
+    this.documentLayerID = layerID;
   }
 
   GetDeviceInfo = () => {
@@ -220,41 +220,51 @@ class Document extends Container {
     this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
   }
 
-  ConvertWindowToDocCoords = (e, t) => {
+  ConvertWindowToDocCoords = (x: number, y: number) => {
     return {
-      x: (e - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
-      y: (t - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
-    }
+      x: (x - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
+      y: (y - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
+    };
   }
 
-  ConvertDocToWindowCoords = (e, t) => {
+  ConvertDocToWindowCoords = (docX: number, docY: number) => {
     return {
-      x: e * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
-      y: t * this.docInfo.docToScreenScale + this.docInfo.docScreenY
-    }
+      x: docX * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
+      y: docY * this.docInfo.docToScreenScale + this.docInfo.docScreenY
+    };
   }
 
-  SetDocumentScale = (e) => {
+  SetDocumentScale = (scale: number) => {
     this.SetDocumentMetrics({
-      scale: e
-    })
+      scale: scale
+    });
   }
 
-  ApplyDocumentTransform = (e) => {
-    var t, a, r = this.ElementCount();
-    if (this.svgObj.attr({
+  ApplyDocumentTransform = (layerID) => {
+    const elementCount = this.ElementCount();
+    this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
       height: this.docInfo.docScreenHeight
-    }),
-      !e)
-      for (a = 0; a < r; a++)
-        (t = this.GetElementByIndex(a)) instanceof Layer && (t.IsScalingAllowed() ? t.svgObj.transform({
-          scaleX: this.docInfo.docToScreenScale,
-          scaleY: this.docInfo.docToScreenScale
-        }) : t.IsDpiScalingAllowed() && t.svgObj.transform({
-          scaleX: this.docInfo.docDpiScale,
-          scaleY: this.docInfo.docDpiScale
-        }))
+    });
+
+    if (!layerID) {
+      for (let i = 0; i < elementCount; i++) {
+        const element = this.GetElementByIndex(i);
+        if (element instanceof Layer) {
+          if (element.IsScalingAllowed()) {
+            element.svgObj.transform({
+              scaleX: this.docInfo.docToScreenScale,
+              scaleY: this.docInfo.docToScreenScale
+            });
+          } else if (element.IsDpiScalingAllowed()) {
+            element.svgObj.transform({
+              scaleX: this.docInfo.docDpiScale,
+              scaleY: this.docInfo.docDpiScale
+            });
+          }
+        }
+      }
+    }
   }
 
   SetDocumentSize = (width: number, height: number) => {
@@ -264,16 +274,16 @@ class Document extends Container {
     });
   }
 
-  SetDocumentMetrics = function (e) {
-    this.docInfo.docWidth = e.width || this.docInfo.docWidth;
-    this.docInfo.docHeight = e.height || this.docInfo.docHeight;
-    this.docInfo.docDpi = e.dpi || this.docInfo.docDpi;
-    this.docInfo.docScale = e.scale || this.docInfo.docScale;
+  SetDocumentMetrics = (metrics: { width?: number, height?: number, dpi?: number, scale?: number }) => {
+    this.docInfo.docWidth = metrics.width ?? this.docInfo.docWidth;
+    this.docInfo.docHeight = metrics.height ?? this.docInfo.docHeight;
+    this.docInfo.docDpi = metrics.dpi ?? this.docInfo.docDpi;
+    this.docInfo.docScale = metrics.scale ?? this.docInfo.docScale;
     this.CalcWorkArea();
     this.ApplyDocumentTransform();
   }
 
-  GetFormattingLayer = function () {
+  GetFormattingLayer = () => {
     let formattingLayer = this.GetLayer('__FORMATTING__');
 
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
@@ -292,31 +302,28 @@ class Document extends Container {
     return formattingLayer;
   }
 
-  AddLayer = (e) => {
+  AddLayer = (layerID: string) => {
     const layer = this.CreateShape(Models.CreateShapeType.LAYER);
-    layer.SetID(e);
+    layer.SetID(layerID);
     this.AddElement(layer, null);
-    this.ApplyDocumentTransform(e);
+    this.ApplyDocumentTransform(layerID);
 
-    layer.svgObj.node.setAttribute("layerID", e);
+    layer.svgObj.node.setAttribute("layerID", layerID);
     return layer;
   }
 
-  GetLayer = (e) => {
-    let layer = null;
-    const elementCount = this.ElementCount();
-    for (let i = 0; i < elementCount; i++) {
+  GetLayer = (layerID: string): Layer | null => {
+    for (let i = 0; i < this.ElementCount(); i++) {
       const element = this.GetElementByIndex(i);
-      if (element instanceof Layer && element.GetID() === e) {
-        layer = element;
-        break;
+      if (element instanceof Layer && element.GetID() === layerID) {
+        return element;
       }
     }
-    return layer;
+    return null;
   }
 
-  MoveLayer = function (e, t, a) {
-    const layer = this.GetLayer(e);
+  MoveLayer = (layerID: string, moveType: any, referenceLayerID?: string) => {
+    const layer = this.GetLayer(layerID);
     if (!layer) return;
 
     const currentIndex = this.GetElementIndex(layer);
@@ -325,8 +332,8 @@ class Document extends Container {
     let referenceIndex = 0;
     let referenceLayer = null;
 
-    if (a) {
-      referenceLayer = this.GetLayer(a);
+    if (referenceLayerID) {
+      referenceLayer = this.GetLayer(referenceLayerID);
       if (referenceLayer) {
         referenceIndex = this.GetElementIndex(referenceLayer);
         if (currentIndex < referenceIndex) {
@@ -335,7 +342,7 @@ class Document extends Container {
       }
     }
 
-    switch (t) {
+    switch (moveType) {
       case Models.LayerMoveType.BOTTOM:
         targetIndex = 0;
         break;
@@ -360,81 +367,90 @@ class Document extends Container {
     this.SetDocumentMetrics({ dpi });
   }
 
-  ImageLoad_ResetRefCount = () => {
-    this.imageLoadRefCount = 0;
-  }
-
   GetWorkArea = () => {
     return this.docInfo;
   }
 
-  CalcScaleToFit = function (e, t, a, r) {
-    var i, n, o;
-    return a || (a = this.docInfo.docWidth),
-      r || (r = this.docInfo.docHeight),
-      (n = e / (a *= i = this.docInfo.dispDpiX / this.docInfo.docDpi)) > (o = t / (r *= i)) && (n = o),
-      n > 1 && (n = 1),
-    {
-      scale: n,
-      width: this.docInfo.docWidth * i * n,
-      height: this.docInfo.docHeight * i * n
+  CalcScaleToFit = (width: number, height: number, docWidth?: number, docHeight?: number) => {
+    let scale: number;
+    let adjustedDocWidth = docWidth || this.docInfo.docWidth;
+    let adjustedDocHeight = docHeight || this.docInfo.docHeight;
+    const dpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
+
+    adjustedDocWidth *= dpiScale;
+    adjustedDocHeight *= dpiScale;
+
+    const widthScale = width / adjustedDocWidth;
+    const heightScale = height / adjustedDocHeight;
+
+    scale = Math.min(widthScale, heightScale);
+    if (scale > 1) scale = 1;
+
+    return {
+      scale: scale,
+      width: this.docInfo.docWidth * dpiScale * scale,
+      height: this.docInfo.docHeight * dpiScale * scale
+    };
+  }
+
+  CalcStyleMetrics = (style) => {
+    const textCache = this.GetTextCacheForStyle(style);
+    return Utils.CopyObj(textCache.metrics);
+  }
+
+  GetTextCacheForStyle = (style) => {
+    const styleID = new Formatter(null).MakeIDFromStyle(style);
+    let cache = this._TextMetricsCache[styleID];
+
+    if (!cache) {
+      cache = {
+        metrics: new Formatter(null).CalcStyleMetrics(style, this),
+        textCache: {}
+      };
+      this._TextMetricsCache[styleID] = cache;
     }
+
+    return cache;
   }
 
-  CalcStyleMetrics = function (e) {
-    var t = this.GetTextCacheForStyle(e);
-    return Utils.CopyObj(t.metrics)
-  }
+  MapFont = (fontName: string, category: string = 'sanserif'): string => {
+    let fallbackFont: string | undefined;
+    let defaultFallback: string | undefined;
+    const fontListLength = this.fontList.length;
+    let fontFamily = `'${fontName}'`;
 
-  GetTextCacheForStyle = function (e) {
-    var t = new Formatter(null).MakeIDFromStyle(e),
-      a = this._TextMetricsCache[t];
-    a ||
-      (
-        a = {
-          metrics: new Formatter(null).CalcStyleMetrics(e, this),
-          textCache: {
-          }
-        },
-        this._TextMetricsCache[t] = a
-      );
-    return a
-  }
-
-  MapFont = function (e, t) {
-    var a,
-      r,
-      i,
-      n,
-      o = this.fontList.length;
-    for (t || (t = 'sanserif'), n = '\'' + e + '\'', a = 0; a < o; a++) {
-      if (this.fontList[a].name === e) {
-        i = this.fontList[a].fallback;
-        break
+    for (let i = 0; i < fontListLength; i++) {
+      if (this.fontList[i].name === fontName) {
+        fallbackFont = this.fontList[i].fallback;
+        break;
       }
-      !r &&
-        this.fontList[a].default &&
-        this.fontList[a].category === t &&
-        (r = this.fontList[a].fallback)
+      if (!defaultFallback && this.fontList[i].default && this.fontList[i].category === category) {
+        defaultFallback = this.fontList[i].fallback;
+      }
     }
-    return i &&
-      (n += ',' + i),
-      n
+
+    if (fallbackFont) {
+      fontFamily += `,${fallbackFont}`;
+    }
+
+    return fontFamily;
   }
 
-  GetTextRunCache = function (e, t) {
-    var a = this.GetTextCacheForStyle(e);
-    "symbol" != typeof t && (t = Symbol.for(t));
-    var r = a.textCache[t];
-    if (!r) {
-      var i = Symbol.keyFor(t).length;
-      r = {
-        startOffsets: new Array(i),
-        endOffsets: new Array(i)
-      },
-        a.textCache[t] = r
+  GetTextRunCache(style: any, text: any) {
+    const textCache = this.GetTextCacheForStyle(style);
+    if (typeof text !== "symbol") {
+      text = Symbol.for(text);
     }
-    return r
+    let cache = textCache.textCache[text];
+    if (!cache) {
+      const length = Symbol.keyFor(text).length;
+      cache = {
+        startOffsets: new Array(length),
+        endOffsets: new Array(length)
+      };
+      textCache.textCache[text] = cache;
+    }
+    return cache;
   }
 }
 

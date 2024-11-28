@@ -1,26 +1,26 @@
 import Container from "./Container";
-import SVG from '../Hvac.SVG';
+import HvacSVG from '../Hvac.SVG';
 
 class Layer extends Container {
   public scaleOKFlag = true;
   public dpiScaleOnlyFlag = false;
 
   CreateElement = (element, parent) => {
-    this.svgObj = new SVG.Container(SVG.create('g'));
+    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
     this.InitElement(element, parent);
     return this.svgObj;
   }
 
-  AllowScaling = (e) => {
-    this.scaleOKFlag = e;
-    if (e) {
+  AllowScaling = (isAllowed: boolean): void => {
+    this.scaleOKFlag = isAllowed;
+    if (isAllowed) {
       this.dpiScaleOnlyFlag = false;
     }
   }
 
-  AllowDpiScalingOnly = (e) => {
-    this.dpiScaleOnlyFlag = e;
-    if (e) {
+  AllowDpiScalingOnly = (isAllowed: boolean): void => {
+    this.dpiScaleOnlyFlag = isAllowed;
+    if (isAllowed) {
       this.scaleOKFlag = false;
     }
   }

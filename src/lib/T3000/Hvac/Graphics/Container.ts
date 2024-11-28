@@ -1,6 +1,5 @@
 import Element from './Element';
-// import * as SVG from '@svgdotjs/svg.js';
-import SVG from '../Hvac.SVG';
+import HvacSVG from '../Hvac.SVG';
 
 class Container extends Element {
   constructor() {
@@ -9,7 +8,7 @@ class Container extends Element {
 
   ElementCount = () => {
     const childrenCount = this.svgObj.children().length;
-    if (this.svgObj instanceof SVG.Container) {
+    if (this.svgObj instanceof HvacSVG.Container) {
       return childrenCount - 1;
     }
     return childrenCount;
@@ -17,7 +16,7 @@ class Container extends Element {
 
   GetElementByIndex = (e) => {
     const children = this.svgObj.children();
-    if (this.svgObj instanceof SVG.Doc) {
+    if (this.svgObj instanceof HvacSVG.Doc) {
       e++;
     }
     if (e < 0 || e >= children.length) {
@@ -27,7 +26,7 @@ class Container extends Element {
   }
 
   AddElement = (e: any, t: any) => {
-    if (t !== undefined && this.svgObj instanceof SVG.Container) {
+    if (t !== undefined && this.svgObj instanceof HvacSVG.Container) {
       t++;
     }
 
@@ -47,7 +46,7 @@ class Container extends Element {
 
   GetElementIndex = (e) => {
     let index = this.svgObj.children().indexOf(e.svgObj);
-    if (index > 0 && this.svgObj instanceof SVG.Doc) {
+    if (index > 0 && this.svgObj instanceof HvacSVG.Doc) {
       index--;
     }
     return index;
@@ -57,7 +56,7 @@ class Container extends Element {
     let startIndex = 0;
     const childrenCount = this.svgObj.children().length;
 
-    if (this.svgObj instanceof SVG.Doc) {
+    if (this.svgObj instanceof HvacSVG.Doc) {
       startIndex++;
     }
 

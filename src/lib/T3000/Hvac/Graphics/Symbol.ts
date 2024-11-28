@@ -7,13 +7,13 @@ class Symbol extends Element {
     super();
   }
 
-  ParsePlaceholder = function (e, t) {
-    const equalsIndex = e.indexOf("=");
-    const terminatorIndex = e.lastIndexOf(Models.Placeholder.Terminator);
-    let placeholderValue = Models.PlaceholderDefaults[t];
+  ParsePlaceholder = function (placeholderString, placeholderType) {
+    const equalsIndex = placeholderString.indexOf("=");
+    const terminatorIndex = placeholderString.lastIndexOf(Models.Placeholder.Terminator);
+    let placeholderValue = Models.PlaceholderDefaults[placeholderType];
 
     if (equalsIndex > 0 && terminatorIndex > equalsIndex) {
-      placeholderValue = e.slice(equalsIndex + 1, terminatorIndex);
+      placeholderValue = placeholderString.slice(equalsIndex + 1, terminatorIndex);
     }
 
     return placeholderValue;

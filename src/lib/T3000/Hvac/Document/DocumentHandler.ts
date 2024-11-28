@@ -3,7 +3,7 @@ import Document from '../Graphics/Document';
 import Models from '../Hvac.Models';
 import Hammer from 'hammerjs';
 import * as Utils from '../Hvac.Utils';
-import ListManager from './ListManager';
+import ContentHeader from './ContentHeader';
 import UI from '../UI/UI';
 import Path from '../Graphics/Path';
 
@@ -72,8 +72,7 @@ class DocumentHandler {
   public rulerGuideWinPos: any;
   public rulerGuideScrollTimer: any;
   public rulerInDrag: boolean;
-  public gListManager: any;
-
+  // public gListManager: any;
 
   public theSVGDocumentID: string;
   public svgObjectLayer: any;
@@ -116,7 +115,7 @@ class DocumentHandler {
   public theContentHeader: any;
 
   constructor() {
-    this.gListManager = new ListManager();
+    // this.gListManager = new ListManager();
     this.documentConfig = { enableSnap: true, showGrid: true, showRulers: true };
   }
 
@@ -153,7 +152,7 @@ class DocumentHandler {
     this.svgObjectLayer = null;
     this.svgOverlayLayer = null;
     this.svgHighlightLayer = null;
-    this.theContentHeader = this.gListManager.theContentHeader;
+    this.theContentHeader = new ContentHeader();// this.gListManager.theContentHeader;
     this.InitSVGDocument();
     this.SVGroot = this.svgDoc.svgObj.node;
     this.TopLeftPastePos = { x: 0, y: 0 };
@@ -250,7 +249,6 @@ class DocumentHandler {
     }
 
     this.backgroundElem.SetSize(this.svgDoc.docInfo.docWidth, this.svgDoc.docInfo.docHeight);
-    this.svgDoc.ImageLoad_ResetRefCount();
   }
 
   HandleResizeEvent = () => {
@@ -548,8 +546,20 @@ class DocumentHandler {
     this.documentConfig.showRulers = e;
   }
 
+  IsCtrlClick = (e) => {
+    let isCtrlClick = false;
+
+    if (e instanceof MouseEvent) {
+      isCtrlClick = e.ctrlKey;
+    } else if ('onpointerdown' in window && e instanceof PointerEvent) {
+      isCtrlClick = e.ctrlKey;
+    }
+
+    return isCtrlClick;
+  }
+
   RulerTopDrag = (e) => {
-    if (this.gListManager.IsCtrlClick(e)) {
+    if (this.IsCtrlClick(e)) {
       Utils.StopPropagationAndDefaults(e);
       this.RulerHandleDoubleClick(e, false, true);
       this.RulerDragGuides(e, false, true);
@@ -557,7 +567,7 @@ class DocumentHandler {
   }
 
   RulerLeftDrag = (e) => {
-    if (Utils.StopPropagationAndDefaults(e), this.gListManager.IsCtrlClick(e)) {
+    if (Utils.StopPropagationAndDefaults(e), this.IsCtrlClick(e)) {
       Utils.StopPropagationAndDefaults(e);
       this.RulerHandleDoubleClick(e, true, false);
       return;
@@ -573,12 +583,12 @@ class DocumentHandler {
     }
 
     if (this.hRulerGuide) {
-      this.gListManager.svgOverlayLayer.RemoveElement(this.hRulerGuide);
+      this.svgOverlayLayer.RemoveElement(this.hRulerGuide);
       this.hRulerGuide = null;
     }
 
     if (this.vRulerGuide) {
-      this.gListManager.svgOverlayLayer.RemoveElement(this.vRulerGuide);
+      this.svgOverlayLayer.RemoveElement(this.vRulerGuide);
       this.vRulerGuide = null;
     }
 
@@ -608,7 +618,7 @@ class DocumentHandler {
         this.hRulerGuide.SetStrokeColor('black');
         this.hRulerGuide.SetStrokeWidth(scale);
         this.hRulerGuide.SetStrokePattern(pattern);
-        this.gListManager.svgOverlayLayer.AddElement(this.hRulerGuide);
+        this.svgOverlayLayer.AddElement(this.hRulerGuide);
       }
 
       if (a && !this.vRulerGuide) {
@@ -617,7 +627,7 @@ class DocumentHandler {
         this.vRulerGuide.SetStrokeColor('black');
         this.vRulerGuide.SetStrokeWidth(scale);
         this.vRulerGuide.SetStrokePattern(pattern);
-        this.gListManager.svgOverlayLayer.AddElement(this.vRulerGuide);
+        this.svgOverlayLayer.AddElement(this.vRulerGuide);
       }
 
       this.rulerGuideWinPos.x = e.gesture.center.clientX;
@@ -925,8 +935,8 @@ class DocumentHandler {
       const path = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
       let pathData = '';
 
-      const pageSize = this.gListManager.theContentHeader.Page.papersize;
-      const margins = this.gListManager.theContentHeader.Page.margins;
+      const pageSize = this.theContentHeader.Page.papersize;
+      const margins = this.theContentHeader.Page.margins;
 
       if (pageSize.x - (margins.left + margins.right) <= 0) {
         margins.left = 50;

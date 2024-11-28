@@ -528,7 +528,10 @@ onMounted(() => {
 // Lifecycle hook for component unmount
 onUnmounted(() => {
   if (panzoomInstance?.dispose) return;
-  panzoomInstance.dispose();
+
+  if (panzoomInstance != null && panzoomInstance != undefined) {
+    panzoomInstance.dispose();
+  }
 });
 
 // Handle messages from the webview

@@ -1,8 +1,6 @@
-import { G, utils } from '@svgdotjs/svg.js';
 import * as Utils from '../Hvac.Utils';
 
 class Element {
-
   public doc: any;
   public parent: any;
   public svgObj: any;
@@ -194,99 +192,53 @@ class Element {
     if (formattingLayer) {
       formattingLayer.RemoveElement(this);
     }
-
-    this.CleanGraphics();
   }
 
-  CleanGraphics = () => {
-  }
+  protected UpdatePattern = (patternID, isFill) => {
+    let patternData = isFill ? this.fillPatternData : this.strokePatternData;
 
-  UpdateImagePattern = (e) => { }
-
-  UpdateTexturePattern = (e) => { }
-
-  protected UpdatePattern = (e, t) => {
-    let patternData;
-    if ((patternData = t ? this.fillPatternData : this.strokePatternData) && patternData.ID === e) {
+    if (patternData && patternData.ID === patternID) {
       if (!patternData.patternElem) {
-        patternData.patternElem = null;
-        patternData.imageElem = null;
-        patternData.imageElem.load(patternData.url);
-        patternData.patternElem.add(patternData.imageElem);
+        patternData.patternElem = this.svgObj.pattern(0, 0, (add) => {
+          patternData.imageElem = add.image(patternData.url);
+        });
         patternData.patternElem.attr('id', patternData.ID);
         this.svgObj.add(patternData.patternElem, 0);
       }
 
-      if (patternData.isImage) {
-        this.UpdateImagePattern(patternData);
-      } else if (patternData.isTexture) {
-        this.UpdateTexturePattern(patternData);
-      }
-
-      if (t) {
-        this.svgObj.attr('fill', `url(#${patternData.ID})`);
-      } else {
-        this.svgObj.attr('stroke', `url(#${patternData.ID})`);
-      }
+      const attribute = isFill ? 'fill' : 'stroke';
+      this.svgObj.attr(attribute, `url(#${patternData.ID})`);
     }
   }
 
-  protected UpdateGradient = (e, t) => {
-
+  RefreshPaint = (isFill) => {
   }
 
-  protected RefreshPaint = (e) => {
-    // if (this.fillPatternData) {
-    //   this.UpdatePattern(this.fillPatternData.ID, true);
-    // } else if (this.fillGradientData) {
-    //   this.UpdateGradient(this.fillGradientData.ID, true);
-    // }
-
-    // if (this.strokePatternData) {
-    //   this.UpdatePattern(this.strokePatternData.ID, false);
-    // } else if (this.strokeGradientData) {
-    //   this.UpdateGradient(this.strokeGradientData.ID, false);
-    // }
-
-    /*
-    if (e && this instanceof Group) {
-      const elementCount = this.ElementCount();
-      for (let i = 0; i < elementCount; i++) {
-        const element = this.GetElementByIndex(i);
-        if (element) {
-          element.RefreshPaint(e);
-        }
-      }
-    }
-    */
+  SetFillOpacity = (opacity) => {
+    this.svgObj.attr('fill-opacity', opacity);
   }
 
-
-  SetFillOpacity = (e) => {
-    this.svgObj.attr('fill-opacity', e)
+  SetStrokeOpacity = (opacity) => {
+    this.svgObj.attr('stroke-opacity', opacity);
   }
 
-  SetStrokeOpacity = (e) => {
-    this.svgObj.attr('stroke-opacity', e)
+  SetFillRule = (fillRule) => {
+    this.svgObj.attr('fill-rule', fillRule);
   }
 
-  SetFillRule = (e) => {
-    this.svgObj.attr('fill-rule', e)
-  }
+  SetStrokeWidth = (width) => {
+    this.svgObj.attr('stroke-width', width);
 
-  SetStrokeWidth = (e) => {
-    this.svgObj.attr('stroke-width', e);
-
-    if (isNaN(e)) {
-      e = null; //Graphics.Symbol.ParsePlaceholder(e, Graphics.Symbol.Placeholder.LineThick);
+    if (isNaN(width)) {
+      width = null;
     }
 
-    this.strokeWidth = Number(e);
+    this.strokeWidth = Number(width);
     this.svgObj.attr('stroke-dasharray', this.GetStrokePatternForWidth());
   }
 
-  SetStrokePattern = (e) => {
-    this.strokeDashArray = e;
+  SetStrokePattern = (pattern) => {
+    this.strokeDashArray = pattern;
     this.svgObj.attr('stroke-dasharray', this.GetStrokePatternForWidth());
   }
 
@@ -294,8 +246,8 @@ class Element {
     return this.ID
   }
 
-  SetID = function (e) {
-    this.ID = e
+  SetID = (id) => {
+    this.ID = id;
   }
 
   GetBBox = () => {
@@ -325,12 +277,12 @@ class Element {
     return dashArray.join(',');
   }
 
-  SetOpacity = (e) => {
-    this.svgObj.attr('opacity', e);
+  SetOpacity = (opacity) => {
+    this.svgObj.attr('opacity', opacity);
   }
 
-  ExcludeFromExport = (e) => {
-    if (e) {
+  ExcludeFromExport = (exclude) => {
+    if (exclude) {
       this.svgObj.node.setAttribute("no-export", "1");
     } else {
       this.svgObj.node.removeAttribute("no-export");
@@ -342,9 +294,9 @@ class Element {
     y = Utils.RoundCoord(y);
     this.svgObj.transform({ x, y });
 
-    var rt = this.GetRotation();
-    if (rt) {
-      this.SetRotation(rt, x, y);
+    const rotation = this.GetRotation();
+    if (rotation) {
+      this.SetRotation(rotation, x, y);
     }
 
     this.UpdateTransform();

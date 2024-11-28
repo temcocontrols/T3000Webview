@@ -1,14 +1,12 @@
 
 import Container from './Container';
 import * as Utils from '../Hvac.Utils';
-import SVG from '../Hvac.SVG';
+import HvacSVG from '../Hvac.SVG';
 import Models from '../Hvac.Models';
 import Symbol from './Symbol';
 import '../pathseg';
 
-
 class Path extends Container {
-
   public pathCreator: any;
   public svgObj: any;
   public pathElem: any;
@@ -30,7 +28,6 @@ class Path extends Container {
   public curPosX: number;
   public curPosY: number;
 
-
   constructor() {
     super();
     this.Initialize();
@@ -48,8 +45,8 @@ class Path extends Container {
     this.strokeWidth = 0;
     this.sArrowSize = 0;
     this.eArrowSize = 0;
-    this.sArrowDisp = !1;
-    this.eArrowDisp = !1;
+    this.sArrowDisp = false;
+    this.eArrowDisp = false;
     this.sArrowMetrics = {};
     this.eArrowMetrics = {};
     this.arrowheadBounds = [];
@@ -63,15 +60,14 @@ class Path extends Container {
   }
 
   CreateElement = (e, t) => {
-    this.svgObj = new SVG.Container(SVG.create("g"));
-    this.pathElem = new SVG.Path();
-    this.arrowAreaElem = new SVG.Container(SVG.create("g"));
+    this.svgObj = new HvacSVG.Container(HvacSVG.create("g"));
+    this.pathElem = new HvacSVG.Path();
+    this.arrowAreaElem = new HvacSVG.Container(HvacSVG.create("g"));
 
     this.svgObj.add(this.pathElem);
     this.svgObj.add(this.arrowAreaElem);
 
     this.InitElement(e, t);
-
     return this.svgObj;
   }
 
@@ -88,7 +84,6 @@ class Path extends Container {
   }
 
   SetStrokeWidth = (width) => {
-
     let symbol = new Symbol();
 
     if (isNaN(width) && typeof width === "string") {
@@ -110,9 +105,8 @@ class Path extends Container {
     this.ClearColorData(false);
   }
 
-  UpdatePattern = (e, t) => {
-    // super.UpdatePattern(this, e, t);
-    if (!t) {
+  UpdatePattern = (pattern, isPattern) => {
+    if (!isPattern) {
       const strokeColor = this.svgObj.attr("stroke");
       if (!this.IsClosed()) {
         this.svgObj.attr("fill", strokeColor);
@@ -122,7 +116,6 @@ class Path extends Container {
   }
 
   UpdateGradient = (gradient, isPattern) => {
-    // super.UpdateGradient(this, gradient, isPattern);
     if (!isPattern) {
       const strokeColor = this.svgObj.attr("stroke");
       if (!this.IsClosed()) {
@@ -139,11 +132,9 @@ class Path extends Container {
 
   SetSize = function (e, t) { }
 
-
   GetArrowheadBounds = () => {
     return [...this.arrowheadBounds];
   }
-
 
   UpdateArrowheads = () => {
     const startArrow = this.sArrowRec;
@@ -201,8 +192,6 @@ class Path extends Container {
     }
   }
 
-
-
   CalcArrowheadDim = function (arrowData, size, display) {
     const metrics = { width: 0, height: 0, scaleFactor: 0, attachX: 0, attachY: 0, endX: 0, endY: 0, trimAmount: 0, offsetX: 0, offsetY: 0, rotatePt: { x: 0, y: 0 }, angle: 0 };
     let arrowHeight = 2 * (this.strokeWidth + size);
@@ -243,11 +232,11 @@ class Path extends Container {
     const scaleFactor = metrics.scaleFactor;
     const geometry = isStart && arrowData.flippedGeometry ? arrowData.flippedGeometry : arrowData.geometry;
 
-    const arrowContainer = new SVG.Container(SVG.create("g"));
+    const arrowContainer = new HvacSVG.Container(HvacSVG.create("g"));
     arrowContainer.parts = [];
 
     geometry.forEach((shape) => {
-      let path = new SVG.Path();
+      let path = new HvacSVG.Path();
       let pathData = "";
 
       switch (shape.type) {
@@ -600,11 +589,10 @@ class Path extends Container {
     return endpoint;
   }
 
-
   GetGeometryBBox = () => {
     if (this.geometryBBox.width < 0 || this.geometryBBox.height < 0) {
       const formattingLayer = this.doc.GetFormattingLayer();
-      const tempPath = new SVG.Path();
+      const tempPath = new HvacSVG.Path();
       tempPath.plot(this.origPathData);
       formattingLayer.svgObj.add(tempPath);
       const bbox = tempPath.node.getBBox();
@@ -633,15 +621,12 @@ class Path extends Container {
     }
   }
 
-
   IsClosed = () => {
-    console.log('this.pathElem.node.pathSegList.numberOfItems', this.pathElem.node);
     const numSegments = this.pathElem.node.pathSegList.numberOfItems;
     if (numSegments < 1) return false;
     const lastSegment = this.pathElem.node.pathSegList.getItem(numSegments - 1);
     return lastSegment.pathSegType === Models.SVGPathSeg.PATHSEG_CLOSEPATH;
   }
-
 
   SetPath = (pathData, bbox) => {
     this.origPathData = pathData;

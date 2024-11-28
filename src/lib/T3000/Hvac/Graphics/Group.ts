@@ -1,9 +1,8 @@
 
 import Container from './Container';
-import SVG from '../Hvac.SVG';
+import HvacSVG from '../Hvac.SVG';
 
 class Group extends Container {
-
   constructor() {
     super();
   }
@@ -11,7 +10,7 @@ class Group extends Container {
   public clipElem: any;
 
   CreateElement = (element, parent) => {
-    this.svgObj = new SVG.Container().add(SVG.create('g'));
+    this.svgObj = new HvacSVG.Container().add(HvacSVG.create('g'));
     this.clipElem = null;
     this.InitElement(element, parent);
     return this.svgObj;
