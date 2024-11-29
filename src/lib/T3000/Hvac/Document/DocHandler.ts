@@ -62,8 +62,6 @@ class DocHandler {
   public MainAppElement: any;
   public WorkAreaElement: any;
   public DocumentElement: any;
-  public WorkAreaHammer: any;
-  public DocumentElementHammer: any;
   public SVGroot: any;
   public theDragStartX: number;
   public theDragStartY: number;
@@ -91,6 +89,10 @@ class DocHandler {
   public TopLeftPasteScrollPos: any;
   public theContentHeader: any;
   public inZoomIdle: boolean;
+  public theRubberBandFrame: any;
+  public theRubberBandStartX: number = 0;
+  public theRubberBandStartY: number = 0;
+  public theRubberBand: any;
 
   constructor() {
     this.InitDocumentConfig();
@@ -122,7 +124,6 @@ class DocHandler {
     this.textEntryTimer = null;
     this.MainAppElement = null;
     this.WorkAreaElement = null;
-    this.WorkAreaHammer = null;
     this.svgDoc = null;
     this.svgObjectLayer = null;
     this.svgOverlayLayer = null;
@@ -152,6 +153,30 @@ class DocHandler {
     this.MainAppElement = document.getElementById('mainApp');
     this.WorkAreaElement = document.getElementById('svg-area');
     this.DocumentElement = document.getElementById('document-area');
+
+    document.getElementById('svg-area').addEventListener('mousedown', this.SDJS_LM_WorkAreaHammerDragStart);
+    document.getElementById('svg-area').addEventListener('mousemove', this.SDJS_LM_RubberBandDrag);
+    document.getElementById('svg-area').addEventListener('mouseup', this.SDJS_LM_RubberBandDragEnd);
+  }
+
+  SDJS_LM_WorkAreaHammerDragStart = (e) => {
+
+    console.log('SDJS_LM_WorkAreaHammerDragStart', e);
+
+    const svgArea = document.getElementById("svg-area");
+    const offset = svgArea.getBoundingClientRect();
+    const clientX = e.clientX - offset.left;
+    const clientY = e.clientY - offset.top;
+    const clientWidth = svgArea.clientWidth;
+    const clientHeight = svgArea.clientHeight;
+
+    console.log('SDJS_LM_WorkAreaHammerDragStart 1', e.clientX, e.clientY, clientX, clientY, clientWidth, clientHeight);
+
+    if (clientX < clientWidth && clientY < clientHeight) {
+
+      console.log('SDJS_LM_WorkAreaHammerDragStart 1');
+      this.StartRubberBandSelect(e);
+    }
   }
 
   InitializeWorkArea = (workArea) => {
@@ -445,33 +470,6 @@ class DocHandler {
     this.rulerGuideWinPos = { x: 0, y: 0 };
     this.rulerGuideScrollTimer = null;
     this.rulerInDrag = false;
-
-    // if (!this.IsReadOnly()) {
-    //   const hRulerElem = document.getElementById(this.hRulerAreaID);
-    //   const vRulerElem = document.getElementById(this.vRulerAreaID);
-    //   const cRulerElem = document.getElementById(this.cRulerAreaID);
-
-    //   const hammerH = new Hammer(hRulerElem);
-    //   const hammerV = new Hammer(vRulerElem);
-    //   const hammerC = new Hammer(cRulerElem);
-
-    //   hammerH.on("doubletap", this.RulerTopDoubleClick);
-    //   hammerV.on("doubletap", this.RulerLeftDoubleClick);
-    //   hammerC.on("doubletap", this.RulerCenterDoubleClick);
-
-    //   hammerH.on("dragstart", this.RulerDragStart);
-    //   hammerV.on("dragstart", this.RulerDragStart);
-    //   hammerC.on("dragstart", this.RulerDragStart);
-
-    //   hammerH.on("drag", this.RulerTopDrag);
-    //   hammerV.on("drag", this.RulerLeftDrag);
-    //   hammerC.on("drag", this.RulerCenterDrag);
-
-    //   hammerH.on("dragend", this.RulerDragEnd);
-    //   hammerV.on("dragend", this.RulerDragEnd);
-    //   hammerC.on("dragend", this.RulerDragEnd);
-    // }
-
     this.ResetRulers();
   }
 
@@ -1124,6 +1122,230 @@ class DocHandler {
 
   }
 
+  StartRubberBandSelect = (e) => {
+    console.log('StartRubberBandSelect event:', e);
+
+    const rubberBand = this.svgDoc.CreateShape(Models.CreateShapeType.RECT);
+    rubberBand.SetStrokeColor("black");
+
+    rubberBand.SetFillColor("black");
+    rubberBand.SetFillOpacity(0.03);
+
+    const scale = 1 / this.GetZoomFactor();
+    rubberBand.SetStrokeWidth(1 * scale);
+
+    const pattern = `${2 * scale},${scale}`;
+    rubberBand.SetStrokePattern(pattern);
+
+    const coords = this.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
+    this.theRubberBandStartX = coords.x;
+    this.theRubberBandStartY = coords.y;
+
+    console.log('StartRubberBandSelect coords: 1', e.clientX, e.clientY);
+    console.log('StartRubberBandSelect coords: 2', coords.x, coords.y);
+
+    rubberBand.SetSize(1, 1);
+    rubberBand.SetPos(coords.x, coords.y);
+
+    this.svgOverlayLayer.AddElement(rubberBand);
+    this.theRubberBand = rubberBand;
+
+    console.log('StartRubberBandSelect theRubberBand:', this.theRubberBand);
+
+    this.EndStampSession();
+  }
+
+  AutoScrollCommon = (e, t, a) => {
+    console.log('2 SDJS.ListManager.LM.prototype.AutoScrollCommon e=> 1111111111111111111', e);
+    let isAutoScrollNeeded = false;
+    // this.OverrideSnaps(e) && (t = false);
+
+    let clientX, clientY;
+    if (e.gesture) {
+      clientX = e.gesture.center.clientX;
+      clientY = e.gesture.center.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    let scrollX = clientX;
+    let scrollY = clientY;
+
+    if (clientX >= this.svgDoc.docInfo.dispX + this.svgDoc.docInfo.dispWidth - 8) {
+      isAutoScrollNeeded = true;
+      scrollX = this.svgDoc.docInfo.dispX + this.svgDoc.docInfo.dispWidth - 8 + 32;
+    }
+
+    if (clientX < this.svgDoc.docInfo.dispX) {
+      isAutoScrollNeeded = true;
+      scrollX = this.svgDoc.docInfo.dispX - 32;
+    }
+
+    if (clientY >= this.svgDoc.docInfo.dispY + this.svgDoc.docInfo.dispHeight - 8) {
+      isAutoScrollNeeded = true;
+      scrollY = this.svgDoc.docInfo.dispY + this.svgDoc.docInfo.dispHeight - 8 + 32;
+    }
+
+    if (clientY < this.svgDoc.docInfo.dispY) {
+      isAutoScrollNeeded = true;
+      scrollY = this.svgDoc.docInfo.dispY - 32;
+    }
+
+    if (isAutoScrollNeeded) {
+      if (t && this.documentConfig.enableSnap) {
+        const snappedCoords = this.SnapToGrid({ x: scrollX, y: scrollY });
+        scrollX = snappedCoords.x;
+        scrollY = snappedCoords.y;
+      }
+
+      this.autoScrollXPos = scrollX;
+      this.autoScrollYPos = scrollY;
+
+      if (this.autoScrollTimerID !== -1) {
+        return false;
+      }
+
+      // this.autoScrollTimerID = this.autoScrollTimer.setTimeout(a, 0);
+      return false;
+    }
+
+    this.ResetAutoScrollTimer();
+    return true;
+  }
+
+  SDJS_LM_RubberBandDrag = (e) => {
+    // Utils.StopPropagationAndDefaults(e);
+    console.log('SDJS_LM_RubberBandDrag event: 1', e);
+
+    if (!this.AutoScrollCommon(e, !1, "RubberBandSelectDoAutoScroll"))
+      return;
+
+    var a = this.svgDoc.ConvertWindowToDocCoords(
+      e.clientX,
+      e.clientY
+    );
+    console.log('SDJS_LM_RubberBandDrag event: 2', a);
+    this.RubberBandSelectMoveCommon(a.x, a.y);
+  }
+
+  SDJS_LM_RubberBandDragEnd = (e) => {
+    // Utils.StopPropagationAndDefaults(e);
+
+    this.ResetAutoScrollTimer();
+    var t = this.theRubberBandFrame;
+    this.svgOverlayLayer.RemoveElement(this.theRubberBand);
+    this.theRubberBand = null;
+    this.theRubberBandStartX = 0;
+    this.theRubberBandStartY = 0;
+    this.theRubberBandFrame = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    };
+  }
+
+  IsRectEnclosed = (outerRect, innerRect) => {
+    return (
+      innerRect.x >= outerRect.x &&
+      innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
+      innerRect.y >= outerRect.y &&
+      innerRect.y + innerRect.height <= outerRect.y + outerRect.height
+    );
+  }
+
+  RotateRectAboutCenter = (rect, center, angle) => {
+    const points = [
+      this.Point(rect.x, rect.y),
+      this.Point(rect.x + rect.width, rect.y),
+      this.Point(rect.x + rect.width, rect.y + rect.height),
+      this.Point(rect.x, rect.y + rect.height),
+      this.Point(rect.x, rect.y)
+    ];
+
+    if (points.length > 0 && angle) {
+      const radians = -2 * Math.PI * (angle / 360);
+      this.RotatePointsAboutPoint(center, radians, points);
+      this.GetPolyRect(rect, points);
+    }
+
+    return rect;
+  }
+
+  GetPolyRect = (rect, points) => {
+    if (points.length === 0) return;
+
+    rect.x = points[0].x;
+    rect.y = points[0].y;
+    let maxX = rect.x;
+    let maxY = rect.y;
+
+    points.forEach(point => {
+      if (point.x < rect.x) rect.x = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < rect.y) rect.y = point.y;
+      if (point.y > maxY) maxY = point.y;
+    });
+
+    rect.width = maxX - rect.x;
+    rect.height = maxY - rect.y;
+  }
+
+  RotatePointsAboutPoint = (center, angle, points) => {
+    if (angle === 0) return;
+
+    const sinAngle = Math.sin(angle);
+    const cosAngle = Math.cos(angle);
+
+    // Adjust for floating point precision issues
+    const adjustedCosAngle = Math.abs(cosAngle) < 1e-4 ? 0 : cosAngle;
+    const adjustedSinAngle = Math.abs(sinAngle) < 1e-4 ? 0 : sinAngle;
+
+    points.forEach(point => {
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+
+      point.x = dx * adjustedCosAngle + dy * adjustedSinAngle + center.x;
+      point.y = -dx * adjustedSinAngle + dy * adjustedCosAngle + center.y;
+    });
+  }
+
+  ResetAutoScrollTimer = () => {
+
+  }
+
+  EndStampSession = function () {
+
+  }
+
+  RubberBandSelectMoveCommon = (x: number, y: number) => {
+    console.log('RubberBandSelectMoveCommon event:', x, y);
+
+    if (!this.theRubberBand) return;
+
+    const startX = this.theRubberBandStartX;
+    const startY = this.theRubberBandStartY;
+
+    if (x >= startX && y >= startY) {
+      this.theRubberBand.SetSize(x - startX, y - startY);
+      this.theRubberBandFrame = { x: startX, y: startY, width: x - startX, height: y - startY };
+    } else if (y < startY) {
+      if (x >= startX) {
+        this.theRubberBand.SetSize(x - startX, startY - y);
+        this.theRubberBand.SetPos(startX, y);
+        this.theRubberBandFrame = { x: startX, y: y, width: x - startX, height: startY - y };
+      } else {
+        this.theRubberBand.SetSize(startX - x, startY - y);
+        this.theRubberBand.SetPos(x, y);
+        this.theRubberBandFrame = { x: x, y: y, width: startX - x, height: startY - y };
+      }
+    } else if (x < startX) {
+      this.theRubberBand.SetSize(startX - x, y - startY);
+      this.theRubberBand.SetPos(x, startY);
+      this.theRubberBandFrame = { x: x, y: startY, width: startX - x, height: y - startY };
+    }
+  }
 }
 
 export default DocHandler;

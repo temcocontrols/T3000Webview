@@ -152,7 +152,6 @@
             <div id="v-ruler" class="document-ruler-left">
             </div>
             <div id="svg-area" class="svg-area">
-              svg area
             </div>
           </div>
 

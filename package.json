@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.15.11",
+    "@svgdotjs/svg.draggable.js": "^3.0.4",
     "@svgdotjs/svg.js": "^3.2.4",
+    "@svgdotjs/svg.select.js": "^4.0.2",
     "@types/fabric": "^5.3.9",
     "@uppy/aws-s3": "^3.5.0",
     "@uppy/core": "^3.0.4",
