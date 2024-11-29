@@ -8,6 +8,8 @@ import UI from '../UI/UI';
 import Path from '../Graphics/Path';
 import HvacSVG from '../Hvac.SVG';
 
+//#region
+
 interface DocumentConfig {
   showRulers: boolean;
   showGrid: boolean;
@@ -30,7 +32,12 @@ interface RulerSettings {
   fractionaldenominator: number;
 }
 
+//#endregion
+
 class DocHandler {
+
+  //#region
+
   public documentConfig: DocumentConfig
   public workAreaID: string;
   public svgAreaID: string;
@@ -55,159 +62,14 @@ class DocHandler {
   public rulerGuideWinPos: any;
   public rulerGuideScrollTimer: any;
   public rulerInDrag: boolean;
-  public theSVGDocumentID: string;
-  public svgObjectLayer: any;
-  public svgOverlayLayer: any;
-  public svgHighlightLayer: any;
-  public svgCollabLayer: any;
-  public MainAppElement: any;
-  public WorkAreaElement: any;
-  public DocumentElement: any;
-  public SVGroot: any;
-  public theDragStartX: number;
-  public theDragStartY: number;
-  public theDragDeltaX: number;
-  public theDragDeltaY: number;
-  public theDragTargetID: any;
-  public theDragTargetBBox: any;
-  public theDragGotMove: boolean;
-  public theDragGotAutoResizeRight: boolean;
-  public theDragGotAutoResizeBottom: boolean;
-  public theDragGotAutoResizeOldX: any[];
-  public theDragGotAutoResizeOldY: any[];
-  public theDrawStartX: number;
-  public theDrawStartY: number;
-  public theLineDrawStartX: number;
-  public theLineDrawStartY: number;
-  public LineDrawID: number;
-  public LineDrawLineID: number;
-  public autoScrollTimerID: number;
-  public autoScrollXPos: number;
-  public autoScrollYPos: number;
-  public bInAutoScroll: boolean;
-  public textEntryTimer: any;
-  public TopLeftPastePos: any;
-  public TopLeftPasteScrollPos: any;
-  public theContentHeader: any;
-  public inZoomIdle: boolean;
-  public theRubberBandFrame: any;
-  public theRubberBandStartX: number = 0;
-  public theRubberBandStartY: number = 0;
-  public theRubberBand: any;
+  public theContentHeader: ContentHeader;
+  public optHandler: any;
+
+  //#endregion
 
   constructor() {
     this.InitDocumentConfig();
-  }
-
-  Initialize = () => {
-    this.theSVGDocumentID = 'svg-area';
-    this.theDragStartX = 0;
-    this.theDragStartY = 0;
-    this.theDragDeltaX = 0;
-    this.theDragDeltaY = 0;
-    this.theDragTargetID = null;
-    this.theDragTargetBBox = {};
-    this.theDragGotMove = false;
-    this.theDragGotAutoResizeRight = false;
-    this.theDragGotAutoResizeBottom = false;
-    this.theDragGotAutoResizeOldX = [];
-    this.theDragGotAutoResizeOldY = [];
-    this.theDrawStartX = 0;
-    this.theDrawStartY = 0;
-    this.theLineDrawStartX = 0;
-    this.theLineDrawStartY = 0;
-    this.LineDrawID = -1;
-    this.LineDrawLineID = -1;
-    this.autoScrollTimerID = -1;
-    this.autoScrollXPos = 0;
-    this.autoScrollYPos = 0;
-    this.bInAutoScroll = true;
-    this.textEntryTimer = null;
-    this.MainAppElement = null;
-    this.WorkAreaElement = null;
-    this.svgDoc = null;
-    this.svgObjectLayer = null;
-    this.svgOverlayLayer = null;
-    this.svgHighlightLayer = null;
     this.theContentHeader = new ContentHeader();
-    this.InitSVGDocument();
-    this.SVGroot = this.svgDoc.svgObj.node;
-    this.TopLeftPastePos = { x: 0, y: 0 };
-    this.TopLeftPasteScrollPos = { x: 0, y: 0 };
-  }
-
-  InitSVGDocument = () => {
-    this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 1000, documentHeight: 750, documentDPI: 100 });
-
-    console.log('InitSVGDocument 1 this.svgDoc', this.svgDoc);
-
-    this.svgObjectLayer = this.svgDoc.AddLayer('svgObjectLayer');
-    this.svgDoc.SetDocumentLayer('svgObjectLayer');
-    this.svgOverlayLayer = this.svgDoc.AddLayer('svgOverlayLayer');
-    this.svgOverlayLayer.ExcludeFromExport(true);
-    this.svgHighlightLayer = this.svgDoc.AddLayer('svgHighlightLayer');
-    this.svgHighlightLayer.ExcludeFromExport(true);
-    this.svgCollabLayer = this.svgDoc.AddLayer('svgCollabLayer');
-    this.svgCollabLayer.ExcludeFromExport(true);
-    this.svgCollabLayer.AllowScaling(false);
-    this.MainAppElement = document.getElementById('mainApp');
-    this.WorkAreaElement = document.getElementById('svg-area');
-    this.DocumentElement = document.getElementById('document-area');
-
-    // document.getElementById('svg-area').addEventListener('mousedown', this.LM_WorkAreaDragStart);
-    document.getElementById('svg-area').addEventListener('mousedown', this.DrawTest);
-
-    document.getElementById('svg-area').addEventListener('mousemove', this.LM_RubberBandDrag);
-    document.getElementById('svg-area').addEventListener('mouseup', this.LM_RubberBandDragEnd);
-  }
-
-  public testWall: any;
-  public wStartx: any;
-  public wEndx: any;
-
-  DrawTest = (event) => {
-
-    // HvacSVG().addTo('#svg-area').rect(100, 100).attr({ fill: 'red' });
-
-    // this.svgObjectLayer.AddElement(100, 100).attr({ fill: 'blue' });
-
-    let x = event.clientX;
-    let y = event.clientY;
-
-    let nx = this.svgDoc.ConvertWindowToDocCoords(event.clientX, event.clientY);
-
-    this.wStartx = nx.x;
-    this.wEndx = nx.y;
-
-    let nshape = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
-    nshape.SetStrokeWidth(1);
-    nshape.SetStrokeColor('black');
-    nshape.SetFillColor('none');
-    // nshape.SetStrokePattern('4,2');
-    nshape.SetPath(`M ${this.wStartx} ${this.wEndx} L ${this.wStartx + 10} ${this.wEndx}`);//'M 100 100 L 200 200 L 300 100 L 100 100');
-
-    this.testWall = nshape;
-    this.svgObjectLayer.AddElement(this.testWall);
-
-    /*
-    var svgElem = HvacSVG("#svg-area").get(0);
-    console.log('DrawTest 1 svgElem', svgElem);
-    svgElem.rect(100, 100).attr({ fill: 'red' });
-    */
-  }
-
-  LM_WorkAreaDragStart = (e) => {
-
-    const svgArea = document.getElementById("svg-area");
-    const offset = svgArea.getBoundingClientRect();
-    const clientX = e.clientX - offset.left;
-    const clientY = e.clientY - offset.top;
-    const clientWidth = svgArea.clientWidth;
-    const clientHeight = svgArea.clientHeight;
-
-    if (clientX < clientWidth && clientY < clientHeight) {
-      this.StartRubberBandSelect(e);
-    }
   }
 
   InitializeWorkArea = (workArea) => {
@@ -241,7 +103,6 @@ class DocHandler {
 
   InitSVGArea = (config) => {
     this.svgDoc = this.svgDoc || new Document(this.svgAreaID);
-    console.log('InitSVGArea 1 this.svgDoc', this.svgDoc);
 
     const backgroundLayer = this.svgDoc.AddLayer(this.backgroundLayer);
     this.backgroundElem = this.svgDoc.CreateShape(Models.CreateShapeType.RECT);
@@ -296,12 +157,8 @@ class DocHandler {
     }
   }
 
-  UpdateDocumentScale = () => {
-    // Reset all svg items
-  }
-
   IdleZoomUI = () => {
-    this.UpdateDocumentScale()
+    this.optHandler.UpdateDocumentScale()
   }
 
   GetScrollBarSize = () => {
@@ -340,7 +197,7 @@ class DocHandler {
       e.width -= s,
       e.y += l,
       e.height -= l);
-    this.svgDoc ? this.scaleToFit ? this.bInAutoScroll ? t = {
+    this.svgDoc ? this.scaleToFit ? this.optHandler.bInAutoScroll ? t = {
       width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
       height: a.docScreenHeight
     } : e.width > 0 && e.height > 0 ? (t = {
@@ -358,7 +215,7 @@ class DocHandler {
             width: (a = this.svgDoc.CalcScaleToFit(e.width - 20, e.height - 20, r, i)).width,
             height: a.height
           },
-          this.bInAutoScroll || this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
+          this.optHandler.bInAutoScroll || this.svgDoc.docInfo.docScale != a.scale && (this.svgDoc.SetDocumentScale(a.scale),
             this.UpdateGrid(),
             this.ResetRulers())) : t = {
               width: (a = this.svgDoc.GetWorkArea()).docScreenWidth,
@@ -466,22 +323,6 @@ class DocHandler {
     console.log('ShowCoordinates');
   }
 
-  IsRightClick = (event) => {
-    let isRightClick = false;
-
-    if (event instanceof MouseEvent) {
-      isRightClick = (event.which === 3 || (event.ctrlKey && event.metaKey));
-    } else if ('onpointerdown' in window && event instanceof PointerEvent) {
-      isRightClick = (event.which === 3);
-    }
-
-    return isRightClick;
-  }
-
-  Point = (x: number = 0, y: number = 0): { x: number, y: number } => {
-    return { x, y };
-  }
-
   UpdateGridVisibility = () => {
     const gridLayer = this.svgDoc ? this.svgDoc.GetLayer(this.gridLayer) : null;
     if (!gridLayer || this.documentConfig.showGrid === this.gridVis) {
@@ -511,7 +352,7 @@ class DocHandler {
 
   RulerCenterDrag = (event) => {
     Utils.StopPropagationAndDefaults(event);
-    if (this.IsCtrlClick(event)) {
+    if (this.optHandler.IsCtrlClick(event)) {
       this.RulerHandleDoubleClick(event, true, true);
     } else {
       this.RulerDragGuides(event, true, true);
@@ -535,7 +376,7 @@ class DocHandler {
 
   RulerDragStart = (event) => {
     if (!this.IsReadOnly()) {
-      if (this.IsRightClick(event)) {
+      if (this.optHandler.IsRightClick(event)) {
         Utils.StopPropagationAndDefaults(event);
         return;
       }
@@ -543,22 +384,8 @@ class DocHandler {
     }
   }
 
-  ShowXY = (showRulers: boolean) => {
-    this.documentConfig.showRulers = showRulers;
-  }
-
-  IsCtrlClick = (event) => {
-    let isCtrlClick = false;
-
-    if (event instanceof MouseEvent || ('onpointerdown' in window && e instanceof PointerEvent)) {
-      isCtrlClick = event.ctrlKey;
-    }
-
-    return isCtrlClick;
-  }
-
   RulerTopDrag = (event) => {
-    if (this.IsCtrlClick(event)) {
+    if (this.optHandler.IsCtrlClick(event)) {
       Utils.StopPropagationAndDefaults(event);
       this.RulerHandleDoubleClick(event, false, true);
     } else {
@@ -568,7 +395,7 @@ class DocHandler {
 
   RulerLeftDrag = (event) => {
     Utils.StopPropagationAndDefaults(event);
-    if (this.IsCtrlClick(event)) {
+    if (this.optHandler.IsCtrlClick(event)) {
       Utils.StopPropagationAndDefaults(event);
       this.RulerHandleDoubleClick(event, true, false);
     } else {
@@ -583,12 +410,12 @@ class DocHandler {
     }
 
     if (this.hRulerGuide) {
-      this.svgOverlayLayer.RemoveElement(this.hRulerGuide);
+      this.optHandler.svgOverlayLayer.RemoveElement(this.hRulerGuide);
       this.hRulerGuide = null;
     }
 
     if (this.vRulerGuide) {
-      this.svgOverlayLayer.RemoveElement(this.vRulerGuide);
+      this.optHandler.svgOverlayLayer.RemoveElement(this.vRulerGuide);
       this.vRulerGuide = null;
     }
 
@@ -618,7 +445,7 @@ class DocHandler {
         this.hRulerGuide.SetStrokeColor('black');
         this.hRulerGuide.SetStrokeWidth(scale);
         this.hRulerGuide.SetStrokePattern(pattern);
-        this.svgOverlayLayer.AddElement(this.hRulerGuide);
+        this.optHandler.svgOverlayLayer.AddElement(this.hRulerGuide);
       }
 
       if (isHorizontal && !this.vRulerGuide) {
@@ -627,7 +454,7 @@ class DocHandler {
         this.vRulerGuide.SetStrokeColor('black');
         this.vRulerGuide.SetStrokeWidth(scale);
         this.vRulerGuide.SetStrokePattern(pattern);
-        this.svgOverlayLayer.AddElement(this.vRulerGuide);
+        this.optHandler.svgOverlayLayer.AddElement(this.vRulerGuide);
       }
 
       this.rulerGuideWinPos.x = e.gesture.center.clientX;
@@ -739,7 +566,7 @@ class DocHandler {
   }
 
   RulerHandleDoubleClick = (e, isVertical, isHorizontal) => {
-    if (!this.IsRightClick(e)) {
+    if (!this.optHandler.IsRightClick(e)) {
       const origin = {
         originx: this.rulerSettings.originx,
         originy: this.rulerSettings.originy
@@ -1098,14 +925,8 @@ class DocHandler {
   }
 
   SetZoomLevel = (zoomLevel: number, adjustScroll: boolean) => {
-    if (zoomLevel <= 0 || this.inZoomIdle) return;
-    this.SetDocumentScale(zoomLevel / 100, adjustScroll);
-  }
-
-  SetDocumentScale = (scale: number, adjustScroll: boolean) => {
-    if (this.svgDoc) {
-      this.SetZoomFactor(scale, adjustScroll);
-    }
+    if (zoomLevel <= 0 || this.optHandler.inZoomIdle) return;
+    this.optHandler.SetDocumentScale(zoomLevel / 100, adjustScroll);
   }
 
   SetZoomFactor = function (zoomFactor, adjustScroll) {
@@ -1143,241 +964,6 @@ class DocHandler {
     this.UpdateGrid();
     this.UpdateWorkArea();
     return true;
-  }
-
-  UpdateDisplayCoordinates = function (coords, cursorPos, cursorType, dimensionFlags) {
-
-  }
-
-  StartRubberBandSelect = (e) => {
-    console.log('StartRubberBandSelect event:', e);
-
-    const rubberBand = this.svgDoc.CreateShape(Models.CreateShapeType.RECT);
-    rubberBand.SetStrokeColor("black");
-
-    rubberBand.SetFillColor("black");
-    rubberBand.SetFillOpacity(0.03);
-
-    const scale = 1 / this.GetZoomFactor();
-    rubberBand.SetStrokeWidth(1 * scale);
-
-    const pattern = `${2 * scale},${scale}`;
-    rubberBand.SetStrokePattern(pattern);
-
-    const coords = this.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
-    this.theRubberBandStartX = coords.x;
-    this.theRubberBandStartY = coords.y;
-
-    console.log('StartRubberBandSelect coords: 1', e.clientX, e.clientY);
-    console.log('StartRubberBandSelect coords: 2', coords.x, coords.y);
-
-    rubberBand.SetSize(1, 1);
-    rubberBand.SetPos(coords.x, coords.y);
-
-    this.svgOverlayLayer.AddElement(rubberBand);
-    this.theRubberBand = rubberBand;
-
-    console.log('StartRubberBandSelect theRubberBand:', this.theRubberBand);
-
-    this.EndStampSession();
-  }
-
-  AutoScrollCommon = (e, t, a) => {
-    let isAutoScrollNeeded = false;
-    // this.OverrideSnaps(e) && (t = false);
-
-    let clientX, clientY;
-    if (e.gesture) {
-      clientX = e.gesture.center.clientX;
-      clientY = e.gesture.center.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    let scrollX = clientX;
-    let scrollY = clientY;
-
-    if (clientX >= this.svgDoc.docInfo.dispX + this.svgDoc.docInfo.dispWidth - 8) {
-      isAutoScrollNeeded = true;
-      scrollX = this.svgDoc.docInfo.dispX + this.svgDoc.docInfo.dispWidth - 8 + 32;
-    }
-
-    if (clientX < this.svgDoc.docInfo.dispX) {
-      isAutoScrollNeeded = true;
-      scrollX = this.svgDoc.docInfo.dispX - 32;
-    }
-
-    if (clientY >= this.svgDoc.docInfo.dispY + this.svgDoc.docInfo.dispHeight - 8) {
-      isAutoScrollNeeded = true;
-      scrollY = this.svgDoc.docInfo.dispY + this.svgDoc.docInfo.dispHeight - 8 + 32;
-    }
-
-    if (clientY < this.svgDoc.docInfo.dispY) {
-      isAutoScrollNeeded = true;
-      scrollY = this.svgDoc.docInfo.dispY - 32;
-    }
-
-    if (isAutoScrollNeeded) {
-      if (t && this.documentConfig.enableSnap) {
-        const snappedCoords = this.SnapToGrid({ x: scrollX, y: scrollY });
-        scrollX = snappedCoords.x;
-        scrollY = snappedCoords.y;
-      }
-
-      this.autoScrollXPos = scrollX;
-      this.autoScrollYPos = scrollY;
-
-      if (this.autoScrollTimerID !== -1) {
-        return false;
-      }
-
-      // this.autoScrollTimerID = this.autoScrollTimer.setTimeout(a, 0);
-      return false;
-    }
-
-    this.ResetAutoScrollTimer();
-    return true;
-  }
-
-  LM_RubberBandDrag = (e) => {
-    // Utils.StopPropagationAndDefaults(e);
-
-    if (!this.AutoScrollCommon(e, !1, "RubberBandSelectDoAutoScroll"))
-      return;
-
-    var a = this.svgDoc.ConvertWindowToDocCoords(
-      e.clientX,
-      e.clientY
-    );
-
-    this.RubberBandSelectMoveCommon(a.x, a.y);
-  }
-
-  LM_RubberBandDragEnd = (e) => {
-    // Utils.StopPropagationAndDefaults(e);
-
-    this.ResetAutoScrollTimer();
-    var t = this.theRubberBandFrame;
-
-    if (this.theRubberBand != null) {
-      this.svgOverlayLayer.RemoveElement(this.theRubberBand);
-    }
-    this.theRubberBand = null;
-    this.theRubberBandStartX = 0;
-    this.theRubberBandStartY = 0;
-    this.theRubberBandFrame = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-    };
-  }
-
-  IsRectEnclosed = (outerRect, innerRect) => {
-    return (
-      innerRect.x >= outerRect.x &&
-      innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
-      innerRect.y >= outerRect.y &&
-      innerRect.y + innerRect.height <= outerRect.y + outerRect.height
-    );
-  }
-
-  RotateRectAboutCenter = (rect, center, angle) => {
-    const points = [
-      this.Point(rect.x, rect.y),
-      this.Point(rect.x + rect.width, rect.y),
-      this.Point(rect.x + rect.width, rect.y + rect.height),
-      this.Point(rect.x, rect.y + rect.height),
-      this.Point(rect.x, rect.y)
-    ];
-
-    if (points.length > 0 && angle) {
-      const radians = -2 * Math.PI * (angle / 360);
-      this.RotatePointsAboutPoint(center, radians, points);
-      this.GetPolyRect(rect, points);
-    }
-
-    return rect;
-  }
-
-  GetPolyRect = (rect, points) => {
-    if (points.length === 0) return;
-
-    rect.x = points[0].x;
-    rect.y = points[0].y;
-    let maxX = rect.x;
-    let maxY = rect.y;
-
-    points.forEach(point => {
-      if (point.x < rect.x) rect.x = point.x;
-      if (point.x > maxX) maxX = point.x;
-      if (point.y < rect.y) rect.y = point.y;
-      if (point.y > maxY) maxY = point.y;
-    });
-
-    rect.width = maxX - rect.x;
-    rect.height = maxY - rect.y;
-  }
-
-  RotatePointsAboutPoint = (center, angle, points) => {
-    if (angle === 0) return;
-
-    const sinAngle = Math.sin(angle);
-    const cosAngle = Math.cos(angle);
-
-    // Adjust for floating point precision issues
-    const adjustedCosAngle = Math.abs(cosAngle) < 1e-4 ? 0 : cosAngle;
-    const adjustedSinAngle = Math.abs(sinAngle) < 1e-4 ? 0 : sinAngle;
-
-    points.forEach(point => {
-      const dx = point.x - center.x;
-      const dy = point.y - center.y;
-
-      point.x = dx * adjustedCosAngle + dy * adjustedSinAngle + center.x;
-      point.y = -dx * adjustedSinAngle + dy * adjustedCosAngle + center.y;
-    });
-  }
-
-  ResetAutoScrollTimer = () => {
-
-  }
-
-  EndStampSession = function () {
-
-  }
-
-  RubberBandSelectMoveCommon = (x: number, y: number) => {
-    // console.log('RubberBandSelectMoveCommon event:', x, y);
-
-    this.testWall.SetPath(`M${this.wStartx},${this.wEndx} L${x},${y}`);
-    this.testWall.SetStrokeWidth(19.5);
-
-    if (!this.theRubberBand) return;
-
-    const startX = this.theRubberBandStartX;
-    const startY = this.theRubberBandStartY;
-
-    if (x >= startX && y >= startY) {
-      this.theRubberBand.SetSize(x - startX, y - startY);
-      this.theRubberBandFrame = { x: startX, y: startY, width: x - startX, height: y - startY };
-    } else if (y < startY) {
-      if (x >= startX) {
-        this.theRubberBand.SetSize(x - startX, startY - y);
-        this.theRubberBand.SetPos(startX, y);
-        this.theRubberBandFrame = { x: startX, y: y, width: x - startX, height: startY - y };
-      } else {
-        this.theRubberBand.SetSize(startX - x, startY - y);
-        this.theRubberBand.SetPos(x, y);
-        this.theRubberBandFrame = { x: x, y: y, width: startX - x, height: startY - y };
-      }
-    } else if (x < startX) {
-      this.theRubberBand.SetSize(startX - x, y - startY);
-      this.theRubberBand.SetPos(x, startY);
-      this.theRubberBandFrame = { x: x, y: startY, width: startX - x, height: y - startY };
-    }
-
-
   }
 }
 

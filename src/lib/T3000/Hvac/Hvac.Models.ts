@@ -108,4 +108,8 @@ enum CommonDefines {
   MetricConv = 2.54,
 }
 
-export default { Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, RulerUnits, CommonDefines };
+export default {
+  Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, RulerUnits, CommonDefines,
+
+
+};

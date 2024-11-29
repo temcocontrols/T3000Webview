@@ -105,4 +105,24 @@ export const GenerateUUID = () => {
     }
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
-};
+}
+
+
+export const GetPolyRect = (rect, points) => {
+  if (points.length === 0) return;
+
+  rect.x = points[0].x;
+  rect.y = points[0].y;
+  let maxX = rect.x;
+  let maxY = rect.y;
+
+  points.forEach(point => {
+    if (point.x < rect.x) rect.x = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < rect.y) rect.y = point.y;
+    if (point.y > maxY) maxY = point.y;
+  });
+
+  rect.width = maxX - rect.x;
+  rect.height = maxY - rect.y;
+}
