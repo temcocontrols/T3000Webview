@@ -53,6 +53,7 @@ class Document extends Container {
     const svgT1 = HvacSVG("#" + this.parentElem);
     console.log('Document parentElem svgT1', svgT1);
 
+
     this.InitDocInfo();
     this.activeEdit = null;
     this.documentLayerID = null;

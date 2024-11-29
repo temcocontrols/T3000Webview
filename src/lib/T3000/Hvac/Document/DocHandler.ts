@@ -6,6 +6,7 @@ import * as Utils from '../Hvac.Utils';
 import ContentHeader from './ContentHeader';
 import UI from '../UI/UI';
 import Path from '../Graphics/Path';
+import HvacSVG from '../Hvac.SVG';
 
 interface DocumentConfig {
   showRulers: boolean;
@@ -154,9 +155,46 @@ class DocHandler {
     this.WorkAreaElement = document.getElementById('svg-area');
     this.DocumentElement = document.getElementById('document-area');
 
-    document.getElementById('svg-area').addEventListener('mousedown', this.SDJS_LM_WorkAreaHammerDragStart);
+    // document.getElementById('svg-area').addEventListener('mousedown', this.SDJS_LM_WorkAreaHammerDragStart);
+    document.getElementById('svg-area').addEventListener('mousedown', this.DrawTest);
+
     document.getElementById('svg-area').addEventListener('mousemove', this.SDJS_LM_RubberBandDrag);
     document.getElementById('svg-area').addEventListener('mouseup', this.SDJS_LM_RubberBandDragEnd);
+  }
+
+  public testWall: any;
+  public wStartx: any;
+  public wEndx: any;
+
+  DrawTest = (event) => {
+
+    // HvacSVG().addTo('#svg-area').rect(100, 100).attr({ fill: 'red' });
+
+    // this.svgObjectLayer.AddElement(100, 100).attr({ fill: 'blue' });
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    let nx = this.svgDoc.ConvertWindowToDocCoords(event.clientX, event.clientY);
+
+    this.wStartx = nx.x;
+    this.wEndx = nx.y;
+
+    let nshape = this.svgDoc.CreateShape(Models.CreateShapeType.PATH);
+    nshape.SetStrokeWidth(1);
+    nshape.SetStrokeColor('black');
+    nshape.SetFillColor('none');
+    // nshape.SetStrokePattern('4,2');
+    nshape.SetPath(`M ${this.wStartx} ${this.wEndx} L ${this.wStartx + 10} ${this.wEndx}`);//'M 100 100 L 200 200 L 300 100 L 100 100');
+
+    this.testWall = nshape;
+    this.svgObjectLayer.AddElement(this.testWall);
+
+    /*
+    var svgElem = HvacSVG("#svg-area").get(0);
+    console.log('DrawTest 1 svgElem', svgElem);
+    svgElem.rect(100, 100).attr({ fill: 'red' });
+    */
   }
 
   SDJS_LM_WorkAreaHammerDragStart = (e) => {
@@ -1156,7 +1194,7 @@ class DocHandler {
   }
 
   AutoScrollCommon = (e, t, a) => {
-    console.log('2 SDJS.ListManager.LM.prototype.AutoScrollCommon e=> 1111111111111111111', e);
+    // console.log('2 SDJS.ListManager.LM.prototype.AutoScrollCommon e=> 1111111111111111111', e);
     let isAutoScrollNeeded = false;
     // this.OverrideSnaps(e) && (t = false);
 
@@ -1216,7 +1254,7 @@ class DocHandler {
 
   SDJS_LM_RubberBandDrag = (e) => {
     // Utils.StopPropagationAndDefaults(e);
-    console.log('SDJS_LM_RubberBandDrag event: 1', e);
+    // console.log('SDJS_LM_RubberBandDrag event: 1', e);
 
     if (!this.AutoScrollCommon(e, !1, "RubberBandSelectDoAutoScroll"))
       return;
@@ -1225,7 +1263,8 @@ class DocHandler {
       e.clientX,
       e.clientY
     );
-    console.log('SDJS_LM_RubberBandDrag event: 2', a);
+    // console.log('SDJS_LM_RubberBandDrag event: 2', a);
+
     this.RubberBandSelectMoveCommon(a.x, a.y);
   }
 
@@ -1234,7 +1273,10 @@ class DocHandler {
 
     this.ResetAutoScrollTimer();
     var t = this.theRubberBandFrame;
-    this.svgOverlayLayer.RemoveElement(this.theRubberBand);
+
+    if (this.theRubberBand != null) {
+      this.svgOverlayLayer.RemoveElement(this.theRubberBand);
+    }
     this.theRubberBand = null;
     this.theRubberBandStartX = 0;
     this.theRubberBandStartY = 0;
@@ -1320,7 +1362,10 @@ class DocHandler {
   }
 
   RubberBandSelectMoveCommon = (x: number, y: number) => {
-    console.log('RubberBandSelectMoveCommon event:', x, y);
+    // console.log('RubberBandSelectMoveCommon event:', x, y);
+
+    this.testWall.SetPath(`M${this.wStartx},${this.wEndx} L${x},${y}`);
+    this.testWall.SetStrokeWidth(19.5);
 
     if (!this.theRubberBand) return;
 
@@ -1345,6 +1390,8 @@ class DocHandler {
       this.theRubberBand.SetPos(x, startY);
       this.theRubberBandFrame = { x: x, y: startY, width: startX - x, height: y - startY };
     }
+
+
   }
 }
 
