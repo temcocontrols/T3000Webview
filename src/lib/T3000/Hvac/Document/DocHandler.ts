@@ -138,7 +138,6 @@ class DocHandler {
 
   InitSVGDocument = () => {
     this.InitializeWorkArea({ svgAreaID: this.theSVGDocumentID, documentWidth: 1000, documentHeight: 750, documentDPI: 100 });
-    this.svgDoc = this.DocObject();
 
     console.log('InitSVGDocument 1 this.svgDoc', this.svgDoc);
 
@@ -155,11 +154,11 @@ class DocHandler {
     this.WorkAreaElement = document.getElementById('svg-area');
     this.DocumentElement = document.getElementById('document-area');
 
-    // document.getElementById('svg-area').addEventListener('mousedown', this.SDJS_LM_WorkAreaHammerDragStart);
+    // document.getElementById('svg-area').addEventListener('mousedown', this.LM_WorkAreaDragStart);
     document.getElementById('svg-area').addEventListener('mousedown', this.DrawTest);
 
-    document.getElementById('svg-area').addEventListener('mousemove', this.SDJS_LM_RubberBandDrag);
-    document.getElementById('svg-area').addEventListener('mouseup', this.SDJS_LM_RubberBandDragEnd);
+    document.getElementById('svg-area').addEventListener('mousemove', this.LM_RubberBandDrag);
+    document.getElementById('svg-area').addEventListener('mouseup', this.LM_RubberBandDragEnd);
   }
 
   public testWall: any;
@@ -197,9 +196,7 @@ class DocHandler {
     */
   }
 
-  SDJS_LM_WorkAreaHammerDragStart = (e) => {
-
-    console.log('SDJS_LM_WorkAreaHammerDragStart', e);
+  LM_WorkAreaDragStart = (e) => {
 
     const svgArea = document.getElementById("svg-area");
     const offset = svgArea.getBoundingClientRect();
@@ -208,11 +205,7 @@ class DocHandler {
     const clientWidth = svgArea.clientWidth;
     const clientHeight = svgArea.clientHeight;
 
-    console.log('SDJS_LM_WorkAreaHammerDragStart 1', e.clientX, e.clientY, clientX, clientY, clientWidth, clientHeight);
-
     if (clientX < clientWidth && clientY < clientHeight) {
-
-      console.log('SDJS_LM_WorkAreaHammerDragStart 1');
       this.StartRubberBandSelect(e);
     }
   }
@@ -974,10 +967,6 @@ class DocHandler {
     this.AdjustScroll(scrollX, scrollY);
   }
 
-  DocObject = function () {
-    return this.svgDoc
-  }
-
   SetRulerContent = (e, t) => {
     var a, r, i, n, o, s, l, S, c, u, p, d, D, g, h, m, C, y, f, L, I, T, b, M, P;
     var R = this.svgDoc.GetWorkArea();
@@ -1194,7 +1183,6 @@ class DocHandler {
   }
 
   AutoScrollCommon = (e, t, a) => {
-    // console.log('2 SDJS.ListManager.LM.prototype.AutoScrollCommon e=> 1111111111111111111', e);
     let isAutoScrollNeeded = false;
     // this.OverrideSnaps(e) && (t = false);
 
@@ -1252,9 +1240,8 @@ class DocHandler {
     return true;
   }
 
-  SDJS_LM_RubberBandDrag = (e) => {
+  LM_RubberBandDrag = (e) => {
     // Utils.StopPropagationAndDefaults(e);
-    // console.log('SDJS_LM_RubberBandDrag event: 1', e);
 
     if (!this.AutoScrollCommon(e, !1, "RubberBandSelectDoAutoScroll"))
       return;
@@ -1263,12 +1250,11 @@ class DocHandler {
       e.clientX,
       e.clientY
     );
-    // console.log('SDJS_LM_RubberBandDrag event: 2', a);
 
     this.RubberBandSelectMoveCommon(a.x, a.y);
   }
 
-  SDJS_LM_RubberBandDragEnd = (e) => {
+  LM_RubberBandDragEnd = (e) => {
     // Utils.StopPropagationAndDefaults(e);
 
     this.ResetAutoScrollTimer();
