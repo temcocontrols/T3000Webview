@@ -636,7 +636,7 @@ class DocHandler {
   }
 
   IsReadOnly = () => {
-    return false;//SDUI.AppSettings.ReadOnly
+    return false;
   }
 
   GetScaledRuler = (scale: number): number => {

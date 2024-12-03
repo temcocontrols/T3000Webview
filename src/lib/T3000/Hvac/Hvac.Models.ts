@@ -2,7 +2,7 @@
 
 export const Default = {
   Environment: "dev",
-};
+}
 
 export const DocumentAreaModel = {
   LEFT_PANEL_ID: "left-panel",
@@ -10,7 +10,7 @@ export const DocumentAreaModel = {
 
   WORK_AREA_ID: "work-area",
   WORK_AREA_PADDING_LEFT: 105,
-};
+}
 
 export enum CreateShapeType {
   RECT = 1,
@@ -109,7 +109,5 @@ enum CommonDefines {
 }
 
 export default {
-  Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, RulerUnits, CommonDefines,
-
-
-};
+  Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, RulerUnits, CommonDefines
+}
