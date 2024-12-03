@@ -25,47 +25,48 @@ export const RoundCoord = function (number) {
   return isNaN(result) ? number : result
 }
 
-export const StopPropagationAndDefaults = (e) => {
+export const StopPropagationAndDefaults = (e: Event) => {
   e.preventDefault();
   // e.stopPropagation();
 }
 
-export const DeepCopy = (e) => {
-  var t,
-    a;
-  if (null == e) return null;
-  var r = typeof e;
-  if (e instanceof Array) {
-    t = [];
-    var i = e.length;
-    for (a = 0; a < i; a++) t.push(DeepCopy(e[a]));
-    return t
-  }
-  if ('string' === r || 'number' === r || 'boolean' === r || 'function' === r) return e;
-  if (e instanceof Blob) return e.slice();
-  if (e instanceof Uint8Array) return e;
-  if ('object' === r) {
-    for (var n in t = new e.constructor, e) {
-      var o = e[n],
-        s = typeof o;
-      if (null == o) t[n] = o;
-      else if ('string' === s || 'number' === s || 'boolean' === s) t[n] = o;
-      else if (o instanceof Array) {
-        null == t[n] &&
-          (t[n] = []);
-        var l = o.length;
-        for (a = 0; a < l; a++) t[n].push(DeepCopy(o[a]))
-      } else 'function' !== s &&
-        (t[n] = DeepCopy(o))
+export const DeepCopy = (obj) => {
+  if (obj === null || obj === undefined) return obj;
+
+  let copy;
+
+  if (Array.isArray(obj)) {
+    copy = [];
+    for (let i = 0; i < obj.length; i++) {
+      copy[i] = DeepCopy(obj[i]);
     }
-    return t
+    return copy;
   }
-  return null
+
+  if (typeof obj === 'object') {
+    copy = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        copy[key] = DeepCopy(obj[key]);
+      }
+    }
+    return copy;
+  }
+
+  if (obj instanceof Blob) {
+    return obj.slice();
+  }
+
+  if (obj instanceof Uint8Array) {
+    return new Uint8Array(obj);
+  }
+
+  return obj;
 }
 
-export const RoundCoordLP = (e) => {
-  var t = Math.round(10 * Number(e)) / 10;
-  return isNaN(t) ? e : t
+export const RoundCoordLP = (number) => {
+  const result = Math.round(10 * Number(number)) / 10;
+  return isNaN(result) ? number : result;
 }
 
 export const CalcAngleFromPoints = (point1, point2) => {
@@ -87,8 +88,9 @@ export const CalcAngleFromPoints = (point1, point2) => {
   return angle;
 }
 
-export const CopyObj = function (e) {
-  return e ? JSON.parse(JSON.stringify(e)) : null
+export const CopyObj = (obj) => {
+  if (!obj) return null;
+  return JSON.parse(JSON.stringify(obj));
 }
 
 export const GenerateUUID = () => {

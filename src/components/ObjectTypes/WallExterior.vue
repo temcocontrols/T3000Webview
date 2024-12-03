@@ -3,7 +3,7 @@
     'flex flex-col flex-nowrap': true,
     [item.type]: item.type,
     'with-bg': item.settings.bgColor
-  }" :width="item.width" :height="item.height + 60">
+  }" :width="getNewWidthHeight().width" :height="getNewWidthHeight().height">
     <!-- <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" :width="item.width"
       :height="item.height">
       <g :transform="`scale(1,1) translate(${svgData.trsX},${svgData.trsY})`">
@@ -70,6 +70,7 @@ export default defineComponent({
       default: () => { }
     }
   },
+  emits: ["updateWeldModel"],
   setup(props, { emit }) {
     const svgData = computed(() => {
       // console.log('WallExterior props.item', props.item);
@@ -89,12 +90,124 @@ export default defineComponent({
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
 
-      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate };
+      let joinWall = null;
+      if (props.item.joinWall != null && props.item.joinWall != undefined) {
+        let joinWall = props.item.joinWall;
+        console.log('WallExterior joinWall',
+          '1x', trsX, '1y', trsY,
+          '2x', joinWall[0].x, '2y', joinWall[0].y,
+          '2trx', joinWall[0].translate[0], '2try', joinWall[0].translate[1]
+        );
+
+        const newPathData = getNewPathL(trsX, trsY, width, height, joinWall[0].x, joinWall[0].y);
+
+        Mx = newPathData.p1.x;
+        My = newPathData.p1.y;
+
+        Lx = newPathData.p2.x;
+        Ly = newPathData.p2.y;
+
+        let L2x = newPathData.p3.x;
+        let L2y = newPathData.p3.y;
+
+        let minx = newPathData.min.x;
+        let miny = newPathData.min.y;
+
+        console.log('SVG WallExteriorEl 1111111111', 'Mx', Mx, 'My', My, 'Lx', Lx, 'Ly', Ly, 'L2x', L2x, 'L2y', L2y, 'minx', minx, 'miny', miny);
+
+        emit("updateWeldModel", minx, miny, props.item.id);
+
+        path = `M${Mx},${My} L${Lx},${Ly} L${L2x},${L2y}`;
+      }
+
+
+
+      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate, joinWall };
+    });
+
+    const getNewPathL = (p1x, p1y, p1width, p1height, pjx, pjy) => {
+
+      console.log('---> getNewPathL', 'p1x', p1x, 'p1y', p1y, 'p1width', p1width, 'p1height', p1height, 'pjx', pjx, 'pjy', pjy);
+
+      const p2x = p1x + p1width;
+      const p2y = p1y + p1height;
+
+      // Get the minimum x and y
+      const minX = Math.min(p1x, p2x, pjx);
+      const minY = Math.min(p1y, p2y, pjy);
+
+      const p1NewX = Math.abs(p1x - minX);
+      const p1NewY = Math.abs(p1y - minY);
+
+      const p2NewX = Math.abs(p2x - minX);
+      const p2NewY = Math.abs(p2y - minY);
+
+      const p3NewX = Math.abs(pjx - minX);
+      const p3NewY = Math.abs(pjy - minY);
+
+      return {
+        p1: { x: p1NewX, y: p1NewY }, p2: { x: p2NewX, y: p2NewY }, p3: { x: p3NewX, y: p3NewY },
+        min: { x: minX, y: minY }
+      };
+    }
+
+
+    const getNewWidthHeight = () => {
+
+      const joinWall = props.item.joinWall != null && props.item.joinWall != undefined ? props.item.joinWall[0] : null;
+
+      if (joinWall === null) {
+        return { width: props.item.width, height: props.item.height + 60, margin: -60 };
+      }
+      else {
+        // const topLeftX = props.item.translate[0];
+        // const topLeftY = props.item.translate[1];
+
+        // const bottomRightX = joinWall.x;
+        // const bottomRightY = joinWall.y;
+
+        // let width = Math.abs(bottomRightX - topLeftX);
+        // let height = Math.abs(bottomRightY - topLeftY);
+
+        // if (bottomRightX < topLeftX + props.item.width) {
+        //   width = props.item.width;
+        // }
+
+        const p1x = props.item.translate[0];
+        const p1y = props.item.translate[1];
+
+        const p2x = props.item.translate[0] + props.item.width;
+        const p2y = props.item.translate[1];
+
+        const p3x = joinWall.x;
+        const p3y = joinWall.y;
+
+        const maxX = Math.max(p1x, p2x, p3x);
+        const maxY = Math.max(p1y, p2y, p3y);
+
+        const minX = Math.min(p1x, p2x, p3x);
+        const minY = Math.min(p1y, p2y, p3y);
+
+        const width = Math.abs(maxX - minX);
+        const height = Math.abs(maxY - minY);
+
+        console.log('AutoJoinWall getNewWidthHeight', 'width', width, 'height', height);
+
+        return { width, height: height, margin: -60 };
+      }
+    }
+
+    const margin = computed(() => {
+      return getNewWidthHeight().margin + 'px';
     });
 
     onMounted(() => {
       const svgRef = ref(null);
-      svgRef.value = SVG().addTo(`#wall_${props.item.id}`).size(props.item.width, props.item.height + 60);
+
+      // Calculate new width and height
+      const newWidthHeight = getNewWidthHeight();
+
+      svgRef.value = SVG().addTo(`#wall_${props.item.id}`).size(newWidthHeight.width, newWidthHeight.height);
       // svgRef.value.path(svgData.value.path).fill('none').stroke({ color: '#000', width: svgData.value.strokeWidth });
       // console.log('svgRef default', svgData.value.path);
 
@@ -147,10 +260,12 @@ export default defineComponent({
       }
 
       const refreshSvg = (newData) => {
-        // T3000.Utils.Log('WallExteriorEl', 'refreshSvg', props.item);
+        console.log('AutoJoinWall refreshSvg', svgData);
 
         svgRef.value.clear();
-        svgRef.value.size(props.item.width, props.item.height + 60);
+
+        const newWidthHeight = getNewWidthHeight();
+        svgRef.value.size(newWidthHeight.width, newWidthHeight.height);
         renderSvg(newData);
       }
 
@@ -159,7 +274,7 @@ export default defineComponent({
       watch(svgData, (newData) => { refreshSvg(newData); }, { deep: true });
     });
 
-    return { svgData };
+    return { svgData, getNewWidthHeight, margin };
   },
 });
 </script>
@@ -168,7 +283,7 @@ export default defineComponent({
 .wall-exterior {
   background-color: v-bind("props?.item?.settings?.bgColor");
   /* border: 1px solid #000; */
-  margin-top: -60px;
-  /* background-color: aqua; */
+  margin-top: v-bind("margin");
+  background-color: aqua;
 }
 </style>

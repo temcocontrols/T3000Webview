@@ -89,12 +89,9 @@
   background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px); */
+  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
+  height: calc(100vh - 60px);
   /* overflow: hidden scroll; */
-
-  width: 600px;
-  height: 300px;
   overflow: scroll;
 }
 
@@ -106,14 +103,11 @@
   background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
-  background-color: #8db4db;
+  /* background-color: rgb(7, 115, 115); */
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
-  /* width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height"); */
-
-  width: 1000px;
-  height: 1000px;
+  width: v-bind("documentAreaPosition.wiewPortWH.width");
+  height: v-bind("documentAreaPosition.wiewPortWH.height");
 }
 
 .default-svg {
@@ -491,7 +485,7 @@
                       :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModelCanvas">
+                      @update-weld-model="updateJoinWall">
                     </WallExterior>
 
                   </div>
@@ -763,14 +757,13 @@ onMounted(() => {
       return shouldIgnore;
     },
     // Add the focal point for zooming to be the center of the viewport
-    // transformOrigin: { x: 0.5, y: 0.5 },
+    transformOrigin: { x: 0.5, y: 0.5 },
   });
 
   // Update the viewport transform on panzoom transform event
   panzoomInstance.on("transform", function (e) {
 
     const pzTrs = e.getTransform();
-    T3000.Hvac.Utils.Log("Panzoom transform", pzTrs);
     // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
     // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
@@ -986,7 +979,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 });
 
 function viewportMouseMoved(e) {
-  // T3000.Utils.Log("Viewport mouse moved", e);
+  // T3000.Hvac.Utils.Log("0 Viewport mouse moved", e);
 
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
@@ -1026,9 +1019,121 @@ function viewportMouseMoved(e) {
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
     appState.value.items[appState.value.activeItemIndex].width = distance;
+
+    T3000.Hvac.App.AutoJoinWall(appState, mouseX, mouseY, angle, distance);
+
     refreshObjects();
   }
 }
+
+// Handles the start of a selecto drag event
+function onSelectoDragStart(e) {
+  T3000.Hvac.Utils.Log('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
+  T3000.Hvac.Utils.Log('1 onSelectoDragStart', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
+
+  const target = e.inputEvent.target;
+  if (
+    moveable.value.isMoveableElement(target) ||
+    appState.value.selectedTargets.some(
+      (t) => t === target || t.contains(target)
+    )
+  ) {
+    e.stop();
+  }
+}
+
+// Ends a selecto drag event and handles object drawing based on tool type
+function onSelectoDragEnd(e) {
+  T3000.Hvac.Utils.Log('2 onSelectoDragEnd', "e=", e);
+  T3000.Hvac.Utils.Log('2 onSelectoDragEnd', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
+
+  const size = { width: e.rect.width, height: e.rect.height };
+  const pos = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    top: e.rect.top,
+    left: e.rect.left,
+  };
+  if (
+    (selectedTool.value.name === "Pointer" ||
+      size.width < 20 ||
+      size.height < 20) &&
+    !continuesObjectTypes.includes(selectedTool.value.name)
+  ) {
+    isDrawing.value = false;
+    return;
+  }
+  if (
+    continuesObjectTypes.includes(selectedTool.value.name) &&
+    size.height < 20
+  ) {
+    size.height = selectedTool.value.height;
+  }
+
+  const item = drawObject(size, pos);
+  if (item && continuesObjectTypes.includes(item.type)) {
+    setTimeout(() => {
+      isDrawing.value = true;
+      appState.value.selectedTargets = [];
+      appState.value.items[appState.value.activeItemIndex].rotate = 0;
+      startTransform.value = cloneDeep(item.translate);
+    }, 100);
+  }
+}
+
+// Handles the end of a selecto select event
+function onSelectoSelectEnd(e) {
+  T3000.Hvac.Utils.Log('3 onSelectoSelectEnd', "e=", e, e.isDragStart);
+  T3000.Hvac.Utils.Log('3 onSelectoSelectEnd', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
+
+  appState.value.selectedTargets = e.selected;
+  if (e.selected && !e.inputEvent.ctrlKey) {
+    const selectedItems = appState.value.items.filter((i) =>
+      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
+    );
+    const selectedGroups = [
+      ...new Set(
+        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
+      ),
+    ];
+    selectedGroups.forEach((gId) => {
+      selectGroup(gId);
+    });
+  }
+
+  if (appState.value.selectedTargets.length === 1) {
+    appState.value.activeItemIndex = appState.value.items.findIndex(
+      (item) =>
+        `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+    );
+  } else {
+    appState.value.activeItemIndex = null;
+  }
+
+  if (e.isDragStart) {
+    e.inputEvent.preventDefault();
+
+    setTimeout(() => {
+      moveable.value.dragStart(e.inputEvent);
+    });
+  }
+
+  if (appState.value.selectedTargets.length > 1 && !locked.value) {
+    setTimeout(() => {
+      contextMenuShow.value = true;
+    }, 100);
+  } else {
+    contextMenuShow.value = false;
+  }
+
+  refreshMoveableGuides(); // Refresh the moveable guidelines after selection
+
+  setTimeout(() => {
+    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.Hvac.App.StartAutoJoinWall(appState);
+  }, 100);
+}
+
 // Refreshes the guidelines for the moveable elements
 function refreshMoveableGuides() {
   appState.value.elementGuidelines = [];
@@ -1134,70 +1239,6 @@ function onDragGroupEnd(e) {
   } else {
     refreshObjects(); // Refresh objects
   }
-}
-
-// Handles the start of a selecto drag event
-function onSelectoDragStart(e) {
-  // T3000.Utils.Log('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
-  const target = e.inputEvent.target;
-  if (
-    moveable.value.isMoveableElement(target) ||
-    appState.value.selectedTargets.some(
-      (t) => t === target || t.contains(target)
-    )
-  ) {
-    e.stop();
-  }
-}
-
-// Handles the end of a selecto select event
-function onSelectoSelectEnd(e) {
-  // T3000.Utils.Log('3 onSelectoSelectEnd 1', e, e.isDragStart);
-  appState.value.selectedTargets = e.selected;
-  if (e.selected && !e.inputEvent.ctrlKey) {
-    const selectedItems = appState.value.items.filter((i) =>
-      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
-    );
-    const selectedGroups = [
-      ...new Set(
-        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
-      ),
-    ];
-    selectedGroups.forEach((gId) => {
-      selectGroup(gId);
-    });
-  }
-
-  if (appState.value.selectedTargets.length === 1) {
-    appState.value.activeItemIndex = appState.value.items.findIndex(
-      (item) =>
-        `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
-    );
-  } else {
-    appState.value.activeItemIndex = null;
-  }
-
-  if (e.isDragStart) {
-    e.inputEvent.preventDefault();
-
-    setTimeout(() => {
-      moveable.value.dragStart(e.inputEvent);
-    });
-  }
-
-  if (appState.value.selectedTargets.length > 1 && !locked.value) {
-    setTimeout(() => {
-      contextMenuShow.value = true;
-    }, 100);
-  } else {
-    contextMenuShow.value = false;
-  }
-
-  refreshMoveableGuides(); // Refresh the moveable guidelines after selection
-
-  setTimeout(() => {
-    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
-  }, 100);
 }
 
 // Selects a group of elements by their group ID
@@ -1422,44 +1463,6 @@ function addLibItem(items, size, pos) {
     );
     refreshMoveable();
   }, 60); */
-}
-
-// Ends a selecto drag event and handles object drawing based on tool type
-function onSelectoDragEnd(e) {
-  // T3000.Utils.Log('2 onSelectoDragEnd', e);
-
-  const size = { width: e.rect.width, height: e.rect.height };
-  const pos = {
-    clientX: e.clientX,
-    clientY: e.clientY,
-    top: e.rect.top,
-    left: e.rect.left,
-  };
-  if (
-    (selectedTool.value.name === "Pointer" ||
-      size.width < 20 ||
-      size.height < 20) &&
-    !continuesObjectTypes.includes(selectedTool.value.name)
-  ) {
-    isDrawing.value = false;
-    return;
-  }
-  if (
-    continuesObjectTypes.includes(selectedTool.value.name) &&
-    size.height < 20
-  ) {
-    size.height = selectedTool.value.height;
-  }
-
-  const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item.type)) {
-    setTimeout(() => {
-      isDrawing.value = true;
-      appState.value.selectedTargets = [];
-      appState.value.items[appState.value.activeItemIndex].rotate = 0;
-      startTransform.value = cloneDeep(item.translate);
-    }, 100);
-  }
 }
 
 // Draws an object based on the provided size, position, and tool settings
@@ -3005,6 +3008,41 @@ const updateWeldModel = (weldModel, itemList) => {
     }
   });
 };
+
+const updateJoinWall = (Mx, My, id) => {
+  console.log('IndexPage.vue->updateJoinWall->wallModel', Mx, My, id);
+
+  appState.value.items.map((item) => {
+
+    if (item.type === "Int_Ext_Wall" && item.id === id - 1) {
+
+      const trsx = item.translate[0];
+      const trsy = item.translate[1];
+
+      if (item.translate[0] !== Mx || item.translate[1] !== My) {
+
+        console.log('IndexPage.vue->updateJoinWall->wallModel 2', Mx, My, id);
+
+        if (trsx < Mx && trsy > My) {
+          item.translate[0] = trsx;
+        }
+
+        if (trsy < My) {
+          item.translate[1] = trsy;
+        }
+
+
+        setTimeout(() => {
+          // moveable-item-1
+          refreshObjects();
+        }, 100);
+
+
+      }
+    }
+  });
+
+}
 
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {

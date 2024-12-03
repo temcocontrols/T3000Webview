@@ -101,6 +101,7 @@ class App {
     }
   };
 
+  /*
   // Document onwheel event handler
   WorkAreaMouseWheel = (e) => {
     Utils.Log("WorkAreaMouseWheel=>", e);
@@ -112,6 +113,64 @@ class App {
   BottomSliderbarEvent = (type, value) => {
     Utils.Log("BottomSliderbarEvent=>", type, value);
   };
+  */
+
+  GetPreviousItem = (appState) => {
+
+    let previousItemIndex = appState.value.activeItemIndex - 1;
+
+    while (previousItemIndex >= 0 && appState.value.items[previousItemIndex].width === 0) {
+      previousItemIndex--;
+    }
+
+    if (previousItemIndex >= 0) {
+      return previousItemIndex;
+    } else {
+      return -1;
+    }
+  }
+
+  // Start auto join wall
+  StartAutoJoinWall = (appState, pos) => {
+    console.log("AutoJoinWall StartAutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, pos);
+
+    const currentItem = appState.value.items[appState.value.activeItemIndex];
+
+    const previousItemIndex = this.GetPreviousItem(appState);
+    const previousItem = appState.value.items[previousItemIndex];
+
+
+    console.log("AutoJoinWall StartAutoJoinWall Current item:", currentItem);
+    console.log("AutoJoinWall StartAutoJoinWall Previous item:", previousItem);
+
+    if (previousItem !== null && previousItem !== undefined) {
+      if (previousItem.joinWall) {
+        previousItem.joinWall.push(cloneDeep(currentItem));
+      } else {
+        previousItem.joinWall = [cloneDeep(currentItem)];
+      }
+    }
+  };
+
+  // Auto Join the wall
+  AutoJoinWall = (appState, mouseX, mouseY, rotate, width) => {
+    console.log("AutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, mouseX, mouseY, rotate, width);
+
+    const previousItemIndex = this.GetPreviousItem(appState);
+    const previousItem = appState.value.items[previousItemIndex];
+
+    if (previousItem !== null && previousItem !== undefined) {
+      // const currentItem = appState.value.items[appState.value.activeItemIndex];
+      previousItem?.joinWall?.forEach((item) => {
+        item.x = mouseX;
+        item.y = mouseY;
+        item.rotate = rotate;
+        item.width = width;
+      });
+    };
+  }
+
+
 }
 
 export default App;
