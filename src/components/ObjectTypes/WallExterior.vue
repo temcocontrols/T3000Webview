@@ -90,6 +90,7 @@ export default defineComponent({
 
       let path = `M${Mx},${My} L${Lx},${Ly}`;
 
+      /*
       let joinWall = null;
       if (props.item.joinWall != null && props.item.joinWall != undefined) {
         let joinWall = props.item.joinWall;
@@ -119,10 +120,11 @@ export default defineComponent({
 
         path = `M${Mx},${My} L${Lx},${Ly} L${L2x},${L2y}`;
       }
+        */
 
 
 
-      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate, joinWall };
+      return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate };
     });
 
     const getNewPathL = (p1x, p1y, p1width, p1height, pjx, pjy) => {
@@ -153,7 +155,7 @@ export default defineComponent({
 
 
     const getNewWidthHeight = () => {
-
+      return { width: props.item.width, height: props.item.height + 60, margin: -60 };
       const joinWall = props.item.joinWall != null && props.item.joinWall != undefined ? props.item.joinWall[0] : null;
 
       if (joinWall === null) {

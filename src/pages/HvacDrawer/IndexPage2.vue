@@ -1020,6 +1020,8 @@ function viewportMouseMoved(e) {
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
     appState.value.items[appState.value.activeItemIndex].width = distance;
 
+    // appState.value.items[appState.value.activeItemIndex - 1].rotate = angle;
+
     T3000.Hvac.App.AutoJoinWall(appState, mouseX, mouseY, angle, distance);
 
     refreshObjects();
@@ -1069,6 +1071,17 @@ function onSelectoDragEnd(e) {
   ) {
     size.height = selectedTool.value.height;
   }
+
+  // Check has previous drawed wall
+  const previousWall = appState.value.items
+    .filter((item) => item.type === "Int_Ext_Wall")
+    .pop();
+
+  console.log('onSelectoDragEnd', "previousWall=", previousWall);
+
+  // if (previousWall != null && previousWall !== undefined) {
+  //   previousWall.width += 10;
+  // }
 
   const item = drawObject(size, pos);
   if (item && continuesObjectTypes.includes(item.type)) {
