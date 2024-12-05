@@ -177,8 +177,10 @@ export default {
       drawingArea.value.addEventListener('mousedown', (event) => {
         startX = event.offsetX;
         startY = event.offsetY;
-        tempPath = draw.path(`M${startX},${startY}`).attr({ fill: 'none', stroke: 'black' });
-        tempBox = draw.rect(10, 10).attr({ fill: 'none', stroke: 'blue', 'stroke-dasharray': '5,5' }).move(startX - 5, startY - 5);
+        tempPath = draw.path(`M${startX},${startY}`).attr({ fill: 'none', stroke: 'black', 'stroke-width': 19.5 });
+        // tempBox = draw.rect(10, 10).attr({ fill: 'none', stroke: 'blue', 'stroke-dasharray': '5,5' }).move(startX - 5, startY - 5);
+
+        tempBox = draw.circle(20).attr({ fill: 'none', stroke: 'blue', 'stroke-dasharray': '5,5' }).move(startX - 10, startY - 10);
       });
 
       drawingArea.value.addEventListener('mousemove', (event) => {
@@ -190,15 +192,73 @@ export default {
         }
       });
 
+      // drawingArea.value.addEventListener('mouseup', () => {
+      //   if (tempPath) {
+      //     tempPath = null;
+      //   }
+      //   if (tempBox) {
+      //     tempBox.remove();
+      //     tempBox = null;
+      //   }
+      // });
+
+
+      let tempPathList = [];
+
       drawingArea.value.addEventListener('mouseup', () => {
         if (tempPath) {
+          tempPathList.push(tempPath);
           tempPath = null;
         }
         if (tempBox) {
           tempBox.remove();
           tempBox = null;
         }
+
+        if (tempPathList.length === 2) {
+          const path1 = tempPathList[0];
+          const path2 = tempPathList[1];
+          const intersection = path1.intersect(path2);
+          intersection.fill('red');
+        }
+
+
+        // if (tempPathList.length > 1) {
+        //   let combinedPath = tempPathList[0].attr('d');
+        //   for (let i = 1; i < tempPathList.length; i++) {
+        //     const pathData = tempPathList[i].attr('d').replace('M', 'L');
+        //     combinedPath += pathData;
+        //   }
+        //   const finalPath = draw.path(combinedPath).attr({ fill: 'none', stroke: 'black', 'stroke-width': 19.5 });
+        //   tempPathList.forEach(path => path.remove());
+        //   tempPathList = [];
+        // }
+
+        if (tempPathList.length > 1) {
+          let combinedPath = tempPathList[0].attr('d');
+          for (let i = 1; i < tempPathList.length; i++) {
+            const pathData = tempPathList[i].attr('d');
+            const lastPoint = combinedPath.match(/L([^L]+)$/)[1];
+            const newPathData = pathData.replace(/M[^L]+/, `L${lastPoint}`);
+            combinedPath += newPathData;
+          }
+          const finalPath = draw.path(combinedPath).attr({ fill: 'none', stroke: 'black', 'stroke-width': 1.5 });
+          tempPathList.forEach(path => path.remove());
+          tempPathList = [];
+        }
+
+
+        tempPathList.forEach((path) => {
+          path.draggable().on('dragmove', (event) => {
+            const dx = event.detail.p.x - path.bbox().x;
+            const dy = event.detail.p.y - path.bbox().y;
+            const newPathData = path.attr('d').replace(/M[^L]+/, `M${event.detail.p.x},${event.detail.p.y}`);
+            path.plot(newPathData);
+          });
+        });
+
       });
+
     });
 
     return {
