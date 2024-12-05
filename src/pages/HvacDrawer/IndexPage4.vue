@@ -1,86 +1,78 @@
 <template>
-  <div id="app">
-    <div ref="svgContainer" class="svg-container"></div>
-    <vue3-selecto ref="selecto" :selectable-targets="['.shape']" :selectable-classes="['selected']"
-      @select="onSelect" />
-    <vue3-moveable ref="moveable" :target="selectedTargets" :draggable="true" :resizable="true" :rotatable="true"
-      @drag="onDrag" @resize="onResize" @rotate="onRotate" />
-  </div>
+  <div ref="drawingArea" class="drawing-area"></div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue';
 import { SVG } from '@svgdotjs/svg.js';
-import Vue3Selecto from 'vue3-selecto';
-import Vue3Moveable from 'vue3-moveable';
+import Hammer from 'hammerjs';
 
 export default {
-  components: {
-    Vue3Selecto,
-    Vue3Moveable,
-  },
+  name: 'IndexPage4',
   setup() {
-    const svgContainer = ref(null);
-    const selectedTargets = ref([]);
+    const drawingArea = ref(null);
+    let selectedElement = null;
+    let initialRotation = 0;
 
     onMounted(() => {
-      const draw = SVG().addTo(svgContainer.value).size('100%', '100%');
-      draw.rect(100, 100).move(50, 50).addClass('shape');
-      draw.circle(100).move(200, 50).addClass('shape');
-      draw.ellipse(150, 100).move(350, 50).addClass('shape');
+      const draw = SVG().addTo(drawingArea.value).size('100%', '100%');
+      const rect = draw.rect(100, 100).attr({ fill: '#f06' }).move(50, 50);
+
+      const hammer = new Hammer(drawingArea.value);
+      hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+      hammer.get('rotate').set({ enable: true });
+
+      hammer.on('tap', (ev) => {
+        if (ev.target.instance === rect) {
+          selectElement(rect);
+        } else {
+          deselectElement();
+        }
+      });
+
+      hammer.on('panmove', (ev) => {
+        if (selectedElement) {
+          selectedElement.move(ev.center.x - 50, ev.center.y - 50);
+        }
+      });
+
+      hammer.on('rotatemove', (ev) => {
+        if (selectedElement) {
+          selectedElement.rotate(initialRotation + ev.rotation);
+        }
+      });
+
+      hammer.on('rotateend', (ev) => {
+        if (selectedElement) {
+          initialRotation += ev.rotation;
+        }
+      });
+
+      function selectElement(element) {
+        deselectElement();
+        selectedElement = element;
+        selectedElement.stroke({ color: '#000', width: 2 });
+      }
+
+      function deselectElement() {
+        if (selectedElement) {
+          selectedElement.stroke({ color: 'none' });
+          selectedElement = null;
+        }
+      }
     });
 
-    const customSelectStyle = (e) => {
-      e.selected.forEach((el) => {
-        el.style.border = '2px dashed red';
-        el.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-      });
-    };
-
-    const onSelect = (e) => {
-      selectedTargets.value = e.selected;
-      customSelectStyle(e);
-    };
-
-    const onDrag = (e) => {
-      e.target.style.transform = e.transform;
-    };
-
-    const onResize = (e) => {
-      e.target.style.width = `${e.width}px`;
-      e.target.style.height = `${e.height}px`;
-      e.target.style.transform = e.drag.transform;
-    };
-
-    const onRotate = (e) => {
-      e.target.style.transform = e.transform;
-    };
-
     return {
-      svgContainer,
-      selectedTargets,
-      onSelect,
-      onDrag,
-      onResize,
-      onRotate,
+      drawingArea,
     };
   },
 };
 </script>
 
 <style>
-.svg-container {
+.drawing-area {
   width: 100%;
-  height: 500px;
+  height: 100vh;
   border: 1px solid #ccc;
-}
-
-.shape {
-  cursor: pointer;
-}
-
-.selected {
-  stroke: blue;
-  stroke-width: 2;
 }
 </style>
