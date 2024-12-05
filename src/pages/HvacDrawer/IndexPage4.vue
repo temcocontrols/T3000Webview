@@ -4,53 +4,223 @@
 
 <script>
 import { ref, onMounted } from 'vue';
-import { SVG } from '@svgdotjs/svg.js';
+import { SVG, Box, extend } from '@svgdotjs/svg.js';
+// import Draggable from '@svgdotjs/svg.draggable.js';
+
+import '@svgdotjs/svg.draggable.js';
+import '@svgdotjs/svg.select.js';
+import '@svgdotjs/svg.resize.js';
+
 import Hammer from 'hammerjs';
 
 export default {
   name: 'IndexPage4',
   setup() {
     const drawingArea = ref(null);
+
+
+    function makeDraggable(element) {
+      element.draggable().on('dragstart', () => {
+        // selectElement(element);
+      });
+
+      element.resize();
+    }
+
     let selectedElement = null;
     let initialRotation = 0;
 
     onMounted(() => {
-      const draw = SVG().addTo(drawingArea.value).size('100%', '100%');
-      const rect = draw.rect(100, 100).attr({ fill: '#f06' }).move(50, 50);
-      const circle = draw.circle(100).attr({ fill: 'blue' }).move(200, 200);
 
-      const hammer = new Hammer(drawingArea.value);
-      hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
-      hammer.get('rotate').set({ enable: true });
+      // var e,
+      //   constrainingShape,
+      //   ghostShape,
+      //   draw = SVG()
+      //     .addTo(drawingArea.value)
+      //     .size('100%', '400')
+      //     .attr({ 'font-size': 10 })
+      //     .fill('#f06')
 
-      hammer.on('tap', (ev) => {
-        console.log('tap', ev);
-        if (ev.target.instance === rect) {
-          selectElement(rect);
-        } else if (ev.target.instance === circle) {
-          selectElement(circle);
-        } else {
-          deselectElement();
-        }
-      });
+      // /* plain draggable */
+      // draw
+      //   .rect(100, 100)
+      //   .center(150, 150)
+      //   .draggable()
 
-      hammer.on('panmove', (ev) => {
-        if (selectedElement) {
-          selectedElement.move(ev.center.x - 50, ev.center.y - 50);
-        }
-      });
+      // draw.plain('just plain draggable').center(150, 210)
 
-      hammer.on('rotatemove', (ev) => {
-        if (selectedElement) {
-          selectedElement.rotate(initialRotation + ev.rotation);
-        }
-      });
+      // /* grouped draggable */
+      // var g = draw.group().draggable()
+      // g.rect(100, 100).center(400, 150)
+      // g.plain('grouped draggable').center(400, 210)
 
-      hammer.on('rotateend', (ev) => {
-        if (selectedElement) {
-          initialRotation += ev.rotation;
-        }
-      });
+      // /* constrained with object */
+      // var constrainedWithObject = draw
+      //   .rect(100, 100)
+      //   .center(650, 150)
+      //   .draggable()
+      //   .on('dragstart', function () {
+      //     ghostShape = draw.put(constrainedWithObject.clone().opacity(0.2))
+
+      //     constrainingShape = draw
+      //       .rect(400, 350)
+      //       .move(400, 50)
+      //       .fill('none')
+      //       .stroke('#0fa')
+      //   })
+      //   .on('dragmove', e => {
+      //     e.preventDefault()
+
+      //     const { handler, box } = e.detail
+      //     let { x, y } = box
+
+      //     const constraints = constrainingShape.bbox()
+
+      //     if (x < constraints.x) {
+      //       x = constraints.x
+      //     }
+
+      //     if (y < constraints.y) {
+      //       y = constraints.y
+      //     }
+
+      //     if (box.x2 > constraints.x2) {
+      //       x = constraints.x2 - box.w
+      //     }
+
+      //     if (box.y2 > constraints.y2) {
+      //       y = constraints.y2 - box.h
+      //     }
+
+      //     handler.move(x, y)
+      //     ghostShape.animate(300, '>').move(x, y)
+      //   })
+      //   .on('dragend', function () {
+      //     constrainingShape.remove()
+      //     ghostShape.remove()
+      //   })
+      // draw.plain('constrained with object and ghost').center(650, 210)
+
+      // /* constraind with function */
+      // // Some constraints (x, y, width, height)
+      // const constraints = new Box(750, 0, 300, 300)
+
+      // draw
+      //   .rect(100, 100)
+      //   .center(900, 150)
+      //   .draggable()
+      //   .on('dragmove', e => {
+      //     const { handler, box } = e.detail
+      //     e.preventDefault()
+
+      //     let { x, y } = box
+
+      //     // In case your dragged element is a nested element,
+      //     // you are better off using the rbox() instead of bbox()
+
+      //     if (x < constraints.x) {
+      //       x = constraints.x
+      //     }
+
+      //     if (y < constraints.y) {
+      //       y = constraints.y
+      //     }
+
+      //     if (box.x2 > constraints.x2) {
+      //       x = constraints.x2 - box.w
+      //     }
+
+      //     if (box.y2 > constraints.y2) {
+      //       y = constraints.y2 - box.h
+      //     }
+
+      //     handler.move(x, y)
+      //   })
+
+      // draw.plain('constraint with function').center(900, 210)
+
+      // /* group with multiple levels of draggables (dragging a part doesn't drag the group) */
+      // var g2 = draw.group().draggable()
+      // for (var i = 0; i < 4; i++) {
+      //   var cx = i & 1 ? -25 : 25
+      //   var cy = i & 2 ? -25 : 25
+      //   g2.rect(50, 50)
+      //     .center(cx, cy)
+      //     .draggable()
+      // }
+      // g2.plain('grouped with multiple levels of draggable').center(0, 70)
+      // g2.move(1150, 150)
+
+
+
+      const canvas = new SVG().size(1000, 700).addTo(drawingArea.value)
+      canvas
+        .rect(100, 100)
+        .move(100, 100)
+        .fill('red')
+        .select({ createHandle: (el) => el.polyline().css({ stroke: '#666' }) })
+      canvas
+        // star shape
+        .polygon([
+          [100, 100],
+          [200, 100],
+          [200, 200],
+          [300, 200],
+          [200, 300],
+          [200, 400],
+          [100, 400],
+          [100, 300],
+          [0, 300],
+          [0, 200],
+          [100, 200],
+        ])
+        .move(250, 250)
+        .fill('blue')
+        .pointSelect()
+        .select()
+
+
+      /*
+
+      const draw1 = SVG().addTo(drawingArea.value).size('100%', '100%');
+      const rect = draw1.rect(100, 100).attr({ fill: '#f06' }).move(50, 50);
+      const circle = draw1.circle(100).attr({ fill: 'blue' }).move(200, 200);
+
+      makeDraggable(rect);
+      makeDraggable(circle);
+
+      // const hammer = new Hammer(drawingArea.value);
+      // hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+      // hammer.get('rotate').set({ enable: true });
+
+      // hammer.on('tap', (ev) => {
+      //   console.log('tap', ev);
+      //   if (ev.target.instance === rect) {
+      //     selectElement(rect);
+      //   } else if (ev.target.instance === circle) {
+      //     selectElement(circle);
+      //   } else {
+      //     deselectElement();
+      //   }
+      // });
+
+      // hammer.on('panmove', (ev) => {
+      //   if (selectedElement) {
+      //     selectedElement.move(ev.center.x - 50, ev.center.y - 50);
+      //   }
+      // });
+
+      // hammer.on('rotatemove', (ev) => {
+      //   if (selectedElement) {
+      //     selectedElement.rotate(initialRotation + ev.rotation);
+      //   }
+      // });
+
+      // hammer.on('rotateend', (ev) => {
+      //   if (selectedElement) {
+      //     initialRotation += ev.rotation;
+      //   }
+      // });
 
       let startX = 0;
       let startY = 0;
@@ -175,6 +345,7 @@ export default {
       let tempBox = null;
 
       drawingArea.value.addEventListener('mousedown', (event) => {
+        return;
         startX = event.offsetX;
         startY = event.offsetY;
         tempPath = draw.path(`M${startX},${startY}`).attr({ fill: 'none', stroke: 'black', 'stroke-width': 19.5 });
@@ -258,6 +429,8 @@ export default {
         });
 
       });
+
+      */
 
     });
 
