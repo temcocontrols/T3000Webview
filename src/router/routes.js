@@ -25,6 +25,11 @@ const routes = [
         name: "hvac2",
         component: () => import("pages/HvacDrawer/IndexPage3.vue"),
       },
+      {
+        path: "t3",
+        name: "hvac3",
+        component: () => import("pages/HvacDrawer/IndexPage4.vue"),
+      },
     ],
   },
   {
