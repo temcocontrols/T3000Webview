@@ -57,9 +57,28 @@ export default {
       let tempRect = null;
 
       drawingArea.value.addEventListener('mousedown', (event) => {
+        return;
         startX = event.offsetX;
         startY = event.offsetY;
-        tempRect = draw.rect(1, 1).attr({ fill: 'none', stroke: 'red', 'stroke-dasharray': '5,5' }).move(startX, startY);
+        // tempRect = draw.rect(1, 1).attr({ fill: 'none', stroke: 'red', 'stroke-dasharray': '5,5' }).move(startX, startY);
+
+        const elements = draw.children();
+        let insideElement = false;
+        elements.forEach((element) => {
+          const bbox = element.bbox();
+          if (
+            event.offsetX >= bbox.x &&
+            event.offsetX <= bbox.x2 &&
+            event.offsetY >= bbox.y &&
+            event.offsetY <= bbox.y2
+          ) {
+            insideElement = true;
+          }
+        });
+
+        if (!insideElement) {
+          tempRect = draw.rect(1, 1).attr({ fill: 'none', stroke: 'red', 'stroke-dasharray': '5,5' }).move(startX, startY);
+        }
       });
 
       drawingArea.value.addEventListener('mousemove', (event) => {
@@ -149,6 +168,37 @@ export default {
         selectedElement.stroke({ color: '#000', width: 2 });
         // addRotationHandle(selectedElement);
       }
+
+
+
+      let tempPath = null;
+      let tempBox = null;
+
+      drawingArea.value.addEventListener('mousedown', (event) => {
+        startX = event.offsetX;
+        startY = event.offsetY;
+        tempPath = draw.path(`M${startX},${startY}`).attr({ fill: 'none', stroke: 'black' });
+        tempBox = draw.rect(10, 10).attr({ fill: 'none', stroke: 'blue', 'stroke-dasharray': '5,5' }).move(startX - 5, startY - 5);
+      });
+
+      drawingArea.value.addEventListener('mousemove', (event) => {
+        if (tempPath) {
+          const x = event.offsetX;
+          const y = event.offsetY;
+          tempPath.plot(`M${startX},${startY} L${x},${y}`);
+          tempBox.move(x - 5, y - 5);
+        }
+      });
+
+      drawingArea.value.addEventListener('mouseup', () => {
+        if (tempPath) {
+          tempPath = null;
+        }
+        if (tempBox) {
+          tempBox.remove();
+          tempBox = null;
+        }
+      });
     });
 
     return {
