@@ -1,10 +1,10 @@
 
 import Container from './Container';
-import * as Utils from '../Hvac.Utils';
-import HvacSVG from '../Hvac.SVG';
-import Models from '../Hvac.Models';
+import * as Utils from '../Helper/Hvac.Utils';
+import HvacSVG from '../Helper/Hvac.SVG';
+import Models from '../Model/Hvac.Models';
 import Symbol from './Symbol';
-import '../pathseg';
+import '../Helper/pathseg';
 
 class Path extends Container {
   public pathCreator: any;

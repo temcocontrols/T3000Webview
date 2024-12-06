@@ -1,12 +1,12 @@
 
-import Document from '../Graphics/Document';
-import Models from '../Hvac.Models';
+import Document from '../Basic/Document';
+import Models from '../Model/Hvac.Models';
 import Hammer from 'hammerjs';
-import * as Utils from '../Hvac.Utils';
+import * as Utils from '../Helper/Hvac.Utils';
 import ContentHeader from './ContentHeader';
 import UI from '../UI/UI';
-import Path from '../Graphics/Path';
-import HvacSVG from '../Hvac.SVG';
+import Path from '../Basic/Path';
+import HvacSVG from '../Helper/Hvac.SVG';
 
 //#region
 

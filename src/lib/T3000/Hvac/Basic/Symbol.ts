@@ -1,5 +1,5 @@
 
-import Models from '../Hvac.Models';
+import Models from '../Model/Hvac.Models';
 import Element from './Element';
 
 class Symbol extends Element {

@@ -1,6 +1,6 @@
 import Formatter from "./Text.Formatter";
-import * as Utils from '../Hvac.Utils';
-import HvacSVG from '../Hvac.SVG';
+import * as Utils from '../Helper/Hvac.Utils';
+import HvacSVG from '../Helper/Hvac.SVG';
 import Element from './Element';
 
 class Text extends Element {

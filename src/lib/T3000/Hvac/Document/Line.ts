@@ -1,6 +1,6 @@
 
-import Models from '../Hvac.Models';
-import * as Utils from '../Hvac.Utils';
+import Models from '../Model/Hvac.Models';
+import * as Utils from '../Helper/Hvac.Utils';
 import Point from '../Data/Point';
 
 class Line {

@@ -1,11 +1,11 @@
-import HvacSVG from '../Hvac.SVG';
+import HvacSVG from '../Helper/Hvac.SVG';
 import Container from "./Container";
 import Rect from "./Rect";
 import Layer from "./Layer";
-import Models from '../Hvac.Models';
+import Models from '../Model/Hvac.Models';
 import Path from './Path';
 import Text from './Text';
-import * as Utils from '../Hvac.Utils';
+import * as Utils from '../Helper/Hvac.Utils';
 import Formatter from './Text.Formatter';
 
 interface DocInfo {

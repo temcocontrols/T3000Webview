@@ -1,12 +1,12 @@
 
 
-import Models from '../Hvac.Models';
-import Formatter from '../Graphics/Text.Formatter';
-import Text from '../Graphics/Text';
+import Models from '../Model/Hvac.Models';
+import Formatter from '../Basic/Text.Formatter';
+import Text from '../Basic/Text';
 import ContentHeader from './ContentHeader';
 import DocHandler from './DocHandler';
-import * as Utils from '../Hvac.Utils';
-import Point from '../Graphics/Point';
+import * as Utils from '../Helper/Hvac.Utils';
+import Point from '../Basic/Point';
 
 class OptHandler {
 
