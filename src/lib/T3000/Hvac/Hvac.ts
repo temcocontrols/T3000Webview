@@ -1,9 +1,9 @@
 
-import App from './App/App';
-import * as Utils from './Helper/Hvac.Utils';
-import Models from './Model/Hvac.Models';
-import Doc from './Document/DocHandler';
-import UI from './UI/UI';
+import App from './Page/Page.Main';
+import * as Utils from './Helper/Helper.Utils';
+import Models from './Data/Data.Constant';
+import Doc from './Doc/DocHandler';
+import UI from './Doc/UI';
 
 const Hvac = {
   App: new App(),

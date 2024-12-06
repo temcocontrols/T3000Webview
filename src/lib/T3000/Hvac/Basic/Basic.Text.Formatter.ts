@@ -1,5 +1,5 @@
-import * as Utils from '../Helper/Hvac.Utils';
-import HvacSVG from '../Helper/Hvac.SVG';
+import * as Utils from '../Helper/Helper.Utils';
+import HvacSVG from '../Helper/Helper.SVG';
 
 class Formatter {
   public parent: any;

@@ -1,5 +1,5 @@
 
-import Path from './Path';
+import Path from './Basic.Path';
 
 class Line extends Path {
 

@@ -1,7 +1,7 @@
-import Formatter from "./Text.Formatter";
-import * as Utils from '../Helper/Hvac.Utils';
-import HvacSVG from '../Helper/Hvac.SVG';
-import Element from './Element';
+import Formatter from "./Basic.Text.Formatter";
+import * as Utils from '../Helper/Helper.Utils';
+import HvacSVG from '../Helper/Helper.SVG';
+import Element from './Basic.Element';
 
 class Text extends Element {
 

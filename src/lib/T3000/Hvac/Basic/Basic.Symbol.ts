@@ -1,6 +1,6 @@
 
-import Models from '../Model/Hvac.Models';
-import Element from './Element';
+import Models from '../Data/Data.Constant';
+import Element from './Basic.Element';
 
 class Symbol extends Element {
   constructor() {

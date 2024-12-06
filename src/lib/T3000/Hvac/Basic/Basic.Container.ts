@@ -1,5 +1,5 @@
-import Element from './Element';
-import HvacSVG from '../Helper/Hvac.SVG';
+import Element from './Basic.Element';
+import HvacSVG from '../Helper/Helper.SVG';
 
 class Container extends Element {
   constructor() {

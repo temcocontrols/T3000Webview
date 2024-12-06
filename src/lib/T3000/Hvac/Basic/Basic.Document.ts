@@ -1,12 +1,12 @@
-import HvacSVG from '../Helper/Hvac.SVG';
-import Container from "./Container";
-import Rect from "./Rect";
-import Layer from "./Layer";
-import Models from '../Model/Hvac.Models';
-import Path from './Path';
-import Text from './Text';
-import * as Utils from '../Helper/Hvac.Utils';
-import Formatter from './Text.Formatter';
+import HvacSVG from '../Helper/Helper.SVG';
+import Container from "./Basic.Container";
+import Rect from "./Basic.Rect";
+import Layer from "./Basic.Layer";
+import Models from '../Data/Data.Constant';
+import Path from './Basic.Path';
+import Text from './Basic.Text';
+import * as Utils from '../Helper/Helper.Utils';
+import Formatter from './Basic.Text.Formatter';
 
 interface DocInfo {
   dispX: number;

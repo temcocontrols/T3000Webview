@@ -1,8 +1,8 @@
 
-import Element from './Element';
-import * as Utils from '../Helper/Hvac.Utils';
-import HvacSVG from '../Helper/Hvac.SVG';
-import * as HvacSVG1 from '../Helper/Hvac.SVG1';
+import Element from './Basic.Element';
+import * as Utils from '../Helper/Helper.Utils';
+import HvacSVG from '../Helper/Helper.SVG';
+import * as HvacSVG1 from '../Helper/Helper.SVG1';
 
 class Rect extends Element {
   public shapeElem: any;

@@ -1,9 +1,9 @@
 
-import Container from './Container';
-import * as Utils from '../Helper/Hvac.Utils';
-import HvacSVG from '../Helper/Hvac.SVG';
-import Models from '../Model/Hvac.Models';
-import Symbol from './Symbol';
+import Container from './Basic.Container';
+import * as Utils from '../Helper/Helper.Utils';
+import HvacSVG from '../Helper/Helper.SVG';
+import Models from '../Data/Data.Constant';
+import Symbol from './Basic.Symbol';
 import '../Helper/pathseg';
 
 class Path extends Container {
