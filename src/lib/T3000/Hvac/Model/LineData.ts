@@ -1,16 +1,19 @@
 
+import PaintData from './PaintData';
 
 class LineData {
-  Hatch: number;
-  LineEffect: number;
-  Thickness: number;
-  LinePattern: number;
-  BThick: number;
-  EdgeColor: any;
-  LParam: number;
-  WParam: number;
+  public Paint: PaintData;
+  public Hatch: number;
+  public LineEffect: number;
+  public Thickness: number;
+  public LinePattern: number;
+  public BThick: number;
+  public EdgeColor: any;
+  public LParam: number;
+  public WParam: number;
 
   constructor() {
+    this.Paint = new PaintData('#000000');
     this.Hatch = 0;
     this.LineEffect = 0;
     this.Thickness = 1;
@@ -19,6 +22,11 @@ class LineData {
     this.EdgeColor = null;
     this.LParam = 0;
     this.WParam = 0;
+  }
+
+  SetPaint = (paint: PaintData) => {
+    this.Paint = paint;
+    return this;
   }
 }
 
