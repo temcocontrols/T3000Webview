@@ -1,6 +1,6 @@
 
-import PaintData from './PaintData';
-import OutsideEffectData from './OutsideEffectData';
+import PaintData from './PaintData'
+import OutsideEffectData from './OutsideEffectData'
 
 class TextFormatData {
   public Paint: PaintData;
@@ -27,4 +27,4 @@ class TextFormatData {
   }
 }
 
-export default TextFormatData;
+export default TextFormatData

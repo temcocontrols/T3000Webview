@@ -12,4 +12,4 @@ class PageRecord {
   }
 }
 
-export default PageRecord;
+export default PageRecord

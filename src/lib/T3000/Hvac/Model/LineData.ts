@@ -2,6 +2,7 @@
 import PaintData from './PaintData';
 
 class LineData {
+
   public Paint: PaintData;
   public Hatch: number;
   public LineEffect: number;
@@ -30,4 +31,4 @@ class LineData {
   }
 }
 
-export default LineData;
+export default LineData

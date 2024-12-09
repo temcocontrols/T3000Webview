@@ -1,7 +1,8 @@
 
-import TextureScale from './TextureScale';
+import TextureScale from './TextureScale'
 
 class PaintData {
+
   public FillType: number;
   public Color: string;
   public EndColor: string;
@@ -23,4 +24,4 @@ class PaintData {
   }
 }
 
-export default PaintData;
+export default PaintData

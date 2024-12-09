@@ -1,5 +1,6 @@
 
 class OutsideEffectData {
+
   public OutsideType: number;
   public OutsideExtent_Right: number;
   public OutsideExtent_Left: number;
@@ -21,4 +22,4 @@ class OutsideEffectData {
   }
 }
 
-export default OutsideEffectData;
+export default OutsideEffectData

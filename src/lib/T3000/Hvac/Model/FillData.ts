@@ -1,7 +1,8 @@
 
-import PaintData from './PaintData';
+import PaintData from './PaintData'
 
 class FillData {
+
   public Paint: PaintData;
   public Hatch: number;
   public FillEffect: number;
@@ -24,4 +25,4 @@ class FillData {
   }
 }
 
-export default FillData;
+export default FillData

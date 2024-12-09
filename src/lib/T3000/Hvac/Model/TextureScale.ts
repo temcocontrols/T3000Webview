@@ -1,5 +1,6 @@
 
 class TextureScale {
+
   public Units: number;
   public Scale: number;
   public RWidth: number;
@@ -15,4 +16,4 @@ class TextureScale {
   }
 }
 
-export default TextureScale;
+export default TextureScale

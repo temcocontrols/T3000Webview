@@ -1,40 +1,33 @@
 
-import FillData from './FillData';
-import LineData from './LineData';
-import OutsideEffectData from './OutsideEffectData';
-import TextFormatData from './TextFormatData';
-import PaintData from './PaintData';
-
 class DefaultStyle {
-  public Name: string;
-  public Fill: FillData;
-  public Border: LineData;
-  public OutsideEffect: OutsideEffectData;
-  public Text: TextFormatData;
-  public Line: LineData;
+
+  public font: string;
+  public type: string;
+  public size: number;
+  public weight: string;
+  public style: string;
+  public baseOffset: string;
+  public decoration: string;
+  public color: string;
+  public colorTrans: number;
+  public spError: boolean;
+  public dataField: any;
+  public hyperlink: number;
 
   constructor() {
-    this.Name = 'default';
-    this.Fill = new FillData();
-    this.Border = new LineData();
-    this.OutsideEffect = new OutsideEffectData();
-    this.Text = new TextFormatData();
-    this.Line = new LineData();
+    this.font = 'Arial';
+    this.type = 'sanserif';
+    this.size = 10;
+    this.weight = 'normal';
+    this.style = 'normal';
+    this.baseOffset = 'none';
+    this.decoration = 'none';
+    this.color = '#000000';
+    this.colorTrans = 1;
+    this.spError = false;
+    this.dataField = null;
+    this.hyperlink = -1;
   }
 }
 
-var df = new DefaultStyle();
-
-/*
-var df = new FillData();
-df.SetPaint(new PaintData('#000000'));
-*/
-
-df.Border = new LineData().SetPaint(new PaintData('#7F7F7F'));
-df.Fill = new FillData().SetPaint(new PaintData('#FFFFFF'));
-df.Line = new LineData().SetPaint(new PaintData('#545454'));
-df.Text = new TextFormatData().SetPaint(new PaintData('#333333'));
-
 export default DefaultStyle;
-
-
