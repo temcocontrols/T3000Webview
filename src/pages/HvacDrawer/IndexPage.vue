@@ -169,7 +169,7 @@
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @dragover="($event) => {
+                @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
                   ">
@@ -3026,6 +3026,28 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
     }
   });
 };
+
+function viewportLeftClick(ev) {
+  // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
+  ev.preventDefault();
+
+  if (!locked.value && selectedTool.value.name !== 'Pointer' && !isDrawing.value) {
+    // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
+
+    // Manually create a shape at the mouse current position
+
+    var ePosition = {
+      rect: { width: 60, height: 60, top: ev.clientY, left: ev.clientX },
+      clientX: ev.clientX,
+      clientY: ev.clientY
+    };
+
+    onSelectoDragEnd(ePosition);
+
+    // Release the tool
+    selectTool(tools[0]);
+  }
+}
 
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {

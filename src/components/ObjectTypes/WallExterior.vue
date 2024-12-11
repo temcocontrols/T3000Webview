@@ -286,6 +286,6 @@ export default defineComponent({
   background-color: v-bind("props?.item?.settings?.bgColor");
   /* border: 1px solid #000; */
   margin-top: v-bind("margin");
-  background-color: aqua;
+  /* background-color: aqua; */
 }
 </style>
