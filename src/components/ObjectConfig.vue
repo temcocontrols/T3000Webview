@@ -47,7 +47,7 @@
             <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
             <label class="ml-2" for="bg-color-input">{{
               settings.bgColor?.label || "Background color"
-              }}</label>
+            }}</label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
             <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
@@ -77,7 +77,7 @@
                 <input type="color" id="text-color-input" v-model="item.settings[key]" />
                 <label class="ml-2" for="text-color-input">{{
                   setting.label
-                  }}</label>
+                }}</label>
               </div>
               <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
                 <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
@@ -218,7 +218,9 @@
               label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
             <!-- Display field -->
             <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
-              label="Display field" emit-value map-options />
+              label="Display field" emit-value map-options
+              @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
+
           </div>
         </q-expansion-item>
       </div>
@@ -261,6 +263,7 @@ export default defineComponent({
       // setter
       set(newValue, oldValue) {
         if (newValue === oldValue) return;
+        // console.log("ObjectConfig=>", "set", "newValue=", newValue, "oldValue=", oldValue);
         emit("update:object", newValue);
       },
     });
@@ -306,6 +309,7 @@ export default defineComponent({
       emit("refreshMoveable");
     }
     function T3UpdateEntryField(key, obj) {
+      // console.log('ObjectConfig.vue->T3UpdateEntryField->key=', key, 'obj=', obj);
       emit("T3UpdateEntryField", key, obj);
     }
     function linkT3Entry() {
@@ -332,6 +336,14 @@ export default defineComponent({
       }
     }
 
+    function DisplayFieldValueChanged(value) {
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->value=', value);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value=', item.value);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value.settings=', item.value.settings);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->props=', props.object);
+      emit("DisplayFieldValueChanged", value);
+    }
+
     return {
       item,
       refreshMoveable,
@@ -345,7 +357,8 @@ export default defineComponent({
       getEntryRange,
       getSwitchIcon,
       rangeOptions,
-      updatePropsValue
+      updatePropsValue,
+      DisplayFieldValueChanged
     };
   },
 });

@@ -502,7 +502,8 @@
       v-if="!locked && appState.items[appState.activeItemIndex] && (appState.activeItemIndex || appState.activeItemIndex === 0)"
       @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"
+      @DisplayFieldValueChanged="DisplayFieldValueChanged" />
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
@@ -1654,6 +1655,13 @@ function T3UpdateEntryField(key, obj) {
   });
 }
 
+// Trigger the save event when user changed the "Display Field" value
+function DisplayFieldValueChanged(value) {
+  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
+  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
+  save(false);
+}
+
 // Define a condition for drag events in Selecto
 function selectoDragCondition(e) {
   return !e.inputEvent.altKey;
@@ -1661,21 +1669,14 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
+  // console.log('linkT3EntrySave t3 entry dialog value=', linkT3EntryDialog.value.data);
+  // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
-  if (
-    !appState.value.items[appState.value.activeItemIndex].settings
-      .t3EntryDisplayField
-  ) {
-    if (
-      appState.value.items[appState.value.activeItemIndex].label === undefined
-    ) {
-      appState.value.items[
-        appState.value.activeItemIndex
-      ].settings.t3EntryDisplayField = "id";
+  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
     } else {
-      appState.value.items[
-        appState.value.activeItemIndex
-      ].settings.t3EntryDisplayField = "label";
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
     }
   }
   appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
