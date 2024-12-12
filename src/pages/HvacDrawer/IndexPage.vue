@@ -1640,6 +1640,7 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
+  console.log(' 555555 T3UpdateEntryField key=', key, 'obj=', obj);
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
   if (key === "value" || key === "control") {
@@ -2631,7 +2632,8 @@ function restDocumentAreaPosition(pzXY) {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-  if (!locked.value) return;
+  // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
+  // if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
@@ -2653,6 +2655,23 @@ function objectClicked(item) {
     item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
     T3UpdateEntryField("control", item);
   }
+}
+
+// Updates an entry value
+function changeEntryValue(refItem, newVal, control) {
+  // console.log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
+  const key = control ? "control" : "value";
+  const item = appState.value.items.find((i) => i.id === refItem.id);
+  item.t3Entry[key] = newVal;
+  T3UpdateEntryField(key, item);
+}
+
+// Toggles the auto/manual mode of an item
+function autoManualToggle(item) {
+  // console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', item, locked.value);
+  // if (!locked.value) return;
+  item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
+  T3UpdateEntryField("auto_manual", item);
 }
 
 // Navigate back in the group navigation history
@@ -2822,12 +2841,6 @@ function saveLib() {
   });
 }
 
-// Toggles the auto/manual mode of an item
-function autoManualToggle(item) {
-  if (!locked.value) return;
-  item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
-  T3UpdateEntryField("auto_manual", item);
-}
 
 // Deletes a library item
 function deleteLibItem(item) {
@@ -2929,14 +2942,6 @@ function deleteLibImage(item) {
       saveLib();
     }
   }
-}
-
-// Updates an entry value
-function changeEntryValue(refItem, newVal, control) {
-  const key = control ? "control" : "value";
-  const item = appState.value.items.find((i) => i.id === refItem.id);
-  item.t3Entry[key] = newVal;
-  T3UpdateEntryField(key, item);
 }
 
 // Converts an object to a different type
