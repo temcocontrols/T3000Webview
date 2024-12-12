@@ -148,6 +148,6 @@ mouse select, multiple select, drag events.
 1. continued updating the library.
 
 2024-12-11
-1. Fixed bug: set the default value of link entry's [Display field] to description field
+1. Fixed bug: set the default value of link entry's [Display field] to description field, and can remerber user last selection
 2. Updated the Auto/Manual icon
 3. Draw selected shape when mouse clicked on the graphic area
