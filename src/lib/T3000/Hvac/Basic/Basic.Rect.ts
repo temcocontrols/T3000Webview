@@ -2,14 +2,9 @@
 
 
 // import Basic from "./Basic.Index";
-import HvacSVG from "../Helper/Helper.SVG.t2"
+import HvacSVG from "../Helper/Helper.SVG"
 import $ from "jquery";
-// import SDJS from "../SDJS/SDJS.Index";
-// import SDUI from "../SDUI/SDUI.Index";
-// this.svgObj = new SVG.Container(SVG.create('g')),
-
 import Element from "./Basic.Element";
-import Global from "./Basic.Global";
 
 class Rect extends Element {
 
