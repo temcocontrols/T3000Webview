@@ -1,19 +1,25 @@
 
 
 
-// import Basic from "./Basic.Index";
-import HvacSVG from "../Helper/Helper.SVG.t2"
-import $ from "jquery";
+
 // import SDJS from "../SDJS/SDJS.Index";
 // import SDUI from "../SDUI/SDUI.Index";
-// this.svgObj = new SVG.Container(SVG.create('g')),
+// import Basic from "./Basic.Index";
+// import GPP from "../gListManager";
+import $ from 'jquery';
+import HvacSVG from "../Helper/Helper.SVG.t2"
 
-import Element from "./Basic.Element";
+
 import Global from "./Basic.Global";
 
-class Rect extends Element {
 
+
+
+import Element from "./Basic.Element";
+
+class Oval extends Element {
   public shapeElem: any;
+
 
   constructor() {
     super();
@@ -21,21 +27,16 @@ class Rect extends Element {
     this.svgObj = null,
       this.shapeElem = null
   }
+
   // GetInstanceName(){
-  //   return "Rect";
+  //   return "Oval";
   // }
-
-
-  // Basic.Rect.prototype = new Basic.Element
-  // Basic.Rect.prototype.constructor = Basic.Rect
+  // Basic.Oval.prototype = new Basic.Element,
+  // Basic.Oval.prototype.constructor = Basic.Oval,
   CreateElement(e, t) {
     'use strict';
-
-    console.log('Basic.Rect.prototype.CreateElement 1 e=', e);
-    console.log('Basic.Rect.prototype.CreateElement 2 t=', t);
-
     return this.svgObj = new HvacSVG.Container(HvacSVG.create('g')),
-      this.shapeElem = new HvacSVG.Rect,
+      this.shapeElem = new HvacSVG.Ellipse,
       this.svgObj.add(this.shapeElem),
       this.InitElement(e, t),
       this.svgObj
@@ -55,6 +56,7 @@ class Rect extends Element {
 
 }
 
-export default Rect;
+export default Oval
 
-// export default Basic.Rect;
+
+// export default Basic.Oval;
