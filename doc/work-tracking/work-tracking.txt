@@ -131,3 +131,23 @@ mouse select, multiple select, drag events.
 
 2024-12-03 (Library Upgradation)
 1. continued updating the library.
+
+2024-12-04 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-05 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-06 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-09 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-10 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-11
+1. Fixed bug: set the default value of link entry's [Display field] to description field
+2. Updated the Auto/Manual icon
+3. Draw selected shape when mouse clicked on the graphic area
