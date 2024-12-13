@@ -4,7 +4,7 @@ import * as Utils from '../Helper/Helper.Utils';
 import HvacSVG from '../Helper/Helper.SVG';
 import Models from '../Data/Data.Constant';
 import Symbol from './Basic.Symbol';
-import '../Helper/pathseg';
+// import '../Helper/pathseg';
 
 class Path extends Container {
   public pathCreator: any;
