@@ -2758,7 +2758,7 @@ function ObjectRightClicked(item, ev) {
 
     showSettingMenu.value = true;
 
-    console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
+    // console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
 
     // Load the default auto_manual value
     if (item.t3Entry.auto_manual === 1) {
@@ -2805,10 +2805,10 @@ function ObjectRightClicked(item, ev) {
 
 function toggleClicked(item, type, ev) {
   // ev.preventDefault();
-  console.log('toggleClicked->item,type', item, type, ev);
-  console.log('toggleClicked->toggleModeValue,toggleValueValue',
-    toggleModeValue.value, toggleValueValue.value);
-  console.log('toggleClicked->before item', item.t3Entry)
+  // console.log('toggleClicked->item,type', item, type, ev);
+  // console.log('toggleClicked->toggleModeValue,toggleValueValue',
+  //   toggleModeValue.value, toggleValueValue.value);
+  // console.log('toggleClicked->before item', item.t3Entry)
 
   if (type === "mode") {
 
@@ -2838,7 +2838,7 @@ function toggleClicked(item, type, ev) {
 
   save(false);
 
-  console.log('toggleClicked->after item', item.t3Entry)
+  // console.log('toggleClicked->after item', item.t3Entry)
 }
 
 function setTheSettingContextMenuVisible() {
