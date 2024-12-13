@@ -367,6 +367,36 @@
 
                     <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
                       <q-list>
+
+
+                        <q-item dense v-if="topContextToggleVisible">
+                          <span style="margin-top: 8px">Mode:</span>
+                          <q-toggle :label="toggleModeValue" v-model="toggleModeValue" color="blue"
+                            @click="toggleClicked(item, 'mode', $event)" false-value="Auto" true-value="Manual" />
+                        </q-item>
+                        <q-separator />
+                        <q-item dense :disable="toggleValueDisable" v-if="toggleValueShow">
+                          <span style="margin-top: 8px">Value:</span>
+                          <q-toggle :disable="toggleValueDisable" :label="toggleValueValue" v-model="toggleValueValue"
+                            color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
+                            true-value="On" />
+                        </q-item>
+                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                          <span style="margin-top: 8px">Value:</span>
+                          <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
+                            type="number" v-model="toggleNumberValue"
+                            @click="toggleClicked(item, 'number-value', $event)" />
+                        </q-item> -->
+                        <q-separator />
+
+
+
+
+
+
+
+
+
                         <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
                           <q-item-section avatar>
                             <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
@@ -466,11 +496,37 @@
                       </q-list>
                     </q-menu>
 
+                    <q-menu v-if="showSettingMenu && appState.selectedTargets?.length === 0" touch-position
+                      context-menu>
+                      <q-list>
+                        <q-item dense>
+                          <span style="margin-top: 8px">Mode:</span>
+                          <q-toggle :label="toggleModeValue" v-model="toggleModeValue" color="blue"
+                            @click="toggleClicked(item, 'mode', $event)" false-value="Auto" true-value="Manual" />
+                        </q-item>
+                        <q-separator />
+                        <q-item dense :disable="toggleValueDisable" v-if="toggleValueShow">
+                          <span style="margin-top: 8px">Value:</span>
+                          <q-toggle :disable="toggleValueDisable" :label="toggleValueValue" v-model="toggleValueValue"
+                            color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
+                            true-value="On" />
+                        </q-item>
+                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                          <span style="margin-top: 8px">Value:</span>
+                          <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
+                            type="number" v-model="toggleNumberValue"
+                            @click="toggleClicked(item, 'number-value', $event)" />
+                        </q-item> -->
+                        <q-separator />
+                      </q-list>
+
+                    </q-menu>
+
                     <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
                       :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" />
+                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
                       item.cat === 'General' ||
@@ -615,6 +671,8 @@ import T3000 from "src/lib/T3000/T3000";
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
+
+
 
 // Ruler & Grid default value
 const documentAreaPosition = ref(
@@ -2632,8 +2690,11 @@ function restDocumentAreaPosition(pzXY) {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+
+  setTheSettingContextMenuVisible();
+
   // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
-  // if (!locked.value) return;
+  if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
@@ -2669,9 +2730,142 @@ function changeEntryValue(refItem, newVal, control) {
 // Toggles the auto/manual mode of an item
 function autoManualToggle(item) {
   // console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', item, locked.value);
-  // if (!locked.value) return;
+  if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
+}
+
+const topContextToggleVisible = ref(false);
+
+const showSettingMenu = ref(false);
+const toggleModeValue = ref('Auto');
+const toggleValueValue = ref('Off');
+const toggleValueDisable = ref(false);
+const toggleValueShow = ref(false);
+
+const toggleNumberDisable = ref(false);
+const toggleNumberShow = ref(false);
+const toggleNumberValue = ref(0);
+
+
+function ObjectRightClicked(item, ev) {
+  // ev.preventDefault();
+
+  console.log('4444444444444444444 ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  console.log('4444444444444444444 ObjectRightClicked->ev,item', item);
+
+  if (item.t3Entry !== null) {
+
+    showSettingMenu.value = true;
+
+    console.log('4444444444444444444 ObjectRightClicked->item.t3Entry', item.t3Entry);
+
+    // Load the default auto_manual value
+    if (item.t3Entry.auto_manual === 1) {
+      toggleModeValue.value = "Manual";
+      toggleValueDisable.value = false;
+      toggleNumberDisable.value = false;
+    }
+    else {
+      toggleModeValue.value = "Auto";
+      toggleValueDisable.value = true;
+      toggleNumberDisable.value = true;
+    }
+
+    // Show on/off value field only if the digital_analog is 0, otherwise show different value field (Input / Dropdown)
+
+    if (item.t3Entry.digital_analog === 0) {
+      toggleValueShow.value = true;
+    }
+    else {
+      toggleValueShow.value = false;
+    }
+
+    // Load the default control value
+    if (item.t3Entry.control === 1) {
+      toggleValueValue.value = "On";
+    }
+    else {
+      toggleValueValue.value = "Off";
+    }
+
+    // Set digital_analog field and value
+    if (item.t3Entry.digital_analog === 1) {
+      toggleNumberShow.value = true;
+      toggleNumberValue.value = item.t3Entry.value;
+    }
+    else {
+      toggleNumberShow.value = false;
+    }
+  }
+  else {
+    showSettingMenu.value = false;
+  }
+}
+
+function toggleClicked(item, type, ev) {
+  // ev.preventDefault();
+  console.log('5555555555555555555 IndexPage.vue->toggleClicked->item,type', item, type, ev);
+  console.log('5555555555555555555 IndexPage.vue->toggleClicked->toggleModeValue,toggleValueValue',
+    toggleModeValue.value, toggleValueValue.value);
+  console.log('5555555555555555555 IndexPage.vue->toggleClicked->before item', item.t3Entry)
+
+  if (type === "mode") {
+
+    // Disable the value field if the mode is set to Auto
+    if (toggleModeValue.value === "Auto") {
+      toggleValueDisable.value = true;
+      toggleNumberDisable.value = true;
+    }
+    else {
+      toggleValueDisable.value = false;
+      toggleNumberDisable.value = false;
+    }
+
+    item.t3Entry.auto_manual = toggleModeValue.value === "Auto" ? 0 : 1;
+    T3UpdateEntryField("auto_manual", item);
+  }
+
+  if (type == "value") {
+    item.t3Entry.control = toggleValueValue.value === "Off" ? 0 : 1;
+    T3UpdateEntryField("control", item);
+  }
+
+  if (type === "number-value") {
+    item.t3Entry.value = toggleNumberValue.value;
+    T3UpdateEntryField("value", item);
+  }
+
+  save(false);
+
+  console.log('5555555555555555555 IndexPage.vue->toggleClicked->after item', item.t3Entry)
+}
+
+function setTheSettingContextMenuVisible() {
+
+  if (appState.value.selectedTargets.length > 1) {
+    topContextToggleVisible.value = false;
+    toggleValueShow.value = false;
+    toggleNumberShow.value = false;
+
+  } else {
+    if (appState.value.selectedTargets.length === 1) {
+      const selectedItem = appState.value.items.find(
+        (item) => `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+      )
+
+      console.log('6666666666666666666 IndexPage.vue->setTheSettingContextMenuVisible->selectedItem', selectedItem);
+      if (selectedItem.t3Entry !== null) {
+        topContextToggleVisible.value = true;
+        ObjectRightClicked(selectedItem, null);
+      }
+      else {
+        topContextToggleVisible.value = false;
+        toggleValueShow.value = false;
+        toggleNumberShow.value = false;
+      }
+    }
+  }
 }
 
 // Navigate back in the group navigation history
