@@ -1698,7 +1698,7 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-  console.log(' 555555 T3UpdateEntryField key=', key, 'obj=', obj);
+  // console.log(' 555555 T3UpdateEntryField key=', key, 'obj=', obj);
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
   if (key === "value" || key === "control") {
@@ -2751,14 +2751,14 @@ const toggleNumberValue = ref(0);
 function ObjectRightClicked(item, ev) {
   // ev.preventDefault();
 
-  console.log('4444444444444444444 ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-  console.log('4444444444444444444 ObjectRightClicked->ev,item', item);
+  console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  console.log('ObjectRightClicked->ev,item', item);
 
   if (item.t3Entry !== null) {
 
     showSettingMenu.value = true;
 
-    console.log('4444444444444444444 ObjectRightClicked->item.t3Entry', item.t3Entry);
+    console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
 
     // Load the default auto_manual value
     if (item.t3Entry.auto_manual === 1) {
@@ -2805,10 +2805,10 @@ function ObjectRightClicked(item, ev) {
 
 function toggleClicked(item, type, ev) {
   // ev.preventDefault();
-  console.log('5555555555555555555 IndexPage.vue->toggleClicked->item,type', item, type, ev);
-  console.log('5555555555555555555 IndexPage.vue->toggleClicked->toggleModeValue,toggleValueValue',
+  console.log('toggleClicked->item,type', item, type, ev);
+  console.log('toggleClicked->toggleModeValue,toggleValueValue',
     toggleModeValue.value, toggleValueValue.value);
-  console.log('5555555555555555555 IndexPage.vue->toggleClicked->before item', item.t3Entry)
+  console.log('toggleClicked->before item', item.t3Entry)
 
   if (type === "mode") {
 
@@ -2838,7 +2838,7 @@ function toggleClicked(item, type, ev) {
 
   save(false);
 
-  console.log('5555555555555555555 IndexPage.vue->toggleClicked->after item', item.t3Entry)
+  console.log('toggleClicked->after item', item.t3Entry)
 }
 
 function setTheSettingContextMenuVisible() {
@@ -2854,7 +2854,6 @@ function setTheSettingContextMenuVisible() {
         (item) => `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
       )
 
-      console.log('6666666666666666666 IndexPage.vue->setTheSettingContextMenuVisible->selectedItem', selectedItem);
       if (selectedItem.t3Entry !== null) {
         topContextToggleVisible.value = true;
         ObjectRightClicked(selectedItem, null);
