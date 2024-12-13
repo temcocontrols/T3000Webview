@@ -151,3 +151,8 @@ mouse select, multiple select, drag events.
 1. Fixed bug: set the default value of link entry's [Display field] to description field, and can remerber user last selection
 2. Updated the Auto/Manual icon
 3. Draw selected shape when mouse clicked on the graphic area
+
+2024-12-12
+1. Updated: when pump been clicked can toggle the value on/off in manual mode
+2. Updated: when the lock icon area been clicked can swith to Auto or Manul mode
+3. I will start to add the 'Insert key' function to webview today
