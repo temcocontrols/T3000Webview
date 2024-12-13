@@ -19,7 +19,10 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.15.11",
+    "@svgdotjs/svg.draggable.js": "^3.0.4",
     "@svgdotjs/svg.js": "^3.2.4",
+    "@svgdotjs/svg.resize.js": "^2.0.5",
+    "@svgdotjs/svg.select.js": "^4.0.2",
     "@types/fabric": "^5.3.9",
     "@uppy/aws-s3": "^3.5.0",
     "@uppy/core": "^3.0.4",
@@ -36,6 +39,7 @@
     "dotenv": "^16.4.4",
     "echarts": "^5.4.1",
     "fabric": "^6.4.3",
+    "hammerjs": "^2.0.8",
     "keycon": "^1.3.2",
     "ky": "^1.1.3",
     "lodash": "^4.17.21",
@@ -52,6 +56,8 @@
   "devDependencies": {
     "@quasar/app-vite": "^1.0.0",
     "@quasar/quasar-app-extension-testing-unit-vitest": "^1.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
     "@vitest/ui": "^1.3.1",
     "@vue/test-utils": "^2.4.4",
     "autoprefixer": "^10.4.12",
@@ -63,6 +69,7 @@
     "prettier": "^2.5.1",
     "quasar-app-extension-sys-env": "^1.0.1",
     "tailwindcss": "^3.1.8",
+    "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^4.3.1",
     "vitest": "^1.3.1"
   },

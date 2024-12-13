@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hammer.js Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <style>
+    #gestureArea {
+      width: 100%;
+      height: 100vh;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      color: #333;
+    }
+  </style>
+</head>
+
+
+<script>
+  (function (Hammer) {
+    function Drag(options) {
+      Hammer.Recognizer.call(this, options);
+      this.options = Hammer.assign({}, this.defaults, options || {});
+      this.pX = null;
+      this.pY = null;
+    }
+
+    Hammer.inherit(Drag, Hammer.Recognizer, {
+      defaults: {
+        event: 'drag',
+        threshold: 10
+      },
+
+      getTouchAction: function () {
+        return ['none'];
+      },
+
+      process: function (input) {
+        var state = this.state;
+        var eventType = input.eventType;
+
+        var isRecognized = state & (Hammer.STATE_BEGAN | Hammer.STATE_CHANGED);
+        var isValid = this.attrTest(input);
+
+        if (isRecognized && (eventType & Hammer.INPUT_CANCEL || !isValid)) {
+          return state | Hammer.STATE_CANCELLED;
+        } else if (isRecognized || isValid) {
+          if (eventType & Hammer.INPUT_END) {
+            return state | Hammer.STATE_ENDED;
+          } else if (!(state & Hammer.STATE_BEGAN)) {
+            return Hammer.STATE_BEGAN;
+          }
+          return state | Hammer.STATE_CHANGED;
+        }
+        return Hammer.STATE_FAILED;
+      },
+
+      attrTest: function (input) {
+        var options = this.options;
+        var distance = Hammer.util.getDistance(input.startX, input.startY, input.pointers[0].clientX,
+          input.pointers[0].clientY);
+        return distance > options.threshold;
+      },
+
+      emit: function (input) {
+        this.pX = input.pointers[0].clientX;
+        this.pY = input.pointers[0].clientY;
+
+        var direction = Hammer.util.getDirection(input.deltaX, input.deltaY);
+        input.additionalEvent = this.options.event + direction;
+        this.manager.emit(this.options.event, input);
+      }
+    });
+
+    Hammer.Drag = Drag;
+    Hammer.defaults.preset.push([Drag, {}]);
+  })(Hammer);
+</script>
+
+<script>
+  var gestureArea = document.getElementById('gestureArea');
+  var hammer = new Hammer(gestureArea);
+
+  hammer.add(new Hammer.Drag());
+
+  /*
+  hammer.on('dragstart', function (ev) {
+    gestureArea.innerHTML = 'Event: dragstart';
+    console.log('dragstart', ev);
+  });
+
+  hammer.on('dragend', function (ev) {
+    gestureArea.innerHTML = 'Event: dragend';
+    console.log('dragend', ev);
+  });
+  */
+</script>
+
+<script>
+  var gestureArea = document.getElementById('gestureArea');
+  var hammer = new Hammer(gestureArea);
+
+  hammer.add(new Hammer.Drag());
+
+  /*
+  hammer.on('dragstart', function (ev) {
+    gestureArea.innerHTML = 'Event: dragstart';
+    console.log('dragstart', ev);
+  });
+
+  hammer.on('dragmove', function (ev) {
+    gestureArea.innerHTML = 'Event: dragmove';
+    console.log('dragmove', ev);
+  });
+
+  hammer.on('dragend', function (ev) {
+    gestureArea.innerHTML = 'Event: dragend';
+    console.log('dragend', ev);
+  });
+  */
+</script>
+
+<body>
+  <div id="gestureArea">Perform gestures here</div>
+
+
+
+  <script>
+    var gestureArea = document.getElementById('gestureArea');
+    var hammer = new Hammer(gestureArea);
+
+    hammer.add(new Hammer.Drag());
+
+    /*
+    hammer.on('drag', function (ev) {
+      gestureArea.innerHTML = 'Event: drag';
+      console.log('drag', ev);
+    });
+    */
+  </script>
+
+  <script>
+    var gestureArea = document.getElementById('gestureArea');
+    var hammer = new Hammer(gestureArea);
+
+    var events = [
+      'tap', 'doubletap', 'press', 'pressup', 'pan', 'panstart', 'panmove', 'panend', 'pancancel', 'swipe', 'swipeleft', 'swiperight', 'swipeup', 'swipedown', 'pinch', 'pinchstart', 'pinchmove', 'pinchend', 'pinchcancel', 'pinchin', 'pinchout', 'rotate', 'rotatestart', 'rotatemove', 'rotateend', 'rotatecancel'
+    ];
+
+    events.forEach(function (event) {
+      hammer.on(event, function (ev) {
+        gestureArea.innerHTML = 'Event: ' + event;
+        console.log(event, ev);
+      });
+    });
+  </script>
+</body>
+
+</html>

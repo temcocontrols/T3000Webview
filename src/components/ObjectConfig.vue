@@ -218,7 +218,9 @@
               label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
             <!-- Display field -->
             <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
-              label="Display field" emit-value map-options />
+              label="Display field" emit-value map-options
+              @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
+
           </div>
         </q-expansion-item>
       </div>
@@ -230,7 +232,8 @@
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import { getEntryRange, icons, switchIcons, tools } from "../lib/common";
-import { T3000Util } from "src/lib/T3000Util";
+import T3000 from "src/lib/T3000/T3000";
+
 export default defineComponent({
   name: "ToolConfig",
   props: {
@@ -260,6 +263,7 @@ export default defineComponent({
       // setter
       set(newValue, oldValue) {
         if (newValue === oldValue) return;
+        // console.log("ObjectConfig=>", "set", "newValue=", newValue, "oldValue=", oldValue);
         emit("update:object", newValue);
       },
     });
@@ -299,12 +303,13 @@ export default defineComponent({
 
     function refreshMoveable() {
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.settings.strokeWidth = T3000Util.GetExteriorWallStrokeWidth(item.value.height);
+        item.value.settings.strokeWidth = T3000.Hvac.App.GetExteriorWallStrokeWidth(item.value.height);
       }
 
       emit("refreshMoveable");
     }
     function T3UpdateEntryField(key, obj) {
+      // console.log('ObjectConfig.vue->T3UpdateEntryField->key=', key, 'obj=', obj);
       emit("T3UpdateEntryField", key, obj);
     }
     function linkT3Entry() {
@@ -324,11 +329,19 @@ export default defineComponent({
     }
 
     function updatePropsValue(key) {
-      //T3000Util.HvacLog("ObjectConfig=>", "updatePropsValue", "key=", key, "pros.object=", props.object, "item.value=", item.value);
+      //T3000.Utils.Log("ObjectConfig=>", "updatePropsValue", "key=", key, "pros.object=", props.object, "item.value=", item.value);
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.height = T3000Util.GetExteriorWallHeight(item.value.settings.strokeWidth);
+        item.value.height = T3000.Hvac.App.GetExteriorWallHeight(item.value.settings.strokeWidth);
         emit("refreshMoveable");
       }
+    }
+
+    function DisplayFieldValueChanged(value) {
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->value=', value);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value=', item.value);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value.settings=', item.value.settings);
+      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->props=', props.object);
+      emit("DisplayFieldValueChanged", value);
     }
 
     return {
@@ -344,7 +357,8 @@ export default defineComponent({
       getEntryRange,
       getSwitchIcon,
       rangeOptions,
-      updatePropsValue
+      updatePropsValue,
+      DisplayFieldValueChanged
     };
   },
 });

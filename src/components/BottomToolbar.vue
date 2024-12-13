@@ -2,7 +2,7 @@
 .document-toolbar {
   display: flex;
   padding: 0 10px;
-  background-color: #f5f5f5;
+  /* background-color: #f5f5f5; */
   border-bottom: 1px solid #e0e0e0;
   height: 36px;
   color: #444;
@@ -72,7 +72,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { QSlider } from 'quasar';
-import { T3000Util } from 'src/lib/T3000Util';
+// import T3000 from 'src/lib/T3000';
 
 export default defineComponent({
   name: 'BottomToolbar',
@@ -101,21 +101,21 @@ export default defineComponent({
       default: 0
     }
   },
-  emits: ["slideZoom"],
+  emits: ["bottomSliderbarEvent"],
   setup(props, { emit }) {
     const model = ref(25);
 
     const onChange = () => {
-      T3000Util.HvacLog("--------------------------------")
-      emit('slideZoom', "change", model.value);
+      T3000.Utils.Log("--------------------------------")
+      emit('bottomSliderbarEvent', "change", model.value);
     }
 
     const onPan = () => {
-      emit('slideZoom', "pan", model.value);
+      emit('bottomSliderbarEvent', "pan", model.value);
     }
 
     const onUpdate = () => {
-      emit('slideZoom', "update", model.value);
+      emit('bottomSliderbarEvent', "update", model.value);
     }
 
     return {

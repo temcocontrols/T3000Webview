@@ -105,3 +105,54 @@ mouse select, multiple select, drag events.
 1. continue to update the library.
 2. small updates for new wall type.
 3. clean up code and prepare for version release.
+
+2024-11-22
+1. continued working on upgrading the library.
+2. fixed some bugs.
+3. released a new version.
+
+2024-11-25 (Library Upgradation)
+1. continued to update the library and new type of wall.
+
+2024-11-26 (Library Upgradation)
+1. continued updating the library.
+
+2024-11-27 (Library Upgradation)
+1. continued updating the library.
+
+2024-11-28 (Library Upgradation)
+1. continued updating the library.
+
+2024-11-29 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-02 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-03 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-04 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-05 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-06 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-09 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-10 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-11
+1. Fixed bug: set the default value of link entry's [Display field] to description field, and can remerber user last selection
+2. Updated the Auto/Manual icon
+3. Draw selected shape when mouse clicked on the graphic area
+
+2024-12-12
+1. Updated: when pump been clicked can toggle the value on/off in manual mode
+2. Updated: when the lock icon area been clicked can swith to Auto or Manul mode
+3. I will start to add the 'Insert key' function to webview today

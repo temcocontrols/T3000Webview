@@ -18,59 +18,38 @@
   - The component manages the editing lifecycle by integrating with ag-Grid's API to stop editing when necessary.
 -->
 <template>
-  <div
-    class="moveable-item"
-    :class="{
-      'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-        item.type
-      ),
-      'overflow-hidden': item.type === 'Text',
-      [item.type]: item.type,
-      'with-bg': item.settings.bgColor,
-      'with-title':
-        item.settings.title ||
-        (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
-    }"
-  >
-    <div
-      class="object-title"
-      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
-      v-if="item.settings.title"
-      @click="$emit('objectClicked')"
-    >
+  <div class="moveable-item" :class="{
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
+      item.type
+    ),
+    'overflow-hidden': item.type === 'Text',
+    [item.type]: item.type,
+    'with-bg': item.settings.bgColor,
+    'with-title':
+      item.settings.title ||
+      (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+  }">
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }" v-if="item.settings.title"
+      @click="$emit('objectClicked')">
       {{ item.settings.title }}
     </div>
-    <div
-      class="object-title"
-      :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'"
-    >
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
+      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
       <div class="relative">
-        <q-btn
-          v-if="
-            showArrows &&
-            item.type !== 'Switch' &&
-            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
-          "
-          class="up-btn absolute"
-          size="sm"
-          icon="keyboard_arrow_up"
-          color="grey-4"
-          text-color="black"
-          dense
-          :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('increase')"
-        />
+        <q-btn v-if="
+          showArrows &&
+          item.type !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
+          icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('increase')" />
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
           }}</span>
-          <span
-            v-if="item.t3Entry.auto_manual !== undefined"
-            class="mode-icon ml-2 text-lg"
-            @click="$emit('autoManualToggle')"
-          >
-            <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
+
+          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
+            @click="$emit('autoManualToggle')">
+            <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
               <q-tooltip anchor="top middle" self="center middle">
                 In auto mode
               </q-tooltip>
@@ -79,216 +58,76 @@
               <q-tooltip anchor="top middle" self="center middle">
                 In manual mode
               </q-tooltip>
+            </q-icon> -->
+            <q-icon v-if="!item.t3Entry.auto_manual">
+              <q-tooltip anchor="top middle" self="center middle">
+                In auto mode
+              </q-tooltip>
+            </q-icon>
+            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
+              <q-tooltip anchor="top middle" self="center middle">
+                In manual mode
+              </q-tooltip>
             </q-icon>
           </span>
         </div>
-        <q-btn
-          v-if="
-            showArrows &&
-            item.type !== 'Switch' &&
-            ['value', 'control'].includes(item.settings.t3EntryDisplayField)
-          "
-          class="down-btn absolute"
-          size="sm"
-          icon="keyboard_arrow_down"
-          color="grey-4"
-          text-color="black"
-          dense
-          :disable="item.t3Entry?.auto_manual === 0"
-          @click="changeValue('decrease')"
-        />
+        <q-btn v-if="
+          showArrows &&
+          item.type !== 'Switch' &&
+          ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
+          icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
+          @click="changeValue('decrease')" />
       </div>
     </div>
-    <div
-      class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }"
-      @click="$emit('objectClicked')"
-    >
+    <div class="flex justify-center object-container relative"
+      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }" @click="$emit('objectClicked')">
       <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
-      <duct
-        v-else-if="item.type === 'Duct'"
-        class="duct"
-        v-bind="item.settings"
-        ref="objectRef"
-      />
-      <cooling-coil
-        v-else-if="item.type === 'CoolingCoil'"
-        class="cooling-coil"
-        v-bind="item.settings"
-      />
-      <heating-coil
-        v-else-if="item.type === 'HeatingCoil'"
-        class="heating-coil"
-        v-bind="item.settings"
-      />
-      <filter-el
-        v-else-if="item.type === 'Filter'"
-        class="filter"
-        v-bind="item.settings"
-      />
-      <humidifier
-        v-else-if="item.type === 'Humidifier'"
-        class="humidifier"
-        v-bind="item.settings"
-      />
-      <humidity
-        v-else-if="item.type === 'Humidity'"
-        class="humidity"
-        v-bind="item.settings"
-      />
-      <Pressure
-        v-else-if="item.type === 'Pressure'"
-        class="pressure"
-        v-bind="item.settings"
-      />
-      <ThermalWheel
-        v-else-if="item.type === 'ThermalWheel'"
-        class="thermal-wheel"
-        v-bind="item.settings"
-      />
-      <damper
-        v-else-if="item.type === 'Damper'"
-        class="damper"
-        :item="item"
-        v-bind="item.settings"
-      />
-      <boiler
-        v-else-if="item.type === 'Boiler'"
-        class="boiler"
-        v-bind="item.settings"
-      />
-      <heatpump
-        v-else-if="item.type === 'Heatpump'"
-        class="heatpump"
-        v-bind="item.settings"
-      />
-      <pump
-        v-else-if="item.type === 'Pump'"
-        class="heatpump"
-        v-bind="item.settings"
-      />
-      <ValveThreeWay
-        v-else-if="item.type === 'ValveThreeWay'"
-        class="valve-threeway"
-        v-bind="item.settings"
-      />
-      <ValveTwoWay
-        v-else-if="item.type === 'ValveTwoWay'"
-        class="valve-threeway"
-        v-bind="item.settings"
-      />
-      <enthalpy
-        v-else-if="item.type === 'Enthalpy'"
-        class="enthalpy"
-        v-bind="item.settings"
-      />
-      <flow
-        v-else-if="item.type === 'Flow'"
-        class="flow"
-        v-bind="item.settings"
-      />
-      <text-el
-        v-else-if="item.type === 'Text'"
-        class="text"
-        v-bind="item.settings"
-      />
-      <box-el
-        v-else-if="item.type === 'Box'"
-        class="box"
-        v-bind="item.settings"
-      />
-      <icon-value
-        v-else-if="item.type === 'Icon'"
-        class="icon-value"
-        :item="item"
-        :show-arrows="showArrows"
-        v-bind="item.settings"
-        @change-value="changeValue"
-      />
-      <icon-basic
-        v-else-if="item.type === 'IconBasic'"
-        class="icon-basic"
-        :item="item"
-        v-bind="item.settings"
-      />
-      <icon-switch
-        v-else-if="item.type === 'Switch'"
-        class="icon-switch"
-        :item="item"
-        :show-arrows="showArrows"
-        v-bind="item.settings"
-        @change-value="changeValue"
-      />
-      <led-el
-        v-else-if="item.type === 'LED'"
-        class="led-el"
-        :item="item"
-        v-bind="item.settings"
-      />
-      <value-el
-        v-else-if="item.type === 'Value'"
-        class="value"
-        :item="item"
-        :show-arrows="showArrows"
-        v-bind="item.settings"
-        @change-value="changeValue"
-      />
-      <temperature
-        v-else-if="item.type === 'Temperature'"
-        class="temperature"
-        v-bind="item.settings"
-      />
-      <gauge-chart
-        v-else-if="item.type === 'Gauge'"
-        class="gauge-object gauge"
-        v-bind="item.settings"
-        :unit="range.unit"
-        :colors="processedColors"
-        :value="item.t3Entry?.value / 1000 || 0"
-      />
-      <div
-        v-else-if="item.type === 'Dial'"
-        class="flex flex-col flex-nowrap justify-center"
-      >
-        <dial-chart
-          class="gauge-object dial"
-          :options="{
-            value: item.t3Entry?.value / 1000 || 0,
-            unit: range.unit,
-            ...item.settings,
-            colors: processedColors,
-          }"
-        />
+      <duct v-else-if="item.type === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
+      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
+      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.settings" />
+      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.settings" />
+      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.settings" />
+      <humidity v-else-if="item.type === 'Humidity'" class="humidity" v-bind="item.settings" />
+      <Pressure v-else-if="item.type === 'Pressure'" class="pressure" v-bind="item.settings" />
+      <ThermalWheel v-else-if="item.type === 'ThermalWheel'" class="thermal-wheel" v-bind="item.settings" />
+      <damper v-else-if="item.type === 'Damper'" class="damper" :item="item" v-bind="item.settings" />
+      <boiler v-else-if="item.type === 'Boiler'" class="boiler" v-bind="item.settings" />
+      <heatpump v-else-if="item.type === 'Heatpump'" class="heatpump" v-bind="item.settings" />
+      <pump v-else-if="item.type === 'Pump'" class="heatpump" v-bind="item.settings" />
+      <ValveThreeWay v-else-if="item.type === 'ValveThreeWay'" class="valve-threeway" v-bind="item.settings" />
+      <ValveTwoWay v-else-if="item.type === 'ValveTwoWay'" class="valve-threeway" v-bind="item.settings" />
+      <enthalpy v-else-if="item.type === 'Enthalpy'" class="enthalpy" v-bind="item.settings" />
+      <flow v-else-if="item.type === 'Flow'" class="flow" v-bind="item.settings" />
+      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
+      <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
+      <icon-value v-else-if="item.type === 'Icon'" class="icon-value" :item="item" :show-arrows="showArrows"
+        v-bind="item.settings" @change-value="changeValue" />
+      <icon-basic v-else-if="item.type === 'IconBasic'" class="icon-basic" :item="item" v-bind="item.settings" />
+      <icon-switch v-else-if="item.type === 'Switch'" class="icon-switch" :item="item" :show-arrows="showArrows"
+        v-bind="item.settings" @change-value="changeValue" />
+      <led-el v-else-if="item.type === 'LED'" class="led-el" :item="item" v-bind="item.settings" />
+      <value-el v-else-if="item.type === 'Value'" class="value" :item="item" :show-arrows="showArrows"
+        v-bind="item.settings" @change-value="changeValue" />
+      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
+      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
+        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
+      <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
+        <dial-chart class="gauge-object dial" :options="{
+          value: item.t3Entry?.value / 1000 || 0,
+          unit: range.unit,
+          ...item.settings,
+          colors: processedColors,
+        }" />
         <div class="text-center font-bold pl-8 pb-2">
           {{ item.t3Entry?.value / 1000 || 0 }} {{ range.unit }}
         </div>
       </div>
-      <RoomHumidity
-        v-else-if="item.type === 'RoomHumidity'"
-        class="room-humidity"
-        v-bind="item.settings"
-      />
-      <RoomTemperature
-        v-else-if="item.type === 'RoomTemperature'"
-        class="room-temperature"
-        v-bind="item.settings"
-      />
-      <Wall
-        v-else-if="item.type === 'Wall'"
-        class="room-temperature"
-        v-bind="item.settings"
-      />
-      <Weld
-        v-else-if="item.type === 'Weld'"
-        class="weld"
-        v-bind:weldModel="item"
-        @update-weld-model="updateWeldModel"
-      />
-      <img
-        class="img-object"
-        v-else-if="item.type.startsWith('IMG-')"
-        :src="item.image.path"
-      />
+      <RoomHumidity v-else-if="item.type === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
+      <RoomTemperature v-else-if="item.type === 'RoomTemperature'" class="room-temperature" v-bind="item.settings" />
+      <Wall v-else-if="item.type === 'Wall'" class="room-temperature" v-bind="item.settings" />
+      <Weld v-else-if="item.type === 'Weld'" class="weld" v-bind:weldModel="item"
+        @update-weld-model="updateWeldModel" />
+      <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
     </div>
   </div>
 </template>
@@ -429,12 +268,12 @@ export default defineComponent({
       return item.type === "Gauge"
         ? item.settings.colors.map((i) => [i.offset / 100, i.color])
         : item.settings.colors.map((i, index) => {
-            return {
-              from: index ? item.settings.colors[index - 1].offset : 0,
-              to: i.offset,
-              color: [i.color],
-            };
-          });
+          return {
+            from: index ? item.settings.colors[index - 1].offset : 0,
+            to: i.offset,
+            color: [i.color],
+          };
+        });
     });
 
     function changeValue(type) {
@@ -534,6 +373,7 @@ export default defineComponent({
   color: v-bind("item.settings.textColor");
   font-size: v-bind("item.settings.fontSize + 'px'");
 }
+
 .moveable-item.Duct {
   background-color: transparent;
 }
@@ -611,18 +451,22 @@ export default defineComponent({
 .moveable-item.Switch.with-bg .object-title {
   background-color: transparent;
 }
+
 .moveable-item.link {
   cursor: pointer;
 }
+
 .img-object {
   max-width: none;
   width: 100%;
 }
+
 .up-btn {
   display: none;
   bottom: 100%;
   z-index: 1;
 }
+
 .down-btn {
   display: none;
   top: 100%;
@@ -633,10 +477,12 @@ export default defineComponent({
 .moveable-item.Switch .up-btn {
   bottom: calc(100% + 5px);
 }
+
 .moveable-item.Icon .down-btn,
 .moveable-item.Switch .down-btn {
   top: calc(100% + 3px);
 }
+
 .object-title:hover .up-btn,
 .object-title:hover .down-btn {
   display: inline-flex;

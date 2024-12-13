@@ -3,7 +3,7 @@
   margin-left: 0px;
   position: absolute;
   width: 100%;
-  background-color: red;
+  background-color: rgb(223, 178, 178);
 }
 
 #main-toolbar {
@@ -56,7 +56,7 @@
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  background-color: hotpink;
+  background-color: rgb(227, 153, 190);
 }
 
 .document-ruler-corner {
@@ -80,7 +80,7 @@
   top: 0px;
   width: 976.8px;
   height: 20px;
-  background-color: blue;
+  background-color: rgb(166, 166, 223);
 }
 
 .document-ruler-left {
@@ -148,19 +148,16 @@
               c-ruler
             </div>
             <div id="h-ruler" class="document-ruler-top">
-              h-ruler
             </div>
             <div id="v-ruler" class="document-ruler-left">
-              v-ruler
             </div>
             <div id="svg-area" class="svg-area">
-              svg area
             </div>
           </div>
 
           <div id="doc-toolbar" class="doc-toolbar">
             <!-- bottom tool bar -->
-            <BottomToolbar @slideZoom="slideZoom">
+            <BottomToolbar @bottomSliderbarEvent="T3000.Hvac.App.BottomSliderbarEvent">
             </BottomToolbar>
           </div>
 
@@ -303,10 +300,10 @@ import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
 
-//
-import { T3000 } from "src/lib/T3000";
-import { T3000Util } from "src/lib/T3000Util";
-//
+
+// import T3000 from "src/lib/T3000";
+import T3000 from 'src/lib/T3000/T3000';
+
 
 // Meta information for the application
 // Set the meta information
@@ -426,6 +423,9 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
+  document.addEventListener("wheel", function (event) { if (event.ctrlKey) { event.preventDefault() } }, { passive: false });
+
+  T3000.Hvac.UI.Initialize(); // Initialize the HVAC UI
 
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
@@ -514,7 +514,7 @@ onMounted(() => {
 
   // Viewport wrapper scroll event listener
   const div = document.querySelector('.svg-area');//viewport-wrapper
-  div.addEventListener('scroll', handleScroll);
+  // div.addEventListener('scroll', handleScroll);
 
   // Init ruler and grid default value
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
@@ -527,7 +527,10 @@ onMounted(() => {
 // Lifecycle hook for component unmount
 onUnmounted(() => {
   if (panzoomInstance?.dispose) return;
-  panzoomInstance.dispose();
+
+  if (panzoomInstance != null && panzoomInstance != undefined) {
+    panzoomInstance.dispose();
+  }
 });
 
 // Handle messages from the webview
@@ -2316,12 +2319,13 @@ function lockToggle() {
 
   // Update the document area position based on the lock state
   // restDocumentAreaPosition();
-  ResetLeftPanel(locked.value);
+  T3000.Hvac.App.ResetLeftPanel(locked.value);
+  T3000.Hvac.UI.docHandler.HandleResizeEvent();
 }
 
-function slideZoom(type, val) {
-  T3000Util.HvacLog("slideZoom=>type,val", type, val);
-}
+// function slideZoom(type, val) {
+//   T3000.Utils.Log("slideZoom=>type,val", type, val);
+// }
 
 function restDocumentAreaPosition(pzXY) {
   const div = document.querySelector('.full-area');
