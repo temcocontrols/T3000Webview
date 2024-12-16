@@ -381,12 +381,12 @@
                             color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
                             true-value="On" />
                         </q-item>
-                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
                           <span style="margin-top: 8px">Value:</span>
                           <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
                             type="number" v-model="toggleNumberValue"
                             @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item> -->
+                        </q-item>
                         <q-separator />
 
 
@@ -511,12 +511,12 @@
                             color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
                             true-value="On" />
                         </q-item>
-                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
                           <span style="margin-top: 8px">Value:</span>
                           <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
                             type="number" v-model="toggleNumberValue"
                             @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item> -->
+                        </q-item>
                         <q-separator />
                       </q-list>
 
@@ -989,6 +989,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
       if (!linkT3EntryDialog.value.active) {
         selectPanelOptions.value = T3000_Data.value.panelsData;
+        console.log('GET_ENTRIES_RES', T3000_Data.value.panelsData);
       }
       refreshLinkedEntries(arg.data.data);
     } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
@@ -1698,9 +1699,16 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-  // console.log(' 555555 T3UpdateEntryField key=', key, 'obj=', obj);
+  console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
+  console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+  console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
+
+  if (fieldVal > 1000) {
+    fieldVal = fieldVal / 1000;
+  }
+
   if (key === "value" || key === "control") {
     refreshObjectStatus(obj);
   }
@@ -1712,6 +1720,8 @@ function T3UpdateEntryField(key, obj) {
     entryIndex: obj.t3Entry.index,
     entryType: T3_Types[obj.t3Entry.type],
   });
+
+  console.log('IndexPage.vue T3UpdateEntryField post to C++ fieldVal', fieldVal);
 }
 
 // Trigger the save event when user changed the "Display Field" value
@@ -2635,6 +2645,8 @@ function reloadPanelsData() {
 
 // Refresh linked entries with updated panel data
 function refreshLinkedEntries(panelData) {
+  console.log('IndexPage.vue->refreshLinkedEntries->panelData', panelData);
+  console.log('IndexPage.vue->refreshLinkedEntries->appState.value.items', appState.value.items);
   appState.value.items
     .filter((i) => i.t3Entry?.type)
     .forEach((item) => {
@@ -2792,7 +2804,7 @@ function ObjectRightClicked(item, ev) {
     // Set digital_analog field and value
     if (item.t3Entry.digital_analog === 1) {
       toggleNumberShow.value = true;
-      toggleNumberValue.value = item.t3Entry.value;
+      toggleNumberValue.value = item.t3Entry.value / 1000;
     }
     else {
       toggleNumberShow.value = false;
@@ -2832,7 +2844,7 @@ function toggleClicked(item, type, ev) {
   }
 
   if (type === "number-value") {
-    item.t3Entry.value = toggleNumberValue.value;
+    item.t3Entry.value = toggleNumberValue.value * 1000;
     T3UpdateEntryField("value", item);
   }
 
