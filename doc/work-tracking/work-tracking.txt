@@ -156,3 +156,7 @@ mouse select, multiple select, drag events.
 1. Updated: when pump been clicked can toggle the value on/off in manual mode
 2. Updated: when the lock icon area been clicked can swith to Auto or Manul mode
 3. I will start to add the 'Insert key' function to webview today
+
+2024-12-13
+1. Added a context menu to toggle the value of [Model] and [Value] field to [Auto/Manual] and [On/Off]
+2. Released a new version to including above updates
