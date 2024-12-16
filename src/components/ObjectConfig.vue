@@ -276,10 +276,16 @@ export default defineComponent({
         (i) => i.status === 1
       );
       const ranges = cloneDeep(items);
-      return ranges?.map((ii) => {
-        ii.value = ii.value * 1000;
+      console.log('== oc range-options range=', ranges);
+      const result = ranges?.map((ii) => {
+        // ii.value = ii.value * 1000;
+        ii.value = ii.value;
         return ii;
       });
+
+      console.log('== oc range-options result=', result);
+      console.log('== oc range-options props=', props);
+      return result;
     });
     const t3EntryDisplayFieldOptions = computed(() => {
       const options = [
@@ -309,8 +315,8 @@ export default defineComponent({
       emit("refreshMoveable");
     }
     function T3UpdateEntryField(key, obj) {
-      console.log('ObjectConfig.vue->T3UpdateEntryField->key=', key, 'obj=', obj);
-      console.log('ObjectConfig.vue->T3UpdateEntryField->props.object=', props.object);
+      // console.log('ObjectConfig.vue->T3UpdateEntryField->key=', key, 'obj=', obj);
+      // console.log('ObjectConfig.vue->T3UpdateEntryField->props.object=', props.object);
       emit("T3UpdateEntryField", key, obj);
     }
     function linkT3Entry() {
@@ -330,8 +336,8 @@ export default defineComponent({
     }
 
     function updatePropsValue(key) {
-      console.log('ObjectConfig=>,updatePropsValue,key', key);
-      console.log('ObjectConfig=>,updatePropsValue,props', props.object);
+      // console.log('ObjectConfig=>,updatePropsValue,key', key);
+      // console.log('ObjectConfig=>,updatePropsValue,props', props.object);
       //T3000.Utils.Log("ObjectConfig=>", "updatePropsValue", "key=", key, "pros.object=", props.object, "item.value=", item.value);
       if (item.value.type === "Int_Ext_Wall") {
         item.value.height = T3000.Hvac.App.GetExteriorWallHeight(item.value.settings.strokeWidth);

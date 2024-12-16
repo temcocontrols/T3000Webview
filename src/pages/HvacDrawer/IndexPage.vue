@@ -699,7 +699,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
@@ -943,10 +943,16 @@ onMounted(() => {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 });
 
+onBeforeUnmount(() => {
+  // selecto.value = null;
+  console.log('=== onBeforeUnmount ===', selecto.value);
+  console.log('=== onBeforeUnmount ===', moveable.value);
+  console.log('=== onBeforeUnmount ===', appState.value.selectedTargets);
+})
+
 // Lifecycle hook for component unmount
 onUnmounted(() => {
   appState.value.selectedTargets = [];
-  selecto.value = null;
 
   if (panzoomInstance?.dispose) return;
   panzoomInstance?.dispose();
@@ -2729,8 +2735,8 @@ function reloadPanelsData() {
 
 // Refresh linked entries with updated panel data
 function refreshLinkedEntries(panelData) {
-  console.log('IndexPage.vue->refreshLinkedEntries->panelData', panelData);
-  console.log('IndexPage.vue->refreshLinkedEntries->appState.value.items', appState.value.items);
+  // console.log('IndexPage.vue->refreshLinkedEntries->panelData', panelData);
+  // console.log('IndexPage.vue->refreshLinkedEntries->appState.value.items', appState.value.items);
   appState.value.items
     .filter((i) => i.t3Entry?.type)
     .forEach((item) => {
@@ -2741,7 +2747,11 @@ function refreshLinkedEntries(panelData) {
           ii.pid === item.t3Entry.pid
       );
       if (linkedEntry && linkedEntry.id) {
+        console.log('== Before refreshObjectStatus lk-value item,lk', linkedEntry.value, item, linkedEntry);
+        let newLkValue = linkedEntry.value / 1000;
+        linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
+        console.log('== After refreshObjectStatus lk-value item,lk', linkedEntry.value, item, linkedEntry);
         refreshObjectStatus(item);
       }
     });
@@ -2847,8 +2857,8 @@ const toggleNumberValue = ref(0);
 function ObjectRightClicked(item, ev) {
   // ev.preventDefault();
 
-  console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-  console.log('ObjectRightClicked->ev,item', item);
+  // console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  // console.log('ObjectRightClicked->ev,item', item);
 
   if (item.t3Entry !== null) {
 
@@ -2888,7 +2898,7 @@ function ObjectRightClicked(item, ev) {
     // Set digital_analog field and value
     if (item.t3Entry.digital_analog === 1) {
       toggleNumberShow.value = true;
-      toggleNumberValue.value = item.t3Entry.value;/// 1000;
+      toggleNumberValue.value = item.t3Entry.value * 1;/// 1000;
     }
     else {
       toggleNumberShow.value = false;
@@ -2928,7 +2938,7 @@ function toggleClicked(item, type, ev) {
   }
 
   if (type === "number-value") {
-    item.t3Entry.value = toggleNumberValue.value;// * 1000;
+    item.t3Entry.value = toggleNumberValue.value * 1;// * 1000;
     T3UpdateEntryField("value", item);
   }
 

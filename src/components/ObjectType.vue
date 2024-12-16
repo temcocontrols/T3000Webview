@@ -45,7 +45,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-            }}</span>
+          }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -237,7 +237,8 @@ export default defineComponent({
           props.item.t3Entry.range > 100
         ) {
           const rangeValue = range.options?.find(
-            (item) => item.value * 1000 === props.item.t3Entry.value
+            // (item) => item.value * 1000 === props.item.t3Entry.value
+            (item) => item.value === props.item.t3Entry.value
           );
           return rangeValue?.name;
         } else if (
@@ -303,9 +304,11 @@ export default defineComponent({
         props.item.t3Entry.digital_analog === 1
       ) {
         if (type === "increase") {
-          newVal = props.item.t3Entry.value + 1000;
+          // newVal = props.item.t3Entry.value + 1000;
+          newVal = props.item.t3Entry.value + 1;
         } else {
-          newVal = props.item.t3Entry.value - 1000;
+          // newVal = props.item.t3Entry.value - 1000;
+          newVal = props.item.t3Entry.value - 1;
         }
       } else if (
         props.item.t3Entry.control !== undefined &&
