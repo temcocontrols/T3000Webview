@@ -948,6 +948,11 @@ onBeforeUnmount(() => {
   console.log('=== onBeforeUnmount ===', selecto.value);
   console.log('=== onBeforeUnmount ===', moveable.value);
   console.log('=== onBeforeUnmount ===', appState.value.selectedTargets);
+
+
+  if (selecto.value) {
+    selecto.value.destroy();
+  }
 })
 
 // Lifecycle hook for component unmount
@@ -2747,11 +2752,11 @@ function refreshLinkedEntries(panelData) {
           ii.pid === item.t3Entry.pid
       );
       if (linkedEntry && linkedEntry.id) {
-        console.log('== Before refreshObjectStatus lk-value item,lk', linkedEntry.value, item, linkedEntry);
+        console.log('== Before refreshObjectStatus lk-value item,lk', linkedEntry.value, linkedEntry);
         let newLkValue = linkedEntry.value / 1000;
         linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
-        console.log('== After refreshObjectStatus lk-value item,lk', linkedEntry.value, item, linkedEntry);
+        console.log('== After refreshObjectStatus lk-value item,lk', linkedEntry.value, linkedEntry);
         refreshObjectStatus(item);
       }
     });
@@ -2896,7 +2901,7 @@ function ObjectRightClicked(item, ev) {
     }
 
     // Set digital_analog field and value
-    if (item.t3Entry.digital_analog === 1) {
+    if (item.t3Entry.digital_analog === 1 && item.t3Entry.range !== 101) {
       toggleNumberShow.value = true;
       toggleNumberValue.value = item.t3Entry.value * 1;/// 1000;
     }
