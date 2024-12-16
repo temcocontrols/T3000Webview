@@ -618,6 +618,65 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="insertT3EntryDialog.active">
+    <!-- <a>This is a test q-dialog></a> -->
+    <q-card style="min-width: 650px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Link Entry</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section style="height: 70vh" class="scroll">
+        <div class="flex">
+          <q-btn icon="refresh" flat @click="reloadPanelsData">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Reload panels data</strong>
+            </q-tooltip>
+          </q-btn>
+          <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
+            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+            @filter="selectPanelFilterFn" label="Select Entry" class="grow">
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section class="grow">
+                  <q-item-label>{{ entryLabel(scope.opt) }}</q-item-label>
+                </q-item-section>
+                <q-item-section avatar class="pl-1 min-w-0">
+                  <q-chip size="sm" icon="label_important">Panel: {{ scope.opt.pid }}</q-chip>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+        <div class="flex flex-col items-center mt-4">
+          <q-circular-progress v-if="T3000_Data.loadingPanel !== null" indeterminate show-value
+            :value="loadingPanelsProgress" size="270px" :thickness="0.22" color="light-blue" track-color="grey-3"
+            class="q-ma-md overflow-hidden">
+            <div class="text-xl text-center">
+              <div>{{ loadingPanelsProgress }}%</div>
+              <div>
+                Loading Panel #{{
+                  T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number
+                }}
+              </div>
+            </div>
+          </q-circular-progress>
+        </div>
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <!-- Edit Gauge/Dial dialog -->
   <GaugeSettingsDialog v-model:active="gaugeSettingsDialog.active" :data="gaugeSettingsDialog.data"
     @saved="gaugeSettingsSave" />
@@ -666,6 +725,12 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
+import { activate } from "paper/dist/paper-core";
+
+
+// New import for Data
+import Data from "src/lib/T3000/Hvac/Data/Data";
+import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 
 // Meta information for the application
 // Set the meta information
@@ -695,6 +760,8 @@ const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+
+// const insertT3EntryDialog = ref({ activate: false, data: {} })
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -878,8 +945,12 @@ onMounted(() => {
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
+  appState.value.selectedTargets = [];
+  selecto.value = null;
+
   if (panzoomInstance?.dispose) return;
-  panzoomInstance.dispose();
+  panzoomInstance?.dispose();
+
 });
 
 // Handle messages from the webview
@@ -1299,6 +1370,12 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
+
+  // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
+  if (e.lastEvent === null || e.lastEvent === undefined) {
+    return;
+  }
+
   const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
@@ -1705,9 +1782,9 @@ function T3UpdateEntryField(key, obj) {
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
 
-  if (fieldVal > 1000) {
-    fieldVal = fieldVal / 1000;
-  }
+  // if (Math.abs(fieldVal) >= 1000) {
+  //   fieldVal = fieldVal / 1000;
+  // }
 
   if (key === "value" || key === "control") {
     refreshObjectStatus(obj);
@@ -1944,6 +2021,13 @@ keycon.keydown(["ctrl", "v"], (e) => {
 keycon.keydown(["ctrl", "b"], (e) => {
   e.inputEvent.preventDefault();
   weldSelected();
+});
+
+// Insert function
+keycon.keydown(["insert"], (e) => {
+  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
+  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
@@ -2804,7 +2888,7 @@ function ObjectRightClicked(item, ev) {
     // Set digital_analog field and value
     if (item.t3Entry.digital_analog === 1) {
       toggleNumberShow.value = true;
-      toggleNumberValue.value = item.t3Entry.value / 1000;
+      toggleNumberValue.value = item.t3Entry.value;/// 1000;
     }
     else {
       toggleNumberShow.value = false;
@@ -2844,7 +2928,7 @@ function toggleClicked(item, type, ev) {
   }
 
   if (type === "number-value") {
-    item.t3Entry.value = toggleNumberValue.value * 1000;
+    item.t3Entry.value = toggleNumberValue.value;// * 1000;
     T3UpdateEntryField("value", item);
   }
 
@@ -3344,6 +3428,7 @@ function addOnlineLibImage(oItem) {
   });
 }
 </script>
+
 <style>
 .viewport .selected {
   color: #fff;

@@ -45,7 +45,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -244,7 +244,8 @@ export default defineComponent({
           props.item.t3Entry.value !== undefined &&
           props.item.t3Entry.digital_analog === 1
         ) {
-          return props.item.t3Entry.value / 1000 + " " + range.unit;
+          // return props.item.t3Entry.value / 1000 + " " + range.unit;
+          return props.item.t3Entry.value + " " + range.unit;
         } else if (
           props.item.t3Entry.control !== undefined &&
           props.item.t3Entry.digital_analog === 0
