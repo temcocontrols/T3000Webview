@@ -160,3 +160,8 @@ mouse select, multiple select, drag events.
 2024-12-13
 1. Added a context menu to toggle the value of [Model] and [Value] field to [Auto/Manual] and [On/Off]
 2. Released a new version to including above updates
+
+2024-12-14
+1. Fixed small bugs
+2. Add a context menu for analog value field
+3. Started to build [Insert key] function
