@@ -637,10 +637,10 @@
               <strong>Reload panels data</strong>
             </q-tooltip>
           </q-btn>
-          <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-            input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
-            @filter="selectPanelFilterFn" label="Select Entry" class="grow"
-            @update:model-value="insertT3EntrySelect(value, $event)">
+          <q-select :option-label="entryLabel" label="Input or Select Entry" option-value="id" filled use-input
+            hide-selected fill-input input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
+            @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect(value)" autofocus
+            @focus="insertT3DefaultLoadData">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
                 <q-item-section class="grow">
@@ -956,7 +956,7 @@ onBeforeUnmount(() => {
 
   if (selecto.value) {
     // Perform necessary cleanup for selecto
-    selecto.value.destroySelecto();
+    // selecto.value.destroySelecto();
   }
 })
 
@@ -1882,13 +1882,36 @@ function linkT3EntrySave() {
   linkT3EntryDialog.value.active = false;
 }
 
+// Filter function for selecting panels in the UI
+function selectPanelFilterFn(val, update) {
+  if (val === "") {
+    update(() => {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+
+      // here you have access to "ref" which
+      // is the Vue reference of the QSelect
+    });
+    return;
+  }
+
+  update(() => {
+    const keyword = val.toUpperCase();
+    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
+      (item) =>
+        item.command.toUpperCase().indexOf(keyword) > -1 ||
+        item.description?.toUpperCase().indexOf(keyword) > -1 ||
+        item.label?.toUpperCase().indexOf(keyword) > -1
+    );
+  });
+}
+
 const insertCount = ref(0);
 
 // Insert Key Function
-function insertT3EntrySelect(value, event) {
+function insertT3EntrySelect(value) {
   addActionToHistory("Insert object to T3000 entry");
 
-  console.log('insertT3EntrySelect value,event:', event);
+  console.log('insertT3EntrySelect value:', value);
 
   const posIncrease = insertCount.value * 80;
 
@@ -1941,6 +1964,14 @@ function insertT3EntryOnSave() {
   refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   insertT3EntryDialog.value.data = null;
   insertT3EntryDialog.value.active = false;
+}
+
+function insertT3DefaultLoadData() {
+  // selectPanelOptions.value = T3000_Data.value.panelsData;
+  // selectPanelFilterFn('', (fn) => {
+  //   selectPanelOptions.value = T3000_Data.value.panelsData;
+  // });
+  // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
 // Refresh the status of an object based on its T3 entry
@@ -2413,30 +2444,6 @@ function weldSelected() {
   });
 
   refreshMoveable();
-}
-
-// Filter function for selecting panels in the UI
-function selectPanelFilterFn(val, update) {
-  // console.log('SelectPanelFilterFn val=', val, update);
-  if (val === "") {
-    update(() => {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-
-      // here you have access to "ref" which
-      // is the Vue reference of the QSelect
-    });
-    return;
-  }
-
-  update(() => {
-    const keyword = val.toUpperCase();
-    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-      (item) =>
-        item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description?.toUpperCase().indexOf(keyword) > -1 ||
-        item.label?.toUpperCase().indexOf(keyword) > -1
-    );
-  });
 }
 
 // Undo the last action
