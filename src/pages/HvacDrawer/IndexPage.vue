@@ -638,7 +638,7 @@
             </q-tooltip>
           </q-btn>
           <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+            input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
             @filter="selectPanelFilterFn" label="Select Entry" class="grow" @update:model-value="insertT3EntrySelect">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
@@ -672,7 +672,7 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
       </q-card-actions> -->
     </q-card>
   </q-dialog>
@@ -1884,13 +1884,55 @@ function linkT3EntrySave() {
 
 // Insert Key Function
 function insertT3EntrySelect(value) {
-  console.log('Insert Key selected value', value)
   addActionToHistory("Insert object to T3000 entry");
 
+  // Add a shape to graphic area
   const size = { width: 60, height: 60 };
-  const pos = { clientX: 300, clientY: 200, top: 200, left: 300 };
+  const pos = { clientX: 300, clientY: 100, top: 100, left: 300 };
   const tempTool = tools.find((item) => item.name === 'Pump');
-  drawObject(size, pos, tempTool);
+  const item = drawObject(size, pos, tempTool);
+
+  // Set the added shape to active
+  const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+  appState.value.activeItemIndex = itemIndex;
+
+  // Link to T3 entry
+  insertT3EntryOnSave();
+
+  console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+}
+
+function insertT3EntryOnSave() {
+  addActionToHistory("Link object to T3000 entry");
+  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+    } else {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+    }
+  }
+
+  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
+    toRaw(insertT3EntryDialog.value.data)
+  )
+
+  // Change the icon based on the linked entry type
+  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+    let icon = "fa-solid fa-camera-retro";
+    if (insertT3EntryDialog.value.data.type === "GRP") {
+      icon = "fa-solid fa-camera-retro";
+    } else if (insertT3EntryDialog.value.data.type === "SCHEDULE") {
+      icon = "schedule";
+    } else if (insertT3EntryDialog.value.data.type === "PROGRAM") {
+      icon = "fa-solid fa-laptop-code";
+    } else if (insertT3EntryDialog.value.data.type === "HOLIDAY") {
+      icon = "calendar_month";
+    }
+    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+  }
+  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  insertT3EntryDialog.value.data = null;
+  insertT3EntryDialog.value.active = false;
 }
 
 // Refresh the status of an object based on its T3 entry
