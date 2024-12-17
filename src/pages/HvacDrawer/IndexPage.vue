@@ -639,7 +639,8 @@
           </q-btn>
           <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
             input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
-            @filter="selectPanelFilterFn" label="Select Entry" class="grow" @update:model-value="insertT3EntrySelect">
+            @filter="selectPanelFilterFn" label="Select Entry" class="grow"
+            @update:model-value="insertT3EntrySelect(value, $event)">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
                 <q-item-section class="grow">
@@ -952,12 +953,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   console.log('=== onBeforeUnmount ===', selecto.value);
-  console.log('=== onBeforeUnmount ===', moveable.value);
-  console.log('=== onBeforeUnmount ===', appState.value.selectedTargets);
 
-  // if (selecto.value === null) {
-  //   selecto.value = new VueSelecto({});
-  // }
+  if (selecto.value) {
+    // Perform necessary cleanup for selecto
+    selecto.value.destroySelecto();
+  }
 })
 
 // Lifecycle hook for component unmount
@@ -1882,13 +1882,19 @@ function linkT3EntrySave() {
   linkT3EntryDialog.value.active = false;
 }
 
+const insertCount = ref(0);
+
 // Insert Key Function
-function insertT3EntrySelect(value) {
+function insertT3EntrySelect(value, event) {
   addActionToHistory("Insert object to T3000 entry");
+
+  console.log('insertT3EntrySelect value,event:', event);
+
+  const posIncrease = insertCount.value * 80;
 
   // Add a shape to graphic area
   const size = { width: 60, height: 60 };
-  const pos = { clientX: 300, clientY: 100, top: 100, left: 300 };
+  const pos = { clientX: 300, clientY: 100, top: 100, left: 200 + posIncrease };
   const tempTool = tools.find((item) => item.name === 'Pump');
   const item = drawObject(size, pos, tempTool);
 
@@ -1899,7 +1905,9 @@ function insertT3EntrySelect(value) {
   // Link to T3 entry
   insertT3EntryOnSave();
 
-  console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+  insertCount.value++;
+
+  // console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
 }
 
 function insertT3EntryOnSave() {
