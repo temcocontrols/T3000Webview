@@ -276,15 +276,15 @@ export default defineComponent({
         (i) => i.status === 1
       );
       const ranges = cloneDeep(items);
-      console.log('== oc range-options range=', ranges);
+      // console.log('== oc range-options range=', ranges);
       const result = ranges?.map((ii) => {
         // ii.value = ii.value * 1000;
         ii.value = ii.value;
         return ii;
       });
 
-      console.log('== oc range-options result=', result);
-      console.log('== oc range-options props=', props);
+      // console.log('== oc range-options result=', result);
+      // console.log('== oc range-options props=', props);
       return result;
     });
     const t3EntryDisplayFieldOptions = computed(() => {

@@ -163,5 +163,5 @@ mouse select, multiple select, drag events.
 
 2024-12-14
 1. Fixed small bugs
-2. Add a context menu for analog value field
+2. Add a context menu for analog number value field
 3. Started to build [Insert key] function

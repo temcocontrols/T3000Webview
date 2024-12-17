@@ -29,6 +29,10 @@ class KeyCommand {
   CloseT3EntryDialog() {
     this.insertT3EntryDialog.active = false;
   }
+
+  InsertT3EntrySelect(value) {
+    console.log('=== InsertT3EntrySelect value', value)
+  }
 }
 
 export default KeyCommand
