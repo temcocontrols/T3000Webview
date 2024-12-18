@@ -21,28 +21,11 @@
 <template>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
-    <q-btn-dropdown
-      no-caps
-      stretch
-      flat
-      content-class="menu-dropdown"
-      class="file-menu"
-      label="File"
-    >
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" class="file-menu" label="File">
       <q-list>
-        <q-item
-          clickable
-          v-close-popup
-          class="new-project-menu-item"
-          @click="menuActionEmit('newProject')"
-        >
+        <q-item clickable v-close-popup class="new-project-menu-item" @click="menuActionEmit('newProject')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="assignment"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="assignment" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>New Project</q-item-label>
@@ -51,35 +34,17 @@
             <q-chip>Ctrl + R</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          clickable
-          v-close-popup
-          @click="menuActionEmit('importJsonAction')"
-        >
+        <q-item clickable v-close-popup @click="menuActionEmit('importJsonAction')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="file_open"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="file_open" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Import</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item
-          clickable
-          v-close-popup
-          @click="menuActionEmit('exportToJsonAction')"
-        >
+        <q-item clickable v-close-popup @click="menuActionEmit('exportToJsonAction')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="file_open"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="file_open" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Export</q-item-label>
@@ -99,22 +64,11 @@
       </q-list>
     </q-btn-dropdown>
     <!-- Edit menu -->
-    <q-btn-dropdown
-      no-caps
-      stretch
-      flat
-      content-class="menu-dropdown"
-      label="Edit"
-    >
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Edit">
       <q-list>
         <q-item dense clickable v-close-popup @click="menuActionEmit('copy')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="content_copy"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Copy</q-item-label>
@@ -123,20 +77,9 @@
             <q-chip>Ctrl + C</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('paste')"
-          :disable="disablePaste"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('paste')" :disable="disablePaste">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="content_paste"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="content_paste" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Paste</q-item-label>
@@ -146,13 +89,7 @@
           </q-item-section>
         </q-item>
         <q-separator inset spaced />
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('undoAction')"
-          :disable="disableUndo"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('undoAction')" :disable="disableUndo">
           <q-item-section avatar>
             <q-avatar size="sm" icon="undo" color="grey-7" text-color="white" />
           </q-item-section>
@@ -163,13 +100,7 @@
             <q-chip>Ctrl + Z</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('redoAction')"
-          :disable="disableRedo"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('redoAction')" :disable="disableRedo">
           <q-item-section avatar>
             <q-avatar size="sm" icon="redo" color="grey-7" text-color="white" />
           </q-item-section>
@@ -181,20 +112,9 @@
           </q-item-section>
         </q-item>
         <q-separator inset spaced />
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('duplicateSelected')"
-          :disable="selectedCount < 1"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('duplicateSelected')" :disable="selectedCount < 1">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="content_copy"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Duplicate selected</q-item-label>
@@ -203,20 +123,9 @@
             <q-chip>Ctrl + D</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('groupSelected')"
-          :disable="selectedCount < 2"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('groupSelected')" :disable="selectedCount < 2">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="join_full"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Group selected</q-item-label>
@@ -225,20 +134,9 @@
             <q-chip>Ctrl + G</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('ungroupSelected')"
-          :disable="selectedCount < 2"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('ungroupSelected')" :disable="selectedCount < 2">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="join_inner"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Ungroup selected</q-item-label>
@@ -247,20 +145,9 @@
             <q-chip>Ctrl + Shift + G</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('addToLibrary')"
-          :disable="selectedCount < 2"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('addToLibrary')" :disable="selectedCount < 2">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="library_books"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Add selected to library</q-item-label>
@@ -269,20 +156,9 @@
             <q-chip>Ctrl + L</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('deleteSelected')"
-          :disable="selectedCount < 1"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('deleteSelected')" :disable="selectedCount < 1">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="delete"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Delete selected</q-item-label>
@@ -291,20 +167,9 @@
             <q-chip>Delete</q-chip>
           </q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('weldSelected')"
-          :disable="!(selectedCount >= 2)"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('weldSelected')" :disable="!(selectedCount >= 2)">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="splitscreen"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Weld selected</q-item-label>
@@ -316,14 +181,8 @@
       </q-list>
     </q-btn-dropdown>
     <!-- Object menu -->
-    <q-btn-dropdown
-      no-caps
-      stretch
-      flat
-      content-class="menu-dropdown"
-      label="Object"
-      :disable="!selectedCount || selectedCount > 1"
-    >
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Object"
+      :disable="!selectedCount || selectedCount > 1">
       <q-list>
         <q-item dense clickable v-close-popup @click="menuActionEmit('link')">
           <q-item-section avatar>
@@ -332,44 +191,19 @@
           <q-item-section>Link</q-item-section>
         </q-item>
         <q-separator />
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('duplicateObject')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('duplicateObject')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="file_copy"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Duplicate</q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('rotate90')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('rotate90')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="autorenew"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Rotate 90°</q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('rotate-90')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('rotate-90')">
           <q-item-section avatar>
             <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
           </q-item-section>
@@ -384,58 +218,27 @@
         </q-item>
         <q-item dense clickable v-close-popup @click="menuActionEmit('flipV')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="flip"
-              color="grey-7"
-              text-color="white"
-              style="transform: rotate(90deg)"
-            />
+            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" style="transform: rotate(90deg)" />
           </q-item-section>
           <q-item-section>Flip vertical</q-item-section>
         </q-item>
         <q-separator />
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('bringToFront')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('bringToFront')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="flip_to_front"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Bring to front</q-item-section>
         </q-item>
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('sendToBack')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('sendToBack')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="flip_to_back"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Send to Back</q-item-section>
         </q-item>
         <q-separator />
         <q-item dense clickable>
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="transform"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Convert to</q-item-section>
           <q-item-section side>
@@ -443,25 +246,13 @@
           </q-item-section>
           <q-menu anchor="top end" self="top start" auto-close>
             <q-list>
-              <q-item
-                v-for="t in tools.filter(
-                  (i) =>
-                    i.name !== object.type &&
-                    !['Duct', 'Pointer', 'Text'].includes(i.name)
-                )"
-                :key="t.name"
-                dense
-                clickable
-                v-close-popup
-                @click="menuActionEmit('convertObjectType', t.name)"
-              >
+              <q-item v-for="t in tools.filter(
+                (i) =>
+                  i.name !== object.type &&
+                  !['Duct', 'Pointer', 'Text'].includes(i.name)
+              )" :key="t.name" dense clickable v-close-popup @click="menuActionEmit('convertObjectType', t.name)">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    :icon="t.icon"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>{{ t.name }}</q-item-section>
               </q-item>
@@ -469,19 +260,9 @@
           </q-menu>
         </q-item>
         <q-separator />
-        <q-item
-          dense
-          clickable
-          v-close-popup
-          @click="menuActionEmit('removeObject')"
-        >
+        <q-item dense clickable v-close-popup @click="menuActionEmit('removeObject')">
           <q-item-section avatar>
-            <q-avatar
-              size="sm"
-              icon="remove"
-              color="grey-7"
-              text-color="white"
-            />
+            <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Remove</q-item-section>
         </q-item>
@@ -492,137 +273,57 @@
     <div class="flex gap-1 sticky-top-tool-bar">
       <!-- move Edit menu's items along to the top horizontally -->
       <div class="flex gap-1">
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="undo"
-          @click="menuActionEmit('undoAction')"
-          :disable="disableUndo"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="undo" @click="menuActionEmit('undoAction')"
+          :disable="disableUndo">
           <!-- <span class="toolbar-btn-label">Undo</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Undo</strong><em> (Ctrl + Z)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="redo"
-          @click="menuActionEmit('redoAction')"
-          :disable="disableRedo"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="redo" @click="menuActionEmit('redoAction')"
+          :disable="disableRedo">
           <!-- <span class="toolbar-btn-label">Redo</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Redo</strong><em> (Ctrl + Y)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="content_copy"
-          @click="menuActionEmit('duplicateSelected')"
-          :disable="selectedCount < 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="content_copy"
+          @click="menuActionEmit('duplicateSelected')" :disable="selectedCount < 1">
           <!-- <span class="toolbar-btn-label">Duplicate</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Duplicate selected</strong><em> (Ctrl + D)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="join_full"
-          @click="menuActionEmit('groupSelected')"
-          :disable="selectedCount < 2"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="join_full"
+          @click="menuActionEmit('groupSelected')" :disable="selectedCount < 2">
           <!-- <span class="toolbar-btn-label">Group</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Group selected</strong><em> (Ctrl + G)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="join_inner"
-          @click="menuActionEmit('ungroupSelected')"
-          :disable="selectedCount < 2"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="join_inner"
+          @click="menuActionEmit('ungroupSelected')" :disable="selectedCount < 2">
           <!-- <span class="toolbar-btn-label">Ungroup</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Ungroup selected</strong><em> (Ctrl + Shift + G)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="library_books"
-          @click="menuActionEmit('addToLibrary')"
-          :disable="selectedCount < 2"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="library_books"
+          @click="menuActionEmit('addToLibrary')" :disable="selectedCount < 2">
           <!-- <span class="toolbar-btn-label">Add Library</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Add selected to library</strong><em> (Ctrl + L)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="delete"
-          @click="menuActionEmit('deleteSelected')"
-          :disable="selectedCount < 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="delete"
+          @click="menuActionEmit('deleteSelected')" :disable="selectedCount < 1">
           <!-- <span class="toolbar-btn-label">Delete</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Delete selected</strong><em> (Delete)</em>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="splitscreen"
-          @click="menuActionEmit('weldSelected')"
-          :disable="!(selectedCount >= 2)"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="splitscreen"
+          @click="menuActionEmit('weldSelected')" :disable="!(selectedCount >= 2)">
           <!-- <span class="toolbar-btn-label">Delete</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Weld selected</strong><em> (Ctrl + B)</em>
@@ -633,182 +334,80 @@
 
       <!-- move Object menu's items along to the top horizontally -->
       <div class="flex gap-1">
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="link"
-          @click="menuActionEmit('link')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="link" @click="menuActionEmit('link')"
+          :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Link</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Link</strong>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="file_copy"
-          @click="menuActionEmit('duplicateObject')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="file_copy"
+          @click="menuActionEmit('duplicateObject')" :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Duplicate</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Duplicate</strong>
           </q-tooltip>
         </q-btn>
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="autorenew"
-          @click="menuActionEmit('rotate90')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="autorenew" @click="menuActionEmit('rotate90')"
+          :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Rotate 90°</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Rotate 90°</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="sync"
-          @click="menuActionEmit('rotate-90')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="sync" @click="menuActionEmit('rotate-90')"
+          :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Rotate -90°</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Rotate -90°</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="flip"
-          @click="menuActionEmit('flipH')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="flip" @click="menuActionEmit('flipH')"
+          :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Flip horizontal</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Flip horizontal</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="flip"
-          @click="menuActionEmit('flipV')"
-          style="transform: rotate(90deg)"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="flip" @click="menuActionEmit('flipV')"
+          style="transform: rotate(90deg)" :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Flip vertical</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Flip vertical</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="flip_to_front"
-          @click="menuActionEmit('bringToFront')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="flip_to_front"
+          @click="menuActionEmit('bringToFront')" :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Bring to front</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Bring to front</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="flip_to_back"
-          @click="menuActionEmit('sendToBack')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="flip_to_back"
+          @click="menuActionEmit('sendToBack')" :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Send to Back</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Send to Back</strong>
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="transform"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="transform"
+          :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Convert to</span> -->
           <q-menu anchor="top end" self="top start" auto-close>
             <q-list>
-              <q-item
-                v-for="t in tools.filter(
-                  (i) =>
-                    i.name !== object.type &&
-                    !['Duct', 'Pointer', 'Text'].includes(i.name)
-                )"
-                :key="t.name"
-                dense
-                clickable
-                v-close-popup
-                @click="menuActionEmit('convertObjectType', t.name)"
-              >
+              <q-item v-for="t in tools.filter(
+                (i) =>
+                  i.name !== object.type &&
+                  !['Duct', 'Pointer', 'Text'].includes(i.name)
+              )" :key="t.name" dense clickable v-close-popup @click="menuActionEmit('convertObjectType', t.name)">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="sm"
-                    :icon="t.icon"
-                    color="grey-7"
-                    text-color="white"
-                  />
+                  <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
                 </q-item-section>
                 <q-item-section>{{ t.name }}</q-item-section>
               </q-item>
@@ -819,18 +418,8 @@
           </q-tooltip>
         </q-btn>
 
-        <q-btn
-          dense
-          flat
-          round
-          outline
-          stack
-          v-close-popup
-          no-caps
-          icon="remove"
-          @click="menuActionEmit('removeObject')"
-          :disable="!selectedCount || selectedCount > 1"
-        >
+        <q-btn dense flat round outline stack v-close-popup no-caps icon="remove"
+          @click="menuActionEmit('removeObject')" :disable="!selectedCount || selectedCount > 1">
           <!-- <span class="toolbar-btn-label">Remove</span> -->
           <q-tooltip anchor="top middle" self="bottom middle">
             <strong>Remove</strong>
@@ -838,67 +427,33 @@
         </q-btn>
       </div>
     </div>
-
+    <div style="margin-left:10px; font-size: 10px; color:gray;">
+      V:24.1218.01
+    </div>
     <q-space />
     <div class="flex">
-      <q-btn
-        @click="menuActionEmit('zoomOut')"
-        :disable="zoom <= 10"
-        dense
-        flat
-        size="sm"
-        icon="zoom_out"
-      />
+      <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out" />
       <div class="flex items-center px-1">
-        <input
-          class="zoom-input"
-          @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
-          :value="zoom"
-          type="number"
-        />%
+        <input class="zoom-input" @keydown.enter="menuActionEmit('zoomSet', $event.target.value)" :value="zoom"
+          type="number" />%
       </div>
-      <q-btn
-        @click="menuActionEmit('zoomIn')"
-        :disable="zoom >= 400"
-        dense
-        flat
-        size="sm"
-        icon="zoom_in"
-      />
+      <q-btn @click="menuActionEmit('zoomIn')" :disable="zoom >= 400" dense flat size="sm" icon="zoom_in" />
       <div>
         <q-btn v-if="!user" flat color="primary" label="Login" to="/login" />
-        <q-btn-dropdown
-          v-else
-          no-caps
-          flat
-          dense
-          content-class="menu-dropdown"
-          :label="user.name"
-          class="px-2 ml-4"
-        >
+        <q-btn-dropdown v-else no-caps flat dense content-class="menu-dropdown" :label="user.name" class="px-2 ml-4">
           <q-list>
             <q-item dense>
               <q-item-section avatar>
-                <q-avatar
-                  size="sm"
-                  icon="person"
-                  color="grey-7"
-                  text-color="white"
-                />
+                <q-avatar size="sm" icon="person" color="grey-7" text-color="white" />
               </q-item-section>
               <q-item-section class="text-zinc-500">{{
                 user.name
-              }}</q-item-section>
+                }}</q-item-section>
             </q-item>
             <q-separator />
             <q-item dense clickable v-close-popup @click="logout">
               <q-item-section avatar>
-                <q-avatar
-                  size="sm"
-                  icon="logout"
-                  color="grey-7"
-                  text-color="white"
-                />
+                <q-avatar size="sm" icon="logout" color="grey-7" text-color="white" />
               </q-item-section>
               <q-item-section>Logout</q-item-section>
             </q-item>
