@@ -165,3 +165,6 @@ mouse select, multiple select, drag events.
 1. Fixed small bugs
 2. Add a context menu for analog number value field
 3. Started to build [Insert key] function
+
+2024-12-15
+1. Applied the [Insert key] function to webview.
