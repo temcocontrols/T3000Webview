@@ -19,6 +19,9 @@
 
 -->
 <template>
+  <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
+    V:24.1218.01
+  </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
     <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" class="file-menu" label="File">
@@ -427,9 +430,6 @@
         </q-btn>
       </div>
     </div>
-    <div style="margin-left:10px; font-size: 10px; color:gray;">
-      V:24.1218.01
-    </div>
     <q-space />
     <div class="flex">
       <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out" />
@@ -448,7 +448,7 @@
               </q-item-section>
               <q-item-section class="text-zinc-500">{{
                 user.name
-                }}</q-item-section>
+              }}</q-item-section>
             </q-item>
             <q-separator />
             <q-item dense clickable v-close-popup @click="logout">
