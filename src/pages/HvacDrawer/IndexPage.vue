@@ -793,9 +793,6 @@ const loadingPanelsProgress = computed(() => {
 
 const clipboardFull = ref(false); // State of the clipboard
 
-process.env.DEV = true;
-// process.env.PRD = true;
-
 // Dev mode only
 
 if (process.env.DEV) {
@@ -855,7 +852,7 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
-  console.log('=== onMounted ===', process.env);
+  // console.log('=== onMounted ===', process.env);
 
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
@@ -952,12 +949,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  console.log('=== onBeforeUnmount ===', selecto.value);
 
-  if (selecto.value) {
-    // Perform necessary cleanup for selecto
-    // selecto.value.destroySelecto();
-  }
 })
 
 // Lifecycle hook for component unmount
