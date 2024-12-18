@@ -237,14 +237,16 @@ export default defineComponent({
           props.item.t3Entry.range > 100
         ) {
           const rangeValue = range.options?.find(
-            (item) => item.value * 1000 === props.item.t3Entry.value
+            // (item) => item.value * 1000 === props.item.t3Entry.value
+            (item) => item.value === props.item.t3Entry.value
           );
           return rangeValue?.name;
         } else if (
           props.item.t3Entry.value !== undefined &&
           props.item.t3Entry.digital_analog === 1
         ) {
-          return props.item.t3Entry.value / 1000 + " " + range.unit;
+          // return props.item.t3Entry.value / 1000 + " " + range.unit;
+          return props.item.t3Entry.value + " " + range.unit;
         } else if (
           props.item.t3Entry.control !== undefined &&
           props.item.t3Entry.digital_analog === 0
@@ -302,9 +304,11 @@ export default defineComponent({
         props.item.t3Entry.digital_analog === 1
       ) {
         if (type === "increase") {
-          newVal = props.item.t3Entry.value + 1000;
+          // newVal = props.item.t3Entry.value + 1000;
+          newVal = props.item.t3Entry.value + 1;
         } else {
-          newVal = props.item.t3Entry.value - 1000;
+          // newVal = props.item.t3Entry.value - 1000;
+          newVal = props.item.t3Entry.value - 1;
         }
       } else if (
         props.item.t3Entry.control !== undefined &&

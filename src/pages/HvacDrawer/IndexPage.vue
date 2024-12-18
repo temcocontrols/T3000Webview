@@ -381,12 +381,12 @@
                             color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
                             true-value="On" />
                         </q-item>
-                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
                           <span style="margin-top: 8px">Value:</span>
                           <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
                             type="number" v-model="toggleNumberValue"
                             @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item> -->
+                        </q-item>
                         <q-separator />
 
 
@@ -511,12 +511,12 @@
                             color="blue" @click="toggleClicked(item, 'value', $event)" false-value="Off"
                             true-value="On" />
                         </q-item>
-                        <!-- <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
+                        <q-item dense :disable="toggleNumberDisable" v-if="toggleNumberShow">
                           <span style="margin-top: 8px">Value:</span>
                           <q-input style="margin-left: 15px;margin-top:-5px" :disable="toggleNumberDisable" dense
                             type="number" v-model="toggleNumberValue"
                             @click="toggleClicked(item, 'number-value', $event)" />
-                        </q-item> -->
+                        </q-item>
                         <q-separator />
                       </q-list>
 
@@ -618,6 +618,66 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="insertT3EntryDialog.active">
+    <!-- <a>This is a test q-dialog></a> -->
+    <q-card style="min-width: 650px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Insert Entry</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section style="height: 70vh" class="scroll">
+        <div class="flex">
+          <q-btn icon="refresh" flat @click="reloadPanelsData">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Reload panels data</strong>
+            </q-tooltip>
+          </q-btn>
+          <q-select :option-label="entryLabel" label="Type or select Entry" option-value="id" filled use-input
+            hide-selected fill-input input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
+            @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect(value)" autofocus
+            @focus="insertT3DefaultLoadData">
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section class="grow">
+                  <q-item-label>{{ entryLabel(scope.opt) }}</q-item-label>
+                </q-item-section>
+                <q-item-section avatar class="pl-1 min-w-0">
+                  <q-chip size="sm" icon="label_important">Panel: {{ scope.opt.pid }}</q-chip>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+        <div class="flex flex-col items-center mt-4">
+          <q-circular-progress v-if="T3000_Data.loadingPanel !== null" indeterminate show-value
+            :value="loadingPanelsProgress" size="270px" :thickness="0.22" color="light-blue" track-color="grey-3"
+            class="q-ma-md overflow-hidden">
+            <div class="text-xl text-center">
+              <div>{{ loadingPanelsProgress }}%</div>
+              <div>
+                Loading Panel #{{
+                  T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number
+                }}
+              </div>
+            </div>
+          </q-circular-progress>
+        </div>
+      </q-card-section>
+
+      <!-- <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions> -->
+    </q-card>
+  </q-dialog>
+
   <!-- Edit Gauge/Dial dialog -->
   <GaugeSettingsDialog v-model:active="gaugeSettingsDialog.active" :data="gaugeSettingsDialog.data"
     @saved="gaugeSettingsSave" />
@@ -640,7 +700,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
@@ -666,6 +726,12 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
+import { activate } from "paper/dist/paper-core";
+
+
+// New import for Data
+import Data from "src/lib/T3000/Hvac/Data/Data";
+import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 
 // Meta information for the application
 // Set the meta information
@@ -696,6 +762,8 @@ const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
 
+// const insertT3EntryDialog = ref({ activate: false, data: {} })
+
 // State variables for drawing and transformations
 const isDrawing = ref(false);
 const startTransform = ref([0, 0]);
@@ -725,7 +793,11 @@ const loadingPanelsProgress = computed(() => {
 
 const clipboardFull = ref(false); // State of the clipboard
 
+process.env.DEV = true;
+// process.env.PRD = true;
+
 // Dev mode only
+
 if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
@@ -782,6 +854,9 @@ const handleScroll = (event) => {
 
 // Lifecycle hook for component mount
 onMounted(() => {
+
+  console.log('=== onMounted ===', process.env);
+
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
   globalNav.value.back = null;
@@ -816,7 +891,7 @@ onMounted(() => {
       return shouldIgnore;
     },
     // Add the focal point for zooming to be the center of the viewport
-    transformOrigin: { x: 0.5, y: 0.5 },
+    // transformOrigin: { x: 0.5, y: 0.5 },
   });
 
   // Update the viewport transform on panzoom transform event
@@ -876,177 +951,209 @@ onMounted(() => {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 });
 
+onBeforeUnmount(() => {
+  console.log('=== onBeforeUnmount ===', selecto.value);
+
+  if (selecto.value) {
+    // Perform necessary cleanup for selecto
+    // selecto.value.destroySelecto();
+  }
+})
+
 // Lifecycle hook for component unmount
 onUnmounted(() => {
+  appState.value.selectedTargets = [];
+
   if (panzoomInstance?.dispose) return;
-  panzoomInstance.dispose();
+  panzoomInstance?.dispose();
 });
 
 // Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("Received a message from webview", arg.data);
-  if ("action" in arg.data) {
-    // Handle various actions based on message data
-    if (arg.data.action === "GET_PANELS_LIST_RES") {
-      if (arg.data.data?.length) {
-        T3000_Data.value.panelsList = arg.data.data;
-        T3000_Data.value.loadingPanel = 0;
-        window.chrome?.webview?.postMessage({
-          action: 0, // GET_PANEL_DATA
-          panelId: T3000_Data.value.panelsList[0].panel_number,
-        });
-      }
-    } else if (arg.data.action === "UPDATE_ENTRY_RES") {
-      // Handle update entry response
-    } else if (arg.data.action === "GET_INITIAL_DATA_RES") {
-      if (arg.data.data) {
-        arg.data.data = JSON.parse(arg.data.data);
-      }
-      appState.value = arg.data.data;
-      grpNav.value = [arg.data.entry];
-      if (arg.data.library) {
-        arg.data.library = JSON.parse(arg.data.library);
-        library.value = arg.data.library;
-      }
-      setTimeout(() => {
-        refreshMoveableGuides();
-      }, 100);
-    } else if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-      if (arg.data.data) {
-        arg.data.data = JSON.parse(arg.data.data);
-      }
-      appState.value = arg.data.data;
-      if (grpNav.value.length > 1) {
-        const navItem = grpNav.value[grpNav.value.length - 2];
-        if (
-          navItem.index !== arg.data.entry.index ||
-          navItem.pid !== arg.data.entry.pid
-        ) {
-          grpNav.value.push(arg.data.entry);
-        } else {
-          grpNav.value.pop();
-        }
-      } else {
-        grpNav.value.push(arg.data.entry);
-      }
+  console.log("Received a message from webview", arg.data.action, arg.data);
+  console.log('=== T3000_Data ===', T3000_Data)
 
-      setTimeout(() => {
-        refreshMoveableGuides();
-      }, 100);
-    } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-      if (getPanelsInterval && arg.data?.panel_id) {
-        clearInterval(getPanelsInterval);
-      }
-      if (arg.data?.panel_id) {
-        if (
-          T3000_Data.value.loadingPanel !== null &&
-          T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1
-        ) {
-          T3000_Data.value.loadingPanel++;
-          const index = T3000_Data.value.loadingPanel;
-          window.chrome?.webview?.postMessage({
-            action: 0, // GET_PANEL_DATA
-            panelId: T3000_Data.value.panelsList[index].panel_number,
-          });
-        }
-        if (
-          T3000_Data.value.loadingPanel !== null &&
-          T3000_Data.value.loadingPanel ===
-          T3000_Data.value.panelsList.length - 1
-        ) {
-          T3000_Data.value.loadingPanel = null;
-        }
+  // Handle various actions based on message data
+  if (!"action" in arg.data) return;
 
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-          arg.data.data
-        );
-        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(
-          arg.data.ranges
-        );
-
-        refreshLinkedEntries(arg.data.data);
-      }
-    } else if (arg.data.action === "GET_ENTRIES_RES") {
-      arg.data.data.forEach((item) => {
-        const itemIndex = T3000_Data.value.panelsData.findIndex(
-          (ii) =>
-            ii.index === item.index &&
-            ii.type === item.type &&
-            ii.pid === item.pid
-        );
-        if (itemIndex !== -1) {
-          T3000_Data.value.panelsData[itemIndex] = item;
-        }
+  if (arg.data.action === "GET_PANELS_LIST_RES") {
+    console.log('===[GET_PANELS_LIST_RES] data=>', arg.data.data)
+    if (arg.data.data?.length) {
+      T3000_Data.value.panelsList = arg.data.data;
+      T3000_Data.value.loadingPanel = 0;
+      window.chrome?.webview?.postMessage({
+        action: 0, // GET_PANEL_DATA
+        panelId: T3000_Data.value.panelsList[0].panel_number,
       });
-
-      if (!linkT3EntryDialog.value.active) {
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-      }
-      refreshLinkedEntries(arg.data.data);
-    } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-      if (arg.data.data?.status === true) {
-        if (!savedNotify.value) return;
-        $q.notify({
-          message: "Saved successfully.",
-          color: "primary",
-          icon: "check_circle",
-          actions: [
-            {
-              label: "Dismiss",
-              color: "white",
-              handler: () => {
-                /* ... */
-              },
-            },
-          ],
-        });
-      } else {
-        $q.notify({
-          message: "Error, not saved!",
-          color: "negative",
-          icon: "error",
-          actions: [
-            {
-              label: "Dismiss",
-              color: "white",
-              handler: () => {
-                /* ... */
-              },
-            },
-          ],
-        });
-      }
-    } else if (arg.data.action === "SAVE_IMAGE_RES") {
-      library.value.imagesCount++;
-      library.value.images.push({
-        id: "IMG-" + library.value.imagesCount,
-        name: arg.data.data.name,
-        path: arg.data.data.path,
-        online: false,
-      });
-      saveLib();
     }
   }
+
+  if (arg.data.action === "UPDATE_ENTRY_RES") {
+    console.log('===[UPDATE_ENTRY_RES] data=>', arg.data.data)
+    // Handle update entry response
+  }
+
+  if (arg.data.action === "GET_INITIAL_DATA_RES") {
+    console.log('===[GET_INITIAL_DATA_RES] data=>', arg.data.data)
+    if (arg.data.data) {
+      arg.data.data = JSON.parse(arg.data.data);
+    }
+    appState.value = arg.data.data;
+    grpNav.value = [arg.data.entry];
+    if (arg.data.library) {
+      arg.data.library = JSON.parse(arg.data.library);
+      library.value = arg.data.library;
+    }
+    setTimeout(() => {
+      refreshMoveableGuides();
+    }, 100);
+  }
+
+  if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+    console.log('===[LOAD_GRAPHIC_ENTRY_RES] data=>', arg.data.data)
+    if (arg.data.data) {
+      arg.data.data = JSON.parse(arg.data.data);
+    }
+    appState.value = arg.data.data;
+    if (grpNav.value.length > 1) {
+      const navItem = grpNav.value[grpNav.value.length - 2];
+      if (
+        navItem.index !== arg.data.entry.index ||
+        navItem.pid !== arg.data.entry.pid
+      ) {
+        grpNav.value.push(arg.data.entry);
+      } else {
+        grpNav.value.pop();
+      }
+    } else {
+      grpNav.value.push(arg.data.entry);
+    }
+
+    setTimeout(() => {
+      refreshMoveableGuides();
+    }, 100);
+  }
+
+  if (arg.data.action === "GET_PANEL_DATA_RES") {
+    console.log('===[GET_PANEL_DATA_RES] data=>', arg.data.data)
+
+    if (getPanelsInterval && arg.data?.panel_id) {
+      clearInterval(getPanelsInterval);
+    }
+    if (arg.data?.panel_id) {
+      if (
+        T3000_Data.value.loadingPanel !== null &&
+        T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1
+      ) {
+        T3000_Data.value.loadingPanel++;
+        const index = T3000_Data.value.loadingPanel;
+        window.chrome?.webview?.postMessage({
+          action: 0, // GET_PANEL_DATA
+          panelId: T3000_Data.value.panelsList[index].panel_number,
+        });
+      }
+      if (
+        T3000_Data.value.loadingPanel !== null &&
+        T3000_Data.value.loadingPanel ===
+        T3000_Data.value.panelsList.length - 1
+      ) {
+        T3000_Data.value.loadingPanel = null;
+      }
+
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+        (item) => item.pid !== arg.data.panel_id
+      );
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+        arg.data.data
+      );
+      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+        (item) => item.pid !== arg.data.panel_id
+      );
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(
+        arg.data.ranges
+      );
+
+      refreshLinkedEntries(arg.data.data);
+    }
+  }
+
+  if (arg.data.action === "GET_ENTRIES_RES") {
+    console.log('===[GET_ENTRIES_RES] data=>', arg.data.data)
+    arg.data.data.forEach((item) => {
+      const itemIndex = T3000_Data.value.panelsData.findIndex(
+        (ii) =>
+          ii.index === item.index &&
+          ii.type === item.type &&
+          ii.pid === item.pid
+      );
+      if (itemIndex !== -1) {
+        T3000_Data.value.panelsData[itemIndex] = item;
+      }
+    });
+
+    if (!linkT3EntryDialog.value.active) {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+    }
+    refreshLinkedEntries(arg.data.data);
+  }
+
+  if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+    console.log('===[SAVE_GRAPHIC_DATA_RES] data=>', arg.data.data)
+    if (arg.data.data?.status === true) {
+      if (!savedNotify.value) return;
+      $q.notify({
+        message: "Saved successfully.",
+        color: "primary",
+        icon: "check_circle",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    } else {
+      $q.notify({
+        message: "Error, not saved!",
+        color: "negative",
+        icon: "error",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    }
+  }
+
+  if (arg.data.action === "SAVE_IMAGE_RES") {
+    library.value.imagesCount++;
+    library.value.images.push({
+      id: "IMG-" + library.value.imagesCount,
+      name: arg.data.data.name,
+      path: arg.data.data.path,
+      online: false,
+    });
+    saveLib();
+  }
+
 });
 
 function viewportMouseMoved(e) {
-  // T3000Util.HvacLog("Viewport mouse moved", e);
-
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
   // console.log('Viewport mouse moved cursorIconPos:', "mouse",
-  //   [e.clientX, e.clientY], "cursor", [cursorIconPos.value.x, cursorIconPos.value.y], "vm", [viewportMargins.left, viewportMargins.top],
-  //   'appState.vp', [appState.value.viewportTransform.x, appState.value.viewportTransform.y]);
 
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
@@ -1298,6 +1405,12 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
+
+  // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
+  if (e.lastEvent === null || e.lastEvent === undefined) {
+    return;
+  }
+
   const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
@@ -1698,9 +1811,16 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-  // console.log(' 555555 T3UpdateEntryField key=', key, 'obj=', obj);
+  // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
+  // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+  // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
+
+  // if (Math.abs(fieldVal) >= 1000) {
+  //   fieldVal = fieldVal / 1000;
+  // }
+
   if (key === "value" || key === "control") {
     refreshObjectStatus(obj);
   }
@@ -1712,6 +1832,8 @@ function T3UpdateEntryField(key, obj) {
     entryIndex: obj.t3Entry.index,
     entryType: T3_Types[obj.t3Entry.type],
   });
+
+  console.log('IndexPage.vue T3UpdateEntryField post to C++ fieldVal', fieldVal);
 }
 
 // Trigger the save event when user changed the "Display Field" value
@@ -1758,6 +1880,98 @@ function linkT3EntrySave() {
   refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   linkT3EntryDialog.value.data = null;
   linkT3EntryDialog.value.active = false;
+}
+
+// Filter function for selecting panels in the UI
+function selectPanelFilterFn(val, update) {
+  if (val === "") {
+    update(() => {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+
+      // here you have access to "ref" which
+      // is the Vue reference of the QSelect
+    });
+    return;
+  }
+
+  update(() => {
+    const keyword = val.toUpperCase();
+    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
+      (item) =>
+        item.command.toUpperCase().indexOf(keyword) > -1 ||
+        item.description?.toUpperCase().indexOf(keyword) > -1 ||
+        item.label?.toUpperCase().indexOf(keyword) > -1
+    );
+  });
+}
+
+const insertCount = ref(0);
+
+// Insert Key Function
+function insertT3EntrySelect(value) {
+  addActionToHistory("Insert object to T3000 entry");
+
+  console.log('insertT3EntrySelect value:', value);
+
+  const posIncrease = insertCount.value * 80;
+
+  // Add a shape to graphic area
+  const size = { width: 60, height: 60 };
+  const pos = { clientX: 300, clientY: 100, top: 100, left: 200 + posIncrease };
+  const tempTool = tools.find((item) => item.name === 'Pump');
+  const item = drawObject(size, pos, tempTool);
+
+  // Set the added shape to active
+  const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+  appState.value.activeItemIndex = itemIndex;
+
+  // Link to T3 entry
+  insertT3EntryOnSave();
+
+  insertCount.value++;
+
+  // console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+}
+
+function insertT3EntryOnSave() {
+  addActionToHistory("Link object to T3000 entry");
+  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+    } else {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+    }
+  }
+
+  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
+    toRaw(insertT3EntryDialog.value.data)
+  )
+
+  // Change the icon based on the linked entry type
+  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+    let icon = "fa-solid fa-camera-retro";
+    if (insertT3EntryDialog.value.data.type === "GRP") {
+      icon = "fa-solid fa-camera-retro";
+    } else if (insertT3EntryDialog.value.data.type === "SCHEDULE") {
+      icon = "schedule";
+    } else if (insertT3EntryDialog.value.data.type === "PROGRAM") {
+      icon = "fa-solid fa-laptop-code";
+    } else if (insertT3EntryDialog.value.data.type === "HOLIDAY") {
+      icon = "calendar_month";
+    }
+    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+  }
+  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  insertT3EntryDialog.value.data = null;
+  insertT3EntryDialog.value.active = false;
+}
+
+function insertT3DefaultLoadData() {
+  // selectPanelOptions.value = T3000_Data.value.panelsData;
+  // selectPanelFilterFn('', (fn) => {
+  //   selectPanelOptions.value = T3000_Data.value.panelsData;
+  // });
+  // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
 // Refresh the status of an object based on its T3 entry
@@ -1934,6 +2148,13 @@ keycon.keydown(["ctrl", "v"], (e) => {
 keycon.keydown(["ctrl", "b"], (e) => {
   e.inputEvent.preventDefault();
   weldSelected();
+});
+
+// Insert function
+keycon.keydown(["insert"], (e) => {
+  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
+  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
@@ -2223,29 +2444,6 @@ function weldSelected() {
   });
 
   refreshMoveable();
-}
-
-// Filter function for selecting panels in the UI
-function selectPanelFilterFn(val, update) {
-  if (val === "") {
-    update(() => {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-
-      // here you have access to "ref" which
-      // is the Vue reference of the QSelect
-    });
-    return;
-  }
-
-  update(() => {
-    const keyword = val.toUpperCase();
-    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-      (item) =>
-        item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description?.toUpperCase().indexOf(keyword) > -1 ||
-        item.label?.toUpperCase().indexOf(keyword) > -1
-    );
-  });
 }
 
 // Undo the last action
@@ -2645,7 +2843,14 @@ function refreshLinkedEntries(panelData) {
           ii.pid === item.t3Entry.pid
       );
       if (linkedEntry && linkedEntry.id) {
+        console.log('refreshLinkedEntries->linkedEntry before', linkedEntry.value);
+
+        let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
+        linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
+
+        console.log('refreshLinkedEntries->linkedEntry after', linkedEntry.value);
+
         refreshObjectStatus(item);
       }
     });
@@ -2653,6 +2858,7 @@ function refreshLinkedEntries(panelData) {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
+  // console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -2751,8 +2957,8 @@ const toggleNumberValue = ref(0);
 function ObjectRightClicked(item, ev) {
   // ev.preventDefault();
 
-  console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-  console.log('ObjectRightClicked->ev,item', item);
+  // console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  // console.log('ObjectRightClicked->ev,item', item);
 
   if (item.t3Entry !== null) {
 
@@ -2790,9 +2996,9 @@ function ObjectRightClicked(item, ev) {
     }
 
     // Set digital_analog field and value
-    if (item.t3Entry.digital_analog === 1) {
+    if (item.t3Entry.digital_analog === 1 && item.t3Entry.range !== 101) {
       toggleNumberShow.value = true;
-      toggleNumberValue.value = item.t3Entry.value;
+      toggleNumberValue.value = item.t3Entry.value * 1;/// 1000;
     }
     else {
       toggleNumberShow.value = false;
@@ -2832,7 +3038,7 @@ function toggleClicked(item, type, ev) {
   }
 
   if (type === "number-value") {
-    item.t3Entry.value = toggleNumberValue.value;
+    item.t3Entry.value = toggleNumberValue.value * 1;// * 1000;
     T3UpdateEntryField("value", item);
   }
 
@@ -3332,6 +3538,7 @@ function addOnlineLibImage(oItem) {
   });
 }
 </script>
+
 <style>
 .viewport .selected {
   color: #fff;
