@@ -2843,9 +2843,14 @@ function refreshLinkedEntries(panelData) {
           ii.pid === item.t3Entry.pid
       );
       if (linkedEntry && linkedEntry.id) {
-        let newLkValue = linkedEntry.value / 1000;
+        console.log('refreshLinkedEntries->linkedEntry before', linkedEntry.value);
+
+        let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
         linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
+
+        console.log('refreshLinkedEntries->linkedEntry after', linkedEntry.value);
+
         refreshObjectStatus(item);
       }
     });
