@@ -47,3 +47,11 @@
 #### 4. Added a context menu to toggle the value of [Mode] and [Value] fields, when the selected shape been right clicked.
 
 ![1](./revnotes/2024-12-13/4.png)
+
+## 2024-12-18
+
+#### 1. Added a new feature [Insert key], to add a new shape and automatically link to the selected entry when the insert key been pressed
+
+![1](./revnotes/2024-12-18/1.png)
+
+![1](./revnotes/2024-12-18/2.png)

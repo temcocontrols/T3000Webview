@@ -637,7 +637,7 @@
               <strong>Reload panels data</strong>
             </q-tooltip>
           </q-btn>
-          <q-select :option-label="entryLabel" label="Input or Select Entry" option-value="id" filled use-input
+          <q-select :option-label="entryLabel" label="Type or select Entry" option-value="id" filled use-input
             hide-selected fill-input input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
             @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect(value)" autofocus
             @focus="insertT3DefaultLoadData">
