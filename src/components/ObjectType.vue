@@ -45,7 +45,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -110,16 +110,16 @@
         v-bind="item.settings" @change-value="changeValue" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
-        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
+        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value || 0" />
       <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
         <dial-chart class="gauge-object dial" :options="{
-          value: item.t3Entry?.value / 1000 || 0,
+          value: item.t3Entry?.value || 0,
           unit: range.unit,
           ...item.settings,
           colors: processedColors,
         }" />
         <div class="text-center font-bold pl-8 pb-2">
-          {{ item.t3Entry?.value / 1000 || 0 }} {{ range.unit }}
+          {{ item.t3Entry?.value || 0 }} {{ range.unit }}
         </div>
       </div>
       <RoomHumidity v-else-if="item.type === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
@@ -279,6 +279,8 @@ export default defineComponent({
     });
 
     function changeValue(type) {
+      // console.log('==== ChangeValue', type);
+      // debugger
       if (props.item.t3Entry.auto_manual === 0) return;
       let control = false;
       let newVal = props.item.t3Entry.value;
@@ -289,13 +291,17 @@ export default defineComponent({
       ) {
         const rangeOptions = range.options?.filter((item) => item.status === 1);
         const rangeIndex = rangeOptions.findIndex(
-          (item) => item.value * 1000 === props.item.t3Entry.value
+          // (item) => item.value * 1000 === props.item.t3Entry.value
+          (item) => item.value === props.item.t3Entry.value
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          newVal = rangeOptions[rangeIndex + 1].value * 1000;
+          // console.log('=========== decrease ===========');
+          //newVal = rangeOptions[rangeIndex + 1].value * 1000;
+          newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
-          newVal = rangeOptions[rangeIndex - 1].value * 1000;
+          //newVal = rangeOptions[rangeIndex - 1].value * 1000;
+          newVal = rangeOptions[rangeIndex - 1].value;
         } else {
           return;
         }
@@ -336,11 +342,6 @@ export default defineComponent({
     }
 
     const updateWeldModel = (weldModel, itemList) => {
-      // console.log(
-      //   "ObjectType.vue -> updateWeldModel | recieve from child",
-      //   weldModel,
-      //   itemList
-      // );
       emit("updateWeldModel", weldModel, itemList);
     };
 
