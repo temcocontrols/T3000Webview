@@ -1809,9 +1809,11 @@ function T3UpdateEntryField(key, obj) {
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
 
-  // if (Math.abs(fieldVal) >= 1000) {
-  //   fieldVal = fieldVal / 1000;
-  // }
+  const tempFieldBefore = fieldVal;
+
+  if (Math.abs(fieldVal) >= 1000) {
+    fieldVal = fieldVal / 1000;
+  }
 
   if (key === "value" || key === "control") {
     refreshObjectStatus(obj);
@@ -1825,7 +1827,7 @@ function T3UpdateEntryField(key, obj) {
     entryType: T3_Types[obj.t3Entry.type],
   });
 
-  console.log('IndexPage.vue T3UpdateEntryField post to C++ fieldVal', fieldVal);
+  console.log('=== T3UpdateEntryField to c++ before,after', tempFieldBefore, fieldVal);
 }
 
 // Trigger the save event when user changed the "Display Field" value
@@ -2835,13 +2837,14 @@ function refreshLinkedEntries(panelData) {
           ii.pid === item.t3Entry.pid
       );
       if (linkedEntry && linkedEntry.id) {
-        console.log('refreshLinkedEntries->linkedEntry before', linkedEntry.value);
+
+        const tempBefore = linkedEntry.value;
 
         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
         linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
 
-        console.log('refreshLinkedEntries->linkedEntry after', linkedEntry.value);
+        console.log('=== RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
 
         refreshObjectStatus(item);
       }

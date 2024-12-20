@@ -37,7 +37,8 @@ export default defineComponent({
       const range = getEntryRange(props.item?.t3Entry);
       if (props.item.t3Entry.range > 100) {
         const rangeValue = range.options?.find(
-          (item) => item.value * 1000 === props.item.t3Entry.value
+          // (item) => item.value * 1000 === props.item.t3Entry.value
+          (item) => item.value === props.item.t3Entry.value
         );
         return rangeValue?.name;
       } else if (props.item.t3Entry.digital_analog === 1) {
