@@ -20,7 +20,7 @@
 -->
 <template>
   <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
-    V:24.1218.02
+    V:24.1218.03
   </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
@@ -448,7 +448,7 @@
               </q-item-section>
               <q-item-section class="text-zinc-500">{{
                 user.name
-                }}</q-item-section>
+              }}</q-item-section>
             </q-item>
             <q-separator />
             <q-item dense clickable v-close-popup @click="logout">

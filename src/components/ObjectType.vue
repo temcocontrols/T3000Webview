@@ -223,34 +223,77 @@ export default defineComponent({
     const range = computed(() => {
       return getEntryRange(props.item?.t3Entry);
     });
+
     const dispalyText = computed(() => {
+
+      console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
+        props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
+
       if (!props.item.t3Entry) {
         return "";
       }
+
       const range = getEntryRange(props.item.t3Entry);
-      if (
-        props.item.settings.t3EntryDisplayField === "value" ||
-        props.item.settings.t3EntryDisplayField === "control"
-      ) {
-        if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.range > 100
-        ) {
+
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        const description = props.item.t3Entry.description || "";
+        const value = props.item.t3Entry.value || "";
+        let valueText = "";
+
+        if (props.item.t3Entry.range > 100) {
+          const rangeValue = range.options?.find(
+            (item) => item.value === props.item.t3Entry.value
+          )
+          valueText = rangeValue?.name || "";
+        }
+        else if (props.item.t3Entry.digital_analog === 1) {
+          valueText = (value || "") + " " + (range?.unit || "");
+        } else if (props.item.t3Entry.digital_analog === 0) {
+          if (props.item.t3Entry.control) {
+            valueText = range?.on || "";
+          } else {
+            valueText = range?.off || "";
+          }
+        }
+
+        return description + " " + valueText;
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "label") {
+        const description = props.item.t3Entry.label || "";
+        const value = props.item.t3Entry.value || "";
+        let valueText = "";
+
+        if (props.item.t3Entry.range > 100) {
+          const rangeValue = range.options?.find(
+            (item) => item.value === props.item.t3Entry.value
+          )
+          valueText = rangeValue?.name || "";
+        }
+        else if (props.item.t3Entry.digital_analog === 1) {
+          valueText = (value || "") + " " + (range?.unit || "");
+        } else if (props.item.t3Entry.digital_analog === 0) {
+          if (props.item.t3Entry.control) {
+            valueText = range?.on || "";
+          } else {
+            valueText = range?.off || "";
+          }
+        }
+
+        return description + " " + valueText;
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
+        if (props.item.t3Entry.value !== undefined && props.item.t3Entry.range > 100) {
           const rangeValue = range.options?.find(
             // (item) => item.value * 1000 === props.item.t3Entry.value
             (item) => item.value === props.item.t3Entry.value
           );
           return rangeValue?.name;
-        } else if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.digital_analog === 1
-        ) {
+        } else if (props.item.t3Entry.value !== undefined && props.item.t3Entry.digital_analog === 1) {
           // return props.item.t3Entry.value / 1000 + " " + range.unit;
           return props.item.t3Entry.value + " " + range.unit;
-        } else if (
-          props.item.t3Entry.control !== undefined &&
-          props.item.t3Entry.digital_analog === 0
-        ) {
+        } else if (props.item.t3Entry.control !== undefined && props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {
             return range.on;
           } else {
@@ -260,7 +303,7 @@ export default defineComponent({
       }
 
       return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
-    });
+    })
 
     const processedColors = computed(() => {
       const item = props.item;
