@@ -161,10 +161,24 @@ mouse select, multiple select, drag events.
 1. Added a context menu to toggle the value of [Model] and [Value] field to [Auto/Manual] and [On/Off]
 2. Released a new version to including above updates
 
-2024-12-14
+2024-12-16
 1. Fixed small bugs
 2. Add a context menu for analog number value field
 3. Started to build [Insert key] function
 
-2024-12-15
+2024-12-17
 1. Applied the [Insert key] function to webview.
+2. Fixed bugs and small changes for the old graphic view
+
+2024-12-18 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-19 (Library Upgradation)
+1. continued updating the library.
+
+2024-12-20
+1. Fixed bugs and implement small changes for pump
+2. Fixed some bugs and made small change for context menu
+
+2024-12-23 (Library Upgradation)
+1. continued updating the library.
