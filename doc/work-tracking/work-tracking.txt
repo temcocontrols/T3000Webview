@@ -41,7 +41,7 @@ the existing components (moveable,selecto) may not suitable for transfering the 
 1. trying to use a different way to deal with the shapes,
 use paperjs to redraw the shapes as lines and points, make them controlable.
 
-2024-11-03 (4h)
+2024-11-03
 1. add a child canvas layer for vue-moveable & vue-selecto selected items, perform lines and points extraction, redraw the shape with them.
 
 2024-11-04
