@@ -106,8 +106,6 @@ class DataOpt {
     // const ii1 = instanceToPlain(GPP.stateManagerPrimary);
     // const ii2 = plainToInstance(StateManager, ii1);
 
-
-
     const stateManagerPrimaryStr = JSON.stringify(GPP.stateManagerPrimary);
 
     const stateManagerPrimaryJsonObj = JSON.parse(stateManagerPrimaryStr);
@@ -147,26 +145,42 @@ class DataOpt {
 
         if (storedObjectData.Type === 'BaseDrawingObject') {
 
-          if (storedObjectData.ShapeType === 'Oval') {
+          // SHAPE: 0, LINE: 1,  CONNECTOR: 3
+          if (storedObjectData.DrawingObjectBaseClass === 1) {
+            const lineData = plainToInstance(Instance.Shape.Line, storedObjectData);
+            console.log('lineData', lineData);
+          }
 
-            const ovalData = plainToInstance(Instance.Shape.Oval, storedObjectData);
+          if (storedObjectData.DrawingObjectBaseClass === 0) {
+            if (storedObjectData.ShapeType === 'Oval') {
 
-            console.log('ovalData', ovalData);
+              const ovalData = plainToInstance(Instance.Shape.Oval, storedObjectData);
+
+              console.log('ovalData', ovalData);
+            }
+
+            if (storedObjectData.ShapeType === 'Rect') {
+
+              const rectData = plainToInstance(Instance.Shape.Rect, storedObjectData);
+
+              console.log('rectData', rectData);
+            }
+
+            if (storedObjectData.ShapeType === 'Polygon') {
+
+              const polygonData = plainToInstance(Instance.Shape.Polygon, storedObjectData);
+
+              console.log('polygonData', polygonData);
+            }
+
+
+          }
+
+          if (storedObjectData.DrawingObjectBaseClass === 3) {
+            const connectorData = plainToInstance(Instance.Shape.Connector, storedObjectData);
+            console.log('connectorData', connectorData);
           }
         }
-
-        // type=SEDSession  cls=SEDSession
-
-        // type=LayersManagerObject cls=LayersManager
-
-        // type=ListManager.TEDSession cls=TEDSession
-
-        // type=Links cls=Links
-
-        // type=SelectedList
-
-        // type=BaseDrawingObject ShapeType=Oval
-        // sub-type=QuickStyle
 
         console.log('storedObjectCls');
       }

@@ -1,4 +1,6 @@
 
+import ConstantData from '../Data/ConstantData'
+
 class OutsideEffectData {
 
   public OutsideType: number;
@@ -16,7 +18,7 @@ class OutsideEffectData {
     this.OutsideExtent_Left = 0;
     this.OutsideExtent_Top = 0;
     this.OutsideExtent_Bottom = 0;
-    this.Color = '#000000';
+    this.Color = ConstantData.Colors.Color_Black;
     this.LParam = 0;
     this.WParam = 0;
   }

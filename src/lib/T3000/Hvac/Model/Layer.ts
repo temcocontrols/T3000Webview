@@ -1,4 +1,5 @@
 
+import ConstantData from "../Data/ConstantData"
 
 class Layer {
 
@@ -11,10 +12,10 @@ class Layer {
 
   constructor() {
     this.name = '';
-    this.flags = 1;
+    this.flags = ConstantData.LayerFlags.SDLF_Visible;
     this.n = 0;
     this.index = 0;
-    this.layertype = 0;
+    this.layertype = ConstantData.LayerTypes.SD_LAYERT_NONE;
     this.zList = [];
   }
 }

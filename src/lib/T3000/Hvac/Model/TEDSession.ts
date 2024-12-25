@@ -15,7 +15,6 @@ class TEDSession {
   public EditorID: number;
 
   constructor() {
-
     this.Type = ConstantData.StoredObjectType.TED_SESSION_OBJECT;
     this.theActiveTextEditObjectID = -1;
     this.theTEWasResized = false;
@@ -26,7 +25,6 @@ class TEDSession {
     this.theActiveOutlineObjectID = -1;
     this.theActiveGraphObjectID = -1;
     this.EditorID = 0;
-
   }
 }
 
