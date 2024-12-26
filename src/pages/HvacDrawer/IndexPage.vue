@@ -108,6 +108,11 @@
   height: calc(100vh - 68px); */
   width: v-bind("documentAreaPosition.wiewPortWH.width");
   height: v-bind("documentAreaPosition.wiewPortWH.height");
+
+  /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
+  background-size: 20px 20px; */
+
+  /* background-color: #e5e7eb; */
 }
 
 .default-svg {
@@ -138,14 +143,14 @@
         </div>
         <div class="work-area">
           <div class="document-area">
-            <div class="c-ruler"></div>
-            <div class="h-ruler">
+            <div class="c-ruler" v-if="!locked && rulersGridVisible"></div>
+            <div class="h-ruler" v-if="!locked && rulersGridVisible">
               <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
             </div>
-            <div class="v-ruler">
+            <div class="v-ruler" v-if="!locked && rulersGridVisible">
               <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
             </div>
-            <div class="hv-grid">
+            <div class="hv-grid" v-if="!locked && rulersGridVisible">
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
             <div class="viewport-wrapper" @scroll="handleScroll">
@@ -738,7 +743,7 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-
+const rulersGridVisible = ref(true);
 
 // Ruler & Grid default value
 const documentAreaPosition = ref(
@@ -2820,6 +2825,9 @@ function handleMenuAction(action, val) {
     case "convertObjectType":
       convertObjectType(item, val);
       break;
+    case "toggleRulersGrid":
+      toggleRulersGrid(val);
+      break;
     default:
       break;
   }
@@ -3381,6 +3389,11 @@ function convertObjectType(item, type) {
   }
   item.type = type;
   item.settings = newSettings;
+}
+
+function toggleRulersGrid(val) {
+  console.log('toggleRulersGrid', val);
+  rulersGridVisible.value = val === "Enable" ? true : false;
 }
 
 // Handles a tool being dropped
