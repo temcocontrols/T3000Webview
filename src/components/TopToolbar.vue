@@ -20,7 +20,7 @@
 -->
 <template>
   <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
-    V:24.1226.01
+    V:24.1226.02
   </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
@@ -471,7 +471,7 @@
 </template>
 
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, ref, watch } from "vue";
 import { useQuasar } from "quasar";
 import { tools, user } from "../lib/common";
 
@@ -503,6 +503,10 @@ export default defineComponent({
       type: Number,
       required: true,
     },
+    rulersGridVisible: {
+      type: Boolean,
+      required: false,
+    }
   },
   setup(props, { emit }) {
     const $q = useQuasar();
@@ -516,12 +520,18 @@ export default defineComponent({
       localStorage.removeItem("user");
     }
 
+    const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
+    watch(() => props.rulersGridVisible, (newVal) => {
+      showRulersGrid.value = newVal ? "Enable" : "Disable";
+      // console.log('showRulersGrid props,show-rulers-grid', props.rulersGridVisible, showRulersGrid);
+    })
+
     return {
       menuActionEmit,
       logout,
       tools,
       user,
-      showRulersGrid: ref('Enable'),
+      showRulersGrid: showRulersGrid,
     };
   },
 });

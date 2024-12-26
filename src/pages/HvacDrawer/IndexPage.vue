@@ -131,7 +131,8 @@
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
+          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
+          :rulersGridVisible="rulersGridVisible" />
       </div>
       <div class="main-area">
         <div class="side-bar" v-if="!locked">
@@ -742,8 +743,6 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-const rulersGridVisible = ref(true);
-
 // Ruler & Grid default value
 const documentAreaPosition = ref(
   {
@@ -838,6 +837,8 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
+const rulersGridVisible = ref(true);
+
 const handleScroll = (event) => {
 
   // Reset the h,v ruler's width for scrolling
@@ -869,8 +870,11 @@ onMounted(() => {
     const localState = localStorage.getItem("appState");
     if (localState) {
       appState.value = JSON.parse(localState);
+      rulersGridVisible.value = appState.value.rulersGridVisible;
     }
   }
+
+  console.log('==== IndexPage.rulersGridVisible', rulersGridVisible.value)
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
@@ -912,6 +916,7 @@ onMounted(() => {
   window.chrome?.webview?.postMessage({
     action: 1, // GET_INITIAL_DATA
   });
+
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
@@ -967,7 +972,7 @@ onUnmounted(() => {
 // Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
   console.log("Received a message from webview", arg.data.action, arg.data);
-  console.log('=== T3000_Data ===', T3000_Data)
+  // console.log('=== T3000_Data ===', T3000_Data)
 
   // Handle various actions based on message data
   if (!"action" in arg.data) return;
@@ -994,7 +999,10 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
     }
+
     appState.value = arg.data.data;
+    rulersGridVisible.value = appState.value.rulersGridVisible;
+
     grpNav.value = [arg.data.entry];
     if (arg.data.library) {
       arg.data.library = JSON.parse(arg.data.library);
@@ -3402,8 +3410,9 @@ function convertObjectType(item, type) {
 }
 
 function toggleRulersGrid(val) {
-  console.log('toggleRulersGrid', val);
   rulersGridVisible.value = val === "Enable" ? true : false;
+  appState.value.rulersGridVisible = rulersGridVisible.value;
+  save(false);
 }
 
 // Handles a tool being dropped
