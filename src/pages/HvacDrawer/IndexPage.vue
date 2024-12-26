@@ -731,7 +731,6 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
-import { activate } from "paper/dist/paper-core";
 
 
 // New import for Data
@@ -1037,11 +1036,11 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     if (getPanelsInterval && arg.data?.panel_id) {
       clearInterval(getPanelsInterval);
     }
+
     if (arg.data?.panel_id) {
-      if (
-        T3000_Data.value.loadingPanel !== null &&
-        T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1
-      ) {
+
+      const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+      if (check1) {
         T3000_Data.value.loadingPanel++;
         const index = T3000_Data.value.loadingPanel;
         window.chrome?.webview?.postMessage({
@@ -1049,28 +1048,31 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
           panelId: T3000_Data.value.panelsList[index].panel_number,
         });
       }
-      if (
-        T3000_Data.value.loadingPanel !== null &&
-        T3000_Data.value.loadingPanel ===
-        T3000_Data.value.panelsList.length - 1
-      ) {
+
+      const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+      if (check2) {
         T3000_Data.value.loadingPanel = null;
       }
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== arg.data.panel_id
       );
+
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         arg.data.data
       );
+
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+
       selectPanelOptions.value = T3000_Data.value.panelsData;
+      console.log('===[GET_PANEL_DATA_RES] selectPanelOptions=>', selectPanelOptions.value)
+
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== arg.data.panel_id
       );
-      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(
-        arg.data.ranges
-      );
+
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+      console.log('===[GET_PANEL_DATA_RES] T3000_Data.value.panelsRanges=>', T3000_Data.value.panelsRanges)
 
       refreshLinkedEntries(arg.data.data);
     }
@@ -1092,6 +1094,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
     if (!linkT3EntryDialog.value.active) {
       selectPanelOptions.value = T3000_Data.value.panelsData;
+      console.log('===[GET_ENTRIES_RES] selectPanelOptions=>', selectPanelOptions.value)
     }
     refreshLinkedEntries(arg.data.data);
   }
@@ -1849,9 +1852,10 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
-  // console.log('linkT3EntrySave t3 entry dialog value=', linkT3EntryDialog.value.data);
+  console.log('===linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
   // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
+
   if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
     if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
       appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
@@ -1859,9 +1863,15 @@ function linkT3EntrySave() {
       appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
     }
   }
-  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
-    toRaw(linkT3EntryDialog.value.data)
-  );
+
+  // set the default to be divided by 1000
+  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+  if (checkHasValue) {
+    linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
+  }
+
+  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
+
   // Change the icon based on the linked entry type
   if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
     let icon = "fa-solid fa-camera-retro";
@@ -1876,6 +1886,7 @@ function linkT3EntrySave() {
     }
     appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
   }
+
   refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   linkT3EntryDialog.value.data = null;
   linkT3EntryDialog.value.active = false;
@@ -2166,11 +2177,10 @@ keycon.keydown(["insert"], (e) => {
 
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
+  console.log('===linkT3EntryDialogAction appState:', appState.value);
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
-  linkT3EntryDialog.value.data = cloneDeep(
-    appState.value.items[appState.value.activeItemIndex]?.t3Entry
-  );
+  linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
 }
 
 // Delete selected objects from the app state
