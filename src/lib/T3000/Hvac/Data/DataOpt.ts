@@ -20,125 +20,56 @@ class DataOpt {
   static readonly objectStorePrimaryKey: string = "T3.objectStorePrimary";
   static readonly clipboardManagerKey: string = "T3.clipboardManager";
   static readonly CURRENT_SEQ_OBJECT_IDKey: string = "T3.CURRENT_SEQ_OBJECT_ID";
-  // static readonly stateManagerKey: string = "T3.stateManager";
-  // static readonly objectStoreKey: string = "T3.objectStore";
+  static readonly stateManagerKey: string = "T3.stateManager";
+  static readonly objectStoreKey: string = "T3.objectStore";
 
   // call this function to load data from localstorage after GPP is initialized
-  static InitStateManagerFromLocal() {
 
-    return
+  static InitStoredData() {
 
-    debugger
+    // init stateManagerPrimary
+    this.InitStateManagerPrimary();
 
-    // const t1 = serialize(GPP.stateManagerPrimary);
-    // const t2 = deserialize(StateManager, t1);
+    this.InitObjectStorePrimary();
 
+    this.InitClipboardManager();
 
-
-    const testJson = localStorage.getItem(this.stateManagerPrimaryKey);
-    const testObj = JSON.parse(testJson);
-    const testInstance = plainToClass(StateManager, testObj);
-
-
-
-    // load stateManagePrimary
-    const stateManagerPrimary = this.LoadData(this.stateManagerPrimaryKey);
-    if (stateManagerPrimary) {
-
-      const stm = new StateManager();
-      stm.CurrentStateID = stateManagerPrimary.CurrentStateID;
-      stm.HistoryState = stateManagerPrimary.HistoryState;
-      stm.DroppedStates = stateManagerPrimary.DroppedStates;
-      stm.States = stateManagerPrimary.States;
-
-      GPP.stateManagerPrimary = stm;
-    }
-
-    // load objectStorePrimary
-    const objectStorePrimary = this.LoadData(this.objectStorePrimaryKey);
-    if (objectStorePrimary) {
-
-      const osp = new ObjectStore();
-      osp.StoredObjects = objectStorePrimary.StoredObjects;
-
-      GPP.objectStorePrimary = osp;
-    }
-
-    // load clipboardManager
-    const clipboardManager = this.LoadData(this.clipboardManagerKey);
-    if (clipboardManager) {
-
-      var clm = new ObjectStoreFactory().Create();
-
-      GPP.clipboardManager = clm;
-    }
-
-    // load CURRENT_SEQ_OBJECT_ID
-    const CURRENT_SEQ_OBJECT_ID = this.LoadData(this.CURRENT_SEQ_OBJECT_IDKey);
-    if (CURRENT_SEQ_OBJECT_ID) {
-      GPP.CURRENT_SEQ_OBJECT_ID_Primary = CURRENT_SEQ_OBJECT_ID;
-    }
-
-    /*
-    // load stateManager
-    const stateManager = this.LoadData(this.stateManagerKey);
-    if (stateManager) {
-      GPP.stateManager = stateManager;
-    }
-
-    // load objectStore
-    const objectStore = this.LoadData(this.objectStoreKey);
-    if (objectStore) {
-      GPP.objectStore = objectStore;
-    }
-    */
-
-    this.SDJS_select_primary_state_manager();
-
-    // GPP.stateManagerPrimary.RestoreObjectStoreFromState();
-    // GPP.stateManager.RestoreObjectStoreFromState();
+    this.InitStateManager();
   }
 
-  static SaveToLocal() {
+  static InitStateManagerPrimary() {
 
-    debugger
-
-    // const ii1 = instanceToPlain(GPP.stateManagerPrimary);
-    // const ii2 = plainToInstance(StateManager, ii1);
-
-    const stateManagerPrimaryStr = JSON.stringify(GPP.stateManagerPrimary);
-
+    const stateManagerPrimaryStr = this.LoadData(this.stateManagerPrimaryKey);
     const stateManagerPrimaryJsonObj = JSON.parse(stateManagerPrimaryStr);
+
     const stateManagerPrimaryCls = plainToInstance(StateManager, stateManagerPrimaryJsonObj);
 
-    const statesJsonObj = stateManagerPrimaryJsonObj.States;
-    const statesCls = plainToInstance(State, statesJsonObj);
+    for (let i = 0; i < stateManagerPrimaryCls.States.length; i++) {
 
-    for (let i = 0; i < statesJsonObj.length; i++) {
-      const storedObjectsJsonObj = statesJsonObj[i].StoredObjects;
+      const stateCls = plainToInstance(State, stateManagerPrimaryCls.States[i]);
 
-      for (let j = 0; j < storedObjectsJsonObj.length; j++) {
+      for (let j = 0; j < stateCls.StoredObjects.length; j++) {
 
-        // const t1 = new StoredObject();
-
-        const storedObjectCls = plainToInstance(StoredObject, storedObjectsJsonObj[j]);
-
-        const storedObjectData = storedObjectsJsonObj[j].Data;
+        const storedObjectCls = plainToInstance(StoredObject, stateCls.StoredObjects[j]);
+        const storedObjectData = storedObjectCls.Data;
 
         if (storedObjectData.Type === 'SEDSession') {
           const sedSessionData = plainToInstance(SEDSession, storedObjectData);
+          storedObjectCls.Data = sedSessionData;
 
           console.log('sedSessionData', sedSessionData);
         }
 
         if (storedObjectData.Type === 'LayersManager') {
           const layersManagerData = plainToInstance(LayersManager, storedObjectData);
+          storedObjectCls.Data = layersManagerData;
 
           console.log('layersManagerData', layersManagerData);
         }
 
         if (storedObjectData.Type === 'TEDSession') {
           const tedSessionData = plainToInstance(TEDSession, storedObjectData);
+          storedObjectCls.Data = tedSessionData;
 
           console.log('tedSessionData', tedSessionData);
         }
@@ -148,6 +79,8 @@ class DataOpt {
           // SHAPE: 0, LINE: 1,  CONNECTOR: 3
           if (storedObjectData.DrawingObjectBaseClass === 1) {
             const lineData = plainToInstance(Instance.Shape.Line, storedObjectData);
+            storedObjectCls.Data = lineData;
+
             console.log('lineData', lineData);
           }
 
@@ -155,6 +88,7 @@ class DataOpt {
             if (storedObjectData.ShapeType === 'Oval') {
 
               const ovalData = plainToInstance(Instance.Shape.Oval, storedObjectData);
+              storedObjectCls.Data = ovalData;
 
               console.log('ovalData', ovalData);
             }
@@ -162,6 +96,7 @@ class DataOpt {
             if (storedObjectData.ShapeType === 'Rect') {
 
               const rectData = plainToInstance(Instance.Shape.Rect, storedObjectData);
+              storedObjectCls.Data = rectData;
 
               console.log('rectData', rectData);
             }
@@ -169,32 +104,131 @@ class DataOpt {
             if (storedObjectData.ShapeType === 'Polygon') {
 
               const polygonData = plainToInstance(Instance.Shape.Polygon, storedObjectData);
+              storedObjectCls.Data = polygon
 
-              console.log('polygonData', polygonData);
             }
 
+            const statesJsonObj = stateManagerPrimaryJsonObj.States;
+            const statesCls = plainToInstance(State, statesJsonObj);
 
-          }
+            for (let i = 0; i < statesJsonObj.length; i++) {
+              const storedObjectsJsonObj = statesJsonObj[i].StoredObjects;
 
-          if (storedObjectData.DrawingObjectBaseClass === 3) {
-            const connectorData = plainToInstance(Instance.Shape.Connector, storedObjectData);
-            console.log('connectorData', connectorData);
+              for (let j = 0; j < storedObjectsJsonObj.length; j++) {
+
+                const storedObjectCls = plainToInstance(StoredObject, storedObjectsJsonObj[j]);
+
+                const storedObjectData = storedObjectsJsonObj[j].Data;
+
+                if (storedObjectData.Type === 'SEDSession') {
+                  const sedSessionData = plainToInstance(SEDSession, storedObjectData);
+                  storedObjectCls.Data = sedSessionData;
+
+                  console.log('sedSessionData', sedSessionData);
+                }
+
+                if (storedObjectData.Type === 'LayersManager') {
+                  const layersManagerData = plainToInstance(LayersManager, storedObjectData);
+                  storedObjectCls.Data = layersManagerData;
+
+                  console.log('layersManagerData', layersManagerData);
+                }
+
+                if (storedObjectData.Type === 'TEDSession') {
+                  const tedSessionData = plainToInstance(TEDSession, storedObjectData);
+                  storedObjectCls.Data = tedSessionData;
+
+                  console.log('tedSessionData', tedSessionData);
+                }
+
+                if (storedObjectData.Type === 'BaseDrawingObject') {
+
+                  // SHAPE: 0, LINE: 1,  CONNECTOR: 3
+                  if (storedObjectData.DrawingObjectBaseClass === 1) {
+                    const lineData = plainToInstance(Instance.Shape.Line, storedObjectData);
+                    storedObjectCls.Data = lineData;
+
+                    console.log('lineData', lineData);
+                  }
+
+                  if (storedObjectData.DrawingObjectBaseClass === 0) {
+                    if (storedObjectData.ShapeType === 'Oval') {
+
+                      const ovalData = plainToInstance(Instance.Shape.Oval, storedObjectData);
+                      storedObjectCls.Data = ovalData;
+
+                      console.log('ovalData', ovalData);
+                    }
+
+                    if (storedObjectData.ShapeType === 'Rect') {
+
+                      const rectData = plainToInstance(Instance.Shape.Rect, storedObjectData);
+                      storedObjectCls.Data = rectData;
+
+                      console.log('rectData', rectData);
+                    }
+
+                    if (storedObjectData.ShapeType === 'Polygon') {
+
+                      const polygonData = plainToInstance(Instance.Shape.Polygon, storedObjectData);
+                      storedObjectCls.Data = polygonData;
+
+                      console.log('polygonData', polygonData);
+                    }
+
+                    if (storedObjectData.ShapeType === "PolyLineContainer") {
+                      const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, storedObjectData);
+                      storedObjectCls.Data = polyLineContainerData;
+
+                      console.log('polyLineContainerData', polyLineContainerData);
+                    }
+                  }
+
+                  if (storedObjectData.DrawingObjectBaseClass === 3) {
+                    const connectorData = plainToInstance(Instance.Shape.Connector, storedObjectData);
+                    storedObjectCls.Data = connectorData;
+
+                    console.log('connectorData', connectorData);
+                  }
+                }
+
+                statesCls[i][j].StoredObjects.push(storedObjectCls);
+
+                console.log('storedObjectCls');
+              }
+
+            }
           }
         }
 
-        console.log('storedObjectCls');
+        // stateCls.StoredObjects[j] = storedObjectCls;
       }
-      // const storedObjectsCls = plainToInstance(StoredObject, storedObjectsJsonObj);
-
     }
+  }
 
+  static InitObjectStorePrimary() {
 
-    const m1 = JSON.stringify(GPP.stateManagerPrimary);
-    const m2 = JSON.parse(m1);
+  }
 
+  static InitClipboardManager() {
 
+  }
 
+  static InitStateManager() {
 
+  }
+
+  static InitObjectStore() {
+
+  }
+
+  static SaveToLocal() {
+
+    debugger
+
+    this.InitStateManagerPrimary();
+
+    return;
 
     // save stateManagePrimary
     this.SaveData(this.stateManagerPrimaryKey, GPP.stateManagerPrimary);
@@ -205,13 +239,12 @@ class DataOpt {
     // save clipboardManager
     this.SaveData(this.clipboardManagerKey, GPP.clipboardManager);
 
-    /*
     // save stateManager
     this.SaveData(this.stateManagerKey, GPP.stateManager);
 
     // save objectStore
     this.SaveData(this.objectStoreKey, GPP.objectStore);
-    */
+
   }
 
   static SaveToT3000() {
