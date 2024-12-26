@@ -1987,6 +1987,14 @@ function refreshObjectStatus(item) {
 function save(notify = false) {
   savedNotify.value = notify;
   const data = cloneDeep(toRaw(appState.value));
+
+  // recalculate the items count
+  const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
+  data.itemsCount = nonZeroWidthItemsCount;
+  // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
+  // console.log('==== Save appState:', appState.value);
+  console.log('==== Save data:', data);
+
   data.selectedTargets = [];
   data.elementGuidelines = [];
   window.chrome?.webview?.postMessage({
@@ -3430,7 +3438,10 @@ function viewportLeftClick(ev) {
   // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
   ev.preventDefault();
 
-  if (!locked.value && selectedTool.value.name !== 'Pointer' && !isDrawing.value) {
+  const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
+    && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
+
+  if (check) {
     // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
 
     // Manually create a shape at the mouse current position
