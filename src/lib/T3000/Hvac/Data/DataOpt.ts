@@ -131,10 +131,18 @@ class DataOpt {
 
       // SHAPE: 0, LINE: 1,  CONNECTOR: 3
       if (storedObjectData.DrawingObjectBaseClass === 1) {
-        const lineData = plainToInstance(Instance.Shape.Line, storedObjectData);
-        storedObjectCls.Data = lineData;
+        if (storedObjectData.ShapeType === "PolyLineContainer") {
+          const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, storedObjectData);
+          storedObjectCls.Data = polyLineContainerData;
 
-        console.log('lineData', lineData);
+          console.log('polyLineContainerData', polyLineContainerData);
+        }
+        else {
+          const lineData = plainToInstance(Instance.Shape.Line, storedObjectData);
+          storedObjectCls.Data = lineData;
+
+          console.log('lineData', lineData);
+        }
       }
 
       if (storedObjectData.DrawingObjectBaseClass === 0) {
