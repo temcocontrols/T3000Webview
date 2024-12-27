@@ -101,7 +101,9 @@ class SEDSession {
     this.hopdimindex = 1;
     this.hopdim = { x: ConstantData.HopDimX[1], y: ConstantData.HopDimY[1] };
     this.hopstyle = ConstantData.HopStyle.SDH_Arc;
-    this.dimensions = ConstantData.DimensionFlags.SED_DF_Total;
+
+    // Double change it to SED_DF_Select: 8 | SED_DF_Always: 16
+    this.dimensions = 146;//ConstantData.DimensionFlags.SED_DF_Total;
     this.shapedimensions = 0;
     this.background = new FillData();
     this.background.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
