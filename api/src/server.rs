@@ -20,6 +20,10 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
+use tokio_tungstenite::accept_async;
+// use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio::net::TcpStream;
+use futures_util::{StreamExt, SinkExt};
 
 fn routes_static() -> Router {
     Router::new().nest_service(
@@ -80,7 +84,9 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", &server_port)).await?;
 
     // Print the server address
-    println!("->> LISTENING on {:?}\n", listener.local_addr());
+    // println!("->> LISTENING on {:?}\n", listener.local_addr());
+
+    start_websocket_server().await;
 
     // Start the server with graceful shutdown
     axum::serve(listener, app)
@@ -123,3 +129,54 @@ async fn shutdown_signal(state: AppState) {
     println!("->> SHUTTING DOWN: Closing database connection...");
     let _ = state.conn.lock().await; // Lock and drop the connection
 }
+
+async fn start_websocket_server(){
+  tokio::spawn(async move {
+    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
+    // println!("WebSocket server listening on {:?}", ws_listener.local_addr());
+
+    loop {
+      let (socket, _) = ws_listener.accept().await.unwrap();
+      tokio::spawn(async move {
+        if let Err(e) = handle_websocket(socket).await {
+          println!("WebSocket error: {:?}", e);
+        }
+      });
+    }
+  });
+
+  /*
+  // Create a WebSocket server
+  tokio::spawn(async move {
+    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
+    println!("WebSocket server listening on {:?}", ws_listener.local_addr());
+
+    loop {
+      let (socket, _) = ws_listener.accept().await.unwrap();
+      tokio::spawn(async move {
+        if let Err(e) = handle_websocket(socket).await {
+          println!("WebSocket error: {:?}", e);
+        }
+      });
+    }
+  });
+  */
+}
+
+async fn handle_websocket(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+  let ws_stream = accept_async(stream).await?;
+  let (mut write, mut read) = ws_stream.split();
+
+  while let Some(msg) = read.next().await {
+    let msg = msg?;
+    if msg.is_text() || msg.is_binary() {
+      println!("Received: {}", msg);
+        // Process the message and forward it to clients and T3000
+      write.send(msg).await?;
+    }
+  }
+
+  Ok(())
+}
+
+

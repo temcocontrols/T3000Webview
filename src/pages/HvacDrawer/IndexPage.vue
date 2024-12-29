@@ -857,7 +857,38 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
-  // console.log('=== onMounted ===', process.env);
+  console.log('=== 1229 onMounted ===');
+  console.log('=== 1229 window', window);
+
+  const socket = new WebSocket('ws://localhost:9104');
+
+  socket.onopen = function (event) {
+
+    /*
+    action: 0, // GET_PANEL_DATA
+    action: 1, // GET_INITIAL_DATA
+    action: 2, // SAVE_GRAPHIC
+    action: 3, // UPDATE_ENTRY
+    action: 4, // GET_PANELS_LIST
+    action: 6, // GET_ENTRIES
+    action: 7, // LOAD_GRAPHIC_ENTRY
+    action: 8, // OPEN_ENTRY_EDIT_WINDOW
+    action: 9, // SAVE_IMAGE
+    action: 10, // SAVE_LIBRARY_DATA
+    action: 11, // DELETE_IMAGE
+    */
+
+    const message = {
+      action: 0, // GET_PANEL_DATA
+      panelId: 1,
+    };
+
+    socket.send(message);
+  };
+
+  socket.onmessage = function (event) {
+    console.log('Message from server ', event.data);
+  };
 
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
