@@ -169,11 +169,24 @@ async fn handle_websocket(stream: TcpStream) -> Result<(), Box<dyn Error>> {
 
   while let Some(msg) = read.next().await {
     let msg = msg?;
+
     if msg.is_text() || msg.is_binary() {
-      println!("Received: {}", msg);
+      println!("Received message: {}", msg);
         // Process the message and forward it to clients and T3000
       write.send(msg).await?;
     }
+
+    /*
+    if msg.is_text() {
+      println!("Received text message: {}", msg.to_text()?);
+      write.send(msg).await?;
+    } else if msg.is_binary() {
+      let data = msg.into_data();
+      let json: serde_json::Value = serde_json::from_slice(&data)?;
+      println!("Received binary message as JSON: {}", json);
+      write.send(msg).await?;
+    }
+    */
   }
 
   Ok(())

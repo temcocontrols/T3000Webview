@@ -857,39 +857,6 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
-  console.log('=== 1229 onMounted ===');
-  console.log('=== 1229 window', window);
-
-  const socket = new WebSocket('ws://localhost:9104');
-
-  socket.onopen = function (event) {
-
-    /*
-    action: 0, // GET_PANEL_DATA
-    action: 1, // GET_INITIAL_DATA
-    action: 2, // SAVE_GRAPHIC
-    action: 3, // UPDATE_ENTRY
-    action: 4, // GET_PANELS_LIST
-    action: 6, // GET_ENTRIES
-    action: 7, // LOAD_GRAPHIC_ENTRY
-    action: 8, // OPEN_ENTRY_EDIT_WINDOW
-    action: 9, // SAVE_IMAGE
-    action: 10, // SAVE_LIBRARY_DATA
-    action: 11, // DELETE_IMAGE
-    */
-
-    const message = {
-      action: 0, // GET_PANEL_DATA
-      panelId: 1,
-    };
-
-    socket.send(message);
-  };
-
-  socket.onmessage = function (event) {
-    console.log('Message from server ', event.data);
-  };
-
   // Set global navigation properties
   globalNav.value.title = "HVAC Drawer";
   globalNav.value.back = null;
@@ -986,7 +953,72 @@ onMounted(() => {
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+
+  processTcpMessage();
+
 });
+
+function connectSocket() {
+
+  let reconnectInterval;
+  const socket = new WebSocket('ws://localhost:9104');
+
+  /*
+  action: 0, // GET_PANEL_DATA
+  action: 1, // GET_INITIAL_DATA
+  action: 2, // SAVE_GRAPHIC
+  action: 3, // UPDATE_ENTRY
+  action: 4, // GET_PANELS_LIST
+  action: 6, // GET_ENTRIES
+  action: 7, // LOAD_GRAPHIC_ENTRY
+  action: 8, // OPEN_ENTRY_EDIT_WINDOW
+  action: 9, // SAVE_IMAGE
+  action: 10, // SAVE_LIBRARY_DATA
+  action: 11, // DELETE_IMAGE
+  */
+
+  socket.onopen = function (event) {
+    const message = {
+      action: 0, // GET_PANEL_DATA
+      panelId: 1,
+    };
+    socket.send(JSON.stringify(message));
+  };
+
+  socket.onmessage = function (event) {
+
+    // process the messgae here
+
+    console.log('==== Message from TCP Server, start to process it:', event.data);
+    const jsonObj = JSON.parse(event.data);
+
+    // if (jsonObj.action === 0) {
+    //   socket.send(JSON.stringify({
+    //     action: 1, // GET_INITIAL_DATA
+    //   }));
+    // }
+  };
+
+  socket.onclose = function (event) {
+    console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
+    reconnectInterval = setTimeout(function () {
+      connectSocket();
+    }, 1000);
+  };
+
+  socket.onerror = function (error) {
+    console.error('Socket encountered error: ', error.message, 'Closing socket');
+    socket.close();
+  };
+}
+
+
+function processTcpMessage() {
+  console.log('=== TCP Start to process tcp message after mounted === , The window is:', window);
+
+  connectSocket();
+}
 
 onBeforeUnmount(() => {
 
