@@ -954,7 +954,6 @@ onMounted(() => {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-
   processTcpMessage();
 
 });
@@ -963,6 +962,8 @@ function connectSocket() {
 
   let reconnectInterval;
   const socket = new WebSocket('ws://localhost:9104');
+
+  const isFirefox = typeof InstallTrigger !== 'undefined';
 
   /*
   action: 0, // GET_PANEL_DATA
@@ -982,6 +983,7 @@ function connectSocket() {
     const message = {
       action: 0, // GET_PANEL_DATA
       panelId: 1,
+      from: isFirefox ? 'firefox' : 'other'
     };
     socket.send(JSON.stringify(message));
   };
@@ -1001,18 +1003,17 @@ function connectSocket() {
   };
 
   socket.onclose = function (event) {
-    console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
+    // console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
     reconnectInterval = setTimeout(function () {
       connectSocket();
     }, 1000);
   };
 
   socket.onerror = function (error) {
-    console.error('Socket encountered error: ', error.message, 'Closing socket');
+    // console.error('Socket encountered error: ', error.message, 'Closing socket');
     socket.close();
   };
 }
-
 
 function processTcpMessage() {
   console.log('=== TCP Start to process tcp message after mounted === , The window is:', window);

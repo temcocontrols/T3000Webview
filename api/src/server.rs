@@ -24,6 +24,8 @@ use tokio_tungstenite::accept_async;
 // use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio::net::TcpStream;
 use futures_util::{StreamExt, SinkExt};
+use std::sync::{Arc, Mutex};
+use tokio_tungstenite::tungstenite::protocol::Message;
 
 fn routes_static() -> Router {
     Router::new().nest_service(
@@ -130,66 +132,112 @@ async fn shutdown_signal(state: AppState) {
     let _ = state.conn.lock().await; // Lock and drop the connection
 }
 
-async fn start_websocket_server(){
+// async fn start_websocket_server(){
+//   tokio::spawn(async move {
+//     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
+//     // println!("WebSocket server listening on {:?}", ws_listener.local_addr());
+
+//     loop {
+//       let (socket, _) = ws_listener.accept().await.unwrap();
+//       tokio::spawn(async move {
+//         if let Err(e) = handle_websocket(socket).await {
+//           println!("WebSocket error: {:?}", e);
+//         }
+//       });
+//     }
+//   });
+
+//   /*
+//   // Create a WebSocket server
+//   tokio::spawn(async move {
+//     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
+//     println!("WebSocket server listening on {:?}", ws_listener.local_addr());
+
+//     loop {
+//       let (socket, _) = ws_listener.accept().await.unwrap();
+//       tokio::spawn(async move {
+//         if let Err(e) = handle_websocket(socket).await {
+//           println!("WebSocket error: {:?}", e);
+//         }
+//       });
+//     }
+//   });
+//   */
+// }
+
+// async fn handle_websocket(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+//   let ws_stream = accept_async(stream).await?;
+//   let (mut write, mut read) = ws_stream.split();
+
+//   while let Some(msg) = read.next().await {
+//     let msg = msg?;
+
+//     if msg.is_text() || msg.is_binary() {
+//       println!("Received message: {}", msg);
+//         // Process the message and forward it to clients and T3000
+//       write.send(msg).await?;
+//     }
+
+//     /*
+//     if msg.is_text() {
+//       println!("Received text message: {}", msg.to_text()?);
+//       write.send(msg).await?;
+//     } else if msg.is_binary() {
+//       let data = msg.into_data();
+//       let json: serde_json::Value = serde_json::from_slice(&data)?;
+//       println!("Received binary message as JSON: {}", json);
+//       write.send(msg).await?;
+//     }
+//     */
+//   }
+
+//   Ok(())
+// }
+
+type Clients = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Message>>>>;
+
+async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
+  let ws_stream = accept_async(stream).await?;
+  let (mut write, mut read) = ws_stream.split();
+  let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+  clients.lock().unwrap().push(tx);
+  tokio::spawn(async move {
+    while let Some(msg) = rx.recv().await {
+      if write.send(msg).await.is_err() {
+        break;
+      }
+    }
+  });
+  while let Some(msg) = read.next().await {
+    let msg = msg?;
+    if msg.is_text() || msg.is_binary() {
+      println!("Received message: {}", msg);
+      let clients = clients.lock().unwrap();
+      for client in clients.iter() {
+        if client.send(msg.clone()).is_err() {
+          // Handle error if needed
+        }
+      }
+    }
+  }
+  Ok(())
+}
+
+async fn start_websocket_server() {
+  let clients: Clients = Arc::new(Mutex::new(Vec::new()));
   tokio::spawn(async move {
     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
     // println!("WebSocket server listening on {:?}", ws_listener.local_addr());
-
     loop {
       let (socket, _) = ws_listener.accept().await.unwrap();
+      let clients = clients.clone();
       tokio::spawn(async move {
-        if let Err(e) = handle_websocket(socket).await {
+        if let Err(e) = handle_websocket(socket, clients).await {
           println!("WebSocket error: {:?}", e);
         }
       });
     }
   });
-
-  /*
-  // Create a WebSocket server
-  tokio::spawn(async move {
-    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
-    println!("WebSocket server listening on {:?}", ws_listener.local_addr());
-
-    loop {
-      let (socket, _) = ws_listener.accept().await.unwrap();
-      tokio::spawn(async move {
-        if let Err(e) = handle_websocket(socket).await {
-          println!("WebSocket error: {:?}", e);
-        }
-      });
-    }
-  });
-  */
-}
-
-async fn handle_websocket(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-  let ws_stream = accept_async(stream).await?;
-  let (mut write, mut read) = ws_stream.split();
-
-  while let Some(msg) = read.next().await {
-    let msg = msg?;
-
-    if msg.is_text() || msg.is_binary() {
-      println!("Received message: {}", msg);
-        // Process the message and forward it to clients and T3000
-      write.send(msg).await?;
-    }
-
-    /*
-    if msg.is_text() {
-      println!("Received text message: {}", msg.to_text()?);
-      write.send(msg).await?;
-    } else if msg.is_binary() {
-      let data = msg.into_data();
-      let json: serde_json::Value = serde_json::from_slice(&data)?;
-      println!("Received binary message as JSON: {}", json);
-      write.send(msg).await?;
-    }
-    */
-  }
-
-  Ok(())
 }
 
 
