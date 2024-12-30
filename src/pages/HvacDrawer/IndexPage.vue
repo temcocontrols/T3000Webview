@@ -704,9 +704,8 @@
     </q-card>
   </q-dialog>
 
-
   <q-dialog v-model="deviceList.active">
-    <q-card style="min-width: 650px">
+    <q-card style="min-width: 800px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />
@@ -855,7 +854,7 @@ const objectsRef = ref(null); // Reference to objects
 
 const rulersGridVisible = ref(true);
 
-const deviceList = ref({ active: true, data: {} });
+const deviceList = ref({ active: false, data: {} });
 
 const handleScroll = (event) => {
 
@@ -973,7 +972,12 @@ onMounted(() => {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   // processTcpMessage();
+  // check if need to show the device list dialog
+  // deviceList.value.active = true;
 
+  setTimeout(() => {
+    deviceList.value.active = true;
+  }, 2000);
 });
 
 function connectSocket() {

@@ -1,59 +1,52 @@
 <style scoped>
-.container {
-  display: flex;
-}
-
-.tree {
-  width: 30%;
-  border-right: 1px solid #ccc;
-  padding: 10px;
-}
-
-.panel {
-  width: 70%;
-  padding: 10px;
+.dvcontainer {
+  max-width: 99%;
 }
 </style>
 
 <template>
 
-  <div class="q-pa-md row q-col-gutter-sm">
-    <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
-      label="Search - only filters labels that have also '(*)'">
-      <template v-slot:append>
-        <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
-      </template>
-    </q-input>
-  </div>
+  <div class=".dvcontainer">
+    <div class="q-pa-sm row q-col-gutter-sm">
+      <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
+        label="Search - only filters labels that have also '(*)'">
+        <template v-slot:append>
+          <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
+        </template>
+      </q-input>
+    </div>
 
-  <div class="q-pa-md row q-col-gutter-sm">
+    <div class="q-pa-sm row q-col-gutter-sm">
 
+      <q-tree class="col-12 col-sm-5" :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
+        v-model:ticked="ticked" v-model:expanded="expanded" />
+      <div class="col-12 col-sm-7 q-gutter-sm">
+        <div class="text-h6">Selected</div>
+        <div>{{ selected }}</div>
 
-    <q-tree class="col-12 col-sm-6" :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
-      v-model:ticked="ticked" v-model:expanded="expanded" />
-    <div class="col-12 col-sm-6 q-gutter-sm">
-      <div class="text-h6">Selected</div>
-      <div>{{ selected }}</div>
+        <q-separator spaced />
 
-      <q-separator spaced />
-
-      <div class="text-h6">Ticked</div>
-      <div>
-        <div v-for="tick in ticked" :key="`ticked-${tick}`">
-          {{ tick }}
+        <div class="text-h6">Ticked</div>
+        <div>
+          <div v-for="tick in ticked" :key="`ticked-${tick}`">
+            {{ tick }}
+          </div>
         </div>
-      </div>
 
-      <q-separator spaced />
+        <q-separator spaced />
 
-      <div class="text-h6">Expanded</div>
-      <div>
-        <div v-for="expand in expanded" :key="`expanded-${expand}`">
-          {{ expand }}
+        <div class="text-h6">Expanded</div>
+        <div>
+          <div v-for="expand in expanded" :key="`expanded-${expand}`">
+            {{ expand }}
+          </div>
         </div>
       </div>
     </div>
+
   </div>
+
+
   <!-- <div class="container">
     <div class="tree">
       <ul>
@@ -113,13 +106,34 @@ export default defineComponent({
   },
 
   setup(props, { emit }) {
-    console.log(MockData.DeviceList)
-    return {
-      selected: ref('Pleasant surroundings'),
-      ticked: ref(['Quality ingredients', 'Good table presentation']),
-      expanded: ref(['Satisfied customers', 'Good service (disabled node)', 'Pleasant surroundings']),
+    console.log('==== device', MockData.DeviceList)
 
-      simple: MockData.DeviceList
+    const filter = ref('de');
+    const filterRef = ref(null);
+    const selected = ref('Pleasant surroundings');
+    const ticked = ref(['Quality ingredients', 'Good table presentation']);
+    const expanded = ref(['All Devices', 'Satisfied customers', 'Good service (disabled node)', 'Pleasant surroundings']);
+    const simple = MockData.DeviceList;
+
+    const myFilterMethod = (node, filter) => {
+      const filt = filter.toLowerCase()
+      return node.label && node.label.toLowerCase().indexOf(filt) > -1 && node.label.toLowerCase().indexOf('(*)') > -1
+    }
+
+    const resetFilter = () => {
+      filter.value = ''
+      filterRef.value.focus()
+    }
+
+    return {
+      filter,
+      filterRef,
+      selected,
+      ticked,
+      expanded,
+      simple,
+      myFilterMethod,
+      resetFilter
     }
   }
 });
