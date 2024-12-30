@@ -216,6 +216,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
       for client in clients.iter() {
         if client.send(msg.clone()).is_err() {
           // Handle error if needed
+          println!("Client send msg on error");
         }
       }
     }

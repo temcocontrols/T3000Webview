@@ -980,12 +980,26 @@ function connectSocket() {
   */
 
   socket.onopen = function (event) {
-    const message = {
-      action: 0, // GET_PANEL_DATA
-      panelId: 1,
-      from: isFirefox ? 'firefox' : 'other'
-    };
-    socket.send(JSON.stringify(message));
+    // const message = {
+    //   action: 0, // GET_PANEL_DATA
+    //   panelId: 1,
+    //   from: isFirefox ? 'firefox' : 'other'
+    // };
+
+    const data = {
+      header: {
+        device: 'T3-XX-ESP',
+        panel: 1,
+        clientId: 'R102039488500',
+        from: isFirefox ? 'firefox' : 'other'
+      },
+      message: {
+        action: 0, // GET_PANEL_DATA
+        panelId: 1,
+      }
+    }
+
+    socket.send(JSON.stringify(data));
   };
 
   socket.onmessage = function (event) {
