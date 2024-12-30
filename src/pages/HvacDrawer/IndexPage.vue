@@ -37,16 +37,17 @@
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  background: red;
-  height: calc(100vh - 137px);
-  width: calc(100vw - 148px);
+  /* background: red; */
+
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
 
 .c-ruler {
   width: 20px;
   height: 20px;
   background-color: #ebeced;
-  background-color: blue;
+  /* background-color: blue; */
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -59,11 +60,12 @@
   background-color: #ebeced;
   /* background-color: #416990; */
   top: 1px;
-  /* left: 22px; */
-  padding-left: 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
+  left: 22px;
+  /* padding-left: 22px; */
+  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
   height: 20px;
-  /* width: calc(100vw - 148px); */
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+
 }
 
 .v-ruler {
@@ -74,7 +76,7 @@
   width: 20px;
   left: 1px;
   top: 22px;
-  height: calc(100vh - 137px);
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
 
 .hv-grid {
@@ -85,8 +87,9 @@
   /* width: calc(100vw - 166px);
   height: calc(100vh - 97px); */
 
-  width: calc(100vw - 148px);
-  height: calc(100vh - 137px);
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
   overflow: hidden;
 }
 
@@ -96,11 +99,11 @@
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
   /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
-  width: calc(100vw - 148px);
-  height: calc(100vh - 137px);
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
   /* overflow: hidden scroll; */
   /* overflow: scroll; */
-  background-color: aquamarine;
+  /* background-color: aquamarine; */
   overflow: hidden;
 }
 
@@ -119,8 +122,8 @@
   /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
 
   /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
-  width: calc(100vw - 148px);
-  height: calc(100vh - 137px);
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 
 
   /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
@@ -128,7 +131,7 @@
 
   /* background-color: #e5e7eb; */
 
-  background-color: chartreuse;
+  /* background-color: chartreuse; */
 }
 
 .default-svg {
@@ -216,28 +219,6 @@
                 </vue-selecto>
                 <!-- Moveable Component for Draggable/Resizable Items -->
                 <div ref="viewport">
-
-                  <div id="svg-area">
-                    <!-- <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
-                      xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
-                      style="position:relative;overflow:hidden;" class="default-svg">
-                      <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
-                        ref="objectsRef" :item="item" :key="item.id + item.type + index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </svg> -->
-
-                    <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
-                      <WallExterior
-                        ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </div> -->
-                  </div>
 
                   <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
                     :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
@@ -789,7 +770,9 @@ const documentAreaPosition = ref(
 
     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
     //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" }
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
+    widthOffset: '128px',
+    heightOffset: '115px',
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -3040,8 +3023,9 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-
   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
+  documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
+  documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
 }
 
 // Handle object click events based on t3Entry type
