@@ -37,15 +37,16 @@
   position: relative;
   background-color: #e3e4e5;
   height: 100%;
-  /* background: red; */
-  height: calc(100vh - 38px);
+  background: red;
+  height: calc(100vh - 137px);
+  width: calc(100vw - 148px);
 }
 
 .c-ruler {
   width: 20px;
   height: 20px;
   background-color: #ebeced;
-  /* background-color: blue; */
+  background-color: blue;
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -58,9 +59,11 @@
   background-color: #ebeced;
   /* background-color: #416990; */
   top: 1px;
-  left: 22px;
+  /* left: 22px; */
+  padding-left: 22px;
   width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
-  height: 20px
+  height: 20px;
+  /* width: calc(100vw - 148px); */
 }
 
 .v-ruler {
@@ -71,7 +74,7 @@
   width: 20px;
   left: 1px;
   top: 22px;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 137px);
 }
 
 .hv-grid {
@@ -79,8 +82,11 @@
   background-color: #ebeced;
   /* background-color: #b25b5b; */
   inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
+  /* width: calc(100vw - 166px);
+  height: calc(100vh - 97px); */
+
+  width: calc(100vw - 148px);
+  height: calc(100vh - 137px);
   overflow: hidden;
 }
 
@@ -89,10 +95,13 @@
   background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px);
+  /* width: calc(100vw v-bind("documentAreaPosition.wpwWOffset")); */
+  width: calc(100vw - 148px);
+  height: calc(100vh - 137px);
   /* overflow: hidden scroll; */
-  overflow: scroll;
+  /* overflow: scroll; */
+  background-color: aquamarine;
+  overflow: hidden;
 }
 
 .viewport {
@@ -106,13 +115,20 @@
   /* background-color: rgb(7, 115, 115); */
   /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
   height: calc(100vh - 68px); */
-  width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height");
+  /* width: v-bind("documentAreaPosition.wiewPortWH.width"); */
+  /* height: v-bind("documentAreaPosition.wiewPortWH.height"); */
+
+  /* width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset")); */
+  width: calc(100vw - 148px);
+  height: calc(100vh - 137px);
+
 
   /* background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
   background-size: 20px 20px; */
 
   /* background-color: #e5e7eb; */
+
+  background-color: chartreuse;
 }
 
 .default-svg {
@@ -129,11 +145,14 @@
       <div class="top-area">
         <!-- Top Toolbar -->
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" />
+          :rulersGridVisible="rulersGridVisible" /> -->
+
+        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack"></NewTopToolBar>
       </div>
+
       <div class="main-area">
         <div class="side-bar" v-if="!locked">
           <!-- Tools Sidebar -->
@@ -144,14 +163,14 @@
         </div>
         <div class="work-area">
           <div class="document-area">
-            <div class="c-ruler" v-if="!locked && rulersGridVisible"></div>
-            <div class="h-ruler" v-if="!locked && rulersGridVisible">
+            <div class="c-ruler" v-if="/*!locked &&*/ rulersGridVisible"></div>
+            <div class="h-ruler" v-if="/*!locked &&*/ rulersGridVisible">
               <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
             </div>
-            <div class="v-ruler" v-if="!locked && rulersGridVisible">
+            <div class="v-ruler" v-if="/*!locked &&*/ rulersGridVisible">
               <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
             </div>
-            <div class="hv-grid" v-if="!locked && rulersGridVisible">
+            <div class="hv-grid" v-if="/*!locked &&*/ rulersGridVisible">
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
             <div class="viewport-wrapper" @scroll="handleScroll">
@@ -165,13 +184,13 @@
                   </q-tooltip>
                 </q-btn>
                 <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                <!-- <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                   :color="locked ? 'primary' : 'normal'" @click="lockToggle">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong v-if="!locked">Lock</strong>
                     <strong v-else>Unlock</strong>
                   </q-tooltip>
-                </q-btn>
+                </q-btn> -->
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
@@ -557,6 +576,7 @@
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- Object config sidebar -->
@@ -747,6 +767,7 @@ import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
 import DeviceInfo from "src/components/DeviceInfo.vue";
+import NewTopToolBar from "src/components/NewTopToolBar.vue";
 
 
 // New import for Data
@@ -768,7 +789,7 @@ const documentAreaPosition = ref(
 
     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
     //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" }
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" }
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -975,9 +996,9 @@ onMounted(() => {
   // check if need to show the device list dialog
   // deviceList.value.active = true;
 
-  setTimeout(() => {
-    deviceList.value.active = true;
-  }, 2000);
+  // setTimeout(() => {
+  //   deviceList.value.active = true;
+  // }, 2000);
 });
 
 function connectSocket() {
@@ -3020,7 +3041,7 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-  documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+  documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
 }
 
 // Handle object click events based on t3Entry type
