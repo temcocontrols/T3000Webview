@@ -703,9 +703,24 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+
+  <q-dialog v-model="deviceList.active">
+    <q-card style="min-width: 650px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Devices List</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+      <q-separator />
+      <DeviceInfo></DeviceInfo>
+    </q-card>
+  </q-dialog>
+
 </template>
 
 <script setup>
+
 import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
@@ -732,6 +747,7 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
+import DeviceInfo from "src/components/DeviceInfo.vue";
 
 
 // New import for Data
@@ -838,6 +854,8 @@ const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
 const rulersGridVisible = ref(true);
+
+const deviceList = ref({ active: true, data: {} });
 
 const handleScroll = (event) => {
 
@@ -954,7 +972,7 @@ onMounted(() => {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-  processTcpMessage();
+  // processTcpMessage();
 
 });
 
