@@ -148,10 +148,10 @@
       <div class="top-area">
         <!-- Top Toolbar -->
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" />
+          :rulersGridVisible="rulersGridVisible" /> -->
 
         <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"

@@ -110,13 +110,29 @@
   padding-top: 8px;
   font-size: 10px;
 }
+
+.zoom-input {
+  background: transparent;
+  width: 27px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.zoom-input::-webkit-outer-spin-button,
+.zoom-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 </style>
 
 <template>
   <div class="tool-bar-container">
     <div class="left-panel">
       <div class="tool-title">
-        <span>T3000 Havc</span>
+        <p style="font-size: 12px;">T3000 Havc</p>
+        <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
+          V:24.1230.01
+        </span>
       </div>
       <div class="tool-btns">
         <q-btn dense flat round icon="menu" size="sm" @click="lockToggle" />
@@ -154,7 +170,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="content_copy" no-caps @click="menuActionEmit('copy')"
                     :disable="selectedCount < 1">Copy
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Copy</strong><em> (Ctrl + C)</em>
                     </q-tooltip>
                   </q-btn>
@@ -162,7 +178,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="content_paste" no-caps @click="menuActionEmit('paste')"
                     :disable="disablePaste">Paste
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Copy</strong><em> (Ctrl + V)</em>
                     </q-tooltip></q-btn>
                 </div>
@@ -171,7 +187,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="undo" no-caps @click="menuActionEmit('undoAction')"
                     :disable="disableUndo">Undo
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Undo</strong><em> (Ctrl + Z)</em>
                     </q-tooltip>
                   </q-btn>
@@ -179,7 +195,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="redo" no-caps @click="menuActionEmit('redoAction')"
                     :disable="disableRedo">Redo
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Redo</strong><em> (Ctrl + Y)</em>
                     </q-tooltip>
                   </q-btn>
@@ -189,7 +205,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="delete" no-caps @click="menuActionEmit('deleteSelected')"
                     :disable="selectedCount < 1">Delete
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Delete selected</strong><em> (Delete)</em>
                     </q-tooltip>
                   </q-btn>
@@ -200,7 +216,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="join_full" no-caps @click="menuActionEmit('groupSelected')"
                     :disable="selectedCount < 2">Group
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Group selected</strong><em> (Ctrl + G)</em>
                     </q-tooltip>
                   </q-btn>
@@ -208,7 +224,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="join_inner" no-caps @click="menuActionEmit('ungroupSelected')"
                     :disable="selectedCount < 2">Ungroup
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Ungroup selected</strong><em> (Ctrl + Shift + G)</em>
                     </q-tooltip>
                   </q-btn>
@@ -218,7 +234,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="library_books" no-caps @click="menuActionEmit('addToLibrary')"
                     :disable="selectedCount < 2">Add to library
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Add selected to library</strong><em> (Ctrl + L)</em>
                     </q-tooltip>
                   </q-btn>
@@ -226,7 +242,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="file_copy" no-caps @click="menuActionEmit('duplicateSelected')"
                     :disable="selectedCount < 1">Duplicate
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Duplicate selected</strong><em> (Ctrl + D)</em>
                     </q-tooltip>
                   </q-btn>
@@ -237,7 +253,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="splitscreen" no-caps @click="menuActionEmit('weldSelected')"
                     :disable="!(selectedCount >= 2)">Weld
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Weld selected</strong><em> (Ctrl + B)</em>
                     </q-tooltip>
                   </q-btn>
@@ -250,7 +266,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="link" no-caps @click="menuActionEmit('link')"
                     :disable="!selectedCount || selectedCount > 1">Link
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Link</strong>
                     </q-tooltip>
                   </q-btn>
@@ -273,7 +289,7 @@
                         </q-item>
                       </q-list>
                     </q-menu>
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Convert to</strong>
                     </q-tooltip>
                   </q-btn>
@@ -284,7 +300,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="autorenew" no-caps @click="menuActionEmit('rotate90')"
                     :disable="!selectedCount || selectedCount > 1">Rotate 90°
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Rotate 90°</strong>
                     </q-tooltip>
                   </q-btn>
@@ -292,7 +308,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="sync" no-caps @click="menuActionEmit('rotate-90')"
                     :disable="!selectedCount || selectedCount > 1">Rotate -90°
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Rotate -90°</strong>
                     </q-tooltip>
                   </q-btn>
@@ -302,7 +318,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="flip" no-caps @click="menuActionEmit('flipH')"
                     :disable="!selectedCount || selectedCount > 1">Flip horizontal
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Flip horizontal</strong>
                     </q-tooltip>
                   </q-btn>
@@ -311,7 +327,7 @@
                   <q-btn flat size="sm" icon="flip" no-caps @click="menuActionEmit('flipV')"
                     :disable="!selectedCount || selectedCount > 1">Flip
                     vertical
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Flip vertical</strong>
                     </q-tooltip>
                   </q-btn>
@@ -321,7 +337,7 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="flip_to_front" no-caps @click="menuActionEmit('bringToFront')"
                     :disable="!selectedCount || selectedCount > 1">Bring to front
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Bring to front</strong>
                     </q-tooltip>
                   </q-btn>
@@ -329,13 +345,40 @@
                 <div class="button-row">
                   <q-btn flat size="sm" icon="flip_to_back" no-caps @click="menuActionEmit('sendToBack')"
                     :disable="!selectedCount || selectedCount > 1">Send to back
-                    <q-tooltip anchor="top middle" self="bottom middle">
+                    <q-tooltip anchor="top middle" self="center right">
                       <strong>Send to Back</strong>
                     </q-tooltip>
                   </q-btn>
                 </div>
               </div>
-              <!-- <q-separator color="white" inset vertical /> -->
+              <q-separator color="white" inset vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-toggle color="blue" false-value="Disable" true-value="Enable" v-model="showRulersGrid" size='xs'
+                    @update:model-value="menuActionEmit('toggleRulersGrid', showRulersGrid)" style="margin-top: -3px;">
+                    <span style="font-size: 11px;">Rulers & Grid</span>
+                    <q-tooltip anchor="top middle" self="center right">
+                      Show rulers and grid ({{ showRulersGrid }})
+                    </q-tooltip>
+                  </q-toggle>
+                </div>
+                <div class="button-row" style="margin-top: -3px;">
+                  <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out">
+                    <q-tooltip anchor="top middle" self="center right">
+                      Zoom out
+                    </q-tooltip>
+                  </q-btn>
+                  <div class="flex items-center px-1" style="font-size: 12px;">
+                    <input class="zoom-input" @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
+                      :value="zoom" type="number" />%
+                  </div>
+                  <q-btn @click="menuActionEmit('zoomIn')" :disable="zoom >= 400" dense flat size="sm" icon="zoom_in">
+                    <q-tooltip anchor="top middle" self="center right">
+                      Zoom in
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
             </div>
           </q-tab-panel>
           <q-tab-panel name="file" class="file-panel">
