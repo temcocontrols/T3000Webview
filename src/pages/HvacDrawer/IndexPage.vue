@@ -35,7 +35,7 @@
 
 .document-area {
   position: relative;
-  background-color: #e3e4e5;
+  background-color: #ebeced;
   height: 100%;
   /* background: red; */
 
@@ -142,7 +142,7 @@
 </style>
 
 <template>
-  <q-page>
+  <q-page style="background-color: #ebeced;">
     <div class="full-area">
 
       <div class="top-area">
@@ -709,7 +709,7 @@
   </q-dialog>
 
   <q-dialog v-model="deviceList.active">
-    <q-card style="min-width: 800px">
+    <q-card style="min-width: 900px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />

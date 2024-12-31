@@ -2,12 +2,16 @@
 .dvcontainer {
   max-width: 99%;
 }
+
+.graphic-label {
+  margin-top: 11px;
+}
 </style>
 
 <template>
 
   <div class=".dvcontainer">
-    <div class="q-pa-sm row q-col-gutter-sm">
+    <div class="q-pa-sm row ">
       <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
         label="Search - only filters labels that have also '(*)'">
         <template v-slot:append>
@@ -16,58 +20,57 @@
       </q-input>
     </div>
 
-    <div class="q-pa-sm row q-col-gutter-sm">
-
-      <q-tree class="col-12 col-sm-5" :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
+    <div class="q-pa-sm row">
+      <q-tree class="col-12 col-sm-4" :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
         v-model:ticked="ticked" v-model:expanded="expanded" />
-      <div class="col-12 col-sm-7 q-gutter-sm">
-        <div class="text-h6">Selected</div>
-        <div>{{ selected }}</div>
 
-        <q-separator spaced />
+      <div class="col-12 col-sm-8">
 
-        <div class="text-h6">Ticked</div>
-        <div>
-          <div v-for="tick in ticked" :key="`ticked-${tick}`">
-            {{ tick }}
-          </div>
-        </div>
+        <q-list style="background: #f0f0f0;font-weight: 600;font-size: 13px;">
+          <q-item style="padding: 0; min-height: 35px;">
+            <q-item-section top class="col-1">
+              <q-item-label></q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-1">
+              <q-item-label class="q-mt-sm">Graphic</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-4">
+              <q-item-label class="q-mt-sm">Full Label</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-3">
+              <q-item-label class="q-mt-sm">Label</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-2">
+              <q-item-label class="q-mt-sm">Element Count</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
 
-        <q-separator spaced />
+        <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
 
-        <div class="text-h6">Expanded</div>
-        <div>
-          <div v-for="expand in expanded" :key="`expanded-${expand}`">
-            {{ expand }}
-          </div>
-        </div>
+        <q-list v-for="graphic in graphicList" :key="graphic.id">
+          <q-item tag="label" style="padding:0px;min-height: 35px;border-bottom: 1px solid #f0f0f0;font-size: 13px;">
+            <q-item-section top class="col-1">
+              <q-radio v-model="color" val="blue" color="blue" checked-icon="task_alt"
+                unchecked-icon="panorama_fish_eye" />
+            </q-item-section>
+            <q-item-section top class="col-1">
+              <q-item-label class="graphic-label">{{ graphic.id }}</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-4">
+              <q-item-label class="graphic-label">{{ graphic.fullLabel }}</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-3">
+              <q-item-label class="graphic-label">{{ graphic.label }}</q-item-label>
+            </q-item-section>
+            <q-item-section top class="col-2">
+              <q-item-label class="graphic-label">{{ graphic.elementCount }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
       </div>
     </div>
-
   </div>
-
-
-  <!-- <div class="container">
-    <div class="tree">
-      <ul>
-        <li v-for="node in treeData" :key="node.id">
-          {{ node.name }}
-          <ul v-if="node.children">
-            <li v-for="child in node.children" :key="child.id">
-              {{ child.name }}
-            </li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-    <div class="panel">
-      <ul>
-        <li v-for="item in listData" :key="item.id">
-          {{ item.name }}
-        </li>
-      </ul>
-    </div>
-  </div> -->
 </template>
 
 <script lang="ts">
@@ -114,6 +117,9 @@ export default defineComponent({
     const ticked = ref(['Quality ingredients', 'Good table presentation']);
     const expanded = ref(['All Devices', 'Satisfied customers', 'Good service (disabled node)', 'Pleasant surroundings']);
     const simple = MockData.DeviceList;
+    const color = ref('cyan');
+    const graphicList = MockData.GraphicList;
+
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -125,6 +131,7 @@ export default defineComponent({
       filterRef.value.focus()
     }
 
+
     return {
       filter,
       filterRef,
@@ -133,7 +140,9 @@ export default defineComponent({
       expanded,
       simple,
       myFilterMethod,
-      resetFilter
+      resetFilter,
+      color,
+      graphicList
     }
   }
 });
