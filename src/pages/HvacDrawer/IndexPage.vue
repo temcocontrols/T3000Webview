@@ -982,9 +982,9 @@ onMounted(() => {
   // check if need to show the device list dialog
   // deviceList.value.active = true;
 
-  // setTimeout(() => {
-  //   deviceList.value.active = true;
-  // }, 2000);
+  setTimeout(() => {
+    deviceList.value.active = true;
+  }, 2000);
 });
 
 function connectSocket() {
@@ -1645,8 +1645,8 @@ function addObject(item, group = undefined, addToHistory = true) {
 }
 
 const viewportMargins = {
-  // top: 36,
-  top: 38 + 20 + 2,
+  // top: 36,93
+  top: 95 + 20 + 2,
   left: 106 + 20 + 2,
 };
 
