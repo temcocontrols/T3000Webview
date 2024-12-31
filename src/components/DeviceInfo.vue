@@ -51,7 +51,7 @@
         <q-list v-for="graphic in graphicList" :key="graphic.id">
           <q-item tag="label" style="padding:0px;min-height: 35px;border-bottom: 1px solid #f0f0f0;font-size: 13px;">
             <q-item-section top class="col-1">
-              <q-radio v-model="color" val="blue" color="blue" checked-icon="task_alt"
+              <q-radio v-model="selectedDevice.graphic" :val=graphic.id color="blue" checked-icon="task_alt"
                 unchecked-icon="panorama_fish_eye" />
             </q-item-section>
             <q-item-section top class="col-1">
@@ -119,6 +119,7 @@ export default defineComponent({
     const simple = MockData.DeviceList;
     const color = ref('cyan');
     const graphicList = MockData.GraphicList;
+    const selectedDevice = ref({ device: "", graphic: 0 });
 
 
     const myFilterMethod = (node, filter) => {
@@ -142,7 +143,8 @@ export default defineComponent({
       myFilterMethod,
       resetFilter,
       color,
-      graphicList
+      graphicList,
+      selectedDevice,
     }
   }
 });
