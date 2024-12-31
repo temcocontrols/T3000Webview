@@ -24,19 +24,11 @@
 
   <div class=".dvcontainer">
     <div class="q-pa-sm row ">
-      <!-- <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
-        label="Search - only filters labels that have also '(*)'">
-        <template v-slot:append>
-          <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
-        </template>
-</q-input> -->
-
     </div>
 
     <div class="q-pa-sm row">
 
       <div class="col-12 col-sm-4">
-
         <q-input ref="filterRef" filled v-model="filter" placeholder="Search here">
           <template v-slot:append>
             <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
@@ -45,15 +37,13 @@
 
         <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
 
-        <q-tree :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
-          v-model:ticked="ticked" v-model:expanded="expanded" :filter="filter" :accordion=true
-          style="max-height: 326px;overflow-y: auto;" />
+        <q-tree :nodes="simple" node-key="label" v-model:selected="selected" v-model:ticked="ticked"
+          v-model:expanded="expanded" :filter="filter" :accordion=true style="max-height: 326px;overflow-y: auto;"
+          selected-color="primary" @update:selected="treeSelected" />
+
       </div>
 
-
-
       <div class="col-12 col-sm-8" style="padding-left: 5px;">
-
         <q-list style="background: #f0f0f0;font-weight: 600;font-size: 13px;">
           <q-item style="padding: 0; min-height: 35px;">
             <q-item-section top class="col-1">
@@ -86,7 +76,7 @@
           <q-item tag="label" style="padding:0px;min-height: 35px;border-bottom: 1px solid #f0f0f0;font-size: 13px;">
             <q-item-section top class="col-1">
               <q-radio v-model="selectedDevice.graphic" :val=graphic.id color="blue" checked-icon="task_alt"
-                unchecked-icon="panorama_fish_eye" />
+                unchecked-icon="panorama_fish_eye" @update:model-value="updateGraphicSelection" />
             </q-item-section>
             <q-item-section top class="col-1">
               <q-item-label class="graphic-label">{{ graphic.id }}</q-item-label>
@@ -145,16 +135,15 @@ export default defineComponent({
   setup(props, { emit }) {
     console.log('==== device', MockData.DeviceList)
 
-    const filter = ref('de');
+    const filter = ref('');
     const filterRef = ref(null);
     const selected = ref('Pleasant surroundings');
     const ticked = ref(['Quality ingredients', 'Good table presentation']);
-    const expanded = ref(['All Devices', 'Satisfied customers', 'Good service (disabled node)', 'Pleasant surroundings']);
+    const expanded = ref(["All Devices"]);
     const simple = MockData.DeviceList;
     const color = ref('cyan');
     const graphicList = MockData.GraphicList;
     const selectedDevice = ref({ device: "", graphic: 3 });
-
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -168,8 +157,63 @@ export default defineComponent({
 
     const clearGraphicSelection = () => {
       selectedDevice.value.graphic = 0;
+      console.log('==== graphic-clear 1 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+
     }
 
+    const updateGraphicSelection = (val) => {
+      selectedDevice.value.graphic = val;
+      console.log('==== graphic-selected 1 val:', val);
+      console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+    }
+
+    const treeSelected = (target) => {
+      console.log('==== tree-selected 1 target:', target)
+
+      // Clear the icon for all nodes
+      const clearIcons = (nodes) => {
+        nodes.forEach(node => {
+          if (node.label === 'All Devices') {
+            node.icon = 'devices';
+          } else {
+            if (node.icon === undefined || node.icon === null) {
+            } else {
+              node.icon = 'horizontal_rule';
+            }
+          }
+          if (node.children) {
+            clearIcons(node.children);
+          }
+        });
+      };
+
+      const findAllNodes = (nodes, target) => {
+        for (const node of nodes) {
+          if (node.label === target) {
+            return node;
+          }
+          if (node.children) {
+            const found = findAllNodes(node.children, target);
+            if (found) {
+              return found;
+            }
+          }
+        }
+        return null;
+      };
+
+      clearIcons(simple);
+
+      const selectedNode = findAllNodes(simple, target);
+      if (selectedNode) {
+        selectedNode.icon = 'check';
+        selectedDevice.value.device = selectedNode.label;
+      }
+
+      clearGraphicSelection();
+
+      console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+    }
 
     return {
       filter,
@@ -184,6 +228,8 @@ export default defineComponent({
       graphicList,
       selectedDevice,
       clearGraphicSelection,
+      treeSelected,
+      updateGraphicSelection
     }
   }
 });

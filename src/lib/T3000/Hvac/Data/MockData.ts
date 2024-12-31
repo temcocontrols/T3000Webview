@@ -4,7 +4,9 @@ class MockData {
 
   static readonly DeviceList = [
     {
+      id: 0,
       label: 'All Devices',
+      icon: 'devices',
       children: [
         {
           label: 'T3-Nano-1030657',
@@ -14,58 +16,94 @@ class MockData {
           ]
         },
         {
+          id: 1,
           label: 'T3-XX-ESP 1',
+          icon: 'horizontal_rule',
         },
         {
+          id: 2,
           label: 'T3-XX-ESP 2',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 3,
+          label: 'T3-XX-ESP 3',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 4,
+          label: 'T3-XX-ESP 4',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 5,
+          label: 'T3-XX-ESP 5',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 6,
+          label: 'T3-XX-ESP 6',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 7,
+          label: 'T3-XX-ESP 7',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 8,
+          label: 'T3-XX-ESP 8',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 9,
+          label: 'T3-XX-ESP 9',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 10,
+          label: 'T3-XX-ESP 10',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 11,
+          label: 'T3-XX-ESP 11',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 12,
+          label: 'T3-XX-ESP 12',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 13,
+          label: 'T3-XX-ESP 13',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 14,
+          label: 'T3-XX-ESP 14',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 15,
+          label: 'T3-XX-ESP 15',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 16,
+          label: 'T3-XX-ESP 16',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 17,
+          label: 'T3-XX-ESP 17',
+          icon: 'horizontal_rule',
         },
         {
-          label: 'T3-XX-ESP 2',
+          id: 18,
+          label: 'T3-XX-ESP 18',
+          icon: 'horizontal_rule',
         }
       ]
     }
