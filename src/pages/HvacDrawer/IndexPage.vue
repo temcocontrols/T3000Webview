@@ -148,12 +148,15 @@
       <div class="top-area">
         <!-- Top Toolbar -->
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" /> -->
+          :rulersGridVisible="rulersGridVisible" />
 
-        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack"></NewTopToolBar>
+        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
+          :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
+          :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
+          :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"></NewTopToolBar>
       </div>
 
       <div class="main-area">
@@ -166,14 +169,14 @@
         </div>
         <div class="work-area">
           <div class="document-area">
-            <div class="c-ruler" v-if="/*!locked &&*/ rulersGridVisible"></div>
-            <div class="h-ruler" v-if="/*!locked &&*/ rulersGridVisible">
+            <div class="c-ruler" v-if="!locked && rulersGridVisible"></div>
+            <div class="h-ruler" v-if="!locked && rulersGridVisible">
               <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
             </div>
-            <div class="v-ruler" v-if="/*!locked &&*/ rulersGridVisible">
+            <div class="v-ruler" v-if="!locked && rulersGridVisible">
               <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
             </div>
-            <div class="hv-grid" v-if="/*!locked &&*/ rulersGridVisible">
+            <div class="hv-grid" v-if="!locked && rulersGridVisible">
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
             <div class="viewport-wrapper" @scroll="handleScroll">

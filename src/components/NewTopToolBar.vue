@@ -10,7 +10,10 @@
 
 .right-panel {
   flex-grow: 1;
-  /* background-color: lightgreen; */
+}
+
+.right-tab {
+  background-color: #2a2a2a;
 }
 
 .tool-title {
@@ -26,10 +29,15 @@
   display: flex;
   justify-content: space-evenly;
   align-items: center;
-  height: 55px;
+  height: 54px;
   width: 105px;
   color: #fff;
   /* background-color: aqua; */
+}
+
+.tab-panel {
+  background-color: #2a2a2a;
+  color: #fff;
 }
 
 .home-panel {
@@ -97,6 +105,11 @@
     font-size: 12px;
   }
 }
+
+.file-short-cut {
+  padding-top: 8px;
+  font-size: 10px;
+}
 </style>
 
 <template>
@@ -124,7 +137,7 @@
     </div>
     <div class="right-panel">
       <q-card class="right-panel-card">
-        <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="left"
+        <q-tabs v-model="tab" dense class="right-tab text-white" active-color="#fff" indicator-color="#fff" align="left"
           narrow-indicator>
           <q-tab name="home" no-caps label="Home" />
           <q-tab name="file" no-caps label="File" />
@@ -134,119 +147,228 @@
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-model="tab">
+        <q-tab-panels v-model="tab" class="tab-panel">
           <q-tab-panel name="home" class="home-panel">
             <div class="container">
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="content_copy" no-caps> Copy</q-btn>
+                  <q-btn flat size="sm" icon="content_copy" no-caps @click="menuActionEmit('copy')"
+                    :disable="selectedCount < 1">Copy
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Copy</strong><em> (Ctrl + C)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="content_paste" no-caps>Paste</q-btn>
+                  <q-btn flat size="sm" icon="content_paste" no-caps @click="menuActionEmit('paste')"
+                    :disable="disablePaste">Paste
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Copy</strong><em> (Ctrl + V)</em>
+                    </q-tooltip></q-btn>
                 </div>
               </div>
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="undo" no-caps>Undo</q-btn>
+                  <q-btn flat size="sm" icon="undo" no-caps @click="menuActionEmit('undoAction')"
+                    :disable="disableUndo">Undo
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Undo</strong><em> (Ctrl + Z)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="redo" no-caps>Redo</q-btn>
+                  <q-btn flat size="sm" icon="redo" no-caps @click="menuActionEmit('redoAction')"
+                    :disable="disableRedo">Redo
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Redo</strong><em> (Ctrl + Y)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
               </div>
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="delete" no-caps>Delete</q-btn>
+                  <q-btn flat size="sm" icon="delete" no-caps @click="menuActionEmit('deleteSelected')"
+                    :disable="selectedCount < 1">Delete
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Delete selected</strong><em> (Delete)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
               </div>
-              <q-separator black vertical />
+              <q-separator color="white" inset vertical />
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="join_full" no-caps>Group</q-btn>
+                  <q-btn flat size="sm" icon="join_full" no-caps @click="menuActionEmit('groupSelected')"
+                    :disable="selectedCount < 2">Group
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Group selected</strong><em> (Ctrl + G)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="join_inner" no-caps>UnGroup</q-btn>
-                </div>
-              </div>
-              <div class="sub-div">
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="library_books" no-caps>Add to library</q-btn>
-                </div>
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="file_copy" no-caps>Duplicate</q-btn>
-                </div>
-              </div>
-              <q-separator black vertical />
-              <div class="sub-div">
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="splitscreen" no-caps>Weld</q-btn>
-                </div>
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="splitscreen" no-caps>UnWeld</q-btn>
-                </div>
-              </div>
-              <div class="sub-div">
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="link" no-caps>Link</q-btn>
-                </div>
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="transform" no-caps>Convert to</q-btn>
-                </div>
-              </div>
-              <q-separator black vertical />
-              <div class="sub-div">
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="autorenew" no-caps>Rotate 90</q-btn>
-                </div>
-                <div class="button-row">
-                  <q-btn flat size="sm" icon="sync" no-caps>Rotate -90</q-btn>
+                  <q-btn flat size="sm" icon="join_inner" no-caps @click="menuActionEmit('ungroupSelected')"
+                    :disable="selectedCount < 2">Ungroup
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Ungroup selected</strong><em> (Ctrl + Shift + G)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
               </div>
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="flip" no-caps>Flip horizontal</q-btn>
+                  <q-btn flat size="sm" icon="library_books" no-caps @click="menuActionEmit('addToLibrary')"
+                    :disable="selectedCount < 2">Add to library
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Add selected to library</strong><em> (Ctrl + L)</em>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="flip" no-caps>Flip vertical</q-btn>
+                  <q-btn flat size="sm" icon="file_copy" no-caps @click="menuActionEmit('duplicateSelected')"
+                    :disable="selectedCount < 1">Duplicate
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Duplicate selected</strong><em> (Ctrl + D)</em>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+              <q-separator color="white" inset vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="splitscreen" no-caps @click="menuActionEmit('weldSelected')"
+                    :disable="!(selectedCount >= 2)">Weld
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Weld selected</strong><em> (Ctrl + B)</em>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+                <!-- <div class="button-row">
+                  <q-btn flat size="sm" icon="splitscreen" no-caps>Unweld</q-btn>
+                </div> -->
+              </div>
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="link" no-caps @click="menuActionEmit('link')"
+                    :disable="!selectedCount || selectedCount > 1">Link
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Link</strong>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="transform" no-caps :disable="!selectedCount || selectedCount > 1">Convert
+                    to
+                    <q-menu anchor="top end" self="top start" auto-close>
+                      <q-list>
+                        <q-item v-for="t in tools.filter(
+                          (i) =>
+                            i.name !== object.type &&
+                            !['Duct', 'Pointer', 'Text'].includes(i.name)
+                        )" :key="t.name" dense clickable v-close-popup
+                          @click="menuActionEmit('convertObjectType', t.name)">
+                          <q-item-section avatar>
+                            <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
+                          </q-item-section>
+                          <q-item-section>{{ t.name }}</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Convert to</strong>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+              <q-separator color="white" inset vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="autorenew" no-caps @click="menuActionEmit('rotate90')"
+                    :disable="!selectedCount || selectedCount > 1">Rotate 90°
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Rotate 90°</strong>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="sync" no-caps @click="menuActionEmit('rotate-90')"
+                    :disable="!selectedCount || selectedCount > 1">Rotate -90°
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Rotate -90°</strong>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
               </div>
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="flip_to_front" no-caps>Bring to front</q-btn>
+                  <q-btn flat size="sm" icon="flip" no-caps @click="menuActionEmit('flipH')"
+                    :disable="!selectedCount || selectedCount > 1">Flip horizontal
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Flip horizontal</strong>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="flip_to_back" no-caps>Send to back</q-btn>
+                  <q-btn flat size="sm" icon="flip" no-caps @click="menuActionEmit('flipV')"
+                    :disable="!selectedCount || selectedCount > 1">Flip
+                    vertical
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Flip vertical</strong>
+                    </q-tooltip>
+                  </q-btn>
                 </div>
               </div>
-              <q-separator black vertical />
+              <div class="sub-div">
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip_to_front" no-caps @click="menuActionEmit('bringToFront')"
+                    :disable="!selectedCount || selectedCount > 1">Bring to front
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Bring to front</strong>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="button-row">
+                  <q-btn flat size="sm" icon="flip_to_back" no-caps @click="menuActionEmit('sendToBack')"
+                    :disable="!selectedCount || selectedCount > 1">Send to back
+                    <q-tooltip anchor="top middle" self="bottom middle">
+                      <strong>Send to Back</strong>
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+              <!-- <q-separator color="white" inset vertical /> -->
             </div>
           </q-tab-panel>
           <q-tab-panel name="file" class="file-panel">
             <div class="container">
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="assignment" no-caps label="New Project" />
-                  <span class="short-cut">Ctrl + R</span>
+                  <q-btn flat size="sm" icon="assignment" no-caps label="New Project" style="font-size: 11px;"
+                    @click="menuActionEmit('newProject')" />
+                  <span class="file-short-cut">(Ctrl + R)</span>
                 </div>
               </div>
-              <q-separator black vertical />
+              <q-separator color="white" inset vertical />
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="file_open" no-caps label="Import" />
+                  <q-btn flat size="sm" icon="file_open" no-caps label="Import" style="font-size: 11px;"
+                    @click="menuActionEmit('importJsonAction')" />
                 </div>
               </div>
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="file_open" no-caps label="Export" />
+                  <q-btn flat size="sm" icon="file_open" no-caps label="Export" style="font-size: 11px;"
+                    @click="menuActionEmit('exportToJsonAction')" />
                 </div>
               </div>
-              <q-separator black vertical />
+              <q-separator color="white" inset vertical />
               <div class="sub-div">
                 <div class="button-row">
-                  <q-btn flat size="sm" icon="save" no-caps label="Save" />
-                  <span class="short-cut">Ctrl + S</span>
+                  <q-btn flat size="sm" icon="save" no-caps label="Save" @click="menuActionEmit('save')"
+                    style="font-size: 11px;" />
+                  <span class="file-short-cut">(Ctrl + S)</span>
                 </div>
               </div>
-              <q-separator black vertical />
+              <!-- <q-separator color="white" inset vertical /> -->
             </div>
           </q-tab-panel>
         </q-tab-panels>
@@ -256,7 +378,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+
+import { defineComponent, ref, watch } from 'vue'
+import { useQuasar } from "quasar"
+import { tools, user } from "../lib/common"
 
 export default defineComponent({
   name: 'NewTopToolBar',
@@ -268,10 +393,55 @@ export default defineComponent({
     grpNav: {
       type: Array,
       default: () => []
+    },
+    object: {
+      type: Object,
+      required: false,
+    },
+    selectedCount: {
+      type: Number,
+      required: true,
+    },
+    disableUndo: {
+      type: Boolean,
+      required: false,
+    },
+    disableRedo: {
+      type: Boolean,
+      required: false,
+    },
+    disablePaste: {
+      type: Boolean,
+      required: false,
+    },
+    zoom: {
+      type: Number,
+      required: true,
+    },
+    rulersGridVisible: {
+      type: Boolean,
+      required: false,
     }
   },
-  emits: ["navGoBack", "lockToggle"],
+  emits: ["navGoBack", "lockToggle", "menuAction"],
   setup(props, { emit }) {
+
+    const $q = useQuasar();
+    function menuActionEmit(action, val = null) {
+      emit("menuAction", action, val);
+    }
+
+    function logout() {
+      $q.cookies.remove("token");
+      user.value = null;
+      localStorage.removeItem("user");
+    }
+
+    const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
+    watch(() => props.rulersGridVisible, (newVal) => {
+      showRulersGrid.value = newVal ? "Enable" : "Disable";
+      // console.log('showRulersGrid props,show-rulers-grid', props.rulersGridVisible, showRulersGrid);
+    })
 
     const navGoBack = () => {
       // Emit event to parent to navigate back
@@ -286,7 +456,12 @@ export default defineComponent({
     return {
       tab: ref('home'),
       navGoBack,
-      lockToggle
+      lockToggle,
+      menuActionEmit,
+      logout,
+      tools,
+      user,
+      showRulersGrid: showRulersGrid,
     };
   },
 });
