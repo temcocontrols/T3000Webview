@@ -6,30 +6,64 @@
 .graphic-label {
   margin-top: 11px;
 }
+
+::v-deep .q-input .q-field__control {
+  border-radius: 0;
+  /* background-color: #cef; */
+  height: 35px;
+}
+
+::v-deep .q-input .q-field__marginal {
+  border-radius: 0;
+  /* background-color: #cef; */
+  height: 35px;
+}
 </style>
 
 <template>
 
   <div class=".dvcontainer">
     <div class="q-pa-sm row ">
-      <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
+      <!-- <q-input class="col-12 col-sm-12" ref="filterRef" filled v-model="filter"
         label="Search - only filters labels that have also '(*)'">
         <template v-slot:append>
           <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
         </template>
-      </q-input>
+</q-input> -->
+
     </div>
 
     <div class="q-pa-sm row">
-      <q-tree class="col-12 col-sm-4" :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
-        v-model:ticked="ticked" v-model:expanded="expanded" />
 
-      <div class="col-12 col-sm-8">
+      <div class="col-12 col-sm-4">
+
+        <q-input ref="filterRef" filled v-model="filter" placeholder="Search here">
+          <template v-slot:append>
+            <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
+          </template>
+        </q-input>
+
+        <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
+
+        <q-tree :nodes="simple" node-key="label" tick-strategy="leaf" v-model:selected="selected"
+          v-model:ticked="ticked" v-model:expanded="expanded" :filter="filter" :accordion=true
+          style="max-height: 326px;overflow-y: auto;" />
+      </div>
+
+
+
+      <div class="col-12 col-sm-8" style="padding-left: 5px;">
 
         <q-list style="background: #f0f0f0;font-weight: 600;font-size: 13px;">
           <q-item style="padding: 0; min-height: 35px;">
             <q-item-section top class="col-1">
-              <q-item-label></q-item-label>
+              <q-item-label style="margin-left: 5px;margin-top: 2px;">
+                <q-btn class="gt-xs" size="12px" flat dense round icon="remove" @click="clearGraphicSelection">
+                  <q-tooltip anchor="top middle" self="center right">
+                    Clear selection
+                  </q-tooltip>
+                </q-btn>
+              </q-item-label>
             </q-item-section>
             <q-item-section top class="col-1">
               <q-item-label class="q-mt-sm">Graphic</q-item-label>
@@ -119,7 +153,7 @@ export default defineComponent({
     const simple = MockData.DeviceList;
     const color = ref('cyan');
     const graphicList = MockData.GraphicList;
-    const selectedDevice = ref({ device: "", graphic: 0 });
+    const selectedDevice = ref({ device: "", graphic: 3 });
 
 
     const myFilterMethod = (node, filter) => {
@@ -130,6 +164,10 @@ export default defineComponent({
     const resetFilter = () => {
       filter.value = ''
       filterRef.value.focus()
+    }
+
+    const clearGraphicSelection = () => {
+      selectedDevice.value.graphic = 0;
     }
 
 
@@ -145,6 +183,7 @@ export default defineComponent({
       color,
       graphicList,
       selectedDevice,
+      clearGraphicSelection,
     }
   }
 });

@@ -7,27 +7,65 @@ class MockData {
       label: 'All Devices',
       children: [
         {
-          label: 'T3-Nano-1030657 (VD)',
+          label: 'T3-Nano-1030657',
           children: [
-            { label: 'Quality ingredients' },
-            { label: 'Good recipe' }
+            { label: 'S1' },
+            { label: 'S2' }
           ]
         },
         {
-          label: 'T3-XX-ESP',
-          disabled: true,
-          children: [
-            { label: 'Prompt attention' },
-            { label: 'Professional waiter' }
-          ]
+          label: 'T3-XX-ESP 1',
         },
         {
           label: 'T3-XX-ESP 2',
-          children: [
-            { label: 'Happy atmosphere' },
-            { label: 'Good table presentation' },
-            { label: 'Pleasing decor' }
-          ]
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
+        },
+        {
+          label: 'T3-XX-ESP 2',
         }
       ]
     }
