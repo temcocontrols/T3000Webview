@@ -863,6 +863,7 @@ const objectsRef = ref(null); // Reference to objects
 const rulersGridVisible = ref(true);
 
 const deviceModel = ref({ active: false, data: {} });
+const deviceAppState = ref([]);
 
 const handleScroll = (event) => {
 
@@ -990,6 +991,10 @@ onMounted(() => {
     else {
       deviceModel.value.active = false;
       deviceModel.value.data = currentDevice;
+
+      // load device appstate
+      refreshDeviceAppState();
+
       console.log('=== indexPage.currentDevice load from local storage', currentDevice);
       console.log('=== indexPage.deviceModel changed', deviceModel.value);
     }
@@ -1000,10 +1005,31 @@ function updateDeviceModel(isActive, data) {
   console.log('=== indexPage.updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
+
+  // load device appstate
+  refreshDeviceAppState();
 }
 
 function showMoreDevices() {
   deviceModel.value.active = true;
+}
+
+function refreshDeviceAppState() {
+  const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
+  console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
+
+  if (existAppState) {
+    appState.value = existAppState;
+  }
+  else {
+    appState.value = cloneDeep(emptyProject);
+    appState.value.rulersGridVisible = rulersGridVisible.value;
+  }
+}
+
+function saveDeviceAppState() {
+  console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+  Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel.value.data, appState);
 }
 
 function connectSocket() {
@@ -2151,9 +2177,13 @@ function save(notify = false) {
     action: 2, // SAVE_GRAPHIC
     data,
   });
+
   if (!window.chrome?.webview?.postMessage) {
     localStorage.setItem("appState", JSON.stringify(data));
   }
+
+  // save device data and related appState
+  saveDeviceAppState();
 }
 
 // Create a new project, optionally confirming with the user if there's existing data

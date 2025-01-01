@@ -167,7 +167,7 @@
           narrow-indicator>
           <q-tab name="home" no-caps label="Home" />
           <q-tab name="file" no-caps label="File" />
-          <q-tab name="device" no-caps label="Device ()" />
+          <q-tab name="device" no-caps :label="`Device (${deviceModel.data.device})`" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
@@ -550,6 +550,7 @@ export default defineComponent({
   setup(props, { emit }) {
 
     const currentDevice = ref(null);
+    const deviceTabTitle = ref('Device (-)');
 
     const $q = useQuasar();
     function menuActionEmit(action, val = null) {
@@ -585,13 +586,17 @@ export default defineComponent({
 
     onMounted(() => {
       currentDevice.value = props.deviceModel;
+      deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
       console.log('=== new-top-toolbar currentDevice', currentDevice);
     });
 
+    /*
     watch(() => props.deviceModel, (newVal) => {
       console.log('=== new-top-toolbar newVal', newVal);
       currentDevice.value = newVal;
+      deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
     });
+    */
 
     return {
       tab: ref('home'),
@@ -603,7 +608,8 @@ export default defineComponent({
       user,
       showRulersGrid: showRulersGrid,
       showMoreDevices,
-      currentDevice
+      currentDevice,
+      deviceTabTitle
     };
   },
 });
