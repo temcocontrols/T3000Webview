@@ -37,7 +37,7 @@
   <div class=".dvcontainer">
     <div class="q-pa-sm row ">
 
-      <q-list bordered class="rounded-borders col-12">
+      <q-list bordered class="rounded-borders col-12" style="height: 50px;">
         <!-- <q-item-label header>Current selection</q-item-label> -->
 
         <q-item>
@@ -50,7 +50,7 @@
           </q-item-section>
 
           <q-item-section top class="col-3">
-            <q-item-label class="q-mt-sm">{{ selectedDevice.device }}</q-item-label>
+            <q-item-label class="q-mt-sm">{{ currentDevice.device }}</q-item-label>
           </q-item-section>
 
           <q-item-section top class="col-1">
@@ -58,7 +58,7 @@
               Graphic
             </q-item-label>
             <q-item-label>
-              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.id }}</span>
+              <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.id }}</span>
             </q-item-label>
           </q-item-section>
 
@@ -67,7 +67,7 @@
               Full label
             </q-item-label>
             <q-item-label>
-              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.fullLabel }}</span>
+              <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.fullLabel }}</span>
             </q-item-label>
           </q-item-section>
 
@@ -76,7 +76,7 @@
               Label
             </q-item-label>
             <q-item-label>
-              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.label }}</span>
+              <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.label }}</span>
             </q-item-label>
           </q-item-section>
 
@@ -85,19 +85,19 @@
               Element Count
             </q-item-label>
             <q-item-label>
-              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.elementCount }}</span>
+              <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.elementCount }}</span>
             </q-item-label>
           </q-item-section>
 
           <q-item-section avatar top>
             <q-item-label caption class="select-title">
-              Status
+              Action
             </q-item-label>
             <!-- <q-icon name="check" color="black" /> -->
             <!-- <q-btn color="secondary" outline icon-right="check" label="Save" size="xs" /> -->
             <q-link class="text-primary" style="font-size: 12px;margin-top: 2px;cursor: pointer;"
               @click="saveCurrentSelection">Save
-              <q-tooltip anchor="top middle" self="center right">
+              <q-tooltip anchor="top middle" self="center left">
                 Save the current selection
               </q-tooltip>
             </q-link>
@@ -164,7 +164,7 @@
         <q-list v-for="graphic in graphicList" :key="graphic.id">
           <q-item tag="label" style="padding:0px;min-height: 35px;border-bottom: 1px solid #f0f0f0;font-size: 13px;">
             <q-item-section top class="col-1">
-              <q-radio v-model="selectedDevice.graphic" :val=graphic.id color="blue" checked-icon="task_alt"
+              <q-radio v-model="currentDevice.graphic" :val=graphic.id color="blue" checked-icon="task_alt"
                 unchecked-icon="panorama_fish_eye" @update:model-value="updateGraphicSelection" />
             </q-item-section>
             <q-item-section top class="col-1">
@@ -188,24 +188,29 @@
 
 <script lang="ts">
 
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
+import Hvac from 'src/lib/T3000/Hvac/Hvac'
+import { useQuasar, useMeta } from "quasar";
 
 export default defineComponent({
   name: 'NewTopBar',
 
   props: {
-    locked: {
-      type: Boolean,
-      default: false
-    },
-    grpNav: {
-      type: Array,
-      default: () => []
+    // locked: {
+    //   type: Boolean,
+    //   default: false
+    // },
+    // grpNav: {
+    //   type: Array,
+    //   default: () => []
+    // }
+    deviceModel: {
+      type: Object,
     }
   },
 
-  emits: ["navGoBack", "lockToggle"],
+  emits: ['updateDeviceModel'],
 
   data() {
     return {
@@ -224,15 +229,16 @@ export default defineComponent({
   setup(props, { emit }) {
     console.log('==== device', MockData.DeviceList)
 
+    const $q = useQuasar();
     const filter = ref('');
     const filterRef = ref(null);
-    const selected = ref('Pleasant surroundings');
-    const ticked = ref(['Quality ingredients', 'Good table presentation']);
+    const selected = ref('');
+    const ticked = ref(['']);
     const expanded = ref(["All Devices"]);
     const simple = MockData.DeviceList;
-    const color = ref('cyan');
+    // const color = ref('cyan');
     const graphicList = MockData.GraphicList;
-    const selectedDevice = ref({ device: "", graphic: 3, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
+    const currentDevice = ref({ device: "", graphic: 3, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -245,25 +251,24 @@ export default defineComponent({
     }
 
     const clearGraphicSelection = () => {
-      selectedDevice.value.graphic = 0;
-      selectedDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
-      console.log('==== graphic-clear 1 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
-
+      currentDevice.value.graphic = 0;
+      currentDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
+      console.log('==== graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     const updateGraphicSelection = (val) => {
-      selectedDevice.value.graphic = val;
+      currentDevice.value.graphic = val;
 
       const found = graphicList.find(element => element.id === val);
       if (found) {
-        selectedDevice.value.graphicFull.id = found.id.toString();
-        selectedDevice.value.graphicFull.fullLabel = found.fullLabel;
-        selectedDevice.value.graphicFull.label = found.label;
-        selectedDevice.value.graphicFull.elementCount = found.elementCount.toString();
+        currentDevice.value.graphicFull.id = found.id.toString();
+        currentDevice.value.graphicFull.fullLabel = found.fullLabel;
+        currentDevice.value.graphicFull.label = found.label;
+        currentDevice.value.graphicFull.elementCount = found.elementCount.toString();
       }
 
       console.log('==== graphic-selected 1 val:', val);
-      console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+      console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     const treeSelected = (target) => {
@@ -306,17 +311,47 @@ export default defineComponent({
       const selectedNode = findAllNodes(simple, target);
       if (selectedNode) {
         selectedNode.icon = 'check';
-        selectedDevice.value.device = selectedNode.label;
+        currentDevice.value.device = selectedNode.label;
       }
 
       clearGraphicSelection();
 
-      console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+      console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     const saveCurrentSelection = () => {
-      console.log('==== saveCurrentSelection 1 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+      console.log('==== saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+
+      if (currentDevice.value.device === '' || currentDevice.value.graphic === 0) {
+        $q.notify({
+          type: "negative",
+          message: "Please select a device and graphic",
+        });
+        return;
+      }
+      else {
+        Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
+        emit('updateDeviceModel', { ...props.deviceModel, active: false });
+        // emit('update:deviceModel', { ...props.deviceModel, active: false });
+
+      }
     }
+
+    onMounted(() => {
+
+      console.log('==== onMounted 1 deviceModel:', props.deviceModel);
+
+      //load the saved current device from local storage
+      const savedDevice = Hvac.DeviceOpt.getCurrentDevice();
+      if (savedDevice !== null) {
+        currentDevice.value = savedDevice;
+        Hvac.DeviceOpt.setDeviceAndGraphicDefaultData(savedDevice);
+        // sample.value = MockData.DeviceList;
+        selected.value = savedDevice.device;
+        console.log('==== onMounted 1 mockData:', MockData.DeviceList);
+        console.log('==== onMounted 2 simple:', simple);
+      }
+    });
 
     return {
       filter,
@@ -327,9 +362,9 @@ export default defineComponent({
       simple,
       myFilterMethod,
       resetFilter,
-      color,
+      // color,
       graphicList,
-      selectedDevice,
+      currentDevice,
       clearGraphicSelection,
       treeSelected,
       updateGraphicSelection,

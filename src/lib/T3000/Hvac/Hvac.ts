@@ -5,6 +5,7 @@ import Models from './Data/Data.Constant'
 import Doc from './Doc/DocHandler'
 import UI from './Doc/UI'
 import KeyCommand from './Opt/Opt.KeyCommand'
+import DeviceOpt from './Opt/DeviceOpt'
 
 const Hvac = {
   App: new App(),
@@ -12,7 +13,8 @@ const Hvac = {
   UI: new UI(),
   KeyCommand: new KeyCommand(),
   Utils: Utils,
-  Models: Models
+  Models: Models,
+  DeviceOpt: new DeviceOpt()
 }
 
 export default Hvac;

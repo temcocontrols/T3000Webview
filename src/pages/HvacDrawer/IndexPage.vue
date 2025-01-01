@@ -708,7 +708,7 @@
     </q-card>
   </q-dialog>
 
-  <q-dialog v-model="deviceList.active">
+  <q-dialog v-model="deviceModel.active">
     <q-card style="min-width: 900px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
@@ -716,7 +716,7 @@
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
-      <DeviceInfo></DeviceInfo>
+      <DeviceInfo :deviceModel="deviceModel"></DeviceInfo>
     </q-card>
   </q-dialog>
 
@@ -861,7 +861,7 @@ const objectsRef = ref(null); // Reference to objects
 
 const rulersGridVisible = ref(true);
 
-const deviceList = ref({ active: false, data: {} });
+const deviceModel = ref({ active: false, data: {} });
 
 const handleScroll = (event) => {
 
@@ -980,12 +980,16 @@ onMounted(() => {
 
   // processTcpMessage();
   // check if need to show the device list dialog
-  // deviceList.value.active = true;
 
   setTimeout(() => {
-    deviceList.value.active = true;
+    deviceModel.value.active = true;
   }, 2000);
 });
+
+function updateDeviceModel(isActive, data) {
+  deviceModel.value.active = true;
+  deviceModel.value.data = data;
+}
 
 function connectSocket() {
 
