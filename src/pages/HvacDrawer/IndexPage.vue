@@ -156,7 +156,8 @@
         <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
-          :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"></NewTopToolBar>
+          :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices"></NewTopToolBar>
       </div>
 
       <div class="main-area">
@@ -716,10 +717,9 @@
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
-      <DeviceInfo :deviceModel="deviceModel"></DeviceInfo>
+      <DeviceInfo :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel"></DeviceInfo>
     </q-card>
   </q-dialog>
-
 </template>
 
 <script setup>
@@ -757,6 +757,7 @@ import NewTopToolBar from "src/components/NewTopToolBar.vue";
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
+import Hvac from "src/lib/T3000/Hvac/Hvac";
 
 // Meta information for the application
 // Set the meta information
@@ -896,7 +897,7 @@ onMounted(() => {
     }
   }
 
-  console.log('==== IndexPage.rulersGridVisible', rulersGridVisible.value)
+  // console.log('==== IndexPage.rulersGridVisible', rulersGridVisible.value)
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
@@ -979,16 +980,30 @@ onMounted(() => {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   // processTcpMessage();
-  // check if need to show the device list dialog
 
+  // check if need to show the device list dialog
   setTimeout(() => {
-    deviceModel.value.active = true;
-  }, 2000);
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (!currentDevice) {
+      deviceModel.value.active = true;
+    }
+    else {
+      deviceModel.value.active = false;
+      deviceModel.value.data = currentDevice;
+      console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+      console.log('=== indexPage.deviceModel changed', deviceModel.value);
+    }
+  }, 1000);
 });
 
 function updateDeviceModel(isActive, data) {
-  deviceModel.value.active = true;
+  console.log('=== indexPage.updateDeviceModel ===', isActive, data)
+  deviceModel.value.active = isActive;
   deviceModel.value.data = data;
+}
+
+function showMoreDevices() {
+  deviceModel.value.active = true;
 }
 
 function connectSocket() {

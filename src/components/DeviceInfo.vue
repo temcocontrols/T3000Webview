@@ -236,9 +236,8 @@ export default defineComponent({
     const ticked = ref(['']);
     const expanded = ref(["All Devices"]);
     const simple = MockData.DeviceList;
-    // const color = ref('cyan');
     const graphicList = MockData.GraphicList;
-    const currentDevice = ref({ device: "", graphic: 3, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
+    const currentDevice = ref({ device: "", graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -331,14 +330,11 @@ export default defineComponent({
       }
       else {
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
-        emit('updateDeviceModel', { ...props.deviceModel, active: false });
-        // emit('update:deviceModel', { ...props.deviceModel, active: false });
-
+        emit('updateDeviceModel', false, currentDevice.value);
       }
     }
 
     onMounted(() => {
-
       console.log('==== onMounted 1 deviceModel:', props.deviceModel);
 
       //load the saved current device from local storage
@@ -346,8 +342,8 @@ export default defineComponent({
       if (savedDevice !== null) {
         currentDevice.value = savedDevice;
         Hvac.DeviceOpt.setDeviceAndGraphicDefaultData(savedDevice);
-        // sample.value = MockData.DeviceList;
         selected.value = savedDevice.device;
+
         console.log('==== onMounted 1 mockData:', MockData.DeviceList);
         console.log('==== onMounted 2 simple:', simple);
       }
@@ -362,7 +358,6 @@ export default defineComponent({
       simple,
       myFilterMethod,
       resetFilter,
-      // color,
       graphicList,
       currentDevice,
       clearGraphicSelection,

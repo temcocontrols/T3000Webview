@@ -123,6 +123,16 @@
   -webkit-appearance: none;
   margin: 0;
 }
+
+.device-panel {
+  padding: 0px;
+  height: 53px;
+}
+
+.device-row {
+  background-color: #e5e7eb;
+  color: #2a2a2a;
+}
 </style>
 
 <template>
@@ -157,13 +167,14 @@
           narrow-indicator>
           <q-tab name="home" no-caps label="Home" />
           <q-tab name="file" no-caps label="File" />
-          <q-tab name="device" no-caps label="Device (T3-Nano-1030657 (VD))" />
+          <q-tab name="device" no-caps label="Device ()" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />
         <q-tab-panels v-model="tab" class="tab-panel">
+
           <q-tab-panel name="home" class="home-panel">
             <div class="container">
               <div class="sub-div">
@@ -381,6 +392,7 @@
               </div>
             </div>
           </q-tab-panel>
+
           <q-tab-panel name="file" class="file-panel">
             <div class="container">
               <div class="sub-div">
@@ -414,6 +426,70 @@
               <!-- <q-separator color="white" inset vertical /> -->
             </div>
           </q-tab-panel>
+
+          <q-tab-panel name="device" class="device-panel">
+            <div class="row device-row">
+
+              <q-list class="col-8" style="height: 50px;">
+                <q-item>
+                  <q-item-section top class="col-3">
+                    <q-item-label class="q-mt-sm">Current: {{ currentDevice.data.device }}</q-item-label>
+                  </q-item-section>
+
+                  <q-item-section top class="col-1">
+                    <q-item-label caption class="select-title">
+                      Graphic
+                    </q-item-label>
+                    <q-item-label>
+                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.id }}</span>
+                    </q-item-label>
+                  </q-item-section>
+
+                  <q-item-section top class="col-3">
+                    <q-item-label caption class="select-title">
+                      Full label
+                    </q-item-label>
+                    <q-item-label>
+                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.fullLabel }}</span>
+                    </q-item-label>
+                  </q-item-section>
+
+                  <q-item-section top>
+                    <q-item-label caption class="select-title">
+                      Label
+                    </q-item-label>
+                    <q-item-label>
+                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.label }}</span>
+                    </q-item-label>
+                  </q-item-section>
+
+                  <q-item-section top>
+                    <q-item-label caption class="select-title">
+                      Element Count
+                    </q-item-label>
+                    <q-item-label>
+                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.elementCount
+                        }}</span>
+                    </q-item-label>
+                  </q-item-section>
+
+                  <q-item-section avatar top>
+                    <q-item-label caption class="select-title">
+                      Action
+                    </q-item-label>
+                    <!-- <q-icon name="check" color="black" /> -->
+                    <!-- <q-btn color="secondary" outline icon-right="check" label="Save" size="xs" /> -->
+                    <q-link class="text-primary" style="font-size: 12px;margin-top: 2px;cursor: pointer;"
+                      @click="showMoreDevices">Show more devices
+                      <q-tooltip anchor="top middle" self="center left">
+                        Save the current selection
+                      </q-tooltip>
+                    </q-link>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+          </q-tab-panel>
         </q-tab-panels>
       </q-card>
     </div>
@@ -422,7 +498,7 @@
 
 <script lang="ts">
 
-import { defineComponent, ref, watch } from 'vue'
+import { defineComponent, ref, watch, onMounted } from 'vue'
 import { useQuasar } from "quasar"
 import { tools, user } from "../lib/common"
 
@@ -464,10 +540,16 @@ export default defineComponent({
     rulersGridVisible: {
       type: Boolean,
       required: false,
-    }
+    },
+    deviceModel: {
+      type: Object,
+      required: false,
+    },
   },
-  emits: ["navGoBack", "lockToggle", "menuAction"],
+  emits: ["navGoBack", "lockToggle", "menuAction", "showMoreDevices"],
   setup(props, { emit }) {
+
+    const currentDevice = ref(null);
 
     const $q = useQuasar();
     function menuActionEmit(action, val = null) {
@@ -496,6 +578,21 @@ export default defineComponent({
       emit('lockToggle');
     };
 
+    const showMoreDevices = () => {
+      console.log('showMoreDevices');
+      emit('showMoreDevices');
+    }
+
+    onMounted(() => {
+      currentDevice.value = props.deviceModel;
+      console.log('=== new-top-toolbar currentDevice', currentDevice);
+    });
+
+    watch(() => props.deviceModel, (newVal) => {
+      console.log('=== new-top-toolbar newVal', newVal);
+      currentDevice.value = newVal;
+    });
+
     return {
       tab: ref('home'),
       navGoBack,
@@ -505,6 +602,8 @@ export default defineComponent({
       tools,
       user,
       showRulersGrid: showRulersGrid,
+      showMoreDevices,
+      currentDevice
     };
   },
 });
