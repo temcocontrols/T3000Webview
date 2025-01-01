@@ -18,20 +18,109 @@
   /* background-color: #cef; */
   height: 35px;
 }
+
+.select-title {
+  font-size: 10px;
+}
+
+.select-text {
+  font-size: 12px;
+}
+
+.header-title {
+  color: #a6a0a0;
+}
 </style>
 
 <template>
 
   <div class=".dvcontainer">
     <div class="q-pa-sm row ">
+
+      <q-list bordered class="rounded-borders col-12">
+        <!-- <q-item-label header>Current selection</q-item-label> -->
+
+        <q-item>
+          <!-- <q-item-section avatar top>
+            <q-icon name="check" color="black" size="34px" />
+          </q-item-section> -->
+
+          <q-item-section top class="col-1">
+            <q-item-label class="q-mt-sm text-weight-medium" style="font-size: 13px;">Current:</q-item-label>
+          </q-item-section>
+
+          <q-item-section top class="col-3">
+            <q-item-label class="q-mt-sm">{{ selectedDevice.device }}</q-item-label>
+          </q-item-section>
+
+          <q-item-section top class="col-1">
+            <q-item-label caption class="select-title">
+              Graphic
+            </q-item-label>
+            <q-item-label>
+              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.id }}</span>
+            </q-item-label>
+          </q-item-section>
+
+          <q-item-section top class="col-3">
+            <q-item-label caption class="select-title">
+              Full label
+            </q-item-label>
+            <q-item-label>
+              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.fullLabel }}</span>
+            </q-item-label>
+          </q-item-section>
+
+          <q-item-section top>
+            <q-item-label caption class="select-title">
+              Label
+            </q-item-label>
+            <q-item-label>
+              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.label }}</span>
+            </q-item-label>
+          </q-item-section>
+
+          <q-item-section top>
+            <q-item-label caption class="select-title">
+              Element Count
+            </q-item-label>
+            <q-item-label>
+              <span class="text-weight-medium select-text">{{ selectedDevice.graphicFull.elementCount }}</span>
+            </q-item-label>
+          </q-item-section>
+
+          <q-item-section avatar top>
+            <q-item-label caption class="select-title">
+              Status
+            </q-item-label>
+            <!-- <q-icon name="check" color="black" /> -->
+            <!-- <q-btn color="secondary" outline icon-right="check" label="Save" size="xs" /> -->
+            <q-link class="text-primary" style="font-size: 12px;margin-top: 2px;cursor: pointer;"
+              @click="saveCurrentSelection">Save
+              <q-tooltip anchor="top middle" self="center right">
+                Save the current selection
+              </q-tooltip>
+            </q-link>
+          </q-item-section>
+
+          <!-- <q-item-section top side>
+            <div class="text-grey-8 q-gutter-xs">
+              <q-btn class="gt-xs" size="12px" flat dense round icon="delete" />
+              <q-btn class="gt-xs" size="12px" flat dense round icon="done" />
+              <q-btn size="12px" flat dense round icon="more_vert" />
+            </div>
+          </q-item-section> -->
+        </q-item>
+      </q-list>
     </div>
 
-    <div class="q-pa-sm row">
+    <div class="q-pa-sm row" style="margin-top: -8px;">
 
       <div class="col-12 col-sm-4">
         <q-input ref="filterRef" filled v-model="filter" placeholder="Search here">
           <template v-slot:append>
             <q-icon v-if="filter !== ''" name="clear" class="cursor-pointer" @click="resetFilter" />
+            <q-icon v-if="filter === ''" name="search" />
           </template>
         </q-input>
 
@@ -56,16 +145,16 @@
               </q-item-label>
             </q-item-section>
             <q-item-section top class="col-1">
-              <q-item-label class="q-mt-sm">Graphic</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Graphic</q-item-label>
             </q-item-section>
             <q-item-section top class="col-4">
-              <q-item-label class="q-mt-sm">Full Label</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Full Label</q-item-label>
             </q-item-section>
             <q-item-section top class="col-3">
-              <q-item-label class="q-mt-sm">Label</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Label</q-item-label>
             </q-item-section>
             <q-item-section top class="col-2">
-              <q-item-label class="q-mt-sm">Element Count</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Element Count</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
@@ -143,7 +232,7 @@ export default defineComponent({
     const simple = MockData.DeviceList;
     const color = ref('cyan');
     const graphicList = MockData.GraphicList;
-    const selectedDevice = ref({ device: "", graphic: 3 });
+    const selectedDevice = ref({ device: "", graphic: 3, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -157,12 +246,22 @@ export default defineComponent({
 
     const clearGraphicSelection = () => {
       selectedDevice.value.graphic = 0;
+      selectedDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
       console.log('==== graphic-clear 1 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
 
     }
 
     const updateGraphicSelection = (val) => {
       selectedDevice.value.graphic = val;
+
+      const found = graphicList.find(element => element.id === val);
+      if (found) {
+        selectedDevice.value.graphicFull.id = found.id.toString();
+        selectedDevice.value.graphicFull.fullLabel = found.fullLabel;
+        selectedDevice.value.graphicFull.label = found.label;
+        selectedDevice.value.graphicFull.elementCount = found.elementCount.toString();
+      }
+
       console.log('==== graphic-selected 1 val:', val);
       console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
     }
@@ -215,6 +314,10 @@ export default defineComponent({
       console.log('==== graphic-selected 2 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
     }
 
+    const saveCurrentSelection = () => {
+      console.log('==== saveCurrentSelection 1 selectedDevice:', [selectedDevice.value.device, selectedDevice.value.graphic]);
+    }
+
     return {
       filter,
       filterRef,
@@ -229,7 +332,8 @@ export default defineComponent({
       selectedDevice,
       clearGraphicSelection,
       treeSelected,
-      updateGraphicSelection
+      updateGraphicSelection,
+      saveCurrentSelection
     }
   }
 });
