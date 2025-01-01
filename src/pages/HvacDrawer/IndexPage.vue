@@ -1019,6 +1019,7 @@ function refreshDeviceAppState() {
   console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
 
   if (existAppState) {
+    // appState.value = cloneDeep(existAppState);
     appState.value = existAppState;
   }
   else {

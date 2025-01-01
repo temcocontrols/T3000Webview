@@ -1,5 +1,6 @@
 
 
+import { cloneDeep } from "lodash";
 import MockData from "../Data/MockData"
 
 class DeviceOpt {
@@ -67,12 +68,20 @@ class DeviceOpt {
 
     const deviceExists = deviceAppState.value.some(opt => opt.device.device === currentDevice.device);
     if (!deviceExists) {
-      const dasItem = { device: currentDevice, appState };
+
+      // clear the selected target
+      const newAppState = cloneDeep(appState);
+      // newAppState.value.selectedTarget = [];
+
+      const dasItem = { device: currentDevice, appState: appState };
       deviceAppState.value.push(dasItem);
     }
     else {
       deviceAppState.value.forEach(opt => {
         if (opt.device.device === currentDevice.device) {
+
+          const newAppState = cloneDeep(appState);
+          // newAppState.value.selectedTarget = [];
           opt.appState = appState;
         }
       });
