@@ -367,3 +367,181 @@ By following these steps, you can create a WebSocket client using WebSocket++ to
 
 $env:VCPKG_ROOT = "D:\1025\github\microsoft\vcpkg"
 $env:PATH = "$env:VCPKG_ROOT;$env:PATH"
+
+
+## Connecting to WebSocket Server using Boost.Asio
+
+To connect to a WebSocket server using Boost.Asio, you can follow these steps:
+
+1. **Include Boost.Asio and WebSocket++ Libraries**: Ensure you have Boost.Asio and WebSocket++ installed and included in your project.
+
+```cpp
+#include <boost/asio.hpp>
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+```
+
+2. **Initialize WebSocket Client**: Create a WebSocket client and connect to the server.
+
+```cpp
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+class WebSocketClient {
+public:
+  WebSocketClient() : io_service_(), resolver_(io_service_), ws_client_() {
+    ws_client_.init_asio(&io_service_);
+    ws_client_.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+    ws_client_.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+  }
+
+  void connect(const std::string& uri) {
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = ws_client_.get_connection(uri, ec);
+    if (ec) {
+      std::cout << "Could not create connection because: " << ec.message() << std::endl;
+      return;
+    }
+    ws_client_.connect(con);
+    io_service_.run();
+  }
+
+private:
+  void on_open(websocketpp::connection_hdl hdl) {
+    std::cout << "Connected to WebSocket server" << std::endl;
+    ws_client_.send(hdl, "Hello from C++", websocketpp::frame::opcode::text);
+  }
+
+  void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+    std::cout << "Received message: " << msg->get_payload() << std::endl;
+    // Handle the message as needed
+  }
+
+  boost::asio::io_service io_service_;
+  boost::asio::ip::tcp::resolver resolver_;
+  client ws_client_;
+};
+
+int main() {
+  WebSocketClient wsClient;
+  wsClient.connect("ws://localhost:9104");
+  return 0;
+}
+```
+
+By following these steps, you can connect to a WebSocket server using Boost.Asio and WebSocket++ in your C++ application.
+
+
+## Connecting to WebSocket Server using Boost.Asio Only
+
+To connect to a WebSocket server using only Boost.Asio, you can follow these steps:
+
+1. **Include Boost.Asio Library**: Ensure you have Boost.Asio installed and included in your project.
+
+
+## Installing Boost.Asio
+
+To install Boost.Asio, you can follow these steps:
+
+1. **Download Boost**: Download the Boost library from the [official Boost website](https://www.boost.org/).
+
+2. **Extract Boost**: Extract the downloaded Boost archive to a directory of your choice.
+
+3. **Build Boost Libraries**: Open a terminal or command prompt and navigate to the Boost directory. Run the following commands to bootstrap and build the Boost libraries:
+
+```sh
+./bootstrap.sh
+./b2
+```
+
+On Windows, you can use the following commands:
+
+```sh
+bootstrap.bat
+b2
+```
+
+4. **Include Boost.Asio in Your Project**: Add the Boost include directory to your project's include paths. For example, if you are using g++, you can compile your code with the following command:
+
+```sh
+g++ -I /path/to/boost_1_76_0 your_code.cpp -o your_program
+```
+
+Replace `/path/to/boost_1_76_0` with the actual path to the Boost directory.
+
+5. **Link Boost Libraries**: If your project requires linking against Boost libraries, add the appropriate library paths and link flags. For example, if you are using g++, you can link against the Boost system library with the following command:
+
+```sh
+g++ -I /path/to/boost_1_76_0 -L /path/to/boost_1_76_0/stage/lib your_code.cpp -o your_program -lboost_system
+```
+
+By following these steps, you can install and use Boost.Asio in your project.
+
+
+```cpp
+#include <boost/asio.hpp>
+#include <boost/beast/websocket.hpp>
+#include <iostream>
+```
+
+2. **Initialize WebSocket Client**: Create a WebSocket client and connect to the server.
+
+```cpp
+using tcp = boost::asio::ip::tcp;
+namespace websocket = boost::beast::websocket;
+
+class WebSocketClient {
+public:
+  WebSocketClient(boost::asio::io_context& ioc) : resolver_(ioc), ws_(ioc) {}
+
+  void connect(const std::string& host, const std::string& port) {
+    auto const results = resolver_.resolve(host, port);
+    boost::asio::async_connect(ws_.next_layer(), results.begin(), results.end(),
+      [this](boost::system::error_code ec, tcp::resolver::results_type::endpoint_type) {
+        if (!ec) {
+          ws_.async_handshake(host_, "/",
+            [this](boost::system::error_code ec) {
+              if (!ec) {
+                send_message("Hello from C++");
+              }
+            });
+        }
+      });
+  }
+
+  void send_message(const std::string& message) {
+    ws_.async_write(boost::asio::buffer(message),
+      [this](boost::system::error_code ec, std::size_t bytes_transferred) {
+        if (!ec) {
+          receive_message();
+        }
+      });
+  }
+
+  void receive_message() {
+    ws_.async_read(buffer_,
+      [this](boost::system::error_code ec, std::size_t bytes_transferred) {
+        if (!ec) {
+          std::cout << "Received message: " << boost::beast::buffers_to_string(buffer_.data()) << std::endl;
+          buffer_.consume(buffer_.size());
+        }
+      });
+  }
+
+private:
+  tcp::resolver resolver_;
+  websocket::stream<tcp::socket> ws_;
+  boost::beast::flat_buffer buffer_;
+  std::string host_;
+};
+
+int main() {
+  boost::asio::io_context ioc;
+  WebSocketClient wsClient(ioc);
+  wsClient.connect("localhost", "9104");
+  ioc.run();
+  return 0;
+}
+```
+
+By following these steps, you can connect to a WebSocket server using only Boost.Asio in your C++ application.
