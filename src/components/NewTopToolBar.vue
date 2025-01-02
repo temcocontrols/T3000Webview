@@ -167,7 +167,8 @@
           narrow-indicator>
           <q-tab name="home" no-caps label="Home" />
           <q-tab name="file" no-caps label="File" />
-          <q-tab name="device" no-caps :label="`Device (${deviceModel.data.device})`" />
+          <q-tab name="device" no-caps
+            :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>

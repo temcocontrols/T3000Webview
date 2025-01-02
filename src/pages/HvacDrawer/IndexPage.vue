@@ -980,7 +980,7 @@ onMounted(() => {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-  // processTcpMessage();
+  processTcpMessage();
 
   // check if need to show the device list dialog
   setTimeout(() => {

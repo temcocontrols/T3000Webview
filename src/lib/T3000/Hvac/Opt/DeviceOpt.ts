@@ -73,7 +73,7 @@ class DeviceOpt {
       const newAppState = cloneDeep(appState);
       // newAppState.value.selectedTarget = [];
 
-      const dasItem = { device: currentDevice, appState: appState };
+      const dasItem = { device: currentDevice, appState: newAppState };
       deviceAppState.value.push(dasItem);
     }
     else {
@@ -82,7 +82,7 @@ class DeviceOpt {
 
           const newAppState = cloneDeep(appState);
           // newAppState.value.selectedTarget = [];
-          opt.appState = appState;
+          opt.appState = newAppState;
         }
       });
     }

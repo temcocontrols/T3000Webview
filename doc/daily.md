@@ -180,3 +180,190 @@ webView->add_WebMessageReceived(
 ```
 
 By following these steps, you can post messages from a standalone Firefox browser to an integrated WebView2 in your C++ application using WebSockets.
+
+
+
+## Connecting to WebSocket Server in C++ and Handling Messages
+
+To connect to a WebSocket server in your C++ application and handle messages, you can use the WebSocket++ library. Here are the steps:
+
+1. **Include WebSocket++ Library**: Ensure you have WebSocket++ installed and included in your project.
+```cpp
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <websocketpp/common/thread.hpp>
+#include <websocketpp/common/memory.hpp>
+```
+2. **Initialize WebSocket Client**: Create a WebSocket client and connect to the server.
+
+```cpp
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+class WebSocketClient {
+public:
+  WebSocketClient() {
+    c.init_asio();
+    c.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+    c.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+  }
+
+  void connect(const std::string& uri) {
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = c.get_connection(uri, ec);
+    if (ec) {
+      std::cout << "Could not create connection because: " << ec.message() << std::endl;
+      return;
+    }
+    c.connect(con);
+    c.run();
+  }
+
+private:
+  void on_open(websocketpp::connection_hdl hdl) {
+    std::cout << "Connected to WebSocket server" << std::endl;
+    c.send(hdl, "Hello from C++", websocketpp::frame::opcode::text);
+  }
+
+  void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+    std::cout << "Received message: " << msg->get_payload() << std::endl;
+    // Handle the message as needed
+  }
+
+  client c;
+};
+
+int main() {
+  WebSocketClient wsClient;
+  wsClient.connect("ws://localhost:9104");
+  return 0;
+}
+```
+
+3. **Handle Messages**: Implement the `on_message` method to process incoming messages from the WebSocket server.
+
+By following these steps, you can connect to a WebSocket server from your C++ application, send messages, and handle incoming messages.
+
+
+
+```cpp
+#include <boost/asio.hpp>
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+class WebSocketClient {
+public:
+  WebSocketClient() : io_service_(), resolver_(io_service_), ws_client_() {
+    ws_client_.init_asio(&io_service_);
+    ws_client_.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+    ws_client_.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+  }
+
+  void connect(const std::string& uri) {
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = ws_client_.get_connection(uri, ec);
+    if (ec) {
+      std::cout << "Could not create connection because: " << ec.message() << std::endl;
+      return;
+    }
+    ws_client_.connect(con);
+    io_service_.run();
+  }
+
+private:
+  void on_open(websocketpp::connection_hdl hdl) {
+    std::cout << "Connected to WebSocket server" << std::endl;
+    ws_client_.send(hdl, "Hello from C++", websocketpp::frame::opcode::text);
+  }
+
+  void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+    std::cout << "Received message: " << msg->get_payload() << std::endl;
+    // Handle the message as needed
+  }
+
+  boost::asio::io_service io_service_;
+  boost::asio::ip::tcp::resolver resolver_;
+  client ws_client_;
+};
+
+int main() {
+  WebSocketClient wsClient;
+  wsClient.connect("ws://localhost:9104");
+  return 0;
+}
+```
+
+## Using WebSocket++
+
+WebSocket++ is a C++ library that allows you to implement WebSocket client and server functionality. Here are the steps to use WebSocket++ in your project:
+
+1. **Install WebSocket++**: You can install WebSocket++ using a package manager like vcpkg or by downloading it from the [official repository](https://github.com/zaphoyd/websocketpp).
+
+2. **Include WebSocket++ Headers**: Include the necessary headers in your C++ code.
+
+```cpp
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+```
+
+3. **Create a WebSocket Client**: Define a WebSocket client class and initialize it.
+
+```cpp
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+class WebSocketClient {
+public:
+  WebSocketClient() {
+    c.init_asio();
+    c.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+    c.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+  }
+
+  void connect(const std::string& uri) {
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = c.get_connection(uri, ec);
+    if (ec) {
+      std::cout << "Could not create connection because: " << ec.message() << std::endl;
+      return;
+    }
+    c.connect(con);
+    c.run();
+  }
+
+private:
+  void on_open(websocketpp::connection_hdl hdl) {
+    std::cout << "Connected to WebSocket server" << std::endl;
+    c.send(hdl, "Hello from C++", websocketpp::frame::opcode::text);
+  }
+
+  void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+    std::cout << "Received message: " << msg->get_payload() << std::endl;
+    // Handle the message as needed
+  }
+
+  client c;
+};
+```
+
+4. **Connect to WebSocket Server**: Use the `connect` method to connect to a WebSocket server.
+
+```cpp
+int main() {
+  WebSocketClient wsClient;
+  wsClient.connect("ws://localhost:9001");
+  return 0;
+}
+```
+
+By following these steps, you can create a WebSocket client using WebSocket++ to connect to a WebSocket server, send messages, and handle incoming messages.
+
+
+$env:VCPKG_ROOT = "D:\1025\github\microsoft\vcpkg"
+$env:PATH = "$env:VCPKG_ROOT;$env:PATH"
