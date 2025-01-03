@@ -111,74 +111,115 @@ mouse select, multiple select, drag events.
 2. fixed some bugs.
 3. released a new version.
 
-2024-11-25 (Library Upgradation)
-1. continued to update the library and new type of wall.
+2024-11-25 (LIB)
+1. Continued to update the library and new type of wall.
 
-2024-11-26 (Library Upgradation)
-1. continued updating the library.
+2024-11-26 (LIB)
+1. Continued to updating the library.
 
-2024-11-27 (Library Upgradation)
-1. continued updating the library.
+2024-11-27 (LIB)
+1. Continued to updating the library.
 
-2024-11-28 (Library Upgradation)
-1. continued updating the library.
+2024-11-28 (LIB)
+1. Continued to updating the library.
 
-2024-11-29 (Library Upgradation)
-1. continued updating the library.
+2024-11-29 (LIB)
+1. Continued to updating the library.
 
-2024-12-02 (Library Upgradation)
-1. continued updating the library.
+2024-12-02 (LIB)
+1. Continued to updating the library.
 
-2024-12-03 (Library Upgradation)
-1. continued updating the library.
+2024-12-03 (LIB)
+1. Continued to updating the library.
 
-2024-12-04 (Library Upgradation)
-1. continued updating the library.
+2024-12-04 (LIB)
+1. Continued to updating the library.
 
-2024-12-05 (Library Upgradation)
-1. continued updating the library.
+2024-12-05 (LIB)
+1. Continued to updating the library.
 
-2024-12-06 (Library Upgradation)
-1. continued updating the library.
+2024-12-06 (LIB)
+1. Continued to updating the library.
 
-2024-12-09 (Library Upgradation)
-1. continued updating the library.
+2024-12-09 (LIB)
+1. Continued to updating the library.
 
-2024-12-10 (Library Upgradation)
-1. continued updating the library.
+2024-12-10 (LIB)
+1. Continued to updating the library.
 
 2024-12-11
-1. Fixed bug: set the default value of link entry's [Display field] to description field, and can remerber user last selection
-2. Updated the Auto/Manual icon
-3. Draw selected shape when mouse clicked on the graphic area
+1. Fixed bug: set the default value of link entry's [Display field] to description field, and can remerber user last selection.
+2. Updated the Auto/Manual icon.
+3. Draw selected shape when mouse clicked on the graphic area.
 
 2024-12-12
-1. Updated: when pump been clicked can toggle the value on/off in manual mode
-2. Updated: when the lock icon area been clicked can swith to Auto or Manul mode
-3. I will start to add the 'Insert key' function to webview today
+1. Updated: when pump been clicked can toggle the value on/off in manual mode.
+2. Updated: when the lock icon area been clicked can swith to Auto or Manul mode.
+3. I will start to add the 'Insert key' function to webview today.
 
 2024-12-13
-1. Added a context menu to toggle the value of [Model] and [Value] field to [Auto/Manual] and [On/Off]
-2. Released a new version to including above updates
+1. Added a context menu to toggle the value of [Model] and [Value] field to [Auto/Manual] and [On/Off].
+2. Released a new version to including above updates.
 
 2024-12-16
-1. Fixed small bugs
-2. Add a context menu for analog number value field
-3. Started to build [Insert key] function
+1. Fixed small bugs.
+2. Add a context menu for analog number value field.
+3. Started to build [Insert key] function.
 
 2024-12-17
 1. Applied the [Insert key] function to webview.
-2. Fixed bugs and small changes for the old graphic view
+2. Fixed bugs and small changes for the old graphic view.
 
-2024-12-18 (Library Upgradation)
-1. continued updating the library.
+2024-12-18 (LIB)
+1. Updated the library.
 
-2024-12-19 (Library Upgradation)
-1. continued updating the library.
+2024-12-19 (LIB)
+1. Updated the library.
 
 2024-12-20
-1. Fixed bugs and implement small changes for pump
-2. Fixed some bugs and made small change for context menu
+1. Fixed bugs and implement small changes for pump.
+2. Fixed some bugs and made small change for context menu.
 
-2024-12-23 (Library Upgradation)
-1. continued updating the library.
+2024-12-23 (LIB)
+1. Updated the library # DataStream.js.
+
+2024-12-24 (LIB)
+1. Updated the library # DataOpt.ts & Basic.ts & Instance.ts.
+
+2024-12-25 (LIB)
+1. Updated the library # Data, State, Model.
+
+2024-12-26
+1. Added a toggle button to control rulers and grid visibility.
+2. Fixed bug # set the default value to be divided by 1000.
+3. Updated the library.
+
+2024-12-27
+1. Updated the library: save data to local storage and reload from it.
+2. Tried to handle communication between external explorer and T3000.
+
+2024-12-28/29 (LIB)
+1. Updated the library.
+2. Added a new rust websocket handler.
+
+2024-12-30
+1. Added a new top toolbar.
+2. Updated the tcp socket handler.
+3. Built a popup dialog for showing devices info.
+
+2024-12-31
+1. Updated the header layout.
+2. Updated the top toolbar and graphic panel.
+3. Updated UI styles.
+
+2025-01-01
+1. Updated the device list dialog style.
+2. Updated the device tree and graphic panel selection event.
+
+2025-01-02
+1. Updated the device list.
+2. Updated the device app state save and load logic.
+
+2025-01-03
+1. Added some test demos for sending message from explorer to c++ and send the processed data back to explorer.
+2. Fixed typo and updated the work details.
