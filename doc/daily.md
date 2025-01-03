@@ -545,3 +545,186 @@ int main() {
 ```
 
 By following these steps, you can connect to a WebSocket server using only Boost.Asio in your C++ application.
+
+
+## Adding Custom String to WebSocket Connection
+
+To add a custom string to the WebSocket connection and pass it to the server, you can include the custom string in the WebSocket handshake request. On the server side, you can extract this custom string and decide whether to send a message back to the related clients.
+
+### Client Side
+
+1. **Modify the WebSocket Handshake**: Add a custom header to the WebSocket handshake request.
+
+```cpp
+void connect(const std::string& host, const std::string& port, const std::string& custom_string) {
+  host_ = host;
+  custom_string_ = custom_string;
+  auto const results = resolver_.resolve(host, port);
+  boost::asio::async_connect(ws_.next_layer(), results.begin(), results.end(),
+    [this](boost::system::error_code ec, tcp::resolver::results_type::endpoint_type) {
+      if (!ec) {
+        ws_.set_option(websocket::stream_base::decorator(
+          [this](websocket::request_type& req) {
+            req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async");
+            req.set(http::field::custom, custom_string_);
+          }));
+        ws_.async_handshake(host_, "/",
+          [this](boost::system::error_code ec) {
+            if (!ec) {
+              send_message("Hello from C++");
+            }
+          });
+      }
+    });
+}
+```
+
+2. **Pass the Custom String**: Call the `connect` method with the custom string.
+
+```cpp
+int main() {
+  boost::asio::io_context ioc;
+  WebSocketClient wsClient(ioc);
+  wsClient.connect("localhost", "9104", "custom_string_value");
+  ioc.run();
+  return 0;
+}
+```
+
+### Server Side
+
+1. **Extract Custom String**: Extract the custom string from the WebSocket handshake request.
+
+```cpp
+void on_open(websocketpp::connection_hdl hdl) {
+  server::connection_ptr con = server_.get_con_from_hdl(hdl);
+  std::string custom_string = con->get_request_header("custom");
+  std::cout << "Custom string received: " << custom_string << std::endl;
+
+  // Check the custom string and decide whether to send a message back
+  if (custom_string == "custom_string_value") {
+    server_.send(hdl, "Message to related client", websocketpp::frame::opcode::text);
+  }
+}
+```
+
+2. **Set Up WebSocket Server**: Initialize the WebSocket server and set the open handler.
+
+```cpp
+int main() {
+  server_.init_asio();
+  server_.set_open_handler(bind(&on_open, ::_1));
+  server_.listen(9104);
+  server_.start_accept();
+  server_.run();
+  return 0;
+}
+```
+
+By following these steps, you can add a custom string to the WebSocket connection, pass it to the server, and handle it on the server side to decide whether to send a message back to the related clients.
+
+
+# Using WebSocket++ with boost 1.66.0
+
+# Additional library
+D:\1026\boost_1_66_0-bin-msvc-all-32-64\boost_1_66_0\lib32-msvc-14.1
+
+# Additional Include Directories
+D:\1025\github\zaphoyd\websocketpp\
+D:\1026\boost_1_66_0-bin-msvc-all-32-64\boost_1_66_0
+
+WebSocketClient.cpp
+
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+//#include <nlohmann/json.hpp>
+
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+using websocketpp::lib::placeholders::_1;
+using websocketpp::lib::placeholders::_2;
+using websocketpp::lib::bind;
+//using json = nlohmann::json;
+
+class WebSocketClient {
+public:
+    WebSocketClient() {
+        c.init_asio();
+        c.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+        c.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+    }
+
+    void connect(const std::string& uri) {
+        websocketpp::lib::error_code ec;
+        client::connection_ptr con = c.get_connection(uri, ec);
+        if (ec) {
+            std::cout << "Could not create connection because: " << ec.message() << std::endl;
+            return;
+        }
+        c.connect(con);
+        c.run();
+    }
+
+private:
+    void on_open(websocketpp::connection_hdl hdl) {
+        std::cout << "Connected to WebSocket server" << std::endl;
+        c.send(hdl, "Hello from C++", websocketpp::frame::opcode::text);
+    }
+
+    void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+
+        //std::string msgCtx = msg->get_payload();
+
+        std::cout << "Received message: " << msg->get_payload() << std::endl;
+        // Handle the message as needed
+
+        //  {"header":{"device":"T3-XX-ESP","panel":1,"clientId":"R102039488500","from":"firefox"},"message":{"action":0,"panelId":1}}
+
+        /*
+        // Parse the JSON message
+        try {
+            json j = json::parse(msg->get_payload());
+            std::string device = j["header"]["device"];
+            int panel = j["header"]["panel"];
+            std::string clientId = j["header"]["clientId"];
+            std::string from = j["header"]["from"];
+            int action = j["message"]["action"];
+            int panelId = j["message"]["panelId"];
+
+            std::cout << "Device: " << device << std::endl;
+            std::cout << "Panel: " << panel << std::endl;
+            std::cout << "Client ID: " << clientId << std::endl;
+            std::cout << "From: " << from << std::endl;
+            std::cout << "Action: " << action << std::endl;
+            std::cout << "Panel ID: " << panelId << std::endl;
+
+            // Handle the message as needed
+
+            // Send a response back to the server
+            // c.send(hdl, "Message received", websocketpp::frame::opcode::text);
+
+            // Close the connection when done
+            // c.close(hdl, websocketpp::close::status::normal, "Done");
+        }
+        catch (json::parse_error& e) {
+            std::cerr << "JSON parse error: " << e.what() << std::endl;
+        }
+        */
+
+        // Send a response back to the server
+		//std::cout << msgCtx << std::endl;
+
+        if (msg->get_payload() == "ClientA test1") {
+
+            std::cout << "Get matched message =>: start to send it back to clients " << msg->get_payload() << std::endl;
+
+            c.send(hdl, "{\"Data1\":\"send back test1\",\"Data2\":\"send 00000000000000000\"}", websocketpp::frame::opcode::text);
+        }
+
+        // Close the connection when done
+        //c.close(hdl, websocketpp::close::status::normal, "Done");
+    }
+
+    client c;
+};

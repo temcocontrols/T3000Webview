@@ -1075,6 +1075,8 @@ function connectSocket() {
     }
 
     socket.send(JSON.stringify(data));
+
+    socket.send("ClientA test1");
   };
 
   socket.onmessage = function (event) {
@@ -1082,7 +1084,7 @@ function connectSocket() {
     // process the messgae here
 
     console.log('==== Message from TCP Server, start to process it:', event.data);
-    const jsonObj = JSON.parse(event.data);
+    // const jsonObj = JSON.parse(event.data);
 
     // if (jsonObj.action === 0) {
     //   socket.send(JSON.stringify({

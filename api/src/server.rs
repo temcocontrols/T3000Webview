@@ -211,9 +211,13 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
   while let Some(msg) = read.next().await {
     let msg = msg?;
     if msg.is_text() || msg.is_binary() {
-      println!("Received message: {}", msg);
+      println!("=== Server Received message from client: {}", msg);
+
       let clients = clients.lock().unwrap();
       for client in clients.iter() {
+
+        println!("Sending message to client: {:?}", client);
+
         if client.send(msg.clone()).is_err() {
           // Handle error if needed
           println!("Client send msg on error");
