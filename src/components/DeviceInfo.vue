@@ -255,6 +255,7 @@ export default defineComponent({
       console.log('==== graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
+    // graphic panel change event
     const updateGraphicSelection = (val) => {
       currentDevice.value.graphic = val;
 
@@ -270,6 +271,7 @@ export default defineComponent({
       console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
+    // device tree selection event
     const treeSelected = (target) => {
       console.log('==== tree-selected 1 target:', target)
 
@@ -312,10 +314,18 @@ export default defineComponent({
         selectedNode.icon = 'check';
         currentDevice.value.device = selectedNode.label;
       }
+      else {
+        if (target === null) {
+          currentDevice.value.device = '';
+        }
+      }
 
       clearGraphicSelection();
 
       console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+
+      // update the graphic panel's elements count
+      Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice);
     }
 
     const saveCurrentSelection = () => {

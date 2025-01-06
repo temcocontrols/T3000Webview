@@ -50,6 +50,7 @@ class DeviceOpt {
     return null;
   }
 
+  // use "deviceModel" as a ref here, when do updating it's value, it will also update the ui component value
   saveDeviceAppState(deviceAppState, deviceModel, appState) {
 
     // deviceAppState.value = [{ device: {}, appState: {} }];
@@ -100,7 +101,7 @@ class DeviceOpt {
     localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
 
     // load the element count
-    this.resetDeviceCount(deviceModel);
+    this.refreshCurrentDeviceCount(deviceModel);
   }
 
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
@@ -127,7 +128,7 @@ class DeviceOpt {
   }
 
   // rest the device count
-  resetDeviceCount(deviceModel) {
+  refreshCurrentDeviceCount(deviceModel) {
 
     // current device's element count
     const appStateLs = this.loadDeviceAppStateLS();
@@ -147,10 +148,42 @@ class DeviceOpt {
 
       localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
     }
+  }
+
+  // refresh the graphic panel element count
+  refreshGraphicPanelElementCount(currentDevice) {
+
+    // currentDevice {device: "T3-XX-ESP 1", graphic: 1, graphicFull: {…}}
+
+    const appStateLs = this.loadDeviceAppStateLS();
+    const canRefresh = currentDevice?.value.device && appStateLs;
+
+    if (!canRefresh) {
+      this.clearGraphicPanelElementCount();
+      return;
+    }
+
+    const graphicValues = appStateLs.filter(opt => opt?.device?.device === currentDevice?.value.device);
+
+    // clear the value first, reset the element count base on the current device info
+    this.clearGraphicPanelElementCount();
 
     MockData.GraphicList.forEach(graphic => {
 
+      const graphicValue = graphicValues.find(opt => opt?.device?.graphic === graphic.id);
 
+      if (graphicValue) {
+        const elementCount = graphicValue?.appState?.items?.length ?? 0;
+        graphic.elementCount = elementCount;
+      }
+    })
+
+    console.log('== refresh-graphic-panel-element-count ==', MockData.GraphicList);
+  }
+
+  clearGraphicPanelElementCount() {
+    MockData.GraphicList.forEach(graphic => {
+      graphic.elementCount = 0;
     });
   }
 }
