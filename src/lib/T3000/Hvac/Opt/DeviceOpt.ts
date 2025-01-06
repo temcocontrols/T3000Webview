@@ -156,14 +156,14 @@ class DeviceOpt {
     // currentDevice {device: "T3-XX-ESP 1", graphic: 1, graphicFull: {…}}
 
     const appStateLs = this.loadDeviceAppStateLS();
-    const canRefresh = currentDevice?.value.device && appStateLs;
+    const canRefresh = currentDevice?.device && appStateLs;
 
     if (!canRefresh) {
       this.clearGraphicPanelElementCount();
       return;
     }
 
-    const graphicValues = appStateLs.filter(opt => opt?.device?.device === currentDevice?.value.device);
+    const graphicValues = appStateLs.filter(opt => opt?.device?.device === currentDevice?.device);
 
     // clear the value first, reset the element count base on the current device info
     this.clearGraphicPanelElementCount();
@@ -183,6 +183,37 @@ class DeviceOpt {
 
   clearGraphicPanelElementCount() {
     MockData.GraphicList.forEach(graphic => {
+      graphic.elementCount = 0;
+    });
+  }
+
+  // clear dirty current device data, checked the device without save to local storage
+  clearDirtyCurrentDevice() {
+    const currentDevice = this.getCurrentDevice();
+
+    if (MockData.DeviceList.length > 0) {
+      MockData.DeviceList[0].children.forEach(device => {
+
+        if (device.icon === 'check') {
+          if (device.label !== currentDevice.device) {
+            device.icon = 'horizontal_rule';
+          }
+        }
+      });
+    }
+  }
+
+  // load graphic panel data from hardware device（T3000)
+  loadGraphicPanelData(currentDevice) {
+
+    // TODO post message to 9104 to get the panel data (id, full label, label, picture file, element count)
+
+    // temperary to set the mock data
+
+    MockData.GraphicList.forEach(graphic => {
+      graphic.fullLabel = `${currentDevice.device} mock real ${graphic.id}`;
+      graphic.label = `mock real ${graphic.id}`;
+      graphic.pictureFile = '';
       graphic.elementCount = 0;
     });
   }

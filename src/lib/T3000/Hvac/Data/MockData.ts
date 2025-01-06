@@ -8,13 +8,13 @@ class MockData {
       label: 'All Devices',
       icon: 'devices',
       children: [
-        {
-          label: 'T3-Nano-1030657',
-          children: [
-            { label: 'S1' },
-            { label: 'S2' }
-          ]
-        },
+        // {
+        //   label: 'T3-Nano-1030657',
+        //   children: [
+        //     { label: 'S1' },
+        //     { label: 'S2' }
+        //   ]
+        // },
         {
           id: 1,
           label: 'T3-XX-ESP 1',
@@ -112,60 +112,61 @@ class MockData {
   static readonly GraphicList = [
     {
       id: 1,
-      fullLabel: 'Graphic full label 1',
+      fullLabel: 'T3-xx-ESP1 full label 1',
       label: 'label 1',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 2,
-      fullLabel: 'Graphic full label 2',
+      fullLabel: 'T3-xx-ESP1 full label 2',
       label: 'label 2',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 3,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 full label 3',
+      label: 'label 3',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 4,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 full label 4',
+      label: 'label 4',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 5,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 Default',
+      label: 'label 5',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 6,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 full label 6',
+      label: 'label 6',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 7,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 full label 7',
+      label: 'label 7',
       pictureFile: '',
       elementCount: 0
     },
     {
       id: 8,
-      fullLabel: '',
-      label: '',
+      fullLabel: 'T3-xx-ESP1 Default',
+      label: 'label 8',
       pictureFile: '',
       elementCount: 0
-    }]
+    }
+  ]
 }
 
 export default MockData

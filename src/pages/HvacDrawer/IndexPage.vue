@@ -1011,7 +1011,19 @@ function updateDeviceModel(isActive, data) {
 }
 
 function showMoreDevices() {
+
+  // clear the dirty selection data
+  Hvac.DeviceOpt.clearDirtyCurrentDevice();
+
   deviceModel.value.active = true;
+
+  // clear the shape selection
+  appState.value.selectedTarget = [];
+  appState.value.selectedTargets = [];
+  appState.value.activeItemIndex = null;
+
+  // refresh the graphic panel data
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 function refreshDeviceAppState() {

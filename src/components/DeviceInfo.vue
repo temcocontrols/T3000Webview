@@ -324,8 +324,11 @@ export default defineComponent({
 
       console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
+      // load hardware data from T3000
+      Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
+
       // update the graphic panel's elements count
-      Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice);
+      Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice.value);
     }
 
     const saveCurrentSelection = () => {
@@ -345,7 +348,7 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      console.log('==== onMounted 1 deviceModel:', props.deviceModel);
+      console.log('==== onMounted 1 deviceModel,selected', props.deviceModel);
 
       //load the saved current device from local storage
       const savedDevice = Hvac.DeviceOpt.getCurrentDevice();
