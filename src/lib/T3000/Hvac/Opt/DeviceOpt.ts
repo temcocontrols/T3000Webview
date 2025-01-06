@@ -50,9 +50,10 @@ class DeviceOpt {
     return null;
   }
 
-  saveDeviceAppState(deviceAppState, currentDevice, appState) {
+  saveDeviceAppState(deviceAppState, deviceModel, appState) {
 
     // deviceAppState.value = [{ device: {}, appState: {} }];
+    let currentDevice = deviceModel.value.data;
 
     // load from local storage if not exist // TODO: why the passed currentDevice is empty?
     if (!currentDevice.device) {
@@ -70,7 +71,11 @@ class DeviceOpt {
       deviceAppState.value = deviceAppStateLS;
     }
 
-    const deviceExists = deviceAppState.value.some(opt => opt?.device?.device === currentDevice?.device);
+    const deviceExists = deviceAppState.value.some(
+      opt =>
+        opt?.device?.device === currentDevice?.device &&
+        opt?.device?.graphic === currentDevice?.graphic
+    );
     if (!deviceExists) {
 
       // clear the selected target
@@ -82,7 +87,8 @@ class DeviceOpt {
     }
     else {
       deviceAppState.value.forEach(opt => {
-        if (opt?.device?.device === currentDevice?.device) {
+        const check = opt?.device?.device === currentDevice?.device && opt?.device?.graphic === currentDevice?.graphic;
+        if (check) {
 
           const newAppState = cloneDeep(appState);
           // newAppState.value.selectedTarget = [];
@@ -92,6 +98,9 @@ class DeviceOpt {
     }
 
     localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
+
+    // load the element count
+    this.resetDeviceCount(deviceModel);
   }
 
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
@@ -103,15 +112,47 @@ class DeviceOpt {
       deviceAppState.value = deviceAppStateLS;
     }
 
-    const device = deviceAppState.value.find(opt => opt?.device?.device === currentDevice?.device);
+    const device = deviceAppState.value.find(
+      opt =>
+        opt?.device?.device === currentDevice?.device &&
+        opt?.device?.graphic === currentDevice?.graphic);
+
     if (device) {
       const newAppState = cloneDeep(device.appState);
       newAppState.selectedTarget = [];
       newAppState.selectedTargets = [];
+      newAppState.activeItemIndex = -1;
       return newAppState;//device.appState;
     }
   }
 
+  // rest the device count
+  resetDeviceCount(deviceModel) {
+
+    // current device's element count
+    const appStateLs = this.loadDeviceAppStateLS();
+    const currentDevice = this.getCurrentDevice();
+
+    if (appStateLs) {
+      appStateLs.forEach(opt => {
+        if (opt?.device?.device === currentDevice?.device && opt?.device?.graphic === currentDevice?.graphic) {
+          const elementCount = opt?.appState?.items?.length ?? 0;
+
+          //{"device":"T3-XX-ESP 1","graphic":1,"graphicFull":{"id":"1","fullLabel":"Graphic full label 1","label":"label 1","elementCount":"0"}}
+          currentDevice.graphicFull.elementCount = elementCount;
+          deviceModel.value.data = currentDevice;
+          return;
+        }
+      });
+
+      localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
+    }
+
+    MockData.GraphicList.forEach(graphic => {
+
+
+    });
+  }
 }
 
 export default DeviceOpt

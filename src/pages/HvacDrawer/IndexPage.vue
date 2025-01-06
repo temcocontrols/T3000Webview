@@ -1035,7 +1035,7 @@ function saveDeviceAppState(clearSelected) {
     appState.value.selectedTargets = [];
   }
 
-  Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel.value.data, appState);
+  Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
 }
 
 function connectSocket() {
