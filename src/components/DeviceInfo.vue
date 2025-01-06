@@ -7,13 +7,13 @@
   margin-top: 11px;
 }
 
-::v-deep .q-input .q-field__control {
+:deep(.q-input .q-field__control) {
   border-radius: 0;
   /* background-color: #cef; */
   height: 35px;
 }
 
-::v-deep .q-input .q-field__marginal {
+:deep(.q-input .q-field__marginal) {
   border-radius: 0;
   /* background-color: #cef; */
   height: 35px;

@@ -57,6 +57,10 @@ class DeviceOpt {
     // load from local storage if not exist // TODO: why the passed currentDevice is empty?
     if (!currentDevice.device) {
       currentDevice = this.getCurrentDevice();
+
+      if (currentDevice === null) {
+        return;
+      }
     }
 
     // check whether the deviceAppState exists in local storage
@@ -66,7 +70,7 @@ class DeviceOpt {
       deviceAppState.value = deviceAppStateLS;
     }
 
-    const deviceExists = deviceAppState.value.some(opt => opt.device.device === currentDevice.device);
+    const deviceExists = deviceAppState.value.some(opt => opt?.device?.device === currentDevice?.device);
     if (!deviceExists) {
 
       // clear the selected target
@@ -78,7 +82,7 @@ class DeviceOpt {
     }
     else {
       deviceAppState.value.forEach(opt => {
-        if (opt.device.device === currentDevice.device) {
+        if (opt?.device?.device === currentDevice?.device) {
 
           const newAppState = cloneDeep(appState);
           // newAppState.value.selectedTarget = [];
@@ -99,9 +103,12 @@ class DeviceOpt {
       deviceAppState.value = deviceAppStateLS;
     }
 
-    const device = deviceAppState.value.find(opt => opt.device.device === currentDevice.device);
+    const device = deviceAppState.value.find(opt => opt?.device?.device === currentDevice?.device);
     if (device) {
-      return device.appState;
+      const newAppState = cloneDeep(device.appState);
+      newAppState.selectedTarget = [];
+      newAppState.selectedTargets = [];
+      return newAppState;//device.appState;
     }
   }
 

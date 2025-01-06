@@ -1028,8 +1028,13 @@ function refreshDeviceAppState() {
   }
 }
 
-function saveDeviceAppState() {
+function saveDeviceAppState(clearSelected) {
   console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+
+  if (clearSelected) {
+    appState.value.selectedTargets = [];
+  }
+
   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel.value.data, appState);
 }
 
@@ -1076,7 +1081,7 @@ function connectSocket() {
 
     socket.send(JSON.stringify(data));
 
-    socket.send("ClientA test1");
+    // socket.send("ClientA test1");
   };
 
   socket.onmessage = function (event) {
@@ -1126,6 +1131,9 @@ onUnmounted(() => {
 
 // Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
+
+  console.log('window.chrome?.webview', window.chrome?.webview);
+
   console.log("Received a message from webview", arg.data.action, arg.data);
   // console.log('=== T3000_Data ===', T3000_Data)
 
