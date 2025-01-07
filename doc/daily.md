@@ -1211,3 +1211,100 @@ int main() {
 
 By ensuring that the WebSocket handshake request is correctly formatted, you can avoid common errors such as `Protocol(HttparseError(Version))` and establish a successful WebSocket connection using MFC `CAsyncSocket`.
 
+## Fix error
+
+The invalidcode (4) error in the context of WebSockets typically indicates that there was an issue with the WebSocket frame being sent. This error can occur for several reasons, such as improperly formatted WebSocket frames, issues with the handshake, or problems in the WebSocket protocol implementation.
+
+To help you debug and resolve this issue, here are a few steps to check and ensure your WebSocket client implemented using MFC CAsyncSocket is correctly handling the WebSocket protocol:
+
+1. Verify Handshake
+
+Ensure that the WebSocket handshake is completed successfully. The server should respond with an HTTP 101 Switching Protocols status code. Here is an example of a successful handshake response:
+
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: [base64-encoded response]
+
+2. Frame Formatting
+
+WebSocket messages must be sent in a specific format. Ensure that your frames are correctly formatted according to the WebSocket protocol. Each frame has a specific structure, including an opcode, payload length, masking key (for client-to-server frames), and payload data.
+
+Here is a basic structure of a WebSocket frame:
+
+// WebSocket frame structure
+struct WebSocketFrame {
+    unsigned char fin_and_opcode; // 1 byte
+    unsigned char mask_and_payload_len; // 1 byte
+    unsigned char masking_key[4]; // 4 bytes (if masked)
+    unsigned char payload_data[]; // Variable length
+};
+
+Example Code
+
+Below is an example of how to create and send a WebSocket text frame in MFC CAsyncSocket:
+
+void CMySocket::SendWebSocketMessage(const CString& message) {
+    // Convert the message to UTF-8
+    std::string utf8Message = CT2A(message, CP_UTF8);
+
+    // Create WebSocket frame
+    std::vector<unsigned char> frame;
+
+    // FIN and opcode (0x81 for text frame)
+    frame.push_back(0x81);
+
+    // Mask and payload length
+    size_t msgLen = utf8Message.size();
+    if (msgLen <= 125) {
+        frame.push_back(0x80 | static_cast<unsigned char>(msgLen));
+    } else if (msgLen <= 65535) {
+        frame.push_back(0x80 | 126);
+        frame.push_back((msgLen >> 8) & 0xFF);
+        frame.push_back(msgLen & 0xFF);
+    } else {
+        frame.push_back(0x80 | 127);
+        for (int i = 7; i >= 0; --i) {
+            frame.push_back((msgLen >> (8 * i)) & 0xFF);
+        }
+    }
+
+    // Masking key (randomly generated)
+    unsigned char maskingKey[4];
+    for (int i = 0; i < 4; ++i) {
+        maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+    }
+    frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+    // Mask the payload data
+    for (size_t i = 0; i < msgLen; ++i) {
+        frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+    }
+
+    // Send the frame
+    Send(frame.data(), frame.size());
+}
+
+void CMySocket::OnSend(int nErrorCode) {
+    // Check if there was an error
+    if (nErrorCode != 0) {
+        AfxMessageBox(_T("Error sending WebSocket message."));
+        return;
+    }
+
+    // Code to handle successful send
+    // ...
+
+    CAsyncSocket::OnSend(nErrorCode);
+}
+
+3. Error Handling
+
+Ensure that you handle errors appropriately in your OnSend and OnReceive methods. Proper error handling can help you identify and resolve issues during the WebSocket communication.
+Conclusion
+
+    Verify that the WebSocket handshake is completed successfully.
+    Ensure that the WebSocket frames are correctly formatted according to the WebSocket protocol.
+    Implement appropriate error handling in your OnSend and OnReceive methods.
+
+By following these steps, you should be able to debug and resolve the invalidcode (4) error in your MFC CAsyncSocket WebSocket client.

@@ -1095,7 +1095,7 @@ function connectSocket() {
       }
     }
 
-    // socket.send(JSON.stringify(data));
+    socket.send(JSON.stringify(data));
 
     // socket.send(1);
   };
