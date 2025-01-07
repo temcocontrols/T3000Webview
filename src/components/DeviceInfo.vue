@@ -114,10 +114,6 @@
       </q-list>
     </div>
 
-    <div class="q-pa-sm row ">
-      <q-btn class="gt-xs" size="12px" flat dense icon="plus" @click="testSendMsg(1)">Test Action 1</q-btn>
-    </div>
-
     <div class="q-pa-sm row" style="margin-top: -8px;">
 
       <div class="col-12 col-sm-4">
