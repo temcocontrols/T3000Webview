@@ -728,3 +728,486 @@ private:
 
     client c;
 };
+
+## Connecting to WebSocket Server using Windows Sockets
+
+To connect to a WebSocket server using Windows Sockets, you can follow these steps:
+
+1. **Include Necessary Headers**: Include the necessary headers for Windows Sockets.
+
+```cpp
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+#pragma comment(lib, "Ws2_32.lib")
+```
+
+2. **Initialize Winsock**: Initialize Winsock in your main function.
+
+```cpp
+int main() {
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    std::cerr << "WSAStartup failed: " << result << std::endl;
+    return 1;
+  }
+
+  // Your WebSocket connection code here
+
+  WSACleanup();
+  return 0;
+}
+```
+
+3. **Create and Connect Socket**: Create a socket and connect to the WebSocket server.
+
+```cpp
+SOCKET ConnectSocket = INVALID_SOCKET;
+struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+ZeroMemory(&hints, sizeof(hints));
+hints.ai_family = AF_INET;
+hints.ai_socktype = SOCK_STREAM;
+hints.ai_protocol = IPPROTO_TCP;
+
+result = getaddrinfo("localhost", "9104", &hints, &result);
+if (result != 0) {
+  std::cerr << "getaddrinfo failed: " << result << std::endl;
+  WSACleanup();
+  return 1;
+}
+
+for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+  ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+  if (ConnectSocket == INVALID_SOCKET) {
+    std::cerr << "Error at socket(): " << WSAGetLastError() << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  result = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+  if (result == SOCKET_ERROR) {
+    closesocket(ConnectSocket);
+    ConnectSocket = INVALID_SOCKET;
+    continue;
+  }
+  break;
+}
+
+freeaddrinfo(result);
+
+if (ConnectSocket == INVALID_SOCKET) {
+  std::cerr << "Unable to connect to server!" << std::endl;
+  WSACleanup();
+  return 1;
+}
+```
+
+4. **Send and Receive Data**: Send and receive data using the connected socket.
+
+```cpp
+const char* sendbuf = "Hello from C++";
+result = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+if (result == SOCKET_ERROR) {
+  std::cerr << "send failed: " << WSAGetLastError() << std::endl;
+  closesocket(ConnectSocket);
+  WSACleanup();
+  return 1;
+}
+
+char recvbuf[512];
+result = recv(ConnectSocket, recvbuf, 512, 0);
+if (result > 0) {
+  std::cout << "Bytes received: " << result << std::endl;
+  std::cout << "Message: " << std::string(recvbuf, result) << std::endl;
+} else if (result == 0) {
+  std::cout << "Connection closed" << std::endl;
+} else {
+  std::cerr << "recv failed: " << WSAGetLastError() << std::endl;
+}
+
+closesocket(ConnectSocket);
+WSACleanup();
+```
+
+By following these steps, you can connect to a WebSocket server using Windows Sockets in your C++ application.
+
+```cpp
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+#pragma comment(lib, "Ws2_32.lib")
+
+class WebSocketClient {
+public:
+  WebSocketClient(const std::string& host, const std::string& port) : host_(host), port_(port), ConnectSocket(INVALID_SOCKET) {
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+      throw std::runtime_error("WSAStartup failed: " + std::to_string(result));
+    }
+  }
+
+  ~WebSocketClient() {
+    closesocket(ConnectSocket);
+    WSACleanup();
+  }
+
+  void connect() {
+    struct addrinfo* result = NULL, * ptr = NULL, hints;
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    int res = getaddrinfo(host_.c_str(), port_.c_str(), &hints, &result);
+    if (res != 0) {
+      WSACleanup();
+      throw std::runtime_error("getaddrinfo failed: " + std::to_string(res));
+    }
+
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+      ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+      if (ConnectSocket == INVALID_SOCKET) {
+        WSACleanup();
+        throw std::runtime_error("Error at socket(): " + std::to_string(WSAGetLastError()));
+      }
+
+      res = ::connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+      if (res == SOCKET_ERROR) {
+        closesocket(ConnectSocket);
+        ConnectSocket = INVALID_SOCKET;
+        continue;
+      }
+      break;
+    }
+
+    freeaddrinfo(result);
+
+    if (ConnectSocket == INVALID_SOCKET) {
+      WSACleanup();
+      throw std::runtime_error("Unable to connect to server!");
+    }
+  }
+
+  void sendMessage(const std::string& message) {
+    int res = send(ConnectSocket, message.c_str(), (int)message.length(), 0);
+    if (res == SOCKET_ERROR) {
+      closesocket(ConnectSocket);
+      WSACleanup();
+      throw std::runtime_error("send failed: " + std::to_string(WSAGetLastError()));
+    }
+  }
+
+  std::string receiveMessage() {
+    char recvbuf[512];
+    int res = recv(ConnectSocket, recvbuf, 512, 0);
+    if (res > 0) {
+      return std::string(recvbuf, res);
+    } else if (res == 0) {
+      return "Connection closed";
+    } else {
+      throw std::runtime_error("recv failed: " + std::to_string(WSAGetLastError()));
+    }
+  }
+
+private:
+  std::string host_;
+  std::string port_;
+  SOCKET ConnectSocket;
+};
+
+int main() {
+  try {
+    WebSocketClient client("localhost", "9104");
+    client.connect();
+    client.sendMessage("Hello from C++");
+    std::string response = client.receiveMessage();
+    std::cout << "Received message: " << response << std::endl;
+  } catch (const std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+  }
+  return 0;
+}
+```
+
+## Connecting to WebSocket Server using MFC SocketCore
+
+To connect to a WebSocket server using MFC (Microsoft Foundation Class) SocketCore, you can follow these steps:
+
+1. **Include Necessary Headers**: Include the necessary headers for MFC and sockets.
+
+```cpp
+#include <afxsock.h>
+#include <iostream>
+```
+
+2. **Initialize MFC and Sockets**: Initialize MFC and sockets in your main function.
+
+```cpp
+int main() {
+  if (!AfxWinInit(::GetModuleHandle(NULL), NULL, ::GetCommandLine(), 0)) {
+    std::cerr << "MFC initialization failed" << std::endl;
+    return 1;
+  }
+
+  if (!AfxSocketInit()) {
+    std::cerr << "Socket initialization failed" << std::endl;
+    return 1;
+  }
+
+  // Your WebSocket connection code here
+
+  return 0;
+}
+```
+
+3. **Create and Connect Socket**: Create a socket and connect to the WebSocket server.
+
+```cpp
+CSocket socket;
+if (!socket.Create()) {
+  std::cerr << "Socket creation failed" << std::endl;
+  return 1;
+}
+
+if (!socket.Connect(_T("localhost"), 9104)) {
+  std::cerr << "Socket connection failed" << std::endl;
+  return 1;
+}
+```
+
+4. **Send and Receive Data**: Send and receive data using the connected socket.
+
+```cpp
+const char* sendbuf = "Hello from MFC";
+if (socket.Send(sendbuf, strlen(sendbuf)) == SOCKET_ERROR) {
+  std::cerr << "Send failed" << std::endl;
+  return 1;
+}
+
+char recvbuf[512];
+int result = socket.Receive(recvbuf, sizeof(recvbuf));
+if (result > 0) {
+  std::cout << "Bytes received: " << result << std::endl;
+  std::cout << "Message: " << std::string(recvbuf, result) << std::endl;
+} else if (result == 0) {
+  std::cout << "Connection closed" << std::endl;
+} else {
+  std::cerr << "Receive failed" << std::endl;
+}
+
+socket.Close();
+```
+
+By following these steps, you can connect to a WebSocket server using MFC SocketCore in your C++ application.
+
+
+## Connecting to WebSocket Server using MFC CAsyncSocket
+
+To connect to a WebSocket server using MFC `CAsyncSocket`, you can follow these steps:
+
+1. **Include Necessary Headers**: Include the necessary headers for MFC and sockets.
+
+```cpp
+#include <afxsock.h>
+#include <iostream>
+```
+
+2. **Create a WebSocket Client Class**: Define a WebSocket client class that inherits from `CAsyncSocket`.
+
+```cpp
+class WebSocketClient : public CAsyncSocket {
+public:
+  WebSocketClient() {}
+  virtual ~WebSocketClient() {}
+
+  void ConnectToServer(const CString& host, UINT port) {
+    if (!Create()) {
+      std::cerr << "Socket creation failed" << std::endl;
+      return;
+    }
+
+    if (!Connect(host, port)) {
+      std::cerr << "Socket connection failed" << std::endl;
+      return;
+    }
+  }
+
+  void SendMessage(const CString& message) {
+    if (Send(message, message.GetLength()) == SOCKET_ERROR) {
+      std::cerr << "Send failed" << std::endl;
+    }
+  }
+
+protected:
+  virtual void OnReceive(int nErrorCode) override {
+    char buffer[512];
+    int bytesReceived = Receive(buffer, sizeof(buffer) - 1);
+    if (bytesReceived > 0) {
+      buffer[bytesReceived] = '\0';
+      std::cout << "Received message: " << buffer << std::endl;
+    } else if (bytesReceived == 0) {
+      std::cout << "Connection closed" << std::endl;
+    } else {
+      std::cerr << "Receive failed" << std::endl;
+    }
+    CAsyncSocket::OnReceive(nErrorCode);
+  }
+
+  virtual void OnClose(int nErrorCode) override {
+    std::cout << "Connection closed by server" << std::endl;
+    CAsyncSocket::OnClose(nErrorCode);
+  }
+};
+```
+
+3. **Initialize MFC and Sockets**: Initialize MFC and sockets in your main function.
+
+```cpp
+int main() {
+  if (!AfxWinInit(::GetModuleHandle(NULL), NULL, ::GetCommandLine(), 0)) {
+    std::cerr << "MFC initialization failed" << std::endl;
+    return 1;
+  }
+
+  if (!AfxSocketInit()) {
+    std::cerr << "Socket initialization failed" << std::endl;
+    return 1;
+  }
+
+  WebSocketClient client;
+  client.ConnectToServer(_T("localhost"), 9104);
+  client.SendMessage(_T("Hello from MFC"));
+
+  // Run a message loop to keep the application running
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+
+  return 0;
+}
+```
+
+By following these steps, you can connect to a WebSocket server using MFC `CAsyncSocket` in your C++ application.
+
+
+## Handling WebSocket Errors in MFC CAsyncSocket
+
+When using MFC `CAsyncSocket` to connect to a WebSocket server, you might encounter errors such as `Protocol(HttparseError(Version))`. This error typically indicates an issue with the WebSocket handshake process, where the server expects a specific HTTP version or format that is not being met by the client's request.
+
+### Common Causes and Solutions
+
+1. **Incorrect HTTP Version**: Ensure that the WebSocket handshake request uses HTTP/1.1, as WebSocket requires this version.
+
+2. **Malformed Handshake Request**: Verify that the WebSocket handshake request includes all necessary headers, such as `Upgrade`, `Connection`, `Sec-WebSocket-Key`, and `Sec-WebSocket-Version`.
+
+3. **Server Configuration**: Check the WebSocket server configuration to ensure it correctly handles WebSocket upgrade requests.
+
+### Example Code
+
+Here is an example of how to properly format a WebSocket handshake request using MFC `CAsyncSocket`:
+
+```cpp
+class WebSocketClient : public CAsyncSocket {
+public:
+  WebSocketClient() {}
+  virtual ~WebSocketClient() {}
+
+  void ConnectToServer(const CString& host, UINT port) {
+    if (!Create()) {
+      std::cerr << "Socket creation failed" << std::endl;
+      return;
+    }
+
+    if (!Connect(host, port)) {
+      std::cerr << "Socket connection failed" << std::endl;
+      return;
+    }
+  }
+
+  void SendHandshakeRequest(const CString& host) {
+      CString handshakeRequest;
+      handshakeRequest.Format(
+        _T("GET / HTTP/1.1\r\n")
+        _T("Host: %s\r\n")
+        _T("Upgrade: websocket\r\n")
+        _T("Connection: Upgrade\r\n")
+        _T("Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n")
+        _T("Sec-WebSocket-Version: 13\r\n")
+         host, host
+      );
+
+      if (Send(handshakeRequest, handshakeRequest.GetLength()) == SOCKET_ERROR) {
+        std::cerr << "Send handshake request failed" << std::endl;
+      }
+    }
+
+    void SendMessage(const CString& message) {
+    if (Send(message, message.GetLength()) == SOCKET_ERROR) {
+      std::cerr << "Send failed" << std::endl;
+    }
+  }
+
+
+protected:
+  virtual void OnConnect(int nErrorCode) override {
+    if (nErrorCode == 0) {
+      SendHandshakeRequest(_T("localhost"));
+    } else {
+      std::cerr << "Connection failed with error code: " << nErrorCode << std::endl;
+    }
+    CAsyncSocket::OnConnect(nErrorCode);
+  }
+
+  virtual void OnReceive(int nErrorCode) override {
+    char buffer[512];
+    int bytesReceived = Receive(buffer, sizeof(buffer) - 1);
+    if (bytesReceived > 0) {
+      buffer[bytesReceived] = '\0';
+      std::cout << "Received message: " << buffer << std::endl;
+    } else if (bytesReceived == 0) {
+      std::cout << "Connection closed" << std::endl;
+    } else {
+      std::cerr << "Receive failed" << std::endl;
+    }
+    CAsyncSocket::OnReceive(nErrorCode);
+  }
+
+  virtual void OnClose(int nErrorCode) override {
+    std::cout << "Connection closed by server" << std::endl;
+    CAsyncSocket::OnClose(nErrorCode);
+  }
+};
+
+int main() {
+  if (!AfxWinInit(::GetModuleHandle(NULL), NULL, ::GetCommandLine(), 0)) {
+    std::cerr << "MFC initialization failed" << std::endl;
+    return 1;
+  }
+
+  if (!AfxSocketInit()) {
+    std::cerr << "Socket initialization failed" << std::endl;
+    return 1;
+  }
+
+  WebSocketClient client;
+  client.ConnectToServer(_T("localhost"), 9104);
+  client.SendMessage(_T("Hello from MFC"));
+
+  // Run a message loop to keep the application running
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+
+  return 0;
+}
+```
+
+By ensuring that the WebSocket handshake request is correctly formatted, you can avoid common errors such as `Protocol(HttparseError(Version))` and establish a successful WebSocket connection using MFC `CAsyncSocket`.
+
