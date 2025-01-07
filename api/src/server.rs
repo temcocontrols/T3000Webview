@@ -197,34 +197,52 @@ async fn shutdown_signal(state: AppState) {
 type Clients = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Message>>>>;
 
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
-  let ws_stream = accept_async(stream).await?;
+
+  println!("==Start handling websocket");
+  println!("==Stream: {:?}", stream);
+  println!("==Clients: {:?}", clients);
+
+  let ws_stream = match accept_async(stream).await {
+    Ok(ws) => ws,
+    Err(e) => {
+      println!("==Failed to accept websocket connection: {:?}", e);
+      return Err(Box::new(e));
+    }
+  };
+
+   println!("==ws_stream: {:?}", ws_stream);
+
   let (mut write, mut read) = ws_stream.split();
   let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
   clients.lock().unwrap().push(tx);
+
   tokio::spawn(async move {
     while let Some(msg) = rx.recv().await {
-      if write.send(msg).await.is_err() {
+      if let Err(e) = write.send(msg).await {
+        println!("==Error sending message to client: {:?}", e);
         break;
       }
     }
   });
+
   while let Some(msg) = read.next().await {
     let msg = msg?;
+    println!("------------------------");
+    println!("==Received message: {}", msg);
+
     if msg.is_text() || msg.is_binary() {
-      println!("=== Server Received message from client: {}", msg);
+      println!("==Server Received message from client: {}", msg);
 
       let clients = clients.lock().unwrap();
       for client in clients.iter() {
-
-        println!("Sending message to client: {:?}", client);
-
-        if client.send(msg.clone()).is_err() {
-          // Handle error if needed
-          println!("Client send msg on error");
+        println!("==Sending message to client: {:?}", client);
+        if let Err(e) = client.send(msg.clone()) {
+          println!("==Failed to send message to client: {:?}", e);
         }
       }
     }
   }
+
   Ok(())
 }
 
@@ -232,15 +250,25 @@ async fn start_websocket_server() {
   let clients: Clients = Arc::new(Mutex::new(Vec::new()));
   tokio::spawn(async move {
     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
-    // println!("WebSocket server listening on {:?}", ws_listener.local_addr());
+    println!("==WebSocket server listening on {:?}", ws_listener.local_addr());
     loop {
-      let (socket, _) = ws_listener.accept().await.unwrap();
-      let clients = clients.clone();
-      tokio::spawn(async move {
+      match ws_listener.accept().await {
+        Ok((socket, addr)) => {
+          println!("");
+          println!("");
+          println!("==New client connected: {:?}",addr);
+          println!("==Socket details: {:?}", socket);
+          let clients = clients.clone();
+          tokio::spawn(async move {
         if let Err(e) = handle_websocket(socket, clients).await {
-          println!("WebSocket error: {:?}", e);
+          println!("==WebSocket error: {:?}", e);
         }
-      });
+          });
+        }
+        Err(e) => {
+          println!("==Failed to accept connection: {:?}", e);
+        }
+      }
     }
   });
 }

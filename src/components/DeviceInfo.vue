@@ -114,6 +114,10 @@
       </q-list>
     </div>
 
+    <div class="q-pa-sm row ">
+      <q-btn class="gt-xs" size="12px" flat dense icon="plus" @click="testSendMsg(1)">Test Action 1</q-btn>
+    </div>
+
     <div class="q-pa-sm row" style="margin-top: -8px;">
 
       <div class="col-12 col-sm-4">
@@ -210,7 +214,7 @@ export default defineComponent({
     }
   },
 
-  emits: ['updateDeviceModel'],
+  emits: ['updateDeviceModel', 'testSendMsg'],
 
   data() {
     return {
@@ -347,6 +351,10 @@ export default defineComponent({
       }
     }
 
+    const testSendMsg = (action) => {
+      emit('testSendMsg', action);
+    }
+
     onMounted(() => {
       console.log('==== onMounted 1 deviceModel,selected', props.deviceModel);
 
@@ -376,7 +384,8 @@ export default defineComponent({
       clearGraphicSelection,
       treeSelected,
       updateGraphicSelection,
-      saveCurrentSelection
+      saveCurrentSelection,
+      testSendMsg
     }
   }
 });

@@ -11,6 +11,7 @@
     "build": "quasar build",
     "client-dev": "quasar dev",
     "api-dev": "cd api && cargo watch -x \"run --example run_server\"",
+    "api": "cd api && cargo run --example run_server",
     "dev": "concurrently \"npm run api-dev\" \"npm run client-dev\"",
     "test": "echo \"See package.json => scripts for available tests.\" && exit 0",
     "test:unit:ui": "vitest --ui",

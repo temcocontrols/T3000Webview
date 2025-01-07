@@ -717,7 +717,8 @@
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
-      <DeviceInfo :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel"></DeviceInfo>
+      <DeviceInfo :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel" @testSendMsg="testSendMsg">
+      </DeviceInfo>
     </q-card>
   </q-dialog>
 </template>
@@ -1050,10 +1051,13 @@ function saveDeviceAppState(clearSelected) {
   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
 }
 
-function connectSocket() {
+const socket = new WebSocket('ws://localhost:9104');
 
-  let reconnectInterval;
-  const socket = new WebSocket('ws://localhost:9104');
+const testSendMsg = (action) => {
+  socket.send("ClientA test1");
+}
+
+function connectSocket() {
 
   const isFirefox = typeof InstallTrigger !== 'undefined';
 
@@ -1091,9 +1095,9 @@ function connectSocket() {
       }
     }
 
-    socket.send(JSON.stringify(data));
+    // socket.send(JSON.stringify(data));
 
-    // socket.send("ClientA test1");
+    // socket.send(1);
   };
 
   socket.onmessage = function (event) {
@@ -1112,14 +1116,18 @@ function connectSocket() {
 
   socket.onclose = function (event) {
     // console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
-    reconnectInterval = setTimeout(function () {
+    setTimeout(function () {
       connectSocket();
-    }, 1000);
+    }, 1000)
   };
 
   socket.onerror = function (error) {
-    // console.error('Socket encountered error: ', error.message, 'Closing socket');
+    console.error('Socket encountered error: ', error.message, 'Closing socket');
     socket.close();
+
+    setTimeout(function () {
+      connectSocket();
+    }, 1000)
   };
 }
 

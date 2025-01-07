@@ -223,3 +223,6 @@ mouse select, multiple select, drag events.
 2025-01-03
 1. Added some test demos for sending message from explorer to c++ and send the processed data back to explorer.
 2. Fixed typo and updated the work details.
+
+2025-01-06
+1. Added more events to the device and graphic panel, simulated how to load real data, send message and process the data.
