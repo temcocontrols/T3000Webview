@@ -231,7 +231,7 @@ export default defineComponent({
   },
 
   setup(props, { emit }) {
-    console.log('==== device', MockData.DeviceList)
+    console.log('= Dvi setup mock data', MockData.DeviceList)
 
     const $q = useQuasar();
     const filter = ref('');
@@ -256,7 +256,7 @@ export default defineComponent({
     const clearGraphicSelection = () => {
       currentDevice.value.graphic = 0;
       currentDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
-      console.log('==== graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     // graphic panel change event
@@ -271,13 +271,13 @@ export default defineComponent({
         currentDevice.value.graphicFull.elementCount = found.elementCount.toString();
       }
 
-      console.log('==== graphic-selected 1 val:', val);
-      console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi graphic-selected 1 val:', val);
+      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     // device tree selection event
     const treeSelected = (target) => {
-      console.log('==== tree-selected 1 target:', target)
+      console.log('= Dvi tree-selected 1 target:', target)
 
       // Clear the icon for all nodes
       const clearIcons = (nodes) => {
@@ -326,17 +326,22 @@ export default defineComponent({
 
       clearGraphicSelection();
 
-      console.log('==== graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       // load hardware data from T3000
       Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
 
       // update the graphic panel's elements count
       Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice.value);
+
+      // load real data from T3000
+      if (currentDevice.value.device !== '') {
+        Hvac.WsClient.GetPanelData();
+      }
     }
 
     const saveCurrentSelection = () => {
-      console.log('==== saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       if (currentDevice.value.device === '' || currentDevice.value.graphic === 0) {
         $q.notify({
@@ -356,7 +361,7 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      console.log('==== onMounted 1 deviceModel,selected', props.deviceModel);
+      console.log('= Dvi onMounted 1 deviceModel,selected', props.deviceModel);
 
       //load the saved current device from local storage
       const savedDevice = Hvac.DeviceOpt.getCurrentDevice();
@@ -365,8 +370,8 @@ export default defineComponent({
         Hvac.DeviceOpt.setDeviceAndGraphicDefaultData(savedDevice);
         selected.value = savedDevice.device;
 
-        console.log('==== onMounted 1 mockData:', MockData.DeviceList);
-        console.log('==== onMounted 2 simple:', simple);
+        console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
+        console.log('= Dvi onMounted 2 simple:', simple);
       }
     });
 

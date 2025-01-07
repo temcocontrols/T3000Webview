@@ -1,17 +1,24 @@
 
 
 import MessageType from "../Data/Socket/MessageType"
+import MessageModel from "../Data/Socket/MessageModel"
 
 class WebSocketClient {
 
   private socket: WebSocket;
 
+  public messageModel: MessageModel;
+  public messageData: string;
+
   constructor() {
-    this.socket = new WebSocket('ws://localhost:9104');
-    this.initialize();
+    // this.socket = new WebSocket('ws://localhost:9104');
+    // this.initialize();
   }
 
-  private initialize() {
+  public Initialize() {
+
+    this.socket = new WebSocket('ws://localhost:9104');
+
     this.socket.onopen = this.onOpen.bind(this);
     this.socket.onmessage = this.onMessage.bind(this);
     this.socket.onclose = this.onClose.bind(this);
@@ -19,34 +26,32 @@ class WebSocketClient {
   }
 
   private onOpen(event: Event) {
-    console.log('WebSocket connection opened:', event);
+    console.log('= Ws connection opened:', event);
   }
 
   private onMessage(event: MessageEvent) {
-    console.log('WebSocket message received:', event.data);
+    console.log('= Ws message received:', event.data);
 
     this.processMessage(event.data);
   }
 
   private onClose(event: CloseEvent) {
-    console.log('WebSocket connection closed:', event);
+    console.log('= Ws connection closed:', event);
 
     // Attempt to reconnect after a delay
     setTimeout(() => {
-      console.log('Attempting to reconnect...');
-      this.socket = new WebSocket('ws://localhost:9104');
-      this.initialize();
+      console.log('= Ws attempting to reconnect...');
+      this.Initialize();
     }, 5000); // Reconnect after 5 seconds
   }
 
   private onError(event: Event) {
-    console.error('WebSocket error:', event);
+    console.error('= Ws error:', event);
 
     // Attempt to reconnect after a delay
     setTimeout(() => {
-      console.log('Attempting to reconnect...');
-      this.socket = new WebSocket('ws://localhost:9104');
-      this.initialize();
+      console.log('= Ws attempting to reconnect...');
+      this.Initialize();
     }, 5000); // Reconnect after 5 seconds
   }
 
@@ -54,9 +59,22 @@ class WebSocketClient {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(message);
     } else {
-      console.error('WebSocket is not open. Ready state:', this.socket.readyState);
+      console.error('= Ws socket is not open. Ready state:', this.socket.readyState);
     }
   }
+
+  //#region  Format Message
+
+  public FormatMessageData(action: number, panelId?: number, needPanelId?: boolean) {
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(action, panelId, needPanelId);
+
+    const data = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(data);
+  }
+
+  //#endregion
 
   //#region Send Messages
 
@@ -66,62 +84,110 @@ class WebSocketClient {
 
   public GetPanelData() {
     // action: 0, // GET_PANEL_DATA
-    this.sendMessage(JSON.stringify({ action: MessageType.GET_PANEL_DATA }));
+
+    this.FormatMessageData(MessageType.GET_PANEL_DATA, undefined, true);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANEL_DATA }));
   }
 
   public GetInitialData() {
     // action: 1, // GET_INITIAL_DATA
-    this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
+
+    this.FormatMessageData(MessageType.GET_INITIAL_DATA, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
   public SaveGraphic() {
     // action: 2, // SAVE_GRAPHIC
-    this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
+
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
   }
 
   public UpdateEntry() {
     // action: 3, // UPDATE_ENTRY
-    this.sendMessage(JSON.stringify({ action: MessageType.UPDATE_ENTRY }));
+
+    this.FormatMessageData(MessageType.UPDATE_ENTRY, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.UPDATE_ENTRY }));
   }
 
   public GetPanelsList() {
     // action: 4, // GET_PANELS_LIST
-    this.sendMessage(JSON.stringify({ action: MessageType.GET_PANELS_LIST }));
+
+    this.FormatMessageData(MessageType.GET_PANELS_LIST, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANELS_LIST }));
   }
 
   public GetEntries() {
     // action: 6, // GET_ENTRIES
-    this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
+
+    this.FormatMessageData(MessageType.GET_ENTRIES, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
   }
 
   public LoadGraphicEntry() {
     // action: 7, // LOAD_GRAPHIC_ENTRY
-    this.sendMessage(JSON.stringify({ action: MessageType.LOAD_GRAPHIC_ENTRY }));
+
+    this.FormatMessageData(MessageType.LOAD_GRAPHIC_ENTRY, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.LOAD_GRAPHIC_ENTRY }));
   }
 
   public OpenEntryEditWindow() {
     // action: 8, // OPEN_ENTRY_EDIT_WINDOW
-    this.sendMessage(JSON.stringify({ action: MessageType.OPEN_ENTRY_EDIT_WINDOW }));
+
+    this.FormatMessageData(MessageType.OPEN_ENTRY_EDIT_WINDOW, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.OPEN_ENTRY_EDIT_WINDOW }));
   }
 
   public SaveImage() {
     // action: 9, // SAVE_IMAGE
-    this.sendMessage(JSON.stringify({ action: MessageType.SAVE_IMAGE }));
+
+    this.FormatMessageData(MessageType.SAVE_IMAGE, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_IMAGE }));
   }
 
   public SaveLibraryData() {
     // action: 10, // SAVE_LIBRARY_DATA
-    this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
+
+    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
   }
 
   public DeleteImage() {
     // action: 11, // DELETE_IMAGE
-    this.sendMessage(JSON.stringify({ action: MessageType.DELETE_IMAGE }));
+
+    this.FormatMessageData(MessageType.DELETE_IMAGE, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.DELETE_IMAGE }));
   }
 
   public GetAllDevicesData() {
     // action: 12, // GET_ALL_DEVICES_DATA
-    this.sendMessage(JSON.stringify({ action: MessageType.GET_ALL_DEVICES_DATA }));
+
+    this.FormatMessageData(MessageType.GET_ALL_DEVICES_DATA, undefined, false);
+    this.sendMessage(this.messageData);
+
+    // this.sendMessage(JSON.stringify({ action: MessageType.GET_ALL_DEVICES_DATA }));
   }
 
   //#endregion
@@ -130,17 +196,17 @@ class WebSocketClient {
 
   private processMessage(data: any) {
     // Implement your message processing logic here
-    console.log('Processing message:', data);
+    console.log('= Ws processing message:', data);
     // Example: Parse JSON data
     try {
       const parsedData = JSON.parse(data);
-      console.log('Parsed data:', parsedData);
+      console.log('= Ws parsed data:', parsedData);
 
       // Further processing based on parsed data
       this.processMessageData(parsedData);
 
     } catch (error) {
-      console.error('Failed to parse message data:', error);
+      console.error('= Ws failed to parse message data:', error);
     }
   }
 
@@ -261,3 +327,94 @@ class WebSocketClient {
 }
 
 export default WebSocketClient
+
+
+//#region  Old Test Code
+
+// const socket = new WebSocket('ws://localhost:9104');
+
+// const testSendMsg = (action) => {
+//   socket.send("ClientA test1");
+// }
+
+// function connectSocket() {
+
+//   const isFirefox = typeof InstallTrigger !== 'undefined';
+
+//   /*
+//   action: 0, // GET_PANEL_DATA
+//   action: 1, // GET_INITIAL_DATA
+//   action: 2, // SAVE_GRAPHIC
+//   action: 3, // UPDATE_ENTRY
+//   action: 4, // GET_PANELS_LIST
+//   action: 6, // GET_ENTRIES
+//   action: 7, // LOAD_GRAPHIC_ENTRY
+//   action: 8, // OPEN_ENTRY_EDIT_WINDOW
+//   action: 9, // SAVE_IMAGE
+//   action: 10, // SAVE_LIBRARY_DATA
+//   action: 11, // DELETE_IMAGE
+//   */
+
+//   socket.onopen = function (event) {
+//     // const message = {
+//     //   action: 0, // GET_PANEL_DATA
+//     //   panelId: 1,
+//     //   from: isFirefox ? 'firefox' : 'other'
+//     // };
+
+//     const data = {
+//       header: {
+//         device: 'T3-XX-ESP',
+//         panel: 1,
+//         clientId: 'R102039488500',
+//         from: isFirefox ? 'firefox' : 'other'
+//       },
+//       message: {
+//         action: 0, // GET_PANEL_DATA
+//         panelId: 1,
+//       }
+//     }
+
+//     socket.send(JSON.stringify(data));
+
+//     // socket.send(1);
+//   };
+
+//   socket.onmessage = function (event) {
+
+//     // process the messgae here
+
+//     console.log('==== Message from TCP Server, start to process it:', event.data);
+//     // const jsonObj = JSON.parse(event.data);
+
+//     // if (jsonObj.action === 0) {
+//     //   socket.send(JSON.stringify({
+//     //     action: 1, // GET_INITIAL_DATA
+//     //   }));
+//     // }
+//   };
+
+//   socket.onclose = function (event) {
+//     // console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
+//     setTimeout(function () {
+//       connectSocket();
+//     }, 1000)
+//   };
+
+//   socket.onerror = function (error) {
+//     console.error('Socket encountered error: ', error.message, 'Closing socket');
+//     socket.close();
+
+//     setTimeout(function () {
+//       connectSocket();
+//     }, 1000)
+//   };
+// }
+
+// function processTcpMessage() {
+//   console.log('=== TCP Start to process tcp message after mounted === , The window is:', window);
+
+//   connectSocket();
+// }
+
+//#endregion

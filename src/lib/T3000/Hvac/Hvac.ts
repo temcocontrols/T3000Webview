@@ -6,6 +6,7 @@ import Doc from './Doc/DocHandler'
 import UI from './Doc/UI'
 import KeyCommand from './Opt/Opt.KeyCommand'
 import DeviceOpt from './Opt/DeviceOpt'
+import WebSocketClient from './Opt/WebSocketClient'
 
 const Hvac = {
   App: new App(),
@@ -14,7 +15,8 @@ const Hvac = {
   KeyCommand: new KeyCommand(),
   Utils: Utils,
   Models: Models,
-  DeviceOpt: new DeviceOpt()
+  DeviceOpt: new DeviceOpt(),
+  WsClient: new WebSocketClient()
 }
 
 export default Hvac;

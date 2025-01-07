@@ -758,7 +758,7 @@ import NewTopToolBar from "src/components/NewTopToolBar.vue";
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
-import Hvac from "src/lib/T3000/Hvac/Hvac";
+import Hvac from "src/lib/T3000/Hvac/Hvac"
 
 // Meta information for the application
 // Set the meta information
@@ -981,7 +981,9 @@ onMounted(() => {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-  processTcpMessage();
+  // processTcpMessage();
+  // connect to the ws://localhost:9104 websocket server
+  Hvac.WsClient.Initialize();
 
   // check if need to show the device list dialog
   setTimeout(() => {
@@ -996,14 +998,21 @@ onMounted(() => {
       // load device appstate
       refreshDeviceAppState();
 
-      console.log('=== indexPage.currentDevice load from local storage', currentDevice);
-      console.log('=== indexPage.deviceModel changed', deviceModel.value);
+      // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+      // console.log('=== indexPage.deviceModel changed', deviceModel.value);
     }
+  }, 1000);
+
+  // load real data from T3000
+  setTimeout(() => {
+    Hvac.WsClient.GetAllDevicesData();
+    Hvac.WsClient.GetInitialData();
+    Hvac.WsClient.GetPanelData();
   }, 1000);
 });
 
 function updateDeviceModel(isActive, data) {
-  console.log('=== indexPage.updateDeviceModel ===', isActive, data)
+  console.log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -1029,7 +1038,7 @@ function showMoreDevices() {
 
 function refreshDeviceAppState() {
   const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
-  console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
+  // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
 
   if (existAppState) {
     // appState.value = cloneDeep(existAppState);
@@ -1042,99 +1051,13 @@ function refreshDeviceAppState() {
 }
 
 function saveDeviceAppState(clearSelected) {
-  console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+  // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
 
   if (clearSelected) {
     appState.value.selectedTargets = [];
   }
 
   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
-}
-
-const socket = new WebSocket('ws://localhost:9104');
-
-const testSendMsg = (action) => {
-  socket.send("ClientA test1");
-}
-
-function connectSocket() {
-
-  const isFirefox = typeof InstallTrigger !== 'undefined';
-
-  /*
-  action: 0, // GET_PANEL_DATA
-  action: 1, // GET_INITIAL_DATA
-  action: 2, // SAVE_GRAPHIC
-  action: 3, // UPDATE_ENTRY
-  action: 4, // GET_PANELS_LIST
-  action: 6, // GET_ENTRIES
-  action: 7, // LOAD_GRAPHIC_ENTRY
-  action: 8, // OPEN_ENTRY_EDIT_WINDOW
-  action: 9, // SAVE_IMAGE
-  action: 10, // SAVE_LIBRARY_DATA
-  action: 11, // DELETE_IMAGE
-  */
-
-  socket.onopen = function (event) {
-    // const message = {
-    //   action: 0, // GET_PANEL_DATA
-    //   panelId: 1,
-    //   from: isFirefox ? 'firefox' : 'other'
-    // };
-
-    const data = {
-      header: {
-        device: 'T3-XX-ESP',
-        panel: 1,
-        clientId: 'R102039488500',
-        from: isFirefox ? 'firefox' : 'other'
-      },
-      message: {
-        action: 0, // GET_PANEL_DATA
-        panelId: 1,
-      }
-    }
-
-    socket.send(JSON.stringify(data));
-
-    // socket.send(1);
-  };
-
-  socket.onmessage = function (event) {
-
-    // process the messgae here
-
-    console.log('==== Message from TCP Server, start to process it:', event.data);
-    // const jsonObj = JSON.parse(event.data);
-
-    // if (jsonObj.action === 0) {
-    //   socket.send(JSON.stringify({
-    //     action: 1, // GET_INITIAL_DATA
-    //   }));
-    // }
-  };
-
-  socket.onclose = function (event) {
-    // console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
-    setTimeout(function () {
-      connectSocket();
-    }, 1000)
-  };
-
-  socket.onerror = function (error) {
-    console.error('Socket encountered error: ', error.message, 'Closing socket');
-    socket.close();
-
-    setTimeout(function () {
-      connectSocket();
-    }, 1000)
-  };
-}
-
-function processTcpMessage() {
-  console.log('=== TCP Start to process tcp message after mounted === , The window is:', window);
-
-  connectSocket();
 }
 
 onBeforeUnmount(() => {
@@ -1154,14 +1077,14 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
   console.log('window.chrome?.webview', window.chrome?.webview);
 
-  console.log("Received a message from webview", arg.data.action, arg.data);
+  console.log("= Idx Received a message from webview", arg.data.action, arg.data);
   // console.log('=== T3000_Data ===', T3000_Data)
 
   // Handle various actions based on message data
   if (!"action" in arg.data) return;
 
   if (arg.data.action === "GET_PANELS_LIST_RES") {
-    console.log('===[GET_PANELS_LIST_RES] data=>', arg.data.data)
+    console.log('= Idx [GET_PANELS_LIST_RES] data=>', arg.data.data)
     if (arg.data.data?.length) {
       T3000_Data.value.panelsList = arg.data.data;
       T3000_Data.value.loadingPanel = 0;
@@ -1173,12 +1096,12 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "UPDATE_ENTRY_RES") {
-    console.log('===[UPDATE_ENTRY_RES] data=>', arg.data.data)
+    console.log('= Idx [UPDATE_ENTRY_RES] data=>', arg.data.data)
     // Handle update entry response
   }
 
   if (arg.data.action === "GET_INITIAL_DATA_RES") {
-    console.log('===[GET_INITIAL_DATA_RES] data=>', arg.data.data)
+    console.log('= Idx [GET_INITIAL_DATA_RES] data=>', arg.data.data)
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
     }
@@ -1197,7 +1120,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-    console.log('===[LOAD_GRAPHIC_ENTRY_RES] data=>', arg.data.data)
+    console.log('= Idx [LOAD_GRAPHIC_ENTRY_RES] data=>', arg.data.data)
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
     }
@@ -1222,7 +1145,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "GET_PANEL_DATA_RES") {
-    console.log('===[GET_PANEL_DATA_RES] data=>', arg.data.data)
+    console.log('= Idx [GET_PANEL_DATA_RES] data=>', arg.data.data)
 
     if (getPanelsInterval && arg.data?.panel_id) {
       clearInterval(getPanelsInterval);
@@ -1256,21 +1179,21 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
 
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      console.log('===[GET_PANEL_DATA_RES] selectPanelOptions=>', selectPanelOptions.value)
+      console.log('= Idx [GET_PANEL_DATA_RES] selectPanelOptions=>', selectPanelOptions.value)
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== arg.data.panel_id
       );
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
-      console.log('===[GET_PANEL_DATA_RES] T3000_Data.value.panelsRanges=>', T3000_Data.value.panelsRanges)
+      console.log('= Idx [GET_PANEL_DATA_RES] T3000_Data.value.panelsRanges=>', T3000_Data.value.panelsRanges)
 
       refreshLinkedEntries(arg.data.data);
     }
   }
 
   if (arg.data.action === "GET_ENTRIES_RES") {
-    console.log('===[GET_ENTRIES_RES] data=>', arg.data.data)
+    console.log('= Idx [GET_ENTRIES_RES] data=>', arg.data.data)
     arg.data.data.forEach((item) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
         (ii) =>
@@ -1285,13 +1208,13 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
     if (!linkT3EntryDialog.value.active) {
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      console.log('===[GET_ENTRIES_RES] selectPanelOptions=>', selectPanelOptions.value)
+      console.log('= Idx [GET_ENTRIES_RES] selectPanelOptions=>', selectPanelOptions.value)
     }
     refreshLinkedEntries(arg.data.data);
   }
 
   if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-    console.log('===[SAVE_GRAPHIC_DATA_RES] data=>', arg.data.data)
+    console.log('= Idx [SAVE_GRAPHIC_DATA_RES] data=>', arg.data.data)
     if (arg.data.data?.status === true) {
       if (!savedNotify.value) return;
       $q.notify({
@@ -2026,7 +1949,7 @@ function T3UpdateEntryField(key, obj) {
     entryType: T3_Types[obj.t3Entry.type],
   });
 
-  console.log('=== T3UpdateEntryField to c++ before,after', tempFieldBefore, fieldVal);
+  console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
 }
 
 // Trigger the save event when user changed the "Display Field" value
@@ -2043,7 +1966,7 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
-  console.log('===linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
+  console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
   // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
 
@@ -2111,8 +2034,6 @@ const insertCount = ref(0);
 // Insert Key Function
 function insertT3EntrySelect(value) {
   addActionToHistory("Insert object to T3000 entry");
-
-  console.log('insertT3EntrySelect value:', value);
 
   const posIncrease = insertCount.value * 80;
 
@@ -2200,7 +2121,7 @@ function save(notify = false) {
   data.itemsCount = nonZeroWidthItemsCount;
   // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
   // console.log('==== Save appState:', appState.value);
-  console.log('==== Save data:', data);
+  console.log('= Idx save data', data);
 
   data.selectedTargets = [];
   data.elementGuidelines = [];
@@ -2372,7 +2293,7 @@ keycon.keydown(["insert"], (e) => {
 
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
-  console.log('===linkT3EntryDialogAction appState:', appState.value);
+  console.log('= Idx linkT3EntryDialogAction appState:', appState.value);
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
   linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
@@ -3065,7 +2986,7 @@ function refreshLinkedEntries(panelData) {
         linkedEntry.value = newLkValue;
         item.t3Entry = linkedEntry;
 
-        console.log('=== RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
+        console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
 
         refreshObjectStatus(item);
       }

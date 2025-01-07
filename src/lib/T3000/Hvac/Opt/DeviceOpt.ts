@@ -178,7 +178,7 @@ class DeviceOpt {
       }
     })
 
-    console.log('== refresh-graphic-panel-element-count ==', MockData.GraphicList);
+    console.log('= Dvopt refresh element count', MockData.GraphicList);
   }
 
   clearGraphicPanelElementCount() {

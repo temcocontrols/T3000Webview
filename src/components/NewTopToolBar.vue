@@ -581,14 +581,13 @@ export default defineComponent({
     };
 
     const showMoreDevices = () => {
-      console.log('showMoreDevices');
       emit('showMoreDevices');
     }
 
     onMounted(() => {
       currentDevice.value = props.deviceModel;
       deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
-      console.log('=== new-top-toolbar currentDevice', currentDevice);
+      // console.log('=== new-top-toolbar currentDevice', currentDevice);
     });
 
     /*
