@@ -27,6 +27,9 @@ use futures_util::{StreamExt, SinkExt};
 use std::sync::{Arc, Mutex};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
+use uuid::Uuid;
+
+
 fn routes_static() -> Router {
     Router::new().nest_service(
         "/",
@@ -194,13 +197,14 @@ async fn shutdown_signal(state: AppState) {
 //   Ok(())
 // }
 
-type Clients = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Message>>>>;
+type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
 
   println!("==Start handling websocket");
   println!("==Stream: {:?}", stream);
   println!("==Clients: {:?}", clients);
+  println!("");
 
   let ws_stream = match accept_async(stream).await {
     Ok(ws) => ws,
@@ -214,6 +218,77 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
 
   let (mut write, mut read) = ws_stream.split();
   let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+  // let client_id = Uuid::new_v4();
+  // println!("==Assigned client ID: {}", client_id);
+
+  // bind the client id to incoming session
+  while let Some(msg)=read.next().await{
+    let msg=msg?;
+
+    println!("==Recived message 1st:{:?}", msg);
+
+    if msg.is_text()||msg.is_binary(){
+      let msg_text=msg.to_text()?;
+      let json_msg:serde_json::Value=serde_json::from_str(msg_text)?;
+
+      if let Some(action)=json_msg.get("action").and_then(|a| a.as_i64()){
+        if action==-1{
+          if let Some(client_id_str) = json_msg.get("clientId").and_then(|id| id.as_str()) {
+            let client_id = Uuid::parse_str(client_id_str)?;
+            clients.lock().unwrap().push((client_id, tx.clone()));
+          }
+        }
+      }
+    }
+  }
+
+  // clients.lock().unwrap().push((client_id, tx));
+
+  tokio::spawn(async move {
+    while let Some(msg) = rx.recv().await {
+      if let Err(e) = write.send(msg).await {
+        println!("==Error sending message to client: {:?}", e);
+        break;
+      }
+    }
+  });
+
+  while let Some(msg) = read.next().await {
+    let msg = msg?;
+    println!("------------------------");
+    println!("==Received message: {}", msg);
+
+    if msg.is_text() || msg.is_binary() {
+      println!("==Server Received message from client: {}", msg);
+
+      // { action: -1, clientId: "5b43c0f8-7a4c-4f8b-b414-253c4d068469" }
+
+      let msg_text = msg.to_text()?;
+      let json_msg: serde_json::Value = serde_json::from_str(msg_text)?;
+      if let Some(action) = json_msg.get("action").and_then(|a| a.as_i64()) {
+        if action != -1 {
+
+          // send message to specify client T3000 to get the data and transfer to other web client user
+
+        }
+      }
+
+      /*
+      let clients = clients.lock().unwrap();
+      for (id, client) in clients.iter() {
+        if *id == client_id {
+          println!("==Sending message to client: {:?}", client);
+          if let Err(e) = client.send(msg.clone()) {
+            println!("==Failed to send message to client: {:?}", e);
+          }
+        }
+      }
+      */
+    }
+  }
+
+  /*
   clients.lock().unwrap().push(tx);
 
   tokio::spawn(async move {
@@ -242,6 +317,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
       }
     }
   }
+  */
 
   Ok(())
 }

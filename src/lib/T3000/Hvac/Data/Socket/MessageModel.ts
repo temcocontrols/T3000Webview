@@ -1,4 +1,5 @@
 
+import { head } from "lodash";
 import DeviceOpt from "../../Opt/DeviceOpt"
 
 /*
@@ -17,10 +18,10 @@ class Message {
 
 class MessageModel {
 
-  deviceOpt: DeviceOpt;
-
-  public header: { device: string, panel: number, clientId: string, from: string };
-  public message: { action: number, panelId: number };
+  public deviceOpt: DeviceOpt;
+  public browserType: string;
+  public header: { clientId: string, from: string };
+  public message: any;
 
   /*
   {
@@ -35,7 +36,7 @@ class MessageModel {
   }
   */
 
-  currentDevice: { device: string, graphic: number, graphicFull: { id: string, fullLabel: string, label: string, elementCount: string } };
+  public currentDevice: { device: string, graphic: number, graphicFull: { id: string, fullLabel: string, label: string, elementCount: string } };
 
   /*
   const data = {
@@ -56,8 +57,24 @@ class MessageModel {
     this.deviceOpt = new DeviceOpt();
     this.loadCurrentDevice();
 
-    this.header = { device: '', panel: -1, clientId: '', from: '' };
-    this.message = { action: -1, panelId: -1 };
+    this.browserType = this.getBrowserType();
+    this.header = { clientId: '', from: this.browserType };
+    this.message = {};
+  }
+
+  getBrowserType(): string {
+    const userAgent = navigator.userAgent;
+    if (userAgent.indexOf("Firefox") > -1) {
+      return "Firefox";
+    } else if (userAgent.indexOf("Chrome") > -1) {
+      return "Chrome";
+    } else if (userAgent.indexOf("Safari") > -1) {
+      return "Safari";
+    } else if (userAgent.indexOf("MSIE") > -1 || !!document.DOCUMENT_NODE) {
+      return "IE";
+    } else {
+      return "Unknown";
+    }
   }
 
   loadCurrentDevice() {
@@ -74,38 +91,35 @@ class MessageModel {
   }
 
   setEmptyDevice() {
-    this.currentDevice.device = "";
-    this.currentDevice.graphic = -1;
-    this.currentDevice.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
+    this.currentDevice = { device: "", graphic: -1, graphicFull: { id: "", fullLabel: "", label: "", elementCount: "" } };
   }
 
   setHeader() {
     // load current selected device from local storage and fill the value to the header
-
-    this.header.device = this.currentDevice.device;
-    this.header.panel = this.currentDevice.graphic;
-    this.header.clientId = '0000000000';
-    this.header.from = 'ext-wb';
+    this.header.clientId = '-';
+    this.header.from = this.getBrowserType();
   }
 
-  setMessage(action: number, panelId?: number, needPanelId?: boolean) {
+  setMessage(action: number, panelId: number, viewitem: number, data: {}, clientId?: string) {
 
-    if (needPanelId === true) {
-
-      if (panelId === null || panelId === undefined) {
-        this.message.action = action;
-
-        // load panelId from local storage
-        this.message.panelId = this.currentDevice.graphic;
-      }
-      else {
-        this.message.action = action;
-        this.message.panelId = panelId;
-      }
-    }
-    else {
+    if (action !== null && action !== undefined) {
       this.message.action = action;
+    }
+
+    if (panelId !== null && panelId !== undefined) {
       this.message.panelId = panelId;
+    }
+
+    if (viewitem !== null && viewitem !== undefined) {
+      this.message.viewitem = viewitem;
+    }
+
+    if (data != null && data !== undefined) {
+      this.message.data = data;
+    }
+
+    if (clientId != null && clientId !== undefined) {
+      this.message.clientId = clientId;
     }
   }
 

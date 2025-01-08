@@ -25,8 +25,51 @@ class WebSocketClient {
     this.socket.onerror = this.onError.bind(this);
   }
 
+  public GenerateUUID() {
+    let d = new Date().getTime();
+    let d2 = (performance && performance.now && performance.now() * 1000) || 0;
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      let r = Math.random() * 16;
+      if (d > 0) {
+        r = (d + r) % 16 | 0;
+        d = Math.floor(d / 16);
+      } else {
+        r = (d2 + r) % 16 | 0;
+        d2 = Math.floor(d2 / 16);
+      }
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+
+  public bindCurrentClient() {
+
+    /*
+    // get clientId from local storage
+    let lsClientId = localStorage.getItem('clientId');
+
+    if (lsClientId == undefined || lsClientId === null || lsClientId === "") {
+      lsClientId = this.GenerateUUID();
+
+      localStorage.setItem('clientId', lsClientId);
+    }
+    */
+
+    const lsClientId = this.GenerateUUID();
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(-1, null, null, null, lsClientId);
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+
+    this.sendMessage(this.messageData);
+  }
+
   private onOpen(event: Event) {
     console.log('= Ws connection opened:', event);
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.bindCurrentClient();
+    }
   }
 
   private onMessage(event: MessageEvent) {
@@ -60,18 +103,21 @@ class WebSocketClient {
       this.socket.send(message);
     } else {
       console.error('= Ws socket is not open. Ready state:', this.socket.readyState);
+      this.socket.onopen = () => {
+        this.socket.send(message);
+      };
     }
   }
 
   //#region  Format Message
 
-  public FormatMessageData(action: number, panelId?: number, needPanelId?: boolean) {
+  public FormatMessageData(action: number, panelId: number, viewitem: number, data: {}) {
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
-    this.messageModel.setMessage(action, panelId, needPanelId);
+    this.messageModel.setMessage(action, panelId, viewitem, data);
 
-    const data = this.messageModel.formatMessageData();
-    this.messageData = JSON.stringify(data);
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
   }
 
   //#endregion
@@ -82,37 +128,37 @@ class WebSocketClient {
     this.sendMessage(JSON.stringify({ action: action }));
   }
 
-  public GetPanelData() {
+  public GetPanelData(panelId: number) {
     // action: 0, // GET_PANEL_DATA
 
-    this.FormatMessageData(MessageType.GET_PANEL_DATA, undefined, true);
+    this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANEL_DATA }));
   }
 
-  public GetInitialData() {
+  public GetInitialData(panelId: number) {
     // action: 1, // GET_INITIAL_DATA
 
-    this.FormatMessageData(MessageType.GET_INITIAL_DATA, undefined, false);
+    this.FormatMessageData(MessageType.GET_INITIAL_DATA, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
-  public SaveGraphic() {
+  public SaveGraphic(panelId, graphicId, data: {}) {
     // action: 2, // SAVE_GRAPHIC
 
-    this.FormatMessageData(MessageType.SAVE_GRAPHIC, undefined, false);
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC, panelId, graphicId, data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
   }
 
-  public UpdateEntry() {
+  public UpdateEntry(panelId: number) {
     // action: 3, // UPDATE_ENTRY
 
-    this.FormatMessageData(MessageType.UPDATE_ENTRY, undefined, false);
+    this.FormatMessageData(MessageType.UPDATE_ENTRY, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.UPDATE_ENTRY }));
@@ -121,61 +167,61 @@ class WebSocketClient {
   public GetPanelsList() {
     // action: 4, // GET_PANELS_LIST
 
-    this.FormatMessageData(MessageType.GET_PANELS_LIST, undefined, false);
+    this.FormatMessageData(MessageType.GET_PANELS_LIST, null, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANELS_LIST }));
   }
 
-  public GetEntries() {
+  public GetEntries(panelId: number) {
     // action: 6, // GET_ENTRIES
 
-    this.FormatMessageData(MessageType.GET_ENTRIES, undefined, false);
+    this.FormatMessageData(MessageType.GET_ENTRIES, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
   }
 
-  public LoadGraphicEntry() {
+  public LoadGraphicEntry(panelId, graphicId) {
     // action: 7, // LOAD_GRAPHIC_ENTRY
 
-    this.FormatMessageData(MessageType.LOAD_GRAPHIC_ENTRY, undefined, false);
+    this.FormatMessageData(MessageType.LOAD_GRAPHIC_ENTRY, panelId, graphicId, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.LOAD_GRAPHIC_ENTRY }));
   }
 
-  public OpenEntryEditWindow() {
+  public OpenEntryEditWindow(panelId) {
     // action: 8, // OPEN_ENTRY_EDIT_WINDOW
 
-    this.FormatMessageData(MessageType.OPEN_ENTRY_EDIT_WINDOW, undefined, false);
+    this.FormatMessageData(MessageType.OPEN_ENTRY_EDIT_WINDOW, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.OPEN_ENTRY_EDIT_WINDOW }));
   }
 
-  public SaveImage() {
+  public SaveImage(panelId: number, data: {}) {
     // action: 9, // SAVE_IMAGE
 
-    this.FormatMessageData(MessageType.SAVE_IMAGE, undefined, false);
+    this.FormatMessageData(MessageType.SAVE_IMAGE, panelId, null, data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_IMAGE }));
   }
 
-  public SaveLibraryData() {
+  public SaveLibraryData(panelId: number) {
     // action: 10, // SAVE_LIBRARY_DATA
 
-    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, undefined, false);
+    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
   }
 
-  public DeleteImage() {
+  public DeleteImage(panelId: number) {
     // action: 11, // DELETE_IMAGE
 
-    this.FormatMessageData(MessageType.DELETE_IMAGE, undefined, false);
+    this.FormatMessageData(MessageType.DELETE_IMAGE, panelId, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.DELETE_IMAGE }));
@@ -184,7 +230,7 @@ class WebSocketClient {
   public GetAllDevicesData() {
     // action: 12, // GET_ALL_DEVICES_DATA
 
-    this.FormatMessageData(MessageType.GET_ALL_DEVICES_DATA, undefined, false);
+    this.FormatMessageData(MessageType.GET_ALL_DEVICES_DATA, null, null, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ALL_DEVICES_DATA }));
