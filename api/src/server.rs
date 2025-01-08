@@ -247,8 +247,14 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                         if let Some(client_id_str) =
                             message.get("clientId").and_then(|id| id.as_str())
                         {
+                            let mut clients = clients.lock().unwrap();
+                            clients.retain(|(id, _)| {
+                                *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")
+                                    .unwrap()
+                            });
+
                             let client_id = Uuid::parse_str(client_id_str)?;
-                            clients.lock().unwrap().push((client_id, tx.clone()));
+                            clients.push((client_id, tx.clone()));
                         }
                     } else {
                         let clients = clients.lock().unwrap();
