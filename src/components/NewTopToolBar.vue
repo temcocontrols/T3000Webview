@@ -141,7 +141,7 @@
       <div class="tool-title">
         <p style="font-size: 12px;">T3000 Havc</p>
         <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
-          V:25.0106.01
+          V:25.0108.01
         </span>
       </div>
       <div class="tool-btns">
