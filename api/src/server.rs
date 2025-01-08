@@ -201,7 +201,7 @@ type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
     println!("==Start handling websocket");
     println!("==Stream: {:?}", stream);
-    // println!("==Clients: {:?}", clients);
+    println!("==Clients: {:?}", clients);
     println!("");
 
     let ws_stream = match accept_async(stream).await {
@@ -220,6 +220,15 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     // let client_id = Uuid::new_v4();
     // println!("==Assigned client ID: {}", client_id);
 
+    tokio::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            if let Err(e) = write.send(msg).await {
+                println!("==Error sending message to client: {:?}", e);
+                break;
+            }
+        }
+    });
+
     // bind the client id to incoming session
     while let Some(msg) = read.next().await {
         let msg = msg?;
@@ -231,6 +240,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
             let json_msg: serde_json::Value = serde_json::from_str(msg_text)?;
 
             //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"4aa7e8c2-437e-422c-a55d-e1ae4c757935"}}
+            //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}}
             if let Some(message) = json_msg.get("message") {
                 if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
                     if action == -1 {
@@ -240,16 +250,31 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                             let client_id = Uuid::parse_str(client_id_str)?;
                             clients.lock().unwrap().push((client_id, tx.clone()));
                         }
+                    } else {
+                        let clients = clients.lock().unwrap();
+                        for (id, client) in clients.iter() {
+                            if *id == Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
+                                let text_message = Message::text(message.to_string());
+                                if let Err(e) = client.send(text_message) {
+                                    println!("==Failed to send text msg to client ==1111: {:?}", e);
+                                }
+                            }
+                        }
                     }
                 }
             } else {
-                // send back to web client with client_id not equals to '11111111-1111-1111-1111-111111111111'
+                // transfer processed data back to web client where client_id not equals to '11111111-1111-1111-1111-111111111111'
                 // {"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}
-                let clients = clients.lock().unwrap();
-                for (id, client) in clients.iter() {
-                    if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
-                        if let Err(e) = client.send(msg.clone()) {
-                            println!("==Failed to send message to client: {:?}", e);
+
+                if let Some(_action) = json_msg.get("action").and_then(|a| a.as_i64()) {
+                    if _action != -1 {
+                        let clients = clients.lock().unwrap();
+                        for (id, client) in clients.iter() {
+                            if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
+                                if let Err(e) = client.send(msg.clone()) {
+                                    println!("==Failed to send message to client !=1111: {:?}", e);
+                                }
+                            }
                         }
                     }
                 }
@@ -258,16 +283,6 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     }
 
     // clients.lock().unwrap().push((client_id, tx));
-    print!("==Clients: {:?}", clients);
-
-    tokio::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            if let Err(e) = write.send(msg).await {
-                println!("==Error sending message to client: {:?}", e);
-                break;
-            }
-        }
-    });
 
     /*
     clients.lock().unwrap().push(tx);

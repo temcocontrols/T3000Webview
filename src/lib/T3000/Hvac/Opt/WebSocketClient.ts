@@ -103,6 +103,7 @@ class WebSocketClient {
   public sendMessage(message: string) {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(message);
+      console.log('= Ws send to T3', message);
     } else {
       console.error('= Ws socket is not open. Ready state:', this.socket.readyState);
       this.socket.onopen = () => {
