@@ -62,6 +62,8 @@ class WebSocketClient {
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
 
+    console.log('= Ws bind msg:', this.messageData)
+
     this.sendMessage(this.messageData);
   }
 

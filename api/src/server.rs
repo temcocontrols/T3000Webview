@@ -22,13 +22,12 @@ use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 use tokio_tungstenite::accept_async;
 // use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio::net::TcpStream;
-use futures_util::{StreamExt, SinkExt};
+use futures_util::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
+use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 use uuid::Uuid;
-
 
 fn routes_static() -> Router {
     Router::new().nest_service(
@@ -200,153 +199,138 @@ async fn shutdown_signal(state: AppState) {
 type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
+    println!("==Start handling websocket");
+    println!("==Stream: {:?}", stream);
+    // println!("==Clients: {:?}", clients);
+    println!("");
 
-  println!("==Start handling websocket");
-  println!("==Stream: {:?}", stream);
-  println!("==Clients: {:?}", clients);
-  println!("");
+    let ws_stream = match accept_async(stream).await {
+        Ok(ws) => ws,
+        Err(e) => {
+            println!("==Failed to accept websocket connection: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
 
-  let ws_stream = match accept_async(stream).await {
-    Ok(ws) => ws,
-    Err(e) => {
-      println!("==Failed to accept websocket connection: {:?}", e);
-      return Err(Box::new(e));
+    //  println!("==ws_stream: {:?}", ws_stream);
+
+    let (mut write, mut read) = ws_stream.split();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+    // let client_id = Uuid::new_v4();
+    // println!("==Assigned client ID: {}", client_id);
+
+    // bind the client id to incoming session
+    while let Some(msg) = read.next().await {
+        let msg = msg?;
+
+        println!("==Recived message 1st:{:?}", msg);
+
+        if msg.is_text() || msg.is_binary() {
+            let msg_text = msg.to_text()?;
+            let json_msg: serde_json::Value = serde_json::from_str(msg_text)?;
+
+            //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"4aa7e8c2-437e-422c-a55d-e1ae4c757935"}}
+            if let Some(message) = json_msg.get("message") {
+                if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
+                    if action == -1 {
+                        if let Some(client_id_str) =
+                            message.get("clientId").and_then(|id| id.as_str())
+                        {
+                            let client_id = Uuid::parse_str(client_id_str)?;
+                            clients.lock().unwrap().push((client_id, tx.clone()));
+                        }
+                    }
+                }
+            } else {
+                // send back to web client with client_id not equals to '11111111-1111-1111-1111-111111111111'
+                // {"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}
+                let clients = clients.lock().unwrap();
+                for (id, client) in clients.iter() {
+                    if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
+                        if let Err(e) = client.send(msg.clone()) {
+                            println!("==Failed to send message to client: {:?}", e);
+                        }
+                    }
+                }
+            }
+        }
     }
-  };
 
-  //  println!("==ws_stream: {:?}", ws_stream);
+    // clients.lock().unwrap().push((client_id, tx));
+    print!("==Clients: {:?}", clients);
 
-  let (mut write, mut read) = ws_stream.split();
-  let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            if let Err(e) = write.send(msg).await {
+                println!("==Error sending message to client: {:?}", e);
+                break;
+            }
+        }
+    });
 
-  // let client_id = Uuid::new_v4();
-  // println!("==Assigned client ID: {}", client_id);
+    /*
+    clients.lock().unwrap().push(tx);
 
-  // bind the client id to incoming session
-  while let Some(msg)=read.next().await{
-    let msg=msg?;
-
-    println!("==Recived message 1st:{:?}", msg);
-
-    if msg.is_text()||msg.is_binary(){
-      let msg_text=msg.to_text()?;
-      let json_msg:serde_json::Value=serde_json::from_str(msg_text)?;
-
-      if let Some(action)=json_msg.get("action").and_then(|a| a.as_i64()){
-        if action==-1{
-          if let Some(client_id_str) = json_msg.get("clientId").and_then(|id| id.as_str()) {
-            let client_id = Uuid::parse_str(client_id_str)?;
-            clients.lock().unwrap().push((client_id, tx.clone()));
-          }
+    tokio::spawn(async move {
+      while let Some(msg) = rx.recv().await {
+        if let Err(e) = write.send(msg).await {
+          println!("==Error sending message to client: {:?}", e);
+          break;
         }
       }
-    }
-  }
+    });
 
-  // clients.lock().unwrap().push((client_id, tx));
+    while let Some(msg) = read.next().await {
+      let msg = msg?;
+      println!("------------------------");
+      println!("==Received message: {}", msg);
 
-  tokio::spawn(async move {
-    while let Some(msg) = rx.recv().await {
-      if let Err(e) = write.send(msg).await {
-        println!("==Error sending message to client: {:?}", e);
-        break;
-      }
-    }
-  });
+      if msg.is_text() || msg.is_binary() {
+        println!("==Server Received message from client: {}", msg);
 
-  while let Some(msg) = read.next().await {
-    let msg = msg?;
-    println!("------------------------");
-    println!("==Received message: {}", msg);
-
-    if msg.is_text() || msg.is_binary() {
-      println!("==Server Received message from client: {}", msg);
-
-      // { action: -1, clientId: "5b43c0f8-7a4c-4f8b-b414-253c4d068469" }
-
-      let msg_text = msg.to_text()?;
-      let json_msg: serde_json::Value = serde_json::from_str(msg_text)?;
-      if let Some(action) = json_msg.get("action").and_then(|a| a.as_i64()) {
-        if action != -1 {
-
-          // send message to specify client T3000 to get the data and transfer to other web client user
-
-        }
-      }
-
-      /*
-      let clients = clients.lock().unwrap();
-      for (id, client) in clients.iter() {
-        if *id == client_id {
+        let clients = clients.lock().unwrap();
+        for client in clients.iter() {
           println!("==Sending message to client: {:?}", client);
           if let Err(e) = client.send(msg.clone()) {
             println!("==Failed to send message to client: {:?}", e);
           }
         }
       }
-      */
     }
-  }
+    */
 
-  /*
-  clients.lock().unwrap().push(tx);
-
-  tokio::spawn(async move {
-    while let Some(msg) = rx.recv().await {
-      if let Err(e) = write.send(msg).await {
-        println!("==Error sending message to client: {:?}", e);
-        break;
-      }
-    }
-  });
-
-  while let Some(msg) = read.next().await {
-    let msg = msg?;
-    println!("------------------------");
-    println!("==Received message: {}", msg);
-
-    if msg.is_text() || msg.is_binary() {
-      println!("==Server Received message from client: {}", msg);
-
-      let clients = clients.lock().unwrap();
-      for client in clients.iter() {
-        println!("==Sending message to client: {:?}", client);
-        if let Err(e) = client.send(msg.clone()) {
-          println!("==Failed to send message to client: {:?}", e);
-        }
-      }
-    }
-  }
-  */
-
-  Ok(())
+    Ok(())
 }
 
 async fn start_websocket_server() {
-  let clients: Clients = Arc::new(Mutex::new(Vec::new()));
-  tokio::spawn(async move {
-    let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
-    println!("==WebSocket server listening on {:?}", ws_listener.local_addr());
-    loop {
-      match ws_listener.accept().await {
-        Ok((socket, addr)) => {
-          println!("");
-          println!("");
-          println!("==New client connected: {:?}",addr);
-          println!("==Socket details: {:?}", socket);
-          let clients = clients.clone();
-          tokio::spawn(async move {
-        if let Err(e) = handle_websocket(socket, clients).await {
-          println!("==WebSocket error: {:?}", e);
+    let clients: Clients = Arc::new(Mutex::new(Vec::new()));
+    tokio::spawn(async move {
+        let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104))
+            .await
+            .unwrap();
+        println!(
+            "==WebSocket server listening on {:?}",
+            ws_listener.local_addr()
+        );
+        loop {
+            match ws_listener.accept().await {
+                Ok((socket, addr)) => {
+                    println!("");
+                    println!("");
+                    println!("==New client connected: {:?}", addr);
+                    println!("==Socket details: {:?}", socket);
+                    let clients = clients.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_websocket(socket, clients).await {
+                            println!("==WebSocket error: {:?}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    println!("==Failed to accept connection: {:?}", e);
+                }
+            }
         }
-          });
-        }
-        Err(e) => {
-          println!("==Failed to accept connection: {:?}", e);
-        }
-      }
-    }
-  });
+    });
 }
-
-
