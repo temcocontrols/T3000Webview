@@ -156,10 +156,12 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+
+import { ref,watch } from "vue";
 import { useQuasar } from "quasar";
 import FileUpload from "./FileUploadS3.vue";
 import { tools, toolsCategories, user } from "../lib/common";
+
 const props = defineProps({
   selectedTool: {
     type: Object,
@@ -173,6 +175,9 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  isBuiltInEdge:{
+    type:Boolean
+  }
 });
 
 const emit = defineEmits([
@@ -183,9 +188,11 @@ const emit = defineEmits([
   "deleteLibImage",
   "toolDropped",
 ]);
+
 const $q = useQuasar();
 const fileUploaderRef = ref(null);
 const libTab = ref("lib");
+
 function selectTool(tool, type = "default") {
   emit("selectTool", tool, type);
 }
@@ -274,6 +281,14 @@ function saveLibImageEmit(data) {
 function toolDropped(event, tool) {
   emit("toolDropped", event, tool);
 }
+
+let heightOffset=ref("37px");
+heightOffset.value=props.isBuiltInEdge?"37px":"93px";
+
+watch(() => props.isBuiltInEdge, (newValue) => {
+  heightOffset.value = newValue ? "37px" : "93px";
+});
+
 </script>
 
 <style scoped>
@@ -286,7 +301,8 @@ function toolDropped(event, tool) {
   height: 100%;
   overflow-y: auto;
   /* max-height: calc(100vh - 37px); */
-  max-height: calc(100vh - 93px);
+  /* max-height: calc(100vh - 93px); */
+  max-height:calc(100vh - v-bind("heightOffset"));
   scrollbar-width: thin;
   z-index: 1;
   flex-wrap: nowrap;

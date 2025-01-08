@@ -201,7 +201,7 @@ type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
     println!("==Start handling websocket");
     println!("==Stream: {:?}", stream);
-    println!("==Clients: {:?}", clients);
+    println!("==Clients 1st: {:?}", clients);
     println!("");
 
     let ws_stream = match accept_async(stream).await {
@@ -248,10 +248,13 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                             message.get("clientId").and_then(|id| id.as_str())
                         {
                             let mut clients = clients.lock().unwrap();
-                            clients.retain(|(id, _)| {
-                                *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")
-                                    .unwrap()
-                            });
+
+                            if client_id_str == "11111111-1111-1111-1111-111111111111" {
+                                clients.retain(|(id, _)| {
+                                    *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")
+                                        .unwrap()
+                                });
+                            }
 
                             let client_id = Uuid::parse_str(client_id_str)?;
                             clients.push((client_id, tx.clone()));
@@ -264,6 +267,9 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                                 if let Err(e) = client.send(text_message) {
                                     println!("==Failed to send text msg to client ==1111: {:?}", e);
                                 }
+                            } else {
+                                // println!("==Clients 2nd: {:?}", clients);
+                                // println!("==Cannot find client 1111");
                             }
                         }
                     }

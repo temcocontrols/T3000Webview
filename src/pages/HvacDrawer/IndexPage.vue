@@ -148,16 +148,16 @@
       <div class="top-area">
         <!-- Top Toolbar -->
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <!-- <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
           :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
-          :rulersGridVisible="rulersGridVisible" /> -->
+          :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge" />
 
         <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices"></NewTopToolBar>
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge"></NewTopToolBar>
       </div>
 
       <div class="main-area">
@@ -166,7 +166,7 @@
           <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
             :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
             @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" />
+            @tool-dropped="toolDropped" :isBuiltInEdge="isBuiltInEdge" />
         </div>
         <div class="work-area">
           <div class="document-area">
@@ -191,13 +191,13 @@
                   </q-tooltip>
                 </q-btn>
                 <!-- Lock/Unlock Button -->
-                <!-- <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle">
+                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                  :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="isBuiltInEdge">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong v-if="!locked">Lock</strong>
                     <strong v-else>Unlock</strong>
                   </q-tooltip>
-                </q-btn> -->
+                </q-btn>
               </div>
               <!-- Viewport Area -->
               <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
@@ -754,11 +754,12 @@ import T3000 from "src/lib/T3000/T3000";
 import DeviceInfo from "src/components/DeviceInfo.vue";
 import NewTopToolBar from "src/components/NewTopToolBar.vue";
 
-
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
+
+const isBuiltInEdge = ref(false);
 
 // Meta information for the application
 // Set the meta information
@@ -777,7 +778,7 @@ const documentAreaPosition = ref(
     //height: calc(100vh - 68px);
     wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
     widthOffset: '128px',
-    heightOffset: '115px',
+    heightOffset: isBuiltInEdge.value ? '68px' : '115px',
   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
@@ -899,7 +900,14 @@ onMounted(() => {
     }
   }
 
-  // console.log('==== IndexPage.rulersGridVisible', rulersGridVisible.value)
+  if (window.chrome?.webview) {
+    isBuiltInEdge.value = true;
+    documentAreaPosition.value.widthOffset = '128px';
+    documentAreaPosition.value.heightOffset = '68px';
+  }
+  else {
+    isBuiltInEdge.value = false;
+  }
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
@@ -981,7 +989,16 @@ onMounted(() => {
   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
-  // processTcpMessage();
+  // If accessed from an external browser
+  initExternalBrowserOpt();
+});
+
+function initExternalBrowserOpt() {
+
+  if (isBuiltInEdge.value) {
+    return;
+  }
+
   // connect to the ws://localhost:9104 websocket server
   Hvac.WsClient.Initialize();
 
@@ -1009,7 +1026,7 @@ onMounted(() => {
     // Hvac.WsClient.GetInitialData();
     // Hvac.WsClient.GetPanelData();
   }, 1000);
-});
+}
 
 function updateDeviceModel(isActive, data) {
   console.log('= Idx updateDeviceModel ===', isActive, data)
@@ -3029,7 +3046,13 @@ function restDocumentAreaPosition(pzXY) {
   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
+
+  if (isBuiltInEdge.value) {
+    documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
+  }
+  else {
+    documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
+  }
 }
 
 // Handle object click events based on t3Entry type
