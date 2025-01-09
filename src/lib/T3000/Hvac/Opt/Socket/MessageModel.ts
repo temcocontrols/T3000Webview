@@ -1,6 +1,6 @@
 
 import { head } from "lodash";
-import DeviceOpt from "../../Opt/DeviceOpt"
+import DeviceOpt from "./DeviceOpt"
 
 /*
 class Header {

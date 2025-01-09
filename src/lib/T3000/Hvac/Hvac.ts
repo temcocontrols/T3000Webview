@@ -5,8 +5,8 @@ import Models from './Data/Data.Constant'
 import Doc from './Doc/DocHandler'
 import UI from './Doc/UI'
 import KeyCommand from './Opt/Opt.KeyCommand'
-import DeviceOpt from './Opt/DeviceOpt'
-import WebSocketClient from './Opt/WebSocketClient'
+import DeviceOpt from './Opt/Socket/DeviceOpt'
+import WebSocketClient from './Opt/Socket/WebSocketClient'
 
 const Hvac = {
   App: new App(),

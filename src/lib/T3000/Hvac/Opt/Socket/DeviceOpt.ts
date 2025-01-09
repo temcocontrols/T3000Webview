@@ -1,9 +1,85 @@
 
 
-import { cloneDeep } from "lodash";
-import MockData from "../Data/MockData"
+import { cloneDeep } from "lodash"
+import MockData from "../../Data/MockData"
+import PanelInfo from "./PanelInfo"
+import DeviceItem from "./DeviceItem"
 
 class DeviceOpt {
+
+  // mock data
+  public mockDeviceList: {};
+  public mockGraphicList: {};
+
+  public panelList: PanelInfo[];
+
+  public deviceList: DeviceItem[];
+  public graphicList: {};
+  public currentDevice: {};
+
+  constructor() {
+    this.mockDeviceList = MockData.DeviceList;
+    this.mockGraphicList = MockData.GraphicList;
+  }
+
+  // init data with real panel list
+  initPanelList(plList) {
+
+    /*
+    {
+      "object_instance": 237219,
+      "online_time": 1736432605,
+      "panel_name": "T3-XX-ESP",
+      "panel_number": 1,
+      "pid": 88,
+      "serial_number": 237219
+    }
+    */
+
+    const jsonData = JSON.parse(plList);
+
+    const panelInfoList: PanelInfo[] = jsonData.map(panel => {
+      const panelInfo = new PanelInfo();
+      panelInfo.object_instance = panel.object_instance;
+      panelInfo.online_time = panel.online_time;
+      panelInfo.panel_name = panel.panel_name;
+      panelInfo.panel_number = panel.panel_number;
+      panelInfo.pid = panel.pid;
+      panelInfo.serial_number = panel.serial_number;
+      return panelInfo;
+    });
+
+    this.panelList = panelInfoList;
+  }
+
+  initDeviceList(plList) {
+    this.initPanelList(plList);
+
+    /*
+    [
+      {
+        id: 0,
+        label: 'All Devices',
+        icon: 'devices',
+        children:
+        [
+          {
+            id: 1,
+            label: 'T3-XX-ESP 1',
+            icon: 'horizontal_rule',
+          }
+        ]
+      }
+    ]
+    */
+
+
+
+    const di = new DeviceItem();
+    di.initData(-1, "All Devices", "devices", this.panelList, {});
+
+    this.deviceList = [di];
+  }
 
   saveCurrentDevice(selectDevice) {
     localStorage.setItem('currentDevice', JSON.stringify(selectDevice))

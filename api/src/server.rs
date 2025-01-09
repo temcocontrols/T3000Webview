@@ -259,7 +259,6 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                                 if let Err(e) = client.send(msg.clone()) {
                                     // println!("==Failed to send message to client !=1111: {:?}", e);
                                     log_message(&format!("==Failed to send message to client !=1111: {:?}", e), true);
-
                                 }
                             }
                         }

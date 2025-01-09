@@ -1,7 +1,7 @@
 
 
-import MessageType from "../Data/Socket/MessageType"
-import MessageModel from "../Data/Socket/MessageModel"
+import MessageType from "./MessageType"
+import MessageModel from "./MessageModel"
 
 class WebSocketClient {
 
