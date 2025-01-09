@@ -14,12 +14,16 @@ class DeviceOpt {
   public panelList: PanelInfo[];
 
   public deviceList: DeviceItem[];
-  public graphicList: {};
+  public graphicList: [];
   public currentDevice: {};
 
   constructor() {
     this.mockDeviceList = MockData.DeviceList;
     this.mockGraphicList = MockData.GraphicList;
+    this.panelList = [];
+    this.deviceList = [];
+    this.graphicList = [];
+    this.currentDevice = {};
   }
 
   // init data with real panel list
@@ -36,9 +40,9 @@ class DeviceOpt {
     }
     */
 
-    const jsonData = JSON.parse(plList);
+    // const jsonData = JSON.parse(plList);
 
-    const panelInfoList: PanelInfo[] = jsonData.map(panel => {
+    const panelInfoList: PanelInfo[] = plList.map(panel => {
       const panelInfo = new PanelInfo();
       panelInfo.object_instance = panel.object_instance;
       panelInfo.online_time = panel.online_time;
@@ -73,10 +77,14 @@ class DeviceOpt {
     ]
     */
 
-
+    const deviceItems = this.panelList.map(panel => {
+      const deviceItem = new DeviceItem();
+      deviceItem.initData(panel.panel_number, panel.panel_name, 'horizontal_rule', [], panel);
+      return deviceItem;
+    });
 
     const di = new DeviceItem();
-    di.initData(-1, "All Devices", "devices", this.panelList, {});
+    di.initData(-1, "All Devices", "devices", deviceItems, {});
 
     this.deviceList = [di];
   }

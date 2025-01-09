@@ -126,9 +126,10 @@
 
         <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
 
-        <q-tree :nodes="simple" node-key="label" v-model:selected="selected" v-model:ticked="ticked"
+        <q-tree :nodes="dvList" :noNodesLabel="noNodesLabel" node-key="label" v-model:selected="selected" v-model:ticked="ticked"
           v-model:expanded="expanded" :filter="filter" :accordion=true style="max-height: 326px;overflow-y: auto;"
-          selected-color="primary" @update:selected="treeSelected" />
+          selected-color="primary" @update:selected="treeSelected"
+           />
 
       </div>
 
@@ -191,7 +192,7 @@
 import { defineComponent, ref, onMounted } from 'vue'
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
-import { useQuasar, useMeta } from "quasar";
+import { useQuasar, useMeta } from "quasar"
 
 export default defineComponent({
   name: 'NewTopBar',
@@ -227,15 +228,21 @@ export default defineComponent({
   },
 
   setup(props, { emit }) {
-    console.log('= Dvi setup mock data', MockData.DeviceList)
-
     const $q = useQuasar();
     const filter = ref('');
     const filterRef = ref(null);
     const selected = ref('');
     const ticked = ref(['']);
     const expanded = ref(["All Devices"]);
-    const simple = MockData.DeviceList;
+
+    const noNodesLabel="No nodes available";
+
+    // const simple = MockData.DeviceList;
+    const dvList = Hvac.DeviceOpt.deviceList;
+    console.log('= Dvi real device data', dvList)
+
+
+
     const graphicList = MockData.GraphicList;
     const currentDevice = ref({ device: "", graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
@@ -307,9 +314,9 @@ export default defineComponent({
         return null;
       };
 
-      clearIcons(simple);
+      clearIcons(dvList);
 
-      const selectedNode = findAllNodes(simple, target);
+      const selectedNode = findAllNodes(dvList, target);
       if (selectedNode) {
         selectedNode.icon = 'check';
         currentDevice.value.device = selectedNode.label;
@@ -367,7 +374,7 @@ export default defineComponent({
         selected.value = savedDevice.device;
 
         console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
-        console.log('= Dvi onMounted 2 simple:', simple);
+        console.log('= Dvi onMounted 2 dvList:', dvList);
       }
     });
 
@@ -377,7 +384,7 @@ export default defineComponent({
       selected,
       ticked,
       expanded,
-      simple,
+      dvList,
       myFilterMethod,
       resetFilter,
       graphicList,
@@ -386,7 +393,8 @@ export default defineComponent({
       treeSelected,
       updateGraphicSelection,
       saveCurrentSelection,
-      testSendMsg
+      testSendMsg,
+      noNodesLabel
     }
   }
 });

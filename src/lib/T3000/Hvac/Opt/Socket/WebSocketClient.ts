@@ -2,6 +2,7 @@
 
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
+import Hvac from "../../Hvac";
 
 class WebSocketClient {
 
@@ -246,55 +247,56 @@ class WebSocketClient {
     }
   }
 
-  private processMessageData(data) {
+  private processMessageData(msgData) {
 
-    if (data.action === MessageType.GET_PANEL_DATA_RES) {
-      this.HandleGetPanelDataRes(data);
+    if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
+      this.HandleGetPanelDataRes(msgData.data);
     }
 
-    if (data.action === MessageType.GET_INITIAL_DATA_RES) {
-      this.HandleGetInitialDataRes(data);
+    if (msgData.action === MessageType.GET_INITIAL_DATA_RES) {
+      this.HandleGetInitialDataRes(msgData.data);
     }
 
-    if (data.action === MessageType.SAVE_GRAPHIC_RES) {
-      this.HandleSaveGraphicRes(data);
+    if (msgData.action === MessageType.SAVE_GRAPHIC_RES) {
+      this.HandleSaveGraphicRes(msgData.data);
     }
 
-    if (data.action === MessageType.UPDATE_ENTRY_RES) {
-      this.HandleUpdateEntryRes(data);
+    if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
+      this.HandleUpdateEntryRes(msgData.data);
     }
 
-    if (data.action === MessageType.GET_PANELS_LIST_RES) {
-      this.HandleGetPanelsListRes(data);
+    if (msgData.action === MessageType.GET_PANELS_LIST_RES) {
+      this.HandleGetPanelsListRes(msgData.data);
     }
 
-    if (data.action === MessageType.GET_ENTRIES_RES) {
-      this.HandleGetEntriesRes(data);
+    if (msgData.action === MessageType.GET_ENTRIES_RES) {
+      this.HandleGetEntriesRes(msgData.data);
     }
 
-    if (data.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      this.HandleLoadGraphicEntryRes(data);
+    if (msgData.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
+      this.HandleLoadGraphicEntryRes(msgData.data);
     }
 
-    if (data.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
-      this.HandleOpenEntryEditWindowRes(data);
+    if (msgData.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
+      this.HandleOpenEntryEditWindowRes(msgData.data);
     }
 
-    if (data.action === MessageType.SAVE_IMAGE_RES) {
-      this.HandleSaveImageRes(data);
+    if (msgData.action === MessageType.SAVE_IMAGE_RES) {
+      this.HandleSaveImageRes(msgData.data);
     }
 
-    if (data.action === MessageType.SAVE_LIBRARY_DATA_RES) {
-      this.HandleSaveLibraryDataRes(data);
+    if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
+      this.HandleSaveLibraryDataRes(msgData.data);
     }
 
-    if (data.action === MessageType.DELETE_IMAGE_RES) {
-      this.HandleDeleteImageRes(data);
+    if (msgData.action === MessageType.DELETE_IMAGE_RES) {
+      this.HandleDeleteImageRes(msgData.data);
     }
   }
 
   public HandleGetPanelDataRes(data) {
     // action: 0, // GET_PANEL_DATA_RES
+
   }
 
   public HandleGetInitialDataRes(data) {
@@ -311,6 +313,7 @@ class WebSocketClient {
 
   public HandleGetPanelsListRes(data) {
     // action: 4, // GET_PANELS_LIST_RES
+    Hvac.DeviceOpt.initDeviceList(data);
   }
 
   public HandleGetEntriesRes(data) {
