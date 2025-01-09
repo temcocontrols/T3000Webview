@@ -57,7 +57,7 @@ class WebSocketClient {
     const lsClientId = this.GenerateUUID();
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
-    this.messageModel.setMessage(-1, null, null, null, lsClientId);
+    this.messageModel.setMessage(13, null, null, null, lsClientId);
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -261,18 +261,20 @@ class WebSocketClient {
 
   private processMessageData(data) {
     /*
-    action: 0, // GET_PANEL_DATA_RES
-    action: 1, // GET_INITIAL_DATA_RES
-    action: 2, // SAVE_GRAPHIC_RES
-    action: 3, // UPDATE_ENTRY_RES
-    action: 4, // GET_PANELS_LIST_RES
-    action: 6, // GET_ENTRIES_RES
-    action: 7, // LOAD_GRAPHIC_ENTRY_RES
-    action: 8, // OPEN_ENTRY_EDIT_WINDOW_RES
-    action: 9, // SAVE_IMAGE_RES
-    action: 10, // SAVE_LIBRARY_DATA_RES
-    action: 11, // DELETE_IMAGE_RES
-    action: 12, //GET_ALL_DEVICES_DATA_RES
+    action: 0,  // GET_PANEL_DATA
+    action: 1,  // GET_INITIAL_DATA
+    action: 2,  // SAVE_GRAPHIC_DATA
+    action: 3,  // UPDATE_ENTRY
+    action: 4,  // GET_PANELS_LIST
+    action: 5,  // GET_PANEL_RANGE_INFO
+    action: 6,  // GET_ENTRIES
+    action: 7,  // LOAD_GRAPHIC_ENTRY
+    action: 8,  // OPEN_ENTRY_EDIT_WINDOW
+    action: 9,  // SAVE_IMAGE
+    action: 10, // SAVE_LIBRARY_DATA
+    action: 11, // DELETE_IMAGE
+    action: 12, // GET_SELECTED_DEVICE_INFO
+    action: 13, // BIND_DEVICE
     */
 
     if (data.action === MessageType.GET_PANEL_DATA_RES) {
@@ -376,94 +378,3 @@ class WebSocketClient {
 }
 
 export default WebSocketClient
-
-
-//#region  Old Test Code
-
-// const socket = new WebSocket('ws://localhost:9104');
-
-// const testSendMsg = (action) => {
-//   socket.send("ClientA test1");
-// }
-
-// function connectSocket() {
-
-//   const isFirefox = typeof InstallTrigger !== 'undefined';
-
-//   /*
-//   action: 0, // GET_PANEL_DATA
-//   action: 1, // GET_INITIAL_DATA
-//   action: 2, // SAVE_GRAPHIC
-//   action: 3, // UPDATE_ENTRY
-//   action: 4, // GET_PANELS_LIST
-//   action: 6, // GET_ENTRIES
-//   action: 7, // LOAD_GRAPHIC_ENTRY
-//   action: 8, // OPEN_ENTRY_EDIT_WINDOW
-//   action: 9, // SAVE_IMAGE
-//   action: 10, // SAVE_LIBRARY_DATA
-//   action: 11, // DELETE_IMAGE
-//   */
-
-//   socket.onopen = function (event) {
-//     // const message = {
-//     //   action: 0, // GET_PANEL_DATA
-//     //   panelId: 1,
-//     //   from: isFirefox ? 'firefox' : 'other'
-//     // };
-
-//     const data = {
-//       header: {
-//         device: 'T3-XX-ESP',
-//         panel: 1,
-//         clientId: 'R102039488500',
-//         from: isFirefox ? 'firefox' : 'other'
-//       },
-//       message: {
-//         action: 0, // GET_PANEL_DATA
-//         panelId: 1,
-//       }
-//     }
-
-//     socket.send(JSON.stringify(data));
-
-//     // socket.send(1);
-//   };
-
-//   socket.onmessage = function (event) {
-
-//     // process the messgae here
-
-//     console.log('==== Message from TCP Server, start to process it:', event.data);
-//     // const jsonObj = JSON.parse(event.data);
-
-//     // if (jsonObj.action === 0) {
-//     //   socket.send(JSON.stringify({
-//     //     action: 1, // GET_INITIAL_DATA
-//     //   }));
-//     // }
-//   };
-
-//   socket.onclose = function (event) {
-//     // console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
-//     setTimeout(function () {
-//       connectSocket();
-//     }, 1000)
-//   };
-
-//   socket.onerror = function (error) {
-//     console.error('Socket encountered error: ', error.message, 'Closing socket');
-//     socket.close();
-
-//     setTimeout(function () {
-//       connectSocket();
-//     }, 1000)
-//   };
-// }
-
-// function processTcpMessage() {
-//   console.log('=== TCP Start to process tcp message after mounted === , The window is:', window);
-
-//   connectSocket();
-// }
-
-//#endregion

@@ -243,7 +243,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
             //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}}
             if let Some(message) = json_msg.get("message") {
                 if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
-                    if action == -1 {
+                    if action == 13 {
                         if let Some(client_id_str) =
                             message.get("clientId").and_then(|id| id.as_str())
                         {
@@ -279,7 +279,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                 // {"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}
 
                 if let Some(_action) = json_msg.get("action").and_then(|a| a.as_i64()) {
-                    if _action != -1 {
+                    if _action != 13 {
                         let clients = clients.lock().unwrap();
                         for (id, client) in clients.iter() {
                             if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
