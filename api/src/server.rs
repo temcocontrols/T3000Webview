@@ -27,6 +27,9 @@ use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
+use chrono::Local;
+use std::fs::OpenOptions;
+use std::io::Write;
 use uuid::Uuid;
 
 fn routes_static() -> Router {
@@ -137,15 +140,23 @@ async fn shutdown_signal(state: AppState) {
 type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
-    println!("==Start handling websocket");
-    println!("==Stream: {:?}", stream);
-    println!("==Clients 1st: {:?}", clients);
-    println!("");
+    /*
+     println!("==Start handling websocket");
+     println!("==Stream: {:?}", stream);
+     println!("==Clients 1st: {:?}", clients);
+     println!("");
+    */
+
+    log_message(&format!("==Start handling websocket"), true);
+    log_message(&format!("==Stream: {:?}", stream), true);
+    log_message(&format!("==Clients 1st: {:?}", clients), true);
+    log_message(&format!(""), true);
 
     let ws_stream = match accept_async(stream).await {
         Ok(ws) => ws,
         Err(e) => {
-            println!("==Failed to accept websocket connection: {:?}", e);
+            // println!("==Failed to accept websocket connection: {:?}", e);
+            log_message(&format!("==Failed to accept websocket connection: {:?}", e), true);
             return Err(Box::new(e));
         }
     };
@@ -155,13 +166,11 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     let (mut write, mut read) = ws_stream.split();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-    // let client_id = Uuid::new_v4();
-    // println!("==Assigned client ID: {}", client_id);
-
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             if let Err(e) = write.send(msg).await {
-                println!("==Error sending message to client: {:?}", e);
+                // println!("==Error sending message to client: {:?}", e);
+                log_message(&format!("==Error sending message to client: {:?}", e), true);
                 break;
             }
         }
@@ -171,7 +180,8 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     while let Some(msg) = read.next().await {
         let msg = msg?;
 
-        println!("==Recived message 1st:{:?}", msg);
+        // println!("==Recived message 1st:{:?}", msg);
+        log_message(&format!("==Recived message 1st:{:?}", msg), true);
 
         if msg.is_text() || msg.is_binary() {
             let msg_text = msg.to_text()?;
@@ -179,7 +189,8 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
             let json_msg: serde_json::Value = match serde_json::from_str(msg_text) {
                 Ok(json) => json,
                 Err(_) => {
-                    println!("==1st message with incorrect format: {}", msg_text);
+                    // println!("==1st message with incorrect format: {}", msg_text);
+                    log_message(&format!("==1st message with incorrect format: {}", msg_text), true);
                     continue;
                 }
             };
@@ -210,11 +221,10 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                             if *id == Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
                                 let text_message = Message::text(message.to_string());
                                 if let Err(e) = client.send(text_message) {
-                                    println!("==Failed to send text msg to client ==1111: {:?}", e);
+                                    // println!("==Failed to send text msg to client ==1111: {:?}", e);
+                                    log_message(&format!("==Failed to send text msg to client ==1111: {:?}", e), true);
+
                                 }
-                            } else {
-                                // println!("==Clients 2nd: {:?}", clients);
-                                // println!("==Cannot find client 1111");
                             }
                         }
                     }
@@ -224,8 +234,8 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                 // {"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}
 
                 if let Some(action) = json_msg.get("action") {
-
-                    print!("==Start send back to WebBrowser");
+                    // print!("==Start send back to WebBrowser");
+                    log_message(&format!("==Start send back to WebBrowser"), true);
 
                     if let Some(action_int) = action.as_i64() {
                         // Handle action as an integer
@@ -234,10 +244,8 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                             for (id, client) in clients.iter() {
                                 if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
                                     if let Err(e) = client.send(msg.clone()) {
-                                        println!(
-                                            "==Failed to send message to client !=1111: {:?}",
-                                            e
-                                        );
+                                        // println!("==Failed to send message to client !=1111: {:?}", e);
+                                        log_message(&format!("==Failed to send message to client !=1111: {:?}",e), true);
                                     }
                                 }
                             }
@@ -249,13 +257,14 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                         for (id, client) in clients.iter() {
                             if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
                                 if let Err(e) = client.send(msg.clone()) {
-                                    println!("==Failed to send message to client !=1111: {:?}", e);
+                                    // println!("==Failed to send message to client !=1111: {:?}", e);
+                                    log_message(&format!("==Failed to send message to client !=1111: {:?}", e), true);
+
                                 }
                             }
                         }
-                        //println!("==Action as string: {}", action_str);
                     } else {
-                        println!("==Action is neither an integer nor a string");
+                       println!("==Action is neither an integer nor a string");
                     }
                 }
             }
@@ -271,28 +280,83 @@ async fn start_websocket_server() {
         let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104))
             .await
             .unwrap();
-        println!(
-            "==WebSocket server listening on {:?}",
-            ws_listener.local_addr()
-        );
+
+        // println!("==WebSocket server listening on {:?}", ws_listener.local_addr());
+        log_message(&format!("==WebSocket server listening on {:?}", ws_listener.local_addr()), true);
+
         loop {
             match ws_listener.accept().await {
                 Ok((socket, addr)) => {
-                    println!("");
-                    println!("");
-                    println!("==New client connected: {:?}", addr);
-                    println!("==Socket details: {:?}", socket);
+
+                    /*
+                     println!("");
+                     println!("");
+                     println!("==New client connected: {:?}", addr);
+                     println!("==Socket details: {:?}", socket);
+                    */
+
+                    log_message(&format!("", ), true);
+                    log_message(&format!("",), true);
+                    log_message(&format!("==New client connected: {:?}", addr), true);
+                    log_message(&format!("==Socket details: {:?}", socket), true);
+
                     let clients = clients.clone();
                     tokio::spawn(async move {
                         if let Err(e) = handle_websocket(socket, clients).await {
-                            println!("==WebSocket error: {:?}", e);
+                            // println!("==WebSocket error: {:?}", e);
+                            log_message(&format!("==WebSocket error: {:?}", e), true);
                         }
                     });
                 }
                 Err(e) => {
-                    println!("==Failed to accept connection: {:?}", e);
+                    // println!("==Failed to accept connection: {:?}", e);
+                    log_message(&format!("==Failed to accept connection: {:?}", e), true);
                 }
             }
         }
     });
+}
+
+fn log_message_to_file(message: &str) -> Result<(), Box<dyn Error>> {
+    let now = Local::now();
+    let file_name = format!(
+        "log/log_{}_{}.txt",
+        now.format("%Y-%m-%d"),
+        now.format("%H")
+    );
+
+    // Check if the log directory exists, if not, create it
+    let log_dir = std::path::Path::new("log");
+    if !log_dir.exists() {
+        std::fs::create_dir_all(log_dir)?;
+    }
+
+    let mut file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file_name)
+    {
+        Ok(f) => f,
+        Err(e) => {
+            println!("Failed to open log file: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
+    if let Err(e) = writeln!(file, "{}", message) {
+        println!("Failed to write to log file: {:?}", e);
+        return Err(Box::new(e));
+    }
+    Ok(())
+}
+
+fn log_message(message: &str, log_to_file: bool) {
+    let print_to_console = true;
+    if log_to_file {
+        if let Err(e) = log_message_to_file(message) {
+            println!("Failed to log message: {:?}", e);
+        }
+    }
+    if print_to_console {
+        println!("{}", message);
+    }
 }

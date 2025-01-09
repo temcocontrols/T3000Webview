@@ -34,3 +34,5 @@ yarn-error.log*
 
 .vs
 .vscode
+
+/api/log
