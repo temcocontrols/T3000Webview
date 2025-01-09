@@ -6,14 +6,10 @@ import MessageModel from "../Data/Socket/MessageModel"
 class WebSocketClient {
 
   private socket: WebSocket;
-
   public messageModel: MessageModel;
   public messageData: string;
 
-  constructor() {
-    // this.socket = new WebSocket('ws://localhost:9104');
-    // this.initialize();
-  }
+  constructor() {}
 
   public Initialize() {
 
@@ -25,7 +21,7 @@ class WebSocketClient {
     this.socket.onerror = this.onError.bind(this);
   }
 
-  public GenerateUUID() {
+  public generateUUID() {
     let d = new Date().getTime();
     let d2 = (performance && performance.now && performance.now() * 1000) || 0;
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -54,7 +50,7 @@ class WebSocketClient {
     }
     */
 
-    const lsClientId = this.GenerateUUID();
+    const lsClientId = this.generateUUID();
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
     this.messageModel.setMessage(13, null, null, null, lsClientId);
@@ -230,15 +226,6 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.DELETE_IMAGE }));
   }
 
-  public GetAllDevicesData() {
-    // action: 12, // GET_ALL_DEVICES_DATA
-
-    this.FormatMessageData(MessageType.GET_ALL_DEVICES_DATA, null, null, null);
-    this.sendMessage(this.messageData);
-
-    // this.sendMessage(JSON.stringify({ action: MessageType.GET_ALL_DEVICES_DATA }));
-  }
-
   //#endregion
 
   //#region Process Messages
@@ -260,22 +247,6 @@ class WebSocketClient {
   }
 
   private processMessageData(data) {
-    /*
-    action: 0,  // GET_PANEL_DATA
-    action: 1,  // GET_INITIAL_DATA
-    action: 2,  // SAVE_GRAPHIC_DATA
-    action: 3,  // UPDATE_ENTRY
-    action: 4,  // GET_PANELS_LIST
-    action: 5,  // GET_PANEL_RANGE_INFO
-    action: 6,  // GET_ENTRIES
-    action: 7,  // LOAD_GRAPHIC_ENTRY
-    action: 8,  // OPEN_ENTRY_EDIT_WINDOW
-    action: 9,  // SAVE_IMAGE
-    action: 10, // SAVE_LIBRARY_DATA
-    action: 11, // DELETE_IMAGE
-    action: 12, // GET_SELECTED_DEVICE_INFO
-    action: 13, // BIND_DEVICE
-    */
 
     if (data.action === MessageType.GET_PANEL_DATA_RES) {
       this.HandleGetPanelDataRes(data);
@@ -319,10 +290,6 @@ class WebSocketClient {
 
     if (data.action === MessageType.DELETE_IMAGE_RES) {
       this.HandleDeleteImageRes(data);
-    }
-
-    if (data.action === MessageType.GET_ALL_DEVICES_DATA_RES) {
-      this.HandleGetAllDevicesDataRes(data);
     }
   }
 

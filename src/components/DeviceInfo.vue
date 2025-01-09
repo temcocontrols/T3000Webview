@@ -332,7 +332,7 @@ export default defineComponent({
 
       // load real data from T3000
       if (currentDevice.value.device !== '') {
-        Hvac.WsClient.GetPanelData();
+        Hvac.WsClient.GetPanelData(1);
       }
     }
 

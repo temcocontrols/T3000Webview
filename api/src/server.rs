@@ -212,7 +212,7 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
         }
     };
 
-    //  println!("==ws_stream: {:?}", ws_stream);
+    // println!("==ws_stream: {:?}", ws_stream);
 
     let (mut write, mut read) = ws_stream.split();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -237,10 +237,17 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
 
         if msg.is_text() || msg.is_binary() {
             let msg_text = msg.to_text()?;
-            let json_msg: serde_json::Value = serde_json::from_str(msg_text)?;
 
-            //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"4aa7e8c2-437e-422c-a55d-e1ae4c757935"}}
-            //{"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}}
+            let json_msg: serde_json::Value = match serde_json::from_str(msg_text) {
+              Ok(json) => json,
+              Err(_) => {
+                println!("==1st message with incorrect format: {}", msg_text);
+                continue;
+              }
+            };
+
+            // {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"4aa7e8c2-437e-422c-a55d-e1ae4c757935"}}
+            // {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}}
             if let Some(message) = json_msg.get("message") {
                 if let Some(action) = message.get("action").and_then(|a| a.as_i64()) {
                     if action == 13 {
