@@ -1308,3 +1308,513 @@ Conclusion
     Implement appropriate error handling in your OnSend and OnReceive methods.
 
 By following these steps, you should be able to debug and resolve the invalidcode (4) error in your MFC CAsyncSocket WebSocket client.
+
+
+## Protocol(InvalidOpcode(11)) Error
+
+The `Protocol(InvalidOpcode(11))` error in the context of WebSockets indicates that the WebSocket frame being sent or received contains an invalid opcode. In the WebSocket protocol, opcodes are used to define the type of frame being transmitted. The valid opcodes are:
+
+- `0x0`: Continuation frame
+- `0x1`: Text frame
+- `0x2`: Binary frame
+- `0x8`: Connection close frame
+- `0x9`: Ping frame
+- `0xA`: Pong frame
+
+An opcode of `11` (or `0xB`) is not defined in the WebSocket protocol, hence the `InvalidOpcode` error.
+
+### Common Causes
+
+1. **Malformed Frame**: The WebSocket frame might be incorrectly formatted, leading to an invalid opcode.
+2. **Corrupted Data**: Data corruption during transmission could result in an invalid opcode.
+3. **Implementation Bug**: There might be a bug in the WebSocket client or server implementation that generates an invalid opcode.
+
+### Solutions
+
+1. **Verify Frame Construction**: Ensure that the WebSocket frames are correctly constructed according to the WebSocket protocol specification.
+2. **Check Data Integrity**: Implement checks to ensure data integrity during transmission.
+3. **Debug Implementation**: Review and debug the WebSocket client and server code to identify and fix any issues related to frame construction.
+
+### Example Code
+
+Here is an example of how to correctly construct and send a WebSocket text frame in C++:
+
+```cpp
+void SendWebSocketMessage(const std::string& message) {
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = message.size();
+  if (msgLen <= 125) {
+    frame.push_back(0x80 | static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(0x80 | 126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(0x80 | 127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  Send(frame.data(), frame.size());
+}
+```
+
+By ensuring that the WebSocket frames are correctly constructed and transmitted, you can avoid the `Protocol(InvalidOpcode(11))` error.
+
+
+```cpp
+void sendMessage(const std::wstring& message) {
+  // Convert the wide string to a UTF-8 encoded string
+  int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message.c_str(), -1, nullptr, 0, nullptr, nullptr);
+  std::vector<char> utf8Message(bufferSize);
+  WideCharToMultiByte(CP_UTF8, 0, message.c_str(), -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+  if (msgLen <= 125) {
+    frame.push_back(static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  Send(frame.data(), frame.size());
+}
+```
+
+```cpp
+void sendMessage(const CString& message) {
+  // Convert the CString to a UTF-8 encoded string
+  int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message, -1, nullptr, 0, nullptr, nullptr);
+  std::vector<char> utf8Message(bufferSize);
+  WideCharToMultiByte(CP_UTF8, 0, message, -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+  if (msgLen <= 125) {
+    frame.push_back(static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  send(ConnectSocket, reinterpret_cast<const char*>(frame.data()), frame.size(), 0);
+}
+```
+When establishing a WebSocket connection, the initial handshake is performed using HTTP, not WebSocket frames. The handshake process involves the client sending an HTTP request to the server, which includes specific headers indicating the desire to establish a WebSocket connection. The server responds with an HTTP response that includes headers confirming the WebSocket upgrade.
+
+Here is a brief overview of the WebSocket handshake process:
+
+Client Request: The client sends an HTTP request to the server with headers indicating the upgrade to WebSocket. For example:
+
+Server Response: The server responds with an HTTP response indicating that the connection has been upgraded to WebSocket. For example:
+
+After the handshake is complete, the connection is established, and both the client and server can start sending WebSocket frames to each other.
+
+The handshake does not require creating WebSocket frames because it uses standard HTTP headers to negotiate the connection upgrade. Once the connection is established, subsequent communication uses WebSocket frames, which need to be constructed as shown in your example code.
+
+If you have any further questions or need more details, feel free to ask!
+
+
+
+### Creating a WebSocket Frame using `WideCharToMultiByte`
+
+To create a WebSocket frame based on `WideCharToMultiByte`, you need to follow these steps:
+
+1. **Convert the Wide String to a UTF-8 Encoded String**: Use `WideCharToMultiByte` to convert the wide string to a UTF-8 encoded string.
+2. **Construct the WebSocket Frame**: Create the WebSocket frame according to the WebSocket protocol specification.
+3. **Send the Frame**: Send the constructed frame over the WebSocket connection.
+
+Here is an example of how to achieve this in C++:
+
+```cpp
+void sendMessage(const std::wstring& message) {
+  // Convert the wide string to a UTF-8 encoded string
+  int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message.c_str(), -1, nullptr, 0, nullptr, nullptr);
+  std::vector<char> utf8Message(bufferSize);
+  WideCharToMultiByte(CP_UTF8, 0, message.c_str(), -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+  if (msgLen <= 125) {
+    frame.push_back(static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  send(ConnectSocket, reinterpret_cast<const char*>(frame.data()), frame.size(), 0);
+}
+```
+
+This code snippet demonstrates how to convert a wide string to a UTF-8 encoded string using `WideCharToMultiByte`, construct a WebSocket frame, and send it over a WebSocket connection.
+
+## Sending Message to WebSocket Server using WinSock2
+
+To send a message to a WebSocket server using WinSock2, you can follow these steps:
+
+1. **Include Necessary Headers**: Include the necessary headers for Windows Sockets.
+
+```cpp
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+#pragma comment(lib, "Ws2_32.lib")
+```
+
+2. **Initialize Winsock**: Initialize Winsock in your main function.
+
+```cpp
+int main() {
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    std::cerr << "WSAStartup failed: " << result << std::endl;
+    return 1;
+  }
+
+  // Your WebSocket connection code here
+
+  WSACleanup();
+  return 0;
+}
+```
+
+3. **Create and Connect Socket**: Create a socket and connect to the WebSocket server.
+
+```cpp
+SOCKET ConnectSocket = INVALID_SOCKET;
+struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+ZeroMemory(&hints, sizeof(hints));
+hints.ai_family = AF_INET;
+hints.ai_socktype = SOCK_STREAM;
+hints.ai_protocol = IPPROTO_TCP;
+
+result = getaddrinfo("localhost", "9104", &hints, &result);
+if (result != 0) {
+  std::cerr << "getaddrinfo failed: " << result << std::endl;
+  WSACleanup();
+  return 1;
+}
+
+for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+  ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+  if (ConnectSocket == INVALID_SOCKET) {
+    std::cerr << "Error at socket(): " << WSAGetLastError() << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  result = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+  if (result == SOCKET_ERROR) {
+    closesocket(ConnectSocket);
+    ConnectSocket = INVALID_SOCKET;
+    continue;
+  }
+  break;
+}
+
+freeaddrinfo(result);
+
+if (ConnectSocket == INVALID_SOCKET) {
+  std::cerr << "Unable to connect to server!" << std::endl;
+  WSACleanup();
+  return 1;
+}
+```
+
+4. **Send and Receive Data**: Send and receive data using the connected socket.
+
+```cpp
+void sendMessage(SOCKET ConnectSocket, const std::string& message) {
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = message.size();
+  if (msgLen <= 125) {
+    frame.push_back(0x80 | static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(0x80 | 126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(0x80 | 127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  send(ConnectSocket, reinterpret_cast<const char*>(frame.data()), frame.size(), 0);
+}
+
+int main() {
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    std::cerr << "WSAStartup failed: " << result << std::endl;
+    return 1;
+  }
+
+  SOCKET ConnectSocket = INVALID_SOCKET;
+  struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  result = getaddrinfo("localhost", "9104", &hints, &result);
+  if (result != 0) {
+    std::cerr << "getaddrinfo failed: " << result << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+    ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if (ConnectSocket == INVALID_SOCKET) {
+      std::cerr << "Error at socket(): " << WSAGetLastError() << std::endl;
+      WSACleanup();
+      return 1;
+    }
+
+    result = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+    if (result == SOCKET_ERROR) {
+      closesocket(ConnectSocket);
+      ConnectSocket = INVALID_SOCKET;
+      continue;
+    }
+    break;
+  }
+
+  freeaddrinfo(result);
+
+  if (ConnectSocket == INVALID_SOCKET) {
+    std::cerr << "Unable to connect to server!" << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  sendMessage(ConnectSocket, "Hello from C++");
+
+  closesocket(ConnectSocket);
+  WSACleanup();
+  return 0;
+}
+```
+
+By following these steps, you can send a message to a WebSocket server using WinSock2 in your C++ application.
+
+
+
+```cpp
+void sendMessage(SOCKET ConnectSocket, const CString& message) {
+  // Convert the CString to a UTF-8 encoded string
+  int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message, -1, nullptr, 0, nullptr, nullptr);
+  std::vector<char> utf8Message(bufferSize);
+  WideCharToMultiByte(CP_UTF8, 0, message, -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+  if (msgLen <= 125) {
+    frame.push_back(0x80 | static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(0x80 | 126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(0x80 | 127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Send the frame
+  send(ConnectSocket, reinterpret_cast<const char*>(frame.data()), frame.size(), 0);
+}
+
+int main() {
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    std::cerr << "WSAStartup failed: " << result << std::endl;
+    return 1;
+  }
+
+  SOCKET ConnectSocket = INVALID_SOCKET;
+  struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  result = getaddrinfo("localhost", "9104", &hints, &result);
+  if (result != 0) {
+    std::cerr << "getaddrinfo failed: " << result << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+    ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if (ConnectSocket == INVALID_SOCKET) {
+      std::cerr << "Error at socket(): " << WSAGetLastError() << std::endl;
+      WSACleanup();
+      return 1;
+    }
+
+    result = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+    if (result == SOCKET_ERROR) {
+      closesocket(ConnectSocket);
+      ConnectSocket = INVALID_SOCKET;
+      continue;
+    }
+    break;
+  }
+
+  freeaddrinfo(result);
+
+  if (ConnectSocket == INVALID_SOCKET) {
+    std::cerr << "Unable to connect to server!" << std::endl;
+    WSACleanup();
+    return 1;
+  }
+
+  sendMessage(ConnectSocket, _T("Hello from C++"));
+
+  closesocket(ConnectSocket);
+  WSACleanup();
+  return 0;
+}
+```

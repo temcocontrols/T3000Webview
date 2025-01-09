@@ -134,68 +134,6 @@ async fn shutdown_signal(state: AppState) {
     let _ = state.conn.lock().await; // Lock and drop the connection
 }
 
-// async fn start_websocket_server(){
-//   tokio::spawn(async move {
-//     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
-//     // println!("WebSocket server listening on {:?}", ws_listener.local_addr());
-
-//     loop {
-//       let (socket, _) = ws_listener.accept().await.unwrap();
-//       tokio::spawn(async move {
-//         if let Err(e) = handle_websocket(socket).await {
-//           println!("WebSocket error: {:?}", e);
-//         }
-//       });
-//     }
-//   });
-
-//   /*
-//   // Create a WebSocket server
-//   tokio::spawn(async move {
-//     let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104)).await.unwrap();
-//     println!("WebSocket server listening on {:?}", ws_listener.local_addr());
-
-//     loop {
-//       let (socket, _) = ws_listener.accept().await.unwrap();
-//       tokio::spawn(async move {
-//         if let Err(e) = handle_websocket(socket).await {
-//           println!("WebSocket error: {:?}", e);
-//         }
-//       });
-//     }
-//   });
-//   */
-// }
-
-// async fn handle_websocket(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-//   let ws_stream = accept_async(stream).await?;
-//   let (mut write, mut read) = ws_stream.split();
-
-//   while let Some(msg) = read.next().await {
-//     let msg = msg?;
-
-//     if msg.is_text() || msg.is_binary() {
-//       println!("Received message: {}", msg);
-//         // Process the message and forward it to clients and T3000
-//       write.send(msg).await?;
-//     }
-
-//     /*
-//     if msg.is_text() {
-//       println!("Received text message: {}", msg.to_text()?);
-//       write.send(msg).await?;
-//     } else if msg.is_binary() {
-//       let data = msg.into_data();
-//       let json: serde_json::Value = serde_json::from_slice(&data)?;
-//       println!("Received binary message as JSON: {}", json);
-//       write.send(msg).await?;
-//     }
-//     */
-//   }
-
-//   Ok(())
-// }
-
 type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
 async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
@@ -239,11 +177,11 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
             let msg_text = msg.to_text()?;
 
             let json_msg: serde_json::Value = match serde_json::from_str(msg_text) {
-              Ok(json) => json,
-              Err(_) => {
-                println!("==1st message with incorrect format: {}", msg_text);
-                continue;
-              }
+                Ok(json) => json,
+                Err(_) => {
+                    println!("==1st message with incorrect format: {}", msg_text);
+                    continue;
+                }
             };
 
             // {"header":{"clientId":"-","from":"Firefox"},"message":{"action":-1,"clientId":"4aa7e8c2-437e-422c-a55d-e1ae4c757935"}}
@@ -285,8 +223,28 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                 // transfer processed data back to web client where client_id not equals to '11111111-1111-1111-1111-111111111111'
                 // {"action":-1,"clientId":"11111111-1111-1111-1111-111111111111"}
 
-                if let Some(_action) = json_msg.get("action").and_then(|a| a.as_i64()) {
-                    if _action != 13 {
+                if let Some(action) = json_msg.get("action") {
+
+                    print!("==Start send back to WebBrowser");
+
+                    if let Some(action_int) = action.as_i64() {
+                        // Handle action as an integer
+                        if action_int != 13 {
+                            let clients = clients.lock().unwrap();
+                            for (id, client) in clients.iter() {
+                                if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
+                                    if let Err(e) = client.send(msg.clone()) {
+                                        println!(
+                                            "==Failed to send message to client !=1111: {:?}",
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        //println!("==Action as integer: {}", action_int);
+                    } else if let Some(_action_str) = action.as_str() {
+                        // Handle action as a string
                         let clients = clients.lock().unwrap();
                         for (id, client) in clients.iter() {
                             if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
@@ -295,44 +253,14 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                                 }
                             }
                         }
+                        //println!("==Action as string: {}", action_str);
+                    } else {
+                        println!("==Action is neither an integer nor a string");
                     }
                 }
             }
         }
     }
-
-    // clients.lock().unwrap().push((client_id, tx));
-
-    /*
-    clients.lock().unwrap().push(tx);
-
-    tokio::spawn(async move {
-      while let Some(msg) = rx.recv().await {
-        if let Err(e) = write.send(msg).await {
-          println!("==Error sending message to client: {:?}", e);
-          break;
-        }
-      }
-    });
-
-    while let Some(msg) = read.next().await {
-      let msg = msg?;
-      println!("------------------------");
-      println!("==Received message: {}", msg);
-
-      if msg.is_text() || msg.is_binary() {
-        println!("==Server Received message from client: {}", msg);
-
-        let clients = clients.lock().unwrap();
-        for client in clients.iter() {
-          println!("==Sending message to client: {:?}", client);
-          if let Err(e) = client.send(msg.clone()) {
-            println!("==Failed to send message to client: {:?}", e);
-          }
-        }
-      }
-    }
-    */
 
     Ok(())
 }
