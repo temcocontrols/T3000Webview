@@ -434,7 +434,7 @@
               <q-list class="col-8" style="height: 50px;">
                 <q-item>
                   <q-item-section top class="col-3">
-                    <q-item-label class="q-mt-sm">Current: {{ currentDevice.data.device }}</q-item-label>
+                    <q-item-label class="q-mt-sm">Current: {{ currentDevice?.data?.device }}</q-item-label>
                   </q-item-section>
 
                   <q-item-section top class="col-1">
@@ -442,7 +442,7 @@
                       Graphic
                     </q-item-label>
                     <q-item-label>
-                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.id }}</span>
+                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.id }}</span>
                     </q-item-label>
                   </q-item-section>
 
@@ -451,7 +451,7 @@
                       Full label
                     </q-item-label>
                     <q-item-label>
-                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.fullLabel }}</span>
+                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.fullLabel }}</span>
                     </q-item-label>
                   </q-item-section>
 
@@ -460,7 +460,7 @@
                       Label
                     </q-item-label>
                     <q-item-label>
-                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.label }}</span>
+                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.label }}</span>
                     </q-item-label>
                   </q-item-section>
 
@@ -469,7 +469,7 @@
                       Element Count
                     </q-item-label>
                     <q-item-label>
-                      <span class="text-weight-medium select-text">{{ currentDevice.data.graphicFull.elementCount
+                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.elementCount
                         }}</span>
                     </q-item-label>
                   </q-item-section>

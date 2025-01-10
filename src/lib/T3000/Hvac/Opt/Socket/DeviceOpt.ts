@@ -5,6 +5,8 @@ import MockData from "../../Data/MockData"
 import PanelInfo from "./PanelInfo"
 import DeviceItem from "./DeviceItem"
 
+import T3Data from '../../Data/T3Data'
+
 class DeviceOpt {
 
   // mock data
@@ -91,6 +93,8 @@ class DeviceOpt {
     di.initData(-1, "All Devices", "devices", deviceItems, {});
 
     this.deviceList = [di];
+
+    T3Data.deviceList.value = this.deviceList;
   }
 
   saveCurrentDevice(selectDevice) {

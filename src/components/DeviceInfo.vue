@@ -192,6 +192,7 @@ import { defineComponent, ref, onMounted, watch, reactive, toRefs } from 'vue'
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
+import T3Data from '../lib/T3000/Hvac/Data/T3Data'
 
 export default defineComponent({
   name: 'NewTopBar',
@@ -236,14 +237,22 @@ export default defineComponent({
 
     const noNodesLabel = "No nodes available";
 
+    // const x1 = ref();
+    // console.log('= Dvi x1', x1);
+
+    // watch(() => Hvac.DeviceOpt.x1, (newVal, oldVal) => {
+    //   console.log('= Dvi x1 changed:', newVal);
+    //   x1.value = newVal;
+    // }, { deep: true });
+
     // const simple = MockData.DeviceList;
-    const dvList = ref(Hvac.DeviceOpt.deviceList);
+    const dvList = T3Data.deviceList;// Hvac.DeviceOpt.deviceList;
     console.log('= Dvi real device data', dvList);
 
-    watch(() => Hvac.DeviceOpt.deviceList, (newVal, oldVal) => {
-      console.log('= Dvi device list changed:', newVal);
-      dvList.value = newVal;
-    }, { deep: true });
+    // watch(() => Hvac.DeviceOpt.deviceList, (newVal) => {
+    //   console.log('= Dvi device list changed:', newVal);
+    //   dvList.value = newVal;
+    // }, { deep: true });
 
     const graphicList = MockData.GraphicList;
     const currentDevice = ref({ device: "", graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
