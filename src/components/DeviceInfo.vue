@@ -126,10 +126,9 @@
 
         <q-separator color="grey" style="margin-top: 2px;margin-bottom: 2px;" />
 
-        <q-tree :nodes="dvList" :noNodesLabel="noNodesLabel" node-key="label" v-model:selected="selected" v-model:ticked="ticked"
-          v-model:expanded="expanded" :filter="filter" :accordion=true style="max-height: 326px;overflow-y: auto;"
-          selected-color="primary" @update:selected="treeSelected"
-           />
+        <q-tree :nodes="dvList" :noNodesLabel="noNodesLabel" node-key="label" v-model:selected="selected"
+          v-model:ticked="ticked" v-model:expanded="expanded" :filter="filter" :accordion=true
+          style="max-height: 326px;overflow-y: auto;" selected-color="primary" @update:selected="treeSelected" />
 
       </div>
 
@@ -189,7 +188,7 @@
 
 <script lang="ts">
 
-import { defineComponent, ref, onMounted } from 'vue'
+import { defineComponent, ref, onMounted, watch, reactive, toRefs } from 'vue'
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
@@ -235,13 +234,16 @@ export default defineComponent({
     const ticked = ref(['']);
     const expanded = ref(["All Devices"]);
 
-    const noNodesLabel="No nodes available";
+    const noNodesLabel = "No nodes available";
 
     // const simple = MockData.DeviceList;
-    const dvList = Hvac.DeviceOpt.deviceList;
-    console.log('= Dvi real device data', dvList)
+    const dvList = ref(Hvac.DeviceOpt.deviceList);
+    console.log('= Dvi real device data', dvList);
 
-
+    watch(() => Hvac.DeviceOpt.deviceList, (newVal, oldVal) => {
+      console.log('= Dvi device list changed:', newVal);
+      dvList.value = newVal;
+    }, { deep: true });
 
     const graphicList = MockData.GraphicList;
     const currentDevice = ref({ device: "", graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
@@ -314,9 +316,9 @@ export default defineComponent({
         return null;
       };
 
-      clearIcons(dvList);
+      clearIcons(dvList.value);
 
-      const selectedNode = findAllNodes(dvList, target);
+      const selectedNode = findAllNodes(dvList.value, target);
       if (selectedNode) {
         selectedNode.icon = 'check';
         currentDevice.value.device = selectedNode.label;

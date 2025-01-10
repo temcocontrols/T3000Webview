@@ -1818,3 +1818,343 @@ int main() {
   return 0;
 }
 ```
+
+
+WebSocket
+## Keeping WebSocket Connection Alive and Reconnecting
+
+To keep the WebSocket connection always online and check whether the server is down, you can implement a mechanism to periodically send ping messages and attempt reconnection if the connection is lost. Here is an example of how to achieve this in C++:
+
+1. **Include Necessary Headers**: Include the necessary headers for WebSocket and networking.
+
+```cpp
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <iostream>
+#include <thread>
+#include <chrono>
+```
+
+2. **Define WebSocket Client Class**: Define a WebSocket client class that handles connection, ping, and reconnection.
+
+```cpp
+typedef websocketpp::client<websocketpp::config::asio_client> client;
+
+class WebSocketClient {
+public:
+  WebSocketClient() : retries(0), max_retries(5) {
+    c.init_asio();
+    c.set_open_handler(bind(&WebSocketClient::on_open, this, ::_1));
+    c.set_close_handler(bind(&WebSocketClient::on_close, this, ::_1));
+    c.set_fail_handler(bind(&WebSocketClient::on_fail, this, ::_1));
+    c.set_message_handler(bind(&WebSocketClient::on_message, this, ::_1, ::_2));
+  }
+
+  void connect(const std::string& uri) {
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = c.get_connection(uri, ec);
+    if (ec) {
+      std::cout << "Could not create connection because: " << ec.message() << std::endl;
+      return;
+    }
+    c.connect(con);
+    c.run();
+  }
+
+  void send_ping() {
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+      if (connected) {
+        c.ping(hdl, "");
+      }
+    }
+  }
+
+private:
+  void on_open(websocketpp::connection_hdl hdl) {
+    std::cout << "Connected to WebSocket server" << std::endl;
+    this->hdl = hdl;
+    connected = true;
+    retries = 0;
+  }
+
+  void on_close(websocketpp::connection_hdl hdl) {
+    std::cout << "Connection closed" << std::endl;
+    connected = false;
+    attempt_reconnect();
+  }
+
+  void on_fail(websocketpp::connection_hdl hdl) {
+    std::cout << "Connection failed" << std::endl;
+    connected = false;
+    attempt_reconnect();
+  }
+
+  void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+    std::cout << "Received message: " << msg->get_payload() << std::endl;
+  }
+
+  void attempt_reconnect() {
+    if (retries < max_retries) {
+      std::cout << "Attempting to reconnect (" << retries + 1 << "/" << max_retries << ")" << std::endl;
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      connect(uri);
+      retries++;
+    } else {
+      std::cout << "Max retries reached. Giving up." << std::endl;
+    }
+  }
+
+  client c;
+  websocketpp::connection_hdl hdl;
+  bool connected = false;
+  int retries;
+  const int max_retries;
+  std::string uri;
+};
+```
+
+3. **Main Function**: Initialize the WebSocket client and start the ping thread.
+
+```cpp
+int main() {
+  WebSocketClient wsClient;
+  std::thread ping_thread(&WebSocketClient::send_ping, &wsClient);
+  wsClient.connect("ws://localhost:9104");
+  ping_thread.join();
+  return 0;
+}
+```
+
+By following these steps, you can keep the WebSocket connection alive and attempt to reconnect if the connection is lost, up to a maximum of 5 times.
+
+
+## Keeping WebSocket Connection Alive in TypeScript
+
+To keep the WebSocket connection always online and check whether the server is down, you can implement a mechanism to periodically send ping messages and attempt reconnection if the connection is lost. Here is an example of how to achieve this in TypeScript:
+
+1. **Define WebSocket Client Class**: Define a WebSocket client class that handles connection, ping, and reconnection.
+
+```typescript
+class WebSocketClient {
+  private ws: WebSocket | null = null;
+  private retries: number = 0;
+  private maxRetries: number = 5;
+  private uri: string;
+  private pingInterval: number = 10000; // 10 seconds
+
+  constructor(uri: string) {
+    this.uri = uri;
+    this.connect();
+  }
+
+  private connect() {
+    this.ws = new WebSocket(this.uri);
+
+    this.ws.onopen = () => {
+      console.log("Connected to WebSocket server");
+      this.retries = 0;
+      this.startPing();
+    };
+
+    this.ws.onclose = () => {
+      console.log("Connection closed");
+      this.attemptReconnect();
+    };
+
+    this.ws.onerror = () => {
+      console.log("Connection error");
+      this.attemptReconnect();
+    };
+
+    this.ws.onmessage = (event) => {
+      console.log("Received message:", event.data);
+    };
+  }
+
+  private startPing() {
+    setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send("ping");
+      }
+    }, this.pingInterval);
+  }
+
+  private attemptReconnect() {
+    if (this.retries < this.maxRetries) {
+      console.log(`Attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
+      setTimeout(() => {
+        this.retries++;
+        this.connect();
+      }, 5000); // 5 seconds
+    } else {
+      console.log("Max retries reached. Giving up.");
+    }
+  }
+}
+```
+
+2. **Initialize WebSocket Client**: Create an instance of the WebSocket client and connect to the server.
+
+```typescript
+const wsClient = new WebSocketClient("ws://localhost:9104");
+```
+
+By following these steps, you can keep the WebSocket connection alive and attempt to reconnect if the connection is lost, up to a maximum of 5 times.
+
+
+## Exporting and Importing Instances in JavaScript
+
+When you export an instance of a class in JavaScript and import it in multiple files, each import will reference the same instance. This is because JavaScript modules are singletons, meaning that the module is evaluated once and the same instance is shared across all imports.
+
+### Example
+
+1. **Define the Class and Export the Instance**:
+
+```javascript
+// A.js
+class A {
+  constructor() {
+    this.deviceList = [];
+  }
+}
+
+const x = new A();
+export default x;
+```
+
+2. **Import the Instance in Multiple Files**:
+
+```javascript
+// file1.js
+import x from './A.js';
+x.deviceList.push('Device1');
+console.log(x.deviceList); // Output: ['Device1']
+
+// file2.js
+import x from './A.js';
+console.log(x.deviceList); // Output: ['Device1']
+x.deviceList.push('Device2');
+console.log(x.deviceList); // Output: ['Device1', 'Device2']
+
+// file3.js
+import x from './A.js';
+console.log(x.deviceList); // Output: ['Device1', 'Device2']
+```
+
+In this example, `x` is the same instance of `A` across `file1.js`, `file2.js`, and `file3.js`. Any changes made to `x.deviceList` in one file will be reflected in the other files.
+
+### Conclusion
+
+When you export an instance of a class and import it in multiple files, all imports will reference the same instance. This allows you to share state across different parts of your application.
+
+
+
+## Using Shared Instances in Vue Components
+
+When you use a shared instance in a Vue component and bind its properties to the UI, you need to ensure that Vue reactivity is maintained. Simply assigning the shared instance's property to a local variable will not make it reactive. Instead, you should directly use the shared instance's property in your component's reactive state.
+
+Here's an example of how to achieve this:
+
+1. **Define the Shared Instance**:
+
+```javascript
+// A.js
+class A {
+  constructor() {
+    this.deviceList = [];
+  }
+}
+
+const x = new A();
+export default x;
+```
+
+2. **Use the Shared Instance in a Vue Component**:
+
+```vue
+<!-- MyComponent.vue -->
+<template>
+  <div>
+    <ul>
+      <li v-for="device in deviceList" :key="device">{{ device }}</li>
+    </ul>
+  </div>
+</template>
+
+<script>
+import { reactive, toRefs } from 'vue';
+import x from './A.js';
+
+export default {
+  setup() {
+    const state = reactive({
+      deviceList: x.deviceList
+    });
+
+    return {
+      ...toRefs(state)
+    };
+  }
+};
+</script>
+```
+
+3. **Update the Shared Instance in Another File**:
+
+```javascript
+// updateDeviceList.js
+import x from './A.js';
+
+function addDevice(device) {
+  x.deviceList.push(device);
+}
+
+export { addDevice };
+```
+
+4. **Trigger Updates**:
+
+```javascript
+// main.js or any other file
+import { addDevice } from './updateDeviceList.js';
+
+addDevice('Device1');
+addDevice('Device2');
+```
+
+By using `reactive` and `toRefs` in the Vue component, you ensure that changes to `x.deviceList` are reactive and will update the UI accordingly.
+
+```vue
+<!-- MyComponent.vue -->
+<template>
+  <div>
+    <ul>
+      <li v-for="device in deviceList" :key="device">{{ device }}</li>
+    </ul>
+  </div>
+</template>
+
+<script>
+import { ref, watch } from 'vue';
+import x from './A.js';
+
+export default {
+  setup() {
+    const deviceList = ref(x.deviceList);
+
+    watch(
+      () => x.deviceList,
+      (newList) => {
+        deviceList.value = newList;
+      },
+      { deep: true }
+    );
+
+    return {
+      deviceList
+    };
+  }
+};
+</script>
+```

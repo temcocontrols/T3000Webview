@@ -7,14 +7,23 @@ import Hvac from "../../Hvac";
 class WebSocketClient {
 
   private socket: WebSocket;
+  private retries: number = 0;
+  private maxRetries: number = 5;
+  private pingInterval: number = 10000; // 10 seconds
+  private uri: string;
+
   public messageModel: MessageModel;
   public messageData: string;
 
-  constructor() {}
+  constructor() { }
 
-  public Initialize() {
+  public connect() {
 
-    this.socket = new WebSocket('ws://localhost:9104');
+    this.uri = this.getUri();
+
+    //ws://localhost:9104 || ws://127.0.0.1:9104
+    const wsUri = `ws://${this.uri}:9104`;
+    this.socket = new WebSocket(wsUri);
 
     this.socket.onopen = this.onOpen.bind(this);
     this.socket.onmessage = this.onMessage.bind(this);
@@ -22,20 +31,56 @@ class WebSocketClient {
     this.socket.onerror = this.onError.bind(this);
   }
 
-  public generateUUID() {
-    let d = new Date().getTime();
-    let d2 = (performance && performance.now && performance.now() * 1000) || 0;
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      let r = Math.random() * 16;
-      if (d > 0) {
-        r = (d + r) % 16 | 0;
-        d = Math.floor(d / 16);
-      } else {
-        r = (d2 + r) % 16 | 0;
-        d2 = Math.floor(d2 / 16);
+  private onOpen(event: Event) {
+    console.log('= Ws connection opened:', event);
+
+    this.retries = 0;
+    // this.startPing();
+
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.bindCurrentClient();
+    }
+  }
+
+  private onMessage(event: MessageEvent) {
+    console.log('= Ws message received:', event.data);
+
+    this.processMessage(event.data);
+  }
+
+  private onClose(event: CloseEvent) {
+    console.log('= Ws connection closed:', event);
+    this.attemptReconnect();
+  }
+
+  private onError(event: Event) {
+    console.error('= Ws error:', event);
+    this.attemptReconnect();
+  }
+
+  private startPing() {
+    setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send("ping");
       }
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    }, this.pingInterval);
+  }
+
+  private attemptReconnect() {
+    if (this.retries < this.maxRetries) {
+      console.log(`= Ws attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
+      setTimeout(() => {
+        this.retries++;
+        this.connect();
+      }, 5000); // 5 seconds
+    } else {
+      console.log("= Ws max retries reached. Giving up.");
+    }
+  }
+
+  public getUri() {
+    const url = new URL(window.location.href);
+    return url.hostname;
   }
 
   public bindCurrentClient() {
@@ -59,42 +104,7 @@ class WebSocketClient {
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
 
-    console.log('= Ws bind msg:', this.messageData)
-
     this.sendMessage(this.messageData);
-  }
-
-  private onOpen(event: Event) {
-    console.log('= Ws connection opened:', event);
-    if (this.socket.readyState === WebSocket.OPEN) {
-      this.bindCurrentClient();
-    }
-  }
-
-  private onMessage(event: MessageEvent) {
-    console.log('= Ws message received:', event.data);
-
-    this.processMessage(event.data);
-  }
-
-  private onClose(event: CloseEvent) {
-    console.log('= Ws connection closed:', event);
-
-    // Attempt to reconnect after a delay
-    setTimeout(() => {
-      console.log('= Ws attempting to reconnect...');
-      this.Initialize();
-    }, 5000); // Reconnect after 5 seconds
-  }
-
-  private onError(event: Event) {
-    console.error('= Ws error:', event);
-
-    // Attempt to reconnect after a delay
-    setTimeout(() => {
-      console.log('= Ws attempting to reconnect...');
-      this.Initialize();
-    }, 5000); // Reconnect after 5 seconds
   }
 
   public sendMessage(message: string) {
@@ -107,6 +117,22 @@ class WebSocketClient {
         this.socket.send(message);
       };
     }
+  }
+
+  public generateUUID() {
+    let d = new Date().getTime();
+    let d2 = (performance && performance.now && performance.now() * 1000) || 0;
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      let r = Math.random() * 16;
+      if (d > 0) {
+        r = (d + r) % 16 | 0;
+        d = Math.floor(d / 16);
+      } else {
+        r = (d2 + r) % 16 | 0;
+        d2 = Math.floor(d2 / 16);
+      }
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
   }
 
   //#region  Format Message
@@ -314,6 +340,7 @@ class WebSocketClient {
   public HandleGetPanelsListRes(data) {
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
+    console.log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList)
   }
 
   public HandleGetEntriesRes(data) {

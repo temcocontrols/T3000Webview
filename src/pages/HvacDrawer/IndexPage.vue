@@ -1000,7 +1000,7 @@ function initExternalBrowserOpt() {
   }
 
   // connect to the ws://localhost:9104 websocket server
-  Hvac.WsClient.Initialize();
+  Hvac.WsClient.connect();
 
   // check if need to show the device list dialog
   setTimeout(() => {

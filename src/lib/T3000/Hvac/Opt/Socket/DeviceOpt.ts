@@ -29,6 +29,10 @@ class DeviceOpt {
   // init data with real panel list
   initPanelList(plList) {
 
+    if (plList === undefined || plList === null) {
+      return;
+    }
+
     /*
     {
       "object_instance": 237219,
