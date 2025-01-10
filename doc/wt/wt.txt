@@ -231,8 +231,29 @@ mouse select, multiple select, drag events.
 1. Added new functions to load the dynamic element count for each graphic panel.
 2. Updated the communication type of socket client for sending real message to T3000.
 
-
 2025-01-06/07
 1. Added more events to the device and graphic panel, simulated how to load real data, send message and process the data.
 2. Added new functions to load the dynamic element count for each graphic panel.
 3. Updated the communication type of socket client for sending real message to T3000.
+
+2025-01-08
+1. Updated socket server with following functions:
+# Add data model MessageModel to handle the message content & Add relate events to send the message to T3000
+# Update rust socket server and add bind client function to store the client info
+# Update process message function to bind the client info
+
+2025-01-09
+1. Updated socket server and webview with following changes:
+# Keep the orgin ui layout when open the webview from T3000
+# Update socket message type set BIND_DEVICE=13
+# Update rust server to block wrong format messages
+# Update device panel with real device data
+
+2025-01-10
+1. Tried to fix error: Message payload is larger than the default config size =>
+Currently this results in an error like Capacity(MessageTooLong { size: 2319073409, max_size: 16777216 }) on the receiving end
+Struct tungstenite::protocol::WebSocketConfig
+https://docs.rs/tungstenite/0.21.0/tungstenite/protocol/struct.WebSocketConfig.html
+
+2. Result returned in a incorrect format, should including action field and the error field with text content also.
+3. Need to set the device connection type to wifi to get the panel list info. this is not working under USB model.
