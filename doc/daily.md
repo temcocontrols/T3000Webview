@@ -624,12 +624,13 @@ int main() {
 By following these steps, you can add a custom string to the WebSocket connection, pass it to the server, and handle it on the server side to decide whether to send a message back to the related clients.
 
 
-# Using WebSocket++ with boost 1.66.0
+## Using WebSocket++ with boost 1.66.0
 
-# Additional library
+## Additional library
 D:\1026\boost_1_66_0-bin-msvc-all-32-64\boost_1_66_0\lib32-msvc-14.1
 
-# Additional Include Directories
+## Additional Include Directories
+
 D:\1025\github\zaphoyd\websocketpp\
 D:\1026\boost_1_66_0-bin-msvc-all-32-64\boost_1_66_0
 
@@ -728,6 +729,8 @@ private:
 
     client c;
 };
+
+## --
 
 ## Connecting to WebSocket Server using Windows Sockets
 
@@ -1821,6 +1824,7 @@ int main() {
 
 
 WebSocket
+
 ## Keeping WebSocket Connection Alive and Reconnecting
 
 To keep the WebSocket connection always online and check whether the server is down, you can implement a mechanism to periodically send ping messages and attempt reconnection if the connection is lost. Here is an example of how to achieve this in C++:
@@ -2159,3 +2163,425 @@ export default {
 </script>
 ```
 
+==WebSocket error: Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
+
+
+
+```cpp
+void sendMessage(SOCKET ConnectSocket, const CString& message) {
+  // Convert the CString to a UTF-8 encoded string
+  int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message, -1, nullptr, 0, nullptr, nullptr);
+  std::vector<char> utf8Message(bufferSize);
+  WideCharToMultiByte(CP_UTF8, 0, message, -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+  // Create WebSocket frame
+  std::vector<unsigned char> frame;
+
+  // FIN and opcode (0x81 for text frame)
+  frame.push_back(0x81);
+
+  // Mask and payload length
+  size_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+  if (msgLen <= 125) {
+    frame.push_back(static_cast<unsigned char>(msgLen));
+  } else if (msgLen <= 65535) {
+    frame.push_back(126);
+    frame.push_back((msgLen >> 8) & 0xFF);
+    frame.push_back(msgLen & 0xFF);
+  } else {
+    frame.push_back(127);
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((msgLen >> (8 * i)) & 0xFF);
+    }
+  }
+
+  // Masking key (randomly generated)
+  unsigned char maskingKey[4];
+  for (int i = 0; i < 4; ++i) {
+    maskingKey[i] = static_cast<unsigned char>(rand() % 256);
+  }
+  frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+  // Mask the payload data
+  for (size_t i = 0; i < msgLen; ++i) {
+    frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+  }
+
+  // Split the frame into smaller chunks if necessary
+  size_t maxChunkSize = 1024; // Define a maximum chunk size
+  for (size_t i = 0; i < frame.size(); i += maxChunkSize) {
+    size_t chunkSize = std::min(maxChunkSize, frame.size() - i);
+    send(ConnectSocket, reinterpret_cast<const char*>(frame.data() + i), chunkSize, 0);
+  }
+}
+```
+
+## Debugging Rust in Visual Studio Code
+
+To debug Rust code in Visual Studio Code (VS Code), follow these steps:
+
+1. **Install Rust and Cargo**: Ensure you have Rust and Cargo installed. You can install them using [rustup](https://rustup.rs/).
+
+2. **Install VS Code**: Download and install Visual Studio Code from the [official website](https://code.visualstudio.com/).
+
+3. **Install Rust Extension**: Open VS Code and install the Rust extension by running the following command in the Command Palette (Ctrl+Shift+P):
+
+  ```
+  ext install rust-lang.rust
+  ```
+
+4. **Install CodeLLDB Extension**: Install the CodeLLDB extension for debugging support by running the following command in the Command Palette:
+
+  ```
+  ext install vadimcn.vscode-lldb
+  ```
+
+5. **Configure Launch Settings**: Create a `launch.json` file in the `.vscode` directory of your project to configure the debugger. Here is an example configuration:
+
+  ```json
+  {
+    "version": "0.2.0",
+    "configurations": [
+     {
+      "name": "Rust API Debug",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/your_executable",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "preLaunchTask": "cargo build",
+      "sourceLanguages": ["rust"]
+     }
+    ]
+  }
+  ```
+
+  Replace `your_executable` with the name of your compiled Rust binary.
+
+6. **Add Prelaunch Task**: Create a `tasks.json` file in the `.vscode` directory to define the prelaunch task for building your project:
+
+  ```json
+  {
+    "version": "2.0.0",
+    "tasks": [
+     {
+      "label": "cargo build",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$rustc"]
+     }
+    ]
+  }
+  ```
+
+7. **Start Debugging**: Set breakpoints in your Rust code by clicking in the gutter next to the line numbers. Then, start debugging by selecting the debug configuration from the Run and Debug view (Ctrl+Shift+D) and clicking the green play button.
+
+By following these steps, you can debug Rust code in Visual Studio Code effectively.
+
+
+{"header":{"clientId":"-","from":"T3"},"message":{"action":13,"clientId":"11111111-1111-1111-1111-111111111111"}}
+
+Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
+
+To calculate the maximum length of a `CString` that can be sent given the `max_size` of 16777216 bytes, you need to consider the overhead of the WebSocket frame. The WebSocket frame includes a header and possibly a masking key.
+
+1. **WebSocket Frame Overhead**:
+  - **FIN and opcode**: 1 byte
+  - **Mask and payload length**: 1 byte (for payloads <= 125 bytes), 3 bytes (for payloads <= 65535 bytes), or 9 bytes (for larger payloads)
+  - **Masking key**: 4 bytes (if masked)
+
+For large payloads (greater than 65535 bytes), the overhead is 1 byte (FIN and opcode) + 9 bytes (mask and payload length) + 4 bytes (masking key) = 14 bytes.
+
+2. **Calculate Maximum Payload Size**:
+  - `max_size` = 16777216 bytes
+  - Overhead = 14 bytes
+  - Maximum payload size = `max_size` - Overhead = 16777216 - 14 = 16777202 bytes
+
+3. **CString Length**:
+  - The maximum length of a `CString` that can be sent is 16777202 bytes.
+
+Therefore, the maximum length of a `CString` that can be sent given the `max_size` of 16777216 bytes is 16777202 bytes.
+
+
+To transfer the maximum length of a string in kilobytes (KB), you can convert the bytes to kilobytes by dividing the byte size by 1024. Here is the implementation:
+
+```cpp
+#include <iostream>
+
+int main() {
+  // Maximum payload size in bytes
+  size_t maxPayloadSizeBytes = 16777202;
+
+  // Convert bytes to kilobytes
+  size_t maxPayloadSizeKB = maxPayloadSizeBytes / 1024;
+
+  std::cout << "Maximum payload size: " << maxPayloadSizeKB << " KB" << std::endl;
+
+  return 0;
+}
+```
+
+This code calculates the maximum payload size in kilobytes and prints it to the console.
+
+
+## Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
+
+{"header":{"clientId":"-","from":"T3"},"message":{"action":13,"clientId":"11111111-1111-1111-1111-111111111111"}}
+
+Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
+
+To transfer 295201692257404 bytes to kilobytes (KB), you can divide the byte size by 1024. Here is the calculation:
+
+```markdown
+295201692257404 bytes / 1024 = 288292617823.84 KB
+```
+
+So, 295201692257404 bytes is approximately 288292617823.84 KB.
+
+To transfer a JSON string that is 64KB large to bytes, you can convert kilobytes to bytes by multiplying the size in kilobytes by 1024. Here is the calculation:
+
+```markdown
+64 KB * 1024 = 65536 bytes
+```
+
+So, a JSON string that is 64KB large is equivalent to 65536 bytes.
+
+// Log the frame size
+let frame_size = msg.into_data().len();
+println!("Frame size: {} bytes", frame_size);
+
+No, you do not always need to mask the payload data when sending a JSON string message to a Tokio WebSocket server. Masking is required for client-to-server messages as per the WebSocket protocol, but server-to-client messages do not need to be masked. If you are implementing a client, you should mask the payload data. If you are implementing a server, you do not need to mask the payload data.
+
+```cpp
+// Mask the payload data (only if you are implementing a client)
+for (size_t i = 0; i < msgLen; ++i) {
+  frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+}
+
+If you do not mask the data when sending a message from a client to a Tokio WebSocket server, it may result in a protocol violation, and the server could reject the message or close the connection. The WebSocket protocol requires that client-to-server messages be masked to prevent certain types of attacks. Therefore, it is important to mask the payload data when implementing a WebSocket client.
+
+```cpp
+// Mask the payload data (only if you are implementing a client)
+for (size_t i = 0; i < msgLen; ++i) {
+  frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+}
+
+// Send the frame
+send(ConnectSocket, reinterpret_cast<const char*>(frame.data()), frame.size(), 0);
+```
+```
+To check the encoding of a JSON string text on the server side using Tokio, you can inspect the received data and ensure it is properly decoded. Here is an example of how to handle and check the encoding of incoming WebSocket messages in a Tokio server:
+
+1. **Set Up Tokio WebSocket Server**: Create a Tokio WebSocket server that listens for incoming connections.
+
+```rust
+use tokio::net::TcpListener;
+use tokio_tungstenite::accept_async;
+use futures_util::{StreamExt, SinkExt};
+
+#[tokio::main]
+async fn main() {
+  let addr = "127.0.0.1:9001";
+  let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
+
+  while let Ok((stream, _)) = listener.accept().await {
+    tokio::spawn(handle_connection(stream));
+  }
+}
+
+async fn handle_connection(stream: tokio::net::TcpStream) {
+  let ws_stream = accept_async(stream).await.expect("Error during the websocket handshake");
+
+  let (mut write, mut read) = ws_stream.split();
+
+  while let Some(message) = read.next().await {
+    match message {
+      Ok(msg) => {
+        if msg.is_text() {
+          let text = msg.into_text().expect("Failed to convert message to text");
+          println!("Received text message: {}", text);
+
+          // Check encoding
+          if text.is_ascii() {
+            println!("The message is ASCII encoded.");
+          } else {
+            println!("The message is not ASCII encoded.");
+          }
+
+          // Process JSON
+          match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(json) => println!("Received valid JSON: {:?}", json),
+            Err(e) => println!("Failed to parse JSON: {}", e),
+          }
+        }
+      }
+      Err(e) => println!("Error receiving message: {}", e),
+    }
+  }
+}
+```
+
+2. **Check Encoding**: In the `handle_connection` function, after receiving a text message, you can check if the message is ASCII encoded using the `is_ascii` method. You can also attempt to parse the message as JSON using `serde_json`.
+
+By following these steps, you can check the encoding of incoming JSON string text messages on the server side using Tokio.
+
+The default text encoding for a Tokio server is UTF-8. When handling text data, such as JSON strings, it is common to assume that the data is encoded in UTF-8. This is because UTF-8 is the standard encoding for JSON and is widely used for text data in web applications.
+
+When receiving text messages in a Tokio WebSocket server, you can safely assume that the text is UTF-8 encoded unless specified otherwise. Here is an example of how to handle and decode UTF-8 text messages in a Tokio WebSocket server:
+
+```rust
+use tokio::net::TcpListener;
+use tokio_tungstenite::accept_async;
+use futures_util::{StreamExt, SinkExt};
+
+#[tokio::main]
+async fn main() {
+  let addr = "127.0.0.1:9001";
+  let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
+
+  while let Ok((stream, _)) = listener.accept().await {
+    tokio::spawn(handle_connection(stream));
+  }
+}
+
+async fn handle_connection(stream: tokio::net::TcpStream) {
+  let ws_stream = accept_async(stream).await.expect("Error during the websocket handshake");
+
+  let (mut write, mut read) = ws_stream.split();
+
+  while let Some(message) = read.next().await {
+    match message {
+      Ok(msg) => {
+        if msg.is_text() {
+          let text = msg.into_text().expect("Failed to convert message to text");
+          println!("Received text message: {}", text);
+
+          // Process JSON
+          match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(json) => println!("Received valid JSON: {:?}", json),
+            Err(e) => println!("Failed to parse JSON: {}", e),
+          }
+        }
+      }
+      Err(e) => println!("Error receiving message: {}", e),
+    }
+  }
+}
+```
+
+In this example, the server assumes that incoming text messages are UTF-8 encoded and processes them accordingly.
+
+
+The maximum frame size for `tokio::net::TcpStream` is not explicitly defined by Tokio itself. Instead, it depends on the underlying TCP/IP protocol and the operating system's configuration. TCP does not impose a strict limit on the size of the data that can be sent in a single write operation, but it is generally recommended to keep the frame size within reasonable limits to avoid issues with network congestion and buffer sizes.
+
+For WebSocket communication over `tokio::net::TcpStream`, the maximum frame size is typically determined by the WebSocket protocol and the WebSocket library you are using. For example, the `tokio-tungstenite` library has a default maximum frame size of 16 MiB (16777216 bytes).
+
+If you need to handle larger frames, you can configure the WebSocket library to increase the maximum frame size. Here is an example of how to configure the maximum frame size using `tokio-tungstenite`:
+
+```rust
+use tokio::net::TcpListener;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+use tokio_tungstenite::accept_async_with_config;
+use futures_util::{StreamExt, SinkExt};
+
+#[tokio::main]
+async fn main() {
+  let addr = "127.0.0.1:9001";
+  let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
+
+  let config = WebSocketConfig {
+    max_frame_size: Some(32 * 1024 * 1024), // 32 MiB
+    ..Default::default()
+  };
+
+  while let Ok((stream, _)) = listener.accept().await {
+    tokio::spawn(handle_connection(stream, config.clone()));
+  }
+}
+
+async fn handle_connection(stream: tokio::net::TcpStream, config: WebSocketConfig) {
+  let ws_stream = accept_async_with_config(stream, Some(config))
+    .await
+    .expect("Error during the websocket handshake");
+
+  let (mut write, mut read) = ws_stream.split();
+
+  while let Some(message) = read.next().await {
+    match message {
+      Ok(msg) => {
+        if msg.is_text() {
+          let text = msg.into_text().expect("Failed to convert message to text");
+          println!("Received text message: {}", text);
+
+          // Process JSON
+          match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(json) => println!("Received valid JSON: {:?}", json),
+            Err(e) => println!("Failed to parse JSON: {}", e),
+          }
+        }
+      }
+      Err(e) => println!("Error receiving message: {}", e),
+    }
+  }
+}
+```
+
+In this example, the maximum frame size is set to 32 MiB. Adjust the `max_frame_size` value as needed for your application.
+
+To change the maximum frame size for a Tokio WebSocket server using the `tokio-tungstenite` library, you can configure the `WebSocketConfig` with the desired `max_frame_size` and pass it to the `accept_async_with_config` function. Here is an example:
+
+```rust
+use tokio::net::TcpListener;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+use tokio_tungstenite::accept_async_with_config;
+use futures_util::{StreamExt, SinkExt};
+
+#[tokio::main]
+async fn main() {
+  let addr = "127.0.0.1:9001";
+  let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
+
+  let config = WebSocketConfig {
+    max_frame_size: Some(32 * 1024 * 1024), // 32 MiB
+    ..Default::default()
+  };
+
+  while let Ok((stream, _)) = listener.accept().await {
+    tokio::spawn(handle_connection(stream, config.clone()));
+  }
+}
+
+async fn handle_connection(stream: tokio::net::TcpStream, config: WebSocketConfig) {
+  let ws_stream = accept_async_with_config(stream, Some(config))
+    .await
+    .expect("Error during the websocket handshake");
+
+  let (mut write, mut read) = ws_stream.split();
+
+  while let Some(message) = read.next().await {
+    match message {
+      Ok(msg) => {
+        if msg.is_text() {
+          let text = msg.into_text().expect("Failed to convert message to text");
+          println!("Received text message: {}", text);
+
+          // Process JSON
+          match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(json) => println!("Received valid JSON: {:?}", json),
+            Err(e) => println!("Failed to parse JSON: {}", e),
+          }
+        }
+      }
+      Err(e) => println!("Error receiving message: {}", e),
+    }
+  }
+}
+```
+
+In this example, the maximum frame size is set to 32 MiB. Adjust the `max_frame_size` value as needed for your application.

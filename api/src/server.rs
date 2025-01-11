@@ -20,12 +20,20 @@ use crate::{
 
 use super::modbus_register::routes::modbus_register_routes;
 use super::user::routes::user_routes;
-use tokio_tungstenite::accept_async;
-// use tokio_tungstenite::tungstenite::protocol::Message;
+
 use futures_util::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
+
+use tokio_tungstenite::accept_async;
+use tokio_tungstenite::accept_async_with_config;
+use tokio_tungstenite::accept_hdr_async;
+use tokio_tungstenite::accept_hdr_async_with_config;
+
+use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
+
 use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use chrono::Local;
 use std::fs::OpenOptions;
@@ -139,7 +147,11 @@ async fn shutdown_signal(state: AppState) {
 
 type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
-async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box<dyn Error>> {
+async fn handle_websocket(
+    stream: TcpStream,
+    clients: Clients,
+    config: WebSocketConfig,
+) -> Result<(), Box<dyn Error>> {
     /*
      println!("==Start handling websocket");
      println!("==Stream: {:?}", stream);
@@ -152,11 +164,40 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     log_message(&format!("==Clients 1st: {:?}", clients), true);
     log_message(&format!(""), true);
 
-    let ws_stream = match accept_async(stream).await {
+    /*
+    let ws_stream = match accept_async_with_config(stream, Some(config)).await {
         Ok(ws) => ws,
         Err(e) => {
             // println!("==Failed to accept websocket connection: {:?}", e);
-            log_message(&format!("==Failed to accept websocket connection: {:?}", e), true);
+            log_message(
+                &format!("==Failed to accept websocket connection: {:?}", e),
+                true,
+            );
+            return Err(Box::new(e));
+        }
+    };
+    */
+
+    let ws_stream = match accept_hdr_async_with_config(
+        stream,
+        |req: &Request, mut response: Response| {
+            // Inspect and modify the request and response headers
+            println!("Received a connection request: {:#?}", req);
+            println!("Response with: {:#?}", response);
+            // Optionally modify the response headers
+            // response.headers_mut().insert(...);
+            Ok(response)
+        },
+        Some(config),
+    )
+    .await
+    {
+        Ok(ws) => ws,
+        Err(e) => {
+            log_message(
+                &format!("Failed to accept websocket connection: {:?}", e),
+                true,
+            );
             return Err(Box::new(e));
         }
     };
@@ -180,6 +221,11 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
     while let Some(msg) = read.next().await {
         let msg = msg?;
 
+        // Log the frame size
+        let info_msg = msg.clone();
+        let frame_size = info_msg.into_data().len();
+        log_message(&format!("==Frame size: {} bytes", frame_size), true);
+
         // println!("==Recived message 1st:{:?}", msg);
         log_message(&format!("==Recived message 1st:{:?}", msg), true);
 
@@ -190,7 +236,10 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                 Ok(json) => json,
                 Err(_) => {
                     // println!("==1st message with incorrect format: {}", msg_text);
-                    log_message(&format!("==1st message with incorrect format: {}", msg_text), true);
+                    log_message(
+                        &format!("==1st message with incorrect format: {}", msg_text),
+                        true,
+                    );
                     continue;
                 }
             };
@@ -222,8 +271,13 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                                 let text_message = Message::text(message.to_string());
                                 if let Err(e) = client.send(text_message) {
                                     // println!("==Failed to send text msg to client ==1111: {:?}", e);
-                                    log_message(&format!("==Failed to send text msg to client ==1111: {:?}", e), true);
-
+                                    log_message(
+                                        &format!(
+                                            "==Failed to send text msg to client ==1111: {:?}",
+                                            e
+                                        ),
+                                        true,
+                                    );
                                 }
                             }
                         }
@@ -245,7 +299,13 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                                 if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
                                     if let Err(e) = client.send(msg.clone()) {
                                         // println!("==Failed to send message to client !=1111: {:?}", e);
-                                        log_message(&format!("==Failed to send message to client !=1111: {:?}",e), true);
+                                        log_message(
+                                            &format!(
+                                                "==Failed to send message to client !=1111: {:?}",
+                                                e
+                                            ),
+                                            true,
+                                        );
                                     }
                                 }
                             }
@@ -258,12 +318,18 @@ async fn handle_websocket(stream: TcpStream, clients: Clients) -> Result<(), Box
                             if *id != Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
                                 if let Err(e) = client.send(msg.clone()) {
                                     // println!("==Failed to send message to client !=1111: {:?}", e);
-                                    log_message(&format!("==Failed to send message to client !=1111: {:?}", e), true);
+                                    log_message(
+                                        &format!(
+                                            "==Failed to send message to client !=1111: {:?}",
+                                            e
+                                        ),
+                                        true,
+                                    );
                                 }
                             }
                         }
                     } else {
-                       println!("==Action is neither an integer nor a string");
+                        println!("==Action is neither an integer nor a string");
                     }
                 }
             }
@@ -281,12 +347,17 @@ async fn start_websocket_server() {
             .unwrap();
 
         // println!("==WebSocket server listening on {:?}", ws_listener.local_addr());
-        log_message(&format!("==WebSocket server listening on {:?}", ws_listener.local_addr()), true);
+        log_message(
+            &format!(
+                "==WebSocket server listening on {:?}",
+                ws_listener.local_addr()
+            ),
+            true,
+        );
 
         loop {
             match ws_listener.accept().await {
                 Ok((socket, addr)) => {
-
                     /*
                      println!("");
                      println!("");
@@ -294,14 +365,21 @@ async fn start_websocket_server() {
                      println!("==Socket details: {:?}", socket);
                     */
 
-                    log_message(&format!("", ), true);
+                    log_message(&format!("",), true);
                     log_message(&format!("",), true);
                     log_message(&format!("==New client connected: {:?}", addr), true);
                     log_message(&format!("==Socket details: {:?}", socket), true);
 
+                    let config = WebSocketConfig {
+                        max_message_size: Some(100 * 1024 * 1024), // 100 MB
+                        max_frame_size: None,                      // No frame limit
+                        // max_frame_size: Some(16 << 20), // 32 MiB
+                        ..Default::default()
+                    };
+
                     let clients = clients.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = handle_websocket(socket, clients).await {
+                        if let Err(e) = handle_websocket(socket, clients, config.clone()).await {
                             // println!("==WebSocket error: {:?}", e);
                             log_message(&format!("==WebSocket error: {:?}", e), true);
                         }
