@@ -2585,3 +2585,57 @@ async fn handle_connection(stream: tokio::net::TcpStream, config: WebSocketConfi
 ```
 
 In this example, the maximum frame size is set to 32 MiB. Adjust the `max_frame_size` value as needed for your application.
+
+
+## In 32-bit application, should use uint64_t to store the messge length value for some large json text string.
+
+std::vector<unsigned char> CreateWebSocketFrame(const CString& message) {
+
+    // Convert the CString to a UTF-8 encoded string
+    int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message, -1, nullptr, 0, nullptr, nullptr);
+    if (bufferSize <= 0) {
+        throw std::runtime_error("Failed to convert CString to UTF-8");
+    }
+
+    std::vector<char> utf8Message(bufferSize);
+    WideCharToMultiByte(CP_UTF8, 0, message, -1, utf8Message.data(), bufferSize, nullptr, nullptr);
+
+    // Create WebSocket frame
+    std::vector<unsigned char> frame;
+
+    // FIN and opcode (0x81 for text frame)
+    frame.push_back(0x81);
+
+    // Mask and payload length, should use uint64_t instead of size_t for 32-bit application
+    uint64_t msgLen = utf8Message.size() - 1; // Exclude null terminator
+    if (msgLen <= 125) {
+        frame.push_back(0x80 | static_cast<unsigned char>(msgLen));
+    }
+    else if (msgLen <= 65535) {
+        frame.push_back(0x80 | 126);
+        frame.push_back((msgLen >> 8) & 0xFF);
+        frame.push_back(msgLen & 0xFF);
+    }
+    else {
+        frame.push_back(0x80 | 127);
+        for (int i = 7; i >= 0; --i) {
+            frame.push_back((msgLen >> (8 * i)) & 0xFF);
+        }
+    }
+
+    // Masking key (securely generated)
+    std::random_device rd;
+    std::uniform_int_distribution<unsigned int> dist(0, 255);
+    unsigned char maskingKey[4];
+    for (int i = 0; i < 4; ++i) {
+        maskingKey[i] = dist(rd);
+    }
+    frame.insert(frame.end(), maskingKey, maskingKey + 4);
+
+    // Mask the payload data
+    for (size_t i = 0; i < msgLen; ++i) {
+        frame.push_back(utf8Message[i] ^ maskingKey[i % 4]);
+    }
+
+    return frame;
+}

@@ -181,11 +181,8 @@ async fn handle_websocket(
     let ws_stream = match accept_hdr_async_with_config(
         stream,
         |req: &Request, mut response: Response| {
-            // Inspect and modify the request and response headers
-            println!("Received a connection request: {:#?}", req);
-            println!("Response with: {:#?}", response);
-            // Optionally modify the response headers
-            // response.headers_mut().insert(...);
+            log_message(&format!("Received a connection request: {:#?}", req), true);
+            log_message(&format!("Response with: {:#?}", response), true);
             Ok(response)
         },
         Some(config),
@@ -371,9 +368,8 @@ async fn start_websocket_server() {
                     log_message(&format!("==Socket details: {:?}", socket), true);
 
                     let config = WebSocketConfig {
-                        max_message_size: Some(100 * 1024 * 1024), // 100 MB
-                        max_frame_size: None,                      // No frame limit
-                        // max_frame_size: Some(16 << 20), // 32 MiB
+                        max_message_size: Some(64 * 1024 * 1024), // 100 MB
+                        max_frame_size: Some(16 << 20), // 32 MiB | None No frame limit
                         ..Default::default()
                     };
 
