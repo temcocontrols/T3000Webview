@@ -1,6 +1,7 @@
 
 import { head } from "lodash";
 import DeviceOpt from "./DeviceOpt"
+import Utils5 from "../../Helper/Utils5"
 
 /*
 class Header {
@@ -20,7 +21,7 @@ class MessageModel {
 
   public deviceOpt: DeviceOpt;
   public browserType: string;
-  public header: { clientId: string, from: string };
+  public header: { from: string };
   public message: any;
 
   /*
@@ -58,7 +59,7 @@ class MessageModel {
     this.loadCurrentDevice();
 
     this.browserType = this.getBrowserType();
-    this.header = { clientId: '', from: this.browserType };
+    this.header = { from: this.browserType };
     this.message = {};
   }
 
@@ -96,7 +97,6 @@ class MessageModel {
 
   setHeader() {
     // load current selected device from local storage and fill the value to the header
-    this.header.clientId = '-';
     this.header.from = this.getBrowserType();
   }
 
@@ -118,9 +118,12 @@ class MessageModel {
       this.message.data = data;
     }
 
-    if (clientId != null && clientId !== undefined) {
-      this.message.clientId = clientId;
+    if(clientId!=null&&clientId!==undefined){
+      this.message.clientId = Utils5.generateUUID();
     }
+
+    // Add msg id
+    this.message.msgId = Utils5.generateUUID();
   }
 
   formatMessageData() {

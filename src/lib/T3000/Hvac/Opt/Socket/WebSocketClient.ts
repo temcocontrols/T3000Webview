@@ -2,7 +2,8 @@
 
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
-import Hvac from "../../Hvac";
+import Hvac from "../../Hvac"
+import Utils5 from '../../Helper/Utils5'
 
 class WebSocketClient {
 
@@ -39,13 +40,15 @@ class WebSocketClient {
 
     if (this.socket.readyState === WebSocket.OPEN) {
       this.bindCurrentClient();
-      this.GetPanelsList();
+      // this.GetPanelsList();
+      // this.GetInitialData(1);
+      this.GetEntries(1);
+      this.LoadGraphicEntry(1,1)
     }
   }
 
   private onMessage(event: MessageEvent) {
     console.log('= Ws message received:', event.data);
-
     this.processMessage(event.data);
   }
 
@@ -97,10 +100,10 @@ class WebSocketClient {
     }
     */
 
-    const lsClientId = this.generateUUID();
+    const clientId = Utils5.generateUUID();
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
-    this.messageModel.setMessage(13, null, null, null, lsClientId);
+    this.messageModel.setMessage(13, null, null, null, clientId);
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -118,22 +121,6 @@ class WebSocketClient {
         this.socket.send(message);
       };
     }
-  }
-
-  public generateUUID() {
-    let d = new Date().getTime();
-    let d2 = (performance && performance.now && performance.now() * 1000) || 0;
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      let r = Math.random() * 16;
-      if (d > 0) {
-        r = (d + r) % 16 | 0;
-        d = Math.floor(d / 16);
-      } else {
-        r = (d2 + r) % 16 | 0;
-        d2 = Math.floor(d2 / 16);
-      }
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
   }
 
   //#region  Format Message
@@ -260,17 +247,16 @@ class WebSocketClient {
 
   private processMessage(data: any) {
     // Implement your message processing logic here
-    console.log('= Ws processing message:', data);
-    // Example: Parse JSON data
+    // console.log('= Ws processing message:', data);
     try {
       const parsedData = JSON.parse(data);
-      console.log('= Ws parsed data:', parsedData);
+      console.log('= Ws parsed server data:', parsedData);
 
       // Further processing based on parsed data
       this.processMessageData(parsedData);
-
+      console.log('= ========================');
     } catch (error) {
-      console.error('= Ws failed to parse message data:', error);
+      console.error('= Ws failed to parse | process data:', error);
     }
   }
 

@@ -2589,7 +2589,7 @@ In this example, the maximum frame size is set to 32 MiB. Adjust the `max_frame_
 
 ## In 32-bit application, should use uint64_t to store the messge length value for some large json text string.
 
-std::vector<unsigned char> CreateWebSocketFrame(const CString& message) {
+## std::vector<unsigned char> CreateWebSocketFrame(const CString& message) {
 
     // Convert the CString to a UTF-8 encoded string
     int bufferSize = WideCharToMultiByte(CP_UTF8, 0, message, -1, nullptr, 0, nullptr, nullptr);
@@ -2639,3 +2639,32 @@ std::vector<unsigned char> CreateWebSocketFrame(const CString& message) {
 
     return frame;
 }
+
+## Wrap error message T3000
+
+void WrapErrorMessage(const Json::Value& tempjson, CString& outmsg, const CString& temp_message, Json::StreamWriterBuilder& builder) {
+    if (!temp_message.IsEmpty()) {
+        Json::Value tempjsonCopy = tempjson;
+        tempjsonCopy["error"] = temp_message.GetString();
+        const std::string output = Json::writeString(builder, tempjsonCopy);
+        outmsg = CString(output.c_str());
+    } else {
+        const std::string output = Json::writeString(builder, tempjson);
+        outmsg = CString(output.c_str());
+    }
+}
+
+To check whether a `CString` is null or empty in C++, you can use the `IsEmpty` method provided by the `CString` class. Here is an example:
+
+```cpp
+if (error_message.IsEmpty()) {
+  // The CString is null or empty
+  std::cout << "The error message is null or empty." << std::endl;
+} else {
+  // The CString is not empty
+  std::cout << "The error message is: " << (LPCTSTR)error_message << std::endl;
+}
+```
+
+The `IsEmpty` method returns `TRUE` if the `CString` is empty or contains only whitespace characters, and `FALSE` otherwise.
+
