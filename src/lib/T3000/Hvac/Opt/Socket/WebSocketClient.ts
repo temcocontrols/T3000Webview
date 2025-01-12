@@ -39,6 +39,7 @@ class WebSocketClient {
 
     if (this.socket.readyState === WebSocket.OPEN) {
       this.bindCurrentClient();
+      this.GetPanelsList();
     }
   }
 
