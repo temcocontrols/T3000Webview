@@ -1020,11 +1020,12 @@ function initExternalBrowserOpt() {
     }
   }, 1000);
 
+  /*
   // load real data from T3000
   setTimeout(() => {
     Hvac.WsClient.GetPanelsList();
-    Hvac.WsClient.GetInitialData();
   }, 1000);
+  */
 }
 
 function updateDeviceModel(isActive, data) {

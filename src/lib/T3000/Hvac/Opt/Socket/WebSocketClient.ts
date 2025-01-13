@@ -40,11 +40,10 @@ class WebSocketClient {
 
     if (this.socket.readyState === WebSocket.OPEN) {
       this.bindCurrentClient();
-      // this.GetPanelsList();
-      // this.GetInitialData(1);
-      this.GetEntries(1);
-      this.LoadGraphicEntry(1,1)
     }
+
+    // Refesh the data if re/connected to the data client
+    this.GetPanelsList();
   }
 
   private onMessage(event: MessageEvent) {
@@ -310,10 +309,20 @@ class WebSocketClient {
   public HandleGetPanelDataRes(data) {
     // action: 0, // GET_PANEL_DATA_RES
 
+    // load graphic list from GET_PANEL_DATA_RES
+    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
+
+    Hvac.DeviceOpt.initGraphicList(data);
   }
 
   public HandleGetInitialDataRes(data) {
     // action: 1, // GET_INITIAL_DATA_RES
+
+    if (!data) {
+      return;
+    }
+    const parseData = JSON.parse(data);
+    console.log('= Ws GET_INITIAL_DATA_RES', parseData);
   }
 
   public HandleSaveGraphicRes(data) {
@@ -327,7 +336,13 @@ class WebSocketClient {
   public HandleGetPanelsListRes(data) {
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
-    console.log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList)
+    console.log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
+
+    // load the first panel's panel data by default
+    const firstPanelId = data.length > 0 ? data[0].panel_number : null;
+    if (firstPanelId !== null) {
+      this.GetPanelData(firstPanelId);
+    }
   }
 
   public HandleGetEntriesRes(data) {

@@ -3,10 +3,10 @@
 
 import { ref } from 'vue'
 
-// export const deviceList = ref([]);
-
 const T3Data = {
-  deviceList: ref([])
+  deviceList: ref([]),
+  graphicList: ref([]),
+  currentDevice:ref()
 }
 
 export default T3Data

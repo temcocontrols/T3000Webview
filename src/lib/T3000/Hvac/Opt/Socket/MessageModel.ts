@@ -118,7 +118,7 @@ class MessageModel {
       this.message.data = data;
     }
 
-    if(clientId!=null&&clientId!==undefined){
+    if (clientId != null && clientId !== undefined) {
       this.message.clientId = Utils5.generateUUID();
     }
 

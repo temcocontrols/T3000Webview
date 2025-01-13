@@ -13,10 +13,14 @@ class DeviceOpt {
   public mockDeviceList: {};
   public mockGraphicList: {};
 
+  // the field used for ui rendering with QUASAR library
   public panelList: PanelInfo[];
 
+  // should use T3Data's ref fields [deviceList & graphicList] for ui automatically refreshing
+  // keep the 2 local fields here, just in case the value will be used for some other functions
   public deviceList: DeviceItem[];
   public graphicList: [];
+
   public currentDevice: {};
 
   constructor() {
@@ -97,6 +101,51 @@ class DeviceOpt {
     T3Data.deviceList.value = this.deviceList;
   }
 
+  // init graphic list for ui rendering
+  initGraphicList(gphList) {
+
+    console.log('= Dvopt t3 graphic data', gphList);
+
+    // load graphic list from GET_PANEL_DATA_RES
+    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
+    // { id, fullLabel, label, elementCount}
+    const graphicItems = gphList.filter(graphic => graphic.id.startsWith('GRP')).slice(0, 8);
+
+    const transformedGraphicItems = graphicItems.map(graphic => ({
+      id: graphic.id.includes('GRP') ? graphic.id.replace('GRP', '') : graphic.id,
+      fullLabel: graphic.description || '',
+      label: graphic.label || '',
+      elementCount: this.calculateElementCount(graphic.id) || 0
+    }));
+
+    this.graphicList = transformedGraphicItems;
+    T3Data.graphicList.value = this.graphicList;
+  }
+
+  calculateElementCount(graphicId) {
+
+    const currentDevice = T3Data.currentDevice.value;
+    if (!currentDevice) {
+      return 0;
+    }
+
+    const deviceAppStateLS = this.loadDeviceAppStateLS();
+
+    if (deviceAppStateLS) {
+      const device = deviceAppStateLS.find(
+        opt =>
+          opt?.device?.deviceId === currentDevice?.deviceId &&
+          opt?.device?.graphic === graphicId
+      );
+
+      if (device) {
+        return device.appState.items.length;
+      }
+    }
+
+    return 0;
+  }
+
   saveCurrentDevice(selectDevice) {
     localStorage.setItem('currentDevice', JSON.stringify(selectDevice))
   }
@@ -128,7 +177,7 @@ class DeviceOpt {
   };
 
   setDeviceAndGraphicDefaultData(currentDevice) {
-    const selectedNode = this.findAllNodes(MockData.DeviceList, currentDevice.device);
+    const selectedNode = this.findAllNodes(T3Data.deviceList.value, currentDevice.device);
     if (selectedNode) {
       selectedNode.icon = 'check';
     }
@@ -260,7 +309,7 @@ class DeviceOpt {
     // clear the value first, reset the element count base on the current device info
     this.clearGraphicPanelElementCount();
 
-    MockData.GraphicList.forEach(graphic => {
+    T3Data.graphicList.value.forEach(graphic => {
 
       const graphicValue = graphicValues.find(opt => opt?.device?.graphic === graphic.id);
 
@@ -270,11 +319,11 @@ class DeviceOpt {
       }
     })
 
-    console.log('= Dvopt refresh element count', MockData.GraphicList);
+    console.log('= Dvopt refresh element count', T3Data.graphicList.value);
   }
 
   clearGraphicPanelElementCount() {
-    MockData.GraphicList.forEach(graphic => {
+    T3Data.graphicList.value.forEach(graphic => {
       graphic.elementCount = 0;
     });
   }
@@ -283,8 +332,8 @@ class DeviceOpt {
   clearDirtyCurrentDevice() {
     const currentDevice = this.getCurrentDevice();
 
-    if (MockData.DeviceList.length > 0) {
-      MockData.DeviceList[0].children.forEach(device => {
+    if (T3Data.deviceList.value.length > 0) {
+      T3Data.deviceList.value[0].children.forEach(device => {
 
         if (device.icon === 'check') {
           if (device.label !== currentDevice.device) {

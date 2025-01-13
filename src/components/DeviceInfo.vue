@@ -247,15 +247,18 @@ export default defineComponent({
 
     // const simple = MockData.DeviceList;
     const dvList = T3Data.deviceList;// Hvac.DeviceOpt.deviceList;
-    console.log('= Dvi real device data', dvList);
+    // console.log('= Dvi real device data', dvList);
 
     // watch(() => Hvac.DeviceOpt.deviceList, (newVal) => {
     //   console.log('= Dvi device list changed:', newVal);
     //   dvList.value = newVal;
     // }, { deep: true });
 
-    const graphicList = MockData.GraphicList;
-    const currentDevice = ref({ device: "", graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
+    // const graphicList = MockData.GraphicList;
+    const graphicList = T3Data.graphicList;
+    // console.log('= Dvi real graphic data', graphicList);
+
+    const currentDevice = ref({ device: "", deviceId: -1, graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -277,7 +280,7 @@ export default defineComponent({
     const updateGraphicSelection = (val) => {
       currentDevice.value.graphic = val;
 
-      const found = graphicList.find(element => element.id === val);
+      const found = graphicList.value.find(element => element.id === val);
       if (found) {
         currentDevice.value.graphicFull.id = found.id.toString();
         currentDevice.value.graphicFull.fullLabel = found.fullLabel;
@@ -331,10 +334,14 @@ export default defineComponent({
       if (selectedNode) {
         selectedNode.icon = 'check';
         currentDevice.value.device = selectedNode.label;
+
+        const dviPl = getPlFromDvList(selectedNode.label);
+        currentDevice.value.deviceId = dviPl?.panel_number ?? -1;
       }
       else {
         if (target === null) {
           currentDevice.value.device = '';
+          currentDevice.value.deviceId = -1;
         }
       }
 
@@ -350,9 +357,33 @@ export default defineComponent({
 
       // load real data from T3000
       if (currentDevice.value.device !== '') {
-        Hvac.WsClient.GetPanelData(1);
+        const deviceId = currentDevice.value.deviceId;
+
+        Hvac.WsClient.GetPanelData(deviceId);
+
+        // user drawing data
+        Hvac.WsClient.GetInitialData(deviceId);
       }
     }
+
+    const getPlFromDvList = (label) => {
+      const findNode = (nodes, label) => {
+        for (const node of nodes) {
+          if (node.label === label) {
+            return node?.pl;
+          }
+          if (node.children) {
+            const found = findNode(node.children, label);
+            if (found) {
+              return found;
+            }
+          }
+        }
+        return null;
+      };
+
+      return findNode(dvList.value, label);
+    };
 
     const saveCurrentSelection = () => {
       console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
