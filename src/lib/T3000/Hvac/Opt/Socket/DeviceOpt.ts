@@ -146,6 +146,33 @@ class DeviceOpt {
     return 0;
   }
 
+  // sync the t3 appstate data to ls [deviceAppState]
+  syncTempAppStateToDeviceAppState() {
+    const tempAppState = localStorage.getItem('tempAppState');
+    const currentDevice = this.getCurrentDevice();
+
+    if (!tempAppState || !currentDevice) {
+      return;
+    }
+
+    const parsedTempAppState = JSON.parse(tempAppState);
+    const deviceAppStateLS = this.loadDeviceAppStateLS() || [];
+
+    const deviceIndex = deviceAppStateLS.findIndex(
+      opt =>
+        opt?.device?.device === currentDevice?.device &&
+        opt?.device?.graphic === currentDevice?.graphic
+    );
+
+    if (deviceIndex !== -1) {
+      deviceAppStateLS[deviceIndex].appState = parsedTempAppState;
+    } else {
+      deviceAppStateLS.push({ device: currentDevice, appState: parsedTempAppState });
+    }
+
+    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+  }
+
   saveCurrentDevice(selectDevice) {
     localStorage.setItem('currentDevice', JSON.stringify(selectDevice))
   }

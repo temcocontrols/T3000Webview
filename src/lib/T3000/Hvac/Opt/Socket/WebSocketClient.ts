@@ -150,10 +150,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANEL_DATA }));
   }
 
-  public GetInitialData(panelId: number) {
+  public GetInitialData(panelId: number, graphicId: number) {
     // action: 1, // GET_INITIAL_DATA
 
-    this.FormatMessageData(MessageType.GET_INITIAL_DATA, panelId, null, null);
+    this.FormatMessageData(MessageType.GET_INITIAL_DATA, panelId, graphicId, null);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
@@ -318,9 +318,12 @@ class WebSocketClient {
   public HandleGetInitialDataRes(data) {
     // action: 1, // GET_INITIAL_DATA_RES
 
-    if (!data) {
-      return;
+    // save the T3 data to localstorage with key 'tempAppState'
+
+    if (data !== null && data !== undefined) {
+      localStorage.setItem('tempAppState', data);
     }
+
     const parseData = JSON.parse(data);
     console.log('= Ws GET_INITIAL_DATA_RES', parseData);
   }

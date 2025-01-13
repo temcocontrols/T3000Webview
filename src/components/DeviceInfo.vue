@@ -258,7 +258,7 @@ export default defineComponent({
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
 
-    const currentDevice = ref({ device: "", deviceId: -1, graphic: 0, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
+    const currentDevice = ref({ device: "", deviceId: -1, graphic: -1, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -271,7 +271,7 @@ export default defineComponent({
     }
 
     const clearGraphicSelection = () => {
-      currentDevice.value.graphic = 0;
+      currentDevice.value.graphic = -1;
       currentDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
       console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
@@ -290,6 +290,9 @@ export default defineComponent({
 
       console.log('= Dvi graphic-selected 1 val:', val);
       console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+
+      const deviceId = currentDevice.value.deviceId;
+      Hvac.WsClient.GetInitialData(deviceId, val);
     }
 
     // device tree selection event
@@ -350,19 +353,20 @@ export default defineComponent({
       console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       // load hardware data from T3000
-      Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
+      // Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
 
       // update the graphic panel's elements count
-      Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice.value);
+      // Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice.value);
 
       // load real data from T3000
       if (currentDevice.value.device !== '') {
         const deviceId = currentDevice.value.deviceId;
+        const graphicId = currentDevice.value.graphic;
 
         Hvac.WsClient.GetPanelData(deviceId);
 
         // user drawing data
-        Hvac.WsClient.GetInitialData(deviceId);
+        Hvac.WsClient.GetInitialData(deviceId, graphicId);
       }
     }
 
@@ -397,6 +401,10 @@ export default defineComponent({
       }
       else {
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
+
+        // sync t3 appState data to ls [deviceAppState]
+        Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+
         emit('updateDeviceModel', false, currentDevice.value);
       }
     }
