@@ -182,6 +182,8 @@ async fn start_websocket_server() {
                     log_message(&format!("Failed to accept connection: {:?}", e), true);
                 }
             }
+
+
         }
     });
 }
@@ -213,8 +215,8 @@ async fn handle_websocket(
     let ws_stream = match accept_hdr_async_with_config(
         stream,
         |req: &Request, response: Response| {
-            log_message(&format!("Received a connection request: {:#?}", req), true);
-            log_message(&format!("Response with: {:#?}", response), true);
+            // log_message(&format!("Received a connection request: {:#?}", req), true);
+            // log_message(&format!("Response with: {:#?}", response), true);
             Ok(response)
         },
         Some(config),
@@ -383,8 +385,8 @@ async fn notify_web_clients(
 
     let clients = clients.lock().unwrap();
     let notification = serde_json::json!({
-      "action": -10,
-      "message": "Data client is online"
+      "action": -1,
+      "message": "Data server is online"
     });
     let message = Message::text(notification.to_string());
 
@@ -398,6 +400,48 @@ async fn notify_web_clients(
             }
         }
     }
+    Ok(())
+}
+
+async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
+    log_message("Checking clients status...", true);
+
+    let mut clients = clients.lock().unwrap();
+    let mut dead_clients = Vec::new();
+    let data_client_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111")?;
+
+    for (id, client) in clients.iter() {
+        if *id != data_client_id {
+            if client.is_closed() {
+                dead_clients.push(*id);
+            }
+        }
+    }
+
+    for id in dead_clients {
+        clients.retain(|(client_id, _)| *client_id != id);
+    }
+
+    let data_client_alive = clients.iter().any(|(id, _)| *id == data_client_id);
+    if !data_client_alive {
+        let error_message = serde_json::json!({
+          "action": -2,
+          "message": "The data server is down, please check whether the T3 application is running"
+        });
+        let message = Message::text(error_message.to_string());
+
+        for (id, client) in clients.iter() {
+            if *id != data_client_id {
+                if let Err(e) = client.send(message.clone()) {
+                    log_message(
+                        &format!("Failed to send error message to client: {:?}", e),
+                        true,
+                    );
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -450,3 +494,5 @@ fn log_message(message: &str, log_to_file: bool) {
         println!("{}", formatted_message);
     }
 }
+
+

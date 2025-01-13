@@ -307,6 +307,11 @@ class WebSocketClient {
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
       this.HandleDeleteImageRes(msgData.data);
     }
+
+    // specify action -1 [Data server is back online (T3 application)]
+    if (msgData.action === MessageType.DATA_SERVER_ONLINE) {
+      this.HandleDataServerOnline(msgData);
+    }
   }
 
   public HandleGetPanelDataRes(data) {
@@ -377,6 +382,19 @@ class WebSocketClient {
 
   public HandleGetAllDevicesDataRes(data) {
     // action: 12, // GET_ALL_DEVICES_DATA_RES
+  }
+
+  public HandleDataServerOnline(data) {
+    // action: -1, // DATA_SERVER_ONLINE
+
+    // refresh panel list
+    this.GetPanelsList();
+
+    // refresh appState
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+    this.GetInitialData(panelId, graphicId);
   }
 
   //#endregion

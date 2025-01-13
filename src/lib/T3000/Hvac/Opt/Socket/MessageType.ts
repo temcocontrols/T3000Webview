@@ -19,6 +19,8 @@ class MessageType {
   action: 13, // BIND_DEVICE
   */
 
+  static DATA_SERVER_ONLINE = -1
+
   static GET_PANEL_DATA = 0
   static GET_INITIAL_DATA = 1
   static SAVE_GRAPHIC = 2
