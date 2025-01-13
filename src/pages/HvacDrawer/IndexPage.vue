@@ -1075,6 +1075,13 @@ function saveDeviceAppState(clearSelected) {
   }
 
   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
+
+  // Post a save action to T3
+  const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+  const panelId = currentDevice.deviceId;
+  const graphicId = currentDevice.graphic;
+
+  Hvac.WsClient.SaveGraphic(panelId, graphicId);
 }
 
 onBeforeUnmount(() => {

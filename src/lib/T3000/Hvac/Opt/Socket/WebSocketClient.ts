@@ -159,10 +159,13 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
-  public SaveGraphic(panelId, graphicId, data: {}) {
+  public SaveGraphic(panelId, graphicId, data?: {}) {
     // action: 2, // SAVE_GRAPHIC
 
-    this.FormatMessageData(MessageType.SAVE_GRAPHIC, panelId, graphicId, data);
+    // data => appState load the appState from localStorage
+    const storedAppState = !data ? localStorage.getItem('appState') : data;
+
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC, panelId, graphicId, storedAppState);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
