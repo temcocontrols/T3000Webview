@@ -345,6 +345,11 @@ class WebSocketClient {
   }
 
   public HandleGetPanelsListRes(data) {
+
+    if (data === undefined) {
+      return;
+    }
+
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
     console.log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);

@@ -95,8 +95,10 @@ pub async fn server_start() -> Result<(), Box<dyn Error>> {
 
     // Print the server address
     // println!("->> LISTENING on {:?}\n", listener.local_addr());
+    let clients: Clients = Arc::new(Mutex::new(Vec::new()));
 
-    start_websocket_server().await;
+    start_websocket_server(clients.clone()).await;
+    tokio::spawn(monitor_clients_status(clients));
 
     // Start the server with graceful shutdown
     axum::serve(listener, app)
@@ -142,8 +144,7 @@ async fn shutdown_signal(state: AppState) {
 
 type Clients = Arc<Mutex<Vec<(Uuid, tokio::sync::mpsc::UnboundedSender<Message>)>>>;
 
-async fn start_websocket_server() {
-    let clients: Clients = Arc::new(Mutex::new(Vec::new()));
+async fn start_websocket_server(clients: Clients) {
     tokio::spawn(async move {
         let ws_listener = TcpListener::bind(format!("0.0.0.0:{}", 9104))
             .await
@@ -182,8 +183,6 @@ async fn start_websocket_server() {
                     log_message(&format!("Failed to accept connection: {:?}", e), true);
                 }
             }
-
-
         }
     });
 }
@@ -195,7 +194,7 @@ async fn handle_websocket(
 ) -> Result<(), Box<dyn Error>> {
     log_message(&format!("Start handling websocket"), true);
     log_message(&format!("Stream: {:?}", stream), true);
-    log_message(&format!("Clients 1st: {:?}", clients), true);
+    // log_message(&format!("Clients 1st: {:?}", clients), true);
     log_message(&format!(""), true);
 
     /*
@@ -214,9 +213,9 @@ async fn handle_websocket(
 
     let ws_stream = match accept_hdr_async_with_config(
         stream,
-        |req: &Request, response: Response| {
-            // log_message(&format!("Received a connection request: {:#?}", req), true);
-            // log_message(&format!("Response with: {:#?}", response), true);
+        |_req: &Request, response: Response| {
+            log_message(&format!("Received a connection request: {:#?}", _req), true);
+            log_message(&format!("Response with: {:#?}", response), true);
             Ok(response)
         },
         Some(config),
@@ -403,10 +402,19 @@ async fn notify_web_clients(
     Ok(())
 }
 
-async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
-    log_message("Checking clients status...", true);
+async fn monitor_clients_status(clients: Clients) {
+    loop {
+        if let Err(e) = check_clients_status(clients.clone()).await {
+            log_message(&format!("Error checking clients status: {:?}", e), true);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
 
+async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
     let mut clients = clients.lock().unwrap();
+    let total_clients_count = clients.len();
+
     let mut dead_clients = Vec::new();
     let data_client_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111")?;
 
@@ -418,9 +426,14 @@ async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let dead_clients_count: usize = dead_clients.len();
+
     for id in dead_clients {
         clients.retain(|(client_id, _)| *client_id != id);
     }
+
+    // let available_clients_count: Vec<Uuid> = clients.iter().map(|(id, _)| *id).collect();
+    let available_clients_count = clients.len();
 
     let data_client_alive = clients.iter().any(|(id, _)| *id == data_client_id);
     if !data_client_alive {
@@ -441,6 +454,14 @@ async fn check_clients_status(clients: Clients) -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    log_message(
+        &format!(
+            "Check status: Total clients: {:?}, Avaiable now: {}, Dead clients: {}",
+            total_clients_count, available_clients_count, dead_clients_count
+        ),
+        true,
+    );
 
     Ok(())
 }
@@ -494,5 +515,3 @@ fn log_message(message: &str, log_to_file: bool) {
         println!("{}", formatted_message);
     }
 }
-
-
