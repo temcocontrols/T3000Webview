@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 
-use migration::cli;
+// use migration::cli;
 use tokio::{net::TcpListener, signal, sync::mpsc};
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -407,7 +407,7 @@ async fn monitor_clients_status(clients: Clients) {
         if let Err(e) = check_clients_status(clients.clone()).await {
             log_message(&format!("Error checking clients status: {:?}", e), true);
         }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
 }
 

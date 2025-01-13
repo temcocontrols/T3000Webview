@@ -16,7 +16,10 @@ class WebSocketClient {
   public messageModel: MessageModel;
   public messageData: string;
 
-  constructor() { }
+  constructor() {
+
+
+  }
 
   public connect() {
 
