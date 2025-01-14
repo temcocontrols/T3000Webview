@@ -9,7 +9,7 @@ class WebSocketClient {
 
   private socket: WebSocket;
   private retries: number = 0;
-  private maxRetries: number = 5;
+  private maxRetries: number = 10;
   private pingInterval: number = 10000; // 10 seconds
   private uri: string;
 
@@ -118,7 +118,7 @@ class WebSocketClient {
       this.socket.send(message);
       console.log('= Ws send to T3', message);
     } else {
-      console.error('= Ws socket is not open. Ready state:', this.socket.readyState);
+      console.log('= Ws send message | socket is not open | wait for.  Ready state:', this.socket.readyState);
       this.socket.onopen = () => {
         this.socket.send(message);
       };
@@ -361,6 +361,16 @@ class WebSocketClient {
     const firstPanelId = data.length > 0 ? data[0].panel_number : null;
     if (firstPanelId !== null) {
       this.GetPanelData(firstPanelId);
+    }
+
+    const currentDevice = JSON.parse(localStorage.getItem('currentDevice') || '{}');
+    if (!currentDevice.deviceId) {
+      const panelName = currentDevice.device;
+      const panel = data.find((panel) => panel.panel_name === panelName);
+      if (panel) {
+      currentDevice.deviceId = panel.panel_number;
+      localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
+      }
     }
   }
 
