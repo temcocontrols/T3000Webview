@@ -2159,7 +2159,9 @@ function save(notify = false) {
   }
 
   // save device data and related appState
-  saveDeviceAppState();
+  if(!isBuiltInEdge.value) {
+    saveDeviceAppState();
+  }
 }
 
 // Create a new project, optionally confirming with the user if there's existing data

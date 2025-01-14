@@ -112,10 +112,10 @@ class DeviceOpt {
     const graphicItems = gphList.filter(graphic => graphic.id.startsWith('GRP')).slice(0, 8);
 
     const transformedGraphicItems = graphicItems.map(graphic => ({
-      id: graphic.id.includes('GRP') ? graphic.id.replace('GRP', '') : graphic.id,
+      id: graphic.id.includes('GRP') ? parseInt(graphic.id.replace('GRP', ''), 10) : parseInt(graphic.id, 10),
       fullLabel: graphic.description || '',
       label: graphic.label || '',
-      elementCount: this.calculateElementCount(graphic.id) || 0
+      elementCount: Number(graphic.count) || 0
     }));
 
     this.graphicList = transformedGraphicItems;

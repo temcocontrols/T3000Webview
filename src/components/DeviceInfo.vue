@@ -258,7 +258,7 @@ export default defineComponent({
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
 
-    const currentDevice = ref({ device: "", deviceId: -1, graphic: -1, graphicFull: { id: '', fullLabel: '', label: '', elementCount: '' } });
+    const currentDevice = ref({ device: "", deviceId: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: 0 } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -278,21 +278,22 @@ export default defineComponent({
 
     // graphic panel change event
     const updateGraphicSelection = (val) => {
-      currentDevice.value.graphic = val;
+      const graphicId = val != null ? Number(val) : -1;
+      currentDevice.value.graphic = graphicId;
 
       const found = graphicList.value.find(element => element.id === val);
       if (found) {
-        currentDevice.value.graphicFull.id = found.id.toString();
+        currentDevice.value.graphicFull.id = found.id;
         currentDevice.value.graphicFull.fullLabel = found.fullLabel;
         currentDevice.value.graphicFull.label = found.label;
-        currentDevice.value.graphicFull.elementCount = found.elementCount.toString();
+        currentDevice.value.graphicFull.elementCount = found.elementCount;
       }
 
       console.log('= Dvi graphic-selected 1 val:', val);
       console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       const deviceId = currentDevice.value.deviceId;
-      Hvac.WsClient.GetInitialData(deviceId, val);
+      Hvac.WsClient.GetInitialData(deviceId, graphicId);
     }
 
     // device tree selection event
