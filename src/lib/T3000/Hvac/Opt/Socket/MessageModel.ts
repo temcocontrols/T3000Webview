@@ -37,7 +37,7 @@ class MessageModel {
   }
   */
 
-  public currentDevice: { device: string, graphic: number, graphicFull: { id: string, fullLabel: string, label: string, elementCount: string } };
+  public currentDevice: { device: string, deviceId: number, serialNumber: number, graphic: number, graphicFull: { id: number, fullLabel: string, label: string, elementCount: string } };
 
   /*
   const data = {
@@ -92,7 +92,7 @@ class MessageModel {
   }
 
   setEmptyDevice() {
-    this.currentDevice = { device: "", graphic: -1, graphicFull: { id: "", fullLabel: "", label: "", elementCount: "" } };
+    this.currentDevice = { device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: "", label: "", elementCount: "" } };
   }
 
   setHeader() {
@@ -100,7 +100,7 @@ class MessageModel {
     this.header.from = this.getBrowserType();
   }
 
-  setMessage(action: number, panelId: number, viewitem: number, data: {}, clientId?: string) {
+  setMessage(action: number, panelId: number, viewitem: number, data: {}, serialNumber: number, clientId?: string) {
 
     if (action !== null && action !== undefined) {
       this.message.action = action;
@@ -111,7 +111,9 @@ class MessageModel {
     }
 
     if (viewitem !== null && viewitem !== undefined) {
-      this.message.viewitem = viewitem;
+
+      // set the viewitem start index to 0 as t3 application
+      this.message.viewitem = viewitem - 1;
     }
 
     if (data != null && data !== undefined) {
@@ -124,6 +126,10 @@ class MessageModel {
 
     // Add msg id
     this.message.msgId = Utils5.generateUUID();
+
+    if (serialNumber != null && serialNumber !== undefined) {
+      this.message.serialNumber = serialNumber;
+    }
   }
 
   formatMessageData() {

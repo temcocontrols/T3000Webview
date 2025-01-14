@@ -1050,7 +1050,7 @@ function showMoreDevices() {
   appState.value.activeItemIndex = null;
 
   // refresh the graphic panel data
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+  // Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 function refreshDeviceAppState() {
@@ -2149,6 +2149,23 @@ function save(notify = false) {
 
   data.selectedTargets = [];
   data.elementGuidelines = [];
+
+  if (isBuiltInEdge.value) {
+    window.chrome?.webview?.postMessage({
+      action: 2, // SAVE_GRAPHIC
+      data,
+    });
+  }
+  else {
+    localStorage.setItem("appState", JSON.stringify(data));
+
+    // save device data and related appState
+    if (!isBuiltInEdge.value) {
+      saveDeviceAppState();
+    }
+  }
+
+  /*
   window.chrome?.webview?.postMessage({
     action: 2, // SAVE_GRAPHIC
     data,
@@ -2157,11 +2174,7 @@ function save(notify = false) {
   if (!window.chrome?.webview?.postMessage) {
     localStorage.setItem("appState", JSON.stringify(data));
   }
-
-  // save device data and related appState
-  if(!isBuiltInEdge.value) {
-    saveDeviceAppState();
-  }
+  */
 }
 
 // Create a new project, optionally confirming with the user if there's existing data

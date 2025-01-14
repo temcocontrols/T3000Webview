@@ -115,8 +115,10 @@ class DeviceOpt {
       id: graphic.id.includes('GRP') ? parseInt(graphic.id.replace('GRP', ''), 10) : parseInt(graphic.id, 10),
       fullLabel: graphic.description || '',
       label: graphic.label || '',
-      elementCount: Number(graphic.count) || 0
+      elementCount: Number(graphic.count) || 0// this.calculateElementCount(graphic.id) || 0
     }));
+
+    console.log('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
 
     this.graphicList = transformedGraphicItems;
     T3Data.graphicList.value = this.graphicList;
@@ -384,6 +386,31 @@ class DeviceOpt {
       graphic.pictureFile = '';
       graphic.elementCount = 0;
     });
+  }
+
+  // get the serial number of the panel
+  getSerialNumber(panelId) {
+
+    // const serialNumber = T3Data.currentDevice.value?.serialNumber ?? -1;
+
+    const device = T3Data.deviceList.value[0]?.children?.find(itx => itx.pl.panel_number === panelId);
+    if (device) {
+      return device.pl.serial_number;
+    }
+
+
+    // const data = T3Data.deviceList.value[0];
+
+    // const device = data.find(deviceItem =>
+    //   deviceItem.children.some(itx => itx.pl.panel_number === panelId)
+    // );
+
+    // if (device) {
+    //   const panel = device.find(itx => itx.pl.panel_number === panelId);
+    //   return panel ? panel.pl.serial_number : -1;
+    // }
+
+    return -1;
   }
 }
 

@@ -105,7 +105,7 @@ class WebSocketClient {
     const clientId = Utils5.generateUUID();
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
-    this.messageModel.setMessage(13, null, null, null, clientId);
+    this.messageModel.setMessage(13, null, null, null, null, clientId);
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -128,9 +128,13 @@ class WebSocketClient {
   //#region  Format Message
 
   public FormatMessageData(action: number, panelId: number, viewitem: number, data: {}) {
+
+    // get the serial_number base on panelId
+    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
-    this.messageModel.setMessage(action, panelId, viewitem, data);
+    this.messageModel.setMessage(action, panelId, viewitem, data, serialNumber);
 
     const msgData = this.messageModel.formatMessageData();
     this.messageData = JSON.stringify(msgData);
@@ -380,8 +384,9 @@ class WebSocketClient {
       const panelName = currentDevice.device;
       const panel = data.find((panel) => panel.panel_name === panelName);
       if (panel) {
-      currentDevice.deviceId = panel.panel_number;
-      localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
+        currentDevice.deviceId = panel.panel_number;
+        currentDevice.serialNumber = panel.serial_number;
+        localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
       }
     }
   }
