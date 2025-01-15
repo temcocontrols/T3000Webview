@@ -113,7 +113,7 @@ class MessageModel {
     if (viewitem !== null && viewitem !== undefined) {
 
       // set the viewitem start index to 0 as t3 application
-      this.message.viewitem = viewitem - 1;
+      this.message.viewitem = viewitem;
     }
 
     if (data != null && data !== undefined) {

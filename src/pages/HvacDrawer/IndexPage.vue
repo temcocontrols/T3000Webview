@@ -904,9 +904,12 @@ onMounted(() => {
     isBuiltInEdge.value = true;
     documentAreaPosition.value.widthOffset = '128px';
     documentAreaPosition.value.heightOffset = '68px';
+
+    viewportMargins.top = 56;
   }
   else {
     isBuiltInEdge.value = false;
+    viewportMargins.top = 95 + 20 + 2;
   }
 
   // Save the state before the window is unloaded
@@ -1669,7 +1672,7 @@ function addObject(item, group = undefined, addToHistory = true) {
 
 const viewportMargins = {
   // top: 36,93
-  top: 95 + 20 + 2,
+  top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
   left: 106 + 20 + 2,
 };
 
