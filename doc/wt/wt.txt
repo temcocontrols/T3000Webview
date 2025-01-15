@@ -257,3 +257,12 @@ https://docs.rs/tungstenite/0.21.0/tungstenite/protocol/struct.WebSocketConfig.h
 
 2. Result returned in a incorrect format, should including action field and the error field with text content also.
 3. Need to set the device connection type to wifi to get the panel list info. this is not working under USB model.
+
+2025-01-13
+1. Updated the socket server and bind real device info to webview
+2. Added functions monitor_clients_status & check_clients_status for monitoring the server status
+
+2025-01-14
+1. Updated graphic ui
+2. Updated save logic for both external browser and built in browser
+
