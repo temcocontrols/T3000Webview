@@ -16,6 +16,8 @@ class WebSocketClient {
   public messageModel: MessageModel;
   public messageData: string;
 
+  public needRefresh: boolean = true;
+
   constructor() {
 
 
@@ -157,9 +159,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANEL_DATA }));
   }
 
-  public GetInitialData(panelId: number, graphicId: number) {
+  public GetInitialData(panelId: number, graphicId: number, needRefresh?: boolean) {
     // action: 1, // GET_INITIAL_DATA
 
+    this.needRefresh = needRefresh ?? true;
     this.FormatMessageData(MessageType.GET_INITIAL_DATA, panelId, graphicId, null);
     this.sendMessage(this.messageData);
 
@@ -353,6 +356,15 @@ class WebSocketClient {
 
     const parseData = JSON.parse(data);
     console.log('= Ws GET_INITIAL_DATA_RES', parseData);
+    console.log('= Ws GET_INITIAL_DATA_RES | needRefresh:', this.needRefresh);
+
+    if (this.needRefresh) {
+      // sync t3 appState data to ls [deviceAppState]
+      Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+
+      // load device appstate
+      Hvac.DeviceOpt.refreshDeviceAppState();
+    }
   }
 
   public HandleSaveGraphicRes(data) {

@@ -6,6 +6,7 @@ import PanelInfo from "./PanelInfo"
 import DeviceItem from "./DeviceItem"
 
 import T3Data from '../../Data/T3Data'
+import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 
 class DeviceOpt {
 
@@ -391,26 +392,34 @@ class DeviceOpt {
   // get the serial number of the panel
   getSerialNumber(panelId) {
 
-    // const serialNumber = T3Data.currentDevice.value?.serialNumber ?? -1;
+    let serialNumber = -1;
 
-    const device = T3Data.deviceList.value[0]?.children?.find(itx => itx.pl.panel_number === panelId);
-    if (device) {
-      return device.pl.serial_number;
+    if (T3Data.deviceList.value.length === 0) {
+      const currentDevice = this.getCurrentDevice();
+      serialNumber = currentDevice?.serialNumber ?? -1;
+    }
+    else {
+      const device = T3Data.deviceList.value[0]?.children?.find(itx => itx.pl.panel_number === panelId);
+      if (device) {
+        serialNumber = device.pl.serial_number;
+      }
     }
 
+    return serialNumber;
+  }
 
-    // const data = T3Data.deviceList.value[0];
+  refreshDeviceAppState() {
+    const existAppState = this.loadDeviceAppState(deviceAppState, deviceModel.value.data, null);
+    // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
 
-    // const device = data.find(deviceItem =>
-    //   deviceItem.children.some(itx => itx.pl.panel_number === panelId)
-    // );
-
-    // if (device) {
-    //   const panel = device.find(itx => itx.pl.panel_number === panelId);
-    //   return panel ? panel.pl.serial_number : -1;
-    // }
-
-    return -1;
+    if (existAppState) {
+      // appState.value = cloneDeep(existAppState);
+      appState.value = existAppState;
+    }
+    else {
+      appState.value = cloneDeep(emptyProject);
+      appState.value.rulersGridVisible = rulersGridVisible.value;
+    }
   }
 }
 

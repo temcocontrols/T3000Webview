@@ -258,7 +258,7 @@ export default defineComponent({
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
 
-    const currentDevice = ref({ device: "", deviceId: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: 0 } });
+    const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: 0 } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -272,7 +272,7 @@ export default defineComponent({
 
     const clearGraphicSelection = () => {
       currentDevice.value.graphic = -1;
-      currentDevice.value.graphicFull = { id: '', fullLabel: '', label: '', elementCount: '' };
+      currentDevice.value.graphicFull = { id: -1, fullLabel: '', label: '', elementCount: '' };
       console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
@@ -293,7 +293,7 @@ export default defineComponent({
       console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       const deviceId = currentDevice.value.deviceId;
-      Hvac.WsClient.GetInitialData(deviceId, graphicId);
+      Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
     }
 
     // device tree selection event
@@ -341,11 +341,13 @@ export default defineComponent({
 
         const dviPl = getPlFromDvList(selectedNode.label);
         currentDevice.value.deviceId = dviPl?.panel_number ?? -1;
+        currentDevice.value.serialNumber = dviPl?.serial_number ?? -1;
       }
       else {
         if (target === null) {
           currentDevice.value.device = '';
           currentDevice.value.deviceId = -1;
+          currentDevice.value.serialNumber = -1;
         }
       }
 
@@ -367,7 +369,7 @@ export default defineComponent({
         Hvac.WsClient.GetPanelData(deviceId);
 
         // user drawing data
-        Hvac.WsClient.GetInitialData(deviceId, graphicId);
+        Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
       }
     }
 
@@ -403,8 +405,10 @@ export default defineComponent({
       else {
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
 
+        Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
+
         // sync t3 appState data to ls [deviceAppState]
-        Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+        // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
 
         emit('updateDeviceModel', false, currentDevice.value);
       }

@@ -759,6 +759,8 @@ import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 
+import { emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible } from '../../lib/T3000/Hvac/Data/T3Data'
+
 const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -833,16 +835,16 @@ if (process.env.DEV) {
 
 // Initialization of empty project and library structures
 let panzoomInstance = null;
-const emptyProject = {
-  version: process.env.VERSION,
-  items: [],
-  selectedTargets: [],
-  elementGuidelines: [],
-  itemsCount: 0,
-  groupCount: 0,
-  activeItemIndex: null,
-  viewportTransform: { x: 0, y: 0, scale: 1 },
-};
+// const emptyProject = {
+//   version: process.env.VERSION,
+//   items: [],
+//   selectedTargets: [],
+//   elementGuidelines: [],
+//   itemsCount: 0,
+//   groupCount: 0,
+//   activeItemIndex: null,
+//   viewportTransform: { x: 0, y: 0, scale: 1 },
+// };
 const emptyLib = {
   version: process.env.VERSION,
   imagesCount: 0,
@@ -853,7 +855,7 @@ const emptyLib = {
 
 // State references for the library and application state
 const library = ref(cloneDeep(emptyLib));
-const appState = ref(cloneDeep(emptyProject));
+// const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
 const locked = ref(false); // State to lock or unlock the interface
@@ -862,10 +864,10 @@ let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-const rulersGridVisible = ref(true);
+// const rulersGridVisible = ref(true);
 
-const deviceModel = ref({ active: false, data: {} });
-const deviceAppState = ref([]);
+// const deviceModel = ref({ active: false, data: {} });
+// const deviceAppState = ref([]);
 
 const handleScroll = (event) => {
 
@@ -914,7 +916,7 @@ onMounted(() => {
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
-    save();
+    // save();
   });
 
   // Initialize panzoom for viewport
@@ -1015,20 +1017,43 @@ function initExternalBrowserOpt() {
       deviceModel.value.active = false;
       deviceModel.value.data = currentDevice;
 
+      console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+
       // load device appstate
-      refreshDeviceAppState();
+      //Hvac.DeviceOpt.refreshDeviceAppState();
+      Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
 
       // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
       // console.log('=== indexPage.deviceModel changed', deviceModel.value);
     }
   }, 1000);
 
-  /*
-  // load real data from T3000
-  setTimeout(() => {
-    Hvac.WsClient.GetPanelsList();
-  }, 1000);
-  */
+  setInterval(function () {
+    if (getLinkedEntries().length === 0) return;
+
+    const data = getLinkedEntries().map((ii) => {
+      return {
+        panelId: ii.t3Entry.pid,
+        index: ii.t3Entry.index,
+        type: T3_Types[ii.t3Entry.type],
+      };
+    });
+
+    Hvac.WsClient.GetEntries(data);
+
+    /*
+    window.chrome?.webview?.postMessage({
+      action: 6, // GET_ENTRIES
+      data: getLinkedEntries().map((ii) => {
+        return {
+          panelId: ii.t3Entry.pid,
+          index: ii.t3Entry.index,
+          type: T3_Types[ii.t3Entry.type],
+        };
+      }),
+    });
+    */
+  }, 10000);
 }
 
 function updateDeviceModel(isActive, data) {
@@ -1037,7 +1062,7 @@ function updateDeviceModel(isActive, data) {
   deviceModel.value.data = data;
 
   // load device appstate
-  refreshDeviceAppState();
+  // Hvac.DeviceOpt.refreshDeviceAppState();
 }
 
 function showMoreDevices() {
@@ -1056,6 +1081,7 @@ function showMoreDevices() {
   // Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
+/*
 function refreshDeviceAppState() {
   const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
   // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
@@ -1069,6 +1095,7 @@ function refreshDeviceAppState() {
     appState.value.rulersGridVisible = rulersGridVisible.value;
   }
 }
+*/
 
 function saveDeviceAppState(clearSelected) {
   // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
@@ -1356,7 +1383,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      save(); // Save the current state
+      // save(); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1401,7 +1428,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    save(); // Save the state after drag end
+    // save(); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
