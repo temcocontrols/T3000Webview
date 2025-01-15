@@ -738,7 +738,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
+import { tools, T3_Types, getObjectActiveValue, T3000_Data, /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -759,7 +759,7 @@ import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 
-import { emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible } from '../../lib/T3000/Hvac/Data/T3Data'
+import { emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user,library,emptyLib } from '../../lib/T3000/Hvac/Data/T3Data'
 
 const isBuiltInEdge = ref(false);
 
@@ -845,16 +845,16 @@ let panzoomInstance = null;
 //   activeItemIndex: null,
 //   viewportTransform: { x: 0, y: 0, scale: 1 },
 // };
-const emptyLib = {
-  version: process.env.VERSION,
-  imagesCount: 0,
-  objLibItemsCount: 0,
-  images: [],
-  objLib: [],
-};
+// const emptyLib = {
+//   version: process.env.VERSION,
+//   imagesCount: 0,
+//   objLibItemsCount: 0,
+//   images: [],
+//   objLib: [],
+// };
 
 // State references for the library and application state
-const library = ref(cloneDeep(emptyLib));
+// const library = ref(cloneDeep(emptyLib));
 // const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
@@ -887,11 +887,14 @@ const handleScroll = (event) => {
 // Lifecycle hook for component mount
 onMounted(() => {
 
-  // Set global navigation properties
-  globalNav.value.title = "HVAC Drawer";
-  globalNav.value.back = null;
-  globalNav.value.home = "/";
-  isLoggedIn(); // Check if user is logged in
+  // // Set global navigation properties
+  // globalNav.value.title = "HVAC Drawer";
+  // globalNav.value.back = null;
+  // globalNav.value.home = "/";
+
+  // isLoggedIn(); // Check if user is logged in
+
+  Hvac.IdxPage.initPage();
 
   // Restore app state from local storage if not in a webview
   if (!window.chrome?.webview?.postMessage) {
@@ -1128,17 +1131,12 @@ onUnmounted(() => {
 
 // Handle messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
-
-  console.log('window.chrome?.webview', window.chrome?.webview);
-
   console.log("= Idx Received a message from webview", arg.data.action, arg.data);
-  // console.log('=== T3000_Data ===', T3000_Data)
 
   // Handle various actions based on message data
   if (!"action" in arg.data) return;
 
   if (arg.data.action === "GET_PANELS_LIST_RES") {
-    console.log('= Idx [GET_PANELS_LIST_RES] data=>', arg.data.data)
     if (arg.data.data?.length) {
       T3000_Data.value.panelsList = arg.data.data;
       T3000_Data.value.loadingPanel = 0;
@@ -1150,12 +1148,10 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "UPDATE_ENTRY_RES") {
-    console.log('= Idx [UPDATE_ENTRY_RES] data=>', arg.data.data)
     // Handle update entry response
   }
 
   if (arg.data.action === "GET_INITIAL_DATA_RES") {
-    console.log('= Idx [GET_INITIAL_DATA_RES] data=>', arg.data.data)
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
     }
@@ -1174,7 +1170,6 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-    console.log('= Idx [LOAD_GRAPHIC_ENTRY_RES] data=>', arg.data.data)
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
     }
@@ -1199,8 +1194,6 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
 
   if (arg.data.action === "GET_PANEL_DATA_RES") {
-    console.log('= Idx [GET_PANEL_DATA_RES] data=>', arg.data.data)
-
     if (getPanelsInterval && arg.data?.panel_id) {
       clearInterval(getPanelsInterval);
     }
@@ -1231,23 +1224,19 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       );
 
       T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      console.log('= Idx [GET_PANEL_DATA_RES] selectPanelOptions=>', selectPanelOptions.value)
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
         (item) => item.pid !== arg.data.panel_id
       );
 
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
-      console.log('= Idx [GET_PANEL_DATA_RES] T3000_Data.value.panelsRanges=>', T3000_Data.value.panelsRanges)
 
       refreshLinkedEntries(arg.data.data);
     }
   }
 
   if (arg.data.action === "GET_ENTRIES_RES") {
-    console.log('= Idx [GET_ENTRIES_RES] data=>', arg.data.data)
     arg.data.data.forEach((item) => {
       const itemIndex = T3000_Data.value.panelsData.findIndex(
         (ii) =>
@@ -1262,13 +1251,11 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
 
     if (!linkT3EntryDialog.value.active) {
       selectPanelOptions.value = T3000_Data.value.panelsData;
-      console.log('= Idx [GET_ENTRIES_RES] selectPanelOptions=>', selectPanelOptions.value)
     }
     refreshLinkedEntries(arg.data.data);
   }
 
   if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-    console.log('= Idx [SAVE_GRAPHIC_DATA_RES] data=>', arg.data.data)
     if (arg.data.data?.status === true) {
       if (!savedNotify.value) return;
       $q.notify({
@@ -1383,7 +1370,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      // save(); // Save the current state
+      save(); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1428,7 +1415,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    // save(); // Save the state after drag end
+    save(); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -3692,73 +3679,73 @@ function viewportRightClick(ev) {
   }
 }
 
-// Checks if the user is logged in
-function isLoggedIn() {
-  const hasToken = $q.cookies.has("token");
-  if (!hasToken) {
-    user.value = null;
-    return;
-  }
+// // Checks if the user is logged in
+// function isLoggedIn() {
+//   const hasToken = $q.cookies.has("token");
+//   if (!hasToken) {
+//     user.value = null;
+//     return;
+//   }
 
-  // Get the user's data from the API
-  liveApi
-    .get("hvacTools")
-    .then(async (res) => {
-      const data = await res.json();
-      if (data.length > 0) {
-        data?.forEach((oItem) => {
-          addOnlineLibImage(oItem);
-        });
-      }
-    })
-    .catch((err) => {
-      console.log(err);
-    });
+//   // Get the user's data from the API
+//   liveApi
+//     .get("hvacTools")
+//     .then(async (res) => {
+//       const data = await res.json();
+//       if (data.length > 0) {
+//         data?.forEach((oItem) => {
+//           addOnlineLibImage(oItem);
+//         });
+//       }
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//     });
 
-  liveApi
-    .get("hvacObjectLibs")
-    .then(async (res) => {
-      const data = await res.json();
-      if (data.length > 0) {
-        data.forEach((oItem) => {
-          library.value.objLib.push({
-            id: oItem.id,
-            label: oItem.label,
-            items: oItem.items,
-            online: true,
-          });
-        });
-      }
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-  liveApi
-    .get("me")
-    .then(async (res) => {
-      user.value = await res.json();
-    })
-    .catch((err) => {
-      // Not logged in
-    });
-}
+//   liveApi
+//     .get("hvacObjectLibs")
+//     .then(async (res) => {
+//       const data = await res.json();
+//       if (data.length > 0) {
+//         data.forEach((oItem) => {
+//           library.value.objLib.push({
+//             id: oItem.id,
+//             label: oItem.label,
+//             items: oItem.items,
+//             online: true,
+//           });
+//         });
+//       }
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//     });
+//   liveApi
+//     .get("me")
+//     .then(async (res) => {
+//       user.value = await res.json();
+//     })
+//     .catch((err) => {
+//       // Not logged in
+//     });
+// }
 
-// Adds the online images to the library
-function addOnlineLibImage(oItem) {
-  const iIndex = library.value.images.findIndex(
-    (obj) => obj.id === "IMG-" + oItem.id
-  );
-  if (iIndex !== -1) {
-    library.value.images.splice(iIndex, 1);
-  }
-  library.value.images.push({
-    id: "IMG-" + oItem.id,
-    dbId: oItem.id,
-    name: oItem.name,
-    path: process.env.API_URL + "/file/" + oItem.file.path,
-    online: true,
-  });
-}
+// // Adds the online images to the library
+// function addOnlineLibImage(oItem) {
+//   const iIndex = library.value.images.findIndex(
+//     (obj) => obj.id === "IMG-" + oItem.id
+//   );
+//   if (iIndex !== -1) {
+//     library.value.images.splice(iIndex, 1);
+//   }
+//   library.value.images.push({
+//     id: "IMG-" + oItem.id,
+//     dbId: oItem.id,
+//     name: oItem.name,
+//     path: process.env.API_URL + "/file/" + oItem.file.path,
+//     online: true,
+//   });
+// }
 </script>
 
 <style>
