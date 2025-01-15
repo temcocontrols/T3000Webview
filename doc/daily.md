@@ -2668,3 +2668,61 @@ if (error_message.IsEmpty()) {
 
 The `IsEmpty` method returns `TRUE` if the `CString` is empty or contains only whitespace characters, and `FALSE` otherwise.
 
+
+## Add new function for processing the data received from websocket server at T3 application
+
+std::string ProcessWebSocketFrame(const std::vector<uint8_t>& recvbuf) {
+    std::string message;
+
+    if (recvbuf.size() < 2) {
+        return message; // Invalid frame
+    }
+
+    bool fin = recvbuf[0] & 0x80;
+    uint8_t opcode = recvbuf[0] & 0x0F;
+    bool mask = recvbuf[1] & 0x80;
+    uint64_t payloadLength = recvbuf[1] & 0x7F;
+
+    size_t pos = 2;
+
+    if (payloadLength == 126) {
+        if (recvbuf.size() < 4) {
+            return message; // Invalid frame
+        }
+        payloadLength = (recvbuf[2] << 8) | recvbuf[3];
+        pos += 2;
+    } else if (payloadLength == 127) {
+        if (recvbuf.size() < 10) {
+            return message; // Invalid frame
+        }
+        payloadLength = 0;
+        for (int i = 0; i < 8; ++i) {
+            payloadLength = (payloadLength << 8) | recvbuf[2 + i];
+        }
+        pos += 8;
+    }
+
+    if (mask) {
+        if (recvbuf.size() < pos + 4) {
+            return message; // Invalid frame
+        }
+        std::vector<uint8_t> maskingKey(recvbuf.begin() + pos, recvbuf.begin() + pos + 4);
+        pos += 4;
+
+        if (recvbuf.size() < pos + payloadLength) {
+            return message; // Invalid frame
+        }
+
+        message.resize(payloadLength);
+        for (size_t i = 0; i < payloadLength; ++i) {
+            message[i] = recvbuf[pos + i] ^ maskingKey[i % 4];
+        }
+    } else {
+        if (recvbuf.size() < pos + payloadLength) {
+            return message; // Invalid frame
+        }
+        message.insert(message.end(), recvbuf.begin() + pos, recvbuf.begin() + pos + payloadLength);
+    }
+
+    return message;
+}
