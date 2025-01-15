@@ -129,7 +129,7 @@ class WebSocketClient {
 
   //#region  Format Message
 
-  public FormatMessageData(action: number, panelId: number, viewitem: number, data: {}) {
+  public FormatMessageData(action: number, panelId: number, viewitem: number, data: any) {
 
     // get the serial_number base on panelId
     const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
@@ -211,10 +211,15 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANELS_LIST }));
   }
 
-  public GetEntries(panelId: number) {
+  public GetEntries(data: []) {
     // action: 6, // GET_ENTRIES
 
-    this.FormatMessageData(MessageType.GET_ENTRIES, panelId, null, null);
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+    const serialNumber = currentDevice.serialNumber;
+
+    this.FormatMessageData(MessageType.GET_ENTRIES, panelId, graphicId, data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
@@ -405,6 +410,7 @@ class WebSocketClient {
 
   public HandleGetEntriesRes(data) {
     // action: 6, // GET_ENTRIES_RES
+    console.log('= Ws GET_ENTRIES_RES', data);
   }
 
   public HandleLoadGraphicEntryRes(data) {

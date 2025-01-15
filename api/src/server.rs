@@ -340,7 +340,8 @@ async fn send_message_to_data_client(
         if *id == Uuid::parse_str("11111111-1111-1111-1111-111111111111")? {
             let text_message = Message::text(message.to_string());
 
-             print!("Send message to data client: {:?}", text_message);
+            print!("Send message to data client: {:?}", text_message);
+
             if let Err(e) = client.send(text_message) {
                 log_message(
                     &format!("Failed to send text msg to client ==1111: {:?}", e),

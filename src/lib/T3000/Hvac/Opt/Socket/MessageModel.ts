@@ -100,7 +100,7 @@ class MessageModel {
     this.header.from = this.getBrowserType();
   }
 
-  setMessage(action: number, panelId: number, viewitem: number, data: {}, serialNumber: number, clientId?: string) {
+  setMessage(action: number, panelId: number, viewitem: number, data: any, serialNumber: number, clientId?: string) {
 
     if (action !== null && action !== undefined) {
       this.message.action = action;
@@ -127,7 +127,8 @@ class MessageModel {
     // Add msg id
     this.message.msgId = Utils5.generateUUID();
 
-    if (serialNumber != null && serialNumber !== undefined) {
+    const needAppedSerialNumber = panelId != null && serialNumber != null;
+    if (needAppedSerialNumber) {
       this.message.serialNumber = serialNumber;
     }
   }

@@ -20,7 +20,7 @@
 -->
 <template>
   <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
-    V:25.0115.02
+    V:25.0115.03
   </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
