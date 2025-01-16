@@ -58,7 +58,8 @@
               Graphic
             </q-item-label>
             <q-item-label>
-              <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.id }}</span>
+              <span class="text-weight-medium select-text">{{
+                currentDevice.graphicFull.id === -1 ? "" : currentDevice.graphicFull.id }}</span>
             </q-item-label>
           </q-item-section>
 
@@ -258,7 +259,7 @@ export default defineComponent({
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
 
-    const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: 0 } });
+    const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
       const filt = filter.toLowerCase()
@@ -395,10 +396,10 @@ export default defineComponent({
     const saveCurrentSelection = () => {
       console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
-      if (currentDevice.value.device === '' || currentDevice.value.graphic === 0) {
+      if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
         $q.notify({
           type: "negative",
-          message: "Please select a device and graphic",
+          message: "Please select a device and a graphic",
         });
         return;
       }
