@@ -68,6 +68,16 @@ export const viewport = ref(null); // Reference to the viewport element
 
 export const locked = ref(false); // State to lock or unlock the interface
 
+export const T3_Types = {
+  OUTPUT: 0,
+  INPUT: 1,
+  VARIABLE: 2,
+  SCHEDULE: 4,
+  HOLIDAY: 5,
+  PROGRAM: 6,
+  MON: 9,
+};
+
 const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),

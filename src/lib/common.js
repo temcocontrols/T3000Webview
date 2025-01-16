@@ -48,15 +48,15 @@ export const getEntryRange = (item) => {
   return { label: "Unused", unit: "" };
 };
 
-export const T3_Types = {
-  OUTPUT: 0,
-  INPUT: 1,
-  VARIABLE: 2,
-  SCHEDULE: 4,
-  HOLIDAY: 5,
-  PROGRAM: 6,
-  MON: 9,
-};
+// export const T3_Types = {
+//   OUTPUT: 0,
+//   INPUT: 1,
+//   VARIABLE: 2,
+//   SCHEDULE: 4,
+//   HOLIDAY: 5,
+//   PROGRAM: 6,
+//   MON: 9,
+// };
 
 const gaugeDefautColors = [
   { offset: 33, color: "#14BE64" },

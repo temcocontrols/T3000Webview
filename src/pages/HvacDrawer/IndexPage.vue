@@ -738,7 +738,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
+import { tools, /*T3_Types,*/ getObjectActiveValue, T3000_Data, /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -758,10 +758,11 @@ import NewTopToolBar from "src/components/NewTopToolBar.vue";
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  documentAreaPosition,viewportMargins,viewport,locked
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
 // const isBuiltInEdge = ref(false);
@@ -813,7 +814,7 @@ const contextMenuShow = ref(false); // State of the context menu visibility
 
 // Panel options for selection
 const selectPanelOptions = ref(T3000_Data.value.panelsData);
-let getPanelsInterval = null; // Interval for fetching panel data
+// let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
@@ -827,7 +828,7 @@ const loadingPanelsProgress = computed(() => {
 const clipboardFull = ref(false); // State of the clipboard
 
 
-const zoom=Hvac.IdxPage.zoom;
+const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 
@@ -875,20 +876,20 @@ const objectsRef = ref(null); // Reference to objects
 // const deviceModel = ref({ active: false, data: {} });
 // const deviceAppState = ref([]);
 
-const handleScroll = (event) => {
+// const handleScroll = (event) => {
 
-  // Reset the h,v ruler's width for scrolling
-  documentAreaPosition.value.vRuler.height += event.target.scrollTop;
-  documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
+//   // Reset the h,v ruler's width for scrolling
+//   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
+//   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
 
-  // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
-  // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+//   // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+//   // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
 
-  // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+//   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
 
-  document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
-  document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
-};
+//   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
+//   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+// };
 
 // Lifecycle hook for component mount
 onMounted(() => {
@@ -959,111 +960,111 @@ onMounted(() => {
 
   Hvac.IdxPage.initPage();
 
-  // Request initial data and panels list if in a webview
-  window.chrome?.webview?.postMessage({
-    action: 1, // GET_INITIAL_DATA
-  });
+  // // Request initial data and panels list if in a webview
+  // window.chrome?.webview?.postMessage({
+  //   action: 1, // GET_INITIAL_DATA
+  // });
 
-  window.chrome?.webview?.postMessage({
-    action: 4, // GET_PANELS_LIST
-  });
+  // window.chrome?.webview?.postMessage({
+  //   action: 4, // GET_PANELS_LIST
+  // });
 
-  // Set intervals for fetching panel and entry data if in a webview
-  if (window.chrome?.webview?.postMessage) {
-    getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
-      action: 4, // GET_PANELS_LIST
-    });
+  // // Set intervals for fetching panel and entry data if in a webview
+  // if (window.chrome?.webview?.postMessage) {
+  //   getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
+  //     action: 4, // GET_PANELS_LIST
+  //   });
 
-    setInterval(function () {
-      if (getLinkedEntries().length === 0) return;
-      window.chrome?.webview?.postMessage({
-        action: 6, // GET_ENTRIES
-        data: getLinkedEntries().map((ii) => {
-          return {
-            panelId: ii.t3Entry.pid,
-            index: ii.t3Entry.index,
-            type: T3_Types[ii.t3Entry.type],
-          };
-        }),
-      });
-    }, 10000);
-  }
+  //   setInterval(function () {
+  //     if (getLinkedEntries().length === 0) return;
+  //     window.chrome?.webview?.postMessage({
+  //       action: 6, // GET_ENTRIES
+  //       data: getLinkedEntries().map((ii) => {
+  //         return {
+  //           panelId: ii.t3Entry.pid,
+  //           index: ii.t3Entry.index,
+  //           type: T3_Types[ii.t3Entry.type],
+  //         };
+  //       }),
+  //     });
+  //   }, 10000);
+  // }
 
   // Refresh moveable guides after a short delay
-  setTimeout(() => {
-    refreshMoveableGuides();
-  }, 100);
+  // setTimeout(() => {
+  //   refreshMoveableGuides();
+  // }, 100);
 
-  // Viewport wrapper scroll event listener
-  const div = document.querySelector('.viewport-wrapper');
-  div.addEventListener('scroll', handleScroll);
+  // // Viewport wrapper scroll event listener
+  // const div = document.querySelector('.viewport-wrapper');
+  // div.addEventListener('scroll', handleScroll);
 
-  // Init ruler and grid default value
-  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+  // // Init ruler and grid default value
+  // documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+  // documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+  // documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
 
   // If accessed from an external browser
-  initExternalBrowserOpt();
+  // initExternalBrowserOpt();
 });
 
-function initExternalBrowserOpt() {
+// function initExternalBrowserOpt() {
 
-  if (isBuiltInEdge.value) {
-    return;
-  }
+//   if (isBuiltInEdge.value) {
+//     return;
+//   }
 
-  // connect to the ws://localhost:9104 websocket server
-  Hvac.WsClient.connect();
+//   // connect to the ws://localhost:9104 websocket server
+//   Hvac.WsClient.connect();
 
-  // check if need to show the device list dialog
-  setTimeout(() => {
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-    if (!currentDevice) {
-      deviceModel.value.active = true;
-    }
-    else {
-      deviceModel.value.active = false;
-      deviceModel.value.data = currentDevice;
+//   // check if need to show the device list dialog
+//   setTimeout(() => {
+//     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//     if (!currentDevice) {
+//       deviceModel.value.active = true;
+//     }
+//     else {
+//       deviceModel.value.active = false;
+//       deviceModel.value.data = currentDevice;
 
-      console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+//       console.log('=== indexPage.currentDevice load from local storage', currentDevice);
 
-      // load device appstate
-      //Hvac.DeviceOpt.refreshDeviceAppState();
-      Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
+//       // load device appstate
+//       //Hvac.DeviceOpt.refreshDeviceAppState();
+//       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
 
-      // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
-      // console.log('=== indexPage.deviceModel changed', deviceModel.value);
-    }
-  }, 1000);
+//       // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+//       // console.log('=== indexPage.deviceModel changed', deviceModel.value);
+//     }
+//   }, 1000);
 
-  setInterval(function () {
-    if (getLinkedEntries().length === 0) return;
+//   setInterval(function () {
+//     if (getLinkedEntries().length === 0) return;
 
-    const data = getLinkedEntries().map((ii) => {
-      return {
-        panelId: ii.t3Entry.pid,
-        index: ii.t3Entry.index,
-        type: T3_Types[ii.t3Entry.type],
-      };
-    });
+//     const data = getLinkedEntries().map((ii) => {
+//       return {
+//         panelId: ii.t3Entry.pid,
+//         index: ii.t3Entry.index,
+//         type: T3_Types[ii.t3Entry.type],
+//       };
+//     });
 
-    Hvac.WsClient.GetEntries(data);
+//     Hvac.WsClient.GetEntries(data);
 
-    /*
-    window.chrome?.webview?.postMessage({
-      action: 6, // GET_ENTRIES
-      data: getLinkedEntries().map((ii) => {
-        return {
-          panelId: ii.t3Entry.pid,
-          index: ii.t3Entry.index,
-          type: T3_Types[ii.t3Entry.type],
-        };
-      }),
-    });
-    */
-  }, 10000);
-}
+//     /*
+//     window.chrome?.webview?.postMessage({
+//       action: 6, // GET_ENTRIES
+//       data: getLinkedEntries().map((ii) => {
+//         return {
+//           panelId: ii.t3Entry.pid,
+//           index: ii.t3Entry.index,
+//           type: T3_Types[ii.t3Entry.type],
+//         };
+//       }),
+//     });
+//     */
+//   }, 10000);
+// }
 
 function updateDeviceModel(isActive, data) {
   console.log('= Idx updateDeviceModel ===', isActive, data)
@@ -1171,7 +1172,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       library.value = arg.data.library;
     }
     setTimeout(() => {
-      refreshMoveableGuides();
+      IdxUtils.refreshMoveableGuides();
     }, 100);
   }
 
@@ -1195,14 +1196,14 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     }
 
     setTimeout(() => {
-      refreshMoveableGuides();
+      IdxUtils.refreshMoveableGuides();
     }, 100);
   }
 
   if (arg.data.action === "GET_PANEL_DATA_RES") {
-    if (getPanelsInterval && arg.data?.panel_id) {
-      clearInterval(getPanelsInterval);
-    }
+    // if (getPanelsInterval && arg.data?.panel_id) {
+    //   clearInterval(getPanelsInterval);
+    // }
 
     if (arg.data?.panel_id) {
 
@@ -1349,16 +1350,16 @@ function viewportMouseMoved(e) {
     refreshObjects();
   }
 }
-// Refreshes the guidelines for the moveable elements
-function refreshMoveableGuides() {
-  appState.value.elementGuidelines = [];
-  const lines = document.querySelectorAll(
-    `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
-  );
-  Array.from(lines).forEach(function (el) {
-    appState.value.elementGuidelines.push(el);
-  });
-}
+// // Refreshes the guidelines for the moveable elements
+// function refreshMoveableGuides() {
+//   appState.value.elementGuidelines = [];
+//   const lines = document.querySelectorAll(
+//     `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
+//   );
+//   Array.from(lines).forEach(function (el) {
+//     appState.value.elementGuidelines.push(el);
+//   });
+// }
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
@@ -1513,7 +1514,7 @@ function onSelectoSelectEnd(e) {
     contextMenuShow.value = false;
   }
 
-  refreshMoveableGuides(); // Refresh the moveable guidelines after selection
+  IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
     T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
@@ -2759,12 +2760,12 @@ function exportToJsonAction() {
   a.click();
 }
 
-// Get all items linked to a T3 entry
-function getLinkedEntries() {
-  const items = appState.value.items;
-  if (items.length === 0) return [];
-  return toRaw(appState.value).items.filter((i) => i.t3Entry);
-}
+// // Get all items linked to a T3 entry
+// function getLinkedEntries() {
+//   const items = appState.value.items;
+//   if (items.length === 0) return [];
+//   return toRaw(appState.value).items.filter((i) => i.t3Entry);
+// }
 
 // Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
@@ -2810,7 +2811,7 @@ function executeImportFromJson() {
         appState.value = importedState;
         importJsonDialog.value.data = null;
         setTimeout(() => {
-          refreshMoveableGuides();
+          IdxUtils.refreshMoveableGuides();
         }, 100);
         refreshMoveable();
       })
@@ -2825,7 +2826,7 @@ function executeImportFromJson() {
   appState.value = importedState;
   importJsonDialog.value.data = null;
   setTimeout(() => {
-    refreshMoveableGuides();
+    IdxUtils.refreshMoveableGuides();
   }, 100);
   refreshMoveable();
 }

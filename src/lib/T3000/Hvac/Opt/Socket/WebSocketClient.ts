@@ -18,10 +18,7 @@ class WebSocketClient {
 
   public needRefresh: boolean = true;
 
-  constructor() {
-
-
-  }
+  constructor() { }
 
   public connect() {
 
@@ -211,7 +208,7 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_PANELS_LIST }));
   }
 
-  public GetEntries(data: []) {
+  public GetEntries(data: any[]) {
     // action: 6, // GET_ENTRIES
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();

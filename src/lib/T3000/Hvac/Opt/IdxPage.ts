@@ -3,14 +3,17 @@
 
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition,
-  viewportMargins, viewport, locked
+  viewportMargins, viewport, locked, deviceModel, T3_Types
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
 import panzoom from "panzoom"
-import { computed, triggerRef } from "vue"
+import { computed, triggerRef, toRaw } from "vue"
+import Hvac from "../Hvac"
+import IdxUtils from "./IdxUtils"
 
 let panzoomInstance = null;
+let getPanelsInterval = null; // Interval for fetching panel data
 
 class IdxPage {
 
@@ -30,6 +33,8 @@ class IdxPage {
     this.restoreAppState();
     this.setDocMarginOffset();
     this.initPanzoom();
+    this.initMessageClient();
+    this.initScorller();
   }
 
   // Set global navigation properties
@@ -125,7 +130,7 @@ class IdxPage {
     this.zoom = computed({
       // Getter for zoom value
       get() {
-        return parseInt(appState.value.viewportTransform.scale * 100);
+        return parseInt(appState.value.viewportTransform.scale * 100 + "");
       },
       // Setter for zoom value
       set(newValue) {
@@ -138,6 +143,143 @@ class IdxPage {
         );
       },
     });
+  }
+
+  // Refresh moveable guides after a short delay
+  refreshMoveableGuides() {
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
+  }
+
+  handleScroll(event) {
+    // Reset the h,v ruler's width for scrolling
+    documentAreaPosition.value.vRuler.height += event.target.scrollTop;
+    documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
+
+    // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+    // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+
+    // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+    document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
+    document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+  }
+
+  initScorller() {
+    // Viewport wrapper scroll event listener
+    const div = document.querySelector('.viewport-wrapper');
+    div.addEventListener('scroll', this.handleScroll);
+
+    // Init ruler and grid default value
+    documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+    documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+    documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+  }
+
+  // Set intervals for fetching panel and entry data if in a webview
+  initFetchPanelEntryInterval() {
+    if (!this.webview?.postMessage) {
+      return;
+    }
+
+    getPanelsInterval = setInterval(() => {
+      Hvac.WebClient.GetPanelsList();
+    }, 10000);
+
+    setInterval(function () {
+      const lkdEntries = IdxUtils.getLinkedEntries();
+
+      if (lkdEntries.length <= 0) {
+        return;
+      }
+
+      const etries = lkdEntries.map((ii) => {
+        return {
+          panelId: ii.t3Entry.pid,
+          index: ii.t3Entry.index,
+          type: T3_Types[ii.t3Entry.type],
+        };
+      });
+
+      Hvac.WebClient.GetEntries(null, null, etries);
+
+    }, 10000);
+  }
+
+  initMessageClient() {
+    // Built-in explorer
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.GetInitialData();
+      Hvac.WebClient.GetPanelsList();
+      this.initFetchPanelEntryInterval();
+      return;
+    }
+
+    // External explorer
+    // If accessed from an external browser
+    if (!isBuiltInEdge.value) {
+      this.initExternalBrowserOpt();
+      return;
+    }
+  }
+
+  initExternalBrowserOpt() {
+
+    if (isBuiltInEdge.value) return;
+
+    // connect to the ws://localhost:9104 websocket server
+    Hvac.WsClient.connect();
+
+    // check if need to show the device list dialog
+    setTimeout(() => {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      if (!currentDevice) {
+        deviceModel.value.active = true;
+      }
+      else {
+        deviceModel.value.active = false;
+        deviceModel.value.data = currentDevice;
+
+        console.log('= IdxPage load from local storage', currentDevice);
+
+        // load device appstate
+        //Hvac.DeviceOpt.refreshDeviceAppState();
+        Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
+
+        // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+        // console.log('=== indexPage.deviceModel changed', deviceModel.value);
+      }
+    }, 1000);
+
+    setInterval(function () {
+      const linkedEntries = IdxUtils.getLinkedEntries();
+      if (linkedEntries.length === 0) return;
+
+      const data = linkedEntries.map((ii) => {
+        return {
+          panelId: ii.t3Entry.pid,
+          index: ii.t3Entry.index,
+          type: T3_Types[ii.t3Entry.type],
+        };
+      });
+
+      Hvac.WsClient.GetEntries(data);
+
+      /*
+      window.chrome?.webview?.postMessage({
+        action: 6, // GET_ENTRIES
+        data: getLinkedEntries().map((ii) => {
+          return {
+            panelId: ii.t3Entry.pid,
+            index: ii.t3Entry.index,
+            type: T3_Types[ii.t3Entry.type],
+          };
+        }),
+      });
+      */
+    }, 10000);
   }
 
   // Checks if the user is logged in
