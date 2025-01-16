@@ -13,6 +13,7 @@ export const emptyProject = {
   groupCount: 0,
   activeItemIndex: null,
   viewportTransform: { x: 0, y: 0, scale: 1 },
+  rulersGridVisible: false
 };
 
 export const emptyLib = {
@@ -40,6 +41,32 @@ export const globalNav = ref({
 });
 
 export const library = ref(cloneDeep(emptyLib));
+
+export const isBuiltInEdge = ref(false);
+
+// Ruler & Grid default value
+export const documentAreaPosition = ref(
+  {
+    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
+    hRuler: { width: 0, height: 20 },
+    vRuler: { width: 20, height: 0 },
+    hvGrid: { width: 0, height: 0 },
+
+    //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
+    //height: calc(100vh - 68px);
+    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
+    widthOffset: '128px',
+    heightOffset: isBuiltInEdge.value ? '68px' : '115px',
+  });
+
+export const viewportMargins = ({
+  top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
+  left: 106 + 20 + 2,
+});
+
+export const viewport = ref(null); // Reference to the viewport element
+
+export const locked = ref(false); // State to lock or unlock the interface
 
 const T3Data = {
   deviceList: ref([]),

@@ -731,7 +731,7 @@ import { VueMoveable, getElementInfo } from "vue3-moveable";
 import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
-import panzoom from "panzoom";
+// import panzoom from "panzoom";
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
@@ -759,35 +759,38 @@ import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 
-import { emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user,library,emptyLib } from '../../lib/T3000/Hvac/Data/T3Data'
+import {
+  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
+  documentAreaPosition,viewportMargins,viewport,locked
+} from '../../lib/T3000/Hvac/Data/T3Data'
 
-const isBuiltInEdge = ref(false);
+// const isBuiltInEdge = ref(false);
 
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-// Ruler & Grid default value
-const documentAreaPosition = ref(
-  {
-    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
-    hRuler: { width: 0, height: 20 },
-    vRuler: { width: 20, height: 0 },
-    hvGrid: { width: 0, height: 0 },
+// // Ruler & Grid default value
+// const documentAreaPosition = ref(
+//   {
+//     workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
+//     hRuler: { width: 0, height: 20 },
+//     vRuler: { width: 20, height: 0 },
+//     hvGrid: { width: 0, height: 0 },
 
-    //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-    //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
-    widthOffset: '128px',
-    heightOffset: isBuiltInEdge.value ? '68px' : '115px',
-  });
+//     //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
+//     //height: calc(100vh - 68px);
+//     wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" },
+//     widthOffset: '128px',
+//     heightOffset: isBuiltInEdge.value ? '68px' : '115px',
+//   });
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
 const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
-const viewport = ref(null); // Reference to the viewport element
+// const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
@@ -823,6 +826,9 @@ const loadingPanelsProgress = computed(() => {
 
 const clipboardFull = ref(false); // State of the clipboard
 
+
+const zoom=Hvac.IdxPage.zoom;
+
 // Dev mode only
 
 if (process.env.DEV) {
@@ -834,7 +840,7 @@ if (process.env.DEV) {
 }
 
 // Initialization of empty project and library structures
-let panzoomInstance = null;
+// let panzoomInstance = null;
 // const emptyProject = {
 //   version: process.env.VERSION,
 //   items: [],
@@ -858,7 +864,7 @@ let panzoomInstance = null;
 // const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
-const locked = ref(false); // State to lock or unlock the interface
+// const locked = ref(false); // State to lock or unlock the interface
 const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
@@ -894,64 +900,64 @@ onMounted(() => {
 
   // isLoggedIn(); // Check if user is logged in
 
-  Hvac.IdxPage.initPage();
+  // // Restore app state from local storage if not in a webview
+  // if (!window.chrome?.webview?.postMessage) {
+  //   const localState = localStorage.getItem("appState");
+  //   if (localState) {
+  //     appState.value = JSON.parse(localState);
+  //     rulersGridVisible.value = appState.value.rulersGridVisible;
+  //   }
+  // }
 
-  // Restore app state from local storage if not in a webview
-  if (!window.chrome?.webview?.postMessage) {
-    const localState = localStorage.getItem("appState");
-    if (localState) {
-      appState.value = JSON.parse(localState);
-      rulersGridVisible.value = appState.value.rulersGridVisible;
-    }
-  }
+  // if (window.chrome?.webview) {
+  //   isBuiltInEdge.value = true;
+  //   documentAreaPosition.value.widthOffset = '128px';
+  //   documentAreaPosition.value.heightOffset = '68px';
 
-  if (window.chrome?.webview) {
-    isBuiltInEdge.value = true;
-    documentAreaPosition.value.widthOffset = '128px';
-    documentAreaPosition.value.heightOffset = '68px';
-
-    viewportMargins.top = 56;
-  }
-  else {
-    isBuiltInEdge.value = false;
-    viewportMargins.top = 95 + 20 + 2;
-  }
+  //   viewportMargins.top = 56;
+  // }
+  // else {
+  //   isBuiltInEdge.value = false;
+  //   viewportMargins.top = 95 + 20 + 2;
+  // }
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
     // save();
   });
 
-  // Initialize panzoom for viewport
-  panzoomInstance = panzoom(viewport.value, {
-    maxZoom: 4,
-    minZoom: 0.1,
-    zoomDoubleClickSpeed: 1,
-    filterKey: function (/* e, dx, dy, dz */) {
-      // don't let panzoom handle this event:
-      return true;
-    },
-    beforeMouseDown: function (e) {
-      // allow mouse-down panning only if altKey is down. Otherwise - ignore
-      var shouldIgnore = !e.altKey;
-      return shouldIgnore;
-    },
-    // Add the focal point for zooming to be the center of the viewport
-    // transformOrigin: { x: 0.5, y: 0.5 },
-  });
+  // // Initialize panzoom for viewport
+  // panzoomInstance = panzoom(viewport.value, {
+  //   maxZoom: 4,
+  //   minZoom: 0.1,
+  //   zoomDoubleClickSpeed: 1,
+  //   filterKey: function (/* e, dx, dy, dz */) {
+  //     // don't let panzoom handle this event:
+  //     return true;
+  //   },
+  //   beforeMouseDown: function (e) {
+  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
+  //     var shouldIgnore = !e.altKey;
+  //     return shouldIgnore;
+  //   },
+  //   // Add the focal point for zooming to be the center of the viewport
+  //   // transformOrigin: { x: 0.5, y: 0.5 },
+  // });
 
-  // Update the viewport transform on panzoom transform event
-  panzoomInstance.on("transform", function (e) {
+  // // Update the viewport transform on panzoom transform event
+  // panzoomInstance.on("transform", function (e) {
 
-    const pzTrs = e.getTransform();
-    // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-    // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+  //   const pzTrs = e.getTransform();
+  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
 
-    appState.value.viewportTransform = e.getTransform();
-    triggerRef(appState);
+  //   appState.value.viewportTransform = e.getTransform();
+  //   triggerRef(appState);
 
-    restDocumentAreaPosition(e.getTransform());
-  });
+  //   restDocumentAreaPosition(e.getTransform());
+  // });
+
+  Hvac.IdxPage.initPage();
 
   // Request initial data and panels list if in a webview
   window.chrome?.webview?.postMessage({
@@ -1684,11 +1690,11 @@ function addObject(item, group = undefined, addToHistory = true) {
   return item;
 }
 
-const viewportMargins = {
-  // top: 36,93
-  top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
-  left: 106 + 20 + 2,
-};
+// const viewportMargins = {
+//   // top: 36,93
+//   top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
+//   left: 106 + 20 + 2,
+// };
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
@@ -2824,23 +2830,23 @@ function executeImportFromJson() {
   refreshMoveable();
 }
 
-// Computed property for zoom control
-const zoom = computed({
-  // Getter for zoom value
-  get() {
-    return parseInt(appState.value.viewportTransform.scale * 100);
-  },
-  // Setter for zoom value
-  set(newValue) {
-    if (!newValue) return;
-    appState.value.viewportTransform.scale = newValue / 100;
-    panzoomInstance.smoothZoomAbs(
-      appState.value.viewportTransform.x,
-      appState.value.viewportTransform.y,
-      newValue / 100
-    );
-  },
-});
+// // Computed property for zoom control
+// const zoom = computed({
+//   // Getter for zoom value
+//   get() {
+//     return parseInt(appState.value.viewportTransform.scale * 100);
+//   },
+//   // Setter for zoom value
+//   set(newValue) {
+//     if (!newValue) return;
+//     appState.value.viewportTransform.scale = newValue / 100;
+//     panzoomInstance.smoothZoomAbs(
+//       appState.value.viewportTransform.x,
+//       appState.value.viewportTransform.y,
+//       newValue / 100
+//     );
+//   },
+// });
 
 // Duplicate the selected items in the app state
 function duplicateSelected() {
@@ -3074,25 +3080,25 @@ function lockToggle() {
   restDocumentAreaPosition();
 }
 
-function restDocumentAreaPosition(pzXY) {
-  const div = document.querySelector('.full-area');
-  documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
-  documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
-  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-  documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
-  documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
+// function restDocumentAreaPosition(pzXY) {
+//   const div = document.querySelector('.full-area');
+//   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
+//   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
+//   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+//   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+//   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+//   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
+//   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
 
-  if (isBuiltInEdge.value) {
-    documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
-  }
-  else {
-    documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
-  }
-}
+//   if (isBuiltInEdge.value) {
+//     documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
+//   }
+//   else {
+//     documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
+//   }
+// }
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
