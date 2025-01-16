@@ -1130,10 +1130,12 @@ onBeforeUnmount(() => {
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
-  appState.value.selectedTargets = [];
+  // appState.value.selectedTargets = [];
 
-  if (panzoomInstance?.dispose) return;
-  panzoomInstance?.dispose();
+  // if (panzoomInstance?.dispose) return;
+  // panzoomInstance?.dispose();
+
+  Hvac.IdxPage.clearIdx();
 });
 
 // Handle messages from the webview
@@ -1204,6 +1206,10 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     // if (getPanelsInterval && arg.data?.panel_id) {
     //   clearInterval(getPanelsInterval);
     // }
+
+    if(arg.data?.panel_id){
+      Hvac.IdxPage.clearGetPanelsInterval();
+    }
 
     if (arg.data?.panel_id) {
 

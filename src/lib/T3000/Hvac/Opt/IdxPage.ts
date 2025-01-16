@@ -13,13 +13,14 @@ import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 
 let panzoomInstance = null;
-let getPanelsInterval = null; // Interval for fetching panel data
+// let getPanelsInterval = null; // Interval for fetching panel data
 
 class IdxPage {
 
   private webview = (window as any).chrome?.webview;
   // private panzoomInstance: any;
   public zoom: any;
+  public getPanelsInterval: any;
 
   constructor() {
     // this.panzoomInstance = null;
@@ -183,7 +184,7 @@ class IdxPage {
       return;
     }
 
-    getPanelsInterval = setInterval(() => {
+    this.getPanelsInterval = setInterval(() => {
       Hvac.WebClient.GetPanelsList();
     }, 10000);
 
@@ -280,6 +281,19 @@ class IdxPage {
       });
       */
     }, 10000);
+  }
+
+  clearGetPanelsInterval() {
+    if (this.getPanelsInterval) {
+      clearInterval(this.getPanelsInterval);
+    }
+  }
+
+  clearIdx() {
+    appState.value.selectedTargets = [];
+
+    if (panzoomInstance?.dispose) return;
+    panzoomInstance?.dispose();
   }
 
   // Checks if the user is logged in
