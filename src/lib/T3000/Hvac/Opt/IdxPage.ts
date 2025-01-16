@@ -299,8 +299,7 @@ class IdxPage {
   // Checks if the user is logged in
   isLoggedIn() {
     const $q = useQuasar();
-
-    console.log("= Idx $q:", $q);
+    // console.log("= Idx $q:", $q);
 
     const hasToken = $q.cookies.has("token");
     if (!hasToken) {

@@ -565,12 +565,12 @@
     </div>
 
     <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]"
-      v-if="!locked && appState.items[appState.activeItemIndex] && (appState.activeItemIndex || appState.activeItemIndex === 0)"
-      @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
-      @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"
-      @DisplayFieldValueChanged="DisplayFieldValueChanged" />
+    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0) &&
+      (appState.selectedTargets.length === 0)" @refresh-moveable="refreshMoveable"
+      @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
+      @gaugeSettings="gaugeSettingsDialogAction" @mounted="addActionToHistory('Object settings opened')"
+      @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" />
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
@@ -1207,7 +1207,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
     //   clearInterval(getPanelsInterval);
     // }
 
-    if(arg.data?.panel_id){
+    if (arg.data?.panel_id) {
       Hvac.IdxPage.clearGetPanelsInterval();
     }
 
@@ -2167,6 +2167,7 @@ function refreshObjectStatus(item) {
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false) {
+  console.log('= Idx save notify', rulersGridVisible.value);
   savedNotify.value = notify;
   const data = cloneDeep(toRaw(appState.value));
 

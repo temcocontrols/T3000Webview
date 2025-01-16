@@ -351,7 +351,6 @@ class WebSocketClient {
     // action: 1, // GET_INITIAL_DATA_RES
 
     // save the T3 data to localstorage with key 'tempAppState'
-
     if (data !== null && data !== undefined) {
       localStorage.setItem('tempAppState', data);
     }

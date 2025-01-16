@@ -191,6 +191,10 @@ class DeviceOpt {
     }
   }
 
+  saveAppState(appstate) {
+    localStorage.setItem('appState', JSON.stringify(appstate))
+  }
+
   findAllNodes(nodes, target) {
     for (const node of nodes) {
       if (node.label === target) {
@@ -420,6 +424,12 @@ class DeviceOpt {
       appState.value = cloneDeep(emptyProject);
       appState.value.rulersGridVisible = rulersGridVisible.value;
     }
+
+    // save or update the latest appState to local storage
+    this.saveAppState(appState.value);
+
+    // reset the rulersGridVisible value
+    rulersGridVisible.value = appState.value?.rulersGridVisible ?? false;
   }
 }
 
