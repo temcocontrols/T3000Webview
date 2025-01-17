@@ -431,6 +431,19 @@ class DeviceOpt {
     // reset the rulersGridVisible value
     rulersGridVisible.value = appState.value?.rulersGridVisible ?? false;
   }
+
+  refreshCurrentDevice() {
+    const currentDevice = this.getCurrentDevice();
+
+    const appStateElmCount = appState.value.items.length;
+    const graphicElmCount = currentDevice.graphicFull.elementCount;
+    const needRefresh = appStateElmCount !== graphicElmCount;
+
+    if (needRefresh) {
+      currentDevice.graphicFull.elementCount = appStateElmCount;
+      this.saveCurrentDevice(currentDevice);
+    }
+  }
 }
 
 export default DeviceOpt

@@ -1088,7 +1088,7 @@ function showMoreDevices() {
   appState.value.activeItemIndex = null;
 
   // refresh the graphic panel data
-  // Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
 /*

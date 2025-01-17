@@ -365,6 +365,9 @@ class WebSocketClient {
 
       // load device appstate
       Hvac.DeviceOpt.refreshDeviceAppState();
+
+      // refresh the current device
+      Hvac.DeviceOpt.refreshCurrentDevice();
     }
   }
 
