@@ -1146,180 +1146,180 @@ onUnmounted(() => {
 //   // Handle various actions based on message data
 //   if (!"action" in arg.data) return;
 
-  /* move to WebViewClient.ts
-  if (arg.data.action === "GET_PANELS_LIST_RES") {
-    if (arg.data.data?.length) {
-      T3000_Data.value.panelsList = arg.data.data;
-      T3000_Data.value.loadingPanel = 0;
-      window.chrome?.webview?.postMessage({
-        action: 0, // GET_PANEL_DATA
-        panelId: T3000_Data.value.panelsList[0].panel_number,
-      });
-    }
+/* move to WebViewClient.ts
+if (arg.data.action === "GET_PANELS_LIST_RES") {
+  if (arg.data.data?.length) {
+    T3000_Data.value.panelsList = arg.data.data;
+    T3000_Data.value.loadingPanel = 0;
+    window.chrome?.webview?.postMessage({
+      action: 0, // GET_PANEL_DATA
+      panelId: T3000_Data.value.panelsList[0].panel_number,
+    });
   }
-  */
+}
+*/
 
-  // if (arg.data.action === "UPDATE_ENTRY_RES") {
-  //   // Handle update entry response
-  // }
+// if (arg.data.action === "UPDATE_ENTRY_RES") {
+//   // Handle update entry response
+// }
 
-  /*
-  if (arg.data.action === "GET_INITIAL_DATA_RES") {
-    if (arg.data.data) {
-      arg.data.data = JSON.parse(arg.data.data);
-    }
-
-    appState.value = arg.data.data;
-    rulersGridVisible.value = appState.value.rulersGridVisible;
-
-    grpNav.value = [arg.data.entry];
-    if (arg.data.library) {
-      arg.data.library = JSON.parse(arg.data.library);
-      library.value = arg.data.library;
-    }
-    setTimeout(() => {
-      IdxUtils.refreshMoveableGuides();
-    }, 100);
+/*
+if (arg.data.action === "GET_INITIAL_DATA_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
   }
-  */
 
-  /*
-  if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-    if (arg.data.data) {
-      arg.data.data = JSON.parse(arg.data.data);
-    }
-    appState.value = arg.data.data;
-    if (grpNav.value.length > 1) {
-      const navItem = grpNav.value[grpNav.value.length - 2];
-      if (
-        navItem.index !== arg.data.entry.index ||
-        navItem.pid !== arg.data.entry.pid
-      ) {
-        grpNav.value.push(arg.data.entry);
-      } else {
-        grpNav.value.pop();
-      }
-    } else {
+  appState.value = arg.data.data;
+  rulersGridVisible.value = appState.value.rulersGridVisible;
+
+  grpNav.value = [arg.data.entry];
+  if (arg.data.library) {
+    arg.data.library = JSON.parse(arg.data.library);
+    library.value = arg.data.library;
+  }
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
+
+/*
+if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
+  }
+  appState.value = arg.data.data;
+  if (grpNav.value.length > 1) {
+    const navItem = grpNav.value[grpNav.value.length - 2];
+    if (
+      navItem.index !== arg.data.entry.index ||
+      navItem.pid !== arg.data.entry.pid
+    ) {
       grpNav.value.push(arg.data.entry);
+    } else {
+      grpNav.value.pop();
     }
-
-    setTimeout(() => {
-      IdxUtils.refreshMoveableGuides();
-    }, 100);
+  } else {
+    grpNav.value.push(arg.data.entry);
   }
-  */
 
-  // if (arg.data.action === "GET_PANEL_DATA_RES") {
-  //   // if (getPanelsInterval && arg.data?.panel_id) {
-  //   //   clearInterval(getPanelsInterval);
-  //   // }
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
 
-  //   if (arg.data?.panel_id) {
-  //     Hvac.IdxPage.clearGetPanelsInterval();
-  //   }
+// if (arg.data.action === "GET_PANEL_DATA_RES") {
+//   // if (getPanelsInterval && arg.data?.panel_id) {
+//   //   clearInterval(getPanelsInterval);
+//   // }
 
-  //   if (arg.data?.panel_id) {
+//   if (arg.data?.panel_id) {
+//     Hvac.IdxPage.clearGetPanelsInterval();
+//   }
 
-  //     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
-  //     if (check1) {
-  //       T3000_Data.value.loadingPanel++;
-  //       const index = T3000_Data.value.loadingPanel;
-  //       window.chrome?.webview?.postMessage({
-  //         action: 0, // GET_PANEL_DATA
-  //         panelId: T3000_Data.value.panelsList[index].panel_number,
-  //       });
-  //     }
+//   if (arg.data?.panel_id) {
 
-  //     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
-  //     if (check2) {
-  //       T3000_Data.value.loadingPanel = null;
-  //     }
+//     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+//     if (check1) {
+//       T3000_Data.value.loadingPanel++;
+//       const index = T3000_Data.value.loadingPanel;
+//       window.chrome?.webview?.postMessage({
+//         action: 0, // GET_PANEL_DATA
+//         panelId: T3000_Data.value.panelsList[index].panel_number,
+//       });
+//     }
 
-  //     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-  //       (item) => item.pid !== arg.data.panel_id
-  //     );
+//     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+//     if (check2) {
+//       T3000_Data.value.loadingPanel = null;
+//     }
 
-  //     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-  //       arg.data.data
-  //     );
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
 
-  //     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-  //     selectPanelOptions.value = T3000_Data.value.panelsData;
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+//       arg.data.data
+//     );
 
-  //     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-  //       (item) => item.pid !== arg.data.panel_id
-  //     );
+//     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
 
-  //     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
 
-  //     refreshLinkedEntries(arg.data.data);
-  //   }
-  // }
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
 
-  // if (arg.data.action === "GET_ENTRIES_RES") {
-  //   arg.data.data.forEach((item) => {
-  //     const itemIndex = T3000_Data.value.panelsData.findIndex(
-  //       (ii) =>
-  //         ii.index === item.index &&
-  //         ii.type === item.type &&
-  //         ii.pid === item.pid
-  //     );
-  //     if (itemIndex !== -1) {
-  //       T3000_Data.value.panelsData[itemIndex] = item;
-  //     }
-  //   });
+//     refreshLinkedEntries(arg.data.data);
+//   }
+// }
 
-  //   if (!linkT3EntryDialog.value.active) {
-  //     selectPanelOptions.value = T3000_Data.value.panelsData;
-  //   }
-  //   refreshLinkedEntries(arg.data.data);
-  // }
+// if (arg.data.action === "GET_ENTRIES_RES") {
+//   arg.data.data.forEach((item) => {
+//     const itemIndex = T3000_Data.value.panelsData.findIndex(
+//       (ii) =>
+//         ii.index === item.index &&
+//         ii.type === item.type &&
+//         ii.pid === item.pid
+//     );
+//     if (itemIndex !== -1) {
+//       T3000_Data.value.panelsData[itemIndex] = item;
+//     }
+//   });
 
-  // if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-  //   if (arg.data.data?.status === true) {
-  //     if (!savedNotify.value) return;
-  //     $q.notify({
-  //       message: "Saved successfully.",
-  //       color: "primary",
-  //       icon: "check_circle",
-  //       actions: [
-  //         {
-  //           label: "Dismiss",
-  //           color: "white",
-  //           handler: () => {
-  //             /* ... */
-  //           },
-  //         },
-  //       ],
-  //     });
-  //   } else {
-  //     $q.notify({
-  //       message: "Error, not saved!",
-  //       color: "negative",
-  //       icon: "error",
-  //       actions: [
-  //         {
-  //           label: "Dismiss",
-  //           color: "white",
-  //           handler: () => {
-  //             /* ... */
-  //           },
-  //         },
-  //       ],
-  //     });
-  //   }
-  // }
+//   if (!linkT3EntryDialog.value.active) {
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
+//   }
+//   refreshLinkedEntries(arg.data.data);
+// }
 
-  // if (arg.data.action === "SAVE_IMAGE_RES") {
-  //   library.value.imagesCount++;
-  //   library.value.images.push({
-  //     id: "IMG-" + library.value.imagesCount,
-  //     name: arg.data.data.name,
-  //     path: arg.data.data.path,
-  //     online: false,
-  //   });
-  //   saveLib();
-  // }
+// if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+//   if (arg.data.data?.status === true) {
+//     if (!savedNotify.value) return;
+//     $q.notify({
+//       message: "Saved successfully.",
+//       color: "primary",
+//       icon: "check_circle",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   } else {
+//     $q.notify({
+//       message: "Error, not saved!",
+//       color: "negative",
+//       icon: "error",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   }
+// }
+
+// if (arg.data.action === "SAVE_IMAGE_RES") {
+//   library.value.imagesCount++;
+//   library.value.images.push({
+//     id: "IMG-" + library.value.imagesCount,
+//     name: arg.data.data.name,
+//     path: arg.data.data.path,
+//     online: false,
+//   });
+//   saveLib();
+// }
 
 // });
 
@@ -1999,7 +1999,7 @@ function T3UpdateEntryField(key, obj) {
   }
 
   if (key === "value" || key === "control") {
-    refreshObjectStatus(obj);
+    IdxUtils.refreshObjectStatus(obj);
   }
   window.chrome?.webview?.postMessage({
     action: 3, // UPDATE_ENTRY
@@ -2062,7 +2062,7 @@ function linkT3EntrySave() {
     appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
   }
 
-  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   linkT3EntryDialog.value.data = null;
   linkT3EntryDialog.value.active = false;
 }
@@ -2144,7 +2144,7 @@ function insertT3EntryOnSave() {
     }
     appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
   }
-  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   insertT3EntryDialog.value.data = null;
   insertT3EntryDialog.value.active = false;
 }
