@@ -184,7 +184,7 @@ class WebSocketClient {
       parsedAppState = storedAppState;
     }
 
-    this.FormatMessageData(MessageType.SAVE_GRAPHIC, panelId, graphicId, parsedAppState);
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, parsedAppState);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
@@ -296,7 +296,7 @@ class WebSocketClient {
       this.HandleGetInitialDataRes(msgData.data);
     }
 
-    if (msgData.action === MessageType.SAVE_GRAPHIC_RES) {
+    if (msgData.action === MessageType.SAVE_GRAPHIC_DATA_RES) {
       this.HandleSaveGraphicRes(msgData.data);
     }
 

@@ -231,7 +231,8 @@
 <script>
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
-import { getEntryRange, icons, switchIcons, tools } from "../lib/common";
+import { /*getEntryRange,*/ icons, switchIcons, tools } from "../lib/common";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
 import T3000 from "src/lib/T3000/T3000";
 
 export default defineComponent({
@@ -272,7 +273,7 @@ export default defineComponent({
       return tools.find((i) => i.name === props.object.type)?.settings || {};
     });
     const rangeOptions = computed(() => {
-      const items = getEntryRange(props.object.t3Entry)?.options?.filter(
+      const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(
         (i) => i.status === 1
       );
       const ranges = cloneDeep(items);
@@ -352,6 +353,10 @@ export default defineComponent({
       // console.log('ObjectConfig.vue->DisplayFieldValueChanged->props=', props.object);
       emit("DisplayFieldValueChanged", value);
     }
+
+    const getEntryRange = (entry) => {
+      return IdxUtils.getEntryRange(entry);
+    };
 
     return {
       item,

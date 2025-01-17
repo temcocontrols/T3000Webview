@@ -45,7 +45,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-            }}</span>
+          }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -134,7 +134,8 @@
 
 <script>
 import { defineComponent, computed, ref } from "vue";
-import { getEntryRange } from "src/lib/common";
+// import { getEntryRange } from "src/lib/common";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
 
 import DuctEl from "./ObjectTypes/Duct.vue";
 import FanEl from "./ObjectTypes/Fan.vue";
@@ -221,7 +222,7 @@ export default defineComponent({
   ],
   setup(props, { emit }) {
     const range = computed(() => {
-      return getEntryRange(props.item?.t3Entry);
+      return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
     const dispalyText = computed(() => {
@@ -233,7 +234,7 @@ export default defineComponent({
         return "";
       }
 
-      const range = getEntryRange(props.item.t3Entry);
+      const range = IdxUtils.getEntryRange(props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
@@ -327,7 +328,7 @@ export default defineComponent({
       if (props.item.t3Entry.auto_manual === 0) return;
       let control = false;
       let newVal = props.item.t3Entry.value;
-      const range = getEntryRange(props.item?.t3Entry);
+      const range = IdxUtils.getEntryRange(props.item?.t3Entry);
       if (
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.range > 100

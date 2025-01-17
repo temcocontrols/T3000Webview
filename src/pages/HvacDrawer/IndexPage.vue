@@ -567,7 +567,7 @@
     <!-- Object config sidebar -->
     <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
       (appState.activeItemIndex || appState.activeItemIndex === 0) &&
-      (appState.selectedTargets.length === 0)" @refresh-moveable="refreshMoveable"
+      (appState.selectedTargets.length > 0)" @refresh-moveable="refreshMoveable"
       @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
       @gaugeSettings="gaugeSettingsDialogAction" @mounted="addActionToHistory('Object settings opened')"
       @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" />
@@ -738,7 +738,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, /*T3_Types,*/ getObjectActiveValue, T3000_Data, /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -762,7 +762,8 @@ import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
+  savedNotify
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
 // const isBuiltInEdge = ref(false);
@@ -794,7 +795,7 @@ const selecto = ref(null); // Reference to the selecto component instance
 // const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
 
 // const insertT3EntryDialog = ref({ activate: false, data: {} })
 
@@ -809,11 +810,11 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
-const savedNotify = ref(false); // Notification state for saving
+// const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
-// Panel options for selection
-const selectPanelOptions = ref(T3000_Data.value.panelsData);
+// // Panel options for selection
+// const selectPanelOptions = ref(T3000_Data.value.panelsData);
 // let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
@@ -1139,11 +1140,11 @@ onUnmounted(() => {
 });
 
 // Handle messages from the webview
-window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("= Idx Received a message from webview", arg.data.action, arg.data);
+// window.chrome?.webview?.addEventListener("message", (arg) => {
+//   console.log("= Idx Received a message from webview", arg.data.action, arg.data);
 
-  // Handle various actions based on message data
-  if (!"action" in arg.data) return;
+//   // Handle various actions based on message data
+//   if (!"action" in arg.data) return;
 
   /* move to WebViewClient.ts
   if (arg.data.action === "GET_PANELS_LIST_RES") {
@@ -1158,10 +1159,11 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   }
   */
 
-  if (arg.data.action === "UPDATE_ENTRY_RES") {
-    // Handle update entry response
-  }
+  // if (arg.data.action === "UPDATE_ENTRY_RES") {
+  //   // Handle update entry response
+  // }
 
+  /*
   if (arg.data.action === "GET_INITIAL_DATA_RES") {
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
@@ -1179,7 +1181,9 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       IdxUtils.refreshMoveableGuides();
     }, 100);
   }
+  */
 
+  /*
   if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
     if (arg.data.data) {
       arg.data.data = JSON.parse(arg.data.data);
@@ -1203,120 +1207,121 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       IdxUtils.refreshMoveableGuides();
     }, 100);
   }
+  */
 
-  if (arg.data.action === "GET_PANEL_DATA_RES") {
-    // if (getPanelsInterval && arg.data?.panel_id) {
-    //   clearInterval(getPanelsInterval);
-    // }
+  // if (arg.data.action === "GET_PANEL_DATA_RES") {
+  //   // if (getPanelsInterval && arg.data?.panel_id) {
+  //   //   clearInterval(getPanelsInterval);
+  //   // }
 
-    if (arg.data?.panel_id) {
-      Hvac.IdxPage.clearGetPanelsInterval();
-    }
+  //   if (arg.data?.panel_id) {
+  //     Hvac.IdxPage.clearGetPanelsInterval();
+  //   }
 
-    if (arg.data?.panel_id) {
+  //   if (arg.data?.panel_id) {
 
-      const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
-      if (check1) {
-        T3000_Data.value.loadingPanel++;
-        const index = T3000_Data.value.loadingPanel;
-        window.chrome?.webview?.postMessage({
-          action: 0, // GET_PANEL_DATA
-          panelId: T3000_Data.value.panelsList[index].panel_number,
-        });
-      }
+  //     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+  //     if (check1) {
+  //       T3000_Data.value.loadingPanel++;
+  //       const index = T3000_Data.value.loadingPanel;
+  //       window.chrome?.webview?.postMessage({
+  //         action: 0, // GET_PANEL_DATA
+  //         panelId: T3000_Data.value.panelsList[index].panel_number,
+  //       });
+  //     }
 
-      const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
-      if (check2) {
-        T3000_Data.value.loadingPanel = null;
-      }
+  //     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+  //     if (check2) {
+  //       T3000_Data.value.loadingPanel = null;
+  //     }
 
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-        (item) => item.pid !== arg.data.panel_id
-      );
+  //     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+  //       (item) => item.pid !== arg.data.panel_id
+  //     );
 
-      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-        arg.data.data
-      );
+  //     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+  //       arg.data.data
+  //     );
 
-      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-      selectPanelOptions.value = T3000_Data.value.panelsData;
+  //     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+  //     selectPanelOptions.value = T3000_Data.value.panelsData;
 
-      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-        (item) => item.pid !== arg.data.panel_id
-      );
+  //     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+  //       (item) => item.pid !== arg.data.panel_id
+  //     );
 
-      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+  //     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
 
-      refreshLinkedEntries(arg.data.data);
-    }
-  }
+  //     refreshLinkedEntries(arg.data.data);
+  //   }
+  // }
 
-  if (arg.data.action === "GET_ENTRIES_RES") {
-    arg.data.data.forEach((item) => {
-      const itemIndex = T3000_Data.value.panelsData.findIndex(
-        (ii) =>
-          ii.index === item.index &&
-          ii.type === item.type &&
-          ii.pid === item.pid
-      );
-      if (itemIndex !== -1) {
-        T3000_Data.value.panelsData[itemIndex] = item;
-      }
-    });
+  // if (arg.data.action === "GET_ENTRIES_RES") {
+  //   arg.data.data.forEach((item) => {
+  //     const itemIndex = T3000_Data.value.panelsData.findIndex(
+  //       (ii) =>
+  //         ii.index === item.index &&
+  //         ii.type === item.type &&
+  //         ii.pid === item.pid
+  //     );
+  //     if (itemIndex !== -1) {
+  //       T3000_Data.value.panelsData[itemIndex] = item;
+  //     }
+  //   });
 
-    if (!linkT3EntryDialog.value.active) {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-    }
-    refreshLinkedEntries(arg.data.data);
-  }
+  //   if (!linkT3EntryDialog.value.active) {
+  //     selectPanelOptions.value = T3000_Data.value.panelsData;
+  //   }
+  //   refreshLinkedEntries(arg.data.data);
+  // }
 
-  if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-    if (arg.data.data?.status === true) {
-      if (!savedNotify.value) return;
-      $q.notify({
-        message: "Saved successfully.",
-        color: "primary",
-        icon: "check_circle",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
-    } else {
-      $q.notify({
-        message: "Error, not saved!",
-        color: "negative",
-        icon: "error",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
-    }
-  }
+  // if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+  //   if (arg.data.data?.status === true) {
+  //     if (!savedNotify.value) return;
+  //     $q.notify({
+  //       message: "Saved successfully.",
+  //       color: "primary",
+  //       icon: "check_circle",
+  //       actions: [
+  //         {
+  //           label: "Dismiss",
+  //           color: "white",
+  //           handler: () => {
+  //             /* ... */
+  //           },
+  //         },
+  //       ],
+  //     });
+  //   } else {
+  //     $q.notify({
+  //       message: "Error, not saved!",
+  //       color: "negative",
+  //       icon: "error",
+  //       actions: [
+  //         {
+  //           label: "Dismiss",
+  //           color: "white",
+  //           handler: () => {
+  //             /* ... */
+  //           },
+  //         },
+  //       ],
+  //     });
+  //   }
+  // }
 
-  if (arg.data.action === "SAVE_IMAGE_RES") {
-    library.value.imagesCount++;
-    library.value.images.push({
-      id: "IMG-" + library.value.imagesCount,
-      name: arg.data.data.name,
-      path: arg.data.data.path,
-      online: false,
-    });
-    saveLib();
-  }
+  // if (arg.data.action === "SAVE_IMAGE_RES") {
+  //   library.value.imagesCount++;
+  //   library.value.images.push({
+  //     id: "IMG-" + library.value.imagesCount,
+  //     name: arg.data.data.name,
+  //     path: arg.data.data.path,
+  //     online: false,
+  //   });
+  //   saveLib();
+  // }
 
-});
+// });
 
 function viewportMouseMoved(e) {
   // Move object icon with mouse
@@ -2152,20 +2157,20 @@ function insertT3DefaultLoadData() {
   // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
-// Refresh the status of an object based on its T3 entry
-function refreshObjectStatus(item) {
-  if (item.t3Entry && item.settings?.active !== undefined) {
-    item.settings.active = getObjectActiveValue(item);
-  }
+// // Refresh the status of an object based on its T3 entry
+// function refreshObjectStatus(item) {
+//   if (item.t3Entry && item.settings?.active !== undefined) {
+//     item.settings.active = getObjectActiveValue(item);
+//   }
 
-  if (
-    item.t3Entry &&
-    item.t3Entry.decom !== undefined &&
-    item.settings?.inAlarm !== undefined
-  ) {
-    item.settings.inAlarm = !!item.t3Entry.decom;
-  }
-}
+//   if (
+//     item.t3Entry &&
+//     item.t3Entry.decom !== undefined &&
+//     item.settings?.inAlarm !== undefined
+//   ) {
+//     item.settings.inAlarm = !!item.t3Entry.decom;
+//   }
+// }
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false) {
@@ -3039,31 +3044,31 @@ function reloadPanelsData() {
   });
 }
 
-// Refresh linked entries with updated panel data
-function refreshLinkedEntries(panelData) {
-  appState.value.items
-    .filter((i) => i.t3Entry?.type)
-    .forEach((item) => {
-      const linkedEntry = panelData.find(
-        (ii) =>
-          ii.index === item.t3Entry.index &&
-          ii.type === item.t3Entry.type &&
-          ii.pid === item.t3Entry.pid
-      );
-      if (linkedEntry && linkedEntry.id) {
+// // Refresh linked entries with updated panel data
+// function refreshLinkedEntries(panelData) {
+//   appState.value.items
+//     .filter((i) => i.t3Entry?.type)
+//     .forEach((item) => {
+//       const linkedEntry = panelData.find(
+//         (ii) =>
+//           ii.index === item.t3Entry.index &&
+//           ii.type === item.t3Entry.type &&
+//           ii.pid === item.t3Entry.pid
+//       );
+//       if (linkedEntry && linkedEntry.id) {
 
-        const tempBefore = linkedEntry.value;
+//         const tempBefore = linkedEntry.value;
 
-        let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
-        linkedEntry.value = newLkValue;
-        item.t3Entry = linkedEntry;
+//         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
+//         linkedEntry.value = newLkValue;
+//         item.t3Entry = linkedEntry;
 
-        console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
+//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
 
-        refreshObjectStatus(item);
-      }
-    });
-}
+//         refreshObjectStatus(item);
+//       }
+//     });
+// }
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
@@ -3347,7 +3352,7 @@ async function addToLibrary() {
           items: createdItem.items,
           online: isOnline,
         });
-        saveLib();
+        IdxUtils.saveLib();
       })
       .catch((err) => {
         $q.notify({
@@ -3362,7 +3367,7 @@ async function addToLibrary() {
     items: libItems,
     online: isOnline,
   });
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Bring selected objects to the front by increasing their z-index
@@ -3443,18 +3448,18 @@ function pasteFromClipboard() {
   }, 10);
 }
 
-// Saves the library data to the webview
-function saveLib() {
-  // Filter out online images and objects from the library
-  const libImages = toRaw(library.value.images.filter((item) => !item.online));
-  const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
+// // Saves the library data to the webview
+// function saveLib() {
+//   // Filter out online images and objects from the library
+//   const libImages = toRaw(library.value.images.filter((item) => !item.online));
+//   const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
 
-  // Post a message to the webview with the saved data
-  window.chrome?.webview?.postMessage({
-    action: 10, // SAVE_LIBRARY_DATA
-    data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
-  });
-}
+//   // Post a message to the webview with the saved data
+//   window.chrome?.webview?.postMessage({
+//     action: 10, // SAVE_LIBRARY_DATA
+//     data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
+//   });
+// }
 
 
 // Deletes a library item
@@ -3484,7 +3489,7 @@ function deleteLibItem(item) {
   if (itemIndex !== -1) {
     library.value.objLib.splice(itemIndex, 1);
   }
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Renames a library item
@@ -3518,7 +3523,7 @@ function renameLibItem(item, name) {
   if (itemIndex !== -1) {
     library.value.objLib[itemIndex].label = name;
   }
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Deletes a library image
@@ -3554,7 +3559,7 @@ function deleteLibImage(item) {
         action: 11, // DELETE_IMAGE
         data: toRaw(imagePath),
       });
-      saveLib();
+      IdxUtils.saveLib();
     }
   }
 }

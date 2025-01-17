@@ -8,45 +8,45 @@ import { ref } from "vue";
 //   loadingPanel: null,
 // });
 
-// Define a function to get the entry range based on the item
-export const getEntryRange = (item) => {
-  // Check if the item has a range
-  if (item?.range) {
-    // Determine the range type based on the item type
-    const rangeType = item.type.toLowerCase();
-    // Find the range based on the item's range ID
-    let range = !item.digital_analog
-      ? ranges.digital.find((i) => i.id === item.range)
-      : ranges.analog[rangeType].find((i) => i.id === item.range);
+// // Define a function to get the entry range based on the item
+// export const getEntryRange = (item) => {
+//   // Check if the item has a range
+//   if (item?.range) {
+//     // Determine the range type based on the item type
+//     const rangeType = item.type.toLowerCase();
+//     // Find the range based on the item's range ID
+//     let range = !item.digital_analog
+//       ? ranges.digital.find((i) => i.id === item.range)
+//       : ranges.analog[rangeType].find((i) => i.id === item.range);
 
-    // If the range is not found, check for custom ranges
-    if (!range) {
-      const customRanges = T3000_Data.value.panelsRanges.filter(
-        (i) => i.pid === item.pid
-      );
-      range = !item.digital_analog
-        ? customRanges.find(
-            (i) => i.type === "digital" && i.index === item.range
-          )
-        : customRanges.find(
-            (i) => i.type === "analog" && i.index === item.range
-          );
+//     // If the range is not found, check for custom ranges
+//     if (!range) {
+//       const customRanges = T3000_Data.value.panelsRanges.filter(
+//         (i) => i.pid === item.pid
+//       );
+//       range = !item.digital_analog
+//         ? customRanges.find(
+//             (i) => i.type === "digital" && i.index === item.range
+//           )
+//         : customRanges.find(
+//             (i) => i.type === "analog" && i.index === item.range
+//           );
 
-      // If the range is still not found and the range ID is greater than 100, assume it is a custom range
-      if (!range && item.range > 100) {
-        range = customRanges.find(
-          (i) => i.type === "MSV" && i.index === item.range
-        );
-      }
-    }
+//       // If the range is still not found and the range ID is greater than 100, assume it is a custom range
+//       if (!range && item.range > 100) {
+//         range = customRanges.find(
+//           (i) => i.type === "MSV" && i.index === item.range
+//         );
+//       }
+//     }
 
-    // Return the range if found
-    if (range) return range;
-  }
+//     // Return the range if found
+//     if (range) return range;
+//   }
 
-  // Return a default range if no range is found
-  return { label: "Unused", unit: "" };
-};
+//   // Return a default range if no range is found
+//   return { label: "Unused", unit: "" };
+// };
 
 // export const T3_Types = {
 //   OUTPUT: 0,
@@ -1087,537 +1087,537 @@ export const switchIcons = [
   },
 ];
 
-export const ranges = {
-  digital: [
-    {
-      id: 1,
-      label: "Off/On",
-      off: "Off",
-      on: "On",
-      direct: null,
-    },
-    {
-      id: 2,
-      label: "Close/Open",
-      off: "Close",
-      on: "Open",
-      direct: null,
-    },
-    {
-      id: 3,
-      label: "Stop/Start",
-      off: "Stop",
-      on: "Start",
-      direct: null,
-    },
-    {
-      id: 4,
-      label: "Disable/Enable",
-      off: "Disable",
-      on: "Enable",
-      direct: null,
-    },
-    {
-      id: 5,
-      label: "Normal/Alarm",
-      off: "Normal",
-      on: "Alarm",
-      direct: null,
-    },
-    {
-      id: 6,
-      label: "Normal/High",
-      off: "Normal",
-      on: "High",
-      direct: null,
-    },
-    {
-      id: 7,
-      label: "Normal/Low",
-      off: "Normal",
-      on: "Low",
-      direct: null,
-    },
-    {
-      id: 8,
-      label: "No/Yes",
-      off: "No",
-      on: "Yes",
-      direct: null,
-    },
-    {
-      id: 9,
-      label: "Cool/Heat",
-      off: "Cool",
-      on: "Heat",
-      direct: null,
-    },
-    {
-      id: 10,
-      label: "Unoccupy/Occupy",
-      off: "Unoccupy",
-      on: "Occupy",
-      direct: null,
-    },
-    {
-      id: 11,
-      label: "Low/High",
-      on: "Low",
-      off: "High",
-      direct: null,
-    },
-    {
-      id: 12,
-      label: "On/Off",
-      on: "Off",
-      off: "On",
-      direct: true,
-    },
-    {
-      id: 13,
-      label: "Open/Close",
-      on: "Close",
-      off: "Open",
-      direct: true,
-    },
-    {
-      id: 14,
-      label: "Start/Stop",
-      on: "Stop",
-      off: "Start",
-      direct: true,
-    },
-    {
-      id: 15,
-      label: "Enable/Disable",
-      on: "Disable",
-      off: "Enable",
-      direct: true,
-    },
-    {
-      id: 16,
-      label: "Alarm/Normal",
-      on: "Normal",
-      off: "Alarm",
-      direct: true,
-    },
-    {
-      id: 17,
-      label: "High/Normal",
-      on: "Normal",
-      off: "High",
-      direct: true,
-    },
-    {
-      id: 18,
-      label: "Low/Normal",
-      on: "Normal",
-      off: "Low",
-      direct: true,
-    },
-    {
-      id: 19,
-      label: "Yes/No",
-      on: "No",
-      off: "Yes",
-      direct: true,
-    },
-    {
-      id: 20,
-      label: "Heat/Cool",
-      on: "Cool",
-      off: "Heat",
-      direct: true,
-    },
-    {
-      id: 21,
-      label: "Occupy/Unoccupy",
-      on: "Unoccupy",
-      off: "Occupy",
-      direct: true,
-    },
-    {
-      id: 22,
-      label: "High/Low",
-      on: "Low",
-      off: "High",
-      direct: true,
-    },
-  ],
-  analog: {
-    input: [
-      {
-        id: 0,
-        unit: "",
-        label: "Unused",
-      },
-      {
-        id: 1,
-        unit: "Deg.C",
-        label: "Y3K -40 to 150",
-      },
-      {
-        id: 2,
-        unit: "Deg.F",
-        label: "Y3K -40 to 300",
-      },
-      {
-        id: 3,
-        unit: "Deg.C",
-        label: "10K Type2",
-      },
-      {
-        id: 4,
-        unit: "Deg.F",
-        label: "10K Type2",
-      },
-      {
-        id: 5,
-        unit: "Deg.C",
-        label: "G3K -40 to 120",
-      },
-      {
-        id: 6,
-        unit: "Deg.F",
-        label: "G3K -40 to 250",
-      },
-      {
-        id: 7,
-        unit: "Deg.C",
-        label: "10K Type3",
-      },
-      {
-        id: 8,
-        unit: "Deg.F",
-        label: "10K Type3",
-      },
-      {
-        id: 9,
-        unit: "Deg.C",
-        label: "PT 1K -200 to 300",
-      },
-      {
-        id: 10,
-        unit: "Deg.F",
-        label: "PT 1K -200 to 570",
-      },
-      {
-        id: 11,
-        unit: "Volts",
-        label: "0.0 to 5.0",
-      },
-      {
-        id: 12,
-        unit: "Amps",
-        label: "0.0 to 100",
-      },
-      {
-        id: 13,
-        unit: "ma",
-        label: "4 to 20",
-      },
-      {
-        id: 14,
-        unit: "psi",
-        label: "4 to 20",
-      },
-      {
-        id: 15,
-        unit: "counts",
-        label: "Pulse Count (Slow 1Hz)",
-      },
-      {
-        id: 16,
-        unit: "%",
-        label: "0 to 100",
-      },
-      {
-        id: 17,
-        unit: "%",
-        label: "0 to 100",
-      },
-      {
-        id: 18,
-        unit: "%",
-        label: "0 to 100",
-      },
-      {
-        id: 19,
-        unit: "Volts",
-        label: "0.0 to 10.0",
-      },
-      {
-        id: 25,
-        unit: "counts",
-        label: "Pulse Count (Fast 100Hz)",
-      },
-      {
-        id: 26,
-        unit: "Hz",
-        label: "Frequency",
-      },
-      {
-        id: 27,
-        unit: "%",
-        label: "Humidty %",
-      },
-      {
-        id: 28,
-        unit: "PPM",
-        label: "CO2  PPM",
-      },
-      {
-        id: 29,
-        unit: "RPM",
-        label: "Revolutions Per Minute",
-      },
-      {
-        id: 30,
-        unit: "PPB",
-        label: "TVOC PPB",
-      },
-      {
-        id: 31,
-        unit: "ug/m3",
-        label: "ug/m3",
-      },
-      {
-        id: 32,
-        unit: "#/cm3",
-        label: "#/cm3",
-      },
-      {
-        id: 33,
-        unit: "dB",
-        label: "dB",
-      },
-      {
-        id: 34,
-        unit: "Lux",
-        label: "Lux",
-      },
-    ],
-    output: [
-      {
-        id: 0,
-        unit: "",
-        label: "Unused",
-      },
-      {
-        id: 1,
-        unit: "Volts",
-        label: "0.0 to 10.0",
-      },
-      {
-        id: 2,
-        unit: "%Open",
-        label: "0.0 to 100",
-      },
-      {
-        id: 3,
-        unit: "psi",
-        label: "4 to 20",
-      },
-      {
-        id: 4,
-        unit: "%",
-        label: "0 to 100",
-      },
-      {
-        id: 5,
-        unit: "%Cls",
-        label: "0 to 100",
-      },
-      {
-        id: 6,
-        unit: "ma",
-        label: "4 to 20",
-      },
-      {
-        id: 7,
-        unit: "%PWM",
-        label: "0 to 100",
-      },
-      {
-        id: 8,
-        unit: "%",
-        label: "2 to 10",
-      },
-    ],
-    variable: [
-      {
-        id: 0,
-        unit: "Unused",
-        label: "Unused",
-      },
-      {
-        id: 1,
-        unit: "Deg.C",
-        label: "Deg.C",
-      },
-      {
-        id: 2,
-        unit: "Deg.F",
-        label: "Deg.F",
-      },
-      {
-        id: 3,
-        unit: "Feet per Min",
-        label: "Feet per Min",
-      },
-      {
-        id: 4,
-        unit: "Pascals",
-        label: "Pascals",
-      },
-      {
-        id: 5,
-        unit: "KPascals",
-        label: "KPascals",
-      },
-      {
-        id: 6,
-        unit: "lbs/sqr.inch",
-        label: "lbs/sqr.inch",
-      },
-      {
-        id: 7,
-        unit: "inches of WC",
-        label: "inches of WC",
-      },
-      {
-        id: 8,
-        unit: "Watts",
-        label: "Watts",
-      },
-      {
-        id: 9,
-        unit: "KWatts",
-        label: "KWatts",
-      },
-      {
-        id: 10,
-        unit: "KWH",
-        label: "KWH",
-      },
-      {
-        id: 11,
-        unit: "Volts",
-        label: "Volts",
-      },
-      {
-        id: 12,
-        unit: "KV",
-        label: "KV",
-      },
-      {
-        id: 13,
-        unit: "Amps",
-        label: "Amps",
-      },
-      {
-        id: 14,
-        unit: "ma",
-        label: "ma",
-      },
-      {
-        id: 15,
-        unit: "CFM",
-        label: "CFM",
-      },
-      {
-        id: 16,
-        unit: "Seconds",
-        label: "Seconds",
-      },
-      {
-        id: 17,
-        unit: "Minutes",
-        label: "Minutes",
-      },
-      {
-        id: 18,
-        unit: "Hours",
-        label: "Hours",
-      },
-      {
-        id: 19,
-        unit: "Days",
-        label: "Days",
-      },
-      {
-        id: 20,
-        unit: "Time",
-        label: "Time",
-      },
-      {
-        id: 21,
-        unit: "Ohms",
-        label: "Ohms",
-      },
-      {
-        id: 22,
-        unit: "%",
-        label: "%",
-      },
-      {
-        id: 23,
-        unit: "%RH",
-        label: "%RH",
-      },
-      {
-        id: 24,
-        unit: "p/min",
-        label: "p/min",
-      },
-      {
-        id: 25,
-        unit: "Counts",
-        label: "Counts",
-      },
-      {
-        id: 26,
-        unit: "%Open",
-        label: "%Open",
-      },
-      {
-        id: 27,
-        unit: "Kg",
-        label: "Kg",
-      },
-      {
-        id: 28,
-        unit: "L/Hour",
-        label: "L/Hour",
-      },
-      {
-        id: 29,
-        unit: "GPH",
-        label: "GPH",
-      },
-      {
-        id: 30,
-        unit: "GAL",
-        label: "GAL",
-      },
-      {
-        id: 31,
-        unit: "CF",
-        label: "CF",
-      },
-      {
-        id: 32,
-        unit: "BTU",
-        label: "BTU",
-      },
-      {
-        id: 33,
-        unit: "CMH",
-        label: "CMH",
-      },
-    ],
-  },
-};
+// export const ranges = {
+//   digital: [
+//     {
+//       id: 1,
+//       label: "Off/On",
+//       off: "Off",
+//       on: "On",
+//       direct: null,
+//     },
+//     {
+//       id: 2,
+//       label: "Close/Open",
+//       off: "Close",
+//       on: "Open",
+//       direct: null,
+//     },
+//     {
+//       id: 3,
+//       label: "Stop/Start",
+//       off: "Stop",
+//       on: "Start",
+//       direct: null,
+//     },
+//     {
+//       id: 4,
+//       label: "Disable/Enable",
+//       off: "Disable",
+//       on: "Enable",
+//       direct: null,
+//     },
+//     {
+//       id: 5,
+//       label: "Normal/Alarm",
+//       off: "Normal",
+//       on: "Alarm",
+//       direct: null,
+//     },
+//     {
+//       id: 6,
+//       label: "Normal/High",
+//       off: "Normal",
+//       on: "High",
+//       direct: null,
+//     },
+//     {
+//       id: 7,
+//       label: "Normal/Low",
+//       off: "Normal",
+//       on: "Low",
+//       direct: null,
+//     },
+//     {
+//       id: 8,
+//       label: "No/Yes",
+//       off: "No",
+//       on: "Yes",
+//       direct: null,
+//     },
+//     {
+//       id: 9,
+//       label: "Cool/Heat",
+//       off: "Cool",
+//       on: "Heat",
+//       direct: null,
+//     },
+//     {
+//       id: 10,
+//       label: "Unoccupy/Occupy",
+//       off: "Unoccupy",
+//       on: "Occupy",
+//       direct: null,
+//     },
+//     {
+//       id: 11,
+//       label: "Low/High",
+//       on: "Low",
+//       off: "High",
+//       direct: null,
+//     },
+//     {
+//       id: 12,
+//       label: "On/Off",
+//       on: "Off",
+//       off: "On",
+//       direct: true,
+//     },
+//     {
+//       id: 13,
+//       label: "Open/Close",
+//       on: "Close",
+//       off: "Open",
+//       direct: true,
+//     },
+//     {
+//       id: 14,
+//       label: "Start/Stop",
+//       on: "Stop",
+//       off: "Start",
+//       direct: true,
+//     },
+//     {
+//       id: 15,
+//       label: "Enable/Disable",
+//       on: "Disable",
+//       off: "Enable",
+//       direct: true,
+//     },
+//     {
+//       id: 16,
+//       label: "Alarm/Normal",
+//       on: "Normal",
+//       off: "Alarm",
+//       direct: true,
+//     },
+//     {
+//       id: 17,
+//       label: "High/Normal",
+//       on: "Normal",
+//       off: "High",
+//       direct: true,
+//     },
+//     {
+//       id: 18,
+//       label: "Low/Normal",
+//       on: "Normal",
+//       off: "Low",
+//       direct: true,
+//     },
+//     {
+//       id: 19,
+//       label: "Yes/No",
+//       on: "No",
+//       off: "Yes",
+//       direct: true,
+//     },
+//     {
+//       id: 20,
+//       label: "Heat/Cool",
+//       on: "Cool",
+//       off: "Heat",
+//       direct: true,
+//     },
+//     {
+//       id: 21,
+//       label: "Occupy/Unoccupy",
+//       on: "Unoccupy",
+//       off: "Occupy",
+//       direct: true,
+//     },
+//     {
+//       id: 22,
+//       label: "High/Low",
+//       on: "Low",
+//       off: "High",
+//       direct: true,
+//     },
+//   ],
+//   analog: {
+//     input: [
+//       {
+//         id: 0,
+//         unit: "",
+//         label: "Unused",
+//       },
+//       {
+//         id: 1,
+//         unit: "Deg.C",
+//         label: "Y3K -40 to 150",
+//       },
+//       {
+//         id: 2,
+//         unit: "Deg.F",
+//         label: "Y3K -40 to 300",
+//       },
+//       {
+//         id: 3,
+//         unit: "Deg.C",
+//         label: "10K Type2",
+//       },
+//       {
+//         id: 4,
+//         unit: "Deg.F",
+//         label: "10K Type2",
+//       },
+//       {
+//         id: 5,
+//         unit: "Deg.C",
+//         label: "G3K -40 to 120",
+//       },
+//       {
+//         id: 6,
+//         unit: "Deg.F",
+//         label: "G3K -40 to 250",
+//       },
+//       {
+//         id: 7,
+//         unit: "Deg.C",
+//         label: "10K Type3",
+//       },
+//       {
+//         id: 8,
+//         unit: "Deg.F",
+//         label: "10K Type3",
+//       },
+//       {
+//         id: 9,
+//         unit: "Deg.C",
+//         label: "PT 1K -200 to 300",
+//       },
+//       {
+//         id: 10,
+//         unit: "Deg.F",
+//         label: "PT 1K -200 to 570",
+//       },
+//       {
+//         id: 11,
+//         unit: "Volts",
+//         label: "0.0 to 5.0",
+//       },
+//       {
+//         id: 12,
+//         unit: "Amps",
+//         label: "0.0 to 100",
+//       },
+//       {
+//         id: 13,
+//         unit: "ma",
+//         label: "4 to 20",
+//       },
+//       {
+//         id: 14,
+//         unit: "psi",
+//         label: "4 to 20",
+//       },
+//       {
+//         id: 15,
+//         unit: "counts",
+//         label: "Pulse Count (Slow 1Hz)",
+//       },
+//       {
+//         id: 16,
+//         unit: "%",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 17,
+//         unit: "%",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 18,
+//         unit: "%",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 19,
+//         unit: "Volts",
+//         label: "0.0 to 10.0",
+//       },
+//       {
+//         id: 25,
+//         unit: "counts",
+//         label: "Pulse Count (Fast 100Hz)",
+//       },
+//       {
+//         id: 26,
+//         unit: "Hz",
+//         label: "Frequency",
+//       },
+//       {
+//         id: 27,
+//         unit: "%",
+//         label: "Humidty %",
+//       },
+//       {
+//         id: 28,
+//         unit: "PPM",
+//         label: "CO2  PPM",
+//       },
+//       {
+//         id: 29,
+//         unit: "RPM",
+//         label: "Revolutions Per Minute",
+//       },
+//       {
+//         id: 30,
+//         unit: "PPB",
+//         label: "TVOC PPB",
+//       },
+//       {
+//         id: 31,
+//         unit: "ug/m3",
+//         label: "ug/m3",
+//       },
+//       {
+//         id: 32,
+//         unit: "#/cm3",
+//         label: "#/cm3",
+//       },
+//       {
+//         id: 33,
+//         unit: "dB",
+//         label: "dB",
+//       },
+//       {
+//         id: 34,
+//         unit: "Lux",
+//         label: "Lux",
+//       },
+//     ],
+//     output: [
+//       {
+//         id: 0,
+//         unit: "",
+//         label: "Unused",
+//       },
+//       {
+//         id: 1,
+//         unit: "Volts",
+//         label: "0.0 to 10.0",
+//       },
+//       {
+//         id: 2,
+//         unit: "%Open",
+//         label: "0.0 to 100",
+//       },
+//       {
+//         id: 3,
+//         unit: "psi",
+//         label: "4 to 20",
+//       },
+//       {
+//         id: 4,
+//         unit: "%",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 5,
+//         unit: "%Cls",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 6,
+//         unit: "ma",
+//         label: "4 to 20",
+//       },
+//       {
+//         id: 7,
+//         unit: "%PWM",
+//         label: "0 to 100",
+//       },
+//       {
+//         id: 8,
+//         unit: "%",
+//         label: "2 to 10",
+//       },
+//     ],
+//     variable: [
+//       {
+//         id: 0,
+//         unit: "Unused",
+//         label: "Unused",
+//       },
+//       {
+//         id: 1,
+//         unit: "Deg.C",
+//         label: "Deg.C",
+//       },
+//       {
+//         id: 2,
+//         unit: "Deg.F",
+//         label: "Deg.F",
+//       },
+//       {
+//         id: 3,
+//         unit: "Feet per Min",
+//         label: "Feet per Min",
+//       },
+//       {
+//         id: 4,
+//         unit: "Pascals",
+//         label: "Pascals",
+//       },
+//       {
+//         id: 5,
+//         unit: "KPascals",
+//         label: "KPascals",
+//       },
+//       {
+//         id: 6,
+//         unit: "lbs/sqr.inch",
+//         label: "lbs/sqr.inch",
+//       },
+//       {
+//         id: 7,
+//         unit: "inches of WC",
+//         label: "inches of WC",
+//       },
+//       {
+//         id: 8,
+//         unit: "Watts",
+//         label: "Watts",
+//       },
+//       {
+//         id: 9,
+//         unit: "KWatts",
+//         label: "KWatts",
+//       },
+//       {
+//         id: 10,
+//         unit: "KWH",
+//         label: "KWH",
+//       },
+//       {
+//         id: 11,
+//         unit: "Volts",
+//         label: "Volts",
+//       },
+//       {
+//         id: 12,
+//         unit: "KV",
+//         label: "KV",
+//       },
+//       {
+//         id: 13,
+//         unit: "Amps",
+//         label: "Amps",
+//       },
+//       {
+//         id: 14,
+//         unit: "ma",
+//         label: "ma",
+//       },
+//       {
+//         id: 15,
+//         unit: "CFM",
+//         label: "CFM",
+//       },
+//       {
+//         id: 16,
+//         unit: "Seconds",
+//         label: "Seconds",
+//       },
+//       {
+//         id: 17,
+//         unit: "Minutes",
+//         label: "Minutes",
+//       },
+//       {
+//         id: 18,
+//         unit: "Hours",
+//         label: "Hours",
+//       },
+//       {
+//         id: 19,
+//         unit: "Days",
+//         label: "Days",
+//       },
+//       {
+//         id: 20,
+//         unit: "Time",
+//         label: "Time",
+//       },
+//       {
+//         id: 21,
+//         unit: "Ohms",
+//         label: "Ohms",
+//       },
+//       {
+//         id: 22,
+//         unit: "%",
+//         label: "%",
+//       },
+//       {
+//         id: 23,
+//         unit: "%RH",
+//         label: "%RH",
+//       },
+//       {
+//         id: 24,
+//         unit: "p/min",
+//         label: "p/min",
+//       },
+//       {
+//         id: 25,
+//         unit: "Counts",
+//         label: "Counts",
+//       },
+//       {
+//         id: 26,
+//         unit: "%Open",
+//         label: "%Open",
+//       },
+//       {
+//         id: 27,
+//         unit: "Kg",
+//         label: "Kg",
+//       },
+//       {
+//         id: 28,
+//         unit: "L/Hour",
+//         label: "L/Hour",
+//       },
+//       {
+//         id: 29,
+//         unit: "GPH",
+//         label: "GPH",
+//       },
+//       {
+//         id: 30,
+//         unit: "GAL",
+//         label: "GAL",
+//       },
+//       {
+//         id: 31,
+//         unit: "CF",
+//         label: "CF",
+//       },
+//       {
+//         id: 32,
+//         unit: "BTU",
+//         label: "BTU",
+//       },
+//       {
+//         id: 33,
+//         unit: "CMH",
+//         label: "CMH",
+//       },
+//     ],
+//   },
+// };
 
 export const cellClassRules = {
   "bg-yellow-400": (params) =>
@@ -1766,49 +1766,49 @@ export const modbusRegColumns = [
   },
 ];
 
-// Define a function to get the active value of an object based on its settings and T3 entry
-export function getObjectActiveValue(item) {
-  // Initialize the active value to false
-  let active = false;
+// // Define a function to get the active value of an object based on its settings and T3 entry
+// export function getObjectActiveValue(item) {
+//   // Initialize the active value to false
+//   let active = false;
 
-  // Check if the item has a T3 entry and its settings have an active property
-  if (!item.t3Entry || item.settings?.active === undefined) return false;
+//   // Check if the item has a T3 entry and its settings have an active property
+//   if (!item.t3Entry || item.settings?.active === undefined) return false;
 
-  // Check if the item is an output with a hardware switch status
-  if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status === 1) {
-    active = !!item.t3Entry.hw_switch_status;
-  }
-  // Check if the item has a range
-  else if (item.t3Entry.range) {
-    const analog = item.t3Entry.digital_analog;
-    const range = getEntryRange(item.t3Entry);
-    if (range) {
-      // Determine the active value based on the item's type and value
-      active =
-        (!analog &&
-          ((item.t3Entry?.control === 1 && !range.direct) ||
-            (item.t3Entry?.control === 0 && range.direct))) ||
-        (analog && item.t3Entry?.value > 0)
-          ? true
-          : false;
-    }
-  }
-  // Check if the item is a program
-  else if (item.t3Entry.type === "PROGRAM") {
-    active = !!item.t3Entry.status;
-  }
-  // Check if the item is a schedule
-  else if (item.t3Entry.type === "SCHEDULE") {
-    active = !!item.t3Entry.output;
-  }
-  // Check if the item is a holiday
-  else if (item.t3Entry.type === "HOLIDAY") {
-    active = !!item.t3Entry.value;
-  }
+//   // Check if the item is an output with a hardware switch status
+//   if (item.t3Entry.type === "OUTPUT" && item.t3Entry.hw_switch_status === 1) {
+//     active = !!item.t3Entry.hw_switch_status;
+//   }
+//   // Check if the item has a range
+//   else if (item.t3Entry.range) {
+//     const analog = item.t3Entry.digital_analog;
+//     const range = getEntryRange(item.t3Entry);
+//     if (range) {
+//       // Determine the active value based on the item's type and value
+//       active =
+//         (!analog &&
+//           ((item.t3Entry?.control === 1 && !range.direct) ||
+//             (item.t3Entry?.control === 0 && range.direct))) ||
+//         (analog && item.t3Entry?.value > 0)
+//           ? true
+//           : false;
+//     }
+//   }
+//   // Check if the item is a program
+//   else if (item.t3Entry.type === "PROGRAM") {
+//     active = !!item.t3Entry.status;
+//   }
+//   // Check if the item is a schedule
+//   else if (item.t3Entry.type === "SCHEDULE") {
+//     active = !!item.t3Entry.output;
+//   }
+//   // Check if the item is a holiday
+//   else if (item.t3Entry.type === "HOLIDAY") {
+//     active = !!item.t3Entry.value;
+//   }
 
-  // Return the active value
-  return active;
-}
+//   // Return the active value
+//   return active;
+// }
 
 export const user = ref(null);
 

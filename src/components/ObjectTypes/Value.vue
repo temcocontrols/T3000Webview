@@ -12,7 +12,9 @@
 
 <script>
 import { defineComponent, computed } from "vue";
-import { getEntryRange } from "src/lib/common";
+// import { getEntryRange } from "src/lib/common";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+
 export default defineComponent({
   name: "ValueEl",
   props: {
@@ -34,7 +36,7 @@ export default defineComponent({
       if (!props.item.t3Entry || props.item.t3Entry?.value === undefined) {
         return "";
       }
-      const range = getEntryRange(props.item?.t3Entry);
+      const range = IdxUtils.getEntryRange(props.item?.t3Entry);
       if (props.item.t3Entry.range > 100) {
         const rangeValue = range.options?.find(
           // (item) => item.value * 1000 === props.item.t3Entry.value

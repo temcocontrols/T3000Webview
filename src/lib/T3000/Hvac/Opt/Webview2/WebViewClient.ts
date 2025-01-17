@@ -8,7 +8,8 @@ import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
 import Utils5 from "../../Helper/Utils5"
 import IdxUtils from "../IdxUtils"
-import { T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library } from "../../Data/T3Data"
+import { useQuasar } from "quasar"
+import { T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify } from "../../Data/T3Data"
 
 
 class WebViewClient {
@@ -47,16 +48,12 @@ class WebViewClient {
   }
 
   // Handle messages received from the native code T3 application
-  handleMessage(data: any) {
+  handleMessage(event: any) {
+    const data = event?.data ?? {};
     console.log('= Wv2 Received message from T3:', data);
-    // Handle the message as needed
 
     try {
-      const parsedData = JSON.parse(data);
-      console.log('= Wv2 parsed server data:', parsedData);
-
-      // Further processing based on parsed data
-      this.processMessageData(parsedData);
+      this.processMessageData(data);
       console.log('= Wv2 ========================');
     } catch (error) {
       console.error('= Wv2 failed to parse | process data:', error);
@@ -142,6 +139,11 @@ class WebViewClient {
     this.sendMessage(this.messageData);
   }
 
+  SaveLibraryData(panelId?: number, viewitem?: number, data?: any) {
+    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
   private processMessageData(msgData) {
 
     if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
@@ -152,8 +154,8 @@ class WebViewClient {
       this.HandleGetInitialDataRes(msgData);
     }
 
-    if (msgData.action === MessageType.SAVE_GRAPHIC_RES) {
-      this.HandleSaveGraphicRes(msgData);
+    if (msgData.action === MessageType.SAVE_GRAPHIC_DATA_RES) {
+      this.HandleSaveGraphicDataRes(msgData);
     }
 
     if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
@@ -189,15 +191,110 @@ class WebViewClient {
     }
   }
 
-  public HandleGetPanelDataRes(arg) {
+  public HandleGetPanelDataRes(msgData) {
     // action: 0, // GET_PANEL_DATA_RES
 
     // load graphic list from GET_PANEL_DATA_RES
     // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
 
+    /*
+    if (arg.data.action === "GET_PANEL_DATA_RES") {
+      // if (getPanelsInterval && arg.data?.panel_id) {
+      //   clearInterval(getPanelsInterval);
+      // }
+
+      if (arg.data?.panel_id) {
+        Hvac.IdxPage.clearGetPanelsInterval();
+      }
+
+      if (arg.data?.panel_id) {
+
+        const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+        if (check1) {
+          T3000_Data.value.loadingPanel++;
+          const index = T3000_Data.value.loadingPanel;
+          window.chrome?.webview?.postMessage({
+            action: 0, // GET_PANEL_DATA
+            panelId: T3000_Data.value.panelsList[index].panel_number,
+          });
+        }
+
+        const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+        if (check2) {
+          T3000_Data.value.loadingPanel = null;
+        }
+
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+
+        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+          arg.data.data
+        );
+
+        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+          (item) => item.pid !== arg.data.panel_id
+        );
+
+        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+
+        refreshLinkedEntries(arg.data.data);
+      }
+    }
+    */
+
+    // if (getPanelsInterval && arg.data?.panel_id) {
+    //   clearInterval(getPanelsInterval);
+    // }
+
+    if (msgData?.panel_id) {
+      Hvac.IdxPage.clearGetPanelsInterval();
+    }
+
+    if (msgData?.panel_id) {
+
+      const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+      if (check1) {
+        T3000_Data.value.loadingPanel++;
+        const index = T3000_Data.value.loadingPanel;
+        // window.chrome?.webview?.postMessage({
+        //   action: 0, // GET_PANEL_DATA
+        //   panelId: T3000_Data.value.panelsList[index].panel_number,
+        // });
+
+        this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
+      }
+
+      const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+      if (check2) {
+        T3000_Data.value.loadingPanel = null;
+      }
+
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+        (item) => item.pid !== msgData.panel_id
+      );
+
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+        msgData.data
+      );
+
+      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+        (item) => item.pid !== msgData.panel_id
+      );
+
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
+
+      IdxUtils.refreshLinkedEntries(msgData.data);
+    }
   }
 
-  public HandleGetInitialDataRes(arg) {
+  public HandleGetInitialDataRes(msgData) {
     // action: 1, // GET_INITIAL_DATA_RES
 
     /*
@@ -217,65 +314,17 @@ class WebViewClient {
       setTimeout(() => {
         IdxUtils.refreshMoveableGuides();
       }, 100);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
     */
 
-    appState.value = arg.data.data;
+    msgData.data = JSON.parse(msgData.data);
+    appState.value = msgData.data;
     rulersGridVisible.value = appState.value.rulersGridVisible;
 
-    grpNav.value = [arg.data.entry];
-    if (arg.data.library) {
-      arg.data.library = JSON.parse(arg.data.library);
-      library.value = arg.data.library;
+    grpNav.value = [msgData.entry];
+    if (msgData.library) {
+      msgData.library = JSON.parse(msgData.library);
+      library.value = msgData.library;
     }
 
     setTimeout(() => {
@@ -283,11 +332,81 @@ class WebViewClient {
     }, 100);
   }
 
-  public HandleSaveGraphicRes(arg) {
+  public HandleSaveGraphicDataRes(msgData) {
     // action: 2, // SAVE_GRAPHIC_RES
+
+    // if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+    //   if (arg.data.data?.status === true) {
+    //     if (!savedNotify.value) return;
+    //     $q.notify({
+    //       message: "Saved successfully.",
+    //       color: "primary",
+    //       icon: "check_circle",
+    //       actions: [
+    //         {
+    //           label: "Dismiss",
+    //           color: "white",
+    //           handler: () => {
+    //             /* ... */
+    //           },
+    //         },
+    //       ],
+    //     });
+    //   } else {
+    //     $q.notify({
+    //       message: "Error, not saved!",
+    //       color: "negative",
+    //       icon: "error",
+    //       actions: [
+    //         {
+    //           label: "Dismiss",
+    //           color: "white",
+    //           handler: () => {
+    //             /* ... */
+    //           },
+    //         },
+    //       ],
+    //     });
+    //   }
+    // }
+
+    const $q = useQuasar();
+
+    if (msgData.data?.status === true) {
+      if (!savedNotify.value) return;
+      $q.notify({
+        message: "Saved successfully.",
+        color: "primary",
+        icon: "check_circle",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    } else {
+      $q.notify({
+        message: "Error, not saved!",
+        color: "negative",
+        icon: "error",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    }
   }
 
-  public HandleUpdateEntryRes(arg) {
+  public HandleUpdateEntryRes(msgData) {
     // action: 3, // UPDATE_ENTRY_RES
 
     /*
@@ -297,7 +416,7 @@ class WebViewClient {
     */
   }
 
-  public HandleGetPanelsListRes(arg) {
+  public HandleGetPanelsListRes(msgData) {
     // action: 4, // GET_PANELS_LIST_RES
 
     /*
@@ -313,41 +432,146 @@ class WebViewClient {
     }
     */
 
-    if (!arg.data.data?.length) {
+    if (!msgData.data?.length) {
       return;
     }
 
-    T3000_Data.value.panelsList = arg.data.data;
+    T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
 
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
-  public HandleGetEntriesRes(data) {
+  public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
+
+    /*
+    if (arg.data.action === "GET_ENTRIES_RES") {
+      arg.data.data.forEach((item) => {
+        const itemIndex = T3000_Data.value.panelsData.findIndex(
+          (ii) =>
+            ii.index === item.index &&
+            ii.type === item.type &&
+            ii.pid === item.pid
+        );
+        if (itemIndex !== -1) {
+          T3000_Data.value.panelsData[itemIndex] = item;
+        }
+      });
+
+      if (!linkT3EntryDialog.value.active) {
+        selectPanelOptions.value = T3000_Data.value.panelsData;
+      }
+      refreshLinkedEntries(arg.data.data);
+    }
+    */
+
+    msgData.data.forEach((item) => {
+      const itemIndex = T3000_Data.value.panelsData.findIndex(
+        (ii) =>
+          ii.index === item.index &&
+          ii.type === item.type &&
+          ii.pid === item.pid
+      );
+      if (itemIndex !== -1) {
+        T3000_Data.value.panelsData[itemIndex] = item;
+      }
+    });
+
+    if (!linkT3EntryDialog.value.active) {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+    }
+    IdxUtils.refreshLinkedEntries(msgData.data);
   }
 
-  public HandleLoadGraphicEntryRes(data) {
+  public HandleLoadGraphicEntryRes(msgData) {
     // action: 7, // LOAD_GRAPHIC_ENTRY_RES
+
+    /*
+    if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+      if (arg.data.data) {
+        arg.data.data = JSON.parse(arg.data.data);
+      }
+      appState.value = arg.data.data;
+      if (grpNav.value.length > 1) {
+        const navItem = grpNav.value[grpNav.value.length - 2];
+        if (
+          navItem.index !== arg.data.entry.index ||
+          navItem.pid !== arg.data.entry.pid
+        ) {
+          grpNav.value.push(arg.data.entry);
+        } else {
+          grpNav.value.pop();
+        }
+      } else {
+        grpNav.value.push(arg.data.entry);
+      }
+
+      setTimeout(() => {
+        IdxUtils.refreshMoveableGuides();
+      }, 100);
+    }
+    */
+
+    msgData.data = JSON.parse(msgData.data);
+    appState.value = msgData.data;
+
+    if (grpNav.value.length > 1) {
+      const navItem = grpNav.value[grpNav.value.length - 2];
+      if (navItem.index !== msgData.entry.index || navItem.pid !== msgData.entry.pid) {
+        grpNav.value.push(msgData.entry);
+      } else {
+        grpNav.value.pop();
+      }
+    } else {
+      grpNav.value.push(msgData.entry);
+    }
+
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
   }
 
-  public HandleOpenEntryEditWindowRes(data) {
+  public HandleOpenEntryEditWindowRes(msgData) {
     // action: 8, // OPEN_ENTRY_EDIT_WINDOW_RES
   }
 
-  public HandleSaveImageRes(data) {
+  public HandleSaveImageRes(msgData) {
     // action: 9, // SAVE_IMAGE_RES
+
+    /*
+    if (arg.data.action === "SAVE_IMAGE_RES") {
+      library.value.imagesCount++;
+      library.value.images.push({
+        id: "IMG-" + library.value.imagesCount,
+        name: arg.data.data.name,
+        path: arg.data.data.path,
+        online: false,
+      });
+      saveLib();
+    }
+    */
+
+    library.value.imagesCount++;
+    library.value.images.push({
+      id: "IMG-" + library.value.imagesCount,
+      name: msgData.data.name,
+      path: msgData.data.path,
+      online: false,
+    });
+
+    IdxUtils.saveLib();
   }
 
-  public HandleSaveLibraryDataRes(data) {
+  public HandleSaveLibraryDataRes(msgData) {
     // action: 10, // SAVE_LIBRARY_DATA_RES
   }
 
-  public HandleDeleteImageRes(data) {
+  public HandleDeleteImageRes(msgData) {
     // action: 11, // DELETE_IMAGE_RES
   }
 
-  public HandleGetAllDevicesDataRes(data) {
+  public HandleGetAllDevicesDataRes(msgData) {
     // action: 12, // GET_ALL_DEVICES_DATA_RES
   }
 }

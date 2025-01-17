@@ -29,6 +29,8 @@ class IdxPage {
 
   // wrap code for IndexPage's onMounted event
   initPage() {
+    Hvac.WebClient.initMessageHandler();
+
     this.initGlobalNav();
     this.isLoggedIn();
     this.restoreAppState();
