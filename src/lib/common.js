@@ -1,12 +1,12 @@
 // Import the necessary dependencies
 import { ref } from "vue";
 
-export const T3000_Data = ref({
-  panelsData: [],
-  panelsList: [],
-  panelsRanges: [],
-  loadingPanel: null,
-});
+// export const T3000_Data = ref({
+//   panelsData: [],
+//   panelsList: [],
+//   panelsRanges: [],
+//   loadingPanel: null,
+// });
 
 // Define a function to get the entry range based on the item
 export const getEntryRange = (item) => {

@@ -762,7 +762,7 @@ import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  documentAreaPosition, viewportMargins, viewport, locked, T3_Types
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav
 } from '../../lib/T3000/Hvac/Data/T3Data'
 
 // const isBuiltInEdge = ref(false);
@@ -866,7 +866,7 @@ if (process.env.DEV) {
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
 // const locked = ref(false); // State to lock or unlock the interface
-const grpNav = ref([]); // Navigation history for grouped elements
+// const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
@@ -1145,6 +1145,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
   // Handle various actions based on message data
   if (!"action" in arg.data) return;
 
+  /* move to WebViewClient.ts
   if (arg.data.action === "GET_PANELS_LIST_RES") {
     if (arg.data.data?.length) {
       T3000_Data.value.panelsList = arg.data.data;
@@ -1155,6 +1156,7 @@ window.chrome?.webview?.addEventListener("message", (arg) => {
       });
     }
   }
+  */
 
   if (arg.data.action === "UPDATE_ENTRY_RES") {
     // Handle update entry response

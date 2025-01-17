@@ -78,6 +78,15 @@ export const T3_Types = {
   MON: 9,
 };
 
+export const T3000_Data = ref({
+  panelsData: [],
+  panelsList: [],
+  panelsRanges: [],
+  loadingPanel: null,
+});
+
+export const grpNav = ref([]); // Navigation history for grouped elements
+
 const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),

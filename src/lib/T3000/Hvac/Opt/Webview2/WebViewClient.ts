@@ -8,7 +8,7 @@ import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
 import Utils5 from "../../Helper/Utils5"
 import IdxUtils from "../IdxUtils"
-import { T3_Types } from "../../Data/T3Data"
+import { T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library } from "../../Data/T3Data"
 
 
 class WebViewClient {
@@ -126,6 +126,17 @@ class WebViewClient {
     this.sendMessage(this.messageData);
   }
 
+  /*
+  window.chrome?.webview?.postMessage({
+    action: 0, // GET_PANEL_DATA
+    panelId: T3000_Data.value.panelsList[0].panel_number,
+  });
+  */
+  GetPanelData(panelId?: number, viewitem?: number, data?: any) {
+    this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
   GetEntries(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.GET_ENTRIES, panelId, viewitem, data);
     this.sendMessage(this.messageData);
@@ -134,51 +145,51 @@ class WebViewClient {
   private processMessageData(msgData) {
 
     if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
-      this.HandleGetPanelDataRes(msgData.data);
+      this.HandleGetPanelDataRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_INITIAL_DATA_RES) {
-      this.HandleGetInitialDataRes(msgData.data);
+      this.HandleGetInitialDataRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_GRAPHIC_RES) {
-      this.HandleSaveGraphicRes(msgData.data);
+      this.HandleSaveGraphicRes(msgData);
     }
 
     if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
-      this.HandleUpdateEntryRes(msgData.data);
+      this.HandleUpdateEntryRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_PANELS_LIST_RES) {
-      this.HandleGetPanelsListRes(msgData.data);
+      this.HandleGetPanelsListRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_ENTRIES_RES) {
-      this.HandleGetEntriesRes(msgData.data);
+      this.HandleGetEntriesRes(msgData);
     }
 
     if (msgData.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      this.HandleLoadGraphicEntryRes(msgData.data);
+      this.HandleLoadGraphicEntryRes(msgData);
     }
 
     if (msgData.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
-      this.HandleOpenEntryEditWindowRes(msgData.data);
+      this.HandleOpenEntryEditWindowRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_IMAGE_RES) {
-      this.HandleSaveImageRes(msgData.data);
+      this.HandleSaveImageRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
-      this.HandleSaveLibraryDataRes(msgData.data);
+      this.HandleSaveLibraryDataRes(msgData);
     }
 
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
-      this.HandleDeleteImageRes(msgData.data);
+      this.HandleDeleteImageRes(msgData);
     }
   }
 
-  public HandleGetPanelDataRes(data) {
+  public HandleGetPanelDataRes(arg) {
     // action: 0, // GET_PANEL_DATA_RES
 
     // load graphic list from GET_PANEL_DATA_RES
@@ -186,20 +197,130 @@ class WebViewClient {
 
   }
 
-  public HandleGetInitialDataRes(data) {
+  public HandleGetInitialDataRes(arg) {
     // action: 1, // GET_INITIAL_DATA_RES
+
+    /*
+    if (arg.data.action === "GET_INITIAL_DATA_RES") {
+      if (arg.data.data) {
+        arg.data.data = JSON.parse(arg.data.data);
+      }
+
+      appState.value = arg.data.data;
+      rulersGridVisible.value = appState.value.rulersGridVisible;
+
+      grpNav.value = [arg.data.entry];
+      if (arg.data.library) {
+        arg.data.library = JSON.parse(arg.data.library);
+        library.value = arg.data.library;
+      }
+      setTimeout(() => {
+        IdxUtils.refreshMoveableGuides();
+      }, 100);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+    */
+
+    appState.value = arg.data.data;
+    rulersGridVisible.value = appState.value.rulersGridVisible;
+
+    grpNav.value = [arg.data.entry];
+    if (arg.data.library) {
+      arg.data.library = JSON.parse(arg.data.library);
+      library.value = arg.data.library;
+    }
+
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
   }
 
-  public HandleSaveGraphicRes(data) {
+  public HandleSaveGraphicRes(arg) {
     // action: 2, // SAVE_GRAPHIC_RES
   }
 
-  public HandleUpdateEntryRes(data) {
+  public HandleUpdateEntryRes(arg) {
     // action: 3, // UPDATE_ENTRY_RES
+
+    /*
+    if (arg.data.action === "UPDATE_ENTRY_RES") {
+      // Handle update entry response
+    }
+    */
   }
 
-  public HandleGetPanelsListRes(data) {
+  public HandleGetPanelsListRes(arg) {
     // action: 4, // GET_PANELS_LIST_RES
+
+    /*
+    if (arg.data.action === "GET_PANELS_LIST_RES") {
+      if (arg.data.data?.length) {
+        T3000_Data.value.panelsList = arg.data.data;
+        T3000_Data.value.loadingPanel = 0;
+        window.chrome?.webview?.postMessage({
+          action: 0, // GET_PANEL_DATA
+          panelId: T3000_Data.value.panelsList[0].panel_number,
+        });
+      }
+    }
+    */
+
+    if (!arg.data.data?.length) {
+      return;
+    }
+
+    T3000_Data.value.panelsList = arg.data.data;
+    T3000_Data.value.loadingPanel = 0;
+
+    this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
   public HandleGetEntriesRes(data) {
