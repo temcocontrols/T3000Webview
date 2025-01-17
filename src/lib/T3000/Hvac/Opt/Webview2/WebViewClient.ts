@@ -43,13 +43,24 @@ class WebViewClient {
     }
 
     this.webview.postMessage(message);
-    console.log('= Wv Sent message to T3:', message);
+    console.log('= Wv2 Sent message to T3:', message);
   }
 
   // Handle messages received from the native code T3 application
-  handleMessage(arg: any) {
-    console.log('= Wv2 Received message from T3:', arg);
+  handleMessage(data: any) {
+    console.log('= Wv2 Received message from T3:', data);
     // Handle the message as needed
+
+    try {
+      const parsedData = JSON.parse(data);
+      console.log('= Wv2 parsed server data:', parsedData);
+
+      // Further processing based on parsed data
+      this.processMessageData(parsedData);
+      console.log('= Wv2 ========================');
+    } catch (error) {
+      console.error('= Wv2 failed to parse | process data:', error);
+    }
   }
 
   FormatMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
@@ -118,6 +129,105 @@ class WebViewClient {
   GetEntries(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.GET_ENTRIES, panelId, viewitem, data);
     this.sendMessage(this.messageData);
+  }
+
+  private processMessageData(msgData) {
+
+    if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
+      this.HandleGetPanelDataRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.GET_INITIAL_DATA_RES) {
+      this.HandleGetInitialDataRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.SAVE_GRAPHIC_RES) {
+      this.HandleSaveGraphicRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
+      this.HandleUpdateEntryRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.GET_PANELS_LIST_RES) {
+      this.HandleGetPanelsListRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.GET_ENTRIES_RES) {
+      this.HandleGetEntriesRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
+      this.HandleLoadGraphicEntryRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
+      this.HandleOpenEntryEditWindowRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.SAVE_IMAGE_RES) {
+      this.HandleSaveImageRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
+      this.HandleSaveLibraryDataRes(msgData.data);
+    }
+
+    if (msgData.action === MessageType.DELETE_IMAGE_RES) {
+      this.HandleDeleteImageRes(msgData.data);
+    }
+  }
+
+  public HandleGetPanelDataRes(data) {
+    // action: 0, // GET_PANEL_DATA_RES
+
+    // load graphic list from GET_PANEL_DATA_RES
+    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
+
+  }
+
+  public HandleGetInitialDataRes(data) {
+    // action: 1, // GET_INITIAL_DATA_RES
+  }
+
+  public HandleSaveGraphicRes(data) {
+    // action: 2, // SAVE_GRAPHIC_RES
+  }
+
+  public HandleUpdateEntryRes(data) {
+    // action: 3, // UPDATE_ENTRY_RES
+  }
+
+  public HandleGetPanelsListRes(data) {
+    // action: 4, // GET_PANELS_LIST_RES
+  }
+
+  public HandleGetEntriesRes(data) {
+    // action: 6, // GET_ENTRIES_RES
+  }
+
+  public HandleLoadGraphicEntryRes(data) {
+    // action: 7, // LOAD_GRAPHIC_ENTRY_RES
+  }
+
+  public HandleOpenEntryEditWindowRes(data) {
+    // action: 8, // OPEN_ENTRY_EDIT_WINDOW_RES
+  }
+
+  public HandleSaveImageRes(data) {
+    // action: 9, // SAVE_IMAGE_RES
+  }
+
+  public HandleSaveLibraryDataRes(data) {
+    // action: 10, // SAVE_LIBRARY_DATA_RES
+  }
+
+  public HandleDeleteImageRes(data) {
+    // action: 11, // DELETE_IMAGE_RES
+  }
+
+  public HandleGetAllDevicesDataRes(data) {
+    // action: 12, // GET_ALL_DEVICES_DATA_RES
   }
 }
 
