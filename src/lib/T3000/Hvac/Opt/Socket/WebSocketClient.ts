@@ -4,7 +4,7 @@ import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
 import Utils5 from '../../Helper/Utils5'
-import { grpNav, library, T3000_Data } from '../../Data/T3Data'
+import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState } from '../../Data/T3Data'
 import IdxUtils from '../IdxUtils'
 
 class WebSocketClient {
@@ -350,6 +350,51 @@ class WebSocketClient {
     */
 
     Hvac.DeviceOpt.initGraphicList(msgData.data);
+
+    // refer to WebViewClient-> HandleGetPanelDataRes
+
+    if (msgData?.panel_id) {
+      Hvac.IdxPage.clearGetPanelsInterval();
+    }
+
+    if (msgData?.panel_id) {
+
+      const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+      if (check1) {
+        T3000_Data.value.loadingPanel++;
+        const index = T3000_Data.value.loadingPanel;
+        // window.chrome?.webview?.postMessage({
+        //   action: 0, // GET_PANEL_DATA
+        //   panelId: T3000_Data.value.panelsList[index].panel_number,
+        // });
+
+        this.GetPanelData(T3000_Data.value.panelsList[index].panel_number);
+      }
+
+      const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+      if (check2) {
+        T3000_Data.value.loadingPanel = null;
+      }
+
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+        (item) => item.pid !== msgData.panel_id
+      );
+
+      T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+        msgData.data
+      );
+
+      T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+        (item) => item.pid !== msgData.panel_id
+      );
+
+      T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
+
+      IdxUtils.refreshLinkedEntries(msgData.data);
+    }
   }
 
   public HandleGetInitialDataRes(msgData) {
@@ -439,10 +484,47 @@ class WebSocketClient {
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
     console.log('= Ws GET_ENTRIES_RES', msgData.data);
+
+    // TODO refer to WebViewClient-> HandleGetEntriesRes
+    msgData.data.forEach((item) => {
+      const itemIndex = T3000_Data.value.panelsData.findIndex(
+        (ii) =>
+          ii.index === item.index &&
+          ii.type === item.type &&
+          ii.pid === item.pid
+      );
+      if (itemIndex !== -1) {
+        T3000_Data.value.panelsData[itemIndex] = item;
+      }
+    });
+
+    if (!linkT3EntryDialog.value.active) {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+    }
+    IdxUtils.refreshLinkedEntries(msgData.data);
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
     // action: 7, // LOAD_GRAPHIC_ENTRY_RES
+
+    // TODO refer to WebViewClient-> HandleLoadGraphicEntryRes, appState
+    msgData.data = JSON.parse(msgData.data);
+    appState.value = msgData.data;
+
+    if (grpNav.value.length > 1) {
+      const navItem = grpNav.value[grpNav.value.length - 2];
+      if (navItem.index !== msgData.entry.index || navItem.pid !== msgData.entry.pid) {
+        grpNav.value.push(msgData.entry);
+      } else {
+        grpNav.value.pop();
+      }
+    } else {
+      grpNav.value.push(msgData.entry);
+    }
+
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
   }
 
   public HandleOpenEntryEditWindowRes(msgData) {
@@ -451,6 +533,17 @@ class WebSocketClient {
 
   public HandleSaveImageRes(msgData) {
     // action: 9, // SAVE_IMAGE_RES
+
+    // refer to WebViewClient-> HandleSaveImageRes
+    library.value.imagesCount++;
+    library.value.images.push({
+      id: "IMG-" + library.value.imagesCount,
+      name: msgData.data.name,
+      path: msgData.data.path,
+      online: false,
+    });
+
+    IdxUtils.saveLib();
   }
 
   public HandleSaveLibraryDataRes(msgData) {
