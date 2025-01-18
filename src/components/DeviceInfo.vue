@@ -294,6 +294,9 @@ export default defineComponent({
       console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       const deviceId = currentDevice.value.deviceId;
+
+      // load user drawing data from T3, only when user selects a device
+      if (deviceId === -1) return;
       Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
     }
 
@@ -369,8 +372,10 @@ export default defineComponent({
 
         Hvac.WsClient.GetPanelData(deviceId);
 
-        // user drawing data
+        // load user drawing data from T3, only when user selects a graphic
+        if (graphicId <= 0) return;
         Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
+
       }
     }
 

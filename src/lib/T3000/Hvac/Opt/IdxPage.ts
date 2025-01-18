@@ -240,6 +240,8 @@ class IdxPage {
 
     if (isBuiltInEdge.value) return;
 
+    Hvac.WsClient.initQuasar(this.$q);
+
     // connect to the ws://localhost:9104 websocket server
     Hvac.WsClient.connect();
 

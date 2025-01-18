@@ -1,7 +1,7 @@
 
-import { appState, T3000_Data, ranges, library } from '../Data/T3Data'
+import { appState, T3000_Data, ranges, library, savedNotify } from '../Data/T3Data'
 import { toRaw } from 'vue'
-import Hvac from '../Hvac';
+import Hvac from '../Hvac'
 
 class IdxUtils {
 
@@ -161,6 +161,41 @@ class IdxUtils {
     // });
 
     Hvac.WebClient.SaveLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+  }
+
+  static saveGraphicData(msgData, $q) {
+    if (msgData.data?.status === true) {
+      if (!savedNotify.value) return;
+      $q.notify({
+        message: "Saved successfully.",
+        color: "primary",
+        icon: "check_circle",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    } else {
+      $q.notify({
+        message: "Error, not saved!",
+        color: "negative",
+        icon: "error",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    }
   }
 }
 

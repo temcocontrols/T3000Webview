@@ -4,6 +4,8 @@ import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
 import Utils5 from '../../Helper/Utils5'
+import { grpNav, library, T3000_Data } from '../../Data/T3Data'
+import IdxUtils from '../IdxUtils'
 
 class WebSocketClient {
 
@@ -12,11 +14,10 @@ class WebSocketClient {
   private maxRetries: number = 10;
   private pingInterval: number = 10000; // 10 seconds
   private uri: string;
-
   public messageModel: MessageModel;
   public messageData: string;
-
   public needRefresh: boolean = true;
+  public $q: any;
 
   constructor() { }
 
@@ -49,7 +50,7 @@ class WebSocketClient {
   }
 
   private onMessage(event: MessageEvent) {
-    console.log('= Ws message received:', event.data);
+    // console.log('= Ws message received:', event.data);
     this.processMessage(event.data);
   }
 
@@ -271,14 +272,17 @@ class WebSocketClient {
 
   //#region Process Messages
 
+  // Implement your message processing logic here
   private processMessage(data: any) {
-    // Implement your message processing logic here
-    // console.log('= Ws processing message:', data);
     try {
       const parsedData = JSON.parse(data);
-      console.log('= Ws parsed server data:', parsedData);
+      console.log('= Ws received parsed data:', parsedData);
 
-      // Further processing based on parsed data
+      if (parsedData.error) {
+        this.handleError(parsedData);
+        return;
+      }
+
       this.processMessageData(parsedData);
       console.log('= ========================');
     } catch (error) {
@@ -289,47 +293,47 @@ class WebSocketClient {
   private processMessageData(msgData) {
 
     if (msgData.action === MessageType.GET_PANEL_DATA_RES) {
-      this.HandleGetPanelDataRes(msgData.data);
+      this.HandleGetPanelDataRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_INITIAL_DATA_RES) {
-      this.HandleGetInitialDataRes(msgData.data);
+      this.HandleGetInitialDataRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_GRAPHIC_DATA_RES) {
-      this.HandleSaveGraphicRes(msgData.data);
+      this.HandleSaveGraphicRes(msgData);
     }
 
     if (msgData.action === MessageType.UPDATE_ENTRY_RES) {
-      this.HandleUpdateEntryRes(msgData.data);
+      this.HandleUpdateEntryRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_PANELS_LIST_RES) {
-      this.HandleGetPanelsListRes(msgData.data);
+      this.HandleGetPanelsListRes(msgData);
     }
 
     if (msgData.action === MessageType.GET_ENTRIES_RES) {
-      this.HandleGetEntriesRes(msgData.data);
+      this.HandleGetEntriesRes(msgData);
     }
 
     if (msgData.action === MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      this.HandleLoadGraphicEntryRes(msgData.data);
+      this.HandleLoadGraphicEntryRes(msgData);
     }
 
     if (msgData.action === MessageType.OPEN_ENTRY_EDIT_WINDOW_RES) {
-      this.HandleOpenEntryEditWindowRes(msgData.data);
+      this.HandleOpenEntryEditWindowRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_IMAGE_RES) {
-      this.HandleSaveImageRes(msgData.data);
+      this.HandleSaveImageRes(msgData);
     }
 
     if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
-      this.HandleSaveLibraryDataRes(msgData.data);
+      this.HandleSaveLibraryDataRes(msgData);
     }
 
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
-      this.HandleDeleteImageRes(msgData.data);
+      this.HandleDeleteImageRes(msgData);
     }
 
     // specify action -1 [Data server is back online (T3 application)]
@@ -338,26 +342,27 @@ class WebSocketClient {
     }
   }
 
-  public HandleGetPanelDataRes(data) {
-    // action: 0, // GET_PANEL_DATA_RES
+  public HandleGetPanelDataRes(msgData) {
+    /*
+     load graphic list from GET_PANEL_DATA_RES
+     => action: 0, // GET_PANEL_DATA_RES
+     => { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
+    */
 
-    // load graphic list from GET_PANEL_DATA_RES
-    // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
-
-    Hvac.DeviceOpt.initGraphicList(data);
+    Hvac.DeviceOpt.initGraphicList(msgData.data);
   }
 
-  public HandleGetInitialDataRes(data) {
+  public HandleGetInitialDataRes(msgData) {
     // action: 1, // GET_INITIAL_DATA_RES
+    const appStateData = msgData.data;
 
     // save the T3 data to localstorage with key 'tempAppState'
-    if (data !== null && data !== undefined) {
-      localStorage.setItem('tempAppState', data);
+    if (appStateData !== null && appStateData !== undefined) {
+      localStorage.setItem('tempAppState', appStateData);
     }
 
-    const parseData = JSON.parse(data);
-    console.log('= Ws GET_INITIAL_DATA_RES', parseData);
-    console.log('= Ws GET_INITIAL_DATA_RES | needRefresh:', this.needRefresh);
+    const parsedAppStateData = JSON.parse(appStateData);
+    console.log('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (this.needRefresh) {
       // sync t3 appState data to ls [deviceAppState]
@@ -368,22 +373,35 @@ class WebSocketClient {
 
       // refresh the current device
       Hvac.DeviceOpt.refreshCurrentDevice();
+
+      // refer to WebViewClient-> HandleGetInitialDataRes
+      grpNav.value = [msgData.entry];
+      if (msgData.library) {
+        msgData.library = JSON.parse(msgData.library);
+        library.value = msgData.library;
+      }
+
+      setTimeout(() => {
+        IdxUtils.refreshMoveableGuides();
+      }, 100);
     }
   }
 
-  public HandleSaveGraphicRes(data) {
+  public HandleSaveGraphicRes(msgData) {
     // action: 2, // SAVE_GRAPHIC_RES
+    IdxUtils.saveGraphicData(msgData, this.$q);
   }
 
-  public HandleUpdateEntryRes(data) {
+  public HandleUpdateEntryRes(msgData) {
     // action: 3, // UPDATE_ENTRY_RES
   }
 
-  public HandleGetPanelsListRes(data) {
+  public HandleGetPanelsListRes(msgData) {
 
-    if (data === undefined) {
-      return;
-    }
+    //#region external browser
+
+    const data = msgData.data;
+    if (data === undefined) return;
 
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
@@ -405,38 +423,49 @@ class WebSocketClient {
         localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
       }
     }
+
+    //#endregion
+
+    //#region built-in browser, refer to WebViewClient-> HandleGetPanelsListRes
+
+    if (!msgData.data?.length) return;
+    T3000_Data.value.panelsList = msgData.data;
+    T3000_Data.value.loadingPanel = 0;
+    //this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
+
+    //#endregion
   }
 
-  public HandleGetEntriesRes(data) {
+  public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    console.log('= Ws GET_ENTRIES_RES', data);
+    console.log('= Ws GET_ENTRIES_RES', msgData.data);
   }
 
-  public HandleLoadGraphicEntryRes(data) {
+  public HandleLoadGraphicEntryRes(msgData) {
     // action: 7, // LOAD_GRAPHIC_ENTRY_RES
   }
 
-  public HandleOpenEntryEditWindowRes(data) {
+  public HandleOpenEntryEditWindowRes(msgData) {
     // action: 8, // OPEN_ENTRY_EDIT_WINDOW_RES
   }
 
-  public HandleSaveImageRes(data) {
+  public HandleSaveImageRes(msgData) {
     // action: 9, // SAVE_IMAGE_RES
   }
 
-  public HandleSaveLibraryDataRes(data) {
+  public HandleSaveLibraryDataRes(msgData) {
     // action: 10, // SAVE_LIBRARY_DATA_RES
   }
 
-  public HandleDeleteImageRes(data) {
+  public HandleDeleteImageRes(msgData) {
     // action: 11, // DELETE_IMAGE_RES
   }
 
-  public HandleGetAllDevicesDataRes(data) {
+  public HandleGetAllDevicesDataRes(msgData) {
     // action: 12, // GET_ALL_DEVICES_DATA_RES
   }
 
-  public HandleDataServerOnline(data) {
+  public HandleDataServerOnline(msgData) {
     // action: -1, // DATA_SERVER_ONLINE
 
     // refresh panel list
@@ -450,6 +479,32 @@ class WebSocketClient {
   }
 
   //#endregion
+
+  initQuasar(quasar) {
+    this.$q = quasar;
+  }
+
+  handleError(errorMsg) {
+    if (!errorMsg && !errorMsg.error) return;
+    console.error('= Ws error:', errorMsg);
+
+    const message = errorMsg.error;
+
+    this.$q.notify({
+      message: message,
+      color: "negative",
+      icon: "error",
+      actions: [
+        {
+          label: "Dismiss",
+          color: "white",
+          handler: () => {
+            /* ... */
+          },
+        },
+      ],
+    });
+  }
 }
 
 export default WebSocketClient

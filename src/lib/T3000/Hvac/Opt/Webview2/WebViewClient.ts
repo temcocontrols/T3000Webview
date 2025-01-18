@@ -388,38 +388,7 @@ class WebViewClient {
     //   }
     // }
 
-    if (msgData.data?.status === true) {
-      if (!savedNotify.value) return;
-      this.$q.notify({
-        message: "Saved successfully.",
-        color: "primary",
-        icon: "check_circle",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
-    } else {
-      this.$q.notify({
-        message: "Error, not saved!",
-        color: "negative",
-        icon: "error",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
-    }
+    IdxUtils.saveGraphicData(msgData, this.$q);
   }
 
   public HandleUpdateEntryRes(msgData) {
@@ -448,13 +417,9 @@ class WebViewClient {
     }
     */
 
-    if (!msgData.data?.length) {
-      return;
-    }
-
+    if (!msgData.data?.length) return;
     T3000_Data.value.panelsList = msgData.data;
     T3000_Data.value.loadingPanel = 0;
-
     this.GetPanelData(T3000_Data.value.panelsList[0].panel_number);
   }
 
