@@ -429,7 +429,7 @@ export default defineComponent({
         Hvac.DeviceOpt.setDeviceAndGraphicDefaultData(savedDevice);
         selected.value = savedDevice.device;
 
-        console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
+        // console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
         console.log('= Dvi onMounted 2 dvList:', dvList);
       }
     });

@@ -122,7 +122,9 @@ class DeviceOpt {
     console.log('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
 
     this.graphicList = transformedGraphicItems;
-    T3Data.graphicList.value = this.graphicList;
+    T3Data.graphicList.value = transformedGraphicItems;
+
+    console.log('= Dvopt t3 graphicList', T3Data.graphicList.value);
   }
 
   calculateElementCount(graphicId) {
@@ -325,27 +327,27 @@ class DeviceOpt {
     }
   }
 
-  // refresh the graphic panel element count
+  // Refresh the graphic panel element count
   refreshGraphicPanelElementCount(currentDevice) {
 
-    // currentDevice {device: "T3-XX-ESP 1", graphic: 1, graphicFull: {…}}
-
     const appStateLs = this.loadDeviceAppStateLS();
+
+    /*
     const canRefresh = currentDevice?.device && appStateLs;
 
     if (!canRefresh) {
       this.clearGraphicPanelElementCount();
       return;
     }
+    */
 
-    const graphicValues = appStateLs.filter(opt => opt?.device?.device === currentDevice?.device);
+    const lsGraphic = appStateLs.filter(opt => opt?.device?.device === currentDevice?.device);
 
     // clear the value first, reset the element count base on the current device info
-    this.clearGraphicPanelElementCount();
+    // this.clearGraphicPanelElementCount();
 
     T3Data.graphicList.value.forEach(graphic => {
-
-      const graphicValue = graphicValues.find(opt => opt?.device?.graphic === graphic.id);
+      const graphicValue = lsGraphic.find(opt => opt?.device?.graphic === graphic.id);
 
       if (graphicValue) {
         const elementCount = graphicValue?.appState?.items?.length ?? 0;

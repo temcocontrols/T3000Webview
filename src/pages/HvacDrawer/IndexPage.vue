@@ -765,6 +765,7 @@ import {
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify
 } from '../../lib/T3000/Hvac/Data/T3Data'
+import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
 
 // const isBuiltInEdge = ref(false);
 
@@ -1393,7 +1394,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      // save(); // Save the current state
+      save(); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1438,7 +1439,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    // save(); // Save the state after drag end
+    save(); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -3096,7 +3097,7 @@ function lockToggle() {
   }
 
   // Update the document area position based on the lock state
-  restDocumentAreaPosition();
+  IdxPage.restDocumentAreaPosition();
 }
 
 // function restDocumentAreaPosition(pzXY) {
