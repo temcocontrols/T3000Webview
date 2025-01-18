@@ -286,7 +286,10 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
+// import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
+// import { tools, T3_Types, getObjectActiveValue, user, globalNav, demoDeviceData } from "../../lib/common";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
+
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -299,7 +302,11 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
-
+import {
+  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
+  viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
+  savedNotify
+} from '../../lib/T3000/Hvac/Data/T3Data'
 
 // import T3000 from "src/lib/T3000";
 import T3000 from 'src/lib/T3000/T3000';
@@ -328,10 +335,10 @@ const keycon = new KeyController(); // Initialize key controller for handling ke
 const $q = useQuasar(); // Access Quasar framework instance
 const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
-const viewport = ref(null); // Reference to the viewport element
+// const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -344,11 +351,11 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
-const savedNotify = ref(false); // Notification state for saving
+// const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
 // Panel options for selection
-const selectPanelOptions = ref(T3000_Data.value.panelsData);
+// const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
@@ -373,31 +380,31 @@ if (process.env.DEV) {
 
 // Initialization of empty project and library structures
 let panzoomInstance = null;
-const emptyProject = {
-  version: process.env.VERSION,
-  items: [],
-  selectedTargets: [],
-  elementGuidelines: [],
-  itemsCount: 0,
-  groupCount: 0,
-  activeItemIndex: null,
-  viewportTransform: { x: 0, y: 0, scale: 1 },
-};
-const emptyLib = {
-  version: process.env.VERSION,
-  imagesCount: 0,
-  objLibItemsCount: 0,
-  images: [],
-  objLib: [],
-};
+// const emptyProject = {
+//   version: process.env.VERSION,
+//   items: [],
+//   selectedTargets: [],
+//   elementGuidelines: [],
+//   itemsCount: 0,
+//   groupCount: 0,
+//   activeItemIndex: null,
+//   viewportTransform: { x: 0, y: 0, scale: 1 },
+// };
+// const emptyLib = {
+//   version: process.env.VERSION,
+//   imagesCount: 0,
+//   objLibItemsCount: 0,
+//   images: [],
+//   objLib: [],
+// };
 
 // State references for the library and application state
-const library = ref(cloneDeep(emptyLib));
-const appState = ref(cloneDeep(emptyProject));
+// const library = ref(cloneDeep(emptyLib));
+// const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
-const locked = ref(false); // State to lock or unlock the interface
-const grpNav = ref([]); // Navigation history for grouped elements
+// const locked = ref(false); // State to lock or unlock the interface
+// const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
@@ -1061,11 +1068,11 @@ function addObject(item, group = undefined, addToHistory = true) {
   return item;
 }
 
-const viewportMargins = {
-  // top: 36,
-  top: 38 + 20 + 2,
-  left: 106 + 20 + 2,
-};
+// const viewportMargins = {
+//   // top: 36,
+//   top: 38 + 20 + 2,
+//   left: 106 + 20 + 2,
+// };
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
