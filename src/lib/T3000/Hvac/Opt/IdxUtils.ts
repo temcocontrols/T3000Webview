@@ -1,5 +1,5 @@
 
-import { appState, T3000_Data, ranges, library, savedNotify } from '../Data/T3Data'
+import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge } from '../Data/T3Data'
 import { toRaw } from 'vue'
 import Hvac from '../Hvac'
 
@@ -160,7 +160,15 @@ class IdxUtils {
     //   data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
     // });
 
-    Hvac.WebClient.SaveLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+    }
+    else {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.panelId;
+      const graphicId = currentDevice?.graphicId;
+      Hvac.WsClient.SaveLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+    }
   }
 
   static saveGraphicData(msgData, $q) {

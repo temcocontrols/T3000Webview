@@ -250,10 +250,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_IMAGE }));
   }
 
-  public SaveLibraryData(panelId: number) {
+  public SaveLibraryData(panelId?: number, viewitem?: number, data?: any) {
     // action: 10, // SAVE_LIBRARY_DATA
 
-    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, null, null);
+    this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
