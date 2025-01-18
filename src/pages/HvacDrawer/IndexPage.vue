@@ -959,7 +959,10 @@ onMounted(() => {
   //   restDocumentAreaPosition(e.getTransform());
   // });
 
+  Hvac.IdxPage.initQuasar($q);
+
   Hvac.IdxPage.initPage();
+
 
   // // Request initial data and panels list if in a webview
   // window.chrome?.webview?.postMessage({
@@ -1390,7 +1393,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      save(); // Save the current state
+      // save(); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1435,7 +1438,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    save(); // Save the state after drag end
+    // save(); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -2189,10 +2192,11 @@ function save(notify = false) {
   data.elementGuidelines = [];
 
   if (isBuiltInEdge.value) {
-    window.chrome?.webview?.postMessage({
-      action: 2, // SAVE_GRAPHIC
-      data,
-    });
+    // window.chrome?.webview?.postMessage({
+    //   action: 2, // SAVE_GRAPHIC
+    //   data,
+    // });
+    Hvac.WebClient.SaveGraphicData(null, null, data);
   }
   else {
     localStorage.setItem("appState", JSON.stringify(data));

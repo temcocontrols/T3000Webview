@@ -22,6 +22,9 @@ class IdxPage {
   public zoom: any;
   public getPanelsInterval: any;
 
+  // Access Quasar framework instance
+  public $q: any;
+
   constructor() {
     // this.panzoomInstance = null;
     this.initZoom();
@@ -38,6 +41,11 @@ class IdxPage {
     this.initPanzoom();
     this.initMessageClient();
     this.initScorller();
+  }
+
+  initQuasar(quasar) {
+    this.$q = quasar;
+    Hvac.WebClient.initQuasar(this.$q);
   }
 
   // Set global navigation properties
@@ -300,10 +308,10 @@ class IdxPage {
 
   // Checks if the user is logged in
   isLoggedIn() {
-    const $q = useQuasar();
+    // const $q = useQuasar();
     // console.log("= Idx $q:", $q);
 
-    const hasToken = $q.cookies.has("token");
+    const hasToken = this.$q.cookies.has("token");
     if (!hasToken) {
       user.value = null;
       return;

@@ -9,7 +9,10 @@ import MessageModel from "../Socket/MessageModel"
 import Utils5 from "../../Helper/Utils5"
 import IdxUtils from "../IdxUtils"
 import { useQuasar } from "quasar"
-import { T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify } from "../../Data/T3Data"
+import {
+  T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
+
+} from "../../Data/T3Data"
 
 
 class WebViewClient {
@@ -26,6 +29,9 @@ class WebViewClient {
   public message: any;
   public messageData: string;
 
+  // Access Quasar framework instance
+  public $q: any;
+
   constructor() {
     this.message = {};
   }
@@ -34,6 +40,10 @@ class WebViewClient {
     if (this.webview) {
       this.webview.addEventListener('message', this.handleMessage.bind(this));
     }
+  }
+
+  initQuasar(quasar) {
+    this.$q = quasar;
   }
 
   // Send a message to the native code T3 application
@@ -66,6 +76,9 @@ class WebViewClient {
   }
 
   setMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
+
+    this.message = {};
+
     // get the serial_number base on panelId
     const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
 
@@ -141,6 +154,11 @@ class WebViewClient {
 
   SaveLibraryData(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
+  SaveGraphicData(panelId?: number, viewitem?: number, data?: any) {
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
 
@@ -370,11 +388,9 @@ class WebViewClient {
     //   }
     // }
 
-    const $q = useQuasar();
-
     if (msgData.data?.status === true) {
       if (!savedNotify.value) return;
-      $q.notify({
+      this.$q.notify({
         message: "Saved successfully.",
         color: "primary",
         icon: "check_circle",
@@ -389,7 +405,7 @@ class WebViewClient {
         ],
       });
     } else {
-      $q.notify({
+      this.$q.notify({
         message: "Error, not saved!",
         color: "negative",
         icon: "error",
