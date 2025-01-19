@@ -299,6 +299,11 @@ class WebViewClient {
     this.sendMessage(this.messageData);
   }
 
+  DeleteImage(imagePath: string) {
+    this.FormatMessageData(MessageType.DELETE_IMAGE, null, null, imagePath);
+    this.sendMessage(this.messageData);
+  }
+
   private processMessageData(msgData) {
 
     if (msgData.action === MessageType.GET_PANEL_DATA_RES) {

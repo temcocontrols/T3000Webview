@@ -771,7 +771,7 @@ import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
-  savedNotify
+  savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
 
@@ -799,7 +799,7 @@ useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
-const moveable = ref(null); // Reference to the moveable component instance
+// const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
 // const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
@@ -873,8 +873,8 @@ if (process.env.DEV) {
 // State references for the library and application state
 // const library = ref(cloneDeep(emptyLib));
 // const appState = ref(cloneDeep(emptyProject));
-const undoHistory = ref([]); // History for undo actions
-const redoHistory = ref([]); // History for redo actions
+// const undoHistory = ref([]); // History for undo actions
+// const redoHistory = ref([]); // History for redo actions
 // const locked = ref(false); // State to lock or unlock the interface
 // const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
@@ -1897,14 +1897,14 @@ function selectTool(tool, type = "default") {
   selectedTool.value.type = type;
 }
 
-// Refresh the moveable object's rectangle after a short delay
-function refreshMoveable() {
-  // const targetsCache = cloneDeep(appState.value.selectedTargets);
-  // appState.value.selectedTargets = [];
-  setTimeout(() => {
-    moveable.value.updateRect();
-  }, 1);
-}
+// // Refresh the moveable object's rectangle after a short delay
+// function refreshMoveable() {
+//   // const targetsCache = cloneDeep(appState.value.selectedTargets);
+//   // appState.value.selectedTargets = [];
+//   setTimeout(() => {
+//     moveable.value.updateRect();
+//   }, 1);
+// }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
@@ -2244,26 +2244,35 @@ function newProject() {
       persistent: true,
     })
       .onOk(() => {
+        /*
         appState.value = cloneDeep(emptyProject);
         undoHistory.value = [];
         redoHistory.value = [];
         refreshMoveable();
 
-        // TODO
         if (!window.chrome?.webview?.postMessage) {
           localStorage.removeItem("appState");
         }
+        */
+
+        Hvac.IdxPage.newProject();
       })
       .onCancel(() => { });
     return;
   }
+
+  /*
   appState.value = cloneDeep(emptyProject);
   undoHistory.value = [];
   redoHistory.value = [];
   refreshMoveable();
+
   if (!window.chrome?.webview?.postMessage) {
     localStorage.removeItem("appState");
   }
+  */
+
+  Hvac.IdxPage.newProject();
 }
 
 // Handle keyup event for keyboard control
@@ -3658,10 +3667,21 @@ function deleteLibImage(item) {
     if (!item.online) {
       // Delete the image from the webview
       const imagePath = cloneDeep(library.value.images[itemIndex].path);
+
+      /*
       window.chrome?.webview?.postMessage({
         action: 11, // DELETE_IMAGE
         data: toRaw(imagePath),
       });
+      */
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.DeleteImage(toRaw(imagePath));
+      }
+      else {
+        Hvac.WsClient.DeleteImage(toRaw(imagePath));
+      }
+
       IdxUtils.saveLib();
     }
   }

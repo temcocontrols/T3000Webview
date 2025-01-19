@@ -391,10 +391,14 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
   }
 
-  public DeleteImage(panelId: number) {
+  public DeleteImage(imagePath: string) {
     // action: 11, // DELETE_IMAGE
 
-    this.FormatMessageData(MessageType.DELETE_IMAGE, panelId, null, null);
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+
+    this.FormatMessageData(MessageType.DELETE_IMAGE, panelId, graphicId, imagePath);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.DELETE_IMAGE }));

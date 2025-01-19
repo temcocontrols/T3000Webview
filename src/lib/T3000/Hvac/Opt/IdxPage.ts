@@ -3,7 +3,7 @@
 
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition,
-  viewportMargins, viewport, locked, deviceModel, T3_Types
+  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
@@ -11,6 +11,7 @@ import panzoom from "panzoom"
 import { computed, triggerRef, toRaw } from "vue"
 import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
+import { cloneDeep } from "lodash"
 
 let panzoomInstance = null;
 // let getPanelsInterval = null; // Interval for fetching panel data
@@ -392,6 +393,68 @@ class IdxPage {
     }
 
     console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+  }
+
+  // Clear ls appState and deviceAppState and tempAppState
+  newProject() {
+    if (isBuiltInEdge.value) {
+      appState.value = cloneDeep(emptyProject);
+      undoHistory.value = [];
+      redoHistory.value = [];
+      this.refreshMoveable();
+
+      /*
+      if (!window.chrome?.webview?.postMessage) {
+        localStorage.removeItem("appState");
+      }
+      */
+
+      if (!this.webview?.postMessage) {
+        localStorage.removeItem("appState");
+      }
+    }
+    else {
+      appState.value = cloneDeep(emptyProject);
+      undoHistory.value = [];
+      redoHistory.value = [];
+      this.refreshMoveable();
+
+      // set ls appState to empty
+      localStorage.setItem("appState", JSON.stringify(appState.value));
+
+      // set ls deviceAppState's current appState to empty
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const deviceAppState = Hvac.DeviceOpt.loadDeviceAppStateLS();
+
+      if (currentDevice) {
+        const deviceState = deviceAppState.find(
+          (state) =>
+            state.device.device === currentDevice.device &&
+            state.device.graphic === currentDevice.graphic
+        );
+
+        if (deviceState) {
+          deviceState.appState = cloneDeep(emptyProject);
+          localStorage.setItem("deviceAppState", JSON.stringify(deviceAppState));
+        }
+      }
+
+      // set ls tempAppState to empty
+      localStorage.setItem("tempAppState", JSON.stringify(appState.value));
+
+      // clear current device's element count
+      currentDevice.graphicFull.elementCount = 0;
+      localStorage.setItem("currentDevice", JSON.stringify(currentDevice));
+    }
+  }
+
+  // Refresh the moveable object's rectangle after a short delay
+  refreshMoveable() {
+    // const targetsCache = cloneDeep(appState.value.selectedTargets);
+    // appState.value.selectedTargets = [];
+    setTimeout(() => {
+      moveable.value.updateRect();
+    }, 1);
   }
 
   // Adds the online images to the library
