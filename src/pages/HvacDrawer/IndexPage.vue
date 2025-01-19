@@ -3066,9 +3066,19 @@ function handleMenuAction(action, val) {
 // Reload panel data by requesting the panels list
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
+
+  /*
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
+  */
+
+  if (isBuiltInEdge.value) {
+    Hvac.WebClient.GetPanelsList();
+  }
+  else {
+    Hvac.WsClient.GetPanelsList();
+  }
 }
 
 // // Refresh linked entries with updated panel data
