@@ -199,6 +199,8 @@
                     <strong v-else>Unlock</strong>
                   </q-tooltip>
                 </q-btn>
+              </div>
+              <div>
                 <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                   :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="!isBuiltInEdge && locked">
                   <q-tooltip anchor="top middle" self="bottom middle">
