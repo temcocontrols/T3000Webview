@@ -157,7 +157,8 @@
           :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge"></NewTopToolBar>
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+        </NewTopToolBar>
       </div>
 
       <div class="main-area">
@@ -193,6 +194,13 @@
                 <!-- Lock/Unlock Button -->
                 <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                   :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="isBuiltInEdge">
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    <strong v-if="!locked">Lock</strong>
+                    <strong v-else>Unlock</strong>
+                  </q-tooltip>
+                </q-btn>
+                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                  :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="!isBuiltInEdge && locked">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong v-if="!locked">Lock</strong>
                     <strong v-else>Unlock</strong>
