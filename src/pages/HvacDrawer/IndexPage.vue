@@ -3160,18 +3160,52 @@ function objectClicked(item) {
   // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
+
+    const message = {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.LoadGraphicEntry(message);
+    }
+    else {
+      Hvac.WsClient.LoadGraphicEntry(message);
+    }
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
       panelId: item.t3Entry.pid,
       entryIndex: item.t3Entry.index,
     });
+    */
+
   } else if (["SCHEDULE", "PROGRAM", "HOLIDAY"].includes(item.t3Entry?.type)) {
+
+    const message = {
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.OpenEntryEditWindow(message);
+    }
+    else {
+      Hvac.WsClient.OpenEntryEditWindow(message);
+    }
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 8, // OPEN_ENTRY_EDIT_WINDOW
       panelId: item.t3Entry.pid,
       entryType: T3_Types[item.t3Entry.type],
       entryIndex: item.t3Entry.index,
     });
+    */
   } else if (
     item.t3Entry?.auto_manual === 1 &&
     item.t3Entry?.digital_analog === 0 &&
@@ -3335,15 +3369,44 @@ function setTheSettingContextMenuVisible() {
 function navGoBack() {
   if (grpNav.value.length > 1) {
     const item = grpNav.value[grpNav.value.length - 2];
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
       panelId: item.pid,
       entryIndex: item.index,
     });
+    */
+
+    const message = {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.pid,
+      entryIndex: item.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.LoadGraphicEntry(message);
+    }
+    else {
+      Hvac.WsClient.LoadGraphicEntry(message);
+    }
   } else {
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 1, // GET_INITIAL_DATA
     });
+    */
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.GetInitialData();
+    }
+    else {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice.panelId;
+      const graphicId = currentDevice.graphic;
+      Hvac.WsClient.GetInitialData(panelId, graphicId, true);
+    }
   }
 }
 

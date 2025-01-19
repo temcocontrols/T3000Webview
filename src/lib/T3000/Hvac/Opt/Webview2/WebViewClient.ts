@@ -118,6 +118,41 @@ class WebViewClient {
     this.messageData = this.message;
   }
 
+  FormatLoadGraphicEntryData(data) {
+    /*
+    {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    this.message = {};
+    this.message.action = MessageType.LOAD_GRAPHIC_ENTRY;
+    this.message.entryIndex = data.entryIndex;
+
+    this.messageData = this.message;
+  }
+
+  FormatOpenEntryEditWindowData(data) {
+    /*
+    {
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    this.message = {};
+    this.message.action = MessageType.OPEN_ENTRY_EDIT_WINDOW;
+    this.message.panelId = data.panelId;
+    this.message.entryType = data.entryType;
+    this.message.entryIndex = data.entryIndex;
+
+    this.messageData = this.message;
+  }
+
   setMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
 
     this.message = {};
@@ -233,6 +268,34 @@ class WebViewClient {
     */
 
     this.FormatSaveImageData(data);
+    this.sendMessage(this.messageData);
+  }
+
+  LoadGraphicEntry(data) {
+    /*
+    {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    this.FormatLoadGraphicEntryData(data);
+    this.sendMessage(this.messageData);
+  }
+
+  OpenEntryEditWindow(data) {
+
+    /*
+    {
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    this.FormatOpenEntryEditWindowData(data);
     this.sendMessage(this.messageData);
   }
 

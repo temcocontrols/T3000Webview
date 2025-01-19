@@ -201,6 +201,58 @@ class WebSocketClient {
     this.messageData = JSON.stringify(msgData);
   }
 
+  public FormatLoadGraphicEntryData(data) {
+    /*
+    {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = data.panelId || currentDevice.panenId;
+    const graphicId = currentDevice.graphic;
+
+    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(MessageType.LOAD_GRAPHIC_ENTRY, panelId, graphicId, null, serialNumber);
+
+    this.messageModel.message.entryIndex = data.entryIndex;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+  }
+
+  FormatOpenEntryEditWindow(data) {
+    /*
+    {
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = data.panelId || currentDevice.panenId;
+    const graphicId = currentDevice.graphic;
+
+    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(MessageType.OPEN_ENTRY_EDIT_WINDOW, panelId, graphicId, null, serialNumber);
+
+    this.messageModel.message.entryType = data.entryType;
+    this.messageModel.message.entryIndex = data.entryIndex;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+  }
+
   //#endregion
 
   //#region Send Messages
@@ -295,19 +347,27 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_ENTRIES }));
   }
 
-  public LoadGraphicEntry(panelId, graphicId) {
+  public LoadGraphicEntry(data) {
     // action: 7, // LOAD_GRAPHIC_ENTRY
 
-    this.FormatMessageData(MessageType.LOAD_GRAPHIC_ENTRY, panelId, graphicId, null);
+    /*
+    {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    }
+    */
+
+    this.FormatLoadGraphicEntryData(data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.LOAD_GRAPHIC_ENTRY }));
   }
 
-  public OpenEntryEditWindow(panelId) {
+  public OpenEntryEditWindow(data) {
     // action: 8, // OPEN_ENTRY_EDIT_WINDOW
 
-    this.FormatMessageData(MessageType.OPEN_ENTRY_EDIT_WINDOW, panelId, null, null);
+    this.FormatOpenEntryEditWindow(data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.OPEN_ENTRY_EDIT_WINDOW }));
