@@ -2752,7 +2752,14 @@ async function saveLibImage(file) {
     fileData: await readFile(file.data),
   };
 
-  window.chrome?.webview?.postMessage(message);
+  if (isBuiltInEdge.value) {
+    Hvac.WebClient.SaveImage(message);
+  }
+  else {
+    Hvac.WsClient.SaveImage(message);
+  }
+
+  // window.chrome?.webview?.postMessage(message);
 }
 
 const gaugeSettingsDialog = ref({

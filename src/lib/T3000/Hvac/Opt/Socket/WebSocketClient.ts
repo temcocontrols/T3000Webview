@@ -173,6 +173,34 @@ class WebSocketClient {
     this.messageData = JSON.stringify(msgData);
   }
 
+  public FormatSaveImageData(data: any) {
+    /*
+    {
+      action: 9, // SAVE_IMAGE
+      filename: file.name,
+      fileLength: file.size,
+      fileData: await readFile(file.data),
+    }
+    */
+
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = currentDevice.panelId;
+    const graphicId = currentDevice.graphic;
+
+    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(MessageType.SAVE_IMAGE, panelId, graphicId, null, serialNumber);
+
+    this.messageModel.message.filename = data.filename;
+    this.messageModel.message.fileLength = data.fileLength;
+    this.messageModel.message.fileData = data.fileData;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+  }
+
   //#endregion
 
   //#region Send Messages
@@ -285,10 +313,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.OPEN_ENTRY_EDIT_WINDOW }));
   }
 
-  public SaveImage(panelId: number, data: {}) {
+  public SaveImage(data) {
     // action: 9, // SAVE_IMAGE
 
-    this.FormatMessageData(MessageType.SAVE_IMAGE, panelId, null, data);
+    this.FormatSaveImageData(data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_IMAGE }));

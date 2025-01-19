@@ -99,6 +99,25 @@ class WebViewClient {
     this.messageData = this.message;
   }
 
+  FormatSaveImageData(data: any) {
+    /*
+     {
+       action: 9, // SAVE_IMAGE
+       filename: file.name,
+       fileLength: file.size,
+       fileData: await readFile(file.data),
+     }
+     */
+
+    this.message = {};
+    this.message.action = MessageType.SAVE_IMAGE;
+    this.message.filename = data.filename;
+    this.message.fileLength = data.fileLength;
+    this.message.fileData = data.fileData;
+
+    this.messageData = this.message;
+  }
+
   setMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
 
     this.message = {};
@@ -200,6 +219,20 @@ class WebViewClient {
     */
 
     this.FormatUpdateEntryData(data);
+    this.sendMessage(this.messageData);
+  }
+
+  SaveImage(data: any) {
+    /*
+    {
+      action: 9, // SAVE_IMAGE
+      filename: file.name,
+      fileLength: file.size,
+      fileData: await readFile(file.data),
+    }
+    */
+
+    this.FormatSaveImageData(data);
     this.sendMessage(this.messageData);
   }
 
