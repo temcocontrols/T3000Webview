@@ -627,6 +627,16 @@ export const undoHistory = ref([]); // History for undo actions
 export const redoHistory = ref([]); // History for redo actions
 export const moveable = ref(null); // Reference to the moveable component instance
 
+/*
+{
+  type: "error" | "warning" | "info" | "success"
+  message:"Error message",
+  isShow: true | false,
+  msgType: ""
+}
+*/
+export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
+
 const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),

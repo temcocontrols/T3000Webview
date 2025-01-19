@@ -331,6 +331,7 @@ class DeviceOpt {
   refreshGraphicPanelElementCount(currentDevice) {
 
     const appStateLs = this.loadDeviceAppStateLS();
+    if (!appStateLs) return;
 
     /*
     const canRefresh = currentDevice?.device && appStateLs;

@@ -35,6 +35,16 @@
 <template>
 
   <div class=".dvcontainer">
+
+    <div class="q-pa-sm row" v-if="glMsg.isShow && glMsg.type === 'error'">
+      <q-banner inline-actions class="text-white bg-purple" style="width: 100%;">
+        {{ glMsg.message }}
+        <template v-slot:action>
+          <q-btn flat caption color="white" label="Reload data" @click="reloadPanelsData" />
+        </template>
+      </q-banner>
+    </div>
+
     <div class="q-pa-sm row ">
 
       <q-list bordered class="rounded-borders col-12" style="height: 50px;">
@@ -194,6 +204,7 @@ import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
 import T3Data from '../lib/T3000/Hvac/Data/T3Data'
+import { globalMsg } from '../lib/T3000/Hvac/Data/T3Data'
 
 export default defineComponent({
   name: 'NewTopBar',
@@ -236,7 +247,7 @@ export default defineComponent({
     const ticked = ref(['']);
     const expanded = ref(["All Devices"]);
 
-    const noNodesLabel = "No nodes available";
+    const noNodesLabel = "No devices available";
 
     // const x1 = ref();
     // console.log('= Dvi x1', x1);
@@ -258,6 +269,8 @@ export default defineComponent({
     // const graphicList = MockData.GraphicList;
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
+
+    let glMsg = globalMsg;
 
     const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: '' } });
 
@@ -437,7 +450,27 @@ export default defineComponent({
         // console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
         console.log('= Dvi onMounted 2 dvList:', dvList);
       }
+
+      if (dvList.value.length === 0) {
+        const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
+        Hvac.T3Utils.setGlobalMsg('error', errorMsg, true);
+      }
+      else {
+        Hvac.T3Utils.clearGlobalMsg();
+      }
     });
+
+    const reloadPanelsData = () => {
+      // console.log('= Dvi reloadPanelsData 1');
+      Hvac.WsClient.GetPanelsList();
+    }
+
+    watch(dvList, (newVal) => {
+      if (newVal.length > 0) {
+        // console.log('= Dvi watch dvList 1 newVal:', newVal);
+        Hvac.T3Utils.clearGlobalMsg();
+      }
+    }, { deep: true });
 
     return {
       filter,
@@ -455,7 +488,9 @@ export default defineComponent({
       updateGraphicSelection,
       saveCurrentSelection,
       testSendMsg,
-      noNodesLabel
+      noNodesLabel,
+      reloadPanelsData,
+      glMsg
     }
   }
 });
