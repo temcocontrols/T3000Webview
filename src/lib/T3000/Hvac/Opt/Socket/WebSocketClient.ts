@@ -140,6 +140,39 @@ class WebSocketClient {
     this.messageData = JSON.stringify(msgData);
   }
 
+  public FormatUpdateEntryData(data: any) {
+    /*
+    {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: obj.t3Entry.pid,
+      entryIndex: obj.t3Entry.index,
+      entryType: T3_Types[obj.t3Entry.type],
+    }
+    */
+
+    const panelId = data.panelId;
+
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const graphicId = currentDevice.graphic;
+
+    // get the serial_number base on panelId
+    const serialNumber = Hvac.DeviceOpt.getSerialNumber(panelId);
+
+    this.messageModel = new MessageModel();
+    this.messageModel.setHeader();
+    this.messageModel.setMessage(MessageType.UPDATE_ENTRY, panelId, graphicId, null, serialNumber);
+
+    this.messageModel.message.field = data.field;
+    this.messageModel.message.value = data.value;
+    this.messageModel.message.entryIndex = data.entryIndex;
+    this.messageModel.message.entryType = data.entryType;
+
+    const msgData = this.messageModel.formatMessageData();
+    this.messageData = JSON.stringify(msgData);
+  }
+
   //#endregion
 
   //#region Send Messages
@@ -191,10 +224,21 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
   }
 
-  public UpdateEntry(panelId: number) {
+  public UpdateEntry(data: any) {
     // action: 3, // UPDATE_ENTRY
 
-    this.FormatMessageData(MessageType.UPDATE_ENTRY, panelId, null, null);
+    /*
+    {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: obj.t3Entry.pid,
+      entryIndex: obj.t3Entry.index,
+      entryType: T3_Types[obj.t3Entry.type],
+    }
+    */
+
+    this.FormatUpdateEntryData(data);
     this.sendMessage(this.messageData);
 
     // this.sendMessage(JSON.stringify({ action: MessageType.UPDATE_ENTRY }));

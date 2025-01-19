@@ -357,6 +357,43 @@ class IdxPage {
       });
   }
 
+  // Update a T3 entry field for an object
+  T3UpdateEntryField(key, obj) {
+    // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
+    // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+    // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
+    if (!obj.t3Entry) return;
+    let fieldVal = obj.t3Entry[key];
+
+    const tempFieldBefore = fieldVal;
+
+    if (Math.abs(fieldVal) >= 1000) {
+      fieldVal = fieldVal / 1000;
+    }
+
+    if (key === "value" || key === "control") {
+      IdxUtils.refreshObjectStatus(obj);
+    }
+
+    const msgData = {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: obj.t3Entry.pid,
+      entryIndex: obj.t3Entry.index,
+      entryType: T3_Types[obj.t3Entry.type],
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.UpdateEntry(msgData);
+    }
+    else {
+      Hvac.WsClient.UpdateEntry(msgData);
+    }
+
+    console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+  }
+
   // Adds the online images to the library
   addOnlineLibImage(oItem) {
     const iIndex = library.value.images.findIndex(

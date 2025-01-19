@@ -1998,6 +1998,8 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
+
+  /*
   // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
   // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
   // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
@@ -2023,6 +2025,9 @@ function T3UpdateEntryField(key, obj) {
   });
 
   console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+  */
+
+  Hvac.IdxPage.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value

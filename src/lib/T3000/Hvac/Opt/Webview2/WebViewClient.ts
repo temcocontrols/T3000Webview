@@ -75,6 +75,30 @@ class WebViewClient {
     this.messageData = this.message;//JSON.stringify(this.message);
   }
 
+  FormatUpdateEntryData(data: any) {
+
+    /*
+    {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: obj.t3Entry.pid,
+      entryIndex: obj.t3Entry.index,
+      entryType: T3_Types[obj.t3Entry.type],
+    }
+    */
+
+    this.message = {};
+    this.message.action = MessageType.UPDATE_ENTRY;
+    this.message.field = data.field;
+    this.message.value = data.value;
+    this.message.panelId = data.panelId;
+    this.message.entryIndex = data.entryIndex;
+    this.message.entryType = data.entryType;
+
+    this.messageData = this.message;
+  }
+
   setMessageData(action: number, panelId?: number, viewitem?: number, data?: any) {
 
     this.message = {};
@@ -159,6 +183,23 @@ class WebViewClient {
 
   SaveGraphicData(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
+  UpdateEntry(data: any) {
+
+    /*
+    {
+      action: 3, // UPDATE_ENTRY
+      field: key,
+      value: fieldVal,
+      panelId: obj.t3Entry.pid,
+      entryIndex: obj.t3Entry.index,
+      entryType: T3_Types[obj.t3Entry.type],
+    }
+    */
+
+    this.FormatUpdateEntryData(data);
     this.sendMessage(this.messageData);
   }
 
