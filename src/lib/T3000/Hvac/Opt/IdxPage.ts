@@ -46,12 +46,27 @@ class IdxPage {
     this.initScorller();
 
     this.initAutoSaveInterval();
+    this.initWindowListener();
   }
 
   initQuasar(quasar) {
     this.$q = quasar;
     Hvac.WebClient.initQuasar(this.$q);
     Hvac.T3Utils.initQuasar(this.$q);
+  }
+
+  initWindowListener() {
+    // Save the state before the window is unloaded
+    window.addEventListener("beforeunload", function (event) {
+      // save();
+      Hvac.IdxPage.clearAutoSaveInterval();
+      Hvac.WsClient.clearInitialDataInterval();
+    });
+
+    window.addEventListener("resize", () => {
+      IdxPage.restDocumentAreaPosition(null);
+      // console.log('= Idx window resize', documentAreaPosition.value);
+    });
   }
 
   // Set global navigation properties
@@ -476,6 +491,7 @@ class IdxPage {
 
     data.selectedTargets = [];
     data.elementGuidelines = [];
+    data.rulersGridVisible = rulersGridVisible.value;
 
     if (isBuiltInEdge.value) {
       // window.chrome?.webview?.postMessage({
