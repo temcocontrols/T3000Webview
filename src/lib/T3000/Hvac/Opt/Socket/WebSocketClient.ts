@@ -749,7 +749,7 @@ class WebSocketClient {
 
     console.log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
 
-    if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES && rspStatus) {
+    if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
       this.$q.notify({
         message: "Graphic loaded successfully",
         color: "positive",
@@ -766,7 +766,7 @@ class WebSocketClient {
       });
     }
 
-    if (rspAction == MessageType.GET_INITIAL_DATA_RES && rspStatus) {
+    if (rspAction == MessageType.GET_INITIAL_DATA_RES) {
       this.$q.notify({
         message: "Initial data loaded successfully",
         color: "positive",
