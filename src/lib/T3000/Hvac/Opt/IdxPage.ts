@@ -3,7 +3,8 @@
 
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
-  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState
+  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
+  globalMsg
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
@@ -463,15 +464,14 @@ class IdxPage {
 
   // Save the current app state, optionally displaying a notification
   save(notify = false) {
-    console.log('= Idx save notify', rulersGridVisible.value);
+    console.log('= Idx save notify,rulers-grid-visible', notify, rulersGridVisible.value);
+
     savedNotify.value = notify;
     const data = cloneDeep(toRaw(appState.value));
 
     // recalculate the items count
     const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
     data.itemsCount = nonZeroWidthItemsCount;
-    // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
-    // console.log('==== Save appState:', appState.value);
     console.log('= Idx save data', data);
 
     data.selectedTargets = [];
@@ -485,12 +485,16 @@ class IdxPage {
       Hvac.WebClient.SaveGraphicData(null, null, data);
     }
     else {
-      // localStorage.setItem("appState", JSON.stringify(data));
+      localStorage.setItem("appState", JSON.stringify(data));
+
+      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+      if (msgType) {
+        console.log('= Idx save with initial data been loaded with error, cancel auto save');
+        return;
+      }
 
       // save device data and related appState
-      if (!isBuiltInEdge.value) {
-        this.saveDeviceAppState(true);
-      }
+      this.saveDeviceAppState(true);
     }
 
     /*

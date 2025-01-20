@@ -580,6 +580,7 @@ class WebSocketClient {
     }, 100);
 
     this.clearInitialDataInterval();
+    Hvac.T3Utils.clearGlobalMsg("get_initial_data");
   }
 
   public HandleSaveGraphicRes(msgData) {
@@ -788,6 +789,9 @@ class WebSocketClient {
       const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
       Hvac.T3Utils.ShowWebSocketError(errorMsg);
       this.reloadInitialData();
+
+      // add global error message for blocking auto save
+      Hvac.T3Utils.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
     }
   }
 

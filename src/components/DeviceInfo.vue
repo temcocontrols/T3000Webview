@@ -420,7 +420,7 @@ export default defineComponent({
       }
       else {
         // clear the reload initial data flag when user selects a new graphic
-        Hvac.WsClient.clearReloadInitialData();
+        Hvac.WsClient.clearInitialDataInterval();
 
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
         Hvac.DeviceOpt.addPresetsData();

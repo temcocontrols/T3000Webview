@@ -475,12 +475,13 @@ class DeviceOpt {
     appState.value = cloneDeep(emptyProject);
     rulersGridVisible.value = false;
 
+    // save the appState value to local storage
+    this.saveAppState(appState.value);
+
     // set the ls deviceAppState related value
     const deviceAppStateLS = this.loadDeviceAppStateLS();
 
-    if (!deviceAppStateLS) {
-      return;
-    }
+    if (!deviceAppStateLS) return;
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
