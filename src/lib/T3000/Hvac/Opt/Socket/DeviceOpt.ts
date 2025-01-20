@@ -447,6 +447,43 @@ class DeviceOpt {
       this.saveCurrentDevice(currentDevice);
     }
   }
+
+  // Set the appSate value to an empty project, and update the ls deviceAppState related value, and merge the responsed data
+  // by checking action=GET_INITIAL_DATA_RES into this appState when the T3000 has a correct feedback
+  doPrevalueSet() {
+
+    // set the tempAppState to empty project
+    const emptyAppState = cloneDeep(emptyProject);
+    localStorage.setItem('tempAppState', JSON.stringify(emptyAppState));
+
+    // get the current device info
+    const currentDevice = this.getCurrentDevice();
+    const crtDeviceName = currentDevice?.device ?? "-";
+    const crtDeviceId = currentDevice?.deviceId ?? -1;
+    const crtGraphicId = currentDevice?.graphic ?? -1;
+
+    // set the appState value to empty project
+    appState.value = cloneDeep(emptyProject);
+
+    // set the ls deviceAppState related value
+    const deviceAppStateLS = this.loadDeviceAppStateLS();
+
+    if(!deviceAppStateLS) {
+      return;
+    }
+
+    const deviceIndex = deviceAppStateLS.findIndex(
+      opt =>
+      opt?.device?.device === crtDeviceName &&
+      opt?.device?.graphic === crtGraphicId
+    );
+
+    if (deviceIndex !== -1) {
+      deviceAppStateLS[deviceIndex].appState = cloneDeep(emptyProject);
+    }
+
+    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+  }
 }
 
 export default DeviceOpt

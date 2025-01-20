@@ -703,9 +703,13 @@ class WebSocketClient {
 
     // refresh appState
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;
-    this.GetInitialData(panelId, graphicId);
+
+    if (panelId && graphicId) {
+      this.GetInitialData(panelId, graphicId);
+    }
   }
 
   //#endregion
@@ -714,14 +718,16 @@ class WebSocketClient {
     this.$q = quasar;
   }
 
-  handleError(errorMsg) {
-    if (!errorMsg && !errorMsg.error) return;
-    console.error('= Ws error:', errorMsg);
+  handleError(messageData) {
+    if (!messageData && !messageData.error) return;
+    console.error('= Ws error:', messageData);
 
-    const message = errorMsg.error;
+    // GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
+
+    const errorMsg = messageData.error;
 
     this.$q.notify({
-      message: message,
+      message: errorMsg,
       color: "negative",
       icon: "error",
       actions: [

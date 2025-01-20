@@ -36,7 +36,7 @@
 
   <div class=".dvcontainer">
 
-    <div class="q-pa-sm row" v-if="glMsg.isShow && glMsg.type === 'error'">
+    <div class="q-pa-sm row" v-if="glMsg.isShow">
       <q-banner inline-actions class="text-white bg-purple" style="width: 100%;">
         {{ glMsg.message }}
         <template v-slot:action>
@@ -197,12 +197,14 @@
 
 <script lang="ts">
 
-import { defineComponent, ref, onMounted, watch, reactive, toRefs } from 'vue'
+import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } from 'vue'
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
 import T3Data from '../lib/T3000/Hvac/Data/T3Data'
 import { globalMsg } from '../lib/T3000/Hvac/Data/T3Data'
+import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
+import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
 
 export default defineComponent({
   name: 'NewTopBar',
@@ -267,8 +269,6 @@ export default defineComponent({
     // const graphicList = MockData.GraphicList;
     const graphicList = T3Data.graphicList;
     // console.log('= Dvi real graphic data', graphicList);
-
-    let glMsg = globalMsg;
 
     const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: '' } });
 
@@ -421,7 +421,7 @@ export default defineComponent({
       }
       else {
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
-
+        Hvac.DeviceOpt.doPrevalueSet();
         Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
 
         // sync t3 appState data to ls [deviceAppState]
@@ -449,12 +449,13 @@ export default defineComponent({
         console.log('= Dvi onMounted 2 dvList:', dvList);
       }
 
-      if (dvList.value.length === 0 || graphicList.value.length === 0) {
+      const hasNoData = dvList.value.length === 0 || graphicList.value.length === 0;
+      if (hasNoData) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
-        Hvac.T3Utils.setGlobalMsg('error', errorMsg, true);
+        Hvac.T3Utils.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
       }
       else {
-        Hvac.T3Utils.clearGlobalMsg();
+        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
       }
     });
 
@@ -463,12 +464,16 @@ export default defineComponent({
       Hvac.WsClient.GetPanelsList();
     }
 
-    watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
-      if (newDvList.length > 0 && newGraphicList.length > 0) {
-        // console.log('= Dvi watch dvList and graphicList 1 newVal:', newDvList, newGraphicList);
-        Hvac.T3Utils.clearGlobalMsg();
-      }
-    }, { deep: true });
+    const glMsg = computed<GlobalMsgModel>(() => {
+      return globalMsg?.value?.find(msg => msg.msgType === "get_panel_list_data") ?? {} as GlobalMsgModel;
+    });
+
+    // watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
+    //   if (newDvList.length > 0 && newGraphicList.length > 0) {
+    //     // console.log('= Dvi watch dvList and graphicList 1 newVal:', newDvList, newGraphicList);
+    //     Hvac.T3Utils.clearGlobalMsg();
+    //   }
+    // }, { deep: true });
 
     return {
       filter,

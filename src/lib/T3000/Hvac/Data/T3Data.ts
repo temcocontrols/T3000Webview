@@ -3,6 +3,7 @@
 
 import { ref } from 'vue'
 import { cloneDeep } from "lodash"
+import GlobalMsgModel from '../Model/GlobalMsgModel'
 
 export const ranges = {
   digital: [
@@ -635,7 +636,8 @@ export const moveable = ref(null); // Reference to the moveable component instan
   msgType: ""
 }
 */
-export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
+// export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
+export const globalMsg = ref<GlobalMsgModel[]>([]);
 
 const T3Data = {
   deviceList: ref([]),

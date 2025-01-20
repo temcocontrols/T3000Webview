@@ -3,8 +3,7 @@
 
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
-  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  autoSaveInterval
+  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
@@ -516,17 +515,26 @@ class IdxPage {
 
     // Post a save action to T3
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-    const panelId = currentDevice.deviceId;
-    const graphicId = currentDevice.graphic;
+    const panelId = currentDevice?.deviceId;
+    const graphicId = currentDevice?.graphic;
 
-    Hvac.WsClient.SaveGraphic(panelId, graphicId);
+    if (panelId && graphicId) {
+      Hvac.WsClient.SaveGraphic(panelId, graphicId);
+    }
+    else {
+      console.log('= Idx saveDeviceAppState current device is null');
+    }
   }
 
   initSaveInterval() {
-    this.autoSaveInterval = setInterval(() => {
-      console.log('= Idx auto save every 30s', new Date().toLocaleString());
-      this.save(true);
-    }, 30000);
+    // do not trigger the auto save for the first time, cause there may have some other operations to load the initial data
+    // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
+    setTimeout(() => {
+      this.autoSaveInterval = setInterval(() => {
+        console.log('= Idx auto save every 30s', new Date().toLocaleString());
+        this.save(true);
+      }, 30000);
+    }, 5000);
   }
 
   clearAutoSaveInterval() {
