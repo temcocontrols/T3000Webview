@@ -100,17 +100,17 @@
             </q-item-label>
           </q-item-section>
 
-          <!-- <q-item-section avatar top>
+          <q-item-section avatar top>
             <q-item-label caption class="select-title">
               Action
             </q-item-label>
             <q-link class="text-primary" style="font-size: 12px;margin-top: 2px;cursor: pointer;"
-              @click="saveCurrentSelection">Save
+              @click="saveCurrentSelection">Confirm
               <q-tooltip anchor="top middle" self="center left">
-                Save the current selection
+                Confirm the current selection
               </q-tooltip>
             </q-link>
-          </q-item-section> -->
+          </q-item-section>
 
           <!-- <q-item-section top side>
             <div class="text-grey-8 q-gutter-xs">

@@ -1122,22 +1122,22 @@ function refreshDeviceAppState() {
 }
 */
 
-function saveDeviceAppState(clearSelected) {
-  // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+// function saveDeviceAppState(clearSelected) {
+//   // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
 
-  if (clearSelected) {
-    appState.value.selectedTargets = [];
-  }
+//   if (clearSelected) {
+//     appState.value.selectedTargets = [];
+//   }
 
-  Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
+//   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
 
-  // Post a save action to T3
-  const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-  const panelId = currentDevice.deviceId;
-  const graphicId = currentDevice.graphic;
+//   // Post a save action to T3
+//   const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//   const panelId = currentDevice.deviceId;
+//   const graphicId = currentDevice.graphic;
 
-  Hvac.WsClient.SaveGraphic(panelId, graphicId);
-}
+//   Hvac.WsClient.SaveGraphic(panelId, graphicId);
+// }
 
 onBeforeUnmount(() => {
 
@@ -1404,7 +1404,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      save(); // Save the current state
+      // save(); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1449,7 +1449,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    save(); // Save the state after drag end
+    // save(); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -2193,47 +2193,51 @@ function insertT3DefaultLoadData() {
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false) {
-  console.log('= Idx save notify', rulersGridVisible.value);
-  savedNotify.value = notify;
-  const data = cloneDeep(toRaw(appState.value));
-
-  // recalculate the items count
-  const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
-  data.itemsCount = nonZeroWidthItemsCount;
-  // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
-  // console.log('==== Save appState:', appState.value);
-  console.log('= Idx save data', data);
-
-  data.selectedTargets = [];
-  data.elementGuidelines = [];
-
-  if (isBuiltInEdge.value) {
-    // window.chrome?.webview?.postMessage({
-    //   action: 2, // SAVE_GRAPHIC
-    //   data,
-    // });
-    Hvac.WebClient.SaveGraphicData(null, null, data);
-  }
-  else {
-    localStorage.setItem("appState", JSON.stringify(data));
-
-    // save device data and related appState
-    if (!isBuiltInEdge.value) {
-      saveDeviceAppState();
-    }
-  }
-
-  /*
-  window.chrome?.webview?.postMessage({
-    action: 2, // SAVE_GRAPHIC
-    data,
-  });
-
-  if (!window.chrome?.webview?.postMessage) {
-    localStorage.setItem("appState", JSON.stringify(data));
-  }
-  */
+  Hvac.IdxPage.save(notify);
 }
+
+// function save(notify = false) {
+//   console.log('= Idx save notify', rulersGridVisible.value);
+//   savedNotify.value = notify;
+//   const data = cloneDeep(toRaw(appState.value));
+
+//   // recalculate the items count
+//   const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
+//   data.itemsCount = nonZeroWidthItemsCount;
+//   // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
+//   // console.log('==== Save appState:', appState.value);
+//   console.log('= Idx save data', data);
+
+//   data.selectedTargets = [];
+//   data.elementGuidelines = [];
+
+//   if (isBuiltInEdge.value) {
+//     // window.chrome?.webview?.postMessage({
+//     //   action: 2, // SAVE_GRAPHIC
+//     //   data,
+//     // });
+//     Hvac.WebClient.SaveGraphicData(null, null, data);
+//   }
+//   else {
+//     localStorage.setItem("appState", JSON.stringify(data));
+
+//     // save device data and related appState
+//     if (!isBuiltInEdge.value) {
+//       saveDeviceAppState();
+//     }
+//   }
+
+//   /*
+//   window.chrome?.webview?.postMessage({
+//     action: 2, // SAVE_GRAPHIC
+//     data,
+//   });
+
+//   if (!window.chrome?.webview?.postMessage) {
+//     localStorage.setItem("appState", JSON.stringify(data));
+//   }
+//   */
+// }
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {

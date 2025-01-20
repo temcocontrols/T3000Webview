@@ -420,6 +420,7 @@ class WebSocketClient {
       }
 
       this.processMessageData(parsedData);
+      this.showSuccess(parsedData);
       console.log('= ========================');
     } catch (error) {
       console.error('= Ws failed to parse | process data:', error);
@@ -733,6 +734,54 @@ class WebSocketClient {
         },
       ],
     });
+  }
+
+  showSuccess(response) {
+    /*
+    LOAD_GRAPHIC_ENTRY
+    GET_INITIAL_DATA
+    tempjson["data"] = nbuff_str;
+    tempjson["data"]["status"] = true;
+    */
+
+    const rspAction = response?.action ?? -1;
+    const rspStatus = response?.data?.status ?? false;
+
+    console.log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
+
+    if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES && rspStatus) {
+      this.$q.notify({
+        message: "Graphic loaded successfully",
+        color: "positive",
+        icon: "check",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    }
+
+    if (rspAction == MessageType.GET_INITIAL_DATA_RES && rspStatus) {
+      this.$q.notify({
+        message: "Initial data loaded successfully",
+        color: "positive",
+        icon: "check",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+    }
   }
 }
 

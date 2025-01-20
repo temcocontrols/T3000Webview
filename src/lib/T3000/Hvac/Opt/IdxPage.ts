@@ -2,8 +2,9 @@
 // Migrate code from HvacDrawer/IndexPage to IdxPage
 
 import {
-  globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition,
-  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable
+  globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
+  viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
+  autoSaveInterval
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
@@ -22,6 +23,7 @@ class IdxPage {
   // private panzoomInstance: any;
   public zoom: any;
   public getPanelsInterval: any;
+  public autoSaveInterval: any;
 
   // Access Quasar framework instance
   public $q: any;
@@ -42,6 +44,8 @@ class IdxPage {
     this.initPanzoom();
     this.initMessageClient();
     this.initScorller();
+
+    this.initSaveInterval();
   }
 
   initQuasar(quasar) {
@@ -455,6 +459,80 @@ class IdxPage {
     setTimeout(() => {
       moveable.value.updateRect();
     }, 1);
+  }
+
+  // Save the current app state, optionally displaying a notification
+  save(notify = false) {
+    console.log('= Idx save notify', rulersGridVisible.value);
+    savedNotify.value = notify;
+    const data = cloneDeep(toRaw(appState.value));
+
+    // recalculate the items count
+    const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
+    data.itemsCount = nonZeroWidthItemsCount;
+    // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
+    // console.log('==== Save appState:', appState.value);
+    console.log('= Idx save data', data);
+
+    data.selectedTargets = [];
+    data.elementGuidelines = [];
+
+    if (isBuiltInEdge.value) {
+      // window.chrome?.webview?.postMessage({
+      //   action: 2, // SAVE_GRAPHIC
+      //   data,
+      // });
+      Hvac.WebClient.SaveGraphicData(null, null, data);
+    }
+    else {
+      localStorage.setItem("appState", JSON.stringify(data));
+
+      // save device data and related appState
+      if (!isBuiltInEdge.value) {
+        this.saveDeviceAppState(true);
+      }
+    }
+
+    /*
+    window.chrome?.webview?.postMessage({
+      action: 2, // SAVE_GRAPHIC
+      data,
+    });
+
+    if (!window.chrome?.webview?.postMessage) {
+      localStorage.setItem("appState", JSON.stringify(data));
+    }
+    */
+  }
+
+  saveDeviceAppState(clearSelected) {
+    // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+
+    if (clearSelected) {
+      appState.value.selectedTargets = [];
+    }
+
+    Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
+
+    // Post a save action to T3
+    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    const panelId = currentDevice.deviceId;
+    const graphicId = currentDevice.graphic;
+
+    Hvac.WsClient.SaveGraphic(panelId, graphicId);
+  }
+
+  initSaveInterval() {
+    this.autoSaveInterval = setInterval(() => {
+      console.log('= Idx auto save every 30s', new Date().toLocaleString());
+      this.save(true);
+    }, 30000);
+  }
+
+  clearAutoSaveInterval() {
+    if (this.autoSaveInterval) {
+      clearInterval(this.autoSaveInterval);
+    }
   }
 
   // Adds the online images to the library

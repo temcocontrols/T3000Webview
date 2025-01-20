@@ -416,15 +416,14 @@
                     @click="menuActionEmit('exportToJsonAction')" />
                 </div>
               </div>
-              <q-separator color="white" inset vertical />
+              <!-- <q-separator color="white" inset vertical />
               <div class="sub-div">
                 <div class="button-row">
                   <q-btn flat size="sm" icon="save" no-caps label="Save" @click="menuActionEmit('save')"
                     style="font-size: 11px;" />
                   <span class="file-short-cut">(Ctrl + S)</span>
                 </div>
-              </div>
-              <!-- <q-separator color="white" inset vertical /> -->
+              </div> -->
             </div>
           </q-tab-panel>
 
@@ -451,7 +450,8 @@
                       Full label
                     </q-item-label>
                     <q-item-label>
-                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.fullLabel }}</span>
+                      <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.fullLabel
+                        }}</span>
                     </q-item-label>
                   </q-item-section>
 
