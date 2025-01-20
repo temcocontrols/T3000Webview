@@ -547,8 +547,11 @@ class WebSocketClient {
     console.log('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (this.needRefresh) {
+      // merge the appState data to the current appState
+      Hvac.DeviceOpt.mergeAppState(parsedAppStateData);
+
       // sync t3 appState data to ls [deviceAppState]
-      Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+      // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
 
       // load device appstate
       Hvac.DeviceOpt.refreshDeviceAppState();

@@ -534,7 +534,7 @@ class IdxPage {
         console.log('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true);
       }, 30000);
-    }, 5000);
+    }, 30000);
   }
 
   clearAutoSaveInterval() {

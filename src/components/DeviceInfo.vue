@@ -386,7 +386,6 @@ export default defineComponent({
         // load user drawing data from T3, only when user selects a graphic
         if (graphicId <= 0) return;
         Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
-
       }
     }
 
@@ -421,7 +420,7 @@ export default defineComponent({
       }
       else {
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
-        Hvac.DeviceOpt.doPrevalueSet();
+        Hvac.DeviceOpt.addPresetsData();
         Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
 
         // sync t3 appState data to ls [deviceAppState]

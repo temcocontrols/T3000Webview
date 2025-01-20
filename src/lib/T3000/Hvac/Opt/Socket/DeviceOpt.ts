@@ -253,7 +253,8 @@ class DeviceOpt {
       opt =>
         opt?.device?.device === currentDevice?.device &&
         opt?.device?.graphic === currentDevice?.graphic
-    );
+    )
+
     if (!deviceExists) {
 
       // clear the selected target
@@ -267,7 +268,6 @@ class DeviceOpt {
       deviceAppState.value.forEach(opt => {
         const check = opt?.device?.device === currentDevice?.device && opt?.device?.graphic === currentDevice?.graphic;
         if (check) {
-
           const newAppState = cloneDeep(appState);
           // newAppState.value.selectedTarget = [];
           opt.appState = newAppState;
@@ -281,6 +281,7 @@ class DeviceOpt {
     this.refreshCurrentDeviceCount(deviceModel);
   }
 
+  /*
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
@@ -303,6 +304,7 @@ class DeviceOpt {
       return newAppState;//device.appState;
     }
   }
+  */
 
   // rest the device count
   refreshCurrentDeviceCount(deviceModel) {
@@ -415,6 +417,7 @@ class DeviceOpt {
     return serialNumber;
   }
 
+  /*
   refreshDeviceAppState() {
     const existAppState = this.loadDeviceAppState(deviceAppState, deviceModel.value.data, null);
     // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
@@ -434,6 +437,34 @@ class DeviceOpt {
     // reset the rulersGridVisible value
     rulersGridVisible.value = appState.value?.rulersGridVisible ?? false;
   }
+  */
+
+  // reset the ls deviceAppState related value
+  refreshDeviceAppState() {
+
+    /*
+    const deviceAppStateLS = this.loadDeviceAppStateLS();
+    const currentDevice = this.getCurrentDevice();
+
+    if (!deviceAppStateLS && !currentDevice) {
+      return;
+    }
+
+    const deviceIndex = deviceAppStateLS.findIndex(
+      opt =>
+        opt?.device?.device === currentDevice?.device &&
+        opt?.device?.graphic === currentDevice?.graphic
+    )
+
+    if (deviceIndex !== -1) {
+      deviceAppStateLS[deviceIndex].appState = cloneDeep(appState.value);
+    }
+
+    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+    */
+
+    this.saveDeviceAppState(deviceAppState, deviceModel, appState);
+  }
 
   refreshCurrentDevice() {
     const currentDevice = this.getCurrentDevice();
@@ -450,7 +481,7 @@ class DeviceOpt {
 
   // Set the appSate value to an empty project, and update the ls deviceAppState related value, and merge the responsed data
   // by checking action=GET_INITIAL_DATA_RES into this appState when the T3000 has a correct feedback
-  doPrevalueSet() {
+  addPresetsData() {
 
     // set the tempAppState to empty project
     const emptyAppState = cloneDeep(emptyProject);
@@ -462,20 +493,24 @@ class DeviceOpt {
     const crtDeviceId = currentDevice?.deviceId ?? -1;
     const crtGraphicId = currentDevice?.graphic ?? -1;
 
+    // reset the element count
+    currentDevice.graphicFull.elementCount = 0;
+    this.saveCurrentDevice(currentDevice);
+
     // set the appState value to empty project
     appState.value = cloneDeep(emptyProject);
 
     // set the ls deviceAppState related value
     const deviceAppStateLS = this.loadDeviceAppStateLS();
 
-    if(!deviceAppStateLS) {
+    if (!deviceAppStateLS) {
       return;
     }
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
-      opt?.device?.device === crtDeviceName &&
-      opt?.device?.graphic === crtGraphicId
+        opt?.device?.device === crtDeviceName &&
+        opt?.device?.graphic === crtGraphicId
     );
 
     if (deviceIndex !== -1) {
@@ -483,6 +518,61 @@ class DeviceOpt {
     }
 
     localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+  }
+
+  // Merge the responsed AppState to current AppState
+  mergeAppState(msgAppData) {
+    /*
+    {
+      version: process.env.VERSION,
+      items: [],
+      selectedTargets: [],
+      elementGuidelines: [],
+      itemsCount: 0,
+      groupCount: 0,
+      activeItemIndex: null,
+      viewportTransform: { x: 0, y: 0, scale: 1 },
+      rulersGridVisible: false
+    }
+    */
+
+    if (!appState.value && !msgAppData) return;
+
+    const version = appState.value.version;
+
+    // reset the items object's id
+    const existsMaxId = msgAppData.items.length > 0 ? Math.max(...msgAppData.items.map(itx => itx.id)) : 0;
+
+    appState.value.items.forEach(itx => {
+      itx.id = existsMaxId + itx.id;
+    });
+
+    const items = [...msgAppData.items, ...appState.value.items];
+    const selectedTargets = [];//[...appState.value.selectedTargets, ...msgAppData.selectedTargets];
+    const elementGuidelines = [];// [...appState.value.elementGuidelines, ...msgAppData.elementGuidelines];
+    const itemsCount = appState.value.itemsCount + msgAppData.itemsCount;
+    const groupCount = appState.value.groupCount + msgAppData.groupCount;
+    const activeItemIndex = -1;// appState.value.activeItemIndex;
+    const viewportTransform = appState.value.viewportTransform;
+    const rulersGridVisible = appState.value.rulersGridVisible || msgAppData.rulersGridVisible;
+
+    const mergedProject = {
+      version,
+      items,
+      selectedTargets,
+      elementGuidelines,
+      itemsCount,
+      groupCount,
+      activeItemIndex,
+      viewportTransform,
+      rulersGridVisible
+    }
+
+    appState.value = mergedProject;
+
+    this.saveAppState(appState.value);
+
+    console.log('= Dvopt mergeAppState', appState.value);
   }
 }
 
