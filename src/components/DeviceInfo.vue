@@ -100,19 +100,17 @@
             </q-item-label>
           </q-item-section>
 
-          <q-item-section avatar top>
+          <!-- <q-item-section avatar top>
             <q-item-label caption class="select-title">
               Action
             </q-item-label>
-            <!-- <q-icon name="check" color="black" /> -->
-            <!-- <q-btn color="secondary" outline icon-right="check" label="Save" size="xs" /> -->
             <q-link class="text-primary" style="font-size: 12px;margin-top: 2px;cursor: pointer;"
               @click="saveCurrentSelection">Save
               <q-tooltip anchor="top middle" self="center left">
                 Save the current selection
               </q-tooltip>
             </q-link>
-          </q-item-section>
+          </q-item-section> -->
 
           <!-- <q-item-section top side>
             <div class="text-grey-8 q-gutter-xs">
@@ -451,7 +449,7 @@ export default defineComponent({
         console.log('= Dvi onMounted 2 dvList:', dvList);
       }
 
-      if (dvList.value.length === 0) {
+      if (dvList.value.length === 0 || graphicList.value.length === 0) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
         Hvac.T3Utils.setGlobalMsg('error', errorMsg, true);
       }
@@ -465,9 +463,9 @@ export default defineComponent({
       Hvac.WsClient.GetPanelsList();
     }
 
-    watch(dvList, (newVal) => {
-      if (newVal.length > 0) {
-        // console.log('= Dvi watch dvList 1 newVal:', newVal);
+    watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
+      if (newDvList.length > 0 && newGraphicList.length > 0) {
+        // console.log('= Dvi watch dvList and graphicList 1 newVal:', newDvList, newGraphicList);
         Hvac.T3Utils.clearGlobalMsg();
       }
     }, { deep: true });
