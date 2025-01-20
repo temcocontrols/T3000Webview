@@ -937,6 +937,8 @@ onMounted(() => {
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
     // save();
+    Hvac.IdxPage.clearAutoSaveInterval();
+    Hvac.WsClient.clearInitialDataInterval();
   });
 
   // // Initialize panzoom for viewport
@@ -1150,6 +1152,8 @@ onUnmounted(() => {
   // if (panzoomInstance?.dispose) return;
   // panzoomInstance?.dispose();
 
+  Hvac.IdxPage.clearAutoSaveInterval();
+  Hvac.WsClient.clearInitialDataInterval();
   Hvac.IdxPage.clearIdx();
 });
 

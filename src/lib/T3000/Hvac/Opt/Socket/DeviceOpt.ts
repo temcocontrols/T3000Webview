@@ -156,9 +156,7 @@ class DeviceOpt {
     const tempAppState = localStorage.getItem('tempAppState');
     const currentDevice = this.getCurrentDevice();
 
-    if (!tempAppState || !currentDevice) {
-      return;
-    }
+    if (!tempAppState || !currentDevice) return;
 
     const parsedTempAppState = JSON.parse(tempAppState);
     const deviceAppStateLS = this.loadDeviceAppStateLS() || [];
@@ -281,7 +279,6 @@ class DeviceOpt {
     this.refreshCurrentDeviceCount(deviceModel);
   }
 
-  /*
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
@@ -304,7 +301,6 @@ class DeviceOpt {
       return newAppState;//device.appState;
     }
   }
-  */
 
   // rest the device count
   refreshCurrentDeviceCount(deviceModel) {
@@ -417,10 +413,9 @@ class DeviceOpt {
     return serialNumber;
   }
 
-  /*
+  // reset the ls deviceAppState related value
   refreshDeviceAppState() {
     const existAppState = this.loadDeviceAppState(deviceAppState, deviceModel.value.data, null);
-    // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
 
     if (existAppState) {
       // appState.value = cloneDeep(existAppState);
@@ -437,34 +432,13 @@ class DeviceOpt {
     // reset the rulersGridVisible value
     rulersGridVisible.value = appState.value?.rulersGridVisible ?? false;
   }
-  */
 
+  /*
   // reset the ls deviceAppState related value
   refreshDeviceAppState() {
-
-    /*
-    const deviceAppStateLS = this.loadDeviceAppStateLS();
-    const currentDevice = this.getCurrentDevice();
-
-    if (!deviceAppStateLS && !currentDevice) {
-      return;
-    }
-
-    const deviceIndex = deviceAppStateLS.findIndex(
-      opt =>
-        opt?.device?.device === currentDevice?.device &&
-        opt?.device?.graphic === currentDevice?.graphic
-    )
-
-    if (deviceIndex !== -1) {
-      deviceAppStateLS[deviceIndex].appState = cloneDeep(appState.value);
-    }
-
-    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
-    */
-
     this.saveDeviceAppState(deviceAppState, deviceModel, appState);
   }
+  */
 
   refreshCurrentDevice() {
     const currentDevice = this.getCurrentDevice();
@@ -499,6 +473,7 @@ class DeviceOpt {
 
     // set the appState value to empty project
     appState.value = cloneDeep(emptyProject);
+    rulersGridVisible.value = false;
 
     // set the ls deviceAppState related value
     const deviceAppStateLS = this.loadDeviceAppStateLS();

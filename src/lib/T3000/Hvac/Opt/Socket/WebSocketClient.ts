@@ -428,6 +428,7 @@ class WebSocketClient {
 
       this.processMessageData(parsedData);
       this.showSuccess(parsedData);
+
       console.log('= ========================');
     } catch (error) {
       console.error('= Ws failed to parse | process data:', error);
@@ -553,32 +554,32 @@ class WebSocketClient {
     const parsedAppStateData = JSON.parse(appStateData);
     console.log('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
-    if (this.needRefresh) {
-      // merge the appState data to the current appState
-      Hvac.DeviceOpt.mergeAppState(parsedAppStateData);
+    if (!this.needRefresh) return;
 
-      // sync t3 appState data to ls [deviceAppState]
-      // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+    // merge the appState data to the current appState
+    // Hvac.DeviceOpt.mergeAppState(parsedAppStateData);
 
-      // load device appstate
-      Hvac.DeviceOpt.refreshDeviceAppState();
+    // sync t3 appState data to ls [deviceAppState]
+    Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
 
-      // refresh the current device
-      Hvac.DeviceOpt.refreshCurrentDevice();
+    // load device appstate
+    Hvac.DeviceOpt.refreshDeviceAppState();
 
-      // refer to WebViewClient-> HandleGetInitialDataRes
-      grpNav.value = [msgData.entry];
-      if (msgData.library) {
-        msgData.library = JSON.parse(msgData.library);
-        library.value = msgData.library;
-      }
+    // refresh the current device
+    Hvac.DeviceOpt.refreshCurrentDevice();
 
-      setTimeout(() => {
-        IdxUtils.refreshMoveableGuides();
-      }, 100);
-
-      this.clearReloadInitialData();
+    // refer to WebViewClient-> HandleGetInitialDataRes
+    grpNav.value = [msgData.entry];
+    if (msgData.library) {
+      msgData.library = JSON.parse(msgData.library);
+      library.value = msgData.library;
     }
+
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
+
+    this.clearInitialDataInterval();
   }
 
   public HandleSaveGraphicRes(msgData) {
@@ -716,8 +717,8 @@ class WebSocketClient {
     // refresh appState
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
 
-    const panelId = currentDevice.deviceId;
-    const graphicId = currentDevice.graphic;
+    const panelId = currentDevice?.deviceId;
+    const graphicId = currentDevice?.graphic;
 
     if (panelId && graphicId) {
       this.GetInitialData(panelId, graphicId);
@@ -779,6 +780,8 @@ class WebSocketClient {
     if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
       const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
       Hvac.T3Utils.ShowWebSocketError(errorMsg);
+
+      this.GetPanelsList();
     }
 
     if (action == MessageType.GET_INITIAL_DATA_RES) {
@@ -789,6 +792,12 @@ class WebSocketClient {
   }
 
   reloadInitialData() {
+    // Only reload the initial data if the "needRefresh" flag is true
+    if (!this.needRefresh) return;
+    if (this.reloadInitialDataInterval) return;
+
+    console.log('= Ws reload-initial-interval start', this.reloadInitialDataInterval);
+
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
@@ -798,11 +807,18 @@ class WebSocketClient {
       if (panelId && graphicId) {
         this.GetInitialData(panelId, graphicId);
       }
-    }, 2000); // 300000 ms = 5 minutes
+    }, 2000);
+
+    console.log('= Ws reload-initial-interval end', this.reloadInitialDataInterval);
   }
 
-  clearReloadInitialData() {
-    clearInterval(this.reloadInitialDataInterval);
+  clearInitialDataInterval() {
+    if (this.reloadInitialDataInterval) {
+      clearInterval(this.reloadInitialDataInterval);
+    }
+
+    this.reloadInitialDataInterval = null;
+    console.log('= Ws reload-initial-interval clear', this.reloadInitialDataInterval);
   }
 }
 

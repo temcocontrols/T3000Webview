@@ -44,7 +44,7 @@ class IdxPage {
     this.initMessageClient();
     this.initScorller();
 
-    this.initSaveInterval();
+    this.initAutoSaveInterval();
   }
 
   initQuasar(quasar) {
@@ -485,7 +485,7 @@ class IdxPage {
       Hvac.WebClient.SaveGraphicData(null, null, data);
     }
     else {
-      localStorage.setItem("appState", JSON.stringify(data));
+      // localStorage.setItem("appState", JSON.stringify(data));
 
       // save device data and related appState
       if (!isBuiltInEdge.value) {
@@ -527,7 +527,7 @@ class IdxPage {
     }
   }
 
-  initSaveInterval() {
+  initAutoSaveInterval() {
     // do not trigger the auto save for the first time, cause there may have some other operations to load the initial data
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
@@ -535,7 +535,7 @@ class IdxPage {
         console.log('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true);
       }, 30000);
-    }, 30000);
+    }, 10000);
   }
 
   clearAutoSaveInterval() {

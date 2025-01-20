@@ -308,7 +308,7 @@ export default defineComponent({
 
       // load user drawing data from T3, only when user selects a device
       if (deviceId === -1) return;
-      Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
+      // Hvac.WsClient.GetInitialData(deviceId, graphicId, false);
     }
 
     // device tree selection event
@@ -419,6 +419,9 @@ export default defineComponent({
         return;
       }
       else {
+        // clear the reload initial data flag when user selects a new graphic
+        Hvac.WsClient.clearReloadInitialData();
+
         Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
         Hvac.DeviceOpt.addPresetsData();
         Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
@@ -435,7 +438,7 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      console.log('= Dvi onMounted 1 deviceModel,selected', props.deviceModel);
+      // console.log('= Dvi onMounted 1 deviceModel,selected', props.deviceModel);
 
       //load the saved current device from local storage
       const savedDevice = Hvac.DeviceOpt.getCurrentDevice();
@@ -445,13 +448,14 @@ export default defineComponent({
         selected.value = savedDevice.device;
 
         // console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
-        console.log('= Dvi onMounted 2 dvList:', dvList);
+        // console.log('= Dvi onMounted 2 dvList:', dvList);
       }
 
       const hasNoData = dvList.value.length === 0 || graphicList.value.length === 0;
       if (hasNoData) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
         Hvac.T3Utils.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
+        console.log('= Dvi onMounted 3 dvList:', dvList);
       }
       else {
         Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
@@ -459,20 +463,20 @@ export default defineComponent({
     });
 
     const reloadPanelsData = () => {
-      // console.log('= Dvi reloadPanelsData 1');
       Hvac.WsClient.GetPanelsList();
     }
 
-    const glMsg = computed<GlobalMsgModel>(() => {
-      return globalMsg?.value?.find(msg => msg.msgType === "get_panel_list_data") ?? {} as GlobalMsgModel;
-    });
+    const glMsg = ref(globalMsg?.value?.find(msg => msg.msgType === "get_panel_list_data") ?? {} as GlobalMsgModel);
 
-    // watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
-    //   if (newDvList.length > 0 && newGraphicList.length > 0) {
-    //     // console.log('= Dvi watch dvList and graphicList 1 newVal:', newDvList, newGraphicList);
-    //     Hvac.T3Utils.clearGlobalMsg();
-    //   }
-    // }, { deep: true });
+    watch(globalMsg, (newVal) => {
+      glMsg.value = newVal?.find(msg => msg.msgType === "get_panel_list_data") ?? {} as GlobalMsgModel;
+    }, { deep: true });
+
+    watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
+      if (newDvList.length > 0 && newGraphicList.length > 0) {
+        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
+      }
+    }, { deep: true });
 
     return {
       filter,
