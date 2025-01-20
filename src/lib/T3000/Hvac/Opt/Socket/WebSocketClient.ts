@@ -4,8 +4,9 @@ import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
 import Utils5 from '../../Helper/Utils5'
-import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState } from '../../Data/T3Data'
+import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
 import IdxUtils from '../IdxUtils'
+import T3Utils from "../../Helper/T3Utils"
 
 class WebSocketClient {
 
@@ -18,6 +19,7 @@ class WebSocketClient {
   public messageData: string;
   public needRefresh: boolean = true;
   public $q: any;
+  public reloadInitialDataInterval: any;
 
   constructor() { }
 
@@ -61,6 +63,10 @@ class WebSocketClient {
 
   private onError(event: Event) {
     console.error('= Ws error:', event);
+
+    const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
+    Hvac.T3Utils.ShowWebSocketError(errorMsg);
+
     this.attemptReconnect();
   }
 
@@ -115,12 +121,12 @@ class WebSocketClient {
 
   public sendMessage(message: string) {
     if (this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(message);
+      this.socket?.send(message);
       console.log('= Ws send to T3', message);
     } else {
       console.log('= Ws send message | socket is not open | wait for.  Ready state:', this.socket.readyState);
       this.socket.onopen = () => {
-        this.socket.send(message);
+        this.socket?.send(message);
       };
     }
   }
@@ -414,7 +420,8 @@ class WebSocketClient {
       const parsedData = JSON.parse(data);
       console.log('= Ws received parsed data:', parsedData);
 
-      if (parsedData.error) {
+      const hasError = parsedData.error !== undefined || parsedData?.status === false;
+      if (hasError) {
         this.handleError(parsedData);
         return;
       }
@@ -569,6 +576,8 @@ class WebSocketClient {
       setTimeout(() => {
         IdxUtils.refreshMoveableGuides();
       }, 100);
+
+      this.clearReloadInitialData();
     }
   }
 
@@ -725,24 +734,18 @@ class WebSocketClient {
     if (!messageData && !messageData.error) return;
     console.error('= Ws error:', messageData);
 
-    // GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
+    const errorMsg = messageData?.error ?? "";
+    const isSpecial = messageData.action === MessageType.GET_PANEL_DATA_RES || messageData.action === MessageType.GET_INITIAL_DATA_RES || messageData.action === MessageType.GET_PANELS_LIST_RES;
 
-    const errorMsg = messageData.error;
-
-    this.$q.notify({
-      message: errorMsg,
-      color: "negative",
-      icon: "error",
-      actions: [
-        {
-          label: "Dismiss",
-          color: "white",
-          handler: () => {
-            /* ... */
-          },
-        },
-      ],
-    });
+    if (isSpecial) {
+      // handle special message GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
+      this.handleSpecialMessage(messageData);
+    }
+    else {
+      if (errorMsg !== "") {
+        Hvac.T3Utils.ShowWebSocketError(errorMsg);
+      }
+    }
   }
 
   showSuccess(response) {
@@ -759,38 +762,47 @@ class WebSocketClient {
     console.log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      this.$q.notify({
-        message: "Graphic loaded successfully",
-        color: "positive",
-        icon: "check",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
+      Hvac.T3Utils.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
     }
 
     if (rspAction == MessageType.GET_INITIAL_DATA_RES) {
-      this.$q.notify({
-        message: "Initial data loaded successfully",
-        color: "positive",
-        icon: "check",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
+      Hvac.T3Utils.ShowGET_INITIAL_DATA_RESSuccess();
     }
+  }
+
+  handleSpecialMessage(messageData) {
+
+    // Add global error message and retry those action 3 times
+    // GET_PANEL_DATA_RES | GET_INITIAL_DATA_RES | GET_PANELS_LIST_RES
+    const action = messageData.action;
+
+    if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
+      const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
+      Hvac.T3Utils.ShowWebSocketError(errorMsg);
+    }
+
+    if (action == MessageType.GET_INITIAL_DATA_RES) {
+      const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
+      Hvac.T3Utils.ShowWebSocketError(errorMsg);
+      this.reloadInitialData();
+    }
+  }
+
+  reloadInitialData() {
+    // Set a timer to reload the initial data every 5 minutes
+    this.reloadInitialDataInterval = setInterval(() => {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.deviceId;
+      const graphicId = currentDevice?.graphic;
+
+      if (panelId && graphicId) {
+        this.GetInitialData(panelId, graphicId);
+      }
+    }, 2000); // 300000 ms = 5 minutes
+  }
+
+  clearReloadInitialData() {
+    clearInterval(this.reloadInitialDataInterval);
   }
 }
 

@@ -50,6 +50,7 @@ class IdxPage {
   initQuasar(quasar) {
     this.$q = quasar;
     Hvac.WebClient.initQuasar(this.$q);
+    Hvac.T3Utils.initQuasar(this.$q);
   }
 
   // Set global navigation properties

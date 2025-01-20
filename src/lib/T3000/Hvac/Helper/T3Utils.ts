@@ -4,6 +4,12 @@ import GlobalMsgModel from "../Model/GlobalMsgModel"
 
 class T3Utils {
 
+  public $q: any;
+
+  public initQuasar(quasar: any) {
+    this.$q = quasar;
+  }
+
   /*
   {
     type: "error" | "warning" | "info" | "success"
@@ -44,6 +50,58 @@ class T3Utils {
   public clearAllGlobalMsg() {
     globalMsg.value = [];
   }
+
+  public ShowLOAD_GRAPHIC_ENTRY_RESSuccess() {
+    this.$q.notify({
+      message: "Graphic loaded successfully",
+      color: "positive",
+      icon: "check",
+      actions: [
+        {
+          label: "Dismiss",
+          color: "white",
+          handler: () => {
+            /* ... */
+          },
+        },
+      ],
+    });
+  }
+
+  public ShowGET_INITIAL_DATA_RESSuccess() {
+    this.$q.notify({
+      message: "Initial data loaded successfully",
+      color: "positive",
+      icon: "check",
+      actions: [
+        {
+          label: "Dismiss",
+          color: "white",
+          handler: () => {
+            /* ... */
+          },
+        },
+      ],
+    });
+  }
+
+  public ShowWebSocketError(errorMsg: string) {
+    this.$q.notify({
+      message: errorMsg,
+      color: "negative",
+      icon: "error",
+      actions: [
+        {
+          label: "Dismiss",
+          color: "white",
+          handler: () => {
+            /* ... */
+          },
+        },
+      ],
+    });
+  }
+
 }
 
 export default T3Utils
