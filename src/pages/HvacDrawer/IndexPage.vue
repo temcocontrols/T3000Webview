@@ -840,7 +840,7 @@ const loadingPanelsProgress = computed(() => {
 const clipboardFull = ref(false); // State of the clipboard
 
 
- const zoom = Hvac.IdxPage.zoom;
+const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 
@@ -1408,7 +1408,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      // save(); // Save the current state
+      save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1453,7 +1453,7 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    // save(); // Save the state after drag end
+    save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -2040,7 +2040,7 @@ function T3UpdateEntryField(key, obj) {
 function DisplayFieldValueChanged(value) {
   // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
   // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
-  save(false);
+  save(false, true);
 }
 
 // Define a condition for drag events in Selecto
@@ -2196,8 +2196,8 @@ function insertT3DefaultLoadData() {
 // }
 
 // Save the current app state, optionally displaying a notification
-function save(notify = false) {
-  Hvac.IdxPage.save(notify);
+function save(notify = false, saveToT3 = false) {
+  Hvac.IdxPage.save(notify, saveToT3);
 }
 
 // function save(notify = false) {
@@ -2339,7 +2339,7 @@ keycon.keydown((e) => {
 // Save the current state when "Ctrl + S" is pressed
 keycon.keydown(["ctrl", "s"], (e) => {
   e.inputEvent.preventDefault();
-  save(true);
+  save(true, true);
 });
 
 // Undo the last action when "Ctrl + Z" is pressed
@@ -2992,7 +2992,7 @@ function handleMenuAction(action, val) {
       exportToJsonAction();
       break;
     case "save":
-      save(true);
+      save(true, true);
       break;
     case "undoAction":
       undoAction();
@@ -3342,7 +3342,7 @@ function toggleClicked(item, type, ev) {
     T3UpdateEntryField("value", item);
   }
 
-  save(false);
+  save(false, true);
 
   // console.log('toggleClicked->after item', item.t3Entry)
 }
@@ -3726,7 +3726,7 @@ function convertObjectType(item, type) {
 function toggleRulersGrid(val) {
   rulersGridVisible.value = val === "Enable" ? true : false;
   appState.value.rulersGridVisible = rulersGridVisible.value;
-  // save(false);
+  save(false, false);
 }
 
 // Handles a tool being dropped

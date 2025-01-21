@@ -10,6 +10,7 @@ import WebSocketClient from './Opt/Socket/WebSocketClient'
 import IdxPage from './Opt/IdxPage'
 import WebViewClient from './Opt/Webview2/WebViewClient'
 import T3Utils from './Helper/T3Utils'
+import LSUtils from './Helper/LSUtils'
 
 const Hvac = {
   App: new App(),
@@ -18,6 +19,7 @@ const Hvac = {
   KeyCommand: new KeyCommand(),
   Utils: Utils,
   T3Utils: new T3Utils(),
+  LSUtils: new LSUtils(),
   Models: Models,
   DeviceOpt: new DeviceOpt(),
   WsClient: new WebSocketClient(),

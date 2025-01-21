@@ -161,6 +161,8 @@ class WebSocketClient {
     const panelId = data.panelId;
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice == undefined) return;
+
     const graphicId = currentDevice.graphic;
 
     // get the serial_number base on panelId
@@ -190,6 +192,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.panelId;
     const graphicId = currentDevice.graphic;
 
@@ -217,6 +221,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
@@ -243,6 +249,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
@@ -286,28 +294,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
+  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES ✔
   public SaveGraphic(panelId, graphicId, data?: {}) {
-    // action: 2, // SAVE_GRAPHIC
-
-    // data => appState load the appState from localStorage
-    const storedAppState = !data ? localStorage.getItem('appState') : data;
-
-    let parsedAppState;
-    if (typeof storedAppState === 'string') {
-      try {
-        parsedAppState = JSON.parse(storedAppState);
-      } catch (error) {
-        console.error('Failed to parse storedAppState:', error);
-        parsedAppState = {};
-      }
-    } else {
-      parsedAppState = storedAppState;
-    }
-
-    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, parsedAppState);
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, data);
     this.sendMessage(this.messageData);
-
-    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
   }
 
   public UpdateEntry(data: any) {
@@ -343,6 +333,8 @@ class WebSocketClient {
     // action: 6, // GET_ENTRIES
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;
     const serialNumber = currentDevice.serialNumber;
@@ -401,6 +393,8 @@ class WebSocketClient {
     // action: 11, // DELETE_IMAGE
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if(currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;
 
