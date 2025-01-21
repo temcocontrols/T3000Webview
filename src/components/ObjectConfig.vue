@@ -22,122 +22,6 @@
   <div class="item-config flex flex-nowrap column" v-if="item">
     <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>
     <div class="item-config-inner">
-      <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
-        <div class="p-1">
-          <div class="grid gap-4 grid-cols-2 mb-4">
-            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="X"
-              v-model.number="item.translate[0]" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Y"
-              v-model.number="item.translate[1]" dark filled type="number" />
-
-            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Width"
-              v-model.number="item.width" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Height"
-              v-model.number="item.height" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Rotate"
-              v-model.number="item.rotate" dark filled type="number" />
-            <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
-              type="number" />
-          </div>
-          <div class="w-full relative mb-2">
-            <q-input dark filled v-model="item.settings.title" label="Title" />
-            <input type="color" class="absolute top-2 right-2" v-model="item.settings.titleColor" />
-          </div>
-          <div class="flex flex-nowrap items-center mb-2">
-            <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
-            <label class="ml-2" for="bg-color-input">{{
-              settings.bgColor?.label || "Background color"
-              }}</label>
-          </div>
-          <template v-for="(setting, key) in settings" :key="key">
-            <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
-              <div class="flex flex-nowrap justify-center items-center mb-2" v-if="setting.type === 'justifyContent'">
-                <div class="mx-1">Align</div>
-                <q-btn-group push>
-                  <q-btn push icon="format_align_left" :color="item.settings[key] === 'flex-start' ? 'grey-9' : null
-                    " text-color="grey-5" @click="item.settings[key] = 'flex-start'" />
-                  <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
-                    text-color="grey-5" @click="item.settings[key] = 'center'" />
-                  <q-btn push icon="format_align_right" :color="item.settings[key] === 'flex-end' ? 'grey-9' : null"
-                    text-color="grey-5" @click="item.settings[key] = 'flex-end'" />
-                </q-btn-group>
-              </div>
-              <div class="flex flex-nowrap justify-center items-center mb-2" v-else-if="setting.type === 'textAlign'">
-                <div class="mx-1">Align</div>
-                <q-btn-group push>
-                  <q-btn push icon="format_align_left" :color="item.settings[key] === 'left' ? 'grey-9' : null"
-                    text-color="grey-5" @click="item.settings[key] = 'left'" />
-                  <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
-                    text-color="grey-5" @click="item.settings[key] = 'center'" />
-                  <q-btn push icon="format_align_right" :color="item.settings[key] === 'right' ? 'grey-9' : null"
-                    text-color="grey-5" @click="item.settings[key] = 'right'" />
-                </q-btn-group>
-              </div>
-              <div class="flex flex-nowrap items-center mb-2" v-else-if="setting.type === 'color'">
-                <input type="color" id="text-color-input" v-model="item.settings[key]" />
-                <label class="ml-2" for="text-color-input">{{
-                  setting.label
-                  }}</label>
-              </div>
-              <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
-                <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
-              </div>
-              <div class="w-full relative mb-2" v-else-if="setting.type === 'number'">
-                <q-input class="mb-1" filled dark type="number" v-model.number="item.settings[key]"
-                  :label="setting.label" @update:model-value="updatePropsValue(key)" />
-              </div>
-              <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
-                <q-select filled dark v-model="item.settings[key]" :options="icons" :label="setting.label" emit-value
-                  map-options>
-                  <template v-slot:prepend>
-                    <q-icon :name="item.settings[key] || 'block'" />
-                  </template>
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section avatar class="pr-1 min-w-0">
-                        <q-icon :name="scope.opt.value || 'block'" />
-                      </q-item-section>
-                      <q-item-section class="grow">
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-              <div class="w-full mb-2" v-else-if="setting.type === 'iconSwitch'">
-                <q-select filled dark v-model="item.settings[key]" :options="switchIcons" :label="setting.label"
-                  emit-value map-options>
-                  <template v-slot:prepend>
-                    <q-icon :name="getSwitchIcon(item.settings[key])" />
-                  </template>
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section avatar class="pr-1 min-w-0">
-                        <q-icon :name="scope.opt.icon.off || 'block'" />
-                      </q-item-section>
-                      <q-item-section class="grow">
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-              <q-checkbox v-else-if="setting.type === 'boolean'" dark filled v-model="item.settings[key]"
-                class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
-                  ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
-                    (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
-                  (item.t3Entry && item.t3Entry.decom !== undefined)
-                  ">
-                <q-tooltip v-if="key === 'active' && item.t3Entry?.auto_manual === 0" anchor="center left"
-                  self="center end">
-                  Manual changes are not possible as the linked entry is set to
-                  auto mode.
-                </q-tooltip>
-              </q-checkbox>
-            </template>
-          </template>
-        </div>
-      </q-expansion-item>
 
       <div>
         <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
@@ -224,6 +108,124 @@
           </div>
         </q-expansion-item>
       </div>
+
+      <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
+        <div class="p-1">
+          <div class="grid gap-4 grid-cols-2 mb-4">
+            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="X"
+              v-model.number="item.translate[0]" dark filled type="number" />
+            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Y"
+              v-model.number="item.translate[1]" dark filled type="number" />
+
+            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Width"
+              v-model.number="item.width" dark filled type="number" />
+            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Height"
+              v-model.number="item.height" dark filled type="number" />
+            <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Rotate"
+              v-model.number="item.rotate" dark filled type="number" />
+            <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
+              type="number" />
+          </div>
+          <div class="w-full relative mb-2">
+            <q-input dark filled v-model="item.settings.title" label="Title" />
+            <input type="color" class="absolute top-2 right-2" v-model="item.settings.titleColor" />
+          </div>
+          <div class="flex flex-nowrap items-center mb-2">
+            <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
+            <label class="ml-2" for="bg-color-input">{{
+              settings.bgColor?.label || "Background color"
+            }}</label>
+          </div>
+          <template v-for="(setting, key) in settings" :key="key">
+            <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
+              <div class="flex flex-nowrap justify-center items-center mb-2" v-if="setting.type === 'justifyContent'">
+                <div class="mx-1">Align</div>
+                <q-btn-group push>
+                  <q-btn push icon="format_align_left" :color="item.settings[key] === 'flex-start' ? 'grey-9' : null
+                    " text-color="grey-5" @click="item.settings[key] = 'flex-start'" />
+                  <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                    text-color="grey-5" @click="item.settings[key] = 'center'" />
+                  <q-btn push icon="format_align_right" :color="item.settings[key] === 'flex-end' ? 'grey-9' : null"
+                    text-color="grey-5" @click="item.settings[key] = 'flex-end'" />
+                </q-btn-group>
+              </div>
+              <div class="flex flex-nowrap justify-center items-center mb-2" v-else-if="setting.type === 'textAlign'">
+                <div class="mx-1">Align</div>
+                <q-btn-group push>
+                  <q-btn push icon="format_align_left" :color="item.settings[key] === 'left' ? 'grey-9' : null"
+                    text-color="grey-5" @click="item.settings[key] = 'left'" />
+                  <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                    text-color="grey-5" @click="item.settings[key] = 'center'" />
+                  <q-btn push icon="format_align_right" :color="item.settings[key] === 'right' ? 'grey-9' : null"
+                    text-color="grey-5" @click="item.settings[key] = 'right'" />
+                </q-btn-group>
+              </div>
+              <div class="flex flex-nowrap items-center mb-2" v-else-if="setting.type === 'color'">
+                <input type="color" id="text-color-input" v-model="item.settings[key]" />
+                <label class="ml-2" for="text-color-input">{{
+                  setting.label
+                }}</label>
+              </div>
+              <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
+                <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
+              </div>
+              <div class="w-full relative mb-2" v-else-if="setting.type === 'number'">
+                <q-input class="mb-1" filled dark type="number" v-model.number="item.settings[key]"
+                  :label="setting.label" @update:model-value="updatePropsValue(key)" />
+              </div>
+              <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
+                <q-select filled dark v-model="item.settings[key]" :options="icons" :label="setting.label" emit-value
+                  map-options>
+                  <template v-slot:prepend>
+                    <q-icon :name="item.settings[key] || 'block'" />
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar class="pr-1 min-w-0">
+                        <q-icon :name="scope.opt.value || 'block'" />
+                      </q-item-section>
+                      <q-item-section class="grow">
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+              <div class="w-full mb-2" v-else-if="setting.type === 'iconSwitch'">
+                <q-select filled dark v-model="item.settings[key]" :options="switchIcons" :label="setting.label"
+                  emit-value map-options>
+                  <template v-slot:prepend>
+                    <q-icon :name="getSwitchIcon(item.settings[key])" />
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar class="pr-1 min-w-0">
+                        <q-icon :name="scope.opt.icon.off || 'block'" />
+                      </q-item-section>
+                      <q-item-section class="grow">
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+              <q-checkbox v-else-if="setting.type === 'boolean'" dark filled v-model="item.settings[key]"
+                class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
+                  ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
+                    (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
+                  (item.t3Entry && item.t3Entry.decom !== undefined)
+                  ">
+                <q-tooltip v-if="key === 'active' && item.t3Entry?.auto_manual === 0" anchor="center left"
+                  self="center end">
+                  Manual changes are not possible as the linked entry is set to
+                  auto mode.
+                </q-tooltip>
+              </q-checkbox>
+            </template>
+          </template>
+        </div>
+      </q-expansion-item>
+
     </div>
   </div>
 </template>

@@ -20,7 +20,7 @@
 -->
 <template>
   <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
-    V:25.0120.02
+    {{ devVersion }}
   </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
@@ -471,9 +471,10 @@
 </template>
 
 <script>
-import { defineComponent, ref, watch } from "vue";
-import { useQuasar } from "quasar";
-import { tools, user } from "../lib/common";
+import { defineComponent, ref, watch } from "vue"
+import { useQuasar } from "quasar"
+import { tools, user } from "../lib/common"
+import { devVersion } from "../lib/T3000/Hvac/Data/T3Data"
 
 export default defineComponent({
   name: "TopToolbar",
@@ -532,6 +533,7 @@ export default defineComponent({
       tools,
       user,
       showRulersGrid: showRulersGrid,
+      devVersion
     };
   },
 });

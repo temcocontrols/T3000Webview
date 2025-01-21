@@ -141,7 +141,7 @@
       <div class="tool-title">
         <p style="font-size: 12px;">T3000 Havc</p>
         <span style=" margin-left:0px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 0px;">
-          V:25.0120.02
+          {{ devVersion }}
         </span>
       </div>
       <div class="tool-btns">
@@ -502,6 +502,7 @@
 import { defineComponent, ref, watch, onMounted } from 'vue'
 import { useQuasar } from "quasar"
 import { tools, user } from "../lib/common"
+import { devVersion } from '../lib/T3000/Hvac/Data/T3Data'
 
 export default defineComponent({
   name: 'NewTopToolBar',
@@ -567,7 +568,6 @@ export default defineComponent({
     const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
     watch(() => props.rulersGridVisible, (newVal) => {
       showRulersGrid.value = newVal ? "Enable" : "Disable";
-      // console.log('showRulersGrid props,show-rulers-grid', props.rulersGridVisible, showRulersGrid);
     })
 
     const navGoBack = () => {
@@ -587,16 +587,7 @@ export default defineComponent({
     onMounted(() => {
       currentDevice.value = props.deviceModel;
       deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
-      // console.log('=== new-top-toolbar currentDevice', currentDevice);
     });
-
-    /*
-    watch(() => props.deviceModel, (newVal) => {
-      console.log('=== new-top-toolbar newVal', newVal);
-      currentDevice.value = newVal;
-      deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
-    });
-    */
 
     return {
       tab: ref('home'),
@@ -609,7 +600,8 @@ export default defineComponent({
       showRulersGrid: showRulersGrid,
       showMoreDevices,
       currentDevice,
-      deviceTabTitle
+      deviceTabTitle,
+      devVersion
     };
   },
 });
