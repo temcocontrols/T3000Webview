@@ -840,7 +840,7 @@ const loadingPanelsProgress = computed(() => {
 const clipboardFull = ref(false); // State of the clipboard
 
 
-const zoom = Hvac.IdxPage.zoom;
+ const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 
@@ -2978,17 +2978,6 @@ function ungroupSelected() {
   }
 }
 
-// Control zoom actions for the app
-function zoomAction(action = "in", val = null) {
-  if (action === "out") {
-    zoom.value -= 10;
-  } else if (action === "set") {
-    zoom.value = val;
-  } else {
-    zoom.value += 10;
-  }
-}
-
 // Handle the menu action for the top toolbar
 function handleMenuAction(action, val) {
   const item = appState.value.items[appState.value.activeItemIndex];
@@ -3054,13 +3043,13 @@ function handleMenuAction(action, val) {
       removeObject(item);
       break;
     case "zoomOut":
-      zoomAction("out");
+      Hvac.IdxPage.zoomAction("out");
       break;
     case "zoomIn":
-      zoomAction();
+      Hvac.IdxPage.zoomAction();
       break;
     case "zoomSet":
-      zoomAction("set", val);
+      Hvac.IdxPage.zoomAction("set", val);
       break;
     case "copy":
       saveSelectedToClipboard();

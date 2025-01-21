@@ -1,5 +1,5 @@
 
-import { globalMsg } from "../Data/T3Data"
+import { globalMsg, loadSettings } from "../Data/T3Data"
 import GlobalMsgModel from "../Model/GlobalMsgModel"
 
 class T3Utils {
@@ -102,6 +102,10 @@ class T3Utils {
     });
   }
 
+  public setLocalSettings(key: string, value: any) {
+    loadSettings.value[key] = value;
+    localStorage.setItem("loadSettings", JSON.stringify(loadSettings.value));
+  }
 }
 
 export default T3Utils

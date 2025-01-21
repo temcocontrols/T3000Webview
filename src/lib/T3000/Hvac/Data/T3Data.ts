@@ -641,6 +641,8 @@ export const globalMsg = ref<GlobalMsgModel[]>([]);
 
 export const devVersion = ref("V:25.0121.02");
 
+export const loadSettings = ref({ version: "V:25.0121.02", zoom: 0 });
+
 const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),
