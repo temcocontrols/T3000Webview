@@ -18,6 +18,16 @@ class LSUtils {
     }
     return null;
   }
+
+  public loadAppStateLS() {
+    const appState = localStorage.getItem("appState");
+    return appState ?? null;
+  }
+
+  public loadParsedAppStateLS() {
+    const localState = localStorage.getItem("appState");
+    return localState ? JSON.parse(localState) : null;
+  }
 }
 
 export default LSUtils

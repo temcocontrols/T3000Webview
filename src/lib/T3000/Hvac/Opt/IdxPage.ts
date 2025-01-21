@@ -37,19 +37,15 @@ class IdxPage {
   // wrap code for IndexPage's onMounted event
   initPage() {
     Hvac.WebClient.initMessageHandler();
-
     this.initGlobalNav();
     this.isLoggedIn();
     this.restoreAppState();
     this.setDocMarginOffset();
     this.initPanzoom();
-
     this.initMessageClient();
     this.initScorller();
-
     this.initAutoSaveInterval();
     this.initWindowListener();
-
     this.refreshMoveableGuides();
   }
 
@@ -99,9 +95,9 @@ class IdxPage {
       return;
     }
 
-    const localState = localStorage.getItem("appState");
+    const localState = Hvac.LSUtils.loadParsedAppStateLS();
     if (localState) {
-      appState.value = JSON.parse(localState);
+      appState.value = localState;
       rulersGridVisible.value = appState.value.rulersGridVisible;
     }
   }
@@ -144,7 +140,6 @@ class IdxPage {
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
       console.log('= Idx p zoom transform', e.getTransform());
-      const pzTrs = e.getTransform();
       appState.value.viewportTransform = e.getTransform();
       triggerRef(appState);
 

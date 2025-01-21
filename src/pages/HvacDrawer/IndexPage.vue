@@ -1408,6 +1408,7 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
+      console.log("= IdxPage addActionToHistory", title);
       save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
@@ -1453,6 +1454,8 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
+
+    console.log('= IdxPage onDragEnd:', e, item.translate);
     save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
@@ -1765,7 +1768,7 @@ function addLibItem(items, size, pos) {
         true
       );
       setTimeout(() => {
-        refreshMoveable();
+        Hvac.IdxPage.  refreshMoveable();
       }, 1);
     }, 10);
   }, 10);
@@ -1921,7 +1924,7 @@ function rotate90(item, minues = false) {
   } else {
     item.rotate = item.rotate - 90;
   }
-  refreshMoveable();
+  Hvac.IdxPage. refreshMoveable();
 }
 
 // Flip an item horizontally
@@ -1932,7 +1935,7 @@ function flipH(item) {
   } else {
     item.scaleX = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage. refreshMoveable();
 }
 
 // Flip an item vertically
@@ -1943,7 +1946,7 @@ function flipV(item) {
   } else {
     item.scaleY = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage. refreshMoveable();
 }
 
 // Bring an item to the front by increasing its z-index
@@ -2200,6 +2203,10 @@ function save(notify = false, saveToT3 = false) {
   Hvac.IdxPage.save(notify, saveToT3);
 }
 
+function refreshMoveable(){
+  Hvac.IdxPage.refreshMoveable();
+}
+
 // function save(notify = false) {
 //   console.log('= Idx save notify', rulersGridVisible.value);
 //   savedNotify.value = notify;
@@ -2332,7 +2339,7 @@ keycon.keydown((e) => {
   }
   // Refresh the moveable object after movement
   if (["up", "down", "left", "right"].includes(e.key)) {
-    refreshMoveable();
+    Hvac.IdxPage. refreshMoveable();
   }
 });
 
@@ -2692,7 +2699,7 @@ function weldSelected() {
     }
   });
 
-  refreshMoveable();
+  Hvac.IdxPage. refreshMoveable();
 }
 
 // Undo the last action
@@ -2704,7 +2711,7 @@ function undoAction() {
   });
   appState.value = cloneDeep(undoHistory.value[0].state);
   undoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Redo the last undone action
@@ -2716,7 +2723,7 @@ function redoAction() {
   });
   appState.value = cloneDeep(redoHistory.value[0].state);
   redoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2873,7 +2880,7 @@ function executeImportFromJson() {
         setTimeout(() => {
           IdxUtils.refreshMoveableGuides();
         }, 100);
-        refreshMoveable();
+        Hvac.IdxPage.  refreshMoveable();
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2888,7 +2895,7 @@ function executeImportFromJson() {
   setTimeout(() => {
     IdxUtils.refreshMoveableGuides();
   }, 100);
-  refreshMoveable();
+  Hvac.IdxPage.  refreshMoveable();
 }
 
 // // Computed property for zoom control
@@ -3516,7 +3523,7 @@ function rotate90Selected(minues = false) {
     },
     true
   );
-  refreshMoveable();
+  Hvac.IdxPage. refreshMoveable();
 }
 
 // Save selected items to the clipboard
