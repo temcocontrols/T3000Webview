@@ -70,7 +70,7 @@
 
 ![1](./revnotes/2025-01-21/1.png)
 
-###### 1.2.1 If you want to access it in a local area network (LAN), open a cmd window to find the hosting ip address where the T3000 is running.
+###### 1.2.1 If you want to access it in a local area network (LAN), open a cmd window to find the host ip address where the T3000 is running.
 
 use cmd "ipconfig" to find the IPV4 address (e.g. 192.168.1.8)
 
@@ -84,7 +84,7 @@ use cmd "ipconfig" to find the IPV4 address (e.g. 192.168.1.8)
 
 ![1](./revnotes/2025-01-21/5.png)
 
-##### 1.4 System will load all existing data from T3000 for selected device and graphic.
+##### 1.4 System will load existing data from T3000 for selected device and graphic.
 
 ![1](./revnotes/2025-01-21/6.png)
 
