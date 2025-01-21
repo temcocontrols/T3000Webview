@@ -1,5 +1,9 @@
 
+import { Type } from 'class-transformer'
+import 'reflect-metadata'
+
 import TextureScale from './TextureScale'
+import ConstantData from '../Data/ConstantData'
 
 class PaintData {
 
@@ -8,19 +12,24 @@ class PaintData {
   public EndColor: string;
   public GradientFlags: number;
   public Texture: number;
-  public TextureScale: any;
+
+  @Type(() => TextureScale)
+  public TextureScale: TextureScale;
+
   public Opacity: number;
   public EndOpacity: number;
 
   constructor(color: string) {
-    this.FillType = 1;
+
+    this.FillType = ConstantData.FillTypes.SDFILL_SOLID;
     this.Color = color;
-    this.EndColor = '#FFFFFF';
+    this.EndColor = ConstantData.Colors.Color_White;
     this.GradientFlags = 0;
     this.Texture = 0;
     this.TextureScale = new TextureScale();
     this.Opacity = 1;
     this.EndOpacity = 1;
+
   }
 }
 

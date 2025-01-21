@@ -20,11 +20,12 @@
 -->
 <template>
   <span style="margin-left:10px; font-size: 10px; color:gray; z-index: 99;position:absolute;margin-top: 10px;">
-    V:24.1218.01
+    {{ devVersion }}
   </span>
   <q-toolbar class="toolbar text-white shadow-2">
     <!-- File menu -->
-    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" class="file-menu" label="File">
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" class="file-menu" label="File"
+      style="width: 80px;">
       <q-list>
         <q-item clickable v-close-popup class="new-project-menu-item" @click="menuActionEmit('newProject')">
           <q-item-section avatar>
@@ -67,7 +68,7 @@
       </q-list>
     </q-btn-dropdown>
     <!-- Edit menu -->
-    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Edit">
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Edit" style="width: 80px;">
       <q-list>
         <q-item dense clickable v-close-popup @click="menuActionEmit('copy')">
           <q-item-section avatar>
@@ -184,7 +185,7 @@
       </q-list>
     </q-btn-dropdown>
     <!-- Object menu -->
-    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Object"
+    <q-btn-dropdown no-caps stretch flat content-class="menu-dropdown" label="Object" style="width: 80px;"
       :disable="!selectedCount || selectedCount > 1">
       <q-list>
         <q-item dense clickable v-close-popup @click="menuActionEmit('link')">
@@ -432,6 +433,13 @@
     </div>
     <q-space />
     <div class="flex">
+      <q-toggle color="blue" false-value="Disable" true-value="Enable" v-model="showRulersGrid" size='xs'
+        @update:model-value="menuActionEmit('toggleRulersGrid', showRulersGrid)">
+        <q-tooltip anchor="top middle" self="bottom middle">
+          Show rulers and grid ({{ showRulersGrid }})
+        </q-tooltip>
+      </q-toggle>
+
       <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out" />
       <div class="flex items-center px-1">
         <input class="zoom-input" @keydown.enter="menuActionEmit('zoomSet', $event.target.value)" :value="zoom"
@@ -446,9 +454,7 @@
               <q-item-section avatar>
                 <q-avatar size="sm" icon="person" color="grey-7" text-color="white" />
               </q-item-section>
-              <q-item-section class="text-zinc-500">{{
-                user.name
-              }}</q-item-section>
+              <q-item-section class="text-zinc-500">{{ user.name }}</q-item-section>
             </q-item>
             <q-separator />
             <q-item dense clickable v-close-popup @click="logout">
@@ -465,9 +471,10 @@
 </template>
 
 <script>
-import { defineComponent } from "vue";
-import { useQuasar } from "quasar";
-import { tools, user } from "../lib/common";
+import { defineComponent, ref, watch } from "vue"
+import { useQuasar } from "quasar"
+import { tools, user } from "../lib/common"
+import { devVersion } from "../lib/T3000/Hvac/Data/T3Data"
 
 export default defineComponent({
   name: "TopToolbar",
@@ -497,6 +504,10 @@ export default defineComponent({
       type: Number,
       required: true,
     },
+    rulersGridVisible: {
+      type: Boolean,
+      required: false,
+    }
   },
   setup(props, { emit }) {
     const $q = useQuasar();
@@ -510,11 +521,19 @@ export default defineComponent({
       localStorage.removeItem("user");
     }
 
+    const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
+    watch(() => props.rulersGridVisible, (newVal) => {
+      showRulersGrid.value = newVal ? "Enable" : "Disable";
+      // console.log('showRulersGrid props,show-rulers-grid', props.rulersGridVisible, showRulersGrid);
+    })
+
     return {
       menuActionEmit,
       logout,
       tools,
       user,
+      showRulersGrid: showRulersGrid,
+      devVersion
     };
   },
 });

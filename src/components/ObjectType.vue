@@ -110,16 +110,16 @@
         v-bind="item.settings" @change-value="changeValue" />
       <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
       <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
-        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value / 1000 || 0" />
+        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value || 0" />
       <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
         <dial-chart class="gauge-object dial" :options="{
-          value: item.t3Entry?.value / 1000 || 0,
+          value: item.t3Entry?.value || 0,
           unit: range.unit,
           ...item.settings,
           colors: processedColors,
         }" />
         <div class="text-center font-bold pl-8 pb-2">
-          {{ item.t3Entry?.value / 1000 || 0 }} {{ range.unit }}
+          {{ item.t3Entry?.value || 0 }} {{ range.unit }}
         </div>
       </div>
       <RoomHumidity v-else-if="item.type === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
@@ -134,7 +134,8 @@
 
 <script>
 import { defineComponent, computed, ref } from "vue";
-import { getEntryRange } from "src/lib/common";
+// import { getEntryRange } from "src/lib/common";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
 
 import DuctEl from "./ObjectTypes/Duct.vue";
 import FanEl from "./ObjectTypes/Fan.vue";
@@ -221,36 +222,79 @@ export default defineComponent({
   ],
   setup(props, { emit }) {
     const range = computed(() => {
-      return getEntryRange(props.item?.t3Entry);
+      return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
+
     const dispalyText = computed(() => {
+
+      console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
+        props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
+
       if (!props.item.t3Entry) {
         return "";
       }
-      const range = getEntryRange(props.item.t3Entry);
-      if (
-        props.item.settings.t3EntryDisplayField === "value" ||
-        props.item.settings.t3EntryDisplayField === "control"
-      ) {
-        if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.range > 100
-        ) {
+
+      const range = IdxUtils.getEntryRange(props.item.t3Entry);
+
+      if (props.item.settings.t3EntryDisplayField === "description") {
+        const description = props.item.t3Entry.description || "";
+        const value = props.item.t3Entry.value || "";
+        let valueText = "";
+
+        if (props.item.t3Entry.range > 100) {
+          const rangeValue = range.options?.find(
+            (item) => item.value === props.item.t3Entry.value
+          )
+          valueText = rangeValue?.name || "";
+        }
+        else if (props.item.t3Entry.digital_analog === 1) {
+          valueText = (value || "") + " " + (range?.unit || "");
+        } else if (props.item.t3Entry.digital_analog === 0) {
+          if (props.item.t3Entry.control) {
+            valueText = range?.on || "";
+          } else {
+            valueText = range?.off || "";
+          }
+        }
+
+        return description + " " + valueText;
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "label") {
+        const description = props.item.t3Entry.label || "";
+        const value = props.item.t3Entry.value || "";
+        let valueText = "";
+
+        if (props.item.t3Entry.range > 100) {
+          const rangeValue = range.options?.find(
+            (item) => item.value === props.item.t3Entry.value
+          )
+          valueText = rangeValue?.name || "";
+        }
+        else if (props.item.t3Entry.digital_analog === 1) {
+          valueText = (value || "") + " " + (range?.unit || "");
+        } else if (props.item.t3Entry.digital_analog === 0) {
+          if (props.item.t3Entry.control) {
+            valueText = range?.on || "";
+          } else {
+            valueText = range?.off || "";
+          }
+        }
+
+        return description + " " + valueText;
+      }
+
+      if (props.item.settings.t3EntryDisplayField === "value" || props.item.settings.t3EntryDisplayField === "control") {
+        if (props.item.t3Entry.value !== undefined && props.item.t3Entry.range > 100) {
           const rangeValue = range.options?.find(
             // (item) => item.value * 1000 === props.item.t3Entry.value
             (item) => item.value === props.item.t3Entry.value
           );
           return rangeValue?.name;
-        } else if (
-          props.item.t3Entry.value !== undefined &&
-          props.item.t3Entry.digital_analog === 1
-        ) {
+        } else if (props.item.t3Entry.value !== undefined && props.item.t3Entry.digital_analog === 1) {
           // return props.item.t3Entry.value / 1000 + " " + range.unit;
           return props.item.t3Entry.value + " " + range.unit;
-        } else if (
-          props.item.t3Entry.control !== undefined &&
-          props.item.t3Entry.digital_analog === 0
-        ) {
+        } else if (props.item.t3Entry.control !== undefined && props.item.t3Entry.digital_analog === 0) {
           if (props.item.t3Entry.control) {
             return range.on;
           } else {
@@ -260,7 +304,7 @@ export default defineComponent({
       }
 
       return props.item.t3Entry[props.item.settings.t3EntryDisplayField] || "";
-    });
+    })
 
     const processedColors = computed(() => {
       const item = props.item;
@@ -279,23 +323,29 @@ export default defineComponent({
     });
 
     function changeValue(type) {
+      // console.log('==== ChangeValue', type);
+      // debugger
       if (props.item.t3Entry.auto_manual === 0) return;
       let control = false;
       let newVal = props.item.t3Entry.value;
-      const range = getEntryRange(props.item?.t3Entry);
+      const range = IdxUtils.getEntryRange(props.item?.t3Entry);
       if (
         props.item.t3Entry.value !== undefined &&
         props.item.t3Entry.range > 100
       ) {
         const rangeOptions = range.options?.filter((item) => item.status === 1);
         const rangeIndex = rangeOptions.findIndex(
-          (item) => item.value * 1000 === props.item.t3Entry.value
+          // (item) => item.value * 1000 === props.item.t3Entry.value
+          (item) => item.value === props.item.t3Entry.value
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          newVal = rangeOptions[rangeIndex + 1].value * 1000;
+          // console.log('=========== decrease ===========');
+          //newVal = rangeOptions[rangeIndex + 1].value * 1000;
+          newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
-          newVal = rangeOptions[rangeIndex - 1].value * 1000;
+          //newVal = rangeOptions[rangeIndex - 1].value * 1000;
+          newVal = rangeOptions[rangeIndex - 1].value;
         } else {
           return;
         }
@@ -336,11 +386,6 @@ export default defineComponent({
     }
 
     const updateWeldModel = (weldModel, itemList) => {
-      // console.log(
-      //   "ObjectType.vue -> updateWeldModel | recieve from child",
-      //   weldModel,
-      //   itemList
-      // );
       emit("updateWeldModel", weldModel, itemList);
     };
 

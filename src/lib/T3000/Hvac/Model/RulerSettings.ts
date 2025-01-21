@@ -1,4 +1,5 @@
 
+import ConstantData from '../Data/ConstantData'
 
 class RulerSettings {
 
@@ -20,19 +21,19 @@ class RulerSettings {
 
     this.useInches = true;
     this.majorScale = 1;
-    this.units = 1;
+    this.units = ConstantData.RulerUnits.SED_Inches;
     this.nTics = 12;
     this.nMid = 1;
     this.nGrid = 12;
     this.originx = 0;
     this.originy = 0;
-    this.major = 100;
-    this.metricConv = 2.54;
+    this.major = ConstantData.Defines.DefaultRulerMajor;
+    this.metricConv = ConstantData.Defines.MetricConv;
     this.dp = 2;
     this.showpixels = false;
     this.fractionaldenominator = 1;
-  }
 
+  }
 }
 
 export default RulerSettings

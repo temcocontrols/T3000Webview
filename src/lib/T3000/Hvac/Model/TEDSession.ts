@@ -1,8 +1,9 @@
 
+import ConstantData from "../Data/ConstantData"
 
 class TEDSession {
 
-  public Type: any;
+  public Type: string;
   public theActiveTextEditObjectID: number;
   public theTEWasResized: boolean;
   public theTEWasEdited: boolean;
@@ -14,11 +15,11 @@ class TEDSession {
   public EditorID: number;
 
   constructor() {
-    this.Type = 'TEDSession';
+    this.Type = ConstantData.StoredObjectType.TED_SESSION_OBJECT;
     this.theActiveTextEditObjectID = -1;
     this.theTEWasResized = false;
     this.theTEWasEdited = false;
-    this.theTELastOp = - 1;
+    this.theTELastOp = ConstantData.TELastOp.INIT;
     this.theActiveTableObjectID = -1;
     this.theActiveTableObjectIndex = -1;
     this.theActiveOutlineObjectID = -1;

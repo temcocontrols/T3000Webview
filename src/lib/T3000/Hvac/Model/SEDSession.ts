@@ -1,19 +1,35 @@
 
 
+import { Type } from 'class-transformer'
+import 'reflect-metadata'
+
+import ListManager from "../Data/ListManager"
+import Globals from "../Data/Globals"
 import RulerSettings from "./RulerSettings"
 import PageRecord from "./PageRecord"
+import Resources from '../Data/Resources'
+import ConstantData from "../Data/ConstantData"
+import RecentSymbol from "./RecentSymbol"
+import FillData from "./FillData"
+import SEDDefault from './SEDDefault'
+import SEDGraphDefault from './SEDGraphDefault'
 
 class SEDSession {
 
-  //#region  Properties
+  //#region Properties
 
   public Type: any;
   public dim: { x: number, y: number };
   public flags: number;
   public tselect: number;
   public dupdisp: { x: number, y: number };
-  public def: any;
-  public graphDef: any;
+
+  @Type(() => SEDDefault)
+  public def: SEDDefault;
+
+  @Type(() => SEDGraphDefault)
+  public graphDef: SEDGraphDefault;
+
   public RefCon: number;
   public d_sarrow: number;
   public d_sarrowdisp: boolean;
@@ -26,7 +42,10 @@ class SEDSession {
   public hopstyle: any;
   public dimensions: any;
   public shapedimensions: number;
-  public background: any;
+
+  @Type(() => FillData)
+  public background: FillData;
+
   public bkdir: number;
   public bkid: number;
   public bkcroprect: { left: number, top: number, right: number, bottom: number };
@@ -46,9 +65,16 @@ class SEDSession {
   public fieldmask: number;
   public CurrentTheme: string;
   public EnableSpellCheck: boolean;
-  public rulerSettings: any;
-  public Page: any;
-  public RecentSymbols: any[];
+
+  @Type(() => RulerSettings)
+  public rulerSettings: RulerSettings;
+
+  @Type(() => PageRecord)
+  public Page: PageRecord;
+
+  @Type(() => RecentSymbol)
+  public RecentSymbols: RecentSymbol[];
+
   public CommentListID: number;
   public CommentID: number;
 
@@ -58,11 +84,13 @@ class SEDSession {
 
     //#region Initialize Properties
 
-    this.Type = 'TSession';
+    this.Type = ConstantData.StoredObjectType.SED_SESSION_OBJECT;
     this.dim = { x: 1000, y: 750 };
-    this.flags = 8 | 1024 | 2048;
+    this.flags = ConstantData.SessionFlags.SEDS_LLink | ConstantData.SessionFlags.SEDS_FreeHand | ConstantData.SessionFlags.SEDS_NoTreeOverlap;
     this.tselect = -1;
     this.dupdisp = { x: 0, y: 0 };
+    this.def = new SEDDefault();
+    this.graphDef = new SEDGraphDefault();
     this.RefCon = 0;
     this.d_sarrow = 0;
     this.d_sarrowdisp = false;
@@ -71,11 +99,14 @@ class SEDSession {
     this.d_arrowsize = 1;
     this.centersnapalign = true;
     this.hopdimindex = 1;
-    this.hopdim = { x: 8, y: 8 };
-    this.hopstyle = 1;
-    this.dimensions = 4;
+    this.hopdim = { x: ConstantData.HopDimX[1], y: ConstantData.HopDimY[1] };
+    this.hopstyle = ConstantData.HopStyle.SDH_Arc;
+
+    // Double change it to SED_DF_Select: 8 | SED_DF_Always: 16
+    this.dimensions = 146;//ConstantData.DimensionFlags.SED_DF_Total;
     this.shapedimensions = 0;
-    this.background.Paint.FillType = 0;
+    this.background = new FillData();
+    this.background.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
     this.bkdir = 0;
     this.bkid = -1;
     this.bkcroprect = { left: 0, top: 0, right: 0, bottom: 0 };
