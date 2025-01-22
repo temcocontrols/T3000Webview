@@ -14,6 +14,7 @@ import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Utils from "../Helper/T3Utils"
+import { init } from "echarts"
 
 let panzoomInstance = null;
 // let getPanelsInterval = null; // Interval for fetching panel data
@@ -31,7 +32,8 @@ class IdxPage {
 
   constructor() {
     // this.panzoomInstance = null;
-    this.initZoom();
+    // this.initZoom();
+
   }
 
   // wrap code for IndexPage's onMounted event
@@ -47,6 +49,9 @@ class IdxPage {
     this.initAutoSaveInterval();
     this.initWindowListener();
     this.refreshMoveableGuides();
+
+this.resetPanzoom();
+
   }
 
   initQuasar(quasar) {
@@ -133,6 +138,10 @@ class IdxPage {
       },
       // Add the focal point for zooming to be the center of the viewport
       // transformOrigin: { x: 0.5, y: 0.5 },
+
+      // initialX: 163,//appState.value.viewportTransform.x,
+      // initialY: 167,//appState.value.viewportTransform.y,
+      // initialZoom: 0.23,// appState.value.viewportTransform.scale,
     }
 
     panzoomInstance = panzoom(viewport.value, options);
@@ -140,37 +149,51 @@ class IdxPage {
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
       console.log('= Idx p zoom transform', e.getTransform());
-      appState.value.viewportTransform = e.getTransform();
-      triggerRef(appState);
+      // appState.value.viewportTransform = e.getTransform();
+      // triggerRef(appState);
 
-      localStorage.setItem("appState", JSON.stringify(appState.value));
-      IdxPage.restDocumentAreaPosition(e.getTransform());
-      Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
+      // // localStorage.setItem("appState", JSON.stringify(appState.value));
+      // // IdxPage.restDocumentAreaPosition(e.getTransform());
+      // Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
     });
+
+    // panzoomInstance.on('zoom', function(e) {
+    //   console.log('= Idx p zoom Fired when `element` is zoomed', e);
+    // });
+
+    // panzoomInstance.on('zoomend', function(e) {
+    //   console.log('= Idx p zoom Fired when zoom animation ended', e);
+    // });
+  }
+
+  resetPanzoom() {
+    // panzoomInstance.reset();
+
+    panzoomInstance.smoothZoomAbs(447.2809882332041, -374.1701269130266,1.1641532182693481);
   }
 
   // Computed property for zoom control
   initZoom() {
-    this.zoom = computed({
-      // Getter for zoom value
-      get() {
-        const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
-        console.log('= Idx p zoom get', zoomVal);
-        return zoomVal;
-      },
-      // Setter for zoom value
-      set(newValue) {
-        console.log('= Idx p zoom set', newValue);
-        if (!newValue) return;
+    // this.zoom = computed({
+    //   // Getter for zoom value
+    //   get() {
+    //     const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
+    //     console.log('= Idx p zoom get', zoomVal);
+    //     return zoomVal;
+    //   },
+    //   // Setter for zoom value
+    //   set(newValue) {
+    //     console.log('= Idx p zoom set', newValue);
+    //     if (!newValue) return;
 
-        const scale = newValue / 100;
-        const x = appState.value.viewportTransform.x;
-        const y = appState.value.viewportTransform.y;
+    //     const scale = newValue / 100;
+    //     const x = appState.value.viewportTransform.x;
+    //     const y = appState.value.viewportTransform.y;
 
-        appState.value.viewportTransform.scale = scale;
-        panzoomInstance.smoothZoomAbs(x, y, scale);
-      },
-    });
+    //     appState.value.viewportTransform.scale = scale;
+    //     panzoomInstance.smoothZoomAbs(x, y, scale);
+    //   },
+    // });
   }
 
   static restDocumentAreaPosition(pzXY) {
