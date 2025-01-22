@@ -266,3 +266,42 @@ https://docs.rs/tungstenite/0.21.0/tungstenite/protocol/struct.WebSocketConfig.h
 1. Updated graphic ui
 2. Updated save logic for both external browser and built in browser
 
+2025-01-15
+1. Updated GET_ENTITY message type
+2. Updated socket client and send GET_ENTITIES to T3
+3. Updated daily work details
+4. Added serial_number and set the graphic index start with 1
+
+2025-01-16
+1. Updated index page and migrate code
+2. Fixed bugs
+3. Added new function ProcessWebSocketFrame
+4. Added clearGetPanelsInterval
+
+2025-01-17
+1. Refactored code of webview2 and split them into different files
+2. Added webview2 message handler
+3. Added functions to handle webview2 incoming message
+
+2025-01-18
+1. Updated test page's libs references
+2. Added property $q to store the quasar framework instance
+3. Updated functions for counting graphic element count
+
+2025-01-19
+1. Updated WebSocketClient and WebViewClient
+2. Updated websocketclient-SaveLibraryData
+3. Updated T3UpdateEntryField, reloadPanelsData, newProject
+
+2025-01-20
+1. Updated device panel and add error section
+2. Updated save function to automatically save every 30s
+3. Updated the graphic selection logic, add presets function to avoid load incorrect initial data
+
+2025-01-21
+1. Merged and optimized code for version release.
+2. Fixed bug [Put the ‘Linked with’ section up top]. (already done)
+3. Tried to fix bug [Did not remember the last position and size]. (50%)
+4. About the wall part, I want to fix it along with the new UI. The libs has some parts that need to be updated, this part may not be done before the holiday.
+
+

@@ -1509,7 +1509,7 @@ function onSelectoDragStart(e) {
 function onSelectoSelectEnd(e) {
   // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
-  if (e.selected && !e.inputEvent.ctrlKey) {
+  if (e?.selected && !e?.inputEvent?.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
       e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
     );
