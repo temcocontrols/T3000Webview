@@ -14,15 +14,12 @@ import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Utils from "../Helper/T3Utils"
-import { init } from "echarts"
 
 let panzoomInstance = null;
-// let getPanelsInterval = null; // Interval for fetching panel data
 
 class IdxPage {
 
   private webview = (window as any).chrome?.webview;
-  // private panzoomInstance: any;
   public zoom: any;
   public getPanelsInterval: any;
   public autoSaveInterval: any;
@@ -31,9 +28,7 @@ class IdxPage {
   public $q: any;
 
   constructor() {
-    // this.panzoomInstance = null;
-    // this.initZoom();
-
+    this.initZoom();
   }
 
   // wrap code for IndexPage's onMounted event
@@ -49,9 +44,7 @@ class IdxPage {
     this.initAutoSaveInterval();
     this.initWindowListener();
     this.refreshMoveableGuides();
-
-this.resetPanzoom();
-
+    this.resetPanzoom();
   }
 
   initQuasar(quasar) {
@@ -123,6 +116,12 @@ this.resetPanzoom();
 
   // Initialize panzoom for viewport
   initPanzoom() {
+    const beforeWheel = function (e) {
+      console.log('= Idx p zoom Mouse clientX:', e.clientX, 'clientY:', e.clientY);
+      // Allow panzoom to handle the wheel event
+      return false;
+    }
+
     const options = {
       maxZoom: 4,
       minZoom: 0.1,
@@ -137,63 +136,54 @@ this.resetPanzoom();
         return shouldIgnore;
       },
       // Add the focal point for zooming to be the center of the viewport
-      // transformOrigin: { x: 0.5, y: 0.5 },
-
-      // initialX: 163,//appState.value.viewportTransform.x,
-      // initialY: 167,//appState.value.viewportTransform.y,
-      // initialZoom: 0.23,// appState.value.viewportTransform.scale,
+      beforeWheel: beforeWheel
     }
 
     panzoomInstance = panzoom(viewport.value, options);
 
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
+
       console.log('= Idx p zoom transform', e.getTransform());
-      // appState.value.viewportTransform = e.getTransform();
-      // triggerRef(appState);
+      appState.value.viewportTransform = e.getTransform();
 
-      // // localStorage.setItem("appState", JSON.stringify(appState.value));
-      // // IdxPage.restDocumentAreaPosition(e.getTransform());
-      // Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
+      triggerRef(appState);
+
+      // localStorage.setItem("appState", JSON.stringify(appState.value));
+      IdxPage.restDocumentAreaPosition(e.getTransform());
+      Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
     });
-
-    // panzoomInstance.on('zoom', function(e) {
-    //   console.log('= Idx p zoom Fired when `element` is zoomed', e);
-    // });
-
-    // panzoomInstance.on('zoomend', function(e) {
-    //   console.log('= Idx p zoom Fired when zoom animation ended', e);
-    // });
   }
 
   resetPanzoom() {
-    // panzoomInstance.reset();
-
-    panzoomInstance.smoothZoomAbs(447.2809882332041, -374.1701269130266,1.1641532182693481);
+    const { x, y, scale } = appState.value.viewportTransform;
+    // panzoomInstance.zoomAbs(904.1923366 -106 - 20 - 2 , -208.1624627-95 - 20 - 2, 1.8189894035458565);
+    // panzoomInstance.zoomAbs(447.2809882332041, -374.1701269130266, 1.1641532182693481);
+    panzoomInstance.zoomAbs(557  ,292, 1.23497403709677);
   }
 
   // Computed property for zoom control
   initZoom() {
-    // this.zoom = computed({
-    //   // Getter for zoom value
-    //   get() {
-    //     const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
-    //     console.log('= Idx p zoom get', zoomVal);
-    //     return zoomVal;
-    //   },
-    //   // Setter for zoom value
-    //   set(newValue) {
-    //     console.log('= Idx p zoom set', newValue);
-    //     if (!newValue) return;
+    this.zoom = computed({
+      // Getter for zoom value
+      get() {
+        const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
+        console.log('= Idx p zoom get', zoomVal);
+        return zoomVal;
+      },
+      // Setter for zoom value
+      set(newValue) {
+        console.log('= Idx p zoom set', newValue);
+        if (!newValue) return;
 
-    //     const scale = newValue / 100;
-    //     const x = appState.value.viewportTransform.x;
-    //     const y = appState.value.viewportTransform.y;
+        const scale = newValue / 100;
+        const x = appState.value.viewportTransform.x;
+        const y = appState.value.viewportTransform.y;
 
-    //     appState.value.viewportTransform.scale = scale;
-    //     panzoomInstance.smoothZoomAbs(x, y, scale);
-    //   },
-    // });
+        appState.value.viewportTransform.scale = scale;
+        panzoomInstance.zoomAbs(x, y, scale);
+      },
+    });
   }
 
   static restDocumentAreaPosition(pzXY) {
