@@ -258,10 +258,12 @@ export default defineComponent({
   ],
   setup(props, { emit }) {
     let initialObject = {};
+
     onMounted(() => {
       initialObject = cloneDeep(props.object);
       emit("mounted");
     });
+
     const item = computed({
       get() {
         return props.object;
@@ -269,7 +271,6 @@ export default defineComponent({
       // setter
       set(newValue, oldValue) {
         if (newValue === oldValue) return;
-        // console.log("ObjectConfig=>", "set", "newValue=", newValue, "oldValue=", oldValue);
         emit("update:object", newValue);
       },
     });
@@ -277,22 +278,21 @@ export default defineComponent({
     const settings = computed(() => {
       return tools.find((i) => i.name === props.object.type)?.settings || {};
     });
+
     const rangeOptions = computed(() => {
       const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(
         (i) => i.status === 1
       );
       const ranges = cloneDeep(items);
-      // console.log('== oc range-options range=', ranges);
       const result = ranges?.map((ii) => {
         // ii.value = ii.value * 1000;
         ii.value = ii.value;
         return ii;
       });
 
-      // console.log('== oc range-options result=', result);
-      // console.log('== oc range-options props=', props);
       return result;
     });
+
     const t3EntryDisplayFieldOptions = computed(() => {
       const options = [
         { label: "None", value: "none" },
@@ -320,31 +320,31 @@ export default defineComponent({
 
       emit("refreshMoveable");
     }
+
     function T3UpdateEntryField(key, obj) {
-      // console.log('ObjectConfig.vue->T3UpdateEntryField->key=', key, 'obj=', obj);
-      // console.log('ObjectConfig.vue->T3UpdateEntryField->props.object=', props.object);
       emit("T3UpdateEntryField", key, obj);
     }
+
     function linkT3Entry() {
       emit("linkT3Entry");
     }
+
     function gaugeSettings(item) {
       emit("gaugeSettings", item);
     }
+
     onBeforeUnmount(() => {
       if (isEqual(props.object, initialObject)) {
         emit("noChange");
       }
     });
+
     function getSwitchIcon(name) {
       const iconItem = switchIcons.find((item) => item.value === name);
       return iconItem?.icon?.off ? iconItem.icon.off : "block";
     }
 
     function updatePropsValue(key) {
-      // console.log('ObjectConfig=>,updatePropsValue,key', key);
-      // console.log('ObjectConfig=>,updatePropsValue,props', props.object);
-      //T3000.Utils.Log("ObjectConfig=>", "updatePropsValue", "key=", key, "pros.object=", props.object, "item.value=", item.value);
       if (item.value.type === "Int_Ext_Wall") {
         item.value.height = T3000.Hvac.App.GetExteriorWallHeight(item.value.settings.strokeWidth);
         emit("refreshMoveable");
@@ -352,16 +352,12 @@ export default defineComponent({
     }
 
     function DisplayFieldValueChanged(value) {
-      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->value=', value);
-      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value=', item.value);
-      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->item.value.settings=', item.value.settings);
-      // console.log('ObjectConfig.vue->DisplayFieldValueChanged->props=', props.object);
       emit("DisplayFieldValueChanged", value);
     }
 
     const getEntryRange = (entry) => {
       return IdxUtils.getEntryRange(entry);
-    };
+    }
 
     return {
       item,
@@ -378,8 +374,8 @@ export default defineComponent({
       rangeOptions,
       updatePropsValue,
       DisplayFieldValueChanged
-    };
-  },
+    }
+  }
 });
 </script>
 

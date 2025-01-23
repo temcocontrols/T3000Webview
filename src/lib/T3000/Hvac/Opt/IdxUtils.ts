@@ -125,9 +125,6 @@ class IdxUtils {
           let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
           linkedEntry.value = newLkValue;
           item.t3Entry = linkedEntry;
-
-          console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
-
           IdxUtils.refreshObjectStatus(item);
         }
       });

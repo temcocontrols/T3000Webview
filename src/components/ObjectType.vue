@@ -19,15 +19,11 @@
 -->
 <template>
   <div class="moveable-item" :class="{
-    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-      item.type
-    ),
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(item.type),
     'overflow-hidden': item.type === 'Text',
     [item.type]: item.type,
     'with-bg': item.settings.bgColor,
-    'with-title':
-      item.settings.title ||
-      (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+    'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
     <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }" v-if="item.settings.title"
       @click="$emit('objectClicked')">
@@ -235,6 +231,7 @@ export default defineComponent({
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
+      console.log('= Ot range,t3e', range,props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
@@ -320,11 +317,9 @@ export default defineComponent({
             color: [i.color],
           };
         });
-    });
+    })
 
     function changeValue(type) {
-      // console.log('==== ChangeValue', type);
-      // debugger
       if (props.item.t3Entry.auto_manual === 0) return;
       let control = false;
       let newVal = props.item.t3Entry.value;
@@ -340,7 +335,6 @@ export default defineComponent({
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          // console.log('=========== decrease ===========');
           //newVal = rangeOptions[rangeIndex + 1].value * 1000;
           newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
@@ -387,7 +381,7 @@ export default defineComponent({
 
     const updateWeldModel = (weldModel, itemList) => {
       emit("updateWeldModel", weldModel, itemList);
-    };
+    }
 
     return {
       range,
