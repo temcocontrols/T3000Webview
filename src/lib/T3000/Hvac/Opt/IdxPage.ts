@@ -159,7 +159,7 @@ class IdxPage {
     const { x, y, scale } = appState.value.viewportTransform;
     // panzoomInstance.zoomAbs(904.1923366 -106 - 20 - 2 , -208.1624627-95 - 20 - 2, 1.8189894035458565);
     // panzoomInstance.zoomAbs(447.2809882332041, -374.1701269130266, 1.1641532182693481);
-    panzoomInstance.zoomAbs(557  ,292, 1.23497403709677);
+    // panzoomInstance.zoomAbs(557, 292, 1.23497403709677);
   }
 
   // Computed property for zoom control

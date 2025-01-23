@@ -26,87 +26,91 @@
       <div>
         <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
           class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
-        <q-btn dark outline no-caps stretch :icon="item.t3Entry ? 'dataset_linked' : undefined"
-          class="text-white w-full link-t3-entry" :label="!item.t3Entry
-            ? 'Link with an entry'
-            : `Linked with ${item.t3Entry.description}`
-            " @click="linkT3Entry" />
-        <q-expansion-item v-if="item.t3Entry" class="mt-2 border border-solid border-gray-700" dark default-opened
-          label="Entry settings">
-          <div class="p-1">
-            <q-select v-if="item.t3Entry.auto_manual !== undefined" class="mb-1" filled dark
-              v-model="item.t3Entry.auto_manual" :options="[
-                { label: 'Auto', value: 0 },
-                { label: 'Manual', value: 1 },
-              ]" label="Auto/Manual" emit-value map-options
-              @update:model-value="T3UpdateEntryField('auto_manual', item)" />
-            <!-- Digital range values -->
-            <q-select class="mb-1" v-if="
-              item.t3Entry.range < 101 &&
-              item.t3Entry.digital_analog === 0 &&
-              item.t3Entry.range
-            " :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.control" :options="[
+        <q-btn dark outline no-caps stretch class="text-white w-full link-t3-entry" @click="linkT3Entry">
+          <div v-if="!item.t3Entry">
+            <p>Link with an entry</p>
+          </div>
+          <div v-if="item.t3Entry" style="text-align: left;width: 100%;">
+            <p style="font-size: 13px;">Linked with <q-icon name="dataset_linked" style="font-size: 18px;" /></p>
+            <p>{{ item.t3Entry.description }}</p>
+          </div>
+        </q-btn>
+        <!-- <q-expansion-item v-if="item.t3Entry" class="mt-2 border border-solid border-gray-700" dark default-opened
+          label="Entry settings" > -->
+        <div class="p-1" v-if="item.t3Entry">
+          <q-select v-if="item.t3Entry.auto_manual !== undefined" class="mb-1" filled dark
+            v-model="item.t3Entry.auto_manual" :options="[
+              { label: 'Auto', value: 0 },
+              { label: 'Manual', value: 1 },
+            ]" label="Auto/Manual" emit-value map-options
+            @update:model-value="T3UpdateEntryField('auto_manual', item)" />
+          <!-- Digital range values -->
+          <q-select class="mb-1" v-if="
+            item.t3Entry.range < 101 &&
+            item.t3Entry.digital_analog === 0 &&
+            item.t3Entry.range
+          " :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.control" :options="[
+            {
+              label: getEntryRange(item.t3Entry)?.off,
+              value: 0,
+            },
+            {
+              label: getEntryRange(item.t3Entry)?.on,
+              value: 1,
+            },
+          ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('control', item)" />
+          <!-- MSV range values -->
+          <q-select class="mb-1" v-if="item.t3Entry.range > 100" :disable="item.t3Entry?.auto_manual === 0" filled dark
+            v-model="item.t3Entry.value" :options="rangeOptions" label="Value" emit-value map-options
+            option-label="name" @update:model-value="T3UpdateEntryField('value', item)" />
+          <!-- Program status -->
+          <q-select class="mb-1" v-else-if="item.t3Entry.type === 'PROGRAM'" :disable="item.t3Entry?.auto_manual === 0"
+            filled dark v-model="item.t3Entry.status" :options="[
               {
-                label: getEntryRange(item.t3Entry)?.off,
+                label: 'OFF',
                 value: 0,
               },
               {
-                label: getEntryRange(item.t3Entry)?.on,
+                label: 'ON',
                 value: 1,
               },
-            ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('control', item)" />
-            <!-- MSV range values -->
-            <q-select class="mb-1" v-if="item.t3Entry.range > 100" :disable="item.t3Entry?.auto_manual === 0" filled
-              dark v-model="item.t3Entry.value" :options="rangeOptions" label="Value" emit-value map-options
-              option-label="name" @update:model-value="T3UpdateEntryField('value', item)" />
-            <!-- Program status -->
-            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'PROGRAM'"
-              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.status" :options="[
-                {
-                  label: 'OFF',
-                  value: 0,
-                },
-                {
-                  label: 'ON',
-                  value: 1,
-                },
-              ]" label="Status" emit-value map-options @update:model-value="T3UpdateEntryField('status', item)" />
-            <!-- Schedule output -->
-            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'SCHEDULE'"
-              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.output" :options="[
-                {
-                  label: 'OFF',
-                  value: 0,
-                },
-                {
-                  label: 'ON',
-                  value: 1,
-                },
-              ]" label="Output" emit-value map-options @update:model-value="T3UpdateEntryField('output', item)" />
-            <!-- Holiday value -->
-            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'HOLIDAY'"
-              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.value" :options="[
-                {
-                  label: 'OFF',
-                  value: 0,
-                },
-                {
-                  label: 'ON',
-                  value: 1,
-                },
-              ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('value', item)" />
-            <!-- Analog range value -->
-            <q-input class="mb-1" v-if="
-              item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1
-            " :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
-              label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
-            <!-- Display field -->
-            <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
-              label="Display field" emit-value map-options
-              @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
+            ]" label="Status" emit-value map-options @update:model-value="T3UpdateEntryField('status', item)" />
+          <!-- Schedule output -->
+          <q-select class="mb-1" v-else-if="item.t3Entry.type === 'SCHEDULE'" :disable="item.t3Entry?.auto_manual === 0"
+            filled dark v-model="item.t3Entry.output" :options="[
+              {
+                label: 'OFF',
+                value: 0,
+              },
+              {
+                label: 'ON',
+                value: 1,
+              },
+            ]" label="Output" emit-value map-options @update:model-value="T3UpdateEntryField('output', item)" />
+          <!-- Holiday value -->
+          <q-select class="mb-1" v-else-if="item.t3Entry.type === 'HOLIDAY'" :disable="item.t3Entry?.auto_manual === 0"
+            filled dark v-model="item.t3Entry.value" :options="[
+              {
+                label: 'OFF',
+                value: 0,
+              },
+              {
+                label: 'ON',
+                value: 1,
+              },
+            ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('value', item)" />
+          <!-- Analog range value -->
+          <q-input class="mb-1" v-if="
+            item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1
+          " :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
+            label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
+          <!-- Display field -->
+          <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
+            label="Display field" emit-value map-options
+            @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
 
-          </div>
-        </q-expansion-item>
+        </div>
+        <!-- </q-expansion-item> -->
       </div>
 
       <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
