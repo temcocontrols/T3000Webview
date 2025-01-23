@@ -122,7 +122,8 @@ class WebSocketClient {
   public sendMessage(message: string) {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
-      console.log('= Ws send to T3', message);
+      const currentDateTime = new Date().toLocaleString();
+      console.log('= Ws send to T3 at', currentDateTime, message);
     } else {
       console.log('= Ws send message | socket is not open | wait for.  Ready state:', this.socket.readyState);
       this.socket.onopen = () => {
@@ -393,7 +394,7 @@ class WebSocketClient {
     // action: 11, // DELETE_IMAGE
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-    if(currentDevice === null || currentDevice === undefined) return;
+    if (currentDevice === null || currentDevice === undefined) return;
 
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;

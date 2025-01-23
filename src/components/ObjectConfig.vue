@@ -100,9 +100,8 @@
               },
             ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('value', item)" />
           <!-- Analog range value -->
-          <q-input class="mb-1" v-if="
-            item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1
-          " :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
+          <q-input class="mb-1" v-if="item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1"
+            :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
             label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
           <!-- Display field -->
           <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
@@ -138,7 +137,7 @@
             <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
             <label class="ml-2" for="bg-color-input">{{
               settings.bgColor?.label || "Background color"
-            }}</label>
+              }}</label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
             <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
@@ -168,7 +167,7 @@
                 <input type="color" id="text-color-input" v-model="item.settings[key]" />
                 <label class="ml-2" for="text-color-input">{{
                   setting.label
-                }}</label>
+                  }}</label>
               </div>
               <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
                 <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
