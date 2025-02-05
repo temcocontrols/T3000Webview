@@ -1,6 +1,6 @@
 
-import * as Utils from '../Helper/Helper.Utils';
-import Path from './Basic.Path';
+import * as Utils from '../Helper/Helper.Utils'
+import Path from './Basic.Path'
 
 class Creator {
 
@@ -16,13 +16,13 @@ class Creator {
     this.curPosY = 0;
   }
 
-  BeginPath = () => {
+  BeginPath() {
     this.pathSegs = [];
     this.curPosX = 0;
     this.curPosY = 0;
   }
 
-  MoveTo = (x: number, y: number, isRelative: boolean) => {
+  MoveTo(x: number, y: number, isRelative: boolean) {
     const command = isRelative ? 'm' : 'M';
     const roundedX = Utils.RoundCoord(x);
     const roundedY = Utils.RoundCoord(y);
@@ -39,7 +39,7 @@ class Creator {
     }
   }
 
-  LineTo = (x: number, y: number, isRelative: boolean) => {
+  LineTo(x: number, y: number, isRelative: boolean) {
     const command = isRelative ? 'l' : 'L';
     const roundedX = Utils.RoundCoord(x);
     const roundedY = Utils.RoundCoord(y);
@@ -56,7 +56,7 @@ class Creator {
     }
   }
 
-  CurveTo = (x1: number, y1: number, x2: number, y2: number, isRelative: boolean) => {
+  CurveTo(x1: number, y1: number, x2: number, y2: number, isRelative: boolean) {
     const command = isRelative ? 'q' : 'Q';
     const roundedX1 = Utils.RoundCoord(x1);
     const roundedY1 = Utils.RoundCoord(y1);
@@ -75,7 +75,7 @@ class Creator {
     }
   }
 
-  SimpleArcTo = (x: number, y: number, largeArcFlag: boolean, isRelative: boolean) => {
+  SimpleArcTo(x: number, y: number, largeArcFlag: boolean, isRelative: boolean) {
     let endX = x;
     let endY = y;
 
@@ -94,7 +94,7 @@ class Creator {
     }
   }
 
-  ArcTo = (x: number, y: number, radiusX: number, radiusY: number, rotation: number, largeArcFlag: boolean, sweepFlag: boolean, isRelative: boolean) => {
+  ArcTo(x: number, y: number, radiusX: number, radiusY: number, rotation: number, largeArcFlag: boolean, sweepFlag: boolean, isRelative: boolean) {
     const command = isRelative ? 'a' : 'A';
     const roundedX = Utils.RoundCoord(x);
     const roundedY = Utils.RoundCoord(y);
@@ -113,15 +113,15 @@ class Creator {
     }
   }
 
-  ClosePath = () => {
+  ClosePath() {
     this.pathSegs.push('z');
   }
 
-  ToString = () => {
+  ToString() {
     return this.pathSegs.join(' ')
   }
 
-  Apply = () => {
+  Apply() {
     const pathString = this.ToString();
     if (this.element instanceof Path) {
       this.element.SetPath(pathString);
