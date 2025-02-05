@@ -1,46 +1,45 @@
-import Container from "./Basic.Container";
-import HvacSVG from '../Helper/Helper.SVG';
+
+
+import HvacSVG from "../Helper/SVG.t2"
+import Container from "./Basic.Container"
 
 class Layer extends Container {
-  public scaleOKFlag = true;
-  public dpiScaleOnlyFlag = false;
+  public scaleOKFlag: boolean;
+  public dpiScaleOnlyFlag: boolean;
 
-  CreateElement = (element, parent) => {
+  constructor() {
+    super()
+    this.scaleOKFlag = true;
+    this.dpiScaleOnlyFlag = false;
+  }
 
-    console.log('Layer CreateElement 1 element,parent', element, parent);
-
+  CreateElement(element: any, attributes: any) {
     this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
-
-    console.log('Layer CreateElement 2 this.svgObj', this.svgObj);
-
-    this.InitElement(element, parent);
-
-    console.log('Document CreateElement 3 this.svgObj', this.svgObj);
-
+    this.initElement(element, attributes);
     return this.svgObj;
   }
 
-  AllowScaling = (isAllowed: boolean): void => {
-    this.scaleOKFlag = isAllowed;
-    if (isAllowed) {
+  allowScaling(isScalingEnabled: boolean) {
+    this.scaleOKFlag = isScalingEnabled;
+    if (isScalingEnabled) {
       this.dpiScaleOnlyFlag = false;
     }
   }
 
-  AllowDpiScalingOnly = (isAllowed: boolean): void => {
-    this.dpiScaleOnlyFlag = isAllowed;
-    if (isAllowed) {
+  allowDpiScalingOnly(enableDpiScaling: boolean): void {
+    this.dpiScaleOnlyFlag = enableDpiScaling;
+    if (enableDpiScaling) {
       this.scaleOKFlag = false;
     }
   }
 
-  IsScalingAllowed = () => {
+  isScalingEnabled(): boolean {
     return this.scaleOKFlag;
   }
 
-  IsDpiScalingAllowed = () => {
+  isDpiScalingEnabled(): boolean {
     return this.dpiScaleOnlyFlag;
   }
 }
 
-export default Layer;
+export default Layer
