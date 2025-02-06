@@ -102,7 +102,7 @@
           <!-- Analog range value -->
           <q-input class="mb-1" v-if="item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1"
             :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
-            label="Value" @update:model-value="T3UpdateEntryField('value', item)" />
+            label="Value" @update:model-value="T3UpdateEntryField('value', item)" :suffix="unitText" />
           <!-- Display field -->
           <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
             label="Display field" emit-value map-options
@@ -359,6 +359,10 @@ export default defineComponent({
       return IdxUtils.getEntryRange(entry);
     }
 
+    const unitText = computed(() => {
+      return "   "+ IdxUtils.getUnitText(item.value.t3Entry);
+    });
+
     return {
       item,
       refreshMoveable,
@@ -373,7 +377,8 @@ export default defineComponent({
       getSwitchIcon,
       rangeOptions,
       updatePropsValue,
-      DisplayFieldValueChanged
+      DisplayFieldValueChanged,
+      unitText
     }
   }
 });

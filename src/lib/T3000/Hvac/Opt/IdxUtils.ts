@@ -202,6 +202,29 @@ class IdxUtils {
       });
     }
   }
+
+  static getUnitText(t3Entry) {
+    const range = IdxUtils.getEntryRange(t3Entry);
+    let unitText = "";
+
+    if (t3Entry.range > 100) {
+      const rangeValue = range.options?.find(
+        (item) => item.value === t3Entry.value
+      )
+      unitText = rangeValue?.name || "";
+    }
+    else if (t3Entry.digital_analog === 1) {
+      unitText = range?.unit || "";
+    } else if (t3Entry.digital_analog === 0) {
+      if (t3Entry.control) {
+        unitText = range?.on || "";
+      } else {
+        unitText = range?.off || "";
+      }
+    }
+
+    return unitText;
+  }
 }
 
 export default IdxUtils
