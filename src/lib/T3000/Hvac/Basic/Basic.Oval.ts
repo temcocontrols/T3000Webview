@@ -1,62 +1,52 @@
 
 
-
-
-// import SDJS from "../SDJS/SDJS.Index";
-// import SDUI from "../SDUI/SDUI.Index";
-// import Basic from "./Basic.Index";
-// import GPP from "../gListManager";
 import $ from 'jquery';
-import HvacSVG from "../Helper/Helper.SVG.t2"
-
-
-import Global from "./Basic.Global";
-
-
-
-
-import Element from "./Basic.Element";
+import HvacSVG from "../Helper/SVG.t2"
+import Element from "./Basic.Element"
 
 class Oval extends Element {
   public shapeElem: any;
 
-
   constructor() {
     super();
-    'use strict';
-    this.svgObj = null,
-      this.shapeElem = null
+    this.svgObj = null;
+    this.shapeElem = null;
   }
 
-  // GetInstanceName(){
-  //   return "Oval";
-  // }
-  // Basic.Oval.prototype = new Basic.Element,
-  // Basic.Oval.prototype.constructor = Basic.Oval,
-  CreateElement(e, t) {
-    'use strict';
-    return this.svgObj = new HvacSVG.Container(HvacSVG.create('g')),
-      this.shapeElem = new HvacSVG.Ellipse,
-      this.svgObj.add(this.shapeElem),
-      this.InitElement(e, t),
-      this.svgObj
+  CreateElement(options: any, config: any): HvacSVG.Container {
+    console.log('= B.Oval: CreateElement input options:', options, 'config:', config);
+
+    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.shapeElem = new HvacSVG.Ellipse();
+    this.svgObj.add(this.shapeElem);
+    this.InitElement(options, config);
+
+    console.log('= B.Oval: CreateElement output:', this.svgObj);
+
+    return this.svgObj;
   }
 
-  SetSize(e, t) {
-    'use strict';
-    e = Global.RoundCoord(e),
-      t = Global.RoundCoord(t),
-      this.geometryBBox.width = e,
-      this.geometryBBox.height = t,
-      this.svgObj.size(e, t),
-      this.shapeElem.size(e, t),
-      this.UpdateTransform(),
-      this.RefreshPaint()
-  }
+  SetSize(width: number, height: number): void {
+    console.log('= B.Oval: SetSize input:', { width, height });
 
+    const roundedWidth = Global.RoundCoord(width);
+    const roundedHeight = Global.RoundCoord(height);
+
+    this.geometryBBox.width = roundedWidth;
+    this.geometryBBox.height = roundedHeight;
+
+    this.svgObj.size(roundedWidth, roundedHeight);
+    this.shapeElem.size(roundedWidth, roundedHeight);
+
+    this.UpdateTransform();
+    this.RefreshPaint();
+
+    console.log('= B.Oval: SetSize output:', {
+      roundedWidth: roundedWidth,
+      roundedHeight: roundedHeight,
+      geometryBBox: this.geometryBBox
+    });
+  }
 }
 
 export default Oval
-
-
-// export default Basic.Oval;
