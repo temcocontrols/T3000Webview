@@ -1,10 +1,8 @@
 
 
 
-// import Basic from "./Basic.Index";
-import HvacSVG from "../Helper/Helper.SVG"
-import $ from "jquery";
-import Element from "./Basic.Element";
+import HvacSVG from "../Helper/SVG.t2"
+import Element from "./Basic.Element"
 
 class Rect extends Element {
 
@@ -12,44 +10,39 @@ class Rect extends Element {
 
   constructor() {
     super();
-    'use strict';
-    this.svgObj = null,
-      this.shapeElem = null
-  }
-  // GetInstanceName(){
-  //   return "Rect";
-  // }
-
-
-  // Basic.Rect.prototype = new Basic.Element
-  // Basic.Rect.prototype.constructor = Basic.Rect
-  CreateElement(e, t) {
-    'use strict';
-
-    console.log('Basic.Rect.prototype.CreateElement 1 e=', e);
-    console.log('Basic.Rect.prototype.CreateElement 2 t=', t);
-
-    return this.svgObj = new HvacSVG.Container(HvacSVG.create('g')),
-      this.shapeElem = new HvacSVG.Rect,
-      this.svgObj.add(this.shapeElem),
-      this.InitElement(e, t),
-      this.svgObj
+    this.svgObj = null;
+    this.shapeElem = null;
   }
 
-  SetSize(e, t) {
-    'use strict';
-    e = Global.RoundCoord(e),
-      t = Global.RoundCoord(t),
-      this.geometryBBox.width = e,
-      this.geometryBBox.height = t,
-      this.svgObj.size(e, t),
-      this.shapeElem.size(e, t),
-      this.UpdateTransform(),
-      this.RefreshPaint()
+  CreateElement(elementOptions: any, transformationOptions: any) {
+    console.log('= B.Rect CreateElement input:', { elementOptions, transformationOptions });
+
+    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.shapeElem = new HvacSVG.Rect();
+    this.svgObj.add(this.shapeElem);
+
+    this.InitElement(elementOptions, transformationOptions);
+
+    console.log('= B.Rect CreateElement output:', { svgObj: this.svgObj, shapeElem: this.shapeElem });
+    return this.svgObj;
   }
 
+  SetSize(width: number, height: number): void {
+    console.log("= B.Rect SetSize input:", { width, height });
+
+    const roundedWidth = Global.RoundCoord(width);
+    const roundedHeight = Global.RoundCoord(height);
+
+    this.geometryBBox.width = roundedWidth;
+    this.geometryBBox.height = roundedHeight;
+    this.svgObj.size(roundedWidth, roundedHeight);
+    this.shapeElem.size(roundedWidth, roundedHeight);
+
+    this.UpdateTransform();
+    this.RefreshPaint();
+
+    console.log("= B.Rect SetSize output:", { geometryBBox: this.geometryBBox });
+  }
 }
 
-export default Rect;
-
-// export default Basic.Rect;
+export default Rect
