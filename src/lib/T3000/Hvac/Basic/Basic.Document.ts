@@ -2,7 +2,7 @@ import HvacSVG from '../Helper/Helper.SVG';
 import Container from "./Basic.Container";
 import Rect from "./Basic.Rect";
 import Layer from "./Basic.Layer";
-import Models from '../Data/Data.Constant';
+import Models from '../Data/Constant';
 import Path from './Basic.Path';
 import Text from './Basic.Text';
 import * as Utils from '../Helper/Helper.Utils';

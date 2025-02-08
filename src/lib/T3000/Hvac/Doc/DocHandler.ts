@@ -1,6 +1,6 @@
 
 import Document from '../Basic/Basic.Document';
-import Models from '../Data/Data.Constant';
+import Models from '../Data/Constant';
 import Hammer from 'hammerjs';
 import * as Utils from '../Helper/Helper.Utils';
 import ContentHeader from './ContentHeader';

@@ -1,6 +1,6 @@
 // Common functions for HVAC module
 
-import HvacModels from '../Data/Data.Constant';
+import HvacModels from '../Data/Constant';
 
 const Utils = {
   Log: console.log,

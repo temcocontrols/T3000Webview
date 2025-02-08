@@ -1,6 +1,6 @@
 
 
-import Models from '../Data/Data.Constant';
+import Models from '../Data/Constant';
 import Formatter from '../Basic/Basic.Text.Formatter';
 import Text from '../Basic/Basic.Text';
 import ContentHeader from './ContentHeader';

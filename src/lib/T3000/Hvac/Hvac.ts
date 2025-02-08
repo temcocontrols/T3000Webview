@@ -1,7 +1,7 @@
 
 import App from './Page/Page.Main'
 import * as Utils from './Helper/Helper.Utils'
-import Models from './Data/Data.Constant'
+import Models from './Data/Constant'
 import Doc from './Doc/DocHandler'
 import UI from './Doc/UI'
 import KeyCommand from './Opt/Opt.KeyCommand'

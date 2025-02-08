@@ -1,5 +1,5 @@
 
-import Models from '../Data/Data.Constant';
+import Models from '../Data/Constant';
 import Element from './Basic.Element';
 
 class Symbol extends Element {
