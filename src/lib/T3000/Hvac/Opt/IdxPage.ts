@@ -136,30 +136,30 @@ class IdxPage {
         return shouldIgnore;
       },
       // Add the focal point for zooming to be the center of the viewport
-      beforeWheel: beforeWheel
+      beforeWheel: beforeWheel,
     }
 
     panzoomInstance = panzoom(viewport.value, options);
 
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
-
-      console.log('= Idx p zoom transform', e.getTransform());
+      // console.log('= Idx p zoom transform', e.getTransform());
       appState.value.viewportTransform = e.getTransform();
 
       triggerRef(appState);
 
-      // localStorage.setItem("appState", JSON.stringify(appState.value));
       IdxPage.restDocumentAreaPosition(e.getTransform());
       Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
     });
   }
 
   resetPanzoom() {
-    const { x, y, scale } = appState.value.viewportTransform;
-    // panzoomInstance.zoomAbs(904.1923366 -106 - 20 - 2 , -208.1624627-95 - 20 - 2, 1.8189894035458565);
-    // panzoomInstance.zoomAbs(447.2809882332041, -374.1701269130266, 1.1641532182693481);
-    // panzoomInstance.zoomAbs(557, 292, 1.23497403709677);
+    const transform = Hvac.T3Utils.getLocalSettings('transform');
+
+    if (transform) {
+      panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
+      panzoomInstance.moveTo(transform.x, transform.y);
+    }
   }
 
   // Computed property for zoom control
