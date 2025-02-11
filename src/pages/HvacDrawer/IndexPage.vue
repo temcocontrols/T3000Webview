@@ -549,7 +549,6 @@
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
-                      item.cat !== 'General' ||
                       item.type === 'Weld_General' ||
                       item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"

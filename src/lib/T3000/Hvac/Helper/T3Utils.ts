@@ -52,37 +52,41 @@ class T3Utils {
   }
 
   public ShowLOAD_GRAPHIC_ENTRY_RESSuccess() {
-    this.$q.notify({
-      message: "Graphic loaded successfully",
-      color: "positive",
-      icon: "check",
-      actions: [
-        {
-          label: "Dismiss",
-          color: "white",
-          handler: () => {
-            /* ... */
-          },
-        },
-      ],
-    });
+    // this.$q.notify({
+    //   message: "Graphic loaded successfully",
+    //   color: "positive",
+    //   icon: "check",
+    //   actions: [
+    //     {
+    //       label: "Dismiss",
+    //       color: "white",
+    //       handler: () => {
+    //         /* ... */
+    //       },
+    //     },
+    //   ],
+    // });
+
+    console.log('= T3Utils Graphic loaded successfully');
   }
 
   public ShowGET_INITIAL_DATA_RESSuccess() {
-    this.$q.notify({
-      message: "Initial data loaded successfully",
-      color: "positive",
-      icon: "check",
-      actions: [
-        {
-          label: "Dismiss",
-          color: "white",
-          handler: () => {
-            /* ... */
-          },
-        },
-      ],
-    });
+    // this.$q.notify({
+    //   message: "Initial data loaded successfully",
+    //   color: "positive",
+    //   icon: "check",
+    //   actions: [
+    //     {
+    //       label: "Dismiss",
+    //       color: "white",
+    //       handler: () => {
+    //         /* ... */
+    //       },
+    //     },
+    //   ],
+    // });
+
+    console.log('= T3Utils Initial data loaded successfully');
   }
 
   public ShowWebSocketError(errorMsg: string) {
