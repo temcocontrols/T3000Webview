@@ -185,12 +185,12 @@ export const tools = [
     icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
     cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#000",
-        type: "color",
-        label: "Background Color",
-        id: 1,
-      },
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
       fillColor: {
         value: "#659dc5",
         type: "color",

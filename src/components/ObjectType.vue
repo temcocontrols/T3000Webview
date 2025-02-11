@@ -127,6 +127,7 @@
 
       <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
       <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
+      <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -170,6 +171,7 @@ import Weld from "./ObjectTypes/Weld.vue";
 
 import CircleEl from "./Basic/Circle.vue";
 import RectangleEl from "./Basic/Rectangle.vue";
+import HexagonEl from "./Basic/Hexagon.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -206,7 +208,8 @@ export default defineComponent({
     Wall,
     Weld,
     CircleEl,
-    RectangleEl
+    RectangleEl,
+    HexagonEl
   },
   props: {
     item: {

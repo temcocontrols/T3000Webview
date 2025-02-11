@@ -37,7 +37,7 @@ export default defineComponent({
   color: v-bind(fillColor);
 }
 
-.in-alarm .circle {
+.in-alarm .rectangle {
   animation: color_change 1s infinite;
 }
 </style>
