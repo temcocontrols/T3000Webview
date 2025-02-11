@@ -124,6 +124,8 @@
       <Weld v-else-if="item.type === 'Weld'" class="weld" v-bind:weldModel="item"
         @update-weld-model="updateWeldModel" />
       <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
+
+      <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -165,6 +167,8 @@ import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
 import Wall from "./ObjectTypes/Wall.vue";
 import Weld from "./ObjectTypes/Weld.vue";
 
+import CircleEl from "./Basic/Circle.vue";
+
 export default defineComponent({
   name: "ObjectType",
   components: {
@@ -199,6 +203,7 @@ export default defineComponent({
     RoomTemperature,
     Wall,
     Weld,
+    CircleEl
   },
   props: {
     item: {
@@ -217,14 +222,17 @@ export default defineComponent({
     "updateWeldModel",
   ],
   setup(props, { emit }) {
+
+    console.log('= Object Type', props.item);
+
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
     const dispalyText = computed(() => {
 
-      console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
-        props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
+      // console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
+      //   props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
 
       if (!props.item.t3Entry) {
         return "";

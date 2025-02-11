@@ -548,8 +548,14 @@
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
+                    <object-type ref="objectsRef" v-if="item.cat === 'General' && item.type === 'G_Circle'" :item="item"
+                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
+                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
+                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
+
                     <CanvasShape v-if="
-                      item.cat === 'General' ||
+                      (item.cat === 'General' && item.type !== 'G_Circle') ||
                       item.type === 'Weld_General' ||
                       item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
@@ -1768,7 +1774,7 @@ function addLibItem(items, size, pos) {
         true
       );
       setTimeout(() => {
-        Hvac.IdxPage.  refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       }, 1);
     }, 10);
   }, 10);
@@ -1924,7 +1930,7 @@ function rotate90(item, minues = false) {
   } else {
     item.rotate = item.rotate - 90;
   }
-  Hvac.IdxPage. refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item horizontally
@@ -1935,7 +1941,7 @@ function flipH(item) {
   } else {
     item.scaleX = 1;
   }
-  Hvac.IdxPage. refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item vertically
@@ -1946,7 +1952,7 @@ function flipV(item) {
   } else {
     item.scaleY = 1;
   }
-  Hvac.IdxPage. refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Bring an item to the front by increasing its z-index
@@ -2203,7 +2209,7 @@ function save(notify = false, saveToT3 = false) {
   Hvac.IdxPage.save(notify, saveToT3);
 }
 
-function refreshMoveable(){
+function refreshMoveable() {
   Hvac.IdxPage.refreshMoveable();
 }
 
@@ -2339,7 +2345,7 @@ keycon.keydown((e) => {
   }
   // Refresh the moveable object after movement
   if (["up", "down", "left", "right"].includes(e.key)) {
-    Hvac.IdxPage. refreshMoveable();
+    Hvac.IdxPage.refreshMoveable();
   }
 });
 
@@ -2699,7 +2705,7 @@ function weldSelected() {
     }
   });
 
-  Hvac.IdxPage. refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Undo the last action
@@ -2880,7 +2886,7 @@ function executeImportFromJson() {
         setTimeout(() => {
           IdxUtils.refreshMoveableGuides();
         }, 100);
-        Hvac.IdxPage.  refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2895,7 +2901,7 @@ function executeImportFromJson() {
   setTimeout(() => {
     IdxUtils.refreshMoveableGuides();
   }, 100);
-  Hvac.IdxPage.  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // // Computed property for zoom control
@@ -3523,7 +3529,7 @@ function rotate90Selected(minues = false) {
     },
     true
   );
-  Hvac.IdxPage. refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Save selected items to the clipboard
