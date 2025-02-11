@@ -41,7 +41,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -128,6 +128,7 @@
       <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
       <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
       <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
+      <StepEl v-else-if="item.type === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -172,6 +173,7 @@ import Weld from "./ObjectTypes/Weld.vue";
 import CircleEl from "./Basic/Circle.vue";
 import RectangleEl from "./Basic/Rectangle.vue";
 import HexagonEl from "./Basic/Hexagon.vue";
+import StepEl from "./Basic/Step.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -209,7 +211,8 @@ export default defineComponent({
     Weld,
     CircleEl,
     RectangleEl,
-    HexagonEl
+    HexagonEl,
+    StepEl
   },
   props: {
     item: {
@@ -245,7 +248,7 @@ export default defineComponent({
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
-      console.log('= Ot range,t3e', range,props.item.t3Entry);
+      console.log('= Ot range,t3e', range, props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
