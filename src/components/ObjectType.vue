@@ -126,6 +126,7 @@
       <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
 
       <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
+      <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -168,6 +169,7 @@ import Wall from "./ObjectTypes/Wall.vue";
 import Weld from "./ObjectTypes/Weld.vue";
 
 import CircleEl from "./Basic/Circle.vue";
+import RectangleEl from "./Basic/Rectangle.vue";
 
 export default defineComponent({
   name: "ObjectType",
@@ -203,7 +205,8 @@ export default defineComponent({
     RoomTemperature,
     Wall,
     Weld,
-    CircleEl
+    CircleEl,
+    RectangleEl
   },
   props: {
     item: {

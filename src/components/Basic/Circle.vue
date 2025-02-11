@@ -4,7 +4,7 @@
     xmlns:svg="http://www.w3.org/2000/svg" height="100%" width="100%" class="object-svg"
     :class="{ active: active, 'in-alarm': inAlarm }">
     <g fill="currentColor" transform="translate(-5.4940996,-5.5390997)">
-      <g class="pump">
+      <g class="circle">
         <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003"  />
       </g>
     </g>
@@ -40,7 +40,7 @@ export default defineComponent({
   color: v-bind(fillColor);
 }
 
-.in-alarm .pump {
+.in-alarm .circle {
   animation: color_change 1s infinite;
 }
 </style>

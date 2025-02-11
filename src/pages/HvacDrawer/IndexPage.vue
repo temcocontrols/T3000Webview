@@ -542,20 +542,14 @@
 
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
+                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'"
                       :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
-                    <object-type ref="objectsRef" v-if="item.cat === 'General' && item.type === 'G_Circle'" :item="item"
-                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
-
                     <CanvasShape v-if="
-                      (item.cat === 'General' && item.type !== 'G_Circle') ||
+                      item.cat !== 'General' ||
                       item.type === 'Weld_General' ||
                       item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
