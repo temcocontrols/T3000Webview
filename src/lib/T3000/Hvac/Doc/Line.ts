@@ -1,7 +1,6 @@
 
 import Models from '../Data/Constant';
 import * as Utils from '../Helper/Helper.Utils';
-import Point from '../Data/Point';
 
 class Line {
 

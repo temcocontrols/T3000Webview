@@ -1,7 +1,6 @@
 
-class GlobalData{
-
-
+const GlobalData = {
+  optManager: null
 }
 
 export default GlobalData
