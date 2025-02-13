@@ -14,6 +14,7 @@ import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Utils from "../Helper/T3Utils"
+import { init } from "echarts"
 
 let panzoomInstance = null;
 
@@ -47,6 +48,21 @@ class IdxPage {
     this.resetPanzoom();
   }
 
+  initPage5() {
+    Hvac.WebClient.initMessageHandler();
+    this.initGlobalNav();
+    this.isLoggedIn();
+    this.restoreAppState();
+    this.setDocMarginOffset();
+    // this.initPanzoom();
+    this.initMessageClient();
+    // this.initScorller();
+    this.initAutoSaveInterval();
+    this.initWindowListener5();
+    this.refreshMoveableGuides();
+    // this.resetPanzoom();
+  }
+
   initQuasar(quasar) {
     this.$q = quasar;
     Hvac.WebClient.initQuasar(this.$q);
@@ -76,6 +92,20 @@ class IdxPage {
 
     window.addEventListener("resize", () => {
       IdxPage.restDocumentAreaPosition(null);
+      // console.log('= Idx window resize', documentAreaPosition.value);
+    });
+  }
+
+  initWindowListener5() {
+    // Save the state before the window is unloaded
+    window.addEventListener("beforeunload", function (event) {
+      // save(true, true);
+      Hvac.IdxPage.clearAutoSaveInterval();
+      Hvac.WsClient.clearInitialDataInterval();
+    });
+
+    window.addEventListener("resize", () => {
+      // IdxPage.restDocumentAreaPosition(null);
       // console.log('= Idx window resize', documentAreaPosition.value);
     });
   }
