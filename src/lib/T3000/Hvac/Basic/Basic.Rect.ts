@@ -3,6 +3,7 @@
 
 import HvacSVG from "../Helper/SVG.t2"
 import Element from "./Basic.Element"
+import Utils1 from "../Helper/Utils1"
 
 class Rect extends Element {
 
@@ -30,8 +31,8 @@ class Rect extends Element {
   SetSize(width: number, height: number): void {
     console.log("= B.Rect SetSize input:", { width, height });
 
-    const roundedWidth = Global.RoundCoord(width);
-    const roundedHeight = Global.RoundCoord(height);
+    const roundedWidth = Utils1.RoundCoord(width);
+    const roundedHeight = Utils1.RoundCoord(height);
 
     this.geometryBBox.width = roundedWidth;
     this.geometryBBox.height = roundedHeight;

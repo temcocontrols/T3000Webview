@@ -257,12 +257,12 @@ class Formatter {
     };
   }
 
-  CalcStyleMetrics = function (style, doc) {
+  static CalcStyleMetrics(style, doc) {
     let textContainer = new HvacSVG.Container(HvacSVG.create('text'));
     textContainer.attr('xml:space', 'preserve');
     textContainer.attr('text-anchor', 'start');
 
-    let textRunElem = this.CreateTextRunElem(' .', style, doc, false, null);
+    let textRunElem = Formatter.CreateTextRunElem(' .', style, doc, false, null);
     textContainer.add(textRunElem);
     textContainer.attr('fill-opacity', 0);
 
@@ -315,11 +315,11 @@ class Formatter {
     return metrics;
   }
 
-  MakeIDFromStyle = function (style) {
+  static MakeIDFromStyle(style) {
     return (style.font + '_' + style.size + '_' + style.weight + '_' + style.style + '_' + style.baseOffset).replace(/ /g, '');
   }
 
-  CreateTextRunElem = function (text, style, doc, linksDisabled, dataStyleOverride) {
+  static CreateTextRunElem(text, style, doc, linksDisabled, dataStyleOverride) {
     const tspan = new HvacSVG.Container(HvacSVG.create('tspan'));
     let content = String(text).replace(/\n/g, '');
     let scale = 1;

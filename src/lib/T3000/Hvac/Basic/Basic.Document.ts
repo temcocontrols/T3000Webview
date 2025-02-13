@@ -1,68 +1,50 @@
-import HvacSVG from '../Helper/Helper.SVG';
-import Container from "./Basic.Container";
-import Rect from "./Basic.Rect";
-import Layer from "./Basic.Layer";
-import Models from '../Data/Constant';
-import Path from './Basic.Path';
-import Text from './Basic.Text';
-import * as Utils from '../Helper/Helper.Utils';
-import Formatter from './Basic.Text.Formatter';
 
-interface DocInfo {
-  dispX: number;
-  dispY: number;
-  dispWidth: number;
-  dispHeight: number;
-  dispDpiX: number;
-  dispDpiY: number;
-  scrollX: number;
-  scrollY: number;
-  docDpi: number;
-  docScale: number;
-  docWidth: number;
-  docHeight: number;
-  docToScreenScale: number;
-  docDpiScale: number;
-  docVisX: number;
-  docVisY: number;
-  docVisWidth: number;
-  docVisHeight: number;
-  docScreenX: number;
-  docScreenY: number;
-  docScreenWidth: number;
-  docScreenHeight: number;
-  maxScrollX: number;
-  maxScrollY: number;
-}
+
+
+import HvacSVG from "../Helper/SVG.t2"
+import $ from 'jquery'
+import Rect from './Basic.Rect'
+import Container from './Basic.Container'
+import RRect from './Basic.RRect'
+import Oval from './Basic.Oval'
+import Line from './Basic.Line'
+import PolyLine from './Basic.PolyLine'
+import PolyPolyLine from './Basic.PolyPolyLine'
+import Polygon from './Basic.Polygon'
+import Path from './Basic.Path'
+import Group from './Basic.Group'
+import Layer from './Basic.Layer'
+import Symbol from './Basic.Symbol'
+import ShapeCopy from './Basic.ShapeCopy'
+import ShapeContainer from './Basic.ShapeContainer'
+import Text from './Basic.Text'
+import Formatter from "./Basic.Text.Formatter"
+import Utils1 from "../Helper/Utils1"
+import Utils2 from "../Helper/Utils2"
+import Utils3 from "../Helper/Utils3"
+import ConstantData from "../Data/ConstantData"
 
 class Document extends Container {
-  public parentElem: string;
-  public docInfo: DocInfo;
-  public activeEdit: any;
-  public documentLayerID: any;
-  public textMetricsCache: any;
+
+  public parentElem: any;
   public svgObj: any;
+  public docInfo: any;
+  public fontList: any;
+  public activeEdit: any;
+  public spellChecker: any;
+  public documentLayerID: any;
+  public imageLoadRefCount: number;
 
-  constructor(elementId: string) {
+  constructor(parentElement: string, fontList: any) {
     super();
+    console.log('= B.Document constructor', this);
 
-    this.parentElem = elementId;
+    this.parentElem = parentElement;
+    if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
+      this.parentElem = '#' + this.parentElem;
+    }
 
-    this.svgObj = HvacSVG.svg(this.parentElem);
-
-    const svgT1 = HvacSVG("#" + this.parentElem);
-    console.log('Document parentElem svgT1', svgT1);
-
-
-    this.InitDocInfo();
-    this.activeEdit = null;
-    this.documentLayerID = null;
-    this.InitElement(this, null);
-    this.InitializeContainer();
-    this.textMetricsCache = {};
-  }
-
-  InitDocInfo = () => {
+    this.svgObj = HvacSVG.svg($(this.parentElem)[0]);
     this.docInfo = {
       dispX: 0,
       dispY: 0,
@@ -89,9 +71,93 @@ class Document extends Container {
       maxScrollX: 0,
       maxScrollY: 0
     };
+
+    this.fontList = fontList;
+    this.activeEdit = null;
+    this.spellChecker = null;
+    this.documentLayerID = null;
+    this.imageLoadRefCount = 0;
+
+    console.log('= B.Document constructor', this);
+    this.InitElement(this, null);
+    this.InitializeContainer();
   }
 
-  InitializeContainer = () => {
+  CreateShape(shapeType: number) {
+    console.log('= B.Document CreateShape input shapeType:', shapeType);
+    let basicShape = null;
+
+    switch (shapeType) {
+      case Document.CreateShapeType.RECT:
+        basicShape = new Rect();
+        break;
+      case Document.CreateShapeType.RRECT:
+        basicShape = new RRect();
+        break;
+      case Document.CreateShapeType.OVAL:
+        basicShape = new Oval();
+        break;
+      case Document.CreateShapeType.LINE:
+        basicShape = new Line();
+        break;
+      case Document.CreateShapeType.POLYLINE:
+        basicShape = new PolyLine();
+        break;
+      case Document.CreateShapeType.POLYPOLYLINE:
+        basicShape = new PolyPolyLine();
+        break;
+      case Document.CreateShapeType.POLYLINECONTAINER:
+        basicShape = new PolyLine();
+        break;
+      case Document.CreateShapeType.POLYGON:
+        basicShape = new Polygon();
+        break;
+      case Document.CreateShapeType.PATH:
+        basicShape = new Path();
+        break;
+      case Document.CreateShapeType.TEXT:
+        basicShape = new Text();
+        break;
+      case Document.CreateShapeType.IMAGE:
+        basicShape = new Image();
+        break;
+      case Document.CreateShapeType.GROUP:
+        basicShape = new Group();
+        break;
+      case Document.CreateShapeType.LAYER:
+        basicShape = new Layer();
+        break;
+      case Document.CreateShapeType.SYMBOL:
+        basicShape = new Symbol();
+        break;
+      case Document.CreateShapeType.SHAPECOPY:
+        basicShape = new ShapeCopy();
+        break;
+      case Document.CreateShapeType.SHAPECONTAINER:
+        basicShape = new ShapeContainer();
+        break;
+      default:
+        console.error('= B.Document CreateShape unknown shapeType:', shapeType);
+        return null;
+    }
+
+    try {
+      if (basicShape) {
+        basicShape.CreateElement(this, null);
+        console.log('= B.Document CreateShape output basicShape:', basicShape);
+        return basicShape;
+      } else {
+        console.error('= B.Document CreateShape failed to create shape for shapeType:', shapeType);
+        return null;
+      }
+    } catch (error) {
+      console.error('= B.Document CreateShape error:', error);
+      throw error;
+    }
+  }
+
+  InitializeContainer() {
+    console.log('= B.Document InitializeContainer input');
     this.GetDeviceInfo();
     this.docInfo.docDpi = this.docInfo.dispDpiX;
     this.docInfo.docWidth = this.docInfo.dispWidth;
@@ -100,107 +166,43 @@ class Document extends Container {
     this.docInfo.scrollX = 0;
     this.docInfo.scrollY = 0;
     this.CalcWorkArea();
-    this.ApplyDocumentTransform(null);
+    this.ApplyDocumentTransform();
+    console.log('= B.Document InitializeContainer output', this.docInfo);
   }
 
-  SetDocumentLayer = (layerID: string) => {
-    this.documentLayerID = layerID;
-  }
+  GetDeviceInfo() {
+    console.log('= B.Document GetDeviceInfo input');
 
-  GetDeviceInfo = () => {
-    let shape = this.CreateShape(Models.CreateShapeType.RECT);
+    const rect = this.CreateShape(Document.CreateShapeType.RECT);
+    rect.SetFillOpacity(0);
+    rect.SetStrokeWidth(0);
+    rect.SetSize('100in', '100in');
+    this.AddElement(rect);
 
-    console.log('Document GetDeviceInfo 1 shape', shape);
-
-    shape.SetFillOpacity(0);
-    shape.SetStrokeWidth(0);
-    shape.SetSize('100in', '100in');
-
-    this.AddElement(shape, null);
-
-    let bbox = shape.GetBBox();
+    const bbox = rect.GetBBox();
     this.docInfo.dispDpiX = bbox.width / 100;
     this.docInfo.dispDpiY = bbox.height / 100;
+    this.RemoveElement(rect);
 
-    this.RemoveElement(shape);
+    this.docInfo.dispWidth = $(this.parentElem).innerWidth();
+    this.docInfo.dispHeight = $(this.parentElem).innerHeight();
 
-    this.docInfo.dispWidth = document.getElementById(this.parentElem).clientWidth;
-    this.docInfo.dispHeight = document.getElementById(this.parentElem).clientHeight;
+    console.log('= B.Document GetDeviceInfo output', this.docInfo);
   }
 
-  CreateShape = (shapeType) => {
+  CalcWorkArea() {
+    console.log('= B.Document CalcWorkArea input');
 
-    let shape = null;
-    switch (shapeType) {
-      case Models.CreateShapeType.RECT:
-        shape = new Rect();
-        break;
-      case Models.CreateShapeType.RRECT:
-        // shape = new RRect;
-        break;
-      case Models.CreateShapeType.OVAL:
-        // shape = new Oval;
-        break;
-      case Models.CreateShapeType.LINE:
-        // shape = new Line;
-        break;
-      case Models.CreateShapeType.POLYLINE:
-        // shape = new PolyLine;
-        break;
-      case Models.CreateShapeType.POLYPOLYLINE:
-        // shape = new PolyPolyLine;
-        break;
-      case Models.CreateShapeType.POLYLINECONTAINER:
-        // shape = new PolyLine;
-        break;
-      case Models.CreateShapeType.POLYGON:
-        // shape = new Polygon;
-        break;
-      case Models.CreateShapeType.PATH:
-        shape = new Path();
-        break;
-      case Models.CreateShapeType.TEXT:
-        shape = new Text();
-        break;
-      case Models.CreateShapeType.IMAGE:
-        // shape = new Image;
-        break;
-      case Models.CreateShapeType.GROUP:
-        // shape = new Group;
-        break;
-      case Models.CreateShapeType.LAYER:
-        shape = new Layer();
-        break;
-      case Models.CreateShapeType.SYMBOL:
-        // shape = new Symbol;
-        break;
-      case Models.CreateShapeType.SHAPECOPY:
-        // shape = new ShapeCopy;
-        break;
-      case Models.CreateShapeType.SHAPECONTAINER:
-        // shape = new ShapeContainer;
-        break;
-      default:
-        break;
-    }
+    const offset = $(this.parentElem).offset();
+    console.log('= B.Document CalcWorkArea offset:', offset);
 
-    shape.CreateElement(this, null);
-
-    console.log('Document CreateElement 4 shape', this);
-    console.log('Document CreateElement 5 shape', shape);
-
-    return shape;
-  }
-
-  CalcWorkArea = () => {
-    var parentElemRect = document.getElementById(this.parentElem).getBoundingClientRect();
-    this.docInfo.dispX = parentElemRect.left;
-    this.docInfo.dispY = parentElemRect.top;
-    this.docInfo.dispWidth = parentElemRect.width;
-    this.docInfo.dispHeight = parentElemRect.height;
-    this.docInfo.scrollX = document.getElementById(this.parentElem).scrollLeft;
-    this.docInfo.scrollY = document.getElementById(this.parentElem).scrollTop;
-    this.docInfo.docToScreenScale = this.docInfo.dispDpiX / this.docInfo.docDpi * this.docInfo.docScale;
+    this.docInfo.dispX = offset.left;
+    this.docInfo.dispY = offset.top;
+    this.docInfo.dispWidth = $(this.parentElem).innerWidth();
+    this.docInfo.dispHeight = $(this.parentElem).innerHeight();
+    this.docInfo.scrollX = $(this.parentElem).scrollLeft();
+    this.docInfo.scrollY = $(this.parentElem).scrollTop();
+    this.docInfo.docToScreenScale = (this.docInfo.dispDpiX / this.docInfo.docDpi) * this.docInfo.docScale;
     this.docInfo.docDpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
     this.docInfo.docScreenX = this.docInfo.dispX - this.docInfo.scrollX;
     this.docInfo.docScreenY = this.docInfo.dispY - this.docInfo.scrollY;
@@ -212,36 +214,20 @@ class Document extends Container {
     this.docInfo.docVisHeight = Math.min(this.docInfo.dispHeight / this.docInfo.docToScreenScale, this.docInfo.docHeight);
     this.docInfo.docVisX = Math.min(this.docInfo.scrollX / this.docInfo.docToScreenScale, this.docInfo.docWidth - this.docInfo.docVisWidth);
     this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
+
+    console.log('= B.Document CalcWorkArea output', this.docInfo);
   }
 
-  ConvertWindowToDocCoords = (x: number, y: number) => {
-    return {
-      x: (x - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
-      y: (y - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
-    };
-  }
+  ApplyDocumentTransform(applyToAllLayers: boolean) {
+    console.log('= B.Document ApplyDocumentTransform input applyToAllLayers:', applyToAllLayers);
 
-  ConvertDocToWindowCoords = (docX: number, docY: number) => {
-    return {
-      x: docX * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
-      y: docY * this.docInfo.docToScreenScale + this.docInfo.docScreenY
-    };
-  }
-
-  SetDocumentScale = (scale: number) => {
-    this.SetDocumentMetrics({
-      scale: scale
-    });
-  }
-
-  ApplyDocumentTransform = (layerID) => {
     const elementCount = this.ElementCount();
     this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
       height: this.docInfo.docScreenHeight
     });
 
-    if (!layerID) {
+    if (!applyToAllLayers) {
       for (let i = 0; i < elementCount; i++) {
         const element = this.GetElementByIndex(i);
         if (element instanceof Layer) {
@@ -259,27 +245,360 @@ class Document extends Container {
         }
       }
     }
+
+    console.log('= B.Document ApplyDocumentTransform output');
   }
 
-  SetDocumentSize = (width: number, height: number) => {
+  CalcScaleToFit(containerWidth: number, containerHeight: number, docWidth?: number, docHeight?: number) {
+    console.log('= B.Document CalcScaleToFit input', { containerWidth, containerHeight, docWidth, docHeight });
+
+    if (!docWidth) {
+      docWidth = this.docInfo.docWidth;
+    }
+    if (!docHeight) {
+      docHeight = this.docInfo.docHeight;
+    }
+
+    const dpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
+    let scaleWidth = containerWidth / (docWidth * dpiScale);
+    let scaleHeight = containerHeight / (docHeight * dpiScale);
+    let scale = Math.min(scaleWidth, scaleHeight);
+
+    if (scale > 1) {
+      scale = 1;
+    }
+
+    const result = {
+      scale: scale,
+      width: this.docInfo.docWidth * dpiScale * scale,
+      height: this.docInfo.docHeight * dpiScale * scale
+    };
+
+    console.log('= B.Document CalcScaleToFit output', result);
+    return result;
+  }
+
+  SetDocumentSize(width: number, height: number) {
+    console.log('= B.Document SetDocumentSize input', { width, height });
+
     this.SetDocumentMetrics({
       width: width,
       height: height
     });
+
+    console.log('= B.Document SetDocumentSize output', this.docInfo);
   }
 
-  SetDocumentMetrics = (metrics: { width?: number, height?: number, dpi?: number, scale?: number }) => {
-    this.docInfo.docWidth = metrics.width ?? this.docInfo.docWidth;
-    this.docInfo.docHeight = metrics.height ?? this.docInfo.docHeight;
-    this.docInfo.docDpi = metrics.dpi ?? this.docInfo.docDpi;
-    this.docInfo.docScale = metrics.scale ?? this.docInfo.docScale;
+  GetDocumentSize() {
+    console.log('= B.Document GetDocumentSize input');
+
+    const result = {
+      width: this.docInfo.docWidth,
+      height: this.docInfo.docHeight
+    };
+
+    console.log('= B.Document GetDocumentSize output', result);
+    return result;
+  }
+
+  SetDocumentDPI(dpi: number) {
+    console.log('= B.Document SetDocumentDPI input', { dpi });
+
+    this.SetDocumentMetrics({
+      dpi: dpi
+    });
+
+    console.log('= B.Document SetDocumentDPI output', this.docInfo);
+  }
+
+  SetDocumentScale(scale: number) {
+    console.log('= B.Document SetDocumentScale input', { scale });
+
+    this.SetDocumentMetrics({
+      scale: scale
+    });
+
+    console.log('= B.Document SetDocumentScale output', this.docInfo);
+  }
+
+  SetDocumentMetrics(metrics: { width?: number, height?: number, dpi?: number, scale?: number }) {
+    console.log('= B.Document SetDocumentMetrics input', metrics);
+
+    this.docInfo.docWidth = metrics.width || this.docInfo.docWidth;
+    this.docInfo.docHeight = metrics.height || this.docInfo.docHeight;
+    this.docInfo.docDpi = metrics.dpi || this.docInfo.docDpi;
+    this.docInfo.docScale = metrics.scale || this.docInfo.docScale;
+
     this.CalcWorkArea();
-    this.ApplyDocumentTransform(null);
+    this.ApplyDocumentTransform();
+
+    console.log('= B.Document SetDocumentMetrics output', this.docInfo);
   }
 
-  GetFormattingLayer = () => {
-    let formattingLayer = this.GetLayer('__FORMATTING__');
+  CalcScrollToVisible(x: number, y: number) {
+    console.log('= B.Document CalcScrollToVisible input', { x, y });
 
+    let xOffset = 0;
+    let yOffset = 0;
+    const visibleRight = this.docInfo.docVisX + this.docInfo.docVisWidth;
+    const visibleBottom = this.docInfo.docVisY + this.docInfo.docVisHeight;
+
+    x = Math.max(0, Math.min(x, this.docInfo.docWidth));
+    y = Math.max(0, Math.min(y, this.docInfo.docHeight));
+
+    if (x < this.docInfo.docVisX) {
+      xOffset = x - this.docInfo.docVisX;
+    } else if (x > visibleRight) {
+      xOffset = x - visibleRight;
+    }
+
+    if (y < this.docInfo.docVisY) {
+      yOffset = y - this.docInfo.docVisY;
+    } else if (y > visibleBottom) {
+      yOffset = y - visibleBottom;
+    }
+
+    if (xOffset || yOffset) {
+      const result = {
+        xOff: this.docInfo.scrollX + xOffset * this.docInfo.docToScreenScale,
+        yOff: this.docInfo.scrollY + yOffset * this.docInfo.docToScreenScale
+      };
+      console.log('= B.Document CalcScrollToVisible output', result);
+      return result;
+    }
+
+    console.log('= B.Document CalcScrollToVisible output', null);
+    return null;
+  }
+
+  GetWorkArea() {
+    console.log('= B.Document GetWorkArea input');
+    const result = this.docInfo;
+    console.log('= B.Document GetWorkArea output', result);
+    return result;
+  }
+
+  ConvertDocToWindowCoords(docX: number, docY: number) {
+    console.log('= B.Document ConvertDocToWindowCoords input', { docX, docY });
+
+    const windowCoords = {
+      x: docX * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
+      y: docY * this.docInfo.docToScreenScale + this.docInfo.docScreenY
+    };
+
+    console.log('= B.Document ConvertDocToWindowCoords output', windowCoords);
+    return windowCoords;
+  }
+
+  ConvertDocToWindowLength(length: number) {
+    console.log('= B.Document ConvertDocToWindowLength input', { length });
+    const result = length * this.docInfo.docToScreenScale;
+    console.log('= B.Document ConvertDocToWindowLength output', { result });
+    return result;
+  }
+
+  ConvertOffsetToDocCoords(offsetX: number, offsetY: number) {
+    console.log('= B.Document ConvertOffsetToDocCoords input', { offsetX, offsetY });
+
+    const docCoords = {
+      x: offsetX / this.docInfo.docToScreenScale,
+      y: offsetY / this.docInfo.docToScreenScale
+    };
+
+    console.log('= B.Document ConvertOffsetToDocCoords output', docCoords);
+    return docCoords;
+  }
+
+  ConvertWindowToDocCoords(windowX: number, windowY: number) {
+    console.log('= B.Document ConvertWindowToDocCoords input', { windowX, windowY });
+
+    const docCoords = {
+      x: (windowX - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
+      y: (windowY - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
+    };
+
+    console.log('= B.Document ConvertWindowToDocCoords output', docCoords);
+    return docCoords;
+  }
+
+  ConvertWindowToDocLength(length: number) {
+    console.log('= B.Document ConvertWindowToDocLength input', { length });
+    const result = length / this.docInfo.docToScreenScale;
+    console.log('= B.Document ConvertWindowToDocLength output', { result });
+    return result;
+  }
+
+  ConvertWindowToElemCoords(windowX: number, windowY: number, element: any) {
+    console.log('= B.Document ConvertWindowToElemCoords input', { windowX, windowY, element });
+
+    const svgPoint = this.DOMElement().createSVGPoint();
+    const svgElement = this.DOMElement();
+
+    svgPoint.x = windowX;
+    svgPoint.y = windowY;
+
+    const transformedPoint = svgPoint
+      .matrixTransform(svgElement.getScreenCTM().inverse())
+      .matrixTransform(element.getTransformToElement(svgElement).inverse());
+
+    const result = {
+      x: transformedPoint.x,
+      y: transformedPoint.y
+    };
+
+    console.log('= B.Document ConvertWindowToElemCoords output', result);
+    return result;
+  }
+
+  ConvertElemToWindowCoords(elemX: number, elemY: number, element: any) {
+    console.log('= B.Document ConvertElemToWindowCoords input', { elemX, elemY, element });
+
+    const svgPoint = this.DOMElement().createSVGPoint();
+    const svgElement = this.DOMElement();
+
+    svgPoint.x = elemX;
+    svgPoint.y = elemY;
+
+    const transformedPoint = svgPoint
+      .matrixTransform(element.getTransformToElement(svgElement))
+      .matrixTransform(svgElement.getScreenCTM());
+
+    const result = {
+      x: transformedPoint.x,
+      y: transformedPoint.y
+    };
+
+    console.log('= B.Document ConvertElemToWindowCoords output', result);
+    return result;
+  }
+
+  RotateAroundCenterPt(point, center, angle) {
+    console.log('= B.Document RotateAroundCenterPt input', { point, center, angle });
+
+    const svgPoint = this.DOMElement().createSVGPoint();
+    const svgMatrix = this.DOMElement().createSVGMatrix();
+
+    svgPoint.x = point.x - center.x;
+    svgPoint.y = point.y - center.y;
+
+    const rotatedPoint = svgPoint.matrixTransform(svgMatrix.rotate(angle));
+
+    const result = {
+      x: rotatedPoint.x + center.x,
+      y: rotatedPoint.y + center.y
+    };
+
+    console.log('= B.Document RotateAroundCenterPt output', result);
+    return result;
+  }
+
+  CalculateRotatedOffsetForResize(element, target, angle) {
+    console.log('= B.Document CalculateRotatedOffsetForResize input', { element, target, angle });
+
+    const elementCenter = {
+      x: element.x + element.width / 2,
+      y: element.y + element.height / 2
+    };
+
+    const targetCenter = {
+      x: target.x + target.width / 2,
+      y: target.y + target.height / 2
+    };
+
+    const rotatedPoint = this.RotateAroundCenterPt(targetCenter, elementCenter, angle);
+
+    const result = {
+      x: rotatedPoint.x - targetCenter.x,
+      y: rotatedPoint.y - targetCenter.y
+    };
+
+    console.log('= B.Document CalculateRotatedOffsetForResize output', result);
+    return result;
+  }
+
+
+  AddLayer(layerID: string) {
+    console.log('= B.Document AddLayer input', { layerID });
+
+    const layer = this.CreateShape(Document.CreateShapeType.LAYER);
+    layer.SetID(layerID);
+    this.AddElement(layer);
+    this.ApplyDocumentTransform();
+    $(layer.svgObj.node).data('layerID', layerID);
+
+    console.log('= B.Document AddLayer output', layer);
+    return layer;
+  }
+
+  RemoveLayer(layerID: string) {
+    console.log('= B.Document RemoveLayer input', { layerID });
+
+    const layer = this.GetElementByID(layerID);
+    if (layer) {
+      this.RemoveElement(layer);
+      console.log('= B.Document RemoveLayer removed layer', { layerID });
+    } else {
+      console.warn('= B.Document RemoveLayer layer not found', { layerID });
+    }
+
+    console.log('= B.Document RemoveLayer output');
+  }
+
+  GetLayer(layerID: string) {
+    console.log('= B.Document GetLayer input', { layerID });
+
+    let element;
+    let layer = null;
+    const elementCount = this.ElementCount();
+
+    for (let i = 0; i < elementCount; i++) {
+      element = this.GetElementByIndex(i);
+      if (element instanceof Layer && element.GetID() === layerID) {
+        layer = element;
+        break;
+      }
+    }
+
+    console.log('= B.Document GetLayer output', { layer });
+    return layer;
+  }
+
+  GetDocumentLayer() {
+    console.log('= B.Document GetDocumentLayer input');
+
+    let element;
+    let documentLayer = null;
+    const elementCount = this.ElementCount();
+
+    for (let i = 0; i < elementCount; i++) {
+      element = this.GetElementByIndex(i);
+      if (element instanceof Layer) {
+        if (this.documentLayerID) {
+          if (this.documentLayerID === element.GetID()) {
+            documentLayer = element;
+            break;
+          }
+        } else if (element.IsScalingAllowed()) {
+          documentLayer = element;
+          break;
+        }
+      }
+    }
+
+    console.log('= B.Document GetDocumentLayer output', documentLayer);
+    return documentLayer;
+  }
+
+  SetDocumentLayer(layerID: string) {
+    console.log('= B.Document SetDocumentLayer input', { layerID });
+    this.documentLayerID = layerID;
+    console.log('= B.Document SetDocumentLayer output', { documentLayerID: this.documentLayerID });
+  }
+
+  GetFormattingLayer() {
+    console.log('= B.Document GetFormattingLayer input');
+
+    let formattingLayer = this.GetLayer('__FORMATTING__');
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
       formattingLayer = null;
     }
@@ -288,146 +607,366 @@ class Document extends Container {
       formattingLayer = this.AddLayer('__FORMATTING__');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', "");
+      this.MoveLayer('__FORMATTING__', Document.LayerMoveType.BOTTOM);
       formattingLayer.SetOpacity(0);
-      this.ApplyDocumentTransform(null);
+      this.ApplyDocumentTransform();
     }
 
+    console.log('= B.Document GetFormattingLayer output', formattingLayer);
     return formattingLayer;
   }
 
-  AddLayer = (layerID: string) => {
-    const layer = this.CreateShape(Models.CreateShapeType.LAYER);
+  GetPreviousLayer(layerID: string) {
+    console.log('= B.Document GetPreviousLayer input', { layerID });
 
-    layer.SetID(layerID);
-    this.AddElement(layer, null);
-    this.ApplyDocumentTransform(layerID);
+    let previousLayer = null;
+    const elementCount = this.ElementCount();
 
-    layer.svgObj.data("id", Utils.GenerateUUID());
-    return layer;
-  }
-
-  GetLayer = (layerID: string): Layer | null => {
-    for (let i = 0; i < this.ElementCount(); i++) {
+    for (let i = 0; i < elementCount; i++) {
       const element = this.GetElementByIndex(i);
-      if (element instanceof Layer && element.GetID() === layerID) {
-        return element;
+      if (element instanceof Layer) {
+        if (element.GetID() === layerID) {
+          break;
+        }
+        previousLayer = element;
       }
     }
-    return null;
+
+    console.log('= B.Document GetPreviousLayer output', { previousLayer });
+    return previousLayer;
   }
 
-  MoveLayer = (layerID: string, moveType: any, referenceLayerID?: string) => {
+  GetNextLayer(layerID: string) {
+    console.log('= B.Document GetNextLayer input', { layerID });
+
+    let nextLayer = null;
+    let currentLayer = null;
+    let startIndex = 0;
+    const elementCount = this.ElementCount();
+
+    if (layerID) {
+      currentLayer = this.GetLayer(layerID);
+      if (currentLayer) {
+        startIndex = this.GetElementIndex(currentLayer) + 1;
+      }
+    }
+
+    for (let i = startIndex; i < elementCount; i++) {
+      const element = this.GetElementByIndex(i);
+      if (element instanceof Layer) {
+        nextLayer = element;
+        break;
+      }
+    }
+
+    console.log('= B.Document GetNextLayer output', { nextLayer });
+    return nextLayer;
+  }
+
+  MoveLayer(layerID: string, moveType: number, targetLayerID?: string) {
+    console.log('= B.Document MoveLayer input', { layerID, moveType, targetLayerID });
+
     const layer = this.GetLayer(layerID);
-    if (!layer) return;
+    if (!layer) {
+      console.warn('= B.Document MoveLayer layer not found', { layerID });
+      return;
+    }
 
-    const currentIndex = this.GetElementIndex(layer);
-    const totalElements = this.ElementCount() - 1;
-    let targetIndex = totalElements;
-    let referenceIndex = 0;
-    let referenceLayer = null;
+    const totalElements = this.ElementCount();
+    let targetIndex = totalElements - 1;
+    let currentIndex = this.GetElementIndex(layer);
+    let targetLayer = null;
+    let targetLayerIndex = 0;
 
-    if (referenceLayerID) {
-      referenceLayer = this.GetLayer(referenceLayerID);
-      if (referenceLayer) {
-        referenceIndex = this.GetElementIndex(referenceLayer);
-        if (currentIndex < referenceIndex) {
-          referenceIndex--;
+    if (targetLayerID) {
+      targetLayer = this.GetLayer(targetLayerID);
+      if (targetLayer) {
+        targetLayerIndex = this.GetElementIndex(targetLayer);
+        if (currentIndex < targetLayerIndex) {
+          targetLayerIndex--;
         }
       }
     }
 
     switch (moveType) {
-      case Models.LayerMoveType.BOTTOM:
+      case Document.LayerMoveType.BOTTOM:
         targetIndex = 0;
         break;
-      case Models.LayerMoveType.BEFORE:
-        targetIndex = referenceIndex;
+      case Document.LayerMoveType.BEFORE:
+        targetIndex = targetLayerIndex;
         break;
-      case Models.LayerMoveType.AFTER:
-        targetIndex = referenceIndex + 1;
+      case Document.LayerMoveType.AFTER:
+        targetIndex = targetLayerIndex + 1;
         break;
-      case Models.LayerMoveType.TOP:
-        targetIndex = totalElements;
+      case Document.LayerMoveType.TOP:
+        targetIndex = totalElements - 1;
         break;
+      default:
+        console.error('= B.Document MoveLayer unknown moveType', { moveType });
+        return;
     }
 
     if (targetIndex !== currentIndex) {
       this.RemoveElement(layer);
       this.AddElement(layer, targetIndex);
     }
+
+    console.log('= B.Document MoveLayer output', { layerID, moveType, targetLayerID, targetIndex });
   }
 
-  SetDocumentDPI(dpi: number) {
-    this.SetDocumentMetrics({ dpi });
+  AddDocumentFontToList(fontList, fontName, fontType) {
+    console.log('= B.Document AddDocumentFontToList input', { fontList, fontName, fontType });
+
+    let index = -1;
+    const length = fontList.length;
+
+    for (let i = 0; i < length; i++) {
+      if (fontList[i].name === fontName) {
+        index = i;
+        break;
+      }
+    }
+
+    if (index < 0) {
+      fontList.push({
+        name: fontName,
+        type: fontType
+      });
+      index = length;
+    }
+
+    console.log('= B.Document AddDocumentFontToList output', { index });
+    return index;
   }
 
-  GetWorkArea = () => {
-    return this.docInfo;
+  MapFont(fontName: string, category: string = 'sanserif') {
+    console.log('= B.Document MapFont input', { fontName, category });
+
+    let fallbackFont = '';
+    let defaultFont = '';
+    const fontListLength = this.fontList.length;
+    let mappedFont = `'${fontName}'`;
+
+    for (let i = 0; i < fontListLength; i++) {
+      const font = this.fontList[i];
+      if (font.name === fontName) {
+        fallbackFont = font.fallback;
+        break;
+      }
+      if (!defaultFont && font.default && font.category === category) {
+        defaultFont = font.fallback;
+      }
+    }
+
+    if (fallbackFont) {
+      mappedFont += `,${fallbackFont}`;
+    }
+
+    console.log('= B.Document MapFont output', { mappedFont });
+    return mappedFont;
   }
 
-  CalcScaleToFit = (width: number, height: number, docWidth?: number, docHeight?: number) => {
-    let scale: number;
-    let adjustedDocWidth = docWidth || this.docInfo.docWidth;
-    let adjustedDocHeight = docHeight || this.docInfo.docHeight;
-    const dpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
+  GetFontType(fontName: string) {
+    console.log('= B.Document GetFontType input', { fontName });
 
-    adjustedDocWidth *= dpiScale;
-    adjustedDocHeight *= dpiScale;
+    let fontType = 'sanserif';
+    const fontListLength = this.fontList.length;
 
-    const widthScale = width / adjustedDocWidth;
-    const heightScale = height / adjustedDocHeight;
+    for (let i = 0; i < fontListLength; i++) {
+      if (this.fontList[i].name === fontName) {
+        fontType = this.fontList[i].category;
+        break;
+      }
+    }
 
-    scale = Math.min(widthScale, heightScale);
-    if (scale > 1) scale = 1;
-
-    return {
-      scale: scale,
-      width: this.docInfo.docWidth * dpiScale * scale,
-      height: this.docInfo.docHeight * dpiScale * scale
-    };
+    console.log('= B.Document GetFontType output', { fontType });
+    return fontType;
   }
 
-  CalcStyleMetrics = (style) => {
-    const textCache = this.GetTextCacheForStyle(style);
-    return Utils.CopyObj(textCache.metrics);
-  }
+  static _TextMetricsCache = {}
 
-  GetTextCacheForStyle = (style) => {
-    const styleID = new Formatter(null).MakeIDFromStyle(style);
-    let cache = this.textMetricsCache[styleID];
+  GetTextCacheForStyle(style) {
+    console.log('= B.Document GetTextCacheForStyle input', { style });
+
+    const styleID = Formatter.MakeIDFromStyle(style);
+    let cache = Document._TextMetricsCache[styleID];
 
     if (!cache) {
       cache = {
-        metrics: new Formatter(null).CalcStyleMetrics(style, this),
+        metrics: Formatter.CalcStyleMetrics(style, this),
         textCache: {}
       };
-      this.textMetricsCache[styleID] = cache;
+      Document._TextMetricsCache[styleID] = cache;
     }
 
+    console.log('= B.Document GetTextCacheForStyle output', { cache });
     return cache;
   }
 
-  MapFont = (fontName: string, category: string = 'sanserif'): string => {
-    return `'${fontName}'`;
-  }
+  CalcStyleMetrics(style) {
+    console.log('= B.Document CalcStyleMetrics input', { style });
 
-  GetTextRunCache(style: any, text: any) {
     const textCache = this.GetTextCacheForStyle(style);
-    if (typeof text !== "symbol") {
-      text = Symbol.for(text);
+    const metrics = Utils1.CopyObj(textCache.metrics);
+
+    console.log('= B.Document CalcStyleMetrics output', { metrics });
+    return metrics;
+  }
+
+  GetTextRunCache(style, text) {
+    return { startOffsets: [], endOffsets: [] }
+  }
+
+  SetActiveEdit(newEdit) {
+    console.log('= B.Document SetActiveEdit input', { newEdit });
+
+    const currentEdit = this.GetActiveEdit();
+    if (currentEdit && currentEdit !== newEdit) {
+      currentEdit.Deactivate();
     }
-    let cache = textCache.textCache[text];
-    if (!cache) {
-      const length = Symbol.keyFor(text).length;
-      cache = {
-        startOffsets: new Array(length),
-        endOffsets: new Array(length)
-      };
-      textCache.textCache[text] = cache;
+    this.activeEdit = newEdit;
+
+    console.log('= B.Document SetActiveEdit output', { activeEdit: this.activeEdit });
+  }
+
+  ClearActiveEdit(event) {
+    console.log('= B.Document ClearActiveEdit input', { event });
+
+    const activeEdit = this.GetActiveEdit();
+    if (activeEdit) {
+      activeEdit.Deactivate(event);
     }
-    return cache;
+    this.activeEdit = null;
+
+    console.log('= B.Document ClearActiveEdit output', { activeEdit: this.activeEdit });
+  }
+
+  GetActiveEdit() {
+    console.log('= B.Document GetActiveEdit input');
+
+    if (this.activeEdit && !this.activeEdit.InDocument()) {
+      this.activeEdit = null;
+    }
+
+    console.log('= B.Document GetActiveEdit output', { activeEdit: this.activeEdit });
+    return this.activeEdit;
+  }
+
+  InitSpellCheck() {
+    console.log('= B.Document InitSpellCheck input');
+
+    if (!this.spellChecker) {
+      this.spellChecker = new Spell(this);
+      this.spellChecker.Initialize();
+    }
+
+    console.log('= B.Document InitSpellCheck output', { spellChecker: this.spellChecker });
+  }
+
+  InitSpellCheckUser() {
+    console.log('= B.Document InitSpellCheckUser input');
+
+    if (this.spellChecker) {
+      this.spellChecker.UserInitialize();
+    }
+
+    console.log('= B.Document InitSpellCheckUser output');
+  }
+
+  GetSpellCheck() {
+    console.log('= B.Document GetSpellCheck input');
+
+    if (!this.spellChecker) {
+      this.InitSpellCheck();
+    }
+
+    console.log('= B.Document GetSpellCheck output', { spellChecker: this.spellChecker });
+    return this.spellChecker;
+  }
+
+  DefExists(defID: string) {
+    console.log('= B.Document DefExists input', { defID });
+
+    const defsChildren = this.svgObj.defs().children();
+    let exists = false;
+
+    for (let i = 0; i < defsChildren.length; i++) {
+      if (defsChildren[i].attrs.id === defID) {
+        exists = true;
+        break;
+      }
+    }
+
+    console.log('= B.Document DefExists output', { exists });
+    return exists;
+  }
+
+  Defs() {
+    console.log('= B.Document Defs input');
+    const defs = this.svgObj.defs();
+    console.log('= B.Document Defs output', { defs });
+    return defs;
+  }
+
+  ClearDefs() {
+    console.log('= B.Document ClearDefs input');
+    const defs = this.Defs();
+    if (defs) {
+      defs.clear();
+    }
+    console.log('= B.Document ClearDefs output');
+  }
+
+  ImageLoad_AddRef() {
+    console.log('= B.Document ImageLoad_AddRef input');
+    this.imageLoadRefCount++;
+    console.log('= B.Document ImageLoad_AddRef output', { imageLoadRefCount: this.imageLoadRefCount });
+  }
+
+  ImageLoad_DecRef() {
+    console.log('= B.Document ImageLoad_DecRef input');
+    this.imageLoadRefCount = Math.max(0, this.imageLoadRefCount - 1);
+    console.log('= B.Document ImageLoad_DecRef output', { imageLoadRefCount: this.imageLoadRefCount });
+  }
+
+  ImageLoad_GetRefCount() {
+    console.log('= B.Document ImageLoad_GetRefCount input');
+    const refCount = this.imageLoadRefCount;
+    console.log('= B.Document ImageLoad_GetRefCount output', { refCount });
+    return refCount;
+  }
+
+  ImageLoad_ResetRefCount() {
+    console.log('= B.Document ImageLoad_ResetRefCount input');
+    this.imageLoadRefCount = 0;
+    console.log('= B.Document ImageLoad_ResetRefCount output', { imageLoadRefCount: this.imageLoadRefCount });
+  }
+
+  static CreateShapeType = {
+    RECT: 1,
+    RRECT: 2,
+    OVAL: 3,
+    LINE: 4,
+    POLYLINE: 5,
+    POLYGON: 6,
+    PATH: 7,
+    TEXT: 8,
+    IMAGE: 9,
+    GROUP: 10,
+    LAYER: 11,
+    SYMBOL: 12,
+    POLYLINECONTAINER: 13,
+    POLYPOLYLINE: 14,
+    SHAPECOPY: 15,
+    SHAPECONTAINER: 16
+  }
+
+  static LayerMoveType = {
+    BOTTOM: 0,
+    BEFORE: 1,
+    AFTER: 2,
+    TOP: 3
   }
 }
 
-export default Document;
+export default Document

@@ -5,6 +5,7 @@ import "../Helper/pathseg"
 import Container from "./Basic.Container"
 import Creator from "./Basic.Path.Creator"
 import Utils1 from "../Helper/Utils1"
+import ConstantData2 from "../Data/ConstantData2"
 
 class Path extends Container {
 
@@ -69,7 +70,7 @@ class Path extends Container {
     if (isNaN(stkWidth) && typeof stkWidth === 'string') {
       stkWidth = Basic.Symbol.ParsePlaceholder(stkWidth, Basic.Symbol.Placeholder.LineThick);
     }
-    stkWidth = Global.RoundCoord(stkWidth);
+    stkWidth = Utils1.RoundCoord(stkWidth);
     this.pathElem.attr('stroke-width', stkWidth);
     this.strokeWidth = Number(stkWidth);
     this.pathElem.attr('stroke-dasharray', this.GetStrokePatternForWidth());
@@ -300,16 +301,16 @@ class Path extends Container {
           let rectWidth = geometryPiece.pathData.width * scaleFactor;
           let rectHeight = geometryPiece.pathData.height * scaleFactor;
           let rotated = Utils1.RotatePoint(rotatePoint, { x: rectX, y: rectY }, angle);
-          pathString += Global.RoundCoord(rotated.x) + ',' + Global.RoundCoord(rotated.y) + 'L';
+          pathString += Utils1.RoundCoord(rotated.x) + ',' + Utils1.RoundCoord(rotated.y) + 'L';
 
           rotated = Utils1.RotatePoint(rotatePoint, { x: rectX + rectWidth, y: rectY }, angle);
-          pathString += Global.RoundCoord(rotated.x) + ',' + Global.RoundCoord(rotated.y) + 'L';
+          pathString += Utils1.RoundCoord(rotated.x) + ',' + Utils1.RoundCoord(rotated.y) + 'L';
 
           rotated = Utils1.RotatePoint(rotatePoint, { x: rectX + rectWidth, y: rectY + rectHeight }, angle);
-          pathString += Global.RoundCoord(rotated.x) + ',' + Global.RoundCoord(rotated.y) + 'L';
+          pathString += Utils1.RoundCoord(rotated.x) + ',' + Utils1.RoundCoord(rotated.y) + 'L';
 
           rotated = Utils1.RotatePoint(rotatePoint, { x: rectX, y: rectY + rectHeight }, angle);
-          pathString += Global.RoundCoord(rotated.x) + ',' + Global.RoundCoord(rotated.y) + 'z';
+          pathString += Utils1.RoundCoord(rotated.x) + ',' + Utils1.RoundCoord(rotated.y) + 'z';
 
           pathElem.plot(pathString);
           fillFlag = true;
@@ -325,10 +326,10 @@ class Path extends Container {
           // Adjust ovalY for rotation with a small offset
           ovalY = ovalY + halfHeight;
           let firstRotated = Utils1.RotatePoint(rotatePoint, { x: ovalX, y: ovalY - 0.5 }, angle);
-          pathString += Global.RoundCoord(firstRotated.x) + ',' + Global.RoundCoord(firstRotated.y) + 'A';
-          pathString += Global.RoundCoord(radiusX) + ',' + Global.RoundCoord(halfHeight) + ' ' + Global.RoundCoord(angle) + ' 1 1 ';
+          pathString += Utils1.RoundCoord(firstRotated.x) + ',' + Utils1.RoundCoord(firstRotated.y) + 'A';
+          pathString += Utils1.RoundCoord(radiusX) + ',' + Utils1.RoundCoord(halfHeight) + ' ' + Utils1.RoundCoord(angle) + ' 1 1 ';
           let secondRotated = Utils1.RotatePoint(rotatePoint, { x: ovalX, y: ovalY + 0.5 }, angle);
-          pathString += Global.RoundCoord(secondRotated.x) + ',' + Global.RoundCoord(secondRotated.y) + 'z';
+          pathString += Utils1.RoundCoord(secondRotated.x) + ',' + Utils1.RoundCoord(secondRotated.y) + 'z';
 
           pathElem.plot(pathString);
           fillFlag = true;
@@ -357,7 +358,7 @@ class Path extends Container {
                   },
                   angle
                 );
-                pathString += segment[0] + Global.RoundCoord(rotated.x) + ',' + Global.RoundCoord(rotated.y);
+                pathString += segment[0] + Utils1.RoundCoord(rotated.x) + ',' + Utils1.RoundCoord(rotated.y);
                 break;
               }
               case 'A': {
@@ -369,12 +370,12 @@ class Path extends Container {
                 let rotatedArc = Utils1.RotatePoint(rotatePoint, { x: arcX, y: arcY }, angle);
                 pathString +=
                   'A' +
-                  Global.RoundCoord(arcRadiusX) +
+                  Utils1.RoundCoord(arcRadiusX) +
                   ',' +
-                  Global.RoundCoord(arcRadiusY) +
+                  Utils1.RoundCoord(arcRadiusY) +
                   ' ' +
-                  Global.RoundCoord(segment[3] + angle);
-                pathString += ' ' + segment[4] + ' ' + segment[5] + ' ' + Global.RoundCoord(rotatedArc.x) + ',' + Global.RoundCoord(rotatedArc.y);
+                  Utils1.RoundCoord(segment[3] + angle);
+                pathString += ' ' + segment[4] + ' ' + segment[5] + ' ' + Utils1.RoundCoord(rotatedArc.x) + ',' + Utils1.RoundCoord(rotatedArc.y);
                 break;
               }
               case 'z': {
@@ -609,8 +610,8 @@ class Path extends Container {
         let segIndex = this.pathElem.node.getPathSegAtLength(targetLength);
         let pointAtTrim = this.pathElem.node.getPointAtLength(targetLength);
         pointAtTrim = {
-          x: Global.RoundCoord(pointAtTrim.x),
-          y: Global.RoundCoord(pointAtTrim.y)
+          x: Utils1.RoundCoord(pointAtTrim.x),
+          y: Utils1.RoundCoord(pointAtTrim.y)
         };
 
         // Get the segment at the target index.
@@ -621,8 +622,8 @@ class Path extends Container {
           let isAbs = this.IsSegmentAbs(currentSeg);
           if (!isAbs) {
             endpoint = this.CalcSegEndpoint(this.pathElem, segIndex);
-            endpoint.x = Global.RoundCoord(endpoint.x);
-            endpoint.y = Global.RoundCoord(endpoint.y);
+            endpoint.x = Utils1.RoundCoord(endpoint.x);
+            endpoint.y = Utils1.RoundCoord(endpoint.y);
           }
           // Remove all segments from index 1 up to (but not including) segIndex.
           for (let i = 1; i < segIndex; i++) {

@@ -61,6 +61,8 @@ class IdxPage {
     this.initWindowListener5();
     this.refreshMoveableGuides();
     // this.resetPanzoom();
+
+    Hvac.UI.Initialize(); // Initialize the HVAC UI
   }
 
   initQuasar(quasar) {

@@ -15,29 +15,29 @@ class Layer extends Container {
 
   CreateElement(element: any, attributes: any) {
     this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
-    this.initElement(element, attributes);
+    this.InitElement(element, attributes);
     return this.svgObj;
   }
 
-  allowScaling(isScalingEnabled: boolean) {
+  AllowScaling(isScalingEnabled: boolean) {
     this.scaleOKFlag = isScalingEnabled;
     if (isScalingEnabled) {
       this.dpiScaleOnlyFlag = false;
     }
   }
 
-  allowDpiScalingOnly(enableDpiScaling: boolean): void {
+  AllowDpiScalingOnly(enableDpiScaling: boolean): void {
     this.dpiScaleOnlyFlag = enableDpiScaling;
     if (enableDpiScaling) {
       this.scaleOKFlag = false;
     }
   }
 
-  isScalingEnabled(): boolean {
+  IsScalingAllowed(): boolean {
     return this.scaleOKFlag;
   }
 
-  isDpiScalingEnabled(): boolean {
+  IsDpiScalingAllowed(): boolean {
     return this.dpiScaleOnlyFlag;
   }
 }

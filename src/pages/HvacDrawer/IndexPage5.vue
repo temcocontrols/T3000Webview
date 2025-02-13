@@ -273,8 +273,6 @@
   left: 0;
   background-color: aqua;
 }
-
-
 </style>
 
 <template>
@@ -313,128 +311,132 @@
           </div>
 
           <div id="work-area" class="main-panel">
-            <button id="test_btn_select">Select</button>
 
-            &nbsp;
-            <button id="test_btn_try_library">Library</button>
+            <div>
+              <button id="test_btn_select">Select</button>
 
-            &nbsp;
-            <button id="test_btn_try_line">Line</button>
+              &nbsp;
+              <button id="test_btn_try_library">Library</button>
 
-            &nbsp;
-            <button id="test_btn_try_wall">Wall</button>
+              &nbsp;
+              <button id="test_btn_try_line">Line</button>
 
-            &nbsp;
-            <button id="test_btn_try_Rect">Rect </button>
+              &nbsp;
+              <button id="test_btn_try_wall">Wall</button>
 
-            &nbsp;
-            <button id="test_btn_try_Oval">Oval</button>
+              &nbsp;
+              <button id="test_btn_try_Rect">Rect </button>
 
-            &nbsp;
-            <button id="test_btn_try_Image">Image</button>
+              &nbsp;
+              <button id="test_btn_try_Oval">Oval</button>
 
-            &nbsp;
-            <button id="test_btn_try_Circ">Circ</button>
+              &nbsp;
+              <button id="test_btn_try_Image">Image</button>
 
-            &nbsp;
-            <button id="test_btn_try_Text">Text</button>
+              &nbsp;
+              <button id="test_btn_try_Circ">Circ</button>
 
-            &nbsp;
-            <button id="test_btn_try_ArrR">ArrR</button>
+              &nbsp;
+              <button id="test_btn_try_Text">Text</button>
 
-            &nbsp;
-            <button id="test_btn_try_ArrL">ArrL</button>
+              &nbsp;
+              <button id="test_btn_try_ArrR">ArrR</button>
 
-            &nbsp;
-            <button id="test_btn_try_ArrT">ArrT</button>
+              &nbsp;
+              <button id="test_btn_try_ArrL">ArrL</button>
 
-            &nbsp;
-            <button id="test_btn_try_ArrB">ArrB</button>
+              &nbsp;
+              <button id="test_btn_try_ArrT">ArrT</button>
 
-            &nbsp;
-            <button id="test_btn_try_Roate45">Roate 45</button>
+              &nbsp;
+              <button id="test_btn_try_ArrB">ArrB</button>
 
-            &nbsp;
-            <button id="test_btn_try_Roate90">Roate 90</button>
+              &nbsp;
+              <button id="test_btn_try_Roate45">Roate 45</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_lefts">Align_lefts</button>
+              &nbsp;
+              <button id="test_btn_try_Roate90">Roate 90</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_centers">Align_centers</button>
+              &nbsp;
+              <button id="test_btn_try_Align_lefts">Align_lefts</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_rights">Align_rights</button>
+              &nbsp;
+              <button id="test_btn_try_Align_centers">Align_centers</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_tops">Align_tops</button>
+              &nbsp;
+              <button id="test_btn_try_Align_rights">Align_rights</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_middles">Align_middles</button>
+              &nbsp;
+              <button id="test_btn_try_Align_tops">Align_tops</button>
 
-            &nbsp;
-            <button id="test_btn_try_Align_bottoms">Align_bottoms</button>
+              &nbsp;
+              <button id="test_btn_try_Align_middles">Align_middles</button>
 
-            &nbsp;
-            <button id="test_btn_try_Group">Group</button>
+              &nbsp;
+              <button id="test_btn_try_Align_bottoms">Align_bottoms</button>
 
-            &nbsp;
-            <button id="test_btn_try_Ungroup">Ungroup</button>
+              &nbsp;
+              <button id="test_btn_try_Group">Group</button>
 
-            &nbsp;
-            <button id="test_btn_try_Flip_Horizontal">Flip_Horizontal</button>
+              &nbsp;
+              <button id="test_btn_try_Ungroup">Ungroup</button>
 
-            &nbsp;
-            <button id="test_btn_try_Flip_Vertical">Flip_Vertical</button>
+              &nbsp;
+              <button id="test_btn_try_Flip_Horizontal">Flip_Horizontal</button>
 
-            &nbsp;
-            <button id="test_btn_try_Same_Height">Same_Height</button>
+              &nbsp;
+              <button id="test_btn_try_Flip_Vertical">Flip_Vertical</button>
 
-            &nbsp;
-            <button id="test_btn_try_Same_Width">Same_Width</button>
+              &nbsp;
+              <button id="test_btn_try_Same_Height">Same_Height</button>
 
-            &nbsp;
-            <button id="test_btn_try_Same_Both">Same_Both</button>
+              &nbsp;
+              <button id="test_btn_try_Same_Width">Same_Width</button>
 
-            &nbsp;
-            <button id="test_btn_try_BringToFront">BringToFront</button>
+              &nbsp;
+              <button id="test_btn_try_Same_Both">Same_Both</button>
 
-            &nbsp;
-            <button id="test_btn_try_SendToBack">SendToBack</button>
+              &nbsp;
+              <button id="test_btn_try_BringToFront">BringToFront</button>
 
-            &nbsp;
-            <button id="test_btn_try_Paste">Paste</button>
+              &nbsp;
+              <button id="test_btn_try_SendToBack">SendToBack</button>
 
-            &nbsp;
-            <button id="test_btn_try_Copy">Copy</button>
+              &nbsp;
+              <button id="test_btn_try_Paste">Paste</button>
 
-            &nbsp;
-            <button id="test_btn_try_Cut">Cut</button>
+              &nbsp;
+              <button id="test_btn_try_Copy">Copy</button>
 
-            &nbsp;
-            <button id="test_btn_try_Delete">Delete</button>
+              &nbsp;
+              <button id="test_btn_try_Cut">Cut</button>
 
-            &nbsp;
-            <button id="test_btn_try_Undo">Undo</button>
+              &nbsp;
+              <button id="test_btn_try_Delete">Delete</button>
 
-            &nbsp;
-            <button id="test_btn_try_Redo">Redo</button>
+              &nbsp;
+              <button id="test_btn_try_Undo">Undo</button>
 
-            &nbsp;
-            <button id="test_btn_try_Save">Save</button>
+              &nbsp;
+              <button id="test_btn_try_Redo">Redo</button>
 
-            &nbsp;
-            <button id="test_btn_try_Duplicate">Duplicate</button>
+              &nbsp;
+              <button id="test_btn_try_Save">Save</button>
 
-            &nbsp;
-            <button id="test_btn_try_Clear">Clear</button>
+              &nbsp;
+              <button id="test_btn_try_Duplicate">Duplicate</button>
 
-            &nbsp;
-            <button id="test_btn_try_Measure">Measure</button>
+              &nbsp;
+              <button id="test_btn_try_Clear">Clear</button>
 
-            &nbsp;
-            <button id="test_btn_try_AreaMeasure">AreaMeasure</button>
+              &nbsp;
+              <button id="test_btn_try_Measure">Measure</button>
 
+              &nbsp;
+              <button id="test_btn_try_AreaMeasure">AreaMeasure</button>
+
+
+            </div>
 
 
 
