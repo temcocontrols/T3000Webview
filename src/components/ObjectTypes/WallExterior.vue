@@ -4,55 +4,6 @@
     [item.type]: item.type,
     'with-bg': item.settings.bgColor
   }" :width="getNewWidthHeight().width" :height="getNewWidthHeight().height">
-    <!-- <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" :width="item.width"
-      :height="item.height">
-      <g :transform="`scale(1,1) translate(${svgData.trsX},${svgData.trsY})`">
-        <g :width="`${svgData.width}`" :height="`${svgData.height}`" transform="scale(1,1) translate(0,0)">
-          <g id="e8e96245-d9f9-41ad-85ea-51209aeb0263">
-            <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
-              <path :d="`M${svgData.Mx},${svgData.My} L${svgData.Lx},${svgData.Ly}`" fill="none" stroke-width="12.5"
-                stroke-dasharray="none"></path>
-              <g>
-                <g stroke-dasharray="none">
-                  <path d="M-12.5,-12.5L12.5,-12.5L12.5,12.5L-12.5,12.5z" stroke-width="0" fill="none"></path>
-                </g>
-              </g>
-            </g>
-            <g no-export="1" transform="scale(1,1) translate(0,0)" stroke="white" fill="none" opacity="0"
-              pointer-events="stroke">
-              <path :d="`M${svgData.Mx},${svgData.My} L${svgData.Lx},${svgData.Ly}`" fill="none" stroke-width="19.5"
-                stroke-dasharray="none"></path>
-              <g>
-                <g stroke-dasharray="none">
-                  <path d="M-19.5,-19.5L19.5,-19.5L19.5,19.5L-19.5,19.5z" stroke-width="0" fill="none"></path>
-                </g>
-              </g>
-            </g>
-            <g fill="#9999FF" stroke="#9999FF" stroke-opacity="1" opacity="1" transform="scale(1,1) translate(0,0)">
-              <path fill="none" stroke-width="1" stroke-dasharray="none"
-                d="M0,-15.5 L0,-43.1 L50.958,-43.1 M76.125,-43.1 L127.083,-43.1 L127.083,-15.5"></path>
-              <g>
-                <g stroke-dasharray="none">
-                  <path d="M-1,-16.5L1,-16.5L1,-14.5L-1,-14.5z" stroke-width="0" fill="none"></path>
-                </g>
-              </g>
-            </g>
-            <g width="19.16666603088379" height="11.199999809265137" transform="scale(1,1) translate(53.958,-48.7)"
-              style="user-select: none;" opacity="1">
-              <rect stroke-width="0" fill="none" visibility="hidden" no-export="1" transform="scale(1,1) translate(0,0)"
-                width="19.16666603088379" height="11.199999809265137"></rect><text width="19.16666603088379"
-                height="11.199999809265137" transform="scale(1,1) translate(0,0)" xml:space="preserve">
-                <tspan xml:space="preserve" text-rendering="optimizeSpeed"
-                  style="font-family: &quot;Arial&quot;, &quot;Helvetica Neue&quot;, Helvetica, sans-serif;"
-                  font-size="10" font-weight="normal" font-style="normal" text-decoration="none" fill="#000" opacity="1"
-                  x="0" text-anchor="start" y="8.8" textLength="19.16666603088379">5'&nbsp;1"</tspan>
-              </text>
-              <g width="19.16666603088379" height="11.199999809265137" transform="scale(1,1) translate(0,0)"></g>
-            </g>
-          </g>
-        </g>
-      </g>
-    </svg> -->
   </div>
 </template>
 
@@ -60,7 +11,6 @@
 import { defineComponent, onMounted, computed, ref, watch } from "vue";
 import { SVG } from '@svgdotjs/svg.js';
 import { color } from "echarts";
-// import T3000 from "src/lib/T3000";
 
 export default defineComponent({
   name: "WallExteriorEl",
@@ -73,10 +23,7 @@ export default defineComponent({
   emits: ["updateWeldModel"],
   setup(props, { emit }) {
     const svgData = computed(() => {
-      // console.log('WallExterior props.item', props.item);
-
       let width = props.item.width;
-      // let height = props.item.rotate == 90 ? props.item.width : Math.abs(props.item.width * Math.sin(props.item.rotate * Math.PI / 180));
       let height = props.item.height;
       let trsX = props.item.translate[0];
       let trsY = props.item.translate[1];
@@ -87,49 +34,12 @@ export default defineComponent({
       let strokeWidth = props.item.settings.strokeWidth;
       let rotate = props.item.rotate;
       let showDimensions = props.item.showDimensions;
-
       let path = `M${Mx},${My} L${Lx},${Ly}`;
-
-      /*
-      let joinWall = null;
-      if (props.item.joinWall != null && props.item.joinWall != undefined) {
-        let joinWall = props.item.joinWall;
-        console.log('WallExterior joinWall',
-          '1x', trsX, '1y', trsY,
-          '2x', joinWall[0].x, '2y', joinWall[0].y,
-          '2trx', joinWall[0].translate[0], '2try', joinWall[0].translate[1]
-        );
-
-        const newPathData = getNewPathL(trsX, trsY, width, height, joinWall[0].x, joinWall[0].y);
-
-        Mx = newPathData.p1.x;
-        My = newPathData.p1.y;
-
-        Lx = newPathData.p2.x;
-        Ly = newPathData.p2.y;
-
-        let L2x = newPathData.p3.x;
-        let L2y = newPathData.p3.y;
-
-        let minx = newPathData.min.x;
-        let miny = newPathData.min.y;
-
-        console.log('SVG WallExteriorEl 1111111111', 'Mx', Mx, 'My', My, 'Lx', Lx, 'Ly', Ly, 'L2x', L2x, 'L2y', L2y, 'minx', minx, 'miny', miny);
-
-        emit("updateWeldModel", minx, miny, props.item.id);
-
-        path = `M${Mx},${My} L${Lx},${Ly} L${L2x},${L2y}`;
-      }
-        */
-
-
 
       return { width, height, trsX, trsY, Mx, My, Lx, Ly, path, strokeWidth, rotate };
     });
 
     const getNewPathL = (p1x, p1y, p1width, p1height, pjx, pjy) => {
-
-      console.log('---> getNewPathL', 'p1x', p1x, 'p1y', p1y, 'p1width', p1width, 'p1height', p1height, 'pjx', pjx, 'pjy', pjy);
 
       const p2x = p1x + p1width;
       const p2y = p1y + p1height;
@@ -153,7 +63,6 @@ export default defineComponent({
       };
     }
 
-
     const getNewWidthHeight = () => {
       return { width: props.item.width, height: props.item.height + 60, margin: -60 };
       const joinWall = props.item.joinWall != null && props.item.joinWall != undefined ? props.item.joinWall[0] : null;
@@ -162,18 +71,6 @@ export default defineComponent({
         return { width: props.item.width, height: props.item.height + 60, margin: -60 };
       }
       else {
-        // const topLeftX = props.item.translate[0];
-        // const topLeftY = props.item.translate[1];
-
-        // const bottomRightX = joinWall.x;
-        // const bottomRightY = joinWall.y;
-
-        // let width = Math.abs(bottomRightX - topLeftX);
-        // let height = Math.abs(bottomRightY - topLeftY);
-
-        // if (bottomRightX < topLeftX + props.item.width) {
-        //   width = props.item.width;
-        // }
 
         const p1x = props.item.translate[0];
         const p1y = props.item.translate[1];
@@ -210,8 +107,6 @@ export default defineComponent({
       const newWidthHeight = getNewWidthHeight();
 
       svgRef.value = SVG().addTo(`#wall_${props.item.id}`).size(newWidthHeight.width, newWidthHeight.height);
-      // svgRef.value.path(svgData.value.path).fill('none').stroke({ color: '#000', width: svgData.value.strokeWidth });
-      // console.log('svgRef default', svgData.value.path);
 
       const renderSvg = (data) => {
         const allGroup = svgRef.value.group();
@@ -284,8 +179,6 @@ export default defineComponent({
 <style scoped>
 .wall-exterior {
   background-color: v-bind("props?.item?.settings?.bgColor");
-  /* border: 1px solid #000; */
   margin-top: v-bind("margin");
-  /* background-color: aqua; */
 }
 </style>
