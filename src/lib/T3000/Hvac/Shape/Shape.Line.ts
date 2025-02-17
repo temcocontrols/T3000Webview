@@ -841,11 +841,11 @@ class Line extends BaseLine {
     const newSVGElement = GlobalData.optManager.svgObjectLayer.GetElementByID(joinResult);
 
     // Determine the ruler text based on document settings
-    let majorScaleString = Number(GPP.gDocumentHandler.rulerSettings.majorScale).toString();
-    switch (GPP.gDocumentHandler.rulerSettings.units) {
+    let majorScaleString = Number(GPP.documentHandler.rulerSettings.majorScale).toString();
+    switch (GPP.documentHandler.rulerSettings.units) {
       case ConstantData.RulerUnits.SED_Feet:
         if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) {
-          majorScaleString = Number(12 * GPP.gDocumentHandler.rulerSettings.majorScale).toString();
+          majorScaleString = Number(12 * GPP.documentHandler.rulerSettings.majorScale).toString();
           majorScaleString += '"';
         } else {
           majorScaleString += '\'';
