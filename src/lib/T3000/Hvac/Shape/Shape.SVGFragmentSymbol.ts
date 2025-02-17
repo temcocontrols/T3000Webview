@@ -5,6 +5,7 @@ import BaseSymbol from './Shape.BaseShape'
 import GlobalData from '../Data/GlobalData'
 import Element from "../Basic/Basic.Element"
 import ConstantData from '../Data/ConstantData'
+import $ from 'jquery'
 
 class SVGFragmentSymbol extends BaseSymbol {
 
