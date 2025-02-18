@@ -21,6 +21,7 @@
   "dependencies": {
     "@quasar/extras": "^1.15.11",
     "@svgdotjs/svg.draggable.js": "^3.0.4",
+    "@svgdotjs/svg.draw.js": "^3.0.2",
     "@svgdotjs/svg.js": "^3.2.4",
     "@svgdotjs/svg.resize.js": "^2.0.5",
     "@svgdotjs/svg.select.js": "^4.0.2",
