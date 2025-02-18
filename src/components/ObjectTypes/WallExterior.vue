@@ -64,7 +64,7 @@ export default defineComponent({
     }
 
     const getNewWidthHeight = () => {
-      return { width: props.item.width, height: props.item.height + 60, margin: -60 };
+      return { width: props.item.width, height: 11 + 60/* props.item.height + 60*/, margin: -60 };
       const joinWall = props.item.joinWall != null && props.item.joinWall != undefined ? props.item.joinWall[0] : null;
 
       if (joinWall === null) {
@@ -162,6 +162,7 @@ export default defineComponent({
         svgRef.value.clear();
 
         const newWidthHeight = getNewWidthHeight();
+        console.log('AutoJoinWall refreshSvg', 'newWidthHeight', newWidthHeight);
         svgRef.value.size(newWidthHeight.width, newWidthHeight.height);
         renderSvg(newData);
       }
