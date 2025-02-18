@@ -1,4 +1,3 @@
-
 <template>
   <div id="app">
     <div class="toolbar">
@@ -61,22 +60,22 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, ref, reactive, watch } from 'vue';
-import { SVG, Svg, G, Element as SvgElement, extend as SVGextend, PointArray } from '@svgdotjs/svg.js';
-import '@svgdotjs/svg.select.js';
-import '@svgdotjs/svg.draggable.js';
-import '@svgdotjs/svg.draw.js';
-import '@svgdotjs/svg.resize.js';
+import { defineComponent, onMounted, ref, reactive } from 'vue';
+import SVG from 'svg.js';
+import 'svg.select.js';
+import 'svg.draggable.js';
+import 'svg.draw.js';
+import 'svg.resize.js';
 
 export default defineComponent({
   name: 'DrawingApp',
   setup() {
     const canvasContainer = ref<HTMLDivElement | null>(null);
-    const draw = ref<Svg>();
-    const selectedElements = ref<SvgElement[]>([]);
-    const copiedElements = ref<SvgElement[]>([]);
-    const undoStack = ref<SvgElement[]>([]);
-    const redoStack = ref<SvgElement[]>([]);
+    let draw: any;
+    const selectedElements = ref<any[]>([]);
+    const copiedElements = ref<any[]>([]);
+    const undoStack = ref<any[]>([]);
+    const redoStack = ref<any[]>([]);
 
     // Properties Drawer
     const showPropertiesDrawer = ref(false);
@@ -89,16 +88,13 @@ export default defineComponent({
     });
 
     onMounted(() => {
-      draw.value = SVG().addTo(canvasContainer.value!).size('100%', '100%');
-
-      // Background Grid (Optional)
-      // draw.value.rect('100%', '100%').fill('#ffffff');
+      draw = SVG(canvasContainer.value!).size('100%', '100%');
 
       // Initialize event listeners
-      draw.value.on('click', (event) => {
-        if (event.target.instance !== draw.value) {
+      draw.on('click', (event: any) => {
+        if (event.target.instance !== draw) {
           event.stopPropagation();
-          toggleSelectElement(event.target.instance);
+          toggleSelectElement(event.target.instance, !event.shiftKey);
         } else {
           deselectAll();
         }
@@ -106,16 +102,27 @@ export default defineComponent({
     });
 
     // Selection logic
-    const toggleSelectElement = (element: SvgElement, exclusive = false) => {
+    const toggleSelectElement = (element: any, exclusive = false) => {
       if (exclusive) {
         deselectAll();
       }
 
       if (selectedElements.value.includes(element)) {
+        // Deselect the element
         element.selectize(false).resize('stop');
         selectedElements.value = selectedElements.value.filter((el) => el !== element);
       } else {
-        element.selectize({ deepSelect: true }).resize();
+        // Select the element with custom options
+        element
+          .selectize({
+            deepSelect: true,
+            radius: 7,
+            rotationPoint: false,
+            pointSize: 7,
+          })
+          .resize({
+            // Options for resize
+          });
         selectedElements.value.push(element);
       }
 
@@ -123,7 +130,9 @@ export default defineComponent({
     };
 
     const deselectAll = () => {
-      selectedElements.value.forEach((el) => el.selectize(false).resize('stop'));
+      selectedElements.value.forEach((el) => {
+        el.selectize(false).resize('stop');
+      });
       selectedElements.value = [];
       updatePropertiesDrawer();
     };
@@ -158,38 +167,38 @@ export default defineComponent({
 
     // Shape Creation Methods
     const addRectangle = () => {
-      const rect = draw.value!.rect(100, 100).fill('#f06');
+      const rect = draw.rect(100, 100).fill('#f06');
       initializeElement(rect);
     };
 
     const addCircle = () => {
-      const circle = draw.value!.circle(100).fill('#0f9');
+      const circle = draw.circle(100).fill('#0f9');
       initializeElement(circle);
     };
 
     const addEllipse = () => {
-      const ellipse = draw.value!.ellipse(100, 60).fill('#09f');
+      const ellipse = draw.ellipse(100, 60).fill('#09f');
       initializeElement(ellipse);
     };
 
     const addLine = () => {
-      const line = draw.value!.line(0, 0, 100, 100).stroke({ width: 2, color: '#000' });
+      const line = draw.line(0, 0, 100, 100).stroke({ width: 2, color: '#000' });
       initializeElement(line);
     };
 
     const addPolygon = () => {
-      const polygon = draw.value!
+      const polygon = draw
         .polygon('60,20 100,40 100,80 60,100 20,80 20,40')
         .fill('#ffcc00');
       initializeElement(polygon);
     };
 
     // Initialize element with common properties
-    const initializeElement = (element: SvgElement) => {
+    const initializeElement = (element: any) => {
       element.draggable();
-      element.on('click', (event) => {
+      element.on('click', (event: any) => {
         event.stopPropagation();
-        toggleSelectElement(element, event.shiftKey ? false : true);
+        toggleSelectElement(element, !event.shiftKey);
       });
     };
 
@@ -200,7 +209,7 @@ export default defineComponent({
 
     const pasteElements = () => {
       copiedElements.value.forEach((el) => {
-        const clone = el.clone().addTo(draw.value!);
+        const clone = el.clone().addTo(draw);
         clone.dmove(10, 10); // Offset pasted element
         initializeElement(clone);
       });
@@ -222,19 +231,19 @@ export default defineComponent({
 
     // Move Elements (Placeholder)
     const moveSelectedElements = () => {
-      // Implement move logic
+      // Implement move logic if needed
     };
 
     // Zoom
     const zoomLevel = ref(1);
     const zoomIn = () => {
       zoomLevel.value *= 1.2;
-      draw.value!.zoom(zoomLevel.value);
+      draw.zoom(zoomLevel.value);
     };
 
     const zoomOut = () => {
       zoomLevel.value *= 0.8;
-      draw.value!.zoom(zoomLevel.value);
+      draw.zoom(zoomLevel.value);
     };
 
     // Send to Back / Bring to Front
@@ -249,15 +258,14 @@ export default defineComponent({
     // Rotate Elements
     const rotateSelectedElements = (angle: number) => {
       selectedElements.value.forEach((el) => {
-        const bbox = el.bbox();
-        el.rotate(angle, bbox.cx, bbox.cy);
+        el.rotate(angle);
       });
     };
 
     // Group / Ungroup Elements
     const groupElements = () => {
       if (selectedElements.value.length > 1) {
-        const group = draw.value!.group();
+        const group = draw.group();
         selectedElements.value.forEach((el) => {
           group.add(el);
         });
@@ -269,11 +277,10 @@ export default defineComponent({
 
     const ungroupElements = () => {
       selectedElements.value.forEach((el) => {
-        if (el instanceof G) {
+        if (el.type === 'g') {
           const children = el.children();
-          el.remove();
-          children.forEach((child) => {
-            draw.value!.add(child);
+          el.ungroup();
+          children.forEach((child: any) => {
             initializeElement(child);
           });
         }
@@ -283,48 +290,48 @@ export default defineComponent({
 
     // Weld Elements (Placeholder)
     const weldElements = () => {
-      // Implement weld logic
+      // Implement weld logic if needed
     };
 
     // Add to Library (Placeholder)
     const addToLibrary = () => {
-      // Implement library logic
+      // Implement library logic if needed
     };
 
     // Undo / Redo (Simplified)
     const undo = () => {
-      // Implement undo logic
+      // Implement undo logic if needed
     };
 
     const redo = () => {
-      // Implement redo logic
+      // Implement redo logic if needed
     };
 
     // Wall Drawing Logic
     const isDrawing = ref(false);
-    const wallPath = ref<SvgElement>();
+    let wallPath: any;
     const wallPoints = ref<[number, number][]>([]);
-    const alignmentGuide = ref<SvgElement | null>(null);
+    let alignmentGuide: any = null;
 
     const startWallDrawing = () => {
       isDrawing.value = true;
       wallPoints.value = [];
-      draw.value!.on('mousedown', onWallMouseDown);
+      draw.on('mousedown', onWallMouseDown);
     };
 
-    const onWallMouseDown = (event: MouseEvent) => {
+    const onWallMouseDown = (event: any) => {
       const { offsetX, offsetY } = event;
       wallPoints.value.push([offsetX, offsetY]);
 
-      if (!wallPath.value) {
-        wallPath.value = draw.value!.polyline().fill('none').stroke({ width: 2, color: '#000' });
+      if (!wallPath) {
+        wallPath = draw.polyline().fill('none').stroke({ width: 2, color: '#000' });
       }
 
-      draw.value!.on('mousemove', onWallMouseMove);
-      draw.value!.on('dblclick', finishWallDrawing);
+      draw.on('mousemove', onWallMouseMove);
+      draw.on('dblclick', finishWallDrawing);
     };
 
-    const onWallMouseMove = (event: MouseEvent) => {
+    const onWallMouseMove = (event: any) => {
       const { offsetX, offsetY } = event;
       let currentPoint: [number, number] = [offsetX, offsetY];
 
@@ -339,7 +346,7 @@ export default defineComponent({
       }
 
       const tempPoints = [...wallPoints.value, currentPoint];
-      wallPath.value!.plot(tempPoints);
+      wallPath.plot(tempPoints);
 
       // Show alignment guide
       showAlignmentGuide(lastPoint, currentPoint);
@@ -347,38 +354,33 @@ export default defineComponent({
 
     const finishWallDrawing = () => {
       isDrawing.value = false;
-      wallPath.value!.plot(wallPoints.value);
-      initializeElement(wallPath.value!);
-      wallPath.value = undefined;
+      wallPath.plot(wallPoints.value);
+      initializeElement(wallPath);
+      wallPath = null;
       wallPoints.value = [];
-      draw.value!.off('mousedown', onWallMouseDown);
-      draw.value!.off('mousemove', onWallMouseMove);
-      draw.value!.off('dblclick', finishWallDrawing);
+      draw.off('mousedown', onWallMouseDown);
+      draw.off('mousemove', onWallMouseMove);
+      draw.off('dblclick', finishWallDrawing);
       removeAlignmentGuide();
     };
 
     const showAlignmentGuide = (start: [number, number], end: [number, number]) => {
       removeAlignmentGuide();
-      alignmentGuide.value = draw.value!.line(start[0], start[1], end[0], end[1]).stroke({
-        width: 1,
-        color: '#00f',
-        dasharray: '5,5',
-      });
+      alignmentGuide = draw
+        .line(start[0], start[1], end[0], end[1])
+        .stroke({
+          width: 1,
+          color: '#00f',
+          dasharray: '5,5',
+        });
     };
 
     const removeAlignmentGuide = () => {
-      if (alignmentGuide.value) {
-        alignmentGuide.value.remove();
-        alignmentGuide.value = null;
+      if (alignmentGuide) {
+        alignmentGuide.remove();
+        alignmentGuide = null;
       }
     };
-
-    // Clean up on unmount
-    onMounted(() => {
-      draw.value!.off('mousedown', onWallMouseDown);
-      draw.value!.off('mousemove', onWallMouseMove);
-      draw.value!.off('dblclick', finishWallDrawing);
-    });
 
     return {
       canvasContainer,
@@ -460,5 +462,20 @@ export default defineComponent({
 .properties-drawer input[type='number'],
 .properties-drawer input[type='color'] {
   width: 100px;
+}
+
+/* Selection Styles */
+.svg_select_boundingRect {
+  fill: none !important;
+  stroke: #00f !important;
+  stroke-width: 1 !important;
+  stroke-dasharray: 5, 5 !important;
+  pointer-events: none !important;
+}
+
+.svg_select_points {
+  fill: #fff !important;
+  stroke: #00f !important;
+  stroke-width: 1 !important;
 }
 </style>
