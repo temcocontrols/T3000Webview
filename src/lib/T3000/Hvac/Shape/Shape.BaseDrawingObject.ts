@@ -206,8 +206,8 @@ class BaseDrawingObject {
     this.GanttInfoID = config.GanttInfoID || -1;
     this.ImageID = config.ImageID || -1;
     this.ContentType = config.ContentType || ConstantData.ContentType.NONE;
-    this.ContentID = e.ContentID || -1;
-    this.CommentID = e.CommentID || -1;
+    this.ContentID = config.ContentID || -1;
+    this.CommentID = config.CommentID || -1;
     this.TextParams = config.TextParams || null;
     this.TextGrow = config.TextGrow || ConstantData.TextGrowBehavior.PROPORTIONAL;
     this.TextAlign = config.TextAlign || ConstantData.TextAlign.CENTER;
@@ -1545,6 +1545,1560 @@ class BaseDrawingObject {
     // For example, you might update the style record or modify properties based on the provided text format.
 
     console.log("= S.BaseDrawingObject: SetTextFormat output: completed");
+  }
+
+  ExtendLines(): void {
+    console.log("= S.BaseDrawingObject: ExtendLines input:");
+
+    // TODO: Implement the logic for extending lines here.
+
+    console.log("= S.BaseDrawingObject: ExtendLines output: complete");
+  }
+
+  ExtendCell(inputCell: any, additionalParam: any, anotherParam: any): any {
+    console.log("= S.BaseDrawingObject: ExtendCell input:", { inputCell, additionalParam, anotherParam });
+
+    // TODO: Add your implementation logic here.
+    const result = null;
+
+    console.log("= S.BaseDrawingObject: ExtendCell output:", result);
+    return result;
+  }
+
+  SetShapeProperties(options: {
+    ClickFlag: number;
+    PositionFlag: number;
+    CRFlag?: boolean;
+    AllowSpell?: boolean;
+  }): boolean {
+    console.log("= S.BaseDrawingObject: SetShapeProperties input:", options);
+
+    let changed = false;
+
+    // Process ClickFlag
+    switch (options.ClickFlag) {
+      case ConstantData.TextFlags.SED_TF_OneClick:
+        if ((this.TextFlags & ConstantData.TextFlags.SED_TF_OneClick) === 0) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_OneClick,
+            true
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_None,
+            false
+          );
+          changed = true;
+        }
+        break;
+
+      case ConstantData.TextFlags.SED_TF_None:
+        if ((this.TextFlags & ConstantData.TextFlags.SED_TF_None) === 0) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_OneClick,
+            false
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_None,
+            true
+          );
+          changed = true;
+        }
+        break;
+
+      case 0:
+        if (
+          (this.TextFlags & ConstantData.TextFlags.SED_TF_None) ||
+          (this.TextFlags & ConstantData.TextFlags.SED_TF_OneClick)
+        ) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_OneClick,
+            false
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_None,
+            false
+          );
+          changed = true;
+        }
+        break;
+    }
+
+    // Process PositionFlag
+    switch (options.PositionFlag) {
+      case ConstantData.TextFlags.SED_TF_AttachA:
+        if ((this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) === 0) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachA,
+            true
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachB,
+            false
+          );
+          changed = true;
+        }
+        break;
+
+      case ConstantData.TextFlags.SED_TF_AttachB:
+        if ((this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) === 0) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachB,
+            true
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachA,
+            false
+          );
+          changed = true;
+        }
+        break;
+
+      case 0:
+        if (
+          (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) !== 0 ||
+          (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) !== 0
+        ) {
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachB,
+            false
+          );
+          this.TextFlags = Utils2.SetFlag(
+            this.TextFlags,
+            ConstantData.TextFlags.SED_TF_AttachA,
+            false
+          );
+          changed = true;
+        }
+        break;
+    }
+
+    // Process CRFlag
+    if (options.CRFlag === true) {
+      if ((this.TextFlags & ConstantData.TextFlags.SED_TF_FormCR) === 0) {
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_FormCR,
+          true
+        );
+        changed = true;
+      }
+    } else if (options.CRFlag === false) {
+      if ((this.TextFlags & ConstantData.TextFlags.SED_TF_FormCR) !== 0) {
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_FormCR,
+          false
+        );
+        changed = true;
+      }
+    }
+
+    // Process AllowSpell
+    if (options.AllowSpell === false) {
+      if ((this.TextFlags & ConstantData.TextFlags.SED_TF_NoSpell) === 0) {
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_NoSpell,
+          true
+        );
+        changed = true;
+      }
+    } else if (options.AllowSpell === true) {
+      if ((this.TextFlags & ConstantData.TextFlags.SED_TF_NoSpell) !== 0) {
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_NoSpell,
+          false
+        );
+        changed = true;
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: SetShapeProperties output:", changed);
+    return changed;
+  }
+
+  SetShapeConnectionPoints(shape: any, connectionPoint: any, additionalInfo: any): boolean {
+    console.log("= S.BaseDrawingObject: SetShapeConnectionPoints input:", { shape, connectionPoint, additionalInfo });
+    const result = false;
+    console.log("= S.BaseDrawingObject: SetShapeConnectionPoints output:", result);
+    return result;
+  }
+
+  GetClosestConnectPoint(e: any): boolean {
+    console.log("= S.BaseDrawingObject: GetClosestConnectPoint input:", e);
+    const result = false;
+    console.log("= S.BaseDrawingObject: GetClosestConnectPoint output:", result);
+    return result;
+  }
+
+  ScaleEndPoints(): void {
+    console.log("= S.BaseDrawingObject: ScaleEndPoints input:", {
+      polylist: this.polylist,
+      startPoint: this.StartPoint,
+      endPoint: this.EndPoint
+    });
+
+    if (this.polylist && this.StartPoint && this.EndPoint) {
+      // ListManager.PolyLine.prototype.ScaleEndPoints.call(this)
+      this.PolyLine_ScaleEndPoints();
+    }
+
+    console.log("= S.BaseDrawingObject: ScaleEndPoints output: completed");
+  }
+
+  PolyLine_ScaleEndPoints(): void {
+    console.log("= S.BaseDrawingObject: PolyLine_ScaleEndPoints input:", {
+      polylist: this.polylist,
+      Frame: this.Frame,
+      StartPoint: this.StartPoint,
+      EndPoint: this.EndPoint
+    });
+
+    "use strict";
+
+    const scaleX = this.Frame.width / this.polylist.dim.x;
+    const scaleY = this.Frame.height / this.polylist.dim.y;
+    const center = { x: this.Frame.x + this.Frame.width / 2, y: this.Frame.y + this.Frame.height / 2 };
+
+    if (scaleX === 1 && scaleY === 1) {
+      console.log("= S.BaseDrawingObject: PolyLine_ScaleEndPoints output: no scaling required");
+      return;
+    }
+
+    // Adjust StartPoint
+    let deltaX = center.x - this.StartPoint.x;
+    this.StartPoint.x = center.x - deltaX * scaleX;
+    let deltaY = center.y - this.StartPoint.y;
+    this.StartPoint.y = center.y - deltaY * scaleY;
+
+    // Adjust EndPoint
+    deltaX = center.x - this.EndPoint.x;
+    this.EndPoint.x = center.x - deltaX * scaleX;
+    deltaY = center.y - this.EndPoint.y;
+    this.EndPoint.y = center.y - deltaY * scaleY;
+
+    console.log("= S.BaseDrawingObject: PolyLine_ScaleEndPoints output:", {
+      StartPoint: this.StartPoint,
+      EndPoint: this.EndPoint
+    });
+  }
+
+  ChangeLineThickness(thickness: number): void {
+    console.log("= S.BaseDrawingObject: ChangeLineThickness input:", thickness);
+    this.UpdateFrame(null);
+    console.log("= S.BaseDrawingObject: ChangeLineThickness output: thickness changed");
+  }
+
+  ChangeEffect(): void {
+    console.log("= S.BaseDrawingObject: ChangeEffect input: no parameters");
+    this.UpdateFrame(null);
+    console.log("= S.BaseDrawingObject: ChangeEffect output: effect changed");
+  }
+
+  ChangeTextAttributes(
+    fillColor: string,
+    strokeColor: string,
+    isBold: boolean,
+    isItalic: boolean,
+    paramI: any,
+    paramN: any,
+    paramO: any,
+    paramS: any
+  ): void {
+    console.log("= S.BaseDrawingObject: ChangeTextAttributes input:", {
+      fillColor,
+      strokeColor,
+      isBold,
+      isItalic,
+      paramI,
+      paramN,
+      paramO,
+      paramS,
+    });
+
+    // Only process if any of these parameters are provided
+    if (fillColor || strokeColor || isBold || isItalic || paramS) {
+      if (this.GetTable(true)) {
+        GlobalData.optManager.Table_ChangeTextAttributes(
+          this,
+          fillColor,
+          strokeColor,
+          paramI,
+          isItalic,
+          paramN,
+          null,
+          false,
+          paramO,
+          paramS
+        );
+      } else {
+        GlobalData.optManager.ChangeObjectTextAttributes(
+          this.BlockID,
+          fillColor,
+          strokeColor,
+          paramI,
+          isItalic,
+          paramN,
+          paramO,
+          paramS
+        );
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: ChangeTextAttributes output: text attributes changed");
+  }
+
+  SetObjectStyle(styleInput: any): any {
+    console.log("= S.BaseDrawingObject: SetObjectStyle input:", styleInput);
+
+    const filteredStyle = GlobalData.optManager.ApplyColorFilter(
+      styleInput,
+      this,
+      this.StyleRecord,
+      this.colorfilter
+    );
+    const initialThickness = this.StyleRecord.Line.Thickness;
+
+    if (this.GetTable(false)) {
+      GlobalData.optManager.Table_ApplyProperties(this, filteredStyle, styleInput, false);
+    } else if (
+      filteredStyle.StyleRecord &&
+      filteredStyle.StyleRecord.Fill &&
+      filteredStyle.StyleRecord.Fill.Paint &&
+      filteredStyle.StyleRecord.Fill.Paint.Color &&
+      filteredStyle.StyleRecord.Name === undefined &&
+      filteredStyle.StyleRecord.Fill.Paint.FillType === undefined
+    ) {
+      if (this.StyleRecord.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
+        if (
+          this.StyleRecord.Fill.Paint.Color.toUpperCase() ===
+          filteredStyle.StyleRecord.Fill.Paint.Color.toUpperCase()
+        ) {
+          filteredStyle.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+        }
+      } else {
+        filteredStyle.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+      }
+    }
+
+    GlobalData.optManager.ApplyProperties(filteredStyle, this);
+
+    if (filteredStyle.StyleRecord) {
+      if (filteredStyle.StyleRecord.Line && filteredStyle.StyleRecord.Line.Thickness) {
+        this.ChangeLineThickness(initialThickness);
+      }
+      if (filteredStyle.StyleRecord.OutsideEffect) {
+        this.ChangeEffect();
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: SetObjectStyle output:", filteredStyle);
+    return filteredStyle;
+  }
+
+  GetListOfEnclosedObjects(enclosedItems: any): any[] {
+    console.log("= S.BaseDrawingObject: GetListOfEnclosedObjects input:", enclosedItems);
+    const result: any[] = [];
+    console.log("= S.BaseDrawingObject: GetListOfEnclosedObjects output:", result);
+    return result;
+  }
+
+  InterceptMoveOperation(event: any): boolean {
+    console.log('= S.BaseDrawingObject: InterceptMoveOperation input:', event);
+    const result = false;
+    console.log('= S.BaseDrawingObject: InterceptMoveOperation output:', result);
+    return result;
+  }
+
+  SetupInterceptMove(event: any): boolean {
+    console.log("= S.BaseDrawingObject: SetupInterceptMove input:", event);
+    const result = false;
+    console.log("= S.BaseDrawingObject: SetupInterceptMove output:", result);
+    return result;
+  }
+
+  IsSelected(): boolean {
+    console.log("= S.BaseDrawingObject: IsSelected input: none");
+
+    const blockID = this.BlockID;
+    const selectedList = GlobalData.optManager.theSelectedListBlockID.Data;
+    const isSelected = $.inArray(blockID, selectedList) >= 0;
+
+    console.log("= S.BaseDrawingObject: IsSelected output:", isSelected);
+    return isSelected;
+  }
+
+  RemoveDimensionLines(svgDoc: any): void {
+    console.log('= S.BaseDrawingObject: RemoveDimensionLines input:', svgDoc);
+
+    if (svgDoc != null) {
+      const elementClasses = [
+        ConstantData.SVGElementClass.DIMENSIONLINE,
+        ConstantData.SVGElementClass.DIMENSIONTEXT,
+        ConstantData.SVGElementClass.AREADIMENSIONLINE,
+        ConstantData.SVGElementClass.DIMENSIONTEXTNOEDIT
+      ];
+
+      for (let i = 0; i < elementClasses.length; i++) {
+        const elements = svgDoc.GetElementListWithID(elementClasses[i]);
+        for (let j = 0; j < elements.length; j++) {
+          svgDoc.RemoveElement(elements[j]);
+        }
+      }
+    }
+
+    console.log('= S.BaseDrawingObject: RemoveDimensionLines output: completed');
+  }
+
+  // Remove coordinate lines when adjusting the line
+  RemoveCoordinateLines(svgDoc: any): void {
+    console.log('= S.BaseDrawingObject: RemoveCoordinateLines input:', svgDoc);
+
+    if (svgDoc != null) {
+      const elementClasses = [
+        ConstantData.SVGElementClass.CoordinateLine,
+      ];
+
+      for (let i = 0; i < elementClasses.length; i++) {
+        const elements = svgDoc.GetElementListWithID(elementClasses[i]);
+        for (let j = 0; j < elements.length; j++) {
+          svgDoc.RemoveElement(elements[j]);
+        }
+      }
+    }
+
+    console.log('= S.BaseDrawingObject: RemoveCoordinateLines output: completed');
+  }
+
+  SetDimensionLinesVisibility(svgDoc: any, isVisible: boolean) {
+    console.log('= S.BaseDrawingObject: SetDimensionLinesVisibility input:', { svgDoc, isVisible });
+
+    function setVisibility(svgDoc: any, elementClass: string, isVisible: boolean) {
+      const elements = svgDoc.GetElementListWithID(elementClass);
+      for (let i = 0; i < elements.length; i++) {
+        elements[i].SetVisible(isVisible);
+      }
+    }
+
+    const shouldSetVisibility = this.Dimensions === ConstantData.DimensionFlags.SED_DF_Always || this.Dimensions === ConstantData.DimensionFlags.SED_DF_Select;
+
+    if (svgDoc && shouldSetVisibility) {
+      setVisibility(svgDoc, ConstantData.SVGElementClass.DIMENSIONLINE, isVisible);
+      setVisibility(svgDoc, ConstantData.SVGElementClass.DIMENSIONTEXT, isVisible);
+      setVisibility(svgDoc, ConstantData.SVGElementClass.DIMENSIONTEXTNOEDIT, isVisible);
+    }
+
+    console.log('= S.BaseDrawingObject: SetDimensionLinesVisibility output: visibility set to', isVisible);
+  }
+
+  NeedsAddLineThicknessToDimension(dimension: any): boolean {
+    console.log("= S.BaseDrawingObject: NeedsAddLineThicknessToDimension input:", dimension);
+
+    // Currently, the function always returns false.
+    const result = false;
+
+    console.log("= S.BaseDrawingObject: NeedsAddLineThicknessToDimension output:", result);
+    return result;
+  }
+
+  GetLengthInRulerUnits(length: number, offset?: number): string {
+    console.log("= S.BaseDrawingObject: GetLengthInRulerUnits input:", { length, offset });
+
+    const sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+    let result = '';
+    let feet = 0;
+    let inches = 0;
+    let fractionalInches = 0;
+    let numerator = 0;
+    let denominator = 0;
+    let fraction = '';
+    let sign = 1;
+    const decimalPlaces = Math.pow(10, GlobalData.docHandler.rulerSettings.dp);
+
+    if (offset) {
+      offset *= 100;
+      if (!GlobalData.docHandler.rulerSettings.useInches) {
+        offset /= ConstantData.Defines.MetricConv;
+      }
+      length -= offset;
+    }
+
+    if (GlobalData.docHandler.rulerSettings.showpixels) {
+      result = Math.round(length).toString();
+      console.log("= S.BaseDrawingObject: GetLengthInRulerUnits output:", result);
+      return result;
+    }
+
+    if (GlobalData.docHandler.rulerSettings.useInches && GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Feet) {
+      let totalInches = this.GetLengthInUnits(length, true);
+      if (totalInches < 0) {
+        sign = -1;
+        totalInches = -totalInches;
+      }
+      feet = Math.floor(totalInches / 12);
+      inches = Math.floor(totalInches % 12);
+      fractionalInches = totalInches - (feet * 12 + inches);
+
+      if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) {
+        inches += feet * 12;
+        feet = 0;
+      }
+
+      if (fractionalInches > 0) {
+        denominator = this.GetFractionStringGranularity(sessionBlock);
+        numerator = Math.round(fractionalInches / denominator);
+        if (numerator >= 1 / denominator) {
+          numerator = 0;
+          if (++inches === 12) {
+            inches = 0;
+            feet++;
+          }
+        }
+        if (numerator > 0) {
+          while (numerator % 2 === 0) {
+            numerator /= 2;
+            denominator *= 2;
+          }
+          fraction = `${numerator}/${Math.floor(1 / denominator)}`;
+        }
+      }
+
+      if (feet !== 0) {
+        result = `${feet * sign}'`;
+      }
+      if (inches > 0 || fraction.length === 0) {
+        result += `${feet !== 0 ? ' ' : ''}${inches}`;
+      }
+      if (fraction.length > 0) {
+        result += `${feet !== 0 || inches !== 0 ? ' ' : ''}${fraction}`;
+      }
+      result += '"';
+    } else if (GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Inches) {
+      const inches = this.GetLengthInUnits(length);
+      result = (Math.round(inches * decimalPlaces) / decimalPlaces).toString();
+    } else {
+      const units = this.GetLengthInUnits(length);
+      if (GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_M || GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Cm) {
+        result = (Math.round(units * decimalPlaces) / decimalPlaces).toString();
+      } else if (GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Mm) {
+        result = Math.round(units).toString();
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: GetLengthInRulerUnits output:", result);
+    return result;
+  }
+
+  GetDimensionTextForPoints(startPoint: Point, endPoint: Point): string {
+    console.log("= S.BaseDrawingObject: GetDimensionTextForPoints input:", { startPoint, endPoint });
+
+    // Calculate the angle between the start and end points
+    const startAngle = 360 - Utils1.CalcAngleFromPoints(startPoint, endPoint);
+    const radians = 2 * Math.PI * (startAngle / 360);
+
+    // Create a copy of the points and rotate them around the center of the frame
+    const points = [new Point(startPoint.x, startPoint.y), new Point(endPoint.x, endPoint.y)];
+    Utils3.RotatePointsAboutCenter(this.Frame, -radians, points);
+
+    // Calculate the distance between the rotated points
+    const distance = Math.abs(points[0].x - points[1].x);
+
+    // Convert the distance to ruler units
+    const result = this.GetLengthInRulerUnits(distance);
+    console.log("= S.BaseDrawingObject: GetDimensionTextForPoints output:", result);
+    return result;
+  }
+
+  UpdateDimensionFromTextObj(textObject: any): void {
+    console.log("= S.BaseDrawingObject: UpdateDimensionFromTextObj input:", textObject);
+
+    if (textObject && textObject.userData) {
+      const { segment, hookedObjectInfo } = textObject.userData;
+      const text = textObject.GetText();
+
+      if (hookedObjectInfo) {
+        this.UpdateDimensionsFromTextForHookedObject(textObject, text, hookedObjectInfo);
+      } else if (segment && segment.angleChange) {
+        this.UpdateLineAngleDimensionFromText(textObject, text, segment);
+      } else {
+        this.UpdateDimensionFromText(textObject, text, segment);
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: UpdateDimensionFromTextObj output: completed");
+  }
+
+  UpdateDimensionFromText(textObject: any, text: string, segment: any): void {
+    console.log("= S.BaseDrawingObject: UpdateDimensionFromText input:", { textObject, text, segment });
+
+    // TODO: Implement the logic to update dimensions from text.
+    // This is a placeholder for the actual implementation.
+
+    console.log("= S.BaseDrawingObject: UpdateDimensionFromText output: completed");
+  }
+
+  MaintainProportions(width: number, height: number): { width: number; height: number } | null {
+    console.log("= S.BaseDrawingObject: MaintainProportions input:", { width, height });
+
+    // Placeholder logic for maintaining proportions
+    const result = null;
+
+    console.log("= S.BaseDrawingObject: MaintainProportions output:", result);
+    return result;
+  }
+
+  CanUseRFlags(): boolean {
+    console.log("= S.BaseDrawingObject: CanUseRFlags input: none");
+    const result = true;
+    console.log("= S.BaseDrawingObject: CanUseRFlags output:", result);
+    return result;
+  }
+
+  UpdateDimensionsFromTextForHookedObject(textObject: any, text: string, hookedObjectInfo: any): void {
+    console.log("= S.BaseDrawingObject: UpdateDimensionsFromTextForHookedObject input:", { textObject, text, hookedObjectInfo });
+
+    const segmentIndex = hookedObjectInfo.segment;
+    GlobalData.optManager.ShowSVGSelectionState(this.BlockID, false);
+
+    const dimensionLength = this.GetDimensionLengthFromString(text, segmentIndex);
+    if (dimensionLength <= 0) {
+      GlobalData.optManager.AddToDirtyList(this.BlockID);
+      GlobalData.optManager.RenderDirtySVGObjects();
+      return;
+    }
+
+    const hookedObject = GlobalData.optManager.GetObjectPtr(hookedObjectInfo.hookedObjectID, true);
+    if (!hookedObject) {
+      console.log("= S.BaseDrawingObject: UpdateDimensionsFromTextForHookedObject output: hooked object not found");
+      return;
+    }
+
+    const hookConnection = hookedObject.hooks[0].connect;
+    const perimeterPoints = this.GetPerimPts(this.BlockID, [hookConnection], hookedObject.hooks[0].hookpt, false, -1, hookedObject.BlockID);
+
+    const startPoint = new Point(hookedObjectInfo.start.x, hookedObjectInfo.start.y);
+    const endPoint = new Point(hookedObjectInfo.end.x, hookedObjectInfo.end.y);
+    const dimensionPoints = [startPoint, endPoint];
+
+    const angle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(startPoint, endPoint);
+    Utils3.RotatePointsAboutCenter(this.Frame, -angle, dimensionPoints);
+
+    let offset = dimensionLength - Math.abs(dimensionPoints[1].x - dimensionPoints[0].x);
+    if (hookedObjectInfo.side === 1) {
+      offset = -offset;
+    }
+
+    const framePoints = this.GetDimensionPoints();
+    for (let i = 0; i < framePoints.length; i++) {
+      framePoints[i].x += this.inside.x;
+      framePoints[i].y += this.inside.y;
+    }
+
+    const updatedPoints = [framePoints[segmentIndex - 1], framePoints[segmentIndex], perimeterPoints[0]];
+    Utils3.RotatePointsAboutCenter(this.Frame, -angle, updatedPoints);
+
+    if (offset > 0 && updatedPoints[2].x + offset - hookedObject.Frame.width / 2 > updatedPoints[1].x) {
+      updatedPoints[2].x = updatedPoints[1].x - hookedObject.Frame.width / 2 - 5;
+    } else if (offset < 0 && updatedPoints[2].x + offset - hookedObject.Frame.width / 2 < updatedPoints[0].x) {
+      updatedPoints[2].x = updatedPoints[0].x + hookedObject.Frame.width / 2 + 5;
+    } else {
+      updatedPoints[2].x += offset;
+    }
+
+    Utils3.RotatePointsAboutCenter(this.Frame, angle, updatedPoints);
+
+    const frameCopy = Utils1.DeepCopy(this.Frame);
+    Utils2.InflateRect(frameCopy, 3, 3);
+    const isPointInRect = Utils2.pointInRect(frameCopy, perimeterPoints[0]);
+
+    const targetPoints = this.GetTargetPoints(
+      perimeterPoints[0],
+      ConstantData.HookFlags.SED_LC_NoSnaps | ConstantData.HookFlags.SED_LC_HookNoExtra | ConstantData.HookFlags.SED_LC_ShapeOnLine,
+      null
+    );
+
+    if (targetPoints && isPointInRect) {
+      GlobalData.optManager.UpdateHook(hookedObject.BlockID, 0, this.BlockID, hookedObject.hooks[0].hookpt, targetPoints[0]);
+      GlobalData.optManager.SetLinkFlag(hookedObject.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
+      GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
+      GlobalData.optManager.UpdateLinks();
+      GlobalData.optManager.UpdateHook(hookedObject.BlockID, 0, this.BlockID, hookedObject.hooks[0].hookpt, targetPoints[0]);
+    } else {
+      setTimeout(() => {
+        // Warning user could find the dimension text
+      }, 250);
+    }
+
+    console.log("= S.BaseDrawingObject: UpdateDimensionsFromTextForHookedObject output: completed");
+  }
+
+  UpdateDimensions(inputElement: any, triggerType: any, additionalInfo: any): void {
+    console.log("= S.BaseDrawingObject: UpdateDimensions input:", { inputElement, triggerType, additionalInfo });
+
+    // TODO: Implement the logic to update dimensions here.
+    // This is a placeholder for the actual implementation.
+
+    console.log("= S.BaseDrawingObject: UpdateDimensions output: completed");
+  }
+
+  GetDimensions(): { width: number; height: number } {
+    console.log("= S.BaseDrawingObject: GetDimensions input: none");
+
+    const dimensions = {
+      width: this.Frame.width,
+      height: this.Frame.height
+    };
+
+    console.log("= S.BaseDrawingObject: GetDimensions output:", dimensions);
+    return dimensions;
+  }
+
+  GetDimensionsForDisplay(): { x: number; y: number; width: number; height: number } {
+    console.log("= S.BaseDrawingObject: GetDimensionsForDisplay input: none");
+
+    const dimensions = {
+      x: this.Frame.x,
+      y: this.Frame.y,
+      width: this.Frame.width,
+      height: this.Frame.height
+    };
+
+    console.log("= S.BaseDrawingObject: GetDimensionsForDisplay output:", dimensions);
+    return dimensions;
+  }
+
+  CreateDimension(container, pathCreator, isAreaDimension, angle, text, startPoint, endPoint, segmentIndex, isPolygon, isStandoff, hookedObjectInfo?) {
+
+    let textShape, textFramePoints = [], leftArrowPoints = [], rightArrowPoints = [], topArrowPoints = [], bottomArrowPoints = [];
+    let boundingBox = new Rectangle(), textFrameRect = new Rectangle(), dimensionBounds = { left: -1, top: -1, right: -1, bottom: -1 };
+    let isLocked = this.flags & ConstantData.ObjFlags.SEDO_Lock;
+    let rotationAngle = this.RotationAngle + angle;
+    let textFrameData = { segment: segmentIndex, hookedObjectInfo: null, textFramePts: [] };
+
+    if (hookedObjectInfo) {
+      textFrameData.hookedObjectInfo = hookedObjectInfo;
+    }
+
+    if (container) {
+      textShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
+      container.AddElement(textShape);
+      textShape.SetRenderingEnabled(false);
+      textShape.SetText(text);
+      if (Utils2.HasFlag(this.Dimensions, ConstantData.DimensionFlags.SED_DF_Select)) {
+        textShape.ExcludeFromExport(true);
+      }
+      textShape.SetUserData(textFrameData);
+
+      if (this.LineType !== ConstantData.LineType.LINE && (isAreaDimension || this.Dimensions & ConstantData.DimensionFlags.SED_DF_Total || this.Dimensions & ConstantData.DimensionFlags.SED_DF_EndPts || this.NoGrow())) {
+        textShape.SetID(ConstantData.SVGElementClass.DIMENSIONTEXTNOEDIT);
+      } else {
+        textShape.SetID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+        textShape.SetEditCallback(this.DimensionEditCallback, this);
+      }
+
+      textShape.SetFormat(GlobalData.optManager.theContentHeader.DimensionFontStyle);
+      textShape.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
+      textShape.SetRenderingEnabled(true);
+
+      if (isAreaDimension) {
+        this.GetDimensionAreaTextInfo(textShape, angle, textFramePoints, leftArrowPoints, rightArrowPoints, topArrowPoints, bottomArrowPoints);
+        if (textFramePoints.length > 0 && (Utils2.GetPolyRect(textFrameRect, textFramePoints), textFrameRect.width >= this.Frame.width)) {
+          container.RemoveElement(textShape);
+          return;
+        }
+        textFrameData.textFramePts = textFramePoints;
+        this.CreateDimensionLineArrowHead(container, pathCreator, leftArrowPoints, dimensionBounds);
+        this.CreateDimensionLineArrowHead(container, pathCreator, rightArrowPoints, dimensionBounds);
+        this.CreateDimensionLineArrowHead(container, pathCreator, topArrowPoints, dimensionBounds);
+        this.CreateDimensionLineArrowHead(container, pathCreator, bottomArrowPoints, dimensionBounds);
+      } else {
+        this.GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
+        textFrameData.textFramePts = Utils1.DeepCopy(textFramePoints);
+        if (isPolygon && (Utils2.sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width)) {
+          container.RemoveElement(textShape);
+          return;
+        }
+        if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff && this.CanUseStandOffDimensionLines() && !isStandoff) {
+          this.CreateDimensionLineSegment(pathCreator, isAreaDimension, leftArrowPoints, dimensionBounds);
+          this.CreateDimensionLineSegment(pathCreator, isAreaDimension, rightArrowPoints, dimensionBounds);
+        } else {
+          this.CreateDimensionLineArrowHead(container, pathCreator, leftArrowPoints, dimensionBounds, textFrameData);
+          this.CreateDimensionLineArrowHead(container, pathCreator, rightArrowPoints, dimensionBounds, textFrameData);
+        }
+      }
+
+      if (rotationAngle >= 360) {
+        rotationAngle -= 360;
+      }
+
+      let textPosition = [new Point(textFramePoints[0].x, textFramePoints[0].y)];
+      if (rotationAngle >= 89 && rotationAngle < 270) {
+        let reverseAngle = 360 - angle;
+        let reverseRadians = 2 * Math.PI * (reverseAngle / 360);
+        Utils3.RotatePointsAboutCenter(this.Frame, -reverseRadians, textFramePoints);
+        textFrameRect = { x: 0, y: 0, width: 0, height: 0 };
+        Utils2.GetPolyRect(textFrameRect, textFramePoints);
+        let oppositeCorner = { x: textFrameRect.x + textFrameRect.width, y: textFrameRect.y + textFrameRect.height };
+        textPosition = [new Point(oppositeCorner.x, oppositeCorner.y)];
+        Utils3.RotatePointsAboutCenter(this.Frame, reverseRadians, textPosition);
+        if ((angle += 180) > 360) {
+          angle -= 360;
+        }
+      }
+
+      textShape.SetPos(textPosition[0].x, textPosition[0].y);
+      try {
+        textShape.SetRotation(angle, textPosition[0].x, textPosition[0].y);
+      } catch (error) {
+        throw error;
+      }
+
+      if (!isAreaDimension && !isLocked && !this.NoGrow()) {
+        let hammerInstance = Hammer(textShape.svgObj.SDGObj.DOMElement());
+        hammerInstance.on('tap', DefaultEvt.Evt_DimensionTextTapFactory(this, textFrameData, false));
+        hammerInstance.on('doubletap', DefaultEvt.Evt_DimensionTextTapFactory(this, textFrameData, true));
+        textShape.SetEventProxy(hammerInstance);
+      }
+    }
+  }
+
+  CreateCoordinateLine(container, pathCreator, isAreaDimension, angle, text, startPoint, endPoint, segmentIndex, isPolygon, isStandoff, hookedObjectInfo?) {
+
+    let textShape, textFramePoints = [], leftArrowPoints = [], rightArrowPoints = [], topArrowPoints = [], bottomArrowPoints = [];
+    let boundingBox = new Rectangle(), textFrameRect = new Rectangle(), dimensionBounds = { left: -1, top: -1, right: -1, bottom: -1 };
+    let isLocked = this.flags & ConstantData.ObjFlags.SEDO_Lock;
+    let rotationAngle = this.RotationAngle + angle;
+    let textFrameData = { segment: segmentIndex, hookedObjectInfo: null, textFramePts: [] };
+
+    if (hookedObjectInfo) {
+      textFrameData.hookedObjectInfo = hookedObjectInfo;
+    }
+
+    if (!container) {
+      return;
+    }
+
+    textShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
+    container.AddElement(textShape);
+    textShape.SetRenderingEnabled(false);
+    textShape.SetText(angle);
+
+    const hasSelectFlag = Utils2.HasFlag(this.Dimensions, ConstantData.DimensionFlags.SED_DF_Select);
+
+    if (hasSelectFlag) {
+      textShape.ExcludeFromExport(true);
+    }
+
+    textShape.SetUserData(textFrameData);
+
+    const isNotLine = this.LineType !== ConstantData.LineType.LINE;
+    const isTotalEndPtsFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Total || this.Dimensions & ConstantData.DimensionFlags.SED_DF_EndPts;
+
+    if (isNotLine && (isAreaDimension || isTotalEndPtsFlag || this.NoGrow())) {
+      textShape.SetID(ConstantData.SVGElementClass.DIMENSIONTEXTNOEDIT);
+    } else {
+      textShape.SetID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+      textShape.SetEditCallback(this.DimensionEditCallback, this);
+    }
+
+    textShape.SetFormat(GlobalData.optManager.theContentHeader.DimensionFontStyle);
+    textShape.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
+    textShape.SetRenderingEnabled(true);
+
+    if (isAreaDimension) {
+
+      this.GetDimensionAreaTextInfo(textShape, angle, textFramePoints, leftArrowPoints, rightArrowPoints, topArrowPoints, bottomArrowPoints);
+
+      if (textFramePoints.length > 0 && (Utils2.GetPolyRect(textFrameRect, textFramePoints), textFrameRect.width >= this.Frame.width)) {
+        container.RemoveElement(textShape);
+        return;
+      }
+
+      textFrameData.textFramePts = textFramePoints;
+      this.CreateDimensionLineArrowHead(container, pathCreator, leftArrowPoints, dimensionBounds);
+      this.CreateDimensionLineArrowHead(container, pathCreator, rightArrowPoints, dimensionBounds);
+      this.CreateDimensionLineArrowHead(container, pathCreator, topArrowPoints, dimensionBounds);
+      this.CreateDimensionLineArrowHead(container, pathCreator, bottomArrowPoints, dimensionBounds);
+    }
+    else {
+
+      this.GetCoordinateTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
+      textFrameData.textFramePts = Utils1.DeepCopy(textFramePoints);
+      const check2 = (Utils2.sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width);
+
+      if (isPolygon && check2) {
+        container.RemoveElement(textShape);
+        return;
+      }
+
+      const isStdOff = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+      const check3 = isStdOff && this.CanUseStandOffDimensionLines() && !isStandoff;
+
+      if (check3) {
+
+        console.log('=== wall CreateCoordinateLine.leftArrowPoints=', leftArrowPoints);
+        console.log('=== wall CreateCoordinateLine.rightArrowPoints=', rightArrowPoints);
+
+        this.CreateCoordinateLineSegment(pathCreator, isAreaDimension, leftArrowPoints, dimensionBounds);
+        this.CreateCoordinateLineSegment(pathCreator, isAreaDimension, rightArrowPoints, dimensionBounds);
+
+      } else {
+        this.CreateDimensionLineArrowHead(container, pathCreator, leftArrowPoints, dimensionBounds, textFrameData);
+        this.CreateDimensionLineArrowHead(container, pathCreator, rightArrowPoints, dimensionBounds, textFrameData);
+      }
+    }
+
+    if (rotationAngle >= 360) {
+      rotationAngle -= 360;
+    }
+
+    let textPosition = [new Point(textFramePoints[0].x, textFramePoints[0].y)];
+
+    if (rotationAngle >= 89 && rotationAngle < 270) {
+      let reverseAngle = 360 - angle;
+      let reverseRadians = 2 * Math.PI * (reverseAngle / 360);
+      Utils3.RotatePointsAboutCenter(this.Frame, -reverseRadians, textFramePoints);
+
+      textFrameRect = { x: 0, y: 0, width: 0, height: 0 };
+      Utils2.GetPolyRect(textFrameRect, textFramePoints);
+
+      let oppositeCorner = { x: textFrameRect.x + textFrameRect.width, y: textFrameRect.y + textFrameRect.height };
+
+      textPosition = [new Point(oppositeCorner.x, oppositeCorner.y)];
+
+      Utils3.RotatePointsAboutCenter(this.Frame, reverseRadians, textPosition);
+
+      if ((angle += 180) > 360) {
+        angle -= 360;
+      }
+    }
+
+    textShape.SetPos(textPosition[0].x, textPosition[0].y);
+
+    try {
+      textShape.SetRotation(angle, textPosition[0].x, textPosition[0].y);
+    } catch (error) {
+      throw error;
+    }
+
+    if (!isAreaDimension && !isLocked && !this.NoGrow()) {
+      let hammerInstance = Hammer(textShape.svgObj.SDGObj.DOMElement());
+      hammerInstance.on('tap', DefaultEvt.Evt_DimensionTextTapFactory(this, textFrameData, false));
+      hammerInstance.on('doubletap', DefaultEvt.Evt_DimensionTextTapFactory(this, textFrameData, true));
+      textShape.SetEventProxy(hammerInstance);
+    }
+  }
+
+  DrawDimensionAngle(container: any, pathCreator: any, segmentIndex: number, dimensionPoints: Point[]): void {
+    console.log("= S.BaseDrawingObject: DrawDimensionAngle input:", { container, pathCreator, segmentIndex, dimensionPoints });
+
+    let dimensionInfo, textMinDimensions, distanceBetweenPoints;
+    const angleChangeData = { angleChange: 1, segment: segmentIndex };
+
+    dimensionInfo = this.GetDimensionAngleInfo(segmentIndex, dimensionPoints);
+    if (dimensionInfo) {
+      container.AddElement(dimensionInfo.text);
+      dimensionInfo.text.SetRenderingEnabled(false);
+      dimensionInfo.text.SetUserData(angleChangeData);
+      dimensionInfo.text.SetID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+      dimensionInfo.text.SetEditCallback(this.DimensionEditCallback, this);
+      dimensionInfo.text.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
+      dimensionInfo.text.SetRenderingEnabled(true);
+      dimensionInfo.text.SetPos(dimensionInfo.textRect.x, dimensionInfo.textRect.y);
+
+      if (this.RotationAngle !== 0) {
+        dimensionInfo.text.SetRotation(-this.RotationAngle);
+      }
+
+      distanceBetweenPoints = Utils2.GetDistanceBetween2Points(dimensionInfo.baseLinePts[1], dimensionInfo.targetLinePts[1]);
+      textMinDimensions = dimensionInfo.text.GetTextMinDimensions();
+
+      if (distanceBetweenPoints > textMinDimensions.width) {
+        const textElement = dimensionInfo.text.svgObj.SDGObj.DOMElement();
+        const hammerInstance = Hammer(textElement);
+        hammerInstance.on('tap', DefaultEvt.Evt_DimensionTextTapFactory(this, angleChangeData, false));
+        hammerInstance.on('doubletap', DefaultEvt.Evt_DimensionTextTapFactory(this, angleChangeData, true));
+        dimensionInfo.text.SetEventProxy(hammerInstance);
+      } else {
+        container.RemoveElement(dimensionInfo.text);
+      }
+
+      if (distanceBetweenPoints > textMinDimensions.width + 2 * ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_SIZE) {
+        Utils2.InflateRect(dimensionInfo.textRect, 2, 2);
+        this.DrawDimensionAngleArc(container, pathCreator, dimensionInfo.targetLinePts[0], dimensionInfo.targetLinePts[1], dimensionInfo.textRect, dimensionInfo.baseLinePts[1]);
+        this.DrawDimensionAngleArc(container, pathCreator, dimensionInfo.targetLinePts[0], dimensionInfo.targetLinePts[1], dimensionInfo.textRect, dimensionInfo.targetLinePts[1]);
+      }
+
+      if (!(this.Dimensions & ConstantData.DimensionFlags.SED_DF_InteriorAngles)) {
+        pathCreator.MoveTo(dimensionInfo.baseLinePts[0].x, dimensionInfo.baseLinePts[0].y);
+        pathCreator.LineTo(dimensionInfo.baseLinePts[1].x, dimensionInfo.baseLinePts[1].y);
+      }
+    }
+
+    console.log("= S.BaseDrawingObject: DrawDimensionAngle output: completed");
+  }
+
+  UpdateLineAngleDimensionFromText(textObject: any, text: string, segment: any): void {
+    console.log("= S.BaseDrawingObject: UpdateLineAngleDimensionFromText input:", { textObject, text, segment });
+
+    let angle = parseFloat(text);
+
+    if (isNaN(angle) || angle < -360 || angle > 360) {
+      this.UpdateDimensionLines(textObject);
+    } else {
+      if (angle < 0) {
+        angle += 360;
+      }
+      this.SetSegmentAngle(textObject, segment.segment, angle);
+    }
+
+    console.log("= S.BaseDrawingObject: UpdateLineAngleDimensionFromText output: completed");
+  }
+
+  SetSegmentAngle(segment: any, angle: number, additionalData: any): void {
+    console.log("= S.BaseDrawingObject: SetSegmentAngle input:", { segment, angle, additionalData });
+
+    // TODO: Implement the logic to set the segment angle here.
+    // This is a placeholder for the actual implementation.
+
+    console.log("= S.BaseDrawingObject: SetSegmentAngle output: completed");
+  }
+
+  DrawDimensionAngleArrowhead(container: any, angle: number, point: Point): void {
+    console.log("= S.BaseDrawingObject: DrawDimensionAngleArrowhead input:", { container, angle, point });
+
+    const arrowheadPoints: Point[] = [];
+    const boundingRect: Rectangle = new Rectangle();
+
+    // Define the arrowhead points relative to the given point
+    arrowheadPoints.push(new Point(point.x, point.y));
+    arrowheadPoints.push(
+      new Point(
+        point.x - ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_SIZE,
+        point.y + ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_WIDTH
+      )
+    );
+    arrowheadPoints.push(
+      new Point(
+        point.x - ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_SIZE,
+        point.y - ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_WIDTH
+      )
+    );
+
+    // Rotate the arrowhead points around the given point by the specified angle
+    Utils3.RotatePointsAboutPoint(point, angle, arrowheadPoints);
+
+    // Calculate the bounding rectangle for the arrowhead points
+    Utils2.GetPolyRect(boundingRect, arrowheadPoints);
+
+    // Create the arrowhead shape and set its properties
+    const arrowheadShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.POLYGON);
+    arrowheadShape.SetPoints(arrowheadPoints);
+    arrowheadShape.SetEventBehavior(Element.EventBehavior.ALL);
+    arrowheadShape.SetID(ConstantData.SVGElementClass.DIMENSIONLINE);
+    arrowheadShape.SetPos(0, 0);
+    arrowheadShape.SetSize(boundingRect.width, boundingRect.height);
+    arrowheadShape.SetFillColor(ConstantData.Defines.DimensionLineColor);
+
+    // Add the arrowhead shape to the container
+    container.AddElement(arrowheadShape);
+
+    console.log("= S.BaseDrawingObject: DrawDimensionAngleArrowhead output: arrowhead drawn");
+  }
+
+  GetPerpendicularAngle(point1: Point, point2: Point, isClockwise: boolean): number {
+    console.log("= S.BaseDrawingObject: GetPerpendicularAngle input:", { point1, point2, isClockwise });
+
+    let angle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(point1, point2);
+    angle += isClockwise ? Math.PI / 2 : -Math.PI / 2;
+
+    if (angle < 0) {
+      angle += 2 * Math.PI;
+    }
+
+    if (angle > 2 * Math.PI) {
+      angle -= 2 * Math.PI;
+    }
+
+    console.log("= S.BaseDrawingObject: GetPerpendicularAngle output:", angle);
+    return angle;
+  }
+
+  DrawDimensionAngleArc(
+    container: any,
+    pathCreator: any,
+    startPoint: Point,
+    endPoint: Point,
+    textRect: Rectangle,
+    centerPoint: Point
+  ): void {
+    console.log("= S.BaseDrawingObject: DrawDimensionAngleArc input:", {
+      container,
+      pathCreator,
+      startPoint,
+      endPoint,
+      textRect,
+      centerPoint
+    });
+
+    let distance = Utils2.GetDistanceBetween2Points(startPoint, endPoint);
+    let arcCenter = {
+      x: textRect.x + textRect.width / 2,
+      y: textRect.y + textRect.height / 2
+    };
+    let startAngle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(startPoint, arcCenter);
+    let endAngle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(startPoint, centerPoint);
+
+    if (startAngle > Math.PI && endAngle === 0) {
+      endAngle = 2 * Math.PI;
+    }
+
+    endAngle -= startAngle;
+    if (endAngle < 0) {
+      endAngle += 2 * Math.PI;
+    }
+
+    let isClockwise = endAngle <= Math.PI;
+    let perpendicularAngle = this.GetPerpendicularAngle(startPoint, centerPoint, isClockwise);
+    let rotatedCenterPoint = Utils3.RotatePointAboutPoint(startPoint, -perpendicularAngle, centerPoint);
+    let lineThickness = this.StyleRecord.Line.Thickness / 2;
+    rotatedCenterPoint.x -= lineThickness;
+    rotatedCenterPoint = Utils3.RotatePointAboutPoint(startPoint, perpendicularAngle, rotatedCenterPoint);
+
+    let arcStartPoint = isClockwise ? rotatedCenterPoint : arcCenter;
+    let arcEndPoint = isClockwise ? arcCenter : rotatedCenterPoint;
+    let arcStartAngle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(startPoint, arcStartPoint);
+
+    let arcPoints = GlobalData.optManager.ArcToPoly(
+      ConstantData.Defines.NPOLYPTS,
+      startPoint,
+      distance,
+      arcStartPoint.y,
+      arcEndPoint.y,
+      startPoint.x,
+      false
+    );
+
+    arcPoints = Utils3.RotatePointsAboutPoint(startPoint, -(Math.PI / 2 - arcStartAngle), arcPoints);
+
+    for (let i = 1; i < arcPoints.length; i++) {
+      pathCreator.MoveTo(arcPoints[i - 1].x, arcPoints[i - 1].y);
+      pathCreator.LineTo(arcPoints[i].x, arcPoints[i].y);
+    }
+
+    let arrowheadPoint = isClockwise ? arcPoints[0] : arcPoints[arcPoints.length - 1];
+    for (let i = 0; i < arcPoints.length; i++) {
+      let index = isClockwise ? i : arcPoints.length - 1 - i;
+      if (Utils2.GetDistanceBetween2Points(arrowheadPoint, arcPoints[index]) > ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_SIZE) {
+        arrowheadPoint = arcPoints[index];
+        break;
+      }
+    }
+
+    let arrowheadAngle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(arrowheadPoint, arcPoints[0]);
+    this.DrawDimensionAngleArrowhead(container, arrowheadAngle, arcPoints[0]);
+
+    console.log("= S.BaseDrawingObject: DrawDimensionAngleArc output: completed");
+  }
+
+  GetDimensionAngleInfo(segmentIndex: number, points: Point[]): any {
+    console.log("= S.BaseDrawingObject: GetDimensionAngleInfo input:", { segmentIndex, points });
+
+    let angle, baseAngle, bisectorAngle, minDistance, preferredBisectorLength, textDimensions;
+    let isInteriorAngle = false;
+    let text = '';
+    let textShape = null;
+    let textRect = new Rectangle(0, 0, 0, 0);
+    let baseLinePoints: Point[] = [];
+    let targetLinePoints: Point[] = [];
+    let bisectorPoints: Point[] = [];
+    let distance = 0;
+    let halfAngle = 0;
+    let angleInDegrees = 0;
+    let isClockwise = false;
+
+    // Initialize points for the segment
+    targetLinePoints.push(new Point(points[segmentIndex - 1].x, points[segmentIndex - 1].y));
+    targetLinePoints.push(new Point(points[segmentIndex].x, points[segmentIndex].y));
+
+    // Check if the shape is closed
+    const isClosedShape = this.polylist ? this.polylist.closed : points.length > 2 && points[0].x === points[points.length - 1].x && points[0].y === points[points.length - 1].y;
+
+    // Skip if it's an interior angle and the first segment of an open shape
+    if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_InteriorAngles && segmentIndex === 1 && !isClosedShape) {
+      return null;
+    }
+
+    // Skip if the segment is not a line
+    if (this.polylist && segmentIndex >= 1 && segmentIndex < this.polylist.segs.length) {
+      const prevSegmentIndex = segmentIndex > 1 ? segmentIndex - 1 : this.polylist.segs.length - 1;
+      if (this.polylist.segs[segmentIndex].LineType !== ConstantData.LineType.LINE || this.polylist.segs[prevSegmentIndex].LineType !== ConstantData.LineType.LINE) {
+        return null;
+      }
+    }
+
+    // Initialize base line points
+    baseLinePoints.push(new Point(targetLinePoints[0].x, targetLinePoints[0].y));
+    if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_InteriorAngles) {
+      if (segmentIndex === 1) {
+        baseLinePoints.push(new Point(points[points.length - 2].x, points[points.length - 2].y));
+      } else {
+        baseLinePoints.push(new Point(points[segmentIndex - 2].x, points[segmentIndex - 2].y));
+      }
+    } else {
+      distance = Utils2.GetDistanceBetween2Points(targetLinePoints[0], targetLinePoints[1]);
+      baseLinePoints.push(new Point(baseLinePoints[0].x + distance, baseLinePoints[0].y));
+    }
+
+    // Calculate angles
+    angle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(targetLinePoints[0], targetLinePoints[1]);
+    baseAngle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(baseLinePoints[0], baseLinePoints[1]);
+    angle -= baseAngle;
+    if (angle < 0) {
+      angle += 2 * Math.PI;
+    }
+    halfAngle = angle / 2;
+    if (angle > Math.PI) {
+      angle = 2 * Math.PI - angle;
+      halfAngle += Math.PI;
+      if (halfAngle >= 2 * Math.PI) {
+        halfAngle -= 2 * Math.PI;
+      }
+      isClockwise = true;
+    }
+    angle += baseAngle;
+    if (angle >= 2 * Math.PI) {
+      angle -= 2 * Math.PI;
+    }
+    halfAngle += baseAngle;
+    if (halfAngle >= 2 * Math.PI) {
+      halfAngle -= 2 * Math.PI;
+    }
+
+    // Initialize bisector points
+    bisectorPoints.push(new Point(targetLinePoints[0].x, targetLinePoints[0].y));
+    bisectorPoints.push(new Point(targetLinePoints[1].x, targetLinePoints[1].y));
+    Utils3.RotatePointsAboutPoint(targetLinePoints[0], -angle, bisectorPoints);
+
+    // Calculate preferred bisector length
+    minDistance = Math.min(Utils2.GetDistanceBetween2Points(targetLinePoints[0], targetLinePoints[1]), Utils2.GetDistanceBetween2Points(baseLinePoints[0], baseLinePoints[1]));
+    preferredBisectorLength = ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_PREFERRED_BISECTOR_LEN < minDistance ? ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_PREFERRED_BISECTOR_LEN : minDistance;
+    bisectorPoints[1].x = bisectorPoints[0].x + preferredBisectorLength;
+    Utils3.RotatePointsAboutPoint(targetLinePoints[0], halfAngle, bisectorPoints);
+
+    // Calculate angle in degrees
+    angleInDegrees = Math.abs(angle / (2 * Math.PI) * 360);
+    angleInDegrees = Math.round(angleInDegrees);
+    text = angleInDegrees.toString() + '°';
+
+    // Create text shape
+    textShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
+    textShape.SetFormat(GlobalData.optManager.theContentHeader.DimensionFontStyle);
+    textShape.SetText(text);
+    textDimensions = textShape.GetTextMinDimensions();
+
+    // Adjust bisector length if necessary
+    while (preferredBisectorLength < minDistance && Math.tan(angle / 2) * preferredBisectorLength < textDimensions.width / 2 + ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_PREFERRED_ARROWSTEM_MINIMUM + ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_ARROWHEAD_SIZE) {
+      preferredBisectorLength += ConstantData.LineAngleDimensionDefs.ANGLEDIMENSION_PREFERRED_BISECTOR_LEN;
+      if (preferredBisectorLength >= minDistance) {
+        preferredBisectorLength = minDistance;
+      }
+    }
+
+    // Set line lengths
+    GlobalData.optManager.SetLineLength(targetLinePoints[0], targetLinePoints[1], preferredBisectorLength);
+    GlobalData.optManager.SetLineLength(baseLinePoints[0], baseLinePoints[1], preferredBisectorLength);
+    GlobalData.optManager.SetLineLength(bisectorPoints[0], bisectorPoints[1], preferredBisectorLength);
+
+    // Set text rectangle
+    textRect = Utils2.SetRect(0, 0, textDimensions.width, textDimensions.height);
+    Utils2.OffsetRect(textRect, bisectorPoints[1].x, bisectorPoints[1].y);
+    Utils2.OffsetRect(textRect, -textDimensions.width / 2, -textDimensions.height / 2);
+
+    const result = {
+      text: textShape,
+      textRect: textRect,
+      baseLinePts: baseLinePoints,
+      targetLinePts: targetLinePoints
+    };
+
+    console.log("= S.BaseDrawingObject: GetDimensionAngleInfo output:", result);
+    return result;
+  }
+
+  GetPointsForDimension(
+    angle: number,
+    text: string,
+    startPoint: Point,
+    endPoint: Point,
+    segmentIndex: number,
+    isStandoff: boolean
+  ): { left: Rectangle; textFrame: Rectangle; right: Rectangle } {
+    console.log("= S.BaseDrawingObject: GetPointsForDimension input:", {
+      angle,
+      text,
+      startPoint,
+      endPoint,
+      segmentIndex,
+      isStandoff
+    });
+
+    let textShape: any;
+    const leftArrowPoints: Point[] = [];
+    const rightArrowPoints: Point[] = [];
+    const textFramePoints: Point[] = [];
+    const leftRect = new Rectangle();
+    const rightRect = new Rectangle();
+    const textFrameRect = new Rectangle();
+
+    textShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
+    textShape.SetText(text);
+    textShape.SetFormat(GlobalData.optManager.theContentHeader.DimensionFontStyle);
+    textShape.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
+
+    this.GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
+
+    textShape = null;
+
+    Utils2.GetPolyRect(leftRect, leftArrowPoints);
+    Utils2.GetPolyRect(rightRect, rightArrowPoints);
+    Utils2.GetPolyRect(textFrameRect, textFramePoints);
+
+    const result = {
+      left: leftRect,
+      textFrame: textFrameRect,
+      right: rightRect
+    };
+
+    console.log("= S.BaseDrawingObject: GetPointsForDimension output:", result);
+    return result;
+  }
+
+  GetAreaDimension(points: Point[]): string | void {
+    console.log("= S.BaseDrawingObject: GetAreaDimension input:", points);
+
+    let result: string | void;
+
+    if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Area) {
+      result = this.GetAreaDimensionText(points);
+    } else if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_RectWithAndHeight) {
+      result = this.GetAreaWidthAndHeightText(points);
+    }
+
+    console.log("= S.BaseDrawingObject: GetAreaDimension output:", result);
+    return result;
+  }
+
+  GetAreaDimensionText(points: Point[]): string {
+    console.log("= S.BaseDrawingObject: GetAreaDimensionText input:", points);
+
+    let area = 0;
+    let result = '';
+
+    if (points) {
+      area = this.calculatePolygonArea(points);
+    } else {
+      area = this.Frame.width * this.Frame.height;
+    }
+
+    const lengthInUnits = GlobalData.docHandler.rulerSettings.showpixels ? area : this.GetLengthInUnits(area);
+    result = this.GetLengthInRulerUnits(lengthInUnits);
+
+    console.log("= S.BaseDrawingObject: GetAreaDimensionText output:", result);
+    return result;
+  }
+
+  private calculatePolygonArea(points: Point[]): number {
+    let area = 0;
+    let j = points.length - 1;
+
+    for (let i = 0; i < points.length; i++) {
+      area += (points[j].x + points[i].x) * (points[j].y - points[i].y);
+      j = i;
+    }
+
+    return Math.abs(area / 2);
+  }
+
+  GetAreaWidthAndHeightText(points: Point[]): string | null {
+    console.log("= S.BaseDrawingObject: GetAreaWidthAndHeightText input:", points);
+
+    // Placeholder logic for calculating width and height text
+    const result = null;
+
+    console.log("= S.BaseDrawingObject: GetAreaWidthAndHeightText output:", result);
+    return result;
+  }
+
+  GetDimensionPoints(): Point[] {
+    console.log("= S.BaseDrawingObject: GetDimensionPoints input");
+
+    let points = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true, false, false, null);
+    if (this.RotationAngle) {
+      const angleInRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
+      Utils3.RotatePointsAboutCenter(this.Frame, angleInRadians, points);
+    }
+
+    console.log("= S.BaseDrawingObject: GetDimensionPoints output:", points);
+    return points;
+  }
+
+  // Horizon and vertial points 0,0 -> horizon x,0 | 0,0 -> vertial y,0
+
+  GetCoordinateLinePoints(): Point[] {
+    console.log("= S.BaseDrawingObject: GetCoordinateLinePoints input");
+
+    let points = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true, false, false, null);
+    if (this.RotationAngle) {
+      const angleInRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
+      Utils3.RotatePointsAboutCenter(this.Frame, angleInRadians, points);
+    }
+
+    console.log("= S.BaseDrawingObject: GetCoordinateLinePoints output:", points);
+    return points;
+  }
+
+  GetHookedObjectDescList(dimensionPoints: Point[], context: any): any[] {
+    console.log("= S.BaseDrawingObject: GetHookedObjectDescList input:", { dimensionPoints, context });
+
+    let result: any[] = [];
+    let linkManager = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
+    let boundingRect = new Rectangle(0, 0, 0, 0);
+    let hookPoints: Point[] = [];
+    let hookObject: any = null;
+    let connectPoint: Point = { x: 0, y: 0 };
+    let segmentSortValue = 0;
+
+    if (linkManager) {
+      let linkIndex = GlobalData.optManager.FindLink(linkManager, this.BlockID, true);
+      let linkCount = linkManager.length;
+
+      while (linkIndex >= 0 && linkIndex < linkCount && linkManager[linkIndex].targetid === this.BlockID) {
+        hookObject = GlobalData.optManager.GetObjectPtr(linkManager[linkIndex].hookid, false);
+        if (hookObject) {
+          for (let i = 0; i < hookObject.hooks.length; i++) {
+            if (hookObject.hooks[i].objid === this.BlockID) {
+              hookPoints.push(linkManager[linkIndex].hookid);
+              break;
+            }
+          }
+        }
+        linkIndex++;
+      }
+    }
+
+    if (context && context.linkParams) {
+      if (context.linkParams.ConnectIndex !== this.BlockID &&
+        (context.linkParams.PrevConnect === this.BlockID ||
+          context.linkParams.ConnectIndexHistory.indexOf(this.BlockID) >= 0)) {
+        let index = hookPoints.indexOf(context.movingShapeID);
+        if (index >= 0) hookPoints.splice(index, 1);
+      }
+
+      if (context.linkParams.ConnectIndex === this.BlockID &&
+        hookPoints.indexOf(context.movingShapeID) < 0) {
+        hookPoints.push(context.movingShapeID);
+      }
+    }
+
+    for (let i = 0; i < hookPoints.length; i++) {
+      hookObject = GlobalData.optManager.GetObjectPtr(hookPoints[i], false);
+      if (hookObject instanceof Instance.Shape.BaseShape &&
+        !(context && context.linkParams && context.movingShapeID === hookObject.BlockID &&
+          context.linkParams.ConnectIndex < 0 && context.linkParams.PrevConnect === this.BlockID)) {
+
+        if (context && context.linkParams && context.movingShapeID === hookObject.BlockID) {
+          connectPoint = context.linkParams.ConnectPt;
+        } else {
+          if (!(hookObject.hooks.length > 0)) continue;
+          connectPoint = hookObject.hooks[0].connect;
+        }
+
+        let perimeterPoints = this.GetPerimPts(this.BlockID, [connectPoint]);
+        let hitResult = this.Hit(perimeterPoints[0], true, false, {});
+
+        if (!hitResult) {
+          if (!(this instanceof Instance.Shape.BaseLine) || this instanceof Instance.Shape.PolyLine) continue;
+          if (Utils2.IsEqual(perimeterPoints[0].x, this.StartPoint.x, 2) &&
+            Utils2.IsEqual(perimeterPoints[0].y, this.StartPoint.y, 2)) {
+            hitResult.segment = 0;
+          } else {
+            if (!Utils2.IsEqual(perimeterPoints[0].x, this.EndPoint.x, 2) ||
+              !Utils2.IsEqual(perimeterPoints[0].y, this.EndPoint.y, 2)) continue;
+            hitResult.segment = dimensionPoints.length > 2 ? dimensionPoints.length - 2 : 0;
+          }
+        }
+
+        let segmentIndex = hitResult.segment + 1;
+        if (segmentIndex - 1 >= dimensionPoints.length) continue;
+
+        let segmentPoints = [
+          new Point(dimensionPoints[segmentIndex - 1].x, dimensionPoints[segmentIndex - 1].y),
+          new Point(dimensionPoints[segmentIndex].x, dimensionPoints[segmentIndex].y)
+        ];
+
+        let angle = GlobalData.optManager.SD_GetCounterClockwiseAngleBetween2Points(segmentPoints[0], segmentPoints[1]);
+        Utils3.RotatePointsAboutCenter(boundingRect, -angle, segmentPoints);
+
+        let hookObjectPoints = context && context.movingShapeID === hookObject.BlockID ?
+          Utils2.PolyFromRect(context.movingShapeBBox) :
+          hookObject.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, false, null);
+
+        let rotationAngle = context && context.movingShapeID === hookObject.BlockID ? angle : -hookObject.RotationAngle / (180 / ConstantData.Geometry.PI);
+        let hookObjectRect = Utils2.GetPolyRect({}, hookObjectPoints);
+        let rotatedConnectPoint = Utils1.DeepCopy(perimeterPoints[0]);
+
+        Utils3.RotatePointsAboutCenter(hookObjectRect, rotationAngle, [rotatedConnectPoint]);
+        Utils2.OffsetRect(hookObjectRect, perimeterPoints[0].x - rotatedConnectPoint.x, perimeterPoints[0].y - rotatedConnectPoint.y);
+        hookObjectPoints = Utils2.PolyFromRect(hookObjectRect);
+
+        if (rotationAngle) {
+          Utils3.RotatePointsAboutPoint(perimeterPoints[0], -rotationAngle, hookObjectPoints);
+        }
+
+        for (let j = 0; j < hookObjectPoints.length; j++) {
+          hookObjectPoints[j].x -= this.Frame.x;
+          hookObjectPoints[j].y -= this.Frame.y;
+        }
+
+        Utils3.RotatePointsAboutCenter(boundingRect, -angle, hookObjectPoints);
+        let hookObjectBoundingRect = Utils2.GetPolyRect({}, hookObjectPoints);
+
+        let startPoint = new Point(hookObjectBoundingRect.x, segmentPoints[0].y);
+        let endPoint = new Point(hookObjectBoundingRect.x + hookObjectBoundingRect.width, segmentPoints[0].y);
+        segmentSortValue = startPoint.x;
+
+        Utils3.RotatePointsAboutCenter(boundingRect, angle, [startPoint, endPoint]);
+
+        result.push({
+          id: hookObject.BlockID,
+          segment: segmentIndex,
+          segmentSortValue: segmentSortValue,
+          start: { x: startPoint.x, y: startPoint.y },
+          end: { x: endPoint.x, y: endPoint.y }
+        });
+      }
+    }
+
+    result.sort((a, b) => {
+      if (a.segment !== b.segment) return a.segment < b.segment ? -1 : 1;
+      return a.segmentSortValue < b.segmentSortValue ? -1 : 1;
+    });
+
+    console.log("= S.BaseDrawingObject: GetHookedObjectDescList output:", result);
+    return result;
   }
 }
 
