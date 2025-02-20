@@ -170,9 +170,9 @@ DefaultEvt.Evt_WorkAreaHammerDragStart = function (event) {
         GlobalData.optManager.touchPanX = event.gesture.center.clientX;
         GlobalData.optManager.touchPanY = event.gesture.center.clientY;
 
-        // GlobalData.optManager.WorkAreaHammer.on('drag', SDJS_LM_WorkAreaHammerPan);
-        GlobalData.optManager.WorkAreaHammer.on('mousemove', SDJS_LM_WorkAreaHammerPan);
-        GlobalData.optManager.WorkAreaHammer.on('dragend', SDJS_LM_WorkAreaHammerPanEnd);
+        // GlobalData.optManager.WorkAreaHammer.on('drag', HV_LM_WorkAreaHammerPan);
+        GlobalData.optManager.WorkAreaHammer.on('mousemove', HV_LM_WorkAreaHammerPan);
+        GlobalData.optManager.WorkAreaHammer.on('dragend', HV_LM_WorkAreaHammerPanEnd);
 
         Utils2.StopPropagationAndDefaults(event);
         console.log("= S.BaseShape - Touch pan started with coordinates:", {
@@ -184,7 +184,7 @@ DefaultEvt.Evt_WorkAreaHammerDragStart = function (event) {
       return false;
     } else {
       if (GlobalData.optManager.bTouchPanStarted) {
-        SDJS_LM_WorkAreaHammerPanEnd();
+        HV_LM_WorkAreaHammerPanEnd();
         console.log("= S.BaseShape - Ending touch pan.");
       }
       Utils2.StopPropagationAndDefaults(event);
@@ -750,7 +750,7 @@ DefaultEvt.Evt_ActionTriggerTap = function (e) {
 }
 
 DefaultEvt.Evt_WorkAreaHammerPinchIn = function (e) {
-  if (e.gesture.scale > 0.666) return GlobalData.optManager.bTouchPanStarted ? SDJS_LM_WorkAreaHammerPan(e) : (
+  if (e.gesture.scale > 0.666) return GlobalData.optManager.bTouchPanStarted ? HV_LM_WorkAreaHammerPan(e) : (
     GlobalData.optManager.bTouchPanStarted = !0,
     GlobalData.optManager.touchPanX = e.gesture.center.clientX,
     GlobalData.optManager.touchPanY = e.gesture.center.clientY
@@ -784,47 +784,94 @@ DefaultEvt.Evt_WorkAreaHammerPinchIn = function (e) {
   return !1
 }
 
-DefaultEvt.Evt_WorkAreaHammerPinchOut = function (e) {
-  if (e.gesture.scale < 1.333) return GlobalData.optManager.bTouchPanStarted ? SDJS_LM_WorkAreaHammerPan(e) : (
-    GlobalData.optManager.bTouchPanStarted = !0,
-    GlobalData.optManager.touchPanX = e.gesture.center.clientX,
-    GlobalData.optManager.touchPanY = e.gesture.center.clientY
-  ),
-    !1;
-  GlobalData.optManager.bTouchPanStarted = !1,
-    GlobalData.optManager.touchPanX = e.gesture.center.clientX,
-    GlobalData.optManager.touchPanY = e.gesture.center.clientY,
-    Utils2.StopPropagationAndDefaults(e),
-    e.gesture.stopDetect(),
-    GlobalData.optManager.RubberBandSelect_Cancel(),
-    GlobalData.optManager.theMoveList &&
-    GlobalData.optManager.theMoveList.length &&
-    GlobalData.optManager.LM_MoveRelease(e);
-  GlobalData.docHandler.svgDoc.GetWorkArea();
-  var t = e.gesture.center.clientX,
-    a = e.gesture.center.clientY,
-    r = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(t, a),
-    i = Math.round(100 * GlobalData.docHandler.GetZoomFactor());
-  if (i < 400) {
-    i = Math.min(400, i + 50),
-      GlobalData.docHandler.SetZoomFactor(i / 100);
-    var n = GlobalData.optManager.svgDoc.ConvertDocToWindowCoords(r.x, r.y),
-      o = t - n.x,
-      s = a - n.y,
-      l = $('#svgarea'),
-      S = l.scrollLeft(),
-      c = l.scrollTop();
-    GlobalData.docHandler.SetScroll(S - o, c - s)
+DefaultEvt.Evt_WorkAreaHammerPinchOut = function (event: any) {
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Input event:", event);
+
+  // Check the scale of the gesture to decide the behavior
+  if (event.gesture.scale < 1.333) {
+    // Handle case when scale is less than 1.333
+    if (GlobalData.optManager.bTouchPanStarted) {
+      const result = HV_LM_WorkAreaHammerPan(event);
+      console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Scale < 1.333 with active touch pan, Output:", result);
+      return result;
+    } else {
+      GlobalData.optManager.bTouchPanStarted = true;
+      GlobalData.optManager.touchPanX = event.gesture.center.clientX;
+      GlobalData.optManager.touchPanY = event.gesture.center.clientY;
+      console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Scale < 1.333 without active touch pan; updated touch pan coordinates to:",
+        { x: event.gesture.center.clientX, y: event.gesture.center.clientY });
+      console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Output: false");
+      return false;
+    }
   }
-  return !1
+
+  // For scale greater than or equal to 1.333, reset touch pan and adjust zoom/scroll
+  GlobalData.optManager.bTouchPanStarted = false;
+  GlobalData.optManager.touchPanX = event.gesture.center.clientX;
+  GlobalData.optManager.touchPanY = event.gesture.center.clientY;
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Scale >= 1.333; reset touch pan coordinates to:",
+    { x: event.gesture.center.clientX, y: event.gesture.center.clientY });
+
+  // Stop event propagation and defaults
+  Utils2.StopPropagationAndDefaults(event);
+  event.gesture.stopDetect();
+  GlobalData.optManager.RubberBandSelect_Cancel();
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Stopped propagation and cancelled rubber band selection.");
+
+  // Release move list if exists
+  if (GlobalData.optManager.theMoveList && GlobalData.optManager.theMoveList.length) {
+    GlobalData.optManager.LM_MoveRelease(event);
+    console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Released move list actions.");
+  }
+
+  GlobalData.docHandler.svgDoc.GetWorkArea();
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Fetched work area.");
+
+  const clientX = event.gesture.center.clientX;
+  const clientY = event.gesture.center.clientY;
+  const docCoords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(clientX, clientY);
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Converted window coordinates to docCoords:", docCoords);
+
+  let zoomFactorCurrent = Math.round(100 * GlobalData.docHandler.GetZoomFactor());
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Current zoom factor (percentage):", zoomFactorCurrent);
+
+  if (zoomFactorCurrent < 400) {
+    zoomFactorCurrent = Math.min(400, zoomFactorCurrent + 50);
+    GlobalData.docHandler.SetZoomFactor(zoomFactorCurrent / 100);
+    console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Increased zoom factor, new value (percentage):", zoomFactorCurrent);
+
+    const windowCoords = GlobalData.optManager.svgDoc.ConvertDocToWindowCoords(docCoords.x, docCoords.y);
+    const diffX = clientX - windowCoords.x;
+    const diffY = clientY - windowCoords.y;
+    const $svgArea = $('#svgarea');
+    const scrollLeft = $svgArea.scrollLeft();
+    const scrollTop = $svgArea.scrollTop();
+
+    GlobalData.docHandler.SetScroll(scrollLeft - diffX, scrollTop - diffY);
+    console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Updated scroll values:",
+      { newScrollLeft: scrollLeft - diffX, newScrollTop: scrollTop - diffY });
+  }
+
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchOut: Output: false");
+  return false;
 }
 
-DefaultEvt.Evt_WorkAreaHammerPinchEnd = function (e) {
-  GlobalData.optManager.bTouchPanStarted = !1
+DefaultEvt.Evt_WorkAreaHammerPinchEnd = function (event: any): void {
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchEnd: Received input event:", event);
+
+  GlobalData.optManager.bTouchPanStarted = false;
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchEnd: Updated bTouchPanStarted to false");
+
+  console.log("= E.DefaultEvt - Evt_WorkAreaHammerPinchEnd: Completed processing event");
 }
 
-DefaultEvt.Evt_DimensionTextKeyboardLifter = function (e, t) {
-  GlobalData.optManager.VirtualKeyboardLifter(e, t)
+DefaultEvt.Evt_DimensionTextKeyboardLifter = function (event: any, params: any) {
+  console.log("= E.DefaultEvt - Evt_DimensionTextKeyboardLifter: Received input event:", event, "and parameters:", params);
+
+  const result = GlobalData.optManager.VirtualKeyboardLifter(event, params);
+
+  console.log("= E.DefaultEvt - Evt_DimensionTextKeyboardLifter: Output result:", result);
+  return result;
 }
 
 DefaultEvt.Evt_DimensionTextDoubleTapFactory = function (
