@@ -2526,6 +2526,1135 @@ class BaseLine extends BaseDrawingObject {
       return groupElement;
     }
   }
+
+  HookToPoint(hookId: number, outRect?: any): Point {
+    console.log("= S.BaseLine: HookToPoint input, hookId:", hookId, "outRect:", outRect);
+
+    // Initialize the result point
+    const resultPoint: Point = { x: 0, y: 0 };
+
+    // Get the constant alias for ease of reading
+    const CD = ConstantData;
+
+    // Calculate the width adjustment using the helper method
+    const widthAdjustment = this.Pr_GetWidthAdjustment();
+
+    // Determine the hook point based on the hookId
+    switch (hookId) {
+      case CD.HookPts.SED_KTL:
+        resultPoint.x = this.StartPoint.x;
+        resultPoint.y = this.StartPoint.y;
+        break;
+      case CD.HookPts.SED_KTR:
+        resultPoint.x = this.EndPoint.x;
+        resultPoint.y = this.EndPoint.y;
+        break;
+      case CD.HookPts.SED_WTL:
+        resultPoint.x = this.StartPoint.x - widthAdjustment.deltax;
+        resultPoint.y = this.StartPoint.y - widthAdjustment.deltay;
+        break;
+      case CD.HookPts.SED_WTR:
+        resultPoint.x = this.StartPoint.x + widthAdjustment.deltax;
+        resultPoint.y = this.StartPoint.y - widthAdjustment.deltay;
+        break;
+      case CD.HookPts.SED_WBL:
+        resultPoint.x = this.EndPoint.x - widthAdjustment.deltax;
+        resultPoint.y = this.EndPoint.y + widthAdjustment.deltay;
+        break;
+      case CD.HookPts.SED_WBR:
+        resultPoint.x = this.EndPoint.x + widthAdjustment.deltax;
+        resultPoint.y = this.EndPoint.y + widthAdjustment.deltay;
+        break;
+      default:
+        resultPoint.x = this.EndPoint.x;
+        resultPoint.y = this.EndPoint.y;
+    }
+
+    // If an output rectangle is provided, calculate and assign the rectangle based on StartPoint and EndPoint
+    if (outRect) {
+      const computedRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+      outRect.x = computedRect.x;
+      outRect.y = computedRect.y;
+      outRect.width = computedRect.width;
+      outRect.height = computedRect.height;
+    }
+
+    console.log("= S.BaseLine: HookToPoint output, resultPoint:", resultPoint, "outRect:", outRect);
+    return resultPoint;
+  }
+
+  MaintainPoint(point: Point, targetId: number, distance: number, lineObj: any, offset: any): boolean {
+    console.log("= S.BaseLine: MaintainPoint input:", { point, targetId, distance, lineObj, offset });
+
+    let hookIndex: number = -1;
+    let currentLine = lineObj;
+    const hookRect: any = {};
+    let newLine: any = {};
+
+    if (currentLine.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.LINE) {
+      switch (currentLine.LineType) {
+        case ConstantData.LineType.SEGLINE:
+        case ConstantData.LineType.ARCSEGLINE:
+        case ConstantData.LineType.POLYLINE:
+          // loop through hooks to find the matching target id
+          for (let i = 0; i < currentLine.hooks.length; i++) {
+            if (currentLine.hooks[i].targetid === targetId) {
+              currentLine.HookToPoint(currentLine.hooks[i].hookpt, hookRect);
+              hookIndex = 0; // found a matching hook
+              break;
+            }
+          }
+          if (hookIndex !== 0) {
+            console.log("= S.BaseLine: MaintainPoint output: returning true early (no matching hook)");
+            return true;
+          }
+          newLine = Utils1.DeepCopy(currentLine);
+          Utils2.CopyRect(newLine.Frame, hookRect);
+          newLine.StartPoint.x = hookRect.x;
+          newLine.StartPoint.y = hookRect.y;
+          newLine.EndPoint.x = hookRect.x + hookRect.width;
+          newLine.EndPoint.y = hookRect.y + hookRect.height;
+          currentLine = newLine;
+          break;
+      }
+      if (GlobalData.optManager.LineCheckPoint(this, point)) {
+        console.log("= S.BaseLine: MaintainPoint output: returning true early (LineCheckPoint true)");
+        return true;
+      }
+      if (GlobalData.optManager.Lines_Intersect(this, currentLine, point)) {
+        console.log("= S.BaseLine: MaintainPoint output: returning true early (Lines_Intersect true)");
+        return true;
+      }
+      GlobalData.optManager.Lines_MaintainDist(this, distance, offset, point);
+    } else {
+      GlobalData.optManager.Lines_MaintainDist(this, distance, offset, point);
+    }
+
+    console.log("= S.BaseLine: MaintainPoint output: returning true");
+    return true;
+  }
+
+  ChangeTarget(e: any, targetId: any, a: any, r: any, i: any, n: any): void {
+    console.log("= S.BaseLine: ChangeTarget called with e:", e, "targetId:", targetId, "a:", a, "r:", r, "i:", i, "n:", n);
+
+    let apparentAngle = 0;
+    let targetObj: any = GlobalData.optManager.GetObjectPtr(targetId, false);
+
+    if (this.TextFlags & ConstantData.TextFlags.SED_TF_HorizText &&
+      targetObj instanceof Instance.Shape.BaseShape) {
+
+      apparentAngle = this.GetApparentAngle(-1);
+      apparentAngle = Math.abs(apparentAngle) % 180;
+
+      let targetRotation = Math.abs(targetObj.RotationAngle % 180);
+      console.log("= S.BaseLine: ChangeTarget computed apparentAngle:", apparentAngle, "targetRotation:", targetRotation);
+
+      if (Math.abs(targetRotation - apparentAngle) > 2 &&
+        Math.abs(targetRotation - (apparentAngle - 180)) > 2) {
+        targetObj.RotationAngle = apparentAngle;
+        GlobalData.optManager.SetLinkFlag(
+          this.BlockID,
+          ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE
+        );
+        GlobalData.optManager.AddToDirtyList(targetId);
+        console.log("= S.BaseLine: ChangeTarget updated targetObj.RotationAngle to:", apparentAngle);
+      } else {
+        console.log("= S.BaseLine: ChangeTarget rotation difference within tolerance, no update performed");
+      }
+    }
+
+    GlobalData.optManager.AddToDirtyList(this.BlockID);
+    console.log("= S.BaseLine: ChangeTarget completed for BlockID:", this.BlockID);
+  }
+
+  GetPolyPoints(numPoints: number, isRelative: boolean, a: any, r: any, i: any): Point[] {
+    console.log("= S.BaseLine: GetPolyPoints called with:", { numPoints, isRelative, a, r, i });
+
+    // Create the points array using StartPoint and EndPoint
+    const points: Point[] = [
+      new Point(this.StartPoint.x, this.StartPoint.y),
+      new Point(this.EndPoint.x, this.EndPoint.y)
+    ];
+
+    // If points should be relative to the frame, subtract frame offsets
+    if (isRelative) {
+      for (const point of points) {
+        point.x -= this.Frame.x;
+        point.y -= this.Frame.y;
+      }
+    }
+
+    console.log("= S.BaseLine: GetPolyPoints output:", points);
+    return points;
+  }
+
+  Hit(e, t, a, r, i) {
+    console.log("= S.BaseLine: Hit called with input:", { e, t, a, r, i });
+
+    // Initialize local variables
+    var n, o, s, l, S, c, u;
+    var p = { x: 0, y: 0 };
+    var d = ConstantData.Defines.SED_KnobSize;
+    var D = 1;
+    var g = {};
+    var h = [];
+
+    // Get current document scale factor
+    D = GlobalData.optManager.svgDoc.docInfo.docToScreenScale;
+    if (GlobalData.optManager.svgDoc.docInfo.docScale <= 0.5) {
+      D *= 2;
+    }
+
+    // If flag "a" is truthy, check hit on endpoints (with inflated points)
+    if (a) {
+      // Calculate an inflation size based on knob size and scale
+      S = (GlobalData.optManager.bTouchInitiated, 2 * d / D);
+      c = Utils2.InflatePoint(this.StartPoint, S);
+      g = Utils2.InflatePoint(this.EndPoint, S);
+
+      // If a hook is provided via parameter i, adjust accordingly
+      if (i) {
+        if (i === ConstantData.HookPts.SED_KTL) {
+          c = null;
+        }
+        if (i === ConstantData.HookPts.SED_KTR) {
+          g = null;
+        }
+      }
+
+      // Also check the object's hooks and nullify endpoints if necessary
+      if (this.hooks) {
+        for (l = 0; l < this.hooks.length; l++) {
+          if (this.hooks[l].hookpt === ConstantData.HookPts.SED_KTL) {
+            c = null;
+          }
+          if (this.hooks[l].hookpt === ConstantData.HookPts.SED_KTR) {
+            g = null;
+          }
+        }
+      }
+
+      // If the inflated start point exists and the hit point lies within it...
+      if (c && Utils2.pointInRect(c, e)) {
+        u = GlobalData.optManager.GetObjectPtr(r.objectid, false);
+        if (!(u && u.polylist && u.polylist.closed)) {
+          if (r) {
+            r.hitcode = ConstantData.HitCodes.SED_PLApp;
+            r.segment = ConstantData.HookPts.SED_KTL;
+            r.pt = { x: this.StartPoint.x, y: this.StartPoint.y };
+          }
+          console.log("= S.BaseLine: Hit returning hitcode SED_PLApp (start point)");
+          return ConstantData.HitCodes.SED_PLApp;
+        }
+      }
+      // If the inflated end point exists and the hit point lies within it...
+      if (g && Utils2.pointInRect(g, e)) {
+        u = GlobalData.optManager.GetObjectPtr(r.objectid, false);
+        if (!(u && u.polylist && u.polylist.closed)) {
+          if (r) {
+            r.hitcode = ConstantData.HitCodes.SED_PLApp;
+            r.segment = ConstantData.HookPts.SED_KTR;
+            r.pt = { x: this.EndPoint.x, y: this.EndPoint.y };
+          }
+          console.log("= S.BaseLine: Hit returning hitcode SED_PLApp (end point)");
+          return ConstantData.HitCodes.SED_PLApp;
+        }
+      }
+    }
+
+    // Get polyline points for the object
+    n = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, true, h);
+    p.x = e.x;
+    p.y = e.y;
+
+    var m = {};
+    // Compute hit using line style hit detection helper
+    o = Utils3.LineDStyleHit(n, p, this.StyleRecord.Line.Thickness, 0, m);
+    if (m.lpHit !== void 0 && r) {
+      // Determine segment index by comparing m.lpHit with array h
+      for (s = h.length, l = 0; l < s; l++) {
+        if (m.lpHit < h[l]) {
+          m.lpHit = l;
+          break;
+        }
+      }
+      r.segment = m.lpHit;
+    }
+    if (r) {
+      r.hitcode = o;
+    }
+    console.log("= S.BaseLine: Hit returning output hitcode:", o);
+    return o;
+  }
+
+  StartNewObjectDrawDoAutoScroll() {
+    console.log("= S.BaseLine: StartNewObjectDrawDoAutoScroll called");
+
+    // Set the auto-scroll timer with a 100ms timeout
+    GlobalData.optManager.autoScrollTimerID = GlobalData.optManager.autoScrollTimer.setTimeout(
+      'StartNewObjectDrawDoAutoScroll',
+      100
+    );
+    console.log("= S.BaseLine: autoScrollTimerID set to", GlobalData.optManager.autoScrollTimerID);
+
+    // Convert window coordinates (autoScrollXPos, autoScrollYPos) to document coordinates
+    let docCoords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
+      GlobalData.optManager.autoScrollXPos,
+      GlobalData.optManager.autoScrollYPos
+    );
+    console.log("= S.BaseLine: Converted window coords to docCoords:", docCoords);
+
+    // Adjust the document coordinates for auto-grow drag
+    docCoords = GlobalData.optManager.DoAutoGrowDrag(docCoords);
+    console.log("= S.BaseLine: After DoAutoGrowDrag, docCoords:", docCoords);
+
+    // Scroll the document to the new position
+    GlobalData.docHandler.ScrollToPosition(docCoords.x, docCoords.y);
+    console.log("= S.BaseLine: Scrolled to position:", docCoords);
+
+    // Continue drawing tracking with the updated coordinates
+    this.StartNewObjectDrawTrackCommon(docCoords.x, docCoords.y, null);
+    console.log("= S.BaseLine: Called StartNewObjectDrawTrackCommon with coords:", docCoords.x, docCoords.y);
+  }
+
+  StartNewObjectDrawTrackCommon(x: number, y: number, extraFlag: any): void {
+    console.log("= S.BaseLine: StartNewObjectDrawTrackCommon called with x:", x, "y:", y, "extraFlag:", extraFlag);
+
+    // Compute differences relative to the action start coordinates
+    const deltaX = x - GlobalData.optManager.theActionStartX;
+    const deltaY = y - GlobalData.optManager.theActionStartY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    console.log("= S.BaseLine: Computed deltaX:", deltaX, "deltaY:", deltaY, "distance:", distance);
+
+    // Make a deep copy of the action bounding box
+    const actionBBox = $.extend(true, {}, GlobalData.optManager.theActionBBox);
+    console.log("= S.BaseLine: actionBBox:", actionBBox);
+
+    // Adjust the line end point
+    this.AdjustLineEnd(
+      GlobalData.optManager.theActionSVGObject,
+      x,
+      y,
+      ConstantData.ActionTriggerType.LINEEND,
+      extraFlag
+    );
+    console.log("= S.BaseLine: AdjustLineEnd called with x:", x, "y:", y, "trigger:", ConstantData.ActionTriggerType.LINEEND, "extraFlag:", extraFlag);
+  }
+
+  LM_DrawTrack(e: any): void {
+    console.log("= S.BaseLine: LM_DrawTrack - input:", e);
+
+    // Stop propagation and default behavior
+    Utils2.StopPropagationAndDefaults(e);
+
+    let coords: any;
+    let altKeyFlag: number = 0;
+
+    // Check if an action stored object exists; if not, exit early
+    if (GlobalData.optManager.theActionStoredObjectID === -1) {
+      console.log("= S.BaseLine: LM_DrawTrack - no action stored object; returning early");
+      return;
+    }
+
+    // Convert window coordinates to document coordinates
+    if (e.gesture) {
+      coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
+        e.gesture.center.clientX,
+        e.gesture.center.clientY
+      );
+      altKeyFlag = e.gesture.srcEvent.altKey;
+    } else {
+      coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
+        e.clientX,
+        e.clientY
+      );
+    }
+
+    // Process the coordinate adjustments during draw
+    coords = this.LM_DrawDuringTrack(coords);
+
+    // Check if link parameters exist and if ConnectIndex is valid
+    let hasLinkParams: boolean = GlobalData.optManager.LinkParams &&
+      GlobalData.optManager.LinkParams.ConnectIndex >= 0;
+    if (GlobalData.optManager.OverrideSnaps(e)) {
+      hasLinkParams = true;
+    }
+
+    // If snapping is enabled and no valid link parameter is present, apply grid snapping
+    if (GlobalData.docHandler.documentConfig.enableSnap && !hasLinkParams) {
+      const deltaX: number = coords.x - GlobalData.optManager.theActionStartX;
+      const deltaY: number = coords.y - GlobalData.optManager.theActionStartY;
+      if (!this.CustomSnap(this.Frame.x, this.Frame.y, deltaX, deltaY, false, coords)) {
+        coords = GlobalData.docHandler.SnapToGrid(coords);
+      }
+    }
+
+    // Adjust coordinates for auto-grow drag
+    coords = GlobalData.optManager.DoAutoGrowDrag(coords);
+
+    // Continue drawing if no auto-scroll is triggered; otherwise, auto-scroll will handle it
+    if (this.AutoScrollCommon(e, !hasLinkParams, 'StartNewObjectDrawDoAutoScroll')) {
+      this.StartNewObjectDrawTrackCommon(coords.x, coords.y, altKeyFlag);
+    }
+
+    console.log("= S.BaseLine: LM_DrawTrack - output coords:", coords, "altKeyFlag:", altKeyFlag);
+  }
+
+  CancelObjectDraw(): boolean {
+    console.log("= S.BaseLine: CancelObjectDraw input: none");
+
+    // Unbind click hammer events
+    GlobalData.optManager.unbindActionClickHammerEvents();
+
+    // If LineStamp is set, cancel the mousemove event (if not mobile) and reset LineStamp
+    if (GlobalData.optManager.LineStamp) {
+      if (!GlobalData.optManager.isMobilePlatform && GlobalData.optManager.WorkAreaHammer) {
+        GlobalData.optManager.WorkAreaHammer.off('mousemove');
+      }
+      GlobalData.optManager.LineStamp = false;
+    }
+
+    // Reset overlay state and rebind tap event
+    GlobalData.optManager.FromOverlayLayer = false;
+    GlobalData.optManager.WorkAreaHammer.on('tap', DefaultEvt.Evt_WorkAreaHammerTap);
+
+    // Reset the auto-scroll timer
+    this.ResetAutoScrollTimer();
+
+    console.log("= S.BaseLine: CancelObjectDraw output: true");
+    return true;
+  }
+
+  LM_DrawRelease(e, t) {
+    console.log("= S.BaseLine: LM_DrawRelease called with input:", { e, t });
+
+    try {
+      let a, r = {}, minlen;
+      // Set default minimum segment length
+      minlen = ConstantData.Defines.SED_SegDefLen;
+
+      if (t) {
+        r = t;
+        a = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(t.x, t.y);
+      } else if (e.gesture) {
+        r = {
+          x: e.gesture.center.clientX,
+          y: e.gesture.center.clientY
+        };
+        a = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
+          e.gesture.center.clientX,
+          e.gesture.center.clientY
+        );
+      } else {
+        r = {
+          x: e.clientX,
+          y: e.clientY
+        };
+        a = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(e.clientX, e.clientY);
+      }
+
+      if (e) {
+        Utils2.StopPropagationAndDefaults(e);
+      }
+
+      let i, n;
+      const o = 2 * ConstantData.Defines.SED_MinDim;
+      if (GlobalData.optManager.FromOverlayLayer) {
+        i = GlobalData.optManager.theLineDrawStartX - a.x;
+        n = GlobalData.optManager.theLineDrawStartY - a.y;
+        minlen -= 20;
+      } else {
+        i = GlobalData.optManager.theDrawStartX - a.x;
+        n = GlobalData.optManager.theDrawStartY - a.y;
+      }
+
+      // Check if the movement is too short to consider as a draw operation
+      if (
+        !GlobalData.optManager.LineStamp &&
+        Math.abs(i) < o &&
+        Math.abs(n) < o
+      ) {
+        GlobalData.optManager.LineStamp = true;
+        if (
+          !GlobalData.optManager.isMobilePlatform &&
+          GlobalData.optManager.WorkAreaHammer
+        ) {
+          GlobalData.optManager.WorkAreaHammer.on(
+            "mousemove",
+            DefaultEvt.Evt_DrawTrackHandlerFactory(this)
+          );
+        }
+        console.log("= S.BaseLine: LM_DrawRelease short movement detected; starting line stamp.");
+        return;
+      }
+
+      if (GlobalData.optManager.WorkAreaHammer) {
+        GlobalData.optManager.unbindActionClickHammerEvents();
+        GlobalData.optManager.WorkAreaHammer.on("tap", DefaultEvt.Evt_WorkAreaHammerTap);
+      }
+
+      if (e && e.gesture) {
+        e.gesture.stopDetect();
+      }
+      this.ResetAutoScrollTimer();
+
+      if (GlobalData.optManager.FromOverlayLayer && (i * i + n * n < minlen * minlen)) {
+        SDUI.Commands.MainController.Shapes.CancelModalOperation();
+        console.log("= S.BaseLine: LM_DrawRelease canceled due to insufficient length in overlay mode.");
+        return;
+      }
+
+      // Prepare link parameters backup copy
+      const s = {
+        LinkParams: Utils1.DeepCopy(GlobalData.optManager.LinkParams)
+      };
+
+      const l = this.LM_DrawPostRelease(GlobalData.optManager.theActionStoredObjectID);
+      let S = null;
+      if (GlobalData.optManager.FromOverlayLayer) {
+        S = gBusinessController.AddLineLabel(this.BlockID);
+      }
+
+      // Build collaboration message if allowed
+      if (Collab.AllowMessage()) {
+        const c: any = { attributes: {} };
+        c.attributes.StyleRecord = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StyleRecord);
+        c.attributes.StartArrowID = GlobalData.optManager.theDrawShape.StartArrowID;
+        c.attributes.EndArrowID = GlobalData.optManager.theDrawShape.EndArrowID;
+        c.attributes.StartArrowDisp = GlobalData.optManager.theDrawShape.StartArrowDisp;
+        c.attributes.ArrowSizeIndex = GlobalData.optManager.theDrawShape.ArrowSizeIndex;
+        c.attributes.TextGrow = GlobalData.optManager.theDrawShape.TextGrow;
+        c.attributes.TextAlign = GlobalData.optManager.theDrawShape.TextAlign;
+        c.attributes.TextDirection = GlobalData.optManager.theDrawShape.TextDirection;
+        c.attributes.TextFlags = GlobalData.optManager.theDrawShape.TextFlags;
+        c.attributes.Dimensions = GlobalData.optManager.theDrawShape.Dimensions;
+        c.attributes.StartPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StartPoint);
+        c.attributes.EndPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.EndPoint);
+        c.attributes.Frame = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.Frame);
+        c.attributes.objecttype = this.objecttype;
+        c.attributes.ShortRef = this.ShortRef;
+        c.attributes.shapeparam = this.shapeparam;
+        if (this.CurveAdjust != null) {
+          c.attributes.CurveAdjust = this.CurveAdjust;
+        }
+        if (this.segl) {
+          c.attributes.segl = Utils1.DeepCopy(this.segl);
+        }
+        c.UsingWallTool = ConstantData.DocumentContext.UsingWallTool;
+        c.LineTool = ConstantData.DocumentContext.LineTool;
+        if (Collab.CreateList.length) {
+          Collab.AddNewBlockToSecondary(Collab.CreateList[0]);
+        }
+        if (Collab.IsSecondary() && Collab.CreateList.length) {
+          c.CreateList = [].concat(Collab.CreateList);
+        }
+        c.LinkParams = s.LinkParams;
+        c.Actions = [];
+        let u = new Collab.MessageAction(ConstantData.CollabMessageActions.CreateLine);
+        c.Actions.push(u);
+        u = new Collab.MessageAction(ConstantData.CollabMessageActions.LinkObject);
+        c.Actions.push(u);
+        if (S) {
+          c.label = S;
+          u = new Collab.MessageAction(ConstantData.CollabMessageActions.AddLabel);
+          c.Actions.push(u);
+        }
+        const p = Collab.BuildMessage(ConstantData.CollabMessages.AddLine, c, false, true);
+        if (p) {
+          Collab.SendMessage(p);
+        }
+      }
+
+      // Post-draw operations and finalizing
+      if (l) {
+        GlobalData.optManager.PostObjectDraw(null);
+      } else {
+        GlobalData.optManager.PostObjectDraw(this.LM_DrawRelease);
+      }
+
+      if (GlobalData.optManager.LineStamp) {
+        if (!GlobalData.optManager.isMobilePlatform && GlobalData.optManager.WorkAreaHammer) {
+          GlobalData.optManager.WorkAreaHammer.off("mousemove");
+        }
+        GlobalData.optManager.LineStamp = false;
+      }
+
+      if (GlobalData.optManager.FromOverlayLayer) {
+        GlobalData.optManager.FromOverlayLayer = false;
+        gBusinessController.CompleteAction(this.BlockID, r);
+      }
+
+      console.log("= S.BaseLine: LM_DrawRelease output completed successfully.");
+    } catch (e) {
+      GlobalData.optManager.CancelModalOperation();
+      this.LM_DrawClick_ExceptionCleanup(e);
+      GlobalData.optManager.ExceptionCleanup(e);
+      console.error("= S.BaseLine: LM_DrawRelease encountered error:", e);
+      throw e;
+    }
+    console.log("= S.BaseLine: LM_DrawRelease finished execution.");
+  }
+
+  LM_DrawPreTrack(e) {
+    console.log("= S.BaseLine: LM_DrawPreTrack called with input:", e);
+
+    let hookFlags = this.GetHookFlags();
+    let session = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+    let linksBlock;
+    let extra = {}; // extra object for GetHookList
+    let hookPoints = [{ x: 0, y: 0 }];
+    let allowLink = this.AllowLink();
+
+    if (allowLink) {
+      GlobalData.optManager.LinkParams = new LinkParameters();
+      if (session && !GlobalData.optManager.FromOverlayLayer) {
+        GlobalData.optManager.LinkParams.AllowJoin = session.flags & ConstantData.SessionFlags.SEDS_FreeHand;
+      }
+      if (hookFlags & ConstantData.HookFlags.SED_LC_CHook) {
+        hookPoints[0].id = ConstantData.HookPts.SED_KTL;
+        hookPoints[0].x = e.x;
+        hookPoints[0].y = e.y;
+        GlobalData.optManager.theDragDeltaX = 0;
+        GlobalData.optManager.theDragDeltaY = 0;
+
+        linksBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
+        if (
+          GlobalData.optManager.FindConnect(
+            GlobalData.optManager.theActionStoredObjectID,
+            this,
+            hookPoints,
+            false,
+            false,
+            GlobalData.optManager.LinkParams.AllowJoin,
+            e
+          )
+        ) {
+          GlobalData.optManager.LinkParams.SConnectIndex = GlobalData.optManager.LinkParams.ConnectIndex;
+          GlobalData.optManager.LinkParams.SConnectHookFlag = GlobalData.optManager.LinkParams.ConnectHookFlag;
+          GlobalData.optManager.LinkParams.SConnectInside = GlobalData.optManager.LinkParams.ConnectInside;
+          GlobalData.optManager.LinkParams.SConnectPt.x = GlobalData.optManager.LinkParams.ConnectPt.x;
+          GlobalData.optManager.LinkParams.SConnectPt.y = GlobalData.optManager.LinkParams.ConnectPt.y;
+          GlobalData.optManager.LinkParams.ConnectIndex = -1;
+          GlobalData.optManager.LinkParams.Hookindex = -1;
+          GlobalData.optManager.LinkParams.ConnectInside = 0;
+          GlobalData.optManager.LinkParams.ConnectHookFlag = 0;
+          e.x += GlobalData.optManager.theDragDeltaX;
+          e.y += GlobalData.optManager.theDragDeltaY;
+          this.StartPoint.x += GlobalData.optManager.theDragDeltaX;
+          this.StartPoint.y += GlobalData.optManager.theDragDeltaY;
+          this.EndPoint.x = this.StartPoint.x;
+          this.EndPoint.y = this.StartPoint.y;
+          GlobalData.optManager.LinkParams.lpCircList = GlobalData.optManager.GetHookList(
+            linksBlock,
+            GlobalData.optManager.LinkParams.lpCircList,
+            GlobalData.optManager.LinkParams.SConnectIndex,
+            this,
+            ConstantData.ListCodes.SED_LC_TARGONLY,
+            extra
+          );
+        } else if (GlobalData.optManager.LinkParams.JoinIndex >= 0) {
+          GlobalData.optManager.LinkParams.SJoinIndex = GlobalData.optManager.LinkParams.JoinIndex;
+          GlobalData.optManager.LinkParams.SJoinData = GlobalData.optManager.LinkParams.JoinData;
+          GlobalData.optManager.LinkParams.SJoinSourceData = GlobalData.optManager.LinkParams.JoinSourceData;
+          GlobalData.optManager.LinkParams.SConnectPt.x = GlobalData.optManager.LinkParams.ConnectPt.x;
+          GlobalData.optManager.LinkParams.SConnectPt.y = GlobalData.optManager.LinkParams.ConnectPt.y;
+          GlobalData.optManager.LinkParams.JoinIndex = -1;
+          GlobalData.optManager.LinkParams.JoinData = 0;
+          GlobalData.optManager.LinkParams.JoinSourceData = 0;
+          GlobalData.optManager.LinkParams.lpCircList = GlobalData.optManager.GetHookList(
+            linksBlock,
+            GlobalData.optManager.LinkParams.lpCircList,
+            GlobalData.optManager.LinkParams.SJoinIndex,
+            this,
+            ConstantData.ListCodes.SED_LC_CIRCTARG,
+            extra
+          );
+        }
+      }
+    } else {
+      // When linking is not allowed, just retrieve the session
+      session = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+    }
+
+    // If session exists and the object is a PolyLine or the session allows free-hand,
+    // then set LinkParams with ArraysOnly flag.
+    if (
+      session &&
+      (
+        this instanceof Instance.Shape.PolyLine ||
+        (session.flags & ConstantData.SessionFlags.SEDS_FreeHand)
+      )
+    ) {
+      GlobalData.optManager.LinkParams = new LinkParameters();
+      GlobalData.optManager.LinkParams.ArraysOnly = true;
+      GlobalData.optManager.LinkParams.AllowJoin = session.flags & ConstantData.SessionFlags.SEDS_FreeHand;
+    }
+
+    console.log("= S.BaseLine: LM_DrawPreTrack output LinkParams:", GlobalData.optManager.LinkParams);
+    return true;
+  }
+  // LM_DrawDuringTrack(e) { }
+
+  LM_DrawDuringTrack(e: any): any {
+    console.log("= S.BaseLine: LM_DrawDuringTrack - input:", e);
+
+    let t: any;
+    let a: any;
+    let resultPoints = [{ x: 0, y: 0 }];
+    let hasJoinIssue = false;
+
+    if (GlobalData.optManager.LinkParams != null) {
+      // Set initial connection point and drag deltas
+      resultPoints[0].x = e.x;
+      resultPoints[0].y = e.y;
+      resultPoints[0].id = ConstantData.HookPts.SED_KTR;
+      GlobalData.optManager.theDragDeltaX = 0;
+      GlobalData.optManager.theDragDeltaY = 0;
+
+      // Attempt to find a connection
+      const foundConnection = GlobalData.optManager.FindConnect(
+        GlobalData.optManager.theActionStoredObjectID,
+        this,
+        resultPoints,
+        true,
+        false,
+        GlobalData.optManager.LinkParams.AllowJoin,
+        e
+      );
+      if (foundConnection) {
+        e.x += GlobalData.optManager.theDragDeltaX;
+        e.y += GlobalData.optManager.theDragDeltaY;
+      }
+
+      // Check for join conditions if SJoinIndex is set and JoinIndex is not yet assigned
+      if (
+        GlobalData.optManager.LinkParams.SJoinIndex >= 0 &&
+        GlobalData.optManager.LinkParams.JoinIndex < 0
+      ) {
+        t = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.LinkParams.SJoinIndex);
+        // Check if the object is a polyline
+        if (this.checkIfPolyLine(t)) {
+          a = new HitResult(-1, 0, null);
+          a.hitcode = t.Hit(e, false, true, a);
+          if (a && a.hitcode === ConstantData.HitCodes.SED_PLApp && GlobalData.optManager.LinkParams.SJoinData != a.segment) {
+            hasJoinIssue = true;
+          }
+        }
+        if (hasJoinIssue) {
+          GlobalData.optManager.LinkParams.JoinIndex = t.BlockID;
+          GlobalData.optManager.LinkParams.JoinData = a.segment;
+          if (GlobalData.optManager.LinkParams.HiliteJoin < 0) {
+            GlobalData.optManager.LinkParams.hiliteJoin = t.BlockID;
+            if (GlobalData.optManager.GetEditMode() != ConstantData.EditState.LINKJOIN) {
+              GlobalData.optManager.SetEditMode(ConstantData.EditState.LINKJOIN, null, false);
+              t.SetCursors();
+              GlobalData.optManager.SetEditMode(ConstantData.EditState.LINKJOIN, null, false);
+            }
+          }
+        } else {
+          if (GlobalData.optManager.LinkParams.HiliteJoin >= 0) {
+            GlobalData.optManager.HiliteConnect(
+              GlobalData.optManager.LinkParams.HiliteJoin,
+              GlobalData.optManager.LinkParams.ConnectPt,
+              false,
+              true,
+              this.BlockID,
+              null
+            );
+            GlobalData.optManager.LinkParams.HiliteJoin = -1;
+          }
+          GlobalData.optManager.SetEditMode(ConstantData.EditState.DEFAULT);
+        }
+      }
+    }
+
+    console.log("= S.BaseLine: LM_DrawDuringTrack - output:", e);
+    return e;
+  }
+
+  LM_DrawPostRelease(actionStoredObjectID: number): boolean {
+    console.log("= S.BaseLine: LM_DrawPostRelease called with actionStoredObjectID =", actionStoredObjectID);
+
+    if (GlobalData.optManager.LinkParams != null) {
+      // Process SHiliteConnect if present
+      if (GlobalData.optManager.LinkParams.SHiliteConnect >= 0) {
+        console.log("= S.BaseLine: Processing SHiliteConnect =", GlobalData.optManager.LinkParams.SHiliteConnect);
+        GlobalData.optManager.HiliteConnect(
+          GlobalData.optManager.LinkParams.SHiliteConnect,
+          GlobalData.optManager.LinkParams.SConnectPt,
+          false,
+          false,
+          this.BlockID,
+          GlobalData.optManager.LinkParams.SHiliteInside
+        );
+        GlobalData.optManager.LinkParams.SHiliteConnect = -1;
+        GlobalData.optManager.LinkParams.SHiliteInside = null;
+      }
+      // Process HiliteConnect if present
+      if (GlobalData.optManager.LinkParams.HiliteConnect >= 0) {
+        console.log("= S.BaseLine: Processing HiliteConnect =", GlobalData.optManager.LinkParams.HiliteConnect);
+        GlobalData.optManager.HiliteConnect(
+          GlobalData.optManager.LinkParams.HiliteConnect,
+          GlobalData.optManager.LinkParams.ConnectPt,
+          false,
+          false,
+          this.BlockID,
+          GlobalData.optManager.LinkParams.HiliteInside
+        );
+        GlobalData.optManager.LinkParams.HiliteConnect = -1;
+        GlobalData.optManager.LinkParams.HiliteInside = null;
+      }
+      // Process SHiliteJoin if present
+      if (GlobalData.optManager.LinkParams.SHiliteJoin >= 0) {
+        console.log("= S.BaseLine: Processing SHiliteJoin =", GlobalData.optManager.LinkParams.SHiliteJoin);
+        GlobalData.optManager.HiliteConnect(
+          GlobalData.optManager.LinkParams.SHiliteJoin,
+          GlobalData.optManager.LinkParams.SConnectPt,
+          false,
+          true,
+          this.BlockID,
+          null
+        );
+        GlobalData.optManager.LinkParams.SHiliteJoin = -1;
+      }
+      // Process HiliteJoin if present
+      if (GlobalData.optManager.LinkParams.HiliteJoin >= 0) {
+        console.log("= S.BaseLine: Processing HiliteJoin =", GlobalData.optManager.LinkParams.HiliteJoin);
+        GlobalData.optManager.HiliteConnect(
+          GlobalData.optManager.LinkParams.HiliteJoin,
+          GlobalData.optManager.LinkParams.ConnectPt,
+          false,
+          true,
+          this.BlockID,
+          null
+        );
+        GlobalData.optManager.LinkParams.HiliteJoin = -1;
+      }
+
+      // Set edit mode to default
+      console.log("= S.BaseLine: Setting edit mode to DEFAULT");
+      GlobalData.optManager.SetEditMode(ConstantData.EditState.DEFAULT);
+
+      // Process SJoinIndex if available
+      if (GlobalData.optManager.LinkParams.SJoinIndex >= 0) {
+        console.log("= S.BaseLine: Processing SJoinIndex =", GlobalData.optManager.LinkParams.SJoinIndex);
+        var newConnectID = GlobalData.optManager.PolyLJoin(
+          GlobalData.optManager.LinkParams.SJoinIndex,
+          GlobalData.optManager.LinkParams.SJoinData,
+          actionStoredObjectID,
+          GlobalData.optManager.LinkParams.SJoinSourceData,
+          false
+        );
+        if (
+          newConnectID != actionStoredObjectID &&
+          newConnectID >= 0 &&
+          (actionStoredObjectID = newConnectID, GlobalData.optManager.LinkParams.ConnectIndex >= 0)
+        ) {
+          GlobalData.optManager.LinkParams.ConnectIndex = -1;
+          console.log("= S.BaseLine: Updated actionStoredObjectID to", newConnectID);
+          var joinObj = GlobalData.optManager.GetObjectPtr(newConnectID, false);
+          if (Utils2.EqualPt(this.EndPoint, joinObj.StartPoint)) {
+            GlobalData.optManager.LinkParams.JoinSourceData = 1;
+          } else {
+            GlobalData.optManager.LinkParams.JoinSourceData = 2;
+          }
+        }
+      }
+      // Process SConnectIndex if no SJoinIndex
+      else if (GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.SConnectIndex >= 0) {
+        console.log("= S.BaseLine: Processing SConnectIndex =", GlobalData.optManager.LinkParams.SConnectIndex);
+        GlobalData.optManager.LinkParams.SConnectIndex = GlobalData.optManager.SD_GetVisioTextParent(
+          GlobalData.optManager.LinkParams.SConnectIndex
+        );
+        GlobalData.optManager.UpdateHook(
+          actionStoredObjectID,
+          -1,
+          GlobalData.optManager.LinkParams.SConnectIndex,
+          ConstantData.HookPts.SED_KTL,
+          GlobalData.optManager.LinkParams.SConnectPt,
+          GlobalData.optManager.LinkParams.SConnectInside
+        );
+      }
+
+      // Determine result based on JoinIndex or ConnectIndex
+      var result = false;
+      if (GlobalData.optManager.LinkParams.JoinIndex >= 0) {
+        console.log("= S.BaseLine: Processing JoinIndex =", GlobalData.optManager.LinkParams.JoinIndex);
+        result =
+          GlobalData.optManager.PolyLJoin(
+            GlobalData.optManager.LinkParams.JoinIndex,
+            GlobalData.optManager.LinkParams.JoinData,
+            actionStoredObjectID,
+            GlobalData.optManager.LinkParams.JoinSourceData,
+            false
+          ) == -2;
+      } else if (GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0) {
+        console.log("= S.BaseLine: Processing ConnectIndex =", GlobalData.optManager.LinkParams.ConnectIndex);
+        GlobalData.optManager.UpdateHook(
+          actionStoredObjectID,
+          GlobalData.optManager.LinkParams.InitialHook,
+          GlobalData.optManager.LinkParams.ConnectIndex,
+          GlobalData.optManager.LinkParams.HookIndex,
+          GlobalData.optManager.LinkParams.ConnectPt,
+          GlobalData.optManager.LinkParams.ConnectInside
+        );
+      }
+
+      // Clear continuous drawing flag and update links
+      this.hookflags = Utils2.SetFlag(
+        this.hookflags,
+        ConstantData.HookFlags.SED_LC_NoContinuous,
+        false
+      );
+      console.log("= S.BaseLine: Updating links");
+      GlobalData.optManager.UpdateLinks();
+
+      // Clear LinkParams
+      GlobalData.optManager.LinkParams = null;
+
+      console.log("= S.BaseLine: LM_DrawPostRelease output =", result);
+      return result;
+    }
+
+    console.log("= S.BaseLine: LM_DrawPostRelease: No LinkParams found, returning false");
+    return false;
+  }
+
+  LM_DrawClick_ExceptionCleanup(e) {
+    console.log("= S.BaseLine: LM_DrawClick_ExceptionCleanup - Start, input:", e);
+
+    GlobalData.optManager.unbindActionClickHammerEvents();
+
+    if (GlobalData.optManager.LineStamp) {
+      if (!GlobalData.optManager.isMobilePlatform && GlobalData.optManager.WorkAreaHammer) {
+        GlobalData.optManager.WorkAreaHammer.off('mousemove');
+        console.log("= S.BaseLine: Disabled 'mousemove' event on WorkAreaHammer");
+      }
+      GlobalData.optManager.LineStamp = false;
+      console.log("= S.BaseLine: LineStamp flag reset to false");
+    }
+
+    GlobalData.optManager.WorkAreaHammer.on('tap', DefaultEvt.Evt_WorkAreaHammerTap);
+    console.log("= S.BaseLine: Bound 'tap' event to Evt_WorkAreaHammerTap");
+
+    this.ResetAutoScrollTimer();
+    console.log("= S.BaseLine: Auto-scroll timer reset");
+
+    GlobalData.optManager.LinkParams = null;
+    console.log("= S.BaseLine: LinkParams set to null");
+
+    GlobalData.optManager.theActionStoredObjectID = -1;
+    console.log("= S.BaseLine: theActionStoredObjectID set to -1");
+
+    GlobalData.optManager.theActionSVGObject = null;
+    console.log("= S.BaseLine: theActionSVGObject set to null");
+
+    GlobalData.optManager.LineStamp = false;
+    console.log("= S.BaseLine: LineStamp flag ensured to be false");
+
+    GlobalData.optManager.FromOverlayLayer = false;
+    console.log("= S.BaseLine: FromOverlayLayer set to false");
+
+    GlobalData.optManager.WorkAreaHammer.on('dragstart', DefaultEvt.Evt_WorkAreaHammerDragStart);
+    console.log("= S.BaseLine: Bound 'dragstart' event to Evt_WorkAreaHammerDragStart");
+
+    console.log("= S.BaseLine: LM_DrawClick_ExceptionCleanup - End");
+  }
+
+
+  LM_DrawClick(docCorX: number, docCorY: number): void {
+    console.log("= S.BaseLine: LM_DrawClick input:", { docCorX, docCorY });
+
+    try {
+      // Update frame and starting/ending points
+      this.Frame.x = docCorX;
+      this.Frame.y = docCorY;
+      this.StartPoint = { x: docCorX, y: docCorY };
+      this.EndPoint = { x: docCorX, y: docCorY };
+
+      console.log("= S.BaseLine: LM_DrawClick updated Frame, StartPoint, EndPoint:", {
+        Frame: this.Frame,
+        StartPoint: this.StartPoint,
+        EndPoint: this.EndPoint
+      });
+
+      // Register event handlers for drawing
+      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_DrawTrackHandlerFactory(this));
+      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_DrawReleaseHandlerFactory(this));
+      GlobalData.optManager.WorkAreaHammer.off('tap');
+
+      console.log("= S.BaseLine: LM_DrawClick output: registered event handlers");
+    } catch (error) {
+      console.log("= S.BaseLine: LM_DrawClick error:", error);
+      this.LM_DrawClick_ExceptionCleanup(error);
+      GlobalData.optManager.ExceptionCleanup(error);
+      throw error;
+    }
+  }
+
+  WriteSDFAttributes(e, t) {
+    var a = 0,
+      r = - 1;
+    if (this.DataID >= 0) {
+      switch (SDF.TextAlignToWin(this.TextAlign).vjust) {
+        case FileParser.TextJust.TA_TOP:
+        case FileParser.TextJust.TA_BOTTOM:
+      }
+      a = ConstantData.TextFlags.SED_TF_AttachC,
+        this.LineTextX &&
+        (a = ConstantData.TextFlags.SED_TF_AttachC),
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_AttachA | ConstantData.TextFlags.SED_TF_AttachB | ConstantData.TextFlags.SED_TF_AttachC | ConstantData.TextFlags.SED_TF_AttachD,
+          !1
+        ),
+        this.TextFlags = Utils2.SetFlag(this.TextFlags, a, !0),
+        this.TextFlags = Utils2.SetFlag(
+          this.TextFlags,
+          ConstantData.TextFlags.SED_TF_HorizText,
+          !this.TextDirection
+        )
+    } (t.WriteBlocks || t.WriteVisio) &&
+      (r = this.DataID),
+      t.WriteVisio &&
+      this.polylist &&
+      ListManager.PolyLine.prototype.WriteSDFAttributes.call(this, e, t, !1),
+      SDF.WriteTextParams(e, this, r, t),
+      t.WriteVisio &&
+      r >= 0 &&
+      SDF.WriteText(e, this, null, null, !1, t),
+      SDF.WriteArrowheads(e, t, this)
+  }
+
+  ChangeBackgroundColor(newColor: string, currentColor: string): void {
+    console.log("= S.BaseLine: ChangeBackgroundColor called with newColor:", newColor, "currentColor:", currentColor);
+
+    if (
+      this.StyleRecord.Fill.Paint.FillType !== ConstantData.FillTypes.SDFILL_TRANSPARENT &&
+      this.StyleRecord.Fill.Paint.Color === currentColor
+    ) {
+      const obj = GlobalData.optManager.GetObjectPtr(this.BlockID, true);
+      console.log("= S.BaseLine: Retrieved object:", obj);
+
+      this.StyleRecord.Fill.Paint.Color = newColor;
+      console.log("= S.BaseLine: Background color changed to:", newColor);
+    } else {
+      console.log("= S.BaseLine: Conditions not met, background color remains unchanged.");
+    }
+
+    console.log("= S.BaseLine: ChangeBackgroundColor completed.");
+  }
+
+  ResizeInTextEdit(e: any, t: any): { x: number; y: number } {
+    console.log("= S.BaseLine: ResizeInTextEdit called with input:", { e, t });
+    const result = { x: 0, y: 0 };
+    console.log("= S.BaseLine: ResizeInTextEdit output:", result);
+    return result;
+  }
+
+  CalcTextPosition(e) {
+    console.log("= S.BaseLine: CalcTextPosition called with input:", e);
+
+    // Calculate the center of the input frame
+    const inputCenter = {
+      x: e.Frame.x + e.Frame.width / 2,
+      y: e.Frame.y + e.Frame.height / 2,
+    };
+
+    // Collect the start and end points of the line
+    const linePoints = [];
+    linePoints.push({
+      x: this.StartPoint.x,
+      y: this.StartPoint.y,
+    });
+    linePoints.push({
+      x: this.EndPoint.x,
+      y: this.EndPoint.y,
+    });
+
+    // Calculate the center of this object's frame
+    const currentCenter = {
+      x: this.Frame.x + this.Frame.width / 2,
+      y: this.Frame.y + this.Frame.height / 2,
+    };
+
+    // Get the base angle and the additional rotation angle provided by input
+    const baseAngle = this.GetAngle(null);
+    let rotationAngle = e.RotationAngle;
+
+    // If this is a simple line, adjust the rotationAngle with the base angle
+    if (this.LineType === ConstantData.LineType.LINE) {
+      rotationAngle = baseAngle + rotationAngle;
+      rotationAngle %= 180;
+      if (Math.abs(rotationAngle) < 1) {
+        rotationAngle = 0;
+      }
+    }
+
+    // Calculate the differences between start and end points for distance calculation
+    const deltaX = this.EndPoint.x - this.StartPoint.x;
+    const deltaY = this.EndPoint.y - this.StartPoint.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    this.TextWrapWidth = distance;
+
+    // Check angle modulo for horizontal text flag
+    const modBaseAngle = baseAngle % 180;
+    if (!Utils2.IsEqual(modBaseAngle, 0) && rotationAngle === 0) {
+      this.TextFlags = Utils2.SetFlag(
+        this.TextFlags,
+        ConstantData.TextFlags.SED_TF_HorizText,
+        true
+      );
+    }
+
+    // Compute the rotation (in radians) needed for alignment
+    const rotationRadian = -baseAngle * ConstantData.Geometry.PI / 180;
+    Utils3.RotatePointsAboutPoint(currentCenter, rotationRadian, linePoints);
+
+    // Determine text position along the line (normalized proportion)
+    this.LineTextX = (inputCenter.x - linePoints[0].x) / distance;
+    if (this.LineTextX < 0) {
+      this.LineTextX = 1 + this.LineTextX;
+    }
+    // Vertical offset between the input center and the first point after rotation
+    this.LineTextY = inputCenter.y - linePoints[0].y;
+
+    // Copy the text rectangle from the input if available
+    if (this.LineTextX) {
+      this.trect = $.extend(true, {}, e.trect);
+    }
+
+    console.log("= S.BaseLine: CalcTextPosition output:", {
+      LineTextX: this.LineTextX,
+      LineTextY: this.LineTextY,
+      TextWrapWidth: this.TextWrapWidth,
+      trect: this.trect,
+    });
+  }
+
+  SetTextObject(dataID: number): boolean {
+    this.DataID = dataID;
+
+    // Get text alignment settings based on current text alignment
+    const textAlignSettings = SDF.TextAlignToWin(this.TextAlign);
+    // Retrieve the current session object
+    const sessionObj = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+
+    // Update style fill color using the session background color
+    this.StyleRecord.Fill.Paint.Color = sessionObj.background.Paint.Color;
+
+    // If vertical justification is center, use a solid fill with full opacity;
+    // otherwise, use a transparent fill.
+    if (textAlignSettings.vjust === FileParser.TextJust.TA_CENTER) {
+      this.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+      this.StyleRecord.Fill.Paint.Opacity = 1;
+    } else {
+      this.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
+    }
+
+    return true;
+  }
+
 }
 
 export default BaseLine
