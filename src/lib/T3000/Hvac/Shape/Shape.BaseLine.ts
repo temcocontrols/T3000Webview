@@ -3655,6 +3655,1822 @@ class BaseLine extends BaseDrawingObject {
     return true;
   }
 
+  SetTextObject(dataID: number): boolean {
+    this.DataID = dataID;
+
+    // Get text alignment settings based on current text alignment
+    const textAlignSettings = SDF.TextAlignToWin(this.TextAlign);
+    // Retrieve the current session object
+    const sessionObj = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+
+    // Update style fill color using the session background color
+    this.StyleRecord.Fill.Paint.Color = sessionObj.background.Paint.Color;
+
+    // If vertical justification is center, use a solid fill with full opacity;
+    // otherwise, use a transparent fill.
+    if (textAlignSettings.vjust === FileParser.TextJust.TA_CENTER) {
+      this.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+      this.StyleRecord.Fill.Paint.Opacity = 1;
+    } else {
+      this.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
+    }
+
+    return true;
+  }
+
+  GetTextOnLineParams(inputParam: any) {
+    console.log("= S.BaseLine: GetTextOnLineParams input:", inputParam);
+
+    const params = {
+      Frame: new Rect(),
+      StartPoint: new Point(),
+      EndPoint: new Point()
+    };
+
+    // Copy start and end points from the object
+    params.StartPoint.x = this.StartPoint.x;
+    params.StartPoint.y = this.StartPoint.y;
+    params.EndPoint.x = this.EndPoint.x;
+    params.EndPoint.y = this.EndPoint.y;
+
+    // Calculate the frame from the start and end points
+    params.Frame = Utils2.Pt2Rect(params.StartPoint, params.EndPoint);
+
+    // If there is a non-zero LineTextX, apply additional properties
+    if (this.LineTextX !== 0) {
+      params.CenterProp = this.LineTextX;
+      params.Displacement = this.LineTextY;
+    }
+
+    console.log("= S.BaseLine: GetTextOnLineParams output:", params);
+    return params;
+  }
+
+  TextDirectionCommon(e, t, a, r) {
+    console.log("= S.BaseLine: TextDirectionCommon input:", { e, t, a, r });
+
+    var i, n, o, s, l, S, c, u,
+      p = e.GetTextMinDimensions(),
+      d = p.width,
+      D = this.GetTextOnLineParams(r),
+      g = D.StartPoint.x,
+      h = D.Frame.x,
+      m = D.EndPoint.x,
+      C = p.height,
+      y = D.StartPoint.y,
+      f = D.Frame.y,
+      L = D.EndPoint.y,
+      I = GlobalData.optManager.SD_GetClockwiseAngleBetween2PointsInRadians(D.StartPoint, D.EndPoint),
+      T = I * (180 / ConstantData.Geometry.PI),
+      b = false,
+      M = 0.5,
+      P = {},
+      R = 0,
+      A = 0;
+
+    // Set vertical alignment and prepare linetrect
+    e.SetVerticalAlignment('top');
+    this.linetrect = $.extend(true, {}, this.Frame);
+
+    if (this.LineTextY) {
+      R = this.LineTextY * Math.cos(I);
+      A = -this.LineTextY * Math.sin(I);
+    }
+
+    if (this.VisioRotationDiff) {
+      T -= this.VisioRotationDiff;
+    }
+
+    if (T > 90 && T < 270) {
+      T -= 180;
+      b = true;
+    }
+
+    if (!a && this.TextDirection) {
+      // no change
+    } else {
+      I = 0;
+      T = 0;
+      i = this.TextAlign;
+      s = this.TextDirection;
+    }
+
+    if (this.LineTextX || this.LineTextY) {
+      if (p) {
+        this.theMinTextDim.width = p.width;
+        this.theMinTextDim.height = p.height;
+        if (a) {
+          this.TextAlign = i;
+        }
+        var _ = SDF.TextAlignToJust(this.TextAlign);
+        if (b && (T += 180, this.LineType === ConstantData.LineType.LINE)) {
+          switch (_.just) {
+            case ConstantData.TextAlign.LEFT:
+              _.just = ConstantData.TextAlign.RIGHT;
+              break;
+            case ConstantData.TextAlign.RIGHT:
+              _.just = ConstantData.TextAlign.LEFT;
+              break;
+          }
+        }
+        if (t) {
+          t.SetSize(d + 2, C + 2);
+        }
+        c = g + (m - g) * (M = D.CenterProp) - h + A;
+        u = y + (L - y) * M - f + R;
+        if (this.trect.height === 0) {
+          this.trect.height = 3 * C;
+        }
+        var E = C;
+        if (this.trect.height > C) {
+          E = this.trect.height;
+        }
+        n = this.TextGrow === ConstantData.TextGrowBehavior.HORIZONTAL
+          ? c - p.width / 2
+          : c - this.trect.width / 2;
+        o = u - E / 2;
+        e.SetPos(n, o);
+        e.SetVerticalAlignment(_.vjust);
+        e.SetParagraphAlignment(_.just);
+        if (this.TextDirection) {
+          e.SetRotation(T, c, u);
+        } else {
+          e.SetRotation(0, c, u);
+        }
+        P = { x: c, y: u };
+
+        var w = {};
+        switch (_.just) {
+          case ConstantData.TextAlign.LEFT:
+            w.x = n - 1;
+            break;
+          case ConstantData.TextAlign.RIGHT:
+            w.x = n - 1 + this.trect.width - d;
+            break;
+          default:
+            w.x = c - d / 2 - 1;
+        }
+        switch (_.vjust) {
+          case 'top':
+            w.y = u - 1 - E / 2;
+            break;
+          case 'bottom':
+            w.y = u - C / 2 - 1 + E / 2;
+            break;
+          default:
+            w.y = u - C / 2 - 1;
+        }
+        if (t) {
+          t.SetPos(w.x, w.y);
+        }
+
+        this.linetrect.x = w.x;
+        this.linetrect.y = w.y;
+        this.linetrect.width = d + 2;
+        this.linetrect.height = C + 2;
+
+        if (this.TextDirection) {
+          if (t) {
+            t.SetRotation(T, c, u);
+          }
+          this.linetrect = GlobalData.optManager.RotateRect(this.linetrect, P, T);
+        } else if (t) {
+          t.SetRotation(0, c, u);
+        }
+        this.UpdateFrame();
+      }
+    } else if (p) {
+      // Alternative branch when no LineTextX or LineTextY is set
+      this.theMinTextDim.width = p.width;
+      this.theMinTextDim.height = p.height;
+      t.SetSize(d + 2, C + 2);
+      switch (this.TextAlign) {
+        case ConstantData.TextAlign.TOPLEFT:
+          l = g - h + (d / 2) * Math.cos(I);
+          S = y - f + (d / 2) * Math.sin(I);
+          t.SetPos(l - d / 2 - 1, S - C - this.StyleRecord.Line.Thickness / 2 - 2);
+          n = l - d / 2;
+          o = S - C - this.StyleRecord.Line.Thickness / 2 - 1;
+          e.SetPos(l - d / 2, S - C - this.StyleRecord.Line.Thickness / 2 - 1);
+          e.SetRotation(T, l, S);
+          P = { x: l, y: S };
+          t.SetRotation(T, l, S);
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            b = false;
+          }
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          }
+          break;
+        case ConstantData.TextAlign.LEFT:
+          l = g - h + (d / 2) * Math.cos(I);
+          S = y - f + (d / 2) * Math.sin(I);
+          t.SetPos(l - d / 2 - 1, S - C / 2 - 1);
+          n = l - d / 2;
+          o = S - C / 2;
+          e.SetPos(l - d / 2, S - C / 2);
+          e.SetRotation(T, l, S);
+          P = { x: l, y: S };
+          t.SetRotation(T, l, S);
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            b = false;
+          }
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          }
+          break;
+        case ConstantData.TextAlign.BOTTOMLEFT:
+          l = g - h + (d / 2) * Math.cos(I);
+          S = y - f + (d / 2) * Math.sin(I);
+          t.SetPos(l - d / 2 - 1, S + this.StyleRecord.Line.Thickness / 2 + 1);
+          n = l - d / 2;
+          o = S + this.StyleRecord.Line.Thickness / 2 + 2;
+          e.SetPos(l - d / 2, S + this.StyleRecord.Line.Thickness / 2 + 2);
+          t.SetRotation(T, l, S);
+          e.SetRotation(T, l, S);
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            b = false;
+          }
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          }
+          P = { x: l, y: S };
+          break;
+        case ConstantData.TextAlign.TOPCENTER:
+          c = (g + m) / 2 - h;
+          u = (y + L) / 2 - f;
+          t.SetPos(c - d / 2 - 2, u - C - this.StyleRecord.Line.Thickness / 2 - 2);
+          n = c - d / 2 - 1;
+          o = u - C - this.StyleRecord.Line.Thickness / 2 - 1;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            if (D.CenterProp) {
+              this.trect.x = h + c - this.trect.width / 2;
+            }
+            n = this.trect.x - h;
+            e.SetPos(n, o);
+            e.SetRotation(T, n + this.trect.width / 2, u);
+            P = { x: n + this.trect.width / 2, y: u };
+          } else {
+            e.SetPos(c - d / 2 - 1, u - C - this.StyleRecord.Line.Thickness / 2 - 1);
+            e.SetRotation(T, c, u);
+            P = { x: c, y: u };
+          }
+          t.SetRotation(T, c, u);
+          e.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
+          P = { x: c, y: u };
+          break;
+        case ConstantData.TextAlign.CENTER:
+          if (D.CenterProp) {
+            M = D.CenterProp;
+          }
+          c = g + (m - g) * M - h + A;
+          u = y + (L - y) * M - f + R;
+          t.SetPos(c - d / 2 - 1, u - C / 2 - 1);
+          n = c - d / 2;
+          o = u - C / 2;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            if (D.CenterProp) {
+              this.trect.x = h + c - this.trect.width / 2;
+            }
+            n = this.trect.x - h;
+            e.SetPos(n, o);
+            e.SetRotation(T, n + this.trect.width / 2, u);
+            P = { x: n + this.trect.width / 2, y: u };
+          } else {
+            e.SetPos(n, o);
+            e.SetRotation(T, c, u);
+            P = { x: c, y: u };
+          }
+          t.SetRotation(T, c, u);
+          e.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
+          P = { x: c, y: u };
+          break;
+        case ConstantData.TextAlign.BOTTOMCENTER:
+          c = (g + m) / 2 - h;
+          u = (y + L) / 2 - f;
+          t.SetPos(c - d / 2 - 1, u + this.StyleRecord.Line.Thickness / 2 + 1);
+          n = c - d / 2;
+          o = u + this.StyleRecord.Line.Thickness / 2 + 2;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            if (D.CenterProp) {
+              this.trect.x = h + c - this.trect.width / 2;
+            }
+            n = this.trect.x - h;
+            e.SetPos(n, o);
+            e.SetRotation(T, n + this.trect.width / 2, u);
+            P = { x: n + this.trect.width / 2, y: u };
+          } else {
+            e.SetPos(c - d / 2, u + this.StyleRecord.Line.Thickness / 2 + 2);
+            e.SetRotation(T, c, u);
+            P = { x: c, y: u };
+          }
+          t.SetRotation(T, c, u);
+          e.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
+          break;
+        case ConstantData.TextAlign.TOPRIGHT:
+          M = 1;
+          if (D.CenterProp) { M = D.CenterProp; }
+          l = (m - h) * M - (d / 2) * Math.cos(I) + A;
+          S = (L - f) * M - (d / 2) * Math.sin(I) + R;
+          t.SetPos(l - d / 2 - 1, S - C - this.StyleRecord.Line.Thickness / 2 - 2);
+          n = l - d / 2;
+          o = S - C - this.StyleRecord.Line.Thickness / 2 - 1;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            M = 1;
+            if (D.CenterProp) { M = D.CenterProp; }
+            n = (m - h) * M - (this.trect.width / 2) * Math.cos(I) + A;
+            o = (L - f) * M - (this.trect.width / 2) * Math.sin(I) + R;
+            e.SetPos(n - this.trect.width / 2, o - C);
+            e.SetRotation(T, n, o);
+            P = { x: n, y: o };
+          } else {
+            e.SetPos(l - d / 2, S - C - this.StyleRecord.Line.Thickness / 2 - 1);
+            e.SetRotation(T, l, S);
+            P = { x: l, y: S };
+          }
+          t.SetRotation(T, l, S);
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          }
+          P = { x: l, y: S };
+          break;
+        case ConstantData.TextAlign.RIGHT:
+          M = 1;
+          if (D.CenterProp) { M = D.CenterProp; }
+          l = (m - h) * M - (d / 2) * Math.cos(I) + A;
+          S = (L - f) * M - (d / 2) * Math.sin(I) + R;
+          t.SetPos(l - d / 2 - 1, S - C / 2 - 1);
+          n = l - d / 2;
+          o = S - C / 2;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            M = 1;
+            if (D.CenterProp) { M = D.CenterProp; }
+            n = (m - h) * M - (this.trect.width / 2) * Math.cos(I) + A;
+            o = (L - f) * M - (this.trect.width / 2) * Math.sin(I) + R;
+            e.SetPos(n - this.trect.width / 2, o - C / 2);
+            e.SetRotation(T, n, o);
+            P = { x: n, y: o };
+          } else {
+            e.SetPos(l - d / 2, S - C / 2);
+            e.SetRotation(T, l, S);
+            P = { x: l, y: S };
+          }
+          t.SetRotation(T, l, S);
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          }
+          break;
+        case ConstantData.TextAlign.BOTTOMRIGHT:
+          l = m - h - (d / 2) * Math.cos(I);
+          S = L - f - (d / 2) * Math.sin(I);
+          t.SetPos(l - d / 2 - 1, S + this.StyleRecord.Line.Thickness / 2 + 1);
+          n = l - d / 2;
+          o = S + this.StyleRecord.Line.Thickness / 2 + 2;
+          if (this.TextGrow === ConstantData.TextGrowBehavior.VERTICAL) {
+            M = 1;
+            if (D.CenterProp) { M = D.CenterProp; }
+            n = (m - h) * M - (this.trect.width / 2) * Math.cos(I) + A;
+            o = (L - f) * M - (this.trect.width / 2) * Math.sin(I) + R;
+            e.SetPos(n - this.trect.width / 2, o + this.StyleRecord.Line.Thickness / 2 + 2);
+            e.SetRotation(T, n, o);
+            P = { x: n, y: o };
+          } else {
+            e.SetPos(l - d / 2, S + this.StyleRecord.Line.Thickness / 2 + 2);
+            e.SetRotation(T, l, S);
+            P = { x: l, y: S };
+          }
+          t.SetRotation(T, l, S);
+          if (b) {
+            e.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
+          } else {
+            e.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
+          }
+          break;
+      }
+      this.linetrect.x = n + this.Frame.x;
+      this.linetrect.y = o + this.Frame.y;
+      this.linetrect.width = d;
+      this.linetrect.height = C;
+      P.x += this.Frame.x;
+      P.y += this.Frame.y;
+
+      // Rotate linetrect using current pivot P and angle T
+      $.extend(true, {}, this.linetrect);
+      this.linetrect = GlobalData.optManager.RotateRect(this.linetrect, P, T);
+      var F = $.extend(true, {}, this.linetrect);
+      GlobalData.optManager.TextPinFrame(this.linetrect, C);
+      // Adjust linetrect back relative to Frame
+      this.linetrect.x -= this.Frame.x;
+      this.linetrect.y -= this.Frame.y;
+      this.UpdateFrame();
+    }
+
+    if (a) {
+      this.TextDirection = s;
+      this.TextAlign = i;
+    }
+
+    console.log("= S.BaseLine: TextDirectionCommon output finished");
+  }
+
+  LM_AddSVGTextObject(svgDoc: any, shapeContainer: any): void {
+    console.log("= S.BaseLine: LM_AddSVGTextObject - input:", { svgDoc, shapeContainer });
+
+    // Prepare the base rectangle for text background using this.trect
+    const textRect = this.trect;
+    const textBackground = svgDoc.CreateShape(ConstantData.CreateShapeType.RECT);
+    textBackground.SetID(ConstantData.SVGElementClass.TEXTBACKGROUND);
+    textBackground.SetStrokeWidth(0);
+
+    let fillColor = this.StyleRecord.Fill.Paint.Color;
+    textBackground.SetFillColor(fillColor);
+    if (this.StyleRecord.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_TRANSPARENT) {
+      textBackground.SetOpacity(0);
+    } else {
+      textBackground.SetOpacity(this.StyleRecord.Fill.Paint.Opacity);
+    }
+
+    // Create the text element
+    const textElement = svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
+    textElement.SetID(ConstantData.SVGElementClass.TEXT);
+    textElement.SetRenderingEnabled(false);
+    textElement.SetSize(textRect.width, textRect.height);
+    textElement.SetSpellCheck(this.AllowSpell());
+    textElement.InitDataSettings(this.fieldDataTableID, this.fieldDataElemID);
+
+    // Mark the container as a text container and assign the text element to it.
+    shapeContainer.isText = true;
+    shapeContainer.textElem = textElement;
+
+    // Retrieve the corresponding object from the object store to get runtime text if available.
+    const sourceObj = GlobalData.objectStore.GetObject(this.DataID);
+    if (sourceObj.Data.runtimeText) {
+      textElement.SetRuntimeText(sourceObj.Data.runtimeText);
+    } else {
+      textElement.SetText('');
+      textElement.SetParagraphAlignment(this.TextAlign);
+      textElement.SetVerticalAlignment('top');
+    }
+    if (!sourceObj.Data.runtimeText) {
+      sourceObj.Data.runtimeText = textElement.GetRuntimeText();
+    }
+
+    // Set text constraints if not using vertical text growth.
+    if (this.TextGrow !== ConstantData.TextGrowBehavior.VERTICAL) {
+      textElement.SetConstraints(
+        GlobalData.optManager.theContentHeader.MaxWorkDim.x,
+        0,
+        textRect.height
+      );
+    }
+
+    // Disable hyperlinks if part of a group.
+    if (this.bInGroup) {
+      textElement.DisableHyperlinks(true);
+    }
+
+    textElement.SetRenderingEnabled(true);
+
+    // Get the minimum dimensions required for the text.
+    const minDimensions = textElement.GetTextMinDimensions();
+    const textMinHeight = minDimensions.height;
+    let verticalOffset: number = 0;
+
+    // If text direction is active and line thickness is big enough, adjust the opacity of the background.
+    if (this.TextDirection && this.StyleRecord.Line.Thickness >= textMinHeight && textBackground) {
+      fillColor = this.StyleRecord.Line.Paint.Color;
+      textBackground.SetOpacity(0);
+    }
+
+    // Determine vertical offset based on text alignment settings if either LineTextY or LineTextX is set.
+    if (this.LineTextY || this.LineTextX) {
+      const vAlign = SDF.TextAlignToWin(this.TextAlign).vjust;
+      switch (vAlign) {
+        case FileParser.TextJust.TA_TOP:
+          verticalOffset = textRect.height / 2 - textMinHeight / 2 + this.LineTextY;
+          break;
+        case FileParser.TextJust.TA_BOTTOM:
+          verticalOffset = -textRect.height / 2 + textMinHeight / 2 + this.LineTextY;
+          break;
+        default:
+          verticalOffset = this.LineTextY;
+      }
+    }
+    console.log("= S.BaseLine: LM_AddSVGTextObject - verticalOffset computed:", verticalOffset);
+
+    // Add the background and text elements to the container.
+    if (textBackground) {
+      shapeContainer.AddElement(textBackground);
+    }
+    shapeContainer.AddElement(textElement);
+
+    // Adjust text direction, alignment and rotation.
+    this.TextDirectionCommon(textElement, textBackground, false, null);
+
+    // Set the edit callback for the text element.
+    textElement.SetEditCallback(GlobalData.optManager.TextCallback, shapeContainer);
+
+    console.log("= S.BaseLine: LM_AddSVGTextObject - output: Text element added to shapeContainer");
+  }
+
+  LM_ResizeSVGTextObject(svgDoc: any, shapeObj: any, extraParam: any) {
+    console.log("= S.BaseLine: LM_ResizeSVGTextObject called with input:", {
+      svgDoc,
+      shapeObj,
+      extraParam
+    });
+
+    if (shapeObj.DataID !== -1) {
+      const textBackground = svgDoc.GetElementByID(ConstantData.SVGElementClass.TEXTBACKGROUND);
+      const textElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.TEXT);
+
+      if (textElement) {
+        shapeObj.TextDirectionCommon(textElement, textBackground, false, null);
+        console.log("= S.BaseLine: LM_ResizeSVGTextObject updated text direction.");
+      } else {
+        console.log("= S.BaseLine: LM_ResizeSVGTextObject - No text element found.");
+      }
+    } else {
+      console.log("= S.BaseLine: LM_ResizeSVGTextObject skipped because DataID is -1.");
+    }
+
+    console.log("= S.BaseLine: LM_ResizeSVGTextObject completed.");
+  }
+
+  AdjustTextEditBackground(containerId: string, svgContainer?: any) {
+    console.log("= S.BaseLine: AdjustTextEditBackground called with containerId:", containerId, "svgContainer:", svgContainer);
+
+    if (this.DataID !== -1) {
+      let container;
+      if (svgContainer) {
+        container = svgContainer;
+      } else {
+        container = GlobalData.optManager.svgObjectLayer.GetElementByID(containerId);
+      }
+
+      const textBackground = container.GetElementByID(ConstantData.SVGElementClass.TEXTBACKGROUND);
+      const textElement = container.GetElementByID(ConstantData.SVGElementClass.TEXT);
+
+      if (textElement) {
+        const useDefault = (svgContainer == null);
+        this.TextDirectionCommon(textElement, textBackground, useDefault, null);
+        console.log("= S.BaseLine: AdjustTextEditBackground - TextDirectionCommon updated text direction for text element.");
+      } else {
+        console.log("= S.BaseLine: AdjustTextEditBackground - No text element found in container.");
+      }
+    } else {
+      console.log("= S.BaseLine: AdjustTextEditBackground - DataID is -1, skipping update.");
+    }
+
+    console.log("= S.BaseLine: AdjustTextEditBackground completed");
+  }
+
+  AddCorner(e, t) {
+  }
+
+  SVGTokenizerHook(style: any): any {
+    console.log("= S.BaseLine: SVGTokenizerHook input:", style);
+
+    if (GlobalData.optManager.bTokenizeStyle) {
+      // Create a deep copy of the style object to avoid side effects
+      style = Utils1.DeepCopy(style);
+
+      // Replace fill color with a placeholder for solid fill
+      style.Fill.Paint.Color = Basic.Symbol.CreatePlaceholder(
+        Basic.Symbol.Placeholder.SolidFill,
+        style.Fill.Paint.Color
+      );
+
+      // Replace line paint color with a placeholder for line color
+      style.Line.Paint.Color = Basic.Symbol.CreatePlaceholder(
+        Basic.Symbol.Placeholder.LineColor,
+        style.Line.Paint.Color
+      );
+
+      // If both StartArrowID and EndArrowID are zero, replace line thickness with a placeholder
+      if (this.StartArrowID === 0 && this.EndArrowID === 0) {
+        style.Line.Thickness = Basic.Symbol.CreatePlaceholder(
+          Basic.Symbol.Placeholder.LineThick,
+          style.Line.Thickness
+        );
+      }
+    }
+
+    console.log("= S.BaseLine: SVGTokenizerHook output:", style);
+    return style;
+  }
+
+  GetDimensionPoints() {
+    console.log("= S.BaseLine: GetDimensionPoints input: none");
+    const dimensionPoints: Point[] = [];
+    const boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+
+    dimensionPoints.push(
+      new Point(
+        this.StartPoint.x - boundingRect.x,
+        this.StartPoint.y - boundingRect.y
+      )
+    );
+    dimensionPoints.push(
+      new Point(
+        this.EndPoint.x - boundingRect.x,
+        this.EndPoint.y - boundingRect.y
+      )
+    );
+
+    console.log("= S.BaseLine: GetDimensionPoints output:", dimensionPoints);
+    return dimensionPoints;
+  }
+
+  PostCreateShapeCallback(
+    svgDoc: any,
+    shapeContainer: any,
+    forceUpdate: boolean,
+    extraParam: any
+  ): void {
+    console.log('= S.BaseLine: PostCreateShapeCallback - input:', {
+      svgDoc,
+      shapeContainer,
+      forceUpdate,
+      extraParam
+    });
+
+    const shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    const slopElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+    let startArrow = ConstantData1.ArrowheadLookupTable[this.StartArrowID];
+    let endArrow = ConstantData1.ArrowheadLookupTable[this.EndArrowID];
+    const arrowSize = ConstantData1.ArrowheadSizeTable[this.ArrowSizeIndex];
+
+    if (startArrow.id === 0) {
+      startArrow = null;
+    }
+    if (endArrow.id === 0) {
+      endArrow = null;
+    }
+
+    if (startArrow || endArrow) {
+      shapeElement.SetArrowheads(
+        startArrow,
+        arrowSize,
+        endArrow,
+        arrowSize,
+        this.StartArrowDisp,
+        this.EndArrowDisp
+      );
+      slopElement.SetArrowheads(
+        startArrow,
+        arrowSize,
+        endArrow,
+        arrowSize,
+        this.StartArrowDisp,
+        this.EndArrowDisp
+      );
+    }
+
+    if (this.DataID >= 0) {
+      this.LM_AddSVGTextObject(svgDoc, shapeContainer);
+    }
+
+    this.UpdateDimensionLines(shapeContainer, null);
+    this.UpdateCoordinateLines(shapeContainer, null);
+
+    console.log('= S.BaseLine: PostCreateShapeCallback - output completed');
+  }
+
+  CreateActionTriggers(svgDoc: any, triggerId: any, paramA: any, paramR: any) {
+    console.log("= S.BaseLine: CreateActionTriggers called with input:", { svgDoc, triggerId, paramA, paramR });
+
+    let isEditable: boolean = true;
+    let theKnob: any;
+    let groupElement = svgDoc.CreateShape(ConstantData.CreateShapeType.GROUP);
+    const knobSizeDefault = ConstantData.Defines.SED_KnobSize;
+    const rKnobSizeDefault = ConstantData.Defines.SED_RKnobSize;
+
+    // Check if using wall tool and adding walls
+    if (
+      !(
+        this instanceof Line &&
+        this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL &&
+        (
+          (GlobalData.gBusinessManager &&
+            GlobalData.gBusinessManager.IsAddingWalls &&
+            GlobalData.gBusinessManager.IsAddingWalls()) ||
+          ConstantData.DocumentContext.UsingWallTool
+        )
+      )
+    ) {
+      let scale = svgDoc.docInfo.docToScreenScale;
+      if (svgDoc.docInfo.docScale <= 0.5) {
+        scale *= 2;
+      }
+      let scaledKnobSize = knobSizeDefault / scale;
+      let scaledRKnobSize = rKnobSizeDefault / scale;
+      if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
+        scaledKnobSize *= 2;
+      }
+      const frameRect = this.Frame;
+      let widthWithKnob = frameRect.width + scaledKnobSize;
+      let heightWithKnob = frameRect.height + scaledKnobSize;
+      let adjustedFrame = $.extend(true, {}, frameRect);
+      adjustedFrame.x -= scaledKnobSize / 2;
+      adjustedFrame.y -= scaledKnobSize / 2;
+      adjustedFrame.width += scaledKnobSize;
+      adjustedFrame.height += scaledKnobSize;
+
+      // Create base knob parameters for LINESTART trigger
+      let knobParams: any = {
+        svgDoc: svgDoc,
+        shapeType: ConstantData.CreateShapeType.RECT,
+        knobSize: scaledKnobSize,
+        fillColor: "black",
+        fillOpacity: 1,
+        strokeSize: 1,
+        strokeColor: "#777777",
+        cursorType: this.CalcCursorForSegment(this.StartPoint, this.EndPoint, false),
+        locked: false
+      };
+
+      // If triggerId is not equal to paramR then change properties for switch trigger
+      if (triggerId != paramR) {
+        knobParams.fillColor = "white";
+        knobParams.strokeSize = 1;
+        knobParams.strokeColor = "black";
+        knobParams.fillOpacity = 0;
+      }
+
+      // Apply lock or no-grow settings
+      if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
+        knobParams.fillColor = "gray";
+        knobParams.locked = true;
+      } else if (this.NoGrow()) {
+        knobParams.fillColor = "red";
+        knobParams.strokeColor = "red";
+        knobParams.cursorType = Element.CursorType.DEFAULT;
+      }
+
+      // Set position for LINESTART knob relative to frame
+      knobParams.x = this.StartPoint.x - this.Frame.x;
+      knobParams.y = this.StartPoint.y - this.Frame.y;
+      knobParams.knobID = ConstantData.ActionTriggerType.LINESTART;
+
+      // Check the object pointed by triggerId for hooks at SED_KTL if available
+      let objectPtr = GlobalData.optManager.GetObjectPtr(triggerId, false);
+      if (objectPtr && objectPtr.hooks) {
+        for (let h = 0; h < objectPtr.hooks.length; h++) {
+          if (objectPtr.hooks[h].hookpt === ConstantData.HookPts.SED_KTL) {
+            knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
+            isEditable = false;
+            break;
+          }
+        }
+      }
+
+      // For floorplan wall objects override shape if necessary
+      if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
+        knobParams.shapeType = ConstantData.CreateShapeType.IMAGE;
+      }
+      theKnob = this.GenericKnob(knobParams);
+      if (
+        this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL &&
+        theKnob.SetURL
+      ) {
+        theKnob.SetURL(
+          knobParams.cursorType === Element.CursorType.NWSE_RESIZE
+            ? ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag1
+            : ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag2
+        );
+        theKnob.ExcludeFromExport(true);
+      }
+      groupElement.AddElement(theKnob);
+
+      // Process the LINEEND knob for the other end.
+      knobParams.shapeType = ConstantData.CreateShapeType.RECT;
+      if (objectPtr && objectPtr.hooks) {
+        for (let h = 0; h < objectPtr.hooks.length; h++) {
+          if (objectPtr.hooks[h].hookpt === ConstantData.HookPts.SED_KTR) {
+            knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
+            isEditable = false;
+            break;
+          }
+        }
+      }
+      knobParams.x = this.EndPoint.x - this.Frame.x;
+      knobParams.y = this.EndPoint.y - this.Frame.y;
+      knobParams.knobID = ConstantData.ActionTriggerType.LINEEND;
+      if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
+        knobParams.shapeType = ConstantData.CreateShapeType.IMAGE;
+      }
+      theKnob = this.GenericKnob(knobParams);
+      if (
+        this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL &&
+        theKnob.SetURL
+      ) {
+        theKnob.SetURL(
+          knobParams.cursorType === Element.CursorType.NWSE_RESIZE
+            ? ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag1
+            : ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag2
+        );
+        theKnob.ExcludeFromExport(true);
+      }
+      groupElement.AddElement(theKnob);
+
+      // Add the ROTATE knob if applicable.
+      if (GlobalData.optManager.bTouchInitiated) {
+        isEditable = false;
+      }
+      if (isEditable && !knobParams.locked && !this.NoGrow()) {
+        knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
+        let angleRadians = Math.atan((this.EndPoint.y - this.StartPoint.y) / (this.EndPoint.x - this.StartPoint.x));
+        if (angleRadians < 0) {
+          angleRadians *= -1;
+        }
+        if (this.EndPoint.x >= this.StartPoint.x) {
+          knobParams.x = this.EndPoint.x - 3 * scaledRKnobSize * Math.cos(angleRadians) - this.Frame.x + scaledKnobSize / 2 - scaledRKnobSize / 2;
+        } else {
+          knobParams.x = this.EndPoint.x + 3 * scaledRKnobSize * Math.cos(angleRadians) - this.Frame.x + scaledKnobSize / 2 - scaledRKnobSize / 2;
+        }
+        if (this.EndPoint.y >= this.StartPoint.y) {
+          knobParams.y = this.EndPoint.y - 3 * scaledRKnobSize * Math.sin(angleRadians) - this.Frame.y + scaledKnobSize / 2 - scaledRKnobSize / 2;
+        } else {
+          knobParams.y = this.EndPoint.y + 3 * scaledRKnobSize * Math.sin(angleRadians) - this.Frame.y + scaledKnobSize / 2 - scaledRKnobSize / 2;
+        }
+        knobParams.cursorType = Element.CursorType.ROTATE;
+        knobParams.knobID = ConstantData.ActionTriggerType.ROTATE;
+        knobParams.fillColor = "white";
+        knobParams.fillOpacity = 0.001;
+        knobParams.strokeSize = 2.5;
+        knobParams.knobSize = scaledRKnobSize;
+        knobParams.strokeColor = "white";
+
+        theKnob = this.GenericKnob(knobParams);
+        groupElement.AddElement(theKnob);
+
+        knobParams.strokeSize = 1;
+        knobParams.strokeColor = "black";
+        theKnob = this.GenericKnob(knobParams);
+        groupElement.AddElement(theKnob);
+
+        // Restore knobSize to default for further triggers if needed
+        knobParams.knobSize = scaledKnobSize;
+      }
+
+      // Create dimension adjustment knobs if needed
+      if (
+        this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff &&
+        this.CanUseStandOffDimensionLines()
+      ) {
+        let currentSVGElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+        this.CreateDimensionAdjustmentKnobs(groupElement, currentSVGElement, knobParams);
+      }
+
+      groupElement.SetSize(widthWithKnob, heightWithKnob);
+      groupElement.SetPos(adjustedFrame.x, adjustedFrame.y);
+      groupElement.isShape = true;
+      groupElement.SetID(ConstantData.Defines.Action + triggerId);
+
+      console.log("= S.BaseLine: CreateActionTriggers output:", groupElement);
+      return groupElement;
+    }
+  }
+
+  CalcCursorForSegment(startPoint: any, endPoint: any, useAlternateCursor: boolean) {
+    console.log("= S.BaseLine: CalcCursorForSegment called with input:", {
+      startPoint,
+      endPoint,
+      useAlternateCursor
+    });
+
+    const angleInDegrees = Utils1.CalcAngleFromPoints(startPoint, endPoint);
+    console.log("= S.BaseLine: CalcCursorForSegment angleInDegrees:", angleInDegrees);
+
+    const cursorType = this.CalcCursorForAngle(angleInDegrees, useAlternateCursor);
+    console.log("= S.BaseLine: CalcCursorForSegment output:", cursorType);
+
+    return cursorType;
+  }
+
+  NoRotate(): boolean {
+    console.log("= S.BaseLine: NoRotate called with input: none");
+    const result = this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR
+      || this.hooks.length > 1;
+    console.log("= S.BaseLine: NoRotate output:", result);
+    return result;
+  }
+
+  SetRuntimeEffects(effectSettings: any): void {
+    console.log("= S.BaseLine: SetRuntimeEffects called with input:", effectSettings);
+
+    const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    if (svgElement) {
+      this.ApplyEffects(svgElement, effectSettings, true);
+      console.log("= S.BaseLine: SetRuntimeEffects output: Effects applied to svgElement:", svgElement);
+    } else {
+      console.log("= S.BaseLine: SetRuntimeEffects output: No element found for BlockID:", this.BlockID);
+    }
+  }
+
+  ApplyStyles(shapeElement: any, styleRecord: any) {
+    console.log("= S.BaseLine: ApplyStyles input:", { shapeElement, styleRecord });
+
+    let fillType = styleRecord.Fill.Paint.FillType;
+    let lineType = styleRecord.Line.Paint.FillType;
+    let hasImage = this.ImageURL !== '';
+
+    if (this.polylist && this.polylist.closed) {
+      if (hasImage) {
+        let fillMode = 'PROPFILL';
+        let cropRect = { x: 0, y: 0, width: 0, height: 0 };
+
+        if (this.ImageHeader) {
+          if (this.ImageHeader.croprect) {
+            cropRect.x = this.ImageHeader.croprect.left;
+            cropRect.y = this.ImageHeader.croprect.top;
+            cropRect.width = this.ImageHeader.croprect.right - this.ImageHeader.croprect.left;
+            cropRect.height = this.ImageHeader.croprect.bottom - this.ImageHeader.croprect.top;
+          }
+          if (this.ImageHeader.imageflags !== undefined &&
+            this.ImageHeader.imageflags === ConstantData.ImageScales.SDIMAGE_ALWAYS_FIT) {
+            fillMode = 'NOPROP';
+          }
+        }
+
+        shapeElement.SetImageFill(this.ImageURL, {
+          scaleType: fillMode,
+          cropRect: cropRect
+        });
+        shapeElement.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
+
+      } else if (fillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
+        shapeElement.SetGradientFill(
+          this.CreateGradientRecord(
+            styleRecord.Fill.Paint.GradientFlags,
+            styleRecord.Fill.Paint.Color,
+            styleRecord.Fill.Paint.Opacity,
+            styleRecord.Fill.Paint.EndColor,
+            styleRecord.Fill.Paint.EndOpacity
+          )
+        );
+      } else if (fillType === ConstantData.FillTypes.SDFILL_RICHGRADIENT) {
+        shapeElement.SetGradientFill(
+          this.CreateRichGradientRecord(styleRecord.Fill.Paint.GradientFlags)
+        );
+      } else if (fillType === ConstantData.FillTypes.SDFILL_TEXTURE) {
+        let textureConfig = {
+          url: '',
+          scale: 1,
+          alignment: styleRecord.Fill.Paint.TextureScale.AlignmentScalar
+        };
+        let textureIndex = styleRecord.Fill.Paint.Texture;
+        if (GlobalData.optManager.TextureList.Textures[textureIndex]) {
+          textureConfig.dim = GlobalData.optManager.TextureList.Textures[textureIndex].dim;
+          textureConfig.url = GlobalData.optManager.TextureList.Textures[textureIndex].ImageURL;
+          textureConfig.scale = GlobalData.optManager.CalcTextureScale(
+            styleRecord.Fill.Paint.TextureScale,
+            textureConfig.dim.x
+          );
+          styleRecord.Fill.Paint.TextureScale.Scale = textureConfig.scale;
+          if (!textureConfig.url) {
+            textureConfig.url = Constants.FilePath_CMSRoot +
+              Constants.FilePath_Textures +
+              GlobalData.optManager.TextureList.Textures[textureIndex].filename;
+          }
+          shapeElement.SetTextureFill(textureConfig);
+          shapeElement.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
+        }
+      } else if (fillType === ConstantData.FillTypes.SDFILL_TRANSPARENT) {
+        shapeElement.SetFillColor('none');
+      } else {
+        shapeElement.SetFillColor(styleRecord.Fill.Paint.Color);
+        shapeElement.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
+      }
+    }
+
+    if (lineType === ConstantData.FillTypes.SDFILL_GRADIENT) {
+      shapeElement.SetGradientStroke(
+        this.CreateGradientRecord(
+          styleRecord.Line.Paint.GradientFlags,
+          styleRecord.Line.Paint.Color,
+          styleRecord.Line.Paint.Opacity,
+          styleRecord.Line.Paint.EndColor,
+          styleRecord.Line.Paint.EndOpacity
+        )
+      );
+    } else if (lineType === ConstantData.FillTypes.SDFILL_RICHGRADIENT) {
+      shapeElement.SetGradientStroke(
+        this.CreateRichGradientRecord(styleRecord.Line.Paint.GradientFlags)
+      );
+    } else if (lineType === ConstantData.FillTypes.SDFILL_TEXTURE) {
+      let textureConfig = {
+        url: '',
+        scale: styleRecord.Line.Paint.TextureScale.Scale,
+        alignment: styleRecord.Line.Paint.TextureScale.AlignmentScalar
+      };
+      let textureIndex = styleRecord.Line.Paint.Texture;
+      textureConfig.dim = GlobalData.optManager.TextureList.Textures[textureIndex].dim;
+      textureConfig.url = GlobalData.optManager.TextureList.Textures[textureIndex].ImageURL;
+      if (!textureConfig.url) {
+        textureConfig.url = Constants.FilePath_CMSRoot +
+          Constants.FilePath_Textures +
+          GlobalData.optManager.TextureList.Textures[textureIndex].filename;
+      }
+      shapeElement.SetTextureStroke(textureConfig);
+      shapeElement.SetStrokeOpacity(styleRecord.Line.Paint.Opacity);
+    } else if (lineType === ConstantData.FillTypes.SDFILL_SOLID) {
+      shapeElement.SetStrokeColor(styleRecord.Line.Paint.Color);
+      shapeElement.SetStrokeOpacity(styleRecord.Line.Paint.Opacity);
+    } else {
+      shapeElement.SetStrokeColor('none');
+    }
+
+    console.log("= S.BaseLine: ApplyStyles output");
+  }
+
+  CalcLineHops(shapeObj: any, extraParam: any) {
+    console.log("= S.BaseLine: CalcLineHops input:", { shapeObj, extraParam });
+
+    let polyPoints = this.GetPolyPoints(
+      ConstantData.Defines.NPOLYPTS,
+      false,
+      false,
+      false,
+      null
+    );
+    let polyLength = polyPoints.length;
+
+    let shapePoints = shapeObj.GetPolyPoints(
+      ConstantData.Defines.NPOLYPTS,
+      false,
+      false,
+      false,
+      null
+    );
+    let shapeLength = shapePoints.length;
+
+    for (let indexA = 0; indexA < polyLength; ++indexA) {
+      if (this.hoplist.nhops > ConstantData.Defines.SDMAXHOPS) {
+        console.log("= S.BaseLine: CalcLineHops output: max hops reached");
+        return;
+      }
+
+      let startPoint, endPoint;
+      if (indexA > 0) {
+        startPoint = polyPoints[indexA - 1];
+        endPoint = polyPoints[indexA];
+      } else {
+        startPoint = polyPoints[indexA];
+        endPoint = polyPoints[indexA + 1];
+        indexA++;
+      }
+
+      let hopResult = this.AddHopPoint(
+        startPoint,
+        endPoint,
+        shapePoints,
+        shapeLength,
+        indexA,
+        extraParam
+      );
+      if (hopResult == null) {
+        console.log("= S.BaseLine: CalcLineHops output: no hopResult");
+        break;
+      }
+
+      if (hopResult.bSuccess) {
+        let tempIndex = hopResult.tindex;
+        if (tempIndex >= 1 && shapeLength > 2) {
+          shapePoints = shapePoints.slice(tempIndex);
+          shapeLength -= tempIndex;
+          hopResult = this.AddHopPoint(
+            startPoint,
+            endPoint,
+            shapePoints,
+            shapeLength,
+            indexA,
+            extraParam
+          );
+          if (!hopResult) break;
+          tempIndex = hopResult.tindex;
+        }
+
+        if (tempIndex < shapeLength - 1) {
+          shapePoints = shapePoints.slice(tempIndex);
+          shapeLength -= tempIndex;
+          hopResult = this.AddHopPoint(
+            startPoint,
+            endPoint,
+            shapePoints,
+            shapeLength,
+            indexA,
+            extraParam
+          );
+          if (!hopResult) break;
+        }
+      }
+    }
+
+    console.log("= S.BaseLine: CalcLineHops output: completed");
+  }
+
+  DebugLineHops(svgDoc: any) {
+    console.log("= S.BaseLine: DebugLineHops input:", { svgDoc });
+
+    const hopCount = this.hoplist.nhops;
+    let currentHop = null;
+    let inConsLine = false;
+    const sedSessionObject = GlobalData.optManager.GetObjectPtr(
+      GlobalData.optManager.theSEDSessionBlockID,
+      false
+    );
+
+    if ((sedSessionObject.flags & ConstantData.SessionFlags.SEDS_AllowHops) !== 0) {
+      let defaultRadius = sedSessionObject.hopdim.x;
+      let sumX = 0;
+      let sumY = 0;
+      let consCount = 0;
+
+      for (let hopIndex = 0; hopIndex < hopCount; ++hopIndex) {
+        currentHop = this.hoplist.hops[hopIndex];
+        if (currentHop.cons) {
+          inConsLine = true;
+          consCount++;
+          sumX += currentHop.pt.x;
+          sumY += currentHop.pt.y;
+        } else {
+          let color = "red";
+          let radius = defaultRadius;
+          if (inConsLine) {
+            color = "green";
+            radius = 3 * sedSessionObject.hopdim.x;
+            consCount++;
+            sumX += currentHop.pt.x;
+            sumY += currentHop.pt.y;
+            sumX /= consCount;
+            sumY /= consCount;
+            inConsLine = false;
+          } else {
+            sumX = currentHop.pt.x;
+            sumY = currentHop.pt.y;
+          }
+
+          const boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+          const knobParams = {
+            svgDoc: svgDoc,
+            shapeType: ConstantData.CreateShapeType.OVAL,
+            x: boundingRect.x + (sumX - radius / 2),
+            y: boundingRect.y + (sumY - radius / 2),
+            knobSize: radius,
+            fillColor: "none",
+            fillOpacity: 1,
+            strokeSize: 1,
+            strokeColor: color,
+            KnobID: 0,
+            cursorType: Element.CursorType.CROSSHAIR
+          };
+
+          const newKnob = this.GenericKnob(knobParams);
+          newKnob.SetID("hoptarget");
+          GlobalData.optManager.svgOverlayLayer.AddElement(newKnob);
+
+          sumX = 0;
+          sumY = 0;
+          consCount = 0;
+        }
+      }
+    }
+
+    console.log("= S.BaseLine: DebugLineHops output: completed");
+  }
+
+  AddHopPoint(
+    startPoint: any,
+    endPoint: any,
+    pointArray: any[],
+    totalPoints: number,
+    segmentIndex: number,
+    extraData: any
+  ) {
+    console.log("= S.BaseLine: AddHopPoint input:", {
+      startPoint,
+      endPoint,
+      pointArray,
+      totalPoints,
+      segmentIndex,
+      extraData
+    });
+
+    if (this.hoplist.nhops > ConstantData.Defines.SDMAXHOPS) {
+      console.log("= S.BaseLine: AddHopPoint output: Max hops exceeded");
+      return { bSuccess: false, tindex: -1 };
+    }
+
+    let offset = 0;
+    let iterationCount = 0;
+    const fullPoints = pointArray;
+    pointArray = fullPoints.slice(offset);
+
+    let intersection = GlobalData.optManager.PolyLIntersect(
+      startPoint,
+      endPoint,
+      pointArray,
+      totalPoints
+    );
+    let ipt = intersection.ipt;
+    let lpseg = intersection.lpseg;
+
+    while (intersection.bSuccess) {
+      let startRect = Utils2.Pt2Rect(startPoint, endPoint);
+      Utils2.InflateRect(startRect, 2, 2);
+
+      if (
+        ipt.x >= startRect.x &&
+        ipt.x <= startRect.x + startRect.width &&
+        ipt.y >= startRect.y &&
+        ipt.y <= startRect.y + startRect.height
+      ) {
+        lpseg += offset;
+        let dx = ipt.x - endPoint.x;
+        let dy = ipt.y - endPoint.y;
+
+        const hopInfo = {
+          segment: segmentIndex,
+          index: extraData,
+          pt: ipt,
+          dist: Utils2.sqrt(dx * dx + dy * dy),
+          cons: false
+        };
+
+        this.hoplist.hops.push(hopInfo);
+        this.hoplist.nhops++;
+
+        console.log("= S.BaseLine: AddHopPoint output:", {
+          bSuccess: true,
+          tindex: lpseg
+        });
+        return { bSuccess: true, tindex: lpseg };
+      }
+
+      offset += lpseg;
+      if (offset > totalPoints - 1) {
+        break;
+      }
+
+      iterationCount++;
+      if (iterationCount > totalPoints) {
+        break;
+      }
+
+      pointArray = fullPoints.slice(offset);
+      totalPoints = pointArray.length;
+
+      intersection = GlobalData.optManager.PolyLIntersect(
+        startPoint,
+        endPoint,
+        pointArray,
+        totalPoints
+      );
+      lpseg = intersection.lpseg;
+      ipt = intersection.ipt;
+    }
+
+    console.log("= S.BaseLine: AddHopPoint output:", {
+      bSuccess: false,
+      tindex: lpseg
+    });
+    return { bSuccess: false, tindex: lpseg };
+  }
+
+  SetObjectStyle(e) {
+    console.log("= S.BaseLine: SetObjectStyle input:", e);
+
+    // Deep copy the input style object
+    let style = Utils1.DeepCopy(e);
+    let reverseArrows = false;
+
+    // If not a segline and segl exists, remove it
+    if (this.LineType !== ConstantData.LineType.SEGLINE && style.segl != null) {
+      delete style.segl;
+    }
+
+    // Process arrowhead properties if either EndArrowID or StartArrowID exists
+    if (!(e.EndArrowID == null && e.StartArrowID == null)) {
+      // Determine if arrows need to be reversed based on the start and end points
+      if (this.StartPoint.x < this.EndPoint.x) {
+        reverseArrows = false;
+      } else if (this.StartPoint.x > this.EndPoint.x || this.StartPoint.y > this.EndPoint.y) {
+        reverseArrows = true;
+      }
+
+      if (reverseArrows) {
+        style.EndArrowID = this.EndArrowID;
+        style.StartArrowID = this.StartArrowID;
+        style.EndArrowDisp = this.EndArrowDisp;
+        style.StartArrowDisp = this.StartArrowDisp;
+
+        if (e.EndArrowID != null) {
+          style.StartArrowID = e.EndArrowID;
+          style.StartArrowDisp = e.EndArrowDisp;
+        }
+        if (e.StartArrowID != null) {
+          style.EndArrowID = e.StartArrowID;
+          style.EndArrowDisp = e.StartArrowDisp;
+        }
+      }
+    }
+
+    // If polylist is not closed and Hatch is defined, set Hatch to 0
+    if (!(this.polylist && this.polylist.closed) &&
+      style && style.StyleRecord && style.StyleRecord.Fill && style.StyleRecord.Fill.Hatch) {
+      style.StyleRecord.Fill.Hatch = 0;
+    }
+
+    // For Gantt bar objects, transfer the line thickness from the current style
+    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR &&
+      style.StyleRecord && style.StyleRecord.Name &&
+      style.StyleRecord.Line && style.StyleRecord.Line.Thickness) {
+      style.StyleRecord.Line.Thickness = this.StyleRecord.Line.Thickness;
+    }
+
+    // Call the base class SetObjectStyle method
+    let result = super.SetObjectStyle(style);
+
+    // If there's a fill record in the style, clear the ImageURL
+    if (result.StyleRecord && result.StyleRecord.Fill) {
+      this.ImageURL = '';
+    }
+
+    console.log("= S.BaseLine: SetObjectStyle output:", result);
+    return result;
+  }
+
+  GetArrowheadSelection(e: any): boolean {
+    console.log("= S.BaseLine: GetArrowheadSelection called with input:", e);
+
+    if (e) {
+      // Determine whether to reverse arrowheads based on the current object's geometry.
+      const shouldReverse = (function determineReverse(obj: any): boolean {
+        // Calculate the horizontal difference.
+        const deltaX = Math.abs(obj.EndPoint.x - obj.StartPoint.x);
+        console.log("= S.BaseLine: determineReverse - deltaX:", deltaX);
+
+        // If the horizontal difference is almost zero, decide based on vertical ordering.
+        if (deltaX < 0.01) {
+          const reverse = obj.EndPoint.y < obj.StartPoint.y;
+          console.log("= S.BaseLine: determineReverse - vertical comparison; reverse =", reverse);
+          return reverse;
+        }
+
+        // Otherwise, compute a rectangle from EndPoint and StartPoint.
+        const rect = Utils2.Pt2Rect(obj.EndPoint, obj.StartPoint);
+        console.log("= S.BaseLine: determineReverse - computed rect:", rect);
+
+        const condition1 =
+          Math.abs(obj.EndPoint.x - rect.x) < 0.01 &&
+          Math.abs(obj.EndPoint.y - rect.y) < 0.01;
+        const condition2 =
+          Math.abs(obj.EndPoint.x - rect.x) < 0.01 &&
+          Math.abs(obj.EndPoint.y - (rect.y + rect.height)) < 0.01;
+
+        console.log("= S.BaseLine: determineReverse - condition1:", condition1, ", condition2:", condition2);
+        return condition1 || condition2;
+      })(this);
+
+      console.log("= S.BaseLine: GetArrowheadSelection - shouldReverse:", shouldReverse);
+
+      if (shouldReverse) {
+        // Reverse the start and end arrowhead values.
+        e.StartArrowID = this.EndArrowID;
+        e.StartArrowDisp = this.EndArrowDisp;
+        e.EndArrowID = this.StartArrowID;
+        e.EndArrowDisp = this.StartArrowDisp;
+        console.log("= S.BaseLine: GetArrowheadSelection - Reversed arrowhead values.");
+      } else {
+        // Retain the original arrowhead values.
+        e.StartArrowID = this.StartArrowID;
+        e.StartArrowDisp = this.StartArrowDisp;
+        e.EndArrowID = this.EndArrowID;
+        e.EndArrowDisp = this.EndArrowDisp;
+        console.log("= S.BaseLine: GetArrowheadSelection - Retained original arrowhead values.");
+      }
+
+      // Always copy the arrow size index.
+      e.ArrowSizeIndex = this.ArrowSizeIndex;
+      console.log("= S.BaseLine: GetArrowheadSelection - ArrowSizeIndex set to:", this.ArrowSizeIndex);
+    }
+
+    console.log("= S.BaseLine: GetArrowheadSelection output:", e);
+    return true;
+  }
+
+  UpdateDimensionFromTextObj(inputObj: any, options: any): void {
+    console.log("= S.BaseLine: UpdateDimensionFromTextObj called with input:", { inputObj, options });
+
+    // Preserve the block before updating dimensions
+    GlobalData.objectStore.PreserveBlock(this.BlockID);
+
+    // Hide the SVG selection state for this block
+    GlobalData.optManager.ShowSVGSelectionState(this.BlockID, false);
+
+    // Get the SVG element associated with this BlockID
+    const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+
+    // Retrieve text and user data either from options or from the input object
+    let textValue: string;
+    let userData: any;
+    if (options) {
+      textValue = options.text;
+      userData = options.userData;
+    } else {
+      textValue = inputObj.GetText();
+      userData = inputObj.GetUserData();
+    }
+
+    // Update the dimensions from the extracted text
+    this.UpdateDimensionFromText(svgElement, textValue, userData);
+
+    // Mark this block for link update
+    GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
+
+    // For each hook attached to the object, mark its link flag too
+    for (let i = 0; i < this.hooks.length; i++) {
+      GlobalData.optManager.SetLinkFlag(this.hooks[i].objid, ConstantData.LinkFlags.SED_L_MOVE);
+    }
+
+    // If any additional text-related properties are present, add the block to the dirty list
+    if (
+      this.HyperlinkText !== "" ||
+      this.NoteID !== -1 ||
+      this.CommentID !== -1 ||
+      this.HasFieldData()
+    ) {
+      GlobalData.optManager.AddToDirtyList(this.BlockID);
+    }
+
+    // Complete any pending operations
+    GlobalData.optManager.CompleteOperation(null);
+
+    // If the frame is partially offscreen, scroll the object into view
+    if (this.Frame.x < 0 || this.Frame.y < 0) {
+      GlobalData.optManager.ScrollObjectIntoView(this.BlockID, false);
+    }
+
+    console.log("= S.BaseLine: UpdateDimensionFromTextObj completed for BlockID:", this.BlockID);
+  }
+
+  UpdateDimensionFromText(svgElement: any, textStr: string, opts: any) {
+    console.log("= S.BaseLine: UpdateDimensionFromText - input:", { svgElement, textStr, opts });
+
+    let dimensionValue: number;
+    let segment: any;
+    let i: number; // loop index for hooks
+    let dimensionLength: number = -1;
+
+    // If options indicate that the object is hooked, delegate to the hooked object updater
+    if (opts.hookedObjectInfo) {
+      console.log("= S.BaseLine: UpdateDimensionFromText - detected hookedObjectInfo, delegating update to UpdateDimensionsFromTextForHookedObject");
+      return this.UpdateDimensionsFromTextForHookedObject(svgElement, textStr, opts);
+    }
+
+    // Retrieve the segment from options and calculate the dimension value
+    segment = opts.segment;
+    dimensionValue = this.GetDimensionValueFromString(textStr, segment);
+    if (dimensionValue >= 0) {
+      dimensionLength = this.GetDimensionLengthFromValue(dimensionValue);
+    }
+
+    if (dimensionLength < 0) {
+      console.log("= S.BaseLine: UpdateDimensionFromText - calculated dimensionLength is invalid (<0). Marking dirty and rendering.");
+      GlobalData.optManager.AddToDirtyList(this.BlockID);
+      GlobalData.optManager.RenderDirtySVGObjects();
+      return;
+    }
+
+    // Update the dimensions with the computed length
+    this.UpdateDimensions(dimensionLength, null, null);
+    GlobalData.optManager.SetLinkFlag(
+      this.BlockID,
+      ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE
+    );
+
+    // Update link flags for all attached hooks
+    for (i = 0; i < this.hooks.length; i++) {
+      GlobalData.optManager.SetLinkFlag(
+        this.hooks[i].objid,
+        ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE
+      );
+    }
+
+    GlobalData.optManager.UpdateLinks();
+
+    // If the current displayed dimensions match the calculated length, update runtime flags
+    if (this.GetDimensionsForDisplay().width === dimensionLength) {
+      this.rwd = dimensionValue;
+      this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, true);
+    }
+
+    // Update the dimension lines reflecting the new dimensions
+    this.UpdateDimensionLines(svgElement);
+
+    console.log("= S.BaseLine: UpdateDimensionFromText - output: dimension updated with length", dimensionLength);
+  }
+
+  UpdateSecondaryDimensions(shapeContainer: any, creator: any, forceFlag: boolean): void {
+    console.log("= S.BaseLine: UpdateSecondaryDimensions called with input:", { shapeContainer, creator, forceFlag });
+
+    const isWall = this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL;
+    const isHideHookedDim = !(this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions);
+    const isShowAlways = (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always) ||
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) || forceFlag;
+
+    console.log("= S.BaseLine: UpdateSecondaryDimensions computed flags:", { isWall, isHideHookedDim, isShowAlways });
+
+    if (isWall && isHideHookedDim && isShowAlways) {
+      this.UpdateHookedObjectDimensionLines(shapeContainer, creator, forceFlag);
+    }
+
+    console.log("= S.BaseLine: UpdateSecondaryDimensions completed.");
+  }
+
+
+
+  GetBoundingBoxesForSecondaryDimensions() {
+    console.log("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions called, input: none");
+
+    // Retrieve hooked object dimension info
+    let hookedInfo = this.GetHookedObjectDimensionInfo();
+    let boundingBoxes = [];
+
+    // Check if object is a floorplan wall, dimensions should not be hidden,
+    // and all segments are enabled.
+    if (
+      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL &&
+      !(this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions) &&
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_AllSeg)
+    ) {
+      for (let index = 0, count = hookedInfo.length; index < count; index++) {
+        let dimensionInfo = hookedInfo[index];
+
+        // Skip if start and end points are equal
+        if (Utils2.EqualPt(dimensionInfo.start, dimensionInfo.end)) {
+          continue;
+        }
+
+        // Calculate the angle between start and end points
+        let angle = Utils1.CalcAngleFromPoints(dimensionInfo.start, dimensionInfo.end);
+        // Get the text representation for the dimension
+        let dimensionText = this.GetDimensionTextForPoints(dimensionInfo.start, dimensionInfo.end);
+        // Retrieve left, right and text frame points for the dimension
+        let dimensionPoints = this.GetPointsForDimension(
+          angle,
+          dimensionText,
+          dimensionInfo.start,
+          dimensionInfo.end,
+          dimensionInfo.segment,
+          true
+        );
+
+        if (dimensionPoints) {
+          boundingBoxes.push(dimensionPoints.left);
+          boundingBoxes.push(dimensionPoints.right);
+          boundingBoxes.push(dimensionPoints.textFrame);
+        }
+      }
+    }
+
+    console.log("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions output:", boundingBoxes);
+    return boundingBoxes;
+  }
+
+  AddIcon(e, container, iconPosition) {
+    console.log("= S.BaseLine: AddIcon called with input:", { e, container, iconPosition });
+
+    let targetX, targetY;
+    const polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
+    const len = polyPoints.length;
+
+    if (this.DataID >= 0) {
+      if (len === 2) {
+        targetX = polyPoints[1].x;
+        targetY = polyPoints[1].y;
+      } else if (len === 3) {
+        targetX = polyPoints[2].x;
+        targetY = polyPoints[2].y;
+      } else {
+        targetX = polyPoints[len - 1].x;
+        targetY = polyPoints[len - 1].y;
+      }
+
+      if (this instanceof Instance.Shape.Line || this instanceof Instance.Shape.ArcLine) {
+        targetX -= this.iconSize;
+        iconPosition.y = targetY - 2 * this.iconSize;
+      } else {
+        // For segmented lines
+        targetX -= this.iconSize;
+        iconPosition.y = targetY - 2 * this.iconSize;
+      }
+      iconPosition.x = targetX - this.iconSize * this.nIcons;
+    } else {
+      if (len === 2) {
+        targetX = (polyPoints[0].x + polyPoints[1].x) / 2;
+        targetY = (polyPoints[0].y + polyPoints[1].y) / 2;
+      } else if (len === 3) {
+        targetX = polyPoints[1].x;
+        targetY = polyPoints[1].y;
+      } else {
+        const midIndex = Math.floor(len / 2);
+        targetX = polyPoints[midIndex].x;
+        targetY = polyPoints[midIndex].y;
+      }
+
+      if (this instanceof Instance.Shape.Line) {
+        if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR) {
+          iconPosition.y = targetY - (this.StyleRecord.Line.Thickness / 2 + this.iconSize / 8);
+        } else {
+          targetX += this.iconSize / 2;
+          iconPosition.y = targetY + this.iconSize / 4;
+        }
+      } else if (this instanceof Instance.Shape.ArcLine) {
+        targetX += this.iconSize / 2;
+        iconPosition.y = targetY + this.iconSize / 2;
+      } else if (this instanceof Instance.Shape.SegmentedLine) {
+        iconPosition.y = targetY + this.iconSize / 2;
+      } else {
+        iconPosition.y = targetY - this.iconSize / 2;
+      }
+      iconPosition.x = targetX - this.iconSize * this.nIcons;
+    }
+
+    const iconElement = this.GenericIcon(iconPosition);
+    this.nIcons++;
+    container.AddElement(iconElement);
+    console.log("= S.BaseLine: AddIcon output:", iconElement);
+    return iconElement;
+  }
+
+  GetNotePos(e: any, t: any): { x: number; y: number } {
+    console.log("= S.BaseLine: GetNotePos called with input:", { e, t });
+
+    const polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
+    const numPoints = polyPoints.length;
+    let posX: number, posY: number;
+    let adjustedPos: { x?: number; y?: number } = {};
+    let svgFrame: { x: number; y: number; width: number; height: number };
+
+    if (this.DataID >= 0) {
+      // Determine base position based on the number of poly points
+      if (numPoints === 2) {
+        posX = polyPoints[1].x;
+        posY = polyPoints[1].y;
+      } else if (numPoints === 3) {
+        posX = polyPoints[2].x;
+        posY = polyPoints[2].y;
+      } else {
+        posX = polyPoints[numPoints - 1].x;
+        posY = polyPoints[numPoints - 1].y;
+      }
+
+      // Adjust based on object type: for Line or ArcLine, use specific offset
+      if (this instanceof Instance.Shape.Line || this instanceof Instance.Shape.ArcLine) {
+        posX -= this.iconSize;
+        adjustedPos.y = posY - 2 * this.iconSize;
+      } else {
+        // For segmented lines or others, use same adjustment
+        posX -= this.iconSize;
+        adjustedPos.y = posY - 2 * this.iconSize;
+      }
+
+      adjustedPos.x = posX - this.iconSize * this.nIcons;
+      if (this.nIcons === 1) {
+        adjustedPos.x += 2 * this.iconSize;
+      }
+
+      svgFrame = this.GetSVGFrame();
+      const result = {
+        x: svgFrame.x + (adjustedPos.x as number),
+        y: svgFrame.y + (adjustedPos.y as number) + this.iconSize
+      };
+      console.log("= S.BaseLine: GetNotePos output:", result);
+      return result;
+    } else {
+      // When DataID is not valid, use alternative positioning
+      if (numPoints === 2) {
+        posX = (polyPoints[0].x + polyPoints[1].x) / 2;
+        posY = (polyPoints[0].y + polyPoints[1].y) / 2;
+      } else if (numPoints === 3) {
+        posX = polyPoints[1].x;
+        posY = polyPoints[1].y;
+      } else {
+        const midIndex = Math.floor(numPoints / 2);
+        posX = polyPoints[midIndex].x;
+        posY = polyPoints[midIndex].y;
+      }
+
+      if (this instanceof Instance.Shape.Line) {
+        posX += this.iconSize / 2;
+        adjustedPos.y = posY + this.iconSize / 4;
+      } else if (this instanceof Instance.Shape.ArcLine) {
+        posX += this.iconSize / 2;
+        adjustedPos.y = posY + this.iconSize / 2;
+      } else if (this instanceof Instance.Shape.SegmentedLine) {
+        adjustedPos.y = posY + this.iconSize / 2;
+      } else {
+        adjustedPos.y = posY - this.iconSize / 2;
+      }
+
+      if (this.nIcons === 1) {
+        posX += this.iconSize;
+      }
+      adjustedPos.x = posX;
+
+      svgFrame = this.GetSVGFrame();
+      const result = {
+        x: svgFrame.x + (adjustedPos.x as number),
+        y: svgFrame.y + (adjustedPos.y as number) + this.iconSize
+      };
+      console.log("= S.BaseLine: GetNotePos output:", result);
+      return result;
+    }
+  }
+
+  PolyLine_Pr_PolyLGetArcQuadrant(startPoint: Point, endPoint: any, angle: number) {
+    console.log("= S.BaseLine: PolyLine_Pr_PolyLGetArcQuadrant input:", { startPoint, endPoint, angle });
+
+    // Initialize the result object with default values
+    let result = { param: 0, ShortRef: 0 };
+
+    // Build an array of points starting with the startPoint and endPoint
+    let points: Point[] = [];
+    points.push(new Point(startPoint.x, startPoint.y));
+    points.push(new Point(endPoint.x, endPoint.y));
+
+    // Define a center point for rotation (using the start point as center)
+    let center = { x: startPoint.x, y: startPoint.y };
+
+    // If the given angle is significant, rotate the points around the center
+    if (Math.abs(angle) >= 0.01) {
+      const sinValue = Math.sin(angle);
+      const cosValue = Math.cos(angle);
+      let rotationAngle = Math.asin(sinValue);
+      if (cosValue < 0) {
+        rotationAngle = -rotationAngle;
+      }
+      Utils3.RotatePointsAboutPoint(center, rotationAngle, points);
+    }
+
+    // Extract rotated start and end points
+    const rotatedStart = points[0];
+    const rotatedEnd = points[1];
+
+    // Determine the arc quadrant settings based on the positions of the rotated points
+    if (rotatedEnd.x > rotatedStart.x) {
+      if (rotatedEnd.y > rotatedStart.y) {
+        result.param = -ConstantData.Geometry.PI / 2;
+        result.ShortRef = ConstantData.ArcQuad.SD_PLA_BL;
+        if (endPoint.notclockwise) {
+          result.param = 0;
+        }
+      } else {
+        result.ShortRef = ConstantData.ArcQuad.SD_PLA_TL;
+        if (endPoint.notclockwise) {
+          result.ShortRef = ConstantData.ArcQuad.SD_PLA_TR;
+          result.param = ConstantData.Geometry.PI / 2;
+        }
+      }
+    } else {
+      if (rotatedEnd.y > rotatedStart.y) {
+        result.ShortRef = ConstantData.ArcQuad.SD_PLA_BR;
+        if (endPoint.notclockwise) {
+          result.ShortRef = ConstantData.ArcQuad.SD_PLA_BL;
+          result.param = ConstantData.Geometry.PI / 2;
+        }
+      } else {
+        result.param = -ConstantData.Geometry.PI / 2;
+        result.ShortRef = ConstantData.ArcQuad.SD_PLA_TR;
+        if (endPoint.notclockwise) {
+          result.param = 0;
+        }
+      }
+    }
+
+    console.log("= S.BaseLine: PolyLine_Pr_PolyLGetArcQuadrant output:", result);
+    return result;
+  }
+
+  FieldDataAllowed(): boolean {
+    console.log("= S.BaseLine: FieldDataAllowed called - input: none");
+    const result = false;
+    console.log("= S.BaseLine: FieldDataAllowed output:", result);
+    return result;
+  }
 }
 
 export default BaseLine
