@@ -81,7 +81,7 @@ class ArcSegmentedLine extends SegmentedLine {
     let pathData: string;
 
     if (isSimpleShape) {
-      points = ListManager.SegmentedLine.prototype.GetPolyPoints.call(
+      points = ConstantData.SegmentedLine.prototype.GetPolyPoints.call(
         this,
         ConstantData.Defines.NPOLYPTS,
         true,
@@ -225,7 +225,7 @@ class ArcSegmentedLine extends SegmentedLine {
       additional,
     });
 
-    let basePoints: Point[] = ListManager.SegmentedLine.prototype.GetPolyPoints.call(
+    let basePoints: Point[] = ConstantData.SegmentedLine.prototype.GetPolyPoints.call(
       this,
       ConstantData.Defines.NPOLYPTS,
       true,
@@ -326,7 +326,7 @@ class ArcSegmentedLine extends SegmentedLine {
         }
       }
     } else {
-      resultPoints = ListManager.BaseLine.prototype.GetPolyPoints.call(this, numPoints, alreadyOffset, true, null);
+      resultPoints = ConstantData.BaseLine.prototype.GetPolyPoints.call(this, numPoints, alreadyOffset, true, null);
     }
 
     console.log("= S.ArcSegmentedLine - GetPolyPoints - Output:", resultPoints);
@@ -338,7 +338,7 @@ class ArcSegmentedLine extends SegmentedLine {
 
     // If the segmented line does not have exactly three points, fall back to parent implementation
     if (this.segl.pts.length !== 3) {
-      const fallback = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+      const fallback = ConstantData.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
       console.log("= S.ArcSegmentedLine - GetTextOnLineParams - output (fallback):", fallback);
       return fallback;
     }
@@ -355,12 +355,12 @@ class ArcSegmentedLine extends SegmentedLine {
 
         // Prepare parameters object for text positioning
         const params: {
-          Frame: ListManager.Rect;
+          Frame: ConstantData.Rect;
           StartPoint: Point;
           EndPoint: Point;
           CenterProp?: number;
         } = {
-          Frame: new ListManager.Rect(),
+          Frame: new ConstantData.Rect(),
           StartPoint: new Point(),
           EndPoint: new Point()
         };
@@ -397,7 +397,7 @@ class ArcSegmentedLine extends SegmentedLine {
         return params;
       }
       default: {
-        const defaultResult = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+        const defaultResult = ConstantData.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
         console.log("= S.ArcSegmentedLine - GetTextOnLineParams - output (default):", defaultResult);
         return defaultResult;
       }
