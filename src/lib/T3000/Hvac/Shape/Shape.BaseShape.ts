@@ -1568,6 +1568,14 @@ class BaseShape extends BaseDrawingObject {
     return enclosedObjects;
   }
 
+  // InsertNewTable(e, t, a) {
+  //   return this.GetTable(!1) ? GlobalData.optManager.Table_SetProperties(this, e, t) : null == this.ImageURL ||
+  //     '' === this.ImageURL ? (
+  //     GlobalData.optManager.Table_Create(this.BlockID, e, t, this.TextGrow, a),
+  //     !0
+  //   ) : void 0
+  // }
+
   PinProportional(actionRect: { x: number; y: number; width: number; height: number }): void {
     console.log("= S.BaseShape PinProportional - Input:", actionRect);
 
@@ -2309,6 +2317,20 @@ class BaseShape extends BaseDrawingObject {
       this.trect.y += offset.y;
     }
 
+    visioTextChild = GlobalData.optManager.SD_GetVisioTextChild(this.BlockID);
+    if (visioTextChild >= 0) {
+      visioTextChildObj = GlobalData.optManager.GetObjectPtr(visioTextChild, true);
+      if (visioTextChildObj && visioTextChildObj.hookdisp.x === 0 && visioTextChildObj.hookdisp.y === 0 && this.ShapeType !== ConstantData.ShapeType.GROUPSYMBOL) {
+        visioTextChildObj.sizedim.width = this.trect.width;
+        visioTextChildObj.sizedim.height = this.trect.height;
+        visioTextChildObj.HandleActionTriggerCallResize(this.trect, 0, null);
+        visioTextChildElem = GlobalData.optManager.svgObjectLayer.GetElementByID(visioTextChildObj.BlockID);
+        if (visioTextChildElem) {
+          visioTextChildObj.Resize(visioTextChildElem, visioTextChildObj.Frame, visioTextChildObj);
+        }
+      }
+    }
+
     console.log("= S.BaseShape - HandleActionTriggerCallResize output:", { newFrame, triggerType, event, prevFrame });
   }
 
@@ -2444,8 +2466,6 @@ class BaseShape extends BaseDrawingObject {
     let snapOffsets = { x: null, y: null };
     const actionTriggerType = ConstantData.ActionTriggerType;
 
-    let dynamicGuides;
-
     const adjustBottom = (rect) => {
       adjustedRect.x = rect.x;
       adjustedRect.y = rect.y;
@@ -2539,7 +2559,7 @@ class BaseShape extends BaseDrawingObject {
       }
 
       if (snapApplied) {
-        dynamicGuides = new ListManager.Dynamic_Guides();
+        const dynamicGuides = new ListManager.Dynamic_Guides();
         if (this.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.SHAPE) {
           snapOffsets = GlobalData.optManager.DynamicSnaps_GetSnapObjects(this.BlockID, adjustedRect, dynamicGuides, null, snapGuides);
           if (snapOffsets.x !== null) coords.x += snapOffsets.x;
@@ -2558,97 +2578,69 @@ class BaseShape extends BaseDrawingObject {
     return dynamicGuides;
   }
 
-  LM_ActionTrack(event: any) {
-    console.log("= S.BaseShape - LM_ActionTrack input:", event);
+  LM_ActionTrack(event) {
+    console.log('= S.BaseShape - LM_ActionTrack input:', event);
 
-    // Stop propagation and check if an action object is set
     Utils2.StopPropagationAndDefaults(event);
-    if (GlobalData.optManager.theActionStoredObjectID === -1) {
-      console.log("= S.BaseShape - LM_ActionTrack output: no action stored object");
-      return false;
+    if (GlobalData.optManager.theActionStoredObjectID === -1) return false;
+
+    const actionTriggerType = ConstantData.ActionTriggerType;
+    const storedObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theActionStoredObjectID, false);
+
+    if (GlobalData.optManager.theActionTriggerID !== actionTriggerType.ROTATE) {
+      storedObject.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, false);
     }
 
-    // Get the current shape instance based on the stored object ID
-    let shape = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theActionStoredObjectID, false);
-    const triggerTypes = ConstantData.ActionTriggerType;
-
-    // Hide dimension lines if not in ROTATE trigger
-    if (GlobalData.optManager.theActionTriggerID !== ConstantData.ActionTriggerType.ROTATE) {
-      shape.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, false);
-    }
-
-    // Get current frame and convert window coordinates from the gesture event
-    const currentFrame = shape.Frame;
-    let coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
-      event.gesture.center.clientX,
-      event.gesture.center.clientY
-    );
-
-    // Pin the action to valid boundaries and perform auto-grow drag adjustments
+    const frame = storedObject.Frame;
+    const coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(event.gesture.center.clientX, event.gesture.center.clientY);
     this.PinAction(coords);
-    coords = GlobalData.optManager.DoAutoGrowDrag(coords);
-
-    // Check for snap override setting
+    const adjustedCoords = GlobalData.optManager.DoAutoGrowDrag(coords);
     const overrideSnaps = GlobalData.optManager.OverrideSnaps(event);
-    let immediateTrigger = false;
+    let applySnaps = false;
+
     switch (GlobalData.optManager.theActionTriggerID) {
-      case triggerTypes.MODIFYSHAPE:
-      case triggerTypes.ROTATE:
-        immediateTrigger = true;
+      case actionTriggerType.MODIFYSHAPE:
+      case actionTriggerType.ROTATE:
+        applySnaps = true;
         break;
     }
 
-    // Apply snapping if not immediate and no override
-    let snapGuides: any;
-    if (!immediateTrigger && !overrideSnaps) {
-      snapGuides = this.ActionApplySnaps(coords, GlobalData.optManager.theActionTriggerID);
+    let dynamicGuides = null;
+    if (!applySnaps && !overrideSnaps) {
+      dynamicGuides = this.ActionApplySnaps(adjustedCoords, GlobalData.optManager.theActionTriggerID);
     }
 
-    // Adjust coordinates based on rotation if needed
-    let x = coords.x;
-    let y = coords.y;
-    let currentPoint = { x, y };
-    let centerPoint = {
-      x: currentFrame.x + currentFrame.width / 2,
-      y: currentFrame.y + currentFrame.height / 2
-    };
+    let x = adjustedCoords.x;
+    let y = adjustedCoords.y;
+    const center = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 };
     let rotatedPoint = {};
 
-    if (
-      GlobalData.optManager.theActionTriggerID !== ConstantData.ActionTriggerType.ROTATE &&
-      GlobalData.optManager.theRotateObjectRadians
-    ) {
-      rotatedPoint = GlobalData.optManager.RotatePointAroundPoint(
-        centerPoint,
-        currentPoint,
-        GlobalData.optManager.theRotateObjectRadians
-      );
+    if (GlobalData.optManager.theActionTriggerID !== actionTriggerType.ROTATE && GlobalData.optManager.theRotateObjectRadians) {
+      rotatedPoint = GlobalData.optManager.RotatePointAroundPoint(center, { x, y }, GlobalData.optManager.theRotateObjectRadians);
       x = rotatedPoint.x;
       y = rotatedPoint.y;
-      coords.x = x;
-      coords.y = y;
+      adjustedCoords.x = x;
+      adjustedCoords.y = y;
     }
 
-    // Auto-scroll and track action
-    if (
-      this.AutoScrollCommon(event, true, "HandleActionTriggerDoAutoScroll") &&
-      (
-        coords = this.LM_ActionDuringTrack(coords),
-        this.HandleActionTriggerTrackCommon(coords.x, coords.y, event),
-        GlobalData.optManager.theActionTriggerID !== ConstantData.ActionTriggerType.ROTATE &&
-        shape && shape.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, true),
-        snapGuides
-      )
-    ) {
-      // Update dynamic snap guides if available
-      const originalFrameCopy = Utils1.DeepCopy(this.Frame);
-      this.Frame = GlobalData.optManager.theActionNewBBox;
-      const snapRect = this.GetSnapRect();
-      this.Frame = originalFrameCopy;
-      GlobalData.optManager.DynamicSnaps_UpdateGuides(snapGuides, this.BlockID, snapRect);
+    if (this.AutoScrollCommon(event, true, 'HandleActionTriggerDoAutoScroll')) {
+      const duringTrackCoords = this.LM_ActionDuringTrack(adjustedCoords);
+      this.HandleActionTriggerTrackCommon(duringTrackCoords.x, duringTrackCoords.y, event);
+
+      if (GlobalData.optManager.theActionTriggerID !== actionTriggerType.ROTATE) {
+        storedObject.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, true);
+      }
+
+      if (dynamicGuides) {
+        const originalFrame = Utils1.DeepCopy(this.Frame);
+        this.Frame = GlobalData.optManager.theActionNewBBox;
+        const snapRect = this.GetSnapRect();
+        this.Frame = originalFrame;
+        GlobalData.optManager.DynamicSnaps_UpdateGuides(dynamicGuides, this.BlockID, snapRect);
+      }
     }
 
-    console.log("= S.BaseShape - LM_ActionTrack output:", coords);
+    console.log('= S.BaseShape - LM_ActionTrack output:', { adjustedCoords, dynamicGuides });
   }
 
   LM_ActionRelease(event, triggerData) {
@@ -2835,42 +2827,36 @@ class BaseShape extends BaseDrawingObject {
     }
   }
 
-  LM_ActionPreTrack(inputEvent: any, triggerType: any): void {
-    console.log("= S.BaseShape - LM_ActionPreTrack input:", { inputEvent, triggerType });
+  LM_ActionPreTrack(e, t) {
+    console.log("= S.BaseShape - LM_ActionPreTrack input:", { e, t });
 
-    // Check and update floating point flags for width and height
+    // Check and update rflags
     if (this.rflags) {
       this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
       this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
-      console.log("= S.BaseShape - LM_ActionPreTrack - Updated rflags:", this.rflags);
-    } else {
-      console.log("= S.BaseShape - LM_ActionPreTrack - No rflags defined.");
     }
 
     console.log("= S.BaseShape - LM_ActionPreTrack output:", { rflags: this.rflags });
   }
 
-  LM_ActionDuringTrack(event: { x: number; y: number }): { x: number; y: number } {
-    console.log("= S.BaseShape - LM_ActionDuringTrack input:", event);
-    const result = event; // Readable: simply passing the event through without change.
+  LM_ActionDuringTrack(coords) {
+    console.log("= S.BaseShape - LM_ActionDuringTrack input:", coords);
+    const result = coords;
     console.log("= S.BaseShape - LM_ActionDuringTrack output:", result);
     return result;
   }
 
-  LM_ActionPostRelease(e: any) {
-    console.log("= S.BaseShape - LM_ActionPostRelease input:", { e });
+  LM_ActionPostRelease(event) {
+    console.log("= S.BaseShape - LM_ActionPostRelease input:", event);
 
-    // Helper function to handle format painter actions
-    const applyFormatPainter = () => {
-      if (
-        GlobalData.optManager.currentModalOperation === ListManager.ModalOperations.FORMATPAINTER
-      ) {
+    const handleFormatPainter = () => {
+      if (GlobalData.optManager.currentModalOperation === ListManager.ModalOperations.FORMATPAINTER) {
         if (
           GlobalData.optManager.FormatPainterMode === ListManager.FormatPainterModes.TABLE ||
           GlobalData.optManager.FormatPainterMode === ListManager.FormatPainterModes.OBJECT
         ) {
-          const activeTableID = GlobalData.optManager.Table_GetActiveID();
-          GlobalData.optManager.Table_PasteFormat(activeTableID, GlobalData.optManager.FormatPainterStyle, false);
+          const activeTableId = GlobalData.optManager.Table_GetActiveID();
+          GlobalData.optManager.Table_PasteFormat(activeTableId, GlobalData.optManager.FormatPainterStyle, false);
         }
         if (GlobalData.optManager.FormatPainterSticky !== true) {
           GlobalData.optManager.SetFormatPainter(true, false);
@@ -2878,56 +2864,36 @@ class BaseShape extends BaseDrawingObject {
       }
     };
 
-    // If this object is not a table with shape container, update links
     if (this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER) {
       GlobalData.optManager.UpdateLinks();
     }
+
     GlobalData.optManager.LinkParams = null;
+    const table = this.GetTable(false);
 
-    const tableObj = this.GetTable(false);
-
-    // Set edit mode to default before processing action trigger
     GlobalData.optManager.SetEditMode(ConstantData.EditState.DEFAULT);
 
-    // Process based on the action trigger ID
     switch (GlobalData.optManager.theActionTriggerID) {
       case ConstantData.ActionTriggerType.TABLE_ROW:
-        if (GlobalData.optManager.theActionTable && tableObj) {
-          if (GlobalData.optManager.theActionTable.ht !== tableObj.ht) {
-            this.sizedim.height = this.Frame.height;
-          }
+        if (GlobalData.optManager.theActionTable && table && GlobalData.optManager.theActionTable.ht !== table.ht) {
+          this.sizedim.height = this.Frame.height;
         }
         GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-        applyFormatPainter();
+        handleFormatPainter();
         break;
 
       case ConstantData.ActionTriggerType.TABLE_COL:
-        if (GlobalData.optManager.theActionTable && tableObj) {
-          if (GlobalData.optManager.theActionTable.wd !== tableObj.wd) {
-            this.sizedim.width = this.Frame.width;
-          }
+        if (GlobalData.optManager.theActionTable && table && GlobalData.optManager.theActionTable.wd !== table.wd) {
+          this.sizedim.width = this.Frame.width;
         }
         GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-        applyFormatPainter();
+        handleFormatPainter();
         break;
 
       case ConstantData.ActionTriggerType.TABLE_SELECT:
       case ConstantData.ActionTriggerType.TABLE_ROWSELECT:
       case ConstantData.ActionTriggerType.TABLE_COLSELECT:
-        if (
-          GlobalData.optManager.currentModalOperation === ListManager.ModalOperations.FORMATPAINTER
-        ) {
-          if (
-            GlobalData.optManager.FormatPainterMode === ListManager.FormatPainterModes.TABLE ||
-            GlobalData.optManager.FormatPainterMode === ListManager.FormatPainterModes.OBJECT
-          ) {
-            const activeID = GlobalData.optManager.Table_GetActiveID();
-            GlobalData.optManager.Table_PasteFormat(activeID, GlobalData.optManager.FormatPainterStyle, false);
-          }
-          if (GlobalData.optManager.FormatPainterSticky !== true) {
-            GlobalData.optManager.SetFormatPainter(true, false);
-          }
-        }
+        handleFormatPainter();
         break;
 
       case ConstantData.ActionTriggerType.TABLE_EDIT:
@@ -2957,157 +2923,102 @@ class BaseShape extends BaseDrawingObject {
 
     console.log("= S.BaseShape - LM_ActionPostRelease output:", {
       sizedim: this.sizedim,
-      Frame: this.Frame
+      Frame: this.Frame,
+      objecttype: this.objecttype,
+      actionTriggerID: GlobalData.optManager.theActionTriggerID
     });
   }
 
-  LM_SetupActionClick(event, param2, objectIdOrA, triggerType, triggerDataOrI) {
-    console.log("= S.BaseShape - LM_SetupActionClick input:", {
-      event,
-      param2,
-      objectIdOrA,
-      triggerType,
-      triggerDataOrI
-    });
+  LM_SetupActionClick(event, triggerType, actionStoredObjectID, actionTriggerID, actionTriggerData) {
+    console.log('= S.BaseShape - LM_SetupActionClick input:', { event, triggerType, actionStoredObjectID, actionTriggerID, actionTriggerData });
 
-    // Update global event timestamp and UI adaptation.
     GlobalData.optManager.theEventTimestamp = Date.now();
     GlobalData.optManager.SetUIAdaptation(event);
 
-    let objId, triggerId, triggerData;
-    // Convert event coordinates from window to document
-    let docCoords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
-      event.gesture.center.clientX,
-      event.gesture.center.clientY
-    );
-    // Apply auto grow drag adjustments
-    docCoords = GlobalData.optManager.DoAutoGrowDrag(docCoords);
-    const startX = docCoords.x;
-    const startY = docCoords.y;
+    let rotationAngle = 0;
+    let isRotated = false;
+    const coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(event.gesture.center.clientX, event.gesture.center.clientY);
+    const x = GlobalData.optManager.DoAutoGrowDrag(coords).x;
+    const y = coords.y;
 
     if (triggerType) {
-      // When a trigger type is provided via parameter triggerType.
-      objId = objectIdOrA;
-      triggerId = triggerType;
-      triggerData = triggerDataOrI;
-
-      // Determine whether to flip cursor based on the object's rotation
-      let rotationAngle = 0;
-      let flipFlag = false;
-      const obj = GlobalData.optManager.GetObjectPtr(objectIdOrA, false);
+      const obj = GlobalData.optManager.GetObjectPtr(actionStoredObjectID, false);
       if (obj) {
         rotationAngle = obj.RotationAngle;
-        if (rotationAngle > 180) {
-          rotationAngle = 360 - rotationAngle;
-        }
-        if (rotationAngle >= 90) {
-          rotationAngle = 180 - rotationAngle;
-        }
-        if (rotationAngle > 45) {
-          flipFlag = true;
-        }
+        if (rotationAngle > 180) rotationAngle = 360 - rotationAngle;
+        if (rotationAngle >= 90) rotationAngle = 180 - rotationAngle;
+        if (rotationAngle > 45) isRotated = true;
       }
-      // Set the edit mode and corresponding cursor based on the trigger
+
       switch (triggerType) {
         case ConstantData.ActionTriggerType.TABLE_ROW:
-          if (flipFlag) {
-            GlobalData.optManager.SetEditMode(
-              ConstantData.EditState.DRAGCONTROL,
-              Element.CursorType.COL_RESIZE
-            );
-          } else {
-            GlobalData.optManager.SetEditMode(
-              ConstantData.EditState.DRAGCONTROL,
-              Element.CursorType.ROW_RESIZE
-            );
-          }
+          GlobalData.optManager.SetEditMode(
+            ConstantData.EditState.DRAGCONTROL,
+            isRotated ? Element.CursorType.COL_RESIZE : Element.CursorType.ROW_RESIZE
+          );
           break;
         case ConstantData.ActionTriggerType.TABLE_COL:
-          if (flipFlag) {
-            GlobalData.optManager.SetEditMode(
-              ConstantData.EditState.DRAGCONTROL,
-              Element.CursorType.ROW_RESIZE
-            );
-          } else {
-            GlobalData.optManager.SetEditMode(
-              ConstantData.EditState.DRAGCONTROL,
-              Element.CursorType.COL_RESIZE
-            );
-          }
+          GlobalData.optManager.SetEditMode(
+            ConstantData.EditState.DRAGCONTROL,
+            isRotated ? Element.CursorType.ROW_RESIZE : Element.CursorType.COL_RESIZE
+          );
           break;
       }
     } else {
-      // When no trigger type is passed, get the object based on the overlay element.
       const overlayElement = GlobalData.optManager.svgOverlayLayer.FindElementByDOMElement(event.currentTarget);
-      if (overlayElement === null) {
-        console.log("= S.BaseShape - LM_SetupActionClick output:", false);
-        return false;
-      }
-      const elementId = overlayElement.GetID();
-      // Extract object id from the overlay element id string.
-      objId = parseInt(elementId.substring(ConstantData.Defines.Action.length), 10);
+      if (overlayElement === null) return false;
+
+      const elementID = overlayElement.GetID();
+      actionStoredObjectID = parseInt(elementID.substring(ConstantData.Defines.Action.length), 10);
       const targetElement = overlayElement.GetTargetForEvent(event);
-      if (targetElement === null) {
-        console.log("= S.BaseShape - LM_SetupActionClick output:", false);
-        return false;
-      }
-      triggerId = targetElement.GetID();
-      triggerData = targetElement.GetUserData();
+      if (targetElement === null) return false;
+
+      actionTriggerID = targetElement.GetID();
+      actionTriggerData = targetElement.GetUserData();
       GlobalData.optManager.SetControlDragMode(targetElement);
     }
 
-    GlobalData.optManager.theActionStoredObjectID = objId;
-    const storedObj = GlobalData.optManager.GetObjectPtr(objId, true);
-    GlobalData.optManager.theActionTriggerID = triggerId;
-    GlobalData.optManager.theActionTriggerData = triggerData;
+    GlobalData.optManager.theActionStoredObjectID = actionStoredObjectID;
+    const storedObject = GlobalData.optManager.GetObjectPtr(actionStoredObjectID, true);
+    GlobalData.optManager.theActionTriggerID = actionTriggerID;
+    GlobalData.optManager.theActionTriggerData = actionTriggerData;
 
-    // Handle connector or line triggers
     const actionTriggerType = ConstantData.ActionTriggerType;
-    switch (triggerId) {
+    switch (actionTriggerID) {
       case actionTriggerType.CONNECTOR_PERP:
       case actionTriggerType.CONNECTOR_ADJ:
       case actionTriggerType.CONNECTOR_HOOK:
       case actionTriggerType.LINESTART:
-      case actionTriggerType.LINEEND: {
-        // Get the connector object from the first hook.
-        const connectorObj = (function (currentObj) {
-          if (currentObj.hooks.length) {
-            const hookObjId = currentObj.hooks[0].objid;
-            return GlobalData.optManager.GetObjectPtr(hookObjId, false);
-          }
-          return null;
-        })(this);
-        if (connectorObj) {
-          GlobalData.optManager.theActionStoredObjectID = connectorObj.BlockID;
-          // Delegate action click processing to the connector handler.
+      case actionTriggerType.LINEEND:
+        const connector = this.GetConnector();
+        if (connector) {
+          GlobalData.optManager.theActionStoredObjectID = connector.BlockID;
           this.Connector_LM_ActionClick(event, true);
         }
-        console.log("= S.BaseShape - LM_SetupActionClick output:", false);
         return false;
-      }
     }
 
-    // Special handling for poly segment movement
-    if (triggerId === ConstantData.ActionTriggerType.MOVEPOLYSEG) {
-      GlobalData.optManager.theActionTriggerData = { hitSegment: triggerData, moveAngle: 9999 };
+    if (actionTriggerID === actionTriggerType.MOVEPOLYSEG) {
+      GlobalData.optManager.theActionTriggerData = {
+        hitSegment: actionTriggerData,
+        moveAngle: 9999
+      };
     }
 
-    GlobalData.optManager.theActionSVGObject = GlobalData.optManager.svgObjectLayer.GetElementByID(objId);
-    storedObj.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, false);
+    GlobalData.optManager.theActionSVGObject = GlobalData.optManager.svgObjectLayer.GetElementByID(actionStoredObjectID);
+    storedObject.SetDimensionLinesVisibility(GlobalData.optManager.theActionSVGObject, false);
+    this.LM_ActionPreTrack(actionStoredObjectID, actionTriggerID);
 
-    // Pre-track actions
-    this.LM_ActionPreTrack(objId, triggerId);
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.HasFieldData()) {
+    if (this.HasHyperlinkOrNoteOrFieldData()) {
       this.HideAllIcons(GlobalData.optManager.svgDoc, GlobalData.optManager.theActionSVGObject);
     }
 
-    // Check if Shift is held for lock aspect ratio, and adjust if needed.
     GlobalData.optManager.theActionLockAspectRatio = event.gesture.srcEvent.shiftKey;
     if (this.ResizeAspectConstrain) {
       GlobalData.optManager.theActionLockAspectRatio = !GlobalData.optManager.theActionLockAspectRatio;
     }
 
-    const frame = storedObj.Frame;
+    const frame = storedObject.Frame;
     if (GlobalData.optManager.theActionLockAspectRatio) {
       if (frame.height === 0) {
         GlobalData.optManager.theActionLockAspectRatio = false;
@@ -3116,6 +3027,7 @@ class BaseShape extends BaseDrawingObject {
         GlobalData.optManager.theActionAspectRatioHeight = frame.height;
       }
     }
+
     GlobalData.optManager.theActionBBox = $.extend(true, {}, frame);
     GlobalData.optManager.theActionNewBBox = $.extend(true, {}, frame);
 
@@ -3123,91 +3035,100 @@ class BaseShape extends BaseDrawingObject {
     if (table) {
       GlobalData.optManager.theActionTable = Utils1.DeepCopy(table);
     }
+
     GlobalData.optManager.HideOverlayLayer();
 
-    // Determine start points for various action types
-    let startPoint = {}, centerPoint = {}, rotatedPoint = {};
+    const startCoords = {};
+    const centerCoords = {};
+    const rotatedCoords = {};
+
     GlobalData.optManager.theRotateObjectRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-    if (GlobalData.optManager.theActionTriggerID === ConstantData.ActionTriggerType.CONTAINER_ADJ) {
-      startPoint.x = startX;
-      startPoint.y = startY;
-      GlobalData.optManager.theActionStartX = startPoint.x;
-      GlobalData.optManager.theActionStartY = startPoint.y;
+
+    if (GlobalData.optManager.theActionTriggerID === actionTriggerType.CONTAINER_ADJ) {
+      startCoords.x = x;
+      startCoords.y = y;
+      GlobalData.optManager.theActionStartX = startCoords.x;
+      GlobalData.optManager.theActionStartY = startCoords.y;
+
       const adjustShapeList = this.Pr_GetAdjustShapeList();
-      if (!adjustShapeList) {
-        console.log("= S.BaseShape - LM_SetupActionClick output:", false);
-        return false;
-      }
+      if (!adjustShapeList) return false;
+
       GlobalData.optManager.theMoveList = adjustShapeList.list;
       GlobalData.optManager.theDragElementList = adjustShapeList.svglist;
       GlobalData.optManager.theDragBBoxList = adjustShapeList.framelist;
       GlobalData.optManager.theActionTableLastY = 0;
       GlobalData.optManager.theActionOldExtra = adjustShapeList.oldextra;
       GlobalData.optManager.theActionContainerArrangement = adjustShapeList.arrangement;
-    } else if (GlobalData.optManager.theActionTriggerID === ConstantData.ActionTriggerType.ROTATE) {
+    } else if (GlobalData.optManager.theActionTriggerID === actionTriggerType.ROTATE) {
       GlobalData.optManager.theRotateKnobCenterDivisor = this.RotateKnobCenterDivisor();
       GlobalData.optManager.theRotateStartRotation = this.RotationAngle;
       GlobalData.optManager.theRotateEndRotation = GlobalData.optManager.theRotateStartRotation;
       GlobalData.optManager.theRotatePivotX = frame.x + frame.width / GlobalData.optManager.theRotateKnobCenterDivisor.x;
       GlobalData.optManager.theRotatePivotY = frame.y + frame.height / GlobalData.optManager.theRotateKnobCenterDivisor.y;
-      GlobalData.optManager.theActionStartX = startX;
-      GlobalData.optManager.theActionStartY = startY;
+      GlobalData.optManager.theActionStartX = x;
+      GlobalData.optManager.theActionStartY = y;
     } else {
-      startPoint.x = startX;
-      startPoint.y = startY;
-      centerPoint.x = frame.x + frame.width / 2;
-      centerPoint.y = frame.y + frame.height / 2;
-      rotatedPoint = GlobalData.optManager.RotatePointAroundPoint(centerPoint, startPoint, GlobalData.optManager.theRotateObjectRadians);
-      GlobalData.optManager.theActionStartX = rotatedPoint.x;
-      GlobalData.optManager.theActionStartY = rotatedPoint.y;
-      GlobalData.optManager.theActionTableLastX = rotatedPoint.x;
-      GlobalData.optManager.theActionTableLastY = rotatedPoint.y;
+      startCoords.x = x;
+      startCoords.y = y;
+      centerCoords.x = frame.x + frame.width / 2;
+      centerCoords.y = frame.y + frame.height / 2;
+      rotatedCoords = GlobalData.optManager.RotatePointAroundPoint(centerCoords, startCoords, GlobalData.optManager.theRotateObjectRadians);
+      GlobalData.optManager.theActionStartX = rotatedCoords.x;
+      GlobalData.optManager.theActionStartY = rotatedCoords.y;
+      GlobalData.optManager.theActionTableLastX = rotatedCoords.x;
+      GlobalData.optManager.theActionTableLastY = rotatedCoords.y;
     }
 
-    console.log("= S.BaseShape - LM_SetupActionClick output:", true);
+    console.log('= S.BaseShape - LM_SetupActionClick output:', true);
     return true;
   }
 
-  Connector_LM_ActionClick(event: any, trigger: any): void {
-    console.log("= S.BaseShape - Connector_LM_ActionClick - input:", { event, trigger });
-    this.BaseLine_LM_ActionClick(event, trigger);
-    console.log("= S.BaseShape - Connector_LM_ActionClick - output");
+  Connector_LM_ActionClick(event, triggerType) {
+    console.log("= S.BaseShape - Connector_LM_ActionClick input:", { event, triggerType });
+
+    try {
+      this.BaseLine_LM_ActionClick(event, triggerType);
+    } catch (error) {
+      console.error("= S.BaseShape - Connector_LM_ActionClick error:", error);
+      throw error;
+    }
+
+    console.log("= S.BaseShape - Connector_LM_ActionClick output");
   }
 
-  BaseLine_LM_ActionClick(event: any, trigger: any): void {
-    console.log("= S.BaseShape - BaseLine_LM_ActionClick input:", { event, trigger });
+  BaseLine_LM_ActionClick(event, triggerType) {
+    console.log("= S.BaseShape - BaseLine_LM_ActionClick input:", { event, triggerType });
+
     try {
-      const blockId = this.BlockID;
-      const baseObj = GlobalData.optManager.GetObjectPtr(blockId, false);
+      const blockID = this.BlockID;
+      const storedObject = GlobalData.optManager.GetObjectPtr(blockID, false);
 
-      // Ensure the object is a valid BaseDrawingObject
-      if (!(baseObj && baseObj instanceof BaseDrawingObject)) {
-        console.log("= S.BaseShape - BaseLine_LM_ActionClick output: invalid base object");
-        return;
+      if (!(storedObject && storedObject instanceof BaseDrawingObject)) {
+        console.log("= S.BaseShape - BaseLine_LM_ActionClick output: false (invalid storedObject)");
+        return false;
       }
 
-      // Initialize auto-grow drag and setup action click
-      if (GlobalData.optManager.DoAutoGrowDragInit(0, this.BlockID) && !this.LM_SetupActionClick(event, trigger)) {
-        console.log("= S.BaseShape - BaseLine_LM_ActionClick output: LM_SetupActionClick returned false");
-        return;
+      if (!GlobalData.optManager.DoAutoGrowDragInit(0, blockID) || !this.LM_SetupActionClick(event, triggerType)) {
+        console.log("= S.BaseShape - BaseLine_LM_ActionClick output: false (setup failed)");
+        return false;
       }
 
-      // Begin secondary editing and set up handlers for drag and dragend actions
       Collab.BeginSecondaryEdit();
-      const currentObj = GlobalData.optManager.GetObjectPtr(this.BlockID, false);
-      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_ActionTrackHandlerFactory(currentObj));
-      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_ActionReleaseHandlerFactory(currentObj));
+      const actionObject = GlobalData.optManager.GetObjectPtr(blockID, false);
+      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_ActionTrackHandlerFactory(actionObject));
+      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_ActionReleaseHandlerFactory(actionObject));
 
-      console.log("= S.BaseShape - BaseLine_LM_ActionClick output: success");
-    } catch (err) {
-      this.LM_ActionClick_ExceptionCleanup(err);
-      GlobalData.optManager.ExceptionCleanup(err);
-      throw err;
+      console.log("= S.BaseShape - BaseLine_LM_ActionClick output: true");
+    } catch (error) {
+      this.LM_ActionClick_ExceptionCleanup(error);
+      GlobalData.optManager.ExceptionCleanup(error);
+      console.error("= S.BaseShape - BaseLine_LM_ActionClick error:", error);
+      throw error;
     }
   }
 
-  LM_ActionClick_ExceptionCleanup(error: any): void {
-    console.log("= S.BaseShape - LM_ActionClick_ExceptionCleanup - Input:", error);
+  LM_ActionClick_ExceptionCleanup(error) {
+    console.log("= S.BaseShape - LM_ActionClick_ExceptionCleanup input:", error);
 
     GlobalData.optManager.unbindActionClickHammerEvents();
     this.ResetAutoScrollTimer();
@@ -3219,612 +3140,155 @@ class BaseShape extends BaseDrawingObject {
     GlobalData.optManager.theActionSVGObject = null;
     GlobalData.optManager.HideOverlayLayer();
 
-    console.log("= S.BaseShape - LM_ActionClick_ExceptionCleanup - Output: Cleanup completed");
+    console.log("= S.BaseShape - LM_ActionClick_ExceptionCleanup output");
   }
 
-  LM_ActionClick(event: any, triggerType: any, paramA: any, autoGrowParam: any, paramI: any): void {
-    console.log("= S.BaseShape - LM_ActionClick input:", { event, triggerType, paramA, autoGrowParam, paramI });
+  LM_ActionClick(event, triggerType, actionStoredObjectID, actionTriggerID, actionTriggerData) {
+    console.log("= S.BaseShape - LM_ActionClick input:", { event, triggerType, actionStoredObjectID, actionTriggerID, actionTriggerData });
     Utils2.StopPropagationAndDefaults(event);
+
     try {
-      const blockId = this.BlockID;
-      const objectPtr = GlobalData.optManager.GetObjectPtr(blockId, false);
-      if (!(objectPtr && objectPtr instanceof BaseDrawingObject)) {
-        console.log("= S.BaseShape - LM_ActionClick output: false (invalid BaseDrawingObject)");
-        return;
+      const blockID = this.BlockID;
+      const storedObject = GlobalData.optManager.GetObjectPtr(blockID, false);
+
+      if (!(storedObject && storedObject instanceof BaseDrawingObject)) {
+        console.log("= S.BaseShape - LM_ActionClick output: false (invalid storedObject)");
+        return false;
       }
-      GlobalData.optManager.DoAutoGrowDragInit(autoGrowParam);
-      if (!this.LM_SetupActionClick(event, triggerType, paramA, autoGrowParam, paramI)) {
-        console.log("= S.BaseShape - LM_ActionClick output: false (LM_SetupActionClick returned false)");
-        return;
+
+      if (!GlobalData.optManager.DoAutoGrowDragInit(actionTriggerID) || !this.LM_SetupActionClick(event, triggerType, actionStoredObjectID, actionTriggerID, actionTriggerData)) {
+        console.log("= S.BaseShape - LM_ActionClick output: false (setup failed)");
+        return false;
       }
+
       Collab.BeginSecondaryEdit();
-      const shape = GlobalData.optManager.GetObjectPtr(this.BlockID, false);
-      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_ActionTrackHandlerFactory(shape));
-      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_ActionReleaseHandlerFactory(shape));
-      console.log("= S.BaseShape - LM_ActionClick output: success");
+      const actionObject = GlobalData.optManager.GetObjectPtr(this.BlockID, false);
+      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_ActionTrackHandlerFactory(actionObject));
+      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_ActionReleaseHandlerFactory(actionObject));
+
+      console.log("= S.BaseShape - LM_ActionClick output: true");
+      return true;
     } catch (error) {
       this.LM_ActionClick_ExceptionCleanup(error);
       GlobalData.optManager.ExceptionCleanup(error);
+      console.error("= S.BaseShape - LM_ActionClick error:", error);
       throw error;
     }
   }
 
-  RightClick(e: any) {
-    console.log("= S.BaseShape - RightClick input:", e);
-
-    // Convert the event window coordinates to document coordinates
-    const hitPt = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
-      e.gesture.center.clientX,
-      e.gesture.center.clientY
-    );
-
-    // Get the shape type (kept for clarity)
-    const shapeType = ConstantData.ShapeType;
-
-    // Find the SVG element based on the event target
-    const svgElem = GlobalData.optManager.svgObjectLayer.FindElementByDOMElement(e.currentTarget);
-    const elemId = svgElem.GetID();
-
-    // Retrieve the associated drawing object
-    let drawingObj = GlobalData.optManager.GetObjectPtr(elemId, false);
-    if (drawingObj && drawingObj instanceof BaseDrawingObject) {
-      // Handle shape container scenario
-      if (drawingObj.objecttype === ConstantData.ObjectTypes.SD_OBJT_SHAPECONTAINER) {
-        // In Builder application mode: show builder smart container menu
-        if (SDUI.AppSettings.Application === Resources.Application.Builder) {
-          GlobalData.optManager.SelectObjectFromClick(e, svgElem);
-          ConstantData.DocumentContext.CurrentContainerList = drawingObj.ContainerList;
-          GlobalData.optManager.RightClickParams = new RightClickData();
-          GlobalData.optManager.RightClickParams.TargetID = svgElem.GetID();
-          GlobalData.optManager.RightClickParams.HitPt.x = hitPt.x;
-          GlobalData.optManager.RightClickParams.HitPt.y = hitPt.y;
-          GlobalData.optManager.RightClickParams.Locked = (this.flags & ConstantData.ObjFlags.SEDO_Lock) > 0;
-          console.log("= S.BaseShape - RightClick output (container Builder mode):", hitPt);
-          return Commands.MainController.ShowContextualMenu(
-            Resources.Controls.ContextMenus.BuilderSmartContainer.Id.toLowerCase(),
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        }
-
-        // If the container is inside a table cell, show its container menu
-        const containerCell = GlobalData.optManager.ContainerIsInCell(drawingObj);
-        if (containerCell) {
-          GlobalData.optManager.RightClickParams = new RightClickData();
-          GlobalData.optManager.RightClickParams.TargetID = svgElem.GetID();
-          GlobalData.optManager.RightClickParams.HitPt.x = hitPt.x;
-          GlobalData.optManager.RightClickParams.HitPt.y = hitPt.y;
-          GlobalData.optManager.RightClickParams.Locked = (this.flags & ConstantData.ObjFlags.SEDO_Lock) > 0;
-          console.log("= S.BaseShape - RightClick output (container in table cell):", hitPt);
-          return GlobalData.optManager.Table_ShowContainerMenu(containerCell, e);
-        }
-      }
-
-      // Attempt to select the object; if selection fails, exit
-      if (!GlobalData.optManager.SelectObjectFromClick(e, svgElem)) {
-        console.log("= S.BaseShape - RightClick output: Selection failed");
-        return false;
-      }
-
-      // If document is read-only, show the read-only menu
-      if (GlobalData.docHandler.IsReadOnly()) {
-        GlobalData.optManager.RightClickParams = new RightClickData();
-        GlobalData.optManager.RightClickParams.TargetID = svgElem.GetID();
-        GlobalData.optManager.RightClickParams.HitPt.x = hitPt.x;
-        GlobalData.optManager.RightClickParams.HitPt.y = hitPt.y;
-        GlobalData.optManager.RightClickParams.Locked = (this.flags & ConstantData.ObjFlags.SEDO_Lock) > 0;
-        console.log("= S.BaseShape - RightClick output: ReadOnly mode", hitPt);
-        Commands.MainController.ShowContextualMenu(
-          Resources.Controls.ContextMenus.DefaultReadOnly.Id.toLowerCase(),
-          e.gesture.center.clientX,
-          e.gesture.center.clientY
-        );
-        return false;
-      }
-
-      // Retrieve additional table and object information
-      let activeTableId = GlobalData.optManager.Table_GetActiveID();
-      const tableObj = this.GetTable(false);
-      const currentElemId = svgElem.GetID();
-      const targetElem = svgElem.GetTargetForEvent(e);
-      const targetElemId = targetElem ? targetElem.GetID() : null;
-      let isTableLocked = false;
-      if (tableObj && (tableObj.flags & ListManager.Table.TableFlags.SDT_TF_LOCK)) {
-        isTableLocked = true;
-      }
-      // Refresh drawingObj based on current element
-      drawingObj = GlobalData.optManager.GetObjectPtr(currentElemId, false);
-
-      // Determine if one-click text edit is allowed based on flags and object state
-      let allowOneClickText =
-        ((drawingObj.TextFlags & ConstantData.TextFlags.SED_TF_OneClick) > 0) &&
-        activeTableId < 0 &&
-        (targetElemId !== ConstantData.SVGElementClass.SLOP);
-      if (!drawingObj.AllowTextEdit()) {
-        allowOneClickText = false;
-      }
-      // For swimlane objects, disable text edit under certain conditions
-      if (this.IsSwimlane()) {
-        isTableLocked = true;
-        switch (targetElemId) {
-          case ConstantData.Defines.TableColHit:
-          case ConstantData.Defines.TableRowHit:
-            allowOneClickText = false;
-            break;
-        }
-      }
-
-      // Activate text edit if applicable
-      if (drawingObj.GetTextObject(e, true) >= 0 || allowOneClickText) {
-        const textElem = svgElem.textElem;
-        if (textElem || allowOneClickText) {
-          let spellIndex = -1;
-          if (textElem) {
-            spellIndex = textElem.GetSpellAtLocation(
-              e.gesture.center.clientX,
-              e.gesture.center.clientY
-            );
-          }
-          if (spellIndex >= 0 || allowOneClickText) {
-            GlobalData.optManager.ActivateTextEdit(svgElem, e, true);
-            // Update active table ID after activating text edit
-            activeTableId = GlobalData.optManager.Table_GetActiveID();
-          }
-        }
-      }
-
-      // Set up default right-click parameters
-      GlobalData.optManager.RightClickParams = new RightClickData();
-      GlobalData.optManager.RightClickParams.TargetID = svgElem.GetID();
-      GlobalData.optManager.RightClickParams.HitPt.x = hitPt.x;
-      GlobalData.optManager.RightClickParams.HitPt.y = hitPt.y;
-      GlobalData.optManager.RightClickParams.Locked = (this.flags & ConstantData.ObjFlags.SEDO_Lock) > 0;
-
-      // If table is active and no text edit is active, clear table selection
-      if (activeTableId === -1 && tableObj) {
-        tableObj.select = -1;
-        drawingObj.DataID = -1;
-      }
-
-      // If there's an active text edit object, handle spell check and context menu
-      if (GlobalData.optManager.GetActiveTextEdit() != null) {
-        const activeEdit = GlobalData.optManager.svgDoc.GetActiveEdit();
-        let spellIndex = -1;
-        const selectedRange = activeEdit.GetSelectedRange();
-        const textMenu = this.HasFieldData()
-          ? Resources.Controls.ContextMenus.TextMenuData
-          : Resources.Controls.ContextMenus.TextMenu;
-        if (activeEdit) {
-          spellIndex = activeEdit.GetSpellAtLocation(
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        }
-        if (spellIndex >= 0) {
-          GlobalData.optManager.svgDoc.GetSpellCheck().ShowSpellMenu(
-            activeEdit,
-            spellIndex,
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        } else if (selectedRange.end > selectedRange.start) {
-          Commands.MainController.ShowContextualMenu(
-            textMenu.Id.toLowerCase(),
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        } else if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_UIELEMENT) {
-          Commands.MainController.ShowContextualMenu(
-            Resources.Controls.ContextMenus.Wireframe.Id.toLowerCase(),
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        } else if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART) {
-          Commands.MainController.ShowContextualMenu(
-            Resources.Controls.ContextMenus.Gantt.Id.toLowerCase(),
-            e.gesture.center.clientX,
-            e.gesture.center.clientY
-          );
-        } else if (tableObj && this.BlockID === activeTableId) {
-          if (drawingObj.objecttype === ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER &&
-            SDUI.AppSettings.Application !== Resources.Application.Builder) {
-            GlobalData.optManager.Table_ShowContainerMenu(null, e);
-          } else if (GlobalData.optManager.Table_HideUI(this) ||
-            GlobalData.optManager.Table_NoTableUI(tableObj) ||
-            isTableLocked) {
-            Commands.MainController.ShowContextualMenu(
-              textMenu.Id.toLowerCase(),
-              e.gesture.center.clientX,
-              e.gesture.center.clientY
-            );
-          } else {
-            Commands.MainController.ShowContextualMenu(
-              Resources.Controls.ContextMenus.Table.Id.toLowerCase(),
-              e.gesture.center.clientX,
-              e.gesture.center.clientY
-            );
-          }
-        } else if (tableObj && this.BlockID === activeTableId) {
-          if (this.DataID >= 0) {
-            this.DataID = -1;
-          }
-          let objType = this.objecttype;
-          if (drawingObj.objecttype === ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER &&
-            SDUI.AppSettings.Application === Resources.Application.Builder) {
-            objType = 0;
-          }
-          switch (objType) {
-            case ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER:
-              GlobalData.optManager.Table_ShowContainerMenu(null, e);
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_UIELEMENT:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Wireframe.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Gantt.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_COLS:
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_ROWS:
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_GRID:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Swimlane.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_FRAME_CONTAINER:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Frame.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            default:
-              if (GlobalData.optManager.Table_HideUI(this) ||
-                GlobalData.optManager.Table_NoTableUI(tableObj) ||
-                isTableLocked) {
-                switch (this.ShapeType) {
-                  case shapeType.RECT:
-                  case shapeType.RRECT:
-                    if ((drawingObj.ImageURL && drawingObj.ImageURL.length) ||
-                      (drawingObj.EMFHash && drawingObj.EMFHash.length)) {
-                      Commands.MainController.ShowContextualMenu(
-                        Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                        e.gesture.center.clientX,
-                        e.gesture.center.clientY
-                      );
-                    } else {
-                      Commands.MainController.ShowContextualMenu(
-                        Resources.Controls.ContextMenus.RectContextMenu.Id.toLowerCase(),
-                        e.gesture.center.clientX,
-                        e.gesture.center.clientY
-                      );
-                    }
-                    break;
-                  default:
-                    Commands.MainController.ShowContextualMenu(
-                      Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                      e.gesture.center.clientX,
-                      e.gesture.center.clientY
-                    );
-                }
-              } else {
-                Commands.MainController.ShowContextualMenu(
-                  Resources.Controls.ContextMenus.Table.Id.toLowerCase(),
-                  e.gesture.center.clientX,
-                  e.gesture.center.clientY
-                );
-              }
-          }
-        } else {
-          // Fallback: check for Visio text parent objects and other types
-          const visioParentId = GlobalData.optManager.SD_GetVisioTextParent(currentElemId);
-          GlobalData.optManager.RightClickParams.TargetID = visioParentId;
-          drawingObj = GlobalData.optManager.GetObjectPtr(visioParentId, false);
-          switch (drawingObj.objecttype) {
-            case ConstantData.ObjectTypes.SD_OBJT_D3SYMBOL:
-              switch (drawingObj.codeLibID) {
-                case "RadialGauge":
-                case "LinearGauge":
-                  Commands.MainController.ShowContextualMenu(
-                    Resources.Controls.ContextMenus.Gauge.Id.toLowerCase(),
-                    e.gesture.center.clientX,
-                    e.gesture.center.clientY
-                  );
-                  break;
-                case "BarChart":
-                case "PieChart":
-                case "LineChart":
-                case "SankeyChart":
-                  Commands.MainController.ShowContextualMenu(
-                    Resources.Controls.ContextMenus.Graph.Id.toLowerCase(),
-                    e.gesture.center.clientX,
-                    e.gesture.center.clientY
-                  );
-                  break;
-              }
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_UIELEMENT:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Wireframe.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_ACTIVITY:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.BPMN_Activity.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_START:
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_INTERMEDIATE:
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_END:
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_START_NI:
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_INTERMEDIATE_NI:
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_EVENT_INTERMEDIATE_THROW:
-              gLineDrawBPMNEventManager.GetLineRightClickMenuID(drawingObj.objecttype);
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.BPMN_Event.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_GATEWAY:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.BPMN_Gateway.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_DATAOBJECT:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.BPMN_Data.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_BPMN_CHOREOGRAPHY:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.BPMN_Choreo.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_COLS:
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_ROWS:
-            case ConstantData.ObjectTypes.SD_OBJT_SWIMLANE_GRID:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Swimlane.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_FRAME_CONTAINER:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Frame.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_MULTIPLICITY:
-              Commands.MainController.ShowContextualMenu(
-                Resources.Controls.ContextMenus.Multiplicity.Id.toLowerCase(),
-                e.gesture.center.clientX,
-                e.gesture.center.clientY
-              );
-              break;
-            case ConstantData.ObjectTypes.SD_OBJT_SHAPECONTAINER:
-              if (SDUI.AppSettings.Application === Resources.Application.Builder) {
-                Commands.MainController.ShowContextualMenu(
-                  Resources.Controls.ContextMenus.SmartContainer.Id.toLowerCase(),
-                  e.gesture.center.clientX,
-                  e.gesture.center.clientY
-                );
-              }
-              break;
-            default:
-              // Default handling by shape type
-              switch (drawingObj.ShapeType) {
-                case shapeType.RECT:
-                case shapeType.RRECT:
-                  if ((drawingObj.ImageURL && drawingObj.ImageURL.length) ||
-                    (drawingObj.EMFHash && drawingObj.EMFHash.length)) {
-                    Commands.MainController.ShowContextualMenu(
-                      Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                      e.gesture.center.clientX,
-                      e.gesture.center.clientY
-                    );
-                  } else {
-                    Commands.MainController.ShowContextualMenu(
-                      Resources.Controls.ContextMenus.RectContextMenu.Id.toLowerCase(),
-                      e.gesture.center.clientX,
-                      e.gesture.center.clientY
-                    );
-                  }
-                  break;
-                default:
-                  Commands.MainController.ShowContextualMenu(
-                    Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                    e.gesture.center.clientX,
-                    e.gesture.center.clientY
-                  );
-              }
-          }
-        }
-      }
-
-    }
-    console.log("= S.BaseShape - RightClick output: Completed");
-  }
-
-  StartNewObjectDrawTrackCommon(x: number, y: number, event: any): void {
+  StartNewObjectDrawTrackCommon(x: number, y: number, event: any) {
     console.log("= S.BaseShape - StartNewObjectDrawTrackCommon input:", { x, y, event });
 
-    // Calculate differences from the starting action coordinates
     const deltaX = x - GlobalData.optManager.theActionStartX;
     const deltaY = y - GlobalData.optManager.theActionStartY;
-    console.log("= S.BaseShape - deltaX and deltaY:", { deltaX, deltaY });
+    const newBBox = $.extend(true, {}, GlobalData.optManager.theActionBBox);
 
-    // Compute the distance (logged for clarity)
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    console.log("= S.BaseShape - Calculated distance:", distance);
+    newBBox.width += deltaX;
+    newBBox.height += deltaY;
 
-    // Get a deep copy of the starting bounding box
-    let newBBox = $.extend(true, {}, GlobalData.optManager.theActionBBox);
-    console.log("= S.BaseShape - Original ActionBBox:", GlobalData.optManager.theActionBBox);
-
-    newBBox.width = newBBox.width + deltaX;
-    newBBox.height = newBBox.height + deltaY;
-    console.log("= S.BaseShape - New bounding box before snapping:", newBBox);
-
-    // Calculate the new bottom-right point of the bounding box
-    let newPoint = {
-      x: newBBox.x + newBBox.width,
-      y: newBBox.y + newBBox.height
-    };
-    console.log("= S.BaseShape - Computed new bottom-right point:", newPoint);
-
-    // Determine if snapping should be applied
+    let snappedPoint = { x: newBBox.x + newBBox.width, y: newBBox.y + newBBox.height };
     const overrideSnaps = GlobalData.optManager.OverrideSnaps(event);
-    console.log("= S.BaseShape - Override snaps:", overrideSnaps);
 
     if (GlobalData.docHandler.documentConfig.enableSnap && !overrideSnaps) {
-      newPoint = GlobalData.docHandler.SnapToGrid(newPoint);
-      newBBox.width = newPoint.x - newBBox.x;
-      newBBox.height = newPoint.y - newBBox.y;
-      console.log("= S.BaseShape - New bounding box after snapping:", newBBox);
+      snappedPoint = GlobalData.docHandler.SnapToGrid(snappedPoint);
+      newBBox.width = snappedPoint.x - newBBox.x;
+      newBBox.height = snappedPoint.y - newBBox.y;
     }
 
-    // Correct negative width/height if any
     if (newBBox.width < 0) {
       newBBox.x = x;
       newBBox.width = -newBBox.width;
-      console.log("= S.BaseShape - Corrected negative width:", newBBox);
     }
+
     if (newBBox.height < 0) {
       newBBox.y = y;
       newBBox.height = -newBBox.height;
-      console.log("= S.BaseShape - Corrected negative height:", newBBox);
     }
 
-    // Update the new bounding box in the global manager
     GlobalData.optManager.theActionNewBBox = $.extend(true, {}, newBBox);
-    console.log("= S.BaseShape - Updated GlobalActionNewBBox:", GlobalData.optManager.theActionNewBBox);
-
-    // Update the shape's frame and resize the SVG object accordingly
     this.UpdateFrame(GlobalData.optManager.theActionNewBBox);
     this.Resize(GlobalData.optManager.theActionSVGObject, newBBox, this);
-    console.log("= S.BaseShape - Updated shape frame and resized SVG object");
 
     console.log("= S.BaseShape - StartNewObjectDrawTrackCommon output:", { newBBox });
   }
 
   StartNewObjectDrawDoAutoScroll() {
-    console.log("= S.BaseShape - StartNewObjectDrawDoAutoScroll input:");
+    console.log("= S.BaseShape - StartNewObjectDrawDoAutoScroll input");
 
-    // Schedule the next auto-scroll event in 100ms
-    GlobalData.optManager.autoScrollTimerID =
-      GlobalData.optManager.autoScrollTimer.setTimeout('StartNewObjectDrawDoAutoScroll', 100);
+    GlobalData.optManager.autoScrollTimerID = GlobalData.optManager.autoScrollTimer.setTimeout('StartNewObjectDrawDoAutoScroll', 100);
+    let coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(GlobalData.optManager.autoScrollXPos, GlobalData.optManager.autoScrollYPos);
+    coords = GlobalData.optManager.DoAutoGrowDrag(coords);
+    GlobalData.docHandler.ScrollToPosition(coords.x, coords.y);
+    this.StartNewObjectDrawTrackCommon(coords.x, coords.y, null);
 
-    // Convert the auto-scroll window coordinates to document coordinates
-    let docCoords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
-      GlobalData.optManager.autoScrollXPos,
-      GlobalData.optManager.autoScrollYPos
-    );
-    console.log("= S.BaseShape - AutoScroll - converted document coordinates:", docCoords);
-
-    // Adjust the coordinates based on auto-grow drag logic
-    docCoords = GlobalData.optManager.DoAutoGrowDrag(docCoords);
-    console.log("= S.BaseShape - AutoScroll - after auto grow drag adjustment:", docCoords);
-
-    // Scroll the document to the calculated position
-    GlobalData.docHandler.ScrollToPosition(docCoords.x, docCoords.y);
-    console.log("= S.BaseShape - AutoScroll - scrolled to position:", { x: docCoords.x, y: docCoords.y });
-
-    // Start drawing the new object using the updated coordinates
-    this.StartNewObjectDrawTrackCommon(docCoords.x, docCoords.y, null);
-
-    console.log("= S.BaseShape - StartNewObjectDrawDoAutoScroll output:");
+    console.log("= S.BaseShape - StartNewObjectDrawDoAutoScroll output", coords);
   }
 
-  LM_DrawTrack(event: any) {
-    console.log("= S.BaseShape - LM_DrawTrack input:", { event });
+  LM_DrawTrack(event) {
+    console.log("= S.BaseShape - LM_DrawTrack input:", event);
+
     if (GlobalData.optManager.theActionStoredObjectID === -1) {
-      console.log("= S.BaseShape - LM_DrawTrack output: false (No action stored object)");
+      console.log("= S.BaseShape - LM_DrawTrack output: false (invalid action stored object ID)");
       return false;
     }
-    let docCoords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(
-      event.gesture.center.clientX,
-      event.gesture.center.clientY
-    );
-    let overrideSnaps = GlobalData.optManager.OverrideSnaps(event);
+
+    let coords = GlobalData.optManager.svgDoc.ConvertWindowToDocCoords(event.gesture.center.clientX, event.gesture.center.clientY);
+    const overrideSnaps = GlobalData.optManager.OverrideSnaps(event);
 
     if (GlobalData.docHandler.documentConfig.enableSnap && !overrideSnaps) {
-      docCoords = GlobalData.docHandler.SnapToGrid(docCoords);
+      coords = GlobalData.docHandler.SnapToGrid(coords);
     }
-    // Apply auto-grow drag adjustment
-    docCoords = GlobalData.optManager.DoAutoGrowDrag(docCoords);
-    let xPos = docCoords.x;
-    let yPos = docCoords.y;
+
+    coords = GlobalData.optManager.DoAutoGrowDrag(coords);
+    const x = coords.x;
+    const y = coords.y;
 
     if (this.AutoScrollCommon(event, true, 'StartNewObjectDrawDoAutoScroll')) {
-      this.LM_DrawDuringTrack(xPos, yPos);
-      this.StartNewObjectDrawTrackCommon(xPos, yPos, event);
+      this.LM_DrawDuringTrack(x, y);
+      this.StartNewObjectDrawTrackCommon(x, y, event);
     }
-    console.log("= S.BaseShape - LM_DrawTrack output: completed");
+
+    console.log("= S.BaseShape - LM_DrawTrack output");
   }
 
-  LM_DrawRelease(event: any): void {
-    console.log("= S.BaseShape - LM_DrawRelease - INPUT:", { event });
+  LM_DrawRelease(event) {
+    console.log("= S.BaseShape - LM_DrawRelease input:", event);
 
-    // Unbind click events and reset auto-scroll timer
     GlobalData.optManager.unbindActionClickHammerEvents();
     this.ResetAutoScrollTimer();
 
-    // Create a new bounding box from the global action's new bounding box
-    const newBBox = {
-      x: GlobalData.optManager.theActionNewBBox.x,
-      y: GlobalData.optManager.theActionNewBBox.y,
-      width: GlobalData.optManager.theActionNewBBox.width,
-      height: GlobalData.optManager.theActionNewBBox.height,
+    const newBBox = GlobalData.optManager.theActionNewBBox;
+    const frame = {
+      x: newBBox.x,
+      y: newBBox.y,
+      width: newBBox.width,
+      height: newBBox.height
     };
-    console.log("= S.BaseShape - LM_DrawRelease - New Bounding Box:", newBBox);
 
-    // Set the new frame for the stored object and perform post-release operations
-    GlobalData.optManager.SetObjectFrame(GlobalData.optManager.theActionStoredObjectID, newBBox);
+    GlobalData.optManager.SetObjectFrame(GlobalData.optManager.theActionStoredObjectID, frame);
     this.LM_DrawPostRelease(GlobalData.optManager.theActionStoredObjectID);
 
-    // Build the collaborative creation message and post the object draw action
-    let collabData = {};
+    const collabData = {};
     GlobalData.optManager.BuildCreateMessage(collabData, true);
     GlobalData.optManager.PostObjectDraw();
 
-    console.log("= S.BaseShape - LM_DrawRelease - OUTPUT:", { newBBox, collabData });
+    console.log("= S.BaseShape - LM_DrawRelease output:", { frame, collabData });
   }
 
-  LM_DrawPreTrack(): boolean {
-    console.log("= S.BaseShape - LM_DrawPreTrack input:", {});
+  LM_DrawPreTrack() {
+    console.log("= S.BaseShape - LM_DrawPreTrack input");
+
     const result = true;
+
     console.log("= S.BaseShape - LM_DrawPreTrack output:", result);
     return result;
   }
 
-  LM_DrawDuringTrack(eventX: number, eventY: number): { x: number; y: number } {
-    console.log("= S.BaseShape - LM_DrawDuringTrack input:", { eventX, eventY });
+  LM_DrawDuringTrack(coords: { x: number; y: number }) {
+    console.log("= S.BaseShape - LM_DrawDuringTrack input:", coords);
 
-    // (Insert drawing updates or tracking logic here.)
-    // For now, simply pass through the coordinates.
-    const result = { x: eventX, y: eventY };
+    // Perform any necessary operations with the coordinates
+    const result = coords;
 
     console.log("= S.BaseShape - LM_DrawDuringTrack output:", result);
     return result;
@@ -3833,7 +3297,7 @@ class BaseShape extends BaseDrawingObject {
   LM_DrawPostRelease() {
   }
 
-  LM_DrawClick_ExceptionCleanup(error: any): void {
+  LM_DrawClick_ExceptionCleanup(error) {
     console.log("= S.BaseShape - LM_DrawClick_ExceptionCleanup input:", error);
 
     GlobalData.optManager.unbindActionClickHammerEvents();
@@ -3841,29 +3305,27 @@ class BaseShape extends BaseDrawingObject {
     GlobalData.optManager.LinkParams = null;
     GlobalData.optManager.theActionStoredObjectID = -1;
     GlobalData.optManager.theActionSVGObject = null;
-    GlobalData.optManager.WorkAreaHammer.on(
-      'dragstart',
-      DefaultEvt.Evt_WorkAreaHammerDragStart
-    );
+    GlobalData.optManager.WorkAreaHammer.on('dragstart', DefaultEvt.Evt_WorkAreaHammerDragStart);
 
     console.log("= S.BaseShape - LM_DrawClick_ExceptionCleanup output");
   }
 
-  LM_DrawClick(event: any, triggerData: any) {
-    console.log('= S.BaseShape - LM_DrawClick input:', { event, triggerData });
+  LM_DrawClick(event, triggerType) {
+    console.log('= S.BaseShape - LM_DrawClick input:', { event, triggerType });
 
     try {
       this.Frame.x = event;
-      this.Frame.y = triggerData;
+      this.Frame.y = triggerType;
       this.prevBBox = $.extend(true, {}, this.Frame);
 
       GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_DrawTrackHandlerFactory(this));
       GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_DrawReleaseHandlerFactory(this));
 
-      console.log('= S.BaseShape - LM_DrawClick output:', { Frame: this.Frame, prevBBox: this.prevBBox });
+      console.log('= S.BaseShape - LM_DrawClick output');
     } catch (error) {
       this.LM_DrawClick_ExceptionCleanup(error);
       GlobalData.optManager.ExceptionCleanup(error);
+      console.error('= S.BaseShape - LM_DrawClick error:', error);
       throw error;
     }
   }
@@ -3871,3146 +3333,13 @@ class BaseShape extends BaseDrawingObject {
   RotateKnobCenterDivisor() {
     console.log("= S.BaseShape - RotateKnobCenterDivisor input");
 
-    const divisor = {
+    const result = {
       x: 2,
       y: 2
     };
 
-    console.log("= S.BaseShape - RotateKnobCenterDivisor output:", divisor);
-    return divisor;
-  }
-
-  OffsetShape(offsetX: number, offsetY: number, childShapes: any[], linkFlags: any) {
-    console.log("= S.BaseShape - OffsetShape input:", { offsetX, offsetY, childShapes, linkFlags });
-
-    if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_Container && childShapes) {
-      for (let i = 0; i < childShapes.length; i++) {
-        const childShapeId = childShapes[i];
-        const childShape = GlobalData.optManager.GetObjectPtr(childShapeId, true);
-        if (childShape) {
-          const childLinkFlag = linkFlags ? linkFlags[childShape.BlockID] : null;
-          childShape.OffsetShape(offsetX, offsetY, childLinkFlag);
-          GlobalData.optManager.SetLinkFlag(childShapeId, ConstantData.LinkFlags.SED_L_MOVE);
-          GlobalData.optManager.AddToDirtyList(childShapeId);
-        }
-      }
-    }
-
-    this.Frame.x += offsetX;
-    this.Frame.y += offsetY;
-    this.r.x += offsetX;
-    this.r.y += offsetY;
-    this.inside.x += offsetX;
-    this.inside.y += offsetY;
-    this.trect.x += offsetX;
-    this.trect.y += offsetY;
-
-    if (this.GetGraph(true)) {
-      GlobalData.optManager.GraphShift(this, offsetX, offsetY);
-    }
-
-    console.log("= S.BaseShape - OffsetShape output:", { Frame: this.Frame, r: this.r, inside: this.inside, trect: this.trect });
-  }
-
-  SetShapeOrigin(newX: number, newY: number, childShapes: any[]) {
-    console.log("= S.BaseShape - SetShapeOrigin input:", { newX, newY, childShapes });
-
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (newX != null) {
-      offsetX = newX - this.Frame.x;
-    }
-
-    if (newY != null) {
-      offsetY = newY - this.Frame.y;
-    }
-
-    this.OffsetShape(offsetX, offsetY, childShapes);
-
-    console.log("= S.BaseShape - SetShapeOrigin output:", { offsetX, offsetY });
-  }
-
-  SetShapeIndent(applyIndents: boolean) {
-    console.log("= S.BaseShape - SetShapeIndent input:", { applyIndents });
-
-    let width = this.inside.width;
-    let height = this.inside.height;
-    let leftRatio = 1;
-    let topRatio = 1;
-    let rightRatio = 1;
-    let bottomRatio = 1;
-
-    if (applyIndents) {
-      leftRatio = 1 - (this.left_sindent + this.right_sindent);
-      topRatio = 1 - (this.bottom_sindent + this.top_sindent);
-      rightRatio = 1 - (this.left_sindent + this.right_sindent);
-      bottomRatio = 1 - (this.bottom_sindent + this.top_sindent);
-    }
-
-    this.tindent.left = this.left_sindent * width / leftRatio;
-    this.tindent.top = this.top_sindent * height / topRatio;
-    this.tindent.right = this.right_sindent * width / rightRatio;
-    this.tindent.bottom = this.bottom_sindent * height / bottomRatio;
-
-    console.log("= S.BaseShape - SetShapeIndent output:", this.tindent);
-  }
-
-  UpdateFrame(newFrame) {
-    console.log("= S.BaseShape - UpdateFrame input:", newFrame);
-
-    let lineThickness = 0;
-    let halfLineThickness = 0;
-
-    if (newFrame) {
-      super.UpdateFrame(newFrame);
-    }
-
-    Utils2.CopyRect(this.r, this.Frame);
-
-    if (this.StyleRecord) {
-      if (this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
-        this.StyleRecord.Line.BThick = 0;
-      }
-
-      if (this.StyleRecord.Line.BThick) {
-        if (this.polylist == null) {
-          lineThickness = 0;
-        } else {
-          halfLineThickness = this.StyleRecord.Line.Thickness / 2;
-        }
-      } else {
-        halfLineThickness = lineThickness = this.StyleRecord.Line.Thickness / 2;
-      }
-
-      this.CalcEffectSettings(this.Frame, this.StyleRecord, false);
-    }
-
-    GlobalData.optManager.SetShapeR(this);
-
-    Utils2.CopyRect(this.inside, this.Frame);
-    Utils2.InflateRect(this.inside, -lineThickness, -lineThickness);
-
-    Utils2.CopyRect(this.trect, this.Frame);
-    Utils2.InflateRect(this.trect, -halfLineThickness, -halfLineThickness);
-
-    this.SetShapeIndent(false);
-
-    Utils2.SubRect(this.trect, this.tindent);
-
-    if (this.GetTable(false) == null) {
-      Utils2.SubRect(this.trect, this.TMargins);
-    }
-
-    console.log("= S.BaseShape - UpdateFrame output:", {
-      r: this.r,
-      inside: this.inside,
-      trect: this.trect,
-      Frame: this.Frame
-    });
-  }
-
-  GetSVGFrame(frame = this.Frame) {
-    console.log("= S.BaseShape - GetSVGFrame input:", frame);
-
-    const svgFrame = {};
-    Utils2.CopyRect(svgFrame, frame);
-
-    if (this.StyleRecord.Line.BThick && this.polylist == null) {
-      Utils2.InflateRect(svgFrame, this.StyleRecord.Line.BThick, this.StyleRecord.Line.BThick);
-    }
-
-    console.log("= S.BaseShape - GetSVGFrame output:", svgFrame);
-    return svgFrame;
-  }
-
-  GetSnapRect() {
-    console.log("= S.BaseShape - GetSnapRect input");
-
-    const snapRect = {};
-
-    if (this.RotationAngle !== 0) {
-      const polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, true, null);
-      const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, polyPoints);
-      Utils2.GetPolyRect(snapRect, polyPoints);
-    } else {
-      Utils2.CopyRect(snapRect, this.Frame);
-    }
-
-    console.log("= S.BaseShape - GetSnapRect output:", snapRect);
-    return snapRect;
-  }
-
-  CanSnapToShapes() {
-    console.log("= S.BaseShape - CanSnapToShapes input");
-
-    const objectTypes = ConstantData.ObjectTypes;
-    let result;
-
-    switch (this.objecttype) {
-      case objectTypes.SD_OBJT_SWIMLANE_ROWS:
-      case objectTypes.SD_OBJT_SWIMLANE_COLS:
-      case objectTypes.SD_OBJT_SWIMLANE_GRID:
-      case objectTypes.SD_OBJT_BPMN_POOL:
-      case objectTypes.SD_OBJT_SHAPECONTAINER:
-      case objectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER:
-        result = -1;
-        break;
-      default:
-        result = this.BlockID;
-    }
-
-    console.log("= S.BaseShape - CanSnapToShapes output:", result);
+    console.log("= S.BaseShape - RotateKnobCenterDivisor output:", result);
     return result;
-  }
-
-  IsSnapTarget() {
-    console.log("= S.BaseShape - IsSnapTarget input");
-
-    const objectTypes = ConstantData.ObjectTypes;
-    let result;
-
-    switch (this.objecttype) {
-      case objectTypes.SD_OBJT_SWIMLANE_ROWS:
-      case objectTypes.SD_OBJT_SWIMLANE_COLS:
-      case objectTypes.SD_OBJT_SWIMLANE_GRID:
-      case objectTypes.SD_OBJT_BPMN_POOL:
-      case objectTypes.SD_OBJT_SHAPECONTAINER:
-      case objectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER:
-        result = false;
-        break;
-      default:
-        result = !this.hooks.length && !(GlobalData.optManager.FindChildArray(this.BlockID, -1) >= 0);
-    }
-
-    console.log("= S.BaseShape - IsSnapTarget output:", result);
-    return result;
-  }
-
-  GetAlignRect() {
-    console.log("= S.BaseShape - GetAlignRect input");
-
-    const alignRect = $.extend(true, {}, this.Frame);
-
-    if (this.RotationAngle !== 0) {
-      const polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, true, null);
-      const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, polyPoints);
-      Utils2.GetPolyRect(alignRect, polyPoints);
-    }
-
-    console.log("= S.BaseShape - GetAlignRect output:", alignRect);
-    return alignRect;
-  }
-
-  GetCustomConnectPointsDirection(direction: number) {
-    console.log("= S.BaseShape - GetCustomConnectPointsDirection input:", { direction });
-
-    let closestIndex = -1;
-    let closestDistance: number | null = null;
-    let currentDistance: number;
-    let connectPoints = this.flags & ConstantData.ObjFlags.SEDO_UseConnect && this.ConnectPoints;
-    let targetPoints = this.GetTargetPoints(
-      null,
-      ConstantData.HookFlags.SED_LC_NoSnaps | ConstantData.HookFlags.SED_LC_ForceEnd,
-      null
-    );
-    let topCount = 1, bottomCount = 1, leftCount = 1, rightCount = 1;
-    const dimension = ConstantData.Defines.SED_CDim;
-    let isSinglePoint = false;
-    const ActionArrow = ConstantData.ActionArrow;
-    let boundingRect = { x: 0, y: 0, width: dimension, height: dimension };
-
-    if (this.RotationAngle) {
-      const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(boundingRect, rotationRadians, targetPoints);
-    }
-
-    const updateClosestIndex = (coordinate: number, index: number) => {
-      if (closestDistance === null) {
-        closestIndex = index;
-        closestDistance = Math.abs(coordinate - dimension / 2);
-      } else {
-        currentDistance = Math.abs(coordinate - dimension / 2);
-        if (currentDistance < closestDistance) {
-          closestIndex = index;
-          closestDistance = currentDistance;
-        }
-      }
-    };
-
-    if (targetPoints.length < 2) {
-      isSinglePoint = true;
-    }
-
-    if (connectPoints) {
-      topCount = bottomCount = leftCount = rightCount = 0;
-      boundingRect = new Rectangle(0, 0, 0, 0);
-      const pointCount = targetPoints.length;
-      Utils2.GetPolyRect(boundingRect, targetPoints);
-
-      for (let i = 0; i < pointCount; i++) {
-        targetPoints[i].x -= boundingRect.x;
-        targetPoints[i].y -= boundingRect.y;
-      }
-
-      if (boundingRect.width < 1000) {
-        Utils2.InflateRect(boundingRect, 1000, 0);
-      }
-      if (boundingRect.height < 1000) {
-        Utils2.InflateRect(boundingRect, 0, 1000);
-      }
-
-      if (boundingRect.height > boundingRect.width) {
-        for (let i = 0; i < pointCount; i++) {
-          if (targetPoints[i].y < boundingRect.height / 6) {
-            topCount++;
-            if (direction === ActionArrow.UP) updateClosestIndex(targetPoints[i].x, i);
-          } else if (targetPoints[i].y >= 5 * boundingRect.height / 6) {
-            bottomCount++;
-            if (direction === ActionArrow.DOWN) updateClosestIndex(targetPoints[i].x, i);
-          } else if (targetPoints[i].x < boundingRect.width / 6) {
-            leftCount++;
-            if (direction === ActionArrow.LEFT) updateClosestIndex(targetPoints[i].y, i);
-          } else if (targetPoints[i].x >= 5 * boundingRect.width / 6) {
-            rightCount++;
-            if (direction === ActionArrow.RIGHT) updateClosestIndex(targetPoints[i].y, i);
-          }
-        }
-      } else {
-        for (let i = 0; i < pointCount; i++) {
-          if (targetPoints[i].x < boundingRect.width / 6) {
-            leftCount++;
-            if (direction === ActionArrow.LEFT) updateClosestIndex(targetPoints[i].y, i);
-          } else if (targetPoints[i].x >= 5 * boundingRect.width / 6) {
-            rightCount++;
-            if (direction === ActionArrow.RIGHT) updateClosestIndex(targetPoints[i].y, i);
-          } else if (targetPoints[i].y < boundingRect.height / 6) {
-            topCount++;
-            if (direction === ActionArrow.UP) updateClosestIndex(targetPoints[i].x, i);
-          } else if (targetPoints[i].y >= 5 * boundingRect.height / 6) {
-            bottomCount++;
-            if (direction === ActionArrow.DOWN) updateClosestIndex(targetPoints[i].x, i);
-          }
-        }
-      }
-    }
-
-    const result = {
-      left: leftCount,
-      right: rightCount,
-      top: topCount,
-      bottom: bottomCount,
-      index: closestIndex
-    };
-
-    console.log("= S.BaseShape - GetCustomConnectPointsDirection output:", result);
-    return result;
-  }
-
-  AdjustAutoInsertShape(event, isVertical, isRotated) {
-    console.log("= S.BaseShape - AdjustAutoInsertShape input:", { event, isVertical, isRotated });
-
-    let connectPoints = this.flags & ConstantData.ObjFlags.SEDO_UseConnect && this.ConnectPoints;
-    let topCount = 0, bottomCount = 0, leftCount = 0, rightCount = 0;
-    let singlePoint = false;
-    let targetPoints = this.GetTargetPoints(null, ConstantData.HookFlags.SED_LC_NoSnaps | ConstantData.HookFlags.SED_LC_ForceEnd, null);
-    let isSinglePoint = targetPoints.length < 2;
-    let shouldRotate = false;
-    let blockIDs = [this.BlockID];
-
-    if (isSinglePoint) {
-      GlobalData.optManager.LinkParams && (GlobalData.optManager.LinkParams.AutoSinglePoint = true);
-      singlePoint = true;
-    } else {
-      GlobalData.optManager.LinkParams && (GlobalData.optManager.LinkParams.AutoSinglePoint = false);
-      singlePoint = false;
-    }
-
-    if (connectPoints) {
-      let boundingRect = new Rectangle(0, 0, 0, 0);
-      let pointCount = targetPoints.length;
-      Utils2.GetPolyRect(boundingRect, targetPoints);
-
-      for (let i = 0; i < pointCount; i++) {
-        targetPoints[i].x -= boundingRect.x;
-        targetPoints[i].y -= boundingRect.y;
-      }
-
-      if (boundingRect.width < 1000) {
-        Utils2.InflateRect(boundingRect, 1000, 0);
-      }
-      if (boundingRect.height < 1000) {
-        Utils2.InflateRect(boundingRect, 0, 1000);
-      }
-
-      if (boundingRect.height > boundingRect.width) {
-        for (let i = 0; i < pointCount; i++) {
-          if (targetPoints[i].y < boundingRect.height / 6) {
-            topCount++;
-          } else if (targetPoints[i].y >= 5 * boundingRect.height / 6) {
-            bottomCount++;
-          } else if (targetPoints[i].x < boundingRect.width / 6) {
-            leftCount++;
-          } else if (targetPoints[i].x >= 5 * boundingRect.width / 6) {
-            rightCount++;
-          }
-        }
-        if (leftCount === 0 && rightCount === 0 && topCount && bottomCount) {
-          shouldRotate = true;
-        } else if (leftCount === 0 && rightCount === 0 && singlePoint && (topCount || bottomCount)) {
-          shouldRotate = true;
-        }
-      } else {
-        for (let i = 0; i < pointCount; i++) {
-          if (targetPoints[i].x < boundingRect.width / 6) {
-            leftCount++;
-          } else if (targetPoints[i].x >= 5 * boundingRect.width / 6) {
-            rightCount++;
-          } else if (targetPoints[i].y < boundingRect.height / 6) {
-            topCount++;
-          } else if (targetPoints[i].y >= 5 * boundingRect.height / 6) {
-            bottomCount++;
-          }
-        }
-        if (topCount === 0 && bottomCount === 0 && leftCount && rightCount) {
-          shouldRotate = true;
-        } else if (topCount === 0 && bottomCount === 0 && singlePoint && (leftCount || rightCount)) {
-          shouldRotate = true;
-        }
-      }
-
-      if (!singlePoint) {
-        if (shouldRotate) {
-          if (isVertical) {
-            if (this.RotationAngle !== 0 && this.RotationAngle !== 180) {
-              if (!isRotated) {
-                GlobalData.optManager.RotateShapes(0, blockIDs);
-                let svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-                svgElement && this.Rotate(svgElement, 0);
-              }
-              shouldRotate = true;
-            }
-          } else if (this.RotationAngle !== -90 && this.RotationAngle !== 90) {
-            if (!isRotated) {
-              GlobalData.optManager.RotateShapes(-90, blockIDs);
-              let svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-              svgElement && this.Rotate(svgElement, -90);
-            }
-            shouldRotate = true;
-          }
-        } else if (isVertical) {
-          if (this.RotationAngle !== -90 && this.RotationAngle !== 90) {
-            if (!isRotated) {
-              GlobalData.optManager.RotateShapes(-90, blockIDs);
-              let svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-              svgElement && this.Rotate(svgElement, -90);
-            }
-            shouldRotate = true;
-          }
-        } else if (this.RotationAngle !== 0 && this.RotationAngle !== 180) {
-          if (!isRotated) {
-            GlobalData.optManager.RotateShapes(0, blockIDs);
-            let svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-            svgElement && this.Rotate(svgElement, 0);
-          }
-          shouldRotate = true;
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - AdjustAutoInsertShape output:", shouldRotate);
-    return shouldRotate;
-  }
-
-  TRectToFrame(rect: any, maintainSize: boolean) {
-    console.log("= S.BaseShape - TRectToFrame input:", { rect, maintainSize });
-
-    let lineThickness = 0;
-    let halfLineThickness = 0;
-    let widthAdjustment = 0;
-    let heightAdjustment = 0;
-
-    if (this.StyleRecord.Line.BThick && this.polylist == null) {
-      lineThickness = this.StyleRecord.Line.Thickness;
-      halfLineThickness = 0;
-    } else {
-      halfLineThickness = this.StyleRecord.Line.Thickness / 2;
-    }
-
-    this.trect = Utils1.DeepCopy(rect);
-    const originalFrame = Utils1.DeepCopy(this.Frame);
-    this.inside = new Rectangle(rect.x, rect.y, rect.width, rect.height);
-
-    if (this.GetTable(false) == null) {
-      Utils2.Add2Rect(this.inside, this.TMargins);
-    }
-
-    this.SetShapeIndent(true);
-    Utils2.Add2Rect(this.inside, this.tindent);
-    this.Frame = Utils1.DeepCopy(this.inside);
-    Utils2.InflateRect(this.Frame, halfLineThickness, halfLineThickness);
-
-    if (!maintainSize) {
-      if (this.Frame.width < this.sizedim.width) {
-        widthAdjustment = this.sizedim.width - this.Frame.width;
-        this.Frame.x = originalFrame.x;
-      }
-      if (this.Frame.height < this.sizedim.height) {
-        heightAdjustment = this.sizedim.height - this.Frame.height;
-        this.Frame.y = originalFrame.y;
-      }
-    }
-
-    if (widthAdjustment > 0 || heightAdjustment > 0) {
-      const adjustedFrame = Utils1.DeepCopy(this.Frame);
-      adjustedFrame.width += widthAdjustment;
-      adjustedFrame.height += heightAdjustment;
-      this.UpdateFrame(adjustedFrame);
-    } else {
-      Utils2.CopyRect(this.r, this.Frame);
-      GlobalData.optManager.SetShapeR(this);
-    }
-
-    console.log("= S.BaseShape - TRectToFrame output:", { Frame: this.Frame, r: this.r, inside: this.inside });
-  }
-
-  SetSize(newWidth: number, newHeight: number, actionType: number) {
-    console.log("= S.BaseShape - SetSize input:", { newWidth, newHeight, actionType });
-
-    let originalFrame = {
-      x: this.Frame.x,
-      y: this.Frame.y,
-      width: this.Frame.width,
-      height: this.Frame.height
-    };
-
-    const isGanttChart = this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART;
-    let sizeChanged = false;
-
-    if (newWidth) {
-      originalFrame.width = newWidth;
-    }
-    if (newHeight) {
-      originalFrame.height = newHeight;
-    }
-
-    if (newWidth || newHeight) {
-      const prevActionBBox = GlobalData.optManager.theActionBBox;
-      const newActionBBox = GlobalData.optManager.theActionNewBBox;
-
-      GlobalData.optManager.theActionBBox = Utils1.DeepCopy(this.Frame);
-      GlobalData.optManager.theActionNewBBox = Utils1.DeepCopy(this.Frame);
-
-      this.HandleActionTriggerCallResize(originalFrame, actionType, null);
-
-      GlobalData.optManager.theActionBBox = prevActionBBox;
-      GlobalData.optManager.theActionNewBBox = newActionBBox;
-
-      if (actionType !== ConstantData.ActionTriggerType.TABLE_EDIT && actionType !== ConstantData.ActionTriggerType.LINE_THICKNESS) {
-        if (newWidth) {
-          this.sizedim.width = this.Frame.width;
-          sizeChanged = true;
-        }
-        if (newHeight) {
-          this.sizedim.height = this.Frame.height;
-          sizeChanged = true;
-        }
-      }
-
-      GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-
-      if (sizeChanged && isGanttChart) {
-        GlobalData.optManager.PlanningTableUpdateGeometry(this, true);
-      }
-
-      for (let i = 0; i < this.hooks.length; i++) {
-        GlobalData.optManager.SetLinkFlag(this.hooks[i].objid, ConstantData.LinkFlags.SED_L_MOVE);
-      }
-
-      if (this instanceof Instance.Shape.Polygon) {
-        const newVertexArray = this.RegenerateVectors(originalFrame.width, originalFrame.height);
-        if (newVertexArray) {
-          this.VertexArray = newVertexArray;
-        }
-        if (this.polylist && this.ShapeType === ConstantData.ShapeType.POLYGON) {
-          this.ScaleObject(0, 0, 0, 0, 0, 0);
-        }
-      }
-
-      GlobalData.optManager.AddToDirtyList(this.BlockID);
-      GlobalData.optManager.theActionTable = null;
-
-      if (this.rflags) {
-        if (newWidth) {
-          this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
-        }
-        if (newHeight) {
-          this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - SetSize output:", { Frame: this.Frame, sizedim: this.sizedim, rflags: this.rflags });
-  }
-
-  UpdateDimensions(newWidth: number, newHeight: number, maintainAspectRatio: boolean) {
-    console.log("= S.BaseShape - UpdateDimensions input:", { newWidth, newHeight, maintainAspectRatio });
-
-    const updatedFrame = {
-      x: this.Frame.x,
-      y: this.Frame.y,
-      width: this.Frame.width,
-      height: this.Frame.height
-    };
-
-    if (newWidth) {
-      updatedFrame.width = newWidth;
-    }
-
-    if (newHeight) {
-      updatedFrame.height = newHeight;
-    }
-
-    this.UpdateFrame(updatedFrame);
-
-    console.log("= S.BaseShape - UpdateDimensions output:", updatedFrame);
-  }
-
-  GetHookFlags() {
-    console.log("= S.BaseShape - GetHookFlags input");
-
-    const hookFlags = ConstantData.HookFlags.SED_LC_Shape |
-      ConstantData.HookFlags.SED_LC_ArrayMod |
-      ConstantData.HookFlags.SED_LC_AttachToLine;
-
-    console.log("= S.BaseShape - GetHookFlags output:", hookFlags);
-    return hookFlags;
-  }
-
-  AllowLink() {
-    console.log("= S.BaseShape - AllowLink input");
-
-    let sessionObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
-    let dropOnTableFlag = this.flags & ConstantData.ObjFlags.SEDO_DropOnTable;
-    let result;
-
-    if (sessionObject) {
-      result = (sessionObject.flags & ConstantData.SessionFlags.SEDS_SLink) ||
-        (sessionObject.flags & ConstantData.SessionFlags.SEDS_AttLink) ||
-        dropOnTableFlag;
-    }
-
-    console.log("= S.BaseShape - AllowLink output:", result);
-    return result;
-  }
-
-  IsSwimlane() {
-    console.log("= S.BaseShape - IsSwimlane input");
-
-    const objectTypes = ConstantData.ObjectTypes;
-    let result;
-
-    switch (this.objecttype) {
-      case objectTypes.SD_OBJT_SWIMLANE_COLS:
-      case objectTypes.SD_OBJT_SWIMLANE_ROWS:
-      case objectTypes.SD_OBJT_SWIMLANE_GRID:
-      case objectTypes.SD_OBJT_FRAME_CONTAINER:
-        result = true;
-        break;
-      default:
-        result = false;
-    }
-
-    console.log("= S.BaseShape - IsSwimlane output:", result);
-    return result;
-  }
-
-  IsOKFlowChartShape(objectID: number): number {
-    console.log("= S.BaseShape - IsOKFlowChartShape input:", { objectID });
-
-    const object = GlobalData.optManager.GetObjectPtr(objectID, false);
-    let result: number;
-
-    if (object && (object.flags & ConstantData.ObjFlags.SEDO_TextOnly || object.IsSwimlane())) {
-      result = 0;
-    } else {
-      result = objectID;
-    }
-
-    console.log("= S.BaseShape - IsOKFlowChartShape output:", { result });
-    return result;
-  }
-
-  PreventLink() {
-    console.log("= S.BaseShape - PreventLink input");
-
-    const result = !!this.IsSwimlane();
-
-    console.log("= S.BaseShape - PreventLink output:", result);
-    return result;
-  }
-
-  GetHookPoints() {
-    console.log("= S.BaseShape - GetHookPoints input");
-
-    let connectPoints = this.flags & ConstantData.ObjFlags.SEDO_UseConnect && this.ConnectPoints;
-    let table = this.GetTable(false);
-    let isTableRows = this.hookflags & ConstantData.HookFlags.SED_LC_TableRows && table;
-
-    if (connectPoints || isTableRows) {
-      let points = connectPoints ? this.ConnectPoints : GlobalData.optManager.Table_GetRowConnectPoints(this, table);
-      let hookPoints = [];
-
-      for (let i = 0; i < points.length; i++) {
-        hookPoints.push({
-          x: points[i].x,
-          y: points[i].y,
-          id: ConstantData.HookPts.SED_CustomBase + i
-        });
-      }
-
-      console.log("= S.BaseShape - GetHookPoints output:", hookPoints);
-      return hookPoints;
-    }
-
-    let defaultHookPoints = [
-      { x: ConstantData.Defines.SED_CDim / 2, y: 0, id: ConstantData.HookPts.SED_KTC },
-      { x: ConstantData.Defines.SED_CDim, y: ConstantData.Defines.SED_CDim / 2, id: ConstantData.HookPts.SED_KRC },
-      { x: ConstantData.Defines.SED_CDim / 2, y: ConstantData.Defines.SED_CDim, id: ConstantData.HookPts.SED_KBC },
-      { x: 0, y: ConstantData.Defines.SED_CDim / 2, id: ConstantData.HookPts.SED_KLC }
-    ];
-
-    console.log("= S.BaseShape - GetHookPoints output:", defaultHookPoints);
-    return defaultHookPoints;
-  }
-
-  SetHookAlign(hookPoint, alignType) {
-    console.log("= S.BaseShape - SetHookAlign input:", { hookPoint, alignType });
-
-    let childArrayIndex, childObject, isFlowConnection;
-
-    switch (hookPoint) {
-      case ConstantData.HookPts.SED_AKCL:
-        childArrayIndex = GlobalData.optManager.FindChildArray(this.BlockID, -1);
-        if (childArrayIndex >= 0) {
-          childObject = GlobalData.optManager.GetObjectPtr(childArrayIndex, false);
-          if (childObject) {
-            isFlowConnection = childObject.arraylist.styleflags & ConstantData.SEDA_Styles.SEDA_FlowConn &&
-              !(childObject.arraylist.styleflags & ConstantData.SEDA_Styles.SEDA_Linear);
-            if (childObject.hooks.length && childObject.hooks[0].connect.x === 0 && !isFlowConnection) {
-              childObject._SetDirection(true, false, false);
-            }
-          }
-        }
-        break;
-
-      case ConstantData.HookPts.SED_AKCR:
-        childArrayIndex = GlobalData.optManager.FindChildArray(this.BlockID, -1);
-        if (childArrayIndex >= 0) {
-          childObject = GlobalData.optManager.GetObjectPtr(childArrayIndex, false);
-          if (childObject) {
-            isFlowConnection = childObject.arraylist.styleflags & ConstantData.SEDA_Styles.SEDA_FlowConn &&
-              !(childObject.arraylist.styleflags & ConstantData.SEDA_Styles.SEDA_Linear);
-            if (childObject.hooks.length && childObject.hooks[0].connect.x === ConstantData.Defines.SED_CDim && !isFlowConnection) {
-              childObject._SetDirection(true, false, false);
-            }
-          }
-        }
-        break;
-    }
-
-    console.log("= S.BaseShape - SetHookAlign output");
-  }
-
-  HookToPoint(hookId: number, hookFlags: any) {
-    console.log("= S.BaseShape - HookToPoint input:", { hookId, hookFlags });
-
-    let hookPoints = [];
-    let point = [{ x: 0, y: 0 }];
-    let perimeterPoints = {};
-    let hookIndex = -1;
-    let isCustomHook = false;
-    let connectionFlags = 0;
-    const HookPts = ConstantData.HookPts;
-    const SED_CDim = ConstantData.Defines.SED_CDim;
-    const HookFlags = ConstantData.HookFlags;
-
-    if (this.flags & ConstantData.ObjFlags.SEDO_Obj1 && this.Pr_Format && this.Pr_Format(this.BlockID)) {
-      // Custom formatting logic
-    }
-
-    if (hookId === HookPts.SED_KAT) {
-      point[0].x = this.attachpoint.x;
-      point[0].y = this.attachpoint.y;
-      if (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
-        point[0].x = SED_CDim - point[0].x;
-      }
-      if (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipVert) {
-        point[0].y = SED_CDim - point[0].y;
-      }
-    } else if (hookId === HookPts.SED_KATD) {
-      point[0].x = this.attachpoint.x;
-      point[0].y = this.attachpoint.y;
-    } else {
-      switch (hookId) {
-        case HookPts.SED_KCTL:
-          point[0].x = 0;
-          point[0].y = 0;
-          break;
-        case HookPts.SED_KCTR:
-          point[0].x = SED_CDim;
-          point[0].y = 0;
-          break;
-        case HookPts.SED_KCBL:
-          point[0].x = 0;
-          point[0].y = SED_CDim;
-          break;
-        case HookPts.SED_KCBR:
-          point[0].x = SED_CDim;
-          point[0].y = SED_CDim;
-          break;
-        case HookPts.SED_KCT:
-          point[0].x = SED_CDim / 2;
-          point[0].y = 0;
-          connectionFlags = HookFlags.SED_LC_VOnly;
-          break;
-        case HookPts.SED_KCB:
-          point[0].x = SED_CDim / 2;
-          point[0].y = SED_CDim;
-          connectionFlags = HookFlags.SED_LC_VOnly;
-          break;
-        case HookPts.SED_KCL:
-          point[0].x = 0;
-          point[0].y = SED_CDim / 2;
-          connectionFlags = HookFlags.SED_LC_HOnly;
-          break;
-        case HookPts.SED_KCC:
-          point[0].x = SED_CDim / 2;
-          point[0].y = SED_CDim / 2;
-          break;
-        case HookPts.SED_KCR:
-          point[0].x = SED_CDim;
-          point[0].y = SED_CDim / 2;
-          connectionFlags = HookFlags.SED_LC_HOnly;
-          break;
-        default:
-          hookPoints = this.GetHookPoints();
-          if (!hookPoints) return null;
-          for (let i = 0; i < hookPoints.length; i++) {
-            if (hookId === hookPoints[i].id) {
-              hookIndex = i;
-              point[0].x = hookPoints[i].x;
-              point[0].y = hookPoints[i].y;
-              break;
-            }
-          }
-          if (hookIndex < 0) {
-            switch (hookId) {
-              case 1:
-                hookIndex = 1;
-                point[0].x = SED_CDim / 2;
-                point[0].y = 0;
-                break;
-              case 2:
-                hookIndex = 1;
-                point[0].x = SED_CDim;
-                point[0].y = SED_CDim / 2;
-                break;
-              case 3:
-                hookIndex = 1;
-                point[0].x = SED_CDim / 2;
-                point[0].y = SED_CDim;
-                break;
-              case 4:
-                hookIndex = 1;
-                point[0].x = 0;
-                point[0].y = SED_CDim / 2;
-                break;
-            }
-          }
-          if (hookIndex < 0) return null;
-      }
-    }
-
-    if (
-      (this.RotationAngle || this.extraflags & (ConstantData.ExtraFlags.SEDE_FlipHoriz | ConstantData.ExtraFlags.SEDE_FlipVert)) &&
-      isCustomHook
-    ) {
-      perimeterPoints = this.GetPerimPts(-1, point, hookId, true, null, -1);
-      point = this.PolyGetTargets(perimeterPoints[0], connectionFlags, this.Frame);
-      if (!point) return perimeterPoints[0];
-    }
-
-    perimeterPoints = this.GetPerimPts(-1, point, hookId, false, null, -1);
-
-    if (hookId === HookPts.SED_KATD) {
-      if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_VisioText) {
-        if (this.hookdisp.x || this.hookdisp.y) {
-          const parentObject = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, false);
-          if (parentObject) {
-            const center = {
-              x: parentObject.Frame.x + parentObject.Frame.width / 2,
-              y: parentObject.Frame.y + parentObject.Frame.height / 2
-            };
-            const dispPoints = [{ x: center.x + this.hookdisp.x, y: center.y + this.hookdisp.y }];
-            const rotationRadians = -parentObject.RotationAngle / (180 / ConstantData.Geometry.PI);
-            Utils3.RotatePointsAboutCenter(parentObject.Frame, rotationRadians, dispPoints);
-            dispPoints[0].x -= center.x;
-            dispPoints[0].y -= center.y;
-            perimeterPoints[0].x -= dispPoints[0].x;
-            perimeterPoints[0].y -= dispPoints[0].y;
-          }
-        }
-      } else {
-        perimeterPoints[0].x -= this.hookdisp.x;
-        perimeterPoints[0].y -= this.hookdisp.y;
-      }
-    }
-
-    console.log("= S.BaseShape - HookToPoint output:", perimeterPoints[0]);
-    return perimeterPoints[0];
-  }
-
-  IsCoManager(e: any): boolean {
-    console.log("= S.BaseShape - IsCoManager input:", e);
-
-    let isCoManager = false;
-    if (this.hooks && this.hooks.length) {
-      const hookedObject = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, false);
-      if (hookedObject && hookedObject.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.CONNECTOR) {
-        isCoManager = hookedObject.IsCoManager(e);
-      }
-    }
-
-    console.log("= S.BaseShape - IsCoManager output:", isCoManager);
-    return isCoManager;
-  }
-
-  RRect_GetCornerSize(customSize) {
-    console.log("= S.BaseShape - RRect_GetCornerSize input:", { customSize });
-
-    let width = this.Frame.width;
-    let height = this.Frame.height;
-    let minDimension = width;
-
-    if (height < minDimension) {
-      minDimension = height;
-    }
-
-    if (customSize) {
-      minDimension = customSize;
-    }
-
-    if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_FixedRR) {
-      let fixedSize = ConstantData.Defines.RRectFixedDim * this.shapeparam;
-      let maxSize = 0.4 * minDimension;
-
-      if (fixedSize > maxSize) {
-        fixedSize = maxSize;
-      }
-
-      console.log("= S.BaseShape - RRect_GetCornerSize output:", fixedSize);
-      return fixedSize;
-    }
-
-    let result = minDimension * this.shapeparam;
-    console.log("= S.BaseShape - RRect_GetCornerSize output:", result);
-    return result;
-  }
-
-  GetPerimPts(points, targetPoints, hookId, rotate, table, needRotate) {
-    console.log("= S.BaseShape - GetPerimPts input:", { points, targetPoints, hookId, rotate, table, needRotate });
-
-    let cornerSize = 0;
-    let perimeterPoints = [];
-    let coManagerPoint = {};
-    let isCoManager = false;
-    let tablePoints = null;
-
-    if (this.ShapeType === ConstantData.ShapeType.RECT) {
-      cornerSize = this.RRect_GetCornerSize();
-      if (cornerSize > 0) {
-        return this.RRect_GetPerimPts(points, targetPoints, hookId, rotate, table, needRotate);
-      }
-    }
-
-    if (targetPoints.length === 1 && targetPoints[0].y === -ConstantData.SEDA_Styles.SEDA_CoManager && this.IsCoManager(coManagerPoint)) {
-      perimeterPoints.push(new Point(coManagerPoint.x, coManagerPoint.y));
-      if (targetPoints[0].id != null) {
-        perimeterPoints[0].id = targetPoints[0].id;
-      }
-      console.log("= S.BaseShape - GetPerimPts output:", perimeterPoints);
-      return perimeterPoints;
-    }
-
-    const tableObject = this.GetTable(false);
-    if (table != null && tableObject) {
-      tablePoints = GlobalData.optManager.Table_GetPerimPts(this, tableObject, table, targetPoints);
-      if (tablePoints) {
-        perimeterPoints = tablePoints;
-        isCoManager = true;
-      }
-    }
-
-    if (!isCoManager) {
-      for (let i = 0; i < targetPoints.length; i++) {
-        perimeterPoints[i] = {
-          x: targetPoints[i].x / ConstantData.Defines.SED_CDim * this.Frame.width + this.Frame.x,
-          y: targetPoints[i].y / ConstantData.Defines.SED_CDim * this.Frame.height + this.Frame.y,
-          id: targetPoints[i].id != null ? targetPoints[i].id : 0
-        };
-      }
-    }
-
-    if (!rotate) {
-      const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, perimeterPoints);
-    }
-
-    console.log("= S.BaseShape - GetPerimPts output:", perimeterPoints);
-    return perimeterPoints;
-  }
-
-  RRect_GetPerimPts(e, targetPoints, hookId, rotate, table, needRotate) {
-    console.log("= S.BaseShape - RRect_GetPerimPts input:", { e, targetPoints, hookId, rotate, table, needRotate });
-
-    let cornerSize, polyPoints, intersectCount, intersectPoints = [0, 0];
-    const dimension = ConstantData.Defines.SED_CDim;
-    let perimeterPoints = [];
-    let coManagerPoint = {};
-
-    if (targetPoints.length === 1 && targetPoints[0].y === -ConstantData.SEDA_Styles.SEDA_CoManager && this.IsCoManager(coManagerPoint)) {
-      perimeterPoints.push(new Point(coManagerPoint.x, coManagerPoint.y));
-      if (targetPoints[0].id != null) {
-        perimeterPoints[0].id = targetPoints[0].id;
-      }
-      console.log("= S.BaseShape - RRect_GetPerimPts output:", perimeterPoints);
-      return perimeterPoints;
-    }
-
-    if (hookId === ConstantData.HookPts.SED_KAT && table == null) {
-      perimeterPoints = new BaseDrawingObject(this).GetPerimPts(e, targetPoints, hookId, false, table, needRotate);
-      console.log("= S.BaseShape - RRect_GetPerimPts output:", perimeterPoints);
-      return perimeterPoints;
-    }
-
-    const tableObject = this.GetTable(false);
-    if (table != null && tableObject) {
-      const tablePerimPts = GlobalData.optManager.Table_GetPerimPts(this, tableObject, table, targetPoints);
-      if (tablePerimPts) {
-        perimeterPoints = tablePerimPts;
-        if (!rotate) {
-          const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-          Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, perimeterPoints);
-        }
-        console.log("= S.BaseShape - RRect_GetPerimPts output:", perimeterPoints);
-        return perimeterPoints;
-      }
-    }
-
-    const useConnect = this.flags & ConstantData.ObjFlags.SEDO_UseConnect;
-    const tableRows = this.hookflags & ConstantData.HookFlags.SED_LC_TableRows && tableObject;
-
-    if (useConnect || tableRows) {
-      for (let i = 0; i < targetPoints.length; i++) {
-        perimeterPoints[i] = {
-          x: targetPoints[i].x / dimension * this.Frame.width + this.Frame.x,
-          y: targetPoints[i].y / dimension * this.Frame.height + this.Frame.y,
-          id: targetPoints[i].id != null ? targetPoints[i].id : 0
-        };
-      }
-    } else {
-      perimeterPoints = new BaseDrawingObject(this).GetPerimPts(e, targetPoints, hookId, true, table, needRotate);
-      cornerSize = this.GetCornerSize() * ConstantData.Defines.SED_RoundFactor;
-      polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, false, null);
-
-      for (let i = 0; i < perimeterPoints.length; i++) {
-        if (targetPoints[i].x === 0 && targetPoints[i].y === 0) {
-          perimeterPoints[i].x += cornerSize;
-          perimeterPoints[i].y += cornerSize;
-        } else if (targetPoints[i].x === 0 && targetPoints[i].y === dimension) {
-          perimeterPoints[i].x += cornerSize;
-          perimeterPoints[i].y -= cornerSize;
-        } else if (targetPoints[i].x === dimension && targetPoints[i].y === 0) {
-          perimeterPoints[i].x -= cornerSize;
-          perimeterPoints[i].y += cornerSize;
-        } else if (targetPoints[i].x === dimension && targetPoints[i].y === dimension) {
-          perimeterPoints[i].x -= cornerSize;
-          perimeterPoints[i].y -= cornerSize;
-        } else if (targetPoints[i].x < dimension / 4) {
-          intersectCount = GlobalData.optManager.PolyGetIntersect(polyPoints, perimeterPoints[i].y, intersectPoints, null, false);
-          if (intersectCount) {
-            perimeterPoints[i].x = intersectPoints[0];
-            if (intersectCount > 1 && intersectPoints[1] < perimeterPoints[i].x) {
-              perimeterPoints[i].x = intersectPoints[1];
-            }
-          }
-        } else if (targetPoints[i].x > 3 * dimension / 4) {
-          intersectCount = GlobalData.optManager.PolyGetIntersect(polyPoints, perimeterPoints[i].y, intersectPoints, null, false);
-          if (intersectCount) {
-            perimeterPoints[i].x = intersectPoints[0];
-            if (intersectCount > 1 && intersectPoints[1] > perimeterPoints[i].x) {
-              perimeterPoints[i].x = intersectPoints[1];
-            }
-          }
-        } else if (targetPoints[i].y < dimension / 4) {
-          intersectCount = GlobalData.optManager.PolyGetIntersect(polyPoints, perimeterPoints[i].x, intersectPoints, null, true);
-          if (intersectCount) {
-            perimeterPoints[i].y = intersectPoints[0];
-            if (intersectCount > 1 && intersectPoints[1] < perimeterPoints[i].y) {
-              perimeterPoints[i].y = intersectPoints[1];
-            }
-          }
-        } else if (targetPoints[i].y > 3 * dimension / 4) {
-          intersectCount = GlobalData.optManager.PolyGetIntersect(polyPoints, perimeterPoints[i].x, intersectPoints, null, true);
-          if (intersectCount) {
-            perimeterPoints[i].y = intersectPoints[0];
-            if (intersectCount > 1 && intersectPoints[1] > perimeterPoints[i].y) {
-              perimeterPoints[i].y = intersectPoints[1];
-            }
-          }
-        }
-        if (targetPoints[i].id != null) {
-          perimeterPoints[i].id = targetPoints[i].id;
-        }
-      }
-    }
-
-    if (!rotate) {
-      const rotationRadians = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, perimeterPoints);
-    }
-
-    console.log("= S.BaseShape - RRect_GetPerimPts output:", perimeterPoints);
-    return perimeterPoints;
-  }
-
-  ChangeTarget(eventType: number, targetID: number, additionalData: any, flag: number, coordinates: { x: number; y: number }, needChangeTarget: boolean) {
-    console.log("= S.BaseShape - ChangeTarget input:", { eventType, targetID, additionalData, flag, coordinates, needChangeTarget });
-
-    if (needChangeTarget) {
-      let businessMgr = Business.GetSelectionBusinessManager(this.BlockID);
-
-      if (businessMgr === null) {
-        businessMgr = GlobalData.gBusinessManager;
-      }
-
-      businessMgr.ChangeTarget(targetID);
-    }
-
-    console.log("= S.BaseShape - ChangeTarget output");
-  }
-
-  GetTargetPoints(event, triggerType, objectID) {
-    console.log("= S.BaseShape - GetTargetPoints input:", { event, triggerType, objectID });
-
-    const defaultPoints = [
-      { x: 0, y: 0 },
-      { x: ConstantData.Defines.SED_CDim / 4, y: 0 },
-      { x: ConstantData.Defines.SED_CDim / 2, y: 0 },
-      { x: 3 * ConstantData.Defines.SED_CDim / 4, y: 0 },
-      { x: ConstantData.Defines.SED_CDim, y: 0 },
-      { x: ConstantData.Defines.SED_CDim, y: ConstantData.Defines.SED_CDim / 4 },
-      { x: ConstantData.Defines.SED_CDim, y: ConstantData.Defines.SED_CDim / 2 },
-      { x: ConstantData.Defines.SED_CDim, y: 3 * ConstantData.Defines.SED_CDim / 4 },
-      { x: ConstantData.Defines.SED_CDim, y: ConstantData.Defines.SED_CDim },
-      { x: 3 * ConstantData.Defines.SED_CDim / 4, y: ConstantData.Defines.SED_CDim },
-      { x: ConstantData.Defines.SED_CDim / 2, y: ConstantData.Defines.SED_CDim },
-      { x: ConstantData.Defines.SED_CDim / 4, y: ConstantData.Defines.SED_CDim },
-      { x: 0, y: ConstantData.Defines.SED_CDim },
-      { x: 0, y: 3 * ConstantData.Defines.SED_CDim / 4 },
-      { x: 0, y: ConstantData.Defines.SED_CDim / 2 },
-      { x: 0, y: ConstantData.Defines.SED_CDim / 4 }
-    ];
-
-    let targetPoints = [];
-    const isContinuousConnection = this.flags & ConstantData.ObjFlags.SEDO_ContConn && event !== null;
-    const useConnectPoints = this.flags & ConstantData.ObjFlags.SEDO_UseConnect && this.ConnectPoints;
-    const table = this.GetTable(false);
-    const isTableRows = this.hookflags & ConstantData.HookFlags.SED_LC_TableRows && table;
-    const isGanttChart = this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART;
-    let customTargetPoint = {};
-    let hasCustomTargetPoint = false;
-    const dimension = ConstantData.Defines.SED_CDim;
-
-    if (isGanttChart && table && event) {
-      hasCustomTargetPoint = GlobalData.optManager.Table_GetTargetPoints(this, table, event, triggerType, customTargetPoint, objectID);
-    }
-
-    if (objectID >= 0) {
-      const targetObject = GlobalData.optManager.GetObjectPtr(objectID, false);
-      if (targetObject && targetObject.moreflags & ConstantData.ObjMoreFlags.SED_MF_VisioText) {
-        const visioTextPoint = [{ x: dimension / 2, y: dimension / 2 }];
-        console.log("= S.BaseShape - GetTargetPoints output:", visioTextPoint);
-        return visioTextPoint;
-      }
-    }
-
-    if (hasCustomTargetPoint) {
-      targetPoints.push(customTargetPoint);
-      console.log("= S.BaseShape - GetTargetPoints output:", targetPoints);
-      return targetPoints;
-    }
-
-    if (isContinuousConnection) {
-      const polyTargets = this.PolyGetTargets(event, triggerType, this.Frame);
-      console.log("= S.BaseShape - GetTargetPoints output:", polyTargets);
-      return polyTargets;
-    }
-
-    if (useConnectPoints || isTableRows) {
-      const connectPoints = useConnectPoints ? this.ConnectPoints : GlobalData.optManager.Table_GetRowConnectPoints(this, table);
-      for (let i = 0; i < connectPoints.length; i++) {
-        targetPoints.push({ x: connectPoints[i].x, y: connectPoints[i].y });
-      }
-
-      if (this.extraflags & (ConstantData.ExtraFlags.SEDE_FlipHoriz | ConstantData.ExtraFlags.SEDE_FlipVert)) {
-        const rect = new Rectangle(0, 0, dimension, dimension);
-        GlobalData.optManager.FlipPoints(rect, this.extraflags, targetPoints);
-      }
-
-      console.log("= S.BaseShape - GetTargetPoints output:", targetPoints);
-      return targetPoints;
-    }
-
-    console.log("= S.BaseShape - GetTargetPoints output:", defaultPoints);
-    return defaultPoints;
-  }
-
-  GetSegLFace(point: { x: number; y: number }, table: any, hookFlags: any) {
-    console.log("= S.BaseShape - GetSegLFace input:", { point, table, hookFlags });
-
-    const m = ConstantData.Defines.SED_CDim;
-    const distanceSquared = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
-      return dx * dx + dy * dy;
-    };
-
-    let rotationAngle = this.RotationAngle;
-    let rotatedPoint = { ...point };
-    if (rotationAngle) {
-      const rotationRadians = -rotationAngle / (180 / ConstantData.Geometry.PI);
-      const frame = { x: 0, y: 0, width: m, height: m };
-      Utils3.RotatePointsAboutCenter(frame, rotationRadians, [rotatedPoint]);
-    }
-
-    const useConnectPoints = this.flags & ConstantData.ObjFlags.SEDO_UseConnect;
-    const isTableRows = this.hookflags & ConstantData.HookFlags.SED_LC_TableRows && table;
-    let connectPoints = [];
-
-    if (useConnectPoints || isTableRows) {
-      connectPoints = useConnectPoints ? this.ConnectPoints : GlobalData.optManager.Table_GetRowConnectPoints(this, table);
-      if (rotationAngle) {
-        const rotationRadians = -rotationAngle / (180 / ConstantData.Geometry.PI);
-        const frame = { x: 0, y: 0, width: m, height: m };
-        Utils3.RotatePointsAboutCenter(frame, rotationRadians, connectPoints);
-      }
-
-      const boundingRect = new Rectangle(0, 0, 0, 0);
-      Utils2.GetPolyRect(boundingRect, connectPoints);
-
-      const defaultPoints = [
-        { x: m / 2, y: 0 },
-        { x: m / 2, y: m },
-        { x: 0, y: m / 2 },
-        { x: m, y: m / 2 }
-      ];
-
-      const extendedPoints = [
-        { x: boundingRect.x + boundingRect.width / 2, y: boundingRect.y },
-        { x: boundingRect.x + boundingRect.width / 2, y: boundingRect.y + boundingRect.height },
-        { x: boundingRect.x, y: boundingRect.y + boundingRect.height / 2 },
-        { x: boundingRect.x + boundingRect.width, y: boundingRect.y + boundingRect.height / 2 }
-      ];
-
-      const pointsToCheck = boundingRect.height < 1000 || boundingRect.width < 1000 ? defaultPoints : extendedPoints;
-
-      let minDistance = m * m * m;
-      let closestPointIndex = 0;
-      for (let i = 0; i < pointsToCheck.length; i++) {
-        const distance = distanceSquared(pointsToCheck[i], rotatedPoint);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPointIndex = i;
-        }
-      }
-
-      const result = ConstantData.HookPts.SED_KTC + closestPointIndex;
-      console.log("= S.BaseShape - GetSegLFace output:", result);
-      return result;
-    }
-
-    const distances = {
-      left: rotatedPoint.x,
-      right: m - rotatedPoint.x,
-      top: rotatedPoint.y,
-      bottom: m - rotatedPoint.y
-    };
-
-    let result = ConstantData.SegLDir.SED_KLC;
-    if (distances.right < distances.left) {
-      result = ConstantData.SegLDir.SED_KRC;
-      if (distances.top < distances.right) {
-        result = ConstantData.SegLDir.SED_KTC;
-        if (distances.bottom < distances.top) {
-          result = ConstantData.SegLDir.SED_KBC;
-        }
-      } else if (distances.bottom < distances.right) {
-        result = ConstantData.SegLDir.SED_KBC;
-      }
-    } else {
-      if (distances.top < distances.left) {
-        result = ConstantData.SegLDir.SED_KTC;
-        if (distances.bottom < distances.top) {
-          result = ConstantData.SegLDir.SED_KBC;
-        }
-      } else if (distances.bottom < distances.left) {
-        result = ConstantData.SegLDir.SED_KBC;
-      }
-    }
-
-    console.log("= S.BaseShape - GetSegLFace output:", result);
-    return result;
-  }
-
-  Resize(element, newSize, drawingObject, actionType, previousBBox) {
-    console.log('= S.BaseShape - Resize input:', { element, newSize, drawingObject, actionType, previousBBox });
-
-    if (element != null) {
-      drawingObject.SetDimensionLinesVisibility(element, false);
-      const rotation = element.GetRotation();
-      if (previousBBox == null) {
-        previousBBox = this.prevBBox;
-      }
-
-      const eventDetails = {
-        action: actionType,
-        prevBBox: previousBBox,
-        trect: $.extend(true, {}, this.trect)
-      };
-
-      Collab.SendSVGEvent(this.BlockID, ConstantData.CollabSVGEventTypes.Shape_Grow, newSize, eventDetails);
-
-      const originalBBox = $.extend(true, {}, previousBBox);
-      const updatedBBox = $.extend(true, {}, newSize);
-      const inflatedBBox = $.extend(true, {}, newSize);
-      const offset = GlobalData.optManager.svgDoc.CalculateRotatedOffsetForResize(originalBBox, updatedBBox, rotation);
-
-      if (this.StyleRecord.Line.BThick && this.polylist == null) {
-        Utils2.InflateRect(inflatedBBox, this.StyleRecord.Line.BThick, this.StyleRecord.Line.BThick);
-      }
-
-      if (actionType !== ConstantData.ActionTriggerType.MOVEPOLYSEG) {
-        element.SetSize(inflatedBBox.width, inflatedBBox.height);
-        element.SetPos(inflatedBBox.x + offset.x, inflatedBBox.y + offset.y);
-
-        let cornerSize = 0;
-        if (this.ShapeType === ConstantData.ShapeType.RECT) {
-          cornerSize = this.RRect_GetCornerSize();
-        }
-
-        const shapeElement = element.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-        shapeElement.SetSize(inflatedBBox.width, inflatedBBox.height);
-
-        const slopElement = element.GetElementByID(ConstantData.SVGElementClass.SLOP);
-        if (slopElement) {
-          slopElement.SetSize(inflatedBBox.width, inflatedBBox.height);
-        }
-
-        const hatchElement = element.GetElementByID(ConstantData.SVGElementClass.HATCH);
-        if (hatchElement) {
-          hatchElement.SetSize(inflatedBBox.width, inflatedBBox.height);
-        }
-
-        if (cornerSize > 0 && shapeElement.SetRRectSize) {
-          shapeElement.SetRRectSize(inflatedBBox.width, inflatedBBox.height, cornerSize, cornerSize);
-          if (slopElement && slopElement.SetRRectSize) {
-            slopElement.SetRRectSize(inflatedBBox.width, inflatedBBox.height, cornerSize, cornerSize);
-          }
-          if (hatchElement && hatchElement.SetRRectSize) {
-            hatchElement.SetRRectSize(inflatedBBox.width, inflatedBBox.height, cornerSize, cornerSize);
-          }
-        }
-      }
-
-      const table = this.GetTable(false);
-      const graph = this.GetGraph(true);
-
-      if (table) {
-        GlobalData.optManager.Table_ResizeSVGTableObject(element, drawingObject, newSize);
-      } else if (graph) {
-        GlobalData.optManager.GraphFormat(this, graph, this.Frame, true);
-        GlobalData.optManager.AddToDirtyList(this.BlockID);
-        GlobalData.optManager.RenderDirtySVGObjects();
-      } else {
-        this.LM_ResizeSVGTextObject(element, drawingObject, newSize);
-      }
-
-      element.SetRotation(rotation);
-      this.UpdateDimensionLines(element);
-
-      console.log('= S.BaseShape - Resize output:', offset);
-      return offset;
-    }
-  }
-
-  ResizeInTextEdit(element, newSize) {
-    console.log('= S.BaseShape - ResizeInTextEdit input:', { element, newSize });
-
-    const rotation = element.GetRotation();
-    this.SetDimensionLinesVisibility(element, false);
-
-    const originalFrame = $.extend(true, {}, this.Frame);
-    const updatedFrame = $.extend(true, {}, newSize);
-    const inflatedFrame = $.extend(true, {}, newSize);
-
-    const offset = GlobalData.optManager.svgDoc.CalculateRotatedOffsetForResize(originalFrame, updatedFrame, rotation);
-
-    if (this.StyleRecord.Line.BThick && this.polylist == null) {
-      Utils2.InflateRect(inflatedFrame, this.StyleRecord.Line.BThick, this.StyleRecord.Line.BThick);
-    }
-
-    element.SetSize(inflatedFrame.width, inflatedFrame.height);
-    element.SetPos(inflatedFrame.x + offset.x, inflatedFrame.y + offset.y);
-
-    let cornerSize = 0;
-    if (this.ShapeType === ConstantData.ShapeType.RECT) {
-      cornerSize = this.RRect_GetCornerSize();
-    }
-
-    const shapeElement = element.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-    if (shapeElement) {
-      shapeElement.SetSize(inflatedFrame.width, inflatedFrame.height);
-    }
-
-    const slopElement = element.GetElementByID(ConstantData.SVGElementClass.SLOP);
-    if (slopElement) {
-      slopElement.SetSize(inflatedFrame.width, inflatedFrame.height);
-    }
-
-    const table = this.GetTable(false);
-    if (table) {
-      GlobalData.optManager.Table_ResizeSVGTableObject(element, this, newSize, true);
-    }
-
-    const hatchElement = element.GetElementByID(ConstantData.SVGElementClass.HATCH);
-    if (hatchElement) {
-      hatchElement.SetSize(newSize.width, newSize.height);
-    }
-
-    if (cornerSize > 0) {
-      if (shapeElement && shapeElement.SetRRectSize) {
-        shapeElement.SetRRectSize(inflatedFrame.width, inflatedFrame.height, cornerSize, cornerSize);
-      }
-      if (slopElement && slopElement.SetRRectSize) {
-        slopElement.SetRRectSize(inflatedFrame.width, inflatedFrame.height, cornerSize, cornerSize);
-      }
-      if (hatchElement && hatchElement.SetRRectSize) {
-        hatchElement.SetRRectSize(inflatedFrame.width, inflatedFrame.height, cornerSize, cornerSize);
-      }
-    }
-
-    element.SetRotation(rotation);
-    GlobalData.optManager.UpdateDisplayCoordinates(newSize, null, null, this);
-    this.UpdateDimensionLines(element);
-
-    console.log('= S.BaseShape - ResizeInTextEdit output:', offset);
-    return offset;
-  }
-
-  Rotate(element, angle) {
-    console.log("= S.BaseShape - Rotate input:", { element, angle });
-    element.SetRotation(angle);
-    console.log("= S.BaseShape - Rotate output");
-  }
-
-  ApplyStyles(element, styleRecord) {
-    console.log("= S.BaseShape - ApplyStyles input:", { element, styleRecord });
-
-    let fillType = styleRecord.Fill.Paint.FillType;
-    let strokeType = styleRecord.Line.Paint.FillType;
-    const hasImageURL = this.ImageURL !== '';
-    let fillColor = styleRecord.Fill.Paint.Color;
-    let strokeColor = styleRecord.Line.Paint.Color;
-    const fieldDataStyleOverride = this.GetFieldDataStyleOverride();
-
-    if (fieldDataStyleOverride) {
-      if (fieldDataStyleOverride.fillColor && fillType !== ConstantData.FillTypes.SDFILL_TRANSPARENT) {
-        fillType = ConstantData.FillTypes.SDFILL_SOLID;
-        fillColor = fieldDataStyleOverride.fillColor;
-      }
-      if (fieldDataStyleOverride.strokeColor) {
-        strokeType = ConstantData.FillTypes.SDFILL_SOLID;
-        strokeColor = fieldDataStyleOverride.strokeColor;
-      }
-    }
-
-    if (!this.SymbolURL) {
-      if (hasImageURL) {
-        let scaleType = 'PROPFILL';
-        const cropRect = { x: 0, y: 0, width: 0, height: 0 };
-
-        if (this.ImageHeader) {
-          if (this.ImageHeader.croprect) {
-            cropRect.x = this.ImageHeader.croprect.left;
-            cropRect.y = this.ImageHeader.croprect.top;
-            cropRect.width = this.ImageHeader.croprect.right - this.ImageHeader.croprect.left;
-            cropRect.height = this.ImageHeader.croprect.bottom - this.ImageHeader.croprect.top;
-          }
-          if (this.ImageHeader.imageflags !== undefined) {
-            if (this.ImageHeader.imageflags === ConstantData.ImageScales.SDIMAGE_ALWAYS_FIT) {
-              scaleType = 'NOPROP';
-            } else if (this.ImageHeader.imageflags === ConstantData.ImageScales.SDIMAGE_PROP_FIT) {
-              scaleType = 'PROPFIT';
-            }
-          }
-        }
-
-        if (this.BlobBytesID !== -1) {
-          const blob = GlobalData.optManager.GetObjectPtr(this.BlobBytesID, false);
-          if (blob && blob.ImageDir === FileParser.Image_Dir.dir_svg) {
-            if (this.SVGDim.width == null) {
-              this.SVGDim = Utils2.ParseSVGDimensions(blob.Bytes);
-            }
-            element.SetImageFill(this.ImageURL, {
-              scaleType,
-              cropRect,
-              imageWidth: this.SVGDim.width,
-              imageHeight: this.SVGDim.height
-            });
-          } else {
-            element.SetImageFill(this.ImageURL, { scaleType, cropRect });
-          }
-        } else {
-          if (this.ImageURL.slice(-3).toUpperCase() === 'SVG') {
-            element.SetImageFill(this.ImageURL, {
-              scaleType,
-              cropRect,
-              imageWidth: this.SVGDim.width,
-              imageHeight: this.SVGDim.height
-            });
-          } else {
-            element.SetImageFill(this.ImageURL, { scaleType, cropRect });
-          }
-        }
-
-        const flipHorizontally = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipHoriz) > 0;
-        const flipVertically = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipVert) > 0;
-        if (flipHorizontally) {
-          element.SetMirror(flipHorizontally);
-        }
-        if (flipVertically) {
-          element.SetFlip(flipVertically);
-        }
-        element.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
-      } else {
-        switch (fillType) {
-          case ConstantData.FillTypes.SDFILL_GRADIENT:
-            element.SetGradientFill(this.CreateGradientRecord(
-              styleRecord.Fill.Paint.GradientFlags,
-              fillColor,
-              styleRecord.Fill.Paint.Opacity,
-              styleRecord.Fill.Paint.EndColor,
-              styleRecord.Fill.Paint.EndOpacity
-            ));
-            break;
-          case ConstantData.FillTypes.SDFILL_RICHGRADIENT:
-            element.SetGradientFill(this.CreateRichGradientRecord(styleRecord.Fill.Paint.GradientFlags));
-            break;
-          case ConstantData.FillTypes.SDFILL_TEXTURE:
-            const texture = {
-              url: '',
-              scale: 1,
-              alignment: styleRecord.Fill.Paint.TextureScale.AlignmentScalar
-            };
-            const textureIndex = styleRecord.Fill.Paint.Texture;
-            if (GlobalData.optManager.TextureList.Textures[textureIndex]) {
-              texture.dim = GlobalData.optManager.TextureList.Textures[textureIndex].dim;
-              texture.url = GlobalData.optManager.TextureList.Textures[textureIndex].ImageURL;
-              texture.scale = GlobalData.optManager.CalcTextureScale(styleRecord.Fill.Paint.TextureScale, texture.dim.x);
-              styleRecord.Fill.Paint.TextureScale.Scale = texture.scale;
-              if (!texture.url) {
-                texture.url = Constants.FilePath_CMSRoot + Constants.FilePath_Textures + GlobalData.optManager.TextureList.Textures[textureIndex].filename;
-              }
-              element.SetTextureFill(texture);
-              element.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
-            }
-            break;
-          case ConstantData.FillTypes.SDFILL_TRANSPARENT:
-            element.SetFillColor('none');
-            break;
-          default:
-            if (styleRecord.Fill.Paint.Color.indexOf('#0102') === 0) {
-              element.SetFillColor('none');
-              GlobalData.optManager.Test3DGraph(element.parent, this.Frame.width, this.Frame.height, styleRecord.Fill.Paint.Color);
-            } else {
-              element.SetFillColor(fillColor);
-              element.SetFillOpacity(styleRecord.Fill.Paint.Opacity);
-            }
-            break;
-        }
-
-        switch (strokeType) {
-          case ConstantData.FillTypes.SDFILL_GRADIENT:
-            element.SetGradientStroke(this.CreateGradientRecord(
-              styleRecord.Line.Paint.GradientFlags,
-              strokeColor,
-              styleRecord.Line.Paint.Opacity,
-              styleRecord.Line.Paint.EndColor,
-              styleRecord.Line.Paint.EndOpacity
-            ));
-            break;
-          case ConstantData.FillTypes.SDFILL_RICHGRADIENT:
-            element.SetGradientStroke(this.CreateRichGradientRecord(styleRecord.Line.Paint.GradientFlags));
-            break;
-          case ConstantData.FillTypes.SDFILL_TEXTURE:
-            const strokeTexture = {
-              url: '',
-              scale: styleRecord.Line.Paint.TextureScale.Scale,
-              alignment: styleRecord.Line.Paint.TextureScale.AlignmentScalar
-            };
-            const strokeTextureIndex = styleRecord.Line.Paint.Texture;
-            strokeTexture.dim = GlobalData.optManager.TextureList.Textures[strokeTextureIndex].dim;
-            strokeTexture.url = GlobalData.optManager.TextureList.Textures[strokeTextureIndex].ImageURL;
-            if (!strokeTexture.url) {
-              strokeTexture.url = Constants.FilePath_CMSRoot + Constants.FilePath_Textures + GlobalData.optManager.TextureList.Textures[strokeTextureIndex].filename;
-            }
-            element.SetTextureStroke(strokeTexture);
-            element.SetStrokeOpacity(styleRecord.Line.Paint.Opacity);
-            break;
-          default:
-            element.SetStrokeColor(strokeColor);
-            element.SetStrokeOpacity(styleRecord.Line.Paint.Opacity);
-            break;
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - ApplyStyles output");
-  }
-
-  SetFillHatch(element, hatchType, color) {
-    console.log("= S.BaseShape - SetFillHatch input:", { element, hatchType, color });
-
-    if (hatchType !== -1 && hatchType !== 0) {
-      let hatchIndex = hatchType - 1;
-      const texture = {};
-      const effects = [];
-
-      if (hatchIndex < 10) {
-        hatchIndex = '0' + hatchIndex;
-      }
-
-      texture.url = Constants.FilePath_Hatches + Constants.HatchName + hatchIndex + '.png';
-      texture.scale = 1;
-      texture.alignment = 0;
-      texture.dim = { x: 128, y: 128 };
-
-      element.SetTextureFill(texture);
-
-      let lineColor = this.StyleRecord.Line.Paint.Color;
-      if (color) {
-        lineColor = color;
-      }
-
-      effects.push({
-        type: Effects.EffectType.RECOLOR,
-        params: { color: lineColor }
-      });
-
-      element.Effects().SetEffects(effects, this.Frame);
-    } else {
-      element.SetFillColor('none');
-    }
-
-    console.log("= S.BaseShape - SetFillHatch output");
-  }
-
-  IsTransparent() {
-    console.log("= S.BaseShape - IsTransparent input");
-
-    const isTransparent = this.StyleRecord.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_TRANSPARENT;
-
-    console.log("= S.BaseShape - IsTransparent output:", isTransparent);
-    return isTransparent;
-  }
-
-  GetTargetRect() {
-    console.log("= S.BaseShape - GetTargetRect input");
-
-    const targetRect = {};
-    Utils2.CopyRect(targetRect, this.Frame);
-
-    console.log("= S.BaseShape - GetTargetRect output:", targetRect);
-    return targetRect;
-  }
-
-  Hit(point, isBorderOnly, isTransparent, hitResult) {
-    console.log("= S.BaseShape - Hit input:", { point, isBorderOnly, isTransparent, hitResult });
-
-    let rotationRadians, polyPoints, hitCode;
-    const transformedPoint = [{ x: point.x, y: point.y }];
-    const frameWithThickness = {};
-    const borderThickness = this.StyleRecord.Line.Thickness / 2;
-
-    if (this.flags & ConstantData.ObjFlags.SEDO_UseConnect && this.ConnectPoints) {
-      isBorderOnly = false;
-    }
-
-    if (this.RotationAngle !== 0) {
-      rotationRadians = this.RotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, transformedPoint);
-    }
-
-    const transformedCoords = { x: transformedPoint[0].x, y: transformedPoint[0].y };
-    Utils2.CopyRect(frameWithThickness, this.Frame);
-    Utils2.InflateRect(frameWithThickness, borderThickness, borderThickness);
-
-    hitCode = Utils2.pointInRect(frameWithThickness, transformedCoords) ? ConstantData.HitCodes.SED_Border : 0;
-
-    if (hitCode) {
-      polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, true, null);
-      if (GlobalData.optManager.FromOverlayLayer || GlobalData.optManager.PolyPtInPolygon(polyPoints, transformedCoords)) {
-        hitCode = ConstantData.HitCodes.SED_Inside;
-        if (this.IsTransparent() || isBorderOnly) {
-          hitCode = 0;
-          isBorderOnly = true;
-        }
-        polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, false, null);
-        if (isBorderOnly && Utils3.LineDStyleHit(polyPoints, transformedCoords, borderThickness, 0, null)) {
-          hitCode = ConstantData.HitCodes.SED_Border;
-        }
-      } else {
-        hitCode = 0;
-      }
-    }
-
-    if (hitResult) {
-      hitResult.hitcode = hitCode;
-    }
-
-    console.log("= S.BaseShape - Hit output:", hitCode);
-    return hitCode;
-  }
-
-  AllowMaintainLink() {
-    console.log("= S.BaseShape - AllowMaintainLink input");
-
-    const result = !!(
-      this instanceof Instance.Shape.Polygon &&
-      this.hookflags & ConstantData.HookFlags.SED_LC_AttachToLine
-    );
-
-    console.log("= S.BaseShape - AllowMaintainLink output:", result);
-    return result;
-  }
-
-  PolyGetTargetPointList(rotationAngle: number) {
-    console.log("= S.BaseShape - PolyGetTargetPointList input:", { rotationAngle });
-
-    let polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, false, true, null);
-    let angleInRadians = 0;
-
-    if (rotationAngle !== 0) {
-      angleInRadians = -rotationAngle / (180 / ConstantData.Geometry.PI);
-      Utils3.RotatePointsAboutCenter(this.Frame, angleInRadians, polyPoints);
-    }
-
-    console.log("= S.BaseShape - PolyGetTargetPointList output:", polyPoints);
-    return polyPoints;
-  }
-
-  PolyGetTargets(event, hookFlags, frame) {
-    console.log("= S.BaseShape - PolyGetTargets input:", { event, hookFlags, frame });
-
-    let closestPointIndex = -1;
-    let minDistance = ConstantData.Defines.LongIntMax;
-    const targetPoints = [{ x: 0, y: 0 }];
-    const resultPoints = [];
-    const rotatedEvent = { x: event.x, y: event.y };
-    const rotatedFrame = { ...frame };
-    const polyPoints = this.PolyGetTargetPointList(hookFlags);
-
-    if (!event) return null;
-
-    if (GlobalData.docHandler.documentConfig.enableSnap && !(hookFlags & ConstantData.HookFlags.SED_LC_NoSnaps)) {
-      rotatedEvent.x = GlobalData.docHandler.SnapToGrid(rotatedEvent).x;
-      rotatedEvent.y = GlobalData.docHandler.SnapToGrid(rotatedEvent).y;
-      rotatedEvent.y = Math.max(rotatedEvent.y, frame.y);
-      rotatedEvent.y = Math.min(rotatedEvent.y, frame.y + frame.height);
-      rotatedEvent.x = Math.max(rotatedEvent.x, frame.x);
-      rotatedEvent.x = Math.min(rotatedEvent.x, frame.x + frame.width);
-    }
-
-    for (let i = 1; i < polyPoints.length; i++) {
-      const startPoint = polyPoints[i - 1];
-      const endPoint = polyPoints[i];
-
-      if (Utils2.EqualPt(startPoint, endPoint)) continue;
-
-      const deltaX = endPoint.x - startPoint.x || 1;
-      const deltaY = endPoint.y - startPoint.y || 1;
-
-      let intersectionX, intersectionY, distance;
-
-      if (Math.abs(deltaY / deltaX) > 1) {
-        intersectionY = rotatedEvent.y;
-        intersectionX = startPoint.x + (intersectionY - startPoint.y) * (deltaX / deltaY);
-        distance = Math.abs(intersectionX - rotatedEvent.x);
-      } else {
-        intersectionX = rotatedEvent.x;
-        intersectionY = startPoint.y + (intersectionX - startPoint.x) * (deltaY / deltaX);
-        distance = Math.abs(intersectionY - rotatedEvent.y);
-      }
-
-      const boundingRect = Utils2.Pt2Rect(startPoint, endPoint);
-      Utils2.InflateRect(boundingRect, 1, 1);
-
-      if (Utils2.pointInRect(boundingRect, { x: intersectionX, y: intersectionY }) && distance < minDistance) {
-        minDistance = distance;
-        closestPointIndex = i;
-        targetPoints[0].x = intersectionX;
-        targetPoints[0].y = intersectionY;
-      }
-    }
-
-    if (closestPointIndex >= 0) {
-      if (this.RotationAngle !== 0) {
-        const rotationRadians = this.RotationAngle / (180 / ConstantData.Geometry.PI);
-        Utils3.RotatePointsAboutCenter(rotatedFrame, rotationRadians, targetPoints);
-      }
-
-      const normalizedX = (targetPoints[0].x - frame.x) / frame.width * ConstantData.Defines.SED_CDim;
-      const normalizedY = (targetPoints[0].y - frame.y) / frame.height * ConstantData.Defines.SED_CDim;
-      resultPoints.push(new Point(normalizedX, normalizedY));
-
-      console.log("= S.BaseShape - PolyGetTargets output:", resultPoints);
-      return resultPoints;
-    }
-
-    console.log("= S.BaseShape - PolyGetTargets output: null");
-    return null;
-  }
-
-  LM_AddSVGTextObject(svgDoc, parentElement) {
-    console.log("= S.BaseShape - LM_AddSVGTextObject input:", { svgDoc, parentElement });
-
-    let textFrame = $.extend(true, {}, this.Frame);
-    let textRect = Utils1.DeepCopy(this.trect);
-    let dataID = -1;
-    const table = this.GetTable(false);
-
-    if (table) {
-      if (table.select < 0) return;
-
-      let selectedCell = table.cells[table.select];
-      if (selectedCell.DataID !== this.DataID) {
-        const cellIndex = GlobalData.optManager.Table_CellFromDataID(table, this.DataID);
-        if (cellIndex >= 0) {
-          selectedCell = table.cells[cellIndex];
-        }
-      }
-
-      let cellFrame = selectedCell.trect;
-      if (selectedCell.nextra) {
-        cellFrame = GlobalData.optManager.Table_GetJoinedCellFrame(table, table.select, true, false);
-      }
-
-      textRect.x = this.trect.x + cellFrame.x;
-      textRect.y = this.trect.y + cellFrame.y;
-      textRect.width = cellFrame.width;
-      textRect.height = cellFrame.height;
-      dataID = selectedCell.DataID;
-    }
-
-    const textData = GlobalData.objectStore.GetObject(this.DataID);
-    if (textData != null) {
-      const textElement = svgDoc.CreateShape(ConstantData.CreateShapeType.TEXT);
-      textElement.SetRenderingEnabled(false);
-      textElement.SetID(ConstantData.SVGElementClass.TEXT);
-      textElement.SetUserData(dataID);
-
-      const styleRecord = this.StyleRecord;
-      if (styleRecord.Line.BThick && this.polylist == null) {
-        Utils2.InflateRect(textFrame, styleRecord.Line.BThick, styleRecord.Line.BThick);
-      }
-
-      textElement.SetSpellCheck(this.AllowSpell());
-      textElement.InitDataSettings(this.fieldDataTableID, this.fieldDataElemID, this.dataStyleOverride);
-
-      if (!(this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) && !(this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB)) {
-        textElement.SetPos(textRect.x - textFrame.x, textRect.y - textFrame.y);
-        textElement.SetSize(textRect.width, textRect.height);
-      }
-
-      if (parentElement) {
-        parentElement.AddElement(textElement);
-        parentElement.isText = true;
-        parentElement.textElem = textElement;
-      }
-
-      if (textData.Data.runtimeText) {
-        textElement.SetRuntimeText(textData.Data.runtimeText);
-      } else {
-        textElement.SetText('');
-        textElement.SetParagraphAlignment(this.TextAlign);
-        textElement.SetVerticalAlignment('middle');
-      }
-
-      if (!textData.Data.runtimeText) {
-        textData.Data.runtimeText = textElement.GetRuntimeText();
-      }
-
-      let textSize = null;
-      if (this.bInGroup) {
-        textElement.DisableHyperlinks(true);
-      }
-
-      if (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) {
-        textElement.SetRenderingEnabled(true);
-        textElement.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
-        textSize = textElement.GetTextMinDimensions();
-
-        switch (this.TextAlign) {
-          case ConstantData.TextAlign.TOPLEFT:
-          case ConstantData.TextAlign.LEFT:
-          case ConstantData.TextAlign.BOTTOMLEFT:
-            textElement.SetPos(0, -textSize.height - this.TMargins.top);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
-            break;
-          case ConstantData.TextAlign.TOPRIGHT:
-          case ConstantData.TextAlign.RIGHT:
-          case ConstantData.TextAlign.BOTTOMRIGHT:
-            textElement.SetPos(this.Frame.width - textSize.width, -textSize.height - this.TMargins.top);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
-            break;
-          default:
-            textElement.SetPos(this.Frame.width / 2 - textSize.width / 2, -textSize.height - this.TMargins.top);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
-            break;
-        }
-      } else if (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) {
-        textElement.SetRenderingEnabled(true);
-        textElement.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
-        textSize = textElement.GetTextMinDimensions();
-
-        switch (this.TextAlign) {
-          case ConstantData.TextAlign.TOPLEFT:
-          case ConstantData.TextAlign.LEFT:
-          case ConstantData.TextAlign.BOTTOMLEFT:
-            textElement.SetPos(0, this.Frame.height + this.TMargins.bottom);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
-            break;
-          case ConstantData.TextAlign.TOPRIGHT:
-          case ConstantData.TextAlign.RIGHT:
-          case ConstantData.TextAlign.BOTTOMRIGHT:
-            textElement.SetPos(this.Frame.width - textSize.width, this.Frame.height + this.TMargins.bottom);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
-            break;
-          default:
-            textElement.SetPos(this.Frame.width / 2 - textSize.width / 2, this.Frame.height + this.TMargins.bottom);
-            textElement.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
-            break;
-        }
-      } else {
-        if (this.TextGrow == ConstantData.TextGrowBehavior.HORIZONTAL) {
-          textElement.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, textRect.width, textRect.height);
-        } else {
-          textElement.SetConstraints(textRect.width, textRect.width, textRect.height);
-        }
-      }
-
-      textElement.SetRenderingEnabled(true);
-      textElement.SetEditCallback(GlobalData.optManager.TextCallback, parentElement);
-    }
-
-    console.log("= S.BaseShape - LM_AddSVGTextObject output");
-  }
-
-  LM_ResizeSVGTextObject(svgDoc, drawingObject, newSize) {
-    console.log("= S.BaseShape - LM_ResizeSVGTextObject input:", { svgDoc, drawingObject, newSize });
-
-    if (drawingObject.DataID !== -1) {
-      const textElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.TEXT);
-      if (textElement) {
-        const textRect = drawingObject.trect;
-        let textSize = null;
-
-        if (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) {
-          textSize = textElement.GetTextMinDimensions();
-          switch (this.TextAlign) {
-            case ConstantData.TextAlign.TOPLEFT:
-            case ConstantData.TextAlign.LEFT:
-            case ConstantData.TextAlign.BOTTOMLEFT:
-              textElement.SetPos(0, -textSize.height - this.TMargins.top);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
-              break;
-            case ConstantData.TextAlign.TOPRIGHT:
-            case ConstantData.TextAlign.RIGHT:
-            case ConstantData.TextAlign.BOTTOMRIGHT:
-              textElement.SetPos(newSize.width - textSize.width, -textSize.height - this.TMargins.top);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
-              break;
-            default:
-              textElement.SetPos(newSize.width / 2 - textSize.width / 2, -textSize.height - this.TMargins.top);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
-              break;
-          }
-          textElement.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
-        } else if (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) {
-          textSize = textElement.GetTextMinDimensions();
-          switch (this.TextAlign) {
-            case ConstantData.TextAlign.TOPLEFT:
-            case ConstantData.TextAlign.LEFT:
-            case ConstantData.TextAlign.BOTTOMLEFT:
-              textElement.SetPos(0, newSize.height + this.TMargins.bottom);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.LEFT);
-              break;
-            case ConstantData.TextAlign.TOPRIGHT:
-            case ConstantData.TextAlign.RIGHT:
-            case ConstantData.TextAlign.BOTTOMRIGHT:
-              textElement.SetPos(newSize.width - textSize.width, newSize.height + this.TMargins.bottom);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.RIGHT);
-              break;
-            default:
-              textElement.SetPos(newSize.width / 2 - textSize.width / 2, newSize.height + this.TMargins.bottom);
-              textElement.SetParagraphAlignment(ConstantData.TextAlign.CENTER);
-              break;
-          }
-          textElement.SetConstraints(GlobalData.optManager.theContentHeader.MaxWorkDim.x, 0, 0);
-        } else {
-          textElement.SetPos(textRect.x - newSize.x, textRect.y - newSize.y);
-          let widthConstraint = textRect.width;
-          if (this.TextGrow === ConstantData.TextGrowBehavior.HORIZONTAL) {
-            widthConstraint = GlobalData.optManager.theContentHeader.MaxWorkDim.x;
-          }
-          textElement.SetConstraints(widthConstraint, textRect.width, textRect.height);
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - LM_ResizeSVGTextObject output");
-  }
-
-  WriteSDFAttributes(buffer: any, options: any) {
-    console.log("= S.BaseShape - WriteSDFAttributes input:", { buffer, options });
-
-    let dataID = this.DataID;
-    const table = this.GetTable(false);
-    const graph = this.GetGraph(false);
-    const ganttInfo = this.GetGanttInfo(false);
-    let emfHashWritten = false;
-
-    if (
-      (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB || this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) &&
-      (options.WriteBlocks || options.WriteVisio || (dataID = -1))
-    ) {
-      SDF.WriteTextParams(buffer, this, dataID, options);
-    }
-
-    if (table) {
-      const isGroupBlock = options.WriteGroupBlock && this.objecttype === ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER;
-      if (!options.noTables && !options.WriteBlocks && !(options.WriteGroupBlock && !isGroupBlock)) {
-        SDF.WriteTable(buffer, table, options);
-        if (ganttInfo) {
-          SDF.WriteGanttInfo(buffer, ganttInfo, options);
-        }
-      } else if (options.WriteBlocks || options.WriteGroupBlock) {
-        SDF.WriteTableID(buffer, this.TableID, options);
-        if (ganttInfo) {
-          SDF.WriteGanttInfoID(buffer, this.GanttInfoID, options);
-        }
-      }
-    } else if (graph) {
-      if (!options.noTables && !options.WriteBlocks && !options.WriteGroupBlock) {
-        SDF.WriteGraph(buffer, graph, options);
-      } else if (options.WriteBlocks || options.WriteGroupBlock) {
-        SDF.WriteGraphID(buffer, this.GraphID, options);
-      }
-    } else if (dataID >= 0 && !options.WriteBlocks && !options.WriteGroupBlock) {
-      SDF.WriteText(buffer, this, null, null, false, options);
-    }
-
-    if (this instanceof Instance.Shape.SVGFragmentSymbol && this.EMFHash) {
-      SDF.WriteString8(buffer, this.EMFHash, FileParser.SDROpCodesByName.SDF_C_EMFHASH, options);
-      emfHashWritten = true;
-    }
-
-    const emfBlobBytes = this.GetEMFBlobBytes();
-    if (emfBlobBytes && !options.noTables) {
-      SDF.WriteImageHeader(buffer, this, options);
-      if (this.EMFHash && !emfHashWritten) {
-        SDF.WriteString8(buffer, this.EMFHash, FileParser.SDROpCodesByName.SDF_C_EMFHASH, options);
-      }
-      if (options.WriteBlocks || options.WriteGroupBlock) {
-        SDF.WriteEMFBlobBytesID(buffer, this.EMFBlobBytesID, FileParser.Image_Dir.dir_meta, options);
-      } else {
-        SDF.WriteBlob(buffer, emfBlobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_DRAWMETA);
-      }
-      const blobBytes = this.GetBlobBytes();
-      if (blobBytes) {
-        if (options.WriteBlocks || options.WriteGroupBlock) {
-          SDF.WriteBlobBytesID(buffer, this.BlobBytesID, FileParser.Image_Dir.dir_png, options);
-        } else {
-          SDF.WriteBlob(buffer, blobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_DRAWPREVIEWPNG);
-        }
-      }
-    } else {
-      const blobBytes = this.GetBlobBytes();
-      if (blobBytes && !options.noTables) {
-        SDF.WriteImageHeader(buffer, this, options);
-        switch (blobBytes.ImageDir) {
-          case FileParser.Image_Dir.dir_jpg:
-            if (options.WriteBlocks || options.WriteGroupBlock) {
-              SDF.WriteBlobBytesID(buffer, this.BlobBytesID, FileParser.Image_Dir.dir_jpg, options);
-            } else {
-              SDF.WriteBlob(buffer, blobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_DRAWJPG);
-            }
-            break;
-          case FileParser.Image_Dir.dir_png:
-            if (options.WriteBlocks || options.WriteGroupBlock) {
-              SDF.WriteBlobBytesID(buffer, this.BlobBytesID, FileParser.Image_Dir.dir_png, options);
-            } else {
-              SDF.WriteBlob(buffer, blobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_DRAWPNG);
-            }
-            break;
-          case FileParser.Image_Dir.dir_svg:
-            if (options.WriteBlocks) {
-              SDF.WriteBlobBytesID(buffer, this.BlobBytesID, FileParser.Image_Dir.dir_svg, options);
-            } else {
-              SDF.WriteBlob(buffer, blobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_DRAWSVG);
-            }
-            break;
-        }
-      } else if (this.ImageID && this.ImageID.length > 0 && !options.noTables && this.ImageDir === FileParser.Image_Dir.dir_svg) {
-        SDF.WriteString(buffer, this.ImageID, FileParser.SDROpCodesByName.SDF_C_SVGIMAGEID, options);
-        emfHashWritten = true;
-      }
-    }
-
-    if (this.EMFHash && !emfHashWritten) {
-      SDF.WriteString8(buffer, this.EMFHash, FileParser.SDROpCodesByName.SDF_C_EMFHASH, options);
-    }
-
-    if (this.OleHeader) {
-      SDF.WriteOleHeader(buffer, this.OleHeader, options);
-    }
-
-    if (this.OleBlobBytesID >= 0) {
-      const oleBlobBytes = this.GetOleBlobBytes();
-      if (options.WriteBlocks) {
-        SDF.WriteOleBlobBytesID(buffer, this.OleBlobBytesID, FileParser.Image_Dir.dir_store, options);
-      } else {
-        SDF.WriteBlob(buffer, oleBlobBytes.Bytes, FileParser.SDROpCodesByName.SDF_C_OLESTORAGE);
-      }
-    }
-
-    if (this.NativeID >= 0) {
-      if (options.WriteBlocks) {
-        SDF.WriteNativeID(buffer, this.NativeID, options);
-      } else {
-        const nativeObject = GlobalData.optManager.GetObjectPtr(this.NativeID, false);
-        if (nativeObject) {
-          const nativeCode = SDF.Write_CODE(buffer, FileParser.SDROpCodesByName.SDF_C_NATIVESTORAGE);
-          FileParser.write_nativesdfbuffer(buffer, nativeObject);
-          SDF.Write_LENGTH(buffer, nativeCode);
-        }
-      }
-    }
-
-    if (this.ExpandedViewID >= 0) {
-      const expandedViewObject = GlobalData.optManager.GetObjectPtr(this.ExpandedViewID, false);
-      if (!options.WriteBlocks && !options.WriteGroupBlock) {
-        SDF.WriteExpandedView(buffer, expandedViewObject, options);
-      } else if (options.WriteBlocks || options.WriteGroupBlock) {
-        SDF.WriteExpandedViewID(buffer, this.ExpandedViewID, options);
-      }
-    }
-
-    if (this.ContainerList) {
-      SDF.WriteContainerList(buffer, this.ContainerList, options);
-    }
-
-    console.log("= S.BaseShape - WriteSDFAttributes output");
-  }
-
-  GetIconShape() {
-    console.log("= S.BaseShape - GetIconShape input");
-
-    const table = this.GetTable(false);
-    if (table) {
-      const lastCell = table.cells[table.cells.length - 1];
-      if (lastCell.childcontainer >= 0) {
-        console.log("= S.BaseShape - GetIconShape output:", lastCell.childcontainer);
-        return lastCell.childcontainer;
-      }
-    }
-
-    console.log("= S.BaseShape - GetIconShape output:", this.BlockID);
-    return this.BlockID;
-  }
-
-  PostCreateShapeCallback(svgDoc, parentElement, shapeType, options) {
-    console.log('= S.BaseShape - PostCreateShapeCallback input:', { svgDoc, parentElement, shapeType, options });
-
-    this.UpdateDimensionLines(parentElement);
-
-    if (this.HasIcons()) {
-      const table = this.GetTable(false);
-      if (table && table.cells[table.cells.length - 1].childcontainer >= 0) {
-        console.log('= S.BaseShape - PostCreateShapeCallback output: child container found in table');
-        return;
-      }
-    } else if (this instanceof Instance.Shape.ShapeContainer) {
-      const containerInfo = GlobalData.optManager.ContainerIsInCell(this);
-      if (containerInfo && containerInfo.cellindex === containerInfo.theTable.cells.length - 1) {
-        containerInfo.obj.AddIcons(svgDoc, parentElement);
-        console.log('= S.BaseShape - PostCreateShapeCallback output: added icons to container');
-        return;
-      }
-    }
-
-    this.AddIcons(svgDoc, parentElement);
-    console.log('= S.BaseShape - PostCreateShapeCallback output: added icons');
-  }
-
-  GetDimensionPoints() {
-    console.log("= S.BaseShape - GetDimensionPoints input");
-
-    const points = [];
-    points.push(new Point(this.Frame.x, this.Frame.y));
-
-    if (this.Frame.width > 0) {
-      points.push(new Point(this.Frame.x + this.Frame.width, this.Frame.y));
-    }
-
-    if (this.Frame.height > 0) {
-      points.push(new Point(this.Frame.x + this.Frame.width, this.Frame.y + this.Frame.height));
-    }
-
-    const rotationAngle = 360 - this.RotationAngle;
-    const radians = Math.PI;
-
-    for (let i = 0; i < points.length; i++) {
-      points[i].x -= this.Frame.x;
-      points[i].y -= this.Frame.y;
-    }
-
-    console.log("= S.BaseShape - GetDimensionPoints output:", points);
-    return points;
-  }
-
-  GetDimensionLineDeflection(event, targetX, targetY, knobData) {
-    console.log("= S.BaseShape - GetDimensionLineDeflection input:", { event, targetX, targetY, knobData });
-
-    let i, n, o = 0;
-    const points = [];
-    const adjustedPoint = new Point(0, 0);
-    const dimensionPoints = this.GetDimensionPoints();
-
-    for (i = dimensionPoints.length, o = 0; o < i; o++) {
-      dimensionPoints[o].x += this.inside.x;
-      dimensionPoints[o].y += this.inside.y;
-    }
-
-    adjustedPoint.x = knobData.knobPoint.x + this.Frame.x - knobData.adjustForKnob;
-    adjustedPoint.y = knobData.knobPoint.y + this.Frame.y - knobData.adjustForKnob;
-
-    points.push(dimensionPoints[knobData.segmentIndex - 1]);
-    points.push(dimensionPoints[knobData.segmentIndex]);
-    points.push(new Point(adjustedPoint.x, adjustedPoint.y));
-    points.push(new Point(targetX, targetY));
-
-    Utils3.RotatePointsAboutCenter(this.Frame, -knobData.ccAngleRadians, points);
-    Utils3.RotatePointsAboutCenter(this.Frame, Math.PI, points);
-
-    n = points[3].y - points[2].y;
-    const result = knobData.originalDeflection + n;
-
-    console.log("= S.BaseShape - GetDimensionLineDeflection output:", result);
-    return result;
-  }
-
-  DimensionLineDeflectionAdjust(svgDoc, targetX, targetY, knobData, segmentIndex) {
-    console.log("= S.BaseShape - DimensionLineDeflectionAdjust input:", { svgDoc, targetX, targetY, knobData, segmentIndex });
-
-    const deflection = this.GetDimensionLineDeflection(svgDoc, targetX, targetY, knobData);
-    if (segmentIndex === 1) {
-      this.dimensionDeflectionH = deflection;
-    } else {
-      this.dimensionDeflectionV = deflection;
-    }
-
-    this.UpdateDimensionLines(svgDoc);
-
-    if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) {
-      this.HideOrShowSelectOnlyDimensions(true);
-    }
-
-    console.log("= S.BaseShape - DimensionLineDeflectionAdjust output");
-  }
-
-  MaintainProportions(newWidth: number | null, newHeight: number | null): number | null {
-    console.log("= S.BaseShape - MaintainProportions input:", { newWidth, newHeight });
-
-    let currentWidth = this.Frame.width;
-    let currentHeight = this.Frame.height;
-    let result: number | null = null;
-
-    if (this.ResizeAspectConstrain) {
-      if (newWidth !== null && currentWidth > 0) {
-        result = newWidth * (currentHeight / currentWidth);
-      } else if (newHeight !== null && currentHeight > 0) {
-        result = newHeight * (currentWidth / currentHeight);
-      }
-    }
-
-    console.log("= S.BaseShape - MaintainProportions output:", result);
-    return result;
-  }
-
-  UpdateDimensionFromTextObj(textObj, userData) {
-    console.log("= S.BaseShape - UpdateDimensionFromTextObj input:", { textObj, userData });
-
-    GlobalData.objectStore.PreserveBlock(this.BlockID);
-    let dimensionValue, dimensionLength, newWidth, newHeight;
-    const segment = userData ? userData.segment : textObj.GetUserData().segment;
-    const text = userData ? userData.text : textObj.GetText();
-
-    dimensionValue = this.GetDimensionValueFromString(text, segment);
-    if (dimensionValue >= 0) {
-      dimensionLength = this.GetDimensionLengthFromValue(dimensionValue);
-    }
-
-    if (dimensionLength < 0) {
-      GlobalData.optManager.AddToDirtyList(this.BlockID);
-      GlobalData.optManager.RenderDirtySVGObjects();
-      console.log("= S.BaseShape - UpdateDimensionFromTextObj output: invalid dimension length");
-      return;
-    }
-
-    if (segment === 1) {
-      newHeight = this.MaintainProportions(dimensionLength, null);
-      this.SetSize(dimensionLength, newHeight, ConstantData.ActionTriggerType.LINELENGTH);
-      if (this.GetDimensionsForDisplay().width === dimensionLength) {
-        this.rwd = dimensionValue;
-        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, true);
-      }
-    } else {
-      newWidth = this.MaintainProportions(null, dimensionLength);
-      this.SetSize(newWidth, dimensionLength, ConstantData.ActionTriggerType.LINELENGTH);
-      if (this.GetDimensionsForDisplay().height === dimensionLength) {
-        this.rht = dimensionValue;
-        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, true);
-      }
-    }
-
-    GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-    for (let i = 0; i < this.hooks.length; i++) {
-      GlobalData.optManager.SetLinkFlag(this.hooks[i].objid, ConstantData.LinkFlags.SED_L_MOVE);
-    }
-
-    GlobalData.optManager.AddToDirtyList(this.BlockID);
-    if (this.Frame.x < 0 || this.Frame.y < 0) {
-      GlobalData.optManager.ScrollObjectIntoView(this.BlockID, false);
-    }
-    GlobalData.optManager.CompleteOperation(null);
-
-    console.log("= S.BaseShape - UpdateDimensionFromTextObj output");
-  }
-
-  DimensionEditCallback(eventType, event, textObj, shape) {
-    console.log("= S.BaseShape - DimensionEditCallback input:", { eventType, event, textObj, shape });
-
-    switch (eventType) {
-      case 'edit':
-        break;
-      case 'keyend':
-        if (event.keyCode == Resources.Keys.Tab || event.keyCode == Resources.Keys.Enter) {
-          GlobalData.optManager.CloseEdit();
-          console.log("= S.BaseShape - DimensionEditCallback output: true");
-          return true;
-        }
-        break;
-      case 'charfilter':
-        if (GlobalData.docHandler.rulerSettings.useInches && GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Feet) {
-          if (event.search(/(\d|\.|'|"| )/) === -1) {
-            console.log("= S.BaseShape - DimensionEditCallback output: false");
-            return false;
-          }
-        } else if (event.search(/(\d|\.)/) === -1) {
-          console.log("= S.BaseShape - DimensionEditCallback output: false");
-          return false;
-        }
-        break;
-      case 'activate':
-        let rotation = textObj.svgObj.SDGObj.svgObj.trans.rotation;
-        rotation += shape.RotationAngle;
-        if (rotation >= 360) rotation -= 360;
-        if (rotation !== 0) {
-          const dimensionPoints = shape.GetDimensionPoints();
-          const rotatedPoints = [];
-          const angle = Utils1.CalcAngleFromPoints(dimensionPoints[textObj.userData.segment - 1], dimensionPoints[textObj.userData.segment]);
-          shape.GetDimensionTextInfo(
-            dimensionPoints[textObj.userData.segment - 1],
-            dimensionPoints[textObj.userData.segment],
-            angle,
-            textObj,
-            textObj.userData.segment,
-            rotatedPoints,
-            [],
-            []
-          );
-          const rotationAngle = 360 - shape.RotationAngle;
-          const radians = 2 * Math.PI * (rotationAngle / 360);
-          Utils3.RotatePointsAboutCenter(shape.Frame, radians, rotatedPoints);
-          const boundingRect = {};
-          Utils2.GetPolyRect(boundingRect, rotatedPoints);
-          const position = {};
-          const adjustedPoints = [];
-          position.x = boundingRect.x + boundingRect.width / 2 - textObj.lastFmtSize.width / 2;
-          position.y = boundingRect.y + boundingRect.height / 2 - textObj.lastFmtSize.height / 2;
-          adjustedPoints.push(new Point(position.x, position.y));
-          Utils3.RotatePointsAboutCenter(shape.Frame, -radians, adjustedPoints);
-          textObj.SetPos(adjustedPoints[0].x, adjustedPoints[0].y);
-          textObj.SetRotation(-shape.RotationAngle, adjustedPoints[0].x, adjustedPoints[0].y);
-        }
-        break;
-      case 'deactivate':
-        GlobalData.optManager.bInDimensionEdit = false;
-        if (Collab.AllowMessage()) {
-          Collab.BeginSecondaryEdit();
-          const userData = Utils1.DeepCopy(textObj.GetUserData());
-          const message = {
-            BlockID: shape.BlockID,
-            text: textObj.GetText(),
-            userData: userData
-          };
-          GlobalData.optManager.GetObjectPtr(shape.BlockID, true);
-          Collab.BuildMessage(
-            ConstantData.CollabMessages.UpdateDimensionFromTextObj,
-            message,
-            false,
-            false
-          );
-          shape = GlobalData.optManager.GetObjectPtr(shape.BlockID, false);
-        }
-        shape.UpdateDimensionFromTextObj(textObj);
-        break;
-    }
-
-    console.log("= S.BaseShape - DimensionEditCallback output");
-  }
-
-  NoFlip() {
-    console.log("= S.BaseShape - NoFlip input");
-
-    let result;
-    if (this.hooks.length) {
-      result = this.hooks[0].hookpt !== ConstantData.HookPts.SED_KAT &&
-        !(this.hooks[0].hookpt > ConstantData.HookPts.SED_AK);
-    } else {
-      result = !!(this.extraflags & ConstantData.ExtraFlags.SEDE_NoRotate);
-    }
-
-    console.log("= S.BaseShape - NoFlip output:", result);
-    return result;
-  }
-
-  Flip(flags: number) {
-    console.log("= S.BaseShape - Flip input:", { flags });
-
-    if (this.SymbolURL === '' && this.ImageURL === '') {
-      if (flags & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
-        const flipHoriz = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipHoriz) === 0;
-        this.extraflags = Utils2.SetFlag(this.extraflags, ConstantData.ExtraFlags.SEDE_FlipHoriz, flipHoriz);
-      }
-
-      if (flags & ConstantData.ExtraFlags.SEDE_FlipVert) {
-        const flipVert = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipVert) === 0;
-        this.extraflags = Utils2.SetFlag(this.extraflags, ConstantData.ExtraFlags.SEDE_FlipVert, flipVert);
-      }
-    }
-
-    console.log("= S.BaseShape - Flip output:", { extraflags: this.extraflags });
-  }
-
-  NoRotate() {
-    console.log("= S.BaseShape - NoRotate input");
-
-    let connectors = GlobalData.optManager.FindAllChildConnectors(this.BlockID);
-    let connector, hookObject;
-
-    if (this.IsSwimlane()) {
-      console.log("= S.BaseShape - NoRotate output: true (IsSwimlane)");
-      return true;
-    }
-
-    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER) {
-      console.log("= S.BaseShape - NoRotate output: true (Table with Shape Container)");
-      return true;
-    }
-
-    if (this.hooks.length) {
-      hookObject = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, false);
-      if (hookObject && hookObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_SHAPECONTAINER) {
-        console.log("= S.BaseShape - NoRotate output: true (Shape Container)");
-        return true;
-      }
-    }
-
-    if (this.extraflags & ConstantData.ExtraFlags.SEDE_NoRotate) {
-      console.log("= S.BaseShape - NoRotate output: true (No Rotate Flag)");
-      return true;
-    }
-
-    for (let i = 0; i < connectors.length; i++) {
-      connector = GlobalData.optManager.GetObjectPtr(connectors[i], false);
-      if (!connector._IsFlowChartConnector() && connector.arraylist.hook.length - ConstantData.ConnectorDefines.SEDA_NSkip > 0) {
-        console.log("= S.BaseShape - NoRotate output: true (Connector with hooks)");
-        return true;
-      }
-    }
-
-    console.log("= S.BaseShape - NoRotate output: false");
-    return false;
-  }
-
-  MaintainPoint(point, target, angle, rotation, index) {
-    console.log("= S.BaseShape - MaintainPoint input:", { point, target, angle, rotation, index });
-
-    // Currently, this method always returns false.
-    const result = false;
-
-    console.log("= S.BaseShape - MaintainPoint output:", result);
-    return result;
-  }
-
-  AddIcon(svgDoc, parentElement, iconPosition) {
-    console.log("= S.BaseShape - AddIcon input:", { svgDoc, parentElement, iconPosition });
-
-    if (parentElement) {
-      const parentID = parentElement.GetID();
-      let frame = this.Frame;
-
-      if (parentID !== this.BlockID) {
-        const parentObject = GlobalData.optManager.GetObjectPtr(parentID, false);
-        if (parentObject) {
-          frame = parentObject.Frame;
-        }
-      }
-
-      iconPosition.x = frame.width - this.iconShapeRightOffset - this.iconSize - this.nIcons * this.iconSize;
-      iconPosition.y = frame.height - this.iconShapeBottomOffset - this.iconSize;
-
-      const iconElement = this.GenericIcon(iconPosition);
-      this.nIcons++;
-      parentElement.AddElement(iconElement);
-
-      console.log("= S.BaseShape - AddIcon output:", iconElement);
-      return iconElement;
-    }
-
-    console.log("= S.BaseShape - AddIcon output: null");
-    return null;
-  }
-
-  GetActionButtons() {
-    console.log('= S.BaseShape - GetActionButtons input');
-
-    let up = false;
-    let down = false;
-    let left = false;
-    let right = false;
-    let custom = false;
-
-    const sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
-    if (sessionBlock.moreflags & ConstantData.SessionMoreFlags.SEDSM_NoActionButton) {
-      console.log('= S.BaseShape - GetActionButtons output: null (NoActionButton flag)');
-      return null;
-    }
-
-    if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
-      console.log('= S.BaseShape - GetActionButtons output: null (Lock flag)');
-      return null;
-    }
-
-    const tedSessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theTEDSessionBlockID, false);
-    if (
-      this.BlockID === tedSessionBlock.theActiveTextEditObjectID ||
-      this.BlockID === tedSessionBlock.theActiveTableObjectID ||
-      this.BlockID === tedSessionBlock.theActiveOutlineObjectID
-    ) {
-      console.log('= S.BaseShape - GetActionButtons output: null (Active session block)');
-      return null;
-    }
-
-    const layersManagerBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLayersManagerBlockID, false);
-    if (layersManagerBlock && layersManagerBlock.layers[layersManagerBlock.activelayer].flags & ConstantData.LayerFlags.SDLF_UseEdges) {
-      console.log('= S.BaseShape - GetActionButtons output: null (UseEdges flag)');
-      return null;
-    }
-
-    let businessManager = Business.GetSelectionBusinessManager(this.BlockID);
-    if (businessManager === null) {
-      businessManager = GlobalData.gBusinessManager;
-    }
-
-    if (businessManager && !Business.ShapeCannotHaveActionButtons(this)) {
-      const allowActionButtons = businessManager.AllowActionButtons(this);
-      if (allowActionButtons) {
-        up = allowActionButtons.up;
-        down = allowActionButtons.down;
-        left = allowActionButtons.left;
-        right = allowActionButtons.right;
-        custom = allowActionButtons.custom || allowActionButtons.table;
-      }
-    }
-
-    const result = up || down || left || right || custom ? { left, right, up, down, custom } : null;
-    console.log('= S.BaseShape - GetActionButtons output:', result);
-    return result;
-  }
-
-  SetRolloverActions(svgDoc, svgElement, event) {
-    console.log('= S.BaseShape - SetRolloverActions input:', { svgDoc, svgElement, event });
-
-    const shape = GlobalData.optManager.GetObjectPtr(this.BlockID, false);
-    if (shape && shape instanceof BaseDrawingObject) {
-      const objectTypes = ConstantData.ObjectTypes;
-      switch (this.objecttype) {
-        case objectTypes.SD_OBJT_SWIMLANE_ROWS:
-        case objectTypes.SD_OBJT_SWIMLANE_COLS:
-        case objectTypes.SD_OBJT_SWIMLANE_GRID:
-        case objectTypes.SD_OBJT_FRAME_CONTAINER:
-          if (event) {
-            const targetElement = GlobalData.optManager.svgObjectLayer.FindElementByDOMElement(event.currentTarget).GetTargetForEvent(event);
-            if (targetElement.GetID() === ConstantData.SVGElementClass.SLOP) {
-              super.SetRolloverActions(svgDoc, targetElement);
-            }
-          }
-          this.SetCursors();
-          console.log('= S.BaseShape - SetRolloverActions output');
-          return;
-        case objectTypes.SD_OBJT_SHAPECONTAINER:
-          const containerInfo = GlobalData.optManager.ContainerIsInCell(this);
-          if (containerInfo) {
-            const containerElement = GlobalData.optManager.svgObjectLayer.GetElementByID(containerInfo.obj.BlockID);
-            containerInfo.obj.SetRolloverActions(svgDoc, containerElement);
-            console.log('= S.BaseShape - SetRolloverActions output');
-            return;
-          }
-      }
-
-      if (GlobalData.optManager.curHiliteShape !== -1 && GlobalData.optManager.curHiliteShape !== this.BlockID) {
-        const previousShape = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.curHiliteShape, false);
-        if (previousShape) {
-          previousShape.SetRuntimeEffects(false);
-          previousShape.ClearCursors();
-        }
-      }
-
-      const actionArrowID = 'actionArrow' + this.BlockID;
-      if (this.actionArrowHideTimerID >= 0) {
-        GlobalData.optManager.ClearActionArrowTimer(this.BlockID);
-      }
-      GlobalData.optManager.RemoveActionArrows(this.BlockID, true);
-
-      const actionButtons = this.GetActionButtons();
-      if (actionButtons) {
-        const noActionButtons = !(actionButtons.up || actionButtons.left || actionButtons.down || actionButtons.right || actionButtons.custom);
-        if (this.flags & ConstantData.ObjFlags.SEDO_TextOnly || noActionButtons) {
-          super.SetRolloverActions(svgDoc, svgElement);
-        } else {
-          const shapeID = this.BlockID;
-          const shapeInstance = this;
-          if (GlobalData.optManager.isMobilePlatform) {
-            this.SetRuntimeEffects(false);
-          } else {
-            this.SetRuntimeEffects(true);
-          }
-          this.SetCursors();
-          GlobalData.optManager.curHiliteShape = this.BlockID;
-
-          const actionElements = [];
-          let docToScreenScale = svgDoc.docInfo.docToScreenScale;
-          if (svgDoc.docInfo.docScale <= 0.5) {
-            docToScreenScale *= 2;
-          }
-
-          const baseArrowSlop = ConstantData.Defines.baseArrowSlop / docToScreenScale;
-          const connectorArrowSlop = ConstantData.Defines.connectorArrowSlop / docToScreenScale;
-          let offsetX = 0;
-          let offsetY = 0;
-
-          if (GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSelectedListBlockID, false).indexOf(shapeID) !== -1) {
-            offsetX = ConstantData.Defines.SED_KnobSize / 2;
-          }
-
-          let leftSlop = baseArrowSlop;
-          let rightSlop = baseArrowSlop;
-          let topSlop = baseArrowSlop;
-          let bottomSlop = baseArrowSlop;
-
-          let childArrayInfo = { lindex: -1, id: -1, hookpt: 0 };
-          while (GlobalData.optManager.FindChildArrayByIndex(this.BlockID, childArrayInfo) > 0) {
-            const childShape = GlobalData.optManager.GetObjectPtr(childArrayInfo.id, false);
-            const isCoManager = (childShape.arraylist.styleflags & ConstantData.SEDA_Styles.SEDA_CoManager) > 0;
-            const isAssistant = childShape._IsChildOfAssistant();
-            const isFlowChartConnector = childShape._IsFlowChartConnector();
-            let hookCount = childShape.arraylist.hook.length - ConstantData.ConnectorDefines.SEDA_NSkip;
-            if (hookCount < 0) hookCount = 0;
-
-            if (hookCount !== 0 && !isFlowChartConnector && !isCoManager && !isAssistant && childArrayInfo.hookpt) {
-              switch (childArrayInfo.hookpt) {
-                case ConstantData.HookPts.SED_LL:
-                  rightSlop = connectorArrowSlop;
-                  offsetX += connectorArrowSlop - baseArrowSlop;
-                  break;
-                case ConstantData.HookPts.SED_LR:
-                  leftSlop = connectorArrowSlop;
-                  offsetX -= connectorArrowSlop - baseArrowSlop;
-                  break;
-                case ConstantData.HookPts.SED_LT:
-                  bottomSlop = connectorArrowSlop;
-                  offsetY += connectorArrowSlop - baseArrowSlop;
-                  break;
-                case ConstantData.HookPts.SED_LB:
-                  topSlop = connectorArrowSlop;
-                  offsetY -= connectorArrowSlop - baseArrowSlop;
-                  break;
-              }
-            }
-          }
-
-          const actionGroup = svgDoc.CreateShape(ConstantData.CreateShapeType.GROUP);
-          actionGroup.SetID(actionArrowID);
-          actionGroup.SetUserData(shapeID);
-
-          const parentShapeID = GlobalData.optManager.SD_GetVisioTextParent(this.BlockID);
-          const parentShape = GlobalData.optManager.GetObjectPtr(parentShapeID, false);
-          const parentFrame = $.extend(true, {}, parentShape.Frame);
-
-          const actionArrowSizeV = ConstantData.Defines.ActionArrowSizeV / docToScreenScale;
-          const actionArrowSizeH = ConstantData.Defines.ActionArrowSizeH / docToScreenScale;
-
-          parentFrame.x -= actionArrowSizeV + leftSlop + offsetX;
-          parentFrame.y -= actionArrowSizeV + topSlop + offsetX;
-          parentFrame.width += 2 * actionArrowSizeV + (leftSlop + rightSlop) + 2 * offsetX;
-          parentFrame.height += 2 * actionArrowSizeV + (topSlop + bottomSlop) + 2 * offsetX;
-
-          const centerX = parentFrame.width / 2 - offsetX / 2;
-          const centerY = parentFrame.height / 2 - offsetY / 2;
-
-          if (actionButtons.custom) {
-            const customButtons = gBusinessController.CreateCustomActionButtons(svgDoc, this, 0, this.BlockID);
-            if (customButtons) {
-              for (let i = 0; i < customButtons.length; i++) {
-                const customButton = customButtons[i];
-                customButton.SetID(ConstantData.ActionArrow.CUSTOM + i);
-                customButton.SetUserData(shapeID);
-                actionGroup.AddElement(customButton);
-                actionElements.push(customButton.DOMElement());
-              }
-            }
-          }
-
-          if (actionButtons.left) {
-            let leftButton = gBusinessController.CreateActionButton(svgDoc, leftSlop, centerY, this.BlockID);
-            if (!leftButton) {
-              const pathCreator = (leftButton = svgDoc.CreateShape(ConstantData.CreateShapeType.PATH)).PathCreator();
-              pathCreator.BeginPath();
-              pathCreator.MoveTo(0, centerY);
-              pathCreator.LineTo(actionArrowSizeV, centerY - actionArrowSizeH / 2);
-              pathCreator.LineTo(actionArrowSizeV, centerY + actionArrowSizeH / 2);
-              pathCreator.LineTo(0, centerY);
-              pathCreator.ClosePath();
-              pathCreator.Apply();
-              leftButton.SetFillColor('#FF0000');
-              leftButton.SetStrokeWidth(0);
-              leftButton.SetCursor(Element.CursorType.ADD_LEFT);
-            }
-            leftButton.SetID(ConstantData.ActionArrow.LEFT);
-            leftButton.SetUserData(shapeID);
-            actionGroup.AddElement(leftButton);
-            actionElements.push(leftButton.DOMElement());
-          }
-
-          if (actionButtons.up) {
-            let upButton = gBusinessController.CreateActionButton(svgDoc, centerX, topSlop, this.BlockID);
-            if (!upButton) {
-              const pathCreator = (upButton = svgDoc.CreateShape(ConstantData.CreateShapeType.PATH)).PathCreator();
-              pathCreator.BeginPath();
-              pathCreator.MoveTo(centerX, 0);
-              pathCreator.LineTo(centerX - actionArrowSizeH / 2, actionArrowSizeV);
-              pathCreator.LineTo(centerX + actionArrowSizeH / 2, actionArrowSizeV);
-              pathCreator.LineTo(centerX, 0);
-              pathCreator.ClosePath();
-              pathCreator.Apply();
-              upButton.SetFillColor('#FFD64A');
-              upButton.SetStrokeWidth(0);
-              upButton.SetCursor(Element.CursorType.ADD_UP);
-            }
-            upButton.SetID(ConstantData.ActionArrow.UP);
-            upButton.SetUserData(shapeID);
-            actionGroup.AddElement(upButton);
-            actionElements.push(upButton.DOMElement());
-          }
-
-          if (actionButtons.right) {
-            let rightButton = gBusinessController.CreateActionButton(svgDoc, parentFrame.width - rightSlop, centerY, this.BlockID);
-            if (!rightButton) {
-              const pathCreator = (rightButton = svgDoc.CreateShape(ConstantData.CreateShapeType.PATH)).PathCreator();
-              pathCreator.BeginPath();
-              pathCreator.MoveTo(parentFrame.width, centerY);
-              pathCreator.LineTo(parentFrame.width - actionArrowSizeV, centerY - actionArrowSizeH / 2);
-              pathCreator.LineTo(parentFrame.width - actionArrowSizeV, centerY + actionArrowSizeH / 2);
-              pathCreator.LineTo(parentFrame.width, centerY);
-              pathCreator.ClosePath();
-              pathCreator.Apply();
-              rightButton.SetFillColor('#FFD64A');
-              rightButton.SetStrokeWidth(0);
-              rightButton.SetCursor(Element.CursorType.ADD_RIGHT);
-            }
-            rightButton.SetID(ConstantData.ActionArrow.RIGHT);
-            rightButton.SetUserData(shapeID);
-            actionGroup.AddElement(rightButton);
-            actionElements.push(rightButton.DOMElement());
-          }
-
-          if (actionButtons.down) {
-            let downButton = gBusinessController.CreateActionButton(svgDoc, centerX, parentFrame.height - bottomSlop, this.BlockID);
-            if (!downButton) {
-              const pathCreator = (downButton = svgDoc.CreateShape(ConstantData.CreateShapeType.PATH)).PathCreator();
-              pathCreator.BeginPath();
-              pathCreator.MoveTo(centerX, parentFrame.height);
-              pathCreator.LineTo(centerX - actionArrowSizeH / 2, parentFrame.height - actionArrowSizeV);
-              pathCreator.LineTo(centerX + actionArrowSizeH / 2, parentFrame.height - actionArrowSizeV);
-              pathCreator.LineTo(centerX, parentFrame.height);
-              pathCreator.ClosePath();
-              pathCreator.Apply();
-              downButton.SetFillColor('#FFD64A');
-              downButton.SetStrokeWidth(0);
-              downButton.SetCursor(Element.CursorType.ADD_DOWN);
-            }
-            downButton.SetID(ConstantData.ActionArrow.DOWN);
-            downButton.SetUserData(shapeID);
-            actionGroup.AddElement(downButton);
-            actionElements.push(downButton.DOMElement());
-          }
-
-          actionGroup.SetSize(parentFrame.width, parentFrame.height);
-          actionGroup.SetPos(parentFrame.x, parentFrame.y);
-          if (gBusinessController.RotateActionButtons()) {
-            actionGroup.SetRotation(this.RotationAngle);
-          }
-          GlobalData.optManager.svgOverlayLayer.AddElement(actionGroup);
-
-          const handleClick = (event) => {
-            Utils2.StopPropagationAndDefaults(event);
-            const overlayElement = GlobalData.optManager.svgOverlayLayer.FindElementByDOMElement(event.currentTarget);
-            if (overlayElement) {
-              const targetElement = overlayElement.GetTargetForEvent(event);
-              if (targetElement) {
-                const targetID = targetElement.GetID();
-                const shapeID = overlayElement.GetUserData();
-                const shape = GlobalData.optManager.GetObjectPtr(shapeID, false);
-                if (shape && shape instanceof BaseDrawingObject && targetID !== null && shapeID !== null) {
-                  gBusinessController.ActionClick(event, shapeID, targetID, null);
-                }
-              }
-            }
-          };
-
-          const handleDragStart = (event) => {
-            if (GlobalData.optManager.IsWheelClick(event) || ConstantData.DocumentContext.SpacebarDown) {
-              Evt_WorkAreaHammerDragStart(event);
-              Utils2.StopPropagationAndDefaults(event);
-              return false;
-            }
-
-            if (ConstantData.DocumentContext.HTMLFocusControl && ConstantData.DocumentContext.HTMLFocusControl.blur) {
-              ConstantData.DocumentContext.HTMLFocusControl.blur();
-            }
-            SDUI.Commands.MainController.Dropdowns.HideAllDropdowns();
-
-            const overlayElement = GlobalData.optManager.svgOverlayLayer.FindElementByDOMElement(event.currentTarget);
-            if (overlayElement) {
-              const targetElement = overlayElement.GetTargetForEvent(event);
-              if (targetElement) {
-                const targetID = targetElement.GetID();
-                const shapeID = overlayElement.GetUserData();
-                const shape = GlobalData.optManager.GetObjectPtr(shapeID, false);
-                if (shape && shape instanceof BaseDrawingObject) {
-                  if (!gBusinessController.StopActionEventPropagation(shapeID)) {
-                    Utils2.StopPropagationAndDefaults(event);
-                    GlobalData.optManager.SelectObjects([shapeID], false, false);
-                  }
-
-                  switch (targetID) {
-                    case ConstantData.ActionArrow.UP:
-                      gBusinessController.AddAbove(event, shapeID);
-                      break;
-                    case ConstantData.ActionArrow.LEFT:
-                      gBusinessController.AddLeft(event, shapeID);
-                      break;
-                    case ConstantData.ActionArrow.DOWN:
-                      gBusinessController.AddBelow(event, shapeID);
-                      break;
-                    case ConstantData.ActionArrow.RIGHT:
-                      gBusinessController.AddRight(event, shapeID);
-                      break;
-                    default:
-                      if (targetID >= ConstantData.ActionArrow.CUSTOM) {
-                        gBusinessController.AddCustom(event, shapeID, targetID - ConstantData.ActionArrow.CUSTOM);
-                      }
-                  }
-
-                  if (GlobalData.optManager.isMobilePlatform) {
-                    GlobalData.optManager.svgOverlayLayer.AddElement(actionGroup);
-                    setTimeout(() => {
-                      GlobalData.optManager.RemoveActionArrows(shapeID);
-                      const zList = GlobalData.optManager.ZList();
-                      if (zList.length) {
-                        GlobalData.optManager.SelectObjects([zList[zList.length - 1]], false, false);
-                        const lastShape = GlobalData.optManager.GetObjectPtr(zList[zList.length - 1], false);
-                        const lastShapeElement = GlobalData.optManager.svgObjectLayer.GetElementByID(lastShape.BlockID);
-                        lastShape.SetRolloverActions(GlobalData.optManager.svgDoc, lastShapeElement);
-                      }
-                    }, 0);
-                  }
-                  return false;
-                }
-              }
-            }
-          };
-
-          const handleMouseOut = () => {
-            GlobalData.optManager.SetActionArrowTimer(shapeID);
-            shapeInstance.SetRuntimeEffects(false);
-            shapeInstance.ClearCursors();
-            GlobalData.optManager.curHiliteShape = -1;
-          };
-
-          const handleMouseOver = () => {
-            GlobalData.optManager.ClearActionArrowTimer(shapeID);
-          };
-
-          for (let i = 0; i < actionElements.length; ++i) {
-            const actionElement = actionElements[i];
-            const hammerInstance = Hammer(actionElement);
-            hammerInstance.on('dragstart', handleDragStart);
-            hammerInstance.on('click', handleClick);
-            actionElement.onmouseout = handleMouseOut;
-            actionElement.onmouseover = handleMouseOver;
-          }
-
-          svgElement.mouseout(handleMouseOut);
-        }
-      } else {
-        super.SetRolloverActions(svgDoc, svgElement);
-      }
-    }
-
-    console.log('= S.BaseShape - SetRolloverActions output');
-  }
-
-  UseEdges(
-    isLeftEdge: boolean,
-    isTopEdge: boolean,
-    isRightEdge: boolean,
-    isBottomEdge: boolean,
-    initialPoint: { x: number; y: number },
-    newPoint: { x: number; y: number }
-  ): boolean {
-    console.log("= S.BaseShape - UseEdges input:", {
-      isLeftEdge,
-      isTopEdge,
-      isRightEdge,
-      isBottomEdge,
-      initialPoint,
-      newPoint
-    });
-
-    let offsetX = 0;
-    let offsetY = 0;
-    let newWidth = 0;
-    let newHeight = 0;
-    let shapeMoved = false;
-
-    if (initialPoint.x !== newPoint.x) {
-      if (isLeftEdge && isRightEdge) {
-        offsetX = (newPoint.x - initialPoint.x) / 2;
-        shapeMoved = true;
-      } else {
-        const centerX = this.Frame.x + this.Frame.width / 2;
-        if (Math.abs(centerX - initialPoint.x / 2) < 100) {
-          offsetX = (newPoint.x - initialPoint.x) / 2;
-          shapeMoved = true;
-        } else if (this.Frame.x > initialPoint.x / 2) {
-          offsetX = newPoint.x - initialPoint.x;
-          shapeMoved = true;
-        }
-      }
-    }
-
-    if (initialPoint.y !== newPoint.y) {
-      if (isTopEdge && isBottomEdge) {
-        offsetY = (newPoint.y - initialPoint.y) / 2;
-        shapeMoved = true;
-      } else {
-        const centerY = this.Frame.y + this.Frame.height / 2;
-        if (Math.abs(centerY - initialPoint.y / 2) < 100) {
-          offsetY = (newPoint.y - initialPoint.y) / 2;
-          shapeMoved = true;
-        } else if (this.Frame.y > initialPoint.y / 2) {
-          offsetY = newPoint.y - initialPoint.y;
-          shapeMoved = true;
-        }
-      }
-    }
-
-    if (shapeMoved) {
-      GlobalData.optManager.GetObjectPtr(this.BlockID, true);
-      if (offsetX || offsetY) {
-        this.OffsetShape(offsetX, offsetY);
-      }
-
-      const previousBottom = this.Frame.y + this.Frame.height;
-
-      if (initialPoint.x !== newPoint.x || initialPoint.y !== newPoint.y) {
-        if (initialPoint.x !== newPoint.x) {
-          newWidth = this.Frame.width + (newPoint.x - initialPoint.x);
-        }
-        if (initialPoint.y !== newPoint.y) {
-          newHeight = this.Frame.height + (newPoint.y - initialPoint.y);
-        }
-        this.SetSize(newWidth, newHeight, ConstantData.ActionTriggerType.LINELENGTH);
-
-        if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_ANNOTATION) {
-          const newBottom = this.Frame.y + this.Frame.height;
-          offsetY = previousBottom - newBottom;
-          if (offsetX || offsetY) {
-            this.OffsetShape(offsetX, offsetY);
-          }
-        }
-      }
-
-      GlobalData.optManager.AddToDirtyList(this.BlockID);
-      console.log("= S.BaseShape - UseEdges output: true");
-      return true;
-    }
-
-    console.log("= S.BaseShape - UseEdges output: false");
-    return false;
-  }
-
-  Pr_UpdateExtra(extraValue: number) {
-    console.log("= S.BaseShape - Pr_UpdateExtra input:", { extraValue });
-
-    const blockID = this.BlockID;
-    const parentShape = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, true);
-
-    if (parentShape && parentShape instanceof Instance.Shape.ShapeContainer) {
-      const containerList = parentShape.ContainerList;
-
-      if (!(containerList.flags & ConstantData.ContainerListFlags.Sparse)) {
-        for (let i = 0; i < containerList.List.length; i++) {
-          if (containerList.List[i].id === blockID) {
-            containerList.List[i].extra += extraValue;
-
-            if (containerList.List[i].extra < 0) {
-              containerList.List[i].extra = 0;
-            }
-
-            GlobalData.optManager.SetLinkFlag(parentShape.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-            parentShape.flags = Utils2.SetFlag(parentShape.flags, ConstantData.ObjFlags.SEDO_Obj1, true);
-
-            console.log("= S.BaseShape - Pr_UpdateExtra output: updated extra value");
-            return;
-          }
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - Pr_UpdateExtra output: no update performed");
-  }
-
-  Pr_GetAdjustShapeList() {
-    console.log("= S.BaseShape - Pr_GetAdjustShapeList input");
-
-    let shapeID, shapeObject, svgFrame, containerList, isShapeFound = false;
-    const shapeIDs = [];
-    const svgFrames = [];
-    const frameList = [];
-
-    const addShapeToList = (shapeID) => {
-      shapeObject = GlobalData.optManager.GetObjectPtr(shapeID, false);
-      if (shapeObject) {
-        svgFrame = shapeObject.GetSVGFrame();
-        frameList.push(svgFrame);
-        shapeIDs.push(shapeID);
-        svgFrames.push(shapeID);
-      }
-    };
-
-    if (this.hooks.length) {
-      const currentShapeID = this.BlockID;
-      let extraValue = 0;
-      const parentShape = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, false);
-
-      if (parentShape && parentShape instanceof Instance.Shape.ShapeContainer) {
-        containerList = parentShape.ContainerList;
-
-        if (!(containerList.flags & ConstantData.ContainerListFlags.Sparse)) {
-          for (let i = 0; i < containerList.List.length; i++) {
-            if (containerList.List[i].id === currentShapeID) {
-              extraValue = containerList.List[i].extra;
-              addShapeToList(currentShapeID);
-              isShapeFound = true;
-            } else if (isShapeFound) {
-              addShapeToList(containerList.List[i].id);
-            }
-          }
-
-          const result = {
-            list: shapeIDs,
-            svglist: svgFrames,
-            framelist: frameList,
-            oldextra: extraValue,
-            arrangement: containerList.Arrangement
-          };
-
-          console.log("= S.BaseShape - Pr_GetAdjustShapeList output:", result);
-          return result;
-        }
-      }
-    }
-
-    console.log("= S.BaseShape - Pr_GetAdjustShapeList output: null");
-    return null;
-  }
-
-  OnDisconnect(elementID, shapeContainer, paramA, paramB) {
-    console.log("= S.BaseShape - OnDisconnect input:", { elementID, shapeContainer, paramA, paramB });
-
-    if (
-      shapeContainer instanceof Instance.Shape.ShapeContainer &&
-      this.zListIndex != null &&
-      this.zListIndex >= 0
-    ) {
-      const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(elementID);
-      if (svgElement) {
-        GlobalData.optManager.svgObjectLayer.RemoveElement(svgElement);
-        GlobalData.optManager.svgObjectLayer.AddElement(svgElement, this.zListIndex);
-        this.zListIndex = -1;
-      }
-    }
-
-    console.log("= S.BaseShape - OnDisconnect output");
   }
 }
 

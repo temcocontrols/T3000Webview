@@ -5471,6 +5471,8 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: FieldDataAllowed output:", result);
     return result;
   }
+
+
 }
 
 export default BaseLine
