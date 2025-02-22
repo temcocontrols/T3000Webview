@@ -1,14 +1,19 @@
 
+
 import BaseLine from './Shape.BaseLine'
-import Utils1 from '../Helper/Utils1';
-import Utils2 from "../Helper/Utils2";
-import Utils3 from "../Helper/Utils3";
+import Utils1 from '../Helper/Utils1'
+import Utils2 from "../Helper/Utils2"
+import Utils3 from "../Helper/Utils3"
 import GlobalData from '../Data/GlobalData'
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element'
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
+import ConstantData1 from "../Data/ConstantData1"
+import Point from '../Model/Point'
+import $ from 'jquery'
+import Instance from '../Data/Instance/Instance'
 
 class ArcLine extends BaseLine {
   public CurveAdjust: any;
@@ -24,21 +29,29 @@ class ArcLine extends BaseLine {
   public EndArrowDisp: any;
   public ArrowSizeIndex: any;
   public TextDirection: any;
+  public OriginalCurveAdjust: any;
+  public OriginalIsReversed: any;
+  public OriginalLineSide: any;
+  public OriginalCenterPointDistance: any;
 
   constructor(options: any = {}) {
-    console.log('= S.ArcLine constructor input:', options);
+    console.log("= S.ArcLine constructor input:", options);
 
+    // Set line type and call the super constructor
     options.LineType = ConstantData.LineType.ARCLINE;
     super(options);
 
+    // Initialize properties with default values if not provided
     this.StartPoint = options.StartPoint || { x: 0, y: 0 };
     this.EndPoint = options.EndPoint || { x: 0, y: 0 };
     this.CurveAdjust = options.CurveAdjust;
     this.IsReversed = options.IsReversed || false;
     this.FromPolygon = options.FromPolygon || false;
 
+    // Calculate frame based on start and end points
     this.CalcFrame();
 
+    // Other properties initialization
     this.FixedPoint = options.FixedPoint || [0, 0];
     this.LineOrientation = options.LineOrientation || ConstantData.LineOrientation.NONE;
     this.hoplist = options.hoplist || { nhops: 0, hops: [] };
@@ -50,106 +63,107 @@ class ArcLine extends BaseLine {
     this.ArrowSizeIndex = options.ArrowSizeIndex || 0;
     this.TextDirection = options.TextDirection || false;
 
-    console.log('= S.ArcLine constructor output (instance created):', this);
+    console.log("= S.ArcLine constructor output:", this);
   }
 
-  CalcRadiusAndCenter(startX: number, startY: number, endX: number, endY: number, curveAdjust: number, isReversed: boolean) {
+  CalcRadiusAndCenter(startX, startY, endX, endY, curveAdjust, isReversed) {
     console.log("= S.ArcLine CalcRadiusAndCenter input:", { startX, startY, endX, endY, curveAdjust, isReversed });
 
-    // Midpoint between start and end
+    const result = {
+      centerX: 0,
+      centerY: 0,
+      actionX: 0,
+      actionY: 0,
+      radius: 0,
+      valid: false,
+      centerInside: false
+    };
+
+    // Calculate midpoint and chord vector
     const midX = startX + (endX - startX) / 2;
     const midY = startY + (endY - startY) / 2;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    let chordLength = Math.sqrt(dx * dx + dy * dy);
 
-    // Delta values and full distance between start and end
-    const deltaX = endX - startX;
-    const deltaY = endY - startY;
-    const fullDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    if (fullDistance === 0) {
-      const invalidResult = {
-        centerX: 0,
-        centerY: 0,
-        actionX: 0,
-        actionY: 0,
-        radius: 0,
-        valid: false,
-        centerInside: false
-      };
-      console.log("= S.ArcLine CalcRadiusAndCenter output:", invalidResult);
-      return invalidResult;
+    if (chordLength === 0) {
+      console.log("= S.ArcLine CalcRadiusAndCenter output:", result);
+      result.valid = false;
+      return result;
     }
 
-    // Unit normal components perpendicular to the line
-    const unitNormalX = -deltaY / fullDistance;
-    const unitNormalY = deltaX / fullDistance;
+    // Unit perpendicular and parallel components along the chord
+    const unitPerp = -dy / chordLength;
+    const unitPar = dx / chordLength;
 
-    // Half the distance between endpoints
-    let halfDistance = fullDistance / 2;
+    // Half chord length
+    const halfChord = chordLength / 2;
+    // Use curveAdjust as given (renaming variable y to adjust)
+    const adjust = curveAdjust;
 
-    // Compute the absolute radius using the relation: (halfDistance^2 + curveAdjust^2) / (2*curveAdjust)
-    let computedRadius = Math.abs((halfDistance * halfDistance + curveAdjust * curveAdjust) / (2 * curveAdjust));
+    // Calculate the absolute radius from chord and adjust
+    let computedRadius = Math.abs((halfChord * halfChord + adjust * adjust) / (2 * adjust));
 
-    // Prepare placeholders for results
-    let centerX = 0, centerY = 0, actionX = 0, actionY = 0;
+    let delta, offsetX, offsetY, centerX, centerY, actionX, actionY, tempS;
 
-    if (computedRadius < curveAdjust) {
+    if (computedRadius < adjust) {
       // Center lies inside the arc
-      const centerInside = true;
-      // Compute the chord offset using the Pythagorean relation
-      const chordOffset = Utils2.sqrt(computedRadius * computedRadius - halfDistance * halfDistance);
-      const offsetX = chordOffset * unitNormalX;
-      const offsetY = chordOffset * unitNormalY;
-
+      result.centerInside = true;
+      // Delta is the distance from the chord midpoint to the circle center along the perpendicular
+      delta = Utils2.sqrt(computedRadius * computedRadius - halfChord * halfChord);
       if (isReversed) {
-        centerX = midX + offsetX;
-        centerY = midY + offsetY;
-        actionX = centerX + computedRadius * unitNormalX;
-        actionY = centerY + computedRadius * unitNormalY;
+        centerX = midX + delta * unitPerp;
+        centerY = midY + delta * unitPar;
+        actionX = centerX + computedRadius * unitPerp;
+        actionY = centerY + computedRadius * unitPar;
       } else {
-        centerX = midX - offsetX;
-        centerY = midY - offsetY;
-        actionX = centerX - computedRadius * unitNormalX;
-        actionY = centerY - computedRadius * unitNormalY;
+        centerX = midX - delta * unitPerp;
+        centerY = midY - delta * unitPar;
+        actionX = centerX - computedRadius * unitPerp;
+        actionY = centerY - computedRadius * unitPar;
       }
     } else {
       // Center lies outside the arc
-      // Adjust the offset distance depending on the reverse flag
-      let adjustedOffset = isReversed ? computedRadius + curveAdjust : computedRadius - curveAdjust;
-      centerX = midX + unitNormalX * adjustedOffset;
-      centerY = midY + unitNormalY * adjustedOffset;
-      actionX = centerX - computedRadius * unitNormalX;
-      actionY = centerY - computedRadius * unitNormalY;
+      // Adjust the distance along the chord perpendicular accordingly
+      let s = computedRadius;
+      s = isReversed ? s + adjust : s - adjust;
+      offsetX = unitPerp * s;
+      offsetY = unitPar * s;
+      centerX = midX + offsetX;
+      centerY = midY + offsetY;
+      actionX = centerX - computedRadius * unitPerp;
+      actionY = centerY - computedRadius * unitPar;
       if (isReversed) {
-        // In the reversed case, override the center with an alternative computation
-        adjustedOffset = computedRadius - curveAdjust;
-        centerX = midX + unitNormalX * adjustedOffset;
-        centerY = midY + unitNormalY * adjustedOffset;
+        // Overwrite center coordinates with recalculated offset when reversed
+        tempS = computedRadius - adjust;
+        centerX = midX + unitPerp * tempS;
+        centerY = midY + unitPar * tempS;
       }
     }
 
-    const result = {
-      centerX,
-      centerY,
-      actionX,
-      actionY,
-      radius: computedRadius,
-      valid: true,
-      centerInside: computedRadius < curveAdjust
-    };
+    result.radius = computedRadius;
+    result.centerX = centerX;
+    result.centerY = centerY;
+    result.actionX = actionX;
+    result.actionY = actionY;
+    result.valid = true;
+
     console.log("= S.ArcLine CalcRadiusAndCenter output:", result);
     return result;
   }
 
-  GetLineChangeFrame(): any {
+  GetLineChangeFrame() {
     console.log("= S.ArcLine GetLineChangeFrame input:", {
-      startPoint: this.StartPoint,
-      endPoint: this.EndPoint
+      StartPoint: this.StartPoint,
+      EndPoint: this.EndPoint
     });
 
-    const frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    let frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
 
     if (frame.width < ConstantData.Defines.SED_SegDefLen) {
       frame.width = ConstantData.Defines.SED_SegDefLen;
     }
+
     if (frame.height < ConstantData.Defines.SED_SegDefLen) {
       frame.height = ConstantData.Defines.SED_SegDefLen;
     }
@@ -158,66 +172,73 @@ class ArcLine extends BaseLine {
     return frame;
   }
 
-  CreateArcShapeForHops(svgDoc, eventFlag) {
-    console.log("= S.ArcLine CreateArcShapeForHops input:", { svgDoc, eventFlag });
+  CreateArcShapeForHops(svgDoc, isTouch) {
+    console.log("= S.ArcLine CreateArcShapeForHops input:", { svgDoc, isTouch });
 
     if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) {
-      console.log("= S.ArcLine CreateArcShapeForHops output:", null, "(Not Visible)");
+      console.log("= S.ArcLine CreateArcShapeForHops output:", null);
       return null;
     }
 
+    // Create container shape
     const container = svgDoc.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
 
-    const shape = svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-    shape.SetID(ConstantData.SVGElementClass.SHAPE);
+    // Create the primary polyline shape
+    const shapePolyline = svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+    shapePolyline.SetID(ConstantData.SVGElementClass.SHAPE);
 
-    const slop = svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-    slop.SetID(ConstantData.SVGElementClass.SLOP);
-    slop.ExcludeFromExport(true);
+    // Create the auxiliary slop polyline shape
+    const slopPolyline = svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+    slopPolyline.SetID(ConstantData.SVGElementClass.SLOP);
+    slopPolyline.ExcludeFromExport(true);
 
+    // Calculate frame based on start and end points
     this.CalcFrame();
     const frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    const width = frame.width;
-    const height = frame.height;
 
-    let styleRecord = this.StyleRecord;
-    styleRecord = this.SVGTokenizerHook(styleRecord);
-    const strokeColor = styleRecord.Line.Paint.Color;
-    const lineThickness = styleRecord.Line.Thickness;
-    const strokeOpacity = styleRecord.Line.Paint.Opacity;
-    const linePattern = styleRecord.Line.LinePattern;
+    // Obtain style settings with token hook processing
+    const styleRecord = this.StyleRecord;
+    const hookedStyle = this.SVGTokenizerHook(styleRecord);
+    const strokeColor = hookedStyle.Line.Paint.Color;
+    const strokeWidth = hookedStyle.Line.Thickness;
+    const strokeOpacity = hookedStyle.Line.Paint.Opacity;
+    const strokePattern = hookedStyle.Line.LinePattern;
 
-    container.SetSize(width, height);
+    // Set container dimensions and position
+    container.SetSize(frame.width, frame.height);
     container.SetPos(frame.x, frame.y);
 
+    // Generate polyline points and adjust for hops
     let polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
-    const hopResult = GlobalData.optManager.InsertHops(this, polyPoints, polyPoints.length);
-    polyPoints = polyPoints.slice(0, hopResult.npts);
+    const hopsInfo = GlobalData.optManager.InsertHops(this, polyPoints, polyPoints.length);
+    polyPoints = polyPoints.slice(0, hopsInfo.npts);
 
-    shape.SetPoints(polyPoints);
-    shape.SetFillColor("none");
-    shape.SetStrokeColor(strokeColor);
-    shape.SetStrokeOpacity(strokeOpacity);
-    shape.SetStrokeWidth(lineThickness);
-    if (linePattern !== 0) {
-      shape.SetStrokePattern(linePattern);
+    // Configure the primary polyline shape
+    shapePolyline.SetPoints(polyPoints);
+    shapePolyline.SetFillColor('none');
+    shapePolyline.SetStrokeColor(strokeColor);
+    shapePolyline.SetStrokeOpacity(strokeOpacity);
+    shapePolyline.SetStrokeWidth(strokeWidth);
+    if (strokePattern !== 0) {
+      shapePolyline.SetStrokePattern(strokePattern);
     }
 
-    slop.SetPoints(polyPoints);
-    slop.SetStrokeColor("white");
-    slop.SetFillColor("none");
-    slop.SetOpacity(0);
-    if (eventFlag) {
-      slop.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+    // Configure the auxiliary slop polyline shape
+    slopPolyline.SetPoints(polyPoints);
+    slopPolyline.SetStrokeColor('white');
+    slopPolyline.SetFillColor('none');
+    slopPolyline.SetOpacity(0);
+    if (isTouch) {
+      slopPolyline.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
     } else {
-      slop.SetEventBehavior(Element.EventBehavior.NONE);
+      slopPolyline.SetEventBehavior(Element.EventBehavior.NONE);
     }
-    slop.SetStrokeWidth(lineThickness + ConstantData.Defines.SED_Slop);
+    slopPolyline.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
 
-    container.AddElement(shape);
-    container.AddElement(slop);
-
-    this.ApplyStyles(shape, styleRecord);
+    // Add elements to the container and apply styles/effects
+    container.AddElement(shapePolyline);
+    container.AddElement(slopPolyline);
+    this.ApplyStyles(shapePolyline, hookedStyle);
     this.ApplyEffects(container, false, true);
     container.isShape = true;
     this.AddIcons(svgDoc, container);
@@ -226,17 +247,17 @@ class ArcLine extends BaseLine {
     return container;
   }
 
-  CreateShape(svgDoc, eventFlag) {
-    console.log("= S.ArcLine CreateShape input:", { svgDoc, eventFlag });
+  CreateShape(svgDoc, isTouch) {
+    console.log("= S.ArcLine CreateShape input:", { svgDoc, isTouch });
 
     if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) {
-      console.log("= S.ArcLine CreateShape output:", null, "(Not Visible)");
+      console.log("= S.ArcLine CreateShape output:", null);
       return null;
     }
 
-    // If no hops, create a basic arc shape
-    if (this.hoplist.nhops === 0) {
-      const shapeContainer = svgDoc.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
+    // When there are no hops, generate a standard arc shape.
+    if (0 === this.hoplist.nhops) {
+      const container = svgDoc.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
       const shapePath = svgDoc.CreateShape(ConstantData.CreateShapeType.PATH);
       shapePath.SetID(ConstantData.SVGElementClass.SHAPE);
 
@@ -245,324 +266,321 @@ class ArcLine extends BaseLine {
       slopPath.ExcludeFromExport(true);
 
       this.CalcFrame();
-      const frameRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-      const width = frameRect.width;
-      const height = frameRect.height;
-
-      let styleRecord = this.StyleRecord;
-      styleRecord = this.SVGTokenizerHook(styleRecord);
-      const strokeColor = styleRecord.Line.Paint.Color;
-      const strokeOpacity = styleRecord.Line.Paint.Opacity;
-      let strokeWidth = styleRecord.Line.Thickness;
+      const frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+      const styleRecord = this.StyleRecord;
+      const hookedStyle = this.SVGTokenizerHook(styleRecord);
+      const strokeColor = hookedStyle.Line.Paint.Color;
+      const strokeOpacity = hookedStyle.Line.Paint.Opacity;
+      let strokeWidth = hookedStyle.Line.Thickness;
       if (strokeWidth > 0 && strokeWidth < 1) {
         strokeWidth = 1;
       }
-      const linePattern = styleRecord.Line.LinePattern;
+      const strokePattern = hookedStyle.Line.LinePattern;
+      const width = frame.width;
+      const height = frame.height;
 
-      shapeContainer.SetSize(width, height);
-      shapeContainer.SetPos(frameRect.x, frameRect.y);
+      container.SetSize(width, height);
+      container.SetPos(frame.x, frame.y);
 
-      shapePath.SetFillColor("none");
+      shapePath.SetFillColor('none');
       shapePath.SetStrokeColor(strokeColor);
       shapePath.SetStrokeOpacity(strokeOpacity);
       shapePath.SetStrokeWidth(strokeWidth);
-      if (linePattern !== 0) {
-        shapePath.SetStrokePattern(linePattern);
+      if (strokePattern !== 0) {
+        shapePath.SetStrokePattern(strokePattern);
       }
 
-      slopPath.SetStrokeColor("white");
-      slopPath.SetFillColor("none");
+      slopPath.SetStrokeColor('white');
+      slopPath.SetFillColor('none');
       slopPath.SetOpacity(0);
-      if (eventFlag) {
+      if (isTouch) {
         slopPath.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
       } else {
         slopPath.SetEventBehavior(Element.EventBehavior.NONE);
       }
       slopPath.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
 
-      shapeContainer.AddElement(shapePath);
-      shapeContainer.AddElement(slopPath);
+      container.AddElement(shapePath);
+      container.AddElement(slopPath);
+      this.ApplyStyles(shapePath, hookedStyle);
+      this.ApplyEffects(container, false, true);
+      container.isShape = true;
+      this.AddIcons(svgDoc, container);
 
-      this.ApplyStyles(shapePath, styleRecord);
-      this.ApplyEffects(shapeContainer, false, true);
-      shapeContainer.isShape = true;
-      this.AddIcons(svgDoc, shapeContainer);
-
-      console.log("= S.ArcLine CreateShape output:", shapeContainer);
-      return shapeContainer;
+      console.log("= S.ArcLine CreateShape output:", container);
+      return container;
     }
 
-    // When hops exist, create an arc shape for hops
-    const result = this.CreateArcShapeForHops(svgDoc, eventFlag);
-    console.log("= S.ArcLine CreateShape output:", result);
-    return result;
+    // When hops are present, delegate to CreateArcShapeForHops.
+    const arcShape = this.CreateArcShapeForHops(svgDoc, isTouch);
+    console.log("= S.ArcLine CreateShape output:", arcShape);
+    return arcShape;
   }
 
-  PostCreateShapeCallback(svgDoc: any, shapeContainer: any, additionalParam: any, callbackFlag: any): void {
-    console.log('= S.ArcLine PostCreateShapeCallback input:', { svgDoc, shapeContainer, additionalParam, callbackFlag });
+  PostCreateShapeCallback(svgDoc, svgContainer, callbackData, event) {
+    console.log("= S.ArcLine PostCreateShapeCallback input:", { svgDoc, svgContainer, callbackData, event });
 
     if (this.hoplist.nhops === 0) {
-      this.RegenerateGenerateArc(svgDoc);
+      this.RegenerateGenerateArc(svgContainer);
     } else {
-      this.RegenerateGenerateArcForHops(svgDoc);
+      this.RegenerateGenerateArcForHops(svgContainer);
     }
 
     if (this.DataID >= 0) {
-      this.LM_AddSVGTextObject(svgDoc, shapeContainer);
+      this.LM_AddSVGTextObject(svgDoc, svgContainer);
     }
 
-    this.UpdateDimensionLines(svgDoc);
+    this.UpdateDimensionLines(svgContainer);
 
-    console.log('= S.ArcLine PostCreateShapeCallback output: Callback executed successfully');
+    console.log("= S.ArcLine PostCreateShapeCallback output:", "Callback completed");
   }
 
-  CreateActionTriggers(svgDoc, triggerId, paramA, targetId) {
-    console.log("= S.ArcLine CreateActionTriggers input:", {
-      svgDoc,
-      triggerId,
-      paramA,
-      targetId,
-    });
+  CreateActionTriggers(svgDoc, targetId, triggerType, compareId) {
+    console.log("= S.ArcLine CreateActionTriggers input:", { svgDoc, targetId, triggerType, compareId });
 
-    // Create the main group for action triggers
-    const group = svgDoc.CreateShape(ConstantData.CreateShapeType.GROUP);
-    const defaultKnobSize = ConstantData.Defines.SED_KnobSize;
-    const defaultRotKnobSize = ConstantData.Defines.SED_RKnobSize;
-    let showKnobs = true;
-    let docToScreenScale = svgDoc.docInfo.docToScreenScale;
-    let knobsMultiplied;
+    // Create a group container for the action triggers.
+    let group = svgDoc.CreateShape(ConstantData.CreateShapeType.GROUP);
 
+    // Calculate knob sizes based on document scale.
+    let knobSize = ConstantData.Defines.SED_KnobSize;
+    let reducedKnobSize = ConstantData.Defines.SED_RKnobSize;
+    let allowKnob = true;
+    let docScale = svgDoc.docInfo.docToScreenScale;
     if (svgDoc.docInfo.docScale <= 0.5) {
-      docToScreenScale *= 2;
+      docScale *= 2;
     }
-    const knobSize = defaultKnobSize / docToScreenScale;
-    const rotKnobSize = defaultRotKnobSize / docToScreenScale;
+    let adjustedKnobSize = knobSize / docScale;
+    let adjustedReducedKnobSize = reducedKnobSize / docScale;
 
-    // Adjust knob size for floorplan walls
     if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
-      // Double the knob size
-      knobsMultiplied = knobSize * 2;
+      adjustedKnobSize *= 2;
     }
 
-    // Calculate the frame from start and end points
-    const frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    let frameWidth = frame.width;
-    let frameHeight = frame.height;
-    const refObj = GlobalData.optManager.GetObjectPtr(triggerId, false);
+    // Calculate surrounding rectangle.
+    let rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    let width = rect.width + adjustedKnobSize;
+    let height = rect.height + adjustedKnobSize;
 
-    frameWidth += knobSize;
-    frameHeight += knobSize;
+    // Get target object to check for hook overrides.
+    let targetObject = GlobalData.optManager.GetObjectPtr(targetId, false);
 
-    // Extend the frame slightly
-    const extendedFrame = $.extend(true, {}, frame);
-    extendedFrame.x -= knobSize / 2;
-    extendedFrame.y -= knobSize / 2;
-    extendedFrame.width += knobSize;
-    extendedFrame.height += knobSize;
+    // Adjust the rectangle boundaries.
+    let adjustedRect = $.extend(true, {}, rect);
+    adjustedRect.x -= adjustedKnobSize / 2;
+    adjustedRect.y -= adjustedKnobSize / 2;
+    adjustedRect.width += adjustedKnobSize;
+    adjustedRect.height += adjustedKnobSize;
 
-    // Generate first knob (line start)
-    const knobParams: any = {
-      svgDoc,
+    // Prepare knob configuration.
+    let knobConfig = {
+      svgDoc: svgDoc,
       shapeType: ConstantData.CreateShapeType.RECT,
-      knobSize: knobSize,
+      knobSize: adjustedKnobSize,
       fillColor: 'black',
       fillOpacity: 1,
       strokeSize: 1,
       strokeColor: '#777777',
       cursorType: this.CalcCursorForSegment(this.StartPoint, this.EndPoint, false),
       locked: false,
-      x: this.StartPoint.x - frame.x,
-      y: this.StartPoint.y - frame.y,
-      knobID: ConstantData.ActionTriggerType.LINESTART,
+      x: 0,
+      y: 0,
+      knobID: ConstantData.ActionTriggerType.LINESTART
     };
 
-    if (triggerId !== targetId) {
-      knobParams.fillColor = 'white';
-      knobParams.strokeSize = 1;
-      knobParams.strokeColor = 'black';
-      knobParams.fillOpacity = 0;
+    // When targetId is different from compareId, adjust colors.
+    if (targetId !== compareId) {
+      knobConfig.fillColor = 'white';
+      knobConfig.strokeSize = 1;
+      knobConfig.strokeColor = 'black';
+      knobConfig.fillOpacity = 0;
     }
 
-    if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
-      knobParams.fillColor = 'gray';
-      knobParams.locked = true;
-    } else if (this.NoGrow()) {
-      knobParams.fillColor = 'red';
-      knobParams.strokeColor = 'red';
-      knobParams.cursorType = Element.CursorType.DEFAULT;
-    }
+    // Set knob position for LINESTART.
+    knobConfig.x = this.StartPoint.x - rect.x;
+    knobConfig.y = this.StartPoint.y - rect.y;
+    knobConfig.knobID = ConstantData.ActionTriggerType.LINESTART;
 
-    if (refObj && refObj.hooks) {
-      for (let h = 0; h < refObj.hooks.length; h++) {
-        if (refObj.hooks[h].hookpt === ConstantData.HookPts.SED_KTL) {
-          knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
-          showKnobs = false;
+    // If there is a hook for SED_KTL, override knob shape.
+    if (targetObject && targetObject.hooks) {
+      for (let i = 0; i < targetObject.hooks.length; i++) {
+        if (targetObject.hooks[i].hookpt === ConstantData.HookPts.SED_KTL) {
+          knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
+          allowKnob = false;
           break;
         }
       }
     }
-
     if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
-      knobParams.shapeType = ConstantData.CreateShapeType.IMAGE;
+      knobConfig.shapeType = ConstantData.CreateShapeType.IMAGE;
     }
-
-    let knob = this.GenericKnob(knobParams);
+    let knob = this.GenericKnob(knobConfig);
+    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL && knob.SetURL) {
+      knob.SetURL(
+        knobConfig.cursorType === Element.CursorType.NWSE_RESIZE
+          ? ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag1
+          : ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag2
+      );
+      knob.ExcludeFromExport(true);
+    }
     group.AddElement(knob);
 
-    // Generate second knob (line end)
-    knobParams.shapeType = ConstantData.CreateShapeType.RECT;
-    knobParams.x = this.EndPoint.x - frame.x;
-    knobParams.y = this.EndPoint.y - frame.y;
-    knobParams.knobID = ConstantData.ActionTriggerType.LINEEND;
-
-    if (refObj && refObj.hooks) {
-      for (let h = 0; h < refObj.hooks.length; h++) {
-        if (refObj.hooks[h].hookpt === ConstantData.HookPts.SED_KTR) {
-          knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
-          showKnobs = false;
+    // Configure knob for LINEEND.
+    knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
+    knobConfig.x = this.EndPoint.x - rect.x;
+    knobConfig.y = this.EndPoint.y - rect.y;
+    knobConfig.knobID = ConstantData.ActionTriggerType.LINEEND;
+    if (targetObject && targetObject.hooks) {
+      for (let i = 0; i < targetObject.hooks.length; i++) {
+        if (targetObject.hooks[i].hookpt === ConstantData.HookPts.SED_KTR) {
+          knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
+          allowKnob = false;
           break;
         }
       }
     }
-
     if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
-      knobParams.shapeType = ConstantData.CreateShapeType.IMAGE;
+      knobConfig.shapeType = ConstantData.CreateShapeType.IMAGE;
     }
-    knob = this.GenericKnob(knobParams);
+    knob = this.GenericKnob(knobConfig);
+    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL && knob.SetURL) {
+      knob.SetURL(
+        knobConfig.cursorType === Element.CursorType.NWSE_RESIZE
+          ? ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag1
+          : ConstantData.Constants.FilePath_ImageKnobs + ConstantData.Constants.Knob_ExpandDiag2
+      );
+      knob.ExcludeFromExport(true);
+    }
     group.AddElement(knob);
 
-    // Generate modify knob
-    knobParams.shapeType = ConstantData.CreateShapeType.RECT;
-    knobParams.cursorType = this.CalcCursorForSegment(this.StartPoint, this.EndPoint, true);
+    // Configure knob for MODIFYSHAPE.
+    knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
+    knobConfig.cursorType = this.CalcCursorForSegment(this.StartPoint, this.EndPoint, true);
     if (this.NoGrow()) {
-      knobParams.cursorType = Element.CursorType.DEFAULT;
+      knobConfig.cursorType = Element.CursorType.DEFAULT;
     }
-    const startX = this.StartPoint.x;
-    const startY = this.StartPoint.y;
-    const endX = this.EndPoint.x;
-    const endY = this.EndPoint.y;
-    const radiusResult = this.CalcRadiusAndCenter(startX, startY, endX, endY, this.CurveAdjust, this.IsReversed);
-    knobParams.x = radiusResult.actionX - frame.x;
-    knobParams.y = radiusResult.actionY - frame.y;
-    knobParams.knobID = ConstantData.ActionTriggerType.MODIFYSHAPE;
-    knob = this.GenericKnob(knobParams);
+    let centerX = this.StartPoint.x;
+    let centerY = this.StartPoint.y;
+    let endX = this.EndPoint.x;
+    let endY = this.EndPoint.y;
+    let radiusInfo = this.CalcRadiusAndCenter(centerX, centerY, endX, endY, this.CurveAdjust, this.IsReversed);
+    knobConfig.x = radiusInfo.actionX - rect.x;
+    knobConfig.y = radiusInfo.actionY - rect.y;
+    knobConfig.knobID = ConstantData.ActionTriggerType.MODIFYSHAPE;
+    knob = this.GenericKnob(knobConfig);
     group.AddElement(knob);
 
-    // Generate rotate knob if allowed
+    // Add ROTATE knob if allowed.
     if (GlobalData.optManager.bTouchInitiated) {
-      showKnobs = false;
+      allowKnob = false;
     }
-    if (showKnobs && !knobParams.locked && !this.NoGrow()) {
-      knobParams.shapeType = ConstantData.CreateShapeType.OVAL;
+    if (allowKnob && !knobConfig.locked && !this.NoGrow()) {
+      knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
       let angle = Math.atan((this.EndPoint.y - this.StartPoint.y) / (this.EndPoint.x - this.StartPoint.x));
       if (angle < 0) {
         angle = -angle;
       }
       if (this.EndPoint.x >= this.StartPoint.x) {
-        knobParams.x = this.EndPoint.x - 2 * rotKnobSize * Math.cos(angle) - frame.x;
-        knobParams.y = this.EndPoint.y - 2 * rotKnobSize * Math.sin(angle) - frame.y;
+        knobConfig.x = this.EndPoint.x - 2 * adjustedReducedKnobSize * Math.cos(angle) - rect.x;
+        knobConfig.y = this.EndPoint.y - 2 * adjustedReducedKnobSize * Math.sin(angle) - rect.y;
       } else {
-        knobParams.x = this.StartPoint.x - 2 * rotKnobSize * Math.cos(angle) - frame.x;
-        knobParams.y = this.StartPoint.y - 2 * rotKnobSize * Math.sin(angle) - frame.y;
+        knobConfig.x = this.StartPoint.x - 2 * adjustedReducedKnobSize * Math.cos(angle) - rect.x;
+        knobConfig.y = this.StartPoint.y - 2 * adjustedReducedKnobSize * Math.sin(angle) - rect.y;
       }
-      knobParams.cursorType = Element.CursorType.ROTATE;
-      knobParams.knobID = ConstantData.ActionTriggerType.ROTATE;
-      knobParams.fillColor = 'white';
-      knobParams.fillOpacity = 0.001;
-      knobParams.strokeSize = 1.5;
-      knobParams.strokeColor = 'black';
-      knobParams.knobSize = rotKnobSize;
-      knob = this.GenericKnob(knobParams);
+      knobConfig.cursorType = Element.CursorType.ROTATE;
+      knobConfig.knobID = ConstantData.ActionTriggerType.ROTATE;
+      knobConfig.fillColor = 'white';
+      knobConfig.fillOpacity = 0.001;
+      knobConfig.strokeSize = 1.5;
+      knobConfig.strokeColor = 'black';
+      knobConfig.knobSize = adjustedReducedKnobSize;
+      knob = this.GenericKnob(knobConfig);
       group.AddElement(knob);
-      knobParams.knobSize = knobSize;
+      knobConfig.knobSize = adjustedKnobSize;
     }
 
+    // Create dimension adjustment knobs if standoff dimensions are enabled.
     if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff && this.CanUseStandOffDimensionLines()) {
-      const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-      this.CreateDimensionAdjustmentKnobs(group, svgElement, knobParams);
+      let svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+      this.CreateDimensionAdjustmentKnobs(group, svgElement, knobConfig);
     }
 
-    group.SetSize(frameWidth, frameHeight);
-    group.SetPos(extendedFrame.x, extendedFrame.y);
+    group.SetSize(width, height);
+    group.SetPos(adjustedRect.x, adjustedRect.y);
     group.isShape = true;
-    group.SetID(ConstantData.Defines.Action + triggerId);
+    group.SetID(ConstantData.Defines.Action + targetId);
 
     console.log("= S.ArcLine CreateActionTriggers output:", group);
     return group;
   }
 
-  GetTextOnLineParams(inputParam: any) {
-    console.log("= S.ArcLine GetTextOnLineParams - Input:", { inputParam });
+  GetTextOnLineParams(e) {
+    console.log("= S.ArcLine GetTextOnLineParams input:", { param: e });
 
-    // Prepare a container for text parameters with clearer names
-    const textParams = {
-      Frame: new ListManager.Rect(),
-      StartPoint: new Point(),
-      EndPoint: new Point(),
+    let result = {
+      Frame: new Instance.Shape.Rect(),
+      StartPoint: new Point(0, 0),
+      EndPoint: new Point(0, 0)
     };
 
-    // Copy the initial points from the current object
-    textParams.StartPoint.x = this.StartPoint.x;
-    textParams.StartPoint.y = this.StartPoint.y;
-    textParams.EndPoint.x = this.EndPoint.x;
-    textParams.EndPoint.y = this.EndPoint.y;
-    textParams.Frame = Utils2.Pt2Rect(textParams.StartPoint, textParams.EndPoint);
+    // Set initial points and frame from the current object
+    result.StartPoint.x = this.StartPoint.x;
+    result.StartPoint.y = this.StartPoint.y;
+    result.EndPoint.x = this.EndPoint.x;
+    result.EndPoint.y = this.EndPoint.y;
+    result.Frame = Utils2.Pt2Rect(result.StartPoint, result.EndPoint);
 
-    // Adjust text position based on text alignment
-    if (
-      this.TextAlign === ConstantData.TextAlign.TOPCENTER ||
-      this.TextAlign === ConstantData.TextAlign.CENTER ||
-      this.TextAlign === ConstantData.TextAlign.BOTTOMCENTER
-    ) {
-      const rotationAngle = GlobalData.optManager.SD_GetClockwiseAngleBetween2PointsInRadians(
-        textParams.StartPoint,
-        textParams.EndPoint
-      );
-      console.log("= S.ArcLine GetTextOnLineParams - Rotation Angle:", rotationAngle);
+    // Adjust parameters based on TextAlign options
+    switch (this.TextAlign) {
+      case ConstantData.TextAlign.TOPCENTER:
+      case ConstantData.TextAlign.CENTER:
+      case ConstantData.TextAlign.BOTTOMCENTER: {
+        const angle = GlobalData.optManager.SD_GetClockwiseAngleBetween2PointsInRadians(
+          result.StartPoint,
+          result.EndPoint
+        );
+        const points: Point[] = [];
+        points.push(new Point(result.StartPoint.x, result.StartPoint.y));
+        points.push(new Point(result.EndPoint.x, result.EndPoint.y));
 
-      // Rotate the start and end points to simplify calculation
-      const rotatedPoints = [
-        new Point(textParams.StartPoint.x, textParams.StartPoint.y),
-        new Point(textParams.EndPoint.x, textParams.EndPoint.y),
-      ];
-      console.log("= S.ArcLine GetTextOnLineParams - Before Rotation:", { rotatedPoints });
+        // Rotate points about the center of the frame
+        Utils3.RotatePointsAboutCenter(result.Frame, angle, points);
+        const radiusInfo = this.CalcRadiusAndCenter(
+          points[0].x,
+          points[0].y,
+          points[1].x,
+          points[1].y,
+          this.CurveAdjust,
+          this.IsReversed
+        );
 
-      Utils3.RotatePointsAboutCenter(textParams.Frame, rotationAngle, rotatedPoints);
-      console.log("= S.ArcLine GetTextOnLineParams - After Rotation:", { rotatedPoints });
+        // Set both points' y-coordinates to the calculated actionY
+        points[0].y = radiusInfo.actionY;
+        points[1].y = radiusInfo.actionY;
 
-      // Calculate arc parameters based on rotated coordinates
-      const arcResult = this.CalcRadiusAndCenter(
-        rotatedPoints[0].x,
-        rotatedPoints[0].y,
-        rotatedPoints[1].x,
-        rotatedPoints[1].y,
-        this.CurveAdjust,
-        this.IsReversed
-      );
-      console.log("= S.ArcLine GetTextOnLineParams - CalcRadiusAndCenter Result:", arcResult);
+        // Rotate points back by the negative angle
+        Utils3.RotatePointsAboutCenter(result.Frame, -angle, points);
 
-      // Use the calculated actionY for both points
-      rotatedPoints[0].y = arcResult.actionY;
-      rotatedPoints[1].y = arcResult.actionY;
-
-      // Rotate the points back to the original coordinate system
-      Utils3.RotatePointsAboutCenter(textParams.Frame, -rotationAngle, rotatedPoints);
-      textParams.StartPoint.x = rotatedPoints[0].x;
-      textParams.StartPoint.y = rotatedPoints[0].y;
-      textParams.EndPoint.x = rotatedPoints[1].x;
-      textParams.EndPoint.y = rotatedPoints[1].y;
+        // Update result with the adjusted points
+        result.StartPoint.x = points[0].x;
+        result.StartPoint.y = points[0].y;
+        result.EndPoint.x = points[1].x;
+        result.EndPoint.y = points[1].y;
+        break;
+      }
+      default:
+        break;
     }
 
-    console.log("= S.ArcLine GetTextOnLineParams - Output:", textParams);
-    return textParams;
+    console.log("= S.ArcLine GetTextOnLineParams output:", result);
+    return result;
   }
 
-  RegenerateGenerateArc(svgDoc: any): void {
-    console.log("= S.ArcLine RegenerateGenerateArc - Input:", svgDoc);
+  RegenerateGenerateArc(svgDoc) {
+    console.log("= S.ArcLine RegenerateGenerateArc input:", { svgDoc });
 
     let startArrow = ConstantData1.ArrowheadLookupTable[this.StartArrowID];
     let endArrow = ConstantData1.ArrowheadLookupTable[this.EndArrowID];
-    const arrowSize = ConstantData1.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let arrowSize = ConstantData1.ArrowheadSizeTable[this.ArrowSizeIndex];
 
     if (startArrow.id === 0) {
       startArrow = null;
@@ -574,35 +592,48 @@ class ArcLine extends BaseLine {
     const shapeElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.SHAPE);
     const slopElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.SLOP);
 
-    if (shapeElement != null && shapeElement.PathCreator != null) {
+    if (shapeElement !== null && shapeElement.PathCreator !== undefined) {
       const pathCreator = shapeElement.PathCreator();
+
+      // Start building the path.
       pathCreator.BeginPath();
 
+      // Calculate rectangle bounds and relative positions.
       const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-      const startX = this.StartPoint.x - rect.x;
-      const startY = this.StartPoint.y - rect.y;
-      const endX = this.EndPoint.x - rect.x;
-      const endY = this.EndPoint.y - rect.y;
+      const startRelX = this.StartPoint.x - rect.x;
+      const startRelY = this.StartPoint.y - rect.y;
+      const endRelX = this.EndPoint.x - rect.x;
+      const endRelY = this.EndPoint.y - rect.y;
 
-      const arcParams = this.CalcRadiusAndCenter(startX, startY, endX, endY, this.CurveAdjust, this.IsReversed);
-      console.log("= S.ArcLine RegenerateGenerateArc - Arc Params:", arcParams);
+      // Calculate arc parameters.
+      const arcParams = this.CalcRadiusAndCenter(
+        startRelX,
+        startRelY,
+        endRelX,
+        endRelY,
+        this.CurveAdjust,
+        this.IsReversed
+      );
 
+      // Build the arc path based on whether the center lies inside the arc.
       if (arcParams.centerInside) {
-        pathCreator.MoveTo(endX, endY);
-        pathCreator.ArcTo(startX, startY, arcParams.radius, arcParams.radius, 0, this.IsReversed, true, false);
+        pathCreator.MoveTo(endRelX, endRelY);
+        pathCreator.ArcTo(startRelX, startRelY, arcParams.radius, arcParams.radius, 0, this.IsReversed, true, false);
       } else {
-        pathCreator.MoveTo(startX, startY);
-        pathCreator.ArcTo(endX, endY, arcParams.radius, arcParams.radius, 0, !this.IsReversed, false, false);
+        pathCreator.MoveTo(startRelX, startRelY);
+        pathCreator.ArcTo(endRelX, endRelY, arcParams.radius, arcParams.radius, 0, !this.IsReversed, false, false);
       }
 
-      const pathString = pathCreator.ToString();
-      console.log("= S.ArcLine RegenerateGenerateArc - Generated Path:", pathString);
+      // Create path string and update the shape and slop elements.
+      const pathData = pathCreator.ToString();
+      shapeElement.SetPath(pathData);
+      slopElement.SetPath(pathData);
 
-      shapeElement.SetPath(pathString);
-      slopElement.SetPath(pathString);
+      // Update the overall position and size.
       svgDoc.SetSize(rect.width, rect.height);
       svgDoc.SetPos(rect.x, rect.y);
 
+      // Set arrowheads if defined.
       if (startArrow || endArrow) {
         if (arcParams.centerInside) {
           shapeElement.SetArrowheads(endArrow, arrowSize, startArrow, arrowSize, this.EndArrowDisp, this.StartArrowDisp);
@@ -614,15 +645,16 @@ class ArcLine extends BaseLine {
       }
     }
 
-    console.log("= S.ArcLine RegenerateGenerateArc - Output: Arc regenerated with path set.");
+    console.log("= S.ArcLine RegenerateGenerateArc output:", { pathData: shapeElement ? shapeElement.PathCreator ? shapeElement.PathCreator().ToString() : null : null });
   }
 
-  RegenerateGenerateArcForHops(svgDoc: any): void {
+  RegenerateGenerateArcForHops(svgDoc) {
     console.log("= S.ArcLine RegenerateGenerateArcForHops input:", { svgDoc });
 
+    // Retrieve arrowhead definitions and arrow size
     let startArrow = ConstantData1.ArrowheadLookupTable[this.StartArrowID];
     let endArrow = ConstantData1.ArrowheadLookupTable[this.EndArrowID];
-    const arrowSize = ConstantData1.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let arrowSize = ConstantData1.ArrowheadSizeTable[this.ArrowSizeIndex];
 
     if (startArrow.id === 0) {
       startArrow = null;
@@ -631,30 +663,43 @@ class ArcLine extends BaseLine {
       endArrow = null;
     }
 
+    // Get primary shape and slop elements from the svgDoc
     const shapeElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.SHAPE);
     const slopElement = svgDoc.GetElementByID(ConstantData.SVGElementClass.SLOP);
 
+    // Generate polyline points and adjust for hops
     let polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
-    const hopResult = GlobalData.optManager.InsertHops(this, polyPoints, polyPoints.length);
-    polyPoints = polyPoints.slice(0, hopResult.npts);
+    const hopsInfo = GlobalData.optManager.InsertHops(this, polyPoints, polyPoints.length);
+    polyPoints = polyPoints.slice(0, hopsInfo.npts);
+    const numPoints = polyPoints.length;
 
+    // Set the polyline points in the shape element
     shapeElement.SetPoints(polyPoints);
 
-    const frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    const offsetX = this.StartPoint.x - frame.x;
-    const offsetY = this.StartPoint.y - frame.y;
+    // Calculate relative rectangle bounds and starting offsets
+    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    const startXRel = this.StartPoint.x - rect.x;
+    const startYRel = this.StartPoint.y - rect.y;
 
-    svgDoc.SetSize(frame.width, frame.height);
-    svgDoc.SetPos(frame.x, frame.y);
+    // Set the size and position for the svgDoc container
+    svgDoc.SetSize(rect.width, rect.height);
+    svgDoc.SetPos(rect.x, rect.y);
 
+    // Update arrowheads if defined
     if (startArrow || endArrow) {
-      const firstPoint = polyPoints[0];
-      const lastPoint = polyPoints[polyPoints.length - 1];
-      const distStart = (offsetX - firstPoint.x) * (offsetX - firstPoint.x) + (offsetY - firstPoint.y) * (offsetY - firstPoint.y);
-      const distEnd = (offsetX - lastPoint.x) * (offsetX - lastPoint.x) + (offsetY - lastPoint.y) * (offsetY - lastPoint.y);
-      const useStartAsAnchor = distEnd < distStart;
+      // Compute squared distance from the starting point to the first polyline point
+      const distFirst = (startXRel - polyPoints[0].x) * (startXRel - polyPoints[0].x) +
+        (startYRel - polyPoints[0].y) * (startYRel - polyPoints[0].y);
+      // Compute squared distance from the starting point to the last polyline point
+      const distLast = (startXRel - polyPoints[numPoints - 1].x) * (startXRel - polyPoints[numPoints - 1].x) +
+        (startYRel - polyPoints[numPoints - 1].y) * (startYRel - polyPoints[numPoints - 1].y);
+      let isReversedArrow = false;
+      if (distLast < distFirst) {
+        isReversedArrow = true;
+      }
 
-      if (useStartAsAnchor) {
+      if (isReversedArrow) {
+        // If the last point is closer, swap arrowhead assignment
         shapeElement.SetArrowheads(endArrow, arrowSize, startArrow, arrowSize, this.EndArrowDisp, this.StartArrowDisp);
         slopElement.SetArrowheads(endArrow, arrowSize, startArrow, arrowSize, this.EndArrowDisp, this.StartArrowDisp);
       } else {
@@ -663,42 +708,43 @@ class ArcLine extends BaseLine {
       }
     }
 
-    console.log("= S.ArcLine RegenerateGenerateArcForHops output: arc regenerated with polyPoints:", polyPoints);
+    console.log("= S.ArcLine RegenerateGenerateArcForHops output:", { polyPoints, rect });
   }
 
-  AdjustLineStart(svgDoc: any, newX: number, newY: number): void {
-    console.log("= S.ArcLine AdjustLineStart input:", { svgDoc, newX, newY });
+  AdjustLineStart(svgDoc, newStartX, newStartY) {
+    console.log("= S.ArcLine AdjustLineStart input:", { svgDoc, newStartX, newStartY });
 
-    // Store initial start point for rollback if needed
-    const initialStart = { x: this.StartPoint.x, y: this.StartPoint.y };
+    // Save the current StartPoint values before update
+    const originalStart = {
+      x: this.StartPoint.x,
+      y: this.StartPoint.y,
+    };
 
-    // Update start point with new coordinates
-    this.StartPoint.x = newX;
-    this.StartPoint.y = newY;
+    // Update the StartPoint with new values
+    this.StartPoint.x = newStartX;
+    this.StartPoint.y = newStartY;
 
-    // Enforce minimum dimension constraints and recalculate the frame
+    // Enforce minimum dimensions and recalc frame
     this.EnforceMinimum(true);
     this.CalcFrame();
 
-    // If the recalculated frame is invalid, rollback to initial coordinates
+    // If the frame is invalid, revert to original StartPoint and recalc frame
     if (this.r.x < 0 || this.r.y < 0) {
-      this.StartPoint.x = initialStart.x;
-      this.StartPoint.y = initialStart.y;
+      this.StartPoint.x = originalStart.x;
+      this.StartPoint.y = originalStart.y;
       this.CalcFrame();
     }
 
-    // Regenerate the arc shape based on the updated start point
+    // Regenerate the arc based on the updated StartPoint
     this.RegenerateGenerateArc(svgDoc);
-
-    // Resize text objects if applicable
     if (this.DataID !== -1) {
       this.LM_ResizeSVGTextObject(svgDoc, this, this.Frame);
     }
 
-    // Log selection attributes (even if not stored, for tracing)
+    // Create new selection attributes (side effect only)
     new SelectionAttributes();
 
-    // Calculate the new distance between start and end points
+    // Calculate the euclidean distance (for logging purpose, not assigned)
     const deltaX = this.EndPoint.x - this.StartPoint.x;
     const deltaY = this.EndPoint.y - this.StartPoint.y;
     Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -711,52 +757,49 @@ class ArcLine extends BaseLine {
       ConstantData.CursorTypes.Grow
     );
 
-    // Resize text objects again if applicable
     if (this.DataID !== -1) {
       this.LM_ResizeSVGTextObject(svgDoc, this, this.Frame);
     }
 
-    console.log("= S.ArcLine AdjustLineStart output:", { updatedStart: this.StartPoint, frame: this.Frame });
+    console.log("= S.ArcLine AdjustLineStart output:", {
+      updatedStartPoint: this.StartPoint,
+      updatedFrame: this.Frame
+    });
   }
 
-  AdjustLineEnd(svgDoc: any, newX: number, newY: number, trigger?: any): void {
-    console.log("= S.ArcLine AdjustLineEnd - Input:", { svgDoc, newX, newY, trigger });
+  AdjustLineEnd(svgDoc: any, newEndX: number, newEndY: number, trigger: any) {
+    console.log("= S.ArcLine AdjustLineEnd input:", { svgDoc, newEndX, newEndY, trigger });
 
-    // Store original end point in case a rollback is needed
-    const originalEndPoint = { x: this.EndPoint.x, y: this.EndPoint.y };
+    // Save original end point coordinates
+    const originalEnd = { x: this.EndPoint.x, y: this.EndPoint.y };
 
-    // Update end point with new coordinates
-    this.EndPoint.x = newX;
-    this.EndPoint.y = newY;
+    // Update EndPoint with new coordinates
+    this.EndPoint.x = newEndX;
+    this.EndPoint.y = newEndY;
 
     // Enforce minimum dimensions and recalculate frame
     this.EnforceMinimum(false);
     this.CalcFrame();
 
-    // If the recalculated frame is invalid (negative positions), rollback
+    // If the frame is invalid, revert to original coordinates and recalc frame
     if (this.r.x < 0 || this.r.y < 0) {
-      this.EndPoint.x = originalEndPoint.x;
-      this.EndPoint.y = originalEndPoint.y;
+      this.EndPoint.x = originalEnd.x;
+      this.EndPoint.y = originalEnd.y;
       this.CalcFrame();
     }
 
-    // Regenerate the arc shape if svgDoc is available
+    // Regenerate the arc if a valid svgDoc is provided
     if (svgDoc) {
       this.RegenerateGenerateArc(svgDoc);
       if (this.DataID !== -1) {
         this.LM_ResizeSVGTextObject(svgDoc, this, this.Frame);
       }
-
-      // Log selection attributes creation for traceability
       new SelectionAttributes();
 
-      // Calculate the distance between start and end points for logging
       const deltaX = this.EndPoint.x - this.StartPoint.x;
       const deltaY = this.EndPoint.y - this.StartPoint.y;
-      const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
-      console.log("= S.ArcLine AdjustLineEnd - Calculated Distance:", distance);
+      Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-      // Update dimension lines and display coordinates
       this.UpdateDimensionLines(svgDoc);
       GlobalData.optManager.UpdateDisplayCoordinates(
         this.Frame,
@@ -764,44 +807,45 @@ class ArcLine extends BaseLine {
         ConstantData.CursorTypes.Grow,
         this
       );
-
       if (this.DataID !== -1) {
         this.LM_ResizeSVGTextObject(svgDoc, this, this.Frame);
       }
     }
 
-    console.log("= S.ArcLine AdjustLineEnd - Output:", { updatedEndPoint: this.EndPoint, frame: this.Frame });
+    console.log("= S.ArcLine AdjustLineEnd output:", { updatedEndPoint: this.EndPoint, frame: this.Frame });
   }
 
-  Flip(flipFlag: number): void {
-    console.log("= S.ArcLine Flip - Input:", { flipFlag });
+  Flip(flipFlag: number) {
+    console.log("= S.ArcLine Flip input:", { flipFlag });
 
-    let hasFlipChanged = false;
-    const swapStore: { x?: number; y?: number } = {};
+    let swapped = false;
+    const temp: any = {};
 
-    // Backup the current object
+    // Save a deep copy of the current object for backup
     GlobalData.optManager.ob = Utils1.DeepCopy(this);
 
-    // Vertical flip
+    // Flip vertically if flag is set
     if (flipFlag & ConstantData.ExtraFlags.SEDE_FlipVert) {
-      swapStore.y = this.StartPoint.y;
+      temp.y = this.StartPoint.y;
       this.StartPoint.y = this.EndPoint.y;
-      this.EndPoint.y = swapStore.y;
-      hasFlipChanged = true;
-      console.log("= S.ArcLine Flip - Vertical flip applied");
+      this.EndPoint.y = temp.y;
+      swapped = true;
+      console.log("= S.ArcLine Flip: Performed vertical flip.");
     }
 
-    // Horizontal flip
+    // Flip horizontally if flag is set
     if (flipFlag & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
-      swapStore.x = this.StartPoint.x;
+      temp.x = this.StartPoint.x;
       this.StartPoint.x = this.EndPoint.x;
-      this.EndPoint.x = swapStore.x;
-      hasFlipChanged = true;
-      console.log("= S.ArcLine Flip - Horizontal flip applied");
+      this.EndPoint.x = temp.x;
+      swapped = true;
+      console.log("= S.ArcLine Flip: Performed horizontal flip.");
     }
 
-    if (hasFlipChanged) {
+    if (swapped) {
       this.IsReversed = !this.IsReversed;
+      console.log("= S.ArcLine Flip: Toggled IsReversed to", this.IsReversed);
+
       const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
       if (svgElement) {
         this.UpdateDimensionLines(svgElement);
@@ -809,6 +853,7 @@ class ArcLine extends BaseLine {
           this.LM_ResizeSVGTextObject(svgElement, this, this.Frame);
         }
       }
+
       if (GlobalData.optManager.ob.Frame) {
         GlobalData.optManager.MaintainLink(
           this.BlockID,
@@ -818,42 +863,37 @@ class ArcLine extends BaseLine {
         );
       }
       GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
-      console.log("= S.ArcLine Flip - Flip change executed");
     }
 
+    // Reset the backup object
     GlobalData.optManager.ob = {};
-    console.log("= S.ArcLine Flip - Output:", {
+
+    console.log("= S.ArcLine Flip output:", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
       IsReversed: this.IsReversed,
     });
   }
 
-  ModifyShape(
-    svgDoc: any,
-    pointerX: number,
-    pointerY: number,
-    trigger: number,
-    extra?: any
-  ): void {
-    console.log("= S.ArcLine ModifyShape input:", { svgDoc, pointerX, pointerY, trigger, extra });
+  ModifyShape(svgDoc: any, x: number, y: number, trigger: number, additional?: any): void {
+    console.log("= S.ArcLine ModifyShape input:", { svgDoc, x, y, trigger, additional });
 
-    // Determine which side the pointer is on relative to the line.
+    // Determine the side based on the current start and end points and the provided coordinates.
     let side = this.FindSide(
       this.StartPoint.x,
       this.StartPoint.y,
       this.EndPoint.x,
       this.EndPoint.y,
-      pointerX,
-      pointerY
+      x,
+      y
     );
 
-    // If trigger equals -1, use the original line side.
+    // If trigger is -1, use the original line side.
     if (trigger === -1) {
       side = this.OriginalLineSide;
     }
 
-    // If the side has changed, update IsReversed and store the new side.
+    // If the detected side differs from the original, update and possibly reverse the arc.
     if (side !== this.OriginalLineSide) {
       if (this.OriginalLineSide !== 0) {
         this.IsReversed = !this.IsReversed;
@@ -861,49 +901,48 @@ class ArcLine extends BaseLine {
       this.OriginalLineSide = side;
     }
 
-    // Calculate the midpoint of the line.
+    // Calculate the difference from the midpoint to the input point.
     const midX = this.StartPoint.x + (this.EndPoint.x - this.StartPoint.x) / 2;
     const midY = this.StartPoint.y + (this.EndPoint.y - this.StartPoint.y) / 2;
+    const deltaX = midX - x;
+    const deltaY = midY - y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const diff = distance - this.OriginalCenterPointDistance;
 
-    // Compute the current distance from the midpoint to the pointer.
-    const deltaX = midX - pointerX;
-    const deltaY = midY - pointerY;
-    const currentDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    // Store the current CurveAdjust value for possible rollback.
+    const previousCurveAdjust = this.CurveAdjust;
+    const originalCurveAdjust = this.OriginalCurveAdjust;
 
-    // Determine the distance difference relative to the original center point distance.
-    const distanceDiff = currentDistance - this.OriginalCenterPointDistance;
+    // Adjust CurveAdjust based on whether the point is closer or further from the original center distance.
+    if (distance < this.OriginalCenterPointDistance) {
+      this.CurveAdjust = originalCurveAdjust - diff;
+    } else {
+      this.CurveAdjust = originalCurveAdjust + diff;
+    }
 
-    // Save the current CurveAdjust in case we need to rollback.
-    const originalCurveAdjust = this.CurveAdjust;
-
-    // Adjust CurveAdjust based on the pointer's distance.
-    // Note: Using the + difference as the final calculation.
-    this.CurveAdjust = this.OriginalCurveAdjust + distanceDiff;
-
-    // Constrain CurveAdjust within the boundaries.
+    // Enforce minimum and maximum bounds for CurveAdjust.
     if (this.CurveAdjust < 1) {
       this.CurveAdjust = 1;
-    }
-    if (this.CurveAdjust > 500) {
+    } else if (this.CurveAdjust > 500) {
       this.CurveAdjust = 500;
     }
 
-    // Recalculate the frame.
+    // Recalculate frame based on the new CurveAdjust.
     this.CalcFrame();
 
-    // If trigger is not -1 and the new frame is invalid, rollback CurveAdjust and recalc frame.
+    // If trigger is not -1 and the frame is invalid, revert to the previous CurveAdjust.
     if (trigger !== -1 && (this.r.x < 0 || this.r.y < 0)) {
-      this.CurveAdjust = originalCurveAdjust;
+      this.CurveAdjust = previousCurveAdjust;
       this.CalcFrame();
     }
 
-    // If dimension flags are set, add this object to the dirty list.
-    if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select ||
-      this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always) {
+    // If selection dimensions demand, mark the object as dirty.
+    if ((this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) ||
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always)) {
       GlobalData.optManager.AddToDirtyList(this.BlockID);
     }
 
-    // If svgDoc is provided, regenerate the arc shape and update any associated text.
+    // Regenerate the arc shape and resize the SVG text object if applicable.
     if (svgDoc) {
       this.RegenerateGenerateArc(svgDoc);
       if (this.DataID !== -1) {
@@ -914,236 +953,242 @@ class ArcLine extends BaseLine {
     console.log("= S.ArcLine ModifyShape output:", { CurveAdjust: this.CurveAdjust, Frame: this.Frame });
   }
 
-  FindSide(startX: number, startY: number, endX: number, endY: number, pointX: number, pointY: number) {
-    console.log("= S.ArcLine FindSide input:", { startX, startY, endX, endY, pointX, pointY });
+  FindSide(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    testX: number,
+    testY: number
+  ): number {
+    console.log("= S.ArcLine FindSide input:", {
+      startX,
+      startY,
+      endX,
+      endY,
+      testX,
+      testY
+    });
 
-    // Handle vertical line
+    let side = 0;
+
+    // Handle vertical line (startX == endX)
     if (startX === endX) {
-      let result: number;
-      if (pointX < endX) {
-        result = endY > startY ? 1 : -1;
-      } else if (pointX > endX) {
-        result = endY > startY ? -1 : 1;
+      if (testX < startX) {
+        side = endY > startY ? 1 : -1;
+      } else if (testX > startX) {
+        side = endY > startY ? -1 : 1;
       } else {
-        result = 0;
+        side = 0;
       }
-      console.log("= S.ArcLine FindSide output:", result);
-      return result;
+      console.log("= S.ArcLine FindSide output:", side);
+      return side;
     }
 
-    // Handle horizontal line
+    // Handle horizontal line (startY == endY)
     if (startY === endY) {
-      let result: number;
-      if (pointY < endY) {
-        result = endX > startX ? 1 : -1;
-      } else if (pointY > endY) {
-        result = endX > startX ? -1 : 1;
+      if (testY < startY) {
+        side = endX > startX ? 1 : -1;
+      } else if (testY > startY) {
+        side = endX > startX ? -1 : 1;
       } else {
-        result = 0;
+        side = 0;
       }
-      console.log("= S.ArcLine FindSide output:", result);
-      return result;
+      console.log("= S.ArcLine FindSide output:", side);
+      return side;
     }
 
-    // For non-vertical and non-horizontal lines, compute the slope
+    // For non-degenerate lines, compute slope and the expected Y at testX
     const slope = (endY - startY) / (endX - startX);
-    // Calculate the expected Y value on the line at the given pointX
-    const lineY = slope * pointX + (startY - slope * startX);
-    let result = 0;
+    const expectedY = slope * (testX - startX) + startY;
 
-    if (slope !== 0) {
-      result = pointY > lineY ? (endX > startX ? 1 : -1)
-        : pointY < lineY ? (endX > startX ? -1 : 1)
-          : 0;
+    if (testY > expectedY) {
+      side = endX > startX ? 1 : -1;
+    } else if (testY < expectedY) {
+      side = endX > startX ? -1 : 1;
+    } else {
+      side = 0;
     }
-    console.log("= S.ArcLine FindSide output:", result);
-    return result;
+
+    console.log("= S.ArcLine FindSide output:", side);
+    return side;
   }
 
-  BeforeModifyShape(pointerX: number, pointerY: number, extra?: any): void {
-    console.log("= S.ArcLine BeforeModifyShape input:", { pointerX, pointerY, extra });
+  BeforeModifyShape(mouseX: number, mouseY: number, extra: any) {
+    console.log("= S.ArcLine BeforeModifyShape input:", { mouseX, mouseY, extra });
 
-    // Store the initial curve adjustment
+    // Store the original curve adjustment value
     this.OriginalCurveAdjust = this.CurveAdjust;
 
-    // Calculate the center point of the line between start and end points
-    const midPointX = this.StartPoint.x + (this.EndPoint.x - this.StartPoint.x) / 2;
-    const midPointY = this.StartPoint.y + (this.EndPoint.y - this.StartPoint.y) / 2;
+    // Calculate the midpoint of the line
+    const midX = this.StartPoint.x + (this.EndPoint.x - this.StartPoint.x) / 2;
+    const midY = this.StartPoint.y + (this.EndPoint.y - this.StartPoint.y) / 2;
 
-    // Calculate the distance from the pointer to the midpoint
-    const deltaX = midPointX - pointerX;
-    const deltaY = midPointY - pointerY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    this.OriginalCenterPointDistance = distance;
+    // Calculate the distance from the midpoint to the input point (mouse coordinates)
+    const deltaX = midX - mouseX;
+    const deltaY = midY - mouseY;
+    const centerDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Determine the original line side based on the curve adjustment
-    if (this.CurveAdjust <= 1) {
-      this.OriginalLineSide = 0;
-    } else {
-      this.OriginalLineSide = this.FindSide(
-        this.StartPoint.x,
-        this.StartPoint.y,
-        this.EndPoint.x,
-        this.EndPoint.y,
-        pointerX,
-        pointerY
-      );
-    }
+    // Save the calculated center distance
+    this.OriginalCenterPointDistance = centerDistance;
+
+    // Determine the original line side based on the current CurveAdjust
+    this.OriginalLineSide =
+      this.CurveAdjust <= 1
+        ? 0
+        : this.FindSide(
+          this.StartPoint.x,
+          this.StartPoint.y,
+          this.EndPoint.x,
+          this.EndPoint.y,
+          mouseX,
+          mouseY
+        );
 
     console.log("= S.ArcLine BeforeModifyShape output:", {
       OriginalCurveAdjust: this.OriginalCurveAdjust,
       OriginalCenterPointDistance: this.OriginalCenterPointDistance,
-      OriginalLineSide: this.OriginalLineSide
+      OriginalLineSide: this.OriginalLineSide,
     });
   }
 
-  StartNewObjectDrawTrackCommon(currentX: number, currentY: number, additionalParam: any) {
-    console.log("= S.ArcLine StartNewObjectDrawTrackCommon - Input:", { currentX, currentY, additionalParam });
+  StartNewObjectDrawTrackCommon(drawX: number, drawY: number, extra: any) {
+    console.log("= S.ArcLine StartNewObjectDrawTrackCommon input:", { drawX, drawY, extra });
 
-    // Retrieve the starting X coordinate from the global action manager.
     const startX = GlobalData.optManager.theActionStartX;
-    // Calculate the offset from the start point.
-    const deltaX = currentX - startX;
-    const deltaY = currentY - GlobalData.optManager.theActionStartY;
-    // Compute the distance using the Euclidean distance formula.
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    console.log("= S.ArcLine StartNewObjectDrawTrackCommon - Calculated distance:", distance);
+    const startY = GlobalData.optManager.theActionStartY;
 
-    // Merge the bounding box (the result is not stored as return value, kept for side effects).
+    const deltaX = drawX - startX;
+    const deltaY = drawY - startY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Extend the action bounding box (side effect, if required)
     $.extend(true, {}, GlobalData.optManager.theActionBBox);
 
-    // Set the curve adjustment based on the distance.
-    this.CurveAdjust = distance / 10;
-    if (this.CurveAdjust < 1) {
-      this.CurveAdjust = 1;
+    let newCurveAdjust = distance / 10;
+    if (newCurveAdjust < 1) {
+      newCurveAdjust = 1;
+    } else if (newCurveAdjust > 500) {
+      newCurveAdjust = 500;
     }
-    if (this.CurveAdjust > 500) {
-      this.CurveAdjust = 500;
-    }
+    this.CurveAdjust = newCurveAdjust;
 
-    // Determine if the arc should be reversed based on the current x-coordinate.
-    this.IsReversed = !(currentX >= startX);
-    console.log("= S.ArcLine StartNewObjectDrawTrackCommon - Updated parameters:", { CurveAdjust: this.CurveAdjust, IsReversed: this.IsReversed });
+    // Determine if the arc should be reversed based on the mouse position
+    this.IsReversed = !(drawX >= startX);
 
-    // Adjust the line end using the updated parameters.
-    this.AdjustLineEnd(GlobalData.optManager.theActionSVGObject, currentX, currentY, ConstantData.ActionTriggerType.LINEEND);
+    // Update the end point of the line using the new parameters
+    this.AdjustLineEnd(
+      GlobalData.optManager.theActionSVGObject,
+      drawX,
+      drawY,
+      ConstantData.ActionTriggerType.LINEEND
+    );
 
-    console.log("= S.ArcLine StartNewObjectDrawTrackCommon - Output:", {
-      currentX,
-      currentY,
-      CurveAdjust: this.CurveAdjust,
-      IsReversed: this.IsReversed
-    });
+    console.log("= S.ArcLine StartNewObjectDrawTrackCommon output:", { CurveAdjust: this.CurveAdjust, IsReversed: this.IsReversed });
   }
 
   GetPolyPoints(
-    numPolyPoints: number,
-    applyOffset: boolean,
-    useBaseMethod: boolean,
-    paramR: any,
-    paramI: any
+    numPoints: number,
+    skipOffset: boolean,
+    useSuper: boolean,
+    extraParam1: any,
+    extraParam2: any
   ): Point[] {
     console.log("= S.ArcLine GetPolyPoints input:", {
-      numPolyPoints,
-      applyOffset,
-      useBaseMethod,
-      paramR,
-      paramI,
+      numPoints,
+      skipOffset,
+      useSuper,
+      extraParam1,
+      extraParam2
     });
 
-    // If using base method, delegate to BaseLine implementation
-    if (useBaseMethod) {
-      const basePoints = ListManager.BaseLine.prototype.GetPolyPoints.call(this, numPolyPoints, applyOffset, useBaseMethod, paramR, paramI);
-      console.log("= S.ArcLine GetPolyPoints output (base):", basePoints);
-      return basePoints;
+    let polyPoints: Point[] = [];
+    let rotatedPoints: Point[] = [];
+    let center: { x: number; y: number } = { x: 0, y: 0 };
+
+    // If using superclass implementation, delegate.
+    if (useSuper) {
+      polyPoints = super.GetPolyPoints(numPoints, skipOffset, useSuper, extraParam1, extraParam2);
+      console.log("= S.ArcLine GetPolyPoints output (using super):", polyPoints);
+      return polyPoints;
     }
 
-    // Initialize arrays and objects
-    let polyPoints: Point[] = [];
-    const basePoints: Point[] = [];
-    const centerOffset = { x: 0, y: 0 };
+    // Compute the bounding rectangle for the StartPoint and EndPoint.
+    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    const startXRel = this.StartPoint.x - rect.x;
+    const startYRel = this.StartPoint.y - rect.y;
+    const endXRel = this.EndPoint.x - rect.x;
+    const endYRel = this.EndPoint.y - rect.y;
 
-    // Calculate bounding rectangle and relative start/end coordinates
-    const boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    const startRelX = this.StartPoint.x - boundingRect.x;
-    const startRelY = this.StartPoint.y - boundingRect.y;
-    const endRelX = this.EndPoint.x - boundingRect.x;
-    const endRelY = this.EndPoint.y - boundingRect.y;
-
-    // Compute differences and angle for rotation
-    const deltaX = endRelX - startRelX;
-    const deltaY = endRelY - startRelY;
+    // Calculate differences and distance.
+    const deltaX = endXRel - startXRel;
+    const deltaY = endYRel - startYRel;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     let ratio = distance > 0 ? deltaX / distance : 0;
     if (Math.abs(ratio) < 0.0001) {
       ratio = 0;
     }
-    if (Math.abs(deltaY) < 0.0001) {
-      // Force deltaY to zero if nearly zero for precision
-      // (deltaY is used in angle calculation)
-      // deltaY remains zero due to JavaScript number behavior, so no reassign.
-    }
-    let rotationAngle = Math.asin(ratio);
-    // Invert the angle if deltaY is non-negative
-    if (deltaY >= 0) {
-      rotationAngle = -rotationAngle;
+    let deltaYAdjusted = Math.abs(deltaY) < 0.0001 ? 0 : deltaY;
+
+    // Compute the rotation angle.
+    let angle = Math.asin(ratio);
+    if (deltaYAdjusted > 0 || deltaYAdjusted === 0) {
+      angle = -angle;
     }
 
-    // Calculate arc parameters
-    const arcParams = ListManager.ArcLine.prototype.CalcRadiusAndCenter.call(
-      this,
-      startRelX,
-      startRelY,
-      endRelX,
-      endRelY,
+    // Calculate arc information (radius and center).
+    const arcInfo = this.CalcRadiusAndCenter(
+      startXRel,
+      startYRel,
+      endXRel,
+      endYRel,
       this.CurveAdjust,
       this.IsReversed
     );
+    center.x = arcInfo.centerX;
+    center.y = arcInfo.centerY;
 
-    // Set rotation center based on calculated arc parameters
-    centerOffset.x = arcParams.centerX;
-    centerOffset.y = arcParams.centerY;
+    // Build a temporary points list from start and end.
+    const tempPoints: Point[] = [];
+    tempPoints.push(new Point(startXRel, startYRel));
+    tempPoints.push(new Point(endXRel, endYRel));
 
-    // Push the original relative start and end points
-    basePoints.push(new Point(startRelX, startRelY));
-    basePoints.push(new Point(endRelX, endRelY));
+    // Rotate the temporary points about the computed center.
+    Utils3.RotatePointsAboutPoint(center, angle, tempPoints);
 
-    // Rotate base points about the arc center for further processing
-    Utils3.RotatePointsAboutPoint(centerOffset, rotationAngle, basePoints);
-
-    // Determine vertical ordering adjusted by FromPolygon flag
-    let lowerY: number, higherY: number;
-    if (basePoints[0].y > basePoints[1].y && !this.FromPolygon) {
-      lowerY = basePoints[1].y;
-      higherY = basePoints[0].y;
+    // Determine the lower and upper Y values.
+    let lowerY: number, upperY: number;
+    if (tempPoints[0].y > tempPoints[1].y && !this.FromPolygon) {
+      lowerY = tempPoints[1].y;
+      upperY = tempPoints[0].y;
     } else {
-      lowerY = basePoints[0].y;
-      higherY = basePoints[1].y;
+      lowerY = tempPoints[0].y;
+      upperY = tempPoints[1].y;
     }
 
-    // Generate poly points representing the arc using external helper function
+    // Generate arc polyline points.
     polyPoints = GlobalData.optManager.ArcToPoly(
-      numPolyPoints - 1,
-      centerOffset,
-      arcParams.radius,
+      numPoints - 1,
+      center,
+      arcInfo.radius,
       lowerY,
-      higherY,
-      basePoints[0].x,
+      upperY,
+      tempPoints[0].x,
       this.IsReversed,
-      arcParams.centerInside
+      arcInfo.centerInside
     );
 
-    // Add an extra point based on the first generated point and the higher Y value
-    polyPoints.push(new Point(polyPoints[0].x, higherY));
+    // Append an extra point at the upper Y value based on the first point.
+    polyPoints.push(new Point(polyPoints[0].x, upperY));
 
-    // Rotate poly points back to original coordinate system
-    Utils3.RotatePointsAboutPoint(centerOffset, -rotationAngle, polyPoints);
+    // Rotate the polyline points back.
+    Utils3.RotatePointsAboutPoint(center, -angle, polyPoints);
 
-    // If applyOffset flag is false, adjust points back by the bounding rectangle offset
-    if (!applyOffset) {
+    // If offset is not skipped, adjust points back to the original coordinate system.
+    if (!skipOffset) {
       for (let idx = 0; idx < polyPoints.length; idx++) {
-        polyPoints[idx].x += boundingRect.x;
-        polyPoints[idx].y += boundingRect.y;
+        polyPoints[idx].x += rect.x;
+        polyPoints[idx].y += rect.y;
       }
     }
 
@@ -1153,30 +1198,27 @@ class ArcLine extends BaseLine {
 
   GetConnectLine() {
     console.log("= S.ArcLine GetConnectLine input:", {
-      startPoint: this.StartPoint,
-      endPoint: this.EndPoint,
-      curveAdjust: this.CurveAdjust,
-      isReversed: this.IsReversed,
+      StartPoint: this.StartPoint,
+      EndPoint: this.EndPoint,
+      CurveAdjust: this.CurveAdjust,
+      IsReversed: this.IsReversed
     });
 
-    // Calculate relative coordinates based on the bounding rectangle
-    const boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    const startRelX = this.StartPoint.x - boundingRect.x;
-    const startRelY = this.StartPoint.y - boundingRect.y;
-    const endRelX = this.EndPoint.x - boundingRect.x;
-    const endRelY = this.EndPoint.y - boundingRect.y;
+    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    const startRelX = this.StartPoint.x - rect.x;
+    const startRelY = this.StartPoint.y - rect.y;
+    const endRelX = this.EndPoint.x - rect.x;
+    const endRelY = this.EndPoint.y - rect.y;
 
-    // Prepare the output structure
-    const connectLine = {
+    const result = {
       frame: {},
       length: 0,
-      startpt: {},
-      endpt: {},
-      center: {},
+      startpt: { x: 0, y: 0 },
+      endpt: { x: 0, y: 0 },
+      center: {}
     };
 
-    // Compute arc parameters using relative coordinates
-    const arcParams = this.CalcRadiusAndCenter(
+    const calcResult = this.CalcRadiusAndCenter(
       startRelX,
       startRelY,
       endRelX,
@@ -1185,262 +1227,265 @@ class ArcLine extends BaseLine {
       this.IsReversed
     );
 
-    if (arcParams.centerInside) {
-      // Calculate differences and the unit vector along the line
-      let deltaX = endRelX - startRelX;
-      let deltaY = endRelY - startRelY;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      let unitX = distance > 0 ? deltaX / distance : 0;
+    if (calcResult.centerInside) {
+      // Calculate chord vector components and length
+      const deltaX = endRelX - startRelX;
+      const deltaY = endRelY - startRelY;
+      let chordLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      let unitX = chordLength > 0 ? deltaX / chordLength : 0;
       if (Math.abs(unitX) < 0.0001) {
         unitX = 0;
       }
-      if (Math.abs(deltaY) < 0.0001) {
-        deltaY = 0;
-      }
+      let adjustedDeltaY = Math.abs(deltaY) < 0.0001 ? 0 : deltaY;
 
-      // Determine the rotation angle from the unit vector (handle sign inversion)
+      // Compute rotation angle based on the chord direction
       let angle = Math.asin(unitX);
-      if (deltaY >= 0) {
+      if (adjustedDeltaY >= 0) {
         angle = -angle;
       }
 
-      // Use the arc center from the calculated parameters
-      const arcCenter = { x: arcParams.centerX, y: arcParams.centerY };
+      // Define the center for rotation
+      const centerPoint = { x: calcResult.centerX, y: calcResult.centerY };
 
-      // Create points array for start and end in relative coordinates
+      // Create a copy of the start and end points (relative to rect)
       const points: Point[] = [];
       points.push(new Point(startRelX, startRelY));
       points.push(new Point(endRelX, endRelY));
 
-      // Rotate points about the arc center by the computed angle
-      Utils3.RotatePointsAboutPoint(arcCenter, angle, points);
+      // Rotate the points about the calculated center
+      Utils3.RotatePointsAboutPoint(centerPoint, angle, points);
 
-      // Adjust Y coordinates so that the chord becomes centered on the arc
-      let diffY: number, halfDiff: number;
+      // Adjust points vertically based on the arc's radius
+      let diffY: number;
+      let adjustAmount: number;
       if (points[0].y > points[1].y) {
         diffY = points[0].y - points[1].y;
-        halfDiff = arcParams.radius - diffY / 2;
-        points[0].y += halfDiff;
-        points[1].y -= halfDiff;
+        adjustAmount = calcResult.radius - diffY / 2;
+        points[0].y += adjustAmount;
+        points[1].y -= adjustAmount;
       } else {
         diffY = points[1].y - points[0].y;
-        halfDiff = arcParams.radius - diffY / 2;
-        points[1].y += halfDiff;
-        points[0].y -= halfDiff;
+        adjustAmount = calcResult.radius - diffY / 2;
+        points[1].y += adjustAmount;
+        points[0].y -= adjustAmount;
       }
 
       // Rotate the points back to the original orientation
-      Utils3.RotatePointsAboutPoint(arcCenter, -angle, points);
+      Utils3.RotatePointsAboutPoint(centerPoint, -angle, points);
 
-      // Translate the points back to the original coordinate system
-      points[0].x += boundingRect.x;
-      points[0].y += boundingRect.y;
-      points[1].x += boundingRect.x;
-      points[1].y += boundingRect.y;
+      // Offset points back to the document coordinate system
+      points[0].x += rect.x;
+      points[0].y += rect.y;
+      points[1].x += rect.x;
+      points[1].y += rect.y;
 
-      // Compute the frame and length of the connection line
-      connectLine.frame = Utils2.Pt2Rect(points[0], points[1]);
-      const finalDeltaX = points[0].x - points[1].x;
-      const finalDeltaY = points[0].y - points[1].y;
-      connectLine.length = Math.sqrt(finalDeltaX * finalDeltaX + finalDeltaY * finalDeltaY);
-      connectLine.startpt = { x: points[0].x, y: points[0].y };
-      connectLine.endpt = { x: points[1].x, y: points[1].y };
-      connectLine.center = {
-        x: arcCenter.x + boundingRect.x,
-        y: arcCenter.y + boundingRect.y,
-      };
+      // Compute the frame and length of the adjusted arc chord
+      const computedFrame = Utils2.Pt2Rect(points[0], points[1]);
+      const dx = points[0].x - points[1].x;
+      const dy = points[0].y - points[1].y;
+      const computedLength = Math.sqrt(dx * dx + dy * dy);
 
-      console.log("= S.ArcLine GetConnectLine output:", connectLine);
-      return connectLine;
+      result.frame = computedFrame;
+      result.length = computedLength;
+      result.startpt = { x: points[0].x, y: points[0].y };
+      result.endpt = { x: points[1].x, y: points[1].y };
+      result.center = { x: centerPoint.x + rect.x, y: centerPoint.y + rect.y };
+
+      console.log("= S.ArcLine GetConnectLine intermediate values:", {
+        rotatedPoints: points,
+        computedFrame,
+        computedLength,
+        resultCenter: result.center
+      });
+
+      console.log("= S.ArcLine GetConnectLine output:", result);
+      return result;
     } else {
-      console.log("= S.ArcLine GetConnectLine output:", null, "(arc center not inside)");
+      console.log("= S.ArcLine GetConnectLine output:", null);
       return null;
     }
   }
 
-  GetTargetPoints(hook: any, hookFlags: any, targetId: any): Point[] {
-    console.log("= S.ArcLine GetTargetPoints input:", { hook, hookFlags, targetId });
+  GetTargetPoints(hookElement, hookFlags, targetId) {
+    console.log("= S.ArcLine GetTargetPoints input:", { hookElement, hookFlags, targetId });
 
-    let result: Point[] = [{ x: 0, y: 0 }];
-    const connectLine = this.GetConnectLine();
-    let ptStart: Point;
-    let ptEnd: Point;
-    const hookPoints = ConstantData.HookPts;
+    // Initialize the target point with default values.
+    const targetPoints = [{ x: 0, y: 0 }];
+    let chordResult = { x: 0, y: 0 };
+    let startPt = { x: 0, y: 0 };
+    let endPt = { x: 0, y: 0 };
+    const hookPts = ConstantData.HookPts;
 
-    // If a valid target object exists and is a SHAPE, use base method for certain hook IDs.
-    if (targetId != null && targetId >= 0) {
-      const objPtr = GlobalData.optManager.GetObjectPtr(targetId, false);
-      if (objPtr.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.SHAPE) {
-        switch (hook.id) {
-          case hookPoints.SED_KTC:
-          case hookPoints.SED_KBC:
-          case hookPoints.SED_KRC:
-          case hookPoints.SED_KLC: {
-            const baseTargetPoints = ListManager.BaseLine.prototype.GetTargetPoints.call(this, hook, hookFlags, targetId);
-            console.log("= S.ArcLine GetTargetPoints output (base):", baseTargetPoints);
-            return baseTargetPoints;
-          }
-        }
+    // If targetId is valid and the target object is a shape,
+    // and if the hook id is one of the central hooks, delegate to the base implementation.
+    if (
+      targetId != null &&
+      targetId >= 0 &&
+      GlobalData.optManager.GetObjectPtr(targetId, false).DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.SHAPE
+    ) {
+      switch (hookElement.id) {
+        case hookPts.SED_KTC:
+        case hookPts.SED_KBC:
+        case hookPts.SED_KRC:
+        case hookPts.SED_KLC:
+          // const baseTargetPoints = ListManager.BaseLine.prototype.GetTargetPoints.call(this, hookElement, hookFlags, targetId);
+          const baseTargetPoints = super.GetTargetPoints(hookElement, hookFlags, targetId);
+          console.log("= S.ArcLine GetTargetPoints output:", baseTargetPoints);
+          return baseTargetPoints;
       }
     }
 
-    // Determine the start and end points based on the connect line if available.
+    // Determine start and end points from the connect line if available.
+    const connectLine = this.GetConnectLine();
     if (connectLine) {
-      ptStart = connectLine.startpt;
-      ptEnd = connectLine.endpt;
+      startPt = connectLine.startpt;
+      endPt = connectLine.endpt;
     } else {
-      ptStart = this.StartPoint;
-      ptEnd = this.EndPoint;
+      startPt = this.StartPoint;
+      endPt = this.EndPoint;
     }
 
+    // Calculate horizontal difference; ensure non-zero to avoid division by zero.
     let deltaX = this.EndPoint.x - this.StartPoint.x;
     if (Math.abs(deltaX) < 1) {
       deltaX = 1;
     }
-    let deltaY = this.EndPoint.y - this.StartPoint.y;
-    const slope = deltaY / deltaX;
+    const diffY = this.EndPoint.y - this.StartPoint.y;
+    const slope = diffY / deltaX;
 
-    // Calculate chord difference using the external ArcToChord helper.
-    const chord = GlobalData.optManager.ArcToChord(ptStart, ptEnd, hook, connectLine, this);
-    let diffX: number;
-    let diffY: number;
-
+    let offsetX, offsetY;
+    // Choose chord calculation based on slope or specific hook flag.
     if (Math.abs(slope) > 1 || (hookFlags & ConstantData.HookFlags.SED_LC_HOnly)) {
-      diffY = chord.y - ptStart.y;
-      diffX = chord.x - ptStart.x;
+      // Calculate chord and determine offsets.
+      chordResult = GlobalData.optManager.ArcToChord(startPt, endPt, hookElement, connectLine, this);
+      offsetY = chordResult.y - startPt.y;
+      offsetX = chordResult.x - startPt.x;
     } else {
-      diffX = chord.x - ptStart.x;
-      diffY = chord.y - ptStart.y;
+      chordResult = GlobalData.optManager.ArcToChord(startPt, endPt, hookElement, connectLine, this);
+      offsetX = chordResult.x - startPt.x;
+      offsetY = chordResult.y - startPt.y;
     }
 
-    // Recompute the differences based on the connect line endpoints.
-    deltaX = ptEnd.x - ptStart.x;
-    deltaY = ptEnd.y - ptStart.y;
+    // Determine segmentation differences.
+    const segDeltaY = endPt.y - startPt.y;
+    const segDeltaX = endPt.x - startPt.x;
 
-    if (Math.abs(deltaY) > 1) {
-      result[0].y = (diffY / deltaY) * ConstantData.Defines.SED_CDim;
-    } else {
-      result[0].y = ConstantData.Defines.SED_CDim;
-    }
+    // Calculate the target point coordinates scaled to a standard dimension.
+    targetPoints[0].y =
+      Math.abs(segDeltaY) > 1
+        ? (offsetY / segDeltaY) * ConstantData.Defines.SED_CDim
+        : ConstantData.Defines.SED_CDim;
+    targetPoints[0].x =
+      Math.abs(segDeltaX) > 1
+        ? (offsetX / segDeltaX) * ConstantData.Defines.SED_CDim
+        : ConstantData.Defines.SED_CDim;
 
-    if (Math.abs(deltaX) > 1) {
-      result[0].x = (diffX / deltaX) * ConstantData.Defines.SED_CDim;
-    } else {
-      result[0].x = ConstantData.Defines.SED_CDim;
+    // Clamp the values between 0 and the defined dimension.
+    if (targetPoints[0].x > ConstantData.Defines.SED_CDim) {
+      targetPoints[0].x = ConstantData.Defines.SED_CDim;
     }
-
-    // Constrain the values to be within 0 and the defined dimension.
-    if (result[0].x > ConstantData.Defines.SED_CDim) {
-      result[0].x = ConstantData.Defines.SED_CDim;
+    if (targetPoints[0].y > ConstantData.Defines.SED_CDim) {
+      targetPoints[0].y = ConstantData.Defines.SED_CDim;
     }
-    if (result[0].y > ConstantData.Defines.SED_CDim) {
-      result[0].y = ConstantData.Defines.SED_CDim;
+    if (targetPoints[0].x < 0) {
+      targetPoints[0].x = 0;
     }
-    if (result[0].x < 0) {
-      result[0].x = 0;
-    }
-    if (result[0].y < 0) {
-      result[0].y = 0;
+    if (targetPoints[0].y < 0) {
+      targetPoints[0].y = 0;
     }
 
-    // If a connect line exists, adjust x value rounding.
+    // Adjust x coordinate for rounding if a connect line exists.
     if (connectLine) {
-      const isRounded = (2 * Math.round(chord.x / 2)) !== chord.x;
-      result[0].x = 2 * Math.round((result[0].x + 0.5) / 2);
-      if (isRounded) {
-        result[0].x--;
+      const roundedFlag = (2 * Math.round(chordResult["x"] / 2)) !== chordResult["x"];
+      targetPoints[0].x = 2 * Math.round((targetPoints[0].x + 0.5) / 2);
+      if (roundedFlag) {
+        targetPoints[0].x--;
       }
     }
 
-    console.log("= S.ArcLine GetTargetPoints output:", result);
-    return result;
+    console.log("= S.ArcLine GetTargetPoints output:", targetPoints);
+    return targetPoints;
   }
 
-  GetPerimPts(eventArg, hooks, argA, argR, argI, targetId) {
-    console.log("= S.ArcLine GetPerimPts input:", { eventArg, hooks, argA, argR, argI, targetId });
+  GetPerimPts(event: any, hooks: any[], param3: any, param4: any, param5: any, targetId: any): Point[] {
+    console.log("= S.ArcLine GetPerimPts input:", { event, hooks, param3, param4, param5, targetId });
 
-    let basePerimPoints,
-      isReversed = this.IsReversed,
-      hookCount,
-      connectLine,
-      resultPoints: Point[] = [],
-      centerAbsolute: { x?: number; y?: number } = {},
-      roundingFlag = false,
-      lineStart: Point = {},
-      lineEnd: Point = {},
-      boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint),
-      relativeStartX = this.StartPoint.x - boundingRect.x,
-      relativeStartY = this.StartPoint.y - boundingRect.y,
-      relativeEndX = this.EndPoint.x - boundingRect.x,
-      relativeEndY = this.EndPoint.y - boundingRect.y;
+    let resultPoints: Point[] = [];
+    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    const startXRel = this.StartPoint.x - rect.x;
+    const startYRel = this.StartPoint.y - rect.y;
+    const endXRel = this.EndPoint.x - rect.x;
+    const endYRel = this.EndPoint.y - rect.y;
 
-    // If hooks contain exactly two points with expected IDs, return start and end as perimeter points.
-    hookCount = hooks.length;
+    // If two hooks are provided and they match SED_KTL and SED_KTR, return start and end points directly.
     if (
       hooks &&
-      hookCount === 2 &&
-      hooks[0].id &&
-      hooks[0].id === ConstantData.HookPts.SED_KTL &&
-      hooks[1].id &&
-      hooks[1].id === ConstantData.HookPts.SED_KTR
+      hooks.length === 2 &&
+      hooks[0].id && hooks[0].id === ConstantData.HookPts.SED_KTL &&
+      hooks[1].id && hooks[1].id === ConstantData.HookPts.SED_KTR
     ) {
-      resultPoints.push(new Point(this.StartPoint.x, this.StartPoint.y));
-      resultPoints[0].id = hooks[0].id;
-      resultPoints.push(new Point(this.EndPoint.x, this.EndPoint.y));
-      resultPoints[1].id = hooks[1].id;
-      console.log("= S.ArcLine GetPerimPts output:", resultPoints);
+      const ptStart = new Point(this.StartPoint.x, this.StartPoint.y);
+      ptStart.id = hooks[0].id;
+      const ptEnd = new Point(this.EndPoint.x, this.EndPoint.y);
+      ptEnd.id = hooks[1].id;
+      resultPoints.push(ptStart, ptEnd);
+      console.log("= S.ArcLine GetPerimPts output (direct start/end):", resultPoints);
       return resultPoints;
     }
 
-    // Check for specific object types from target.
-    const targetObj = GlobalData.optManager.GetObjectPtr(targetId, false);
-    if (targetObj && targetObj.objecttype === ConstantData.ObjectTypes.SD_OBJT_MULTIPLICITY) {
-      resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, eventArg, hooks, argA, argR, argI, targetId);
-      console.log("= S.ArcLine GetPerimPts output:", resultPoints);
+    // Retrieve the target object, then delegate if it is of a specific type.
+    const refObject = GlobalData.optManager.GetObjectPtr(targetId, false);
+    if (refObject && refObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_MULTIPLICITY) {
+      // resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
+      resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
+      console.log("= S.ArcLine GetPerimPts output (Multiplicity):", resultPoints);
       return resultPoints;
     }
-    if (targetObj && targetObj.objecttype === ConstantData.ObjectTypes.SD_OBJT_EXTRATEXTLABEL && hookCount === 1) {
-      resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, eventArg, hooks, argA, argR, argI, targetId);
-      console.log("= S.ArcLine GetPerimPts output:", resultPoints);
+    if (refObject && refObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_EXTRATEXTLABEL && hooks.length === 1) {
+      // resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
+      resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
+      console.log("= S.ArcLine GetPerimPts output (ExtraTextLabel):", resultPoints);
       return resultPoints;
     }
 
-    // Calculate arc parameters based on relative coordinates.
-    const arcParams = this.CalcRadiusAndCenter(relativeStartX, relativeStartY, relativeEndX, relativeEndY, this.CurveAdjust, this.IsReversed);
-    centerAbsolute.x = arcParams.centerX + boundingRect.x;
-    centerAbsolute.y = arcParams.centerY + boundingRect.y;
+    // Calculate the arc parameters using relative positions.
+    const arcParams = this.CalcRadiusAndCenter(startXRel, startYRel, endXRel, endYRel, this.CurveAdjust, this.IsReversed);
+    const arcCenter = {
+      x: arcParams.centerX + rect.x,
+      y: arcParams.centerY + rect.y
+    };
 
-    // Get base perimeter points from BaseLine.
-    basePerimPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, eventArg, hooks, argA, argR, argI, targetId);
-
-    // Determine connection line: if available, use its start and end; else use object's start and end.
-    connectLine = this.GetConnectLine();
+    let isReversedFlag = this.IsReversed;
+    // const basePerimPts: Point[] = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
+    const basePerimPts: Point[] = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
+    let chordStart: Point, chordEnd: Point;
+    let adjustFlag = false;
+    const connectLine = this.GetConnectLine();
     if (connectLine) {
-      lineStart = connectLine.startpt;
-      lineEnd = connectLine.endpt;
-      // Check for rounding: if the first hook's x value is not a multiple of 2 exactly.
-      roundingFlag = (2 * Math.round(hooks[0].x / 2)) !== hooks[0].x;
-      isReversed = false;
+      chordStart = connectLine.startpt;
+      chordEnd = connectLine.endpt;
+      // Determine adjust flag based on the hook's x-coordinate rounding (if available).
+      adjustFlag = (2 * Math.round(hooks[0].x / 2)) !== hooks[0].x;
+      isReversedFlag = false;
     } else {
-      lineStart = this.StartPoint;
-      lineEnd = this.EndPoint;
+      chordStart = this.StartPoint;
+      chordEnd = this.EndPoint;
     }
 
-    hookCount = basePerimPoints.length;
-    // Convert each chord point to an arc point.
-    for (let index = 0; index < hookCount; index++) {
-      resultPoints[index] = GlobalData.optManager.ChordToArc(
-        lineStart,
-        lineEnd,
-        centerAbsolute,
+    // Convert each base perimeter point (chord point) to an arc point.
+    for (let i = 0; i < basePerimPts.length; i++) {
+      resultPoints[i] = GlobalData.optManager.ChordToArc(
+        chordStart,
+        chordEnd,
+        arcCenter,
         arcParams.radius,
-        isReversed,
-        roundingFlag,
+        isReversedFlag,
+        adjustFlag,
         arcParams.centerInside,
-        basePerimPoints[index]
+        basePerimPts[i]
       );
-      if (basePerimPoints[index].id != null) {
-        resultPoints[index].id = basePerimPoints[index].id;
+      if (basePerimPts[i].id != null) {
+        resultPoints[i].id = basePerimPts[i].id;
       }
     }
 
@@ -1448,51 +1493,52 @@ class ArcLine extends BaseLine {
     return resultPoints;
   }
 
-  MaintainPoint(eventArg, targetId, paramA, refObject, extraParam) {
-    console.log("= S.ArcLine MaintainPoint input:", { eventArg, targetId, paramA, refObject, extraParam });
+  MaintainPoint(event: any, targetId: any, maintainDistParam: any, drawingObject: any, extraParam: any): any {
+    console.log("= S.ArcLine MaintainPoint input:", { event, targetId, maintainDistParam, drawingObject, extraParam });
 
-    let status, index, hookPoint = {}, copiedObject = {};
+    let hookFound = false;
+    let hookPoint: any = {};
+    let newDrawingObject: any = {};
 
-    switch (refObject.DrawingObjectBaseClass) {
+    switch (drawingObject.DrawingObjectBaseClass) {
       case ConstantData.DrawingObjectBaseClass.LINE:
-        switch (refObject.LineType) {
+        switch (drawingObject.LineType) {
           case ConstantData.LineType.SEGLINE:
           case ConstantData.LineType.ARCSEGLINE:
           case ConstantData.LineType.POLYLINE:
-            status = -1;
-            for (index = 0; index < refObject.hooks.length; index++) {
-              if (refObject.hooks[index].targetid === targetId) {
-                refObject.HookToPoint(refObject.hooks[index].hookpt, hookPoint);
-                status = 0;
+            for (let hookIndex = 0; hookIndex < drawingObject.hooks.length; hookIndex++) {
+              if (drawingObject.hooks[hookIndex].targetid === targetId) {
+                drawingObject.HookToPoint(drawingObject.hooks[hookIndex].hookpt, hookPoint);
+                hookFound = true;
                 break;
               }
             }
-            if (status !== 0) {
-              console.log("= S.ArcLine MaintainPoint output:", true, "(hook not found)");
+            if (!hookFound) {
+              console.log("= S.ArcLine MaintainPoint output:", true);
               return true;
             }
-            copiedObject = Utils1.DeepCopy(refObject);
-            Utils2.CopyRect(copiedObject.Frame, hookPoint);
-            copiedObject.StartPoint.x = hookPoint.x;
-            copiedObject.StartPoint.y = hookPoint.y;
-            copiedObject.EndPoint.x = hookPoint.x + hookPoint.width;
-            copiedObject.EndPoint.y = hookPoint.y + hookPoint.height;
-            console.log("= S.ArcLine MaintainPoint output:", copiedObject);
-            return copiedObject;
+            newDrawingObject = Utils1.DeepCopy(drawingObject);
+            Utils2.CopyRect(newDrawingObject.Frame, hookPoint);
+            newDrawingObject.StartPoint.x = hookPoint.x;
+            newDrawingObject.StartPoint.y = hookPoint.y;
+            newDrawingObject.EndPoint.x = hookPoint.x + hookPoint.width;
+            newDrawingObject.EndPoint.y = hookPoint.y + hookPoint.height;
+            console.log("= S.ArcLine MaintainPoint output:", newDrawingObject);
+            return newDrawingObject;
         }
-        if (GlobalData.optManager.ArcCheckPoint(this, eventArg)) {
-          console.log("= S.ArcLine MaintainPoint output:", true, "(ArcCheckPoint triggered)");
+        if (GlobalData.optManager.ArcCheckPoint(this, event)) {
+          console.log("= S.ArcLine MaintainPoint output:", true);
           return true;
         }
-        if (GlobalData.optManager.Arc_Intersect(this, refObject, eventArg)) {
-          console.log("= S.ArcLine MaintainPoint output:", true, "(Arc_Intersect triggered)");
+        if (GlobalData.optManager.Arc_Intersect(this, drawingObject, event)) {
+          console.log("= S.ArcLine MaintainPoint output:", true);
           return true;
         }
-        GlobalData.optManager.Lines_MaintainDist(this, paramA, extraParam, eventArg);
+        GlobalData.optManager.Lines_MaintainDist(this, maintainDistParam, extraParam, event);
         break;
 
       case ConstantData.DrawingObjectBaseClass.SHAPE:
-        GlobalData.optManager.Lines_MaintainDist(this, paramA, extraParam, eventArg);
+        GlobalData.optManager.Lines_MaintainDist(this, maintainDistParam, extraParam, event);
         break;
     }
 
