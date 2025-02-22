@@ -1,19 +1,25 @@
 
 
-
-
 import { Type } from 'class-transformer'
 import 'reflect-metadata'
 import Globals from "../Data/Globals"
+// import ListManager from "../Data/ListManager"
 import Utils1 from '../Helper/Utils1'
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
+import Global from '../Data/Globals'
 import GlobalData from '../Data/GlobalData'
+// import Collab from '../Data/Collab'
+// import FileParser from '../Data/FileParser'
+import DefaultEvt from "../Event/DefaultEvt"
+// import Resources from '../Data/Resources'
 import DefaultStyle from '../Model/DefaultStyle'
 import Point from '../Model/Point'
 import $ from 'jquery'
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
+import Effects from "../Basic/Basic.Element.Effects";
+import Formatter from '../Basic/Basic.Text.Formatter'
 import Utils4 from "../Helper/Utils3";
 import ParagraphFormat from '../Model/ParagraphFormat'
 import Instance from "../Data/Instance/Instance"
@@ -816,7 +822,7 @@ class BaseDrawingObject {
     return rect;
   }
 
-  AdjustPinRect(inputRect: Rectangle, adjustment: any): Rectangle {
+  AdjustPinRect(inputRect: Rectangle, adjustment: any): any {
     console.log("= S.BaseDrawingObject: AdjustPinRect input:", { inputRect, adjustment });
     const resultRect = inputRect; // No adjustment applied, returning as is
     console.log("= S.BaseDrawingObject: AdjustPinRect output:", resultRect);
@@ -1547,6 +1553,16 @@ class BaseDrawingObject {
     console.log("= S.BaseDrawingObject: SetTextFormat output: completed");
   }
 
+
+
+
+
+
+
+
+
+
+
   ExtendLines(): void {
     console.log("= S.BaseDrawingObject: ExtendLines input:");
 
@@ -1907,6 +1923,42 @@ class BaseDrawingObject {
     console.log("= S.BaseDrawingObject: SetObjectStyle output:", filteredStyle);
     return filteredStyle;
   }
+
+  // GetTextDefault(e) {
+  //   if (
+  //     e &&
+  //     (
+  //       $.extend(!0, e, new ParagraphFormat()/*Basic.Text.ParagraphFormat*/),
+  //       e.bullet = 'none',
+  //       e.spacing = 0,
+  //       e.just = 'center',
+  //       e.vjust = 'middle',
+  //       this.TextAlign
+  //     )
+  //   ) {
+  //     var t = this.TextAlign.indexOf('-');
+  //     t >= 0 ? (
+  //       e.vjust = this.TextAlign.slice(0, t),
+  //       e.just = this.TextAlign.slice(t + 1, this.TextAlign.length)
+  //     ) : e.just = this.TextAlign
+  //   }
+  //   var a = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, !1),
+  //     r = $.extend(!0, {
+  //     }, this.StyleRecord.Text);
+  //   return r.FontId = GlobalData.optManager.GetFontIdByName(a.def.lf.fontName),
+  //     r.FontName = a.def.lf.fontName,
+  //     r
+  // }
+
+  // GetTextParams(e) {
+  //   var t = {};
+  //   return t.trect = this.trect,
+  //     t.sizedim = this.sizedim,
+  //     t.tsizedim = {},
+  //     t.tsizedim.height = this.sizedim.height - (this.Frame.height - this.trect.height),
+  //     t.tsizedim.width = this.sizedim.width - (this.Frame.width - this.trect.width),
+  //     t
+  // }
 
   GetListOfEnclosedObjects(enclosedItems: any): any[] {
     console.log("= S.BaseDrawingObject: GetListOfEnclosedObjects input:", enclosedItems);
@@ -3871,14 +3923,239 @@ class BaseDrawingObject {
     return result;
   }
 
-  AdjustAutoInsertShape(insertEvent: any): boolean {
-    console.log("= S.BaseDrawingObject: AdjustAutoInsertShape input:", insertEvent);
-    const result = false;
-    console.log("= S.BaseDrawingObject: AdjustAutoInsertShape output:", result);
-    return result;
+  AdjustAutoInsertShape(e) {
+    return !1
   }
 
+  // Double
+  GetDimensionTextInfo1(e, t, a, r, i, n, o, s, l) {
+    console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
+    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
+    // e point
+    // t point
+    // a 0
+    // r Text
+    // i 1
+    // n Array
+    // o Array
+    // s array
+    // l boolean
+
+    var S;
+    var c;
+    var u;
+    var p = [];
+    var d = {};
+    var D = {};
+    var g = {};
+    var h = { x: 0, y: 0, width: 0, height: 0 };
+    var m = 0;
+    var C = !1;
+    var y = 0;
+    var f = !1;
+
+
+    u = r.GetTextMinDimensions();
+    h.height = u.height;
+    h.width = u.width;
+    p.push(new Point(e.x, e.y));
+    p.push(new Point(t.x, t.y));
+    S = 360 - a;
+    c = 2 * Math.PI * (S / 360);
+    Utils3.RotatePointsAboutCenter(this.Frame, - c, p);
+
+    p[0].x < p[1].x ?
+      (d = $.extend(!0, {}, p[0]), D = $.extend(!0, {}, p[1]))
+
+      : (d = $.extend(!0, {}, p[1]), D = $.extend(!0, {}, p[0]));
+
+
+    h.x = d.x + (D.x - d.x) / 2;
+    h.y = d.y + (D.y - d.y) / 2;
+    h.x -= h.width / 2;
+    h.y -= h.height / 2;
+    h.y -= h.height / 2;
+
+    const check1 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior || this.StyleRecord &&
+      this.StyleRecord.Line && this.StyleRecord.Line.Thickness;
+
+    if (check1) {
+      (h.y -= this.StyleRecord.Line.Thickness);
+    }
+
+    // f = 0 != (
+    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
+    // ) &&
+    //   this.CanUseStandOffDimensionLines();
+
+
+    f = 0 != (
+      this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
+    ) &&
+      this.CanUseStandOffDimensionLines();
+
+
+
+    if (
+      !l &&
+      !(
+        this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions
+      ) &&
+      // this instanceof ListManager.BaseLine &&
+      // Double === TODO
+      // this instanceof GlobalDataShape.BaseLine &&
+      this instanceof Instance.Shape.BaseLine &&
+      this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
+      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
+    ) {
+      var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
+      if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
+        (f = !0)
+    }
+    l &&
+      (f = !1);
+
+    var I = f ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
+
+    if (
+      h.y -= I,
+      m = ConstantData.Defines.DimensionDefaultTextGap,
+      this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
+      this.StyleRecord &&
+      this.StyleRecord.Line &&
+      this.StyleRecord.Line.Thickness &&
+      (m += this.StyleRecord.Line.Thickness),
+      // this instanceof ListManager.BaseLine &&
+      // Double === TODO
+      // this instanceof GlobalDataShape.BaseLine &&
+      this instanceof Instance.Shape.BaseLine &&
+      (!this.polylist || 2 === this.polylist.segs.length)
+    ) {
+      var T = Math.floor((c - 0.01) / (Math.PI / 2));
+      C = 1 == T ||
+        2 == T
+    } else if (this.polylist && !this.polylist.closed && l) {
+      var b = [
+        (
+          p = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
+        )[i - 1],
+        p[i]
+      ];
+      Utils3.RotatePointsAboutCenter(this.Frame, - c, b),
+        b.push({
+          x: h.x + h.width / 2,
+          y: h.y + h.height / 2
+        }),
+        b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
+        Utils3.RotatePointsAboutCenter(this.Frame, c, b),
+        Utils2.IsPointInPoly(p, b[2]) &&
+        (C = !0)
+    } else this.IsTextFrameOverlap(h, a) &&
+      (C = !0);
+    C &&
+      (
+        h.y += I,
+        h.y += h.height,
+        this.StyleRecord &&
+        this.StyleRecord.Line &&
+        this.StyleRecord.Line.Thickness &&
+        (h.y += 2 * this.StyleRecord.Line.Thickness),
+        h.y += I
+      );
+    var M = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+    if (
+      M &&
+      !this.CanUseStandOffDimensionLines() &&
+      (M = !1),
+      l &&
+      (M = !1),
+      M &&
+      (
+        y = (
+          // this instanceof ListManager.PolyLine ||
+          // this instanceof GlobalDataShape.PolyLine ||
+          this instanceof Instance.Shape.PolyLine ||
+          // this instanceof ListManager.Polygon
+          // Double === TODO
+          // this instanceof GlobalDataShape.Polygon
+          this instanceof Instance.Shape.Polygon
+        ) &&
+          this.polylist &&
+          this.polylist.segs &&
+          this.polylist.segs.length > i ? this.polylist.segs[i].dimDeflection :
+
+          // this instanceof ListManager.BaseLine
+          // Double === TODO
+          // this instanceof GlobalDataShape.BaseLine
+          this instanceof Instance.Shape.BaseLine
+
+            ? this.dimensionDeflectionH ? this.dimensionDeflectionH : 0 : (
+              y = Math.abs(a % 180) < 5 ? this.dimensionDeflectionH : this.dimensionDeflectionV
+            ) ||
+            0,
+        C ? h.y += y : h.y -= y,
+        this.polylist &&
+        this.polylist.segs &&
+        this.polylist.segs.length > i &&
+        (this.polylist.segs[i].dimTextAltPositioning = C)
+      ),
+      this.Frame2Poly(h, n),
+      this.Dimensions & M
+    ) g.x = d.x,
+      g.y = d.y > h.y ? d.y - m : d.y + m,
+      o.push(new Point(g.x, g.y)),
+      g.y = h.y + h.height / 2,
+      o.push(new Point(g.x, g.y)),
+      g.x = h.x - ConstantData.Defines.DimensionDefaultTextGap,
+      o.push(new Point(g.x, g.y)),
+      g.x = h.x + h.width + ConstantData.Defines.DimensionDefaultTextGap,
+      s.push(new Point(g.x, g.y)),
+      g.x = D.x,
+      s.push(new Point(g.x, g.y)),
+      g.y = D.y > h.y ? D.y - m : D.y + m,
+      s.push(new Point(g.x, g.y));
+    else {
+      var P = 0.5 * h.height;
+      var R = 0.5 * P;
+
+
+      g.x = h.x - R;
+      g.y = h.y + (h.height - P) / 2;
+      o.push(new Point(g.x, g.y));
+      g.y += P;
+      o.push(new Point(g.x, g.y));
+      g.x -= P;
+      g.y = h.y + h.height / 2;
+      o.push(new Point(g.x, g.y));
+      o.push(new Point(o[0].x, o[0].y));
+      g.x = h.x + h.width + R;
+      g.y = h.y + (h.height - P) / 2;
+      s.push(new Point(g.x, g.y));
+      g.y += P;
+      s.push(new Point(g.x, g.y));
+      g.x += P;
+      g.y = h.y + h.height / 2;
+      s.push(new Point(g.x, g.y));
+      s.push(new Point(s[0].x, s[0].y));
+    }
+    Utils3.RotatePointsAboutCenter(this.Frame, c, n),
+      Utils3.RotatePointsAboutCenter(this.Frame, c, o),
+      Utils3.RotatePointsAboutCenter(this.Frame, c, s)
+  }
+
+
   GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff) {
+    // console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
+    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
+    // e point
+    // t point
+    // a 0
+    // r Text
+    // i 1
+    // n Array
+    // o Array
+    // s array
+    // l boolean
 
     var newAngle;//S;
     var arcLength;//c;
@@ -3897,6 +4174,8 @@ class BaseDrawingObject {
     var y = 0;
 
     var isStdOff = false;// f = !1;
+
+    // GetTextMinDimensions {width: 0, height: 0}
 
     textMinDim = textShape.GetTextMinDimensions();
     textDim.height = textMinDim.height;
@@ -3918,7 +4197,14 @@ class BaseDrawingObject {
     else {
       pointStart = $.extend(true, {}, polyPoints[1]);
       pointEnd = $.extend(true, {}, polyPoints[0]);
+
     }
+
+    // polyPoints[0].x < polyPoints[1].x ?
+    //   (pointStart = $.extend(!0, {}, polyPoints[0]), pointEnd = $.extend(!0, {}, polyPoints[1]))
+
+    //   : (pointStart = $.extend(!0, {}, polyPoints[1]), pointEnd = $.extend(!0, {}, polyPoints[0]));
+
 
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
     textDim.y = pointStart.y + (pointEnd.y - pointStart.y) / 2;
@@ -3933,17 +4219,43 @@ class BaseDrawingObject {
       (textDim.y -= this.StyleRecord.Line.Thickness);
     }
 
+    // f = 0 != (
+    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
+    // ) &&
+    //   this.CanUseStandOffDimensionLines();
+
     const stdOffFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+
+    // f = 0 != (stdOffFlag ) &&  this.CanUseStandOffDimensionLines();
+
     isStdOff = stdOffFlag != 0 && this.CanUseStandOffDimensionLines();
+
+
     const isHideHookedObjDimensions = this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions;
 
     const check3 = !isStandoff && !isHideHookedObjDimensions && this instanceof Instance.Shape.BaseLine &&
       this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL;
 
+
     if (
+
+      /*
+      !isStandoff && !(isHideHookedObjDimensions) &&
+      // this instanceof ListManager.BaseLine &&
+      // Double === TODO
+      // this instanceof GlobalDataShape.BaseLine &&
+      this instanceof Instance.Shape.BaseLine &&
+      this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
+      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
+      */
+
       check3
     ) {
+      // var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
+      // if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
+      //   (isStdOff = !0)
+
       var linkObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
       if (linkObject) {
 
@@ -3954,11 +4266,65 @@ class BaseDrawingObject {
       }
     }
 
+
+    // isStandoff &&
+    //   (isStdOff = !1);
+
     if (isStandoff) {
       isStdOff = false;
     }
 
+    // var I = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
     const stdOffNum = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
+
+    // if (
+    //   textDim.y -= stdOffNum,
+    //   m = ConstantData.Defines.DimensionDefaultTextGap,
+    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
+    //   this.StyleRecord &&
+    //   this.StyleRecord.Line &&
+    //   this.StyleRecord.Line.Thickness &&
+    //   (m += this.StyleRecord.Line.Thickness),
+    //   // this instanceof ListManager.BaseLine &&
+    //   // Double === TODO
+    //   // this instanceof GlobalDataShape.BaseLine &&
+    //   this instanceof Instance.Shape.BaseLine &&
+    //   (!this.polylist || 2 === this.polylist.segs.length)
+    // ) {
+    //   var T = Math.floor((arcLength - 0.01) / (Math.PI / 2));
+    //   C = 1 == T ||
+    //     2 == T
+    // } else if (this.polylist && !this.polylist.closed && isStandoff) {
+    //   var b = [
+    //     (
+    //       polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
+    //     )[segmentIndex - 1],
+    //     polyPoints[segmentIndex]
+    //   ];
+    //   GlobalData.optManager.RotatePointsAboutCenter(this.Frame, - arcLength, b),
+    //     b.push({
+    //       x: textDim.x + textDim.width / 2,
+    //       y: textDim.y + textDim.height / 2
+    //     }),
+    //     b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
+    //     GlobalData.optManager.RotatePointsAboutCenter(this.Frame, arcLength, b),
+    //     Utils2.IsPointInPoly(polyPoints, b[2]) &&
+    //     (C = !0)
+    // } else this.IsTextFrameOverlap(textDim, angle) &&
+    //   (C = !0);
+    // C &&
+    //   (
+    //     textDim.y += stdOffNum,
+    //     textDim.y += textDim.height,
+    //     this.StyleRecord &&
+    //     this.StyleRecord.Line &&
+    //     this.StyleRecord.Line.Thickness &&
+    //     (textDim.y += 2 * this.StyleRecord.Line.Thickness),
+    //     textDim.y += stdOffNum
+    //   );
+
+
+
 
     if (textDim.y -= stdOffNum,
       m = ConstantData.Defines.DimensionDefaultTextGap,
@@ -3996,7 +4362,18 @@ class BaseDrawingObject {
       textDim.y += stdOffNum;
     }
 
+
+
+
+
+
+
+
+
+
+
     let isStdOff2 = false; //M
+
     var stdOffFlag2 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
 
     if (stdOffFlag2 && !this.CanUseStandOffDimensionLines()) {
@@ -4072,12 +4449,28 @@ class BaseDrawingObject {
       rightArrowPoints.push(new Point(rightArrowPoints[0].x, rightArrowPoints[0].y));
     }
 
+
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, textFramePoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, leftArrowPoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, rightArrowPoints);
+
+
   }
 
+
+
   GetCoordinateTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff) {
+    // console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
+    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
+    // e point
+    // t point
+    // a 0
+    // r Text
+    // i 1
+    // n Array
+    // o Array
+    // s array
+    // l boolean
 
     var newAngle;//S;
     var arcLength;//c;
@@ -4096,6 +4489,8 @@ class BaseDrawingObject {
     var y = 0;
 
     var isStdOff = false;// f = !1;
+
+    // GetTextMinDimensions {width: 0, height: 0}
 
     textMinDim = textShape.GetTextMinDimensions();
     textDim.height = textMinDim.height;
@@ -4117,7 +4512,14 @@ class BaseDrawingObject {
     else {
       pointStart = $.extend(true, {}, polyPoints[1]);
       pointEnd = $.extend(true, {}, polyPoints[0]);
+
     }
+
+    // polyPoints[0].x < polyPoints[1].x ?
+    //   (pointStart = $.extend(!0, {}, polyPoints[0]), pointEnd = $.extend(!0, {}, polyPoints[1]))
+
+    //   : (pointStart = $.extend(!0, {}, polyPoints[1]), pointEnd = $.extend(!0, {}, polyPoints[0]));
+
 
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
     textDim.y = pointStart.y + (pointEnd.y - pointStart.y) / 2;
@@ -4132,8 +4534,17 @@ class BaseDrawingObject {
       (textDim.y -= this.StyleRecord.Line.Thickness);
     }
 
+    // f = 0 != (
+    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
+    // ) &&
+    //   this.CanUseStandOffDimensionLines();
+
     const stdOffFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+
+    // f = 0 != (stdOffFlag ) &&  this.CanUseStandOffDimensionLines();
+
     isStdOff = stdOffFlag != 0 && this.CanUseStandOffDimensionLines();
+
 
     const isHideHookedObjDimensions = this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions;
 
@@ -4141,9 +4552,25 @@ class BaseDrawingObject {
       this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL;
 
+
     if (
+
+      /*
+      !isStandoff && !(isHideHookedObjDimensions) &&
+      // this instanceof ListManager.BaseLine &&
+      // Double === TODO
+      // this instanceof GlobalDataShape.BaseLine &&
+      this instanceof Instance.Shape.BaseLine &&
+      this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
+      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
+      */
+
       check3
     ) {
+      // var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
+      // if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
+      //   (isStdOff = !0)
+
       var linkObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
       if (linkObject) {
 
@@ -4154,13 +4581,76 @@ class BaseDrawingObject {
       }
     }
 
+
+    // isStandoff &&
+    //   (isStdOff = !1);
+
     if (isStandoff) {
       isStdOff = false;
     }
 
+    // var I = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
+
+    // Double set the stdoff to coordindateLine std off
+    //  const stdOffNum = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
+
     const stdOffNum = isStdOff ? ConstantData.Defines.CoordinateLineDefaultStandoff : ConstantData.Defines.CoordinateLineDefaultNonStandoff;
 
+    // if (
+    //   textDim.y -= stdOffNum,
+    //   m = ConstantData.Defines.DimensionDefaultTextGap,
+    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
+    //   this.StyleRecord &&
+    //   this.StyleRecord.Line &&
+    //   this.StyleRecord.Line.Thickness &&
+    //   (m += this.StyleRecord.Line.Thickness),
+    //   // this instanceof ListManager.BaseLine &&
+    //   // Double === TODO
+    //   // this instanceof GlobalDataShape.BaseLine &&
+    //   this instanceof Instance.Shape.BaseLine &&
+    //   (!this.polylist || 2 === this.polylist.segs.length)
+    // ) {
+    //   var T = Math.floor((arcLength - 0.01) / (Math.PI / 2));
+    //   C = 1 == T ||
+    //     2 == T
+    // } else if (this.polylist && !this.polylist.closed && isStandoff) {
+    //   var b = [
+    //     (
+    //       polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
+    //     )[segmentIndex - 1],
+    //     polyPoints[segmentIndex]
+    //   ];
+    //   GlobalData.optManager.RotatePointsAboutCenter(this.Frame, - arcLength, b),
+    //     b.push({
+    //       x: textDim.x + textDim.width / 2,
+    //       y: textDim.y + textDim.height / 2
+    //     }),
+    //     b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
+    //     GlobalData.optManager.RotatePointsAboutCenter(this.Frame, arcLength, b),
+    //     Utils2.IsPointInPoly(polyPoints, b[2]) &&
+    //     (C = !0)
+    // } else this.IsTextFrameOverlap(textDim, angle) &&
+    //   (C = !0);
+    // C &&
+    //   (
+    //     textDim.y += stdOffNum,
+    //     textDim.y += textDim.height,
+    //     this.StyleRecord &&
+    //     this.StyleRecord.Line &&
+    //     this.StyleRecord.Line.Thickness &&
+    //     (textDim.y += 2 * this.StyleRecord.Line.Thickness),
+    //     textDim.y += stdOffNum
+    //   );
+
+
+    // TODO
     textDim.y -= stdOffNum;
+
+    // move the text up
+    // textDim.y += stdOffNum / 2;
+    // textDim.y += textDim.height / 2;
+
+    // m = ConstantData.Defines.DimensionDefaultTextGap;
     textGap = ConstantData.Defines.CoordinateLineDefaultTextGap;//3
 
     const check4 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior || this.StyleRecord &&
@@ -4174,6 +4664,16 @@ class BaseDrawingObject {
       (!this.polylist || 2 === this.polylist.segs.length);
 
     if (
+      // textDim.y -= stdOffNum,
+      // m = ConstantData.Defines.DimensionDefaultTextGap,
+      // this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
+      // this.StyleRecord &&
+      // this.StyleRecord.Line &&
+      // this.StyleRecord.Line.Thickness &&
+      // (m += this.StyleRecord.Line.Thickness),
+      // this instanceof Instance.Shape.BaseLine &&
+      // (!this.polylist || 2 === this.polylist.segs.length)
+
       check5
     ) {
 
@@ -4205,7 +4705,18 @@ class BaseDrawingObject {
       textDim.y += stdOffNum;
     }
 
+
+
+
+
+
+
+
+
+
+
     let isStdOff2 = false; //M
+
     var stdOffFlag2 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
 
     if (stdOffFlag2 && !this.CanUseStandOffDimensionLines()) {
@@ -4245,12 +4756,27 @@ class BaseDrawingObject {
 
     if (this.Dimensions & stdOffFlag2) {
 
+      // Double temp point {x:0,y:0}
+      // 1st----------------2nd--- txtdim  1st---------------
+      // just take 2 points for each arrow (left and right)
+
+      // left arrow's 1st point
+      // pointStart {x:0,y:0}
       arrowPoint.x = pointStart.x;
       arrowPoint.y = pointStart.y > textDim.y ? pointStart.y - textGap : pointStart.y + textGap;
       leftArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
 
+      // left arrow's 2nd point  up-line
+
+      // arrowPoint.y = textDim.y + textDim.height / 2;
+
+      // TODO do not add this point
+      //leftArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
+
+      // left arrow's 3rd point
       arrowPoint.x = textDim.x - ConstantData.Defines.CoordinateLineDefaultTextGap;
       leftArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
+
 
       // right arrow's 1st point
       arrowPoint.x = textDim.x + textDim.width + ConstantData.Defines.CoordinateLineDefaultTextGap;
@@ -4258,6 +4784,9 @@ class BaseDrawingObject {
 
       // right arrow's 2nd point
       arrowPoint.x = pointEnd.x;
+
+      // TODO do not add this point
+      // rightArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
 
       // right arrow's 3rd point
       arrowPoint.y = pointEnd.y > textDim.y ? pointEnd.y - textGap : pointEnd.y + textGap;
@@ -4287,12 +4816,36 @@ class BaseDrawingObject {
       rightArrowPoints.push(new Point(rightArrowPoints[0].x, rightArrowPoints[0].y));
     }
 
+
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, textFramePoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, leftArrowPoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, rightArrowPoints);
+
+
   }
 
+
+  // CreateDimensionLineSegment(e, t, a, r) {
+
+  //   var i = 0;
+  //   for (i = 0; i < a.length; i++) 0 === i ? e.MoveTo(a[i].x, a[i].y) : e.LineTo(a[i].x, a[i].y),
+  //     (a[i].x < r.left || - 1 == r.left) &&
+  //     (r.left = a[i].x),
+  //     a[i].x > r.right &&
+  //     (r.right = a[i].x),
+  //     (a[i].y < r.top || - 1 == r.top) &&
+  //     (r.top = a[i].y),
+  //     a[i].y > r.bottom &&
+  //     (r.bottom = a[i].y)
+  // }
+
+
   CreateDimensionLineSegment(pathCreator, path, points, bounds) {
+
+    // console.log('=== wall CreateDimensionLineSegment pathCreator', pathCreator);
+    console.log('=== wall ========================================================');
+    console.log('=== wall CreateDimensionLineSegment path,points,bounds', path, points, bounds);
+
     for (let i = 0; i < points.length; i++) {
       if (i === 0) {
         pathCreator.MoveTo(points[i].x, points[i].y);
@@ -4316,6 +4869,11 @@ class BaseDrawingObject {
   }
 
   CreateCoordinateLineSegment(pathCreator, path, points, bounds) {
+
+    // console.log('=== wall CreateDimensionLineSegment pathCreator', pathCreator);
+    // console.log('=== wall ========================================================');
+    console.log('=== wall CreateCoordinateLineSegment points/bounds', points, bounds);
+
     for (let i = 0; i < points.length; i++) {
       if (i === 0) {
         pathCreator.MoveTo(points[i].x, points[i].y);
@@ -4338,114 +4896,81 @@ class BaseDrawingObject {
     }
   }
 
-  CreateDimensionLineArrowHead(
-    container: any,
-    unusedParam: any,
-    points: Point[],
-    boundingRect: Rectangle,
-    userData?: any
-  ): void {
-    console.log("= S.BaseDrawingObject: CreateDimensionLineArrowHead input:", {
-      container,
-      unusedParam,
-      points,
-      boundingRect,
-      userData
-    });
 
-    // Make a deep copy of the points array
-    const copiedPoints = Utils1.DeepCopy(points);
-    const numPoints = copiedPoints.length;
 
-    // Update boundingRect values based on the copied points
-    for (let index = 0; index < numPoints; index++) {
-      boundingRect.left = Math.min(boundingRect.left, copiedPoints[index].x);
-      boundingRect.right = Math.max(boundingRect.right, copiedPoints[index].x);
-      boundingRect.top = Math.min(boundingRect.top, copiedPoints[index].y);
-      boundingRect.bottom = Math.max(boundingRect.bottom, copiedPoints[index].y);
-    }
 
-    // Calculate a rectangle that encloses the copiedPoints
-    const rect = new Rectangle(0, 0, 0, 0);
-    Utils2.GetPolyRect(rect, copiedPoints);
 
-    // Adjust points relative to the calculated rectangle
-    for (let index = 0; index < numPoints; index++) {
-      copiedPoints[index].x -= rect.x;
-      copiedPoints[index].y -= rect.y;
-    }
 
-    // Create the polygon shape representing the arrowhead
-    const polygonShape = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.POLYGON);
-    polygonShape.SetPoints(points);
-    polygonShape.SetEventBehavior(Element.EventBehavior.ALL);
-    polygonShape.SetID(ConstantData.SVGElementClass.DIMENSIONLINE);
-    polygonShape.SetPos(0, 0);
-    polygonShape.SetSize(rect.width, rect.height);
-    polygonShape.SetFillColor("black");
-
-    // Exclude shape from export if the Select flag is set
-    if (Utils2.HasFlag(this.Dimensions, ConstantData.DimensionFlags.SED_DF_Select)) {
-      polygonShape.ExcludeFromExport(true);
-    }
-
-    // Set user data if provided
-    if (userData) {
-      polygonShape.SetUserData(userData);
-    }
-
-    // Add the created shape to the container
-    container.AddElement(polygonShape);
-
-    console.log("= S.BaseDrawingObject: CreateDimensionLineArrowHead output: polygon shape added", polygonShape);
+  CreateDimensionLineArrowHead(e, t, a, r, i) {
+    console.log('=== wall CreateDimensionLineArrowHead e,t,a,r,i', e, t, a, r, i);
+    var n,
+      o,
+      s = new Rectangle(0, 0, 0, 0),
+      l = Utils1.DeepCopy(a);
+    for (o = l.length, n = 0; n < o; n++) r.left = Math.min(r.left, l[n].x),
+      r.right = Math.max(r.right, l[n].x),
+      r.top = Math.min(r.top, l[n].y),
+      r.bottom = Math.max(r.right, l[n].y);
+    for (Utils2.GetPolyRect(s, l), n = 0; n < o; n++) l[n].x -= s.x,
+      l[n].y -= s.y;
+    var S = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.POLYGON);
+    S.SetPoints(a),
+      S.SetEventBehavior(Element.EventBehavior.ALL),
+      S.SetID(ConstantData.SVGElementClass.DIMENSIONLINE),
+      S.SetPos(0, 0),
+      S.SetSize(s.width, s.height),
+      S.SetFillColor('black'),
+      Utils2.HasFlag(
+        this.Dimensions,
+        ConstantData.DimensionFlags.SED_DF_Select
+      ) &&
+      S.ExcludeFromExport(!0),
+      i &&
+      S.SetUserData(i),
+      e.AddElement(S)
   }
 
-  ConvertToNative(source: any, options: any): any {
-    console.log("= S.BaseDrawingObject: ConvertToNative input:", { source, options });
-    const result = null;
-    console.log("= S.BaseDrawingObject: ConvertToNative output:", result);
-    return result;
+  ConvertToNative(e, t) {
+    return null
   }
 
-  ContainsText(): boolean {
-    console.log("= S.BaseDrawingObject: ContainsText input:", { DataID: this.DataID, BlockID: this.BlockID });
-    const result = this.DataID >= 0 || GlobalData.optManager.SD_GetVisioTextChild(this.BlockID) >= 0;
-    console.log("= S.BaseDrawingObject: ContainsText output:", result);
-    return result;
+  ContainsText() {
+    return this.DataID >= 0 ||
+      GlobalData.optManager.SD_GetVisioTextChild(this.BlockID) >= 0
   }
 
   GetToUnits(): number {
-    console.log("= S.BaseDrawingObject: GetToUnits() input: none");
+    console.log("= S.BaseDrawingObject: GetToUnits - Input: none");
+
+    // Retrieve major value and majorScale from ruler settings
     const major: number = GlobalData.docHandler.rulerSettings.major;
     const majorScale: number = GlobalData.docHandler.rulerSettings.majorScale;
-    const useInches: boolean = GlobalData.docHandler.rulerSettings.useInches;
-    const metricConv: number = GlobalData.docHandler.rulerSettings.metricConv;
 
-    let result: number = majorScale / major;
-    if (!useInches) {
-      result *= metricConv;
+    // Calculate unit conversion factor
+    let conversionFactor: number = majorScale / major;
+
+    // If not using inches, apply metric conversion factor
+    if (!GlobalData.docHandler.rulerSettings.useInches) {
+      conversionFactor *= GlobalData.docHandler.rulerSettings.metricConv;
     }
 
-    console.log("= S.BaseDrawingObject: GetToUnits() output:", result);
-    return result;
+    console.log("= S.BaseDrawingObject: GetToUnits - Output:", conversionFactor);
+    return conversionFactor;
   }
 
-  GetLengthInUnits(length: number, skipRounding?: boolean): number {
-    console.log("= S.BaseDrawingObject: GetLengthInUnits input:", { length, skipRounding });
-
-    let result = length * this.GetToUnits();
-
-    if (!skipRounding) {
-      const roundingFactor = Math.pow(10, GlobalData.docHandler.rulerSettings.dp);
-      result = Math.round(result * roundingFactor) / roundingFactor;
+  GetLengthInUnits(value: number, round: boolean = false): number {
+    console.log("= S.BaseDrawingObject: GetLengthInUnits input:", { value, round });
+    let result = value * this.GetToUnits();
+    if (!round) {
+      const factor = Math.pow(10, GlobalData.docHandler.rulerSettings.dp);
+      result = Math.round(result * factor) / factor;
     }
-
     console.log("= S.BaseDrawingObject: GetLengthInUnits output:", result);
     return result;
   }
 
-  GetFractionStringGranularity(e: any): number {
-    console.log("= S.BaseDrawingObject: GetFractionStringGranularity input:", { e });
+  GetFractionStringGranularity(input: any): number {
+    console.log("= S.BaseDrawingObject: GetFractionStringGranularity input:", { input });
 
     const rulerSettings = GlobalData.docHandler.rulerSettings;
     let granularity: number;
@@ -4471,13 +4996,13 @@ class BaseDrawingObject {
   NumberIsFloat(input: string): boolean {
     console.log("= S.BaseDrawingObject: NumberIsFloat input:", input);
 
-    const char9 = '9'.charCodeAt(0);
-    const char0 = '0'.charCodeAt(0);
-    const dot = '.'.charCodeAt(0);
+    const nineCharCode = '9'.charCodeAt(0);
+    const zeroCharCode = '0'.charCodeAt(0);
+    const dotCharCode = '.'.charCodeAt(0);
 
     for (let index = 0; index < input.length; index++) {
       const charCode = input.charCodeAt(index);
-      if (!((charCode >= char0 && charCode <= char9) || charCode === dot)) {
+      if (!((charCode >= zeroCharCode && charCode <= nineCharCode) || charCode === dotCharCode)) {
         console.log("= S.BaseDrawingObject: NumberIsFloat output:", false);
         return false;
       }
@@ -4489,35 +5014,40 @@ class BaseDrawingObject {
 
   ParseInchesString(input: string): number {
     console.log("= S.BaseDrawingObject: ParseInchesString input:", input);
+
+    // Trim the input string
     input = input.trim();
+
     let result = 0;
+    // Check if there's a space separating whole number from fractional part
     const spaceIndex = input.indexOf(' ');
-
     if (spaceIndex >= 0) {
-      // Extract feet and remainder parts
-      const feetPart = input.substring(0, spaceIndex);
-      const remainder = input.substring(spaceIndex + 1);
-      const feet = parseFloat(feetPart);
-      let inches = 0;
+      // Extract the whole part and the fraction part
+      const wholePartStr = input.substring(0, spaceIndex);
+      const fractionPartStr = input.substring(spaceIndex + 1);
 
-      const slashIndex = remainder.indexOf('/');
+      const wholePart = parseFloat(wholePartStr);
+      result = isNaN(wholePart) ? 0 : wholePart;
+
+      // Check if the fraction part contains a '/'
+      const slashIndex = fractionPartStr.indexOf('/');
       if (slashIndex >= 0) {
-        // If fraction exists then extract numerator and denominator
-        const numeratorStr = remainder.substring(0, slashIndex);
-        const denominatorStr = remainder.substring(slashIndex + 1);
+        const numeratorStr = fractionPartStr.substring(0, slashIndex);
+        const denominatorStr = fractionPartStr.substring(slashIndex + 1);
         const numerator = parseFloat(numeratorStr);
         const denominator = parseFloat(denominatorStr);
-        // Avoid division by zero
-        if (denominator !== 0) {
-          inches = numerator / denominator;
-        } else {
-          console.warn("= S.BaseDrawingObject: Division by zero in fraction");
+        if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+          result += numerator / denominator;
         }
       } else {
-        inches = parseFloat(remainder);
+        // If no fraction separator found, try to parse the fraction part directly
+        const fractionValue = parseFloat(fractionPartStr);
+        if (!isNaN(fractionValue)) {
+          result += fractionValue;
+        }
       }
-      result = feet + inches;
     } else {
+      // If no space, attempt to parse the entire string as a number
       result = parseFloat(input);
     }
 
@@ -4525,73 +5055,74 @@ class BaseDrawingObject {
     return result;
   }
 
-  ConvertToFeet(e: string): number {
-    console.log("= S.BaseDrawingObject: ConvertToFeet input:", e);
+  ConvertToFeet(input: string): number {
+    console.log("= S.BaseDrawingObject: ConvertToFeet - Input:", input);
 
-    // Trim the input
-    e = e.trim();
-    let indexQuote = e.indexOf("'");
-    // Ensure a space follows the feet symbol if not already there
-    if (indexQuote >= 0 && indexQuote < e.length - 1 && e.charAt(indexQuote + 1) !== ' ') {
-      e = e.substring(0, indexQuote + 1) + " " + e.substring(indexQuote + 1);
+    // Trim the input and insert a space after the foot symbol if missing
+    let processedInput = input.trim();
+    let quoteIndex = processedInput.indexOf("'");
+    if (
+      quoteIndex >= 0 &&
+      quoteIndex < processedInput.length - 1 &&
+      processedInput.charAt(quoteIndex + 1) !== " "
+    ) {
+      processedInput = processedInput.substr(0, quoteIndex + 1) + " " + processedInput.substr(quoteIndex + 1);
     }
 
-    // Split the string into parts using space as delimiter
-    const parts = e.split(' ');
-    let fractionPart = '';
-    let feetStr = '';
-    let inchesStr = '';
-    let feet = 0;
-    let inches = 0;
+    // Split the input into parts
+    const parts = processedInput.split(" ");
+    let fractionStr = "";
+    let inchStr = "";
+    let footStr = "";
 
-    // If the last part contains a fraction (e.g. "3/4")
-    if (parts[parts.length - 1].indexOf('/') >= 0) {
-      fractionPart = parts[parts.length - 1];
-
-      // Check the part just before the fraction for feet information
-      if (parts.length >= 2) {
-        feetStr = parts[parts.length - 2];
-        if (feetStr.charAt(feetStr.length - 1) === "'") {
-          // Remove trailing single quote
-          feetStr = feetStr.substring(0, feetStr.length - 1);
-        }
+    // Determine the parts based on the presence of a fraction (e.g., 1/2)
+    if (parts[parts.length - 1].indexOf("/") >= 0) {
+      // Last part is a fraction
+      fractionStr = parts[parts.length - 1];
+      if (parts.length >= 2 && parts[parts.length - 2].endsWith("'")) {
+        // Second to last part ends with a foot symbol: use it as the foot part
+        footStr = parts[parts.length - 2];
+        inchStr = "";
       }
-
-      // If there is an additional part, use it as inches string
       if (parts.length >= 3) {
-        inchesStr = parts[parts.length - 3];
+        // Third to last part (if exists) becomes the foot part
+        footStr = parts[parts.length - 3];
       }
     } else if (parts.length === 2) {
-      // When two parts exist, assume first is feet and second is inches
-      feetStr = parts[0];
-      inchesStr = parts[1];
-    } else if (parts.length === 1 && parts[0].charAt(parts[0].length - 1) === '"') {
-      // If only one part and ending with a double quote, treat it as inches
-      inchesStr = parts[0];
+      footStr = parts[0];
+      inchStr = parts[1];
+    } else if (parts[0].endsWith('"')) {
+      inchStr = parts[0];
     } else {
-      // Default case, first part is feet
-      feetStr = parts[0];
+      footStr = parts[0];
     }
 
-    // Parse feet and inches from their string representations
-    if (feetStr.length > 0) {
-      feet = parseFloat(feetStr);
+    // Remove trailing foot (') and inch (") symbols if present
+    if (footStr.endsWith("'")) {
+      footStr = footStr.substring(0, footStr.length - 1);
     }
-    if (inchesStr.length > 0) {
-      inches = parseFloat(inchesStr);
+    if (inchStr.endsWith('"')) {
+      inchStr = inchStr.substring(0, inchStr.length - 1);
+    }
+    if (fractionStr.endsWith('"')) {
+      fractionStr = fractionStr.substring(0, fractionStr.length - 1);
     }
 
-    // If fraction part exists, split and process it
-    if (fractionPart.length > 0) {
-      const fractionSplit = fractionPart.split('/');
-      const numerator = parseInt(fractionSplit[0], 10);
-      const denominator = parseInt(fractionSplit[1], 10);
+    // Parse the numeric values for feet and inches
+    let feet = footStr.length > 0 ? parseFloat(footStr) : 0;
+    let inches = inchStr.length > 0 ? parseFloat(inchStr) : 0;
+
+    // If a fraction is provided, split and add its value to inches
+    if (fractionStr.length > 0) {
+      const fractionParts = fractionStr.split("/");
+      const numerator = parseInt(fractionParts[0], 10);
+      const denominator = parseInt(fractionParts[1], 10);
       if (numerator !== 0 && denominator !== 0) {
         inches += numerator / denominator;
       }
     }
 
-    // Update the Dimensions flag based on the inches and feet values
+    // Set dimension flag based on inches and feet
     if (inches >= 12 && feet === 0) {
       this.Dimensions = Utils2.SetFlag(
         this.Dimensions,
@@ -4606,26 +5137,37 @@ class BaseDrawingObject {
       );
     }
 
-    // Compute the final value in feet (inches converted to feet)
-    const result = feet + inches / 12;
-    console.log("= S.BaseDrawingObject: ConvertToFeet output:", result);
-    return result;
+    // Convert the total inches into feet
+    feet += inches / 12;
+
+    console.log("= S.BaseDrawingObject: ConvertToFeet - Output:", feet);
+    return feet;
   }
 
   UnitsToCoord(value: number, offset: number): number {
-    console.log("= S.BaseDrawingObject: UnitsToCoord input:", { value, offset });
+    console.log("= S.BaseDrawingObject: UnitsToCoord - Input:", { value, offset });
+
+    // Ensure the SED session block is retrieved (result unused here)
     GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+
     const toUnits = this.GetToUnits();
     value += offset * GlobalData.docHandler.rulerSettings.majorScale;
-    value /= toUnits;
-    console.log("= S.BaseDrawingObject: UnitsToCoord output:", value);
-    return value;
+    const result = value / toUnits;
+
+    console.log("= S.BaseDrawingObject: UnitsToCoord - Output:", result);
+    return result;
   }
 
   ConvToUnits(value: number, offset: number): number {
     console.log("= S.BaseDrawingObject: ConvToUnits input:", { value, offset });
+
+    // Ensure the SED session block is retrieved (though result is unused here)
     GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
-    const result = value * this.GetToUnits() - offset * GlobalData.docHandler.rulerSettings.majorScale;
+
+    const toUnits = this.GetToUnits();
+    const majorScale = GlobalData.docHandler.rulerSettings.majorScale;
+    const result = value * toUnits - offset * majorScale;
+
     console.log("= S.BaseDrawingObject: ConvToUnits output:", result);
     return result;
   }
@@ -4645,194 +5187,199 @@ class BaseDrawingObject {
     polyPoints.push(new Point(frame.x, frame.y + frame.height));
   }
 
-  SetBackgroundImageURL(url) {
+  SetBackgroundImageURL(e) {
   }
 
-  WriteSDFAttributes(par, attr) {
+  WriteSDFAttributes(e, t) {
   }
 
-  CalcTextPosition(parameter) {
+  CalcTextPosition(e) {
   }
 
-  SetBlobBytes(inputData: any, blobData: any): void {
-    console.log("= S.BaseDrawingObject: SetBlobBytes input:", { inputData, blobData });
+  SetBlobBytes(data: any, format: any): void {
+    console.log("= S.BaseDrawingObject: SetBlobBytes input:", { data, format });
 
-    const blobBytes = new ListManager.BlobBytes(blobData, inputData);
+    const blobBytes = new ListManager.BlobBytes(format, data);
 
     if (this.BlobBytesID >= 0) {
       const preservedBlock = GlobalData.objectStore.PreserveBlock(this.BlobBytesID);
       if (preservedBlock) {
         preservedBlock.Data = blobBytes;
+        console.log("= S.BaseDrawingObject: SetBlobBytes output: Updated existing block with BlobBytesID", this.BlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetBlobBytes output: No preserved block found for BlobBytesID", this.BlobBytesID);
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(
-        ConstantData.StoredObjectType.BLOBBYTES_OBJECT,
-        blobBytes
-      );
-      if (createdBlock) {
-        this.BlobBytesID = createdBlock.ID;
+      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
+      if (newBlock) {
+        this.BlobBytesID = newBlock.ID;
+        console.log("= S.BaseDrawingObject: SetBlobBytes output: Created new block with BlobBytesID", this.BlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetBlobBytes output: Failed to create a new block");
       }
     }
 
-    console.log("= S.BaseDrawingObject: SetBlobBytes output:", { BlobBytesID: this.BlobBytesID });
+    console.log("= S.BaseDrawingObject: SetBlobBytes completed");
   }
 
-  SetEMFBlobBytes(sourceData: any, blobData: any): void {
-    console.log("= S.BaseDrawingObject: SetEMFBlobBytes input:", { sourceData, blobData });
+  SetEMFBlobBytes(data: any, format: any): void {
+    console.log("= S.BaseDrawingObject: SetEMFBlobBytes input:", { data, format });
 
-    const newBlobBytes = new ListManager.BlobBytes(blobData, sourceData);
+    const blobBytes = new ListManager.BlobBytes(format, data);
 
     if (this.EMFBlobBytesID >= 0) {
       const preservedBlock = GlobalData.objectStore.PreserveBlock(this.EMFBlobBytesID);
       if (preservedBlock) {
-        preservedBlock.Data = newBlobBytes;
+        preservedBlock.Data = blobBytes;
+        console.log("= S.BaseDrawingObject: SetEMFBlobBytes output: Updated existing block with EMFBlobBytesID", this.EMFBlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetEMFBlobBytes warning: No preserved block found for EMFBlobBytesID", this.EMFBlobBytesID);
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(
-        ConstantData.StoredObjectType.BLOBBYTES_OBJECT,
-        newBlobBytes
-      );
-      if (createdBlock) {
-        this.EMFBlobBytesID = createdBlock.ID;
+      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
+      if (newBlock) {
+        this.EMFBlobBytesID = newBlock.ID;
+        console.log("= S.BaseDrawingObject: SetEMFBlobBytes output: Created new block with EMFBlobBytesID", this.EMFBlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetEMFBlobBytes error: Failed to create a new block");
       }
     }
-    console.log("= S.BaseDrawingObject: SetEMFBlobBytes output:", { EMFBlobBytesID: this.EMFBlobBytesID });
   }
 
-  SetOleBlobBytes(sourceData: any, blobData: any): void {
-    console.log("= S.BaseDrawingObject: SetOleBlobBytes input:", { sourceData, blobData });
+  SetOleBlobBytes(data: any, format: any): void {
+    console.log("= S.BaseDrawingObject: SetOleBlobBytes input:", { data, format });
 
-    const blobBytes = new ListManager.BlobBytes(blobData, sourceData);
+    const blobBytes = new ListManager.BlobBytes(format, data);
 
     if (this.OleBlobBytesID >= 0) {
-      const preservedBlock = GlobalData.objectStore.PreserveBlock(this.OleBlobBytesID);
-      if (preservedBlock) {
-        preservedBlock.Data = blobBytes;
+      const existingBlock = GlobalData.objectStore.PreserveBlock(this.OleBlobBytesID);
+      if (existingBlock) {
+        existingBlock.Data = blobBytes;
+        console.log("= S.BaseDrawingObject: SetOleBlobBytes output: Updated existing block with OleBlobBytesID", this.OleBlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetOleBlobBytes warning: Failed to preserve block for OleBlobBytesID", this.OleBlobBytesID);
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
-      if (createdBlock) {
-        this.OleBlobBytesID = createdBlock.ID;
+      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
+      if (newBlock) {
+        this.OleBlobBytesID = newBlock.ID;
+        console.log("= S.BaseDrawingObject: SetOleBlobBytes output: Created new block with OleBlobBytesID", this.OleBlobBytesID);
+      } else {
+        console.log("= S.BaseDrawingObject: SetOleBlobBytes error: Failed to create new block");
       }
     }
-
-    console.log("= S.BaseDrawingObject: SetOleBlobBytes output:", { OleBlobBytesID: this.OleBlobBytesID });
   }
 
   GetBlobBytes(): any {
-    console.log("= S.BaseDrawingObject: GetBlobBytes input: BlobBytesID =", this.BlobBytesID);
-    let blobBytes = null;
+    console.log("= S.BaseDrawingObject: GetBlobBytes input: none");
+    let blob: any = null;
     if (this.BlobBytesID >= 0) {
-      blobBytes = GlobalData.optManager.GetObjectPtr(this.BlobBytesID, false);
+      blob = GlobalData.optManager.GetObjectPtr(this.BlobBytesID, false);
     }
-    console.log("= S.BaseDrawingObject: GetBlobBytes output:", blobBytes);
-    return blobBytes;
+    console.log("= S.BaseDrawingObject: GetBlobBytes output:", blob);
+    return blob;
   }
 
   GetEMFBlobBytes(): any {
     console.log("= S.BaseDrawingObject: GetEMFBlobBytes input: EMFBlobBytesID =", this.EMFBlobBytesID);
-    let emfBlobBytes: any = null;
+    let emfBlob: any = null;
     if (this.EMFBlobBytesID >= 0) {
-      emfBlobBytes = GlobalData.optManager.GetObjectPtr(this.EMFBlobBytesID, false);
+      emfBlob = GlobalData.optManager.GetObjectPtr(this.EMFBlobBytesID, false);
     }
-    console.log("= S.BaseDrawingObject: GetEMFBlobBytes output:", emfBlobBytes);
-    return emfBlobBytes;
+    console.log("= S.BaseDrawingObject: GetEMFBlobBytes output:", emfBlob);
+    return emfBlob;
   }
 
   GetOleBlobBytes(): any {
-    console.log("= S.BaseDrawingObject: GetOleBlobBytes input: OleBlobBytesID =", this.OleBlobBytesID);
-    let oleBlobBytes: any = null;
+    console.log("= S.BaseDrawingObject: GetOleBlobBytes input:", { OleBlobBytesID: this.OleBlobBytesID });
+    let oleBlob: any = null;
     if (this.OleBlobBytesID >= 0) {
-      oleBlobBytes = GlobalData.optManager.GetObjectPtr(this.OleBlobBytesID, false);
+      oleBlob = GlobalData.optManager.GetObjectPtr(this.OleBlobBytesID, false);
     }
-    console.log("= S.BaseDrawingObject: GetOleBlobBytes output:", oleBlobBytes);
-    return oleBlobBytes;
+    console.log("= S.BaseDrawingObject: GetOleBlobBytes output:", oleBlob);
+    return oleBlob;
   }
 
-  GetTable(fetchPreserved: boolean = false): any {
-    console.log("= S.BaseDrawingObject: GetTable input:", { fetchPreserved });
-
+  GetTable(preserve: boolean = false): any {
+    console.log("= S.BaseDrawingObject: GetTable - Input:", { preserve });
     let table = null;
     if (this.TableID >= 0) {
-      table = GlobalData.optManager.GetObjectPtr(this.TableID, fetchPreserved);
+      table = GlobalData.optManager.GetObjectPtr(this.TableID, preserve);
     }
-
-    console.log("= S.BaseDrawingObject: GetTable output:", table);
+    console.log("= S.BaseDrawingObject: GetTable - Output:", table);
     return table;
   }
 
-  SetTable(tableData: any): void {
-    console.log("= S.BaseDrawingObject: SetTable input:", tableData);
-
+  SetTable(table: any) {
+    console.log("= S.BaseDrawingObject: SetTable input:", { table });
     if (this.TableID >= 0) {
-      if (tableData == null) {
+      if (table == null) {
         const existingTable = GlobalData.objectStore.GetObject(this.TableID);
         if (existingTable) {
           existingTable.Delete();
+          console.log("= S.BaseDrawingObject: SetTable output: deleted existing table");
         }
         this.TableID = -1;
       } else {
-        const preservedBlock = GlobalData.objectStore.PreserveBlock(this.TableID);
-        if (preservedBlock) {
-          preservedBlock.Data = tableData;
+        const preservedTable = GlobalData.objectStore.PreserveBlock(this.TableID);
+        if (preservedTable) {
+          preservedTable.Data = table;
+          console.log("= S.BaseDrawingObject: SetTable output: updated existing table");
         }
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.TABLE_OBJECT, tableData);
-      if (createdBlock) {
-        this.TableID = createdBlock.ID;
+      const newTable = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.TABLE_OBJECT, table);
+      if (newTable) {
+        this.TableID = newTable.ID;
+        console.log("= S.BaseDrawingObject: SetTable output: created new table with ID", this.TableID);
       }
     }
-
-    console.log("= S.BaseDrawingObject: SetTable output: TableID =", this.TableID);
   }
 
-  GetGraph(fetchPreserved: boolean = false): any {
-    console.log("= S.BaseDrawingObject: GetGraph input:", { fetchPreserved });
-
+  GetGraph(preserve: boolean = false): any {
+    console.log("= S.BaseDrawingObject: GetGraph input:", { preserve });
     let graph = null;
+
     if (this.GraphID >= 0) {
-      graph = GlobalData.optManager.GetObjectPtr(this.GraphID, fetchPreserved);
+      graph = GlobalData.optManager.GetObjectPtr(this.GraphID, preserve);
     }
 
     console.log("= S.BaseDrawingObject: GetGraph output:", graph);
     return graph;
   }
 
-  SetGraph(graphData: any): void {
-    console.log("= S.BaseDrawingObject: SetGraph input:", graphData);
+  SetGraph(graph: any): void {
+    console.log("= S.BaseDrawingObject: SetGraph input:", graph);
 
     if (this.GraphID >= 0) {
-      if (graphData == null) {
-        const existingGraph = GlobalData.objectStore.GetObject(this.GraphID);
-        if (existingGraph) {
-          existingGraph.Delete();
+      if (graph == null) {
+        const existingBlock = GlobalData.objectStore.GetObject(this.GraphID);
+        if (existingBlock) {
+          existingBlock.Delete();
         }
         this.GraphID = -1;
       } else {
         const preservedBlock = GlobalData.objectStore.PreserveBlock(this.GraphID);
         if (preservedBlock) {
-          preservedBlock.Data = graphData;
+          preservedBlock.Data = graph;
         }
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.GRAPH_OBJECT, graphData);
-      if (createdBlock) {
-        this.GraphID = createdBlock.ID;
+      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.GRAPH_OBJECT, graph);
+      if (newBlock) {
+        this.GraphID = newBlock.ID;
       }
     }
 
-    console.log("= S.BaseDrawingObject: SetGraph output: GraphID =", this.GraphID);
+    console.log("= S.BaseDrawingObject: SetGraph output:", this.GraphID);
   }
 
-  GetGanttInfo(fetchPreserved: boolean = false): any {
-    console.log("= S.BaseDrawingObject: GetGanttInfo input:", { fetchPreserved });
-
-    let ganttInfo = null;
+  GetGanttInfo(preserve: boolean = false): any {
+    console.log("= S.BaseDrawingObject: GetGanttInfo input:", { preserve });
+    let ganttInfo: any = null;
     if (this.GanttInfoID >= 0) {
-      ganttInfo = GlobalData.optManager.GetObjectPtr(this.GanttInfoID, fetchPreserved);
+      ganttInfo = GlobalData.optManager.GetObjectPtr(this.GanttInfoID, preserve);
     }
-
     console.log("= S.BaseDrawingObject: GetGanttInfo output:", ganttInfo);
     return ganttInfo;
   }
@@ -4841,29 +5388,30 @@ class BaseDrawingObject {
     console.log("= S.BaseDrawingObject: SetGanttInfo input:", ganttInfo);
 
     if (this.GanttInfoID >= 0) {
-      if (ganttInfo == null) {
-        const existingGanttInfo = GlobalData.objectStore.GetObject(this.GanttInfoID);
-        if (existingGanttInfo) {
-          existingGanttInfo.Delete();
+      if (ganttInfo === null) {
+        const existingBlock = GlobalData.objectStore.GetObject(this.GanttInfoID);
+        if (existingBlock) {
+          existingBlock.Delete();
         }
         this.GanttInfoID = -1;
+        console.log("= S.BaseDrawingObject: SetGanttInfo output: Gantt info deleted.");
       } else {
         const preservedBlock = GlobalData.objectStore.PreserveBlock(this.GanttInfoID);
         if (preservedBlock) {
           preservedBlock.Data = ganttInfo;
         }
+        console.log("= S.BaseDrawingObject: SetGanttInfo output: Gantt info updated.");
       }
     } else {
-      const createdBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.GANTTINFO_OBJECT, ganttInfo);
-      if (createdBlock) {
-        this.GanttInfoID = createdBlock.ID;
+      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.GANTTINFO_OBJECT, ganttInfo);
+      if (newBlock) {
+        this.GanttInfoID = newBlock.ID;
+        console.log("= S.BaseDrawingObject: SetGanttInfo output: Gantt info created with ID", this.GanttInfoID);
       }
     }
-
-    console.log("= S.BaseDrawingObject: SetGanttInfo output: GanttInfoID =", this.GanttInfoID);
   }
 
-  Flip(element) {
+  Flip(e) {
   }
 
   NoFlip() {
@@ -4871,33 +5419,30 @@ class BaseDrawingObject {
   }
 
   NoRotate() {
-    return false
+    return !1
   }
 
   NoGrow(): boolean {
     console.log("= S.BaseDrawingObject: NoGrow input: none");
-
     const result = (this.colorfilter & FileParser.SDRColorFilters.SD_NOCOLOR_RESIZE) > 0;
-
     console.log("= S.BaseDrawingObject: NoGrow output:", result);
     return result;
   }
 
-  MaintainPoint(point: Point, angle: number, distance: number, isClockwise: boolean, additionalData: any): boolean {
-    console.log("= S.BaseDrawingObject: MaintainPoint input:", { point, angle, distance, isClockwise, additionalData });
-
-    // Placeholder logic for maintaining point
-    const result = false;
-
-    console.log("= S.BaseDrawingObject: MaintainPoint output:", result);
-    return result;
+  MaintainPoint(e, t, a, r, i) {
+    return !1
   }
 
   AllowTextEdit() {
-    console.log("= S.BaseDrawingObject: AllowTextEdit input: none");
+    console.log("= S.BaseDrawingObject: AllowTextEdit - Input:", {
+      TextFlags: this.TextFlags,
+      objecttype: this.objecttype,
+      flags: this.flags,
+      FromEditShapeOutline: this.FromEditShapeOutline
+    });
 
     if ((this.TextFlags & ConstantData.TextFlags.SED_TF_None) > 0) {
-      console.log("= S.BaseDrawingObject: AllowTextEdit output: false (SED_TF_None flag is set)");
+      console.log("= S.BaseDrawingObject: AllowTextEdit - Output: false (SED_TF_None flag is set)");
       return false;
     }
 
@@ -4906,195 +5451,169 @@ class BaseDrawingObject {
       (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) === 0 &&
       (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) === 0
     ) {
-      console.log("= S.BaseDrawingObject: AllowTextEdit output: false (ShapeContainer with no Attach flags)");
+      console.log("= S.BaseDrawingObject: AllowTextEdit - Output: false (Shape container without attach flags)");
       return false;
     }
 
     if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
-      console.log("= S.BaseDrawingObject: AllowTextEdit output: false (Object is locked)");
+      console.log("= S.BaseDrawingObject: AllowTextEdit - Output: false (Object is locked)");
       return false;
     }
 
     if (this.FromEditShapeOutline) {
-      console.log("= S.BaseDrawingObject: AllowTextEdit output: false (FromEditShapeOutline is true)");
+      console.log("= S.BaseDrawingObject: AllowTextEdit - Output: false (FromEditShapeOutline is true)");
       return false;
     }
 
     const table = this.GetTable(false);
     if (table) {
-      let selectedCellIndex = -1;
+      let cellIndex = -1;
       if (GlobalData.optManager.Table_GetActiveID() === table.BlockID) {
-        selectedCellIndex = table.select;
+        cellIndex = table.select;
       }
-
-      if (selectedCellIndex < 0) {
-        selectedCellIndex = GlobalData.optManager.Table_GetFirstTextCell(table);
+      if (cellIndex < 0) {
+        cellIndex = GlobalData.optManager.Table_GetFirstTextCell(table);
       }
-
-      const result = selectedCellIndex >= 0 && GlobalData.optManager.Table_AllowCellTextEdit(table, selectedCellIndex);
-      console.log("= S.BaseDrawingObject: AllowTextEdit output:", result);
-      return result;
+      const allowCellEdit = GlobalData.optManager.Table_AllowCellTextEdit(table, cellIndex);
+      console.log("= S.BaseDrawingObject: AllowTextEdit - Output:", allowCellEdit, "(Table cell text edit check)");
+      return allowCellEdit;
     }
 
-    console.log("= S.BaseDrawingObject: AllowTextEdit output: true");
+    console.log("= S.BaseDrawingObject: AllowTextEdit - Output: true (No table present)");
     return true;
   }
 
   AllowDoubleClick() {
-    return false
+    return !1
   }
 
   ChangeBackgroundColor(e, t) {
-    return false
+    return !1
   }
 
-  UseEdges(
-    element: any,
-    triggerType: any,
-    additionalInfo: any,
-    pathCreator: any,
-    container: any,
-    isPolygon: boolean
-  ): boolean {
-    console.log("= S.BaseDrawingObject: UseEdges input:", {
-      element,
-      triggerType,
-      additionalInfo,
-      pathCreator,
-      container,
-      isPolygon
-    });
+  UseEdges(edgeData: any, threshold: number, isActive: boolean, radius: number, importance: number, extraParam: any): boolean {
+    console.log("= S.BaseDrawingObject: UseEdges - Input:", { edgeData, threshold, isActive, radius, importance, extraParam });
 
+    // Placeholder logic: return false.
     const result = false;
 
-    console.log("= S.BaseDrawingObject: UseEdges output:", result);
+    console.log("= S.BaseDrawingObject: UseEdges - Output:", result);
     return result;
   }
 
-  ApplyStyle(style: any, applyTextBlockColor: boolean): void {
-    console.log("= S.BaseDrawingObject: ApplyStyle input:", { style, applyTextBlockColor });
+  ApplyStyle(style: any, applyTextStyle: any) {
+    console.log("= S.BaseDrawingObject: ApplyStyle - Input:", { style, applyTextStyle });
 
-    let newStyle = Utils1.DeepCopy(style);
-    const defaultTextStyle = Resources.FindStyle(ConstantData.Defines.TextBlockStyle);
+    let copiedStyle = Utils1.DeepCopy(style);
+    let defaultTextStyle = Resources.FindStyle(ConstantData.Defines.TextBlockStyle);
 
     if (
       this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART &&
       !(this.colorfilter & FileParser.SDRColorFilters.SD_NOCOLOR_STYLE)
     ) {
-      let textColor = { Color: newStyle.Text.Paint.Color };
-      let textPaintColor = { color: newStyle.Text.Paint.Color };
+      let textColorObj = { Color: copiedStyle.Text.Paint.Color };
+      let textCSS = { color: copiedStyle.Text.Paint.Color };
 
-      if (applyTextBlockColor) {
+      if (applyTextStyle) {
         if (
           this.DrawingObjectBaseClass !== ConstantData.DrawingObjectBaseClass.SHAPE &&
           this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR
         ) {
-          newStyle.Fill = Utils1.DeepCopy(this.StyleRecord.Fill);
-          newStyle.Text = Utils1.DeepCopy(defaultTextStyle.Text);
-          textColor = { Color: defaultTextStyle.Text.Paint.Color };
-          textPaintColor = { color: defaultTextStyle.Text.Paint.Color };
+          copiedStyle.Fill = Utils1.DeepCopy(this.StyleRecord.Fill);
+          copiedStyle.Text = Utils1.DeepCopy(defaultTextStyle.Text);
+          textColorObj = { Color: defaultTextStyle.Text.Paint.Color };
+          textCSS = { color: defaultTextStyle.Text.Paint.Color };
         } else if (this.UseTextBlockColor()) {
-          newStyle.Text = Utils1.DeepCopy(defaultTextStyle.Text);
-          textColor = { Color: defaultTextStyle.Text.Paint.Color };
-          textPaintColor = { color: defaultTextStyle.Text.Paint.Color };
-        }
-
-        if (this.StyleRecord.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_TRANSPARENT) {
-          newStyle.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
-          newStyle.Fill.Hatch = 0;
-        }
-
-        if (this.StyleRecord.Line.Thickness === 0) {
-          newStyle.Line.Thickness = 0;
-        }
-
-        if (newStyle.Line.LinePattern === 0) {
-          newStyle.Line.LinePattern = this.StyleRecord.Line.LinePattern;
+          copiedStyle.Text = Utils1.DeepCopy(defaultTextStyle.Text);
+          textColorObj = { Color: defaultTextStyle.Text.Paint.Color };
+          textCSS = { color: defaultTextStyle.Text.Paint.Color };
         }
       }
 
-      newStyle.Fill.Paint.Opacity = this.StyleRecord.Fill.Paint.Opacity;
-      newStyle.Fill.Paint.EndOpacity = this.StyleRecord.Fill.Paint.EndOpacity;
-      newStyle.Line.Paint.Opacity = this.StyleRecord.Line.Paint.Opacity;
-      newStyle.Line.Paint.EndOpacity = this.StyleRecord.Line.Paint.EndOpacity;
-      newStyle.Text.Paint.Opacity = this.StyleRecord.Text.Paint.Opacity;
-      newStyle.Text.Paint.EndOpacity = this.StyleRecord.Text.Paint.EndOpacity;
+      if (this.StyleRecord.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_TRANSPARENT) {
+        copiedStyle.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_TRANSPARENT;
+        copiedStyle.Fill.Hatch = 0;
+      }
+
+      if (this.StyleRecord.Line.Thickness === 0) {
+        copiedStyle.Line.Thickness = 0;
+      }
+
+      if (copiedStyle.Line.LinePattern === 0) {
+        copiedStyle.Line.LinePattern = this.StyleRecord.Line.LinePattern;
+      }
+
+      copiedStyle.Fill.Paint.Opacity = this.StyleRecord.Fill.Paint.Opacity;
+      copiedStyle.Fill.Paint.EndOpacity = this.StyleRecord.Fill.Paint.EndOpacity;
+      copiedStyle.Line.Paint.Opacity = this.StyleRecord.Line.Paint.Opacity;
+      copiedStyle.Line.Paint.EndOpacity = this.StyleRecord.Line.Paint.EndOpacity;
+      copiedStyle.Text.Paint.Opacity = this.StyleRecord.Text.Paint.Opacity;
+      copiedStyle.Text.Paint.EndOpacity = this.StyleRecord.Text.Paint.EndOpacity;
 
       if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR) {
-        newStyle.Line.BThick = this.StyleRecord.Line.BThick;
-        newStyle.Line.Thickness = this.StyleRecord.Line.Thickness;
-        newStyle.Line.Paint.Color = newStyle.Fill.Paint.Color;
-        newStyle.Line.Paint.EndColor = newStyle.Fill.Paint.EndColor;
+        copiedStyle.Line.BThick = this.StyleRecord.Line.BThick;
+        copiedStyle.Line.Thickness = this.StyleRecord.Line.Thickness;
+        copiedStyle.Line.Paint.Color = copiedStyle.Fill.Paint.Color;
+        copiedStyle.Line.Paint.EndColor = copiedStyle.Fill.Paint.EndColor;
       }
 
-      this.ChangeTextAttributes(textPaintColor, textColor);
-      this.StyleRecord = newStyle;
+      this.ChangeTextAttributes(textCSS, textColorObj);
+      this.StyleRecord = copiedStyle;
     }
 
-    console.log("= S.BaseDrawingObject: ApplyStyle output: Style applied successfully");
+    console.log("= S.BaseDrawingObject: ApplyStyle - Output:", { StyleRecord: this.StyleRecord });
   }
 
-  GenericIcon(params: {
-    svgDoc: any,
-    iconSize: number,
-    x: number,
-    y: number,
-    imageURL: string,
-    cursorType: string,
-    iconID: string,
-    userData?: any
-  }): any {
-    console.log("= S.BaseDrawingObject: GenericIcon input:", params);
+  GenericIcon(iconParams: any): any {
+    console.log("= S.BaseDrawingObject: GenericIcon - Input:", iconParams);
 
-    const {
-      svgDoc,
-      iconSize,
-      x,
-      y,
-      imageURL,
-      cursorType,
-      iconID,
-      userData
-    } = params;
+    // Create an IMAGE shape from the SVG document
+    const iconShape = iconParams.svgDoc.CreateShape(ConstantData.CreateShapeType.IMAGE);
 
-    const iconShape = svgDoc.CreateShape(ConstantData.CreateShapeType.IMAGE);
-
-    if (userData != null) {
-      iconShape.SetUserData(userData);
+    // Set the user data
+    if (iconParams.userData != null) {
+      iconShape.SetUserData(iconParams.userData);
     } else {
       iconShape.SetUserData(ConstantData.SVGElementClass.ICON);
     }
 
-    iconShape.SetSize(iconSize, iconSize);
-    iconShape.SetPos(x, y);
-    iconShape.SetURL(imageURL);
+    // Set size and position
+    iconShape.SetSize(iconParams.iconSize, iconParams.iconSize);
+    iconShape.SetPos(iconParams.x, iconParams.y);
+
+    // Set image URL and appearance properties
+    iconShape.SetURL(iconParams.imageURL);
     iconShape.SetFillOpacity(1);
     iconShape.SetStrokeWidth(0);
-    iconShape.SetID(iconID);
-    iconShape.SetCursor(cursorType);
+    iconShape.SetID(iconParams.iconID);
+    iconShape.SetCursor(iconParams.cursorType);
     iconShape.ExcludeFromExport(true);
 
-    console.log("= S.BaseDrawingObject: GenericIcon output:", iconShape);
+    console.log("= S.BaseDrawingObject: GenericIcon - Output:", iconShape);
     return iconShape;
   }
 
-  AddIcon(svgDoc: any, container: any, params: { svgDoc: any, iconSize: number, cursorType: string, iconID: string, imageURL: string, x?: number, y?: number }): any {
-    console.log("= S.BaseDrawingObject: AddIcon input:", { svgDoc, container, params });
+  AddIcon(svgDoc: any, container: any, iconParams: any): any {
+    console.log("= S.BaseDrawingObject: AddIcon - Input:", { svgDoc, container, iconParams });
 
     if (container) {
       const frame = this.Frame;
-      this.nIcons;
+      // Calculate position for the icon
+      iconParams.x = frame.width - this.iconShapeRightOffset - this.iconSize - (this.nIcons * this.iconSize);
+      iconParams.y = frame.height - this.iconShapeBottomOffset - this.iconSize;
+      // Create icon using the generic icon function
+      const iconShape = this.GenericIcon(iconParams);
 
-      params.x = frame.width - this.iconShapeRightOffset - this.iconSize - this.nIcons * this.iconSize;
-      params.y = frame.height - this.iconShapeBottomOffset - this.iconSize;
-
-      const icon = this.GenericIcon(params);
+      // Increment icon counter and add the icon shape to the container
       this.nIcons++;
-      container.AddElement(icon);
+      container.AddElement(iconShape);
 
-      console.log("= S.BaseDrawingObject: AddIcon output:", icon);
-      return icon;
+      console.log("= S.BaseDrawingObject: AddIcon - Output:", iconShape);
+      return iconShape;
     }
+
+    console.log("= S.BaseDrawingObject: AddIcon - Output: container not provided");
+    return null;
   }
 
   GetIconShape() {
@@ -5137,48 +5656,58 @@ class BaseDrawingObject {
   }
 
   AddIcons(svgDoc: any, container: any): void {
-    console.log("= S.BaseDrawingObject: AddIcons input:", { svgDoc, container });
+    console.log("= S.BaseDrawingObject: AddIcons - Input:", { svgDoc, container });
 
     if (container) {
       this.nIcons = 0;
-      const iconParams = {
+      let iconParams = {
         svgDoc: svgDoc,
         iconSize: this.iconSize,
         cursorType: Element.CursorType.POINTER
       };
 
+      // Data action icon if available
       if (this.dataStyleOverride && this.dataStyleOverride.iconID) {
-        const iconURL = Resources.ActionIcons[this.dataStyleOverride.iconID];
-        if (iconURL) {
+        const actionIconSrc = Resources.ActionIcons[this.dataStyleOverride.iconID];
+        if (actionIconSrc) {
           iconParams.iconID = ConstantData.ShapeIconType.DATAACTION;
-          iconParams.imageURL = iconURL;
+          iconParams.imageURL = actionIconSrc;
           iconParams.x = this.Frame.width - this.iconSize;
           iconParams.y = 0;
-          const iconElement = this.GenericIcon(iconParams);
-          iconElement.ExcludeFromExport(false);
-          container.AddElement(iconElement);
+          const dataActionIcon = this.GenericIcon(iconParams);
+          dataActionIcon.ExcludeFromExport(false);
+          container.AddElement(dataActionIcon);
         }
       }
 
+      this.nIcons = 0;
       if (!this.bInGroup) {
+        // Comment icon
         if (this.CommentID >= 0) {
           iconParams.iconID = ConstantData.ShapeIconType.COMMENT;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Comment;
           const commentIcon = this.AddIcon(svgDoc, container, iconParams);
-          const userData = ConstantData.SVGElementClass.ICON + '.' + this.BlockID;
-          commentIcon.SetUserData(userData);
+          const commentUserData = ConstantData.SVGElementClass.ICON + '.' + this.BlockID;
+          commentIcon.SetUserData(commentUserData);
         }
-
-        if (this.datasetElemID >= 0 &&
-          (this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASKMAP || this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASK)) {
-          const trelloURL = ListManager.SDData.GetValue(this.datasetElemID, ListManager.GanttFieldNameList[ListManager.GanttTaskFields.TASK_TRELLO_CARD_URL]);
-          if (trelloURL && trelloURL.length) {
-            iconParams.iconID = ConstantData.ShapeIconType.TRELLOLINK;
-            iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_TrelloLink;
-            this.AddIcon(svgDoc, container, iconParams);
-          }
+        // Trello link icon
+        if (
+          this.datasetElemID >= 0 &&
+          (this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASKMAP ||
+            this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASK) &&
+          (() => {
+            const trelloValue = ListManager.SDData.GetValue(
+              this.datasetElemID,
+              ListManager.GanttFieldNameList[ListManager.GanttTaskFields.TASK_TRELLO_CARD_URL]
+            );
+            return trelloValue && trelloValue.length;
+          })()
+        ) {
+          iconParams.iconID = ConstantData.ShapeIconType.TRELLOLINK;
+          iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_TrelloLink;
+          this.AddIcon(svgDoc, container, iconParams);
         }
-
+        // Hyperlink icon
         if (this.HyperlinkText && Global.ResolveHyperlink(this.HyperlinkText)) {
           iconParams.iconID = ConstantData.ShapeIconType.HYPERLINK;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Hyperlink;
@@ -5186,87 +5715,85 @@ class BaseDrawingObject {
           hyperlinkIcon.SetHyperlinkAttribute(this.HyperlinkText);
           hyperlinkIcon.SetTooltip(Global.ResolveHyperlinkForDisplay(this.HyperlinkText));
         }
-
+        // Attachment icon
         if (this.AttachmentInfo) {
           iconParams.iconID = ConstantData.ShapeIconType.ATTACHMENT;
           iconParams.imageURL = '../../../Styles/Img/Icons/attachment_icon.png';
           this.AddIcon(svgDoc, container, iconParams);
         }
-
+        // Expanded view icon
         if (this.ExpandedViewID >= 0) {
           iconParams.iconID = ConstantData.ShapeIconType.EXPANDEDVIEW;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_ExpandedView;
           const expandedViewIcon = this.AddIcon(svgDoc, container, iconParams);
           expandedViewIcon.SetCustomAttribute('_expextendtt_', this.ExpandedViewID);
         }
-
+        // Note icon with hover functionality
         if (this.NoteID !== -1 || GlobalData.optManager.NoteIsShowing(this.BlockID, null)) {
+          let noteIcon: any, noteHoverTimeout: any;
           iconParams.iconID = ConstantData.ShapeIconType.NOTES;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Note;
           if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_UseInfoNoteIcon) {
             iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Info;
           }
-          const noteIcon = this.AddIcon(svgDoc, container, iconParams);
+          noteIcon = this.AddIcon(svgDoc, container, iconParams);
           noteIcon.SetCustomAttribute('_expnotett_', this.NoteID);
-
           const self = this;
-          let hoverTimeout: any;
-          const showNote = function () {
-            if (!GlobalData.optManager.bInNoteEdit) {
-              GlobalData.optManager.ShowNote(self.BlockID, null);
-            }
-          };
-          const hideNote = function () {
-            if (!GlobalData.optManager.bInNoteEdit) {
-              GlobalData.optManager.HideNote(self.BlockID, null);
-            }
-            clearTimeout(hoverTimeout);
-          };
-          const noteDOMElement = noteIcon.DOMElement();
-          $(noteDOMElement).hover(
+          const noteDom = noteIcon.DOMElement();
+          $(noteDom).hover(
             function () {
-              hoverTimeout = setTimeout(showNote, 750);
+              noteHoverTimeout = setTimeout(() => {
+                if (!GlobalData.optManager.bInNoteEdit) {
+                  GlobalData.optManager.ShowNote(self.BlockID, null);
+                }
+              }, 750);
             },
-            hideNote
+            function () {
+              if (!GlobalData.optManager.bInNoteEdit) {
+                GlobalData.optManager.HideNote(self.BlockID, null);
+              }
+              clearTimeout(noteHoverTimeout);
+            }
           );
         }
-
-        if (this.HasFieldData() && this.fieldDataElemID >= 0 && !SDUI.Commands.MainController.DataPanel.GetHideIconState()) {
+        // Field data icon with tooltip and double tap functionality
+        if (
+          this.HasFieldData() &&
+          this.fieldDataElemID >= 0 &&
+          !SDUI.Commands.MainController.DataPanel.GetHideIconState()
+        ) {
           iconParams.iconID = ConstantData.ShapeIconType.FIELDDATA;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Info;
           const fieldDataIcon = this.AddIcon(svgDoc, container, iconParams);
           fieldDataIcon.SetCustomAttribute('_expdatatt_', this.BlockID);
-
+          let fieldDataTimeout: any = null;
           const blockID = this.BlockID;
-          let fieldDataTimeout: any;
-          const showFieldDataTooltip = function () {
+          const showFieldDataTooltip = () => {
             if (!GlobalData.optManager.FieldedDataTooltipVisible(blockID)) {
               GlobalData.optManager.ShowFieldedDataTooltip(blockID);
             }
-            fieldDataTimeout = null;
           };
-          const hideFieldDataTooltip = function () {
-            GlobalData.optManager.HideFieldedDataTooltip(blockID);
-            if (fieldDataTimeout) {
-              clearTimeout(fieldDataTimeout);
-              fieldDataTimeout = null;
-            }
-          };
-          const fieldDataDOMElement = fieldDataIcon.DOMElement();
-          $(fieldDataDOMElement).hover(
+          const fieldDom = fieldDataIcon.DOMElement();
+          $(fieldDom).hover(
             function () {
               if (!GlobalData.optManager.FieldedDataTooltipVisible(blockID)) {
                 fieldDataTimeout = setTimeout(showFieldDataTooltip, 750);
               }
             },
-            hideFieldDataTooltip
+            function () {
+              GlobalData.optManager.HideFieldedDataTooltip(blockID);
+              if (fieldDataTimeout) {
+                clearTimeout(fieldDataTimeout);
+                fieldDataTimeout = null;
+              }
+            }
           );
-
           if (!GlobalData.docHandler.IsReadOnly()) {
-            const hammerInstance = Hammer(fieldDataDOMElement);
+            const hammerInstance = Hammer(fieldDom);
             hammerInstance.off('doubletap');
-            hammerInstance.on('doubletap', function (event) {
-              Utils2.StopPropagationAndDefaults(event);
+            hammerInstance.on('doubletap', function (event: any) {
+              event.preventDefault();
+              event.stopPropagation();
               if (fieldDataTimeout) {
                 clearTimeout(fieldDataTimeout);
                 fieldDataTimeout = null;
@@ -5278,67 +5805,75 @@ class BaseDrawingObject {
         }
       }
     }
-
-    console.log("= S.BaseDrawingObject: AddIcons output: completed");
+    console.log("= S.BaseDrawingObject: AddIcons - Output: Completed");
   }
 
-  HideAllIcons(container: any, svgDoc: any): void {
-    console.log("= S.BaseDrawingObject: HideAllIcons input:", { container, svgDoc });
+  HideAllIcons(unused: any, svgLayer: any): void {
+    console.log("= S.BaseDrawingObject: HideAllIcons - Input: svgLayer =", svgLayer);
 
     this.nIcons = 0;
 
-    const hyperlinkIcon = svgDoc.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
-    const trelloLinkIcon = svgDoc.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
-    const notesIcon = svgDoc.GetElementByID(ConstantData.ShapeIconType.NOTES);
-    const commentIcon = svgDoc.GetElementByID(ConstantData.ShapeIconType.COMMENT);
-    const fieldDataIcon = svgDoc.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
+    const hyperlinkIcon = svgLayer.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
+    const trelloLinkIcon = svgLayer.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
+    const notesIcon = svgLayer.GetElementByID(ConstantData.ShapeIconType.NOTES);
+    const commentIcon = svgLayer.GetElementByID(ConstantData.ShapeIconType.COMMENT);
+    const fieldDataIcon = svgLayer.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
 
-    if (hyperlinkIcon) svgDoc.RemoveElement(hyperlinkIcon);
-    if (trelloLinkIcon) svgDoc.RemoveElement(trelloLinkIcon);
-    if (notesIcon) svgDoc.RemoveElement(notesIcon);
-    if (commentIcon) svgDoc.RemoveElement(commentIcon);
-    if (fieldDataIcon) svgDoc.RemoveElement(fieldDataIcon);
+    if (hyperlinkIcon) {
+      svgLayer.RemoveElement(hyperlinkIcon);
+    }
+    if (trelloLinkIcon) {
+      svgLayer.RemoveElement(trelloLinkIcon);
+    }
+    if (notesIcon) {
+      svgLayer.RemoveElement(notesIcon);
+    }
+    if (commentIcon) {
+      svgLayer.RemoveElement(commentIcon);
+    }
+    if (fieldDataIcon) {
+      svgLayer.RemoveElement(fieldDataIcon);
+    }
 
-    console.log("= S.BaseDrawingObject: HideAllIcons output: Icons removed");
+    console.log("= S.BaseDrawingObject: HideAllIcons - Output: Icons hidden");
   }
 
-  GetHyperlink(cellIdentifier: string): string | null {
-    console.log("= S.BaseDrawingObject: GetHyperlink input:", { cellIdentifier });
-
-    let cellIndex: number | null = null;
+  GetHyperlink(input: string): string {
+    console.log("= S.BaseDrawingObject: GetHyperlink - Input:", input);
+    let hyperlinkIndex: number | undefined;
     const table = this.GetTable(false);
 
-    if (cellIdentifier) {
-      if (cellIdentifier.split) {
-        const parts = cellIdentifier.split('.');
+    if (input) {
+      if (typeof input === "string" && input.split) {
+        const parts = input.split(".");
         if (parts[1]) {
-          cellIndex = parseInt(parts[1], 10);
+          hyperlinkIndex = parseInt(parts[1], 10);
         }
       }
     } else if (table && table.select >= 0) {
-      cellIndex = table.select;
+      hyperlinkIndex = table.select;
     }
 
-    let hyperlink: string | null = null;
-    if (table && cellIndex !== null && cellIndex >= 0 && cellIndex < table.cells.length) {
-      hyperlink = table.cells[cellIndex].hyperlink;
+    let result: string;
+    if (table && typeof hyperlinkIndex === "number" && hyperlinkIndex >= 0 && hyperlinkIndex < table.cells.length) {
+      result = table.cells[hyperlinkIndex].hyperlink;
     } else {
-      hyperlink = this.HyperlinkText;
+      result = this.HyperlinkText;
     }
 
-    console.log("= S.BaseDrawingObject: GetHyperlink output:", hyperlink);
-    return hyperlink;
+    console.log("= S.BaseDrawingObject: GetHyperlink - Output:", result);
+    return result;
   }
 
-  IsNoteCell(cellIdentifier: string): any {
-    console.log("= S.BaseDrawingObject: IsNoteCell input:", { cellIdentifier });
+  IsNoteCell(e: any): any {
+    console.log("= S.BaseDrawingObject: IsNoteCell input:", e);
 
-    let cellIndex: number | null = null;
+    let cellIndex: number | undefined;
     const table = this.GetTable(false);
 
-    if (cellIdentifier) {
-      if (cellIdentifier.split) {
-        const parts = cellIdentifier.split('.');
+    if (e) {
+      if (typeof e.split === "function") {
+        const parts = e.split(".");
         if (parts[1]) {
           cellIndex = parseInt(parts[1], 10);
         }
@@ -5347,23 +5882,26 @@ class BaseDrawingObject {
       cellIndex = table.select;
     }
 
-    const result = table && cellIndex !== null && cellIndex >= 0 && cellIndex < table.cells.length ? table.cells[cellIndex] : null;
+    let result = null;
+    if (table && typeof cellIndex === "number" && cellIndex >= 0 && cellIndex < table.cells.length) {
+      result = table.cells[cellIndex];
+    }
 
     console.log("= S.BaseDrawingObject: IsNoteCell output:", result);
     return result;
   }
 
   SetCursors() {
-    console.log("= S.BaseDrawingObject: SetCursors - Input: none");
+    console.log("= S.BaseDrawingObject: SetCursors - Input: BlockID =", this.BlockID);
 
-    const svgObjectLayer = GlobalData.optManager.svgObjectLayer;
-    const element = svgObjectLayer.GetElementByID(this.BlockID);
-    let isCursorSet = false;
+    // Get the main SVG element for this object
+    const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    let updateTextCursor = false;
 
-    if (!(this.flags & ConstantData.ObjFlags.SEDO_Lock) && element) {
-      const editMode = GlobalData.optManager.GetEditMode();
-      if (editMode === ConstantData.EditState.DEFAULT) {
-        const shapeElement = element.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    if (!(this.flags & ConstantData.ObjFlags.SEDO_Lock) && svgElement) {
+      if (GlobalData.optManager.GetEditMode() === ConstantData.EditState.DEFAULT) {
+        // Set cursor for the main shape element
+        const shapeElement = svgElement.GetElementByID(ConstantData.SVGElementClass.SHAPE);
         if (shapeElement) {
           if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FRAME_CONTAINER) {
             shapeElement.SetCursor(Element.CursorType.DEFAULT);
@@ -5372,66 +5910,84 @@ class BaseDrawingObject {
           }
         }
 
-        const iconTypes = [
-          ConstantData.ShapeIconType.HYPERLINK,
-          ConstantData.ShapeIconType.TRELLOLINK,
-          ConstantData.ShapeIconType.NOTES,
-          ConstantData.ShapeIconType.EXPANDEDVIEW,
-          ConstantData.ShapeIconType.COMMENT,
-          ConstantData.ShapeIconType.ATTACHMENT,
-          ConstantData.ShapeIconType.FIELDDATA
-        ];
+        // Set cursors for various icon elements to POINTER
+        let iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
 
-        iconTypes.forEach(iconType => {
-          const iconElement = element.GetElementByID(iconType);
-          if (iconElement) {
-            iconElement.SetCursor(Element.CursorType.POINTER);
-          }
-        });
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
 
-        const slopElement = element.GetElementByID(ConstantData.SVGElementClass.SLOP);
-        if (slopElement) {
-          slopElement.SetCursor(Element.CursorType.ADD);
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.NOTES);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
+
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.EXPANDEDVIEW);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
+
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.COMMENT);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
+
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.ATTACHMENT);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
+
+        iconElement = svgElement.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
+        if (iconElement) iconElement.SetCursor(Element.CursorType.POINTER);
+
+        // Set cursor for "slope" element
+        const slopeElement = svgElement.GetElementByID(ConstantData.SVGElementClass.SLOP);
+        if (slopeElement) {
+          slopeElement.SetCursor(Element.CursorType.ADD);
         }
 
-        const activeEdit = GlobalData.optManager.svgDoc.GetActiveEdit();
-        if (this.DataID && this.DataID >= 0 && element.textElem) {
-          if (element.textElem === activeEdit) {
-            shapeElement.SetCursor(Element.CursorType.TEXT);
-            element.textElem.SetCursorState(ConstantData.CursorState.EDITLINK);
-          } else {
-            element.textElem.SetCursorState(ConstantData.CursorState.LINKONLY);
-          }
-        }
-
-        if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always ||
-          (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select && this.IsSelected())) {
-          const dimensionTextElements = element.GetElementListWithID(ConstantData.SVGElementClass.DIMENSIONTEXT);
-          dimensionTextElements.forEach(dimensionTextElement => {
-            dimensionTextElement.SetCursorState(ConstantData.CursorState.EDITONLY);
-            if (dimensionTextElement === activeEdit) {
-              isCursorSet = true;
+        // Check for active text editing element
+        const activeEditElement = GlobalData.optManager.svgDoc.GetActiveEdit();
+        if (this.DataID && this.DataID >= 0 && svgElement.textElem) {
+          if (svgElement.textElem === activeEditElement) {
+            if (shapeElement) {
+              shapeElement.SetCursor(Element.CursorType.TEXT);
             }
-          });
+            svgElement.textElem.SetCursorState(ConstantData.CursorState.EDITLINK);
+          } else {
+            svgElement.textElem.SetCursorState(ConstantData.CursorState.LINKONLY);
+          }
+        }
 
-          if (isCursorSet) {
-            shapeElement.SetCursor(null);
-            if (slopElement) {
-              slopElement.SetCursor(null);
+        // If dimensions should always be shown or if selected, adjust dimension text cursors
+        if (
+          (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always ||
+            this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) &&
+          this.IsSelected()
+        ) {
+          const dimensionTextElements = svgElement.GetElementListWithID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+          for (let idx = 0; idx < dimensionTextElements.length; idx++) {
+            dimensionTextElements[idx].SetCursorState(ConstantData.CursorState.EDITONLY);
+            if (dimensionTextElements[idx] === activeEditElement) {
+              updateTextCursor = true;
+            }
+          }
+          if (updateTextCursor) {
+            // Clear cursor for main shape and slope if text edit is active
+            if (shapeElement) {
+              shapeElement.SetCursor(null);
+            }
+            if (slopeElement) {
+              slopeElement.SetCursor(null);
             }
           }
         }
       } else {
+        // Clear cursors if not in default edit mode
         this.ClearCursors();
       }
+    } else {
+      // If object is locked or no svgElement found, clear cursors
+      this.ClearCursors();
     }
 
-    console.log("= S.BaseDrawingObject: SetCursors - Output: completed");
+    console.log("= S.BaseDrawingObject: SetCursors - Output: Completed");
   }
 
-  ClearCursors(): void {
-    console.log("= S.BaseDrawingObject: ClearCursors input: none");
-
+  ClearCursors() {
+    console.log("= S.BaseDrawingObject: ClearCursors - Input: {}");
     const element = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
     if (element) {
       element.ClearAllCursors();
@@ -5439,70 +5995,72 @@ class BaseDrawingObject {
         element.textElem.SetCursorState(ConstantData.CursorState.NONE);
       }
     }
-
-    console.log("= S.BaseDrawingObject: ClearCursors output: completed");
+    console.log("= S.BaseDrawingObject: ClearCursors - Output: Completed");
   }
 
-  PostCreateShapeCallback(shape, container, pathCreator, additionalData) {
-    console.log('= S.BaseDrawingObject: PostCreateShapeCallback input:', { shape, container, pathCreator, additionalData });
-
-    // Placeholder for the actual implementation
-    // Add your logic here
-
-    console.log('= S.BaseDrawingObject: PostCreateShapeCallback output: completed');
+  PostCreateShapeCallback(e, t, a, r) {
+    console.log('= S.BaseDrawingObject PostCreateShapeCallback e,t,a,r', e, t, a, r);
   }
 
-  SVGTokenizerHook(style) {
-    console.log("= S.BaseDrawingObject: SVGTokenizerHook input:", style);
+  SVGTokenizerHook(e: any): any {
+    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Input:", e);
 
     if (GlobalData.optManager.bTokenizeStyle) {
       const colorFilter = this.colorfilter;
-      style = Utils1.DeepCopy(style);
+      e = Utils1.DeepCopy(e);
 
+      // If all colors are disabled, return early.
       if (colorFilter === FileParser.SDRColorFilters.SD_NOCOLOR_ALL) {
-        console.log("= S.BaseDrawingObject: SVGTokenizerHook output:", style);
-        return style;
+        console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output (SD_NOCOLOR_ALL):", e);
+        return e;
       }
 
+      // Process Fill settings if fill color is allowed
       if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_FILL)) {
-        if (style.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
-          style.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+        if (e.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
+          e.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
         }
-        style.Fill.Paint.Color = Basic.Symbol.CreatePlaceholder(Basic.Symbol.Placeholder.FillColor, style.Fill.Paint.Color);
+        e.Fill.Paint.Color = Basic.Symbol.CreatePlaceholder(
+          Basic.Symbol.Placeholder.FillColor,
+          e.Fill.Paint.Color
+        );
       }
 
+      // Process Line color if line color is allowed
       if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_LINE)) {
-        style.Line.Paint.Color = Basic.Symbol.CreatePlaceholder(Basic.Symbol.Placeholder.LineColor, style.Line.Paint.Color);
+        e.Line.Paint.Color = Basic.Symbol.CreatePlaceholder(
+          Basic.Symbol.Placeholder.LineColor,
+          e.Line.Paint.Color
+        );
       }
 
+      // Process Line thickness if line thickness is allowed
       if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_LINETHICK)) {
-        style.Line.Thickness = Basic.Symbol.CreatePlaceholder(Basic.Symbol.Placeholder.LineThick, style.Line.Thickness);
+        e.Line.Thickness = Basic.Symbol.CreatePlaceholder(
+          Basic.Symbol.Placeholder.LineThick,
+          e.Line.Thickness
+        );
       }
     }
 
-    console.log("= S.BaseDrawingObject: SVGTokenizerHook output:", style);
-    return style;
+    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output:", e);
+    return e;
   }
 
   CancelObjectDraw(): boolean {
-    console.log("= S.BaseDrawingObject: CancelObjectDraw input: none");
+    console.log("= S.BaseDrawingObject: CancelObjectDraw - Input: {}");
 
-    // Unbind action click hammer events
     GlobalData.optManager.unbindActionClickHammerEvents();
-
-    // Reset auto scroll timer
     this.ResetAutoScrollTimer();
 
-    console.log("= S.BaseDrawingObject: CancelObjectDraw output: true");
+    console.log("= S.BaseDrawingObject: CancelObjectDraw - Output: true");
     return true;
   }
 
   GetAlignRect(): any {
-    console.log("= S.BaseDrawingObject: GetAlignRect input: none");
-
+    console.log("= S.BaseDrawingObject: GetAlignRect - Input:", { Frame: this.Frame });
     const alignRect = $.extend(true, {}, this.Frame);
-
-    console.log("= S.BaseDrawingObject: GetAlignRect output:", alignRect);
+    console.log("= S.BaseDrawingObject: GetAlignRect - Output:", { alignRect });
     return alignRect;
   }
 
@@ -5511,136 +6069,163 @@ class BaseDrawingObject {
   }
 
   GetTextures(textures: string[]): void {
-    console.log("= S.BaseDrawingObject: GetTextures input:", { textures });
+    console.log("= S.BaseDrawingObject: GetTextures - Input:", { textures });
 
-    const fillTypeTexture = ConstantData.FillTypes.SDFILL_TEXTURE;
+    const textureFillType = ConstantData.FillTypes.SDFILL_TEXTURE;
 
-    // Check and add fill texture
-    if (this.StyleRecord.Fill.Paint.FillType === fillTypeTexture) {
+    // Process fill texture
+    if (this.StyleRecord.Fill.Paint.FillType === textureFillType) {
       const fillTexture = this.StyleRecord.Fill.Paint.Texture;
-      if (!textures.includes(fillTexture)) {
+      if (textures.indexOf(fillTexture) === -1) {
         textures.push(fillTexture);
       }
     }
 
-    // Check and add line texture
-    if (this.StyleRecord.Line.Paint.FillType === fillTypeTexture) {
+    // Process line texture
+    if (this.StyleRecord.Line.Paint.FillType === textureFillType) {
       const lineTexture = this.StyleRecord.Line.Paint.Texture;
-      if (!textures.includes(lineTexture)) {
+      if (textures.indexOf(lineTexture) === -1) {
         textures.push(lineTexture);
       }
     }
 
-    // Check and add text texture
-    if (this.StyleRecord.Text.Paint.FillType === fillTypeTexture) {
+    // Process text texture
+    if (this.StyleRecord.Text.Paint.FillType === textureFillType) {
       const textTexture = this.StyleRecord.Text.Paint.Texture;
-      if (!textures.includes(textTexture)) {
+      if (textures.indexOf(textTexture) === -1) {
         textures.push(textTexture);
       }
     }
 
-    // Check and add table textures
+    // Process table textures if table exists
     const table = this.GetTable(false);
     if (table) {
       GlobalData.optManager.Table_GetTextures(table, textures);
     }
 
-    console.log("= S.BaseDrawingObject: GetTextures output:", { textures });
+    console.log("= S.BaseDrawingObject: GetTextures - Output:", { textures });
   }
 
-  GetContrastingColorName(): string {
-    console.log("= S.BaseDrawingObject: GetContrastingColorName input: none");
+  GetContrastingColorName(e: any): string {
+    console.log("= S.BaseDrawingObject: GetContrastingColorName - Input:", e);
 
-    const lineColor = this.StyleRecord.Line.Paint.Color;
-    const red = parseInt(lineColor.substr(1, 2), 16);
-    const green = parseInt(lineColor.substr(3, 2), 16);
-    const blue = parseInt(lineColor.substr(5, 2), 16);
-
+    const color = this.StyleRecord.Line.Paint.Color;
+    const red = parseInt(color.substr(1, 2), 16);
+    const green = parseInt(color.substr(3, 2), 16);
+    const blue = parseInt(color.substr(5, 2), 16);
     const brightness = (299 * red + 587 * green + 114 * blue) / 1000;
-    const contrastingColor = brightness >= 128 ? 'black' : 'white';
+    const result = brightness >= 128 ? 'black' : 'white';
 
-    console.log("= S.BaseDrawingObject: GetContrastingColorName output:", contrastingColor);
-    return contrastingColor;
+    console.log("= S.BaseDrawingObject: GetContrastingColorName - Output:", result);
+    return result;
   }
 
-  SetRuntimeEffects(enableEffects: boolean): void {
-    console.log("= S.BaseDrawingObject: SetRuntimeEffects input:", { enableEffects });
-
-    const svgElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-    if (svgElement) {
-      this.ApplyEffects(svgElement, enableEffects, false);
+  SetRuntimeEffects(effectParams: any): void {
+    console.log("= S.BaseDrawingObject: SetRuntimeEffects - Input:", { effectParams });
+    const targetElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    if (targetElement) {
+      this.ApplyEffects(targetElement, effectParams, false);
     }
-
-    console.log("= S.BaseDrawingObject: SetRuntimeEffects output: completed");
+    console.log("= S.BaseDrawingObject: SetRuntimeEffects - Output: Completed");
   }
 
-  ApplyEffects(element, enableEffects, additionalData) {
-    console.log("= S.BaseDrawingObject: ApplyEffects - Input:", { element, enableEffects, additionalData });
+  ApplyEffects(targetElement: any, effectParams: any, isSecondary: boolean) {
+    console.log("= S.BaseDrawingObject: ApplyEffects - Input:", { targetElement, effectParams, isSecondary });
 
-    // Retrieve the element if not provided
-    element = element || GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    targetElement = targetElement || GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
 
-    // Check if effects should be applied
-    if (element && GlobalData.optManager.bDrawEffects && !GlobalData.optManager.bTokenizeStyle) {
-      const shapeElement = element.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-      const shapeGroup = element.shapeGroup || element;
-      const outsideEffectType = this.StyleRecord.OutsideEffect ? this.StyleRecord.OutsideEffect.OutsideType : 0;
+    if (
+      targetElement &&
+      GlobalData.optManager.bDrawEffects &&
+      !GlobalData.optManager.bTokenizeStyle
+    ) {
+      const shapeElement = targetElement.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+      const groupElement = targetElement.shapeGroup || targetElement;
+      const outsideEffectType = this.StyleRecord.OutsideEffect
+        ? this.StyleRecord.OutsideEffect.OutsideType
+        : 0;
 
-      // Apply effects based on the outside effect type
-      if (outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_REFL || outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_CAST) {
-        this.SetEffects(shapeElement, enableEffects, additionalData, null, false, additionalData);
+      if (
+        outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_REFL ||
+        outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_CAST
+      ) {
+        this.SetEffects(shapeElement, effectParams, isSecondary, null, false, isSecondary);
       } else {
-        if (!additionalData) {
-          this.SetEffects(shapeElement, enableEffects, additionalData, null, true, false);
+        if (!isSecondary) {
+          this.SetEffects(shapeElement, effectParams, isSecondary, null, true, false);
         }
-        this.SetEffects(shapeGroup, enableEffects, additionalData, null, false, true);
+        this.SetEffects(groupElement, effectParams, isSecondary, null, false, true);
       }
-    }
 
-    console.log("= S.BaseDrawingObject: ApplyEffects - Output: Effects applied");
+      console.log("= S.BaseDrawingObject: ApplyEffects - Output: Effects applied");
+    } else {
+      console.log("= S.BaseDrawingObject: ApplyEffects - Output: No target element or effects disabled");
+    }
   }
 
-  SetEffects(element, enableEffects, additionalData, styleRecord, applyOutsideEffect, applyInsideEffect) {
+  SetEffects(
+    targetElement,              // the element on which to set effects
+    flagOverrideGlow,           // boolean flag to override glow settings
+    isSecondary,                // boolean flag indicating secondary effect calculation
+    styleOverride,              // optional style record override
+    skipOutsideEffects,         // boolean flag to skip outside effects processing
+    skipInsideEffects           // boolean flag to skip inside effects processing
+  ) {
     console.log("= S.BaseDrawingObject: SetEffects - Input:", {
-      element,
-      enableEffects,
-      additionalData,
-      styleRecord,
-      applyOutsideEffect,
-      applyInsideEffect
+      targetElement,
+      flagOverrideGlow,
+      isSecondary,
+      styleOverride,
+      skipOutsideEffects,
+      skipInsideEffects
     });
 
-    let frame = this.Frame;
-    let effects = [];
-    let glowColor = null;
+    const frame = this.Frame;
+    let effectsArray = [];
+    let overrideGlowColor = null;
 
-    if (element && (styleRecord = styleRecord || this.StyleRecord)) {
-      if (this.dataStyleOverride && this.dataStyleOverride.glowColor) {
-        glowColor = this.dataStyleOverride.glowColor;
-      }
+    if (targetElement) {
+      const styleUsed = styleOverride || this.StyleRecord;
 
-      let effectSettings = this.CalcEffectSettings(frame, styleRecord, additionalData);
+      if (styleUsed != null) {
+        // Use override glow color if provided in dataStyleOverride
+        if (this.dataStyleOverride && this.dataStyleOverride.glowColor) {
+          overrideGlowColor = this.dataStyleOverride.glowColor;
+        }
 
-      if (applyOutsideEffect) {
-        if (effectSettings.outside.type) {
-          if (enableEffects && effectSettings.outside.type.id === Effects.EffectType.GLOW.id) {
-            effects.push({
-              type: effectSettings.outside.type,
-              params: effectSettings.outside.settings
-            });
+        // Calculate the effect settings based on the frame, style, and secondary flag
+        const effectSettings = this.CalcEffectSettings(frame, styleUsed, isSecondary);
+
+        if (!skipOutsideEffects) {
+          // Process outside effects if any
+          if (effectSettings.outside.type) {
+            // If flagOverrideGlow is true and the outside type is GLOW, then push its settings
+            if (flagOverrideGlow && effectSettings.outside.type.id === Effects.EffectType.GLOW.id) {
+              effectsArray.push({
+                type: effectSettings.outside.type,
+                params: effectSettings.outside.settings
+              });
+            } else if (!flagOverrideGlow) {
+              effectsArray.push({
+                type: effectSettings.outside.type,
+                params: effectSettings.outside.settings
+              });
+            }
           }
 
-          if (enableEffects) {
-            effects.push({
+          if (flagOverrideGlow) {
+            // Add a default glow effect for collaboration
+            effectsArray.push({
               type: Effects.EffectType.GLOW,
               params: {
-                color: '#FFD64A',
+                color: "#FFD64A",
                 size: 4,
                 asSecondary: true
               }
             });
           } else if (this.collabGlowColor) {
-            effects.push({
+            // Use collaboration glow color if available
+            effectsArray.push({
               type: Effects.EffectType.GLOW,
               params: {
                 color: this.collabGlowColor,
@@ -5648,326 +6233,361 @@ class BaseDrawingObject {
                 asSecondary: true
               }
             });
-          } else if (glowColor) {
-            effects.push({
+          } else if (overrideGlowColor) {
+            // Fallback to override color from dataStyleOverride
+            effectsArray.push({
               type: Effects.EffectType.GLOW,
               params: {
-                color: glowColor,
+                color: overrideGlowColor,
                 size: 4,
                 asSecondary: true
               }
             });
           }
         }
-      }
 
-      if (effectSettings.inside.type && !applyInsideEffect) {
-        effects.push({
-          type: effectSettings.inside.type,
-          params: effectSettings.inside.settings
-        });
-      }
+        // Process inside effects if available
+        if (effectSettings.inside.type && !skipInsideEffects) {
+          effectsArray.push({
+            type: effectSettings.inside.type,
+            params: effectSettings.inside.settings
+          });
+        }
 
-      element.Effects().SetEffects(effects, frame);
+        // Apply the calculated effects to the target element
+        targetElement.Effects().SetEffects(effectsArray, frame);
+      }
     }
 
-    console.log("= S.BaseDrawingObject: SetEffects - Output: Effects applied", { effects });
+    console.log("= S.BaseDrawingObject: SetEffects - Output:", {
+      appliedEffects: effectsArray,
+      frame
+    });
   }
 
-  CalcEffectSettings(frame: Rectangle, styleRecord: any, isSecondary: boolean): any {
-    console.log("= S.BaseDrawingObject: CalcEffectSettings input:", { frame, styleRecord, isSecondary });
+  CalcEffectSettings(frame: { width: number; height: number }, style: any, isSecondary: boolean): any {
+    console.log("= S.BaseDrawingObject CalcEffectSettings - Input:", { frame, style, isSecondary });
 
-    let minDimension = Math.min(frame.width, frame.height);
-    let lineThickness = styleRecord.Line.Thickness;
-    let effectExtent = { left: 0, top: 0, right: 0, bottom: 0 };
-    let effectSettings = { inside: {}, outside: {} };
+    let minDimension: number;
+    let secondaryOffset: number;
+    let shadowParam: number;
+    const widthWithThickness = frame.width;
+    const heightWithThickness = frame.height;
+    const lineThickness = style.Line.Thickness;
+    const extent: { left: number; top: number; right: number; bottom: number } = {
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+    };
+    const config: any = {};
 
-    if (isSecondary && lineThickness < 2) {
-      lineThickness = 2;
+    // Adjust line thickness if necessary.
+    let adjustedThickness = lineThickness;
+    if (isSecondary && adjustedThickness < 2) {
+      adjustedThickness = 2;
     }
+    // Increase overall dimensions by thickness.
+    let adjustedWidth = widthWithThickness + adjustedThickness;
+    let adjustedHeight = heightWithThickness + adjustedThickness;
 
-    frame.width += lineThickness;
-    frame.height += lineThickness;
-    minDimension = isSecondary ? lineThickness : Math.min(minDimension, 50);
+    // Determine the minimum dimension.
+    minDimension = Math.min(adjustedWidth, adjustedHeight);
+    minDimension = isSecondary ? adjustedThickness : Math.min(minDimension, 50);
 
-    if (styleRecord.OutsideEffect && styleRecord.OutsideEffect.OutsideType) {
-      effectSettings.outside.settings = {};
-      switch (styleRecord.OutsideEffect.OutsideType) {
+    // Initialize inside and outside configurations.
+    config.inside = {};
+    config.outside = {};
+
+    // Process Outside Effects.
+    if (style.OutsideEffect && style.OutsideEffect.OutsideType) {
+      config.outside.settings = {};
+      switch (style.OutsideEffect.OutsideType) {
         case FileParser.OutEffect.SDOUT_EFFECT_DROP:
-          effectExtent.left = minDimension * styleRecord.OutsideEffect.OutsideExtent_Left;
-          effectExtent.top = minDimension * styleRecord.OutsideEffect.OutsideExtent_Top;
-          effectExtent.right = minDimension * styleRecord.OutsideEffect.OutsideExtent_Right;
-          effectExtent.bottom = minDimension * styleRecord.OutsideEffect.OutsideExtent_Bottom;
-
+          extent.left = minDimension * style.OutsideEffect.OutsideExtent_Left;
+          extent.top = minDimension * style.OutsideEffect.OutsideExtent_Top;
+          extent.right = minDimension * style.OutsideEffect.OutsideExtent_Right;
+          extent.bottom = minDimension * style.OutsideEffect.OutsideExtent_Bottom;
           if (isSecondary) {
-            effectExtent.left = Math.min(effectExtent.left, 2);
-            effectExtent.top = Math.min(effectExtent.top, 2);
-            effectExtent.right = Math.min(effectExtent.right, 2);
-            effectExtent.bottom = Math.min(effectExtent.bottom, 2);
+            if (extent.left) extent.left = Math.min(extent.left, 2);
+            if (extent.top) extent.top = Math.min(extent.top, 2);
+            if (extent.right) extent.right = Math.min(extent.right, 2);
+            if (extent.bottom) extent.bottom = Math.min(extent.bottom, 2);
           }
-
-          effectSettings.outside.type = Effects.EffectType.DROPSHADOW;
-          effectSettings.outside.settings.size = Math.min(Math.max((effectExtent.left + effectExtent.right) / 2, 2), 50);
-          effectSettings.outside.settings.xOff = effectExtent.right / 2 - effectExtent.left / 2;
-          effectSettings.outside.settings.yOff = effectExtent.bottom / 2 - effectExtent.top / 2;
-          effectSettings.outside.settings.color = styleRecord.OutsideEffect.Color;
-          effectSettings.outside.settings.asSecondary = true;
-
-          effectExtent.left = Math.max(-effectSettings.outside.settings.xOff + effectSettings.outside.settings.size, 0);
-          effectExtent.top = Math.max(-effectSettings.outside.settings.yOff + effectSettings.outside.settings.size, 0);
-          effectExtent.right = Math.max(effectSettings.outside.settings.xOff + effectSettings.outside.settings.size, 0);
-          effectExtent.bottom = Math.max(effectSettings.outside.settings.yOff + effectSettings.outside.settings.size, 0);
+          config.outside.type = Effects.EffectType.DROPSHADOW;
+          config.outside.settings.size = Math.min(Math.max((extent.left + extent.right) / 2, 2), 50);
+          config.outside.settings.xOff = extent.right / 2 - extent.left / 2;
+          config.outside.settings.yOff = extent.bottom / 2 - extent.top / 2;
+          config.outside.settings.color = style.OutsideEffect.Color;
+          config.outside.settings.asSecondary = true;
+          extent.left = Math.max(-config.outside.settings.xOff + config.outside.settings.size, 0);
+          extent.top = Math.max(-config.outside.settings.yOff + config.outside.settings.size, 0);
+          extent.right = Math.max(config.outside.settings.xOff + config.outside.settings.size, 0);
+          extent.bottom = Math.max(config.outside.settings.yOff + config.outside.settings.size, 0);
           break;
 
         case FileParser.OutEffect.SDOUT_EFFECT_GLOW:
-          effectExtent.left = effectExtent.top = effectExtent.right = effectExtent.bottom = Math.max(minDimension * styleRecord.OutsideEffect.OutsideExtent_Left, 2);
-          effectSettings.outside.type = Effects.EffectType.GLOW;
-          effectSettings.outside.settings.size = Math.min(Math.max((effectExtent.left + effectExtent.right) / 2, 2), 50);
-          effectSettings.outside.settings.color = styleRecord.OutsideEffect.Color;
-          effectSettings.outside.settings.asSecondary = true;
-
-          effectExtent.left = effectExtent.top = effectExtent.right = effectExtent.bottom = effectSettings.outside.settings.size;
+          extent.left = extent.top = extent.right = extent.bottom = Math.max(minDimension * style.OutsideEffect.OutsideExtent_Left, 2);
+          config.outside.type = Effects.EffectType.GLOW;
+          config.outside.settings.size = Math.min(Math.max((extent.left + extent.right) / 2, 2), 50);
+          config.outside.settings.color = style.OutsideEffect.Color;
+          config.outside.settings.asSecondary = true;
+          extent.left = extent.top = extent.right = extent.bottom = config.outside.settings.size;
           break;
 
         case FileParser.OutEffect.SDOUT_EFFECT_REFL:
-          effectExtent.left = frame.width * styleRecord.OutsideEffect.OutsideExtent_Left;
-          effectExtent.right = frame.width * styleRecord.OutsideEffect.OutsideExtent_Right;
-          effectExtent.bottom = frame.height * styleRecord.OutsideEffect.OutsideExtent_Bottom;
-          effectSettings.outside.type = Effects.EffectType.REFLECT;
-          effectSettings.outside.settings.xOff = effectExtent.right - effectExtent.left;
-          effectSettings.outside.settings.yOff = effectExtent.bottom;
-          effectSettings.outside.settings.asSecondary = true;
-
-          const reflectOffset = Element.Effects.CalcSecondaryEffectOffset(effectSettings.outside.settings.xOff, effectSettings.outside.settings.yOff);
-          effectExtent.left = Math.max(-reflectOffset, 0);
-          effectExtent.right = Math.max(reflectOffset, 0);
+          extent.left = adjustedWidth * style.OutsideEffect.OutsideExtent_Left;
+          extent.right = adjustedWidth * style.OutsideEffect.OutsideExtent_Right;
+          extent.bottom = adjustedHeight * style.OutsideEffect.OutsideExtent_Bottom;
+          config.outside.type = Effects.EffectType.REFLECT;
+          config.outside.settings.xOff = extent.right - extent.left;
+          config.outside.settings.yOff = extent.bottom;
+          config.outside.settings.asSecondary = true;
+          secondaryOffset = Element.Effects.CalcSecondaryEffectOffset(config.outside.settings.xOff, config.outside.settings.yOff);
+          extent.left = Math.max(-secondaryOffset, 0);
+          extent.right = Math.max(secondaryOffset, 0);
           break;
 
         case FileParser.OutEffect.SDOUT_EFFECT_CAST:
-          effectExtent.left = frame.width * styleRecord.OutsideEffect.OutsideExtent_Left;
-          effectExtent.right = frame.width * styleRecord.OutsideEffect.OutsideExtent_Right;
-          effectExtent.bottom = frame.height * styleRecord.OutsideEffect.OutsideExtent_Bottom;
-          effectSettings.outside.type = Effects.EffectType.CASTSHADOW;
-          effectSettings.outside.settings.xOff = effectExtent.right - effectExtent.left;
-          effectSettings.outside.settings.yOff = effectExtent.bottom;
-          effectSettings.outside.settings.size = Math.min(Math.max(0.1 * Math.abs(effectExtent.bottom), 2), 25);
-          effectSettings.outside.settings.asSecondary = true;
-
-          const castOffset = Element.Effects.CalcSecondaryEffectOffset(effectSettings.outside.settings.xOff, effectSettings.outside.settings.yOff);
-          effectExtent.left = Math.max(-castOffset + effectSettings.outside.settings.size, 0);
-          effectExtent.right = Math.max(castOffset + effectSettings.outside.settings.size, 0);
-          effectExtent.bottom = Math.max(effectSettings.outside.settings.yOff + effectSettings.outside.settings.size, 0);
+          extent.left = adjustedWidth * style.OutsideEffect.OutsideExtent_Left;
+          extent.right = adjustedWidth * style.OutsideEffect.OutsideExtent_Right;
+          extent.bottom = adjustedHeight * style.OutsideEffect.OutsideExtent_Bottom;
+          config.outside.type = Effects.EffectType.CASTSHADOW;
+          config.outside.settings.xOff = extent.right - extent.left;
+          config.outside.settings.yOff = extent.bottom;
+          config.outside.settings.size = Math.min(Math.max(0.1 * Math.abs(extent.bottom), 2), 25);
+          config.outside.settings.asSecondary = true;
+          secondaryOffset = Element.Effects.CalcSecondaryEffectOffset(config.outside.settings.xOff, config.outside.settings.yOff);
+          extent.left = Math.max(-secondaryOffset + config.outside.settings.size, 0);
+          extent.right = Math.max(secondaryOffset + config.outside.settings.size, 0);
+          extent.bottom = Math.max(config.outside.settings.yOff + config.outside.settings.size, 0);
           break;
       }
     }
 
-    if (styleRecord.Fill.FillEffect && !isSecondary) {
-      minDimension = Math.min(frame.width, frame.height);
-      effectSettings.inside.settings = {};
-      switch (styleRecord.Fill.FillEffect) {
+    // Process Fill Effects (Inside Effects) if available and if not secondary.
+    if (style.Fill.FillEffect && !isSecondary) {
+      minDimension = Math.min(adjustedWidth, adjustedHeight);
+      config.inside.settings = {};
+      switch (style.Fill.FillEffect) {
         case FileParser.FillEffect.SDFILL_EFFECT_GLOSS:
-          effectSettings.inside.type = Effects.EffectType.GLOSS;
-          effectSettings.inside.settings.size = Math.min(frame.width, frame.height);
-          effectSettings.inside.settings.type = Element.Effects.GlossType.SOFT;
-          effectSettings.inside.settings.dir = Element.Effects.FilterDirection.TOP;
-          effectSettings.inside.settings.color = styleRecord.Fill.EffectColor;
-
-          switch (styleRecord.Fill.LParam) {
-            case 1:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
-              break;
-            case 2:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.RIGHTTOP;
-              break;
-            case 3:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.CENTER;
-              break;
+          config.inside.type = Effects.EffectType.GLOSS;
+          config.inside.settings.size = Math.min(adjustedWidth, adjustedHeight);
+          config.inside.settings.type = Element.Effects.GlossType.SOFT;
+          config.inside.settings.dir = Element.Effects.FilterDirection.TOP;
+          config.inside.settings.color = style.Fill.EffectColor;
+          if (style.Fill.LParam) {
+            switch (style.Fill.LParam) {
+              case 1:
+                config.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
+                break;
+              case 2:
+                config.inside.settings.dir = Element.Effects.FilterDirection.RIGHTTOP;
+                break;
+              case 3:
+                config.inside.settings.dir = Element.Effects.FilterDirection.CENTER;
+                break;
+            }
           }
-
-          if (styleRecord.Fill.WParam) {
-            effectSettings.inside.settings.type = Element.Effects.GlossType.HARD;
+          if (style.Fill.WParam) {
+            config.inside.settings.type = Element.Effects.GlossType.HARD;
           }
           break;
 
         case FileParser.FillEffect.SDFILL_EFFECT_BEVEL:
           minDimension = Math.max(Math.min(minDimension, 50) / 10, 2);
-          effectSettings.inside.type = Effects.EffectType.BEVEL;
-          effectSettings.inside.settings.size = minDimension;
-          effectSettings.inside.settings.type = Element.Effects.BevelType.SOFT;
-          effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
-
-          switch (styleRecord.Fill.WParam) {
-            case 0:
-              effectSettings.inside.settings.type = Element.Effects.BevelType.HARD;
-              break;
-            case 1:
-              effectSettings.inside.settings.type = Element.Effects.BevelType.SOFT;
-              break;
-            case 2:
-              effectSettings.inside.settings.type = Element.Effects.BevelType.BUMP;
-              break;
+          config.inside.type = Effects.EffectType.BEVEL;
+          config.inside.settings.size = minDimension;
+          config.inside.settings.type = Element.Effects.BevelType.SOFT;
+          config.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
+          if (style.Fill.WParam !== undefined) {
+            switch (style.Fill.WParam) {
+              case 0:
+                config.inside.settings.type = Element.Effects.BevelType.HARD;
+                break;
+              case 1:
+                config.inside.settings.type = Element.Effects.BevelType.SOFT;
+                break;
+              case 2:
+                config.inside.settings.type = Element.Effects.BevelType.BUMP;
+                break;
+            }
           }
-
-          switch (styleRecord.Fill.LParam) {
+          switch (style.Fill.LParam) {
             case 0:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFT;
+              config.inside.settings.dir = Element.Effects.FilterDirection.LEFT;
               break;
             case 1:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
+              config.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
               break;
             case 2:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.TOP;
+              config.inside.settings.dir = Element.Effects.FilterDirection.TOP;
               break;
             case 3:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.RIGHTTOP;
+              config.inside.settings.dir = Element.Effects.FilterDirection.RIGHTTOP;
               break;
             case 4:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.RIGHT;
+              config.inside.settings.dir = Element.Effects.FilterDirection.RIGHT;
               break;
             case 5:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.RIGHTBOTTOM;
+              config.inside.settings.dir = Element.Effects.FilterDirection.RIGHTBOTTOM;
               break;
             case 6:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.BOTTOM;
+              config.inside.settings.dir = Element.Effects.FilterDirection.BOTTOM;
               break;
             case 7:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFTBOTTOM;
+              config.inside.settings.dir = Element.Effects.FilterDirection.LEFTBOTTOM;
               break;
             case 8:
-              effectSettings.inside.settings.dir = Element.Effects.FilterDirection.CENTER;
+              config.inside.settings.dir = Element.Effects.FilterDirection.CENTER;
               break;
           }
           break;
 
         case FileParser.FillEffect.SDFILL_EFFECT_INSHADOW:
           minDimension = Math.min(minDimension, 50) / 2;
-          if (styleRecord.Fill.WParam) {
-            let param = styleRecord.Fill.WParam;
-            if (param < 0 || param > 100) {
-              param = 20;
+          if (style.Fill.WParam) {
+            shadowParam = style.Fill.WParam;
+            if (shadowParam < 0 || shadowParam > 100) {
+              shadowParam = 20;
             }
-            minDimension = minDimension * param / 100;
+            minDimension = (minDimension * shadowParam) / 100;
           } else {
             minDimension /= 5;
           }
-
-          effectSettings.inside.type = Effects.EffectType.INNERSHADOW;
-          effectSettings.inside.settings.size = minDimension;
-          effectSettings.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
+          config.inside.type = Effects.EffectType.INNERSHADOW;
+          config.inside.settings.size = minDimension;
+          config.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
           break;
 
         case FileParser.FillEffect.SDFILL_EFFECT_INGLOW:
           minDimension = Math.min(minDimension, 50) / 2;
-          if (styleRecord.Fill.WParam) {
-            let param = styleRecord.Fill.WParam;
-            if (param < 0 || param > 100) {
-              param = 20;
+          if (style.Fill.WParam) {
+            shadowParam = style.Fill.WParam;
+            if (shadowParam < 0 || shadowParam > 100) {
+              shadowParam = 20;
             }
-            minDimension = minDimension * param / 100;
+            minDimension = (minDimension * shadowParam) / 100;
           } else {
             minDimension /= 5;
           }
-
-          effectSettings.inside.type = Effects.EffectType.INNERGLOW;
-          effectSettings.inside.settings.size = minDimension;
-          effectSettings.inside.settings.color = styleRecord.Fill.EffectColor;
+          config.inside.type = Effects.EffectType.INNERGLOW;
+          config.inside.settings.size = minDimension;
+          config.inside.settings.color = style.Fill.EffectColor;
           break;
       }
     }
 
-    effectSettings.extent = effectExtent;
-
-    console.log("= S.BaseDrawingObject: CalcEffectSettings output:", effectSettings);
-    return effectSettings;
+    config.extent = extent;
+    console.log("= S.BaseDrawingObject CalcEffectSettings - Output:", config);
+    return config;
   }
 
   CreateGradientRecord(
-    gradientStyle: number,
-    startColor: string,
-    startOpacity: number,
-    endColor: string,
-    endOpacity: number
-  ): any {
-    console.log("= S.BaseDrawingObject: CreateGradientRecord input:", {
-      gradientStyle,
-      startColor,
-      startOpacity,
-      endColor,
-      endOpacity
+    flags: number,
+    color1: string,
+    opacity1: number,
+    color2: string,
+    opacity2: number
+  ) {
+    console.log("= S.BaseDrawingObject: CreateGradientRecord - Input:", {
+      flags,
+      color1,
+      opacity1,
+      color2,
+      opacity2,
     });
 
-    const gradientRecord = {
+    let gradientRecord = {
       type: Basic.Element.Style.GradientStyle.LINEAR,
       startPos: Basic.Element.Style.GradientPos.LEFTTOP,
-      stops: []
+      stops: [] as Array<{ offset: number; color: string; opacity: number }>,
     };
 
-    const startStop = {
-      color: startColor,
-      opacity: startOpacity
-    };
+    let firstStop = { color: color1, opacity: opacity1 };
+    let secondStop = { color: color2, opacity: opacity2 };
 
-    const endStop = {
-      color: endColor,
-      opacity: endOpacity
-    };
-
-    if (gradientStyle & ListManager.GradientStyle.GRAD_REV) {
-      startStop.color = endColor;
-      startStop.opacity = endOpacity;
-      endStop.color = startColor;
-      endStop.opacity = startOpacity;
+    // Reverse colors if GRAD_REV flag is set
+    if (flags & ListManager.GradientStyle.GRAD_REV) {
+      firstStop = { color: color2, opacity: opacity2 };
+      secondStop = { color: color1, opacity: opacity1 };
     }
 
-    if (gradientStyle & ListManager.GradientStyle.GRAD_MIDDLE) {
-      gradientRecord.stops.push({ offset: 0, color: startStop.color, opacity: startStop.opacity });
-      gradientRecord.stops.push({ offset: 50, color: endStop.color, opacity: endStop.opacity });
-      gradientRecord.stops.push({ offset: 100, color: startStop.color, opacity: startStop.opacity });
+    // Build gradient stops: if GRAD_MIDDLE flag is set, insert a middle stop at 50%
+    if (flags & ListManager.GradientStyle.GRAD_MIDDLE) {
+      gradientRecord.stops.push({
+        offset: 0,
+        color: firstStop.color,
+        opacity: firstStop.opacity,
+      });
+      gradientRecord.stops.push({
+        offset: 50,
+        color: secondStop.color,
+        opacity: secondStop.opacity,
+      });
+      gradientRecord.stops.push({
+        offset: 100,
+        color: firstStop.color,
+        opacity: firstStop.opacity,
+      });
     } else {
-      gradientRecord.stops.push({ offset: 0, color: startStop.color, opacity: startStop.opacity });
-      gradientRecord.stops.push({ offset: 100, color: endStop.color, opacity: endStop.opacity });
+      gradientRecord.stops.push({
+        offset: 0,
+        color: firstStop.color,
+        opacity: firstStop.opacity,
+      });
+      gradientRecord.stops.push({
+        offset: 100,
+        color: secondStop.color,
+        opacity: secondStop.opacity,
+      });
     }
 
-    if (gradientStyle & ListManager.GradientStyle.GRAD_RADIAL) {
+    // Set gradient type and start position
+    if (flags & ListManager.GradientStyle.GRAD_RADIAL) {
       gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
       gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
-    } else if (gradientStyle & ListManager.GradientStyle.GRAD_SHAPE) {
+    } else if (flags & ListManager.GradientStyle.GRAD_SHAPE) {
       gradientRecord.type = Basic.Element.Style.GradientStyle.RADIALFILL;
       gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
     } else {
       gradientRecord.type = Basic.Element.Style.GradientStyle.LINEAR;
-      if (gradientStyle & ListManager.GradientStyle.GRAD_TLBR) {
+      if (flags & ListManager.GradientStyle.GRAD_TLBR) {
         gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTTOP;
-      } else if (gradientStyle & ListManager.GradientStyle.GRAD_TRBL) {
+      } else if (flags & ListManager.GradientStyle.GRAD_TRBL) {
         gradientRecord.startPos = Basic.Element.Style.GradientPos.RIGHTTOP;
-      } else if (gradientStyle & ListManager.GradientStyle.GRAD_VERT) {
+      } else if (flags & ListManager.GradientStyle.GRAD_VERT) {
         gradientRecord.startPos = Basic.Element.Style.GradientPos.TOP;
-      } else if (gradientStyle & ListManager.GradientStyle.GRAD_HORIZ) {
+      } else if (flags & ListManager.GradientStyle.GRAD_HORIZ) {
         gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFT;
       } else {
         gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTTOP;
       }
     }
 
-    console.log("= S.BaseDrawingObject: CreateGradientRecord output:", gradientRecord);
+    console.log("= S.BaseDrawingObject: CreateGradientRecord - Output:", gradientRecord);
     return gradientRecord;
   }
 
-  CreateRichGradientRecord(gradientIndex: number): any {
-    console.log("= S.BaseDrawingObject: CreateRichGradientRecord input:", { gradientIndex });
+  CreateRichGradientRecord(index: number) {
+    console.log("= S.BaseDrawingObject: CreateRichGradientRecord - Input:", { index });
 
-    let gradientRecord: any = {
-      type: Basic.Element.Style.GradientStyle.LINEAR,
-      startPos: Basic.Element.Style.GradientPos.LEFTTOP,
-      stops: []
-    };
-
-    if (gradientIndex < 0 || gradientIndex >= GlobalData.optManager.RichGradients.length) {
-      console.log("= S.BaseDrawingObject: CreateRichGradientRecord output: null (invalid gradientIndex)");
+    if (index < 0 || index >= GlobalData.optManager.RichGradients.length) {
+      console.log("= S.BaseDrawingObject: CreateRichGradientRecord - Output:", null, "(Invalid index)");
       return null;
     }
 
-    const richGradient = GlobalData.optManager.RichGradients[gradientIndex];
+    const richGradient = GlobalData.optManager.RichGradients[index];
+    let gradientRecord: {
+      type: any;
+      startPos: any;
+      stops: Array<{ color: string; opacity: number; offset: number }>;
+      angle?: number;
+    } = {
+      type: Basic.Element.Style.GradientStyle.LINEAR,
+      startPos: Basic.Element.Style.GradientPos.LEFTTOP,
+      stops: [],
+    };
 
     switch (richGradient.gradienttype) {
       case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_LINEAR:
@@ -6014,66 +6634,53 @@ class BaseDrawingObject {
     }
 
     for (let i = 0; i < richGradient.stops.length; i++) {
+      const stop = richGradient.stops[i];
       gradientRecord.stops.push({
-        color: richGradient.stops[i].color,
-        opacity: richGradient.stops[i].opacity,
-        offset: richGradient.stops[i].stop
+        color: stop.color,
+        opacity: stop.opacity,
+        offset: stop.stop,
       });
     }
 
-    console.log("= S.BaseDrawingObject: CreateRichGradientRecord output:", gradientRecord);
+    console.log("= S.BaseDrawingObject: CreateRichGradientRecord - Output:", gradientRecord);
     return gradientRecord;
   }
 
-  CalcLineHops(element) {
+  CalcLineHops(e) {
   }
 
-  AddHopPoint(
-    point: Point,
-    tolerance: number,
-    angle: number,
-    radius: number,
-    index: number,
-    additionalData: any
-  ): { bSuccess: boolean; tindex: number } {
-    console.log("= S.BaseDrawingObject: AddHopPoint input:", {
-      point,
-      tolerance,
-      angle,
-      radius,
-      index,
-      additionalData
-    });
-
+  AddHopPoint(pointA: any, pointB: any, hopIndex: number, radius: number, angle: number, flag: boolean) {
+    console.log("= S.BaseDrawingObject: AddHopPoint input:", { pointA, pointB, hopIndex, radius, angle, flag });
     const result = {
       bSuccess: false,
       tindex: -1
     };
-
-    // TODO: Implement the logic for adding a hop point here.
-
     console.log("= S.BaseDrawingObject: AddHopPoint output:", result);
     return result;
   }
 
-  ResetAutoScrollTimer(): void {
-    console.log("= S.BaseDrawingObject: ResetAutoScrollTimer input: none");
+  ResetAutoScrollTimer() {
+    console.log("= S.BaseDrawingObject: ResetAutoScrollTimer - Input: {}");
 
     if (GlobalData.optManager.autoScrollTimerID !== -1) {
-      clearTimeout(GlobalData.optManager.autoScrollTimerID);
+      GlobalData.optManager.autoScrollTimer.clearTimeout(GlobalData.optManager.autoScrollTimerID);
       GlobalData.optManager.autoScrollTimer.obj = GlobalData.optManager;
       GlobalData.optManager.autoScrollTimerID = -1;
+      console.log("= S.BaseDrawingObject: ResetAutoScrollTimer - Output: Timer has been reset");
+    } else {
+      console.log("= S.BaseDrawingObject: ResetAutoScrollTimer - Output: No active timer to reset");
     }
-
-    console.log("= S.BaseDrawingObject: ResetAutoScrollTimer output: timer reset");
   }
 
   GetActionButtons() {
     return null
   }
 
-  GetArrowheadSelection(element) {
-    return false
+  GetArrowheadSelection(selection: any): boolean {
+    console.log("= S.BaseDrawingObject: GetArrowheadSelection - Input:", { selection });
+    const result = false;
+    console.log("= S.BaseDrawingObject: GetArrowheadSelection - Output:", result);
+    return result;
   }
 
   SetRolloverActions(rolloverElement: any, eventObj: any) {
@@ -6334,107 +6941,28 @@ class BaseDrawingObject {
     return result;
   }
 
-  HasFieldData(): boolean {
-    // console.log("= S.BaseDrawingObject: HasFieldData input: none");
-
-    // const hasDatasetID =
-    //   this.fieldDataDatasetID !== null &&
-    //   this.fieldDataDatasetID !== undefined &&
-    //   this.fieldDataDatasetID >= 0;
-
-    // const hasTableID =
-    //   this.fieldDataTableID !== null &&
-    //   this.fieldDataTableID !== undefined &&
-    //   this.fieldDataTableID >= 0;
-
-    // const result = hasDatasetID && hasTableID;
-
-    // console.log("= S.BaseDrawingObject: HasFieldData output:", result);
-    // return result;
+  HasFieldData() {
   }
 
-  HasFieldDataForTable(tableID: number): boolean {
-    console.log("= S.BaseDrawingObject: HasFieldDataForTable input:", { tableID });
-
-    // Return false if no field data dataset is set
-    if (this.fieldDataDatasetID < 0) {
-      console.log("= S.BaseDrawingObject: HasFieldDataForTable output:", false, "(invalid fieldDataDatasetID)");
-      return false;
-    }
-
-    // Compare the field data table ID to the provided tableID
-    const result = this.fieldDataTableID === tableID;
-
-    console.log("= S.BaseDrawingObject: HasFieldDataForTable output:", result);
-    return result;
+  HasFieldDataForTable(e) {
   }
 
-  HasFieldDataInText(tableID: number): boolean {
-    console.log("= S.BaseDrawingObject: HasFieldDataInText input:", { tableID });
-
-    // If a table ID is provided, ensure it matches this object's field data table ID
-    if (tableID && this.fieldDataTableID !== tableID) {
-      console.log("= S.BaseDrawingObject: HasFieldDataInText output:", false, "(tableID mismatch)");
-      return false;
-    }
-
-    // If the field data element ID is invalid, return false
-    if (this.fieldDataElemID < 0) {
-      console.log("= S.BaseDrawingObject: HasFieldDataInText output:", false, "(invalid fieldDataElemID)");
-      return false;
-    }
-
-    // Check for field data in table cells
-    const table = this.GetTable(false);
-    if (table) {
-      const hasData = GlobalData.optManager.Table_HasFieldDataInText(this.BlockID, table);
-      console.log("= S.BaseDrawingObject: HasFieldDataInText output:", hasData, "(found in table cells)");
-      return hasData;
-    }
-
-    // Check for field data in text if DataID exists
-    if (this.DataID >= 0) {
-      const element = GlobalData.optManager.svgObjectLayer.FindElement(this.BlockID);
-      if (element && element.textElem) {
-        const hasDataFields = element.textElem.HasDataFields();
-        console.log("= S.BaseDrawingObject: HasFieldDataInText output:", hasDataFields, "(found in textElem)");
-        return hasDataFields;
-      }
-    }
-
-    console.log("= S.BaseDrawingObject: HasFieldDataInText output:", false, "(not found)");
-    return false;
+  HasFieldDataInText(e) {
   }
 
-  SetFieldDataRecord(tableID: number, elementID: number, additionalParam: any): void {
-    console.log("= S.BaseDrawingObject: SetFieldDataRecord input:", {
-      tableID,
-      elementID,
-      additionalParam
-    });
-
-    console.log("= S.BaseDrawingObject: SetFieldDataRecord output: completed");
+  SetFieldDataRecord(e, t, a) {
   }
 
-  NewFieldDataRecord(element) {
+  NewFieldDataRecord(e) {
   }
 
-  HasFieldDataRecord(tableID: number, elementID: number, additionalParam: any): boolean {
-    console.log("= S.BaseDrawingObject: HasFieldDataRecord input:", { tableID, elementID, additionalParam });
-
-    const result =
-      this.HasFieldData() &&
-      (!tableID || this.fieldDataTableID === tableID) &&
-      (!elementID || this.fieldDataElemID === elementID || this.fieldDataElemID === -1);
-
-    console.log("= S.BaseDrawingObject: HasFieldDataRecord output:", result);
-    return result;
+  HasFieldDataRecord(e, t, a) {
   }
 
-  ChangeFieldDataTable(element) {
+  ChangeFieldDataTable(e) {
   }
 
-  RemoveFieldData(element, toRemove) {
+  RemoveFieldData(e, t) {
   }
 
   GetFieldDataTable() {
@@ -6443,22 +6971,22 @@ class BaseDrawingObject {
   GetFieldDataRecord() {
   }
 
-  HasFieldDataRules(element) {
+  HasFieldDataRules(e) {
   }
 
   GetFieldDataStyleOverride() {
   }
 
-  RefreshFromFieldData(element) {
+  RefreshFromFieldData(e) {
   }
 
-  RefreshFromRuleChange(element, par) {
+  RefreshFromRuleChange(e, t) {
   }
 
-  RemapDataFields(element) {
+  RemapDataFields(e) {
   }
 
-  RegisterForDataDrop(element) {
+  RegisterForDataDrop(e) {
   }
 
   GetFieldDataStyleOverride() {

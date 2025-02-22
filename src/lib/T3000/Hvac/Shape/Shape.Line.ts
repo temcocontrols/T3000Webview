@@ -1,6 +1,5 @@
 
 
-import BaseLine from './Shape.BaseLine'
 import Utils1 from '../Helper/Utils1'
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
@@ -13,6 +12,7 @@ import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
 import ConstantData2 from '../Data/ConstantData2'
 import GlobalData from '../Data/GlobalData'
+import BaseLine from './Shape.BaseLine'
 
 class Line extends BaseLine {
 
