@@ -1,5 +1,7 @@
 
+
 import SegmentedLine from './Shape.SegmentedLine'
+// import ListManager from '../Data/ListManager';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
@@ -11,398 +13,316 @@ import PolySeg from '../Model/PolySeg'
 
 class ArcSegmentedLine extends SegmentedLine {
 
-  constructor(config: any) {
-    console.log("= S.ArcSegmentedLine - constructor input:", config);
-
-    // Ensure the input parameter is defined and set default properties if missing
-    config = config || {};
-    config.LineType = config.LineType || ConstantData.LineType.ARCSEGLINE;
-
-    // Initialize the parent class with the modified parameters
-    super(config);
-
-    console.log("= S.ArcSegmentedLine - constructor output: instance created with parameters:", config);
+  constructor(options: any) {
+    console.log("S.ArcSegmentedLine - Constructor input:", options);
+    options = options || {};
+    options.LineType = options.LineType || ConstantData.LineType.ARCSEGLINE;
+    super(options);
+    console.log("S.ArcSegmentedLine - Constructor output initialized with:", options);
   }
 
-  CreateShape(context: any, flag: any) {
-    console.log("= S.ArcSegmentedLine - CreateShape - Input:", { context, flag });
+  CreateShape(svgContext, isPreviewMode) {
+    console.log("S.ArcSegmentedLine - CreateShape input:", { svgContext, isPreviewMode });
 
-    let primaryShape: any; // Primary shape element
-    let secondaryShape: any; // Secondary shape element
-    let points: any[] = [];
-
-    // Check if the object should be visible
+    let shapePath, shapeSlop, pointsArray = [];
     if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) {
-      console.log("= S.ArcSegmentedLine - CreateShape - Object not visible, returning null");
+      console.log("S.ArcSegmentedLine - CreateShape output:", null);
       return null;
     }
 
-    // Create the shape container and primary/secondary shapes based on shape complexity
-    const shapeContainer = context.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
-    const isSimpleShape = this.hoplist.nhops === 0;
+    let polyPointsResult;
+    const containerShape = svgContext.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
+    const isSimpleSegment = (this.hoplist.nhops === 0);
 
-    if (isSimpleShape) {
-      primaryShape = context.CreateShape(ConstantData.CreateShapeType.PATH);
-      secondaryShape = context.CreateShape(ConstantData.CreateShapeType.PATH);
+    if (isSimpleSegment) {
+      shapePath = svgContext.CreateShape(ConstantData.CreateShapeType.PATH);
+      shapeSlop = svgContext.CreateShape(ConstantData.CreateShapeType.PATH);
     } else {
-      primaryShape = context.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-      secondaryShape = context.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+      shapePath = svgContext.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+      shapeSlop = svgContext.CreateShape(ConstantData.CreateShapeType.POLYLINE);
     }
 
-    primaryShape.SetID(ConstantData.SVGElementClass.SHAPE);
-    secondaryShape.SetID(ConstantData.SVGElementClass.SLOP);
-    secondaryShape.ExcludeFromExport(true);
+    shapePath.SetID(ConstantData.SVGElementClass.SHAPE);
+    shapeSlop.SetID(ConstantData.SVGElementClass.SLOP);
+    shapeSlop.ExcludeFromExport(true);
 
-    // Calculate frame and rectangle bounds
     this.CalcFrame();
-    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    console.log("= S.ArcSegmentedLine - CreateShape - Calculated Rect:", rect);
 
-    const styleRecord = this.StyleRecord;
-    const styledStyle = this.SVGTokenizerHook(styleRecord);
-    const strokeColor = styledStyle.Line.Paint.Color;
-    let strokeWidth = styledStyle.Line.Thickness;
-    const strokeOpacity = styledStyle.Line.Paint.Opacity;
-    const strokePattern = styledStyle.Line.LinePattern;
+    const boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    let styleRecord = this.StyleRecord;
+    styleRecord = this.SVGTokenizerHook(styleRecord);
+    // Extract stroke color from style.
+    const strokeColor = styleRecord.Line.Paint.Color;
+    let strokeWidth = styleRecord.Line.Thickness;
+    const strokeOpacity = styleRecord.Line.Paint.Opacity;
+    const linePattern = styleRecord.Line.LinePattern;
 
-    // Adjust stroke width if it's too thin
+    // Ensure minimum stroke width.
     if (strokeWidth > 0 && strokeWidth < 1) {
       strokeWidth = 1;
     }
 
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
+    const shapeWidth = boundingRect.width;
+    const shapeHeight = boundingRect.height;
 
-    // Set container and shape dimensions and position
-    shapeContainer.SetSize(containerWidth, containerHeight);
-    shapeContainer.SetPos(rect.x, rect.y);
-    primaryShape.SetSize(containerWidth, containerHeight);
+    containerShape.SetSize(shapeWidth, shapeHeight);
+    containerShape.SetPos(boundingRect.x, boundingRect.y);
+    shapePath.SetSize(shapeWidth, shapeHeight);
 
-    let pathData: string;
-
-    if (isSimpleShape) {
-      points = ConstantData.SegmentedLine.prototype.GetPolyPoints.call(
-        this,
-        ConstantData.Defines.NPOLYPTS,
-        true,
-        true,
-        null
-      );
-      console.log("= S.ArcSegmentedLine - CreateShape - PolyPoints for simple shape:", points);
-
-      pathData = this.UpdateSVG(primaryShape, points);
-      console.log("= S.ArcSegmentedLine - CreateShape - Generated Path Data:", pathData);
+    if (isSimpleSegment) {
+      pointsArray = ListManager.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, null);
+      polyPointsResult = this.UpdateSVG(shapePath, pointsArray);
     } else {
-      points = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
-      console.log("= S.ArcSegmentedLine - CreateShape - PolyPoints:", points);
-
+      pointsArray = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
       if (this.hoplist.nhops !== 0) {
-        const hopData = GlobalData.optManager.InsertHops(this, points, points.length);
-        points = points.slice(0, hopData.npts);
-        console.log("= S.ArcSegmentedLine - CreateShape - Adjusted PolyPoints after hops:", points);
+        const hopsResult = GlobalData.optManager.InsertHops(this, pointsArray, pointsArray.length);
+        pointsArray = pointsArray.slice(0, hopsResult.npts);
       }
-      primaryShape.SetPoints(points);
+      shapePath.SetPoints(pointsArray);
     }
 
-    // Apply styling to the primary shape
-    primaryShape.SetFillColor("none");
-    primaryShape.SetStrokeColor(strokeColor);
-    primaryShape.SetStrokeOpacity(strokeOpacity);
-    primaryShape.SetStrokeWidth(strokeWidth);
-    if (containerWidth !== 0) {
-      primaryShape.SetStrokePattern(strokePattern);
+    shapePath.SetFillColor('none');
+    shapePath.SetStrokeColor(strokeColor);
+    shapePath.SetStrokeOpacity(strokeOpacity);
+    shapePath.SetStrokeWidth(strokeWidth);
+    if (linePattern !== 0) {
+      shapePath.SetStrokePattern(linePattern);
     }
 
-    // Apply styling to the secondary shape
-    secondaryShape.SetSize(containerWidth, containerHeight);
-    if (isSimpleShape) {
-      secondaryShape.SetPath(pathData);
+    shapeSlop.SetSize(shapeWidth, shapeHeight);
+    if (isSimpleSegment) {
+      shapeSlop.SetPath(polyPointsResult);
     } else {
-      secondaryShape.SetPoints(points);
+      shapeSlop.SetPoints(pointsArray);
     }
-    secondaryShape.SetStrokeColor("white");
-    secondaryShape.SetFillColor("none");
-    secondaryShape.SetOpacity(0);
-    if (flag) {
-      secondaryShape.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+
+    shapeSlop.SetStrokeColor('white');
+    shapeSlop.SetFillColor('none');
+    shapeSlop.SetOpacity(0);
+    if (isPreviewMode) {
+      shapeSlop.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
     } else {
-      secondaryShape.SetEventBehavior(Element.EventBehavior.NONE);
+      shapeSlop.SetEventBehavior(Element.EventBehavior.NONE);
     }
-    secondaryShape.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
 
-    // Assemble the shape container
-    shapeContainer.AddElement(primaryShape);
-    shapeContainer.AddElement(secondaryShape);
-    this.ApplyStyles(primaryShape, styledStyle);
-    this.ApplyEffects(shapeContainer, false, true);
-    shapeContainer.isShape = true;
-    this.AddIcons(context, shapeContainer);
+    shapeSlop.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
+    containerShape.AddElement(shapePath);
+    containerShape.AddElement(shapeSlop);
 
-    console.log("= S.ArcSegmentedLine - CreateShape - Output:", shapeContainer);
-    return shapeContainer;
+    this.ApplyStyles(shapePath, styleRecord);
+    this.ApplyEffects(containerShape, false, true);
+
+    containerShape.isShape = true;
+    this.AddIcons(svgContext, containerShape);
+
+    console.log("S.ArcSegmentedLine - CreateShape output:", containerShape);
+    return containerShape;
   }
 
-  UpdateSVG(shape: any, points: any[]): string {
-    console.log("= S.ArcSegmentedLine - UpdateSVG - Input:", { shape, points });
+  UpdateSVG(svgElement, points) {
+    console.log("S.ArcSegmentedLine - updateSVG input:", { svgElement, points });
 
-    const pathCreator = shape.PathCreator();
-    pathCreator.BeginPath();
-    pathCreator.MoveTo(points[0].x, points[0].y);
+    // Create the path creator from the svg element.
+    const arcCreator = svgElement.PathCreator();
+    arcCreator.BeginPath();
+    arcCreator.MoveTo(points[0].x, points[0].y);
 
-    // Initialize current point
     let currentX = points[0].x;
     let currentY = points[0].y;
-    const totalPoints = points.length;
+    const pointsCount = points.length;
 
-    // If there are only two points, draw a straight line
-    if (totalPoints === 2) {
-      pathCreator.LineTo(points[1].x, points[1].y);
+    // If there are only two points, just draw a line.
+    if (pointsCount === 2) {
+      arcCreator.LineTo(points[1].x, points[1].y);
     }
 
-    // Process arcs for remaining points
-    for (let index = 2; index < totalPoints; index++) {
-      // Save the starting point before calculating new coordinates
-      const prevX = currentX;
-      const prevY = currentY;
-      let arcRadiusX: number;
-      let arcRadiusY: number;
-      let sweepFlag: boolean;
-      let diff: number;
+    // Process additional points to create arcs.
+    for (let index = 2; index < pointsCount; index++) {
+      // Preserve previous coordinates.
+      const previousX = currentX;
+      const previousY = currentY;
+      let radiusX, radiusY, delta, diff, anticlockwise;
 
-      // If the previous segment is vertical
       if (points[index - 1].x === points[index].x) {
-        if (index < totalPoints - 1) {
+        if (index < pointsCount - 1) {
           currentY = (points[index - 1].y + points[index].y) / 2;
-          arcRadiusY = Math.abs(points[index - 1].y - points[index].y) / 2;
+          radiusY = Math.abs(points[index - 1].y - points[index].y) / 2;
         } else {
-          arcRadiusY = Math.abs(currentY - points[index].y);
+          radiusY = Math.abs(currentY - points[index].y);
           currentY = points[index].y;
         }
-        arcRadiusX = Math.abs(currentX - points[index].x);
-        diff = currentY - prevY;
-        // Update currentX to the new x coordinate
-        currentX = points[index].x;
-        const deltaX = currentX - prevX;
-        sweepFlag = !((deltaX >= 0 && diff < 0) || (deltaX < 0 && diff >= 0));
+        radiusX = Math.abs(currentX - points[index].x);
+        delta = currentY - previousY;
+        diff = (currentX = points[index].x) - previousX;
+        anticlockwise = !((diff >= 0 && delta < 0) || (diff < 0 && delta >= 0));
       } else {
-        // If the previous segment is not vertical
-        if (index < totalPoints - 1) {
-          arcRadiusX = Math.abs(points[index - 1].x - points[index].x) / 2;
+        if (index < pointsCount - 1) {
+          radiusX = Math.abs(points[index - 1].x - points[index].x) / 2;
           currentX = (points[index - 1].x + points[index].x) / 2;
         } else {
-          arcRadiusX = Math.abs(currentX - points[index].x);
+          radiusX = Math.abs(currentX - points[index].x);
           currentX = points[index].x;
         }
-        arcRadiusY = Math.abs(currentY - points[index].y);
-        // Update currentY to the new y coordinate
-        currentY = points[index].y;
-        diff = currentY - prevY;
-        const deltaX = currentX - prevX;
-        sweepFlag = !((deltaX < 0 && diff < 0) || (deltaX >= 0 && diff >= 0));
+        radiusY = Math.abs(currentY - points[index].y);
+        delta = (currentY = points[index].y) - previousY;
+        diff = currentX - previousX;
+        anticlockwise = !((diff < 0 && delta < 0) || (diff >= 0 && delta >= 0));
       }
-
-      pathCreator.ArcTo(currentX, currentY, arcRadiusX, arcRadiusY, 0, sweepFlag, false, false);
+      arcCreator.ArcTo(currentX, currentY, radiusX, radiusY, 0, anticlockwise, false, false);
     }
 
-    const pathData = pathCreator.ToString();
-    shape.SetPath(pathData);
-    console.log("= S.ArcSegmentedLine - UpdateSVG - Output:", { pathData });
-    return pathData;
+    const pathDefinition = arcCreator.ToString();
+    svgElement.SetPath(pathDefinition);
+    console.log("S.ArcSegmentedLine - updateSVG output:", pathDefinition);
+    return pathDefinition;
   }
 
-  GetPolyPoints(
-    numPoints: number,
-    alreadyOffset: boolean,
-    includeStart: boolean,
-    flag: any,
-    additional?: any
-  ): Point[] {
-    console.log("= S.ArcSegmentedLine - GetPolyPoints - Input:", {
-      numPoints,
-      alreadyOffset,
-      includeStart,
-      flag,
-      additional,
-    });
+  GetPolyPoints(numPoints: number, useRelativeCoordinates: boolean, includeStartPoint: boolean, unusedFlag: any, unusedParam: any) {
+    console.log("S.ArcSegmentedLine - GetPolyPoints input:", { numPoints, useRelativeCoordinates, includeStartPoint, unusedFlag, unusedParam });
 
-    let basePoints: Point[] = ConstantData.SegmentedLine.prototype.GetPolyPoints.call(
-      this,
-      ConstantData.Defines.NPOLYPTS,
-      true,
-      true,
-      false,
-      null
-    );
-    const containerRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    let resultPoints: Point[] = [];
+    let basePoints: Point[],
+      index: number,
+      totalPoints: number,
+      currentX: number,
+      currentY: number,
+      boundingRect,
+      prevX: number,
+      prevY: number,
+      diff: number,
+      delta: number,
+      isClockwise: boolean,
+      resultPoints: Point[] = [];
 
-    // If the object is a simple line with no direction changes and has zero height/width
+    // Obtain base points from SegmentedLine's implementation.
+    basePoints = ListManager.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, false, null);
+    boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+
+    // Check if the starting and ending directions are zero and the bounding rectangle is degenerate.
     if (
       this.segl.firstdir === 0 &&
       this.segl.lastdir === 0 &&
-      (Utils2.IsEqual(containerRect.height, 0) || Utils2.IsEqual(containerRect.width, 0))
+      (Utils2.IsEqual(boundingRect.height, 0) || Utils2.IsEqual(boundingRect.width, 0))
     ) {
       resultPoints = basePoints;
-      if (!alreadyOffset) {
-        for (let i = 0, len = resultPoints.length; i < len; i++) {
-          resultPoints[i].x += containerRect.x;
-          resultPoints[i].y += containerRect.y;
+      if (!useRelativeCoordinates) {
+        for (index = 0, totalPoints = resultPoints.length; index < totalPoints; index++) {
+          resultPoints[index].x += boundingRect.x;
+          resultPoints[index].y += boundingRect.y;
         }
       }
-      console.log("= S.ArcSegmentedLine - GetPolyPoints - Output (early return):", resultPoints);
+      console.log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
       return resultPoints;
     }
 
     if (this.segl && this.segl.pts.length) {
-      let currentX = basePoints[0].x;
-      let currentY = basePoints[0].y;
-      const total = basePoints.length;
-      if (includeStart) {
+      // Initialize starting point values.
+      currentX = basePoints[0].x;
+      currentY = basePoints[0].y;
+      totalPoints = basePoints.length;
+      if (includeStartPoint) {
         resultPoints.push(new Point(currentX, currentY));
       }
-
-      // Process points starting from the 3rd point
-      for (let index = 2; index < total; index++) {
-        const prevX = currentX;
-        const prevY = currentY;
-        let tempX = currentX;
-        let tempY = currentY;
-        let delta: number;
-        let diff: number;
-        let notClockwise: boolean;
-
-        // If previous segment is vertical
+      // Process remaining points starting from index 2.
+      for (index = 2; index < totalPoints; index++) {
+        prevX = currentX;
+        prevY = currentY;
         if (basePoints[index - 1].x === basePoints[index].x) {
-          if (index < total - 1) {
-            tempY = (basePoints[index - 1].y + basePoints[index].y) / 2;
-            const arcRadiusY = Math.abs(basePoints[index - 1].y - basePoints[index].y) / 2;
+          if (index < totalPoints - 1) {
+            currentY = (basePoints[index - 1].y + basePoints[index].y) / 2;
+            // The computed half-difference is not used further.
+            Math.abs(basePoints[index - 1].y - basePoints[index].y) / 2;
           } else {
-            const unused = Math.abs(tempY - basePoints[index].y);
-            tempY = basePoints[index].y;
+            Math.abs(currentY - basePoints[index].y);
+            currentY = basePoints[index].y;
           }
-          const arcRadiusX = Math.abs(currentX - basePoints[index].x);
-          diff = tempY - prevY;
-          currentX = basePoints[index].x;
-          delta = currentX - prevX;
-          notClockwise = !((delta >= 0 && diff < 0) || (delta < 0 && diff >= 0));
+          Math.abs(currentX - basePoints[index].x);
+          delta = currentY - prevY;
+          diff = (currentX = basePoints[index].x) - prevX;
+          isClockwise = !((diff >= 0 && delta < 0) || (diff < 0 && delta >= 0));
         } else {
-          // If previous segment is not vertical
-          if (index < total - 1) {
-            const arcRadiusX = Math.abs(basePoints[index - 1].x - basePoints[index].x) / 2;
-            tempX = (basePoints[index - 1].x + basePoints[index].x) / 2;
+          if (index < totalPoints - 1) {
+            Math.abs(basePoints[index - 1].x - basePoints[index].x);
+            currentX = (basePoints[index - 1].x + basePoints[index].x) / 2;
           } else {
-            const unused = Math.abs(currentX - basePoints[index].x);
-            tempX = basePoints[index].x;
+            Math.abs(currentX - basePoints[index].x);
+            currentX = basePoints[index].x;
           }
-          const arcRadiusY = Math.abs(currentY - basePoints[index].y);
-          diff = (currentY = basePoints[index].y) - prevY;
-          currentX = tempX;
-          delta = currentX - prevX;
-          notClockwise = !((delta < 0 && diff < 0) || (delta >= 0 && diff >= 0));
+          Math.abs(currentY - basePoints[index].y);
+          delta = (currentY = basePoints[index].y) - prevY;
+          diff = currentX - prevX;
+          isClockwise = !((diff < 0 && delta < 0) || (diff >= 0 && delta >= 0));
         }
-
-        // Depending on the includeStart flag, process the point differently
-        if (includeStart) {
-          const newPoint = new Point(currentX, currentY);
-          newPoint.notclockwise = !notClockwise;
-          resultPoints.push(newPoint);
+        if (includeStartPoint) {
+          resultPoints.push(new Point(currentX, currentY));
+          resultPoints[resultPoints.length - 1].notclockwise = !isClockwise;
         } else {
-          GlobalData.optManager.EllipseToPoints(
-            resultPoints,
-            numPoints / 2,
-            prevX,
-            currentX,
-            prevY,
-            currentY,
-            notClockwise
-          );
+          GlobalData.optManager.EllipseToPoints(resultPoints, numPoints / 2, prevX, currentX, prevY, currentY, isClockwise);
         }
       }
-
-      if (!alreadyOffset) {
-        for (let i = 0, len = resultPoints.length; i < len; i++) {
-          resultPoints[i].x += containerRect.x;
-          resultPoints[i].y += containerRect.y;
+      if (!useRelativeCoordinates) {
+        for (index = 0, totalPoints = resultPoints.length; index < totalPoints; index++) {
+          resultPoints[index].x += boundingRect.x;
+          resultPoints[index].y += boundingRect.y;
         }
       }
     } else {
-      resultPoints = ConstantData.BaseLine.prototype.GetPolyPoints.call(this, numPoints, alreadyOffset, true, null);
+      resultPoints = ListManager.BaseLine.prototype.GetPolyPoints.call(this, numPoints, useRelativeCoordinates, true, null);
     }
 
-    console.log("= S.ArcSegmentedLine - GetPolyPoints - Output:", resultPoints);
+    console.log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
     return resultPoints;
   }
 
   GetTextOnLineParams(event: any) {
-    console.log("= S.ArcSegmentedLine - GetTextOnLineParams - input:", { event, segptsLength: this.segl.pts.length });
+    console.log("S.ArcSegmentedLine - GetTextOnLineParams input:", event);
 
-    // If the segmented line does not have exactly three points, fall back to parent implementation
     if (this.segl.pts.length !== 3) {
-      const fallback = ConstantData.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
-      console.log("= S.ArcSegmentedLine - GetTextOnLineParams - output (fallback):", fallback);
-      return fallback;
+      const result = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+      console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
+      return result;
     }
 
     switch (this.TextAlign) {
       case ConstantData.TextAlign.TOPCENTER:
       case ConstantData.TextAlign.CENTER:
       case ConstantData.TextAlign.BOTTOMCENTER: {
-        // Get poly points with formatted parameters
         const polyPoints = this.GetPolyPoints(22, false, false, false, null);
-
-        // Initialize an array to hold text-related points
-        const textPoints: Point[] = [];
-
-        // Prepare parameters object for text positioning
-        const params: {
-          Frame: ConstantData.Rect;
-          StartPoint: Point;
-          EndPoint: Point;
-          CenterProp?: number;
-        } = {
-          Frame: new ConstantData.Rect(),
+        const rotatedPoints: Point[] = [];
+        const textParams = {
+          Frame: new ListManager.Rect(),
           StartPoint: new Point(),
           EndPoint: new Point()
         };
 
-        // Calculate the frame using two of the poly points
-        params.Frame = Utils2.Pt2Rect(polyPoints[0], polyPoints[9]);
-
-        // Calculate the angle between points[0] and points[9]
+        textParams.Frame = Utils2.Pt2Rect(polyPoints[0], polyPoints[9]);
         const angle = GlobalData.optManager.SD_GetClockwiseAngleBetween2PointsInRadians(polyPoints[0], polyPoints[9]);
 
-        // Collect the necessary points
-        textPoints.push(new Point(polyPoints[0].x, polyPoints[0].y));
-        textPoints.push(new Point(polyPoints[9].x, polyPoints[9].y));
-        textPoints.push(new Point(polyPoints[7].x, polyPoints[7].y));
+        rotatedPoints.push(new Point(polyPoints[0].x, polyPoints[0].y));
+        rotatedPoints.push(new Point(polyPoints[9].x, polyPoints[9].y));
+        rotatedPoints.push(new Point(polyPoints[7].x, polyPoints[7].y));
 
-        // Rotate points about the frame center by the calculated angle
-        Utils3.RotatePointsAboutCenter(params.Frame, angle, textPoints);
+        Utils3.RotatePointsAboutCenter(textParams.Frame, angle, rotatedPoints);
+        rotatedPoints[0].y = rotatedPoints[2].y;
+        rotatedPoints[1].y = rotatedPoints[2].y;
+        Utils3.RotatePointsAboutCenter(textParams.Frame, -angle, rotatedPoints);
 
-        // Adjust the y coordinates to be equal
-        textPoints[0].y = textPoints[2].y;
-        textPoints[1].y = textPoints[2].y;
+        textParams.StartPoint.x = rotatedPoints[0].x;
+        textParams.StartPoint.y = rotatedPoints[0].y;
+        textParams.EndPoint.x = rotatedPoints[1].x;
+        textParams.EndPoint.y = rotatedPoints[1].y;
+        textParams.CenterProp = 0.3;
 
-        // Rotate points back by the negative angle
-        Utils3.RotatePointsAboutCenter(params.Frame, -angle, textPoints);
-
-        // Set start and end points for the text line
-        params.StartPoint.x = textPoints[0].x;
-        params.StartPoint.y = textPoints[0].y;
-        params.EndPoint.x = textPoints[1].x;
-        params.EndPoint.y = textPoints[1].y;
-        params.CenterProp = 0.3;
-
-        console.log("= S.ArcSegmentedLine - GetTextOnLineParams - output:", params);
-        return params;
+        console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", textParams);
+        return textParams;
       }
       default: {
-        const defaultResult = ConstantData.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
-        console.log("= S.ArcSegmentedLine - GetTextOnLineParams - output (default):", defaultResult);
-        return defaultResult;
+        const result = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+        console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
+        return result;
       }
     }
   }
+
 }
 
 export default ArcSegmentedLine
