@@ -1,9 +1,12 @@
 
 
-import Utils1 from '../Helper/Utils1'
-import Utils2 from "../Helper/Utils2"
-import Utils3 from "../Helper/Utils3"
-import GPP from '../Data/GlobalData'
+import BaseLine from './Shape.BaseLine'
+// import ListManager from '../Data/ListManager';
+// import FileParser from '../Data/FileParser';
+import Utils1 from '../Helper/Utils1';
+import Utils2 from "../Helper/Utils2";
+import Utils3 from "../Helper/Utils3";
+import GlobalData from '../Data/GlobalData';
 import Point from '../Model/Point'
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element'
@@ -11,8 +14,6 @@ import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
 import ConstantData2 from '../Data/ConstantData2'
-import GlobalData from '../Data/GlobalData'
-import BaseLine from './Shape.BaseLine'
 
 class Line extends BaseLine {
 
@@ -56,163 +57,154 @@ class Line extends BaseLine {
     this.CalcFrame();
   }
 
-  GetLineShapePolyPoints(numPoints: number, adjustForFrame: boolean): Point[] {
-    const polyPoints: Point[] = [];
-    let shapeValue = this.shapeparam;
-    let shortReference = this.ShortRef;
-    if (shapeValue < 0.01) {
-      shortReference = 0;
+  GetLineShapePolyPoints(numPoints: number, adjustForFrame: boolean) {
+    console.log('S.Line - Input:', { numPoints, adjustForFrame });
+
+    let points: Point[] = [];
+    let shapeParam = this.shapeparam;
+    let shortRef = this.ShortRef;
+
+    if (shapeParam < 0.01) {
+      shortRef = 0;
     }
 
-    const deltaX = this.EndPoint.x - this.StartPoint.x;
-    const deltaY = this.EndPoint.y - this.StartPoint.y;
-    // Use a special curve when shortReference equals 2 (or a specific constant)
-    const useSpecialCurve = (shortReference === 2);
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    if (distance === 0) return polyPoints;
+    let deltaX = this.EndPoint.x - this.StartPoint.x;
+    let deltaY = this.EndPoint.y - this.StartPoint.y;
+    let isDoubleArrow = false;
 
-    const sinTheta = deltaY / distance;
-    const cosTheta = deltaX / distance;
-    const limitedDistance = distance > 200 ? 200 : distance;
-    const offset = shapeValue * limitedDistance / 2;
-    const segmentLength = (distance - 2 * offset) / 2;
+    switch (shortRef) {
+      case 0:
+      case ConstantData2.LineTypes.SED_LS_MeasuringTape:
+        points.push(new Point(this.StartPoint.x, this.StartPoint.y));
+        points.push(new Point(this.EndPoint.x, this.EndPoint.y));
+        break;
+      case 1:
+      case 2:
+        if (shortRef === 2) {
+          isDoubleArrow = true;
+        }
 
-    // Start point
-    const startPoint = { x: this.StartPoint.x, y: this.StartPoint.y };
-    polyPoints.push(startPoint);
+        let length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (length === 0) break;
 
-    // End of the first linear segment
-    const firstSegmentEnd = {
-      x: this.StartPoint.x + segmentLength * cosTheta,
-      y: this.StartPoint.y + segmentLength * sinTheta
-    };
-    polyPoints.push(firstSegmentEnd);
+        let sinTheta = deltaY / length;
+        let cosTheta = deltaX / length;
+        let arrowLength = length > 200 ? 200 : length;
+        let arrowHeadLength = shapeParam * arrowLength / 2;
+        let segmentLength = (length - 2 * arrowHeadLength) / 2;
 
-    // Calculate components from offset
-    const offsetComponentX = offset * sinTheta; // corresponds to vertical offset from segment end
-    const offsetComponentY = offset * cosTheta; // corresponds to horizontal offset from segment end
+        let startPoint = new Point(this.StartPoint.x, this.StartPoint.y);
+        points.push(startPoint);
 
-    // The point where the curve starts
-    const curveStart = {
-      x: firstSegmentEnd.x + offsetComponentX,
-      y: firstSegmentEnd.y - offsetComponentY
-    };
+        let firstSegmentEnd = new Point(
+          this.StartPoint.x + segmentLength * cosTheta,
+          this.StartPoint.y + segmentLength * sinTheta
+        );
+        points.push(firstSegmentEnd);
 
-    if (useSpecialCurve) {
-      polyPoints.push(curveStart);
+        let arrowHeadBase = new Point(
+          firstSegmentEnd.x + arrowHeadLength * sinTheta,
+          firstSegmentEnd.y - arrowHeadLength * cosTheta
+        );
 
-      // In the special curve branch, add additional points without shift adjustments
-      const specialPoint = {
-        x: curveStart.x + offsetComponentY,
-        y: curveStart.y + offsetComponentX
-      };
-      polyPoints.push(specialPoint);
+        if (isDoubleArrow) {
+          points.push(arrowHeadBase);
+          let arrowHeadTip = new Point(
+            arrowHeadBase.x + arrowHeadLength * cosTheta,
+            arrowHeadBase.y + arrowHeadLength * sinTheta
+          );
+          points.push(arrowHeadTip);
 
-      const intermediatePoint = {
-        x: specialPoint.x - 2 * segmentLength * cosTheta,
-        y: specialPoint.y + 2 * segmentLength * sinTheta
-      };
-      polyPoints.push(intermediatePoint);
+          let secondArrowHeadBase = new Point(
+            arrowHeadTip.x - 2 * arrowHeadLength * sinTheta,
+            arrowHeadTip.y + 2 * arrowHeadLength * cosTheta
+          );
+          points.push(secondArrowHeadBase);
 
-      const secondCurvePoint = {
-        x: intermediatePoint.x + offsetComponentY,
-        y: intermediatePoint.y + offsetComponentX
-      };
-      polyPoints.push(secondCurvePoint);
+          let secondSegmentEnd = new Point(
+            secondArrowHeadBase.x + arrowHeadLength * cosTheta,
+            secondArrowHeadBase.y + arrowHeadLength * sinTheta
+          );
+          points.push(secondSegmentEnd);
 
-      const finalCurvePoint = {
-        x: secondCurvePoint.x + segmentLength * cosTheta,
-        y: secondCurvePoint.y - offsetComponentY
-      };
-      polyPoints.push(finalCurvePoint);
+          let endPoint = new Point(this.EndPoint.x, this.EndPoint.y);
+          points.push(endPoint);
+        } else {
+          let arrowHeadTip = new Point(
+            arrowHeadBase.x + arrowHeadLength * cosTheta - arrowHeadLength * cosTheta / 2,
+            arrowHeadBase.y + arrowHeadLength * sinTheta - arrowHeadLength * sinTheta / 2
+          );
+          points.push(arrowHeadTip);
 
-      // Push the end point of the line
-      polyPoints.push({ x: this.EndPoint.x, y: this.EndPoint.y });
-    } else {
-      // Normal branch with shift adjustments
-      const shiftX = offset * cosTheta / 2;
-      const shiftY = offset * sinTheta / 2;
+          let secondArrowHeadBase = new Point(
+            arrowHeadTip.x - 2 * arrowHeadLength * sinTheta + 2 * arrowHeadLength * cosTheta / 2,
+            arrowHeadTip.y + 2 * arrowHeadLength * cosTheta + 2 * arrowHeadLength * sinTheta / 2
+          );
+          points.push(secondArrowHeadBase);
 
-      const adjustedCurvePoint = {
-        x: curveStart.x + offsetComponentY - shiftX,
-        y: curveStart.y + offsetComponentX - shiftY
-      };
-      polyPoints.push(adjustedCurvePoint);
+          let secondSegmentEnd = new Point(
+            secondArrowHeadBase.x + arrowHeadLength * cosTheta,
+            secondArrowHeadBase.y + arrowHeadLength * sinTheta
+          );
+          points.push(secondSegmentEnd);
 
-      const intermediatePoint = {
-        x: adjustedCurvePoint.x - 2 * segmentLength * cosTheta + 2 * shiftX,
-        y: adjustedCurvePoint.y + 2 * segmentLength * sinTheta + 2 * shiftY
-      };
-      polyPoints.push(intermediatePoint);
-
-      const secondAdjustedPoint = {
-        x: intermediatePoint.x + offsetComponentY - shiftX,
-        y: intermediatePoint.y + offsetComponentX - shiftY
-      };
-      const finalCurvePoint = {
-        x: secondAdjustedPoint.x + offset * sinTheta,
-        y: secondAdjustedPoint.y - offset * cosTheta
-      };
-      polyPoints.push(finalCurvePoint);
-
-      // Finally, add the end point of the line
-      polyPoints.push({ x: this.EndPoint.x, y: this.EndPoint.y });
+          let endPoint = new Point(this.EndPoint.x, this.EndPoint.y);
+          points.push(endPoint);
+        }
+        break;
     }
 
     if (adjustForFrame) {
-      for (let i = 0; i < polyPoints.length; i++) {
-        polyPoints[i].x -= this.Frame.x;
-        polyPoints[i].y -= this.Frame.y;
+      for (let i = 0; i < points.length; i++) {
+        points[i].x -= this.Frame.x;
+        points[i].y -= this.Frame.y;
       }
     }
-    return polyPoints;
+
+    console.log('S.Line - Output:', points);
+    return points;
   }
 
-  CreateShape(svgDoc, useHiddenEventBehavior) {
+  CreateShape(svgContainer, isHidden) {
+    console.log('S.Line - Input:', { svgContainer, isHidden });
+
     if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) return null;
 
-    // Determine the effective short reference based on shape parameter
-    let shortReference = this.ShortRef;
-    if (this.shapeparam < 0.01) {
-      shortReference = 0;
-    }
-    const isSimpleLine =
-      (shortReference === 0 ||
-        shortReference === ConstantData2.LineTypes.SED_LS_MeasuringTape) &&
-      this.hoplist.nhops === 0;
+    let shapeContainer = svgContainer.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
+    let shapeElement = null;
+    let shortRef = this.ShortRef;
+    let lineColor = '#000000';
+    let lineThickness = 1;
+    let lineOpacity = 1;
+    let linePattern = 0;
 
-    // Create container and shape elements
-    const containerShape = svgDoc.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
-    const shapeElement = isSimpleLine
-      ? svgDoc.CreateShape(ConstantData.CreateShapeType.LINE)
-      : svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+    if (this.shapeparam < 0.01) {
+      shortRef = 0;
+    }
+
+    let isSimpleLine = (shortRef === 0 || shortRef == ConstantData2.LineTypes.SED_LS_MeasuringTape) && this.hoplist.nhops === 0;
+
+    shapeElement = isSimpleLine ? svgContainer.CreateShape(ConstantData.CreateShapeType.LINE) : svgContainer.CreateShape(ConstantData.CreateShapeType.POLYLINE);
     shapeElement.SetID(ConstantData.SVGElementClass.SHAPE);
 
-    const slopElement = isSimpleLine
-      ? svgDoc.CreateShape(ConstantData.CreateShapeType.LINE)
-      : svgDoc.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+    let slopElement = isSimpleLine ? svgContainer.CreateShape(ConstantData.CreateShapeType.LINE) : svgContainer.CreateShape(ConstantData.CreateShapeType.POLYLINE);
     slopElement.SetID(ConstantData.SVGElementClass.SLOP);
     slopElement.ExcludeFromExport(true);
 
-    // Calculate the drawing frame
     this.CalcFrame();
-    const frame = this.Frame;
-
-    // Get style information
+    let frame = this.Frame;
     let styleRecord = this.StyleRecord;
-    styleRecord = this.SVGTokenizerHook(styleRecord);
-    if (!styleRecord) {
-      const sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+
+    if (styleRecord == null) {
+      let sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
       if (sessionBlock) {
         styleRecord = sessionBlock.def.style;
       }
     }
 
-    let lineColor, lineThickness, lineOpacity, linePattern;
     if (styleRecord) {
       lineColor = styleRecord.Line.Paint.Color;
       lineThickness = styleRecord.Line.Thickness;
-      // Ensure a visible thickness if the value is too thin
       if (lineThickness > 0 && lineThickness < 1) {
         lineThickness = 1;
       }
@@ -220,31 +212,30 @@ class Line extends BaseLine {
       linePattern = styleRecord.Line.LinePattern;
     }
 
-    // Set container dimensions
-    const containerWidth = frame.width;
-    const containerHeight = frame.height;
-    containerShape.SetSize(containerWidth, containerHeight);
-    containerShape.SetPos(frame.x, frame.y);
-    shapeElement.SetSize(containerWidth, containerHeight);
+    let frameWidth = frame.width;
+    let frameHeight = frame.height;
+
+    shapeContainer.SetSize(frameWidth, frameHeight);
+    shapeContainer.SetPos(this.Frame.x, this.Frame.y);
+    shapeElement.SetSize(frameWidth, frameHeight);
 
     let points = [];
     if (isSimpleLine) {
       shapeElement.SetPoints(
-        this.StartPoint.x - frame.x,
-        this.StartPoint.y - frame.y,
-        this.EndPoint.x - frame.x,
-        this.EndPoint.y - frame.y
+        this.StartPoint.x - this.Frame.x,
+        this.StartPoint.y - this.Frame.y,
+        this.EndPoint.x - this.Frame.x,
+        this.EndPoint.y - this.Frame.y
       );
     } else {
       points = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
       if (this.hoplist.nhops !== 0) {
-        const hopResult = GlobalData.optManager.InsertHops(this, points, points.length);
+        let hopResult = GlobalData.optManager.InsertHops(this, points, points.length);
         points = points.slice(0, hopResult.npts);
       }
       shapeElement.SetPoints(points);
     }
 
-    // Apply stroke and fill style settings to the shape element
     shapeElement.SetFillColor('none');
     shapeElement.SetStrokeColor(lineColor);
     shapeElement.SetStrokeOpacity(lineOpacity);
@@ -253,63 +244,72 @@ class Line extends BaseLine {
       shapeElement.SetStrokePattern(linePattern);
     }
 
-    // Configure the slop (invisible drag target) element
-    slopElement.SetSize(containerWidth, containerHeight);
+    slopElement.SetSize(frameWidth, frameHeight);
     if (isSimpleLine) {
       slopElement.SetPoints(
-        this.StartPoint.x - frame.x,
-        this.StartPoint.y - frame.y,
-        this.EndPoint.x - frame.x,
-        this.EndPoint.y - frame.y
+        this.StartPoint.x - this.Frame.x,
+        this.StartPoint.y - this.Frame.y,
+        this.EndPoint.x - this.Frame.x,
+        this.EndPoint.y - this.Frame.y
       );
     } else {
       slopElement.SetPoints(points);
     }
+
     slopElement.SetStrokeColor('white');
     slopElement.SetFillColor('none');
     slopElement.SetOpacity(0);
-    slopElement.SetEventBehavior(
-      useHiddenEventBehavior ? Element.EventBehavior.HIDDEN_OUT : Element.EventBehavior.NONE
-    );
+    if (isHidden) {
+      slopElement.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+    } else {
+      slopElement.SetEventBehavior(Element.EventBehavior.NONE);
+    }
     slopElement.SetStrokeWidth(lineThickness + ConstantData.Defines.SED_Slop);
 
-    // Add the shape elements to the container
-    containerShape.AddElement(shapeElement);
-    containerShape.AddElement(slopElement);
+    shapeContainer.AddElement(shapeElement);
+    shapeContainer.AddElement(slopElement);
 
-    // Apply any additional styles or effects
     this.ApplyStyles(shapeElement, styleRecord);
-    this.ApplyEffects(containerShape, false, true);
+    this.ApplyEffects(shapeContainer, false, true);
 
     if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR) {
       GlobalData.optManager.GanttSetPercentCompleteEffectOnBar(this, shapeElement, styleRecord);
     }
 
-    containerShape.isShape = true;
-    this.AddIcons(svgDoc, containerShape);
-    return containerShape;
+    shapeContainer.isShape = true;
+    this.AddIcons(svgContainer, shapeContainer);
+
+    console.log('S.Line - Output:', shapeContainer);
+    return shapeContainer;
   }
 
   SetCursors() {
-    const svgLayerElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    console.log('S.Line - Input:', { currentModalOperation: GlobalData.optManager.currentModalOperation });
+
+    let shapeElement;
+    const shapeContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+
     if (GlobalData.optManager.currentModalOperation === ListManager.ModalOperations.ADDCORNER) {
-      const slopElement = svgLayerElement.GetElementByID(ConstantData.SVGElementClass.SLOP);
-      if (slopElement) {
-        slopElement.SetCursor(Element.CursorType.CROSSHAIR);
+      shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+      if (shapeElement) {
+        shapeElement.SetCursor(Element.CursorType.CROSSHAIR);
       }
     } else {
       this.BaseDrawingObject_SetCursors();
     }
+
+    console.log('S.Line - Output:', { shapeElement });
   }
 
   BaseDrawingObject_SetCursors() {
-    const containerElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-    let clearCursorForShapeAndSlop = false;
+    console.log('S.Line - Input:', { BlockID: this.BlockID, flags: this.flags });
 
-    if (!(this.flags & ConstantData.ObjFlags.SEDO_Lock) && containerElement) {
+    const shapeContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    let isDimensionTextActive = false;
+
+    if (!(this.flags & ConstantData.ObjFlags.SEDO_Lock) && shapeContainer) {
       if (GlobalData.optManager.GetEditMode() === ConstantData.EditState.DEFAULT) {
-        // Set cursor for the main shape element
-        const shapeElement = containerElement.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+        const shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
         if (shapeElement) {
           if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FRAME_CONTAINER) {
             shapeElement.SetCursor(Element.CursorType.DEFAULT);
@@ -318,127 +318,97 @@ class Line extends BaseLine {
           }
         }
 
-        // Set cursors for icon elements
-        let iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const hyperlinkIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
+        if (hyperlinkIcon) hyperlinkIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const trelloLinkIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
+        if (trelloLinkIcon) trelloLinkIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.NOTES);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const notesIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.NOTES);
+        if (notesIcon) notesIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.EXPANDEDVIEW);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const expandedViewIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.EXPANDEDVIEW);
+        if (expandedViewIcon) expandedViewIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.COMMENT);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const commentIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.COMMENT);
+        if (commentIcon) commentIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.ATTACHMENT);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const attachmentIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.ATTACHMENT);
+        if (attachmentIcon) attachmentIcon.SetCursor(Element.CursorType.POINTER);
 
-        iconElement = containerElement.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
-        if (iconElement) {
-          iconElement.SetCursor(Element.CursorType.POINTER);
-        }
+        const fieldDataIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
+        if (fieldDataIcon) fieldDataIcon.SetCursor(Element.CursorType.POINTER);
 
-        // Set cursor for the slop element (the invisible drag target)
-        const slopElement = containerElement.GetElementByID(ConstantData.SVGElementClass.SLOP);
-        if (slopElement) {
-          slopElement.SetCursor(Element.CursorType.ADD);
-        }
+        const slopElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+        if (slopElement) slopElement.SetCursor(Element.CursorType.ADD);
 
         const activeEditElement = GlobalData.optManager.svgDoc.GetActiveEdit();
-
-        // Adjust text element cursor if there is one
-        if (this.DataID && this.DataID >= 0 && containerElement.textElem) {
-          if (containerElement.textElem === activeEditElement) {
+        if (this.DataID && this.DataID >= 0 && shapeContainer.textElem) {
+          if (shapeContainer.textElem === activeEditElement) {
             shapeElement.SetCursor(Element.CursorType.TEXT);
-            containerElement.textElem.SetCursorState(ConstantData.CursorState.EDITLINK);
+            shapeContainer.textElem.SetCursorState(ConstantData.CursorState.EDITLINK);
           } else {
-            containerElement.textElem.SetCursorState(ConstantData.CursorState.LINKONLY);
+            shapeContainer.textElem.SetCursorState(ConstantData.CursorState.LINKONLY);
           }
         }
 
-        // For dimension text elements, adjust their cursor state
-        if ((this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always) ||
-            ((this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) && this.IsSelected())) {
-          const dimensionTextElements = containerElement.GetElementListWithID(ConstantData.SVGElementClass.DIMENSIONTEXT);
-          for (let idx = 0; idx < dimensionTextElements.length; idx++) {
-            dimensionTextElements[idx].SetCursorState(ConstantData.CursorState.EDITONLY);
-            if (dimensionTextElements[idx] === activeEditElement) {
-              clearCursorForShapeAndSlop = true;
+        if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always ||
+          (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select && this.IsSelected())) {
+          const dimensionTextElements = shapeContainer.GetElementListWithID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+          for (let i = 0; i < dimensionTextElements.length; i++) {
+            dimensionTextElements[i].SetCursorState(ConstantData.CursorState.EDITONLY);
+            if (dimensionTextElements[i] === activeEditElement) {
+              isDimensionTextActive = true;
             }
           }
-          if (clearCursorForShapeAndSlop) {
+          if (isDimensionTextActive) {
             shapeElement.SetCursor(null);
-            if (slopElement) {
-              slopElement.SetCursor(null);
-            }
+            if (slopElement) slopElement.SetCursor(null);
           }
         }
       } else {
         this.ClearCursors();
       }
-    } else {
-      this.ClearCursors();
     }
+
+    console.log('S.Line - Output:', { shapeContainer, isDimensionTextActive });
   }
 
-  AdjustLineStart(
-    svgContainer: any,
-    newStartX: number,
-    newStartY: number,
-    unusedParam: any,
-    forceLinkAdjustment: boolean,
-    skipMinimumEnforcement: boolean
-  ) {
-    // Update the start point
-    this.StartPoint.x = newStartX;
-    this.StartPoint.y = newStartY;
-    if (!skipMinimumEnforcement) {
+  AdjustLineStart(svgContainer, startX, startY, endX, endY, enforceMinimum) {
+    console.log('S.Line - Input:', { svgContainer, startX, startY, endX, endY, enforceMinimum });
+
+    let points = [];
+    let shapeElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    let slopElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+
+    this.StartPoint.x = startX;
+    this.StartPoint.y = startY;
+
+    if (!enforceMinimum) {
       this.EnforceMinimum(true);
     }
 
-    // Determine if link adjustment is active
-    let isLinkMode = false;
+    let adjustForLineAngleSnap = false;
     if (GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0) {
-      isLinkMode = true;
+      adjustForLineAngleSnap = true;
     }
-    if (forceLinkAdjustment) {
-      isLinkMode = true;
+
+    if (endY) {
+      adjustForLineAngleSnap = true;
     }
-    if (!isLinkMode) {
+
+    if (!adjustForLineAngleSnap) {
       this.AdjustForLineAngleSnap(this.EndPoint, this.StartPoint);
     }
 
-    // Recalculate frame and update container element
     this.CalcFrame();
     svgContainer.SetSize(this.Frame.width, this.Frame.height);
     svgContainer.SetPos(this.Frame.x, this.Frame.y);
-
-    const shapeElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-    const slopElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
     shapeElement.SetSize(this.Frame.width, this.Frame.height);
 
-    // Determine if the line is a simple line
-    const isSimpleLine =
-      (this.ShortRef === 0 ||
-        this.ShortRef === ConstantData2.LineTypes.SED_LS_MeasuringTape) &&
-      this.hoplist.nhops === 0;
-    let shapePoints: Point[] = [];
+    let polyPoints = [];
+    let isSimpleLine = (this.ShortRef === 0 || this.ShortRef == ConstantData2.LineTypes.SED_LS_MeasuringTape) && this.hoplist.nhops === 0;
+
     if (isSimpleLine) {
       shapeElement.SetPoints(
         this.StartPoint.x - this.Frame.x,
@@ -447,12 +417,12 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      shapePoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
-      shapeElement.SetPoints(shapePoints);
+      polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      shapeElement.SetPoints(polyPoints);
     }
 
-    // Update the slop (drag target) element
     slopElement.SetSize(this.Frame.width, this.Frame.height);
+
     if (isSimpleLine) {
       slopElement.SetPoints(
         this.StartPoint.x - this.Frame.x,
@@ -461,11 +431,11 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      slopElement.SetPoints(shapePoints);
+      slopElement.SetPoints(polyPoints);
     }
 
-    // Recalculate frame and update flags if necessary
     this.CalcFrame();
+
     if (this.rflags) {
       this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
       this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
@@ -474,6 +444,7 @@ class Line extends BaseLine {
     svgContainer.SetSize(this.Frame.width, this.Frame.height);
     svgContainer.SetPos(this.Frame.x, this.Frame.y);
     shapeElement.SetSize(this.Frame.width, this.Frame.height);
+
     if (isSimpleLine) {
       shapeElement.SetPoints(
         this.StartPoint.x - this.Frame.x,
@@ -482,10 +453,12 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      shapePoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
-      shapeElement.SetPoints(shapePoints);
+      polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      shapeElement.SetPoints(polyPoints);
     }
+
     slopElement.SetSize(this.Frame.width, this.Frame.height);
+
     if (isSimpleLine) {
       slopElement.SetPoints(
         this.StartPoint.x - this.Frame.x,
@@ -494,81 +467,70 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      slopElement.SetPoints(shapePoints);
+      slopElement.SetPoints(polyPoints);
     }
 
-    // Update dimensions and coordinates
     this.UpdateDimensionLines(svgContainer);
     this.UpdateCoordinateLines(svgContainer);
 
-    // Set selection attributes
     new SelectionAttributes();
-    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    const offsetPoints: Point[] = [];
-    offsetPoints.push(new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y));
-    offsetPoints.push(new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y));
+    let rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    points.push(new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y));
+    points.push(new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y));
 
-    const deltaX = offsetPoints[0].x - offsetPoints[1].x;
-    const deltaY = offsetPoints[0].y - offsetPoints[1].y;
+    let deltaX = points[0].x - points[1].x;
+    let deltaY = points[0].y - points[1].y;
     Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    GlobalData.optManager.UpdateDisplayCoordinates(
-      this.Frame,
-      this.StartPoint,
-      ConstantData.CursorTypes.Grow,
-      this
-    );
+    GlobalData.optManager.UpdateDisplayCoordinates(this.Frame, this.StartPoint, ConstantData.CursorTypes.Grow, this);
 
     if (this.DataID !== -1) {
       this.LM_ResizeSVGTextObject(svgContainer, this, this.Frame);
     }
+
+    console.log('S.Line - Output:', { shapeElement, slopElement, points });
   }
 
-  AdjustLineEnd(
-    svgContainer: any,
-    newEndPointX: number,
-    newEndPointY: number,
-    unusedParam: any,
-    snapEnabled: boolean
-  ) {
-    let updatedPoints: Point[] = [];
-    let shapeElem: any, slopElem: any;
+  AdjustLineEnd(svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap) {
+    console.log("S.Connector - Input:", { svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap });
 
+    let points = [];
+    let shapeElement, slopElement;
     if (svgContainer) {
-      shapeElem = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-      slopElem = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+      shapeElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+      slopElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
     }
 
-    // Update endpoint coordinates and enforce minimum size
+    // Update endpoint and enforce minimum constraints
     this.EndPoint.x = newEndPointX;
     this.EndPoint.y = newEndPointY;
     this.EnforceMinimum(false);
 
-    // Determine if line angle snap should be applied
-    const linkParamsExist =
-      GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0;
-    const adjustForAngleSnap = snapEnabled || linkParamsExist;
+    // Determine if line angle snap adjustment is needed
+    const linkParamsExist = GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0;
+    const adjustForSnap = forceAngleSnap || linkParamsExist;
 
-    if (adjustForAngleSnap) {
+    if (adjustForSnap) {
       this.AdjustForLineAngleSnap(this.StartPoint, this.EndPoint);
     }
 
+    // Recalculate the bounding frame
     this.CalcFrame();
 
     if (svgContainer) {
-      // Update container dimensions and position
+      // Update container sizes and positions.
       svgContainer.SetSize(this.Frame.width, this.Frame.height);
       svgContainer.SetPos(this.Frame.x, this.Frame.y);
-      shapeElem.SetSize(this.Frame.width, this.Frame.height);
+      shapeElement.SetSize(this.Frame.width, this.Frame.height);
 
-      let polyPoints: Point[] = [];
+      let polyPoints = [];
       const isSimpleLine =
         (this.ShortRef === 0 ||
           this.ShortRef === ConstantData2.LineTypes.SED_LS_MeasuringTape) &&
         this.hoplist.nhops === 0;
 
       if (isSimpleLine) {
-        shapeElem.SetPoints(
+        shapeElement.SetPoints(
           this.StartPoint.x - this.Frame.x,
           this.StartPoint.y - this.Frame.y,
           this.EndPoint.x - this.Frame.x,
@@ -576,44 +538,35 @@ class Line extends BaseLine {
         );
       } else {
         polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
-        shapeElem.SetPoints(polyPoints);
+        shapeElement.SetPoints(polyPoints);
       }
 
-      // Update the invisible drag target (slop element)
-      slopElem.SetSize(this.Frame.width, this.Frame.height);
+      slopElement.SetSize(this.Frame.width, this.Frame.height);
+
       if (isSimpleLine) {
-        slopElem.SetPoints(
+        slopElement.SetPoints(
           this.StartPoint.x - this.Frame.x,
           this.StartPoint.y - this.Frame.y,
           this.EndPoint.x - this.Frame.x,
           this.EndPoint.y - this.Frame.y
         );
       } else {
-        slopElem.SetPoints(polyPoints);
+        slopElement.SetPoints(polyPoints);
       }
 
-      // Clear width/height flags if set
       if (this.rflags) {
-        this.rflags = Utils2.SetFlag(
-          this.rflags,
-          ConstantData.FloatingPointDim.SD_FP_Width,
-          false
-        );
-        this.rflags = Utils2.SetFlag(
-          this.rflags,
-          ConstantData.FloatingPointDim.SD_FP_Height,
-          false
-        );
+        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
+        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
       }
 
-      // Recalculate frame and update container
+      // Recalculate frame and update container again
       this.CalcFrame();
       svgContainer.SetSize(this.Frame.width, this.Frame.height);
       svgContainer.SetPos(this.Frame.x, this.Frame.y);
-      shapeElem.SetSize(this.Frame.width, this.Frame.height);
+      shapeElement.SetSize(this.Frame.width, this.Frame.height);
 
       if (isSimpleLine) {
-        shapeElem.SetPoints(
+        shapeElement.SetPoints(
           this.StartPoint.x - this.Frame.x,
           this.StartPoint.y - this.Frame.y,
           this.EndPoint.x - this.Frame.x,
@@ -621,54 +574,43 @@ class Line extends BaseLine {
         );
       } else {
         polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
-        shapeElem.SetPoints(polyPoints);
+        shapeElement.SetPoints(polyPoints);
       }
 
-      slopElem.SetSize(this.Frame.width, this.Frame.height);
+      slopElement.SetSize(this.Frame.width, this.Frame.height);
+
       if (isSimpleLine) {
-        slopElem.SetPoints(
+        slopElement.SetPoints(
           this.StartPoint.x - this.Frame.x,
           this.StartPoint.y - this.Frame.y,
           this.EndPoint.x - this.Frame.x,
           this.EndPoint.y - this.Frame.y
         );
       } else {
-        slopElem.SetPoints(polyPoints);
+        slopElement.SetPoints(polyPoints);
       }
 
-      // Update dimension and coordinate lines
       this.UpdateDimensionLines(svgContainer);
       this.UpdateCoordinateLines(svgContainer);
 
-      // Set selection attributes and update display coordinates
       new SelectionAttributes();
       const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-      updatedPoints.push(
-        new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y)
-      );
-      updatedPoints.push(
-        new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y)
-      );
+      points.push(new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y));
+      points.push(new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y));
 
-      const deltaX = updatedPoints[0].x - updatedPoints[1].x;
-      const deltaY = updatedPoints[0].y - updatedPoints[1].y;
-      Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const deltaX = points[0].x - points[1].x;
+      const deltaY = points[0].y - points[1].y;
+      const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const deepCopiedEndPoint = Utils1.DeepCopy(this.EndPoint);
 
-      const copiedEndPoint = Utils1.DeepCopy(this.EndPoint);
-      GlobalData.optManager.UpdateDisplayCoordinates(
-        this.Frame,
-        copiedEndPoint,
-        ConstantData.CursorTypes.Grow,
-        this
-      );
+      GlobalData.optManager.UpdateDisplayCoordinates(this.Frame, deepCopiedEndPoint, ConstantData.CursorTypes.Grow, this);
 
       if (
-        GlobalData.optManager.theContentHeader.flags &
-          ConstantData.ContentHeaderFlags.CT_DA_NoAuto &&
-        (copiedEndPoint.x !== this.EndPoint.x || copiedEndPoint.y !== this.EndPoint.y)
+        (GlobalData.optManager.theContentHeader.flags & ConstantData.ContentHeaderFlags.CT_DA_NoAuto) &&
+        (deepCopiedEndPoint.x !== this.EndPoint.x || deepCopiedEndPoint.y !== this.EndPoint.y)
       ) {
         const error = new Error(Resources.Strings.Error_Bounds);
-        error.name = '1';
+        error.name = "1";
         throw error;
       }
 
@@ -676,38 +618,39 @@ class Line extends BaseLine {
         this.LM_ResizeSVGTextObject(svgContainer, this, this.Frame);
       }
     }
+
+    console.log("S.Connector - Output:", {
+      shapeElement: svgContainer ? svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE) : null,
+      slopElement: svgContainer ? svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP) : null
+    });
   }
 
   Flip(flipFlags: number) {
-    let hasFlipped = false;
-    const temp: { x?: number; y?: number } = {};
+    console.log('S.Line - Input:', { flipFlags });
 
-    // Create a backup copy of the current line
-    GlobalData.optManager.ob = Utils1.DeepCopy(this);
+    let temp;
+    let swapped = false;
 
-    // Perform vertical flip if required
-    if (flipFlags & ConstantData.ExtraFlags.SEDE_FlipVert) {
-      temp.y = this.StartPoint.y;
+    if (GlobalData.optManager.ob = Utils1.DeepCopy(this), flipFlags & ConstantData.ExtraFlags.SEDE_FlipVert) {
+      temp = this.StartPoint.y;
       this.StartPoint.y = this.EndPoint.y;
-      this.EndPoint.y = temp.y;
-      hasFlipped = true;
+      this.EndPoint.y = temp;
+      swapped = true;
     }
 
-    // Perform horizontal flip if required
     if (flipFlags & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
-      temp.x = this.StartPoint.x;
+      temp = this.StartPoint.x;
       this.StartPoint.x = this.EndPoint.x;
-      this.EndPoint.x = temp.x;
-      hasFlipped = true;
+      this.EndPoint.x = temp;
+      swapped = true;
     }
 
-    // If any flip has occurred, update related components
-    if (hasFlipped) {
-      const svgContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
-      this.UpdateDimensionLines(svgContainer);
+    if (swapped) {
+      const shapeElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+      this.UpdateDimensionLines(shapeElement);
 
       if (this.DataID !== -1) {
-        this.LM_ResizeSVGTextObject(svgContainer, this, this.Frame);
+        this.LM_ResizeSVGTextObject(shapeElement, this, this.Frame);
       }
 
       if (GlobalData.optManager.ob.Frame) {
@@ -723,150 +666,166 @@ class Line extends BaseLine {
     }
 
     GlobalData.optManager.ob = {};
+    console.log('S.Line - Output:', { swapped });
   }
 
-  AddCorner(eventData, newCornerPoint) {
-    // Backup the current line object
+  AddCorner(event, point) {
+    console.log('S.Line - Input:', { event, point });
+
+    let angle, rotatedPoints, newPoints = [], tempPoints = [], isStartPoint = false;
     GlobalData.optManager.ob = Utils1.DeepCopy(this);
 
-    // Build an array with the current start and end, then add the new corner
-    let cornerPoints: Point[] = [
+    newPoints = [
       { x: this.StartPoint.x, y: this.StartPoint.y },
       { x: this.EndPoint.x, y: this.EndPoint.y }
     ];
-    cornerPoints.push(new Point(newCornerPoint.x, newCornerPoint.y));
+    newPoints.push(new Point(point.x, point.y));
 
-    // Calculate the angle and determine the rotation in radians
-    let rawAngle = Utils1.CalcAngleFromPoints(cornerPoints[0], cornerPoints[1]);
-    let adjustedAngle = 360 - rawAngle;
-    if (adjustedAngle >= 360) {
-      adjustedAngle -= 360;
-    }
-    const rotationRadians = 2 * Math.PI * (adjustedAngle / 360);
+    angle = 360 - Utils1.CalcAngleFromPoints(newPoints[0], newPoints[1]);
+    if (angle >= 360) angle -= 360;
 
-    // Rotate points about the frame center for adjustment
-    Utils3.RotatePointsAboutCenter(this.Frame, -rotationRadians, cornerPoints);
+    const radians = 2 * Math.PI * (angle / 360);
+    Utils3.RotatePointsAboutCenter(this.Frame, -radians, newPoints);
 
-    // Do not add a corner if the vertical difference is too small based on line thickness
-    if (!(Math.abs(cornerPoints[1].y - cornerPoints[2].y) > this.StyleRecord.Line.Thickness)) {
-      return;
-    }
-
-    // Begin secondary edit if collaboration messages are allowed
-    let collabData: { BlockID?: number; point?: { x: number; y: number } } = {};
-    if (Collab.AllowMessage()) {
-      Collab.BeginSecondaryEdit();
-      collabData.BlockID = this.BlockID;
-      collabData.point = { x: newCornerPoint.x, y: newCornerPoint.y };
-    }
-
-    // Force the new corner point horizontally aligned with the starting point
-    cornerPoints[2].y = cornerPoints[0].y;
-
-    // Determine which end to adjust based on the horizontal distances
-    let flipStart = false;
-    if (Math.abs(cornerPoints[1].x - cornerPoints[2].x) > Math.abs(cornerPoints[0].x - cornerPoints[2].x)) {
-      flipStart = true;
-    }
-
-    // Calculate an offset value based on the angle (switching between 50 and -50)
-    const offsetY = (adjustedAngle >= 0 && adjustedAngle <= 180) ? 50 : -50;
-
-    // Add an extra point shifted vertically by the offset for dimensioning
-    cornerPoints.push(new Point(cornerPoints[2].x, cornerPoints[2].y + offsetY));
-
-    // Rotate the points back to the original coordinate system
-    Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, cornerPoints);
-
-    // Extract the new dimension points from the rotated array
-    const dimensionPoints: Point[] = [];
-    dimensionPoints.push(new Point(cornerPoints[2].x, cornerPoints[2].y));
-    dimensionPoints.push(new Point(cornerPoints[3].x, cornerPoints[3].y));
-
-    // Update the corresponding endpoint based on the horizontal adjustment check
-    if (flipStart) {
-      this.StartPoint.x = dimensionPoints[0].x;
-      this.StartPoint.y = dimensionPoints[0].y;
-    } else {
-      this.EndPoint.x = dimensionPoints[0].x;
-      this.EndPoint.y = dimensionPoints[0].y;
-    }
-
-    // Recalculate the frame and update the links
-    this.CalcFrame();
-    GlobalData.optManager.MaintainLink(
-      this.BlockID,
-      this,
-      GlobalData.optManager.ob,
-      ConstantData.ActionTriggerType.MODIFYSHAPE
-    );
-    GlobalData.optManager.SetLinkFlag(
-      this.BlockID,
-      ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE
-    );
-    GlobalData.optManager.UpdateLinks();
-
-    // Prepare the options for the new line representing the added corner
-    let newLineOptions = {
-      StartPoint: { x: dimensionPoints[0].x, y: dimensionPoints[0].y },
-      EndPoint: { x: dimensionPoints[1].x, y: dimensionPoints[1].y },
-      Dimensions: this.Dimensions,
-      TextFlags: this.TextFlags,
-      objecttype: this.objecttype
-    };
-    newLineOptions.StyleRecord = Utils1.DeepCopy(this.StyleRecord);
-
-    // Create the new line object
-    const newLine = new ListManager.Line(newLineOptions);
-
-    // Add new object and connect via join
-    const newObjectId = GlobalData.optManager.AddNewObject(newLine, false, true);
-    const joinResult = flipStart
-      ? GlobalData.optManager.PolyLJoin(
-          newObjectId,
-          ConstantData.HookPts.SED_KTL,
-          this.BlockID,
-          ConstantData.HookPts.SED_KTL,
-          false
-        )
-      : GlobalData.optManager.PolyLJoin(
-          newObjectId,
-          ConstantData.HookPts.SED_KTL,
-          this.BlockID,
-          ConstantData.HookPts.SED_KTR,
-          false
-        );
-
-    const newObjectPtr = GlobalData.optManager.GetObjectPtr(joinResult, false);
-    const newSVGElement = GlobalData.optManager.svgObjectLayer.GetElementByID(joinResult);
-
-    // Determine the ruler text based on document settings
-    let majorScaleString = Number(GPP.documentHandler.rulerSettings.majorScale).toString();
-    switch (GPP.documentHandler.rulerSettings.units) {
-      case ConstantData.RulerUnits.SED_Feet:
-        if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) {
-          majorScaleString = Number(12 * GPP.documentHandler.rulerSettings.majorScale).toString();
-          majorScaleString += '"';
-        } else {
-          majorScaleString += '\'';
-        }
-        break;
-      case ConstantData.RulerUnits.SED_Inches:
-        majorScaleString += '"';
-        break;
-    }
-    newObjectPtr.UpdateDimensionFromText(newSVGElement, majorScaleString, { segment: 2 });
-
-    GlobalData.optManager.AddToDirtyList(this.BlockID);
-    Collab.ClearCreateList();
-    Collab.AddToCreateList(joinResult);
-    if (Collab.AllowMessage()) {
-      if (Collab.IsSecondary() && Collab.CreateList.length) {
-        collabData.CreateList = [joinResult];
+    if (Math.abs(newPoints[1].y - newPoints[2].y) <= this.StyleRecord.Line.Thickness) {
+      if (Collab.AllowMessage()) {
+        Collab.BeginSecondaryEdit();
+        const message = { BlockID: this.BlockID, point: { x: point.x, y: point.y } };
       }
-      Collab.BuildMessage(ConstantData.CollabMessages.AddCorner, collabData, false);
+
+      newPoints[2].y = newPoints[0].y;
+      if (Math.abs(newPoints[1].x - newPoints[2].x) > Math.abs(newPoints[0].x - newPoints[2].x)) {
+        isStartPoint = true;
+      }
+
+      const offset = angle >= 0 && angle <= 180 ? 50 : -50;
+      newPoints.push(new Point(newPoints[2].x, newPoints[2].y + offset));
+      Utils3.RotatePointsAboutCenter(this.Frame, radians, newPoints);
+
+      tempPoints.push(new Point(newPoints[2].x, newPoints[2].y));
+      tempPoints.push(new Point(newPoints[3].x, newPoints[3].y));
+
+      if (isStartPoint) {
+        this.StartPoint.x = tempPoints[0].x;
+        this.StartPoint.y = tempPoints[0].y;
+      } else {
+        this.EndPoint.x = tempPoints[0].x;
+        this.EndPoint.y = tempPoints[0].y;
+      }
+
+      this.CalcFrame();
+      GlobalData.optManager.MaintainLink(this.BlockID, this, GlobalData.optManager.ob, ConstantData.ActionTriggerType.MODIFYSHAPE);
+      GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE);
+      GlobalData.optManager.UpdateLinks();
+
+      const newLineData = {
+        StartPoint: { x: tempPoints[0].x, y: tempPoints[0].y },
+        EndPoint: { x: tempPoints[1].x, y: tempPoints[1].y },
+        Dimensions: this.Dimensions,
+        TextFlags: this.TextFlags,
+        objecttype: this.objecttype,
+        StyleRecord: Utils1.DeepCopy(this.StyleRecord)
+      };
+
+      const newLine = new ListManager.Line(newLineData);
+      const newBlockID = GlobalData.optManager.AddNewObject(newLine, false, true);
+      const joinID = isStartPoint
+        ? GlobalData.optManager.PolyLJoin(newBlockID, ConstantData.HookPts.SED_KTL, this.BlockID, ConstantData.HookPts.SED_KTL, false)
+        : GlobalData.optManager.PolyLJoin(newBlockID, ConstantData.HookPts.SED_KTL, this.BlockID, ConstantData.HookPts.SED_KTR, false);
+
+      const joinedObject = GlobalData.optManager.GetObjectPtr(joinID, false);
+      const joinedElement = GlobalData.optManager.svgObjectLayer.GetElementByID(joinID);
+
+      let dimensionText = Number(GlobalData.docHandler.rulerSettings.majorScale).toString();
+      switch (GlobalData.docHandler.rulerSettings.units) {
+        case ConstantData.RulerUnits.SED_Feet:
+          if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) {
+            dimensionText = `${12 * GlobalData.docHandler.rulerSettings.majorScale}"`;
+          } else {
+            dimensionText += "'";
+          }
+          break;
+        case ConstantData.RulerUnits.SED_Inches:
+          dimensionText += '"';
+          break;
+      }
+
+      joinedObject.UpdateDimensionFromText(joinedElement, dimensionText, { segment: 2 });
+      GlobalData.optManager.AddToDirtyList(this.BlockID);
+
+      Collab.ClearCreateList();
+      Collab.AddToCreateList(joinID);
+
+      if (Collab.AllowMessage()) {
+        if (Collab.IsSecondary() && Collab.CreateList.length) {
+          message.CreateList = [joinID];
+        }
+        Collab.BuildMessage(ConstantData.CollabMessages.AddCorner, message, false);
+      }
+
+      GlobalData.optManager.CompleteOperation(null);
     }
-    GlobalData.optManager.CompleteOperation(null);
+
+    console.log('S.Line - Output:', { newPoints, tempPoints, isStartPoint });
+  }
+
+  UseEdges(enableX: boolean, enableY: boolean, alignX: boolean, alignY: boolean, startPoint: Point, endPoint: Point) {
+    console.log('S.Line - Input:', { enableX, enableY, alignX, alignY, startPoint, endPoint });
+
+    let offsetX = 0, offsetY = 0, newWidth = 0, newHeight = 0, deltaX = 0, deltaY = 0;
+    let shouldAdjust = false;
+
+    if (startPoint.x !== endPoint.x) {
+      if (enableX && alignX) {
+        if (Utils2.IsEqual(this.StartPoint.y, this.EndPoint.y)) {
+          offsetX = endPoint.x - startPoint.x;
+          shouldAdjust = true;
+        }
+      } else {
+        const centerX = this.Frame.x + this.Frame.width / 2;
+        if (Math.abs(centerX - startPoint.x / 2) < 100) {
+          deltaX = (endPoint.x - startPoint.x) / 2;
+          shouldAdjust = true;
+        } else if (this.Frame.x > startPoint.x / 2) {
+          deltaX = endPoint.x - startPoint.x;
+          shouldAdjust = true;
+        }
+      }
+    }
+
+    if (startPoint.y !== endPoint.y) {
+      if (enableY && alignY) {
+        if (Utils2.IsEqual(this.StartPoint.x, this.EndPoint.x)) {
+          offsetY = endPoint.y - startPoint.y;
+          shouldAdjust = true;
+        }
+      } else {
+        const centerY = this.Frame.y + this.Frame.height / 2;
+        if (Math.abs(centerY - startPoint.y / 2) < 100) {
+          deltaY = (endPoint.y - startPoint.y) / 2;
+          shouldAdjust = true;
+        } else if (this.Frame.y > startPoint.y / 2) {
+          deltaY = endPoint.y - startPoint.y;
+          shouldAdjust = true;
+        }
+      }
+    }
+
+    if (shouldAdjust) {
+      GlobalData.optManager.GetObjectPtr(this.BlockID, true);
+      if (deltaX || deltaY) {
+        this.OffsetShape(deltaX, deltaY);
+      }
+      if (offsetX || offsetY) {
+        if (offsetX) newWidth = this.Frame.width + offsetX;
+        if (offsetY) newHeight = this.Frame.height + offsetY;
+        this.SetSize(newWidth, newHeight, 0);
+      }
+      GlobalData.optManager.AddToDirtyList(this.BlockID);
+    }
+
+    console.log('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });
+    return shouldAdjust;
   }
 }
 
