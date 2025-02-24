@@ -2,35 +2,27 @@
 
 
 
-// import ListManager from "../Data/ListManager";
 import BaseDrawingObject from './Shape.BaseDrawingObject'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
 import $ from 'jquery'
-// import Global from '../Basic/Basic.Global'
 import HvTimer from '../Helper/HvTimer'
 import Point from '../Model/Point'
 import BaseShape from './Shape.BaseShape'
 import Utils4 from '../Helper/Utils3'
+import Rect from "./Shape.Rect";
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element'
-// import Business from '../Opt/Business/Business'
-// import Commands from '../Opt/Business/Commands'
-// import SDF from "../Data/SDF";
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"
 import PolyList from "../Model/PolyList"
 import PolySeg from '../Model/PolySeg'
 import HitResult from '../Model/HitResult'
-// import LinkParameters from '../Model/LinkParameters'
 import RightClickData from '../Model/RightClickData'
-// import ConstantData1 from "../Data/ConstantData1"
+import ConstantData1 from "../Data/ConstantData1"
 import ArrowheadRecord from '../Model/ArrowheadRecord'
 
 class BaseLine extends BaseDrawingObject {
