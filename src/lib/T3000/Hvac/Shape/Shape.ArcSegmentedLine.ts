@@ -1,7 +1,6 @@
 
 
 import SegmentedLine from './Shape.SegmentedLine'
-// import ListManager from '../Data/ListManager';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
@@ -10,6 +9,7 @@ import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
+import Instance from '../Data/Instance/Instance';
 
 class ArcSegmentedLine extends SegmentedLine {
 
@@ -70,7 +70,7 @@ class ArcSegmentedLine extends SegmentedLine {
     shapePath.SetSize(shapeWidth, shapeHeight);
 
     if (isSimpleSegment) {
-      pointsArray = ListManager.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, null);
+      pointsArray = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, null);
       polyPointsResult = this.UpdateSVG(shapePath, pointsArray);
     } else {
       pointsArray = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
@@ -194,7 +194,7 @@ class ArcSegmentedLine extends SegmentedLine {
       resultPoints: Point[] = [];
 
     // Obtain base points from SegmentedLine's implementation.
-    basePoints = ListManager.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, false, null);
+    basePoints = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, false, null);
     boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
 
     // Check if the starting and ending directions are zero and the bounding rectangle is degenerate.
@@ -266,7 +266,7 @@ class ArcSegmentedLine extends SegmentedLine {
         }
       }
     } else {
-      resultPoints = ListManager.BaseLine.prototype.GetPolyPoints.call(this, numPoints, useRelativeCoordinates, true, null);
+      resultPoints = Instance.Shape.BaseLine.prototype.GetPolyPoints.call(this, numPoints, useRelativeCoordinates, true, null);
     }
 
     console.log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
@@ -277,7 +277,7 @@ class ArcSegmentedLine extends SegmentedLine {
     console.log("S.ArcSegmentedLine - GetTextOnLineParams input:", event);
 
     if (this.segl.pts.length !== 3) {
-      const result = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+      const result = Instance.Shape.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
       console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
       return result;
     }
@@ -289,7 +289,7 @@ class ArcSegmentedLine extends SegmentedLine {
         const polyPoints = this.GetPolyPoints(22, false, false, false, null);
         const rotatedPoints: Point[] = [];
         const textParams = {
-          Frame: new ListManager.Rect(),
+          Frame: new Instance.Shape.Rect(),
           StartPoint: new Point(),
           EndPoint: new Point()
         };
@@ -316,7 +316,7 @@ class ArcSegmentedLine extends SegmentedLine {
         return textParams;
       }
       default: {
-        const result = ListManager.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
+        const result = Instance.Shape.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
         console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
         return result;
       }

@@ -1328,7 +1328,6 @@ class ArcLine extends BaseLine {
         case hookPts.SED_KBC:
         case hookPts.SED_KRC:
         case hookPts.SED_KLC:
-          // const baseTargetPoints = ListManager.BaseLine.prototype.GetTargetPoints.call(this, hookElement, hookFlags, targetId);
           const baseTargetPoints = super.GetTargetPoints(hookElement, hookFlags, targetId);
           console.log("= S.ArcLine GetTargetPoints output:", baseTargetPoints);
           return baseTargetPoints;
@@ -1436,13 +1435,11 @@ class ArcLine extends BaseLine {
     // Retrieve the target object, then delegate if it is of a specific type.
     const refObject = GlobalData.optManager.GetObjectPtr(targetId, false);
     if (refObject && refObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_MULTIPLICITY) {
-      // resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
       resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
       console.log("= S.ArcLine GetPerimPts output (Multiplicity):", resultPoints);
       return resultPoints;
     }
     if (refObject && refObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_EXTRATEXTLABEL && hooks.length === 1) {
-      // resultPoints = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
       resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
       console.log("= S.ArcLine GetPerimPts output (ExtraTextLabel):", resultPoints);
       return resultPoints;
@@ -1456,7 +1453,6 @@ class ArcLine extends BaseLine {
     };
 
     let isReversedFlag = this.IsReversed;
-    // const basePerimPts: Point[] = ListManager.BaseLine.prototype.GetPerimPts.call(this, event, hooks, param3, param4, param5, targetId);
     const basePerimPts: Point[] = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
     let chordStart: Point, chordEnd: Point;
     let adjustFlag = false;
