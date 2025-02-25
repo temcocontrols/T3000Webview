@@ -7,16 +7,16 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import DefaultEvt from "../Event/DefaultEvt";
-import Collab from '../Data/Collab'
-import FileParser from '../Data/FileParser'
-import Resources from '../Data/Resources'
+// import Collab from '../Data/Collab'
+// import FileParser from '../Data/FileParser'
+// import Resources from '../Data/Resources'
 import $ from 'jquery';
 import Point from '../Model/Point';
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
-import Business from '../Opt/Business/Business';
-import SDF from '../Data/SDF'
-import Commands from '../Opt/Business/Commands'
+// import Business from '../Opt/Business/Business';
+// import SDF from '../Data/SDF'
+// import Commands from '../Opt/Business/Commands'
 import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import PolyList from '../Model/PolyList'
