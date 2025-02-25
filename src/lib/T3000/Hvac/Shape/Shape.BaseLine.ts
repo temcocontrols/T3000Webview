@@ -1,29 +1,27 @@
 
 
-
-
 import BaseDrawingObject from './Shape.BaseDrawingObject'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
+// import Collab from '../Data/Collab'
 import DefaultEvt from "../Event/DefaultEvt";
 import $ from 'jquery'
 import HvTimer from '../Helper/HvTimer'
 import Point from '../Model/Point'
-import BaseShape from './Shape.BaseShape'
-import Utils4 from '../Helper/Utils3'
 import Rect from "./Shape.Rect";
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element'
+// import SDF from "../Data/SDF";
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"
-import PolyList from "../Model/PolyList"
-import PolySeg from '../Model/PolySeg'
 import HitResult from '../Model/HitResult'
+import LinkParameters from '../Model/LinkParameters'
 import RightClickData from '../Model/RightClickData'
 import ConstantData1 from "../Data/ConstantData1"
 import ArrowheadRecord from '../Model/ArrowheadRecord'
+import ConstantData2 from "../Data/ConstantData2"
 
 class BaseLine extends BaseDrawingObject {
 
@@ -631,11 +629,11 @@ class BaseLine extends BaseDrawingObject {
 
       let widthDifference = textRect.width - this.TextWrapWidth;
       switch (SDF.TextAlignToWin(this.TextAlign).just) {
-        case FileParser.TextJust.TA_LEFT:
+        case ConstantData2.TextJust.TA_LEFT:
           this.trect.x = textRect.x;
           this.trect.width = this.TextWrapWidth;
           break;
-        case FileParser.TextJust.TA_RIGHT:
+        case ConstantData2.TextJust.TA_RIGHT:
           this.trect.x = textRect.x + textRect.width - this.TextWrapWidth;
           this.trect.width = this.TextWrapWidth;
           break;
@@ -872,17 +870,26 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: LinkGrow updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
-  HandleActionTriggerTrackCommon(e, t, a, r) {
-    console.log("= S.BaseLine: HandleActionTriggerTrackCommon called with e:", e, "t:", t, "a:", a, "r:", r);
+  HandleActionTriggerTrackCommon(
+    newX: number,
+    newY: number,
+    redrawFlag: boolean,
+    eventObj: any
+  ): void {
+    console.log("= S.BaseLine: HandleActionTriggerTrackCommon called with input:", {
+      newX,
+      newY,
+      redrawFlag,
+      eventObj,
+    });
 
-    const startX = GlobalData.optManager.theActionStartX;
-    const startY = GlobalData.optManager.theActionStartY;
+    const actionStartX = GlobalData.optManager.theActionStartX;
+    const actionStartY = GlobalData.optManager.theActionStartY;
     const actionBBox = $.extend(true, {}, GlobalData.optManager.theActionBBox);
-
     let adjustedPoint = {};
 
-    function adjustPoint(x, y, rect) {
-      const point = { x, y };
+    function adjustPoint(x: number, y: number, rect: any): { x: number; y: number } {
+      const point = { x: x, y: y };
       if (rect.x < 0) point.x -= rect.x;
       if (rect.y < 0) point.y -= rect.y;
       return point;
@@ -890,22 +897,46 @@ class BaseLine extends BaseDrawingObject {
 
     switch (GlobalData.optManager.theActionTriggerID) {
       case ConstantData.ActionTriggerType.LINESTART:
-        this.AdjustLineStart(GlobalData.optManager.theActionSVGObject, e, t, GlobalData.optManager.theActionTriggerID, a);
+        this.AdjustLineStart(
+          GlobalData.optManager.theActionSVGObject,
+          newX,
+          newY,
+          GlobalData.optManager.theActionTriggerID,
+          redrawFlag
+        );
         if (this.r.x < 0 || this.r.y < 0) {
           adjustedPoint = adjustPoint(this.StartPoint.x, this.StartPoint.y, this.r);
-          this.AdjustLineStart(GlobalData.optManager.theActionSVGObject, adjustedPoint.x, adjustedPoint.y, GlobalData.optManager.theActionTriggerID, a);
+          this.AdjustLineStart(
+            GlobalData.optManager.theActionSVGObject,
+            adjustedPoint.x,
+            adjustedPoint.y,
+            GlobalData.optManager.theActionTriggerID,
+            redrawFlag
+          );
         }
         break;
       case ConstantData.ActionTriggerType.POLYLEND:
       case ConstantData.ActionTriggerType.LINEEND:
-        this.AdjustLineEnd(GlobalData.optManager.theActionSVGObject, e, t, GlobalData.optManager.theActionTriggerID, a);
+        this.AdjustLineEnd(
+          GlobalData.optManager.theActionSVGObject,
+          newX,
+          newY,
+          GlobalData.optManager.theActionTriggerID,
+          redrawFlag
+        );
         if (this.r.x < 0 || this.r.y < 0) {
           adjustedPoint = adjustPoint(this.EndPoint.x, this.EndPoint.y, this.r);
-          this.AdjustLineEnd(GlobalData.optManager.theActionSVGObject, adjustedPoint.x, adjustedPoint.y, GlobalData.optManager.theActionTriggerID, a);
+          this.AdjustLineEnd(
+            GlobalData.optManager.theActionSVGObject,
+            adjustedPoint.x,
+            adjustedPoint.y,
+            GlobalData.optManager.theActionTriggerID,
+            redrawFlag
+          );
         }
         break;
       case ConstantData.ActionTriggerType.ROTATE:
-        this.AdjustRotate(e, t, r);
+        this.AdjustRotate(newX, newY, eventObj);
         break;
       case ConstantData.ActionTriggerType.MODIFYSHAPE:
       case ConstantData.ActionTriggerType.SEGL_ONE:
@@ -917,23 +948,48 @@ class BaseLine extends BaseDrawingObject {
       case ConstantData.ActionTriggerType.TOPRIGHT:
       case ConstantData.ActionTriggerType.BOTTOMLEFT:
       case ConstantData.ActionTriggerType.BOTTOMRIGHT:
-        this.ModifyShape(GlobalData.optManager.theActionSVGObject, e, t, GlobalData.optManager.theActionTriggerID, GlobalData.optManager.theActionTriggerData, a);
+        this.ModifyShape(
+          GlobalData.optManager.theActionSVGObject,
+          newX,
+          newY,
+          GlobalData.optManager.theActionTriggerID,
+          GlobalData.optManager.theActionTriggerData,
+          redrawFlag
+        );
         this.UpdateFrame();
         if (this.r.x < 0 || this.r.y < 0) {
-          adjustedPoint = adjustPoint(e, t, this.r);
-          this.ModifyShape(GlobalData.optManager.theActionSVGObject, adjustedPoint.x, adjustedPoint.y, GlobalData.optManager.theActionTriggerID, GlobalData.optManager.theActionTriggerData);
+          adjustedPoint = adjustPoint(newX, newY, this.r);
+          this.ModifyShape(
+            GlobalData.optManager.theActionSVGObject,
+            adjustedPoint.x,
+            adjustedPoint.y,
+            GlobalData.optManager.theActionTriggerID,
+            GlobalData.optManager.theActionTriggerData
+          );
           this.UpdateFrame();
         }
         break;
       case ConstantData.ActionTriggerType.MOVEPOLYSEG:
-        this.MovePolySeg(GlobalData.optManager.theActionSVGObject, e, t, GlobalData.optManager.theActionTriggerID, GlobalData.optManager.theActionTriggerData);
+        this.MovePolySeg(
+          GlobalData.optManager.theActionSVGObject,
+          newX,
+          newY,
+          GlobalData.optManager.theActionTriggerID,
+          GlobalData.optManager.theActionTriggerData
+        );
         break;
       case ConstantData.ActionTriggerType.DIMENSION_LINE_ADJ:
-        this.DimensionLineDeflectionAdjust(GlobalData.optManager.theActionSVGObject, e, t, GlobalData.optManager.theActionTriggerID, GlobalData.optManager.theActionTriggerData);
+        this.DimensionLineDeflectionAdjust(
+          GlobalData.optManager.theActionSVGObject,
+          newX,
+          newY,
+          GlobalData.optManager.theActionTriggerID,
+          GlobalData.optManager.theActionTriggerData
+        );
         break;
     }
 
-    console.log("= S.BaseLine: HandleActionTriggerTrackCommon completed with updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    console.log("= S.BaseLine: HandleActionTriggerTrackCommon completed with updated StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
   }
 
 
@@ -1899,7 +1955,6 @@ class BaseLine extends BaseDrawingObject {
     return hookFlags;
   }
 
-
   AllowLink() {
 
     const layersManager = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLayersManagerBlockID, false);
@@ -1911,8 +1966,6 @@ class BaseLine extends BaseDrawingObject {
 
     return !useEdges && (fromOverlayLayer || sessionLink);
   }
-
-
 
   GetHookPoints(): { x: number; y: number; id: number }[] {
     console.log("= S.BaseLine: GetHookPoints called");
@@ -2374,10 +2427,6 @@ class BaseLine extends BaseDrawingObject {
 
       case ConstantData.ObjectTypes.SD_OBJT_NG_EVENT:
         console.log("= S.BaseLine: Handling SD_OBJT_NG_EVENT");
-
-        if (this.datasetElemID >= 0) {
-          ListManager.SDData.DeleteRow(this.datasetElemID);
-        }
 
         if (this.hooks.length) {
           const hookObject = GlobalData.optManager.GetObjectPtr(this.hooks[0].objid, false);
@@ -3548,7 +3597,6 @@ class BaseLine extends BaseDrawingObject {
     return 0;
   }
 
-
   LM_DrawClick_ExceptionCleanup(event) {
     console.log("= S.BaseLine: LM_DrawClick_ExceptionCleanup called with input:", event);
 
@@ -3572,7 +3620,6 @@ class BaseLine extends BaseDrawingObject {
 
     console.log("= S.BaseLine: LM_DrawClick_ExceptionCleanup output: cleanup complete");
   }
-
 
   LM_DrawClick(docCorX, docCorY) {
 
@@ -3612,8 +3659,8 @@ class BaseLine extends BaseDrawingObject {
       // Evaluate vertical justification from text alignment.
       const textAlignWin = SDF.TextAlignToWin(this.TextAlign);
       switch (textAlignWin.vjust) {
-        case FileParser.TextJust.TA_TOP:
-        case FileParser.TextJust.TA_BOTTOM:
+        case ConstantData2.TextJust.TA_TOP:
+        case ConstantData2.TextJust.TA_BOTTOM:
           console.log("= S.BaseLine: Vertical justification is TOP or BOTTOM");
           break;
       }
@@ -3658,7 +3705,7 @@ class BaseLine extends BaseDrawingObject {
     // If writing for Visio and a polyline exists, delegate the SDF attributes for PolyLine.
     if (options.WriteVisio && this.polylist) {
       console.log("= S.BaseLine: WriteVisio flag set and polylist exists; delegating to PolyLine.WriteSDFAttributes");
-      ListManager.PolyLine.prototype.WriteSDFAttributes.call(this, e, options, false);
+      Instance.Shape.PolyLine.prototype.WriteSDFAttributes.call(this, e, options, false);
     }
 
     // Write text parameters to SDF.
@@ -3795,7 +3842,7 @@ class BaseLine extends BaseDrawingObject {
     this.StyleRecord.Fill.Paint.Color = sessionObj.background.Paint.Color;
 
     // Set FillType and Opacity based on vertical justification
-    if (textAlignWin.vjust === FileParser.TextJust.TA_CENTER) {
+    if (textAlignWin.vjust === ConstantData2.TextJust.TA_CENTER) {
       this.StyleRecord.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
       this.StyleRecord.Fill.Paint.Opacity = 1;
     } else {
@@ -4152,10 +4199,10 @@ class BaseLine extends BaseDrawingObject {
     if (this.LineTextY || this.LineTextX) {
       const winTextAlign = SDF.TextAlignToWin(this.TextAlign);
       switch (winTextAlign.vjust) {
-        case FileParser.TextJust.TA_TOP:
+        case ConstantData2.TextJust.TA_TOP:
           verticalOffset = this.trect.height / 2 - textHeight / 2 + this.LineTextY;
           break;
-        case FileParser.TextJust.TA_BOTTOM:
+        case ConstantData2.TextJust.TA_BOTTOM:
           verticalOffset = -this.trect.height / 2 + textHeight / 2 + this.LineTextY;
           break;
         default:
@@ -4353,7 +4400,7 @@ class BaseLine extends BaseDrawingObject {
 
     // Check if the object is a Line that is a floorplan wall and if the wall tool is enabled
     if (!(
-      this instanceof Line &&
+      this instanceof Instance.Shape.Line &&
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL &&
       (
         (GlobalData.gBusinessManager && GlobalData.gBusinessManager.IsAddingWalls && GlobalData.gBusinessManager.IsAddingWalls()) ||
