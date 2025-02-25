@@ -1,6 +1,6 @@
 
 
-import Utils2 from "./Helper.Utils2"
+import Utils2 from "./Utils2"
 import SegmentData from '../Model/SegmentData'
 import Utils3 from "./Utils3"
 

@@ -3,16 +3,12 @@
 import { Type } from 'class-transformer'
 import 'reflect-metadata'
 import Globals from "../Data/Globals"
-// import ListManager from "../Data/ListManager"
 import Utils1 from '../Helper/Utils1'
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import Global from '../Data/Globals'
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt"
-// import Resources from '../Data/Resources'
 import DefaultStyle from '../Model/DefaultStyle'
 import Point from '../Model/Point'
 import $ from 'jquery'
@@ -20,7 +16,7 @@ import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
 import Effects from "../Basic/Basic.Element.Effects";
 import Formatter from '../Basic/Basic.Text.Formatter'
-import Utils4 from "../Helper/Utils3";
+import Utils4 from "../Helper/Utils4";
 import ParagraphFormat from '../Model/ParagraphFormat'
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"
@@ -33,6 +29,7 @@ import Rectangle from '../Model/Rectangle'
 import CRect from '../Model/CRect'
 import ConstantData2 from '../Data/ConstantData2'
 import PolyList from '../Model/PolyList'
+import BasicConstants from '../Basic/Basic.Constants'
 
 class BaseDrawingObject {
   public Type: string;
@@ -92,7 +89,7 @@ class BaseDrawingObject {
   public CommentID: number;
   public TextParams: any;
   public TextGrow: number;
-  public TextAlign: number;
+  public TextAlign: any;
   public colorfilter: number;
   public colorchanges: number;
   public moreflags: number;
@@ -1767,7 +1764,6 @@ class BaseDrawingObject {
     });
 
     if (this.polylist && this.StartPoint && this.EndPoint) {
-      // ListManager.PolyLine.prototype.ScaleEndPoints.call(this)
       this.PolyLine_ScaleEndPoints();
     }
 
@@ -3923,239 +3919,242 @@ class BaseDrawingObject {
     return result;
   }
 
-  AdjustAutoInsertShape(e) {
-    return !1
+  AdjustAutoInsertShape(shapeData: any): boolean {
+    console.log("= S.BaseDrawingObject: AdjustAutoInsertShape input:", shapeData);
+
+    const result = false;
+
+    console.log("= S.BaseDrawingObject: AdjustAutoInsertShape output:", result);
+    return result;
   }
 
-  // Double
-  GetDimensionTextInfo1(e, t, a, r, i, n, o, s, l) {
-    console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
-    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
-    // e point
-    // t point
-    // a 0
-    // r Text
-    // i 1
-    // n Array
-    // o Array
-    // s array
-    // l boolean
+  GetDimensionTextInfo1(
+    startPoint: Point,
+    endPoint: Point,
+    angle: number,
+    textShape: any,
+    segmentIndex: number,
+    textFramePoints: Point[],
+    leftArrowPoints: Point[],
+    rightArrowPoints: Point[],
+    isStandoff: boolean
+  ): void {
+    console.log("= S.BaseDrawingObject: GetDimensionTextInfo1 input:", {
+      startPoint,
+      endPoint,
+      angle,
+      textShape,
+      segmentIndex,
+      textFramePoints,
+      leftArrowPoints,
+      rightArrowPoints,
+      isStandoff
+    });
 
-    var S;
-    var c;
-    var u;
-    var p = [];
-    var d = {};
-    var D = {};
-    var g = {};
-    var h = { x: 0, y: 0, width: 0, height: 0 };
-    var m = 0;
-    var C = !1;
-    var y = 0;
-    var f = !1;
+    // Define local variables with readable names
+    let newAngle: number;
+    let arcLength: number;
+    let minTextDim: any;
+    const polyPoints: Point[] = [];
+    let pointStartRef: Point;
+    let pointEndRef: Point;
+    let tempPoint: Point = { x: 0, y: 0 };
+    let textDim: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
+    let textGap: number = 0;
+    let isTextAltPositioning: boolean = false;
+    let deflection: number = 0;
+    let useStandOff: boolean = false;
 
+    // Get minimum text dimensions and initialize textDim
+    minTextDim = textShape.GetTextMinDimensions();
+    textDim.height = minTextDim.height;
+    textDim.width = minTextDim.width;
 
-    u = r.GetTextMinDimensions();
-    h.height = u.height;
-    h.width = u.width;
-    p.push(new Point(e.x, e.y));
-    p.push(new Point(t.x, t.y));
-    S = 360 - a;
-    c = 2 * Math.PI * (S / 360);
-    Utils3.RotatePointsAboutCenter(this.Frame, - c, p);
+    // Create a polyline from the start and end points
+    polyPoints.push(new Point(startPoint.x, startPoint.y));
+    polyPoints.push(new Point(endPoint.x, endPoint.y));
 
-    p[0].x < p[1].x ?
-      (d = $.extend(!0, {}, p[0]), D = $.extend(!0, {}, p[1]))
+    // Calculate the arc depending on the angle
+    newAngle = 360 - angle;
+    arcLength = 2 * Math.PI * (newAngle / 360);
+    Utils3.RotatePointsAboutCenter(this.Frame, -arcLength, polyPoints);
 
-      : (d = $.extend(!0, {}, p[1]), D = $.extend(!0, {}, p[0]));
-
-
-    h.x = d.x + (D.x - d.x) / 2;
-    h.y = d.y + (D.y - d.y) / 2;
-    h.x -= h.width / 2;
-    h.y -= h.height / 2;
-    h.y -= h.height / 2;
-
-    const check1 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior || this.StyleRecord &&
-      this.StyleRecord.Line && this.StyleRecord.Line.Thickness;
-
-    if (check1) {
-      (h.y -= this.StyleRecord.Line.Thickness);
+    // Determine which point is to the left most given the rotated points
+    if (polyPoints[0].x < polyPoints[1].x) {
+      pointStartRef = $.extend(true, {}, polyPoints[0]);
+      pointEndRef = $.extend(true, {}, polyPoints[1]);
+    } else {
+      pointStartRef = $.extend(true, {}, polyPoints[1]);
+      pointEndRef = $.extend(true, {}, polyPoints[0]);
     }
 
-    // f = 0 != (
-    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
-    // ) &&
-    //   this.CanUseStandOffDimensionLines();
+    // Calculate the text frame's position (centered between the two points)
+    textDim.x = pointStartRef.x + (pointEndRef.x - pointStartRef.x) / 2;
+    textDim.y = pointStartRef.y + (pointEndRef.y - pointStartRef.y) / 2;
+    textDim.x -= textDim.width / 2;
+    textDim.y -= textDim.height / 2;
+    textDim.y -= textDim.height / 2;
 
+    // If using exterior dimensions, adjust the text frame vertically by line thickness
+    const exteriorCheck =
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior) ||
+      (this.StyleRecord && this.StyleRecord.Line && this.StyleRecord.Line.Thickness);
+    if (exteriorCheck) {
+      textDim.y -= this.StyleRecord.Line.Thickness;
+    }
 
-    f = 0 != (
-      this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
-    ) &&
+    // Determine if standoff should be used
+    useStandOff =
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff) != 0 &&
       this.CanUseStandOffDimensionLines();
 
-
-
     if (
-      !l &&
-      !(
-        this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions
-      ) &&
-      // this instanceof ListManager.BaseLine &&
-      // Double === TODO
-      // this instanceof GlobalDataShape.BaseLine &&
+      !isStandoff &&
+      !(this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions) &&
       this instanceof Instance.Shape.BaseLine &&
       this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
     ) {
-      var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
-      if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
-        (f = !0)
+      const linkObj = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
+      if (linkObj && GlobalData.optManager.FindLink(linkObj, this.BlockID, true) >= 0) {
+        useStandOff = true;
+      }
     }
-    l &&
-      (f = !1);
+    if (isStandoff) {
+      useStandOff = false;
+    }
 
-    var I = f ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
+    // Choose default offset based on standoff usage
+    const defaultOffset = useStandOff
+      ? ConstantData.Defines.DimensionDefaultStandoff
+      : ConstantData.Defines.DimensionDefaultNonStandoff;
 
+    // Adjust textDim vertically with the default offset
+    textDim.y -= defaultOffset;
+    textGap = ConstantData.Defines.DimensionDefaultTextGap;
     if (
-      h.y -= I,
-      m = ConstantData.Defines.DimensionDefaultTextGap,
-      this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
-      this.StyleRecord &&
-      this.StyleRecord.Line &&
-      this.StyleRecord.Line.Thickness &&
-      (m += this.StyleRecord.Line.Thickness),
-      // this instanceof ListManager.BaseLine &&
-      // Double === TODO
-      // this instanceof GlobalDataShape.BaseLine &&
-      this instanceof Instance.Shape.BaseLine &&
-      (!this.polylist || 2 === this.polylist.segs.length)
+      (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior) ||
+      (this.StyleRecord && this.StyleRecord.Line && this.StyleRecord.Line.Thickness)
     ) {
-      var T = Math.floor((c - 0.01) / (Math.PI / 2));
-      C = 1 == T ||
-        2 == T
-    } else if (this.polylist && !this.polylist.closed && l) {
-      var b = [
-        (
-          p = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
-        )[i - 1],
-        p[i]
-      ];
-      Utils3.RotatePointsAboutCenter(this.Frame, - c, b),
-        b.push({
-          x: h.x + h.width / 2,
-          y: h.y + h.height / 2
-        }),
-        b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
-        Utils3.RotatePointsAboutCenter(this.Frame, c, b),
-        Utils2.IsPointInPoly(p, b[2]) &&
-        (C = !0)
-    } else this.IsTextFrameOverlap(h, a) &&
-      (C = !0);
-    C &&
-      (
-        h.y += I,
-        h.y += h.height,
-        this.StyleRecord &&
-        this.StyleRecord.Line &&
-        this.StyleRecord.Line.Thickness &&
-        (h.y += 2 * this.StyleRecord.Line.Thickness),
-        h.y += I
-      );
-    var M = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+      textGap += this.StyleRecord.Line.Thickness;
+    }
+
+    // Determine if alternative text positioning is needed
     if (
-      M &&
-      !this.CanUseStandOffDimensionLines() &&
-      (M = !1),
-      l &&
-      (M = !1),
-      M &&
-      (
-        y = (
-          // this instanceof ListManager.PolyLine ||
-          // this instanceof GlobalDataShape.PolyLine ||
-          this instanceof Instance.Shape.PolyLine ||
-          // this instanceof ListManager.Polygon
-          // Double === TODO
-          // this instanceof GlobalDataShape.Polygon
-          this instanceof Instance.Shape.Polygon
-        ) &&
-          this.polylist &&
-          this.polylist.segs &&
-          this.polylist.segs.length > i ? this.polylist.segs[i].dimDeflection :
+      this instanceof Instance.Shape.BaseLine &&
+      (!this.polylist || this.polylist.segs.length === 2)
+    ) {
+      const T = Math.floor((arcLength - 0.01) / (Math.PI / 2));
+      isTextAltPositioning = T === 1 || T === 2;
+    } else if (this.polylist && !this.polylist.closed && isStandoff) {
+      const polyPts = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true, true, false, null);
+      const segmentPoints = [polyPts[segmentIndex - 1], polyPts[segmentIndex]];
+      Utils3.RotatePointsAboutCenter(this.Frame, -arcLength, segmentPoints);
+      segmentPoints.push({
+        x: textDim.x + textDim.width / 2,
+        y: textDim.y + textDim.height / 2
+      });
+      segmentPoints[2].x = segmentPoints[0].x + (segmentPoints[1].x - segmentPoints[0].x) / 2;
+      Utils3.RotatePointsAboutCenter(this.Frame, arcLength, segmentPoints);
+      if (Utils2.IsPointInPoly(polyPts, segmentPoints[2])) {
+        isTextAltPositioning = true;
+      }
+    } else if (this.IsTextFrameOverlap(textDim, angle)) {
+      isTextAltPositioning = true;
+    }
+    if (isTextAltPositioning) {
+      textDim.y += defaultOffset;
+      textDim.y += textDim.height;
+      if (this.StyleRecord && this.StyleRecord.Line && this.StyleRecord.Line.Thickness) {
+        textDim.y += 2 * this.StyleRecord.Line.Thickness;
+      }
+      textDim.y += defaultOffset;
+    }
 
-          // this instanceof ListManager.BaseLine
-          // Double === TODO
-          // this instanceof GlobalDataShape.BaseLine
-          this instanceof Instance.Shape.BaseLine
-
-            ? this.dimensionDeflectionH ? this.dimensionDeflectionH : 0 : (
-              y = Math.abs(a % 180) < 5 ? this.dimensionDeflectionH : this.dimensionDeflectionV
-            ) ||
-            0,
-        C ? h.y += y : h.y -= y,
+    // Handle standoff flag for further adjustment
+    let standOffFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
+    if (standOffFlag && !this.CanUseStandOffDimensionLines()) {
+      standOffFlag = false;
+    }
+    if (isStandoff) {
+      standOffFlag = false;
+    }
+    if (standOffFlag) {
+      if (
+        (this instanceof Instance.Shape.PolyLine || this instanceof Instance.Shape.Polygon) &&
         this.polylist &&
         this.polylist.segs &&
-        this.polylist.segs.length > i &&
-        (this.polylist.segs[i].dimTextAltPositioning = C)
-      ),
-      this.Frame2Poly(h, n),
-      this.Dimensions & M
-    ) g.x = d.x,
-      g.y = d.y > h.y ? d.y - m : d.y + m,
-      o.push(new Point(g.x, g.y)),
-      g.y = h.y + h.height / 2,
-      o.push(new Point(g.x, g.y)),
-      g.x = h.x - ConstantData.Defines.DimensionDefaultTextGap,
-      o.push(new Point(g.x, g.y)),
-      g.x = h.x + h.width + ConstantData.Defines.DimensionDefaultTextGap,
-      s.push(new Point(g.x, g.y)),
-      g.x = D.x,
-      s.push(new Point(g.x, g.y)),
-      g.y = D.y > h.y ? D.y - m : D.y + m,
-      s.push(new Point(g.x, g.y));
-    else {
-      var P = 0.5 * h.height;
-      var R = 0.5 * P;
-
-
-      g.x = h.x - R;
-      g.y = h.y + (h.height - P) / 2;
-      o.push(new Point(g.x, g.y));
-      g.y += P;
-      o.push(new Point(g.x, g.y));
-      g.x -= P;
-      g.y = h.y + h.height / 2;
-      o.push(new Point(g.x, g.y));
-      o.push(new Point(o[0].x, o[0].y));
-      g.x = h.x + h.width + R;
-      g.y = h.y + (h.height - P) / 2;
-      s.push(new Point(g.x, g.y));
-      g.y += P;
-      s.push(new Point(g.x, g.y));
-      g.x += P;
-      g.y = h.y + h.height / 2;
-      s.push(new Point(g.x, g.y));
-      s.push(new Point(s[0].x, s[0].y));
+        this.polylist.segs.length > segmentIndex
+      ) {
+        deflection = this.polylist.segs[segmentIndex].dimDeflection;
+      } else if (this instanceof Instance.Shape.BaseLine) {
+        deflection = this.dimensionDeflectionH ? this.dimensionDeflectionH : 0;
+      } else {
+        deflection = Math.abs(angle % 180) < 5 ? this.dimensionDeflectionH : this.dimensionDeflectionV || 0;
+      }
+      textDim.y = isTextAltPositioning ? textDim.y + deflection : textDim.y - deflection;
+      if (this.polylist && this.polylist.segs && this.polylist.segs.length > segmentIndex) {
+        this.polylist.segs[segmentIndex].dimTextAltPositioning = isTextAltPositioning;
+      }
     }
-    Utils3.RotatePointsAboutCenter(this.Frame, c, n),
-      Utils3.RotatePointsAboutCenter(this.Frame, c, o),
-      Utils3.RotatePointsAboutCenter(this.Frame, c, s)
+
+    // Convert the calculated text frame (textDim) into a polygon and store in textFramePoints
+    this.Frame2Poly(textDim, textFramePoints);
+
+    // Depending on the standoff flag, create arrowhead points for dimension lines
+    if (this.Dimensions & standOffFlag) {
+      tempPoint.x = pointStartRef.x;
+      tempPoint.y = pointStartRef.y > textDim.y ? pointStartRef.y - textGap : pointStartRef.y + textGap;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.y = textDim.y + textDim.height / 2;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.x = textDim.x - ConstantData.Defines.DimensionDefaultTextGap;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.x = textDim.x + textDim.width + ConstantData.Defines.DimensionDefaultTextGap;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.x = pointEndRef.x;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.y = pointEndRef.y > textDim.y ? pointEndRef.y - textGap : pointEndRef.y + textGap;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+    } else {
+      const halfHeight = 0.5 * textDim.height;
+      const quarterHeight = 0.5 * halfHeight;
+
+      tempPoint.x = textDim.x - quarterHeight;
+      tempPoint.y = textDim.y + (textDim.height - halfHeight) / 2;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.y += halfHeight;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.x -= halfHeight;
+      tempPoint.y = textDim.y + textDim.height / 2;
+      leftArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      leftArrowPoints.push(new Point(leftArrowPoints[0].x, leftArrowPoints[0].y));
+
+      tempPoint.x = textDim.x + textDim.width + quarterHeight;
+      tempPoint.y = textDim.y + (textDim.height - halfHeight) / 2;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.y += halfHeight;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      tempPoint.x += halfHeight;
+      tempPoint.y = textDim.y + textDim.height / 2;
+      rightArrowPoints.push(new Point(tempPoint.x, tempPoint.y));
+      rightArrowPoints.push(new Point(rightArrowPoints[0].x, rightArrowPoints[0].y));
+    }
+
+    // Rotate all calculated points back by the arcLength to adjust their final positions
+    Utils3.RotatePointsAboutCenter(this.Frame, arcLength, textFramePoints);
+    Utils3.RotatePointsAboutCenter(this.Frame, arcLength, leftArrowPoints);
+    Utils3.RotatePointsAboutCenter(this.Frame, arcLength, rightArrowPoints);
+
+    console.log("= S.BaseDrawingObject: GetDimensionTextInfo1 output:", {
+      textDim,
+      textFramePoints,
+      leftArrowPoints,
+      rightArrowPoints
+    });
   }
 
-
   GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff) {
-    // console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
-    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
-    // e point
-    // t point
-    // a 0
-    // r Text
-    // i 1
-    // n Array
-    // o Array
-    // s array
-    // l boolean
 
     var newAngle;//S;
     var arcLength;//c;
@@ -4173,9 +4172,7 @@ class BaseDrawingObject {
     var C = false;// !1;
     var y = 0;
 
-    var isStdOff = false;// f = !1;
-
-    // GetTextMinDimensions {width: 0, height: 0}
+    var isStdOff = false;
 
     textMinDim = textShape.GetTextMinDimensions();
     textDim.height = textMinDim.height;
@@ -4200,12 +4197,6 @@ class BaseDrawingObject {
 
     }
 
-    // polyPoints[0].x < polyPoints[1].x ?
-    //   (pointStart = $.extend(!0, {}, polyPoints[0]), pointEnd = $.extend(!0, {}, polyPoints[1]))
-
-    //   : (pointStart = $.extend(!0, {}, polyPoints[1]), pointEnd = $.extend(!0, {}, polyPoints[0]));
-
-
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
     textDim.y = pointStart.y + (pointEnd.y - pointStart.y) / 2;
     textDim.x -= textDim.width / 2;
@@ -4219,17 +4210,8 @@ class BaseDrawingObject {
       (textDim.y -= this.StyleRecord.Line.Thickness);
     }
 
-    // f = 0 != (
-    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
-    // ) &&
-    //   this.CanUseStandOffDimensionLines();
-
     const stdOffFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
-
-    // f = 0 != (stdOffFlag ) &&  this.CanUseStandOffDimensionLines();
-
     isStdOff = stdOffFlag != 0 && this.CanUseStandOffDimensionLines();
-
 
     const isHideHookedObjDimensions = this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions;
 
@@ -4238,24 +4220,7 @@ class BaseDrawingObject {
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL;
 
 
-    if (
-
-      /*
-      !isStandoff && !(isHideHookedObjDimensions) &&
-      // this instanceof ListManager.BaseLine &&
-      // Double === TODO
-      // this instanceof GlobalDataShape.BaseLine &&
-      this instanceof Instance.Shape.BaseLine &&
-      this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
-      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
-      */
-
-      check3
-    ) {
-      // var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
-      // if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
-      //   (isStdOff = !0)
-
+    if (check3) {
       var linkObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
       if (linkObject) {
 
@@ -4266,65 +4231,11 @@ class BaseDrawingObject {
       }
     }
 
-
-    // isStandoff &&
-    //   (isStdOff = !1);
-
     if (isStandoff) {
       isStdOff = false;
     }
 
-    // var I = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
     const stdOffNum = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
-
-    // if (
-    //   textDim.y -= stdOffNum,
-    //   m = ConstantData.Defines.DimensionDefaultTextGap,
-    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
-    //   this.StyleRecord &&
-    //   this.StyleRecord.Line &&
-    //   this.StyleRecord.Line.Thickness &&
-    //   (m += this.StyleRecord.Line.Thickness),
-    //   // this instanceof ListManager.BaseLine &&
-    //   // Double === TODO
-    //   // this instanceof GlobalDataShape.BaseLine &&
-    //   this instanceof Instance.Shape.BaseLine &&
-    //   (!this.polylist || 2 === this.polylist.segs.length)
-    // ) {
-    //   var T = Math.floor((arcLength - 0.01) / (Math.PI / 2));
-    //   C = 1 == T ||
-    //     2 == T
-    // } else if (this.polylist && !this.polylist.closed && isStandoff) {
-    //   var b = [
-    //     (
-    //       polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
-    //     )[segmentIndex - 1],
-    //     polyPoints[segmentIndex]
-    //   ];
-    //   GlobalData.optManager.RotatePointsAboutCenter(this.Frame, - arcLength, b),
-    //     b.push({
-    //       x: textDim.x + textDim.width / 2,
-    //       y: textDim.y + textDim.height / 2
-    //     }),
-    //     b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
-    //     GlobalData.optManager.RotatePointsAboutCenter(this.Frame, arcLength, b),
-    //     Utils2.IsPointInPoly(polyPoints, b[2]) &&
-    //     (C = !0)
-    // } else this.IsTextFrameOverlap(textDim, angle) &&
-    //   (C = !0);
-    // C &&
-    //   (
-    //     textDim.y += stdOffNum,
-    //     textDim.y += textDim.height,
-    //     this.StyleRecord &&
-    //     this.StyleRecord.Line &&
-    //     this.StyleRecord.Line.Thickness &&
-    //     (textDim.y += 2 * this.StyleRecord.Line.Thickness),
-    //     textDim.y += stdOffNum
-    //   );
-
-
-
 
     if (textDim.y -= stdOffNum,
       m = ConstantData.Defines.DimensionDefaultTextGap,
@@ -4362,18 +4273,7 @@ class BaseDrawingObject {
       textDim.y += stdOffNum;
     }
 
-
-
-
-
-
-
-
-
-
-
-    let isStdOff2 = false; //M
-
+    let isStdOff2 = false;
     var stdOffFlag2 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
 
     if (stdOffFlag2 && !this.CanUseStandOffDimensionLines()) {
@@ -4449,28 +4349,12 @@ class BaseDrawingObject {
       rightArrowPoints.push(new Point(rightArrowPoints[0].x, rightArrowPoints[0].y));
     }
 
-
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, textFramePoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, leftArrowPoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, rightArrowPoints);
-
-
   }
 
-
-
   GetCoordinateTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff) {
-    // console.log('=== GetDimensionTextInfo', e, t, a, r, i, n, o, s, l);
-    //startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff
-    // e point
-    // t point
-    // a 0
-    // r Text
-    // i 1
-    // n Array
-    // o Array
-    // s array
-    // l boolean
 
     var newAngle;//S;
     var arcLength;//c;
@@ -4489,8 +4373,6 @@ class BaseDrawingObject {
     var y = 0;
 
     var isStdOff = false;// f = !1;
-
-    // GetTextMinDimensions {width: 0, height: 0}
 
     textMinDim = textShape.GetTextMinDimensions();
     textDim.height = textMinDim.height;
@@ -4512,14 +4394,7 @@ class BaseDrawingObject {
     else {
       pointStart = $.extend(true, {}, polyPoints[1]);
       pointEnd = $.extend(true, {}, polyPoints[0]);
-
     }
-
-    // polyPoints[0].x < polyPoints[1].x ?
-    //   (pointStart = $.extend(!0, {}, polyPoints[0]), pointEnd = $.extend(!0, {}, polyPoints[1]))
-
-    //   : (pointStart = $.extend(!0, {}, polyPoints[1]), pointEnd = $.extend(!0, {}, polyPoints[0]));
-
 
     textDim.x = pointStart.x + (pointEnd.x - pointStart.x) / 2;
     textDim.y = pointStart.y + (pointEnd.y - pointStart.y) / 2;
@@ -4534,43 +4409,17 @@ class BaseDrawingObject {
       (textDim.y -= this.StyleRecord.Line.Thickness);
     }
 
-    // f = 0 != (
-    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff
-    // ) &&
-    //   this.CanUseStandOffDimensionLines();
-
     const stdOffFlag = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
-
-    // f = 0 != (stdOffFlag ) &&  this.CanUseStandOffDimensionLines();
-
     isStdOff = stdOffFlag != 0 && this.CanUseStandOffDimensionLines();
-
-
     const isHideHookedObjDimensions = this.Dimensions & ConstantData.DimensionFlags.SED_DF_HideHookedObjDimensions;
 
     const check3 = !isStandoff && !isHideHookedObjDimensions && this instanceof Instance.Shape.BaseLine &&
       this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
       this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL;
 
-
     if (
-
-      /*
-      !isStandoff && !(isHideHookedObjDimensions) &&
-      // this instanceof ListManager.BaseLine &&
-      // Double === TODO
-      // this instanceof GlobalDataShape.BaseLine &&
-      this instanceof Instance.Shape.BaseLine &&
-      this.ShortRef != ConstantData2.LineTypes.SED_LS_MeasuringTape &&
-      this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL
-      */
-
       check3
     ) {
-      // var L = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, !1);
-      // if (L) GlobalData.optManager.FindLink(L, this.BlockID, !0) >= 0 &&
-      //   (isStdOff = !0)
-
       var linkObject = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLinksBlockID, false);
       if (linkObject) {
 
@@ -4581,77 +4430,14 @@ class BaseDrawingObject {
       }
     }
 
-
-    // isStandoff &&
-    //   (isStdOff = !1);
-
     if (isStandoff) {
       isStdOff = false;
     }
 
-    // var I = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
-
-    // Double set the stdoff to coordindateLine std off
-    //  const stdOffNum = isStdOff ? ConstantData.Defines.DimensionDefaultStandoff : ConstantData.Defines.DimensionDefaultNonStandoff;
-
     const stdOffNum = isStdOff ? ConstantData.Defines.CoordinateLineDefaultStandoff : ConstantData.Defines.CoordinateLineDefaultNonStandoff;
 
-    // if (
-    //   textDim.y -= stdOffNum,
-    //   m = ConstantData.Defines.DimensionDefaultTextGap,
-    //   this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
-    //   this.StyleRecord &&
-    //   this.StyleRecord.Line &&
-    //   this.StyleRecord.Line.Thickness &&
-    //   (m += this.StyleRecord.Line.Thickness),
-    //   // this instanceof ListManager.BaseLine &&
-    //   // Double === TODO
-    //   // this instanceof GlobalDataShape.BaseLine &&
-    //   this instanceof Instance.Shape.BaseLine &&
-    //   (!this.polylist || 2 === this.polylist.segs.length)
-    // ) {
-    //   var T = Math.floor((arcLength - 0.01) / (Math.PI / 2));
-    //   C = 1 == T ||
-    //     2 == T
-    // } else if (this.polylist && !this.polylist.closed && isStandoff) {
-    //   var b = [
-    //     (
-    //       polyPoints = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, !0, !0, !1, null)
-    //     )[segmentIndex - 1],
-    //     polyPoints[segmentIndex]
-    //   ];
-    //   GlobalData.optManager.RotatePointsAboutCenter(this.Frame, - arcLength, b),
-    //     b.push({
-    //       x: textDim.x + textDim.width / 2,
-    //       y: textDim.y + textDim.height / 2
-    //     }),
-    //     b[2].x = b[0].x + (b[1].x - b[0].x) / 2,
-    //     GlobalData.optManager.RotatePointsAboutCenter(this.Frame, arcLength, b),
-    //     Utils2.IsPointInPoly(polyPoints, b[2]) &&
-    //     (C = !0)
-    // } else this.IsTextFrameOverlap(textDim, angle) &&
-    //   (C = !0);
-    // C &&
-    //   (
-    //     textDim.y += stdOffNum,
-    //     textDim.y += textDim.height,
-    //     this.StyleRecord &&
-    //     this.StyleRecord.Line &&
-    //     this.StyleRecord.Line.Thickness &&
-    //     (textDim.y += 2 * this.StyleRecord.Line.Thickness),
-    //     textDim.y += stdOffNum
-    //   );
-
-
-    // TODO
     textDim.y -= stdOffNum;
-
-    // move the text up
-    // textDim.y += stdOffNum / 2;
-    // textDim.y += textDim.height / 2;
-
-    // m = ConstantData.Defines.DimensionDefaultTextGap;
-    textGap = ConstantData.Defines.CoordinateLineDefaultTextGap;//3
+    textGap = ConstantData.Defines.CoordinateLineDefaultTextGap;
 
     const check4 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior || this.StyleRecord &&
       this.StyleRecord.Line && this.StyleRecord.Line.Thickness;
@@ -4664,16 +4450,6 @@ class BaseDrawingObject {
       (!this.polylist || 2 === this.polylist.segs.length);
 
     if (
-      // textDim.y -= stdOffNum,
-      // m = ConstantData.Defines.DimensionDefaultTextGap,
-      // this.Dimensions & ConstantData.DimensionFlags.SED_DF_Exterior ||
-      // this.StyleRecord &&
-      // this.StyleRecord.Line &&
-      // this.StyleRecord.Line.Thickness &&
-      // (m += this.StyleRecord.Line.Thickness),
-      // this instanceof Instance.Shape.BaseLine &&
-      // (!this.polylist || 2 === this.polylist.segs.length)
-
       check5
     ) {
 
@@ -4705,18 +4481,7 @@ class BaseDrawingObject {
       textDim.y += stdOffNum;
     }
 
-
-
-
-
-
-
-
-
-
-
-    let isStdOff2 = false; //M
-
+    let isStdOff2 = false;
     var stdOffFlag2 = this.Dimensions & ConstantData.DimensionFlags.SED_DF_Standoff;
 
     if (stdOffFlag2 && !this.CanUseStandOffDimensionLines()) {
@@ -4767,7 +4532,6 @@ class BaseDrawingObject {
       leftArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
 
       // left arrow's 2nd point  up-line
-
       // arrowPoint.y = textDim.y + textDim.height / 2;
 
       // TODO do not add this point
@@ -4776,7 +4540,6 @@ class BaseDrawingObject {
       // left arrow's 3rd point
       arrowPoint.x = textDim.x - ConstantData.Defines.CoordinateLineDefaultTextGap;
       leftArrowPoints.push(new Point(arrowPoint.x, arrowPoint.y));
-
 
       // right arrow's 1st point
       arrowPoint.x = textDim.x + textDim.width + ConstantData.Defines.CoordinateLineDefaultTextGap;
@@ -4816,29 +4579,10 @@ class BaseDrawingObject {
       rightArrowPoints.push(new Point(rightArrowPoints[0].x, rightArrowPoints[0].y));
     }
 
-
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, textFramePoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, leftArrowPoints);
     Utils3.RotatePointsAboutCenter(this.Frame, arcLength, rightArrowPoints);
-
-
   }
-
-
-  // CreateDimensionLineSegment(e, t, a, r) {
-
-  //   var i = 0;
-  //   for (i = 0; i < a.length; i++) 0 === i ? e.MoveTo(a[i].x, a[i].y) : e.LineTo(a[i].x, a[i].y),
-  //     (a[i].x < r.left || - 1 == r.left) &&
-  //     (r.left = a[i].x),
-  //     a[i].x > r.right &&
-  //     (r.right = a[i].x),
-  //     (a[i].y < r.top || - 1 == r.top) &&
-  //     (r.top = a[i].y),
-  //     a[i].y > r.bottom &&
-  //     (r.bottom = a[i].y)
-  // }
-
 
   CreateDimensionLineSegment(pathCreator, path, points, bounds) {
 
@@ -4896,47 +4640,82 @@ class BaseDrawingObject {
     }
   }
 
+  CreateDimensionLineArrowHead(
+    container: any,
+    polygonCreator: any, // not used in this function but provided for consistency
+    arrowPoints: Point[],
+    bounds: Rectangle,
+    userData: any
+  ): void {
+    console.log("= S.BaseDrawingObject: CreateDimensionLineArrowHead - Input:", {
+      container,
+      polygonCreator,
+      arrowPoints,
+      bounds,
+      userData,
+    });
 
+    // Make a deep copy of the input arrow points
+    const copiedPoints: Point[] = Utils1.DeepCopy(arrowPoints);
+    const numPoints: number = copiedPoints.length;
+    // Update bounds based on each point in the copied array
+    for (let i = 0; i < numPoints; i++) {
+      bounds.left = Math.min(bounds.left, copiedPoints[i].x);
+      bounds.right = Math.max(bounds.right, copiedPoints[i].x);
+      bounds.top = Math.min(bounds.top, copiedPoints[i].y);
+      bounds.bottom = Math.max(bounds.bottom, copiedPoints[i].y);
+    }
 
+    // Get the polygon's bounding rectangle from the copied points
+    const polyRect: Rectangle = new Rectangle(0, 0, 0, 0);
+    Utils2.GetPolyRect(polyRect, copiedPoints);
 
+    // Adjust copied points relative to the bounding rectangle origin
+    for (let i = 0; i < numPoints; i++) {
+      copiedPoints[i].x -= polyRect.x;
+      copiedPoints[i].y -= polyRect.y;
+    }
 
+    // Create a polygon shape using the SVG document
+    const polygonShape = GlobalData.optManager.svgDoc.CreateShape(
+      ConstantData.CreateShapeType.POLYGON
+    );
+    polygonShape.SetPoints(arrowPoints);
+    polygonShape.SetEventBehavior(Element.EventBehavior.ALL);
+    polygonShape.SetID(ConstantData.SVGElementClass.DIMENSIONLINE);
+    polygonShape.SetPos(0, 0);
+    polygonShape.SetSize(polyRect.width, polyRect.height);
+    polygonShape.SetFillColor("black");
 
-  CreateDimensionLineArrowHead(e, t, a, r, i) {
-    console.log('=== wall CreateDimensionLineArrowHead e,t,a,r,i', e, t, a, r, i);
-    var n,
-      o,
-      s = new Rectangle(0, 0, 0, 0),
-      l = Utils1.DeepCopy(a);
-    for (o = l.length, n = 0; n < o; n++) r.left = Math.min(r.left, l[n].x),
-      r.right = Math.max(r.right, l[n].x),
-      r.top = Math.min(r.top, l[n].y),
-      r.bottom = Math.max(r.right, l[n].y);
-    for (Utils2.GetPolyRect(s, l), n = 0; n < o; n++) l[n].x -= s.x,
-      l[n].y -= s.y;
-    var S = GlobalData.optManager.svgDoc.CreateShape(ConstantData.CreateShapeType.POLYGON);
-    S.SetPoints(a),
-      S.SetEventBehavior(Element.EventBehavior.ALL),
-      S.SetID(ConstantData.SVGElementClass.DIMENSIONLINE),
-      S.SetPos(0, 0),
-      S.SetSize(s.width, s.height),
-      S.SetFillColor('black'),
-      Utils2.HasFlag(
-        this.Dimensions,
-        ConstantData.DimensionFlags.SED_DF_Select
-      ) &&
-      S.ExcludeFromExport(!0),
-      i &&
-      S.SetUserData(i),
-      e.AddElement(S)
+    // Exclude from export if the SED_DF_Select flag is set in Dimensions
+    if (Utils2.HasFlag(this.Dimensions, ConstantData.DimensionFlags.SED_DF_Select)) {
+      polygonShape.ExcludeFromExport(true);
+    }
+
+    // Set user data if provided
+    if (userData) {
+      polygonShape.SetUserData(userData);
+    }
+
+    // Add the polygon shape to the container
+    container.AddElement(polygonShape);
+
+    console.log("= S.BaseDrawingObject: CreateDimensionLineArrowHead - Output: Polygon shape created", polygonShape);
   }
 
-  ConvertToNative(e, t) {
-    return null
+  ConvertToNative(inputData: any, conversionOptions: any): any {
+    console.log("= S.BaseDrawingObject: ConvertToNative - Input:", { inputData, conversionOptions });
+    const nativeResult = null;
+    console.log("= S.BaseDrawingObject: ConvertToNative - Output:", nativeResult);
+    return nativeResult;
   }
 
-  ContainsText() {
-    return this.DataID >= 0 ||
-      GlobalData.optManager.SD_GetVisioTextChild(this.BlockID) >= 0
+  ContainsText(): boolean {
+    console.log("= S.BaseDrawingObject: ContainsText - Input: none");
+    const hasText = this.DataID >= 0 ||
+      GlobalData.optManager.SD_GetVisioTextChild(this.BlockID) >= 0;
+    console.log("= S.BaseDrawingObject: ContainsText - Output:", hasText);
+    return hasText;
   }
 
   GetToUnits(): number {
@@ -5187,87 +4966,33 @@ class BaseDrawingObject {
     polyPoints.push(new Point(frame.x, frame.y + frame.height));
   }
 
-  SetBackgroundImageURL(e) {
+  SetBackgroundImageURL(imageURL: string): void {
+    console.log("= S.BaseDrawingObject: SetBackgroundImageURL - Input:", { imageURL });
+
+    // TODO: Add implementation to set the background image URL.
+    // For example:
+    // this.backgroundImageURL = imageURL;
+
+    console.log("= S.BaseDrawingObject: SetBackgroundImageURL - Output: Completed");
   }
 
-  WriteSDFAttributes(e, t) {
+  WriteSDFAttributes(attributes: any, options: any) {
+    console.log("= S.BaseDrawingObject: WriteSDFAttributes - Input:", { attributes, options });
+
+    // TODO: Add your implementation logic here
+
+    console.log("= S.BaseDrawingObject: WriteSDFAttributes - Output: Completed");
   }
 
-  CalcTextPosition(e) {
-  }
+  CalcTextPosition(inputPosition: any): any {
+    console.log("= S.BaseDrawingObject: CalcTextPosition - Input:", inputPosition);
 
-  SetBlobBytes(data: any, format: any): void {
-    console.log("= S.BaseDrawingObject: SetBlobBytes input:", { data, format });
+    // TODO: Add the logic to calculate the text position.
+    // For now, we return a placeholder position.
+    const calculatedPosition = { x: 0, y: 0 };
 
-    const blobBytes = new ListManager.BlobBytes(format, data);
-
-    if (this.BlobBytesID >= 0) {
-      const preservedBlock = GlobalData.objectStore.PreserveBlock(this.BlobBytesID);
-      if (preservedBlock) {
-        preservedBlock.Data = blobBytes;
-        console.log("= S.BaseDrawingObject: SetBlobBytes output: Updated existing block with BlobBytesID", this.BlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetBlobBytes output: No preserved block found for BlobBytesID", this.BlobBytesID);
-      }
-    } else {
-      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
-      if (newBlock) {
-        this.BlobBytesID = newBlock.ID;
-        console.log("= S.BaseDrawingObject: SetBlobBytes output: Created new block with BlobBytesID", this.BlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetBlobBytes output: Failed to create a new block");
-      }
-    }
-
-    console.log("= S.BaseDrawingObject: SetBlobBytes completed");
-  }
-
-  SetEMFBlobBytes(data: any, format: any): void {
-    console.log("= S.BaseDrawingObject: SetEMFBlobBytes input:", { data, format });
-
-    const blobBytes = new ListManager.BlobBytes(format, data);
-
-    if (this.EMFBlobBytesID >= 0) {
-      const preservedBlock = GlobalData.objectStore.PreserveBlock(this.EMFBlobBytesID);
-      if (preservedBlock) {
-        preservedBlock.Data = blobBytes;
-        console.log("= S.BaseDrawingObject: SetEMFBlobBytes output: Updated existing block with EMFBlobBytesID", this.EMFBlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetEMFBlobBytes warning: No preserved block found for EMFBlobBytesID", this.EMFBlobBytesID);
-      }
-    } else {
-      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
-      if (newBlock) {
-        this.EMFBlobBytesID = newBlock.ID;
-        console.log("= S.BaseDrawingObject: SetEMFBlobBytes output: Created new block with EMFBlobBytesID", this.EMFBlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetEMFBlobBytes error: Failed to create a new block");
-      }
-    }
-  }
-
-  SetOleBlobBytes(data: any, format: any): void {
-    console.log("= S.BaseDrawingObject: SetOleBlobBytes input:", { data, format });
-
-    const blobBytes = new ListManager.BlobBytes(format, data);
-
-    if (this.OleBlobBytesID >= 0) {
-      const existingBlock = GlobalData.objectStore.PreserveBlock(this.OleBlobBytesID);
-      if (existingBlock) {
-        existingBlock.Data = blobBytes;
-        console.log("= S.BaseDrawingObject: SetOleBlobBytes output: Updated existing block with OleBlobBytesID", this.OleBlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetOleBlobBytes warning: Failed to preserve block for OleBlobBytesID", this.OleBlobBytesID);
-      }
-    } else {
-      const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BLOBBYTES_OBJECT, blobBytes);
-      if (newBlock) {
-        this.OleBlobBytesID = newBlock.ID;
-        console.log("= S.BaseDrawingObject: SetOleBlobBytes output: Created new block with OleBlobBytesID", this.OleBlobBytesID);
-      } else {
-        console.log("= S.BaseDrawingObject: SetOleBlobBytes error: Failed to create new block");
-      }
-    }
+    console.log("= S.BaseDrawingObject: CalcTextPosition - Output:", calculatedPosition);
+    return calculatedPosition;
   }
 
   GetBlobBytes(): any {
@@ -5411,26 +5136,46 @@ class BaseDrawingObject {
     }
   }
 
-  Flip(e) {
+  Flip(isHorizontalFlip: boolean): void {
+    console.log("= S.BaseDrawingObject: Flip - Input:", { isHorizontalFlip });
+
+    // TODO: Implement the flip logic here.
+
+    console.log("= S.BaseDrawingObject: Flip - Output: Completed");
   }
 
-  NoFlip() {
-    return !!this.hooks.length
+  NoFlip(): boolean {
+    console.log("= S.BaseDrawingObject: NoFlip - Input: {}");
+    const shouldNotFlip = this.hooks.length > 0;
+    console.log("= S.BaseDrawingObject: NoFlip - Output:", shouldNotFlip);
+    return shouldNotFlip;
   }
 
-  NoRotate() {
-    return !1
+  NoRotate(): boolean {
+    console.log("= S.BaseDrawingObject: NoRotate - Input: none");
+    const result = false;
+    console.log("= S.BaseDrawingObject: NoRotate - Output:", result);
+    return result;
   }
 
   NoGrow(): boolean {
     console.log("= S.BaseDrawingObject: NoGrow input: none");
-    const result = (this.colorfilter & FileParser.SDRColorFilters.SD_NOCOLOR_RESIZE) > 0;
+    const result = (this.colorfilter & ConstantData2.SDRColorFilters.SD_NOCOLOR_RESIZE) > 0;
     console.log("= S.BaseDrawingObject: NoGrow output:", result);
     return result;
   }
 
-  MaintainPoint(e, t, a, r, i) {
-    return !1
+  MaintainPoint(currentPoint: any, targetPoint: any, adjustmentX: number, adjustmentY: number, shouldApply: boolean): boolean {
+    console.log("= S.BaseDrawingObject: MaintainPoint - Input:", {
+      currentPoint,
+      targetPoint,
+      adjustmentX,
+      adjustmentY,
+      shouldApply
+    });
+    const result = false;
+    console.log("= S.BaseDrawingObject: MaintainPoint - Output:", result);
+    return result;
   }
 
   AllowTextEdit() {
@@ -5487,8 +5232,11 @@ class BaseDrawingObject {
     return !1
   }
 
-  ChangeBackgroundColor(e, t) {
-    return !1
+  ChangeBackgroundColor(desiredColor: string, applyImmediately: boolean) {
+    console.log("= S.BaseDrawingObject: ChangeBackgroundColor - Input:", { desiredColor, applyImmediately });
+    const result = false;
+    console.log("= S.BaseDrawingObject: ChangeBackgroundColor - Output:", result);
+    return result;
   }
 
   UseEdges(edgeData: any, threshold: number, isActive: boolean, radius: number, importance: number, extraParam: any): boolean {
@@ -5505,11 +5253,11 @@ class BaseDrawingObject {
     console.log("= S.BaseDrawingObject: ApplyStyle - Input:", { style, applyTextStyle });
 
     let copiedStyle = Utils1.DeepCopy(style);
-    let defaultTextStyle = Resources.FindStyle(ConstantData.Defines.TextBlockStyle);
+    let defaultTextStyle = Utils4.FindStyle(ConstantData.Defines.TextBlockStyle);
 
     if (
       this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_GANTT_CHART &&
-      !(this.colorfilter & FileParser.SDRColorFilters.SD_NOCOLOR_STYLE)
+      !(this.colorfilter & ConstantData2.SDRColorFilters.SD_NOCOLOR_STYLE)
     ) {
       let textColorObj = { Color: copiedStyle.Text.Paint.Color };
       let textCSS = { color: copiedStyle.Text.Paint.Color };
@@ -5621,38 +5369,7 @@ class BaseDrawingObject {
   }
 
   HasIcons() {
-    // if (this.bInGroup) return !1;
-    // var e = !1;
-    // this.HasFieldData() &&
-    //   this.fieldDataElemID >= 0 &&
-    //   !SDUI.Commands.MainController.DataPanel.GetHideIconState() &&
-    //   (e = !0);
-    // var t = !1;
-    // return this.datasetElemID >= 0 &&
-    //   (
-    //     this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASKMAP ||
-    //     this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASK
-    //   ) &&
-    //   (
-    //     s = ListManager.SDData.GetValue(
-    //       this.datasetElemID,
-    //       ListManager.GanttFieldNameList[ListManager.GanttTaskFields.TASK_TRELLO_CARD_URL]
-    //     ),
-    //     s &&
-    //     s.length &&
-    //     (t = !0)
-    //   ),
-    //   !!(
-    //     this.dataStyleOverride &&
-    //     this.dataStyleOverride.iconID ||
-    //     this.CommentID >= 0 ||
-    //     t ||
-    //     e ||
-    //     this.HyperlinkText &&
-    //     Global.ResolveHyperlink(this.HyperlinkText) ||
-    //     - 1 != this.NoteID ||
-    //     GlobalData.optManager.NoteIsShowing(this.BlockID, null)
-    //   )
+
   }
 
   AddIcons(svgDoc: any, container: any): void {
@@ -5667,18 +5384,6 @@ class BaseDrawingObject {
       };
 
       // Data action icon if available
-      if (this.dataStyleOverride && this.dataStyleOverride.iconID) {
-        const actionIconSrc = Resources.ActionIcons[this.dataStyleOverride.iconID];
-        if (actionIconSrc) {
-          iconParams.iconID = ConstantData.ShapeIconType.DATAACTION;
-          iconParams.imageURL = actionIconSrc;
-          iconParams.x = this.Frame.width - this.iconSize;
-          iconParams.y = 0;
-          const dataActionIcon = this.GenericIcon(iconParams);
-          dataActionIcon.ExcludeFromExport(false);
-          container.AddElement(dataActionIcon);
-        }
-      }
 
       this.nIcons = 0;
       if (!this.bInGroup) {
@@ -5690,23 +5395,7 @@ class BaseDrawingObject {
           const commentUserData = ConstantData.SVGElementClass.ICON + '.' + this.BlockID;
           commentIcon.SetUserData(commentUserData);
         }
-        // Trello link icon
-        if (
-          this.datasetElemID >= 0 &&
-          (this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASKMAP ||
-            this.subtype === ConstantData.ObjectSubTypes.SD_SUBT_TASK) &&
-          (() => {
-            const trelloValue = ListManager.SDData.GetValue(
-              this.datasetElemID,
-              ListManager.GanttFieldNameList[ListManager.GanttTaskFields.TASK_TRELLO_CARD_URL]
-            );
-            return trelloValue && trelloValue.length;
-          })()
-        ) {
-          iconParams.iconID = ConstantData.ShapeIconType.TRELLOLINK;
-          iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_TrelloLink;
-          this.AddIcon(svgDoc, container, iconParams);
-        }
+
         // Hyperlink icon
         if (this.HyperlinkText && Global.ResolveHyperlink(this.HyperlinkText)) {
           iconParams.iconID = ConstantData.ShapeIconType.HYPERLINK;
@@ -5757,52 +5446,6 @@ class BaseDrawingObject {
           );
         }
         // Field data icon with tooltip and double tap functionality
-        if (
-          this.HasFieldData() &&
-          this.fieldDataElemID >= 0 &&
-          !SDUI.Commands.MainController.DataPanel.GetHideIconState()
-        ) {
-          iconParams.iconID = ConstantData.ShapeIconType.FIELDDATA;
-          iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Info;
-          const fieldDataIcon = this.AddIcon(svgDoc, container, iconParams);
-          fieldDataIcon.SetCustomAttribute('_expdatatt_', this.BlockID);
-          let fieldDataTimeout: any = null;
-          const blockID = this.BlockID;
-          const showFieldDataTooltip = () => {
-            if (!GlobalData.optManager.FieldedDataTooltipVisible(blockID)) {
-              GlobalData.optManager.ShowFieldedDataTooltip(blockID);
-            }
-          };
-          const fieldDom = fieldDataIcon.DOMElement();
-          $(fieldDom).hover(
-            function () {
-              if (!GlobalData.optManager.FieldedDataTooltipVisible(blockID)) {
-                fieldDataTimeout = setTimeout(showFieldDataTooltip, 750);
-              }
-            },
-            function () {
-              GlobalData.optManager.HideFieldedDataTooltip(blockID);
-              if (fieldDataTimeout) {
-                clearTimeout(fieldDataTimeout);
-                fieldDataTimeout = null;
-              }
-            }
-          );
-          if (!GlobalData.docHandler.IsReadOnly()) {
-            const hammerInstance = Hammer(fieldDom);
-            hammerInstance.off('doubletap');
-            hammerInstance.on('doubletap', function (event: any) {
-              event.preventDefault();
-              event.stopPropagation();
-              if (fieldDataTimeout) {
-                clearTimeout(fieldDataTimeout);
-                fieldDataTimeout = null;
-              }
-              GlobalData.optManager.ShowFieldedDataTooltip(blockID, true, true);
-              return false;
-            });
-          }
-        }
       }
     }
     console.log("= S.BaseDrawingObject: AddIcons - Output: Completed");
@@ -5865,15 +5508,15 @@ class BaseDrawingObject {
     return result;
   }
 
-  IsNoteCell(e: any): any {
-    console.log("= S.BaseDrawingObject: IsNoteCell input:", e);
+  IsNoteCell(cellIdentifier: any): any {
+    console.log("= S.BaseDrawingObject: IsNoteCell - Input:", cellIdentifier);
 
     let cellIndex: number | undefined;
     const table = this.GetTable(false);
 
-    if (e) {
-      if (typeof e.split === "function") {
-        const parts = e.split(".");
+    if (cellIdentifier) {
+      if (typeof cellIdentifier.split === "function") {
+        const parts = cellIdentifier.split(".");
         if (parts[1]) {
           cellIndex = parseInt(parts[1], 10);
         }
@@ -5882,13 +5525,13 @@ class BaseDrawingObject {
       cellIndex = table.select;
     }
 
-    let result = null;
+    let noteCell = null;
     if (table && typeof cellIndex === "number" && cellIndex >= 0 && cellIndex < table.cells.length) {
-      result = table.cells[cellIndex];
+      noteCell = table.cells[cellIndex];
     }
 
-    console.log("= S.BaseDrawingObject: IsNoteCell output:", result);
-    return result;
+    console.log("= S.BaseDrawingObject: IsNoteCell - Output:", noteCell);
+    return noteCell;
   }
 
   SetCursors() {
@@ -5998,53 +5641,58 @@ class BaseDrawingObject {
     console.log("= S.BaseDrawingObject: ClearCursors - Output: Completed");
   }
 
-  PostCreateShapeCallback(e, t, a, r) {
-    console.log('= S.BaseDrawingObject PostCreateShapeCallback e,t,a,r', e, t, a, r);
+  PostCreateShapeCallback(shape: any, container: any, config: any, additionalInfo: any): void {
+    console.log("= S.BaseDrawingObject PostCreateShapeCallback - Input:", { shape, container, config, additionalInfo });
+
+    // (Any additional processing logic can be added here)
+
+    console.log("= S.BaseDrawingObject PostCreateShapeCallback - Output: completed");
   }
 
-  SVGTokenizerHook(e: any): any {
-    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Input:", e);
+  SVGTokenizerHook(svgElementData: any): any {
+    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Input:", svgElementData);
 
+    // Process the SVG element data only if tokenization is enabled
     if (GlobalData.optManager.bTokenizeStyle) {
-      const colorFilter = this.colorfilter;
-      e = Utils1.DeepCopy(e);
+      const currentColorFilter = this.colorfilter;
+      svgElementData = Utils1.DeepCopy(svgElementData);
 
-      // If all colors are disabled, return early.
-      if (colorFilter === FileParser.SDRColorFilters.SD_NOCOLOR_ALL) {
-        console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output (SD_NOCOLOR_ALL):", e);
-        return e;
+      // If all colors are disabled, return the unchanged data
+      if (currentColorFilter === ConstantData2.SDRColorFilters.SD_NOCOLOR_ALL) {
+        console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output (SD_NOCOLOR_ALL):", svgElementData);
+        return svgElementData;
       }
 
       // Process Fill settings if fill color is allowed
-      if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_FILL)) {
-        if (e.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
-          e.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
+      if (!(currentColorFilter & ConstantData2.SDRColorFilters.SD_NOCOLOR_FILL)) {
+        if (svgElementData.Fill.Paint.FillType === ConstantData.FillTypes.SDFILL_GRADIENT) {
+          svgElementData.Fill.Paint.FillType = ConstantData.FillTypes.SDFILL_SOLID;
         }
-        e.Fill.Paint.Color = Basic.Symbol.CreatePlaceholder(
+        svgElementData.Fill.Paint.Color = Basic.Symbol.CreatePlaceholder(
           Basic.Symbol.Placeholder.FillColor,
-          e.Fill.Paint.Color
+          svgElementData.Fill.Paint.Color
         );
       }
 
       // Process Line color if line color is allowed
-      if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_LINE)) {
-        e.Line.Paint.Color = Basic.Symbol.CreatePlaceholder(
+      if (!(currentColorFilter & ConstantData2.SDRColorFilters.SD_NOCOLOR_LINE)) {
+        svgElementData.Line.Paint.Color = Basic.Symbol.CreatePlaceholder(
           Basic.Symbol.Placeholder.LineColor,
-          e.Line.Paint.Color
+          svgElementData.Line.Paint.Color
         );
       }
 
       // Process Line thickness if line thickness is allowed
-      if (!(colorFilter & FileParser.SDRColorFilters.SD_NOCOLOR_LINETHICK)) {
-        e.Line.Thickness = Basic.Symbol.CreatePlaceholder(
+      if (!(currentColorFilter & ConstantData2.SDRColorFilters.SD_NOCOLOR_LINETHICK)) {
+        svgElementData.Line.Thickness = Basic.Symbol.CreatePlaceholder(
           Basic.Symbol.Placeholder.LineThick,
-          e.Line.Thickness
+          svgElementData.Line.Thickness
         );
       }
     }
 
-    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output:", e);
-    return e;
+    console.log("= S.BaseDrawingObject: SVGTokenizerHook - Output:", svgElementData);
+    return svgElementData;
   }
 
   CancelObjectDraw(): boolean {
@@ -6146,8 +5794,8 @@ class BaseDrawingObject {
         : 0;
 
       if (
-        outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_REFL ||
-        outsideEffectType === FileParser.OutEffect.SDOUT_EFFECT_CAST
+        outsideEffectType === ConstantData2.OutEffect.SDOUT_EFFECT_REFL ||
+        outsideEffectType === ConstantData2.OutEffect.SDOUT_EFFECT_CAST
       ) {
         this.SetEffects(shapeElement, effectParams, isSecondary, null, false, isSecondary);
       } else {
@@ -6303,7 +5951,7 @@ class BaseDrawingObject {
     if (style.OutsideEffect && style.OutsideEffect.OutsideType) {
       config.outside.settings = {};
       switch (style.OutsideEffect.OutsideType) {
-        case FileParser.OutEffect.SDOUT_EFFECT_DROP:
+        case ConstantData2.OutEffect.SDOUT_EFFECT_DROP:
           extent.left = minDimension * style.OutsideEffect.OutsideExtent_Left;
           extent.top = minDimension * style.OutsideEffect.OutsideExtent_Top;
           extent.right = minDimension * style.OutsideEffect.OutsideExtent_Right;
@@ -6326,7 +5974,7 @@ class BaseDrawingObject {
           extent.bottom = Math.max(config.outside.settings.yOff + config.outside.settings.size, 0);
           break;
 
-        case FileParser.OutEffect.SDOUT_EFFECT_GLOW:
+        case ConstantData2.OutEffect.SDOUT_EFFECT_GLOW:
           extent.left = extent.top = extent.right = extent.bottom = Math.max(minDimension * style.OutsideEffect.OutsideExtent_Left, 2);
           config.outside.type = Effects.EffectType.GLOW;
           config.outside.settings.size = Math.min(Math.max((extent.left + extent.right) / 2, 2), 50);
@@ -6335,7 +5983,7 @@ class BaseDrawingObject {
           extent.left = extent.top = extent.right = extent.bottom = config.outside.settings.size;
           break;
 
-        case FileParser.OutEffect.SDOUT_EFFECT_REFL:
+        case ConstantData2.OutEffect.SDOUT_EFFECT_REFL:
           extent.left = adjustedWidth * style.OutsideEffect.OutsideExtent_Left;
           extent.right = adjustedWidth * style.OutsideEffect.OutsideExtent_Right;
           extent.bottom = adjustedHeight * style.OutsideEffect.OutsideExtent_Bottom;
@@ -6348,7 +5996,7 @@ class BaseDrawingObject {
           extent.right = Math.max(secondaryOffset, 0);
           break;
 
-        case FileParser.OutEffect.SDOUT_EFFECT_CAST:
+        case ConstantData2.OutEffect.SDOUT_EFFECT_CAST:
           extent.left = adjustedWidth * style.OutsideEffect.OutsideExtent_Left;
           extent.right = adjustedWidth * style.OutsideEffect.OutsideExtent_Right;
           extent.bottom = adjustedHeight * style.OutsideEffect.OutsideExtent_Bottom;
@@ -6370,7 +6018,7 @@ class BaseDrawingObject {
       minDimension = Math.min(adjustedWidth, adjustedHeight);
       config.inside.settings = {};
       switch (style.Fill.FillEffect) {
-        case FileParser.FillEffect.SDFILL_EFFECT_GLOSS:
+        case ConstantData2.FillEffect.SDFILL_EFFECT_GLOSS:
           config.inside.type = Effects.EffectType.GLOSS;
           config.inside.settings.size = Math.min(adjustedWidth, adjustedHeight);
           config.inside.settings.type = Element.Effects.GlossType.SOFT;
@@ -6394,7 +6042,7 @@ class BaseDrawingObject {
           }
           break;
 
-        case FileParser.FillEffect.SDFILL_EFFECT_BEVEL:
+        case ConstantData2.FillEffect.SDFILL_EFFECT_BEVEL:
           minDimension = Math.max(Math.min(minDimension, 50) / 10, 2);
           config.inside.type = Effects.EffectType.BEVEL;
           config.inside.settings.size = minDimension;
@@ -6444,7 +6092,7 @@ class BaseDrawingObject {
           }
           break;
 
-        case FileParser.FillEffect.SDFILL_EFFECT_INSHADOW:
+        case ConstantData2.FillEffect.SDFILL_EFFECT_INSHADOW:
           minDimension = Math.min(minDimension, 50) / 2;
           if (style.Fill.WParam) {
             shadowParam = style.Fill.WParam;
@@ -6460,7 +6108,7 @@ class BaseDrawingObject {
           config.inside.settings.dir = Element.Effects.FilterDirection.LEFTTOP;
           break;
 
-        case FileParser.FillEffect.SDFILL_EFFECT_INGLOW:
+        case ConstantData2.FillEffect.SDFILL_EFFECT_INGLOW:
           minDimension = Math.min(minDimension, 50) / 2;
           if (style.Fill.WParam) {
             shadowParam = style.Fill.WParam;
@@ -6499,8 +6147,8 @@ class BaseDrawingObject {
     });
 
     let gradientRecord = {
-      type: Basic.Element.Style.GradientStyle.LINEAR,
-      startPos: Basic.Element.Style.GradientPos.LEFTTOP,
+      type: BasicConstants.GradientStyle.LINEAR,
+      startPos: BasicConstants.GradientPos.LEFTTOP,
       stops: [] as Array<{ offset: number; color: string; opacity: number }>,
     };
 
@@ -6508,13 +6156,13 @@ class BaseDrawingObject {
     let secondStop = { color: color2, opacity: opacity2 };
 
     // Reverse colors if GRAD_REV flag is set
-    if (flags & ListManager.GradientStyle.GRAD_REV) {
+    if (flags & ConstantData2.GradientStyle.GRAD_REV) {
       firstStop = { color: color2, opacity: opacity2 };
       secondStop = { color: color1, opacity: opacity1 };
     }
 
     // Build gradient stops: if GRAD_MIDDLE flag is set, insert a middle stop at 50%
-    if (flags & ListManager.GradientStyle.GRAD_MIDDLE) {
+    if (flags & ConstantData2.GradientStyle.GRAD_MIDDLE) {
       gradientRecord.stops.push({
         offset: 0,
         color: firstStop.color,
@@ -6544,24 +6192,24 @@ class BaseDrawingObject {
     }
 
     // Set gradient type and start position
-    if (flags & ListManager.GradientStyle.GRAD_RADIAL) {
-      gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-      gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
-    } else if (flags & ListManager.GradientStyle.GRAD_SHAPE) {
-      gradientRecord.type = Basic.Element.Style.GradientStyle.RADIALFILL;
-      gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
+    if (flags & ConstantData2.GradientStyle.GRAD_RADIAL) {
+      gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+      gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
+    } else if (flags & ConstantData2.GradientStyle.GRAD_SHAPE) {
+      gradientRecord.type = BasicConstants.GradientStyle.RADIALFILL;
+      gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
     } else {
-      gradientRecord.type = Basic.Element.Style.GradientStyle.LINEAR;
-      if (flags & ListManager.GradientStyle.GRAD_TLBR) {
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTTOP;
-      } else if (flags & ListManager.GradientStyle.GRAD_TRBL) {
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.RIGHTTOP;
-      } else if (flags & ListManager.GradientStyle.GRAD_VERT) {
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.TOP;
-      } else if (flags & ListManager.GradientStyle.GRAD_HORIZ) {
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFT;
+      gradientRecord.type = BasicConstants.GradientStyle.LINEAR;
+      if (flags & ConstantData2.GradientStyle.GRAD_TLBR) {
+        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
+      } else if (flags & ConstantData2.GradientStyle.GRAD_TRBL) {
+        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTTOP;
+      } else if (flags & ConstantData2.GradientStyle.GRAD_VERT) {
+        gradientRecord.startPos = BasicConstants.GradientPos.TOP;
+      } else if (flags & ConstantData2.GradientStyle.GRAD_HORIZ) {
+        gradientRecord.startPos = BasicConstants.GradientPos.LEFT;
       } else {
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTTOP;
+        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
       }
     }
 
@@ -6584,52 +6232,52 @@ class BaseDrawingObject {
       stops: Array<{ color: string; opacity: number; offset: number }>;
       angle?: number;
     } = {
-      type: Basic.Element.Style.GradientStyle.LINEAR,
-      startPos: Basic.Element.Style.GradientPos.LEFTTOP,
+      type: BasicConstants.GradientStyle.LINEAR,
+      startPos: BasicConstants.GradientPos.LEFTTOP,
       stops: [],
     };
 
     switch (richGradient.gradienttype) {
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_LINEAR:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.LINEAR;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_LINEAR:
+        gradientRecord.type = BasicConstants.GradientStyle.LINEAR;
         gradientRecord.angle = richGradient.angle;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BR:
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BR:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.RIGHTBOTTOM;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BR:
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BR:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTBOTTOM;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BL:
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BL:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTBOTTOM;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BL:
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BL:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.LEFTBOTTOM;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_CENTER:
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_CENTER:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_CENTER:
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_CENTER:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TR:
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TR:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.RIGHTTOP;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TR:
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TR:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTTOP;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TL:
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TL:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.LEFTTOP;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TL:
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TL:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BC:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.BOTTOM;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BC:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.BOTTOM;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TC:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIAL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.TOP;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TC:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
+        gradientRecord.startPos = BasicConstants.GradientPos.TOP;
         break;
-      case Resources.RichGradientTypes.SDFILL_RICHGRADIENT_SHAPE:
-        gradientRecord.type = Basic.Element.Style.GradientStyle.RADIALFILL;
-        gradientRecord.startPos = Basic.Element.Style.GradientPos.CENTER;
+      case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_SHAPE:
+        gradientRecord.type = BasicConstants.GradientStyle.RADIALFILL;
+        gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
         break;
     }
 
@@ -6944,25 +6592,25 @@ class BaseDrawingObject {
   HasFieldData() {
   }
 
-  HasFieldDataForTable(e) {
+  HasFieldDataForTable(event) {
   }
 
-  HasFieldDataInText(e) {
+  HasFieldDataInText(event) {
   }
 
-  SetFieldDataRecord(e, t, a) {
+  SetFieldDataRecord(event, t, a) {
   }
 
-  NewFieldDataRecord(e) {
+  NewFieldDataRecord(event) {
   }
 
-  HasFieldDataRecord(e, t, a) {
+  HasFieldDataRecord(event, t, a) {
   }
 
-  ChangeFieldDataTable(e) {
+  ChangeFieldDataTable(event) {
   }
 
-  RemoveFieldData(e, t) {
+  RemoveFieldData(event, t) {
   }
 
   GetFieldDataTable() {
@@ -6971,22 +6619,22 @@ class BaseDrawingObject {
   GetFieldDataRecord() {
   }
 
-  HasFieldDataRules(e) {
+  HasFieldDataRules(event) {
   }
 
   GetFieldDataStyleOverride() {
   }
 
-  RefreshFromFieldData(e) {
+  RefreshFromFieldData(event) {
   }
 
-  RefreshFromRuleChange(e, t) {
+  RefreshFromRuleChange(event, t) {
   }
 
-  RemapDataFields(e) {
+  RemapDataFields(event) {
   }
 
-  RegisterForDataDrop(e) {
+  RegisterForDataDrop(event) {
   }
 
   GetFieldDataStyleOverride() {
