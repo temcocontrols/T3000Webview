@@ -1,6 +1,13 @@
 
 
-import Path from "./Basic.Path"
+import $ from 'jquery';
+import HvacSVG from "../Helper/SVG.t2"
+import Utils1 from "../Helper/Utils1"
+import Utils2 from "../Helper/Utils2"
+import Utils3 from "../Helper/Utils3"
+import ConstantData from "../Data/ConstantData"
+
+import Path from "./Basic.Path";
 
 class RRect extends Path {
 
@@ -27,19 +34,18 @@ class RRect extends Path {
     this.ry = radiusY;
 
     const pathCreator = this.PathCreator();
-    const lineWidth = width - 2 * radiusX;
-    const lineHeight = height - 2 * radiusY;
+    const innerWidth = width - 2 * radiusX;
+    const innerHeight = height - 2 * radiusY;
 
     pathCreator.BeginPath();
-
-    if (radiusX > 0 && radiusY > 0) {
+    if (radiusX && radiusY) {
       pathCreator.MoveTo(0, radiusY);
       pathCreator.SimpleArcTo(radiusX, -radiusY, true, true);
-      pathCreator.LineTo(lineWidth, 0, true);
+      pathCreator.LineTo(innerWidth, 0, true);
       pathCreator.SimpleArcTo(radiusX, radiusY, true, true);
-      pathCreator.LineTo(0, lineHeight, true);
+      pathCreator.LineTo(0, innerHeight, true);
       pathCreator.SimpleArcTo(-radiusX, radiusY, true, true);
-      pathCreator.LineTo(-lineWidth, 0, true);
+      pathCreator.LineTo(-innerWidth, 0, true);
       pathCreator.SimpleArcTo(-radiusX, -radiusY, true, true);
       pathCreator.ClosePath();
     } else {
@@ -53,14 +59,15 @@ class RRect extends Path {
     const pathString = pathCreator.ToString();
     this.SetPath(pathString, { x: 0, y: 0, width, height });
 
-    console.log("= B.RRect SetRRectSize output:", { rx: this.rx, ry: this.ry, path: pathString });
+    console.log("= B.RRect SetRRectSize output:", { radiusX: this.rx, radiusY: this.ry, path: pathString });
   }
 
   SetSize(width: number, height: number): void {
-    console.log("= B.RRect SetSize - Input:", `width=${width}, height=${height}`);
+    console.log("= B.RRect SetSize input:", { width, height });
     this.SetRRectSize(width, height, this.rx, this.ry);
-    console.log("= B.RRect SetSize - Output:", `rx=${this.rx}, ry=${this.ry}`);
+    console.log("= B.RRect SetSize output:", { rx: this.rx, ry: this.ry });
   }
+
 }
 
 export default RRect
