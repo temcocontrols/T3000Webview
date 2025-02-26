@@ -2,6 +2,8 @@
 
 import HvacSVG from "../Helper/SVG.t2"
 import Element from "./Basic.Element"
+import Utils1 from "../Helper/Utils1"
+import ConstantData from "../Data/ConstantData"
 
 class Container extends Element {
 
@@ -9,13 +11,13 @@ class Container extends Element {
     super();
   }
 
-  AddElement(element, insertionIndex) {
-    console.log('= B.Container AddElement input element, insertionIndex', element, insertionIndex);
+  AddElement(element, index?) {
+    console.log('= B.Container AddElement input element, index', element, index);
 
-    if (insertionIndex !== undefined && this.svgObj instanceof HvacSVG.Doc) {
-      insertionIndex++;
+    if (index !== undefined && this.svgObj instanceof HvacSVG.Doc) {
+      index++;
     }
-    this.svgObj.add(element.svgObj, insertionIndex);
+    this.svgObj.add(element.svgObj, index);
 
     if (element.svgObj.parent === this.svgObj) {
       element.parent = this;
@@ -25,27 +27,23 @@ class Container extends Element {
     console.log('= B.Container AddElement output element', element);
   }
 
-  RemoveElement(elementToRemove) {
-    console.log('= B.Container RemoveElement input', elementToRemove);
+  RemoveElement(element) {
+    console.log('= B.Container RemoveElement input element', element);
 
-    if (elementToRemove.svgObj.parent === this.svgObj) {
-      this.svgObj.remove(elementToRemove.svgObj);
-      elementToRemove.parent = null;
+    if (element.svgObj.parent === this.svgObj) {
+      this.svgObj.remove(element.svgObj);
+      element.parent = null;
     }
 
-    console.log('= B.Container RemoveElement output', elementToRemove);
+    console.log('= B.Container RemoveElement output element', element);
   }
 
   RemoveAll() {
     console.log('= B.Container RemoveAll input');
-    let startIndex = 0;
-    let totalChildren = this.svgObj.children().length;
+    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let childrenCount = this.svgObj.children().length;
 
-    if (this.svgObj instanceof HvacSVG.Doc) {
-      startIndex++;
-    }
-
-    for (let currentIndex = startIndex; currentIndex < totalChildren; currentIndex++) {
+    for (let i = startIndex; i < childrenCount; i++) {
       this.svgObj.removeAt(startIndex);
     }
 
@@ -54,16 +52,11 @@ class Container extends Element {
 
   RemoveElementByInternalID(internalID) {
     console.log('= B.Container RemoveElementByInternalID input internalID', internalID);
+    const children = this.svgObj.children();
+    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
 
-    const elements = this.svgObj.children();
-    let startIndex = 0;
-
-    if (this.svgObj instanceof HvacSVG.Doc) {
-      startIndex++;
-    }
-
-    for (let i = startIndex; i < elements.length; i++) {
-      const child = elements[i].SDGObj;
+    for (let i = startIndex; i < children.length; i++) {
+      const child = children[i].SDGObj;
       if (child && child.internalID === internalID) {
         this.svgObj.removeAt(i);
         console.log('= B.Container RemoveElementByInternalID removed element at index', i);
@@ -76,41 +69,41 @@ class Container extends Element {
 
   ElementCount() {
     console.log('= B.Container ElementCount input');
-    let totalElements = this.svgObj.children().length;
-
+    let count = this.svgObj.children().length;
     if (this.svgObj instanceof HvacSVG.Doc) {
-      totalElements--;
+      count--;
     }
-
-    console.log('= B.Container ElementCount output totalElements', totalElements);
-    return totalElements;
+    console.log('= B.Container ElementCount output count', count);
+    return count;
   }
 
   GetElementByIndex(index: number) {
     console.log('= B.Container GetElementByIndex input index', index);
     const children = this.svgObj.children();
+
     if (this.svgObj instanceof HvacSVG.Doc) {
       index++;
     }
+
     if (index < 0 || index >= children.length) {
       console.log('= B.Container GetElementByIndex output', null);
       return null;
     }
-    console.log('= B.Container GetElementByIndex output', children[index].SDGObj);
-    return children[index].SDGObj;
+
+    const result = children[index].SDGObj;
+    console.log('= B.Container GetElementByIndex output', result);
+    return result;
   }
 
-  GetElementByID(elementID: string, requiredUserData?: any) {
-    console.log('= B.Container GetElementByID input elementID, requiredUserData', elementID, requiredUserData);
+  GetElementByID(id: string, userData?: any) {
+    console.log('= B.Container GetElementByID input id, userData', id, userData);
     const children = this.svgObj.children();
     let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
-      if (child && child.ID === elementID) {
-        if (requiredUserData && child.userData !== requiredUserData) {
-          continue;
-        }
+      if (child && child.ID === id) {
+        if (userData && child.userData !== userData) continue;
         console.log('= B.Container GetElementByID output', child);
         return child;
       }
@@ -119,38 +112,40 @@ class Container extends Element {
     return null;
   }
 
-  GetElementByIDInGroup(targetID) {
-    console.log('= B.Container GetElementByIDInGroup input targetID', targetID);
+  GetElementByIDInGroup(id: string) {
+    console.log('= B.Container GetElementByIDInGroup input id', id);
 
-    function searchByID(container) {
-      const childNodes = container.svgObj.children();
-      let found = null;
+    function findElementByID(element) {
+      const children = element.svgObj.children();
+      let foundElement = null;
 
-      for (let i = 0; i < childNodes.length; i++) {
-        const child = childNodes[i].SDGObj;
-        if (!child) continue;
-        if (child.ID === targetID) {
-          found = child;
-          break;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i].SDGObj;
+        if (child) {
+          if (child.ID === id) {
+            foundElement = child;
+            break;
+          }
+          foundElement = findElementByID(child);
+          if (foundElement) break;
         }
-        found = searchByID(child);
-        if (found) break;
       }
-      return found;
+      return foundElement;
     }
 
-    const topLevelChildren = this.svgObj.children();
-    for (let i = 0; i < topLevelChildren.length; i++) {
-      const child = topLevelChildren[i].SDGObj;
-      if (!child) continue;
-      if (child.ID === targetID) {
-        console.log('= B.Container GetElementByIDInGroup output child', child);
-        return child;
-      }
-      const result = searchByID(child);
-      if (result) {
-        console.log('= B.Container GetElementByIDInGroup output result', result);
-        return result;
+    const children = this.svgObj.children();
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i].SDGObj;
+      if (child) {
+        if (child.ID === id) {
+          console.log('= B.Container GetElementByIDInGroup output child', child);
+          return child;
+        }
+        const foundElement = findElementByID(child);
+        if (foundElement) {
+          console.log('= B.Container GetElementByIDInGroup output foundElement', foundElement);
+          return foundElement;
+        }
       }
     }
 
@@ -158,36 +153,28 @@ class Container extends Element {
     return null;
   }
 
-  GetElementListWithID(elementID: string) {
-    console.log('= B.Container GetElementListWithID input elementID', elementID);
+  GetElementListWithID(id: string) {
+    console.log('= B.Container GetElementListWithID input id', id);
 
     const children = this.svgObj.children();
-    const resultList = [];
-    let startIndex = 0;
+    const result = [];
+    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
 
-    if (this.svgObj instanceof HvacSVG.Doc) {
-      startIndex++;
-    }
-
-    for (let index = startIndex; index < children.length; index++) {
-      const childObj = children[index].SDGObj;
-      if (childObj && childObj.ID === elementID) {
-        resultList.push(childObj);
+    for (let i = startIndex; i < children.length; i++) {
+      const child = children[i].SDGObj;
+      if (child && child.ID === id) {
+        result.push(child);
       }
     }
 
-    console.log('= B.Container GetElementListWithID output resultList', resultList);
-    return resultList;
+    console.log('= B.Container GetElementListWithID output result', result);
+    return result;
   }
 
-  GetElementByInternalID(internalID) {
+  GetElementByInternalID(internalID: string) {
     console.log('= B.Container GetElementByInternalID input internalID', internalID);
     const children = this.svgObj.children();
-    let startIndex = 0;
-
-    if (this.svgObj instanceof HvacSVG.Doc) {
-      startIndex++;
-    }
+    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
@@ -201,24 +188,23 @@ class Container extends Element {
     return null;
   }
 
-  FindElement(elementId: string) {
-    console.log('= B.Container FindElement input elementId', elementId);
+  FindElement(id: string) {
+    console.log('= B.Container FindElement input id', id);
     const children = this.svgObj.children();
 
-    for (let index = 0; index < children.length; index++) {
-      const childElement = children[index].SDGObj;
-      if (!childElement) {
-        continue;
-      }
-      if (childElement.ID === elementId) {
-        console.log('= B.Container FindElement output', childElement);
-        return childElement;
-      }
-      if (childElement instanceof Container) {
-        const foundElement = childElement.FindElement(elementId);
-        if (foundElement) {
-          console.log('= B.Container FindElement output', foundElement);
-          return foundElement;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i].SDGObj;
+      if (child) {
+        if (child.ID === id) {
+          console.log('= B.Container FindElement output', child);
+          return child;
+        }
+        if (child instanceof Container) {
+          const foundElement = child.FindElement(id);
+          if (foundElement) {
+            console.log('= B.Container FindElement output', foundElement);
+            return foundElement;
+          }
         }
       }
     }
@@ -228,24 +214,19 @@ class Container extends Element {
   }
 
   FindElementByDOMElement(domElement: HTMLElement) {
-    console.log('= B.Container FindElementByDOMElement input', domElement);
-    let foundElement;
+    console.log('= B.Container FindElementByDOMElement input domElement', domElement);
     const children = this.svgObj.children();
-    let startIndex = 0;
+    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
 
-    if (this.svgObj instanceof HvacSVG.Doc) {
-      startIndex++;
-    }
-
-    for (let index = startIndex; index < children.length; index++) {
-      const childObject = children[index].SDGObj;
-      if (childObject) {
-        if (childObject.DOMElement() === domElement) {
-          console.log('= B.Container FindElementByDOMElement output', childObject);
-          return childObject;
+    for (let i = startIndex; i < children.length; i++) {
+      const child = children[i].SDGObj;
+      if (child) {
+        if (child.DOMElement() === domElement) {
+          console.log('= B.Container FindElementByDOMElement output', child);
+          return child;
         }
-        if (childObject instanceof Container) {
-          foundElement = childObject.FindElementByDOMElement(domElement);
+        if (child instanceof Container) {
+          const foundElement = child.FindElementByDOMElement(domElement);
           if (foundElement) {
             console.log('= B.Container FindElementByDOMElement output', foundElement);
             return foundElement;
@@ -260,23 +241,23 @@ class Container extends Element {
 
   GetElementIndex(element) {
     console.log('= B.Container GetElementIndex input element', element);
-    let elementIndex = this.svgObj.children().indexOf(element.svgObj);
-    if (elementIndex > 0 && this.svgObj instanceof HvacSVG.Doc) {
-      elementIndex--;
+    let index = this.svgObj.children().indexOf(element.svgObj);
+    if (index > 0 && this.svgObj instanceof HvacSVG.Doc) {
+      index--;
     }
-    console.log('= B.Container GetElementIndex output elementIndex', elementIndex);
-    return elementIndex;
+    console.log('= B.Container GetElementIndex output index', index);
+    return index;
   }
 
   MoveElementForward(element) {
     console.log('= B.Container MoveElementForward input element', element);
-    if (this.GetElementIndex(element) < this.ElementCount()) {
+    if (this.GetElementIndex(element) < this.ElementCount() - 1) {
       element.svgObj.forward();
     }
     console.log('= B.Container MoveElementForward output element', element);
   }
 
-  MoveElementBackward(element: Element) {
+  MoveElementBackward(element) {
     console.log('= B.Container MoveElementBackward input element', element);
     if (this.GetElementIndex(element) > 0) {
       element.svgObj.backward();
@@ -296,6 +277,7 @@ class Container extends Element {
     element.svgObj.level();
     console.log('= B.Container MoveElementToBack output element', element);
   }
+
 }
 
 export default Container

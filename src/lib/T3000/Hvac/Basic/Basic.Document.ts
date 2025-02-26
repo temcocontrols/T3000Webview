@@ -1,6 +1,5 @@
 
 
-
 import HvacSVG from "../Helper/SVG.t2"
 import $ from 'jquery'
 import Rect from './Basic.Rect'
@@ -19,6 +18,8 @@ import ShapeCopy from './Basic.ShapeCopy'
 import ShapeContainer from './Basic.ShapeContainer'
 import Text from './Basic.Text'
 import Formatter from "./Basic.Text.Formatter"
+import Spell from "./Basic.Text.Spell"
+import Image from './Basic.Image'
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
@@ -88,52 +89,52 @@ class Document extends Container {
     let basicShape = null;
 
     switch (shapeType) {
-      case Document.CreateShapeType.RECT:
+      case ConstantData.CreateShapeType.RECT:
         basicShape = new Rect();
         break;
-      case Document.CreateShapeType.RRECT:
+      case ConstantData.CreateShapeType.RRECT:
         basicShape = new RRect();
         break;
-      case Document.CreateShapeType.OVAL:
+      case ConstantData.CreateShapeType.OVAL:
         basicShape = new Oval();
         break;
-      case Document.CreateShapeType.LINE:
+      case ConstantData.CreateShapeType.LINE:
         basicShape = new Line();
         break;
-      case Document.CreateShapeType.POLYLINE:
+      case ConstantData.CreateShapeType.POLYLINE:
         basicShape = new PolyLine();
         break;
-      case Document.CreateShapeType.POLYPOLYLINE:
+      case ConstantData.CreateShapeType.POLYPOLYLINE:
         basicShape = new PolyPolyLine();
         break;
-      case Document.CreateShapeType.POLYLINECONTAINER:
+      case ConstantData.CreateShapeType.POLYLINECONTAINER:
         basicShape = new PolyLine();
         break;
-      case Document.CreateShapeType.POLYGON:
+      case ConstantData.CreateShapeType.POLYGON:
         basicShape = new Polygon();
         break;
-      case Document.CreateShapeType.PATH:
+      case ConstantData.CreateShapeType.PATH:
         basicShape = new Path();
         break;
-      case Document.CreateShapeType.TEXT:
+      case ConstantData.CreateShapeType.TEXT:
         basicShape = new Text();
         break;
-      case Document.CreateShapeType.IMAGE:
+      case ConstantData.CreateShapeType.IMAGE:
         basicShape = new Image();
         break;
-      case Document.CreateShapeType.GROUP:
+      case ConstantData.CreateShapeType.GROUP:
         basicShape = new Group();
         break;
-      case Document.CreateShapeType.LAYER:
+      case ConstantData.CreateShapeType.LAYER:
         basicShape = new Layer();
         break;
-      case Document.CreateShapeType.SYMBOL:
+      case ConstantData.CreateShapeType.SYMBOL:
         basicShape = new Symbol();
         break;
-      case Document.CreateShapeType.SHAPECOPY:
+      case ConstantData.CreateShapeType.SHAPECOPY:
         basicShape = new ShapeCopy();
         break;
-      case Document.CreateShapeType.SHAPECONTAINER:
+      case ConstantData.CreateShapeType.SHAPECONTAINER:
         basicShape = new ShapeContainer();
         break;
       default:
@@ -170,10 +171,27 @@ class Document extends Container {
     console.log('= B.Document InitializeContainer output', this.docInfo);
   }
 
+  /**
+   * Retrieves and updates the device display information.
+   *
+   * This method performs the following operations:
+   * - Creates a temporary rectangular shape with a size of 100in by 100in.
+   * - Sets the temporary shape's fill opacity to 0 and stroke width to 0.
+   * - Adds the shape to the document in order to measure its bounding box.
+   * - Calculates the display DPI (dots per inch) for both X and Y axes by dividing the bounding box's width and height by 100.
+   * - Removes the temporary shape element after obtaining the DPI measurements.
+   * - Retrieves the display width and height from the parent element's inner dimensions.
+   * - Logs the input and output information for debugging purposes.
+   *
+   * @remarks
+   * The method updates the internal document information (this.docInfo) with the calculated DPI and display dimensions.
+   *
+   * @returns void
+   */
   GetDeviceInfo() {
     console.log('= B.Document GetDeviceInfo input');
 
-    const rect = this.CreateShape(Document.CreateShapeType.RECT);
+    const rect = this.CreateShape(ConstantData.CreateShapeType.RECT);
     rect.SetFillOpacity(0);
     rect.SetStrokeWidth(0);
     rect.SetSize('100in', '100in');
@@ -193,32 +211,45 @@ class Document extends Container {
   CalcWorkArea() {
     console.log('= B.Document CalcWorkArea input');
 
+    // Get the offset position (left and top) of the parent element relative to the document
     const offset = $(this.parentElem).offset();
     console.log('= B.Document CalcWorkArea offset:', offset);
 
+    // Set the display X and Y coordinates from the parent's offset
     this.docInfo.dispX = offset.left;
     this.docInfo.dispY = offset.top;
+    // Capture the inner width and height of the parent element for display area
     this.docInfo.dispWidth = $(this.parentElem).innerWidth();
     this.docInfo.dispHeight = $(this.parentElem).innerHeight();
+    // Get the current scroll positions of the parent element
     this.docInfo.scrollX = $(this.parentElem).scrollLeft();
     this.docInfo.scrollY = $(this.parentElem).scrollTop();
+    // Calculate the overall scale factor from document dimensions to screen dimensions,
+    // factoring in the display DPI and document scaling.
     this.docInfo.docToScreenScale = (this.docInfo.dispDpiX / this.docInfo.docDpi) * this.docInfo.docScale;
+    // Calculate the DPI scale factor
     this.docInfo.docDpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
+    // Adjust document screen coordinates taking into account the scroll positions
     this.docInfo.docScreenX = this.docInfo.dispX - this.docInfo.scrollX;
     this.docInfo.docScreenY = this.docInfo.dispY - this.docInfo.scrollY;
+    // Calculate the document's size on the screen using the computed scaling factor
     this.docInfo.docScreenWidth = this.docInfo.docWidth * this.docInfo.docToScreenScale;
     this.docInfo.docScreenHeight = this.docInfo.docHeight * this.docInfo.docToScreenScale;
+    // Determine maximum allowed scroll positions based on difference between document screen size and display area
     this.docInfo.maxScrollX = Math.max(0, this.docInfo.docScreenWidth - this.docInfo.dispWidth);
     this.docInfo.maxScrollY = Math.max(0, this.docInfo.docScreenHeight - this.docInfo.dispHeight);
+    // Calculate the visible width and height in document coordinates by converting display area size
     this.docInfo.docVisWidth = Math.min(this.docInfo.dispWidth / this.docInfo.docToScreenScale, this.docInfo.docWidth);
     this.docInfo.docVisHeight = Math.min(this.docInfo.dispHeight / this.docInfo.docToScreenScale, this.docInfo.docHeight);
+    // Determine the document's visible starting X coordinate ensuring it does not exceed document bounds
     this.docInfo.docVisX = Math.min(this.docInfo.scrollX / this.docInfo.docToScreenScale, this.docInfo.docWidth - this.docInfo.docVisWidth);
+    // Determine the document's visible starting Y coordinate ensuring it does not exceed document bounds
     this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
 
     console.log('= B.Document CalcWorkArea output', this.docInfo);
   }
 
-  ApplyDocumentTransform(applyToAllLayers: boolean) {
+  ApplyDocumentTransform(applyToAllLayers?: boolean) {
     console.log('= B.Document ApplyDocumentTransform input applyToAllLayers:', applyToAllLayers);
 
     const elementCount = this.ElementCount();
@@ -410,14 +441,14 @@ class Document extends Container {
   }
 
   ConvertWindowToDocCoords(windowX: number, windowY: number) {
-    console.log('= B.Document ConvertWindowToDocCoords input', { windowX, windowY });
+    // console.log('= B.Document ConvertWindowToDocCoords input', { windowX, windowY });
 
     const docCoords = {
       x: (windowX - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
       y: (windowY - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
     };
 
-    console.log('= B.Document ConvertWindowToDocCoords output', docCoords);
+    // console.log('= B.Document ConvertWindowToDocCoords output', docCoords);
     return docCoords;
   }
 
@@ -520,7 +551,7 @@ class Document extends Container {
   AddLayer(layerID: string) {
     console.log('= B.Document AddLayer input', { layerID });
 
-    const layer = this.CreateShape(Document.CreateShapeType.LAYER);
+    const layer = this.CreateShape(ConstantData.CreateShapeType.LAYER);
     layer.SetID(layerID);
     this.AddElement(layer);
     this.ApplyDocumentTransform();
@@ -607,7 +638,7 @@ class Document extends Container {
       formattingLayer = this.AddLayer('__FORMATTING__');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', Document.LayerMoveType.BOTTOM);
+      this.MoveLayer('__FORMATTING__', ConstantData.LayerMoveType.BOTTOM);
       formattingLayer.SetOpacity(0);
       this.ApplyDocumentTransform();
     }
@@ -689,16 +720,16 @@ class Document extends Container {
     }
 
     switch (moveType) {
-      case Document.LayerMoveType.BOTTOM:
+      case ConstantData.LayerMoveType.BOTTOM:
         targetIndex = 0;
         break;
-      case Document.LayerMoveType.BEFORE:
+      case ConstantData.LayerMoveType.BEFORE:
         targetIndex = targetLayerIndex;
         break;
-      case Document.LayerMoveType.AFTER:
+      case ConstantData.LayerMoveType.AFTER:
         targetIndex = targetLayerIndex + 1;
         break;
-      case Document.LayerMoveType.TOP:
+      case ConstantData.LayerMoveType.TOP:
         targetIndex = totalElements - 1;
         break;
       default:
@@ -855,10 +886,10 @@ class Document extends Container {
   InitSpellCheck() {
     console.log('= B.Document InitSpellCheck input');
 
-    if (!this.spellChecker) {
-      this.spellChecker = new Spell(this);
-      this.spellChecker.Initialize();
-    }
+    // if (!this.spellChecker) {
+    //   this.spellChecker = new Spell(this);
+    //   this.spellChecker.Initialize();
+    // }
 
     console.log('= B.Document InitSpellCheck output', { spellChecker: this.spellChecker });
   }
@@ -959,13 +990,6 @@ class Document extends Container {
     POLYPOLYLINE: 14,
     SHAPECOPY: 15,
     SHAPECONTAINER: 16
-  }
-
-  static LayerMoveType = {
-    BOTTOM: 0,
-    BEFORE: 1,
-    AFTER: 2,
-    TOP: 3
   }
 }
 
