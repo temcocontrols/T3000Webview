@@ -9,27 +9,34 @@ class Line extends Path {
   }
 
   SetPoints(
-    startX: number,
-    startY: number,
-    endX: number,
-    endY: number
-  ) {
-    console.log('= B.Line SetPoints startX,startY,endX,endY', startX, startY, endX, endY);
+    startXCoord: number,
+    startYCoord: number,
+    endXCoord: number,
+    endYCoord: number
+  ): void {
+    console.log("= B.Line SetPoints input:", {
+      startXCoord,
+      startYCoord,
+      endXCoord,
+      endYCoord,
+    });
 
     const pathCreator = this.PathCreator();
     pathCreator.BeginPath();
-    pathCreator.MoveTo(startX, startY);
-    pathCreator.LineTo(endX, endY);
+    pathCreator.MoveTo(startXCoord, startYCoord);
+    pathCreator.LineTo(endXCoord, endYCoord);
 
     const pathString = pathCreator.ToString();
+    console.log("= B.Line SetPoints output path:", pathString);
 
     this.SetPath(pathString, {
-      x: Math.min(startX, endX),
-      y: Math.min(startY, endY),
-      width: Math.abs(endX - startX),
-      height: Math.abs(endY - startY),
+      x: Math.min(startXCoord, endXCoord),
+      y: Math.min(startYCoord, endYCoord),
+      width: Math.abs(endXCoord - startXCoord),
+      height: Math.abs(endYCoord - startYCoord),
     });
   }
+
 }
 
 export default Line
