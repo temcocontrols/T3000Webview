@@ -1,6 +1,12 @@
 
 
-import Path from "./Basic.Path"
+import $ from 'jquery';
+import HvacSVG from "../Helper/SVG.t2"
+import Path from "./Basic.Path";
+import Utils1 from "../Helper/Utils1"
+import Utils2 from "../Helper/Utils2"
+import Utils3 from "../Helper/Utils3"
+import ConstantData from "../Data/ConstantData"
 
 class Polygon extends Path {
 
@@ -8,58 +14,51 @@ class Polygon extends Path {
     super()
   }
 
-  SetPoints(e: { x: number; y: number }[]) {
-    console.log("B.Polygon: Input points:", e);
+  SetPoints(points: { x: number, y: number }[]) {
+    console.log("= B.Polygon SetPoints input:", points);
 
-    const pathCreator = this.PathCreator();
-    let minPoint = { x: 0, y: 0 };
-    let maxPoint = { x: 0, y: 0 };
-    const n = e.length;
+    let pathCreator = this.PathCreator();
+    let min = { x: 0, y: 0 };
+    let max = { x: 0, y: 0 };
+    let length = points.length;
 
-    // Begin drawing the path
     pathCreator.BeginPath();
 
-    if (n > 1) {
-      // Start with the first point
-      pathCreator.MoveTo(e[0].x, e[0].y);
-      minPoint = { x: e[0].x, y: e[0].y };
-      maxPoint = { x: e[0].x, y: e[0].y };
-    } else if (n === 1) {
-      // If only one point, use it as both min and max
-      minPoint = { x: e[0].x, y: e[0].y };
-      maxPoint = { x: e[0].x, y: e[0].y };
+    if (length > 1) {
+      pathCreator.MoveTo(points[0].x, points[0].y);
+      min.x = max.x = points[0].x;
+      min.y = max.y = points[0].y;
     }
 
-    // Process remaining points
-    for (let t = 1; t < n; t++) {
-      pathCreator.LineTo(e[t].x, e[t].y);
-      minPoint.x = Math.min(minPoint.x, e[t].x);
-      minPoint.y = Math.min(minPoint.y, e[t].y);
-      maxPoint.x = Math.max(maxPoint.x, e[t].x);
-      maxPoint.y = Math.max(maxPoint.y, e[t].y);
+    for (let i = 1; i < length; i++) {
+      pathCreator.LineTo(points[i].x, points[i].y);
+      min.x = Math.min(min.x, points[i].x);
+      min.y = Math.min(min.y, points[i].y);
+      max.x = Math.max(max.x, points[i].x);
+      max.y = Math.max(max.y, points[i].y);
     }
 
-    // Close the path if there are enough points
-    if (n > 1) {
+    if (length > 1) {
       pathCreator.ClosePath();
     }
 
-    // Convert path to string and log the output
-    const pathString = pathCreator.ToString();
-    console.log("B.Polygon: Generated path string:", pathString);
+    let pathString = pathCreator.ToString();
+    this.SetPath(pathString, {
+      x: min.x,
+      y: min.y,
+      width: max.x - min.x,
+      height: max.y - min.y
+    });
 
-    // Calculate bounding box and log the result
-    const boundingBox = {
-      x: minPoint.x,
-      y: minPoint.y,
-      width: maxPoint.x - minPoint.x,
-      height: maxPoint.y - minPoint.y,
-    };
-    console.log("B.Polygon: Calculated bounding box:", boundingBox);
-
-    // Set the path with its bounding box
-    this.SetPath(pathString, boundingBox);
+    console.log("= B.Polygon SetPoints output pathString:", pathString);
+    console.log("= B.Polygon SetPoints output bounding box:", {
+      x: min.x,
+      y: min.y,
+      width: max.x - min.x,
+      height: max.y - min.y
+    });
   }
+
 }
 
 export default Polygon

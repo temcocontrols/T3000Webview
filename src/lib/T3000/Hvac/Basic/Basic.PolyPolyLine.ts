@@ -1,7 +1,12 @@
 
 
-import Path from "./Basic.Path"
+import $ from 'jquery';
+import HvacSVG from "../Helper/SVG.t2"
+import Path from "./Basic.Path";
 import Utils1 from "../Helper/Utils1"
+import Utils2 from "../Helper/Utils2"
+import Utils3 from "../Helper/Utils3"
+import ConstantData from "../Data/ConstantData"
 
 class PolyPolyLine extends Path {
 
@@ -14,267 +19,247 @@ class PolyPolyLine extends Path {
   }
 
   Clear() {
+    console.log("= B.PolyPolyLine Clear: Clearing polyline list");
     this.pList = [];
     this.BuildPath();
+    console.log("= B.PolyPolyLine Clear: Polyline list cleared and path rebuilt");
   }
 
-  AddPolyLine(points: any, startArrowFlag: boolean, endArrowFlag: boolean): void {
-    console.log("= B.Poly2Line - AddPolyLine input:", { points, startArrowFlag, endArrowFlag });
-
+  AddPolyLine(points, startArrowFlag, endArrowFlag) {
+    console.log("= B.PolyPolyLine AddPolyLine: Adding polyline", { points, startArrowFlag, endArrowFlag });
     this.pList.push({
       points: points,
       sArrowFlag: startArrowFlag,
       eArrowFlag: endArrowFlag
     });
-
-    console.log("= B.Poly2Line - AddPolyLine output, updated pList:", this.pList);
+    console.log("= B.PolyPolyLine AddPolyLine: Polyline added", this.pList);
   }
 
   BuildPath() {
-    console.log("= B.Poly2Line - BuildPath input: pList =", this.pList);
+    console.log("= B.PolyPolyLine BuildPath: Input - Building path");
 
-    // Remove old arrow elements
+    // Remove all existing arrow children
     while (this.arrowAreaElem.children().length) {
       this.arrowAreaElem.removeAt(0);
     }
+    this.arrowElems.length = 0;
 
-    this.arrowElems = [];
     const pathCreator = this.PathCreator();
     pathCreator.BeginPath();
     this.arrowheadBounds = [];
 
-    let polylineCount = this.pList.length;
-    let boundingTopLeft = { x: 0, y: 0 };
-    let boundingBottomRight = { x: 0, y: 0 };
-    let isFirstPoint = true;
-    let useDefaultArrow = true;
-    let currentPoint: { x: number; y: number } | null = null;
-    let nextPoint: { x: number; y: number } | null = null;
+    let currentPoint = null;
+    const boundingMin = { x: 0, y: 0 };
+    const boundingMax = { x: 0, y: 0 };
+    let isFirstSegment = true;
+    let arrowGenerated = false;
 
+    const polylineCount = this.pList.length;
     for (let polyIndex = 0; polyIndex < polylineCount; polyIndex++) {
-      const polyItem = this.pList[polyIndex];
-      const points = polyItem.points;
-      const ptsCount = points.length;
+      let startArrowData = null;
+      let endArrowData = null;
+      const pointsCount = this.pList[polyIndex].points.length;
 
-      // Reset arrow configurations for this polyline
-      let startArrowConfig: any = null;
-      let endArrowConfig: any = null;
+      for (let pointIndex = 0; pointIndex < pointsCount - 1; pointIndex++) {
+        const isFirstSegmentOfPolyline = pointIndex === 0;
+        const isLastSegmentOfPolyline = pointIndex === pointsCount - 2;
 
-      for (let ptIndex = 0; ptIndex < ptsCount - 1; ptIndex++) {
-        const isStartSegment = ptIndex === 0;
-        const isEndSegment = ptIndex === ptsCount - 2;
+        const startPoint = this.pList[polyIndex].points[pointIndex];
+        let endPoint = this.pList[polyIndex].points[pointIndex + 1];
 
-        currentPoint = points[ptIndex];
-        nextPoint = points[ptIndex + 1];
-
-        // Create arrow config objects if needed
-        if (isStartSegment && polyItem.sArrowFlag && this.sArrowRec) {
-          startArrowConfig = {
+        // Prepare arrowhead data for start and end of segment if available
+        if (isFirstSegmentOfPolyline && this.pList[polyIndex].sArrowFlag && this.sArrowRec) {
+          startArrowData = {
             arrowRec: this.sArrowRec,
             arrowSize: this.sArrowSize,
             arrowDisp: this.sArrowDisp
           };
         }
-        if (isEndSegment && polyItem.eArrowFlag && this.eArrowRec) {
-          endArrowConfig = {
+
+        if (isLastSegmentOfPolyline && this.pList[polyIndex].eArrowFlag && this.eArrowRec) {
+          endArrowData = {
             arrowRec: this.eArrowRec,
             arrowSize: this.eArrowSize,
             arrowDisp: this.eArrowDisp
           };
         }
 
-        // If any arrow configuration exists, generate arrowheads
-        if (startArrowConfig || endArrowConfig) {
-          this.GenerateArrowheads(currentPoint, nextPoint, startArrowConfig, endArrowConfig);
-          useDefaultArrow = false;
+        // Generate arrowheads if any arrow data exists
+        if (startArrowData || endArrowData) {
+          console.log("= B.PolyPolyLine BuildPath: Generating arrowheads", { startPoint, endPoint, startArrowData, endArrowData });
+          this.GenerateArrowheads(startPoint, endPoint, startArrowData, endArrowData);
+          arrowGenerated = true;
         }
 
-        // Update bounding box
-        if (isFirstPoint) {
-          boundingTopLeft.x = Math.min(currentPoint.x, nextPoint.x);
-          boundingTopLeft.y = Math.min(currentPoint.y, nextPoint.y);
-          boundingBottomRight.x = Math.max(currentPoint.x, nextPoint.x);
-          boundingBottomRight.y = Math.max(currentPoint.y, nextPoint.y);
+        // Update the bounding box
+        if (isFirstSegment) {
+          boundingMin.x = Math.min(startPoint.x, endPoint.x);
+          boundingMin.y = Math.min(startPoint.y, endPoint.y);
+          boundingMax.x = Math.max(startPoint.x, endPoint.x);
+          boundingMax.y = Math.max(startPoint.y, endPoint.y);
         } else {
-          boundingTopLeft.x = Math.min(boundingTopLeft.x, currentPoint.x, nextPoint.x);
-          boundingTopLeft.y = Math.min(boundingTopLeft.y, currentPoint.y, nextPoint.y);
-          boundingBottomRight.x = Math.max(boundingBottomRight.x, currentPoint.x, nextPoint.x);
-          boundingBottomRight.y = Math.max(boundingBottomRight.y, currentPoint.y, nextPoint.y);
+          boundingMin.x = Math.min(boundingMin.x, startPoint.x, endPoint.x);
+          boundingMin.y = Math.min(boundingMin.y, startPoint.y, endPoint.y);
+          boundingMax.x = Math.max(boundingMax.x, startPoint.x, endPoint.x);
+          boundingMax.y = Math.max(boundingMax.y, startPoint.y, endPoint.y);
         }
-        isFirstPoint = false;
+        isFirstSegment = false;
 
-        // Adjust points if arrowheads were generated
-        if (startArrowConfig && startArrowConfig.segPt) {
-          currentPoint = startArrowConfig.segPt;
+        // Adjust start and end points based on arrowheads if generated
+        if (startArrowData) {
+          currentPoint = startArrowData.segPt;
+        } else {
+          currentPoint = startPoint;
         }
-        if (endArrowConfig && endArrowConfig.segPt) {
-          nextPoint = endArrowConfig.segPt;
+        if (endArrowData) {
+          endPoint = endArrowData.segPt;
         }
 
-        // Build the path
-        if (isStartSegment) {
+        // Plot the path
+        if (isFirstSegmentOfPolyline) {
           pathCreator.MoveTo(currentPoint.x, currentPoint.y);
-        } else if (!isEndSegment) {
+        } else if (!isLastSegmentOfPolyline) {
           pathCreator.LineTo(currentPoint.x, currentPoint.y);
         }
-        if (isEndSegment) {
-          pathCreator.LineTo(nextPoint.x, nextPoint.y);
+        if (isLastSegmentOfPolyline) {
+          pathCreator.LineTo(endPoint.x, endPoint.y);
         }
       }
 
-      // Add the generated arrow elements for this polyline (if any)
-      if (startArrowConfig && startArrowConfig.arrowElem) {
-        this.arrowAreaElem.add(startArrowConfig.arrowElem);
-        this.arrowElems.push(startArrowConfig.arrowElem);
+      // Add arrow elements to the arrow area
+      if (startArrowData) {
+        this.arrowAreaElem.add(startArrowData.arrowElem);
+        this.arrowElems.push(startArrowData.arrowElem);
       }
-      if (endArrowConfig && endArrowConfig.arrowElem) {
-        this.arrowAreaElem.add(endArrowConfig.arrowElem);
-        this.arrowElems.push(endArrowConfig.arrowElem);
+      if (endArrowData) {
+        this.arrowAreaElem.add(endArrowData.arrowElem);
+        this.arrowElems.push(endArrowData.arrowElem);
       }
     }
 
-    // If no arrowheads were generated and there's a valid point, generate a default arrow
-    if (useDefaultArrow && currentPoint && nextPoint) {
-      const defaultArrowConfig: any = {
+    // Fallback arrowhead generation if none was added
+    if (!arrowGenerated && currentPoint) {
+      const fallbackArrowData = {
         arrowRec: this.EmptyArrowhead(),
         arrowSize: this.sArrowSize,
-        arrowDisp: false
+        arrowDisp: false,
+        arrowElem: null
       };
-      this.GenerateArrowheads(currentPoint, nextPoint, defaultArrowConfig, null);
-      this.arrowAreaElem.add(defaultArrowConfig.arrowElem);
-      this.arrowElems.push(defaultArrowConfig.arrowElem);
+      // Using the last known endPoint from the loop to generate arrowhead
+      this.GenerateArrowheads(currentPoint, currentPoint, fallbackArrowData, null);
+      this.arrowAreaElem.add(fallbackArrowData.arrowElem);
+      this.arrowElems.push(fallbackArrowData.arrowElem);
     }
 
-    // Finalize path and update geometry
     const pathData = pathCreator.ToString();
     this.origPathData = pathData;
     this.pathElem.plot(pathData);
     this.UpdateTransform();
-    this.geometryBBox.x = boundingTopLeft.x;
-    this.geometryBBox.y = boundingTopLeft.y;
-    this.geometryBBox.width = boundingBottomRight.x - boundingTopLeft.x;
-    this.geometryBBox.height = boundingBottomRight.y - boundingTopLeft.y;
+
+    this.geometryBBox.x = boundingMin.x;
+    this.geometryBBox.y = boundingMin.y;
+    this.geometryBBox.width = boundingMax.x - boundingMin.x;
+    this.geometryBBox.height = boundingMax.y - boundingMin.y;
     this.RefreshPaint();
 
-    console.log("= B.Poly2Line - BuildPath output: pathData =", pathData);
+    console.log("= B.PolyPolyLine BuildPath: Output", {
+      origPathData: pathData,
+      geometryBBox: this.geometryBBox
+    });
   }
 
   UpdateArrowheads() {
-    this.BuildPath();
+    this.BuildPath()
   }
 
-  GenerateArrowheads(
-    startPoint: { x: number; y: number },
-    endPoint: { x: number; y: number },
-    startConfig: any,
-    endConfig: any
-  ): void {
-    console.log("= B.Poly2Line - GenerateArrowheads input:", { startPoint, endPoint, startConfig, endConfig });
+  GenerateArrowheads(startPoint, endPoint, startArrow, endArrow) {
+    console.log("= B.PolyPolyLine GenerateArrowheads: Generating arrowheads", { startPoint, endPoint, startArrow, endArrow });
 
-    let dx: number, dy: number;
-    let distance: number;
-    let trimStart: number, trimEnd: number, combinedTrim: number;
-    let unitX: number, unitY: number;
-    let startArrowDim: any = null, endArrowDim: any = null;
+    let deltaX, deltaY, distance, startArrowDim, endArrowDim, trimAmount, startTrim, endTrim;
+    let startArrowElem = null, endArrowElem = null;
 
-    if (startConfig || endConfig) {
-      // Initialize start configuration.
-      if (startConfig) {
-        startConfig.segPt = { x: startPoint.x, y: startPoint.y };
-        startConfig.attachPt = { x: startPoint.x, y: startPoint.y };
-        startConfig.offset = { x: startPoint.x, y: startPoint.y };
-        startConfig.arrowElem = null;
-        startConfig.angle = 180;
+    if (startArrow) {
+      startArrow.segPt = { x: startPoint.x, y: startPoint.y };
+      startArrow.attachPt = { x: startPoint.x, y: startPoint.y };
+      startArrow.offset = { x: startPoint.x, y: startPoint.y };
+      startArrow.arrowElem = null;
+      startArrow.angle = 180;
+    }
+
+    if (endArrow) {
+      endArrow.segPt = { x: endPoint.x, y: endPoint.y };
+      endArrow.attachPt = { x: endPoint.x, y: endPoint.y };
+      endArrow.offset = { x: endPoint.x, y: endPoint.y };
+      endArrow.arrowElem = null;
+      endArrow.angle = 0;
+    }
+
+    deltaX = endPoint.x - startPoint.x;
+    deltaY = endPoint.y - startPoint.y;
+    distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (startArrow) {
+      startArrowDim = this.CalcArrowheadDim(startArrow.arrowRec, startArrow.arrowSize, startArrow.arrowDisp);
+    }
+
+    if (endArrow) {
+      endArrowDim = this.CalcArrowheadDim(endArrow.arrowRec, endArrow.arrowSize, endArrow.arrowDisp);
+    }
+
+    trimAmount = (startArrowDim ? startArrowDim.trimAmount : 0) + (endArrowDim ? endArrowDim.trimAmount : 0);
+
+    if (trimAmount > distance) {
+      startTrim = (startArrowDim ? startArrowDim.trimAmount : 0) / trimAmount * distance;
+      endTrim = (endArrowDim ? endArrowDim.trimAmount : 0) / trimAmount * distance;
+    } else {
+      startTrim = startArrowDim ? startArrowDim.trimAmount : 0;
+      endTrim = endArrowDim ? endArrowDim.trimAmount : 0;
+    }
+
+    if (distance) {
+      const unitX = deltaX / distance;
+      const unitY = deltaY / distance;
+
+      if (startArrow) {
+        startArrow.segPt.x = startPoint.x + startTrim * unitX;
+        startArrow.segPt.y = startPoint.y + startTrim * unitY;
+        startArrow.attachPt.x = startArrow.arrowRec.centered ? startPoint.x + distance / 2 * unitX : startArrow.segPt.x;
+        startArrow.attachPt.y = startArrow.arrowRec.centered ? startPoint.y + distance / 2 * unitY : startArrow.segPt.y;
+        startArrow.angle = startArrow.arrowRec.noRotate ? 0 : Utils1.CalcAngleFromPoints(endPoint, startPoint);
+        startArrow.offset.x = startArrow.attachPt.x - startArrowDim.attachX;
+        startArrow.offset.y = startArrow.attachPt.y - startArrowDim.attachY;
       }
 
-      // Initialize end configuration.
-      if (endConfig) {
-        endConfig.segPt = { x: endPoint.x, y: endPoint.y };
-        endConfig.attachPt = { x: endPoint.x, y: endPoint.y };
-        endConfig.offset = { x: endPoint.x, y: endPoint.y };
-        endConfig.arrowElem = null;
-        endConfig.angle = 0;
+      if (endArrow) {
+        endArrow.segPt.x = startPoint.x + (distance - endTrim) * unitX;
+        endArrow.segPt.y = startPoint.y + (distance - endTrim) * unitY;
+        endArrow.attachPt.x = endArrow.arrowRec.centered ? startPoint.x + distance / 2 * unitX : endArrow.segPt.x;
+        endArrow.attachPt.y = endArrow.arrowRec.centered ? startPoint.y + distance / 2 * unitY : endArrow.segPt.y;
+        endArrow.angle = endArrow.arrowRec.noRotate ? 0 : Utils1.CalcAngleFromPoints(startPoint, endPoint);
+        endArrow.offset.x = endArrow.attachPt.x - endArrowDim.attachX;
+        endArrow.offset.y = endArrow.attachPt.y - endArrowDim.attachY;
       }
 
-      // Calculate vector and distance between points.
-      dx = endPoint.x - startPoint.x;
-      dy = endPoint.y - startPoint.y;
-      distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Calculate arrow dimensions.
-      if (startConfig) {
-        startArrowDim = this.CalcArrowheadDim(startConfig.arrowRec, startConfig.arrowSize, startConfig.arrowDisp);
-      }
-      if (endConfig) {
-        endArrowDim = this.CalcArrowheadDim(endConfig.arrowRec, endConfig.arrowSize, endConfig.arrowDisp);
-      }
-
-      // Calculate trim amounts.
-      trimStart = startArrowDim ? startArrowDim.trimAmount : 0;
-      trimEnd = endArrowDim ? endArrowDim.trimAmount : 0;
-      combinedTrim = trimStart + trimEnd;
-      if (combinedTrim > distance) {
-        trimStart = (trimStart / combinedTrim) * distance;
-        trimEnd = (trimEnd / combinedTrim) * distance;
-      }
-
-      // Calculate unit vector.
-      if (distance) {
-        unitX = dx / distance;
-        unitY = dy / distance;
-
-        if (startArrowDim) {
-          // Adjust start point.
-          startConfig.segPt.x = startPoint.x + trimStart * unitX;
-          startConfig.segPt.y = startPoint.y + trimStart * unitY;
-          if (startConfig.arrowRec.centered) {
-            startConfig.attachPt.x = startPoint.x + (distance / 2) * unitX;
-            startConfig.attachPt.y = startPoint.y + (distance / 2) * unitY;
-          } else {
-            startConfig.attachPt.x = startConfig.segPt.x;
-            startConfig.attachPt.y = startConfig.segPt.y;
-          }
-          startConfig.angle = startConfig.arrowRec.noRotate ? 0 : Utils1.CalcAngleFromPoints(endPoint, startPoint);
-          startConfig.offset.x = startConfig.attachPt.x - startArrowDim.attachX;
-          startConfig.offset.y = startConfig.attachPt.y - startArrowDim.attachY;
-        }
-
-        if (endArrowDim) {
-          // Adjust end point.
-          endConfig.segPt.x = startPoint.x + (distance - trimEnd) * unitX;
-          endConfig.segPt.y = startPoint.y + (distance - trimEnd) * unitY;
-          if (endConfig.arrowRec.centered) {
-            endConfig.attachPt.x = startPoint.x + (distance / 2) * unitX;
-            endConfig.attachPt.y = startPoint.y + (distance / 2) * unitY;
-          } else {
-            endConfig.attachPt.x = endConfig.segPt.x;
-            endConfig.attachPt.y = endConfig.segPt.y;
-          }
-          endConfig.angle = endConfig.arrowRec.noRotate ? 0 : Utils1.CalcAngleFromPoints(startPoint, endPoint);
-          endConfig.offset.x = endConfig.attachPt.x - endArrowDim.attachX;
-          endConfig.offset.y = endConfig.attachPt.y - endArrowDim.attachY;
-        }
-      }
-
-      // Create arrowhead elements.
       if (startArrowDim) {
-        startArrowDim.offsetX = startConfig.offset.x;
-        startArrowDim.offsetY = startConfig.offset.y;
-        startArrowDim.angle = startConfig.angle;
-        startArrowDim.rotatePt = startConfig.attachPt;
-        startConfig.arrowElem = this.CreateArrowheadElem(startConfig.arrowRec, startArrowDim, true, this.arrowheadBounds);
+        startArrowDim.offsetX = startArrow.offset.x;
+        startArrowDim.offsetY = startArrow.offset.y;
+        startArrowDim.angle = startArrow.angle;
+        startArrowDim.rotatePt = startArrow.attachPt;
+        startArrow.arrowElem = this.CreateArrowheadElem(startArrow.arrowRec, startArrowDim, true, this.arrowheadBounds);
       }
+
       if (endArrowDim) {
-        endArrowDim.offsetX = endConfig.offset.x;
-        endArrowDim.offsetY = endConfig.offset.y;
-        endArrowDim.angle = endConfig.angle;
-        endArrowDim.rotatePt = endConfig.attachPt;
-        endConfig.arrowElem = this.CreateArrowheadElem(endConfig.arrowRec, endArrowDim, false, this.arrowheadBounds);
+        endArrowDim.offsetX = endArrow.offset.x;
+        endArrowDim.offsetY = endArrow.offset.y;
+        endArrowDim.angle = endArrow.angle;
+        endArrowDim.rotatePt = endArrow.attachPt;
+        endArrow.arrowElem = this.CreateArrowheadElem(endArrow.arrowRec, endArrowDim, false, this.arrowheadBounds);
       }
     }
 
-    console.log("= B.Poly2Line - GenerateArrowheads output:", { startConfig, endConfig });
+    console.log("= B.PolyPolyLine GenerateArrowheads: Arrowheads generated", { startArrow, endArrow });
   }
+
 }
 
 export default PolyPolyLine
