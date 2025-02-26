@@ -1093,7 +1093,7 @@ class Element {
     console.log("= B.Element.UpdateGradient: output =>", {});
   }
 
-  RefreshPaint(shouldRefreshChildren: boolean) {
+  RefreshPaint(shouldRefreshChildren?: boolean) {
     console.log('= B.Element.RefreshPaint: input =>', { shouldRefreshChildren });
 
     // Update fill pattern or gradient if exists
