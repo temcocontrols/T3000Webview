@@ -1,7 +1,7 @@
 
 
 import Globals from "../Globals"
-import GPP from "../GlobalData"
+import GlobalData from "../GlobalData"
 import Utils1 from "../../Helper/Utils1"
 import StoredObject from "./StoredObject"
 
@@ -44,7 +44,7 @@ class ObjectStore {
       }
 
       if (isAddToState) {
-        GPP.stateManager.AddToCurrentState(object);
+        GlobalData.stateManager.AddToCurrentState(object);
       }
 
       return object.ID;
@@ -53,11 +53,11 @@ class ObjectStore {
     }
   }
 
-  GetObject(e: number): any {
-    if (e == null) return null;
+  GetObject(objectId: number): any {
+    if (objectId == null) return null;
 
     for (let t = 0; t < this.StoredObjects.length; t++) {
-      if (this.StoredObjects[t].ID === e) {
+      if (this.StoredObjects[t].ID === objectId) {
         return this.StoredObjects[t];
       }
     }
@@ -65,61 +65,57 @@ class ObjectStore {
     return null;
   }
 
-  GetObjects(e: any): any[] {
-    if (e != null) {
-      return this.StoredObjects.filter(t => t.Type === e);
+  GetObjects(objectType: any): any[] {
+    if (objectType != null) {
+      return this.StoredObjects.filter(t => t.Type === objectType);
     } else {
       return this.StoredObjects;
     }
   }
 
-  DeleteObject(e: number, t?: boolean): void {
-    if (e == null) throw new Error('storedObjectID is null');
+  DeleteObject(objectId: number, isAddToState?: boolean): void {
+    if (objectId == null) throw new Error('Object ID is null');
 
-    const a = t === undefined || t;
-    let r = -1;
+    const needAddToCurrent = isAddToState === undefined || isAddToState;
+    let deleteIndex = -1;
 
     try {
       this.StoredObjects.forEach((obj, index) => {
-        if (obj.ID === e) {
-          r = index;
+        if (obj.ID === objectId) {
+          deleteIndex = index;
           return false;
         }
       });
 
-      if (r >= 0) {
-        const i = this.GetObject(e);
-        i.StateOperationTypeID = Globals.StateOperationType.DELETE;
-        if (a) {
-          GPP.stateManager.AddToCurrentState(i);
+      if (deleteIndex >= 0) {
+        const deleteObject = this.GetObject(objectId);
+        deleteObject.StateOperationTypeID = Globals.StateOperationType.DELETE;
+        if (needAddToCurrent) {
+          GlobalData.stateManager.AddToCurrentState(deleteObject);
         }
-        this.StoredObjects.splice(r, 1);
+        this.StoredObjects.splice(deleteIndex, 1);
       }
     } catch (error) {
-      // throw new Error(error.message);
       throw error
     }
   }
 
-  PreserveBlock(e: any): any {
-    console.log('===ObjectStore.PreserveBlock e', e);
-    return new StoredObject(e, null, null, null, null, true);
+  PreserveBlock(id: any): any {
+    return new StoredObject(id, null, null, null, null, true);
   }
 
-  CreateBlock(e: any, t: any): any {
-    console.log('===ObjectStore.CreateBlock e,t', e, t);
-    return new StoredObject(-1, e, t, true, true, true);
+  CreateBlock(type: any, data: any): any {
+    return new StoredObject(-1, type, data, true, true, true);
   }
 
-  SetStoredObjects(e: any[]): void {
-    if (e == null) throw new Error('storedObjects is null');
-    if (!(e instanceof Array)) throw new Error('storedObjects must be an array');
+  SetStoredObjects(stdObjects: any[]): void {
+    if (stdObjects == null) throw new Error('Stored objects is null');
+    if (!(stdObjects instanceof Array)) throw new Error('Stored objects is not an array');
 
-    this.StoredObjects = e;
+    this.StoredObjects = stdObjects;
   }
 
   DumpStoredObjects(): void {
-    for (let e = 0; e < this.StoredObjects.length; ++e);
   }
 }
 

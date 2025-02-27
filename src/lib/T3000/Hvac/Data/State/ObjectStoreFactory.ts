@@ -2,29 +2,31 @@
 import ObjectStore from './ObjectStore'
 
 class ObjectStoreFactory {
-  Create(e?: any) {
-    var t = new ObjectStore();
 
-    if (null != e || e instanceof Array) {
-      t.StoredObjects = e;
+  Create(stdObjs?: any) {
 
-      return {
-        Set: function (e) {
-          if (null == e) throw new Error('storedObjects cannot be null');
+    var obj = new ObjectStore();
 
-          if (!(e instanceof Array)) throw new Error('storedObjects must be an array');
-          t.StoredObjects = e
-        },
-        Get: function () {
-          return t.StoredObjects
-        },
-        Clear: function () {
-          t.StoredObjects = []
-        }
+    if (null != stdObjs || stdObjs instanceof Array) {
+      obj.StoredObjects = stdObjs;
+    }
+
+    return {
+      Set: function (stdObjs) {
+        if (null == stdObjs) throw new Error('Stored objects cannot be null');
+        if (!(stdObjs instanceof Array)) throw new Error('Stored objects is not an array');
+        obj.StoredObjects = stdObjs
+      },
+      Get: function () {
+        return obj.StoredObjects
+      },
+      Clear: function () {
+        obj.StoredObjects = []
       }
     }
   }
 }
 
 export default ObjectStoreFactory
+
 

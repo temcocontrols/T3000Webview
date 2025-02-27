@@ -1,4 +1,3 @@
-
 import State from "./State"
 
 class BaseStateManager {
@@ -19,9 +18,7 @@ class BaseStateManager {
 
   SyncObjectsWithCreateStates() { }
 
-  GetUndoState() {
-    // return false;
-  }
+  GetUndoState() { }
 
   ExceptionCleanup() { }
 
@@ -31,17 +28,15 @@ class BaseStateManager {
 
   RestoreObjectStoreFromState() { }
 
-  GetCurrentState() {
-    return null;
-  }
+  GetCurrentState() { return null; }
 
-  AddToCurrentState(e: any) { }
+  AddToCurrentState(input: any) { }
 
-  CurrentStateReplace(e: any, t: any) { }
+  CurrentStateReplace(state: any, isReplace: any) { }
 
-  CurrentStateDelete(e: any) { }
+  CurrentStateDelete(state: any) { }
 
-  ReplaceInCurrentState(e: any, t: any) { }
+  ReplaceInCurrentState(state: any, isReplace: any) { }
 
   ResetUndoStates() {
     this.CurrentStateID = -1;
@@ -50,11 +45,11 @@ class BaseStateManager {
     this.States = [];
   }
 
-  ResetToSpecificState(e: any) { }
+  ResetToSpecificState(input: any) { }
 
   ClearFutureUndoStates() { }
 
-  DumpStates(e: any) { }
+  DumpStates(input: any) { }
 }
 
 export default BaseStateManager

@@ -4,14 +4,12 @@ import ArcLine from "../../Shape/Shape.ArcLine"
 import ArcSegmentedLine from "../../Shape/Shape.ArcSegmentedLine"
 import BaseDrawingObject from "../../Shape/Shape.BaseDrawingObject"
 import BaseLine from "../../Shape/Shape.BaseLine"
-
 import BaseShape from "../../Shape/Shape.BaseShape"
 import BaseSymbol from "../../Shape/Shape.BaseSymbol"
 import BitmapSymbol from "../../Shape/Shape.BitmapSymbol"
 import Connector from "../../Shape/Shape.Connector"
 import D3Symbol from "../../Shape/Shape.D3Symbol"
 import FreehandLine from "../../Shape/Shape.FreehandLine"
-// import Graph from "../../Shape/Shape.Graph"
 import GroupSymbol from "../../Shape/Shape.GroupSymbol"
 import Line from "../../Shape/Shape.Line"
 import Oval from "../../Shape/Shape.Oval"
@@ -35,7 +33,6 @@ const Shape = {
   Connector: null,
   D3Symbol: null,
   FreehandLine: null,
-  // Graph: null,
   GroupSymbol: null,
   Line: null,
   Oval: null,
@@ -59,7 +56,6 @@ Shape.BitmapSymbol = BitmapSymbol;
 Shape.Connector = Connector;
 Shape.D3Symbol = D3Symbol;
 Shape.FreehandLine = FreehandLine;
-// Shape.Graph = Graph;
 Shape.GroupSymbol = GroupSymbol;
 Shape.Line = Line;
 Shape.Oval = Oval;
