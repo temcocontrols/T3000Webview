@@ -7,21 +7,21 @@ class State extends StateBase {
 
   public StoredObjects: ObjectStore[];
 
-  constructor(e?: number, t?: string, a?: ObjectStore[], r?: number, i?: boolean) {
-    super(e, t, r, i);
-    this.StoredObjects = a || [];
+  constructor(id?: number, name?: string, storedObjects?: ObjectStore[], rank?: number, isActive?: boolean) {
+    super(id, name, rank, isActive);
+    this.StoredObjects = storedObjects || [];
   }
 
-  AddStoredObject(e: any) {
-    if (e == null) throw new Error('storedObject is null');
-    if (e.Type == null) throw new Error('storedObject type is null');
-    this.StoredObjects.push(Utils1.CloneBlock(e));
+  AddStoredObject(storedObject: any) {
+    if (storedObject == null) throw new Error('Stored objects is null');
+    if (storedObject.Type == null) throw new Error('Stored object type is null');
+    this.StoredObjects.push(Utils1.CloneBlock(storedObject));
   }
 
-  SetStoredObjects(e: any[]) {
-    if (e == null) throw new Error('storedObjects is null');
-    const t = e.map(item => Utils1.CloneBlock(item));
-    this.StoredObjects = t;
+  SetStoredObjects(storedObjects: any[]) {
+    if (storedObjects == null) throw new Error('Stored objects is null');
+    const clonedObjects = storedObjects.map(item => Utils1.CloneBlock(item));
+    this.StoredObjects = clonedObjects;
   }
 
   GetStoredObjects() {

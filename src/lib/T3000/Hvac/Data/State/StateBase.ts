@@ -1,5 +1,5 @@
 
-import GPP from "../GlobalData"
+import GlobalData from "../GlobalData"
 
 class StateBase {
 
@@ -9,12 +9,12 @@ class StateBase {
   public IsOpen: boolean;
   public CURRENT_SEQ_OBJECT_ID: number;
 
-  constructor(e?: number, t?: string, a?: number, r?: boolean) {
-    this.ID = e != null ? e : -1;
-    this.CreatedBy = t || null;
-    this.StateType = a || null;
-    this.IsOpen = r || true;
-    this.CURRENT_SEQ_OBJECT_ID = GPP.CURRENT_SEQ_OBJECT_ID;
+  constructor(id?: number, createdBy?: string, stateType?: number, isOpen?: boolean) {
+    this.ID = id != null ? id : -1;
+    this.CreatedBy = createdBy || null;
+    this.StateType = stateType || null;
+    this.IsOpen = isOpen != null ? isOpen : true;
+    this.CURRENT_SEQ_OBJECT_ID = GlobalData.CURRENT_SEQ_OBJECT_ID;
   }
 }
 

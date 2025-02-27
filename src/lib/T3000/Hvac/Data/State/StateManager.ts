@@ -1,6 +1,6 @@
 
 import BaseStateManager from './BaseStateManager'
-import GPP from '../GlobalData'
+import GlobalData from '../GlobalData'
 import Globals from '../Globals'
 import Utils1 from '../../Helper/Utils1'
 import State from './State'
@@ -12,7 +12,7 @@ class StateManager extends BaseStateManager {
 
   constructor() {
     super();
-    this.maxUndoStates = GPP.gMaxUndoStates;
+    this.maxUndoStates = GlobalData.gMaxUndoStates;
   }
 
   PreserveState() {
@@ -21,34 +21,34 @@ class StateManager extends BaseStateManager {
   }
 
   SyncObjectsWithCreateStates() {
+    // Operation Types: CREATE: 1, UPDATE: 2, DELETE: 3
+    const globalStateOperation = Globals.StateOperationType;
+    const cloneBlock = Utils1.CloneBlock;
+    const currentState = this.States[this.CurrentStateID];
+    const totalStoredObjects = currentState.StoredObjects.length;
 
-    //CREATE: 1 || UPDATE: 2 ||DELETE: 3
-    const t = Globals.StateOperationType;
-    const a = Utils1.CloneBlock;
-    const r = this.States[this.CurrentStateID];
-    const i = r.StoredObjects.length;
-    for (let e = 0; e < i; ++e) {
-      const n = r.StoredObjects[e];
-      if (n.StateOperationTypeID == t.CREATE) {
-        const o = a(GPP.objectStore.GetObject(n.ID));
-        o.StateOperationTypeID = t.CREATE;
-        r.StoredObjects[e] = o;
+    for (let index = 0; index < totalStoredObjects; ++index) {
+      const storedObject = currentState.StoredObjects[index];
+      if (storedObject.StateOperationTypeID === globalStateOperation.CREATE) {
+        const clonedObject = cloneBlock(GlobalData.objectStore.GetObject(storedObject.ID));
+        clonedObject.StateOperationTypeID = globalStateOperation.CREATE;
+        currentState.StoredObjects[index] = clonedObject;
       }
     }
   }
 
   GetUndoState() {
-    const e = { undo: false, redo: false };
-    const t = this.States.length - 1;
-    e.undo = this.CurrentStateID > 0;
-    e.redo = this.CurrentStateID < t;
-    return e;
+    const stateAvailability = { undo: false, redo: false };
+    const lastStateIndex = this.States.length - 1;
+    stateAvailability.undo = this.CurrentStateID > 0;
+    stateAvailability.redo = this.CurrentStateID < lastStateIndex;
+    return stateAvailability;
   }
 
   ExceptionCleanup() {
     if (this.CurrentStateID > 0 && this.States[this.CurrentStateID].IsOpen) {
       this.States[this.CurrentStateID].IsOpen = false;
-      GPP.CURRENT_SEQ_OBJECT_ID = this.States[this.CurrentStateID].CURRENT_SEQ_OBJECT_ID;
+      GlobalData.CURRENT_SEQ_OBJECT_ID = this.States[this.CurrentStateID].CURRENT_SEQ_OBJECT_ID;
       this.RestoreObjectStoreFromState();
       this.CurrentStateID--;
       if (this.CurrentStateID < this.States.length - 1) {
@@ -72,45 +72,47 @@ class StateManager extends BaseStateManager {
   }
 
   RestoreObjectStoreFromState() {
-    //CREATE: 1 || UPDATE: 2 ||DELETE: 3
-    const e = Globals.StateOperationType;
-    const t = Utils1.CloneBlock;
+    const operationTypes = Globals.StateOperationType;
+    const cloneBlock = Utils1.CloneBlock;
+
     try {
-      const a = this.States[this.CurrentStateID];
-      const r = a.StoredObjects;
-      let i = null;
-      const n = r.length;
-      let o = 0;
-      let s = null;
-      for (o = 0; o < n; ++o) {
-        s = r[o];
-        switch (s.StateOperationTypeID) {
-          case e.CREATE:
-            if (GPP.objectStore.GetObject(s.ID)) {
-              GPP.objectStore.DeleteObject(s.ID, false);
+      const currentState = this.States[this.CurrentStateID];
+      const storedObjects = currentState.StoredObjects;
+      let clonedObject = null;
+      const totalObjects = storedObjects.length;
+
+      for (let index = 0; index < totalObjects; ++index) {
+        const storedObject = storedObjects[index];
+
+        switch (storedObject.StateOperationTypeID) {
+          case operationTypes.CREATE:
+            if (GlobalData.objectStore.GetObject(storedObject.ID)) {
+              GlobalData.objectStore.DeleteObject(storedObject.ID, false);
             } else {
-              i = t(s);
-              GPP.objectStore.SaveObject(i, false);
+              clonedObject = cloneBlock(storedObject);
+              GlobalData.objectStore.SaveObject(clonedObject, false);
             }
             break;
-          case e.DELETE:
-            if (GPP.objectStore.GetObject(s.ID)) {
-              GPP.objectStore.DeleteObject(s.ID, false);
+
+          case operationTypes.DELETE:
+            if (GlobalData.objectStore.GetObject(storedObject.ID)) {
+              GlobalData.objectStore.DeleteObject(storedObject.ID, false);
             } else {
-              i = t(s);
-              i.StateOperationTypeID = e.CREATE;
-              GPP.objectStore.SaveObject(i, false);
+              clonedObject = cloneBlock(storedObject);
+              clonedObject.StateOperationTypeID = operationTypes.CREATE;
+              GlobalData.objectStore.SaveObject(clonedObject, false);
             }
             break;
-          case e.UPDATE:
-            const l = t(s);
-            const S = GPP.objectStore.GetObject(s.ID);
-            const c = t(S);
-            if (S.StateOperationTypeID == e.CREATE) {
-              c.StateOperationTypeID = e.UPDATE;
+
+          case operationTypes.UPDATE:
+            const updatedClone = cloneBlock(storedObject);
+            const currentGlobalObject = GlobalData.objectStore.GetObject(storedObject.ID);
+            const globalClone = cloneBlock(currentGlobalObject);
+            if (currentGlobalObject.StateOperationTypeID === operationTypes.CREATE) {
+              globalClone.StateOperationTypeID = operationTypes.UPDATE;
             }
-            GPP.objectStore.SaveObject(l, false);
-            a.StoredObjects[o] = c;
+            GlobalData.objectStore.SaveObject(updatedClone, false);
+            currentState.StoredObjects[index] = globalClone;
             break;
         }
       }
@@ -123,108 +125,118 @@ class StateManager extends BaseStateManager {
     return this.States[this.CurrentStateID];
   }
 
-  AddToCurrentState(e) {
-    const t = State;
-    const a = Globals.StateOperationType;
-    let r = true;
-    const i = this.GetCurrentState();
-    let n = null;
-    let o = 0;
-    if (i !== undefined && i.IsOpen === true) {
-      r = false;
-      let s = false;
-      let l = null;
-      $.each(i.StoredObjects, (function (t, a) {
-        if (a.ID === e.ID) {
-          s = true;
-          l = a;
-          return false;
+  AddToCurrentState(newObject) {
+    const StateClass = State;
+    const operationTypes = Globals.StateOperationType;
+    let createNewState = true;
+    const currentState = this.GetCurrentState();
+    let newState = null;
+
+    if (currentState !== undefined && currentState.IsOpen === true) {
+      createNewState = false;
+      let objectFound = false;
+      let existingObject = null;
+
+      $.each(currentState.StoredObjects, (index, storedObject) => {
+        if (storedObject.ID === newObject.ID) {
+          objectFound = true;
+          existingObject = storedObject;
+          return false; // break out of $.each loop
         }
-      }));
-      if (s) {
-        switch (l.StateOperationTypeID) {
-          case a.CREATE:
-            switch (e.StateOperationTypeID) {
-              case a.CREATE:
-                this.CurrentStateReplace(e, false);
+      });
+
+      if (objectFound) {
+        switch (existingObject.StateOperationTypeID) {
+          case operationTypes.CREATE:
+            switch (newObject.StateOperationTypeID) {
+              case operationTypes.CREATE:
+                this.CurrentStateReplace(newObject, false);
                 break;
-              case a.DELETE:
-                this.CurrentStateDelete(e);
-              case a.UPDATE:
+              case operationTypes.DELETE:
+                this.CurrentStateDelete(newObject);
+              // fall through to UPDATE behavior if needed
+              case operationTypes.UPDATE:
+                break;
             }
             break;
-          case a.DELETE:
-            switch (e.StateOperationTypeID) {
-              case a.CREATE:
-                e.StateOperationTypeID = a.UPDATE;
-                this.CurrentStateReplace(e, false);
+          case operationTypes.DELETE:
+            switch (newObject.StateOperationTypeID) {
+              case operationTypes.CREATE:
+                newObject.StateOperationTypeID = operationTypes.UPDATE;
+                this.CurrentStateReplace(newObject, false);
                 break;
-              case a.DELETE:
-                this.CurrentStateReplace(e, false);
+              case operationTypes.DELETE:
+                this.CurrentStateReplace(newObject, false);
                 break;
-              case a.UPDATE:
-                e.StateOperationTypeID = a.UPDATE;
-                this.CurrentStateReplace(e, false);
+              case operationTypes.UPDATE:
+                newObject.StateOperationTypeID = operationTypes.UPDATE;
+                this.CurrentStateReplace(newObject, false);
+                break;
             }
             break;
-          case a.UPDATE:
-            switch (e.StateOperationTypeID) {
-              case a.CREATE:
-                this.CurrentStateReplace(e, false);
+          case operationTypes.UPDATE:
+            switch (newObject.StateOperationTypeID) {
+              case operationTypes.CREATE:
+                this.CurrentStateReplace(newObject, false);
                 break;
-              case a.DELETE:
-                this.CurrentStateReplace(e, true);
-              case a.UPDATE:
+              case operationTypes.DELETE:
+                this.CurrentStateReplace(newObject, true);
+              // fall through to UPDATE behavior if needed
+              case operationTypes.UPDATE:
+                break;
             }
+            break;
         }
       } else {
-        i.AddStoredObject(e);
+        currentState.AddStoredObject(newObject);
       }
     }
-    if (r === true) {
+
+    if (createNewState === true) {
       if (this.CurrentStateID < this.States.length - 1) {
         this.States = this.States.slice(0, this.CurrentStateID + 1);
       }
+
       if (this.maxUndoStates) {
-        n = new t(this.CurrentStateID + 1, 't3');
-        n.AddStoredObject(e);
-        this.States.push(n);
-        this.CurrentStateID = n.ID;
-        let S = this.States.length;
-        if (S > this.maxUndoStates) {
+        newState = new StateClass(this.CurrentStateID + 1, 't3');
+        newState.AddStoredObject(newObject);
+        this.States.push(newState);
+        this.CurrentStateID = newState.ID;
+
+        let totalStates = this.States.length;
+        if (totalStates > this.maxUndoStates) {
           this.States.shift();
           this.CurrentStateID--;
           this.DroppedStates++;
-          S = this.States.length;
-          for (o = 0; o < S; ++o) {
-            this.States[o].ID--;
+          totalStates = this.States.length;
+          for (let index = 0; index < totalStates; ++index) {
+            this.States[index].ID--;
           }
         }
       } else if (this.States.length === 0) {
-        n = new t(GPP.stateManager.CurrentStateID + 1, 't3');
-        n.AddStoredObject(e);
-        this.States.push(n);
-        this.CurrentStateID = n.ID;
+        newState = new StateClass(GlobalData.stateManager.CurrentStateID + 1, 't3');
+        newState.AddStoredObject(newObject);
+        this.States.push(newState);
+        this.CurrentStateID = newState.ID;
       }
     }
   }
 
-  CurrentStateReplace(e, t) {
-    let a = null;
-    let r = 0;
-    let i = 0;
-    const n = e.ID;
-    const o = Utils1.CloneBlock;
+  CurrentStateReplace(newObject, updateOperationTypeOnly) {
+    const objectId = newObject.ID;
+    const cloneObject = Utils1.CloneBlock;
+
     if (this.States.length !== 0) {
-      a = this.States[this.CurrentStateID];
-      i = a.StoredObjects.length;
-      for (r = 0; r < i; ++r) {
-        if (a.StoredObjects[r].ID == n) {
-          if (t) {
-            a.StoredObjects[r].StateOperationTypeID = e.StateOperationTypeID;
+      const currentState = this.States[this.CurrentStateID];
+      const totalObjects = currentState.StoredObjects.length;
+
+      for (let index = 0; index < totalObjects; index++) {
+        if (currentState.StoredObjects[index].ID === objectId) {
+          if (updateOperationTypeOnly) {
+            currentState.StoredObjects[index].StateOperationTypeID = newObject.StateOperationTypeID;
           } else {
-            const s = o(e);
-            a.StoredObjects[r] = s;
+            const clonedNewObject = cloneObject(newObject);
+            currentState.StoredObjects[index] = clonedNewObject;
           }
           return;
         }
@@ -232,47 +244,43 @@ class StateManager extends BaseStateManager {
     }
   }
 
-  CurrentStateDelete(e) {
-    let t = null;
-    let a = 0;
-    let r = 0;
-    const i = e.ID;
+  CurrentStateDelete(objectToDelete) {
     if (this.States.length !== 0) {
-      t = this.States[this.CurrentStateID];
-      r = t.StoredObjects.length;
-      for (a = 0; a < r; ++a) {
-        if (t.StoredObjects[a].ID == i) {
-          t.StoredObjects.splice(a, 1);
+      const currentState = this.States[this.CurrentStateID];
+      const totalObjects = currentState.StoredObjects.length;
+      for (let index = 0; index < totalObjects; ++index) {
+        if (currentState.StoredObjects[index].ID === objectToDelete.ID) {
+          currentState.StoredObjects.splice(index, 1);
           return;
         }
       }
     }
   }
 
-  GetBlockFromState(e, t) {
-    if (this.States.length > e) {
-      const i = this.States[e];
-      const a = i.StoredObjects.length;
-      for (let r = 0; r < a; r++) {
-        if (i.StoredObjects[r].ID === t) {
-          return i.StoredObjects[r];
+  GetObjectFromState(stateIndex: number, objectId: number) {
+    if (this.States.length > stateIndex) {
+      const state = this.States[stateIndex];
+      const storedObjectCount = state.StoredObjects.length;
+      for (let index = 0; index < storedObjectCount; index++) {
+        if (state.StoredObjects[index].ID === objectId) {
+          return state.StoredObjects[index];
         }
       }
     }
   }
 
-  ReplaceInCurrentState(e, t) {
-    let a = null;
-    let r = 0;
-    let i = 0;
-    if (this.States.length !== 0) {
-      a = this.States[this.CurrentStateID];
-      i = a.StoredObjects.length;
-      for (r = 0; r < i; ++r) {
-        if (a.StoredObjects[r].ID == e) {
-          $.extend(a.StoredObjects[r].Data, t.Data, true);
-          break;
-        }
+  ReplaceInCurrentState(objectId, updatedObject) {
+    if (this.States.length === 0) {
+      return;
+    }
+
+    const currentState = this.States[this.CurrentStateID];
+    const totalObjects = currentState.StoredObjects.length;
+
+    for (let index = 0; index < totalObjects; index++) {
+      if (currentState.StoredObjects[index].ID === objectId) {
+        $.extend(currentState.StoredObjects[index].Data, updatedObject.Data, true);
+        break;
       }
     }
   }
@@ -284,14 +292,14 @@ class StateManager extends BaseStateManager {
     this.States = [];
   }
 
-  ResetToSpecificState(e) {
-    this.CurrentStateID = e;
+  ResetToSpecificState(stateIndex: number): void {
+    this.CurrentStateID = stateIndex;
     this.DroppedStates = 0;
     this.HistoryState = 0;
-    this.States = [this.States[e]];
+    this.States = [this.States[stateIndex]];
   }
 
-  AddToHistoryState(e) {
+  AddToHistoryState() {
     this.HistoryState++;
   }
 
@@ -301,19 +309,20 @@ class StateManager extends BaseStateManager {
     }
   }
 
-  DumpStates(e) {
-    const t = this.States.length;
-    let a = null;
-    let r = 0;
-    let i = 0;
-    let n = 0;
-    for (r = 0; r < t; ++r) {
-      n = (a = this.States[r]).StoredObjects.length;
-      for (i = 0; i < n; ++i) {
-        switch (a.StoredObjects[i].StateOperationTypeID) {
+  DumpStates(logHeader: string): void {
+    const totalStates = this.States.length;
+    for (let stateIndex = 0; stateIndex < totalStates; stateIndex++) {
+      const currentState = this.States[stateIndex];
+      const totalObjects = currentState.StoredObjects.length;
+      for (let objectIndex = 0; objectIndex < totalObjects; objectIndex++) {
+        const storedObject = currentState.StoredObjects[objectIndex];
+        switch (storedObject.StateOperationTypeID) {
           case Globals.StateOperationType.CREATE:
           case Globals.StateOperationType.DELETE:
           case Globals.StateOperationType.UPDATE:
+            break;
+          default:
+            break;
         }
       }
     }
