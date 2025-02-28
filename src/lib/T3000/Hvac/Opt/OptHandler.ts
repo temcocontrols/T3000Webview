@@ -1098,6 +1098,1243 @@ class OptHandler{
     console.log('O.Opt ProcessLineObject - Output: Line object processed');
   }
 
+  HandleTextFormatAttributes(textObject, objectIndex) {
+    console.log('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
+
+    const TEXT_FACE = ConstantData.TextFace;
+    const textData = {};
+
+    const textFormat = textObject.GetTextFormat(true, textData);
+    if (textData.hastext) {
+      this.SelectionState.selectionhastext = true;
+    }
+
+    if (objectIndex === 0) {
+      // First object sets the initial values
+      this.SelectionState.fontid = textFormat.FontId;
+      this.SelectionState.fontsize = textFormat.FontSize;
+      this.SelectionState.bold = (textFormat.Face & TEXT_FACE.Bold) > 0;
+      this.SelectionState.italic = (textFormat.Face & TEXT_FACE.Italic) > 0;
+      this.SelectionState.underline = (textFormat.Face & TEXT_FACE.Underline) > 0;
+      this.SelectionState.superscript = (textFormat.Face & TEXT_FACE.Superscript) > 0;
+      this.SelectionState.subscript = (textFormat.Face & TEXT_FACE.Subscript) > 0;
+    } else {
+      // Subsequent objects may cause values to be cleared if they differ
+      if (this.SelectionState.fontid !== textFormat.FontId) {
+        this.SelectionState.fontid = -1;
+      }
+      if (this.SelectionState.fontsize !== textFormat.FontSize) {
+        this.SelectionState.fontsize = -1;
+      }
+      if (this.SelectionState.bold !== ((textFormat.Face & TEXT_FACE.Bold) > 0)) {
+        this.SelectionState.bold = false;
+      }
+      if (this.SelectionState.italic !== ((textFormat.Face & TEXT_FACE.Italic) > 0)) {
+        this.SelectionState.italic = false;
+      }
+      if (this.SelectionState.underline !== ((textFormat.Face & TEXT_FACE.Underline) > 0)) {
+        this.SelectionState.underline = false;
+      }
+      if (this.SelectionState.superscript !== ((textFormat.Face & TEXT_FACE.Superscript) > 0)) {
+        this.SelectionState.superscript = false;
+      }
+      if (this.SelectionState.subscript !== ((textFormat.Face & TEXT_FACE.Subscript) > 0)) {
+        this.SelectionState.subscript = false;
+      }
+    }
+
+    console.log('O.Opt HandleTextFormatAttributes - Output: Text format attributes processed');
+  }
+
+  GetObjectPtr(blockId, isPreserveBlock) {
+    console.log('O.Opt GetObjectPtr - Input:', { blockId, isPreserveBlock });
+
+    const object = GlobalData.objectStore.GetObject(blockId);
+    if (object == null || blockId < 0) {
+      console.log('O.Opt GetObjectPtr - Output: null (invalid block ID or not found)');
+      return null;
+    }
+
+    const result = isPreserveBlock ?
+      GlobalData.objectStore.PreserveBlock(blockId).Data :
+      object.Data;
+
+    console.log('O.Opt GetObjectPtr - Output:', result);
+    return result;
+  }
+
+  GetClipboardType() {
+    console.log('O.Opt GetClipboardType - Input: No parameters');
+
+    // Get the text edit session data
+    const tedSession = this.GetObjectPtr(this.theTEDSessionBlockID, false);
+
+    // Initialize clipboard manager
+    GlobalData.clipboardManager.Get();
+
+    let clipboardType;
+
+    // Handle case when text editing is active or note editing is active
+    if (tedSession.theActiveTextEditObjectID !== -1 || this.bInNoteEdit) {
+      if (tedSession.theActiveTableObjectID >= 0 &&
+        this.theContentHeader.ClipboardType === ConstantData.ClipboardType.Table &&
+        this.theContentHeader.ClipboardBuffer) {
+        clipboardType = ConstantData.ClipboardType.Table;
+      } else if (this.theTextClipboard && this.theTextClipboard.text) {
+        clipboardType = ConstantData.ClipboardType.Text;
+      } else {
+        clipboardType = ConstantData.ClipboardType.None;
+      }
+    }
+    // Handle case when table is active
+    else if (tedSession.theActiveTableObjectID >= 0 &&
+      ((this.theContentHeader.ClipboardType === ConstantData.ClipboardType.Table &&
+        this.theContentHeader.ClipboardBuffer) ||
+        (this.theTextClipboard && this.theTextClipboard.text))) {
+      clipboardType = ConstantData.ClipboardType.Table;
+    }
+    // Handle case when LM content is in clipboard
+    else if (GlobalData.optManager.theContentHeader.ClipboardBuffer &&
+      this.theContentHeader.ClipboardType === ConstantData.ClipboardType.LM) {
+      clipboardType = ConstantData.ClipboardType.LM;
+    }
+    // Handle case when text is selected and text is in clipboard
+    else if (this.GetTargetSelect() >= 0 && this.theTextClipboard && this.theTextClipboard.text) {
+      clipboardType = ConstantData.ClipboardType.Text;
+    }
+    // Default case: no valid clipboard content
+    else {
+      clipboardType = ConstantData.ClipboardType.None;
+    }
+
+    console.log('O.Opt GetClipboardType - Output:', clipboardType);
+    return clipboardType;
+  }
+
+  GetTargetSelect() {
+    console.log('O.Opt GetTargetSelect - Input: No parameters');
+
+    // Get session data
+    const sessionData = this.GetObjectPtr(this.theSEDSessionBlockID, false);
+
+    // Check if table is active and update target select if needed
+    const activeTableId = this.Table_GetActiveID();
+    if (activeTableId >= 0) {
+      sessionData.tselect = activeTableId;
+    }
+
+    // Default to no selection
+    let targetSelectId = -1;
+
+    // Verify the selected object is valid
+    if (sessionData.tselect >= 0) {
+      const selectedObject = GlobalData.optManager.GetObjectPtr(sessionData.tselect, false);
+      if (selectedObject && selectedObject instanceof BaseDrawingObject) {
+        targetSelectId = sessionData.tselect;
+      }
+    }
+
+    console.log('O.Opt GetTargetSelect - Output:', targetSelectId);
+    return targetSelectId;
+  }
+
+  Table_GetActiveID() {
+    console.log('O.Opt Table_GetActiveID - Input: No parameters');
+
+    const activeTableId = this.GetObjectPtr(this.theTEDSessionBlockID, false).theActiveTableObjectID;
+
+    console.log('O.Opt Table_GetActiveID - Output:', activeTableId);
+    return activeTableId;
+  }
+
+  BuildArrowheadLookupTables() {
+    console.log("O.Opt BuildArrowheadLookupTables - Input: No parameters");
+
+    const arrowDefs = new ArrowDefs().uiArrowDefs;
+    const arrowSizes = new ArrowSizes().uiarrowSizes;
+
+    // Initialize lookup tables to the correct size
+    ConstantData1.ArrowheadLookupTable.length = arrowDefs.length;
+    for (let index = 0; index < arrowDefs.length; index++) {
+      ConstantData1.ArrowheadLookupTable[arrowDefs[index].id] = arrowDefs[index];
+    }
+
+    // Initialize size table to the correct size
+    ConstantData1.ArrowheadSizeTable.length = arrowSizes.length;
+    for (let index = 0; index < arrowSizes.length; index++) {
+      ConstantData1.ArrowheadSizeTable[index] = arrowSizes[index];
+    }
+
+    console.log("O.Opt BuildArrowheadLookupTables - Output: Arrowhead lookup tables built");
+  }
+
+  SetEditMode(stateMode, cursorType, shouldAddToList, preserveExisting) {
+    console.log("O.Opt SetEditMode - Input:", { stateMode, cursorType, shouldAddToList, preserveExisting });
+
+    let actualCursorType = cursorType;
+
+    // Initialize edit mode list if needed
+    if (this.editModeList && (shouldAddToList || preserveExisting)) {
+      // Keep existing list
+    } else {
+      this.editModeList = [];
+    }
+
+    // Notify business manager if available
+    if (GlobalData.gBusinessManager && GlobalData.gBusinessManager.NotifySetEditMode) {
+      GlobalData.gBusinessManager.NotifySetEditMode(stateMode);
+    }
+
+    // If no cursor type provided, determine it based on state mode
+    if (!actualCursorType) {
+      switch (stateMode) {
+        case ConstantData.EditState.STAMP:
+          actualCursorType = ConstantData.CursorType.STAMP;
+          break;
+        case ConstantData.EditState.TEXT:
+          actualCursorType = ConstantData.CursorType.TEXT;
+          break;
+        case ConstantData.EditState.FORMATPAINT:
+          actualCursorType = ConstantData.CursorType.PAINT;
+          break;
+        case ConstantData.EditState.LINKCONNECT:
+          actualCursorType = ConstantData.CursorType.ANCHOR;
+          break;
+        case ConstantData.EditState.LINKJOIN:
+          actualCursorType = ConstantData.CursorType.EDIT_CLOSE;
+          break;
+        case ConstantData.EditState.EDIT:
+          actualCursorType = ConstantData.CursorType.EDIT;
+          break;
+        case ConstantData.EditState.DRAGCONTROL:
+          actualCursorType = ConstantData.CursorType.NESW_RESIZE;
+          break;
+        case ConstantData.EditState.DRAGSHAPE:
+          actualCursorType = ConstantData.CursorType.MOVE;
+          break;
+        case ConstantData.EditState.GRAB:
+          actualCursorType = ConstantData.CursorType.GRAB;
+          break;
+        default:
+          actualCursorType = ConstantData.CursorType.DEFAULT;
+      }
+    }
+
+    // Set the cursor
+    this.svgDoc.SetCursor(actualCursorType);
+
+    // Update edit mode list
+    if (shouldAddToList || !this.editModeList.length) {
+      this.editModeList.push({
+        mode: stateMode,
+        cursor: actualCursorType
+      });
+    } else {
+      this.editModeList[this.editModeList.length - 1].mode = stateMode;
+      this.editModeList[this.editModeList.length - 1].cursor = actualCursorType;
+    }
+
+    // Update cursors for highlighted shape
+    if (this.curHiliteShape >= 0) {
+      const highlightedObject = GlobalData.objectStore.GetObject(this.curHiliteShape);
+      if (highlightedObject) {
+        highlightedObject.Data.SetCursors();
+      }
+    }
+
+    console.log("O.Opt SetEditMode - Output:", { mode: stateMode, cursor: actualCursorType });
+  }
+
+  ShowXY(showCoordinates) {
+    console.log("O.Opt ShowXY - Input:", { showCoordinates });
+    // Show the x and y coordinates of the mouse pointer
+    console.log("O.Opt ShowXY - Output: Coordinates display updated");
+  }
+
+  UpdateDisplayCoordinates(dimensions, position, cursorType, drawingObject) {
+    console.log("O.Opt UpdateDisplayCoordinates - Input:", {
+      dimensions,
+      position,
+      cursorType,
+      drawingObject: drawingObject ? drawingObject.BlockID : null
+    });
+
+    // Set default cursor type if not provided
+    if (cursorType == null) {
+      cursorType = CollabOverlayContoller.CursorTypes.Default;
+    }
+
+    // Handle collaboration cursor movement
+    if (Collab.IsCollaborating() && position) {
+      const currentTime = Date.now();
+      if (currentTime - Collab.MoveTimestamp > Collab.MoveDelay) {
+        const message = {
+          CursorType: cursorType
+        };
+        Collab.Animation_BuildMessage(
+          position.x,
+          position.y,
+          ConstantData.Collab_AnimationMessages.CursorMove,
+          message
+        );
+        Collab.MoveTimestamp = currentTime;
+      }
+    }
+
+    // Update ruler displays if rulers are enabled
+    if (GlobalData.docHandler.documentConfig.showRulers) {
+      let showFractionalInches = 0;
+      let showFeetAsInches = 0;
+      const useFeet = GlobalData.docHandler.rulerSettings.useInches &&
+        GlobalData.docHandler.rulerSettings.units === ConstantData.RulerUnits.SED_Feet;
+
+      // Configure display options for feet/inch mode
+      if (useFeet) {
+        showFractionalInches = showFeetAsInches = ConstantData.DimensionFlags.SED_DF_ShowFractionalInches;
+        if (drawingObject) {
+          showFeetAsInches = Utils.SetFlag(
+            showFractionalInches,
+            ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches,
+            (drawingObject.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) > 0
+          );
+        }
+      }
+
+      // Update dimension display
+      if (dimensions) {
+        const xLength = this.GetLengthInRulerUnits(dimensions.x, false, GlobalData.docHandler.rulerSettings.originx, showFractionalInches);
+        const yLength = this.GetLengthInRulerUnits(dimensions.y, false, GlobalData.docHandler.rulerSettings.originy, showFractionalInches);
+        const width = this.GetLengthInRulerUnits(dimensions.width, false, null, showFeetAsInches);
+        const height = this.GetLengthInRulerUnits(dimensions.height, false, null, showFeetAsInches);
+
+        // Helper function to format number values for display (assuming it's defined elsewhere)
+        const formatValue = (value) => value ? value : "";
+
+        // Update UI controls with the dimension values
+        const workArea = Resources.Controls.WorkArea;
+
+        const leftEdit = workArea.LeftEdit;
+        leftEdit.GetControl();
+        if (leftEdit.Control) {
+          leftEdit.Control[0].value = formatValue(NumberToString(xLength, useFeet));
+        }
+
+        const topEdit = workArea.TopEdit;
+        topEdit.GetControl();
+        if (topEdit.Control) {
+          topEdit.Control[0].value = formatValue(NumberToString(yLength, useFeet));
+        }
+
+        const widthEdit = workArea.WidthEdit;
+        widthEdit.GetControl();
+        if (widthEdit.Control) {
+          widthEdit.Control[0].value = formatValue(NumberToString(width, useFeet));
+        }
+
+        const heightEdit = workArea.HeightEdit;
+        heightEdit.GetControl();
+        if (heightEdit.Control) {
+          heightEdit.Control[0].value = formatValue(NumberToString(height, useFeet));
+        }
+      }
+
+      // Constrain position to document bounds
+      if (position) {
+        position.x = Math.max(0, position.x);
+        position.y = Math.max(0, position.y);
+
+        const sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+        position.x = Math.min(sessionBlock.dim.x, position.x);
+        position.y = Math.min(sessionBlock.dim.y, position.y);
+      }
+    }
+
+    console.log("O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
+  }
+
+  IsWheelClick(event) {
+    console.log("O.Opt IsWheelClick - Input:", event);
+
+    let isMiddleButtonClick = false;
+
+    // Handle different event types
+    if (event.gesture) {
+      event = event.gesture.srcEvent;
+    }
+
+    if (event instanceof MouseEvent) {
+      // Button 2 is middle button
+      isMiddleButtonClick = (event.which === 2);
+    } else if ('onpointerdown' in window && event instanceof PointerEvent) {
+      isMiddleButtonClick = (event.which === 2);
+    }
+
+    console.log("O.Opt IsWheelClick - Output:", isMiddleButtonClick);
+    return isMiddleButtonClick;
+  }
+
+  RubberBandSelect_Cancel(event) {
+    console.log("O.Opt RubberBandSelect_Cancel - Input:", event);
+
+    if (GlobalData.optManager.theRubberBand) {
+      // Unbind related event handlers
+      GlobalData.optManager.WorkAreaHammer.off('drag');
+      GlobalData.optManager.WorkAreaHammer.off('dragend');
+
+      // Restore default drag start handler
+      GlobalData.optManager.WorkAreaHammer.on('dragstart', DefaultEvt.Evt_WorkAreaHammerDragStart);
+
+      // Clean up resources
+      GlobalData.optManager.ResetAutoScrollTimer();
+      GlobalData.optManager.svgOverlayLayer.RemoveElement(GlobalData.optManager.theRubberBand);
+
+      // Reset rubber band properties
+      GlobalData.optManager.theRubberBand = null;
+      GlobalData.optManager.theRubberBandStartX = 0;
+      GlobalData.optManager.theRubberBandStartY = 0;
+      GlobalData.optManager.theRubberBandFrame = {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0
+      };
+    }
+
+    console.log("O.Opt RubberBandSelect_Cancel - Output: Rubber band selection canceled");
+  }
+
+  SetUIAdaptation(event) {
+  }
+
+  SetDocumentScale(scaleFactor, isAnimated) {
+    console.log('O.Opt SetDocumentScale: input', { scaleFactor, isAnimated });
+
+    if (this.svgDoc) {
+      GlobalData.docHandler.SetZoomFactor(scaleFactor, isAnimated);
+    }
+
+    console.log('O.Opt SetDocumentScale: output');
+  }
+
+  UpdateDocumentScale() {
+    console.log('O.Opt UpdateDocumentScale: input');
+
+    if (this.svgDoc) {
+      const activeEdit = this.svgDoc.GetActiveEdit();
+
+      if (!activeEdit) {
+        this.HideAllSVGSelectionStates();
+        this.RenderAllSVGSelectionStates();
+      }
+
+      // Double IdleZoomControls();
+    }
+
+    console.log('O.Opt UpdateDocumentScale: output');
+  }
+
+  HideAllSVGSelectionStates() {
+    console.log('O.Opt HideAllSVGSelectionStates: input');
+
+    const selectedList = this.GetObjectPtr(this.theSelectedListBlockID, false);
+    this.SetDimensionVisibility(selectedList, false);
+
+    if (!GlobalData.optManager.FromOverlayLayer) {
+      this.svgOverlayLayer.RemoveAll();
+    }
+
+    this.ClearAllActionArrowTimers();
+    this.ShowOverlayLayer();
+
+    console.log('O.Opt HideAllSVGSelectionStates: output');
+  }
+
+  SetDimensionVisibility(objects, isVisible) {
+    console.log('O.Opt SetDimensionVisibility: input', { objects, isVisible });
+
+    let objectCount = objects.length;
+    for (let i = 0; i < objectCount; i++) {
+      let object = GlobalData.optManager.GetObjectPtr(objects[i], false);
+      if (object && object.ShowOrHideDimensions) {
+        object.ShowOrHideDimensions(isVisible);
+      }
+    }
+
+    console.log('O.Opt SetDimensionVisibility: output');
+  }
+
+  IsRightClick(event) {
+    console.log('O.Opt isRightClick: input', event);
+
+    let isRightClick = false;
+
+    if (event.gesture) {
+      event = event.gesture.srcEvent;
+    }
+
+    if (event instanceof MouseEvent) {
+      isRightClick = (event.which === 3 || (event.ctrlKey && event.metaKey));
+    } else if ('onpointerdown' in window && event instanceof PointerEvent) {
+      isRightClick = (event.which === 3);
+    }
+
+    console.log('O.Opt isRightClick: output', isRightClick);
+    return isRightClick;
+  }
+
+  ClearSelectionClick() {
+    console.log('O.Opt ClearSelectionClick: input');
+
+    this.CloseEdit();
+    this.ClearAnySelection(false);
+    this.UpdateSelectionAttributes(null);
+
+    console.log('O.Opt ClearSelectionClick: output');
+  }
+
+  CloseEdit(skipShapeClose: boolean, closeOption: any, skipTooltipProcessing: boolean) {
+    console.log("O.Opt CloseEdit - Input:", { skipShapeClose, closeOption, skipTooltipProcessing });
+    if (!Collab.IsProcessingMessage()) {
+      let isNudgeActive = false;
+      if (this.NudgeOpen) {
+        isNudgeActive = true;
+        GlobalData.optManager.CloseOpenNudge();
+      }
+      if (!skipTooltipProcessing) {
+        this.HandleDataTooltipClose(true);
+      }
+      this.SetFormatPainter(true, false);
+      this.DeactivateAllTextEdit(false, !skipShapeClose);
+      if (this.bInNoteEdit) {
+        this.Note_CloseEdit();
+      }
+      if (!skipShapeClose) {
+        this.CloseShapeEdit(closeOption);
+      }
+    }
+    console.log("O.Opt CloseEdit - Output: done");
+  }
+
+  ClearAnySelection(preserveBlock: boolean) {
+    console.log("O.Opt ClearAnySelection - Input:", { preserveBlock });
+    const selectedList = this.GetObjectPtr(this.theSelectedListBlockID, preserveBlock);
+    if (selectedList.length !== 0) {
+      this.SetTargetSelect(-1, preserveBlock);
+      this.HideAllSVGSelectionStates();
+      selectedList.length = 0;
+    }
+    console.log("O.Opt ClearAnySelection - Output: selection cleared");
+  }
+
+  SetTargetSelect(targetId: number, preserveSession: boolean) {
+    console.log("O.Opt SetTargetSelect - Input:", { targetId, preserveSession });
+    let sessionData = this.GetObjectPtr(this.theSEDSessionBlockID, preserveSession);
+    sessionData.tselect = targetId;
+    let dimensions: any = null;
+    if (targetId > 0) {
+      const drawingObject = this.GetObjectPtr(targetId, false);
+      if (drawingObject && drawingObject instanceof BaseDrawingObject) {
+        dimensions = drawingObject.GetDimensionsForDisplay();
+      } else {
+        targetId = -1;
+        sessionData.tselect = targetId;
+      }
+    }
+    if (dimensions) {
+      this.ShowFrame(true);
+      this.UpdateDisplayCoordinates(dimensions, null, null, /* drawingObject */ null);
+    } else {
+      this.ShowFrame(false);
+    }
+    console.log("O.Opt SetTargetSelect - Output:", { targetId: sessionData.tselect, dimensions });
+  }
+
+  ShowFrame(isShowFrame: boolean) {
+    console.log('O.Opt ShowFrame - Input:', { isShowFrame });
+
+    const isShowRulers = GlobalData.docHandler.documentConfig.showRulers;
+
+    if (!isShowRulers) {
+      console.log('O.Opt ShowFrame - Output: Rulers are not shown');
+      return;
+    }
+
+    // Double show frame details
+
+    console.log('O.Opt ShowFrame - Output: Frame visibility set to', isShowFrame);
+  }
+
+  StartRubberBandSelect(event: any) {
+    console.log('O.Opt StartRubberBandSelect - Input event:', event);
+    try {
+      if (GlobalData.docHandler.IsReadOnly()) {
+        console.log('O.Opt StartRubberBandSelect - Document is read-only; aborting.');
+        return;
+      }
+
+      if (this.cachedWidth) {
+        try {
+          GlobalData.optManager.CloseEdit();
+          GlobalData.optManager.ChangeWidth(this.cachedWidth);
+        } catch (error) {
+          GlobalData.optManager.ExceptionCleanup(error);
+          throw error;
+        }
+      }
+      if (this.cachedHeight) {
+        try {
+          GlobalData.optManager.CloseEdit();
+          GlobalData.optManager.ChangeHeight(this.cachedHeight);
+        } catch (error) {
+          GlobalData.optManager.ExceptionCleanup(error);
+          throw error;
+        }
+      }
+      if (this.currentModalOperation === ConstantData2.ModalOperations.FORMATPAINTER) {
+        if (this.FormatPainterSticky) {
+          console.log('O.Opt StartRubberBandSelect - FormatPainterSticky active; aborting.');
+          return;
+        }
+        this.SetFormatPainter(true, false);
+      }
+
+      // Ensure any active edit is closed
+      this.GetObjectPtr(this.theTEDSessionBlockID, false);
+      GlobalData.optManager.CloseEdit();
+
+      // Create the rubber band shape as a rectangle
+      const rubberBandShape = this.svgDoc.CreateShape(ConstantData.CreateShapeType.RECT);
+      rubberBandShape.SetStrokeColor('black');
+      if (GlobalData.optManager.isAndroid) {
+        rubberBandShape.SetFillColor('none');
+        rubberBandShape.SetFillOpacity(0);
+      } else {
+        rubberBandShape.SetFillColor('black');
+        rubberBandShape.SetFillOpacity(0.03);
+      }
+
+      const zoomFactorInverse = 1 / GlobalData.docHandler.GetZoomFactor();
+      rubberBandShape.SetStrokeWidth(1 * zoomFactorInverse);
+
+      if (!GlobalData.optManager.isAndroid) {
+        const strokePattern = 2 * zoomFactorInverse + ',' + zoomFactorInverse;
+        rubberBandShape.SetStrokePattern(strokePattern);
+      }
+
+      // Convert window coordinates to document coordinates
+      const startCoordinates = this.svgDoc.ConvertWindowToDocCoords(
+        event.gesture.center.clientX,
+        event.gesture.center.clientY
+      );
+      GlobalData.optManager.theRubberBandStartX = startCoordinates.x;
+      GlobalData.optManager.theRubberBandStartY = startCoordinates.y;
+      rubberBandShape.SetSize(1, 1);
+      rubberBandShape.SetPos(startCoordinates.x, startCoordinates.y);
+      GlobalData.optManager.svgOverlayLayer.AddElement(rubberBandShape);
+
+      console.log('O.Opt StartRubberBandSelect - Rubber band shape created:', rubberBandShape);
+      GlobalData.optManager.theRubberBand = rubberBandShape;
+      GlobalData.optManager.EndStampSession();
+
+      // Bind hammer events for the rubber band dragging
+      GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_RubberBandDrag);
+      GlobalData.optManager.WorkAreaHammer.on('dragend', DefaultEvt.Evt_RubberBandDragEnd);
+
+      console.log('O.Opt StartRubberBandSelect - Output rubber band set successfully:', GlobalData.optManager.theRubberBand);
+    } catch (error) {
+      console.log('O.Opt StartRubberBandSelect - Error:', error);
+      GlobalData.optManager.RubberBandSelectExceptionCleanup(error);
+      GlobalData.optManager.ExceptionCleanup(error);
+      throw error;
+    }
+  }
+
+  HandleDataTooltipClose(isCompleteOperation) {
+    console.log('O.Opt HandleDataTooltipClose - Input:', { isCompleteOperation });
+
+    this.ClearFieldDataDatePicker();
+
+    if (this.ActiveDataTT && this.ActiveDataTT.dataChanged) {
+      this.CompleteOperation(null, isCompleteOperation);
+      this.ActiveDataTT.dataChanged = false;
+    }
+
+    console.log('O.Opt HandleDataTooltipClose - Output: done');
+  }
+
+  ClearFieldDataDatePicker() {
+    console.log('O.Opt ClearFieldDataDatePicker - Input:');
+
+    if (this._curDatePickerElem && this._curDatePickerElem.datepicker) {
+      this._curDatePickerElem.datepicker('hide');
+    }
+
+    this._curDatePickerElem = null;
+
+    console.log('O.Opt ClearFieldDataDatePicker - Output: DatePicker cleared');
+  }
+
+  ClearAllActionArrowTimers() {
+    console.log('O.Opt ClearAllActionArrowTimers: input');
+
+    const visibleObjects = this.VisibleZList();
+    for (let i = 0; i < visibleObjects.length; i++) {
+      const object = this.GetObjectPtr(visibleObjects[i], false);
+      if (object && object.actionArrowHideTimerID !== -1) {
+        this.actionArrowHideTimer.clearTimeout(object.actionArrowHideTimerID);
+        object.actionArrowHideTimerID = -1;
+      }
+    }
+
+    console.log('O.Opt ClearAllActionArrowTimers: output');
+  }
+
+  VisibleZList() {
+    console.log('O.Opt VisibleZList: input');
+
+    const layersManager = GlobalData.optManager.GetObjectPtr(this.theLayersManagerBlockID, false);
+    const layers = layersManager.layers;
+    const numberOfLayers = layersManager.nlayers;
+    const activeLayerIndex = layersManager.activelayer;
+    let visibleZList = [];
+
+    for (let i = numberOfLayers - 1; i >= 0; i--) {
+      const layer = layers[i];
+      if (i === activeLayerIndex || (layer.flags & ConstantData.LayerFlags.SDLF_Visible)) {
+        visibleZList = visibleZList.concat(layer.zList);
+      }
+    }
+
+    console.log('O.Opt VisibleZList: output', visibleZList);
+    return visibleZList;
+  }
+
+  ShowOverlayLayer() {
+    console.log('O.Opt ShowOverlayLayer: input');
+    this.svgOverlayLayer.SetVisible(true);
+    console.log('O.Opt ShowOverlayLayer: output');
+  }
+
+  RenderAllSVGSelectionStates() {
+    console.log('O.Opt RenderAllSVGSelectionStates - Input: No parameters');
+
+    // Get the visible objects list and the currently selected objects
+    const visibleObjectIds = this.ActiveVisibleZList();
+    const visibleObjectCount = visibleObjectIds.length;
+    const selectedList = GlobalData.objectStore.GetObject(this.theSelectedListBlockID).Data;
+
+    let objectIndex = 0;
+    let indexInSelectedList = -1;
+    let objectId = 0;
+    let drawingObject = null;
+    let svgElement = null;
+    let actionTriggerElement = null;
+    let actionTriggerId = null;
+    const targetSelectedId = this.GetTargetSelect();
+
+    // List of dimension element types to check for visibility
+    const dimensionElementTypes = [
+      ConstantData.SVGElementClass.DIMENSIONLINE,
+      ConstantData.SVGElementClass.DIMENSIONTEXT,
+      ConstantData.SVGElementClass.AREADIMENSIONLINE,
+      ConstantData.SVGElementClass.DIMENSIONTEXTNOEDIT
+    ];
+
+    // Create action click handler factory
+    const createActionClickHandler = function (drawingObject) {
+      return function (event) {
+        if (ConstantData.DocumentContext.HTMLFocusControl &&
+          ConstantData.DocumentContext.HTMLFocusControl.blur) {
+          ConstantData.DocumentContext.HTMLFocusControl.blur();
+        }
+        drawingObject.LM_ActionClick(event);
+        return false;
+      };
+    };
+
+    // Process each visible object
+    for (objectIndex = 0; objectIndex < visibleObjectCount; ++objectIndex) {
+      objectId = visibleObjectIds[objectIndex];
+
+      // Skip if object is not in selection list or has issues
+      indexInSelectedList = selectedList.indexOf(objectId);
+      if (indexInSelectedList < 0 ||
+        (drawingObject = GlobalData.optManager.GetObjectPtr(objectId, false)) === null ||
+        drawingObject.flags & ConstantData.ObjFlags.SEDO_NotVisible ||
+        (svgElement = this.svgObjectLayer.GetElementByID(objectId)) === null ||
+        svgElement.GetElementByID(ConstantData.SVGElementClass.SHAPE) === null) {
+        continue;
+      }
+
+      // Handle action triggers
+      actionTriggerId = ConstantData.Defines.Action + objectId;
+      actionTriggerElement = this.svgOverlayLayer.GetElementByID(actionTriggerId);
+
+      if (actionTriggerElement === null &&
+        (actionTriggerElement = drawingObject.CreateActionTriggers(this.svgDoc, objectId, svgElement, targetSelectedId)) !== null) {
+
+        this.svgOverlayLayer.AddElement(actionTriggerElement);
+
+        try {
+          actionTriggerElement.SetRotation(drawingObject.RotationAngle);
+        } catch (error) {
+          throw error;
+        }
+
+        // Add interaction events if object is not locked
+        if ((drawingObject.flags & ConstantData.ObjFlags.SEDO_Lock) === 0 &&
+          !GlobalData.docHandler.IsReadOnly() &&
+          !drawingObject.NoGrow()) {
+
+          const domElement = actionTriggerElement.DOMElement();
+          const hammerInstance = Hammer(domElement);
+
+          hammerInstance.on('tap', DefaultEvt.Evt_ActionTriggerTap);
+          hammerInstance.on('dragstart', createActionClickHandler(drawingObject));
+
+          if (this.isGestureCapable) {
+            hammerInstance.on('pinchin', DefaultEvt.Evt_WorkAreaHammerPinchIn);
+            hammerInstance.on('pinchout', DefaultEvt.Evt_WorkAreaHammerPinchOut);
+            hammerInstance.on('transformend', DefaultEvt.Evt_WorkAreaHammerPinchEnd);
+          }
+
+          actionTriggerElement.SetEventProxy(hammerInstance);
+        }
+      }
+
+      // Handle dimension visibility
+      if (drawingObject.Dimensions & ConstantData.DimensionFlags.SED_DF_Select) {
+        let elementId;
+        let currentElement = null;
+
+        // Set opacity for dimension elements based on selection state
+        for (let elementIndex = svgElement.ElementCount() - 1; elementIndex >= 1; elementIndex--) {
+          currentElement = svgElement.GetElementByIndex(elementIndex);
+          elementId = currentElement.GetID();
+
+          if (dimensionElementTypes.indexOf(elementId) >= 0) {
+            currentElement.SetOpacity(indexInSelectedList >= 0 ? 1 : 0);
+          }
+        }
+      }
+    }
+
+    console.log('O.Opt RenderAllSVGSelectionStates - Output: Selection states rendered');
+  }
+
+  ActiveVisibleZList() {
+    console.log('O.Opt ActiveVisibleZList: input');
+
+    const layersManager = GlobalData.optManager.GetObjectPtr(this.theLayersManagerBlockID, false);
+    const layers = layersManager.layers;
+    const numberOfLayers = layersManager.nlayers;
+    const activeLayerIndex = layersManager.activelayer;
+    let visibleZList = [];
+
+    for (let i = numberOfLayers - 1; i >= 0; i--) {
+      const layer = layers[i];
+      if (i === activeLayerIndex || (layer.flags & ConstantData.LayerFlags.SDLF_Visible && layer.flags & ConstantData.LayerFlags.SDLF_Active)) {
+        visibleZList = visibleZList.concat(layer.zList);
+      }
+    }
+
+    console.log('O.Opt ActiveVisibleZList: output', visibleZList);
+    return visibleZList;
+  }
+
+  SetFormatPainter(shouldDisable: boolean, makeSticky: boolean) {
+    console.log("O.Opt SetFormatPainter - Input:", { shouldDisable, makeSticky });
+
+    let targetObject;
+    let tableObject;
+    let activeTableId;
+    let tableCell;
+    let tableRow;
+    let tableCol;
+
+    // If format painter is already active, disable it
+    if (this.currentModalOperation === ConstantData2.ModalOperations.FORMATPAINTER) {
+      this.currentModalOperation = ConstantData2.ModalOperations.NONE;
+      this.SetEditMode(ConstantData.EditState.DEFAULT);
+      this.FormatPainterSticky = false;
+      console.log("O.Opt SetFormatPainter - Output: Format painter disabled");
+      return;
+    }
+
+    // If not disabling, set up format painter based on current selection/context
+    if (!shouldDisable) {
+      // Cancel any existing modal operation
+      this.CancelModalOperation();
+
+      // Get current text edit and active table
+      const activeTextEdit = GlobalData.optManager.GetActiveTextEdit();
+      activeTableId = GlobalData.optManager.Table_GetActiveID();
+
+      // CASE 1: If text is being edited, set up text format painter
+      if (activeTextEdit != null) {
+        this.currentModalOperation = ConstantData2.ModalOperations.FORMATPAINTER;
+        this.FormatPainterMode = ConstantData2.FormatPainterModes.TEXT;
+        this.FormatPainterSticky = makeSticky;
+
+        const activeEdit = this.svgDoc.GetActiveEdit();
+        if (activeEdit) {
+          this.FormatPainterText = activeEdit.GetSelectedFormat();
+          this.FormatPainterStyle = {
+            StyleRecord: {}
+          };
+          this.FormatPainterStyle.Text = new TextFormatData();
+          this.TextStyleToSDText(this.FormatPainterStyle.Text, this.FormatPainterText);
+          this.SetEditMode(ConstantData.EditState.FORMATPAINT);
+        }
+      }
+      // CASE 2: If a table is active, set up table format painter
+      else if (activeTableId >= 0) {
+        if ((tableObject = this.GetObjectPtr(activeTableId, false)) &&
+          (tableCell = tableObject.GetTable(false))) {
+
+          // If a cell is selected
+          if (tableCell.select >= 0) {
+            this.currentModalOperation = ConstantData2.ModalOperations.FORMATPAINTER;
+            this.FormatPainterSticky = makeSticky;
+            this.FormatPainterMode = ConstantData2.FormatPainterModes.TABLE;
+            this.FormatPainterStyle = {
+              StyleRecord: {}
+            };
+
+            const selectedCell = tableCell.cells[tableCell.select];
+            this.FormatPainterStyle.Text = Utils1.DeepCopy(selectedCell.Text);
+            this.FormatPainterStyle.hline = Utils1.DeepCopy(selectedCell.hline);
+            this.FormatPainterStyle.vline = Utils1.DeepCopy(selectedCell.vline);
+            this.FormatPainterStyle.Fill = Utils1.DeepCopy(selectedCell.fill);
+            this.FormatPainterStyle.vjust = selectedCell.vjust;
+            this.FormatPainterStyle.just = selectedCell.just;
+            this.FormatPainterText = this.CalcDefaultInitialTextStyle(this.FormatPainterStyle.Text);
+
+            const paraFormat = {};
+            paraFormat.just = selectedCell.just;
+            paraFormat.bullet = 'none';
+            paraFormat.spacing = 0;
+
+            const tableElement = this.svgObjectLayer.GetElementByID(tableObject.BlockID);
+            this.Table_GetTextParaFormat(tableCell, paraFormat, tableElement, false, false, tableCell.select);
+            this.FormatPainterParaFormat = paraFormat;
+            this.SetEditMode(ConstantData.EditState.FORMATPAINT);
+          }
+          // If a row is selected
+          else if (tableCell.rselect >= 0) {
+            this.currentModalOperation = ConstantData2.ModalOperations.FORMATPAINTER;
+            this.FormatPainterSticky = makeSticky;
+            this.FormatPainterMode = ConstantData2.FormatPainterModes.TABLE;
+            this.FormatPainterStyle = {
+              StyleRecord: {}
+            };
+
+            tableRow = tableCell.rows[tableCell.rselect];
+            const firstCell = tableCell.cells[tableRow.start + tableRow.segments[0].start];
+            this.FormatPainterStyle.hline = Utils1.DeepCopy(firstCell.hline);
+            this.SetEditMode(ConstantData.EditState.FORMATPAINT);
+          }
+          // If a column is selected
+          else if (tableCell.cselect >= 0) {
+            this.currentModalOperation = ConstantData2.ModalOperations.FORMATPAINTER;
+            this.FormatPainterSticky = makeSticky;
+            this.FormatPainterMode = ConstantData2.FormatPainterModes.TABLE;
+            this.FormatPainterStyle = {
+              StyleRecord: {}
+            };
+
+            tableCol = tableCell.cols[tableCell.cselect];
+            this.FormatPainterStyle.vline = Utils1.DeepCopy(tableCol.vline);
+            this.SetEditMode(ConstantData.EditState.FORMATPAINT);
+          }
+        }
+      }
+      // CASE 3: If a shape/object is selected, set up object format painter
+      else if ((targetObject = this.GetTargetSelect()) >= 0 &&
+        (tableObject = this.GetObjectPtr(targetObject, false))) {
+
+        this.currentModalOperation = ConstantData2.ModalOperations.FORMATPAINTER;
+        this.FormatPainterSticky = makeSticky;
+        this.FormatPainterMode = ConstantData2.FormatPainterModes.OBJECT;
+        this.FormatPainterStyle = Utils1.DeepCopy(tableObject.StyleRecord);
+        this.FormatPainterStyle.Border = Utils1.DeepCopy(tableObject.StyleRecord.Line);
+
+        // Special handling for images, symbols, and groups
+        if ((tableObject.ImageURL ||
+          tableObject.SymbolURL ||
+          tableObject instanceof GroupSymbol) &&
+          !(tableObject instanceof SVGFragmentSymbol)) {
+
+          delete this.FormatPainterStyle.Fill;
+          delete this.FormatPainterStyle.Name;
+
+          if (tableObject.StyleRecord.Line.Thickness === 0 ||
+            tableObject instanceof GroupSymbol) {
+            delete this.FormatPainterStyle.Line;
+            delete this.FormatPainterStyle.Border;
+          }
+        }
+
+        this.FormatPainterText = tableObject.GetTextFormat(false, null);
+
+        if (this.FormatPainterText === null) {
+          this.FormatPainterText = this.CalcDefaultInitialTextStyle(this.FormatPainterStyle.Text);
+        }
+
+        this.FormatPainterParaFormat = tableObject.GetTextParaFormat(false);
+        this.FormatPainterArrows = tableObject.GetArrowheadFormat();
+        this.SetEditMode(ConstantData.EditState.FORMATPAINT);
+      }
+    }
+
+    console.log("O.Opt SetFormatPainter - Output:", {
+      mode: this.FormatPainterMode,
+      isSticky: this.FormatPainterSticky,
+      currentModalOperation: this.currentModalOperation
+    });
+  }
+
+  DeactivateAllTextEdit(skipShapeClose: boolean, closeOption: any) {
+    console.log('O.Opt DeactivateAllTextEdit - Input:', { skipShapeClose, closeOption });
+
+    const tedSession = this.GetObjectPtr(this.theTEDSessionBlockID, false);
+    if (tedSession.theActiveTextEditObjectID !== -1) {
+      this.DeactivateTextEdit(skipShapeClose, closeOption);
+    } else {
+      const activeEdit = this.svgDoc.GetActiveEdit();
+      if (activeEdit != null && activeEdit.ID === ConstantData.SVGElementClass.DIMENSIONTEXT) {
+        this.TEUnregisterEvents();
+      }
+    }
+
+    console.log('O.Opt DeactivateAllTextEdit - Output: done');
+  }
+
+  TEUnregisterEvents(event) {
+    console.log('O.Opt TEUnregisterEvents - Input:', event);
+
+    this.svgDoc.ClearActiveEdit(event);
+
+    if (this.textEntryTimer != null) {
+      clearTimeout(this.textEntryTimer);
+      this.textEntryTimer = null;
+    }
+
+    if (this.TETextHammer) {
+      this.TETextHammer.off('dragstart');
+      this.TETextHammer.dispose();
+      this.TETextHammer = null;
+    }
+
+    if (this.TEClickAreaHammer) {
+      this.TEClickAreaHammer.off('dragstart');
+      this.TEClickAreaHammer.dispose();
+      this.TEClickAreaHammer = null;
+    }
+
+    if (this.TEDecAreaHammer) {
+      this.TEDecAreaHammer.off('dragstart');
+      this.TEDecAreaHammer.dispose();
+      this.TEDecAreaHammer = null;
+    }
+
+    if (this.TEWorkAreaHammer) {
+      this.TEWorkAreaHammer.off('drag');
+      this.TEWorkAreaHammer.off('dragend');
+      this.TEWorkAreaHammer.dispose();
+      this.TEWorkAreaHammer = null;
+    }
+
+    console.log('O.Opt TEUnregisterEvents - Output: done');
+  }
+
+  CloseShapeEdit(providedOutlineId, useAlternate, alternateOutlineId) {
+    console.log("O.Opt CloseShapeEdit - Input:", { providedOutlineId, useAlternate, alternateOutlineId });
+
+    let sessionData = this.GetObjectPtr(this.theTEDSessionBlockID, false);
+    let activeOutlineId = sessionData.theActiveOutlineObjectID;
+
+    // If using the alternate outline id then override activeOutlineId.
+    if (useAlternate) {
+      activeOutlineId = alternateOutlineId;
+    }
+
+    if (activeOutlineId >= 0) {
+      // If the provided outline id is boolean true or already the active id, do nothing.
+      if (providedOutlineId === true) {
+        console.log("O.Opt CloseShapeEdit - Output: Skipping close because providedOutlineId is true");
+        return;
+      }
+      if (providedOutlineId === activeOutlineId) {
+        console.log("O.Opt CloseShapeEdit - Output: Provided outline id equals active outline id, no action taken");
+        return;
+      }
+      let shapeObject = this.GetObjectPtr(activeOutlineId, false);
+      if (shapeObject) {
+        if (shapeObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
+          console.log("O.Opt CloseShapeEdit - Output: Active outline is a floorplan wall, skipping close");
+          return;
+        }
+        // Begin secondary edit and re-fetch the shape object.
+        Collab.BeginSecondaryEdit();
+        shapeObject = this.GetObjectPtr(activeOutlineId, false);
+        if (
+          shapeObject.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.LINE &&
+          shapeObject.LineType === ConstantData.LineType.POLYLINE &&
+          shapeObject.polylist.closed &&
+          (this.PolyLineToShape(activeOutlineId), Collab.AllowMessage())
+        ) {
+          const messagePayload = { BlockID: activeOutlineId };
+          Collab.BuildMessage(ConstantData.CollabMessages.CloseShapeEdit, messagePayload, false);
+        }
+      }
+      if (!useAlternate) {
+        // Reset the active outline id.
+        sessionData = this.GetObjectPtr(this.theTEDSessionBlockID, true);
+        sessionData.theActiveOutlineObjectID = -1;
+      }
+      this.CompleteOperation();
+    }
+    console.log("O.Opt CloseShapeEdit - Output: Operation complete");
+  }
+
+  EndStampSession() {
+    console.log('O.Opt EndStampSession - Input');
+
+    const editMode = GlobalData.optManager.GetEditMode();
+    if (editMode === ConstantData.EditState.STAMP) {
+      this.theActionStoredObjectID = -1;
+      this.CancelObjectDragDrop(true);
+
+      if (GlobalData.optManager.MainAppHammer) {
+        GlobalData.optManager.UnbindDragDropOrStamp();
+      }
+    }
+
+    console.log('O.Opt EndStampSession - Output: done');
+  }
+
+  GetEditMode() {
+    console.log('O.Opt GetEditMode - Input');
+
+    const editModeList = this.editModeList || [];
+    let currentEditMode = ConstantData.EditState.DEFAULT;
+
+    if (editModeList.length) {
+      currentEditMode = editModeList[editModeList.length - 1].mode;
+    }
+
+    console.log('O.Opt GetEditMode - Output:', currentEditMode);
+    return currentEditMode;
+  }
+
+  AutoScrollCommon(event, snapEnabled, callback) {
+    console.log("O.Opt AutoScrollCommon - Input:", { event, snapEnabled, callback });
+
+    let clientX: number, clientY: number;
+    let requiresAutoScroll = false;
+
+    // Disable snap if override key is pressed
+    if (this.OverrideSnaps(event)) {
+      snapEnabled = false;
+    }
+
+    // Get client coordinates from gesture or mouse event
+    if (event.gesture) {
+      clientX = event.gesture.center.clientX;
+      clientY = event.gesture.center.clientY;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
+
+    // Initialize new positions with the current coordinates
+    let newX = clientX;
+    let newY = clientY;
+
+    // Cache document display info for readability
+    const docInfo = GlobalData.optManager.svgDoc.docInfo;
+    const dispX = docInfo.dispX;
+    const dispY = docInfo.dispY;
+    const dispWidth = docInfo.dispWidth;
+    const dispHeight = docInfo.dispHeight;
+
+    // Check horizontal boundaries
+    if (clientX >= dispX + dispWidth - 8) {
+      requiresAutoScroll = true;
+      newX = dispX + dispWidth - 8 + 32;
+    }
+    if (clientX < dispX) {
+      requiresAutoScroll = true;
+      newX = dispX - 32;
+    }
+
+    // Check vertical boundaries
+    if (clientY >= dispY + dispHeight - 8) {
+      requiresAutoScroll = true;
+      newY = dispY + dispHeight - 8 + 32;
+    }
+    if (clientY < dispY) {
+      requiresAutoScroll = true;
+      newY = dispY - 32;
+    }
+
+    if (requiresAutoScroll) {
+      // Apply snapping if enabled and allowed
+      if (snapEnabled && GlobalData.docHandler.documentConfig.enableSnap) {
+        let snapPoint = { x: newX, y: newY };
+        snapPoint = GlobalData.docHandler.SnapToGrid(snapPoint);
+        newX = snapPoint.x;
+        newY = snapPoint.y;
+      }
+      GlobalData.optManager.autoScrollXPos = newX;
+      GlobalData.optManager.autoScrollYPos = newY;
+      if (GlobalData.optManager.autoScrollTimerID !== -1) {
+        console.log("O.Opt AutoScrollCommon - Output: Auto scroll already scheduled");
+        return false;
+      } else {
+        GlobalData.optManager.autoScrollTimerID = GlobalData.optManager.autoScrollTimer.setTimeout(callback, 0);
+        console.log("O.Opt AutoScrollCommon - Output: Auto scroll timer set", { newX, newY });
+        return false;
+      }
+    } else {
+      GlobalData.optManager.ResetAutoScrollTimer();
+      console.log("O.Opt AutoScrollCommon - Output: No auto scroll needed, timer reset");
+      return true;
+    }
+  }
+
+  RubberBandSelectExceptionCleanup(exception: any): never {
+    console.log("O.Opt RubberBandSelectExceptionCleanup - Input:", exception);
+
+    try {
+      // Unbind rubber band related hammer events and reset auto-scroll timer.
+      GlobalData.optManager.UnbindRubberBandHammerEvents();
+      GlobalData.optManager.ResetAutoScrollTimer();
+
+      // Remove the rubber band element from the overlay layer if it exists.
+      if (GlobalData.optManager.theRubberBand) {
+        GlobalData.optManager.svgOverlayLayer.RemoveElement(GlobalData.optManager.theRubberBand);
+      }
+
+      // Reset rubber band properties.
+      GlobalData.optManager.theRubberBand = null;
+      GlobalData.optManager.theRubberBandStartX = 0;
+      GlobalData.optManager.theRubberBandStartY = 0;
+      GlobalData.optManager.theRubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
+
+      // Unlock and unblock collaboration messages, and reset undo state.
+      Collab.UnLockMessages();
+      Collab.UnBlockMessages();
+      GlobalData.optManager.InUndo = false;
+    } catch (cleanupError) {
+      console.error("O.Opt RubberBandSelectExceptionCleanup - Cleanup Error:", cleanupError);
+      throw cleanupError;
+    }
+
+    console.log("O.Opt RubberBandSelectExceptionCleanup - Output: Cleanup completed");
+    throw exception;
+  }
 }
 
 export default OptHandler
