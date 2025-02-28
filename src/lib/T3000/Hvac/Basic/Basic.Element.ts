@@ -1,13 +1,16 @@
 
 
-import $ from "jquery"
-import HvacSVG from "../Helper/SVG.t2"
+import $ from "jquery";
+import HvacSVG from "../Helper/SVG.t2";
+import Effects from "./Basic.Element.Effects"
+import Style from "./Basic.Element.Style";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
-import GPP from '../Data/GlobalData'
-import Instance from "../Data/Instance/Instance"
+import GlobalData from '../Data/GlobalData'
+import Instance from "../Data/Instance/Instance";
 import ConstantData from "../Data/ConstantData"
+import BasicConstants from "./Basic.Constants";
 
 class Element {
 
@@ -191,6 +194,7 @@ class Element {
     console.log('= B.Element.SetInternalID: output =>', { internalID });
     return internalID;
   }
+
 
   SetUserData(userData: any) {
     console.log('= B.Element.SetUserData: input =>', { userData });
@@ -492,6 +496,7 @@ class Element {
     return a
   }
 
+
   GetGeometryBBox() {
     console.log('= B.Element.GetGeometryBBox: input => {}');
 
@@ -687,9 +692,9 @@ class Element {
         this.fillGradientData.settings = {},
         this.fillGradientData.settings.stops = [],
         this.fillGradientData.settings.type = e.type ||
-        Style.GradientStyle.LINEAR,
+        BasicConstants.GradientStyle.LINEAR,
         this.fillGradientData.settings.startPos = e.startPos ||
-        Style.GradientPos.LEFTTOP,
+        BasicConstants.GradientPos.LEFTTOP,
         this.fillGradientData.settings.angle = e.angle,
         a = e.stops,
         t = 0;
@@ -950,45 +955,45 @@ class Element {
 
       // Adjust positions based on the start position setting
       switch (gradientData.settings.startPos) {
-        case Style.GradientPos.TOP:
+        case BasicConstants.GradientPos.TOP:
           startPos.x += bbox.width / 2;
           endPos.x = startPos.x;
           distance = bbox.height;
           break;
-        case Style.GradientPos.RIGHTTOP:
+        case BasicConstants.GradientPos.RIGHTTOP:
           startPos.x = endPos.x;
           endPos.x = bbox.x;
           break;
-        case Style.GradientPos.RIGHT:
+        case BasicConstants.GradientPos.RIGHT:
           startPos.x = endPos.x;
           startPos.y += bbox.height / 2;
           endPos.x = bbox.x;
           endPos.y = startPos.y;
           distance = bbox.width;
           break;
-        case Style.GradientPos.RIGHTBOTTOM:
+        case BasicConstants.GradientPos.RIGHTBOTTOM:
           startPos.x = endPos.x;
           startPos.y = endPos.y;
           endPos.x = bbox.x;
           endPos.y = bbox.y;
           break;
-        case Style.GradientPos.BOTTOM:
+        case BasicConstants.GradientPos.BOTTOM:
           startPos.x += bbox.width / 2;
           startPos.y = endPos.y;
           endPos.x = startPos.x;
           endPos.y = bbox.y;
           distance = bbox.height;
           break;
-        case Style.GradientPos.LEFTBOTTOM:
+        case BasicConstants.GradientPos.LEFTBOTTOM:
           startPos.y = endPos.y;
           endPos.y = bbox.y;
           break;
-        case Style.GradientPos.LEFT:
+        case BasicConstants.GradientPos.LEFT:
           startPos.y += bbox.height / 2;
           endPos.y = startPos.y;
           distance = bbox.width;
           break;
-        case Style.GradientPos.CENTER:
+        case BasicConstants.GradientPos.CENTER:
           if (isLinear) {
             startPos.x += bbox.width / 2;
             startPos.y += bbox.height / 2;
@@ -1218,7 +1223,7 @@ class Element {
 
     // Check if e is not a number and parse it if necessary
     if (isNaN(Number(e))) {
-      e = Basic.Symbol.ParsePlaceholder(e, Basic.Symbol.Placeholder.LineThick);
+      e = Instance.Basic.Symbol.ParsePlaceholder(e, BasicConstants.Placeholder.LineThick);
     }
 
     // Update the strokeWidth property with a numeric value
@@ -1230,10 +1235,10 @@ class Element {
     console.log("= B.Element.SetStrokeWidth: output =>", { strokeWidth: this.strokeWidth });
   }
 
-  SetStrokePattern(e: string) {
-    console.log('= B.Element.SetStrokePattern: input =>', { e });
+  SetStrokePattern(dashArray: string) {
+    console.log('= B.Element.SetStrokePattern: input =>', { dashArray });
 
-    this.strokeDashArray = e;
+    this.strokeDashArray = dashArray;
     const patternForWidth = this.GetStrokePatternForWidth();
     this.svgObj.attr('stroke-dasharray', patternForWidth);
 
@@ -1380,63 +1385,63 @@ class Element {
     console.log('= B.Element.RemoveCursorsOnSVGObj: output =>', { completed: true });
   }
 
-  GetTargetForEvent2(e: any) {
-    console.log("= B.Element.GetTargetForEvent2: input =>", { e });
+  // GetTargetForEvent2(e: any) {
+  //   console.log("= B.Element.GetTargetForEvent2: input =>", { e });
 
-    let domTarget: any, foundElement: any, rootElement: any;
+  //   let domTarget: any, foundElement: any, rootElement: any;
 
-    // Ensure the event exists and the current instance is a valid container.
-    if (!(e && this instanceof Instance.Basic.Container)) {
-      console.log("= B.Element.GetTargetForEvent2: output =>", this);
-      return this;
-    }
+  //   // Ensure the event exists and the current instance is a valid container.
+  //   if (!(e && this instanceof Instance.Basic.Container)) {
+  //     console.log("= B.Element.GetTargetForEvent2: output =>", this);
+  //     return this;
+  //   }
 
-    domTarget = e.target || e.srcElement;
-    rootElement = this.DOMElement();
+  //   domTarget = e.target || e.srcElement;
+  //   rootElement = this.DOMElement();
 
-    if (!domTarget || domTarget === rootElement) {
-      console.log("= B.Element.GetTargetForEvent2: output =>", this);
-      return this;
-    }
+  //   if (!domTarget || domTarget === rootElement) {
+  //     console.log("= B.Element.GetTargetForEvent2: output =>", this);
+  //     return this;
+  //   }
 
-    foundElement = this.FindElementByDOMElement(domTarget);
+  //   foundElement = this.FindElementByDOMElement(domTarget);
 
-    while (domTarget && !foundElement) {
-      domTarget = domTarget.parentNode;
-      foundElement = (domTarget === rootElement) ? this : this.FindElementByDOMElement(domTarget);
-    }
+  //   while (domTarget && !foundElement) {
+  //     domTarget = domTarget.parentNode;
+  //     foundElement = (domTarget === rootElement) ? this : this.FindElementByDOMElement(domTarget);
+  //   }
 
-    console.log("= B.Element.GetTargetForEvent2: output =>", foundElement || this);
-    return foundElement || this;
-  }
+  //   console.log("= B.Element.GetTargetForEvent2: output =>", foundElement || this);
+  //   return foundElement || this;
+  // }
 
-  GetTargetForEvent1(e: any): any {
-    console.log("= B.Element.GetTargetForEvent1: input =>", { e });
+  // GetTargetForEvent1(e: any): any {
+  //   console.log("= B.Element.GetTargetForEvent1: input =>", { e });
 
-    let target: any = e.target || e.srcElement;
-    let rootElement: any = this.DOMElement();
-    let element: any;
+  //   let target: any = e.target || e.srcElement;
+  //   let rootElement: any = this.DOMElement();
+  //   let element: any;
 
-    if (!target || target === rootElement) {
-      console.log("= B.Element.GetTargetForEvent1: output =>", this);
-      return this;
-    }
+  //   if (!target || target === rootElement) {
+  //     console.log("= B.Element.GetTargetForEvent1: output =>", this);
+  //     return this;
+  //   }
 
-    element = this.FindElementByDOMElement(target);
+  //   element = this.FindElementByDOMElement(target);
 
-    while (target && !element) {
-      target = target.parentNode;
-      if (target === rootElement) {
-        element = this;
-        break;
-      } else {
-        element = this.FindElementByDOMElement(target);
-      }
-    }
+  //   while (target && !element) {
+  //     target = target.parentNode;
+  //     if (target === rootElement) {
+  //       element = this;
+  //       break;
+  //     } else {
+  //       element = this.FindElementByDOMElement(target);
+  //     }
+  //   }
 
-    console.log("= B.Element.GetTargetForEvent1: output =>", element || this);
-    return element || this;
-  }
+  //   console.log("= B.Element.GetTargetForEvent1: output =>", element || this);
+  //   return element || this;
+  // }
 
   static EventBehavior = {
     NORMAL: 'visiblePainted',
@@ -1509,6 +1514,11 @@ class Element {
     ADD_PLUS: 'cur-add-plus',
     GRAB: 'cur-grab'
   }
+  // Object.freeze(Element.CursorType)
+
 }
 
 export default Element
+
+
+// export default Basic.Element;

@@ -50,7 +50,7 @@ class Group extends Container {
         parentContainer.remove(this.svgObj);
       }
 
-      this.removeNodesRecursively(this.svgObj.node, removedNodes);
+      this.RemoveNodesRecursively(this.svgObj.node, removedNodes);
 
       // Add the svgObj to the formatting layer temporarily.
       formattingLayer.svgObj.add(this.svgObj);
@@ -99,7 +99,7 @@ class Group extends Container {
   }
 
   // Recursively remove unwanted nodes and store for restoration.
-  removeNodesRecursively(node: any, removedList: Array<any>) {
+  RemoveNodesRecursively(node: any, removedList: Array<any>) {
     const parentNode = node.parentNode;
     if (
       node.hasAttribute &&
@@ -125,7 +125,7 @@ class Group extends Container {
         return;
       }
       for (let idx = node.childNodes.length - 1; idx >= 0; idx--) {
-        this.removeNodesRecursively(node.childNodes[idx], removedList);
+        this.RemoveNodesRecursively(node.childNodes[idx], removedList);
       }
     }
   }

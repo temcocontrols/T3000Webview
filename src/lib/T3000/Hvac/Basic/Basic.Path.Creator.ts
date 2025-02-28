@@ -15,7 +15,7 @@ class Creator {
   public curPosX: number;
   public curPosY: number;
 
-  constructor(element) {
+  constructor(element?) {
     this.element = element;
     this.pathSegs = [];
     this.curPosX = 0;

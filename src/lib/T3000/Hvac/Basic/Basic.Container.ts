@@ -30,6 +30,8 @@ class Container extends Element {
   RemoveElement(element) {
     console.log('= B.Container RemoveElement input element', element);
 
+    if (!element) { return }
+
     if (element.svgObj.parent === this.svgObj) {
       this.svgObj.remove(element.svgObj);
       element.parent = null;
