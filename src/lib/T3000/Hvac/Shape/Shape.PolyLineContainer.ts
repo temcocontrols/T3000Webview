@@ -4,12 +4,8 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
 import PolyLine from "./Shape.PolyLine"
-// import ListManager from '../Data/ListManager'
 import BaseLine from "./Shape.BaseLine";
 import Point from '../Model/Point'
 import BaseShape from '../Shape/Shape.BaseShape'
@@ -19,6 +15,7 @@ import Instance from '../Data/Instance/Instance';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import HitResult from '../Model/HitResult'
+import ConstantData2 from '../Data/ConstantData2';
 
 class PolyLineContainer extends PolyLine {
 
@@ -862,8 +859,8 @@ class PolyLineContainer extends PolyLine {
     const element = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
     const currentOperation = GlobalData.optManager.currentModalOperation;
 
-    if ((currentOperation === ListManager.ModalOperations.SPLITWALL && this.polylist && this.polylist.segs.length >= 3) ||
-      currentOperation === ListManager.ModalOperations.ADDCORNER) {
+    if ((currentOperation === ConstantData2.ModalOperations.SPLITWALL && this.polylist && this.polylist.segs.length >= 3) ||
+      currentOperation === ConstantData2.ModalOperations.ADDCORNER) {
       const slopElement = element.GetElementByID(ConstantData.SVGElementClass.SLOP);
       if (slopElement) {
         slopElement.SetCursor(SDGraphics.Element.CursorType.CROSSHAIR);
@@ -1461,7 +1458,7 @@ class PolyLineContainer extends PolyLine {
       if (instance instanceof Instance.Shape.Polygon) {
         let polygonData = {};
         polygonData.Frame = instance.Frame;
-        polyLine = new ListManager.PolyLine(polygonData);
+        polyLine = new Instance.Shape.PolyLine(polygonData);
         polyLine.polylist = instance.polylist;
         polyLine.StartPoint = instance.StartPoint;
         polyLine.EndPoint = instance.EndPoint;
@@ -1529,7 +1526,7 @@ class PolyLineContainer extends PolyLine {
       if (instance instanceof Instance.Shape.Polygon) {
         let polygonData = {};
         polygonData.Frame = instance.Frame;
-        polyLine = new ListManager.PolyLine(polygonData);
+        polyLine = new Instance.Shape.PolyLine(polygonData);
         polyLine.polylist = instance.polylist;
         polyLine.StartPoint = instance.StartPoint;
         polyLine.EndPoint = instance.EndPoint;

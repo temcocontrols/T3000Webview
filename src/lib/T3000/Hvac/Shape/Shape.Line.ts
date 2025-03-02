@@ -1,8 +1,6 @@
 
 
 import BaseLine from './Shape.BaseLine'
-// import ListManager from '../Data/ListManager';
-// import FileParser from '../Data/FileParser';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
@@ -14,6 +12,7 @@ import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
 import ConstantData2 from '../Data/ConstantData2'
+import Instance from '../Data/Instance/Instance';
 
 class Line extends BaseLine {
 
@@ -289,7 +288,7 @@ class Line extends BaseLine {
     let shapeElement;
     const shapeContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
 
-    if (GlobalData.optManager.currentModalOperation === ListManager.ModalOperations.ADDCORNER) {
+    if (GlobalData.optManager.currentModalOperation === Instance.Shape.ModalOperations.ADDCORNER) {
       shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
       if (shapeElement) {
         shapeElement.SetCursor(Element.CursorType.CROSSHAIR);
@@ -727,7 +726,7 @@ class Line extends BaseLine {
         StyleRecord: Utils1.DeepCopy(this.StyleRecord)
       };
 
-      const newLine = new ListManager.Line(newLineData);
+      const newLine = new Instance.Shape.Line(newLineData);
       const newBlockID = GlobalData.optManager.AddNewObject(newLine, false, true);
       const joinID = isStartPoint
         ? GlobalData.optManager.PolyLJoin(newBlockID, ConstantData.HookPts.SED_KTL, this.BlockID, ConstantData.HookPts.SED_KTL, false)

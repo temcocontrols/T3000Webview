@@ -11,8 +11,11 @@ import GlobalData from '../Data/GlobalData'
 import Instance from "../Data/Instance/Instance";
 import ConstantData from "../Data/ConstantData"
 import BasicConstants from "./Basic.Constants";
+import ConstantData2 from "../Data/ConstantData2";
 
 class Element {
+
+  //#region Properties
 
   public doc: any;
   public parent: any;
@@ -33,6 +36,8 @@ class Element {
   public fillGradientData: any;
   public strokeGradientData: any;
   public strokeDashArray: string;
+
+  //#endregion
 
   constructor() {
     this.doc = null;
@@ -194,7 +199,6 @@ class Element {
     console.log('= B.Element.SetInternalID: output =>', { internalID });
     return internalID;
   }
-
 
   SetUserData(userData: any) {
     console.log('= B.Element.SetUserData: input =>', { userData });
@@ -479,23 +483,37 @@ class Element {
     return result;
   }
 
-  CalcElementFrame(e) {
-    for (
-      var t = this.GetGeometryBBox(),
-      a = {
-        x: t.x,
-        y: t.y,
-        width: t.width,
-        height: t.height
-      },
-      r = this.svgObj;
-      r &&
-      r !== this.doc.svgObj &&
-      (a.x += r.trans.x, a.y += r.trans.y, r = r.parent, !e);
-    );
-    return a
-  }
+  /**
+   * Calculates the bounding box of the element, including transformations.
+   * @param includeTransformations - Whether to include transformations in the calculation.
+   * @returns The bounding box of the element.
+   */
+  CalcElementFrame(includeTransformations?) {
+    console.log('= B.Element.CalcElementFrame: input =>', { includeTransformations });
 
+    const geometryBBox = this.GetGeometryBBox();
+    let boundingBox = {
+      x: geometryBBox.x,
+      y: geometryBBox.y,
+      width: geometryBBox.width,
+      height: geometryBBox.height
+    };
+
+    let currentElement = this.svgObj;
+
+    while (currentElement && currentElement !== this.doc.svgObj) {
+      boundingBox.x += currentElement.trans.x;
+      boundingBox.y += currentElement.trans.y;
+      currentElement = currentElement.parent;
+
+      if (!includeTransformations) {
+        break;
+      }
+    }
+
+    console.log('= B.Element.CalcElementFrame: output =>', { boundingBox });
+    return boundingBox;
+  }
 
   GetGeometryBBox() {
     console.log('= B.Element.GetGeometryBBox: input => {}');
@@ -654,22 +672,26 @@ class Element {
     }
   }
 
-  SetTextureFill(e: any): void {
-    console.log('= B.Element.SetTextureFill: input =>', { e });
+  /**
+   * Sets a texture fill for the element
+   * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions
+   */
+  SetTextureFill(textureSettings: any): void {
+    console.log('= B.Element.SetTextureFill: input =>', { textureSettings });
 
-    if (e && e.url) {
+    if (textureSettings && textureSettings.url) {
       this.ClearColorData(true);
 
       // Initialize texture fill data with readable parameters
       this.fillPatternData = {
         options: {
-          scale: e.scale || 1,
-          alignment: e.alignment || 0
+          scale: textureSettings.scale || 1,
+          alignment: textureSettings.alignment || 0
         },
-        url: e.url,
+        url: textureSettings.url,
         ID: Utils1.MakeGuid(),
-        imgWidth: e.dim.x,
-        imgHeight: e.dim.y,
+        imgWidth: textureSettings.dim.x,
+        imgHeight: textureSettings.dim.y,
         patternElem: null,
         imageElem: null,
         isTexture: true
@@ -682,412 +704,536 @@ class Element {
     console.log('= B.Element.SetTextureFill: output =>', { fillPatternData: this.fillPatternData });
   }
 
-  SetGradientFill(e) {
-    var t,
-      a;
-    if (e && e.stops && e.stops.length) {
-      for (
-        this.ClearColorData(!0),
-        this.fillGradientData = {},
-        this.fillGradientData.settings = {},
-        this.fillGradientData.settings.stops = [],
-        this.fillGradientData.settings.type = e.type ||
-        BasicConstants.GradientStyle.LINEAR,
-        this.fillGradientData.settings.startPos = e.startPos ||
-        BasicConstants.GradientPos.LEFTTOP,
-        this.fillGradientData.settings.angle = e.angle,
-        a = e.stops,
-        t = 0;
-        t < a.length;
-        t++
-      ) this.fillGradientData.settings.stops.push({
-        offset: a[t].offset ||
-          0,
-        color: a[t].color ||
-          '#fff',
-        opacity: void 0 !== a[t].opacity ? a[t].opacity : 1
-      });
-      this.fillGradientData.ID = Utils1.MakeGuid(),
-        this.fillGradientData.gradientElem = null,
-        this.UpdateGradient(this.fillGradientData.ID, !0)
-    }
-  }
+  /**
+   * Sets a gradient fill for the element
+   * @param gradientSettings - The gradient settings including type, stops, and position
+   */
+  SetGradientFill(gradientSettings) {
+    console.log("= B.Element.SetGradientFill: input =>", { gradientSettings });
 
-  ClearColorData(e) {
-    var t,
-      a;
-    e ? (t = this.fillPatternData, a = this.fillGradientData) : (t = this.strokePatternData, a = this.strokeGradientData),
-      t &&
-      t.patternElem &&
-      (
-        this.svgObj.remove(t.patternElem),
-        t.patternElem = null,
-        t.imageElem = null
-      ),
-      a &&
-      a.gradientElem &&
-      (this.svgObj.remove(a.gradientElem), a.gradientElem = null),
-      e ? (this.fillPatternData = null, this.fillGradientData = null) : (this.strokePatternData = null, this.strokeGradientData = null)
-  }
+    if (gradientSettings && gradientSettings.stops && gradientSettings.stops.length) {
+      // Clear previous fill color data
+      this.ClearColorData(true);
 
-  UpdatePattern(e, t) {
-    var a;
-    if ((a = t ? this.fillPatternData : this.strokePatternData) && a.ID == e) {
-      if (
-        a.patternElem ||
-        (
-          a.patternElem = new HvacSVG.Pattern,
-          a.imageElem = new HvacSVG.Image,
-          a.imageElem.load(a.url),
-          a.patternElem.add(a.imageElem),
-          a.patternElem.attr('id', a.ID),
-          this.svgObj.add(a.patternElem, 0)
-        ),
-        a.isImage
-      ) this.UpdateImagePattern(a);
-      else {
-        if (!a.isTexture) return;
-        this.UpdateTexturePattern(a)
+      // Initialize new gradient fill data with readable parameters
+      this.fillGradientData = {};
+      this.fillGradientData.settings = {};
+      this.fillGradientData.settings.stops = [];
+      this.fillGradientData.settings.type = gradientSettings.type || BasicConstants.GradientStyle.LINEAR;
+      this.fillGradientData.settings.startPos = gradientSettings.startPos || BasicConstants.GradientPos.LEFTTOP;
+      this.fillGradientData.settings.angle = gradientSettings.angle;
+
+      // Process each gradient stop
+      const stops = gradientSettings.stops;
+      for (let i = 0; i < stops.length; i++) {
+        this.fillGradientData.settings.stops.push({
+          offset: stops[i].offset || 0,
+          color: stops[i].color || '#fff',
+          opacity: stops[i].opacity !== undefined ? stops[i].opacity : 1
+        });
       }
-      t ? this.svgObj.attr('fill', 'url(#' + a.ID + ')') : this.svgObj.attr('stroke', 'url(#' + a.ID + ')')
+
+      // Generate a new unique ID for the gradient and update fill gradient data
+      this.fillGradientData.ID = Utils1.MakeGuid();
+      this.fillGradientData.gradientElem = null;
+
+      this.UpdateGradient(this.fillGradientData.ID, true);
+      console.log("= B.Element.SetGradientFill: output =>", { fillGradientData: this.fillGradientData });
+    } else {
+      console.log("= B.Element.SetGradientFill: output =>", "No valid gradient stops provided.");
     }
   }
 
-  UpdateImagePattern(e) {
-    var t,
-      a,
-      r,
-      i,
-      n,
-      o,
-      s,
-      l,
-      S,
-      c = this.CalcElementFrame();
-    e.patternElem &&
-      e.imageElem &&
-      e.isImage &&
-      (
-        o = e.imgWidth ||
-        c.width,
-        s = e.imgHeight ||
-        c.height,
-        t = {
-          x: e.options.cropRect.x,
-          y: e.options.cropRect.y,
-          width: e.options.cropRect.width ||
-            o,
-          height: e.options.cropRect.height ||
-            s
-        },
-        e.imgWidth &&
-        e.imgHeight ||
-        (t.x = 0, t.y = 0),
-        t.x >= o ||
-        t.y >= s ||
-        (
-          t.width = Math.min(t.width, o - t.x),
-          t.height = Math.min(t.height, s - t.y),
-          a = c.width / t.width,
-          r = c.height / t.height,
-          'PROPFILL' == e.options.scaleType ? a > r ? r = a : a = r : 'PROPFIT' == e.options.scaleType ? a < r ? r = a : a = r : 'NONE' == e.options.scaleType &&
-            (a = 1, r = 1),
-          t.x *= a,
-          t.y *= r,
-          t.width *= a,
-          t.height *= r,
-          l = (c.width - t.width) / 2 - t.x,
-          S = (c.height - t.height) / 2 - t.y,
-          i = t.width - l,
-          n = t.height - S,
-          i < c.width &&
-          (i = c.width),
-          n < c.height &&
-          (n = c.height),
-          l = Utils1.RoundCoord(l / a),
-          S = Utils1.RoundCoord(S / r),
-          i = Utils1.RoundCoord(i + 1),
-          n = Utils1.RoundCoord(n + 1),
-          a = Utils1.RoundCoord(a),
-          r = Utils1.RoundCoord(r),
-          e.patternElem.attr({
-            x: 0,
-            y: 0,
-            width: i,
-            height: n,
-            patternUnits: 'userSpaceOnUse',
-            preserveAspectRatio: 'none meet',
-            viewBox: '0 0 ' + i + ' ' + n
-          }),
-          e.patternElem.node.setAttribute('_isImage_', !0),
-          e.imageElem.attr({
-            x: 0,
-            y: 0,
-            width: o,
-            height: s,
-            transform: 'scale(' + a + ',' + r + ') translate(' + l + ',' + S + ')',
-            preserveAspectRatio: 'none'
-          })
-        )
-      )
+  /**
+   * Clears fill or stroke pattern/gradient data for the element
+   * @param isFill - If true, clears fill data, otherwise clears stroke data
+   */
+  ClearColorData(isFill: boolean) {
+    console.log("= B.Element.ClearColorData: input =>", { isFill });
+
+    // Determine which data to clear based on isFill parameter
+    let patternData;
+    let gradientData;
+
+    if (isFill) {
+      patternData = this.fillPatternData;
+      gradientData = this.fillGradientData;
+    } else {
+      patternData = this.strokePatternData;
+      gradientData = this.strokeGradientData;
+    }
+
+    // Remove and clear pattern elements if they exist
+    if (patternData && patternData.patternElem) {
+      this.svgObj.remove(patternData.patternElem);
+      patternData.patternElem = null;
+      patternData.imageElem = null;
+    }
+
+    // Remove and clear gradient elements if they exist
+    if (gradientData && gradientData.gradientElem) {
+      this.svgObj.remove(gradientData.gradientElem);
+      gradientData.gradientElem = null;
+    }
+
+    // Reset the appropriate data properties
+    if (isFill) {
+      this.fillPatternData = null;
+      this.fillGradientData = null;
+    } else {
+      this.strokePatternData = null;
+      this.strokeGradientData = null;
+    }
+
+    console.log("= B.Element.ClearColorData: output =>", { isFill });
   }
 
-  UpdateTexturePattern(e) {
-    var t,
-      a,
-      r,
-      i = this.CalcElementFrame();
-    if (
-      e.patternElem &&
-      e.imageElem &&
-      e.isTexture &&
-      e.imgWidth &&
-      e.imgHeight
-    ) {
-      switch (
-      t = e.options.scale,
-      r = {
-        x: 0,
-        y: 0,
-        width: (a = {
+  /**
+   * Updates a fill or stroke pattern for the element
+   * @param patternId - The ID of the pattern to update
+   * @param isFill - If true, updates fill pattern, otherwise updates stroke pattern
+   */
+  UpdatePattern(patternId: string, isFill: boolean) {
+    console.log("= B.Element.UpdatePattern: input =>", { patternId, isFill });
+
+    // Get the appropriate pattern data based on whether we're updating fill or stroke
+    const patternData = isFill ? this.fillPatternData : this.strokePatternData;
+
+    // Only proceed if the pattern data exists and matches the requested ID
+    if (patternData && patternData.ID === patternId) {
+      // Create pattern elements if they don't exist
+      if (!patternData.patternElem) {
+        patternData.patternElem = new HvacSVG.Pattern;
+        patternData.imageElem = new HvacSVG.Image;
+        patternData.imageElem.load(patternData.url);
+        patternData.patternElem.add(patternData.imageElem);
+        patternData.patternElem.attr('id', patternData.ID);
+        this.svgObj.add(patternData.patternElem, 0);
+      }
+
+      // Update the appropriate pattern type
+      if (patternData.isImage) {
+        this.UpdateImagePattern(patternData);
+      } else if (patternData.isTexture) {
+        this.UpdateTexturePattern(patternData);
+      }
+
+      // Apply the pattern to the element
+      const attrName = isFill ? 'fill' : 'stroke';
+      this.svgObj.attr(attrName, 'url(#' + patternData.ID + ')');
+    }
+
+    console.log("= B.Element.UpdatePattern: output =>", { patternId, isFill });
+  }
+
+  /**
+   * Updates an image pattern with proper scaling and positioning
+   * @param patternData - The image pattern data to update
+   */
+  UpdateImagePattern(patternData) {
+    console.log("= B.Element.UpdateImagePattern: input =>", { patternData });
+
+    // Get the element's bounding box for calculations
+    const elementFrame = this.CalcElementFrame();
+
+    // Only proceed if we have valid pattern elements and image data
+    if (patternData.patternElem && patternData.imageElem && patternData.isImage) {
+      // Use image dimensions or fallback to element dimensions
+      const imageWidth = patternData.imgWidth || elementFrame.width;
+      const imageHeight = patternData.imgHeight || elementFrame.height;
+
+      // Define the crop rectangle
+      const cropRect = {
+        x: patternData.options.cropRect.x,
+        y: patternData.options.cropRect.y,
+        width: patternData.options.cropRect.width || imageWidth,
+        height: patternData.options.cropRect.height || imageHeight
+      };
+
+      // If image dimensions are not set, reset crop coordinates
+      if (!patternData.imgWidth && !patternData.imgHeight) {
+        cropRect.x = 0;
+        cropRect.y = 0;
+      }
+
+      // Make sure crop rectangle isn't out of bounds
+      if (cropRect.x < imageWidth && cropRect.y < imageHeight) {
+        // Adjust crop dimensions to stay within image bounds
+        cropRect.width = Math.min(cropRect.width, imageWidth - cropRect.x);
+        cropRect.height = Math.min(cropRect.height, imageHeight - cropRect.y);
+
+        // Calculate scale factors based on scaling type
+        let scaleX = elementFrame.width / cropRect.width;
+        let scaleY = elementFrame.height / cropRect.height;
+
+        // Adjust scale factors based on scaling type
+        if (patternData.options.scaleType === 'PROPFILL') {
+          // Proportional fill - use the larger scale factor
+          if (scaleX > scaleY) {
+            scaleY = scaleX;
+          } else {
+            scaleX = scaleY;
+          }
+        } else if (patternData.options.scaleType === 'PROPFIT') {
+          // Proportional fit - use the smaller scale factor
+          if (scaleX < scaleY) {
+            scaleY = scaleX;
+          } else {
+            scaleX = scaleY;
+          }
+        } else if (patternData.options.scaleType === 'NONE') {
+          // No scaling - use scale factor of 1
+          scaleX = 1;
+          scaleY = 1;
+        }
+
+        // Apply scale to crop rectangle
+        cropRect.x *= scaleX;
+        cropRect.y *= scaleY;
+        cropRect.width *= scaleX;
+        cropRect.height *= scaleY;
+
+        // Calculate positioning adjustments
+        const offsetX = (elementFrame.width - cropRect.width) / 2 - cropRect.x;
+        const offsetY = (elementFrame.height - cropRect.height) / 2 - cropRect.y;
+
+        // Calculate pattern dimensions
+        let patternWidth = cropRect.width - offsetX;
+        let patternHeight = cropRect.height - offsetY;
+
+        // Ensure pattern is at least as large as the element
+        if (patternWidth < elementFrame.width) {
+          patternWidth = elementFrame.width;
+        }
+        if (patternHeight < elementFrame.height) {
+          patternHeight = elementFrame.height;
+        }
+
+        // Round coordinate values for better rendering
+        const roundedOffsetX = Utils1.RoundCoord(offsetX / scaleX);
+        const roundedOffsetY = Utils1.RoundCoord(offsetY / scaleY);
+        const roundedPatternWidth = Utils1.RoundCoord(patternWidth + 1);
+        const roundedPatternHeight = Utils1.RoundCoord(patternHeight + 1);
+        const roundedScaleX = Utils1.RoundCoord(scaleX);
+        const roundedScaleY = Utils1.RoundCoord(scaleY);
+
+        // Set pattern attributes
+        patternData.patternElem.attr({
           x: 0,
           y: 0,
-          width: e.imgWidth * t,
-          height: e.imgHeight * t
-        }).width,
-        height: a.height
-      },
-      e.options.alignment
-      ) {
-        case ListManager.TextureAlign.SDTX_TOPLEFT:
-          break;
-        case ListManager.TextureAlign.SDTX_TOPCENTER:
-          r.x += i.width / 2;
-          break;
-        case ListManager.TextureAlign.SDTX_TOPRIGHT:
-          r.x = i.width - a.width;
-          break;
-        case ListManager.TextureAlign.SDTX_CENLEFT:
-          r.y += i.height / 2;
-          break;
-        case ListManager.TextureAlign.SDTX_CENTER:
-          r.x += i.width / 2,
-            r.y += i.height / 2;
-          break;
-        case ListManager.TextureAlign.SDTX_CENRIGHT:
-          r.x = i.width - a.width,
-            r.y += i.height / 2;
-          break;
-        case ListManager.TextureAlign.SDTX_BOTLEFT:
-          r.y = i.height - a.height;
-          break;
-        case ListManager.TextureAlign.SDTX_BOTCENTER:
-          r.x += i.width / 2,
-            r.y = i.height - a.height;
-          break;
-        case ListManager.TextureAlign.SDTX_BOTRIGHT:
-          r.x = i.width - a.width,
-            r.y = i.height - a.height;
-          break;
-        default:
-          r.x = - i.x,
-            r.y = - i.y
-      }
-      e.imageElem.attr({
-        x: 0,
-        y: 0,
-        width: a.width,
-        height: a.height,
-        preserveAspectRatio: 'none'
-      }),
-        e.patternElem.attr({
-          x: r.x,
-          y: r.y,
-          width: r.width,
-          height: r.height,
+          width: roundedPatternWidth,
+          height: roundedPatternHeight,
           patternUnits: 'userSpaceOnUse',
           preserveAspectRatio: 'none meet',
-          viewBox: '0 0 ' + a.width + ' ' + a.height
-        })
+          viewBox: '0 0 ' + roundedPatternWidth + ' ' + roundedPatternHeight
+        });
+
+        // Mark pattern as an image
+        patternData.patternElem.node.setAttribute('_isImage_', true);
+
+        // Set image attributes
+        patternData.imageElem.attr({
+          x: 0,
+          y: 0,
+          width: imageWidth,
+          height: imageHeight,
+          transform: 'scale(' + roundedScaleX + ',' + roundedScaleY + ') translate(' + roundedOffsetX + ',' + roundedOffsetY + ')',
+          preserveAspectRatio: 'none'
+        });
+      }
     }
+
+    console.log("= B.Element.UpdateImagePattern: output =>", { patternData });
   }
 
-  UpdateGradient(e, isFill: boolean) {
-    console.log("= B.Element.UpdateGradient: input =>", { e, isFill });
+  /**
+   * Updates a texture pattern with proper scaling and positioning
+   * @param patternData - The texture pattern data to update
+   */
+  UpdateTexturePattern(patternData) {
+    console.log("= B.Element.UpdateTexturePattern: input =>", { patternData });
 
-    const bbox = this.GetGeometryBBox();
-    let startPos = { x: 0, y: 0 };
-    let endPos = { x: 0, y: 0 };
-    let distance = Math.sqrt(bbox.width * bbox.width + bbox.height * bbox.height);
-    let isLinear: boolean = true;
+    const elementFrame = this.CalcElementFrame();
+    let scale, scaledImageSize, patternRect;
+
+    if (
+      patternData.patternElem &&
+      patternData.imageElem &&
+      patternData.isTexture &&
+      patternData.imgWidth &&
+      patternData.imgHeight
+    ) {
+      scale = patternData.options.scale;
+
+      scaledImageSize = {
+        x: 0,
+        y: 0,
+        width: patternData.imgWidth * scale,
+        height: patternData.imgHeight * scale
+      };
+
+      patternRect = {
+        x: 0,
+        y: 0,
+        width: scaledImageSize.width,
+        height: scaledImageSize.height
+      };
+
+      // Position the pattern based on alignment option
+      switch (patternData.options.alignment) {
+        case ConstantData2.TextureAlign.SDTX_TOPLEFT:
+          // Default position is already top-left
+          break;
+        case ConstantData2.TextureAlign.SDTX_TOPCENTER:
+          patternRect.x += elementFrame.width / 2;
+          break;
+        case ConstantData2.TextureAlign.SDTX_TOPRIGHT:
+          patternRect.x = elementFrame.width - scaledImageSize.width;
+          break;
+        case ConstantData2.TextureAlign.SDTX_CENLEFT:
+          patternRect.y += elementFrame.height / 2;
+          break;
+        case ConstantData2.TextureAlign.SDTX_CENTER:
+          patternRect.x += elementFrame.width / 2;
+          patternRect.y += elementFrame.height / 2;
+          break;
+        case ConstantData2.TextureAlign.SDTX_CENRIGHT:
+          patternRect.x = elementFrame.width - scaledImageSize.width;
+          patternRect.y += elementFrame.height / 2;
+          break;
+        case ConstantData2.TextureAlign.SDTX_BOTLEFT:
+          patternRect.y = elementFrame.height - scaledImageSize.height;
+          break;
+        case ConstantData2.TextureAlign.SDTX_BOTCENTER:
+          patternRect.x += elementFrame.width / 2;
+          patternRect.y = elementFrame.height - scaledImageSize.height;
+          break;
+        case ConstantData2.TextureAlign.SDTX_BOTRIGHT:
+          patternRect.x = elementFrame.width - scaledImageSize.width;
+          patternRect.y = elementFrame.height - scaledImageSize.height;
+          break;
+        default:
+          patternRect.x = -elementFrame.x;
+          patternRect.y = -elementFrame.y;
+      }
+
+      // Set image attributes
+      patternData.imageElem.attr({
+        x: 0,
+        y: 0,
+        width: scaledImageSize.width,
+        height: scaledImageSize.height,
+        preserveAspectRatio: 'none'
+      });
+
+      // Set pattern attributes
+      patternData.patternElem.attr({
+        x: patternRect.x,
+        y: patternRect.y,
+        width: patternRect.width,
+        height: patternRect.height,
+        patternUnits: 'userSpaceOnUse',
+        preserveAspectRatio: 'none meet',
+        viewBox: '0 0 ' + scaledImageSize.width + ' ' + scaledImageSize.height
+      });
+    }
+
+    console.log("= B.Element.UpdateTexturePattern: output =>", { patternData });
+  }
+
+  /**
+   * Updates a fill or stroke gradient for the element
+   * @param gradientId - The ID of the gradient to update
+   * @param isFill - If true, updates fill gradient, otherwise updates stroke gradient
+   */
+  UpdateGradient(gradientId: string, isFill: boolean) {
+    console.log("= B.Element.UpdateGradient: input =>", { gradientId, isFill });
+
+    const boundingBox = this.GetGeometryBBox();
+    let startPosition = { x: 0, y: 0 };
+    let endPosition = { x: 0, y: 0 };
+    let gradientDistance = Math.sqrt(boundingBox.width * boundingBox.width + boundingBox.height * boundingBox.height);
+    let isLinearGradient: boolean = true;
     const gradientData = isFill ? this.fillGradientData : this.strokeGradientData;
 
-    if (gradientData && gradientData.ID === e) {
+    if (gradientData && gradientData.ID === gradientId) {
+      // Create the gradient element if it doesn't exist yet
       if (!gradientData.gradientElem) {
         let gradientType: string;
         switch (gradientData.settings.type) {
-          case Style.GradientStyle.RADIALFILL:
-          case Style.GradientStyle.RADIAL:
+          case BasicConstants.GradientStyle.RADIALFILL:
+          case BasicConstants.GradientStyle.RADIAL:
             gradientType = "radial";
             break;
           default:
             gradientType = "linear";
         }
+
+        // Create gradient element with proper type
         gradientData.gradientElem = new HvacSVG.Gradient(gradientType);
         gradientData.gradientElem.attr("id", gradientData.ID);
 
+        // Add color stops to the gradient
         for (let i = 0; i < gradientData.settings.stops.length; i++) {
-          const stop = gradientData.settings.stops[i];
+          const colorStop = gradientData.settings.stops[i];
           gradientData.gradientElem.at({
-            offset: stop.offset,
-            color: stop.color,
-            opacity: stop.opacity,
+            offset: colorStop.offset,
+            color: colorStop.color,
+            opacity: colorStop.opacity,
           });
         }
+
+        // Add the gradient element to the SVG
         this.svgObj.add(gradientData.gradientElem, 0);
       }
 
-      isLinear = gradientData.settings.type === Style.GradientStyle.LINEAR;
-      startPos.x = bbox.x;
-      startPos.y = bbox.y;
-      endPos.x = startPos.x + bbox.width;
-      endPos.y = startPos.y + bbox.height;
+      isLinearGradient = gradientData.settings.type === BasicConstants.GradientStyle.LINEAR;
+      startPosition.x = boundingBox.x;
+      startPosition.y = boundingBox.y;
+      endPosition.x = startPosition.x + boundingBox.width;
+      endPosition.y = startPosition.y + boundingBox.height;
 
       // Adjust positions based on the start position setting
       switch (gradientData.settings.startPos) {
         case BasicConstants.GradientPos.TOP:
-          startPos.x += bbox.width / 2;
-          endPos.x = startPos.x;
-          distance = bbox.height;
+          startPosition.x += boundingBox.width / 2;
+          endPosition.x = startPosition.x;
+          gradientDistance = boundingBox.height;
           break;
         case BasicConstants.GradientPos.RIGHTTOP:
-          startPos.x = endPos.x;
-          endPos.x = bbox.x;
+          startPosition.x = endPosition.x;
+          endPosition.x = boundingBox.x;
           break;
         case BasicConstants.GradientPos.RIGHT:
-          startPos.x = endPos.x;
-          startPos.y += bbox.height / 2;
-          endPos.x = bbox.x;
-          endPos.y = startPos.y;
-          distance = bbox.width;
+          startPosition.x = endPosition.x;
+          startPosition.y += boundingBox.height / 2;
+          endPosition.x = boundingBox.x;
+          endPosition.y = startPosition.y;
+          gradientDistance = boundingBox.width;
           break;
         case BasicConstants.GradientPos.RIGHTBOTTOM:
-          startPos.x = endPos.x;
-          startPos.y = endPos.y;
-          endPos.x = bbox.x;
-          endPos.y = bbox.y;
+          startPosition.x = endPosition.x;
+          startPosition.y = endPosition.y;
+          endPosition.x = boundingBox.x;
+          endPosition.y = boundingBox.y;
           break;
         case BasicConstants.GradientPos.BOTTOM:
-          startPos.x += bbox.width / 2;
-          startPos.y = endPos.y;
-          endPos.x = startPos.x;
-          endPos.y = bbox.y;
-          distance = bbox.height;
+          startPosition.x += boundingBox.width / 2;
+          startPosition.y = endPosition.y;
+          endPosition.x = startPosition.x;
+          endPosition.y = boundingBox.y;
+          gradientDistance = boundingBox.height;
           break;
         case BasicConstants.GradientPos.LEFTBOTTOM:
-          startPos.y = endPos.y;
-          endPos.y = bbox.y;
+          startPosition.y = endPosition.y;
+          endPosition.y = boundingBox.y;
           break;
         case BasicConstants.GradientPos.LEFT:
-          startPos.y += bbox.height / 2;
-          endPos.y = startPos.y;
-          distance = bbox.width;
+          startPosition.y += boundingBox.height / 2;
+          endPosition.y = startPosition.y;
+          gradientDistance = boundingBox.width;
           break;
         case BasicConstants.GradientPos.CENTER:
-          if (isLinear) {
-            startPos.x += bbox.width / 2;
-            startPos.y += bbox.height / 2;
-            endPos.x = startPos.x;
-            endPos.y = startPos.y;
-            distance = Math.max(bbox.width, bbox.height) / 2;
+          if (isLinearGradient) {
+            startPosition.x += boundingBox.width / 2;
+            startPosition.y += boundingBox.height / 2;
+            endPosition.x = startPosition.x;
+            endPosition.y = startPosition.y;
+            gradientDistance = Math.max(boundingBox.width, boundingBox.height) / 2;
           }
           break;
       }
 
       // Adjust positions based on angle if provided
       if (gradientData.settings.angle !== undefined) {
-        let angle = gradientData.settings.angle / 10;
-        angle %= 360;
-        if (angle < 0) {
-          angle += 360;
+        let angleInDegrees = gradientData.settings.angle / 10;
+        angleInDegrees %= 360;
+        if (angleInDegrees < 0) {
+          angleInDegrees += 360;
         }
 
-        if (angle === 0) {
-          startPos.x = bbox.x;
-          startPos.y = bbox.y + bbox.height / 2;
-          endPos.x = bbox.x + bbox.width;
-          endPos.y = bbox.y + bbox.height / 2;
-        } else if (angle === 180) {
-          startPos.x = bbox.x + bbox.width;
-          startPos.y = bbox.y + bbox.height / 2;
-          endPos.x = bbox.x;
-          endPos.y = bbox.y + bbox.height / 2;
-        } else if (angle === 90) {
-          startPos.x = bbox.x + bbox.width / 2;
-          startPos.y = bbox.y;
-          endPos.x = bbox.x + bbox.width / 2;
-          endPos.y = bbox.y + bbox.height;
-        } else if (angle === 270) {
-          startPos.x = bbox.x + bbox.width / 2;
-          startPos.y = bbox.y + bbox.height;
-          endPos.x = bbox.x + bbox.width / 2;
-          endPos.y = bbox.y;
+        // Handle special angle cases (0, 90, 180, 270 degrees)
+        if (angleInDegrees === 0) {
+          startPosition.x = boundingBox.x;
+          startPosition.y = boundingBox.y + boundingBox.height / 2;
+          endPosition.x = boundingBox.x + boundingBox.width;
+          endPosition.y = boundingBox.y + boundingBox.height / 2;
+        } else if (angleInDegrees === 180) {
+          startPosition.x = boundingBox.x + boundingBox.width;
+          startPosition.y = boundingBox.y + boundingBox.height / 2;
+          endPosition.x = boundingBox.x;
+          endPosition.y = boundingBox.y + boundingBox.height / 2;
+        } else if (angleInDegrees === 90) {
+          startPosition.x = boundingBox.x + boundingBox.width / 2;
+          startPosition.y = boundingBox.y;
+          endPosition.x = boundingBox.x + boundingBox.width / 2;
+          endPosition.y = boundingBox.y + boundingBox.height;
+        } else if (angleInDegrees === 270) {
+          startPosition.x = boundingBox.x + boundingBox.width / 2;
+          startPosition.y = boundingBox.y + boundingBox.height;
+          endPosition.x = boundingBox.x + boundingBox.width / 2;
+          endPosition.y = boundingBox.y;
         } else {
-          let u, p, d, D, g, h;
-          const tanAngle = Math.tan(angle * Math.PI / 180);
-          const tanAngle90 = Math.tan((angle + 90) * Math.PI / 180);
-          const centerX = bbox.x + bbox.width / 2;
-          const centerY = bbox.y + bbox.height / 2;
-          const intercept = centerY - centerX * tanAngle;
+          // Calculate gradient line for arbitrary angles
+          let leftCoord, topCoord, rightCoord, bottomCoord;
+          const angleTangent = Math.tan(angleInDegrees * Math.PI / 180);
+          const perpAngleTangent = Math.tan((angleInDegrees + 90) * Math.PI / 180);
+          const centerX = boundingBox.x + boundingBox.width / 2;
+          const centerY = boundingBox.y + boundingBox.height / 2;
+          const lineIntercept = centerY - centerX * angleTangent;
 
-          if (angle < 90) {
-            u = bbox.x;
-            p = bbox.y;
-            D = bbox.x + bbox.width;
-            g = bbox.y + bbox.height;
-          } else if (angle < 180) {
-            u = bbox.x + bbox.width;
-            p = bbox.y;
-            D = bbox.x;
-            g = bbox.y + bbox.height;
-          } else if (angle < 270) {
-            u = bbox.x + bbox.width;
-            p = bbox.y + bbox.height;
-            D = bbox.x;
-            g = bbox.y;
+          // Determine coordinates based on angle quadrant
+          if (angleInDegrees < 90) {
+            leftCoord = boundingBox.x;
+            topCoord = boundingBox.y;
+            rightCoord = boundingBox.x + boundingBox.width;
+            bottomCoord = boundingBox.y + boundingBox.height;
+          } else if (angleInDegrees < 180) {
+            leftCoord = boundingBox.x + boundingBox.width;
+            topCoord = boundingBox.y;
+            rightCoord = boundingBox.x;
+            bottomCoord = boundingBox.y + boundingBox.height;
+          } else if (angleInDegrees < 270) {
+            leftCoord = boundingBox.x + boundingBox.width;
+            topCoord = boundingBox.y + boundingBox.height;
+            rightCoord = boundingBox.x;
+            bottomCoord = boundingBox.y;
           } else {
-            u = bbox.x;
-            p = bbox.y + bbox.height;
-            D = bbox.x + bbox.width;
-            g = bbox.y;
+            leftCoord = boundingBox.x;
+            topCoord = boundingBox.y + boundingBox.height;
+            rightCoord = boundingBox.x + boundingBox.width;
+            bottomCoord = boundingBox.y;
           }
 
-          const line1 = p - u * tanAngle90;
-          const line2 = g - D * tanAngle90;
-          startPos.x = (line1 - intercept) / (tanAngle - tanAngle90);
-          startPos.y = startPos.x * tanAngle + intercept;
-          endPos.x = (line2 - intercept) / (tanAngle - tanAngle90);
-          endPos.y = endPos.x * tanAngle + intercept;
+          // Calculate intersections with bounding box edges
+          const line1 = topCoord - leftCoord * perpAngleTangent;
+          const line2 = bottomCoord - rightCoord * perpAngleTangent;
+          startPosition.x = (line1 - lineIntercept) / (angleTangent - perpAngleTangent);
+          startPosition.y = startPosition.x * angleTangent + lineIntercept;
+          endPosition.x = (line2 - lineIntercept) / (angleTangent - perpAngleTangent);
+          endPosition.y = endPosition.x * angleTangent + lineIntercept;
         }
       }
 
-      if (isLinear) {
+      // Set attributes for the gradient element based on its type
+      if (isLinearGradient) {
         gradientData.gradientElem.attr({
-          x1: startPos.x,
-          y1: startPos.y,
-          x2: endPos.x,
-          y2: endPos.y,
+          x1: startPosition.x,
+          y1: startPosition.y,
+          x2: endPosition.x,
+          y2: endPosition.y,
           gradientUnits: "userSpaceOnUse",
         });
       } else {
         gradientData.gradientElem.attr({
-          cx: startPos.x,
-          cy: startPos.y,
-          r: distance,
+          cx: startPosition.x,
+          cy: startPosition.y,
+          r: gradientDistance,
           gradientUnits: "userSpaceOnUse",
         });
       }
 
+      // Apply the gradient to the element
       if (isFill) {
         this.svgObj.attr("fill", "url(#" + gradientData.ID + ")");
       } else {
@@ -1115,6 +1261,7 @@ class Element {
       this.UpdateGradient(this.strokeGradientData.ID, false);
     }
 
+    /*
     // If flag is set and double move is needed (currently always false)
     if (shouldRefreshChildren && false) {
       const count = this.ElementCount();
@@ -1125,6 +1272,7 @@ class Element {
         }
       }
     }
+    */
 
     console.log('= B.Element.RefreshPaint: output =>', { shouldRefreshChildren });
   }
@@ -1152,22 +1300,26 @@ class Element {
     console.log('= B.Element.SetStrokeColor: output =>', { color });
   }
 
-  SetTextureStroke(e) {
-    console.log('= B.Element.SetTextureStroke: input =>', { e });
+  /**
+   * Sets a texture stroke for the element
+   * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions
+   */
+  SetTextureStroke(textureSettings) {
+    console.log('= B.Element.SetTextureStroke: input =>', { textureSettings });
 
-    if (e && e.url) {
+    if (textureSettings && textureSettings.url) {
       // Clear previous stroke color data
       this.ClearColorData(false);
 
       // Initialize stroke texture parameters with readable values
       this.strokePatternData = {};
       this.strokePatternData.options = {};
-      this.strokePatternData.options.scale = e.scale || 1;
-      this.strokePatternData.options.alignment = e.alignment || 0;
-      this.strokePatternData.url = e.url;
+      this.strokePatternData.options.scale = textureSettings.scale || 1;
+      this.strokePatternData.options.alignment = textureSettings.alignment || 0;
+      this.strokePatternData.url = textureSettings.url;
       this.strokePatternData.ID = Utils1.MakeGuid();
-      this.strokePatternData.imgWidth = e.dim.x;
-      this.strokePatternData.imgHeight = e.dim.y;
+      this.strokePatternData.imgWidth = textureSettings.dim.x;
+      this.strokePatternData.imgHeight = textureSettings.dim.y;
       this.strokePatternData.patternElem = null;
       this.strokePatternData.imageElem = null;
       this.strokePatternData.isTexture = true;
@@ -1179,10 +1331,14 @@ class Element {
     console.log('= B.Element.SetTextureStroke: output =>', { strokePatternData: this.strokePatternData });
   }
 
-  SetGradientStroke(e) {
-    console.log("= B.Element.SetGradientStroke: input =>", { e });
+  /**
+   * Sets a gradient stroke for the element
+   * @param gradientSettings - The gradient settings including type, stops, and position
+   */
+  SetGradientStroke(gradientSettings) {
+    console.log("= B.Element.SetGradientStroke: input =>", { gradientSettings });
 
-    if (e && e.stops && e.stops.length) {
+    if (gradientSettings && gradientSettings.stops && gradientSettings.stops.length) {
       // Clear previous stroke color data
       this.ClearColorData(false);
 
@@ -1190,13 +1346,13 @@ class Element {
       this.strokeGradientData = {};
       this.strokeGradientData.settings = {};
       this.strokeGradientData.settings.stops = [];
-      this.strokeGradientData.settings.type = e.type || Style.GradientStyle.LINEAR;
-      this.strokeGradientData.settings.startPos = e.startPos || Style.GradientPos.LEFTTOP;
-      this.strokeGradientData.settings.angle = e.angle;
+      this.strokeGradientData.settings.type = gradientSettings.type || BasicConstants.GradientStyle.LINEAR;
+      this.strokeGradientData.settings.startPos = gradientSettings.startPos || BasicConstants.GradientPos.LEFTTOP;
+      this.strokeGradientData.settings.angle = gradientSettings.angle;
 
       // Process each gradient stop
-      for (let i = 0; i < e.stops.length; i++) {
-        const stop = e.stops[i];
+      for (let i = 0; i < gradientSettings.stops.length; i++) {
+        const stop = gradientSettings.stops[i];
         this.strokeGradientData.settings.stops.push({
           offset: stop.offset || 0,
           color: stop.color || "#fff",
@@ -1215,19 +1371,23 @@ class Element {
     }
   }
 
-  SetStrokeWidth(e: number | string) {
-    console.log("= B.Element.SetStrokeWidth: input =>", { e });
+  /**
+   * Sets the stroke width for the element and updates any stroke dash patterns
+   * @param strokeWidth - The width of the stroke as a number or string
+   */
+  SetStrokeWidth(strokeWidth: number | string) {
+    console.log("= B.Element.SetStrokeWidth: input =>", { strokeWidth });
 
     // Set the initial stroke-width attribute
-    this.svgObj.attr("stroke-width", e);
+    this.svgObj.attr("stroke-width", strokeWidth);
 
-    // Check if e is not a number and parse it if necessary
-    if (isNaN(Number(e))) {
-      e = Instance.Basic.Symbol.ParsePlaceholder(e, BasicConstants.Placeholder.LineThick);
+    // Check if strokeWidth is not a number and parse it if necessary
+    if (isNaN(Number(strokeWidth))) {
+      strokeWidth = Instance.Basic.Symbol.ParsePlaceholder(strokeWidth, BasicConstants.Placeholder.LineThick);
     }
 
     // Update the strokeWidth property with a numeric value
-    this.strokeWidth = Number(e);
+    this.strokeWidth = Number(strokeWidth);
 
     // Update the stroke-dasharray according to the new strokeWidth
     this.svgObj.attr("stroke-dasharray", this.GetStrokePatternForWidth());
@@ -1359,13 +1519,13 @@ class Element {
   }
 
   ClearAllCursors(): void {
-    console.log('= B.Element.ClearAllCursors: input => {}');
+    // console.log('= B.Element.ClearAllCursors: input => {}');
     Element.RemoveCursorsOnSVGObj(this.svgObj);
-    console.log('= B.Element.ClearAllCursors: output => {}');
+    // console.log('= B.Element.ClearAllCursors: output => {}');
   }
 
   static RemoveCursorsOnSVGObj(e: any): void {
-    console.log('= B.Element.RemoveCursorsOnSVGObj: input =>', { e });
+    // console.log('= B.Element.RemoveCursorsOnSVGObj: input =>', { e });
 
     if (e.SDGObj) {
       e.SDGObj.cursor = null;
@@ -1382,143 +1542,9 @@ class Element {
       }
     }
 
-    console.log('= B.Element.RemoveCursorsOnSVGObj: output =>', { completed: true });
+    // console.log('= B.Element.RemoveCursorsOnSVGObj: output =>', { completed: true });
   }
-
-  // GetTargetForEvent2(e: any) {
-  //   console.log("= B.Element.GetTargetForEvent2: input =>", { e });
-
-  //   let domTarget: any, foundElement: any, rootElement: any;
-
-  //   // Ensure the event exists and the current instance is a valid container.
-  //   if (!(e && this instanceof Instance.Basic.Container)) {
-  //     console.log("= B.Element.GetTargetForEvent2: output =>", this);
-  //     return this;
-  //   }
-
-  //   domTarget = e.target || e.srcElement;
-  //   rootElement = this.DOMElement();
-
-  //   if (!domTarget || domTarget === rootElement) {
-  //     console.log("= B.Element.GetTargetForEvent2: output =>", this);
-  //     return this;
-  //   }
-
-  //   foundElement = this.FindElementByDOMElement(domTarget);
-
-  //   while (domTarget && !foundElement) {
-  //     domTarget = domTarget.parentNode;
-  //     foundElement = (domTarget === rootElement) ? this : this.FindElementByDOMElement(domTarget);
-  //   }
-
-  //   console.log("= B.Element.GetTargetForEvent2: output =>", foundElement || this);
-  //   return foundElement || this;
-  // }
-
-  // GetTargetForEvent1(e: any): any {
-  //   console.log("= B.Element.GetTargetForEvent1: input =>", { e });
-
-  //   let target: any = e.target || e.srcElement;
-  //   let rootElement: any = this.DOMElement();
-  //   let element: any;
-
-  //   if (!target || target === rootElement) {
-  //     console.log("= B.Element.GetTargetForEvent1: output =>", this);
-  //     return this;
-  //   }
-
-  //   element = this.FindElementByDOMElement(target);
-
-  //   while (target && !element) {
-  //     target = target.parentNode;
-  //     if (target === rootElement) {
-  //       element = this;
-  //       break;
-  //     } else {
-  //       element = this.FindElementByDOMElement(target);
-  //     }
-  //   }
-
-  //   console.log("= B.Element.GetTargetForEvent1: output =>", element || this);
-  //   return element || this;
-  // }
-
-  static EventBehavior = {
-    NORMAL: 'visiblePainted',
-    INSIDE: 'visibleFill',
-    OUTSIDE: 'visibleStroke',
-    ALL: 'visible',
-    HIDDEN: 'painted',
-    HIDDEN_IN: 'fill',
-    HIDDEN_OUT: 'stroke',
-    HIDDEN_ALL: 'all',
-    NONE: 'none'
-  }
-  // Object.freeze(Element.EventBehavior),
-  static CursorType = {
-    AUTO: 'cur-auto',
-    DEFAULT: 'cur-default',
-    NONE: 'cur-none',
-    CONTEXT_MENU: 'cur-context-menu',
-    HELP: 'cur-help',
-    POINTER: 'cur-pointer',
-    PROGRESS: 'cur-progress',
-    BUSY: 'cur-wait',
-    CELL: 'cur-cell',
-    CROSSHAIR: 'cur-crosshair',
-    TEXT: 'cur-text',
-    VERTICAL_TEXT: 'cur-vertical-text',
-    ALIAS: 'cur-alias',
-    COPY: 'cur-copy',
-    MOVE: 'cur-move',
-    NO_DROP: 'cur-no-drop',
-    NOT_ALLOWED: 'cur-not-allowed',
-    ALL_SCROLL: 'cur-all-scroll',
-    COL_RESIZE: 'cur-col-resize',
-    ROW_RESIZE: 'cur-row-resize',
-    RESIZE_T: 'cur-n-resize',
-    RESIZE_R: 'cur-e-resize',
-    RESIZE_B: 'cur-s-resize',
-    RESIZE_L: 'cur-w-resize',
-    RESIZE_TB: 'cur-ns-resize',
-    RESIZE_LR: 'cur-ew-resize',
-    RESIZE_RT: 'cur-ne-resize',
-    RESIZE_LT: 'cur-nw-resize',
-    RESIZE_RB: 'cur-se-resize',
-    RESIZE_LB: 'cur-sw-resize',
-    NESW_RESIZE: 'cur-nesw-resize',
-    NWSE_RESIZE: 'cur-nwse-resize',
-    ZOOM_IN: 'cur-zoom-in',
-    ZOOM_OUT: 'cur-zoom-out',
-    ZOOM_GRAB: 'cur-zoom-grab',
-    ZOOM_GRABBING: 'cur-zoom-grabbing',
-    ANCHOR: 'cur-anchor',
-    PAINT: 'cur-paint',
-    ROTATE: 'cur-rotate',
-    DROPLIB: 'cur-droplib',
-    EDIT_X: 'cur-pencil-x',
-    EDIT: 'cur-pencil',
-    EDIT_CLOSE: 'cur-pencil-close',
-    ADD: 'cur-add',
-    STAMP: 'cur-stamp',
-    ARR_DOWN: 'cur-arr-down',
-    ARR_RIGHT: 'cur-arr-right',
-    BRUSH: 'cur-brush',
-    BRUSH_EDIT: 'cur-brush-edit',
-    BRUSH_CELL: 'cur-brush-cell',
-    BRUSH_TABLE: 'cur-brush-table',
-    ADD_RIGHT: 'cur-add-right',
-    ADD_LEFT: 'cur-add-left',
-    ADD_UP: 'cur-add-up',
-    ADD_DOWN: 'cur-add-down',
-    ADD_PLUS: 'cur-add-plus',
-    GRAB: 'cur-grab'
-  }
-  // Object.freeze(Element.CursorType)
 
 }
 
 export default Element
-
-
-// export default Basic.Element;

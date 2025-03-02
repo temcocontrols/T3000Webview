@@ -1462,7 +1462,7 @@ class BaseDrawingObject {
 
     // Deep copy the StyleRecord's Text settings and update font information from session block
     textFormatData = Utils1.DeepCopy(this.StyleRecord.Text);
-    textFormatData.FontId = GlobalData.optManager.GetFontIdByName(sessionBlock.def.lf.fontName);
+    textFormatData.FontId = -1;// GlobalData.optManager.GetFontIdByName(sessionBlock.def.lf.fontName);
     textFormatData.FontName = sessionBlock.def.lf.fontName;
 
     // Try to get the table for text formatting
@@ -1483,7 +1483,7 @@ class BaseDrawingObject {
         if (selectedFormat) {
           if (returnTextFormat) {
             textFormatData.FontSize = GlobalData.optManager.FontSizeToPoints(selectedFormat.size);
-            textFormatData.FontId = GlobalData.optManager.GetFontIdByName(selectedFormat.font);
+            textFormatData.FontId = -1;// GlobalData.optManager.GetFontIdByName(selectedFormat.font);
             textFormatData.FontName = selectedFormat.font;
             isBold = (selectedFormat.weight === 'bold');
             textFormatData.Face = Utils2.SetFlag(textFormatData.Face, textFace.Bold, isBold);
@@ -5397,12 +5397,12 @@ class BaseDrawingObject {
         }
 
         // Hyperlink icon
-        if (this.HyperlinkText && Global.ResolveHyperlink(this.HyperlinkText)) {
+        if (this.HyperlinkText && Utils1.ResolveHyperlink(this.HyperlinkText)) {
           iconParams.iconID = ConstantData.ShapeIconType.HYPERLINK;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Hyperlink;
           const hyperlinkIcon = this.AddIcon(svgDoc, container, iconParams);
           hyperlinkIcon.SetHyperlinkAttribute(this.HyperlinkText);
-          hyperlinkIcon.SetTooltip(Global.ResolveHyperlinkForDisplay(this.HyperlinkText));
+          hyperlinkIcon.SetTooltip(Utils1.ResolveHyperlinkForDisplay(this.HyperlinkText));
         }
         // Attachment icon
         if (this.AttachmentInfo) {
@@ -5698,7 +5698,7 @@ class BaseDrawingObject {
   CancelObjectDraw(): boolean {
     console.log("= S.BaseDrawingObject: CancelObjectDraw - Input: {}");
 
-    GlobalData.optManager.unbindActionClickHammerEvents();
+    GlobalData.optManager.UnbindActionClickHammerEvents();
     this.ResetAutoScrollTimer();
 
     console.log("= S.BaseDrawingObject: CancelObjectDraw - Output: true");

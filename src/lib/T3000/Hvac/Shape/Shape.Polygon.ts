@@ -4,17 +4,13 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
-// import ListManager from '../Data/ListManager';
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
-// import PolygonShapeGenerator from '../Opt/Business/PolygonShapeGenerator'
 import $ from 'jquery'
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
+import Instance from '../Data/Instance/Instance';
 
 class Polygon extends BaseShape {
 
@@ -789,7 +785,7 @@ class Polygon extends BaseShape {
     let vertexCount, width, height, polyId, vertexX, vertexY, polySegment;
     if (this.dataclass && this.dataclass === ConstantData.SDRShapeTypes.SED_S_Poly) {
       if (this.polylist) {
-        ListManager.PolyLine.prototype.WriteSDFAttributes.call(this, writer, context, true);
+        Instance.Shape.PolyLine.prototype.WriteSDFAttributes.call(this, writer, context, true);
       } else {
         let code = SDF.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWPOLY);
         vertexCount = this.VertexArray.length;
@@ -852,7 +848,7 @@ class Polygon extends BaseShape {
     this.VertexArray = GlobalData.optManager.FlipVertexArray(this.VertexArray, flipType);
 
     if (this.polylist) {
-      ListManager.PolyLine.prototype.Flip.call(this, flipType);
+      Instance.Shape.PolyLine.prototype.Flip.call(this, flipType);
     }
 
     if (flipType & ConstantData.ExtraFlags.SEDE_FlipVert && this.dataclass != null) {
@@ -1029,35 +1025,35 @@ class Polygon extends BaseShape {
 
   GetParabolaAdjustmentPoint(point, adjustment) {
     console.log('S.Polygon: GetParabolaAdjustmentPoint input:', { point, adjustment });
-    const result = ListManager.PolyLine.prototype.Pr_PolyLGetParabolaAdjPoint.call(this, point, adjustment);
+    const result = Instance.Shape.PolyLine.prototype.Pr_PolyLGetParabolaAdjPoint.call(this, point, adjustment);
     console.log('S.Polygon: GetParabolaAdjustmentPoint output:', result);
     return result;
   }
 
   GetArcParameters(startPoint, endPoint) {
     console.log('S.Polygon: GetArcParameters input:', { startPoint, endPoint });
-    const result = ListManager.PolyLine.prototype.Pr_PolyLGetArc.call(this, startPoint, endPoint);
+    const result = Instance.Shape.PolyLine.prototype.Pr_PolyLGetArc.call(this, startPoint, endPoint);
     console.log('S.Polygon: GetArcParameters output:', result);
     return result;
   }
 
   GetParabolaParameters(event, target) {
     console.log('S.Polygon: GetParabolaParameters input:', { event, target });
-    const result = ListManager.PolyLine.prototype.Pr_PolyLGetParabolaParam.call(this, event, target);
+    const result = Instance.Shape.PolyLine.prototype.Pr_PolyLGetParabolaParam.call(this, event, target);
     console.log('S.Polygon: GetParabolaParameters output:', result);
     return result;
   }
 
   GetArcParameters(event, target, additionalParams) {
     console.log('S.Polygon: GetArcParameters input:', { event, target, additionalParams });
-    const result = ListManager.PolyLine.prototype.Pr_PolyLGetArcParam.call(this, event, target, additionalParams);
+    const result = Instance.Shape.PolyLine.prototype.Pr_PolyLGetArcParam.call(this, event, target, additionalParams);
     console.log('S.Polygon: GetArcParameters output:', result);
     return result;
   }
 
   GetArcQuadrant(event, target, additionalParams) {
     console.log('S.Polygon: GetArcQuadrant input:', { event, target, additionalParams });
-    const result = ListManager.PolyLine.prototype.Pr_PolyLGetArcQuadrant.call(this, event, target, additionalParams);
+    const result = Instance.Shape.PolyLine.prototype.Pr_PolyLGetArcQuadrant.call(this, event, target, additionalParams);
     console.log('S.Polygon: GetArcQuadrant output:', result);
     return result;
   }
@@ -1110,7 +1106,7 @@ class Polygon extends BaseShape {
     }
 
     if (this.polylist) {
-      ListManager.PolyLine.prototype.ScaleObject.call(this, 0, 0, 0, 0, 0, 0);
+      Instance.Shape.PolyLine.prototype.ScaleObject.call(this, 0, 0, 0, 0, 0, 0);
     }
 
     if (scaleX && scaleY) {
@@ -1159,7 +1155,7 @@ class Polygon extends BaseShape {
     console.log('S.Polygon: DimensionLineDeflectionAdjust input:', { event, target, angle, radius, index });
 
     if (!this.polylist) {
-      const result = ListManager.BaseShape.prototype.DimensionLineDeflectionAdjust.call(this, event, target, angle, radius, index);
+      const result = Instance.Shape.BaseShape.prototype.DimensionLineDeflectionAdjust.call(this, event, target, angle, radius, index);
       console.log('S.Polygon: DimensionLineDeflectionAdjust output:', result);
       return result;
     }
@@ -1184,7 +1180,7 @@ class Polygon extends BaseShape {
       console.log('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
       return deflectionValue;
     } else {
-      const deflectionValue = ListManager.BaseShape.prototype.GetDimensionDeflectionValue.call(this, segmentIndex);
+      const deflectionValue = Instance.Shape.BaseShape.prototype.GetDimensionDeflectionValue.call(this, segmentIndex);
       console.log('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
       return deflectionValue;
     }
@@ -1222,7 +1218,7 @@ class Polygon extends BaseShape {
       GlobalData.optManager.GetObjectPtr(this.BlockID, false).UpdateDimensionFromText(svgElement, text, userData);
       GlobalData.optManager.PolyLineToShape(this.BlockID);
     } else {
-      ListManager.BaseShape.prototype.UpdateDimensionFromTextObj.call(this, textObj, textData);
+      Instance.Shape.BaseShape.prototype.UpdateDimensionFromTextObj.call(this, textObj, textData);
     }
 
     console.log('S.Polygon: UpdateDimensionFromTextObj output: dimension updated');
@@ -1237,7 +1233,7 @@ class Polygon extends BaseShape {
       deepCopiedShape = GlobalData.optManager.ShapeToPolyLine(this.BlockID, false, true, deepCopiedShape);
       dimensionPoints = deepCopiedShape.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true, true, false, null);
     } else {
-      dimensionPoints = ListManager.BaseShape.prototype.GetDimensionPoints.call(this);
+      dimensionPoints = Instance.Shape.BaseShape.prototype.GetDimensionPoints.call(this);
     }
 
     console.log('S.Polygon: GetDimensionPoints output:', dimensionPoints);

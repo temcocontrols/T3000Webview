@@ -5,7 +5,6 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
 import DefaultEvt from "../Event/DefaultEvt";
 import $ from 'jquery'
 import HvTimer from '../Helper/HvTimer'
@@ -13,7 +12,6 @@ import Point from '../Model/Point'
 import Rect from "./Shape.Rect";
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element'
-// import SDF from "../Data/SDF";
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"
 import HitResult from '../Model/HitResult'
@@ -578,7 +576,8 @@ class BaseLine extends BaseDrawingObject {
       if (shouldRedraw) {
         if (shapeElement) {
           GlobalData.optManager.svgObjectLayer.RemoveElement(shapeElement);
-          Collab.NoRedrawFromSameEditor = false;
+          // Collab.NoRedrawFromSameEditor = false;
+          GlobalData.optManager.collaboration.NoRedrawFromSameEditor = false;
         }
         shapeElement = this.CreateShape(GlobalData.optManager.svgDoc, false);
       } else if (shapeElement) {
@@ -1346,60 +1345,60 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: LM_ActionRelease called with event:", event, "isSecondary:", isSecondary);
 
     if (!isSecondary) {
-      GlobalData.optManager.unbindActionClickHammerEvents();
+      GlobalData.optManager.UnbindActionClickHammerEvents();
       this.ResetAutoScrollTimer();
 
-      if (Collab.AllowMessage()) {
-        const actionData = {
-          BlockID: GlobalData.optManager.theActionStoredObjectID,
-          theActionTriggerID: GlobalData.optManager.theActionTriggerID,
-          theRotateEndRotation: GlobalData.optManager.theRotateEndRotation,
-          theRotatePivotX: GlobalData.optManager.theRotatePivotX,
-          theRotatePivotY: GlobalData.optManager.theRotatePivotY,
-          theRotateStartPoint: Utils1.DeepCopy(GlobalData.optManager.theRotateStartPoint),
-          CurveAdjust: this.CurveAdjust,
-          IsReversed: this.IsReversed,
-          Frame: Utils1.DeepCopy(this.Frame),
-          StartPoint: Utils1.DeepCopy(this.StartPoint),
-          EndPoint: Utils1.DeepCopy(this.EndPoint),
-        };
+      // if (Collab.AllowMessage()) {
+      //   const actionData = {
+      //     BlockID: GlobalData.optManager.theActionStoredObjectID,
+      //     theActionTriggerID: GlobalData.optManager.theActionTriggerID,
+      //     theRotateEndRotation: GlobalData.optManager.theRotateEndRotation,
+      //     theRotatePivotX: GlobalData.optManager.theRotatePivotX,
+      //     theRotatePivotY: GlobalData.optManager.theRotatePivotY,
+      //     theRotateStartPoint: Utils1.DeepCopy(GlobalData.optManager.theRotateStartPoint),
+      //     CurveAdjust: this.CurveAdjust,
+      //     IsReversed: this.IsReversed,
+      //     Frame: Utils1.DeepCopy(this.Frame),
+      //     StartPoint: Utils1.DeepCopy(this.StartPoint),
+      //     EndPoint: Utils1.DeepCopy(this.EndPoint),
+      //   };
 
-        if (GlobalData.optManager.theActionTriggerData) {
-          actionData.hitSegment = GlobalData.optManager.theActionTriggerData.hitSegment;
-          actionData.moveAngle = GlobalData.optManager.theActionTriggerData.moveAngle;
-        }
+      //   if (GlobalData.optManager.theActionTriggerData) {
+      //     actionData.hitSegment = GlobalData.optManager.theActionTriggerData.hitSegment;
+      //     actionData.moveAngle = GlobalData.optManager.theActionTriggerData.moveAngle;
+      //   }
 
-        if (GlobalData.optManager.ob.Frame) {
-          actionData.ob = {
-            StartPoint: Utils1.DeepCopy(GlobalData.optManager.ob.StartPoint),
-            EndPoint: Utils1.DeepCopy(GlobalData.optManager.ob.EndPoint),
-            Frame: Utils1.DeepCopy(GlobalData.optManager.ob.Frame),
-            CurveAdjust: GlobalData.optManager.ob.CurveAdjust,
-            IsReversed: GlobalData.optManager.ob.IsReversed,
-          };
-        }
+      //   if (GlobalData.optManager.ob.Frame) {
+      //     actionData.ob = {
+      //       StartPoint: Utils1.DeepCopy(GlobalData.optManager.ob.StartPoint),
+      //       EndPoint: Utils1.DeepCopy(GlobalData.optManager.ob.EndPoint),
+      //       Frame: Utils1.DeepCopy(GlobalData.optManager.ob.Frame),
+      //       CurveAdjust: GlobalData.optManager.ob.CurveAdjust,
+      //       IsReversed: GlobalData.optManager.ob.IsReversed,
+      //     };
+      //   }
 
-        if (GlobalData.optManager.LinkParams) {
-          actionData.LinkParams = Utils1.DeepCopy(GlobalData.optManager.LinkParams);
-        }
+      //   if (GlobalData.optManager.LinkParams) {
+      //     actionData.LinkParams = Utils1.DeepCopy(GlobalData.optManager.LinkParams);
+      //   }
 
-        if (this.segl) {
-          actionData.segl = Utils1.DeepCopy(this.segl);
-        }
+      //   if (this.segl) {
+      //     actionData.segl = Utils1.DeepCopy(this.segl);
+      //   }
 
-        if (this.polylist) {
-          actionData.polylist = Utils1.DeepCopy(this.polylist);
-        }
+      //   if (this.polylist) {
+      //     actionData.polylist = Utils1.DeepCopy(this.polylist);
+      //   }
 
-        if (this.pointlist) {
-          actionData.pointlist = Utils1.DeepCopy(this.pointlist);
-        }
+      //   if (this.pointlist) {
+      //     actionData.pointlist = Utils1.DeepCopy(this.pointlist);
+      //   }
 
-        if (GlobalData.optManager.theActionTriggerID === ConstantData.ActionTriggerType.DIMENSION_LINE_ADJ) {
-          actionData.dimensionDeflectionH = this.dimensionDeflectionH;
-          actionData.dimensionDeflectionV = this.dimensionDeflectionV;
-        }
-      }
+      //   if (GlobalData.optManager.theActionTriggerID === ConstantData.ActionTriggerType.DIMENSION_LINE_ADJ) {
+      //     actionData.dimensionDeflectionH = this.dimensionDeflectionH;
+      //     actionData.dimensionDeflectionV = this.dimensionDeflectionV;
+      //   }
+      // }
     }
 
     switch (GlobalData.optManager.theActionTriggerID) {
@@ -1596,8 +1595,8 @@ class BaseLine extends BaseDrawingObject {
     if (this.r.x < 0 || this.r.y < 0) {
       console.log("= S.BaseLine: Rectangle coordinates are negative, performing undo operation");
       GlobalData.optManager.Undo();
-      Collab.UnLockMessages();
-      Collab.UnBlockMessages();
+      // Collab.UnLockMessages();
+      // Collab.UnBlockMessages();
       return;
     }
 
@@ -1845,7 +1844,7 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: LM_ActionClick_ExceptionCleanup called with error:", error);
 
     // Unbind action click hammer events
-    GlobalData.optManager.unbindActionClickHammerEvents();
+    GlobalData.optManager.UnbindActionClickHammerEvents();
 
     // Reset auto scroll timer
     this.ResetAutoScrollTimer();
@@ -1859,7 +1858,7 @@ class BaseLine extends BaseDrawingObject {
     GlobalData.optManager.theActionSVGObject = null;
 
     // Unblock messages
-    Collab.UnBlockMessages();
+    // Collab.UnBlockMessages();
 
     console.log("= S.BaseLine: LM_ActionClick_ExceptionCleanup completed");
   }
@@ -1876,14 +1875,14 @@ class BaseLine extends BaseDrawingObject {
         return false;
       }
 
-      GlobalData.optManager.DoAutoGrowDragInit(0, blockID);
+      GlobalData.optManager.InitializeAutoGrowDrag(0, blockID);
 
       if (!this.LM_SetupActionClick(event, isSecondary)) {
         console.log("= S.BaseLine: LM_ActionClick - LM_SetupActionClick returned false");
         return;
       }
 
-      Collab.BeginSecondaryEdit();
+      // Collab.BeginSecondaryEdit();
 
       const actionObjectPtr = GlobalData.optManager.GetObjectPtr(blockID, false);
       GlobalData.optManager.WorkAreaHammer.on('drag', DefaultEvt.Evt_ActionTrackHandlerFactory(actionObjectPtr));
@@ -3061,7 +3060,7 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: CancelObjectDraw called");
 
     // Unbind click hammer events
-    GlobalData.optManager.unbindActionClickHammerEvents();
+    GlobalData.optManager.UnbindActionClickHammerEvents();
 
     // Handle the LineStamp flag: if set, unbind mousemove on non-mobile platforms
     if (GlobalData.optManager.LineStamp) {
@@ -3147,7 +3146,7 @@ class BaseLine extends BaseDrawingObject {
 
       // Unbind click events and re-bind tap events on the work area hammer
       if (GlobalData.optManager.WorkAreaHammer) {
-        GlobalData.optManager.unbindActionClickHammerEvents();
+        GlobalData.optManager.UnbindActionClickHammerEvents();
         GlobalData.optManager.WorkAreaHammer.on("tap", DefaultEvt.Evt_WorkAreaHammerTap);
       }
       if (event && event.gesture) {
@@ -3177,54 +3176,54 @@ class BaseLine extends BaseDrawingObject {
       }
 
       // Build and send collaborative message if allowed
-      if (Collab.AllowMessage()) {
-        const messageData: any = { attributes: {} };
-        messageData.attributes.StyleRecord = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StyleRecord);
-        messageData.attributes.StartArrowID = GlobalData.optManager.theDrawShape.StartArrowID;
-        messageData.attributes.EndArrowID = GlobalData.optManager.theDrawShape.EndArrowID;
-        messageData.attributes.StartArrowDisp = GlobalData.optManager.theDrawShape.StartArrowDisp;
-        messageData.attributes.ArrowSizeIndex = GlobalData.optManager.theDrawShape.ArrowSizeIndex;
-        messageData.attributes.TextGrow = GlobalData.optManager.theDrawShape.TextGrow;
-        messageData.attributes.TextAlign = GlobalData.optManager.theDrawShape.TextAlign;
-        messageData.attributes.TextDirection = GlobalData.optManager.theDrawShape.TextDirection;
-        messageData.attributes.TextFlags = GlobalData.optManager.theDrawShape.TextFlags;
-        messageData.attributes.Dimensions = GlobalData.optManager.theDrawShape.Dimensions;
-        messageData.attributes.StartPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StartPoint);
-        messageData.attributes.EndPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.EndPoint);
-        messageData.attributes.Frame = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.Frame);
-        messageData.attributes.objecttype = this.objecttype;
-        messageData.attributes.ShortRef = this.ShortRef;
-        messageData.attributes.shapeparam = this.shapeparam;
-        if (this.CurveAdjust != null) {
-          messageData.attributes.CurveAdjust = this.CurveAdjust;
-        }
-        if (this.segl) {
-          messageData.attributes.segl = Utils1.DeepCopy(this.segl);
-        }
-        messageData.UsingWallTool = ConstantData.DocumentContext.UsingWallTool;
-        messageData.LineTool = ConstantData.DocumentContext.LineTool;
-        if (Collab.CreateList.length) {
-          Collab.AddNewBlockToSecondary(Collab.CreateList[0]);
-        }
-        if (Collab.IsSecondary() && Collab.CreateList.length) {
-          messageData.CreateList = [].concat(Collab.CreateList);
-        }
-        messageData.LinkParams = localLinkParams.LinkParams;
-        messageData.Actions = [];
-        let action = new Collab.MessageAction(ConstantData.CollabMessageActions.CreateLine);
-        messageData.Actions.push(action);
-        action = new Collab.MessageAction(ConstantData.CollabMessageActions.LinkObject);
-        messageData.Actions.push(action);
-        if (addedLabel) {
-          messageData.label = addedLabel;
-          action = new Collab.MessageAction(ConstantData.CollabMessageActions.AddLabel);
-          messageData.Actions.push(action);
-        }
-        const message = Collab.BuildMessage(ConstantData.CollabMessages.AddLine, messageData, false, true);
-        if (message) {
-          Collab.SendMessage(message);
-        }
-      }
+      // if (Collab.AllowMessage()) {
+      //   const messageData: any = { attributes: {} };
+      //   messageData.attributes.StyleRecord = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StyleRecord);
+      //   messageData.attributes.StartArrowID = GlobalData.optManager.theDrawShape.StartArrowID;
+      //   messageData.attributes.EndArrowID = GlobalData.optManager.theDrawShape.EndArrowID;
+      //   messageData.attributes.StartArrowDisp = GlobalData.optManager.theDrawShape.StartArrowDisp;
+      //   messageData.attributes.ArrowSizeIndex = GlobalData.optManager.theDrawShape.ArrowSizeIndex;
+      //   messageData.attributes.TextGrow = GlobalData.optManager.theDrawShape.TextGrow;
+      //   messageData.attributes.TextAlign = GlobalData.optManager.theDrawShape.TextAlign;
+      //   messageData.attributes.TextDirection = GlobalData.optManager.theDrawShape.TextDirection;
+      //   messageData.attributes.TextFlags = GlobalData.optManager.theDrawShape.TextFlags;
+      //   messageData.attributes.Dimensions = GlobalData.optManager.theDrawShape.Dimensions;
+      //   messageData.attributes.StartPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.StartPoint);
+      //   messageData.attributes.EndPoint = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.EndPoint);
+      //   messageData.attributes.Frame = Utils1.DeepCopy(GlobalData.optManager.theDrawShape.Frame);
+      //   messageData.attributes.objecttype = this.objecttype;
+      //   messageData.attributes.ShortRef = this.ShortRef;
+      //   messageData.attributes.shapeparam = this.shapeparam;
+      //   if (this.CurveAdjust != null) {
+      //     messageData.attributes.CurveAdjust = this.CurveAdjust;
+      //   }
+      //   if (this.segl) {
+      //     messageData.attributes.segl = Utils1.DeepCopy(this.segl);
+      //   }
+      //   messageData.UsingWallTool = ConstantData.DocumentContext.UsingWallTool;
+      //   messageData.LineTool = ConstantData.DocumentContext.LineTool;
+      //   if (Collab.CreateList.length) {
+      //     Collab.AddNewBlockToSecondary(Collab.CreateList[0]);
+      //   }
+      //   if (Collab.IsSecondary() && Collab.CreateList.length) {
+      //     messageData.CreateList = [].concat(Collab.CreateList);
+      //   }
+      //   messageData.LinkParams = localLinkParams.LinkParams;
+      //   messageData.Actions = [];
+      //   let action = new Collab.MessageAction(ConstantData.CollabMessageActions.CreateLine);
+      //   messageData.Actions.push(action);
+      //   action = new Collab.MessageAction(ConstantData.CollabMessageActions.LinkObject);
+      //   messageData.Actions.push(action);
+      //   if (addedLabel) {
+      //     messageData.label = addedLabel;
+      //     action = new Collab.MessageAction(ConstantData.CollabMessageActions.AddLabel);
+      //     messageData.Actions.push(action);
+      //   }
+      //   const message = Collab.BuildMessage(ConstantData.CollabMessages.AddLine, messageData, false, true);
+      //   if (message) {
+      //     Collab.SendMessage(message);
+      //   }
+      // }
 
       // Execute post drawing routines
       if (postReleaseResult) {
@@ -3545,18 +3544,6 @@ class BaseLine extends BaseDrawingObject {
           }
         }
       }
-      // Else if SConnectIndex is set then update hook with Visio parent info
-      else if (lp.SConnectIndex >= 0) {
-        lp.SConnectIndex = GlobalData.optManager.SD_GetVisioTextParent(lp.SConnectIndex);
-        GlobalData.optManager.UpdateHook(
-          actionTarget,
-          -1,
-          lp.SConnectIndex,
-          ConstantData.HookPts.SED_KTL,
-          lp.SConnectPt,
-          lp.SConnectInside
-        );
-      }
 
       // Initialize result flag
       let result = 0; // default false (0) as number flag
@@ -3600,7 +3587,7 @@ class BaseLine extends BaseDrawingObject {
   LM_DrawClick_ExceptionCleanup(event) {
     console.log("= S.BaseLine: LM_DrawClick_ExceptionCleanup called with input:", event);
 
-    GlobalData.optManager.unbindActionClickHammerEvents();
+    GlobalData.optManager.UnbindActionClickHammerEvents();
 
     if (GlobalData.optManager.LineStamp) {
       if (!GlobalData.optManager.isMobilePlatform && GlobalData.optManager.WorkAreaHammer) {

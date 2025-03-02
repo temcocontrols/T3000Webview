@@ -3,11 +3,9 @@
 import { Type } from 'class-transformer'
 import 'reflect-metadata'
 
-import ListManager from "../Data/ListManager"
 import Globals from "../Data/Globals"
 import RulerSettings from "./RulerSettings"
 import PageRecord from "./PageRecord"
-import Resources from '../Data/Resources'
 import ConstantData from "../Data/ConstantData"
 import FillData from "./FillData"
 import SEDDefault from './SEDDefault'

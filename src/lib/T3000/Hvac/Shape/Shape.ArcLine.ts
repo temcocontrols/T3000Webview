@@ -14,6 +14,7 @@ import ConstantData1 from "../Data/ConstantData1"
 import Point from '../Model/Point'
 import $ from 'jquery'
 import Instance from '../Data/Instance/Instance'
+import ConstantData2 from '../Data/ConstantData2'
 
 class ArcLine extends BaseLine {
   public CurveAdjust: any;

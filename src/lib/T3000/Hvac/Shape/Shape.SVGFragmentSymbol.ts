@@ -5,12 +5,8 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
 import Element from "../Basic/Basic.Element";
-// import ListManager from '../Data/ListManager';
 import ConstantData from '../Data/ConstantData'
 import $ from 'jquery';
 

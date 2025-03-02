@@ -413,7 +413,7 @@ class OptHandler{
 
     this.SelectionState = new SelectionAttributes();
 
-    const tedSession = new TEDSession();// new ListManager.TEDSession();
+    const tedSession = new TEDSession();
     const tedSessionBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.TED_SESSION_OBJECT, tedSession);
     this.theTEDSessionBlockID = tedSessionBlock.ID;
 
@@ -941,23 +941,6 @@ class OptHandler{
     if (object.IsSwimlane() || object instanceof ShapeContainer) {
       this.SelectionState.lockedTableSelected = true;
       this.SelectionState.IsTargetTable = true;
-    }
-
-    // Handle tables
-    const table = object.GetTable(false);
-    if (table) {
-      if ((table.flags & ListManager.Table.TableFlags.SDT_TF_LOCK) > 0) {
-        this.SelectionState.lockedTableSelected = true;
-      }
-
-      if (SDUI.AppSettings.Application !== Resources.Application.Builder &&
-        object.objecttype === ConstantData.ObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER) {
-        this.SelectionState.lockedTableSelected = true;
-      }
-
-      if (GlobalData.optManager.Table_GetCellWithType(table, ListManager.Table.CellTypes.SD_CT_JIRA_ISSUEKEY)) {
-        this.SelectionState.isJiraCard = true;
-      }
     }
 
     // Handle wall objects

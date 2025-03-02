@@ -939,27 +939,6 @@ class DocHandler {
     this.scaleToPage = false;
     this.svgDoc.SetDocumentScale(zoomFactor);
 
-    /*
-    if (!adjustScroll) {
-      const workArea = this.svgDoc.GetWorkArea();
-      const selectedObjects = this.gListManager.GetObjectPtr(this.gListManager.theSelectedListBlockID, false);
-      const enclosingRect = selectedObjects.length
-        ? this.gListManager.GetListSRect(selectedObjects)
-        : this.gListManager.CalcAllObjectEnclosingRect(false);
-
-      if (!enclosingRect.width && !enclosingRect.height) {
-        enclosingRect.x = 0;
-        enclosingRect.y = 0;
-        enclosingRect.width = workArea.docWidth;
-        enclosingRect.height = workArea.docHeight;
-      }
-
-      const scrollX = (enclosingRect.x + enclosingRect.width / 2) * workArea.docToScreenScale - workArea.dispWidth / 2;
-      const scrollY = (enclosingRect.y + enclosingRect.height / 2) * workArea.docToScreenScale - workArea.dispHeight / 2;
-      this.AdjustScroll(scrollX, scrollY);
-    }
-    */
-
     this.ResetRulers();
     this.UpdateGrid();
     this.UpdateWorkArea();

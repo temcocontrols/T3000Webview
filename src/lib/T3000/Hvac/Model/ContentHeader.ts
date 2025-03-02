@@ -26,8 +26,6 @@ class ContentHeader {
   public flags: any;
   public BusinessModule: string;
   public dateformat: number;
-  public smarthelpname: string;
-  public smartpanelname: string;
   public originaltemplate: string;
   public orgcharttable: string;
   public exportpath: string;
@@ -65,8 +63,6 @@ class ContentHeader {
     this.flags = ConstantData.ContentHeaderFlags.CT_DA_Pages;
     this.BusinessModule = '';
     this.dateformat = - 1;
-    this.smarthelpname = '';
-    this.smartpanelname = '';
     this.originaltemplate = '';
     this.orgcharttable = '';
     this.exportpath = '';

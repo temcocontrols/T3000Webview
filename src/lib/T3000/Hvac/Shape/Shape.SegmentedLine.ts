@@ -1,25 +1,22 @@
 
 
 import BaseLine from './Shape.BaseLine'
-// import ListManager from '../Data/ListManager';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
 import BaseShape from './Shape.BaseShape';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
-// import SegLine from '../Model/SegLine';
 import Point from '../Model/Point'
 import $ from 'jquery'
-// import SDF from '../Data/SDF'
+import Instance from '../Data/Instance/Instance';
+import ConstantData1 from '../Data/ConstantData1';
+import ConstantData2 from '../Data/ConstantData2';
 
 class SegmentedLine extends BaseLine {
 
@@ -2002,7 +1999,7 @@ class SegmentedLine extends BaseLine {
     let totalLineLength = 0;
     let centerProportion = 0.5; // default center proportion value
     const result = {
-      Frame: new ListManager.Rect(),
+      Frame: new Instance.Shape.Rect(),
       StartPoint: new Point(),
       EndPoint: new Point(),
       CenterProp: 0
@@ -2472,13 +2469,13 @@ class SegmentedLine extends BaseLine {
   HookToPoint(hookId: number, outRect?: { x: number; y: number; width: number; height: number }): Point {
     console.log("= S.SegmentedLine: HookToPoint input", { hookId, outRect });
 
-    const listManager = ListManager;
+    const lmg = ConstantData;
     let resultPoint: Point = { x: 0, y: 0 };
     let tempPoint: Point = { x: 0, y: 0 };
     let rectData: any = {};
 
     switch (hookId) {
-      case listManager.HookPts.SED_KTL:
+      case lmg.HookPts.SED_KTL:
         resultPoint.x = this.StartPoint.x;
         resultPoint.y = this.StartPoint.y;
         if (outRect) {
@@ -2491,7 +2488,7 @@ class SegmentedLine extends BaseLine {
           outRect.height = rectData.height;
         }
         break;
-      case listManager.HookPts.SED_KTR:
+      case lmg.HookPts.SED_KTR:
       default:
         resultPoint.x = this.EndPoint.x;
         resultPoint.y = this.EndPoint.y;

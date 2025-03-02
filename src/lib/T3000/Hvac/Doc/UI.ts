@@ -46,7 +46,7 @@ class UI {
     GlobalData.documentHandler = new DocHandler();
   }
 
-  InitListManager = () => {
+  InitLMG = () => {
     GlobalData.optManager = new OptHandler();
     GlobalData.optManager.Initialize()
   }
@@ -59,7 +59,7 @@ class UI {
     DataOpt.InitStateAndStore();
 
     this.InitDocumentHandler();
-    this.InitListManager();
+    this.InitLMG();
     this.InitBusinessManager("FL");
 
     window.oncontextmenu = function (e) {

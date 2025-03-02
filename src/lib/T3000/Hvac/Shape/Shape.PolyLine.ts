@@ -8,17 +8,11 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
-// import Resources from '../Data/Resources'
 import Element from "../Basic/Basic.Element";
 import $ from 'jquery';
-// import ListManager from '../Data/ListManager'
-// import OptHandler from '../Opt/Opt.OptHandler';
 import BaseShape from './Shape.BaseShape'
 import Point from '../Model/Point'
 import Document from '../Basic/Basic.Document'
-// import SDF from '../Data/SDF'
 import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import PolyList from '../Model/PolyList'
@@ -1339,7 +1333,7 @@ class PolyLine extends BaseLine {
           adjustmentLine.IsReversed = false;
         }
         adjustmentLine.FromPolygon = true;
-        let arcLineObj = new ListManager.ArcLine(adjustmentLine);
+        let arcLineObj = new Instance.Shape.ArcLine(adjustmentLine);
         arcLineObj.Frame = Utils2.Pt2Rect(adjustmentLine.StartPoint, adjustmentLine.EndPoint);
         let arcActionPoint = arcLineObj.CalcRadiusAndCenter(arcLineObj.StartPoint.x, arcLineObj.StartPoint.y, arcLineObj.EndPoint.x, arcLineObj.EndPoint.y, arcLineObj.CurveAdjust, arcLineObj.IsReversed);
         knobProps.x = arcActionPoint.actionX;
@@ -1690,7 +1684,7 @@ class PolyLine extends BaseLine {
                   IsReversed: this.polylist.segs[i].param >= 0,
                   FromPolygon: true
                 };
-                const arcLine = new ListManager.ArcLine(arcLineData);
+                const arcLine = new Instance.Shape.ArcLine(arcLineData);
                 arcLine.Frame = Utils2.Pt2Rect(arcLineData.StartPoint, arcLineData.EndPoint);
                 const arcLinePoints = arcLine.GetPolyPoints(Math.ceil(ConstantData.Defines.NPOLYPTS / 2), false, false, false, null);
                 for (let j = 0; j < arcLinePoints.length; j++) {
@@ -1761,7 +1755,7 @@ class PolyLine extends BaseLine {
               arcParams.IsReversed = false;
             }
             arcParams.FromPolygon = true;
-            this.arcobj = new ListManager.ArcLine(arcParams);
+            this.arcobj = new Instance.Shape.ArcLine(arcParams);
             this.arcobj.Frame = Utils2.Pt2Rect(arcParams.StartPoint, arcParams.EndPoint);
             this.arcobj.BeforeModifyShape(event, x, y);
             break;
@@ -3121,7 +3115,7 @@ class PolyLine extends BaseLine {
       var polyConverted;
       if (polyObj instanceof Instance.Shape.Polygon) {
         // Create a temporary polygon container.
-        polyConverted = new ListManager.PolyLine({ Frame: polyObj.Frame, inside: polyObj.inside });
+        polyConverted = new Instance.Shape.PolyLine({ Frame: polyObj.Frame, inside: polyObj.inside });
         polyConverted.polylist = polyObj.polylist;
         polyConverted.StartPoint = polyObj.StartPoint;
         polyConverted.EndPoint = polyObj.EndPoint;
@@ -3193,7 +3187,7 @@ class PolyLine extends BaseLine {
     if (options.WriteVisio) {
       var visioPoly;
       if (polyObj instanceof PolyLine == false) {
-        visioPoly = new ListManager.PolyLine({ Frame: polyObj.Frame, inside: polyObj.inside });
+        visioPoly = new Instance.Shape.PolyLine({ Frame: polyObj.Frame, inside: polyObj.inside });
         visioPoly.polylist = polyObj.polylist;
         visioPoly.StartPoint = polyObj.StartPoint;
         visioPoly.EndPoint = polyObj.EndPoint;
@@ -4287,7 +4281,7 @@ class PolyLine extends BaseLine {
       };
     }
 
-    const arcObject = new ListManager.ArcLine(arcLine);
+    const arcObject = new Instance.Shape.ArcLine(arcLine);
     arcObject.Frame = Utils2.Pt2Rect(startPoint, endPoint);
     radiusAndCenter = arcObject.CalcRadiusAndCenter(startPoint.x, startPoint.y, endPoint.x, endPoint.y, arcLine.CurveAdjust, arcLine.IsReversed);
     centerPoint.x = radiusAndCenter.actionX;

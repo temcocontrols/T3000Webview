@@ -5,11 +5,7 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
-// import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
-// import Resources from '../Data/Resources'
-// import ListManager from '../Data/ListManager';
 import RRect from './Shape.RRect'
 import $ from 'jquery';
 import Point from '../Model/Point'
@@ -52,7 +48,6 @@ class Rect extends BaseShape {
       c = r.height;
     a.SetSize(S, c),
       a.SetPos(r.x, r.y);
-    // var u = ListManager.RRect.prototype.GetCornerSize.apply(this);
     var u = this.RRect_GetCornerSize();
     if (this.SymbolURL) {
       var p = e.CreateShape(ConstantData.CreateShapeType.RECT);
@@ -84,8 +79,6 @@ class Rect extends BaseShape {
     if (
       this.ApplyStyles(g, i),
       this.ApplyEffects(a, !1, !1),
-      // !(this instanceof ListManager.ShapeContainer)
-      // !(this instanceof GlobalDataShape.ShapeContainer)
       !(this instanceof Instance.Shape.ShapeContainer)
     ) {
       var h = ConstantData.Defines.SED_Slop,
@@ -412,7 +405,7 @@ class Rect extends BaseShape {
       }
     }
 
-    if (ListManager.BaseShape.prototype.SetShapeProperties.call(this, properties)) {
+    if (Instance.Shape.BaseShape.prototype.SetShapeProperties.call(this, properties)) {
       updated = true;
     }
 
@@ -422,17 +415,6 @@ class Rect extends BaseShape {
 
   ApplyCurvature(curvatureParam) {
     console.log("= S.Rect ApplyCurvature Input:", curvatureParam);
-
-    var table = this.GetTable(false);
-    if (table) {
-      var firstRow = table.rows[0];
-      for (var i = 0; i < firstRow.ncells; i++) {
-        if (table.cells[i].flags & ListManager.Table.CellFlags.SDT_F_UseExpandedRectAsFrame) {
-          console.log("= S.Rect ApplyCurvature Output: No action taken due to expanded rect as frame");
-          return;
-        }
-      }
-    }
 
     var shapeProperties = {
       hasrrectselected: true,

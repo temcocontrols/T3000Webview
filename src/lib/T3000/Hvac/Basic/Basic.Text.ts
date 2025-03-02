@@ -9,6 +9,7 @@ import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import ConstantData from "../Data/ConstantData"
+import GlobalData from "../Data/GlobalData";
 
 class Text extends Element {
 
@@ -1191,11 +1192,11 @@ class Text extends Element {
     const formattedFieldId = BasicTextFormatter.FormatDataFieldID(fieldId, false);
 
     if (useFieldName) {
-      result = ListManager.SDData.FieldedDataGetFieldName(this.dataTableID, formattedFieldId);
+      result = ConstantData.SDData.FieldedDataGetFieldName(this.dataTableID, formattedFieldId);
     } else {
-      result = ListManager.SDData.FieldedDataGetFieldValue(this.dataTableID, this.dataRecordID, formattedFieldId);
-      const fieldType = ListManager.SDData.FieldedDataGetFieldType(this.dataTableID, formattedFieldId);
-      result = gListManager.ModifyFieldDataForDisplay(result, fieldType);
+      result = ConstantData.SDData.FieldedDataGetFieldValue(this.dataTableID, this.dataRecordID, formattedFieldId);
+      const fieldType = ConstantData.SDData.FieldedDataGetFieldType(this.dataTableID, formattedFieldId);
+      result = GlobalData.optManager.ModifyFieldDataForDisplay(result, fieldType);
     }
 
     if (!result || result === "") {
@@ -1216,10 +1217,10 @@ class Text extends Element {
     }
 
     const formattedDataFieldId = BasicTextFormatter.FormatDataFieldID(dataFieldId, false);
-    const fieldStyle = ListManager.SDData.FieldedDataGetFieldStyle(this.dataTableID, this.dataRecordID, formattedDataFieldId);
+    const fieldStyle = ConstantData.SDData.FieldedDataGetFieldStyle(this.dataTableID, this.dataRecordID, formattedDataFieldId);
 
     if (fieldStyle) {
-      styleArray = ListManager.SDData.FieldedDataParseStyle(fieldStyle);
+      styleArray = ConstantData.SDData.FieldedDataParseStyle(fieldStyle);
     }
 
     console.log("B.Text: GetDataStyle output:", styleArray);
@@ -1235,7 +1236,7 @@ class Text extends Element {
 
     if (tableIsValid && recordIsValid) {
       const formattedFieldId = BasicTextFormatter.FormatDataFieldID(dataFieldId, false);
-      const record = ListManager.SDData.FieldedDataGetRecord(this.dataTableID, this.dataRecordID);
+      const record = ConstantData.SDData.FieldedDataGetRecord(this.dataTableID, this.dataRecordID);
       exists = !!record[formattedFieldId];
     }
 

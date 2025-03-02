@@ -10,6 +10,7 @@ import Element from '../Basic/Basic.Element';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import Instance from '../Data/Instance/Instance';
+import ConstantData2 from '../Data/ConstantData2'
 
 class ArcSegmentedLine extends SegmentedLine {
 

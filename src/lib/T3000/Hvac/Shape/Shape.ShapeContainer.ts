@@ -1,18 +1,16 @@
 
 
 import Rect from './Shape.Rect'
-// import ListManager from '../Data/ListManager';
-// import FileParser from '../Data/FileParser';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-// import Collab from '../Data/Collab'
 import DefaultEvt from "../Event/DefaultEvt";
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
 import ConstantData from '../Data/ConstantData'
 import ContainerListShape from '../Model/ContainerListShape'
+import Instance from '../Data/Instance/Instance';
 
 class ShapeContainer extends Rect {
 
@@ -25,7 +23,7 @@ class ShapeContainer extends Rect {
     super(options);
 
     this.dataclass = options.dataclass || ConstantData.SDRShapeTypes.SED_S_Rect;
-    this.ContainerList = options.ContainerList || new ListManager.ContainerList();
+    this.ContainerList = options.ContainerList || new Instance.Shape.ContainerList();
     this.objecttype = ConstantData.ObjectTypes.SD_OBJT_SHAPECONTAINER;
     this.nativeDataArrayBuffer = options.nativeDataArrayBuffer || null;
     this.SymbolData = options.SymbolData || null;
@@ -653,30 +651,30 @@ class ShapeContainer extends Rect {
     console.log("= S.ShapeContainer Pr_Format - Input:", { e });
 
     // Rename variables for readability
-    let listManager = this.ContainerList;
-    let listItems = listManager.List;
+    let lm = this.ContainerList;
+    let listItems = lm.List;
     let totalItems = listItems.length;
     let colOffset = 0;
-    let verticalSpacing = listManager.VerticalSpacing;
+    let verticalSpacing = lm.VerticalSpacing;
     let currentX = 0;
     let currentY = verticalSpacing;
     const Arrangement = ConstantData.ContainerListArrangements;
     let self = this;
     let extraTop = 0;
-    let isSparse = Boolean(listManager.flags & ConstantData.ContainerListFlags.Sparse);
-    let leftChanged = Boolean(listManager.flags & ConstantData.ContainerListFlags.LeftChanged);
-    let topChanged = Boolean(listManager.flags & ConstantData.ContainerListFlags.TopChanged);
+    let isSparse = Boolean(lm.flags & ConstantData.ContainerListFlags.Sparse);
+    let leftChanged = Boolean(lm.flags & ConstantData.ContainerListFlags.LeftChanged);
+    let topChanged = Boolean(lm.flags & ConstantData.ContainerListFlags.TopChanged);
     let cellDimensions = null;
 
     // Clear change flags
-    listManager.flags = Utils2.SetFlag(listManager.flags, ConstantData.ContainerListFlags.LeftChanged, false);
-    listManager.flags = Utils2.SetFlag(listManager.flags, ConstantData.ContainerListFlags.TopChanged, false);
+    lm.flags = Utils2.SetFlag(lm.flags, ConstantData.ContainerListFlags.LeftChanged, false);
+    lm.flags = Utils2.SetFlag(lm.flags, ConstantData.ContainerListFlags.TopChanged, false);
 
     // Function to format a column
     const formatColumn = function (startIndex: number, startX: number, refDimensions: { width: number; height: number } | null) {
       let idx = startIndex;
-      let runningY = listManager.VerticalSpacing + extraTop;
-      let wrapCount = listManager.Wrap;
+      let runningY = lm.VerticalSpacing + extraTop;
+      let wrapCount = lm.Wrap;
       let formattedCount = 0;
       let maxWidth = 0;
 
@@ -692,16 +690,16 @@ class ShapeContainer extends Rect {
           if (obj.Frame.width > maxWidth) {
             maxWidth = obj.Frame.width;
           }
-          runningY += obj.Frame.height + listManager.VerticalSpacing;
+          runningY += obj.Frame.height + lm.VerticalSpacing;
           formattedCount++;
         }
         if (wrapCount > 0 && formattedCount >= wrapCount) {
           break;
         }
       }
-      maxWidth += 2 * listManager.HorizontalSpacing;
-      if (maxWidth < listManager.MinWidth) {
-        maxWidth = listManager.MinWidth;
+      maxWidth += 2 * lm.HorizontalSpacing;
+      if (maxWidth < lm.MinWidth) {
+        maxWidth = lm.MinWidth;
       }
       let colWidth = maxWidth;
       if (refDimensions && colWidth < refDimensions.width) {
@@ -728,8 +726,8 @@ class ShapeContainer extends Rect {
     // Function to format a row
     const formatRow = function (startIndex: number, basePoint: any, startY: number, refDimensions: { width: number; height: number } | null) {
       let idx = startIndex;
-      let runningX = listManager.HorizontalSpacing;
-      let wrapCount = listManager.Wrap;
+      let runningX = lm.HorizontalSpacing;
+      let wrapCount = lm.Wrap;
       let formattedCount = 0;
       let maxHeight = 0;
       let currentBaseY = startY;
@@ -746,21 +744,21 @@ class ShapeContainer extends Rect {
           objWidth = obj.Frame.width;
           objHeight = obj.Frame.height;
         } else {
-          objWidth = listManager.childwidth;
-          objHeight = listManager.childheight;
+          objWidth = lm.childwidth;
+          objHeight = lm.childheight;
         }
         if (objHeight > maxHeight) {
           maxHeight = objHeight;
         }
-        runningX += objWidth + listManager.HorizontalSpacing;
+        runningX += objWidth + lm.HorizontalSpacing;
         formattedCount++;
         if (wrapCount > 0 && formattedCount >= wrapCount) {
           break;
         }
       }
-      maxHeight += 2 * listManager.VerticalSpacing;
-      if (maxHeight < listManager.MinHeight) {
-        maxHeight = listManager.MinHeight;
+      maxHeight += 2 * lm.VerticalSpacing;
+      if (maxHeight < lm.MinHeight) {
+        maxHeight = lm.MinHeight;
       }
       let rowHeight = maxHeight;
       if (refDimensions && rowHeight < refDimensions.height) {
@@ -793,7 +791,7 @@ class ShapeContainer extends Rect {
     let containerFrame = containerFrameData.frame;
     extraTop = containerFrameData.StartY;
     let index = 0;
-    let baseY = listManager.VerticalSpacing + extraTop;
+    let baseY = lm.VerticalSpacing + extraTop;
     let finalWidth = 0;
     let finalHeight = baseY;
     let resultFormat: { start: number; colwidth?: number; top?: number; rowht?: number; left?: number };
@@ -804,16 +802,16 @@ class ShapeContainer extends Rect {
         let currentY = startY;
         let maxWidths: number[] = [];
         let maxHeights: number[] = [];
-        for (let r = 0; r < listManager.ndown; r++) {
-          for (let c = 0; c < listManager.nacross; c++) {
-            let idx = r * listManager.nacross + c;
-            let item = listManager.List[idx];
+        for (let r = 0; r < lm.ndown; r++) {
+          for (let c = 0; c < lm.nacross; c++) {
+            let idx = r * lm.nacross + c;
+            let item = lm.List[idx];
             if (item.id == null) {
               item.id = -1;
             }
             let obj = GlobalData.optManager.GetObjectPtr(item.id, false);
-            let widthVal = obj ? obj.Frame.width : listManager.childwidth;
-            let heightVal = obj ? obj.Frame.height : listManager.childheight;
+            let widthVal = obj ? obj.Frame.width : lm.childwidth;
+            let heightVal = obj ? obj.Frame.height : lm.childheight;
             if (maxWidths[c] == null || maxWidths[c] < widthVal) {
               maxWidths[c] = widthVal;
             }
@@ -822,23 +820,23 @@ class ShapeContainer extends Rect {
             }
           }
         }
-        for (let r = 0; r < listManager.ndown; r++) {
-          let currentX = listManager.HorizontalSpacing;
-          for (let c = 0; c < listManager.nacross; c++) {
-            let idx = r * listManager.nacross + c;
-            let item = listManager.List[idx];
+        for (let r = 0; r < lm.ndown; r++) {
+          let currentX = lm.HorizontalSpacing;
+          for (let c = 0; c < lm.nacross; c++) {
+            let idx = r * lm.nacross + c;
+            let item = lm.List[idx];
             item.pt.x = currentX + maxWidths[c] / 2;
             item.pt.y = currentY;
-            currentX += maxWidths[c] + listManager.HorizontalSpacing;
+            currentX += maxWidths[c] + lm.HorizontalSpacing;
           }
-          currentY += maxHeights[r] + listManager.VerticalSpacing;
+          currentY += maxHeights[r] + lm.VerticalSpacing;
         }
-        return { left: listManager.HorizontalSpacing, top: currentY };
+        return { left: lm.HorizontalSpacing, top: currentY };
       })(baseY);
       finalWidth = sparseFormat.left;
       finalHeight = sparseFormat.top;
     } else {
-      switch (listManager.Arrangement) {
+      switch (lm.Arrangement) {
         case Arrangement.Column:
           while (index < totalItems) {
             resultFormat = formatColumn(index, colOffset, cellDimensions);
@@ -846,8 +844,8 @@ class ShapeContainer extends Rect {
             finalWidth += resultFormat.colwidth!;
             colOffset += resultFormat.colwidth!;
             if (index < totalItems) {
-              finalWidth -= listManager.HorizontalSpacing;
-              colOffset -= listManager.HorizontalSpacing;
+              finalWidth -= lm.HorizontalSpacing;
+              colOffset -= lm.HorizontalSpacing;
             }
             if (resultFormat.top! > finalHeight) {
               finalHeight = resultFormat.top!;
@@ -856,7 +854,7 @@ class ShapeContainer extends Rect {
           break;
         case Arrangement.Row:
           while (index < totalItems) {
-            baseY -= listManager.VerticalSpacing;
+            baseY -= lm.VerticalSpacing;
             resultFormat = formatRow(index, containerFrame, baseY, cellDimensions);
             index = resultFormat.start;
             finalHeight += resultFormat.rowht!;
@@ -870,14 +868,14 @@ class ShapeContainer extends Rect {
     }
 
     if (!e) {
-      listManager.width = finalWidth;
+      lm.width = finalWidth;
       finalHeight += extraTop;
-      listManager.height = finalHeight;
-      if (finalWidth < listManager.MinWidth) {
-        finalWidth = listManager.MinWidth;
+      lm.height = finalHeight;
+      if (finalWidth < lm.MinWidth) {
+        finalWidth = lm.MinWidth;
       }
-      if (finalHeight < listManager.MinHeight) {
-        finalHeight = listManager.MinHeight;
+      if (finalHeight < lm.MinHeight) {
+        finalHeight = lm.MinHeight;
       }
       let deltaWidth = finalWidth - containerFrame.width;
       let deltaHeight = finalHeight - containerFrame.height;
@@ -926,7 +924,7 @@ class ShapeContainer extends Rect {
       this.flags = Utils2.SetFlag(this.flags, ConstantData.ObjFlags.SEDO_Obj1, false);
     }
 
-    console.log("= S.ShapeContainer Pr_Format - Output:", { ContainerList: listManager });
+    console.log("= S.ShapeContainer Pr_Format - Output:", { ContainerList: lm });
   }
 
   OnConnect(eventId: string, target: any, paramA: any, paramR: any, paramI: any): void {
