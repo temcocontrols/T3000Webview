@@ -1,22 +1,26 @@
 
 
 import BaseLine from './Shape.BaseLine'
+import ListManager from '../Data/ListManager';
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
+// import Collab from '../Data/Collab'
+import FileParser from '../Data/FileParser'
 import DefaultEvt from "../Event/DefaultEvt";
+import Resources from '../Data/Resources'
 import Document from '../Basic/Basic.Document'
 import Element from '../Basic/Basic.Element';
 import BaseShape from './Shape.BaseShape';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'
+import SegLine from '../Model/SegLine';
 import Point from '../Model/Point'
 import $ from 'jquery'
-import Instance from '../Data/Instance/Instance';
-import ConstantData1 from '../Data/ConstantData1';
-import ConstantData2 from '../Data/ConstantData2';
+import SDF from '../Data/SDF'
+import ConstantData2 from '../Data/ConstantData2'
 
 class SegmentedLine extends BaseLine {
 
@@ -142,9 +146,9 @@ class SegmentedLine extends BaseLine {
     slopLine.SetFillColor("none");
     slopLine.SetOpacity(0);
     if (isHidden) {
-      slopLine.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+      slopLine.SetEventBehavior(ConstantData2.EventBehavior.HIDDEN_OUT);
     } else {
-      slopLine.SetEventBehavior(Element.EventBehavior.NONE);
+      slopLine.SetEventBehavior(ConstantData2.EventBehavior.NONE);
     }
     slopLine.SetStrokeWidth(strokeThickness + ConstantData.Defines.SED_Slop);
 
@@ -1267,11 +1271,6 @@ class SegmentedLine extends BaseLine {
     let polyPoints: Point[] = [];
     let cornerSizeCalc = 0;
 
-    // If object is a Gantt connector, disable curve parameters
-    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_CONNECTOR) {
-      this.segl.curveparam = 0;
-    }
-
     if (this.segl && this.segl.pts.length) {
       const totalPts = this.segl.pts.length;
       // If curve parameter > 0 and curves are not skipped, add curves to the polyline
@@ -1336,19 +1335,6 @@ class SegmentedLine extends BaseLine {
         // No curve formatting requested, so simply clone all segmentation points
         for (let n = 0; n < totalPts; n++) {
           polyPoints.push(new Point(this.segl.pts[n].x, this.segl.pts[n].y));
-        }
-      }
-
-      // Adjust for Gantt connector hooks if applicable
-      if (
-        this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_CONNECTOR &&
-        this.hooks.length > 1
-      ) {
-        const rectStart = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-        polyPoints[0].x = GlobalData.optManager.GetDependencyLineStartX(this);
-        polyPoints[0].x -= rectStart.x;
-        if (polyPoints[0].x > polyPoints[1].x) {
-          polyPoints[0].x = polyPoints[1].x;
         }
       }
 
@@ -1999,7 +1985,7 @@ class SegmentedLine extends BaseLine {
     let totalLineLength = 0;
     let centerProportion = 0.5; // default center proportion value
     const result = {
-      Frame: new Instance.Shape.Rect(),
+      Frame: new ListManager.Rect(),
       StartPoint: new Point(),
       EndPoint: new Point(),
       CenterProp: 0
@@ -2155,135 +2141,133 @@ class SegmentedLine extends BaseLine {
 
     const groupShape = svgDoc.CreateShape(ConstantData.CreateShapeType.GROUP);
     const knobSizeDef = ConstantData.Defines.SED_KnobSize;
-    // ConstantData.Defines.SED_RKnobSize; // Unused constant
 
-    if (this.objecttype !== ConstantData.ObjectTypes.SD_OBJT_GANTT_CONNECTOR) {
-      let docToScreenScale = svgDoc.docInfo.docToScreenScale;
-      if (svgDoc.docInfo.docScale <= 0.5) {
-        docToScreenScale *= 2;
-      }
-      const knobSize = knobSizeDef / docToScreenScale;
-      const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-      let frameWidth = this.Frame.width;
-      let frameHeight = this.Frame.height;
-      const hookObj = GlobalData.optManager.GetObjectPtr(triggerId, false);
-
-      frameWidth += knobSize;
-      frameHeight += knobSize;
-
-      const adjustedFrame = $.extend(true, {}, this.Frame);
-      adjustedFrame.x -= knobSize / 2;
-      adjustedFrame.y -= knobSize / 2;
-      adjustedFrame.width += knobSize;
-      adjustedFrame.height += knobSize;
-
-      let knobConfig: any = {
-        svgDoc: svgDoc,
-        shapeType: ConstantData.CreateShapeType.RECT,
-        knobSize: knobSize,
-        fillColor: "black",
-        fillOpacity: 1,
-        strokeSize: 1,
-        strokeColor: "#777777",
-        cursorType: this.CalcCursorForSegment(this.StartPoint, this.EndPoint, false),
-        locked: false
-      };
-
-      // Modify knob appearance based on connection status
-      if (triggerId != relatedId) {
-        knobConfig.fillColor = "white";
-        knobConfig.strokeSize = 1;
-        knobConfig.strokeColor = "black";
-        knobConfig.fillOpacity = 0;
-      }
-      if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
-        knobConfig.fillColor = "gray";
-        knobConfig.locked = true;
-      } else if (this.NoGrow()) {
-        knobConfig.fillColor = "red";
-        knobConfig.strokeColor = "red";
-        knobConfig.cursorType = Element.CursorType.DEFAULT;
-      }
-
-      // Set knob position for start knob
-      knobConfig.x = this.StartPoint.x - this.Frame.x;
-      knobConfig.y = this.StartPoint.y - this.Frame.y;
-      knobConfig.knobID = ConstantData.ActionTriggerType.LINESTART;
-
-      if (hookObj && hookObj.hooks) {
-        for (let d = 0; d < hookObj.hooks.length; d++) {
-          if (hookObj.hooks[d].hookpt === ConstantData.HookPts.SED_KTL) {
-            knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
-            break;
-          }
-        }
-      }
-      let startKnob = this.GenericKnob(knobConfig);
-      groupShape.AddElement(startKnob);
-
-      // Set knob configuration for end knob
-      knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
-      if (hookObj && hookObj.hooks) {
-        for (let d = 0; d < hookObj.hooks.length; d++) {
-          if (hookObj.hooks[d].hookpt === ConstantData.HookPts.SED_KTR) {
-            knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
-            break;
-          }
-        }
-      }
-      knobConfig.x = this.EndPoint.x - this.Frame.x;
-      knobConfig.y = this.EndPoint.y - this.Frame.y;
-      knobConfig.knobID = ConstantData.ActionTriggerType.LINEEND;
-
-      let endKnob = this.GenericKnob(knobConfig);
-      groupShape.AddElement(endKnob);
-
-      // Create additional knobs along the segmented line if available
-      knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
-      if (this.segl && this.segl.pts && this.segl.firstdir > 0) {
-        const ptsCount = this.segl.pts.length;
-        for (let d = 2; d < ptsCount - 1; d++) {
-          if (this.segl.pts[d - 1].x === this.segl.pts[d].x) {
-            knobConfig.x = this.segl.pts[d].x + rect.x - this.Frame.x;
-            knobConfig.y =
-              (this.segl.pts[d - 1].y + this.segl.pts[d].y) / 2 +
-              rect.y -
-              this.Frame.y;
-          } else {
-            knobConfig.y = this.segl.pts[d].y + rect.y - this.Frame.y;
-            knobConfig.x =
-              (this.segl.pts[d - 1].x + this.segl.pts[d].x) / 2 +
-              rect.x -
-              this.Frame.x;
-          }
-          knobConfig.cursorType = this.CalcCursorForSegment(
-            this.segl.pts[d],
-            this.segl.pts[d - 1],
-            true
-          );
-          knobConfig.knobID =
-            ConstantData.ActionTriggerType.SEGL_ONE + d - 2;
-          if (this.NoGrow()) {
-            knobConfig.cursorType = Element.CursorType.DEFAULT;
-          }
-          let midKnob = this.GenericKnob(knobConfig);
-          groupShape.AddElement(midKnob);
-        }
-      }
-
-      groupShape.SetSize(frameWidth, frameHeight);
-      groupShape.SetPos(adjustedFrame.x, adjustedFrame.y);
-      groupShape.isShape = true;
-      groupShape.SetID(ConstantData.Defines.Action + triggerId);
-
-      console.log("= S.SegmentedLine: CreateActionTriggers output", {
-        groupShape,
-        adjustedFrame,
-        frameWidth,
-        frameHeight
-      });
-      return groupShape;
+    let docToScreenScale = svgDoc.docInfo.docToScreenScale;
+    if (svgDoc.docInfo.docScale <= 0.5) {
+      docToScreenScale *= 2;
     }
+    const knobSize = knobSizeDef / docToScreenScale;
+    const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
+    let frameWidth = this.Frame.width;
+    let frameHeight = this.Frame.height;
+    const hookObj = GlobalData.optManager.GetObjectPtr(triggerId, false);
+
+    frameWidth += knobSize;
+    frameHeight += knobSize;
+
+    const adjustedFrame = $.extend(true, {}, this.Frame);
+    adjustedFrame.x -= knobSize / 2;
+    adjustedFrame.y -= knobSize / 2;
+    adjustedFrame.width += knobSize;
+    adjustedFrame.height += knobSize;
+
+    let knobConfig: any = {
+      svgDoc: svgDoc,
+      shapeType: ConstantData.CreateShapeType.RECT,
+      knobSize: knobSize,
+      fillColor: "black",
+      fillOpacity: 1,
+      strokeSize: 1,
+      strokeColor: "#777777",
+      cursorType: this.CalcCursorForSegment(this.StartPoint, this.EndPoint, false),
+      locked: false
+    };
+
+    // Modify knob appearance based on connection status
+    if (triggerId != relatedId) {
+      knobConfig.fillColor = "white";
+      knobConfig.strokeSize = 1;
+      knobConfig.strokeColor = "black";
+      knobConfig.fillOpacity = 0;
+    }
+    if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
+      knobConfig.fillColor = "gray";
+      knobConfig.locked = true;
+    } else if (this.NoGrow()) {
+      knobConfig.fillColor = "red";
+      knobConfig.strokeColor = "red";
+      knobConfig.cursorType = ConstantData2.CursorType.DEFAULT;
+    }
+
+    // Set knob position for start knob
+    knobConfig.x = this.StartPoint.x - this.Frame.x;
+    knobConfig.y = this.StartPoint.y - this.Frame.y;
+    knobConfig.knobID = ConstantData.ActionTriggerType.LINESTART;
+
+    if (hookObj && hookObj.hooks) {
+      for (let d = 0; d < hookObj.hooks.length; d++) {
+        if (hookObj.hooks[d].hookpt === ConstantData.HookPts.SED_KTL) {
+          knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
+          break;
+        }
+      }
+    }
+    let startKnob = this.GenericKnob(knobConfig);
+    groupShape.AddElement(startKnob);
+
+    // Set knob configuration for end knob
+    knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
+    if (hookObj && hookObj.hooks) {
+      for (let d = 0; d < hookObj.hooks.length; d++) {
+        if (hookObj.hooks[d].hookpt === ConstantData.HookPts.SED_KTR) {
+          knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
+          break;
+        }
+      }
+    }
+    knobConfig.x = this.EndPoint.x - this.Frame.x;
+    knobConfig.y = this.EndPoint.y - this.Frame.y;
+    knobConfig.knobID = ConstantData.ActionTriggerType.LINEEND;
+
+    let endKnob = this.GenericKnob(knobConfig);
+    groupShape.AddElement(endKnob);
+
+    // Create additional knobs along the segmented line if available
+    knobConfig.shapeType = ConstantData.CreateShapeType.RECT;
+    if (this.segl && this.segl.pts && this.segl.firstdir > 0) {
+      const ptsCount = this.segl.pts.length;
+      for (let d = 2; d < ptsCount - 1; d++) {
+        if (this.segl.pts[d - 1].x === this.segl.pts[d].x) {
+          knobConfig.x = this.segl.pts[d].x + rect.x - this.Frame.x;
+          knobConfig.y =
+            (this.segl.pts[d - 1].y + this.segl.pts[d].y) / 2 +
+            rect.y -
+            this.Frame.y;
+        } else {
+          knobConfig.y = this.segl.pts[d].y + rect.y - this.Frame.y;
+          knobConfig.x =
+            (this.segl.pts[d - 1].x + this.segl.pts[d].x) / 2 +
+            rect.x -
+            this.Frame.x;
+        }
+        knobConfig.cursorType = this.CalcCursorForSegment(
+          this.segl.pts[d],
+          this.segl.pts[d - 1],
+          true
+        );
+        knobConfig.knobID =
+          ConstantData.ActionTriggerType.SEGL_ONE + d - 2;
+        if (this.NoGrow()) {
+          knobConfig.cursorType = ConstantData2.CursorType.DEFAULT;
+        }
+        let midKnob = this.GenericKnob(knobConfig);
+        groupShape.AddElement(midKnob);
+      }
+    }
+
+    groupShape.SetSize(frameWidth, frameHeight);
+    groupShape.SetPos(adjustedFrame.x, adjustedFrame.y);
+    groupShape.isShape = true;
+    groupShape.SetID(ConstantData.Defines.Action + triggerId);
+
+    console.log("= S.SegmentedLine: CreateActionTriggers output", {
+      groupShape,
+      adjustedFrame,
+      frameWidth,
+      frameHeight
+    });
+    return groupShape;
+
   }
 
   ModifyShape(svgDoc, newX, newY, trigger, extra) {
@@ -2469,13 +2453,13 @@ class SegmentedLine extends BaseLine {
   HookToPoint(hookId: number, outRect?: { x: number; y: number; width: number; height: number }): Point {
     console.log("= S.SegmentedLine: HookToPoint input", { hookId, outRect });
 
-    const lmg = ConstantData;
+    const listManager = ListManager;
     let resultPoint: Point = { x: 0, y: 0 };
     let tempPoint: Point = { x: 0, y: 0 };
     let rectData: any = {};
 
     switch (hookId) {
-      case lmg.HookPts.SED_KTL:
+      case listManager.HookPts.SED_KTL:
         resultPoint.x = this.StartPoint.x;
         resultPoint.y = this.StartPoint.y;
         if (outRect) {
@@ -2488,7 +2472,7 @@ class SegmentedLine extends BaseLine {
           outRect.height = rectData.height;
         }
         break;
-      case lmg.HookPts.SED_KTR:
+      case listManager.HookPts.SED_KTR:
       default:
         resultPoint.x = this.EndPoint.x;
         resultPoint.y = this.EndPoint.y;
@@ -3046,7 +3030,7 @@ class SegmentedLine extends BaseLine {
     console.log("= S.SegmentedLine: ConnectToHook input", { connectedObjectId, hookType });
 
     let resultHook = hookType;
-    if (ShapeAttrUtil.LineIsReversed(this, null, false)) {
+    if (SDF.LineIsReversed(this, null, false)) {
       if (resultHook === ConstantData.HookPts.SED_KTL) {
         resultHook = ConstantData.HookPts.SED_KTR;
       } else if (resultHook === ConstantData.HookPts.SED_KTR) {
@@ -3077,7 +3061,7 @@ class SegmentedLine extends BaseLine {
 
     // Determine the two candidate points (r and i) from the segmentation points.
     let firstPt: Point, secondPt: Point;
-    if (ShapeAttrUtil.LineIsReversed(this, null, false)) {
+    if (SDF.LineIsReversed(this, null, false)) {
       if (compareValue === 0) {
         // Use the last two points.
         firstPt = this.segl.pts[totalPts - 2];
@@ -3211,6 +3195,146 @@ class SegmentedLine extends BaseLine {
     GlobalData.optManager.Lines_MaintainDist(this, paramA, paramI, point);
     console.log("= S.SegmentedLine: MaintainPoint output", result);
     return result;
+  }
+
+  WriteSDFAttributes(writer, options) {
+    console.log("= S.SegmentedLine: WriteSDFAttributes input", { writer, options });
+
+    const numPoints = this.segl.pts.length;
+    console.log("= S.SegmentedLine: Number of segmentation points", { numPoints });
+
+    const instanceId = options.WriteBlocks ? this.BlockID : options.nsegl++;
+    console.log("= S.SegmentedLine: Instance ID", { instanceId });
+
+    const reversed = SDF.LineIsReversed(this, options, false);
+    console.log("= S.SegmentedLine: Is line reversed?", { reversed });
+
+    let copiedSeg = Utils1.DeepCopy(this.segl);
+    let lastSegIndex = numPoints - 1;
+    if (lastSegIndex < 0) lastSegIndex = 0;
+
+    // If the line is reversed, reverse the segmentation points and swap the direction flags.
+    if (reversed) {
+      console.log("= S.SegmentedLine: Reversing segmentation points and swapping direction flags");
+      for (let i = 0; i < numPoints; i++) {
+        copiedSeg.pts[numPoints - 1 - i].x = this.segl.pts[i].x;
+        copiedSeg.pts[numPoints - 1 - i].y = this.segl.pts[i].y;
+      }
+      const tempDir = copiedSeg.firstdir;
+      copiedSeg.firstdir = copiedSeg.lastdir;
+      copiedSeg.lastdir = tempDir;
+      console.log("= S.SegmentedLine: Reversed direction flags", {
+        firstdir: copiedSeg.firstdir,
+        lastdir: copiedSeg.lastdir,
+      });
+
+      for (let i = 0; i < numPoints - 1; i++) {
+        if (Utils2.IsEqual(copiedSeg.pts[i + 1].x, copiedSeg.pts[i].x)) {
+          copiedSeg.lengths[i] = Math.abs(copiedSeg.pts[i + 1].y - copiedSeg.pts[i].y);
+        } else {
+          copiedSeg.lengths[i] = Math.abs(copiedSeg.pts[i + 1].x - copiedSeg.pts[i].x);
+        }
+      }
+      if (numPoints === 6) {
+        copiedSeg.lengths[2] = copiedSeg.lengths[4];
+      }
+    }
+
+    let sdfData;
+    if (options.WriteWin32) {
+      sdfData = {
+        InstId: instanceId,
+        firstdir: copiedSeg.firstdir,
+        lastdir: copiedSeg.lastdir,
+        nsegs: lastSegIndex,
+        segr: [],
+        lengths: [0, 0, 0, 0, 0],
+        lsegr: [],
+        llengths: [0, 0, 0, 0, 0],
+      };
+    } else {
+      sdfData = {
+        InstId: instanceId,
+        firstdir: copiedSeg.firstdir,
+        lastdir: copiedSeg.lastdir,
+        curveparam: copiedSeg.curveparam,
+        nsegs: lastSegIndex,
+        lsegr: [],
+        llengths: [0, 0, 0, 0, 0],
+      };
+    }
+    console.log("= S.SegmentedLine: Initialized sdfData", sdfData);
+
+    // Determine the minimum X and Y coordinates from all segmentation points.
+    let minX, minY;
+    for (let i = 0; i < numPoints; i++) {
+      if (i === 0 || copiedSeg.pts[i].x < minX) {
+        minX = copiedSeg.pts[i].x;
+      }
+      if (i === 0 || copiedSeg.pts[i].y < minY) {
+        minY = copiedSeg.pts[i].y;
+      }
+    }
+    console.log("= S.SegmentedLine: Computed minX and minY", { minX, minY });
+
+    // Convert each segment's length to SD window coordinates.
+    const lengthsCount = copiedSeg.lengths.length;
+    for (let i = 0; i < lengthsCount; i++) {
+      sdfData.llengths[i] = SDF.ToSDWinCoords(copiedSeg.lengths[i], options.coordScaleFactor);
+    }
+    console.log("= S.SegmentedLine: Converted segment lengths", { llengths: sdfData.llengths });
+
+    // Create rectangle info for each segment between adjacent points.
+    for (let i = 0; i < numPoints - 1; i++) {
+      let segmentRect = {
+        left: SDF.ToSDWinCoords(copiedSeg.pts[i].x - minX, options.coordScaleFactor),
+        top: SDF.ToSDWinCoords(copiedSeg.pts[i].y - minY, options.coordScaleFactor),
+        right: SDF.ToSDWinCoords(copiedSeg.pts[i + 1].x - minX, options.coordScaleFactor),
+        bottom: SDF.ToSDWinCoords(copiedSeg.pts[i + 1].y - minY, options.coordScaleFactor),
+      };
+
+      // Ensure the rectangle is properly ordered.
+      if (numPoints > 2) {
+        if (segmentRect.left > segmentRect.right) {
+          let temp = segmentRect.left;
+          segmentRect.left = segmentRect.right;
+          segmentRect.right = temp;
+        }
+        if (segmentRect.top > segmentRect.bottom) {
+          let temp = segmentRect.top;
+          segmentRect.top = segmentRect.bottom;
+          segmentRect.bottom = temp;
+        }
+      }
+      sdfData.lsegr.push(segmentRect);
+
+      if (options.WriteWin32) {
+        sdfData.segr.push({ left: 0, top: 0, right: 0, bottom: 0 });
+      }
+    }
+    console.log("= S.SegmentedLine: Created segmentation rectangles", { lsegr: sdfData.lsegr });
+
+    // If there are fewer than 5 segments, pad the remaining segment info with zeros.
+    for (let i = numPoints - 1; i < 5; i++) {
+      sdfData.lsegr.push({ left: 0, top: 0, right: 0, bottom: 0 });
+      if (options.WriteWin32) {
+        sdfData.segr.push({ left: 0, top: 0, right: 0, bottom: 0 });
+      }
+    }
+    console.log("= S.SegmentedLine: Padded segmentation rectangles", { lsegr: sdfData.lsegr });
+
+    const code = SDF.Write_CODE(writer, ConstantData2.SDROpCodesByName.SDF_C_DRAWSEGL);
+    if (options.WriteWin32) {
+      writer.writeStruct(FileParser.SDF_SegLine_Struct, sdfData);
+    } else {
+      writer.writeStruct(FileParser.SDF_SegLine_Struct_210, sdfData);
+    }
+    SDF.Write_LENGTH(writer, code);
+
+    // Call the base class implementation.
+    super.WriteSDFAttributes(writer, options);
+
+    console.log("= S.SegmentedLine: WriteSDFAttributes output", { sdfData, code });
   }
 
 }

@@ -101,9 +101,9 @@ class ArcSegmentedLine extends SegmentedLine {
     shapeSlop.SetFillColor('none');
     shapeSlop.SetOpacity(0);
     if (isPreviewMode) {
-      shapeSlop.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+      shapeSlop.SetEventBehavior(ConstantData2.EventBehavior.HIDDEN_OUT);
     } else {
-      shapeSlop.SetEventBehavior(Element.EventBehavior.NONE);
+      shapeSlop.SetEventBehavior(ConstantData2.EventBehavior.NONE);
     }
 
     shapeSlop.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
