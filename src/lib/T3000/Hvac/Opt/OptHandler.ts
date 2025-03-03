@@ -2313,6 +2313,423 @@ class OptHandler{
     console.log("O.Opt RubberBandSelectExceptionCleanup - Output: Cleanup completed");
     throw exception;
   }
+
+  /**
+   * Maintains the relative distance of a point within a line segment when transforming between lines
+   * @param targetLine - The line to which the point should be mapped
+   * @param sourceLine - The original line containing the point
+   * @param segmentIndex - Index of the segment in the polyline
+   * @param point - The point to be maintained in relative position
+   * @returns The adjusted point position
+   */
+  Lines_MaintainDistWithinSegment(targetLine, sourceLine, segmentIndex, point) {
+    console.log("O.Opt: Lines_MaintainDistWithinSegment inputs:", {
+      targetLine: targetLine.BlockID || "unknown",
+      sourceLine: sourceLine.BlockID || "unknown",
+      segmentIndex,
+      point: { x: point.x, y: point.y }
+    });
+
+    // Get bounding rectangle for calculations
+    var boundingRect = {};
+
+    // Get points of the source line
+    var sourcePoints = sourceLine.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, true, false, null);
+    Utils2.GetPolyRect(boundingRect, sourcePoints);
+
+    // Calculate angle of the segment in the source line
+    var sourceAngle = Utils1.CalcAngleFromPoints(sourcePoints[segmentIndex - 1], sourcePoints[segmentIndex]);
+    var sourceAngleComplement = 360 - sourceAngle;
+    var sourceAngleRadians = 2 * Math.PI * (sourceAngleComplement / 360);
+
+    // Rotate source points to align with horizontal
+    Utils3.RotatePointsAboutCenter(boundingRect, -sourceAngleRadians, sourcePoints);
+
+    // Rotate the target point by the same angle
+    var rotatedPoints = [point];
+    Utils3.RotatePointsAboutCenter(boundingRect, -sourceAngleRadians, rotatedPoints);
+
+    // Calculate the relative position of the point within the segment
+    var segmentLength = sourcePoints[segmentIndex].x - sourcePoints[segmentIndex - 1].x;
+    var relativePosition = (point.x - sourcePoints[segmentIndex - 1].x) / segmentLength;
+    var verticalOffset = point.y - sourcePoints[segmentIndex - 1].y;
+
+    // Rotate back
+    Utils3.RotatePointsAboutCenter(boundingRect, sourceAngleRadians, rotatedPoints);
+
+    // Get points of the target line
+    var targetPoints = targetLine.GetPolyPoints(ConstantData.Defines.NPOLYPTS, false, true, false, null);
+
+    // Calculate angle of the segment in the target line
+    var targetAngle = Utils1.CalcAngleFromPoints(targetPoints[segmentIndex - 1], targetPoints[segmentIndex]);
+    var targetAngleComplement = 360 - targetAngle;
+    var targetAngleRadians = 2 * Math.PI * (targetAngleComplement / 360);
+
+    // Get bounding rectangle for the target line
+    Utils2.GetPolyRect(boundingRect, targetPoints);
+
+    // Rotate target points to align with horizontal
+    Utils3.RotatePointsAboutCenter(boundingRect, -targetAngleRadians, targetPoints);
+    Utils3.RotatePointsAboutCenter(boundingRect, -targetAngleRadians, rotatedPoints);
+
+    // Apply the relative position to the target segment
+    var targetSegmentLength = targetPoints[segmentIndex].x - targetPoints[segmentIndex - 1].x;
+    var adjustedDistance = targetSegmentLength * relativePosition;
+
+    rotatedPoints[0].x = targetPoints[segmentIndex - 1].x + adjustedDistance;
+    rotatedPoints[0].y = targetPoints[segmentIndex - 1].y + verticalOffset;
+
+    // Rotate back to the target line's orientation
+    Utils3.RotatePointsAboutCenter(targetLine.Frame, targetAngleRadians, rotatedPoints);
+
+    // Update the point
+    point = rotatedPoints[0];
+
+    console.log("O.Opt: Lines_MaintainDistWithinSegment output:", {
+      point: { x: point.x, y: point.y }
+    });
+
+    return point;
+  }
+
+  /**
+   * Converts an arc to a sequence of polyline points
+   * @param segments - Number of segments to divide the arc into
+   * @param center - Center point of the arc
+   * @param radius - Radius of the arc
+   * @param startY - Starting Y coordinate
+   * @param endY - Ending Y coordinate
+   * @param targetX - Target X coordinate
+   * @param flipArc - Whether to flip the arc
+   * @param isComplexArc - Whether this is a complex arc that requires multiple segments
+   * @returns Array of points representing the arc
+   */
+  ArcToPoly(segments, center, radius, startY, endY, targetX, flipArc, isComplexArc) {
+    console.log("O.Opt: ArcToPoly inputs:", {
+      segments,
+      center: { x: center.x, y: center.y },
+      radius,
+      startY,
+      endY,
+      targetX,
+      flipArc,
+      isComplexArc
+    });
+
+    let isRightSide,
+      midY1,
+      midY2,
+      points = [];
+
+    // The following expression has no effect, but keeping it for compatibility
+    endY - startY;
+
+    if (isComplexArc) {
+      // For complex arcs, divide into three segments
+      if (startY > endY) {
+        midY2 = center.y - radius;
+        midY1 = center.y + radius;
+      } else {
+        midY1 = center.y - radius;
+        midY2 = center.y + radius;
+      }
+
+      isRightSide = targetX < center.x;
+      flipArc = false;
+
+      // Generate three segments of the complex arc
+      this.ArcToPolySeg(points, segments / 2, center, radius, startY, midY1, targetX, flipArc, !isRightSide);
+      this.ArcToPolySeg(points, segments, center, radius, midY1, midY2, center.x, flipArc, isRightSide);
+      this.ArcToPolySeg(points, segments / 2, center, radius, midY2, endY, targetX, flipArc, !isRightSide);
+    } else {
+      // For simple arcs, generate a single segment
+      isRightSide = targetX >= center.x;
+      this.ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide);
+    }
+
+    console.log("O.Opt: ArcToPoly output points:", points.length);
+    return points;
+  }
+
+  /**
+   * Generates points along an arc segment and adds them to an array
+   * @param points - Array to store the generated points
+   * @param segments - Number of segments to divide the arc into
+   * @param center - Center point of the arc
+   * @param radius - Radius of the arc
+   * @param startY - Starting Y coordinate
+   * @param endY - Ending Y coordinate
+   * @param targetX - Target X coordinate
+   * @param flipArc - Whether to flip the arc
+   * @param isRightSide - Whether the arc is on the right side
+   * @returns Array of points representing the arc segment
+   */
+  ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide) {
+    console.log("O.Opt: ArcToPolySeg inputs:", {
+      segments,
+      center: { x: center.x, y: center.y },
+      radius,
+      startY,
+      endY,
+      targetX,
+      flipArc,
+      isRightSide
+    });
+
+    const radiusSquared = radius * radius;
+    const yStep = (endY - startY) / segments;
+
+    for (let i = 0; i < segments; i++) {
+      const yOffset = yStep * i;
+      const yDist = center.y - (startY + yOffset);
+      const xDist = Utils2.sqrt(radiusSquared - yDist * yDist);
+
+      const point = new Point(0, 0);
+      point.y = center.y - yDist;
+
+      if (isRightSide) {
+        point.x = center.x + xDist;
+        const diff = point.x - targetX;
+        if (flipArc) {
+          point.x = targetX - diff;
+        }
+      } else {
+        point.x = center.x - xDist;
+        const diff = targetX - point.x;
+        if (flipArc) {
+          point.x = targetX + diff;
+        }
+      }
+
+      points.push(point);
+    }
+
+    console.log("O.Opt: ArcToPolySeg output points count:", points.length);
+    return points;
+  }
+
+  DrawNewObject(newShape, clearExistingSection) {
+    console.log("O.Opt DrawNewObject - Input:", { newShape, clearExistingSection });
+
+    this.SetModalOperation(ConstantData2.ModalOperations.DRAW);
+    this.GetObjectPtr(this.theTEDSessionBlockID, false);
+    this.CloseEdit();
+
+    this.LineDrawID = -1;
+    this.theDrawShape = newShape;
+    this.ClearAnySelection(!clearExistingSection);
+    this.SetEditMode(ConstantData.EditState.EDIT);
+    this.WorkAreaHammer.on('dragstart', DefaultEvt.Evt_WorkAreaHammerDrawStart);
+
+    console.log("O.Opt DrawNewObject - Output: Draw new object initialized");
+  }
+
+  StartNewObjectDraw(inputEvent) {
+    console.log("O.Opt StartNewObjectDraw - Input:", inputEvent);
+
+    // Abort drawing if LineStamp is active
+    if (GlobalData.optManager.LineStamp) {
+      console.log("O.Opt StartNewObjectDraw - Output: LineStamp active, aborting draw");
+      return;
+    }
+
+    // Convert client coordinates to document coordinates
+    let docCoords = this.svgDoc.ConvertWindowToDocCoords(
+      inputEvent.gesture.center.clientX,
+      inputEvent.gesture.center.clientY
+    );
+    console.log("O.Opt StartNewObjectDraw: Client coords and Doc coords", inputEvent.gesture.center.clientX, inputEvent.gesture.center.clientY, docCoords);
+
+    // Set the starting point for drawing
+    this.theDrawStartX = docCoords.x;
+    this.theDrawStartY = docCoords.y;
+    console.log("O.Opt StartNewObjectDraw: Draw start coordinates set", this.theDrawStartX, this.theDrawStartY);
+
+    // Pre-track check before drawing
+    const preTrackCheck = this.theDrawShape.LM_DrawPreTrack(docCoords);
+    if (!preTrackCheck) {
+      console.log("O.Opt StartNewObjectDraw - Output: Pre-track check failed");
+      return;
+    }
+
+    // Determine if snapping should be enabled
+    let hasLinkParam = this.LinkParams && this.LinkParams.SConnectIndex >= 0;
+    let needOverrideSnaps = this.OverrideSnaps(inputEvent);
+    hasLinkParam = hasLinkParam || needOverrideSnaps;
+    const isSnapEnabled = GlobalData.docHandler.documentConfig.enableSnap && !hasLinkParam;
+
+    if (isSnapEnabled) {
+      let snapRect = this.theDrawShape.GetSnapRect();
+      let dragRectCopy = this.theDragEnclosingRect ? Utils1.DeepCopy(this.theDragEnclosingRect) : snapRect;
+      let actionBBoxCopy = Utils1.DeepCopy(this.theActionBBox);
+      let offsetX = dragRectCopy.x - actionBBoxCopy.x;
+      let offsetY = dragRectCopy.y - actionBBoxCopy.y;
+
+      // Reposition the drag rectangle to center around the document coordinates
+      dragRectCopy.x = docCoords.x - dragRectCopy.width / 2;
+      dragRectCopy.y = docCoords.y - dragRectCopy.height / 2;
+
+      // Calculate the adjusted offset for custom snap
+      let adjustedOffset = {
+        x: dragRectCopy.x - offsetX,
+        y: dragRectCopy.y - offsetY
+      };
+
+      if (!this.theDrawShape.CustomSnap(adjustedOffset.x, adjustedOffset.y, 0, 0, false, docCoords)) {
+        if (GlobalData.docHandler.documentConfig.centerSnap) {
+          let snapPoint = GlobalData.docHandler.SnapToGrid(docCoords);
+          docCoords.x = snapPoint.x;
+          docCoords.y = snapPoint.y;
+        } else {
+          let tempSnapRect = $.extend(true, {}, snapRect);
+          tempSnapRect.x = docCoords.x - snapRect.width / 2;
+          tempSnapRect.y = docCoords.y - snapRect.height / 2;
+          let snapAdjustment = GlobalData.docHandler.SnapRect(tempSnapRect);
+          docCoords.x += snapAdjustment.x;
+          docCoords.y += snapAdjustment.y;
+        }
+      }
+    }
+
+    // Set action coordinates based on document coordinates
+    let docX = docCoords.x;
+    let docY = docCoords.y;
+    this.ClearAnySelection(true);
+    this.theActionStartX = docX;
+    this.theActionStartY = docY;
+    this.theActionBBox = { x: docX, y: docY, width: 1, height: 1 };
+    this.theActionNewBBox = { x: docX, y: docY, width: 1, height: 1 };
+
+    // Begin drawing the new shape
+    let drawShape = this.theDrawShape;
+    this.InitializeAutoGrowDrag();
+    this.ShowFrame(true);
+    drawShape.LM_DrawClick(docX, docY);
+    this.AddNewObject(drawShape, !drawShape.bOverrideDefaultStyleOnDraw, false);
+
+    // Retrieve the new object's ID from the active layer
+    let layerZList = this.ActiveLayerZList();
+    let layerCount = layerZList.length;
+    this.theActionStoredObjectID = layerZList[layerCount - 1];
+
+    // If a circular link list exists, add the new object to it
+    if (this.LinkParams && this.LinkParams.lpCircList) {
+      this.LinkParams.lpCircList.push(this.theActionStoredObjectID);
+    }
+
+    // Get the corresponding SVG object for the new object
+    this.theActionSVGObject = this.svgObjectLayer.GetElementByID(this.theActionStoredObjectID);
+
+    // Handle connection highlights if there is a connect index
+    if (this.LinkParams && this.LinkParams.SConnectIndex >= 0) {
+      this.HiliteConnect(this.LinkParams.SConnectIndex, this.LinkParams.SConnectPt, true, false, drawShape.BlockID, this.LinkParams.SConnectInside);
+      this.LinkParams.SHiliteConnect = this.LinkParams.SConnectIndex;
+      this.LinkParams.SHiliteInside = this.LinkParams.SConnectInside;
+    }
+
+    // Handle join highlights if there is a join index
+    if (this.LinkParams && this.LinkParams.SJoinIndex >= 0) {
+      this.HiliteConnect(this.LinkParams.SJoinIndex, this.LinkParams.SConnectPt, true, true, drawShape.BlockID, null);
+      this.LinkParams.SHiliteJoin = this.LinkParams.SJoinIndex;
+    }
+
+    console.log("O.Opt StartNewObjectDraw - Output: New object drawn with ID", this.theActionStoredObjectID);
+  }
+
+  AddNewObject(drawingObject, shouldStyleCopy, renderSelection, textContent) {
+    console.log("O.Opt AddNewObject - Input:", { drawingObject, shouldStyleCopy, renderSelection, textContent });
+
+    let nativeSymbolResult;
+    let symbolTitle;
+    let layerFlag = 0;
+    let symbolData = null;
+    let isStandardShape = false;
+
+    // Ensure textContent defaults to null if not provided
+    textContent = textContent || null;
+    let symbolId = null;
+    let symbolTitleForUpdate = '';
+
+    if (drawingObject == null) {
+      throw new Error('The drawing object is null');
+    }
+
+    const sessionData = GlobalData.objectStore.GetObject(this.theSEDSessionBlockID).Data;
+
+    if (shouldStyleCopy === undefined) {
+      shouldStyleCopy = true;
+    }
+
+    // Copy default style if required.
+    if (shouldStyleCopy) {
+      drawingObject.StyleRecord = Utils1.DeepCopy(sessionData.def.style);
+      if (drawingObject.DrawingObjectBaseClass === ConstantData.DrawingObjectBaseClass.SHAPE) {
+        drawingObject.StyleRecord.Line = Utils1.DeepCopy(drawingObject.StyleRecord.Border);
+        drawingObject.TMargins = Utils1.DeepCopy(sessionData.def.tmargins);
+        drawingObject.TextFlags = Utils2.SetFlag(
+          drawingObject.TextFlags,
+          ConstantData.TextFlags.SED_TF_FormCR,
+          (sessionData.def.textflags & ConstantData.TextFlags.SED_TF_FormCR) > 0
+        );
+      }
+      let justification = sessionData.def.just;
+      if (sessionData.def.vjust !== 'middle' && sessionData.def.vjust !== 'center') {
+        justification = sessionData.def.vjust + '-' + sessionData.def.just;
+      }
+      drawingObject.TextAlign = justification;
+    }
+
+    // Apply forced dotted pattern if necessary.
+    if (this.forcedotted && drawingObject.StyleRecord) {
+      drawingObject.StyleRecord.Line.LinePattern = this.forcedotted;
+      this.forcedotted = null;
+    }
+
+    drawingObject.UpdateFrame(drawingObject.Frame);
+    drawingObject.sizedim.width = drawingObject.Frame.width;
+    drawingObject.sizedim.height = drawingObject.Frame.height;
+    drawingObject.UniqueID = this.uniqueID++;
+
+    if (drawingObject.objecttype === ConstantData.ObjectTypes.SD_OBJT_FLOORPLAN_WALL) {
+      layerFlag = ConstantData.LayerFlags.SDLF_UseEdges;
+    }
+
+    drawingObject.DataID = textContent ? GlobalData.optManager.CreateTextBlock(drawingObject, textContent) : -1;
+
+    // Create new graphics block.
+    const newBlock = GlobalData.objectStore.CreateBlock(ConstantData.StoredObjectType.BASE_LM_DRAWING_OBJECT, drawingObject);
+    if (newBlock == null) {
+      throw new Error('AddNewObject got a null new graphics block allocation');
+    }
+
+    // Collab.AddToCreateList(newBlock.Data.BlockID);
+
+    if (symbolId) {
+      GlobalData.gBaseManager.UpdateShapeList(drawingObject, symbolId, symbolTitleForUpdate, isStandardShape);
+    }
+
+    this.ZListPreserve(layerFlag).push(newBlock.ID);
+
+    const isBaseline = drawingObject instanceof BaseLine;
+    const layersData = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theLayersManagerBlockID, false);
+
+    const isSpecialLayer = false;
+
+    if (this.IsTopMostVisibleLayer() || isBaseline || isSpecialLayer) {
+      this.RenderLastSVGObject(renderSelection);
+    } else {
+      this.RenderLastSVGObject(renderSelection);
+      this.MarkAllAllVisibleHigherLayerObjectsDirty();
+      this.RenderDirtySVGObjectsNoSetMouse();
+    }
+
+    this.theActionBBox = $.extend(true, {}, drawingObject.Frame);
+    this.theDragEnclosingRect = drawingObject.GetDragR();
+
+    console.log("O.Opt AddNewObject - Output:", newBlock.ID);
+    return newBlock.ID;
+  }
+
 }
 
 export default OptHandler
