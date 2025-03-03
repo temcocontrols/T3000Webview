@@ -46,6 +46,7 @@ import ConstantData1 from "../Data/ConstantData1"
 import TextObject from "../Model/TextObject"
 import DynamicGuides from "../Model/DynamicGuides"
 import ConstantData2 from "../Data/ConstantData2"
+import ShapeAttrUtil from "../Opt/ShapeAttrUtil"
 
 class OptHandler{
 
@@ -382,7 +383,7 @@ class OptHandler{
     this.NStdTextures = 0;
     this.RichGradients = [];
     this.HasBlockDirectory = false;
-    this.FileVersion = 41;// SDF.SDF_FVERSION2022;
+    this.FileVersion = 41;
     this.ActiveExpandedView = null;
     this.CommentUserIDs = [];
     this.theContentHeader = new ContentHeader();
@@ -508,9 +509,9 @@ class OptHandler{
         // Save blocks and update dirty state if needed
         if (!preserveState && isStateOpen) {
           if (this.GetDocDirtyState()) {
-            SDF.SaveChangedBlocks(GlobalData.stateManager.CurrentStateID, 1);
+            ShapeAttrUtil.SaveChangedBlocks(GlobalData.stateManager.CurrentStateID, 1);
           } else {
-            SDF.SaveAllBlocks();
+            ShapeAttrUtil.SaveAllBlocks();
           }
           this.SetDocDirtyState(true);
         }
@@ -631,7 +632,6 @@ class OptHandler{
     let targetObject;
     let moveList;
     let businessManager;
-    let objectVisioTextChild;
     let currentTable;
     let currentTextFormat;
     let objectCount = 0;
@@ -731,11 +731,6 @@ class OptHandler{
       // Get and process the current object
       currentObject = this.GetObjectPtr(objectId, false);
       if (!(currentObject instanceof BaseDrawingObject)) continue;
-
-      // Check for Visio text child
-      objectVisioTextChild = -1; // GlobalData.optManager.SD_GetVisioTextChild(objectId);
-      const objectToProcess = (objectVisioTextChild >= 0) ?
-        this.GetObjectPtr(objectVisioTextChild, false) : currentObject;
 
       // Process the object based on its type and properties
       this.ProcessSelectedObject(currentObject, objectToProcess, objectIndex);

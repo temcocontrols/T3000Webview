@@ -20,6 +20,7 @@ import RightClickData from '../Model/RightClickData'
 import ConstantData1 from "../Data/ConstantData1"
 import ArrowheadRecord from '../Model/ArrowheadRecord'
 import ConstantData2 from "../Data/ConstantData2"
+import ShapeAttrUtil from '../Opt/ShapeAttrUtil';
 
 class BaseLine extends BaseDrawingObject {
 
@@ -109,7 +110,7 @@ class BaseLine extends BaseDrawingObject {
     console.log("= S.BaseLine: Input this =", this);
 
     const arrHead = new ArrowheadRecord();
-    if (SDF.LineIsReversed(this, null, false)) {
+    if (ShapeAttrUtil.LineIsReversed(this, null, false)) {
       console.log("= S.BaseLine: Line is reversed");
       arrHead.StartArrowID = this.EndArrowID;
       arrHead.EndArrowID = this.StartArrowID;
@@ -627,7 +628,7 @@ class BaseLine extends BaseDrawingObject {
       }
 
       let widthDifference = textRect.width - this.TextWrapWidth;
-      switch (SDF.TextAlignToWin(this.TextAlign).just) {
+      switch (ShapeAttrUtil.TextAlignToWin(this.TextAlign).just) {
         case ConstantData2.TextJust.TA_LEFT:
           this.trect.x = textRect.x;
           this.trect.width = this.TextWrapWidth;
@@ -2248,7 +2249,7 @@ class BaseLine extends BaseDrawingObject {
           case hookPts.SED_KBC:
           case hookPts.SED_KRC:
           case hookPts.SED_KLC:
-            const isReversed = SDF.LineIsReversed(this, null, false);
+            const isReversed = ShapeAttrUtil.LineIsReversed(this, null, false);
             if (this.hooks.length === 0) {
               if (isReversed) {
                 targetPoints[0].x = ConstantData.Defines.SED_CDim;
@@ -3644,7 +3645,7 @@ class BaseLine extends BaseDrawingObject {
       console.log("= S.BaseLine: DataID is valid:", this.DataID);
 
       // Evaluate vertical justification from text alignment.
-      const textAlignWin = SDF.TextAlignToWin(this.TextAlign);
+      const textAlignWin = ShapeAttrUtil.TextAlignToWin(this.TextAlign);
       switch (textAlignWin.vjust) {
         case ConstantData2.TextJust.TA_TOP:
         case ConstantData2.TextJust.TA_BOTTOM:
@@ -3683,31 +3684,13 @@ class BaseLine extends BaseDrawingObject {
       console.log("= S.BaseLine: Set horizontal text flag (", !this.TextDirection, "); current TextFlags:", this.TextFlags);
     }
 
-    // Determine the DataID to use if WriteBlocks or WriteVisio options are set.
-    if (options.WriteBlocks || options.WriteVisio) {
-      dataIdForWrite = this.DataID;
-      console.log("= S.BaseLine: WriteBlocks or WriteVisio flag set; using DataID:", dataIdForWrite);
-    }
-
-    // If writing for Visio and a polyline exists, delegate the SDF attributes for PolyLine.
-    if (options.WriteVisio && this.polylist) {
-      console.log("= S.BaseLine: WriteVisio flag set and polylist exists; delegating to PolyLine.WriteSDFAttributes");
-      Instance.Shape.PolyLine.prototype.WriteSDFAttributes.call(this, e, options, false);
-    }
-
-    // Write text parameters to SDF.
+    // Write text parameters to ShapeAttrUtil.
     console.log("= S.BaseLine: Writing text parameters with DataID:", dataIdForWrite);
-    SDF.WriteTextParams(e, this, dataIdForWrite, options);
-
-    // Optionally write text for Visio.
-    if (options.WriteVisio && dataIdForWrite >= 0) {
-      console.log("= S.BaseLine: Writing text for Visio with DataID:", dataIdForWrite);
-      SDF.WriteText(e, this, null, null, false, options);
-    }
+    ShapeAttrUtil.WriteTextParams(e, this, dataIdForWrite, options);
 
     // Write arrowhead attributes.
     console.log("= S.BaseLine: Writing arrowhead attributes");
-    SDF.WriteArrowheads(e, options, this);
+    ShapeAttrUtil.WriteArrowheads(e, options, this);
 
     console.log("= S.BaseLine: WriteSDFAttributes completed with output:", {
       DataID: this.DataID,
@@ -3822,7 +3805,7 @@ class BaseLine extends BaseDrawingObject {
     this.DataID = newDataId;
 
     // Get text alignment settings and session object
-    const textAlignWin = SDF.TextAlignToWin(this.TextAlign);
+    const textAlignWin = ShapeAttrUtil.TextAlignToWin(this.TextAlign);
     const sessionObj = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
 
     // Update the fill color based on the session background
@@ -3908,11 +3891,6 @@ class BaseLine extends BaseDrawingObject {
       offsetY = -this.LineTextY * Math.sin(angleRadians);
     }
 
-    // Adjust angle for Visio if needed
-    if (this.VisioRotationDiff) {
-      angleDegrees -= this.VisioRotationDiff;
-    }
-
     // Flip text if angle is in (90,270)
     if (angleDegrees > 90 && angleDegrees < 270) {
       angleDegrees -= 180;
@@ -3941,7 +3919,7 @@ class BaseLine extends BaseDrawingObject {
         }
 
         // Get a justification object from text alignment
-        let just = SDF.TextAlignToJust(this.TextAlign);
+        let just = ShapeAttrUtil.TextAlignToJust(this.TextAlign);
 
         // If text is flipped and this is a simple line, swap left/right alignment
         if (flipText && this.LineType === ConstantData.LineType.LINE) {
@@ -4184,7 +4162,7 @@ class BaseLine extends BaseDrawingObject {
 
     // Calculate vertical offset based on text alignment.
     if (this.LineTextY || this.LineTextX) {
-      const winTextAlign = SDF.TextAlignToWin(this.TextAlign);
+      const winTextAlign = ShapeAttrUtil.TextAlignToWin(this.TextAlign);
       switch (winTextAlign.vjust) {
         case ConstantData2.TextJust.TA_TOP:
           verticalOffset = this.trect.height / 2 - textHeight / 2 + this.LineTextY;

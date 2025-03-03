@@ -137,7 +137,6 @@ class BaseDrawingObject {
   public bInGroup: boolean;
   public LineTextX: number;
   public LineTextY: number;
-  public VisioRotationDiff: number;
   public actionArrowHideTimerID: number;
   public FramezList: any;
   public ParentFrameID: number;
@@ -259,7 +258,6 @@ class BaseDrawingObject {
     this.bInGroup = false;
     this.LineTextX = config.LineTextX || 0;
     this.LineTextY = config.LineTextX || 0;
-    this.VisioRotationDiff = 0;
     this.actionArrowHideTimerID = -1;
     this.FramezList = null;
     this.ParentFrameID = -1;
@@ -4712,9 +4710,8 @@ class BaseDrawingObject {
 
   ContainsText(): boolean {
     console.log("= S.BaseDrawingObject: ContainsText - Input: none");
-    const hasText = this.DataID >= 0 ||
-      GlobalData.optManager.SD_GetVisioTextChild(this.BlockID) >= 0;
-    console.log("= S.BaseDrawingObject: ContainsText - Output:", hasText);
+    const hasText = this.DataID >= 0;
+        console.log("= S.BaseDrawingObject: ContainsText - Output:", hasText);
     return hasText;
   }
 

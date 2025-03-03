@@ -501,7 +501,7 @@ class SVGFragmentSymbol extends BaseSymbol {
     ) {
       const isTextGrowHorizontal = this.TextGrow === ConstantData.TextGrowBehavior.HORIZONTAL &&
         (this.flags & ConstantData.ObjFlags.SEDO_TextOnly) &&
-        SDF.TextAlignToWin(this.TextAlign).just === FileParser.TextJust.TA_LEFT;
+        ShapeAttrUtil.TextAlignToWin(this.TextAlign).just === FileParser.TextJust.TA_LEFT;
       knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
       knobConfig.x = isTextGrowHorizontal ? width + adjustedRKnobSize : width - 3 * adjustedRKnobSize;
       knobConfig.y = height / 2 - adjustedRKnobSize / 2;

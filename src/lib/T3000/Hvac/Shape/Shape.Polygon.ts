@@ -503,15 +503,6 @@ class Polygon extends BaseShape {
       foundTableTarget = GlobalData.optManager.Table_GetTargetPoints(this, table, target, hookFlags, tableTargetPoint, objectID);
     }
 
-    if (objectID >= 0) {
-      const object = GlobalData.optManager.GetObjectPtr(objectID, false);
-      if (object && object.moreflags & ConstantData.ObjMoreFlags.SED_MF_VisioText) {
-        const visioTextPoints = [{ x: dimension / 2, y: dimension / 2 }];
-        console.log('S.Polygon: GetTargetPoints output:', visioTextPoints);
-        return visioTextPoints;
-      }
-    }
-
     if (foundTableTarget) {
       targetPoints.push(tableTargetPoint);
       console.log('S.Polygon: GetTargetPoints output:', targetPoints);
@@ -787,32 +778,11 @@ class Polygon extends BaseShape {
       if (this.polylist) {
         Instance.Shape.PolyLine.prototype.WriteSDFAttributes.call(this, writer, context, true);
       } else {
-        let code = SDF.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWPOLY);
+        let code = ShapeAttrUtil.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWPOLY);
         vertexCount = this.VertexArray.length;
-        width = SDF.ToSDWinCoords(this.Frame.width, context.coordScaleFactor);
-        height = SDF.ToSDWinCoords(this.Frame.height, context.coordScaleFactor);
+        width = ShapeAttrUtil.ToSDWinCoords(this.Frame.width, context.coordScaleFactor);
+        height = ShapeAttrUtil.ToSDWinCoords(this.Frame.height, context.coordScaleFactor);
         polyId = context.WriteBlocks ? this.BlockID : context.polyid++;
-
-        let polyListStruct;
-        if (context.WriteVisio || context.WriteWin32) {
-          polyListStruct = {
-            InstID: polyId,
-            n: vertexCount,
-            dim: { x: 0, y: 0 },
-            flags: ConstantData.PolyListFlags.SD_PLF_FreeHand,
-            ldim: { x: width, y: height }
-          };
-          writer.writeStruct(FileParser.SDF_PolyList_Struct_20, polyListStruct);
-        } else {
-          polyListStruct = {
-            InstID: polyId,
-            n: vertexCount,
-            flags: ConstantData.PolyListFlags.SD_PLF_FreeHand,
-            ldim: { x: width, y: height }
-          };
-          writer.writeStruct(FileParser.SDF_PolyList_Struct_24, polyListStruct);
-        }
-        SDF.Write_LENGTH(writer, code);
 
         for (let i = 0; i < vertexCount; i++) {
           vertexX = this.VertexArray[i].x * width;
@@ -826,9 +796,9 @@ class Polygon extends BaseShape {
             lpt: { x: vertexX, y: vertexY },
             dimDeflection: 0
           };
-          code = SDF.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWPOLYSEG);
+          code = ShapeAttrUtil.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWPOLYSEG);
           writer.writeStruct(FileParser.SDF_PolySeg_Struct, polySegment);
-          SDF.Write_LENGTH(writer, code);
+          ShapeAttrUtil.Write_LENGTH(writer, code);
         }
         writer.writeUint16(FileParser.SDROpCodesByName.SDF_C_DRAWPOLY_END);
       }

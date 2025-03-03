@@ -1120,14 +1120,6 @@ class OptHandler2 {
           ) {
             continue;
           }
-          // Skip locked, non-linkable, or VisioText objects.
-          if (
-            currentObject.flags & ConstantData.ObjFlags.SEDO_Lock ||
-            currentObject.flags & ConstantData.ObjFlags.SEDO_NoLinking ||
-            (currentObject.moreflags & ConstantData.ObjMoreFlags.SED_MF_VisioText)
-          ) {
-            currentObject = null;
-          }
         }
 
         if (currentObject != null) {

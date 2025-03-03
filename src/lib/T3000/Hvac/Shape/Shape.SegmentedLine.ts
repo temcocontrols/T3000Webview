@@ -3046,7 +3046,7 @@ class SegmentedLine extends BaseLine {
     console.log("= S.SegmentedLine: ConnectToHook input", { connectedObjectId, hookType });
 
     let resultHook = hookType;
-    if (SDF.LineIsReversed(this, null, false)) {
+    if (ShapeAttrUtil.LineIsReversed(this, null, false)) {
       if (resultHook === ConstantData.HookPts.SED_KTL) {
         resultHook = ConstantData.HookPts.SED_KTR;
       } else if (resultHook === ConstantData.HookPts.SED_KTR) {
@@ -3077,7 +3077,7 @@ class SegmentedLine extends BaseLine {
 
     // Determine the two candidate points (r and i) from the segmentation points.
     let firstPt: Point, secondPt: Point;
-    if (SDF.LineIsReversed(this, null, false)) {
+    if (ShapeAttrUtil.LineIsReversed(this, null, false)) {
       if (compareValue === 0) {
         // Use the last two points.
         firstPt = this.segl.pts[totalPts - 2];
@@ -3211,146 +3211,6 @@ class SegmentedLine extends BaseLine {
     GlobalData.optManager.Lines_MaintainDist(this, paramA, paramI, point);
     console.log("= S.SegmentedLine: MaintainPoint output", result);
     return result;
-  }
-
-  WriteSDFAttributes(writer, options) {
-    console.log("= S.SegmentedLine: WriteSDFAttributes input", { writer, options });
-
-    const numPoints = this.segl.pts.length;
-    console.log("= S.SegmentedLine: Number of segmentation points", { numPoints });
-
-    const instanceId = options.WriteBlocks ? this.BlockID : options.nsegl++;
-    console.log("= S.SegmentedLine: Instance ID", { instanceId });
-
-    const reversed = SDF.LineIsReversed(this, options, false);
-    console.log("= S.SegmentedLine: Is line reversed?", { reversed });
-
-    let copiedSeg = Utils1.DeepCopy(this.segl);
-    let lastSegIndex = numPoints - 1;
-    if (lastSegIndex < 0) lastSegIndex = 0;
-
-    // If the line is reversed, reverse the segmentation points and swap the direction flags.
-    if (reversed) {
-      console.log("= S.SegmentedLine: Reversing segmentation points and swapping direction flags");
-      for (let i = 0; i < numPoints; i++) {
-        copiedSeg.pts[numPoints - 1 - i].x = this.segl.pts[i].x;
-        copiedSeg.pts[numPoints - 1 - i].y = this.segl.pts[i].y;
-      }
-      const tempDir = copiedSeg.firstdir;
-      copiedSeg.firstdir = copiedSeg.lastdir;
-      copiedSeg.lastdir = tempDir;
-      console.log("= S.SegmentedLine: Reversed direction flags", {
-        firstdir: copiedSeg.firstdir,
-        lastdir: copiedSeg.lastdir,
-      });
-
-      for (let i = 0; i < numPoints - 1; i++) {
-        if (Utils2.IsEqual(copiedSeg.pts[i + 1].x, copiedSeg.pts[i].x)) {
-          copiedSeg.lengths[i] = Math.abs(copiedSeg.pts[i + 1].y - copiedSeg.pts[i].y);
-        } else {
-          copiedSeg.lengths[i] = Math.abs(copiedSeg.pts[i + 1].x - copiedSeg.pts[i].x);
-        }
-      }
-      if (numPoints === 6) {
-        copiedSeg.lengths[2] = copiedSeg.lengths[4];
-      }
-    }
-
-    let sdfData;
-    if (options.WriteVisio || options.WriteWin32) {
-      sdfData = {
-        InstId: instanceId,
-        firstdir: copiedSeg.firstdir,
-        lastdir: copiedSeg.lastdir,
-        nsegs: lastSegIndex,
-        segr: [],
-        lengths: [0, 0, 0, 0, 0],
-        lsegr: [],
-        llengths: [0, 0, 0, 0, 0],
-      };
-    } else {
-      sdfData = {
-        InstId: instanceId,
-        firstdir: copiedSeg.firstdir,
-        lastdir: copiedSeg.lastdir,
-        curveparam: copiedSeg.curveparam,
-        nsegs: lastSegIndex,
-        lsegr: [],
-        llengths: [0, 0, 0, 0, 0],
-      };
-    }
-    console.log("= S.SegmentedLine: Initialized sdfData", sdfData);
-
-    // Determine the minimum X and Y coordinates from all segmentation points.
-    let minX, minY;
-    for (let i = 0; i < numPoints; i++) {
-      if (i === 0 || copiedSeg.pts[i].x < minX) {
-        minX = copiedSeg.pts[i].x;
-      }
-      if (i === 0 || copiedSeg.pts[i].y < minY) {
-        minY = copiedSeg.pts[i].y;
-      }
-    }
-    console.log("= S.SegmentedLine: Computed minX and minY", { minX, minY });
-
-    // Convert each segment's length to SD window coordinates.
-    const lengthsCount = copiedSeg.lengths.length;
-    for (let i = 0; i < lengthsCount; i++) {
-      sdfData.llengths[i] = SDF.ToSDWinCoords(copiedSeg.lengths[i], options.coordScaleFactor);
-    }
-    console.log("= S.SegmentedLine: Converted segment lengths", { llengths: sdfData.llengths });
-
-    // Create rectangle info for each segment between adjacent points.
-    for (let i = 0; i < numPoints - 1; i++) {
-      let segmentRect = {
-        left: SDF.ToSDWinCoords(copiedSeg.pts[i].x - minX, options.coordScaleFactor),
-        top: SDF.ToSDWinCoords(copiedSeg.pts[i].y - minY, options.coordScaleFactor),
-        right: SDF.ToSDWinCoords(copiedSeg.pts[i + 1].x - minX, options.coordScaleFactor),
-        bottom: SDF.ToSDWinCoords(copiedSeg.pts[i + 1].y - minY, options.coordScaleFactor),
-      };
-
-      // Ensure the rectangle is properly ordered.
-      if (numPoints > 2) {
-        if (segmentRect.left > segmentRect.right) {
-          let temp = segmentRect.left;
-          segmentRect.left = segmentRect.right;
-          segmentRect.right = temp;
-        }
-        if (segmentRect.top > segmentRect.bottom) {
-          let temp = segmentRect.top;
-          segmentRect.top = segmentRect.bottom;
-          segmentRect.bottom = temp;
-        }
-      }
-      sdfData.lsegr.push(segmentRect);
-
-      if (options.WriteVisio || options.WriteWin32) {
-        sdfData.segr.push({ left: 0, top: 0, right: 0, bottom: 0 });
-      }
-    }
-    console.log("= S.SegmentedLine: Created segmentation rectangles", { lsegr: sdfData.lsegr });
-
-    // If there are fewer than 5 segments, pad the remaining segment info with zeros.
-    for (let i = numPoints - 1; i < 5; i++) {
-      sdfData.lsegr.push({ left: 0, top: 0, right: 0, bottom: 0 });
-      if (options.WriteVisio || options.WriteWin32) {
-        sdfData.segr.push({ left: 0, top: 0, right: 0, bottom: 0 });
-      }
-    }
-    console.log("= S.SegmentedLine: Padded segmentation rectangles", { lsegr: sdfData.lsegr });
-
-    const code = SDF.Write_CODE(writer, FileParser.SDROpCodesByName.SDF_C_DRAWSEGL);
-    if (options.WriteVisio || options.WriteWin32) {
-      writer.writeStruct(FileParser.SDF_SegLine_Struct, sdfData);
-    } else {
-      writer.writeStruct(FileParser.SDF_SegLine_Struct_210, sdfData);
-    }
-    SDF.Write_LENGTH(writer, code);
-
-    // Call the base class implementation.
-    super.WriteSDFAttributes(writer, options);
-
-    console.log("= S.SegmentedLine: WriteSDFAttributes output", { sdfData, code });
   }
 
 }

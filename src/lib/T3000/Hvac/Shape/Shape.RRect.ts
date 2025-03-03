@@ -340,14 +340,12 @@ class RRect extends BaseShape {
   }
 
   GetPolyPoints(
-    divisionCount: number,
     applyPositionOffset: boolean,
     unusedParamA: any,
     shouldInflateFrame: boolean,
     unusedParamI: any
   ) {
     console.log("= S.RRect: GetPolyPoints input:", {
-      divisionCount,
       applyPositionOffset,
       unusedParamA,
       shouldInflateFrame,
@@ -380,7 +378,6 @@ class RRect extends BaseShape {
     GlobalData.optManager.PolyYCurve(
       pointsArray,
       tempRect,
-      divisionCount / 2,
       0,
       0,
       0,
@@ -396,7 +393,6 @@ class RRect extends BaseShape {
     GlobalData.optManager.PolyYCurve(
       pointsArray,
       tempRect,
-      divisionCount / 2,
       0,
       0,
       cornerSize,
@@ -412,7 +408,6 @@ class RRect extends BaseShape {
     GlobalData.optManager.PolyYCurve(
       pointsArray,
       tempRect,
-      divisionCount / 2,
       0,
       0,
       0,
@@ -428,7 +423,6 @@ class RRect extends BaseShape {
     GlobalData.optManager.PolyYCurve(
       pointsArray,
       tempRect,
-      divisionCount / 2,
       0,
       0,
       -cornerSize,
