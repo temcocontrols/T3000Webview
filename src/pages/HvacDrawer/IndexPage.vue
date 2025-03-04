@@ -2743,6 +2743,9 @@ function readFile(file) {
 // Save an image to the library or online storage
 async function saveLibImage(file) {
   if (user.value) {
+
+    console.log('= Idx saveLibImage file', file);
+    console.log('= Idx saveLibImage user',user.value);
     liveApi
       .post("hvacTools", {
         json: {
@@ -3879,22 +3882,22 @@ function viewportRightClick(ev) {
 //     });
 // }
 
-// // Adds the online images to the library
-// function addOnlineLibImage(oItem) {
-//   const iIndex = library.value.images.findIndex(
-//     (obj) => obj.id === "IMG-" + oItem.id
-//   );
-//   if (iIndex !== -1) {
-//     library.value.images.splice(iIndex, 1);
-//   }
-//   library.value.images.push({
-//     id: "IMG-" + oItem.id,
-//     dbId: oItem.id,
-//     name: oItem.name,
-//     path: process.env.API_URL + "/file/" + oItem.file.path,
-//     online: true,
-//   });
-// }
+// Adds the online images to the library
+function addOnlineLibImage(oItem) {
+  const iIndex = library.value.images.findIndex(
+    (obj) => obj.id === "IMG-" + oItem.id
+  );
+  if (iIndex !== -1) {
+    library.value.images.splice(iIndex, 1);
+  }
+  library.value.images.push({
+    id: "IMG-" + oItem.id,
+    dbId: oItem.id,
+    name: oItem.name,
+    path: process.env.API_URL + "/file/" + oItem.file.path,
+    online: true,
+  });
+}
 </script>
 
 <style>
