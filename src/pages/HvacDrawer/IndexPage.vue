@@ -2746,6 +2746,7 @@ async function saveLibImage(file) {
 
     console.log('= Idx saveLibImage file', file);
     console.log('= Idx saveLibImage user',user.value);
+
     liveApi
       .post("hvacTools", {
         json: {
@@ -3674,6 +3675,11 @@ function deleteLibImage(item) {
     library.value.images.splice(itemIndex, 1);
     if (!item.online) {
       // Delete the image from the webview
+
+      if(library.value.images.length<=0){
+        return;
+      }
+
       const imagePath = cloneDeep(library.value.images[itemIndex].path);
 
       /*
