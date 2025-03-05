@@ -10,7 +10,7 @@ import SEDSession from '../Model/SEDSession';
 import LayersManager from "../Model/LayersManager";
 import Layer from "../Model/Layer";
 import $ from 'jquery';
-import DefaultEvt from "../Event/DefaultEvt";
+import DefaultEvt from "../Event/EvtUtil";
 import ArrowSizes from '../Model/ArrowSizes';
 import Document from '../Basic/Basic.Document';
 import Utils1 from "../Helper/Utils1";

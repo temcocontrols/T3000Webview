@@ -4,7 +4,7 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/GlobalData'
-import DefaultEvt from "../Event/DefaultEvt";
+import DefaultEvt from "../Event/EvtUtil";
 import PolyLine from "./Shape.PolyLine"
 import BaseLine from "./Shape.BaseLine";
 import Point from '../Model/Point'
