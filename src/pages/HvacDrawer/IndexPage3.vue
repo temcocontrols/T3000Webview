@@ -49,7 +49,7 @@
   padding-left: 105px;
   margin-top: 93px;
   width: auto;
-  background-color: darkslategray;
+  background-color: #40e4e4;
 }
 
 #document-area {
@@ -63,7 +63,7 @@
   width: 20px;
   height: 20px;
   user-select: none;
-  left: 99.1px;
+  left: 99px;
   top: 0px;
   background-color: #ebeced;
   overflow: hidden;
@@ -76,9 +76,10 @@
   overflow: hidden;
   position: absolute;
   user-select: none;
-  left: 119.1px;
+  left: 119px;
   top: 0px;
-  width: 976.8px;
+  /* width: 976.8px; */
+  width: 100%;
   height: 20px;
   background-color: rgb(166, 166, 223);
 }
@@ -88,10 +89,11 @@
   overflow: hidden;
   position: absolute;
   user-select: none;
-  left: 99.1px;
+  left: 99px;
   top: 20px;
   width: 20px;
-  height: 175.4px;
+  /* height: 175.4px; */
+  height: auto;
   background-color: yellow;
 }
 
@@ -99,10 +101,12 @@
   scrollbar-width: thin;
   position: absolute;
   background-color: #fff;
-  left: 119.1px;
+  left: 119px;
   top: 20px;
-  width: 976.8px;
-  height: 175.4px;
+  /* width: 976.8px; */
+  width: 100%;
+  /* height: 175.4px; */
+  height: auto;
   overflow: hidden scroll;
   user-select: none;
   background-color: lightseagreen;
@@ -125,42 +129,416 @@
 }
 </style>
 
+
+
+<style>
+.cur-auto {
+  cursor: auto
+}
+
+.cur-default {
+  cursor: default
+}
+
+.cur-none {
+  cursor: none
+}
+
+.cur-context-menu {
+  cursor: context-menu
+}
+
+.cur-help {
+  cursor: help
+}
+
+.cur-pointer {
+  cursor: pointer
+}
+
+.cur-progress {
+  cursor: progress
+}
+
+.cur-wait {
+  cursor: wait
+}
+
+.cur-cell {
+  cursor: cell
+}
+
+.cur-text {
+  cursor: text
+}
+
+.cur-vertical-text {
+  cursor: vertical-text
+}
+
+.cur-alias {
+  cursor: alias
+}
+
+.cur-grab {
+  cursor: grab
+}
+
+.cur-copy {
+  cursor: copy
+}
+
+.cur-move {
+  cursor: move
+}
+
+.cur-no-drop {
+  cursor: no-drop
+}
+
+.cur-not-allowed {
+  cursor: not-allowed
+}
+
+.cur-all-scroll {
+  cursor: all-scroll
+}
+
+.cur-col-resize {
+  cursor: col-resize
+}
+
+.cur-row-resize {
+  cursor: row-resize
+}
+
+.cur-n-resize {
+  cursor: n-resize
+}
+
+.cur-e-resize {
+  cursor: e-resize
+}
+
+.cur-s-resize {
+  cursor: s-resize
+}
+
+.cur-w-resize {
+  cursor: w-resize
+}
+
+.cur-ns-resize {
+  cursor: ns-resize
+}
+
+.cur-ew-resize {
+  cursor: ew-resize
+}
+
+.cur-ne-resize {
+  cursor: ne-resize
+}
+
+.cur-nw-resize {
+  cursor: nw-resize
+}
+
+.cur-se-resize {
+  cursor: se-resize
+}
+
+.cur-sw-resize {
+  cursor: sw-resize
+}
+
+.cur-nesw-resize {
+  cursor: nesw-resize
+}
+
+.cur-nwse-resize {
+  cursor: nwse-resize
+}
+
+.cur-zoom-in {
+  cursor: -webkit-zoom-in
+}
+
+.cur-zoom-out {
+  cursor: -webkit-zoom-out
+}
+
+.cur-zoom-grab {
+  cursor: -webkit-zoom-grab
+}
+
+.cur-zoom-grabbing {
+  cursor: -webkit-zoom-grabbing
+}
+
+.cur-anchor {
+  cursor: url("../sdui/cursors/anchor.cur"), pointer
+}
+
+.cur-paint {
+  cursor: url("../sdui/cursors/paint.cur"), default
+}
+
+.cur-rotate {
+  cursor: url("../sdui/cursors/rotate.cur"), move
+}
+
+.cur-droplib,
+.addSymbolCursor,
+.addSymbolCursor button,
+.addSymbolCursor button label {
+  cursor: url("../sdui/cursors/droplib.cur"), copy
+}
+
+.cur-pencil-x {
+  cursor: url("../sdui/cursors/pencil-x.cur"), pointer
+}
+
+.cur-pencil {
+  cursor: url("../sdui/cursors/edit.cur"), pointer
+}
+
+.cur-pencil-close {
+  cursor: url("../sdui/cursors/edit-close.cur"), pointer
+}
+
+.cur-add {
+  cursor: url("../sdui/cursors/cur1012.cur"), pointer
+}
+
+.cur-stamp {
+  cursor: url("../sdui/cursors/cur1036.cur"), pointer
+}
+
+.cur-arr-down {
+  cursor: url("../sdui/cursors/cur1022.cur"), pointer
+}
+
+.cur-arr-right {
+  cursor: url("../sdui/cursors/cur1023.cur"), pointer
+}
+
+.cur-brush {
+  cursor: url("../sdui/cursors/cur1025.cur"), pointer
+}
+
+.cur-brush-edit {
+  cursor: url("../sdui/cursors/cur1026.cur"), pointer
+}
+
+.cur-brush-cell {
+  cursor: url("../sdui/cursors/cur1027.cur"), pointer
+}
+
+.cur-brush-table {
+  cursor: url("../sdui/cursors/cur1028.cur"), pointer
+}
+
+.cur-add-right {
+  cursor: url("../sdui/cursors/cur1048.cur"), pointer
+}
+
+.cur-add-left {
+  cursor: url("../sdui/cursors/cur1049.cur"), pointer
+}
+
+.cur-add-up {
+  cursor: url("../sdui/cursors/cur1050.cur"), pointer
+}
+
+.cur-add-down {
+  cursor: url("../sdui/cursors/cur1051.cur"), pointer
+}
+
+.cur-add-plus {
+  cursor: url("../sdui/cursors/cur1045.cur"), pointer
+}
+
+.cur-crosshair {
+  cursor: url("../sdui/cursors/crosshair.svg") 18 18, pointer
+}
+</style>
+
 <template>
   <q-page>
 
+    <div id="_crossTabClipboardDiv"
+      style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
+      <div id="_IEclipboardDiv" contenteditable="true"></div>
+      <input id="_clipboardInput" type="text" value=" ">
+    </div>
 
-    <div id="main-panel" class="main-panel">
-      <div id="main-toolbar" class="main-toolbar">
-        <!-- top bar -->
-        <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
-      </div>
-      <div class="main-area">
-        <div id="left-panel" class="left-panel">
-          <!-- left bar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
-            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" />
+    <div id="main-app">
+      <div id="main-panel" class="main-panel">
+        <div id="main-toolbar" class="main-toolbar">
+          <!-- top bar -->
+          <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
         </div>
-        <div id="work-area" class="main-panel">
-          <div id="document-area">
-            <div id="c-ruler" class="document-ruler-corner">
-              c-ruler
-            </div>
-            <div id="h-ruler" class="document-ruler-top">
-            </div>
-            <div id="v-ruler" class="document-ruler-left">
-            </div>
-            <div id="svg-area" class="svg-area">
-            </div>
+        <div class="main-area">
+          <div id="left-panel" class="left-panel">
+            <!-- left bar -->
+            <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+              @tool-dropped="toolDropped" />
           </div>
 
-          <div id="doc-toolbar" class="doc-toolbar">
-            <!-- bottom tool bar -->
-            <BottomToolbar @bottomSliderbarEvent="T3000.Hvac.App.BottomSliderbarEvent">
-            </BottomToolbar>
-          </div>
 
+          <div id="work-area" class="main-panel">
+
+            <div style="display: block;">
+              <button id="btn_try_select">Select</button>
+
+              &nbsp;
+              <button id="btn_try_library">Library</button>
+
+              &nbsp;
+              <button id="btn_try_line">Line</button>
+
+              &nbsp;
+              <button id="btn_try_line1">Line1</button>
+
+              &nbsp;
+              <button id="btn_try_wall">Wall</button>
+
+              &nbsp;
+              <button id="btn_try_Rect">Rect </button>
+
+              &nbsp;
+              <button id="btn_try_Oval">Oval</button>
+
+              &nbsp;
+              <button id="btn_try_Image">Image</button>
+
+              &nbsp;
+              <button id="btn_try_Circ">Circ</button>
+
+              &nbsp;
+              <button id="btn_try_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_ArrR">ArrR</button>
+
+              &nbsp;
+              <button id="btn_try_ArrL">ArrL</button>
+
+              &nbsp;
+              <button id="btn_try_ArrT">ArrT</button>
+
+              &nbsp;
+              <button id="btn_try_ArrB">ArrB</button>
+
+              &nbsp;
+              <button id="btn_try_Roate45">Roate 45</button>
+
+              &nbsp;
+              <button id="btn_try_Roate90">Roate 90</button>
+
+              &nbsp;
+              <button id="btn_try_Align_lefts">Align_lefts</button>
+
+              &nbsp;
+              <button id="btn_try_Align_centers">Align_centers</button>
+
+              &nbsp;
+              <button id="test_btn_try_Align_rights">Align_rights</button>
+
+              &nbsp;
+              <button id="btn_try_Align_tops">Align_tops</button>
+
+              &nbsp;
+              <button id="btn_try_Align_middles">Align_middles</button>
+
+              &nbsp;
+              <button id="btn_try_Align_bottoms">Align_bottoms</button>
+
+              &nbsp;
+              <button id="btn_try_group">Group</button>
+
+              &nbsp;
+              <button id="btn_try_Ungroup">Ungroup</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Horizontal">Flip_Horizontal</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Vertical">Flip_Vertical</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Height">Same_Height</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Width">Same_Width</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Both">Same_Both</button>
+
+              &nbsp;
+              <button id="btn_try_BringToFront">BringToFront</button>
+
+              &nbsp;
+              <button id="btn_try_SendToBack">SendToBack</button>
+
+              &nbsp;
+              <button id="btn_try_Paste">Paste</button>
+
+              &nbsp;
+              <button id="btn_try_Copy">Copy</button>
+
+              &nbsp;
+              <button id="btn_try_Cut">Cut</button>
+
+              &nbsp;
+              <button id="btn_try_Delete">Delete</button>
+
+              &nbsp;
+              <button id="btn_try_Undo">Undo</button>
+
+              &nbsp;
+              <button id="btn_try_Redo">Redo</button>
+
+              &nbsp;
+              <button id="btn_try_Save">Save</button>
+
+              &nbsp;
+              <button id="btn_try_Duplicate">Duplicate</button>
+
+              &nbsp;
+              <button id="btn_try_Clear">Clear</button>
+
+              &nbsp;
+              <button id="btn_try_Measure">Measure</button>
+
+              &nbsp;
+              <button id="btn_try_AreaMeasure">AreaMeasure</button>
+
+            </div>
+
+
+            <div id="document-area">
+              <div id="c-ruler" class="document-ruler-corner">
+                c-ruler
+              </div>
+              <div id="h-ruler" class="document-ruler-top">
+              </div>
+              <div id="v-ruler" class="document-ruler-left">
+              </div>
+              <div id="svg-area" class="svg-area">
+              </div>
+            </div>
+
+            <div id="doc-toolbar" class="doc-toolbar">
+
+              <!-- <BottomToolbar @bottomSliderbarEvent="T3000.Hvac.App.BottomSliderbarEvent">
+              </BottomToolbar> -->
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
@@ -286,10 +664,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-// import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
-// import { tools, T3_Types, getObjectActiveValue, user, globalNav, demoDeviceData } from "../../lib/common";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
-
+import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -302,11 +677,7 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import BottomToolbar from "src/components/BottomToolbar.vue";
-import {
-  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
-  savedNotify
-} from '../../lib/T3000/Hvac/Data/T3Data'
+
 
 // import T3000 from "src/lib/T3000";
 import T3000 from 'src/lib/T3000/T3000';
@@ -335,10 +706,10 @@ const keycon = new KeyController(); // Initialize key controller for handling ke
 const $q = useQuasar(); // Access Quasar framework instance
 const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
-// const viewport = ref(null); // Reference to the viewport element
+const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -351,11 +722,11 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
-// const savedNotify = ref(false); // Notification state for saving
+const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
 // Panel options for selection
-// const selectPanelOptions = ref(T3000_Data.value.panelsData);
+const selectPanelOptions = ref(T3000_Data.value.panelsData);
 let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
@@ -380,31 +751,31 @@ if (process.env.DEV) {
 
 // Initialization of empty project and library structures
 let panzoomInstance = null;
-// const emptyProject = {
-//   version: process.env.VERSION,
-//   items: [],
-//   selectedTargets: [],
-//   elementGuidelines: [],
-//   itemsCount: 0,
-//   groupCount: 0,
-//   activeItemIndex: null,
-//   viewportTransform: { x: 0, y: 0, scale: 1 },
-// };
-// const emptyLib = {
-//   version: process.env.VERSION,
-//   imagesCount: 0,
-//   objLibItemsCount: 0,
-//   images: [],
-//   objLib: [],
-// };
+const emptyProject = {
+  version: process.env.VERSION,
+  items: [],
+  selectedTargets: [],
+  elementGuidelines: [],
+  itemsCount: 0,
+  groupCount: 0,
+  activeItemIndex: null,
+  viewportTransform: { x: 0, y: 0, scale: 1 },
+};
+const emptyLib = {
+  version: process.env.VERSION,
+  imagesCount: 0,
+  objLibItemsCount: 0,
+  images: [],
+  objLib: [],
+};
 
 // State references for the library and application state
-// const library = ref(cloneDeep(emptyLib));
-// const appState = ref(cloneDeep(emptyProject));
+const library = ref(cloneDeep(emptyLib));
+const appState = ref(cloneDeep(emptyProject));
 const undoHistory = ref([]); // History for undo actions
 const redoHistory = ref([]); // History for redo actions
-// const locked = ref(false); // State to lock or unlock the interface
-// const grpNav = ref([]); // Navigation history for grouped elements
+const locked = ref(false); // State to lock or unlock the interface
+const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
@@ -450,7 +821,7 @@ onMounted(() => {
 
   // Save the state before the window is unloaded
   window.addEventListener("beforeunload", function (event) {
-    save();
+    // save();
   });
 
   // // Initialize panzoom for viewport
@@ -1068,11 +1439,11 @@ function addObject(item, group = undefined, addToHistory = true) {
   return item;
 }
 
-// const viewportMargins = {
-//   // top: 36,
-//   top: 38 + 20 + 2,
-//   left: 106 + 20 + 2,
-// };
+const viewportMargins = {
+  // top: 36,
+  top: 38 + 20 + 2,
+  left: 106 + 20 + 2,
+};
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
