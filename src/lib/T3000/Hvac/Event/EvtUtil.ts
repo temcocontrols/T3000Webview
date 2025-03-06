@@ -8,7 +8,7 @@ import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import ConstantData2 from '../Data/ConstantData2'
 import RightClickData from '../Model/RightClickData'
-import DocOpt from '../Opt/Business/DocOpt'
+// import DocOpt from '../Opt/Business/DocOpt'
 
 class EvtUtil {
 
