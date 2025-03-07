@@ -2,15 +2,14 @@
 
 import GlobalData from '../../Data/GlobalData'
 import Utils1 from '../../Helper/Utils1'
+import Utils3 from '../../Helper/Utils3'
 import Utils2 from '../../Helper/Utils2'
 import Utils4 from '../../Helper/Utils4'
-import ListManager from '../../Data/ListManager'
 import Resources from '../../Data/Resources'
 import Line from '../../Shape/Shape.Line'
 import Rect from '../../Shape/Shape.Rect'
 import $ from 'jquery'
 import Polygon from '../../Shape/Shape.Polygon'
-import Commands from './ToolOpt'
 import RRect from '../../Shape/Shape.RRect'
 import Oval from '../../Shape/Shape.Oval'
 import Clipboard from './Clipboard'
@@ -21,23 +20,21 @@ import SVGFragmentSymbol from '../../Shape/Shape.SVGFragmentSymbol'
 import QuickStyle from '../../Model/QuickStyle'
 import Instance from '../../Data/Instance/Instance'
 import PolyList from '../../Model/PolyList'
-import DataOpt from '../../Data/DataOpt'
 import ToolConstant from './ToolConstant'
 
 class ToolUtil {
 
   /**
-   * Sets the current selection tool and manages related states
-   * @param toolType - The type of selection tool to set
-   * @param isSticky - Whether the tool should be sticky
-   */
+     * Sets the current selection tool and manages related states
+     * @param toolType - The type of selection tool to set
+     * @param isSticky - Whether the tool should be sticky
+     */
   SetSelectionTool(toolType, isSticky) {
     console.log('O.ActiveSelection.SetSelectionTool - Input:', { toolType, isSticky });
 
     // Initial render of all SVG selection states
     GlobalData.optManager.RenderAllSVGSelectionStates();
 
-    /*
     // Check if we're currently using the wall tool
     const isCurrentlyWallTool = ConstantData.DocumentContext.SelectionTool === Resources.Tools.Tool_Wall;
 
@@ -61,15 +58,14 @@ class ToolUtil {
       isSticky: ConstantData.DocumentContext.SelectionToolSticky,
       usingWallTool: ConstantData.DocumentContext.UsingWallTool
     });
-    */
   }
 
   /**
-   * Cancels the current modal operation
-   * @param skipMessageHandling - If true, skips handling of collaboration messages
-   * @returns false to indicate operation was cancelled
-   */
-  CancelModalOperation = function (skipMessageHandling?) {
+     * Cancels the current modal operation
+     * @param skipMessageHandling - If true, skips handling of collaboration messages
+     * @returns false to indicate operation was cancelled
+     */
+  CancelModalOperation(skipMessageHandling?) {
     console.log("O.ToolOpt CancelModalOperation input:", skipMessageHandling);
 
     // Commands.MainController.Selection.SetSelectionTool(Resources.Tools.Tool_Select, false);
@@ -91,7 +87,7 @@ class ToolUtil {
    * @param wallObj - Optional wall object containing thickness data
    * @returns void
    */
-  SetDefaultWallThickness = function (thickness, wallObj) {
+  SetDefaultWallThickness(thickness, wallObj) {
     console.log("O.ToolOpt SetDefaultWallThickness input:", thickness, wallObj);
 
     var conversionFactor = 1;
@@ -124,12 +120,12 @@ class ToolUtil {
   }
 
   /**
-   * Creates a new wall shape in the drawing
-   * @param event - The drawing event
-   * @param target - Target position or context
-   * @returns The created wall object if isTargetValid is true
-   */
-  DrawNewWallShape = function (event, target) {
+     * Creates a new wall shape in the drawing
+     * @param event - The drawing event
+     * @param target - Target position or context
+     * @returns The created wall object if isTargetValid is true
+     */
+  DrawNewWallShape(event, target) {
     console.log("O.ToolOpt DrawNewWallShape input:", event, target);
 
     var wallObject;
@@ -155,42 +151,43 @@ class ToolUtil {
   }
 
   /**
-   * Prepares and initiates the stamping or drag-dropping of a new shape
-   * @param uiAdaptationFlag - Flag to control UI adaptation
-   * @param shapeType - The type of shape to stamp or drag-drop
-   * @returns void
+   * Handles initiating the process of stamping or drag-dropping a new shape
+   * @param event - The UI event that triggered this action
+   * @param shapeType - The type of shape to create
    */
-  StampOrDragDropNewShape = function (uiAdaptationFlag, shapeType) {
-    console.log("O.ToolOpt StampOrDragDropNewShape input:", uiAdaptationFlag, shapeType);
+  StampOrDragDropNewShape(event, shapeType) {
+    console.log('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
 
-    var callback;
-    var thisReference;
+    let context;
+    let callbackFunction;
 
-    // Set UI adaptation based on the flag
-    GlobalData.optManager.SetUIAdaptation(uiAdaptationFlag);
+    GlobalData.optManager.SetUIAdaptation(event);
 
-    // Initialize drag-drop or stamp operation
+    // Initialize cancel flag
+    let cancelOperation = false;
+
+    // Prepare for drag-drop or stamp operation
     GlobalData.optManager.PreDragDropOrStamp();
 
-    // Store reference to this context and callback
-    thisReference = this;
-    callback = this.StampOrDragDropCallback;
+    // Set up the context and callback
+    context = this;
+    callbackFunction = this.StampOrDragDropCallback;
 
-    // Set timeout to trigger the callback after 200ms
-    GlobalData.optManager.StampTimeout = window.setTimeout(callback, 200, thisReference, shapeType);
+    // Set a timeout to execute the callback after a short delay
+    GlobalData.optManager.StampTimeout = window.setTimeout(callbackFunction, 200, context, shapeType);
 
-    console.log("O.ToolOpt StampOrDragDropNewShape output: void");
+    console.log('U.ToolUtil.StampOrDragDropNewShape - Output: StampTimeout set');
   }
 
   /**
-   * Creates and draws a new line shape based on the specified type
-   * @param lineType - The type of line to draw
-   * @param targetPosition - The target position or context
-   * @param eventObject - The event object for drawing
-   * @param referenceObject - Reference object for line properties
-   * @returns The created line shape object if in drawing mode
-   */
-  DrawNewLineShape = function (lineType, targetPosition, eventObject, referenceObject?) {
+    * Creates and draws a new line shape based on the specified type
+    * @param lineType - The type of line to draw
+    * @param targetPosition - The target position or context
+    * @param eventObject - The event object for drawing
+    * @param referenceObject - Reference object for line properties
+    * @returns The created line shape object if in drawing mode
+    */
+  DrawNewLineShape(lineType, targetPosition, eventObject, referenceObject?) {
     console.log("O.ToolOpt DrawNewLineShape input:", lineType, targetPosition, eventObject, referenceObject);
 
     let isDrawing = false;
@@ -251,7 +248,7 @@ class ToolUtil {
    * @param referenceObject - Optional reference object to copy properties from
    * @returns The created line object if in drawing mode
    */
-  DrawNewLine = function (event, lineType, isDrawing, referenceObject) {
+  DrawNewLine(event, lineType, isDrawing, referenceObject) {
     console.log("O.ToolOpt DrawNewLine input:", event, lineType, isDrawing, referenceObject);
 
     const sessionData = GlobalData.objectStore.GetObject(GlobalData.optManager.theSEDSessionBlockID).Data;
@@ -351,7 +348,7 @@ class ToolUtil {
    * @param shapeType - The type of shape to stamp or drag-drop
    * @returns void
    */
-  StampOrDragDropCallback = function (context, shapeType) {
+  StampOrDragDropCallback(context, shapeType) {
     console.log("O.ToolOpt StampOrDragDropCallback input:", context, shapeType);
 
     var result;
@@ -401,7 +398,7 @@ class ToolUtil {
    * @param isSquare - Whether to create a square (true) or rectangle (false)
    * @returns void
    */
-  StampRectangle = function (isDragDropMode, isSquare) {
+  StampRectangle(isDragDropMode, isSquare) {
     console.log("O.ToolOpt StampRectangle input:", isDragDropMode, isSquare);
 
     let width, height;
@@ -450,7 +447,7 @@ class ToolUtil {
    * @param isSquare - Whether to create a square (true) or rectangle (false)
    * @returns void
    */
-  StampRoundRect = function (isDragDropMode, isSquare) {
+  StampRoundRect(isDragDropMode, isSquare) {
     console.log("O.ToolOpt StampRoundRect input:", isDragDropMode, isSquare);
 
     let width, height;
@@ -499,7 +496,7 @@ class ToolUtil {
    * @param isCircle - Whether to create a circle (true) or oval (false)
    * @returns void
    */
-  StampCircle = function (isDragDropMode, isCircle) {
+  StampCircle(isDragDropMode, isCircle) {
     console.log("O.ToolOpt StampCircle input:", isDragDropMode, isCircle);
 
     let width, height;
@@ -557,7 +554,7 @@ class ToolUtil {
    * @param skipTargetCheck - Whether to skip target selection check
    * @returns void
    */
-  StampTextLabel = function (isDragDropMode, skipTargetCheck) {
+  StampTextLabel(isDragDropMode, skipTargetCheck) {
     console.log("O.ToolOpt StampTextLabel input:", isDragDropMode, skipTargetCheck);
 
     // Get the text edit session block
@@ -651,84 +648,65 @@ class ToolUtil {
   }
 
   /**
-   * Creates and stamps a shape onto the drawing
+   * Creates and stamps a shape based on the specified shape type
    * @param shapeType - The type of shape to stamp
-   * @param isDragDropMode - Whether to use drag-drop mode or mouse stamp mode
+   * @param isDragMode - Whether the shape is being dragged (vs. placed directly)
    * @returns void
    */
-  StampShape = function (shapeType, isDragDropMode) {
-    console.log("O.ToolOpt StampShape input:", shapeType, isDragDropMode);
+  StampShape(shapeType, isDragMode) {
+    console.log("U.ToolUtil.StampShape - Input:", shapeType, isDragMode);
 
-    const shapeTypeConstants = ConstantData.SDRShapeTypes;
-
-    // Initial frame positioned off-screen
-    const initialFrame = {
+    let newShape;
+    const shapeTypes = ConstantData.SDRShapeTypes;
+    const defaultFrame = {
       x: -1000,
       y: -1000,
       width: ConstantData.Defines.Shape_Width,
       height: ConstantData.Defines.Shape_Height
     };
 
-    // Get shape parameters for the specific shape type
-    const shapeParams = GlobalData.optManager.GetShapeParams(shapeType, initialFrame);
-    console.log('O.ToolOpt StampShape shapeParams:', shapeParams);
+    // Get shape parameters for the specified shape type
+    const shapeParams = GlobalData.optManager.GetShapeParams(shapeType, defaultFrame);
 
-    // Determine dimensions based on whether shape is square or not
-    if (shapeParams.bIsSquare) {
-      initialFrame.width = ConstantData.Defines.Shape_Square;
-      initialFrame.height = ConstantData.Defines.Shape_Square;
-    } else {
-      initialFrame.width = ConstantData.Defines.Shape_Width;
-      initialFrame.height = ConstantData.Defines.Shape_Height;
-    }
-
-    // Create attributes for the shape
+    // Configure shape attributes
     const shapeAttributes = {
-      Frame: initialFrame,
+      Frame: defaultFrame,
       TextGrow: ConstantData.TextGrowBehavior.PROPORTIONAL,
       dataclass: shapeParams.dataclass,
-      shapeparam: shapeParams.shapeparam,
-      ObjGrow: ConstantData.GrowBehavior.ALL,
-      VertexArray: null
+      shapeparam: shapeParams.shapeparam
     };
 
-    // Add proportional growth attribute if it's a square
+    // If it's a square shape, set proportional grow behavior
     if (shapeParams.bIsSquare) {
       shapeAttributes.ObjGrow = ConstantData.GrowBehavior.PROPORTIONAL;
     }
 
-    // Create the appropriate shape object based on type
-    let shapeObject;
-
+    // Create the appropriate shape object based on dataclass
     switch (shapeParams.dataclass) {
-      case shapeTypeConstants.SED_S_Rect:
-        shapeObject = new Rect(shapeAttributes);
+      case shapeTypes.SED_S_Rect:
+        newShape = new Rect(shapeAttributes);
         break;
 
-      case shapeTypeConstants.SED_S_RRect:
-        shapeObject = new RRect(shapeAttributes);
+      case shapeTypes.SED_S_RRect:
+        newShape = new RRect(shapeAttributes);
         break;
 
-      case shapeTypeConstants.SED_S_Oval:
-        shapeObject = new Oval(shapeAttributes);
+      case shapeTypes.SED_S_Oval:
+        newShape = new Oval(shapeAttributes);
         break;
 
       default:
-        // For polygon shapes, get the vertices
-        const vertices = shapeParams.polyVectorMethod(initialFrame, shapeParams.shapeparam);
-        shapeAttributes.VertexArray = vertices;
-        shapeObject = new Polygon(shapeAttributes);
-        shapeObject.dataclass = shapeParams.dataclass;
+        // For polygons and other shape types
+        const vertexArray = shapeParams.polyVectorMethod(defaultFrame, shapeParams.shapeparam);
+        shapeAttributes.VertexArray = vertexArray;
+        newShape = new Polygon(shapeAttributes);
+        newShape.dataclass = shapeParams.dataclass;
     }
 
-    // Use drag drop or mouse stamp to add the shape to the drawing
-    if (isDragDropMode) {
-      GlobalData.optManager.DragDropNewShape(shapeObject, true, true, true, null, null);
-    } else {
-      GlobalData.optManager.MouseStampNewShape(shapeObject, true, true, true, null, null);
-    }
+    // Stamp the shape onto the canvas
+    GlobalData.optManager.MouseStampNewShape(newShape, true, true, true, null, null);
 
-    console.log("O.ToolOpt StampShape output: void");
+    console.log("U.ToolUtil.StampShape - Output: Shape stamped successfully");
   }
 
   /**
@@ -736,7 +714,7 @@ class ToolUtil {
    * @param rotationAngle - The angle (in degrees) to rotate the selected shapes
    * @returns void
    */
-  RotateShapes = function (rotationAngle) {
+  RotateShapes(rotationAngle) {
     console.log("O.ToolOpt RotateShapes input:", rotationAngle);
 
     try {
@@ -755,7 +733,7 @@ class ToolUtil {
    * @param alignmentType - The type of alignment to apply to selected shapes
    * @returns void
    */
-  AlignShapes = function (alignmentType) {
+  AlignShapes(alignmentType) {
     console.log("O.ToolOpt AlignShapes input:", alignmentType);
 
     try {
@@ -773,7 +751,7 @@ class ToolUtil {
    * Deletes the currently selected objects from the drawing
    * @returns void
    */
-  DeleteSelectedObjects = function () {
+  DeleteSelectedObjects() {
     console.log("O.ToolOpt DeleteSelectedObjects input: no parameters");
 
     try {
@@ -791,7 +769,7 @@ class ToolUtil {
    * Undoes the last operation in the drawing
    * @returns void
    */
-  Undo = function () {
+  Undo() {
     console.log("O.ToolOpt Undo input: no parameters");
 
     try {
@@ -808,7 +786,7 @@ class ToolUtil {
    * Redoes the last undone operation in the drawing
    * @returns void
    */
-  Redo = function () {
+  Redo() {
     console.log("O.ToolOpt Redo input: no parameters");
 
     try {
@@ -825,7 +803,7 @@ class ToolUtil {
    * Copies the currently selected objects to the clipboard
    * @returns void
    */
-  Copy = function () {
+  Copy() {
     console.log("O.ToolOpt Copy input: no parameters");
 
     try {
@@ -853,7 +831,7 @@ class ToolUtil {
    * Cuts the currently selected objects to the clipboard
    * @returns void
    */
-  Cut = function () {
+  Cut() {
     console.log("O.ToolOpt Cut input: no parameters");
 
     try {
@@ -882,7 +860,7 @@ class ToolUtil {
    * @param eventData - Optional event data containing paste position information
    * @returns void
    */
-  Paste = function (eventData) {
+  Paste(eventData) {
     console.log("O.ToolOpt Paste input:", eventData);
 
     try {
@@ -905,7 +883,7 @@ class ToolUtil {
    * Sends the selected objects to the back of the drawing order
    * @returns void
    */
-  SendToBackOf = function () {
+  SendToBackOf() {
     console.log("O.ToolOpt SendToBackOf input: no parameters");
 
     try {
@@ -923,7 +901,7 @@ class ToolUtil {
    * Brings the selected objects to the front of the drawing order
    * @returns void
    */
-  BringToFrontOf = function () {
+  BringToFrontOf() {
     console.log("O.ToolOpt BringToFrontOf input: no parameters");
 
     try {
@@ -941,7 +919,7 @@ class ToolUtil {
    * Groups the currently selected shapes together
    * @returns void
    */
-  GroupSelectedShapes = function () {
+  GroupSelectedShapes() {
     console.log("O.ToolOpt GroupSelectedShapes input: no parameters");
 
     try {
@@ -960,7 +938,7 @@ class ToolUtil {
    * Ungroups the currently selected grouped shapes
    * @returns void
    */
-  UngroupSelectedShapes = function () {
+  UngroupSelectedShapes() {
     console.log("O.ToolOpt UngroupSelectedShapes input: no parameters");
 
     try {
@@ -978,7 +956,7 @@ class ToolUtil {
    * Flips the selected objects horizontally
    * @returns void
    */
-  FlipHorizontal = function () {
+  FlipHorizontal() {
     console.log("O.ToolOpt FlipHorizontal input: no parameters");
 
     try {
@@ -996,7 +974,7 @@ class ToolUtil {
    * Flips the selected objects vertically
    * @returns void
    */
-  FlipVertical = function () {
+  FlipVertical() {
     console.log("O.ToolOpt FlipVertical input: no parameters");
 
     try {
@@ -1015,7 +993,7 @@ class ToolUtil {
    * @param dimensionType - Integer specifying which dimension to make the same (width, height, or both)
    * @returns void
    */
-  MakeSameSize = function (dimensionType) {
+  MakeSameSize(dimensionType) {
     console.log("O.ToolOpt MakeSameSize input:", dimensionType);
 
     try {
@@ -1032,7 +1010,7 @@ class ToolUtil {
    * Gets the current selection context information
    * @returns Object containing information about the current selection state
    */
-  GetSelectionContext = function () {
+  GetSelectionContext() {
     console.log("O.ToolOpt GetSelectionContext input: no parameters");
 
     try {
@@ -1048,7 +1026,7 @@ class ToolUtil {
    * Checks if text editing is currently active
    * @returns Boolean indicating whether text editing is active
    */
-  IsActiveTextEdit = function () {
+  IsActiveTextEdit() {
     console.log("O.ToolOpt IsActiveTextEdit input: no parameters");
 
     try {
@@ -1070,7 +1048,7 @@ class ToolUtil {
    * @param eventModifier - Additional event modifiers
    * @returns Result of the key down handling operation
    */
-  HandleKeyDown = function (keyEvent, targetElement, eventModifier) {
+  HandleKeyDown(keyEvent, targetElement, eventModifier) {
     console.log("O.ToolOpt HandleKeyDown input:", keyEvent, targetElement, eventModifier);
 
     try {
@@ -1087,7 +1065,7 @@ class ToolUtil {
    * Duplicates the currently selected objects
    * @returns void
    */
-  Duplicate = function () {
+  Duplicate() {
     console.log("O.ToolOpt Duplicate input: no parameters");
 
     try {
@@ -1106,7 +1084,7 @@ class ToolUtil {
    * @param targetElement - The DOM element target
    * @returns Result of the key press handling operation
    */
-  HandleKeyPress = function (keyEvent, targetElement) {
+  HandleKeyPress(keyEvent, targetElement) {
     console.log("O.ToolOpt HandleKeyPress input:", keyEvent, targetElement);
 
     try {
@@ -1119,20 +1097,18 @@ class ToolUtil {
     }
   }
 
-  SD_PreLoad_Symbol = function (e, t, a, r) {
+  /**
+   * Handles drag-drop operations for symbols
+   * @param contextObject - The context object containing callback references
+   * @param symbolData - The data for the symbol to be dragged/dropped
+   * @returns void
+   */
+  DragDropSymbol(contextObject, symbolData) {
+    console.log("U.ToolUtil.dragDropSymbol - Input:", contextObject, symbolData);
 
-    this.StampOrDragDropNewSymbol(e, t)
-  }
+    this.StampOrDragDropNewSymbol(contextObject, symbolData);
 
-
-  DragDropSymbol = function (r, i) {
-
-    this.StampOrDragDropSymbolCallback(r, i)
-  }
-
-  StampOrDragDropSymbolCallback = function (r, i) {
-
-    this.SD_PreLoad_Symbol(i, !0, r.StampOrDragDropNewSymbol, !0)
+    console.log("U.ToolUtil.dragDropSymbol - Output: void");
   }
 
   /**
@@ -1141,7 +1117,7 @@ class ToolUtil {
    * @param useDragDrop - Whether to use drag-drop mode (true) or stamp mode (false)
    * @returns void
    */
-  StampOrDragDropNewSymbol = function (symbolData, useDragDrop) {
+  StampOrDragDropNewSymbol(symbolData, useDragDrop) {
     console.log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolData, useDragDrop);
 
     // Clear any previous replace symbol ID
@@ -1173,7 +1149,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for line properties
    * @returns The created segmented line shape if in drawing mode
    */
-  DrawNewSegLine = function (isDrawing, eventObject, referenceObject) {
+  DrawNewSegLine(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewSegLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1265,7 +1241,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for line properties
    * @returns The created arc segmented line shape if in drawing mode
    */
-  DrawNewArcSegLine = function (isDrawing, eventObject, referenceObject) {
+  DrawNewArcSegLine(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewArcSegLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1356,7 +1332,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for polyline properties
    * @returns The created polyline shape if in drawing mode
    */
-  DrawNewPolyLine = function (isDrawing, eventObject, referenceObject) {
+  DrawNewPolyLine(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewPolyLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1452,7 +1428,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for polyline container properties
    * @returns The created polyline container shape if in drawing mode
    */
-  DrawNewPolyLineContainer = function (isDrawing, eventObject, referenceObject) {
+  DrawNewPolyLineContainer(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewPolyLineContainer input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1521,7 +1497,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for line properties
    * @returns The created freehand line shape if in drawing mode
    */
-  DrawNewFreehandLine = function (isDrawing, eventObject, referenceObject) {
+  DrawNewFreehandLine(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewFreehandLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1584,7 +1560,7 @@ class ToolUtil {
    * @param referenceObject - Reference object for line properties
    * @returns The created arc line shape if in drawing mode
    */
-  DrawNewArcLine = function (isDrawing, eventObject, referenceObject) {
+  DrawNewArcLine(isDrawing, eventObject, referenceObject) {
     console.log("O.ToolOpt DrawNewArcLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
@@ -1672,7 +1648,7 @@ class ToolUtil {
    * Selects all objects in the drawing
    * @returns void
    */
-  SelectAllObjects = function () {
+  SelectAllObjects() {
     console.log("O.ToolOpt SelectAllObjects input: no parameters");
 
     try {
@@ -1688,7 +1664,7 @@ class ToolUtil {
    * Saves the current drawing to local storage
    * @returns void
    */
-  SaveAs = function () {
+  SaveAs() {
     console.log("U.ToolUtil SaveAs input: no parameters");
 
     GlobalData.optManager.CloseEdit();

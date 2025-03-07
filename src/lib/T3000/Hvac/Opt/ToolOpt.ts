@@ -28,7 +28,7 @@ class ToolOpt {
       GlobalData.optManager.ResetObjectDraw();
     }
 
-    let selectionModeAttr = "all";// event.currentTarget.attributes.getNamedItem(ConstantData.Constants.Attr_SelectionMode);
+    let selectionModeAttr = "";// event.currentTarget.attributes.getNamedItem(ConstantData.Constants.Attr_SelectionMode);
     let isMultipleSelection = false;
 
     if (selectionModeAttr) {
@@ -58,7 +58,6 @@ class ToolOpt {
       // ConstantData.DocumentContext.SelectionToolMultiple = true;
     }
 
-    GlobalData.optManager.CloseEdit();
     console.log('O.ToolOpt.SelectAct - Output:', { isMultipleSelection, selectionMode: selectionModeAttr });
   }
 
@@ -388,7 +387,7 @@ class ToolOpt {
     console.log('O.ToolOpt.ClickSymbolAct - Input:', { event });
 
     const symbolId = "d6e019b9-110d-4990-8897-eade69451d92";
-    this.tul.SD_PreLoad_Symbol(symbolId, false, null, true);
+    this.tul.StampOrDragDropNewSymbol(symbolId, false);
 
     console.log('O.ToolOpt.ClickSymbolAct - Output: Pre-loaded symbol', symbolId);
   }
@@ -401,7 +400,7 @@ class ToolOpt {
   DragDropSymbolAct(event) {
     console.log('O.ToolOpt.DragDropSymbolAct - Input:', { event });
 
-    this.tul.DragDropSymbol(event, 't.value');
+    this.tul.DragDropSymbol(event, true);
 
     console.log('O.ToolOpt.DragDropSymbolAct - Output: Handled symbol drag and drop');
   }
