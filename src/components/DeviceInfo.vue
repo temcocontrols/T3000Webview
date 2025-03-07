@@ -419,17 +419,27 @@ export default defineComponent({
         return;
       }
       else {
-        // clear the reload initial data flag when user selects a new graphic
-        Hvac.WsClient.clearInitialDataInterval();
 
-        Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
-        Hvac.DeviceOpt.addPresetsData();
-        Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
+        try {
+          // clear the reload initial data flag when user selects a new graphic
+          Hvac.WsClient.clearInitialDataInterval();
 
-        // sync t3 appState data to ls [deviceAppState]
-        // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+          Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
+          Hvac.DeviceOpt.addPresetsData();
+          Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
 
-        emit('updateDeviceModel', false, currentDevice.value);
+          // sync t3 appState data to ls [deviceAppState]
+          // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
+
+          emit('updateDeviceModel', false, currentDevice.value);
+        }
+        catch (error) {
+          $q.notify({
+            type: "negative",
+            message: "= Dev test " + error,
+          });
+          return;
+        }
       }
     }
 

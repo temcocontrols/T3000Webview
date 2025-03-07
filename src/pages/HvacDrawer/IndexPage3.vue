@@ -446,7 +446,7 @@
               <button id="btn_try_Align_centers">Align_centers</button>
 
               &nbsp;
-              <button id="test_btn_try_Align_rights">Align_rights</button>
+              <button id="btn_try_Align_rights">Align_rights</button>
 
               &nbsp;
               <button id="btn_try_Align_tops">Align_tops</button>
@@ -458,7 +458,7 @@
               <button id="btn_try_Align_bottoms">Align_bottoms</button>
 
               &nbsp;
-              <button id="btn_try_group">Group</button>
+              <button id="btn_try_Group">Group</button>
 
               &nbsp;
               <button id="btn_try_Ungroup">Ungroup</button>

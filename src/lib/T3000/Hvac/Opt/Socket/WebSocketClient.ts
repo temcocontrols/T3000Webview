@@ -412,27 +412,36 @@ class WebSocketClient {
   // Implement your message processing logic here
 
   private printLog(parsedData) {
-    if (parsedData.action == "GET_INITIAL_DATA_RES") {
-      const data = JSON.parse(parsedData.data);
-      const entry = parsedData.entry;
-      const library = JSON.parse(parsedData.library);
-      console.log('= Ws received parsed data:', { action: "GET_INITIAL_DATA_RES", data, entry, library });
+    try {
+      if (parsedData.action == "GET_INITIAL_DATA_RES") {
+        const data = JSON.parse(parsedData.data);
+        const entry = parsedData.entry;
+        const library = JSON.parse(parsedData.library);
+        console.log('= Ws received parsed data:', { action: "GET_INITIAL_DATA_RES", data, entry, library });
+      }
+      else {
+        console.log('= Ws received parsed data:', parsedData);
+      }
     }
-    else {
-      console.log('= Ws received parsed data:', parsedData);
+    catch (error) {
+      console.log('= Ws print log error', error);
     }
   }
 
   private processMessage(data: any) {
+
+    console.log('= Ws received origin data', data);
+
     try {
       const parsedData = JSON.parse(data);
-      this.printLog(parsedData);
 
       const hasError = parsedData.error !== undefined || parsedData?.status === false;
       if (hasError) {
         this.handleError(parsedData);
         return;
       }
+
+      this.printLog(parsedData);
 
       this.processMessageData(parsedData);
       this.showSuccess(parsedData);
