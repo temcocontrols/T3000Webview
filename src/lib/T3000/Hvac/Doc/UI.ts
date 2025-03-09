@@ -1,5 +1,5 @@
 
-import GPP from '../Data/GlobalData';
+import GPP from '../Data/T3Gv';
 import StateManager from '../Data/State/StateManager';
 import ObjectStore from '../Data/State/ObjectStore';
 import ObjectStoreFactory from '../Data/State/ObjectStoreFactory';
@@ -10,7 +10,7 @@ import Instance from '../Data/Instance/Instance';
 import Shape from '../Data/Instance/Shape';
 import Basic from '../Data/Instance/Basic';
 import DataOpt from '../Data/DataOpt';
-import GlobalData from '../Data/GlobalData';
+import GlobalData from '../Data/T3Gv';
 
 declare global {
 

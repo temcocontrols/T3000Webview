@@ -7,7 +7,7 @@ import Style from "./Basic.Element.Style";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
-import GlobalData from '../Data/GlobalData'
+import GlobalData from '../Data/T3Gv'
 import Instance from "../Data/Instance/Instance";
 import ConstantData from "../Data/ConstantData"
 import BasicConstants from "./Basic.Constants";

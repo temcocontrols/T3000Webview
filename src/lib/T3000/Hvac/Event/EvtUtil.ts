@@ -1,6 +1,6 @@
 
 
-import GlobalData from '../Data/GlobalData';
+import GlobalData from '../Data/T3Gv';
 import Utils2 from '../Helper/Utils2';
 import $ from 'jquery';
 import BaseDrawingObject from '../Shape/Shape.BaseDrawingObject'

@@ -1,5 +1,5 @@
 
-const GlobalData = {
+const T3Gv = {
   optManager: null,
   documentHandler: null,
   businessManager: null,
@@ -10,4 +10,4 @@ const GlobalData = {
   CURRENT_SEQ_OBJECT_ID: null,
 }
 
-export default GlobalData
+export default T3Gv

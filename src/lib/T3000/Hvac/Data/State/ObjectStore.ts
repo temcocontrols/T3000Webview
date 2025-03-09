@@ -1,7 +1,7 @@
 
 
 import Globals from "../Globals"
-import GlobalData from "../GlobalData"
+import GlobalData from "../T3Gv"
 import Utils1 from "../../Helper/Utils1"
 import StoredObject from "./StoredObject"
 

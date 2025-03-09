@@ -1,5 +1,5 @@
 
-import GlobalData from "../GlobalData"
+import GlobalData from "../T3Gv"
 
 class StateBase {
 

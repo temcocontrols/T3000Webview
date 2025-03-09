@@ -1,5 +1,5 @@
 
-import GlobalData from  '../Data/GlobalData'
+import GlobalData from  '../Data/T3Gv'
 import $ from 'jquery'
 
 class DocOpt {

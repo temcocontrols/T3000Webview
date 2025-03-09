@@ -7,7 +7,7 @@ import Utils1 from '../Helper/Utils1'
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import Global from '../Data/Globals'
-import GlobalData from '../Data/GlobalData'
+import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil"
 import DefaultStyle from '../Model/DefaultStyle'
 import Point from '../Model/Point'

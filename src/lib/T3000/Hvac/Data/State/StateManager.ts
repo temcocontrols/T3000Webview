@@ -1,6 +1,6 @@
 
 import BaseStateManager from './BaseStateManager'
-import GlobalData from '../GlobalData'
+import GlobalData from '../T3Gv'
 import Globals from '../Globals'
 import Utils1 from '../../Helper/Utils1'
 import State from './State'
