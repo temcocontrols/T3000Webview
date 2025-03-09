@@ -189,8 +189,8 @@ class IdxPage {
     const transform = Hvac.T3Utils.getLocalSettings('transform');
 
     if (transform) {
-      panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
-      panzoomInstance.moveTo(transform.x, transform.y);
+      // panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
+      // panzoomInstance.moveTo(transform.x, transform.y);
     }
   }
 

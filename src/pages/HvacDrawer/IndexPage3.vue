@@ -664,7 +664,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, T3_Types, getObjectActiveValue, T3000_Data, user, globalNav, demoDeviceData } from "../../lib/common";
+// import { tools, T3_Types, getObjectActiveValue, user, globalNav, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
