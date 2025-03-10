@@ -1,6 +1,6 @@
 
 
-import ToolOpt from "../Opt/Business/ToolOpt"
+// import ToolOpt from "../Opt/Business/ToolOpt"
 import $ from 'jquery'
 
 class EvtOpt {

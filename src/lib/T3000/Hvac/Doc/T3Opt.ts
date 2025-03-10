@@ -1,17 +1,17 @@
 
 import T3Gv from '../Data/T3Gv';
-import DocUtil from './DocUtil';
-import OptHandler from '../Opt/Opt.OptHandler';
-import Base from '../Opt/Business/Base';
-import WallOpt from "../Opt/Business/WallOpt";
-import Clipboard from '../Opt/Business/Clipboard'
+// import DocUtil from './DocUtil';
+// import OptHandler from '../Opt/Opt.OptHandler';
+// import Base from '../Opt/Business/Base';
+// import WallOpt from "../Opt/Business/WallOpt";
+// import Clipboard from '../Opt/Business/Clipboard'
 import Instance from '../Data/Instance/Instance';
 import Shape from '../Data/Instance/Shape';
 import Basic from '../Data/Instance/Basic';
 import DataOpt from '../Data/DataOpt';
 import EvtOpt from '../Event/EvtOpt';
-import KeyboardOpt from '../Opt/Business/KeyboardOpt';
-import UserOpt from '../Opt/Business/UserOpt';
+// import KeyboardOpt from '../Opt/Business/KeyboardOpt';
+// import UserOpt from '../Opt/Business/UserOpt';
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references

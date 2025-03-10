@@ -1,17 +1,17 @@
 
 
-import RulerConfig from '../Model/RulerConfig'
+// import RulerConfig from '../Model/RulerConfig'
 import $ from 'jquery'
 import T3Gv from '../Data/T3Gv'
 import EvtUtil from '../Event/EvtUtil'
-import Document from '../Basic/B.Document'
-import FileParser from '../Data/FileParser'
+// import Document from '../Basic/B.Document'
+// import FileParser from '../Data/FileParser'
 import '../Helper/T3Hammer'
 import '../Helper/pathseg'
 import Utils1 from '../Helper/Utils1'
 import Utils2 from '../Helper/Utils2'
 import ConstantData from '../Data/ConstantData'
-import DocConfig from '../Model/DocConfig'
+// import DocConfig from '../Model/DocConfig'
 
 class DocUtil {
 

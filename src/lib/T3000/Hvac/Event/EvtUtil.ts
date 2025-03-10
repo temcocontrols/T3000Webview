@@ -3,12 +3,12 @@
 import T3Gv from '../Data/T3Gv';
 import Utils2 from '../Helper/Utils2';
 import $ from 'jquery';
-import BaseDrawingObject from '../Shape/S.BaseDrawingObject'
+// import BaseDrawingObject from '../Shape/S.BaseDrawingObject'
 import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import ConstantData2 from '../Data/ConstantData2'
 import RightClickData from '../Model/RightClickData'
-import T3Constant from '../Data/T3Constant';
+// import T3Constant from '../Data/T3Constant';
 import DocUtil from '../Doc/DocUtil';
 
 class EvtUtil {
