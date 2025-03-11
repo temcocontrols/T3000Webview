@@ -1,6 +1,6 @@
 
 
-import HvTimer from '../Helper/HvTimer'
+import T3Timer from '../Helper/T3Timer'
 import BaseDrawingObject from './S.BaseDrawingObject'
 import GlobalData from '../Data/T3Gv'
 import Utils1 from '../Helper/Utils1';
@@ -1694,7 +1694,7 @@ class BaseShape extends BaseDrawingObject {
         return false;
       }
 
-      GlobalData.optManager.autoScrollTimer = new HvTimer(this);
+      GlobalData.optManager.autoScrollTimer = new T3Timer(this);
       GlobalData.optManager.autoScrollTimerID = GlobalData.optManager.autoScrollTimer.setTimeout(autoScrollCallback, 0);
       console.log("= S.BaseShape - AutoScrollCommon output: false (timer started)");
       return false;

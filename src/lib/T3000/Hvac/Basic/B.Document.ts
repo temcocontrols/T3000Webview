@@ -1,6 +1,6 @@
 
 
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import $ from 'jquery'
 import Rect from './B.Rect'
 import Container from './B.Container'
@@ -45,7 +45,7 @@ class Document extends Container {
       this.parentElem = '#' + this.parentElem;
     }
 
-    this.svgObj = HvacSVG.svg($(this.parentElem)[0]);
+    this.svgObj = T3Svg.svg($(this.parentElem)[0]);
     this.docInfo = {
       dispX: 0,
       dispY: 0,

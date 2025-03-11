@@ -1,6 +1,6 @@
 
 
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import $ from "jquery";
 import Container from "./B.Container";
 import Utils1 from "../Helper/Utils1"
@@ -21,7 +21,7 @@ class Layer extends Container {
 
   CreateElement(elementParam, optionsParam) {
     console.log('= B.Layer CreateElement input:', elementParam, optionsParam);
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.InitElement(elementParam, optionsParam);
     console.log('= B.Layer CreateElement output:', this.svgObj);
     return this.svgObj;

@@ -1,7 +1,7 @@
 
 
 import $ from "jquery";
-import HvacSVG from "../Helper/SVG.t2";
+import T3Svg from "../Helper/T3Svg";
 import Effects from "./B.Element.Effects"
 import Style from "./B.Element.Style";
 import Utils1 from "../Helper/Utils1"
@@ -579,8 +579,8 @@ class Element {
   static SetTooltipOnElement(element: any, tooltipText: string) {
     console.log('= B.Element.SetTooltipOnElement: input =>', { element, tooltipText });
 
-    if (element && element instanceof HvacSVG.Container) {
-      const titleElement = new HvacSVG.Element(HvacSVG.create('title'));
+    if (element && element instanceof T3Svg.Container) {
+      const titleElement = new T3Svg.Element(T3Svg.create('title'));
       titleElement.node.textContent = tooltipText;
       element.add(titleElement);
     }
@@ -803,8 +803,8 @@ class Element {
     if (patternData && patternData.ID === patternId) {
       // Create pattern elements if they don't exist
       if (!patternData.patternElem) {
-        patternData.patternElem = new HvacSVG.Pattern;
-        patternData.imageElem = new HvacSVG.Image;
+        patternData.patternElem = new T3Svg.Pattern;
+        patternData.imageElem = new T3Svg.Image;
         patternData.imageElem.load(patternData.url);
         patternData.patternElem.add(patternData.imageElem);
         patternData.patternElem.attr('id', patternData.ID);
@@ -1070,7 +1070,7 @@ class Element {
         }
 
         // Create gradient element with proper type
-        gradientData.gradientElem = new HvacSVG.Gradient(gradientType);
+        gradientData.gradientElem = new T3Svg.Gradient(gradientType);
         gradientData.gradientElem.attr("id", gradientData.ID);
 
         // Add color stops to the gradient
@@ -1535,7 +1535,7 @@ class Element {
       e.node.removeAttribute('class');
     }
 
-    if (e instanceof HvacSVG.Container) {
+    if (e instanceof T3Svg.Container) {
       const children = e.children();
       for (let i = 0; i < children.length; i++) {
         Element.RemoveCursorsOnSVGObj(children[i]);

@@ -1,6 +1,6 @@
 
 
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import $ from "jquery";
 import Element from "./B.Element"
 import Formatter from "./B.Text.Formatter";
@@ -48,17 +48,17 @@ class Text extends Element {
     this.editor = new Edit(this);
 
     // Create main SVG container element
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.svgObj = new T3Svg.Container(T3Svg.create('g'));
 
     // Initialize the element with container and options
     this.InitElement(container, options);
 
     // Create SVG sub-elements
-    this.textElem = new HvacSVG.Container(HvacSVG.create('text'));
-    this.selectElem = new HvacSVG.Path();
-    this.cursorElem = new HvacSVG.Line();
-    this.clickAreaElem = new HvacSVG.Rect();
-    this.decorationAreaElem = new HvacSVG.Container(HvacSVG.create('g'));
+    this.textElem = new T3Svg.Container(T3Svg.create('text'));
+    this.selectElem = new T3Svg.Path();
+    this.cursorElem = new T3Svg.Line();
+    this.clickAreaElem = new T3Svg.Rect();
+    this.decorationAreaElem = new T3Svg.Container(T3Svg.create('g'));
 
     // Initialize cursor settings
     this.cursorTimer = undefined;

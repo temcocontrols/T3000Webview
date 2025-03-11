@@ -7,7 +7,7 @@ import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
 import $ from 'jquery'
-import HvTimer from '../Helper/HvTimer'
+import T3Timer from '../Helper/T3Timer'
 import Point from '../Model/Point'
 import Rect from "./S.Rect";
 import Document from '../Basic/B.Document'
@@ -1279,7 +1279,7 @@ class BaseLine extends BaseDrawingObject {
       GlobalData.optManager.autoScrollXPos = scrollX;
       GlobalData.optManager.autoScrollYPos = scrollY;
       if (GlobalData.optManager.autoScrollTimerID === -1) {
-        GlobalData.optManager.autoScrollTimer = new HvTimer(this);
+        GlobalData.optManager.autoScrollTimer = new T3Timer(this);
         GlobalData.optManager.autoScrollTimerID = GlobalData.optManager.autoScrollTimer.setTimeout(autoScrollCallback, 0);
       }
 

@@ -1,7 +1,7 @@
 
 
 import $ from 'jquery';
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import Group from "./B.Group";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
@@ -18,7 +18,7 @@ class ShapeContainer extends Group {
 
   CreateElement(element: any, type: any) {
     console.log("= B.ShapeContainer CreateElement input:", { element, type });
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
+    this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.InitElement(element, type);
     this.shapeGroup = new Group();
     this.shapeGroup.CreateElement(element, type);

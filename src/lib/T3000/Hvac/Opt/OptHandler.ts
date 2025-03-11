@@ -1,5 +1,5 @@
 
-import HvTimer from "../Helper/HvTimer";
+import T3Timer from "../Helper/T3Timer";
 import QuickStyle from "../Model/QuickStyle";
 import ParagraphFormat from '../Model/ParagraphFormat';
 import GlobalData from '../Data/T3Gv';

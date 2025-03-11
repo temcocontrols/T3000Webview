@@ -1,5 +1,5 @@
 import * as Utils from '../Helper/Helper.Utils';
-import HvacSVG from '../Helper/Helper.SVG';
+import T3Svg from '../Helper/T3Svg';
 
 class Formatter {
   public parent: any;
@@ -258,7 +258,7 @@ class Formatter {
   }
 
   static CalcStyleMetrics(style, doc) {
-    let textContainer = new HvacSVG.Container(HvacSVG.create('text'));
+    let textContainer = new T3Svg.Container(T3Svg.create('text'));
     textContainer.attr('xml:space', 'preserve');
     textContainer.attr('text-anchor', 'start');
 
@@ -320,7 +320,7 @@ class Formatter {
   }
 
   static CreateTextRunElem(text, style, doc, linksDisabled, dataStyleOverride) {
-    const tspan = new HvacSVG.Container(HvacSVG.create('tspan'));
+    const tspan = new T3Svg.Container(T3Svg.create('tspan'));
     let content = String(text).replace(/\n/g, '');
     let scale = 1;
 
@@ -468,7 +468,7 @@ class Formatter {
                 l = o / 2 + 2,
                 a.bindent = o,
                 A ? A.clear() : (
-                  (A = new HvacSVG.Container(HvacSVG.create('text'))).attr('xml:space', 'preserve'),
+                  (A = new T3Svg.Container(T3Svg.create('text'))).attr('xml:space', 'preserve'),
                   A.attr('fill-opacity', 0),
                   I = this.parent.doc.GetFormattingLayer()
                 ),

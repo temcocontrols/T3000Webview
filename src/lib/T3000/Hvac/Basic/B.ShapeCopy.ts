@@ -1,7 +1,7 @@
 
 
 import $ from 'jquery';
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import Element from "./B.Element";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
@@ -21,7 +21,7 @@ class ShapeCopy extends Element {
   CreateElement(element, type) {
     console.log('= B.ShapeCopy CreateElement input:', { element, type });
 
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('use'));
+    this.svgObj = new T3Svg.Container(T3Svg.create('use'));
     this.InitElement(element, type);
 
     console.log('= B.ShapeCopy CreateElement output:', this.svgObj);

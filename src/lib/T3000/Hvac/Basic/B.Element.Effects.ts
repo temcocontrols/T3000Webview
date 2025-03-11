@@ -1,7 +1,7 @@
 
 
 import $ from 'jquery';
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import Document from "./B.Document";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
@@ -87,7 +87,7 @@ class Effects {
 
         if (!this.element.doc.DefExists(effectsId)) {
           let effect, mergeNode;
-          let filterContainer = new HvacSVG.Container(HvacSVG.create('filter'));
+          let filterContainer = new T3Svg.Container(T3Svg.create('filter'));
           let sourceInput = 'SourceGraphic';
           let outputEffects = [];
           let extraEffect;
@@ -120,16 +120,16 @@ class Effects {
             }
           }
 
-          let mergeContainer = new HvacSVG.Container(HvacSVG.create('feMerge'));
+          let mergeContainer = new T3Svg.Container(T3Svg.create('feMerge'));
           effectsLength = outputEffects.length;
 
           for (i = 0; i < effectsLength; i++) {
-            mergeNode = new HvacSVG.Element(HvacSVG.create('feMergeNode'));
+            mergeNode = new T3Svg.Element(T3Svg.create('feMergeNode'));
             mergeNode.attr('in', outputEffects[i]);
             mergeContainer.add(mergeNode);
           }
 
-          mergeNode = new HvacSVG.Element(HvacSVG.create('feMergeNode'));
+          mergeNode = new T3Svg.Element(T3Svg.create('feMergeNode'));
           mergeNode.attr('in', sourceInput);
           mergeContainer.add(mergeNode);
           filterContainer.add(mergeContainer);
@@ -244,7 +244,7 @@ class Effects {
       effectsId += widthSize.id + heightSize.id;
 
       if (!this.element.doc.DefExists(effectsId)) {
-        let filterContainer = new HvacSVG.Container(HvacSVG.create('filter'));
+        let filterContainer = new T3Svg.Container(T3Svg.create('filter'));
         filterContainer.attr('id', effectsId);
         filterContainer.attr('x', -widthSize.pct);
         filterContainer.attr('y', -heightSize.pct);
@@ -454,14 +454,14 @@ class Effects {
     let size = params.size || 2;
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr('flood-color', color);
     element.attr('flood-opacity', 0.3);
     element.attr('result', 'flood');
     container.add(element);
 
     // Create composite element
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr('in', 'flood');
     element.attr('in2', 'SourceAlpha');
     element.attr('operator', 'in');
@@ -469,13 +469,13 @@ class Effects {
     container.add(element);
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr('in', 'mask');
     element.attr('stdDeviation', size);
     container.add(element);
 
     // Create offset element
-    element = new HvacSVG.Element(HvacSVG.create('feOffset'));
+    element = new T3Svg.Element(T3Svg.create('feOffset'));
     element.attr('dx', xOffset);
     element.attr('dy', yOffset);
     element.attr('result', outputId);
@@ -491,14 +491,14 @@ class Effects {
     let size = params.size || 2;
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr('flood-color', '#FFF');
     element.attr('flood-opacity', 0.3);
     element.attr('result', 'flood');
     container.add(element);
 
     // Create composite element
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr('in2', 'flood');
     element.attr('in', 'SourceAlpha');
     element.attr('operator', 'in');
@@ -506,7 +506,7 @@ class Effects {
     container.add(element);
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr('in', 'mask');
     element.attr('stdDeviation', size);
     container.add(element);
@@ -520,14 +520,14 @@ class Effects {
     let element;
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr('flood-color', '#FFF');
     element.attr('flood-opacity', 0.3);
     element.attr('result', 'flood');
     container.add(element);
 
     // Create composite element
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr('in2', 'flood');
     element.attr('in', sourceInput);
     element.attr('operator', 'in');
@@ -550,13 +550,13 @@ class Effects {
     let size = params.size || 2;
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr('flood-color', color);
     element.attr('result', 'flood');
     container.add(element);
 
     // Create composite element
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr('in', 'flood');
     element.attr('in2', 'SourceAlpha');
     element.attr('operator', 'in');
@@ -564,7 +564,7 @@ class Effects {
     container.add(element);
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr('in', 'mask');
     element.attr('stdDeviation', size);
     element.attr('result', outputId);
@@ -614,7 +614,7 @@ class Effects {
 
     if (params.type == Effects.BevelType.BUMP) {
       // Create morphology element for erosion
-      element = new HvacSVG.Element(HvacSVG.create('feMorphology'));
+      element = new T3Svg.Element(T3Svg.create('feMorphology'));
       element.attr({
         in: 'SourceAlpha',
         operator: 'erode',
@@ -623,7 +623,7 @@ class Effects {
       container.add(element);
 
       // Create blur element
-      element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+      element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
       element.attr({
         stdDeviation: size,
         result: 'blur'
@@ -631,7 +631,7 @@ class Effects {
       container.add(element);
 
       // Create composite for inner area
-      element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+      element = new T3Svg.Element(T3Svg.create('feComposite'));
       element.attr({
         in: 'blur',
         in2: 'SourceAlpha',
@@ -643,7 +643,7 @@ class Effects {
       container.add(element);
 
       // Create composite to intersect blur with inner
-      element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+      element = new T3Svg.Element(T3Svg.create('feComposite'));
       element.attr({
         in: 'blur',
         in2: 'inner',
@@ -652,7 +652,7 @@ class Effects {
       container.add(element);
     } else {
       // Create blur element
-      element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+      element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
       element.attr({
         in: 'SourceAlpha',
         stdDeviation: size
@@ -660,7 +660,7 @@ class Effects {
       container.add(element);
 
       // Create composite to mask with source alpha
-      element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+      element = new T3Svg.Element(T3Svg.create('feComposite'));
       element.attr({
         in2: 'SourceAlpha',
         operator: 'in'
@@ -669,7 +669,7 @@ class Effects {
     }
 
     // Create diffuse lighting element
-    element = new HvacSVG.Container(HvacSVG.create('feDiffuseLighting'));
+    element = new T3Svg.Container(T3Svg.create('feDiffuseLighting'));
     element.attr({
       surfaceScale: surfaceScale,
       'lighting-color': 'white',
@@ -678,7 +678,7 @@ class Effects {
     });
 
     // Add distant light to lighting element
-    lightElement = new HvacSVG.Element(HvacSVG.create('feDistantLight'));
+    lightElement = new T3Svg.Element(T3Svg.create('feDistantLight'));
     lightElement.attr({
       azimuth: azimuth,
       elevation: '40'
@@ -687,7 +687,7 @@ class Effects {
     container.add(element);
 
     // Create final composite
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in: sourceInput,
       in2: 'hilite',
@@ -747,7 +747,7 @@ class Effects {
     size = Math.max(Math.min(size, 20), 2);
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr({
       in: 'SourceAlpha',
       stdDeviation: size
@@ -755,7 +755,7 @@ class Effects {
     container.add(element);
 
     // Create composite to mask with source alpha
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'SourceAlpha',
       operator: 'in'
@@ -763,7 +763,7 @@ class Effects {
     container.add(element);
 
     // Create specular lighting element
-    element = new HvacSVG.Container(HvacSVG.create('feSpecularLighting'));
+    element = new T3Svg.Container(T3Svg.create('feSpecularLighting'));
     element.attr({
       surfaceScale: 20,
       'lighting-color': 'white',
@@ -773,7 +773,7 @@ class Effects {
     });
 
     // Add distant light to lighting element
-    lightElement = new HvacSVG.Element(HvacSVG.create('feDistantLight'));
+    lightElement = new T3Svg.Element(T3Svg.create('feDistantLight'));
     lightElement.attr({
       azimuth: azimuth,
       elevation: '40'
@@ -782,7 +782,7 @@ class Effects {
     container.add(element);
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr({
       'flood-color': color,
       'flood-opacity': 0.7
@@ -790,7 +790,7 @@ class Effects {
     container.add(element);
 
     // Create composite to mask flood with source alpha
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'SourceAlpha',
       operator: 'in',
@@ -799,7 +799,7 @@ class Effects {
     container.add(element);
 
     // Create composite to combine hilite and flood
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in: 'hilite',
       in2: 'flood',
@@ -809,7 +809,7 @@ class Effects {
     container.add(element);
 
     // Create blend for final output
-    element = new HvacSVG.Element(HvacSVG.create('feBlend'));
+    element = new T3Svg.Element(T3Svg.create('feBlend'));
     element.attr({
       in2: sourceInput,
       mode: 'lighten',
@@ -828,7 +828,7 @@ class Effects {
     let size = params.size || 0;
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr({
       in: 'SourceAlpha',
       stdDeviation: size
@@ -836,7 +836,7 @@ class Effects {
     container.add(element);
 
     // Create composite for shadow difference
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'SourceAlpha',
       operator: 'arithmetic',
@@ -847,7 +847,7 @@ class Effects {
     container.add(element);
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr({
       'flood-color': color,
       'flood-opacity': 1
@@ -855,7 +855,7 @@ class Effects {
     container.add(element);
 
     // Create composite to mask with shadow difference
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'shadowdiff',
       operator: 'in'
@@ -863,7 +863,7 @@ class Effects {
     container.add(element);
 
     // Create final composite
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: sourceInput,
       operator: 'over',
@@ -918,7 +918,7 @@ class Effects {
     }
 
     // Create blur element
-    element = new HvacSVG.Element(HvacSVG.create('feGaussianBlur'));
+    element = new T3Svg.Element(T3Svg.create('feGaussianBlur'));
     element.attr({
       in: 'SourceAlpha',
       stdDeviation: size
@@ -926,7 +926,7 @@ class Effects {
     container.add(element);
 
     // Create offset element
-    element = new HvacSVG.Element(HvacSVG.create('feOffset'));
+    element = new T3Svg.Element(T3Svg.create('feOffset'));
     element.attr({
       dx: offsetX,
       dy: offsetY
@@ -934,7 +934,7 @@ class Effects {
     container.add(element);
 
     // Create composite for shadow difference
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'SourceAlpha',
       operator: 'arithmetic',
@@ -945,7 +945,7 @@ class Effects {
     container.add(element);
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr({
       'flood-color': 'black',
       'flood-opacity': 1
@@ -953,7 +953,7 @@ class Effects {
     container.add(element);
 
     // Create composite to mask with shadow difference
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'shadowdiff',
       operator: 'in'
@@ -961,7 +961,7 @@ class Effects {
     container.add(element);
 
     // Create final composite
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: sourceInput,
       operator: 'over',
@@ -979,7 +979,7 @@ class Effects {
     let color = params.color || '#000000';
 
     // Create flood element
-    element = new HvacSVG.Element(HvacSVG.create('feFlood'));
+    element = new T3Svg.Element(T3Svg.create('feFlood'));
     element.attr({
       'flood-color': color,
       'flood-opacity': 1
@@ -987,7 +987,7 @@ class Effects {
     container.add(element);
 
     // Create composite element
-    element = new HvacSVG.Element(HvacSVG.create('feComposite'));
+    element = new T3Svg.Element(T3Svg.create('feComposite'));
     element.attr({
       in2: 'SourceAlpha',
       operator: 'in',

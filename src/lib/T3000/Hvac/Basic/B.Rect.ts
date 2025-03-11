@@ -1,6 +1,6 @@
 
 
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import $ from "jquery";
 import Element from "./B.Element";
 import Utils1 from "../Helper/Utils1"
@@ -21,8 +21,8 @@ class Rect extends Element {
   CreateElement(elementData, transformData) {
     console.log('= B.Rect CreateElement input:', { elementData, transformData });
 
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
-    this.shapeElem = new HvacSVG.Rect();
+    this.svgObj = new T3Svg.Container(T3Svg.create('g'));
+    this.shapeElem = new T3Svg.Rect();
     this.svgObj.add(this.shapeElem);
 
     this.InitElement(elementData, transformData);

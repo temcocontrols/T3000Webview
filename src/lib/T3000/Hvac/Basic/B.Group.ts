@@ -1,6 +1,6 @@
 
 
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import $ from "jquery";
 import Container from "./B.Container";
 import Utils1 from "../Helper/Utils1"
@@ -19,7 +19,7 @@ class Group extends Container {
   CreateElement(inputData: any, config: any) {
     console.log("= B.Group CreateElement called with:", inputData, config);
 
-    this.svgObj = new HvacSVG.Container(HvacSVG.create("g"));
+    this.svgObj = new T3Svg.Container(T3Svg.create("g"));
     this.clipElem = null;
 
     this.InitElement(inputData, config);
@@ -138,10 +138,10 @@ class Group extends Container {
 
     if (width && height) {
       const clipId = Utils1.MakeGuid();
-      const clipContainer = new HvacSVG.Container(HvacSVG.create("clipPath"));
+      const clipContainer = new T3Svg.Container(T3Svg.create("clipPath"));
       clipContainer.attr("id", clipId);
 
-      const rect = new HvacSVG.Rect();
+      const rect = new T3Svg.Rect();
       rect.transform({
         x: Utils1.RoundCoord(x),
         y: Utils1.RoundCoord(y)

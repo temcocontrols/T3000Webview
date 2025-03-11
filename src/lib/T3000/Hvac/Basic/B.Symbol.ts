@@ -1,7 +1,7 @@
 
 
 import $ from 'jquery';
-import HvacSVG from "../Helper/SVG.t2"
+import T3Svg from "../Helper/T3Svg"
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
@@ -28,8 +28,8 @@ class Symbol extends Element {
   CreateElement(element, type) {
     console.log("= B.Symbol CreateElement input:", { element, type });
 
-    this.svgObj = new HvacSVG.Container(HvacSVG.create('g'));
-    this.shapeElem = new HvacSVG.Container(HvacSVG.create('g'));
+    this.svgObj = new T3Svg.Container(T3Svg.create('g'));
+    this.shapeElem = new T3Svg.Container(T3Svg.create('g'));
     this.svgObj.add(this.shapeElem);
     this.InitElement(element, type);
     this.fillColors = [];
