@@ -116,7 +116,7 @@ class OptHandler{
   public theDrawShape: any;
   public StampTimeout: any;
   public wasClickInShape: boolean;
-  public autoScrollTimer: HvTimer;
+  public autoScrollTimer: T3Timer;
   public autoScrollTimerID: number;
   public autoScrollXPos: number;
   public autoScrollYPos: number;
@@ -168,7 +168,7 @@ class OptHandler{
   public svgOverlayLayer: any;
   public svgHighlightLayer: any;
   public theEventTimestamp: number;
-  public actionArrowHideTimer: HvTimer;
+  public actionArrowHideTimer: T3Timer;
   public uniqueID: number;
   public theTextClipboard: any;
   public theHtmlClipboard: any;
@@ -315,7 +315,7 @@ class OptHandler{
     this.theDrawShape = null;
     this.StampTimeout = null;
     this.wasClickInShape = false;
-    this.autoScrollTimer = new HvTimer(this)/*GPTimer(this)*/;
+    this.autoScrollTimer = new T3Timer(this)/*GPTimer(this)*/;
     this.autoScrollTimerID = -1;
     this.autoScrollXPos = 0;
     this.autoScrollYPos = 0;
@@ -367,7 +367,7 @@ class OptHandler{
     this.svgOverlayLayer = null;
     this.svgHighlightLayer = null;
     this.theEventTimestamp = 0;
-    this.actionArrowHideTimer = new HvTimer(this);
+    this.actionArrowHideTimer = new T3Timer(this);
     this.uniqueID = 0;
     this.theTextClipboard = null;
     this.theHtmlClipboard = null;
