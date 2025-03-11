@@ -1,6 +1,6 @@
 
 
-import BaseSymbol from './Shape.BaseSymbol'
+import BaseSymbol from './S.BaseSymbol'
 import Element from '../Basic/B.Element';
 import ConstantData from '../Data/ConstantData'
 

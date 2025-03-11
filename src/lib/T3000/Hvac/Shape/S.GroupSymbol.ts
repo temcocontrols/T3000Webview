@@ -1,5 +1,5 @@
 
-import BaseSymbol from './Shape.BaseSymbol'
+import BaseSymbol from './S.BaseSymbol'
 
 class GroupSymbol extends BaseSymbol {
 

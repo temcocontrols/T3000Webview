@@ -1,6 +1,6 @@
 
 
-import Rect from './Shape.Rect'
+import Rect from './S.Rect'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";

@@ -1,6 +1,6 @@
 
 
-import BaseSymbol from './Shape.BaseSymbol'
+import BaseSymbol from './S.BaseSymbol'
 
 class D3Symbol extends BaseSymbol
 {

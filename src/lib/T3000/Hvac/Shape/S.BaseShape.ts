@@ -1,7 +1,7 @@
 
 
 import HvTimer from '../Helper/HvTimer'
-import BaseDrawingObject from './Shape.BaseDrawingObject'
+import BaseDrawingObject from './S.BaseDrawingObject'
 import GlobalData from '../Data/T3Gv'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";

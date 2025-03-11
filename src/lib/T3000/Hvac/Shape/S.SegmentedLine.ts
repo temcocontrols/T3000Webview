@@ -1,6 +1,6 @@
 
 
-import BaseLine from './Shape.BaseLine'
+import BaseLine from './S.BaseLine'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
@@ -8,7 +8,7 @@ import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
 import Document from '../Basic/B.Document'
 import Element from '../Basic/B.Element';
-import BaseShape from './Shape.BaseShape';
+import BaseShape from './S.BaseShape';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
 import SelectionAttributes from '../Model/SelectionAttributes'

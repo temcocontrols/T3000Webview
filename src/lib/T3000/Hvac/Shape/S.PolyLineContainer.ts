@@ -5,10 +5,10 @@ import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
-import PolyLine from "./Shape.PolyLine"
-import BaseLine from "./Shape.BaseLine";
+import PolyLine from "./S.PolyLine"
+import BaseLine from "./S.BaseLine";
 import Point from '../Model/Point'
-import BaseShape from '../Shape/Shape.BaseShape'
+import BaseShape from './S.BaseShape'
 import Document from '../Basic/B.Document'
 import Element from '../Basic/B.Element';
 import Instance from '../Data/Instance/Instance';

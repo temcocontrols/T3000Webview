@@ -1,6 +1,6 @@
 
 
-import BaseLine from './Shape.BaseLine'
+import BaseLine from './S.BaseLine'
 
 class FreehandLine extends BaseLine {
 

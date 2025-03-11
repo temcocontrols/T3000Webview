@@ -16,17 +16,17 @@ import Document from '../Basic/B.Document';
 import Utils1 from "../Helper/Utils1";
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3"
-import BaseLine from '../Shape/Shape.BaseLine';
+import BaseLine from '../Shape/S.BaseLine';
 import '../Helper/HammerTest2'
-import PolyLine from '../Shape/Shape.PolyLine';
-import PolyLineContainer from '../Shape/Shape.PolyLineContainer';
-import BaseDrawingObject from '../Shape/Shape.BaseDrawingObject';
-import GroupSymbol from '../Shape/Shape.GroupSymbol';
-import Connector from '../Shape/Shape.Connector';
+import PolyLine from '../Shape/S.PolyLine';
+import PolyLineContainer from '../Shape/S.PolyLineContainer';
+import BaseDrawingObject from '../Shape/S.BaseDrawingObject';
+import GroupSymbol from '../Shape/S.GroupSymbol';
+import Connector from '../Shape/S.Connector';
 import Point from '../Model/Point';
-import ShapeContainer from '../Shape/Shape.ShapeContainer'
-import SegmentedLine from '../Shape/Shape.SegmentedLine';
-import BaseShape from '../Shape/Shape.BaseShape';
+import ShapeContainer from '../Shape/S.ShapeContainer'
+import SegmentedLine from '../Shape/S.SegmentedLine';
+import BaseShape from '../Shape/S.BaseShape';
 import SegmentData from '../Model/SegmentData'
 import DefaultStyle from "../Model/DefaultStyle"
 import Style from '../Basic/B.Element.Style'

@@ -2,7 +2,7 @@
 
 import { Type } from 'class-transformer'
 import 'reflect-metadata'
-import BaseLine from './Shape.BaseLine'
+import BaseLine from './S.BaseLine'
 import DefaultEvt from "../Event/EvtUtil";
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
@@ -10,7 +10,7 @@ import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import Element from "../Basic/B.Element";
 import $ from 'jquery';
-import BaseShape from './Shape.BaseShape'
+import BaseShape from './S.BaseShape'
 import Point from '../Model/Point'
 import Document from '../Basic/B.Document'
 import Instance from '../Data/Instance/Instance'

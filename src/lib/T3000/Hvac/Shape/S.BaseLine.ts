@@ -1,6 +1,6 @@
 
 
-import BaseDrawingObject from './Shape.BaseDrawingObject'
+import BaseDrawingObject from './S.BaseDrawingObject'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
@@ -9,7 +9,7 @@ import DefaultEvt from "../Event/EvtUtil";
 import $ from 'jquery'
 import HvTimer from '../Helper/HvTimer'
 import Point from '../Model/Point'
-import Rect from "./Shape.Rect";
+import Rect from "./S.Rect";
 import Document from '../Basic/B.Document'
 import Element from '../Basic/B.Element'
 import Instance from "../Data/Instance/Instance"

@@ -1,12 +1,12 @@
 
 
-import BaseShape from './Shape.BaseShape'
+import BaseShape from './S.BaseShape'
 import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
-import RRect from './Shape.RRect'
+import RRect from './S.RRect'
 import $ from 'jquery';
 import Point from '../Model/Point'
 import Document from '../Basic/B.Document'
