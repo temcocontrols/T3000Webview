@@ -2,15 +2,15 @@
 
 import $ from "jquery";
 import HvacSVG from "../Helper/SVG.t2";
-import Effects from "./Basic.Element.Effects"
-import Style from "./Basic.Element.Style";
+import Effects from "./B.Element.Effects"
+import Style from "./B.Element.Style";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import GlobalData from '../Data/T3Gv'
 import Instance from "../Data/Instance/Instance";
 import ConstantData from "../Data/ConstantData"
-import BasicConstants from "./Basic.Constants";
+import BasicConstants from "./B.Constants";
 import ConstantData2 from "../Data/ConstantData2";
 
 class Element {

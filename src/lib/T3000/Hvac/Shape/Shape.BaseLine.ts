@@ -10,8 +10,8 @@ import $ from 'jquery'
 import HvTimer from '../Helper/HvTimer'
 import Point from '../Model/Point'
 import Rect from "./Shape.Rect";
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element'
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element'
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"
 import HitResult from '../Model/HitResult'

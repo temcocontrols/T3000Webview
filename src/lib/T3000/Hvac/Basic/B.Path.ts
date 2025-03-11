@@ -3,8 +3,8 @@
 import HvacSVG from "../Helper/SVG.t2"
 import $ from "jquery";
 import "../Helper/pathseg"
-import Container from "./Basic.Container";
-import Creator from "./Basic.Path.Creator";
+import Container from "./B.Container";
+import Creator from "./B.Path.Creator";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
@@ -12,7 +12,7 @@ import ConstantData from "../Data/ConstantData"
 import ConstantData1 from "../Data/ConstantData1"
 import ConstantData2 from "../Data/ConstantData2"
 import Instance from "../Data/Instance/Instance";
-import BasicConstants from "./Basic.Constants";
+import BasicConstants from "./B.Constants";
 
 class Path extends Container {
 

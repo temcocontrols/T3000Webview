@@ -5,9 +5,9 @@ import HvacSVG from "../Helper/SVG.t2"
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
-import Element from './Basic.Element'
+import Element from './B.Element'
 import ConstantData from "../Data/ConstantData"
-import BasicConstants from './Basic.Constants'
+import BasicConstants from './B.Constants'
 import Instance from '../Data/Instance/Instance';
 
 class Symbol extends Element {

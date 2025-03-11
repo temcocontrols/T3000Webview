@@ -12,10 +12,10 @@ import DefaultEvt from "../Event/EvtUtil"
 import DefaultStyle from '../Model/DefaultStyle'
 import Point from '../Model/Point'
 import $ from 'jquery'
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element';
-import Effects from "../Basic/Basic.Element.Effects";
-import Formatter from '../Basic/Basic.Text.Formatter'
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element';
+import Effects from "../Basic/B.Element.Effects";
+import Formatter from '../Basic/B.Text.Formatter'
 import Utils4 from "../Helper/Utils4";
 import ParagraphFormat from '../Model/ParagraphFormat'
 import Instance from "../Data/Instance/Instance"
@@ -29,7 +29,7 @@ import Rectangle from '../Model/Rectangle'
 import CRect from '../Model/CRect'
 import ConstantData2 from '../Data/ConstantData2'
 import PolyList from '../Model/PolyList'
-import BasicConstants from '../Basic/Basic.Constants'
+import BasicConstants from '../Basic/B.Constants'
 
 class BaseDrawingObject {
   public Type: string;

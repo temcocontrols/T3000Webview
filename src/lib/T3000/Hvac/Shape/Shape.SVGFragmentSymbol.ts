@@ -6,7 +6,7 @@ import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
-import Element from "../Basic/Basic.Element";
+import Element from "../Basic/B.Element";
 import ConstantData from '../Data/ConstantData'
 import $ from 'jquery';
 

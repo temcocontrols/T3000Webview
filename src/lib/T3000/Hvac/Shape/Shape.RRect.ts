@@ -7,8 +7,8 @@ import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
 import Point from '../Model/Point'
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element';
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element';
 import BaseDrawingObject from './Shape.BaseDrawingObject'
 import $ from 'jquery'
 import ConstantData from '../Data/ConstantData'

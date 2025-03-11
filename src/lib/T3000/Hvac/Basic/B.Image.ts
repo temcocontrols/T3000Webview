@@ -6,7 +6,7 @@ import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import ConstantData from "../Data/ConstantData"
-import Element from "./Basic.Element";
+import Element from "./B.Element";
 
 class Image extends Element {
 

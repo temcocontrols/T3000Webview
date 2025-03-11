@@ -8,11 +8,11 @@ import Utils1 from '../Helper/Utils1';
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
-import Element from "../Basic/Basic.Element";
+import Element from "../Basic/B.Element";
 import $ from 'jquery';
 import BaseShape from './Shape.BaseShape'
 import Point from '../Model/Point'
-import Document from '../Basic/Basic.Document'
+import Document from '../Basic/B.Document'
 import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import PolyList from '../Model/PolyList'

@@ -1,26 +1,27 @@
 
 
+
 import $ from 'jquery';
 import HvacSVG from "../Helper/SVG.t2"
-import Path from "./Basic.Path";
+import Path from "./B.Path";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import ConstantData from "../Data/ConstantData"
 
-class Polygon extends Path {
+class PolyLine extends Path {
 
   constructor() {
     super()
   }
 
   SetPoints(points: { x: number, y: number }[]) {
-    console.log("= B.Polygon SetPoints input:", points);
+    console.log("= B.PolyLine SetPoints input:", points);
 
-    let pathCreator = this.PathCreator();
-    let min = { x: 0, y: 0 };
-    let max = { x: 0, y: 0 };
-    let length = points.length;
+    const pathCreator = this.PathCreator();
+    const min = { x: 0, y: 0 };
+    const max = { x: 0, y: 0 };
+    const length = points.length;
 
     pathCreator.BeginPath();
 
@@ -38,11 +39,7 @@ class Polygon extends Path {
       max.y = Math.max(max.y, points[i].y);
     }
 
-    if (length > 1) {
-      pathCreator.ClosePath();
-    }
-
-    let pathString = pathCreator.ToString();
+    const pathString = pathCreator.ToString();
     this.SetPath(pathString, {
       x: min.x,
       y: min.y,
@@ -50,15 +47,17 @@ class Polygon extends Path {
       height: max.y - min.y
     });
 
-    console.log("= B.Polygon SetPoints output pathString:", pathString);
-    console.log("= B.Polygon SetPoints output bounding box:", {
-      x: min.x,
-      y: min.y,
-      width: max.x - min.x,
-      height: max.y - min.y
+    console.log("= B.PolyLine SetPoints output:", {
+      pathString,
+      boundingBox: {
+        x: min.x,
+        y: min.y,
+        width: max.x - min.x,
+        height: max.y - min.y
+      }
     });
   }
 
 }
 
-export default Polygon
+export default PolyLine

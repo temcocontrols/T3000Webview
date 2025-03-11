@@ -12,7 +12,7 @@ import Layer from "../Model/Layer";
 import $ from 'jquery';
 import DefaultEvt from "../Event/EvtUtil";
 import ArrowSizes from '../Model/ArrowSizes';
-import Document from '../Basic/Basic.Document';
+import Document from '../Basic/B.Document';
 import Utils1 from "../Helper/Utils1";
 import Utils2 from "../Helper/Utils2";
 import Utils3 from "../Helper/Utils3"
@@ -29,7 +29,7 @@ import SegmentedLine from '../Shape/Shape.SegmentedLine';
 import BaseShape from '../Shape/Shape.BaseShape';
 import SegmentData from '../Model/SegmentData'
 import DefaultStyle from "../Model/DefaultStyle"
-import Style from '../Basic/Basic.Element.Style'
+import Style from '../Basic/B.Element.Style'
 import Instance from "../Data/Instance/Instance"
 import ConstantData from '../Data/ConstantData'
 import TEDSession from "../Model/TEDSession"

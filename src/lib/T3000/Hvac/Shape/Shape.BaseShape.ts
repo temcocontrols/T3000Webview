@@ -9,8 +9,8 @@ import Utils3 from "../Helper/Utils3";
 import DefaultEvt from "../Event/EvtUtil";
 import $ from 'jquery';
 import Point from '../Model/Point';
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element';
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element';
 import Instance from '../Data/Instance/Instance'
 import ConstantData from '../Data/ConstantData'
 import PolyList from '../Model/PolyList'

@@ -7,8 +7,8 @@ import Utils3 from "../Helper/Utils3";
 import GlobalData from '../Data/T3Gv'
 import DefaultEvt from "../Event/EvtUtil";
 import Point from '../Model/Point';
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element'
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element'
 import ConstantData from '../Data/ConstantData'
 import HitResult from '../Model/HitResult'
 import Hook from '../Model/Hook'

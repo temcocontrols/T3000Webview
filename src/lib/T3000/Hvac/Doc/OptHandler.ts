@@ -1,8 +1,8 @@
 
 
 import Models from '../Data/Constant';
-import Formatter from '../Basic/Basic.Text.Formatter';
-import Text from '../Basic/Basic.Text';
+import Formatter from '../Basic/B.Text.Formatter';
+import Text from '../Basic/B.Text';
 import ContentHeader from './ContentHeader';
 import DocHandler from './DocHandler';
 import * as Utils from '../Helper/Helper.Utils';

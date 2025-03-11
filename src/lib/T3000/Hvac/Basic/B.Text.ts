@@ -2,9 +2,9 @@
 
 import HvacSVG from "../Helper/SVG.t2"
 import $ from "jquery";
-import Element from "./Basic.Element"
-import Formatter from "./Basic.Text.Formatter";
-import Edit from "./Basic.Text.Edit";
+import Element from "./B.Element"
+import Formatter from "./B.Text.Formatter";
+import Edit from "./B.Text.Edit";
 import Utils1 from "../Helper/Utils1"
 import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"

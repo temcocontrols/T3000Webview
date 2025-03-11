@@ -9,8 +9,8 @@ import PolyLine from "./Shape.PolyLine"
 import BaseLine from "./Shape.BaseLine";
 import Point from '../Model/Point'
 import BaseShape from '../Shape/Shape.BaseShape'
-import Document from '../Basic/Basic.Document'
-import Element from '../Basic/Basic.Element';
+import Document from '../Basic/B.Document'
+import Element from '../Basic/B.Element';
 import Instance from '../Data/Instance/Instance';
 import ConstantData from '../Data/ConstantData'
 import PolySeg from '../Model/PolySeg'
