@@ -16,7 +16,6 @@ import Document from '../Basic/B.Document'
 import Element from '../Basic/B.Element';
 import Effects from "../Basic/B.Element.Effects";
 import Formatter from '../Basic/B.Text.Formatter'
-import Utils4 from "../Helper/Utils4";
 import ParagraphFormat from '../Model/ParagraphFormat'
 import Instance from "../Data/Instance/Instance"
 import ConstantData from "../Data/ConstantData"

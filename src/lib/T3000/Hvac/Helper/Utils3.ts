@@ -2,7 +2,7 @@
 
 import Utils2 from "./Utils2"
 import ConstantData from "../Data/ConstantData"
-import KeyboardConstant from "../Opt/Business/KeyboardConstant";
+import KeyboardConstant from "../Util/KeyboardConstant";
 import QuickStyle from "../Model/QuickStyle";
 
 class Utils3 {
