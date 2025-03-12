@@ -20,7 +20,7 @@ import RightClickData from '../Model/RightClickData'
 import ConstantData1 from "../Data/ConstantData1"
 import ArrowheadRecord from '../Model/ArrowheadRecord'
 import ConstantData2 from "../Data/ConstantData2"
-import ShapeAttrUtil from '../Opt/ShapeAttrUtil';
+import ShapeAttrUtil from '../Util/ShapeAttrUtil';
 
 class BaseLine extends BaseDrawingObject {
 

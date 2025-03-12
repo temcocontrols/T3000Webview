@@ -46,7 +46,7 @@ import ConstantData1 from "../Data/ConstantData1"
 import TextObject from "../Model/TextObject"
 import DynamicGuides from "../Model/DynamicGuides"
 import ConstantData2 from "../Data/ConstantData2"
-import ShapeAttrUtil from "../Opt/ShapeAttrUtil"
+import ShapeAttrUtil from "../Util/ShapeAttrUtil"
 
 class OptHandler{
 
