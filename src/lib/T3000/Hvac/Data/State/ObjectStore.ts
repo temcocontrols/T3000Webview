@@ -1,6 +1,6 @@
 
 
-import Globals from "../Globals"
+import StateConstant from "./StateConstant"
 import T3Gv from "../T3Gv"
 import Utils1 from "../../Helper/Utils1"
 import StoredObject from "./StoredObject"
@@ -18,6 +18,8 @@ class ObjectStore {
 
   /** Collection of stored objects */
   public StoredObjects: ObjectStore[];
+
+  public Data: any;
 
   /**
    * Initializes a new instance of ObjectStore
@@ -122,7 +124,7 @@ class ObjectStore {
 
       if (deleteIndex >= 0) {
         const deleteObject = this.GetObject(objectId);
-        deleteObject.StateOperationTypeID = Globals.StateOperationType.DELETE;
+        deleteObject.StateOperationTypeID = StateConstant.StateOperationType.DELETE;
         if (needAddToCurrent) {
           T3Gv.state.AddToCurrentState(deleteObject);
         }
