@@ -8,7 +8,7 @@ import T3Gv from '../Data/T3Gv';
 import Instance from '../Data/Instance/Instance';
 import Shape from '../Data/Instance/Shape';
 import Basic from '../Data/Instance/Basic';
-import DataOpt from '../Data/DataOpt';
+import DataOpt from '../Util/DataOpt';
 import EvtOpt from '../Event/EvtOpt';
 // import KeyboardOpt from '../Opt/Business/KeyboardOpt';
 // import UserOpt from '../Opt/Business/UserOpt';

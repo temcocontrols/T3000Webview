@@ -9,7 +9,7 @@ import $ from 'jquery';
 import Instance from '../Data/Instance/Instance';
 import Shape from '../Data/Instance/Shape';
 import Basic from '../Data/Instance/Basic';
-import DataOpt from '../Data/DataOpt';
+import DataOpt from '../Util/DataOpt';
 import GlobalData from '../Data/T3Gv';
 
 declare global {
