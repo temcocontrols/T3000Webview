@@ -8,20 +8,33 @@ import $ from 'jquery'
 
 class StateOpt extends BaseStateOpt {
 
+  /**
+   * Maximum number of undo operations allowed
+   */
   public maxUndo: number;
 
+  /**
+   * Initializes the StateOpt with maximum undo limit from global settings
+   */
   constructor() {
     super();
     this.maxUndo = T3Gv.maxUndo;
   }
 
+  /**
+   * Finalizes the current state by syncing objects and marking it as closed
+   */
   PreserveState() {
     this.SyncObjectsWithCreateStates();
     this.States[this.CurrentStateID].IsOpen = false;
   }
 
+  /**
+   * Synchronizes objects with created states to ensure proper state tracking
+   * Special handling for objects with CREATE operation type
+   * // Operation Types: CREATE: 1, UPDATE: 2, DELETE: 3
+   */
   SyncObjectsWithCreateStates() {
-    // Operation Types: CREATE: 1, UPDATE: 2, DELETE: 3
     const globalStateOperation = Globals.StateOperationType;
     const cloneBlock = Utils1.CloneBlock;
     const currentState = this.States[this.CurrentStateID];
@@ -37,6 +50,10 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Determines if undo and redo operations are available in the current state
+   * @returns Object containing availability status for undo and redo operations
+   */
   GetUndoState() {
     const stateAvailability = { undo: false, redo: false };
     const lastStateIndex = this.States.length - 1;
@@ -45,6 +62,10 @@ class StateOpt extends BaseStateOpt {
     return stateAvailability;
   }
 
+  /**
+   * Performs cleanup operations during exceptions to maintain state integrity
+   * Restores objects and adjusts current state index
+   */
   ExceptionCleanup() {
     if (this.CurrentStateID > 0 && this.States[this.CurrentStateID].IsOpen) {
       this.States[this.CurrentStateID].IsOpen = false;
@@ -57,6 +78,10 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Restores the previous state (undo operation)
+   * Only proceeds if there is a previous state available
+   */
   RestorePrevState() {
     if (this.CurrentStateID > 0) {
       this.RestoreObjectStoreFromState();
@@ -64,6 +89,10 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Restores the next state (redo operation)
+   * Only proceeds if there is a next state available
+   */
   RestoreNextState() {
     if (this.CurrentStateID < this.States.length - 1) {
       this.CurrentStateID++;
@@ -71,6 +100,10 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Restores objects from the current state to the object store
+   * Handles different operation types (CREATE, UPDATE, DELETE) appropriately
+   */
   RestoreObjectStoreFromState() {
     const operationTypes = Globals.StateOperationType;
     const cloneBlock = Utils1.CloneBlock;
@@ -78,7 +111,6 @@ class StateOpt extends BaseStateOpt {
     try {
       const currentState = this.States[this.CurrentStateID];
       const storedObjects = currentState.StoredObjects;
-      let clonedObject = null;
       const totalObjects = storedObjects.length;
 
       for (let index = 0; index < totalObjects; ++index) {
@@ -89,7 +121,7 @@ class StateOpt extends BaseStateOpt {
             if (T3Gv.stdObj.GetObject(storedObject.ID)) {
               T3Gv.stdObj.DeleteObject(storedObject.ID, false);
             } else {
-              clonedObject = cloneBlock(storedObject);
+              const clonedObject = cloneBlock(storedObject);
               T3Gv.stdObj.SaveObject(clonedObject, false);
             }
             break;
@@ -98,7 +130,7 @@ class StateOpt extends BaseStateOpt {
             if (T3Gv.stdObj.GetObject(storedObject.ID)) {
               T3Gv.stdObj.DeleteObject(storedObject.ID, false);
             } else {
-              clonedObject = cloneBlock(storedObject);
+              const clonedObject = cloneBlock(storedObject);
               clonedObject.StateOperationTypeID = operationTypes.CREATE;
               T3Gv.stdObj.SaveObject(clonedObject, false);
             }
@@ -121,10 +153,19 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Retrieves the current active state
+   * @returns The current state object
+   */
   GetCurrentState() {
     return this.States[this.CurrentStateID];
   }
 
+  /**
+   * Adds a new object to the current state or creates a new state if needed
+   * Handles various operation types and maintains maximum undo stack size
+   * @param newObject - The object to add to the current state
+   */
   AddToCurrentState(newObject) {
     const StateClass = State;
     const operationTypes = Globals.StateOperationType;
@@ -222,6 +263,11 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Replaces an object in the current state
+   * @param newObject - The new object to replace with
+   * @param updateOperationTypeOnly - If true, only update operation type, not the entire object
+   */
   CurrentStateReplace(newObject, updateOperationTypeOnly) {
     const objectId = newObject.ID;
     const cloneObject = Utils1.CloneBlock;
@@ -244,6 +290,10 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Deletes an object from the current state
+   * @param objectToDelete - The object to be deleted
+   */
   CurrentStateDelete(objectToDelete) {
     if (this.States.length !== 0) {
       const currentState = this.States[this.CurrentStateID];
@@ -257,6 +307,12 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Retrieves an object from a specific state by its ID
+   * @param stateIndex - The index of the state to search in
+   * @param objectId - The ID of the object to retrieve
+   * @returns The found object or undefined if not found
+   */
   GetObjectFromState(stateIndex: number, objectId: number) {
     if (this.States.length > stateIndex) {
       const state = this.States[stateIndex];
@@ -269,6 +325,11 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Replaces an object in the current state with updated data
+   * @param objectId - The ID of the object to replace
+   * @param updatedObject - The object with updated data
+   */
   ReplaceInCurrentState(objectId, updatedObject) {
     if (this.States.length === 0) {
       return;
@@ -285,6 +346,9 @@ class StateOpt extends BaseStateOpt {
     }
   }
 
+  /**
+   * Resets all undo states to initial values
+   */
   ResetUndoStates() {
     this.CurrentStateID = -1;
     this.DroppedStates = 0;
@@ -292,6 +356,10 @@ class StateOpt extends BaseStateOpt {
     this.States = [];
   }
 
+  /**
+   * Resets state to a specific index, discarding other states
+   * @param stateIndex - The index of the state to reset to
+   */
   ResetToSpecificState(stateIndex: number): void {
     this.CurrentStateID = stateIndex;
     this.DroppedStates = 0;
@@ -299,32 +367,20 @@ class StateOpt extends BaseStateOpt {
     this.States = [this.States[stateIndex]];
   }
 
+  /**
+   * Increments the history state counter
+   */
   AddToHistoryState() {
     this.HistoryState++;
   }
 
+  /**
+   * Clears all future undo states beyond the current state
+   * Used after an action when future redo states should be discarded
+   */
   ClearFutureUndoStates() {
     if (this.CurrentStateID < this.States.length - 1) {
       this.States = this.States.slice(0, this.CurrentStateID + 1);
-    }
-  }
-
-  DumpStates(logHeader: string): void {
-    const totalStates = this.States.length;
-    for (let stateIndex = 0; stateIndex < totalStates; stateIndex++) {
-      const currentState = this.States[stateIndex];
-      const totalObjects = currentState.StoredObjects.length;
-      for (let objectIndex = 0; objectIndex < totalObjects; objectIndex++) {
-        const storedObject = currentState.StoredObjects[objectIndex];
-        switch (storedObject.StateOperationTypeID) {
-          case Globals.StateOperationType.CREATE:
-          case Globals.StateOperationType.DELETE:
-          case Globals.StateOperationType.UPDATE:
-            break;
-          default:
-            break;
-        }
-      }
     }
   }
 }
