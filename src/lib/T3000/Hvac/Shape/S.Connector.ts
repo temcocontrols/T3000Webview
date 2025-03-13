@@ -23,7 +23,7 @@ import SEDArray from '../Model/SEDArray'
 import ConstantData1 from "../Data/ConstantData1"
 import ArrowheadRecord from '../Model/ArrowheadRecord'
 import Instance from '../Data/Instance/Instance';
-import ShapeAttrUtil from '../Util/ShapeAttrUtil';
+// import ShapeAttrUtil from '../Util/ShapeAttrUtil';
 
 class Connector extends BaseDrawingObject {
 

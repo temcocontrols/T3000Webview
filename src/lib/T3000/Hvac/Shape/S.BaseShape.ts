@@ -19,7 +19,7 @@ import RightClickData from '../Model/RightClickData'
 import Rectangle from '../Model/Rectangle'
 import DynamicGuides from '../Model/DynamicGuides'
 import ConstantData2 from '../Data/ConstantData2'
-import ShapeAttrUtil from '../Util/ShapeAttrUtil';
+// import ShapeAttrUtil from '../Util/ShapeAttrUtil';
 
 class BaseShape extends BaseDrawingObject {
 
