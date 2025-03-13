@@ -152,24 +152,6 @@ class KeyboardOpt {
     }
 
     try {
-      // Check for dropdown text attribute
-      let isDropdownText = false;
-      if (targetElement && targetElement[0].attributes) {
-        isDropdownText = targetElement[0].attributes.getNamedItem("dropDownText");
-      }
-
-      // Handle dropdowns and key commands
-      if (!(isDropdownText != null && isDropdownText.value === "1") &&
-        keyCode !== KeyboardConstant.Keys.Alt &&
-        keyCode !== KeyboardConstant.Keys.Ctrl) {
-        // Note: The following line was commented out in the original code
-        // Commands.MainController.Dropdowns.HideAllDropdowns();
-      }
-
-      console.log('U.KeyboardUtil: Delegating key handling to MainController', {
-        keyCode: keyCode,
-        modifierKeys: modifierKeys
-      });
       KeyboardOpt.HandleKeyDown(event, keyCode, modifierKeys);
     } catch (error) {
       console.error('U.KeyboardUtil: Error in key down handler', error);
