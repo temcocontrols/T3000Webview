@@ -2,28 +2,45 @@
 import ObjectStore from './ObjectStore'
 
 class ObjectStoreFactory {
+  /**
+   * Creates a new object store with optional initial objects
+   * @param initialObjects - Optional array of initial objects to store
+   * @returns Object with methods to manipulate the store
+   */
+  Create(initialObjects?: any[]) {
+    let store = new ObjectStore();
 
-  Create(stdObjs?: any) {
-
-    var obj = new ObjectStore();
-
-    if (null != stdObjs || stdObjs instanceof Array) {
-      obj.StoredObjects = stdObjs;
+    if (Array.isArray(initialObjects)) {
+      store.StoredObjects = initialObjects;
     }
 
     return {
-      Set: function (stdObjs) {
-        if (null == stdObjs) throw new Error('Stored objects cannot be null');
-        if (!(stdObjs instanceof Array)) throw new Error('Stored objects is not an array');
-        obj.StoredObjects = stdObjs
+      /**
+       * Sets objects in the store
+       * @param objects - Array of objects to store
+       * @throws Error if objects is null or not an array
+       */
+      Set: function (objects: any[]) {
+        if (objects === null) throw new Error('Stored objects cannot be null');
+        if (!Array.isArray(objects)) throw new Error('Stored objects is not an array');
+        store.StoredObjects = objects;
       },
+
+      /**
+       * Gets all stored objects
+       * @returns Array of stored objects
+       */
       Get: function () {
-        return obj.StoredObjects
+        return store.StoredObjects;
       },
+
+      /**
+       * Clears all objects from the store
+       */
       Clear: function () {
-        obj.StoredObjects = []
+        store.StoredObjects = [];
       }
-    }
+    };
   }
 }
 

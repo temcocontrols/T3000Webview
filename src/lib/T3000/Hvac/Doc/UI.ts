@@ -1,6 +1,6 @@
 
 import GPP from '../Data/T3Gv';
-import StateManager from '../Data/State/StateManager';
+import StateManager from '../Data/State/StateOpt';
 import ObjectStore from '../Data/State/ObjectStore';
 import ObjectStoreFactory from '../Data/State/ObjectStoreFactory';
 import DocHandler from './DocHandler'
