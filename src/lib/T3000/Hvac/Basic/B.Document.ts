@@ -14,152 +14,144 @@ import Path from './B.Path'
 import Group from './B.Group'
 import Layer from './B.Layer'
 import Symbol from './B.Symbol'
-import ShapeCopy from './B.ShapeCopy'
 import ShapeContainer from './B.ShapeContainer'
+import ShapeCopy from './B.ShapeCopy'
 import Text from './B.Text'
 import Formatter from "./B.Text.Formatter"
-import Spell from "./Basic.Text.Spell"
 import Image from './B.Image'
 import Utils1 from "../Helper/Utils1"
-import Utils2 from "../Helper/Utils2"
-import Utils3 from "../Helper/Utils3"
-import ConstantData from "../Data/ConstantData"
+import ConstantData from "../Data/Constant/ConstantData"
+import OptConstant from "../Data/Constant/OptConstant"
+import DocInfo from "../Model/DocInfo"
 
 class Document extends Container {
 
+  /**
+   * Document class that represents the main drawing canvas for HVAC elements
+   * Handles document initialization, scaling, coordinate transformations, and layer management
+   */
   public parentElem: any;
   public svgObj: any;
-  public docInfo: any;
-  public fontList: any;
+  public docInfo: DocInfo;
   public activeEdit: any;
   public spellChecker: any;
-  public documentLayerID: any;
+  public documentLayerId: string;
   public imageLoadRefCount: number;
 
-  constructor(parentElement: string, fontList: any) {
+  /**
+   * Creates a new Document instance
+   * @param parentElementSelector - CSS selector for the parent element where SVG will be rendered
+   * @param fontList - List of available fonts for the document
+   */
+  constructor(parentElementSelector: string, fontList: any[]) {
     super();
-    console.log('= B.Document constructor', this);
 
-    this.parentElem = parentElement;
+    this.parentElem = parentElementSelector;
     if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
       this.parentElem = '#' + this.parentElem;
     }
 
     this.svgObj = T3Svg.svg($(this.parentElem)[0]);
-    this.docInfo = {
-      dispX: 0,
-      dispY: 0,
-      dispWidth: 0,
-      dispHeight: 0,
-      dispDpiX: 0,
-      dispDpiY: 0,
-      scrollX: 0,
-      scrollY: 0,
-      docDpi: 0,
-      docScale: 1,
-      docWidth: 0,
-      docHeight: 0,
-      docToScreenScale: 0,
-      docDpiScale: 0,
-      docVisX: 0,
-      docVisY: 0,
-      docVisWidth: 0,
-      docVisHeight: 0,
-      docScreenX: 0,
-      docScreenY: 0,
-      docScreenWidth: 0,
-      docScreenHeight: 0,
-      maxScrollX: 0,
-      maxScrollY: 0
-    };
-
-    this.fontList = fontList;
+    this.docInfo = new DocInfo();
+    // this.fontList = fontList;
     this.activeEdit = null;
     this.spellChecker = null;
-    this.documentLayerID = null;
+    this.documentLayerId = null;
     this.imageLoadRefCount = 0;
-
-    console.log('= B.Document constructor', this);
     this.InitElement(this, null);
     this.InitializeContainer();
   }
 
+  /**
+   * Creates and initializes a basic shape based on the specified shape type
+   *
+   * This method instantiates a new shape object according to the provided shape type constant.
+   * It initializes the shape within the document context and returns the created object.
+   *
+   * @param shapeType - Numeric constant defining which type of shape to create
+   * @returns The initialized shape object, or null if the shape type is invalid
+   */
   CreateShape(shapeType: number) {
-    console.log('= B.Document CreateShape input shapeType:', shapeType);
-    let basicShape = null;
+    let shape = null;
 
     switch (shapeType) {
-      case ConstantData.CreateShapeType.RECT:
-        basicShape = new Rect();
+      case OptConstant.CSType.RECT:
+        shape = new Rect();
         break;
-      case ConstantData.CreateShapeType.RRECT:
-        basicShape = new RRect();
+      case OptConstant.CSType.RRECT:
+        shape = new RRect();
         break;
-      case ConstantData.CreateShapeType.OVAL:
-        basicShape = new Oval();
+      case OptConstant.CSType.OVAL:
+        shape = new Oval();
         break;
-      case ConstantData.CreateShapeType.LINE:
-        basicShape = new Line();
+      case OptConstant.CSType.LINE:
+        shape = new Line();
         break;
-      case ConstantData.CreateShapeType.POLYLINE:
-        basicShape = new PolyLine();
+      case OptConstant.CSType.POLYLINE:
+        shape = new PolyLine();
         break;
-      case ConstantData.CreateShapeType.POLYPOLYLINE:
-        basicShape = new PolyPolyLine();
+      case OptConstant.CSType.POLYPOLYLINE:
+        shape = new PolyPolyLine();
         break;
-      case ConstantData.CreateShapeType.POLYLINECONTAINER:
-        basicShape = new PolyLine();
+      case OptConstant.CSType.POLYLINECONTAINER:
+        shape = new PolyLine();
         break;
-      case ConstantData.CreateShapeType.POLYGON:
-        basicShape = new Polygon();
+      case OptConstant.CSType.POLYGON:
+        shape = new Polygon();
         break;
-      case ConstantData.CreateShapeType.PATH:
-        basicShape = new Path();
+      case OptConstant.CSType.PATH:
+        shape = new Path();
         break;
-      case ConstantData.CreateShapeType.TEXT:
-        basicShape = new Text();
+      case OptConstant.CSType.TEXT:
+        shape = new Text();
         break;
-      case ConstantData.CreateShapeType.IMAGE:
-        basicShape = new Image();
+      case OptConstant.CSType.IMAGE:
+        shape = new Image();
         break;
-      case ConstantData.CreateShapeType.GROUP:
-        basicShape = new Group();
+      case OptConstant.CSType.GROUP:
+        shape = new Group();
         break;
-      case ConstantData.CreateShapeType.LAYER:
-        basicShape = new Layer();
+      case OptConstant.CSType.LAYER:
+        shape = new Layer();
         break;
-      case ConstantData.CreateShapeType.SYMBOL:
-        basicShape = new Symbol();
+      case OptConstant.CSType.SYMBOL:
+        shape = new Symbol();
         break;
-      case ConstantData.CreateShapeType.SHAPECOPY:
-        basicShape = new ShapeCopy();
+      case OptConstant.CSType.SHAPECOPY:
+        shape = new ShapeCopy();
         break;
-      case ConstantData.CreateShapeType.SHAPECONTAINER:
-        basicShape = new ShapeContainer();
+      case OptConstant.CSType.SHAPECONTAINER:
+        shape = new ShapeContainer();
         break;
       default:
-        console.error('= B.Document CreateShape unknown shapeType:', shapeType);
         return null;
     }
 
     try {
-      if (basicShape) {
-        basicShape.CreateElement(this, null);
-        console.log('= B.Document CreateShape output basicShape:', basicShape);
-        return basicShape;
-      } else {
-        console.error('= B.Document CreateShape failed to create shape for shapeType:', shapeType);
-        return null;
+      if (shape) {
+        shape.CreateElement(this, null);
+        return shape;
       }
+      return null;
     } catch (error) {
-      console.error('= B.Document CreateShape error:', error);
       throw error;
     }
   }
 
+  /**
+   * Initializes the document container with default settings
+   *
+   * This method sets up the initial document properties by:
+   * - Retrieving device information (display DPI)
+   * - Setting document dimensions to match the display dimensions
+   * - Configuring initial scale and scroll positions to default values
+   * - Calculating the work area based on these settings
+   * - Applying the document transform to ensure proper rendering
+   *
+   * @returns void
+   */
   InitializeContainer() {
-    console.log('= B.Document InitializeContainer input');
-    this.GetDeviceInfo();
+    this.GetDeviceDetail();
     this.docInfo.docDpi = this.docInfo.dispDpiX;
     this.docInfo.docWidth = this.docInfo.dispWidth;
     this.docInfo.docHeight = this.docInfo.dispHeight;
@@ -168,7 +160,6 @@ class Document extends Container {
     this.docInfo.scrollY = 0;
     this.CalcWorkArea();
     this.ApplyDocumentTransform();
-    console.log('= B.Document InitializeContainer output', this.docInfo);
   }
 
   /**
@@ -188,10 +179,8 @@ class Document extends Container {
    *
    * @returns void
    */
-  GetDeviceInfo() {
-    console.log('= B.Document GetDeviceInfo input');
-
-    const rect = this.CreateShape(ConstantData.CreateShapeType.RECT);
+  GetDeviceDetail() {
+    const rect = this.CreateShape(OptConstant.CSType.RECT);
     rect.SetFillOpacity(0);
     rect.SetStrokeWidth(0);
     rect.SetSize('100in', '100in');
@@ -204,54 +193,80 @@ class Document extends Container {
 
     this.docInfo.dispWidth = $(this.parentElem).innerWidth();
     this.docInfo.dispHeight = $(this.parentElem).innerHeight();
-
-    console.log('= B.Document GetDeviceInfo output', this.docInfo);
   }
 
+  /**
+   * Calculates the document's working area dimensions and coordinates
+   *
+   * This method computes all necessary measurements for properly displaying and
+   * interacting with the document, including:
+   * - Display offsets and dimensions
+   * - Document-to-screen scaling factors
+   * - Scroll positions and limits
+   * - Visible document area coordinates
+   *
+   * The calculations consider the parent element dimensions, DPI settings,
+   * document scale, and current scroll positions to establish the complete
+   * coordinate mapping system between document and screen space.
+   *
+   * @returns void - Updates the internal docInfo object with calculated values
+   */
   CalcWorkArea() {
-    console.log('= B.Document CalcWorkArea input');
-
-    // Get the offset position (left and top) of the parent element relative to the document
-    const offset = $(this.parentElem).offset();
-    console.log('= B.Document CalcWorkArea offset:', offset);
+    // Get the offset position of the parent element relative to the document
+    const parentOffset = $(this.parentElem).offset();
 
     // Set the display X and Y coordinates from the parent's offset
-    this.docInfo.dispX = offset.left;
-    this.docInfo.dispY = offset.top;
-    // Capture the inner width and height of the parent element for display area
+    this.docInfo.dispX = parentOffset.left;
+    this.docInfo.dispY = parentOffset.top;
+
+    // Capture the parent element dimensions for display area
     this.docInfo.dispWidth = $(this.parentElem).innerWidth();
     this.docInfo.dispHeight = $(this.parentElem).innerHeight();
+
     // Get the current scroll positions of the parent element
     this.docInfo.scrollX = $(this.parentElem).scrollLeft();
     this.docInfo.scrollY = $(this.parentElem).scrollTop();
-    // Calculate the overall scale factor from document dimensions to screen dimensions,
-    // factoring in the display DPI and document scaling.
+
+    // Calculate the overall scale factor from document dimensions to screen dimensions
     this.docInfo.docToScreenScale = (this.docInfo.dispDpiX / this.docInfo.docDpi) * this.docInfo.docScale;
-    // Calculate the DPI scale factor
+
+    // Calculate the DPI scale factor (ratio between display DPI and document DPI)
     this.docInfo.docDpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
-    // Adjust document screen coordinates taking into account the scroll positions
+
+    // Calculate document screen coordinates adjusted for scroll positions
     this.docInfo.docScreenX = this.docInfo.dispX - this.docInfo.scrollX;
     this.docInfo.docScreenY = this.docInfo.dispY - this.docInfo.scrollY;
+
     // Calculate the document's size on the screen using the computed scaling factor
     this.docInfo.docScreenWidth = this.docInfo.docWidth * this.docInfo.docToScreenScale;
     this.docInfo.docScreenHeight = this.docInfo.docHeight * this.docInfo.docToScreenScale;
-    // Determine maximum allowed scroll positions based on difference between document screen size and display area
+
+    // Determine maximum allowed scroll positions
     this.docInfo.maxScrollX = Math.max(0, this.docInfo.docScreenWidth - this.docInfo.dispWidth);
     this.docInfo.maxScrollY = Math.max(0, this.docInfo.docScreenHeight - this.docInfo.dispHeight);
-    // Calculate the visible width and height in document coordinates by converting display area size
+
+    // Calculate the visible document area dimensions in document coordinates
     this.docInfo.docVisWidth = Math.min(this.docInfo.dispWidth / this.docInfo.docToScreenScale, this.docInfo.docWidth);
     this.docInfo.docVisHeight = Math.min(this.docInfo.dispHeight / this.docInfo.docToScreenScale, this.docInfo.docHeight);
-    // Determine the document's visible starting X coordinate ensuring it does not exceed document bounds
-    this.docInfo.docVisX = Math.min(this.docInfo.scrollX / this.docInfo.docToScreenScale, this.docInfo.docWidth - this.docInfo.docVisWidth);
-    // Determine the document's visible starting Y coordinate ensuring it does not exceed document bounds
-    this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale, this.docInfo.docHeight - this.docInfo.docVisHeight);
 
-    console.log('= B.Document CalcWorkArea output', this.docInfo);
+    // Calculate the visible document area origin coordinates
+    this.docInfo.docVisX = Math.min(this.docInfo.scrollX / this.docInfo.docToScreenScale,
+      this.docInfo.docWidth - this.docInfo.docVisWidth);
+    this.docInfo.docVisY = Math.min(this.docInfo.scrollY / this.docInfo.docToScreenScale,
+      this.docInfo.docHeight - this.docInfo.docVisHeight);
   }
 
+  /**
+   * Applies transformation to document elements based on current scale settings
+   *
+   * This method updates the SVG dimensions according to calculated screen dimensions
+   * and applies appropriate scaling transformations to layers based on their
+   * scaling permissions. Layers can be scaled using document-to-screen scale
+   * or DPI scale depending on their configuration.
+   *
+   * @param applyToAllLayers - Whether to apply transformation to all layers regardless of settings
+   */
   ApplyDocumentTransform(applyToAllLayers?: boolean) {
-    console.log('= B.Document ApplyDocumentTransform input applyToAllLayers:', applyToAllLayers);
-
     const elementCount = this.ElementCount();
     this.svgObj.attr({
       width: this.docInfo.docScreenWidth,
@@ -276,85 +291,112 @@ class Document extends Container {
         }
       }
     }
-
-    console.log('= B.Document ApplyDocumentTransform output');
   }
 
-  CalcScaleToFit(containerWidth: number, containerHeight: number, docWidth?: number, docHeight?: number) {
-    console.log('= B.Document CalcScaleToFit input', { containerWidth, containerHeight, docWidth, docHeight });
-
-    if (!docWidth) {
-      docWidth = this.docInfo.docWidth;
+  /**
+   * Calculates scale factor to fit document in specified container dimensions
+   *
+   * Computes the optimal scale factor that would allow the document to fit within
+   * the provided container while maintaining aspect ratio. If the document would
+   * fit at original size, the scale is capped at 1.
+   *
+   * @param containerWidth - Width of the container in pixels
+   * @param containerHeight - Height of the container in pixels
+   * @param documentWidth - Optional custom document width (uses docInfo.docWidth if not provided)
+   * @param documentHeight - Optional custom document height (uses docInfo.docHeight if not provided)
+   * @returns Object with calculated scale and resulting dimensions
+   */
+  CalcScaleToFit(containerWidth: number, containerHeight: number, documentWidth?: number, documentHeight?: number) {
+    if (!documentWidth) {
+      documentWidth = this.docInfo.docWidth;
     }
-    if (!docHeight) {
-      docHeight = this.docInfo.docHeight;
+    if (!documentHeight) {
+      documentHeight = this.docInfo.docHeight;
     }
 
     const dpiScale = this.docInfo.dispDpiX / this.docInfo.docDpi;
-    let scaleWidth = containerWidth / (docWidth * dpiScale);
-    let scaleHeight = containerHeight / (docHeight * dpiScale);
+    const scaleWidth = containerWidth / (documentWidth * dpiScale);
+    const scaleHeight = containerHeight / (documentHeight * dpiScale);
     let scale = Math.min(scaleWidth, scaleHeight);
 
     if (scale > 1) {
       scale = 1;
     }
 
-    const result = {
+    return {
       scale: scale,
       width: this.docInfo.docWidth * dpiScale * scale,
       height: this.docInfo.docHeight * dpiScale * scale
     };
-
-    console.log('= B.Document CalcScaleToFit output', result);
-    return result;
   }
 
+  /**
+   * Sets the document's dimensions
+   *
+   * Updates the document width and height, recalculates the work area,
+   * and applies necessary transformations based on the new dimensions.
+   *
+   * @param width - New document width
+   * @param height - New document height
+   */
   SetDocumentSize(width: number, height: number) {
-    console.log('= B.Document SetDocumentSize input', { width, height });
-
     this.SetDocumentMetrics({
       width: width,
       height: height
     });
-
-    console.log('= B.Document SetDocumentSize output', this.docInfo);
   }
 
+  /**
+   * Retrieves the current document dimensions
+   *
+   * @returns Object containing document width and height
+   */
   GetDocumentSize() {
-    console.log('= B.Document GetDocumentSize input');
-
-    const result = {
+    return {
       width: this.docInfo.docWidth,
       height: this.docInfo.docHeight
     };
-
-    console.log('= B.Document GetDocumentSize output', result);
-    return result;
   }
 
+  /**
+   * Sets the document's DPI (dots per inch)
+   *
+   * Updates the document DPI setting, recalculates the work area,
+   * and applies necessary transformations based on the new DPI.
+   *
+   * @param dpi - New DPI value
+   */
   SetDocumentDPI(dpi: number) {
-    console.log('= B.Document SetDocumentDPI input', { dpi });
-
     this.SetDocumentMetrics({
       dpi: dpi
     });
-
-    console.log('= B.Document SetDocumentDPI output', this.docInfo);
   }
 
+  /**
+   * Sets the document's scale factor
+   *
+   * Updates the document scale setting, recalculates the work area,
+   * and applies necessary transformations based on the new scale.
+   *
+   * @param scale - New scale factor
+   */
   SetDocumentScale(scale: number) {
-    console.log('= B.Document SetDocumentScale input', { scale });
-
     this.SetDocumentMetrics({
       scale: scale
     });
-
-    console.log('= B.Document SetDocumentScale output', this.docInfo);
   }
 
+  /**
+   * Updates multiple document metrics in a single operation
+   *
+   * This method allows updating any combination of document width, height,
+   * DPI, and scale in a single call. After updating the metrics, it
+   * recalculates the work area and applies transformations to reflect
+   * the changes.
+   *
+   * @param metrics - Object containing any combination of width, height, dpi, and scale
+   */
   SetDocumentMetrics(metrics: { width?: number, height?: number, dpi?: number, scale?: number }) {
-    console.log('= B.Document SetDocumentMetrics input', metrics);
-
     this.docInfo.docWidth = metrics.width || this.docInfo.docWidth;
     this.docInfo.docHeight = metrics.height || this.docInfo.docHeight;
     this.docInfo.docDpi = metrics.dpi || this.docInfo.docDpi;
@@ -362,13 +404,20 @@ class Document extends Container {
 
     this.CalcWorkArea();
     this.ApplyDocumentTransform();
-
-    console.log('= B.Document SetDocumentMetrics output', this.docInfo);
   }
 
+  /**
+   * Calculates scroll offsets needed to make a point visible
+   *
+   * Determines if the given document coordinates are within the currently
+   * visible area. If not, it calculates the scroll offsets needed to
+   * bring that point into view.
+   *
+   * @param x - X coordinate in document space
+   * @param y - Y coordinate in document space
+   * @returns Scroll offsets object if scrolling is needed, null otherwise
+   */
   CalcScrollToVisible(x: number, y: number) {
-    console.log('= B.Document CalcScrollToVisible input', { x, y });
-
     let xOffset = 0;
     let yOffset = 0;
     const visibleRight = this.docInfo.docVisX + this.docInfo.docVisWidth;
@@ -390,78 +439,117 @@ class Document extends Container {
     }
 
     if (xOffset || yOffset) {
-      const result = {
+      return {
         xOff: this.docInfo.scrollX + xOffset * this.docInfo.docToScreenScale,
         yOff: this.docInfo.scrollY + yOffset * this.docInfo.docToScreenScale
       };
-      console.log('= B.Document CalcScrollToVisible output', result);
-      return result;
     }
 
-    console.log('= B.Document CalcScrollToVisible output', null);
     return null;
   }
 
+  /**
+   * Retrieves the current document work area information
+   *
+   * Returns the document info object containing all dimensions, coordinates,
+   * scaling factors, and other properties defining the current document
+   * workspace configuration.
+   *
+   * @returns Document information object
+   */
   GetWorkArea() {
-    console.log('= B.Document GetWorkArea input');
-    const result = this.docInfo;
-    console.log('= B.Document GetWorkArea output', result);
-    return result;
+    return this.docInfo;
   }
 
-  ConvertDocToWindowCoords(docX: number, docY: number) {
-    console.log('= B.Document ConvertDocToWindowCoords input', { docX, docY });
-
-    const windowCoords = {
-      x: docX * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
-      y: docY * this.docInfo.docToScreenScale + this.docInfo.docScreenY
+  /**
+   * Converts document coordinates to window coordinates
+   *
+   * Transforms coordinates from document space to window space by applying
+   * the current document-to-screen scaling and offset adjustments.
+   *
+   * @param documentX - X coordinate in document space
+   * @param documentY - Y coordinate in document space
+   * @returns Object with transformed coordinates in window space
+   */
+  ConvertDocToWindowCoords(documentX: number, documentY: number) {
+    return {
+      x: documentX * this.docInfo.docToScreenScale + this.docInfo.docScreenX,
+      y: documentY * this.docInfo.docToScreenScale + this.docInfo.docScreenY
     };
-
-    console.log('= B.Document ConvertDocToWindowCoords output', windowCoords);
-    return windowCoords;
   }
 
+  /**
+   * Converts a length measurement from document space to window space
+   *
+   * Applies the document-to-screen scaling factor to convert a length value
+   * from document coordinates to window/screen coordinates.
+   *
+   * @param length - The length in document space to convert
+   * @returns The converted length in window/screen coordinates
+   */
   ConvertDocToWindowLength(length: number) {
-    console.log('= B.Document ConvertDocToWindowLength input', { length });
-    const result = length * this.docInfo.docToScreenScale;
-    console.log('= B.Document ConvertDocToWindowLength output', { result });
-    return result;
+    return length * this.docInfo.docToScreenScale;
   }
 
+  /**
+   * Converts pixel offsets to document coordinates
+   *
+   * Transforms offset values (typically from mouse events) to document space
+   * by dividing by the document-to-screen scale factor.
+   *
+   * @param offsetX - The X offset in screen pixels
+   * @param offsetY - The Y offset in screen pixels
+   * @returns Object containing converted X and Y coordinates in document space
+   */
   ConvertOffsetToDocCoords(offsetX: number, offsetY: number) {
-    console.log('= B.Document ConvertOffsetToDocCoords input', { offsetX, offsetY });
-
-    const docCoords = {
+    return {
       x: offsetX / this.docInfo.docToScreenScale,
       y: offsetY / this.docInfo.docToScreenScale
     };
-
-    console.log('= B.Document ConvertOffsetToDocCoords output', docCoords);
-    return docCoords;
   }
 
+  /**
+   * Converts window/screen coordinates to document coordinates
+   *
+   * Transforms absolute window coordinates to document space by accounting for
+   * document screen position and applying the inverse scaling factor.
+   *
+   * @param windowX - The X coordinate in window/screen space
+   * @param windowY - The Y coordinate in window/screen space
+   * @returns Object containing converted X and Y coordinates in document space
+   */
   ConvertWindowToDocCoords(windowX: number, windowY: number) {
-    // console.log('= B.Document ConvertWindowToDocCoords input', { windowX, windowY });
-
-    const docCoords = {
+    return {
       x: (windowX - this.docInfo.docScreenX) / this.docInfo.docToScreenScale,
       y: (windowY - this.docInfo.docScreenY) / this.docInfo.docToScreenScale
     };
-
-    // console.log('= B.Document ConvertWindowToDocCoords output', docCoords);
-    return docCoords;
   }
 
+  /**
+   * Converts a length measurement from window/screen space to document space
+   *
+   * Applies the inverse of document-to-screen scaling factor to convert a length value
+   * from window coordinates to document coordinates.
+   *
+   * @param length - The length in window/screen space to convert
+   * @returns The converted length in document coordinates
+   */
   ConvertWindowToDocLength(length: number) {
-    console.log('= B.Document ConvertWindowToDocLength input', { length });
-    const result = length / this.docInfo.docToScreenScale;
-    console.log('= B.Document ConvertWindowToDocLength output', { result });
-    return result;
+    return length / this.docInfo.docToScreenScale;
   }
 
+  /**
+   * Converts window coordinates to element-local coordinates
+   *
+   * Transforms window coordinates to the local coordinate system of a specific SVG element
+   * by applying appropriate SVG matrix transformations.
+   *
+   * @param windowX - The X coordinate in window space
+   * @param windowY - The Y coordinate in window space
+   * @param element - The target SVG element to convert coordinates to
+   * @returns Object containing coordinates in the element's local coordinate system
+   */
   ConvertWindowToElemCoords(windowX: number, windowY: number, element: any) {
-    console.log('= B.Document ConvertWindowToElemCoords input', { windowX, windowY, element });
-
     const svgPoint = this.DOMElement().createSVGPoint();
     const svgElement = this.DOMElement();
 
@@ -472,18 +560,24 @@ class Document extends Container {
       .matrixTransform(svgElement.getScreenCTM().inverse())
       .matrixTransform(element.getTransformToElement(svgElement).inverse());
 
-    const result = {
+    return {
       x: transformedPoint.x,
       y: transformedPoint.y
     };
-
-    console.log('= B.Document ConvertWindowToElemCoords output', result);
-    return result;
   }
 
+  /**
+   * Converts element-local coordinates to window coordinates
+   *
+   * Transforms coordinates from an element's local coordinate system to window coordinates
+   * by applying appropriate SVG matrix transformations.
+   *
+   * @param elemX - The X coordinate in element's local space
+   * @param elemY - The Y coordinate in element's local space
+   * @param element - The source SVG element
+   * @returns Object containing coordinates in window space
+   */
   ConvertElemToWindowCoords(elemX: number, elemY: number, element: any) {
-    console.log('= B.Document ConvertElemToWindowCoords input', { elemX, elemY, element });
-
     const svgPoint = this.DOMElement().createSVGPoint();
     const svgElement = this.DOMElement();
 
@@ -494,18 +588,24 @@ class Document extends Container {
       .matrixTransform(element.getTransformToElement(svgElement))
       .matrixTransform(svgElement.getScreenCTM());
 
-    const result = {
+    return {
       x: transformedPoint.x,
       y: transformedPoint.y
     };
-
-    console.log('= B.Document ConvertElemToWindowCoords output', result);
-    return result;
   }
 
+  /**
+   * Rotates a point around a specified center point by a given angle
+   *
+   * Performs a geometric rotation of a point around another point using SVG matrix
+   * transformations.
+   *
+   * @param point - The point to rotate {x, y}
+   * @param center - The center point to rotate around {x, y}
+   * @param angle - The rotation angle in degrees
+   * @returns The rotated point coordinates {x, y}
+   */
   RotateAroundCenterPt(point, center, angle) {
-    console.log('= B.Document RotateAroundCenterPt input', { point, center, angle });
-
     const svgPoint = this.DOMElement().createSVGPoint();
     const svgMatrix = this.DOMElement().createSVGMatrix();
 
@@ -514,18 +614,24 @@ class Document extends Container {
 
     const rotatedPoint = svgPoint.matrixTransform(svgMatrix.rotate(angle));
 
-    const result = {
+    return {
       x: rotatedPoint.x + center.x,
       y: rotatedPoint.y + center.y
     };
-
-    console.log('= B.Document RotateAroundCenterPt output', result);
-    return result;
   }
 
+  /**
+   * Calculates the offset needed when resizing a rotated element
+   *
+   * Computes the positional adjustment required when resizing an element that has
+   * been rotated, ensuring the resize operation respects the rotation angle.
+   *
+   * @param element - The original element with position and dimensions
+   * @param target - The target position and dimensions after resize
+   * @param angle - The rotation angle in degrees
+   * @returns Object containing the X and Y offsets to apply
+   */
   CalculateRotatedOffsetForResize(element, target, angle) {
-    console.log('= B.Document CalculateRotatedOffsetForResize input', { element, target, angle });
-
     const elementCenter = {
       x: element.x + element.width / 2,
       y: element.y + element.height / 2
@@ -538,65 +644,79 @@ class Document extends Container {
 
     const rotatedPoint = this.RotateAroundCenterPt(targetCenter, elementCenter, angle);
 
-    const result = {
+    return {
       x: rotatedPoint.x - targetCenter.x,
       y: rotatedPoint.y - targetCenter.y
     };
-
-    console.log('= B.Document CalculateRotatedOffsetForResize output', result);
-    return result;
   }
 
-
-  AddLayer(layerID: string) {
-    console.log('= B.Document AddLayer input', { layerID });
-
-    const layer = this.CreateShape(ConstantData.CreateShapeType.LAYER);
-    layer.SetID(layerID);
+  /**
+   * Adds a new layer to the document
+   *
+   * Creates a layer with the specified ID, adds it to the document,
+   * and applies appropriate document transformations.
+   *
+   * @param layerId - The unique identifier for the layer
+   * @returns The newly created layer object
+   */
+  AddLayer(layerId: string) {
+    const layer = this.CreateShape(OptConstant.CSType.LAYER);
+    layer.SetID(layerId);
     this.AddElement(layer);
     this.ApplyDocumentTransform();
-    $(layer.svgObj.node).data('layerID', layerID);
+    $(layer.svgObj.node).data('layerID', layerId);
 
-    console.log('= B.Document AddLayer output', layer);
     return layer;
   }
 
-  RemoveLayer(layerID: string) {
-    console.log('= B.Document RemoveLayer input', { layerID });
-
-    const layer = this.GetElementByID(layerID);
+  /**
+   * Removes a layer from the document
+   *
+   * Finds a layer by its ID and removes it from the document if found.
+   *
+   * @param layerId - The ID of the layer to remove
+   */
+  RemoveLayer(layerId: string) {
+    const layer = this.GetElementByID(layerId);
     if (layer) {
       this.RemoveElement(layer);
-      console.log('= B.Document RemoveLayer removed layer', { layerID });
-    } else {
-      console.warn('= B.Document RemoveLayer layer not found', { layerID });
     }
-
-    console.log('= B.Document RemoveLayer output');
   }
 
-  GetLayer(layerID: string) {
-    console.log('= B.Document GetLayer input', { layerID });
-
+  /**
+   * Retrieves a layer by its ID
+   *
+   * Searches through all elements in the document to find a Layer element
+   * with the specified ID.
+   *
+   * @param layerId - The ID of the layer to find
+   * @returns The found Layer object or null if not found
+   */
+  GetLayer(layerId: string) {
     let element;
     let layer = null;
     const elementCount = this.ElementCount();
 
     for (let i = 0; i < elementCount; i++) {
       element = this.GetElementByIndex(i);
-      if (element instanceof Layer && element.GetID() === layerID) {
+      if (element instanceof Layer && element.GetID() === layerId) {
         layer = element;
         break;
       }
     }
 
-    console.log('= B.Document GetLayer output', { layer });
     return layer;
   }
 
+  /**
+   * Retrieves the current document layer
+   *
+   * Returns the document's primary layer, either by using the stored document layer ID
+   * or by finding the first layer that allows scaling.
+   *
+   * @returns The document layer, or null if no appropriate layer is found
+   */
   GetDocumentLayer() {
-    console.log('= B.Document GetDocumentLayer input');
-
     let element;
     let documentLayer = null;
     const elementCount = this.ElementCount();
@@ -604,8 +724,8 @@ class Document extends Container {
     for (let i = 0; i < elementCount; i++) {
       element = this.GetElementByIndex(i);
       if (element instanceof Layer) {
-        if (this.documentLayerID) {
-          if (this.documentLayerID === element.GetID()) {
+        if (this.documentLayerId) {
+          if (this.documentLayerId === element.GetID()) {
             documentLayer = element;
             break;
           }
@@ -616,19 +736,32 @@ class Document extends Container {
       }
     }
 
-    console.log('= B.Document GetDocumentLayer output', documentLayer);
     return documentLayer;
   }
 
-  SetDocumentLayer(layerID: string) {
-    console.log('= B.Document SetDocumentLayer input', { layerID });
-    this.documentLayerID = layerID;
-    console.log('= B.Document SetDocumentLayer output', { documentLayerID: this.documentLayerID });
+  /**
+   * Sets the specified layer as the active document layer
+   *
+   * This method establishes a particular layer as the main document layer
+   * by storing its ID. The document layer is used as the primary container
+   * for drawing elements.
+   *
+   * @param layerId - The ID of the layer to set as the document layer
+   */
+  SetDocumentLayer(layerId: string) {
+    this.documentLayerId = layerId;
   }
 
+  /**
+   * Retrieves or creates a special formatting layer
+   *
+   * This method returns the formatting layer used for temporary rendering operations.
+   * If the formatting layer doesn't exist or isn't properly configured, it creates
+   * a new one with appropriate settings (DPI scaling, export exclusion, etc.).
+   *
+   * @returns The formatting layer object
+   */
   GetFormattingLayer() {
-    console.log('= B.Document GetFormattingLayer input');
-
     let formattingLayer = this.GetLayer('__FORMATTING__');
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
       formattingLayer = null;
@@ -643,40 +776,52 @@ class Document extends Container {
       this.ApplyDocumentTransform();
     }
 
-    console.log('= B.Document GetFormattingLayer output', formattingLayer);
     return formattingLayer;
   }
 
-  GetPreviousLayer(layerID: string) {
-    console.log('= B.Document GetPreviousLayer input', { layerID });
-
+  /**
+   * Finds the layer that appears before the specified layer
+   *
+   * This method searches through the document's elements to locate the layer
+   * that precedes the one with the given ID in the stacking order.
+   *
+   * @param layerId - The ID of the reference layer
+   * @returns The layer object that appears before the specified layer, or null if none found
+   */
+  GetPreviousLayer(layerId: string) {
     let previousLayer = null;
     const elementCount = this.ElementCount();
 
     for (let i = 0; i < elementCount; i++) {
       const element = this.GetElementByIndex(i);
       if (element instanceof Layer) {
-        if (element.GetID() === layerID) {
+        if (element.GetID() === layerId) {
           break;
         }
         previousLayer = element;
       }
     }
 
-    console.log('= B.Document GetPreviousLayer output', { previousLayer });
     return previousLayer;
   }
 
-  GetNextLayer(layerID: string) {
-    console.log('= B.Document GetNextLayer input', { layerID });
-
+  /**
+   * Finds the layer that appears after the specified layer
+   *
+   * This method searches through the document's elements to locate the layer
+   * that follows the one with the given ID in the stacking order.
+   *
+   * @param layerId - The ID of the reference layer (optional)
+   * @returns The layer object that appears after the specified layer, or null if none found
+   */
+  GetNextLayer(layerId: string) {
     let nextLayer = null;
     let currentLayer = null;
     let startIndex = 0;
     const elementCount = this.ElementCount();
 
-    if (layerID) {
-      currentLayer = this.GetLayer(layerID);
+    if (layerId) {
+      currentLayer = this.GetLayer(layerId);
       if (currentLayer) {
         startIndex = this.GetElementIndex(currentLayer) + 1;
       }
@@ -690,16 +835,23 @@ class Document extends Container {
       }
     }
 
-    console.log('= B.Document GetNextLayer output', { nextLayer });
     return nextLayer;
   }
 
-  MoveLayer(layerID: string, moveType: number, targetLayerID?: string) {
-    console.log('= B.Document MoveLayer input', { layerID, moveType, targetLayerID });
-
-    const layer = this.GetLayer(layerID);
+  /**
+   * Moves a layer to a new position within the document hierarchy
+   *
+   * This method changes the stacking order of the specified layer based on the
+   * requested move type. The layer can be moved to the top, bottom, or before/after
+   * another target layer.
+   *
+   * @param layerId - The ID of the layer to move
+   * @param moveType - The type of movement to perform (TOP, BOTTOM, BEFORE, AFTER)
+   * @param targetLayerId - The ID of the target layer (required for BEFORE/AFTER moves)
+   */
+  MoveLayer(layerId: string, moveType: number, targetLayerId?: string) {
+    const layer = this.GetLayer(layerId);
     if (!layer) {
-      console.warn('= B.Document MoveLayer layer not found', { layerID });
       return;
     }
 
@@ -709,8 +861,8 @@ class Document extends Container {
     let targetLayer = null;
     let targetLayerIndex = 0;
 
-    if (targetLayerID) {
-      targetLayer = this.GetLayer(targetLayerID);
+    if (targetLayerId) {
+      targetLayer = this.GetLayer(targetLayerId);
       if (targetLayer) {
         targetLayerIndex = this.GetElementIndex(targetLayer);
         if (currentIndex < targetLayerIndex) {
@@ -733,7 +885,6 @@ class Document extends Container {
         targetIndex = totalElements - 1;
         break;
       default:
-        console.error('= B.Document MoveLayer unknown moveType', { moveType });
         return;
     }
 
@@ -741,84 +892,20 @@ class Document extends Container {
       this.RemoveElement(layer);
       this.AddElement(layer, targetIndex);
     }
-
-    console.log('= B.Document MoveLayer output', { layerID, moveType, targetLayerID, targetIndex });
   }
 
-  AddDocumentFontToList(fontList, fontName, fontType) {
-    console.log('= B.Document AddDocumentFontToList input', { fontList, fontName, fontType });
-
-    let index = -1;
-    const length = fontList.length;
-
-    for (let i = 0; i < length; i++) {
-      if (fontList[i].name === fontName) {
-        index = i;
-        break;
-      }
-    }
-
-    if (index < 0) {
-      fontList.push({
-        name: fontName,
-        type: fontType
-      });
-      index = length;
-    }
-
-    console.log('= B.Document AddDocumentFontToList output', { index });
-    return index;
-  }
-
-  MapFont(fontName: string, category: string = 'sanserif') {
-    console.log('= B.Document MapFont input', { fontName, category });
-
-    let fallbackFont = '';
-    let defaultFont = '';
-    const fontListLength = this.fontList.length;
-    let mappedFont = `'${fontName}'`;
-
-    for (let i = 0; i < fontListLength; i++) {
-      const font = this.fontList[i];
-      if (font.name === fontName) {
-        fallbackFont = font.fallback;
-        break;
-      }
-      if (!defaultFont && font.default && font.category === category) {
-        defaultFont = font.fallback;
-      }
-    }
-
-    if (fallbackFont) {
-      mappedFont += `,${fallbackFont}`;
-    }
-
-    console.log('= B.Document MapFont output', { mappedFont });
-    return mappedFont;
-  }
-
-  GetFontType(fontName: string) {
-    console.log('= B.Document GetFontType input', { fontName });
-
-    let fontType = 'sanserif';
-    const fontListLength = this.fontList.length;
-
-    for (let i = 0; i < fontListLength; i++) {
-      if (this.fontList[i].name === fontName) {
-        fontType = this.fontList[i].category;
-        break;
-      }
-    }
-
-    console.log('= B.Document GetFontType output', { fontType });
-    return fontType;
-  }
-
+  /**
+   * Text metrics cache to avoid repeated calculations
+   */
   static _TextMetricsCache = {}
 
+  /**
+   * Retrieves text cache for a specific style, creating one if it doesn't exist
+   *
+   * @param style - The text style object containing formatting properties
+   * @returns Object containing metrics and text cache for the style
+   */
   GetTextCacheForStyle(style) {
-    console.log('= B.Document GetTextCacheForStyle input', { style });
-
     const styleID = Formatter.MakeIDFromStyle(style);
     let cache = Document._TextMetricsCache[styleID];
 
@@ -830,94 +917,79 @@ class Document extends Container {
       Document._TextMetricsCache[styleID] = cache;
     }
 
-    console.log('= B.Document GetTextCacheForStyle output', { cache });
     return cache;
   }
 
+  /**
+   * Calculates text metrics for a given style
+   *
+   * @param style - The text style object containing formatting properties
+   * @returns Object containing calculated metrics for the style
+   */
   CalcStyleMetrics(style) {
-    console.log('= B.Document CalcStyleMetrics input', { style });
-
     const textCache = this.GetTextCacheForStyle(style);
     const metrics = Utils1.CopyObj(textCache.metrics);
 
-    console.log('= B.Document CalcStyleMetrics output', { metrics });
     return metrics;
   }
 
+  /**
+   * Retrieves text run cache for positioning characters
+   *
+   * @param style - The text style object containing formatting properties
+   * @param text - The text string to process
+   * @returns Object containing character offset positions
+   */
   GetTextRunCache(style, text) {
     return { startOffsets: [], endOffsets: [] }
   }
 
+  /**
+   * Sets the active editing component, deactivating any previous one
+   *
+   * @param newEdit - The new edit component to activate
+   */
   SetActiveEdit(newEdit) {
-    console.log('= B.Document SetActiveEdit input', { newEdit });
-
     const currentEdit = this.GetActiveEdit();
     if (currentEdit && currentEdit !== newEdit) {
       currentEdit.Deactivate();
     }
     this.activeEdit = newEdit;
-
-    console.log('= B.Document SetActiveEdit output', { activeEdit: this.activeEdit });
   }
 
+  /**
+   * Clears the currently active edit component
+   *
+   * @param event - The event that triggered the clear operation
+   */
   ClearActiveEdit(event) {
-    console.log('= B.Document ClearActiveEdit input', { event });
-
     const activeEdit = this.GetActiveEdit();
     if (activeEdit) {
       activeEdit.Deactivate(event);
     }
     this.activeEdit = null;
-
-    console.log('= B.Document ClearActiveEdit output', { activeEdit: this.activeEdit });
   }
 
+  /**
+   * Retrieves the currently active edit component
+   *
+   * @returns The active edit component or null if none exists
+   */
   GetActiveEdit() {
-    console.log('= B.Document GetActiveEdit input');
-
     if (this.activeEdit && !this.activeEdit.InDocument()) {
       this.activeEdit = null;
     }
 
-    console.log('= B.Document GetActiveEdit output', { activeEdit: this.activeEdit });
     return this.activeEdit;
   }
 
-  InitSpellCheck() {
-    console.log('= B.Document InitSpellCheck input');
-
-    // if (!this.spellChecker) {
-    //   this.spellChecker = new Spell(this);
-    //   this.spellChecker.Initialize();
-    // }
-
-    console.log('= B.Document InitSpellCheck output', { spellChecker: this.spellChecker });
-  }
-
-  InitSpellCheckUser() {
-    console.log('= B.Document InitSpellCheckUser input');
-
-    if (this.spellChecker) {
-      this.spellChecker.UserInitialize();
-    }
-
-    console.log('= B.Document InitSpellCheckUser output');
-  }
-
-  GetSpellCheck() {
-    console.log('= B.Document GetSpellCheck input');
-
-    if (!this.spellChecker) {
-      this.InitSpellCheck();
-    }
-
-    console.log('= B.Document GetSpellCheck output', { spellChecker: this.spellChecker });
-    return this.spellChecker;
-  }
-
+  /**
+   * Checks if a definition with the specified ID exists in the SVG defs section
+   *
+   * @param defID - The ID of the definition to check
+   * @returns Boolean indicating whether the definition exists
+   */
   DefExists(defID: string) {
-    console.log('= B.Document DefExists input', { defID });
-
     const defsChildren = this.svgObj.defs().children();
     let exists = false;
 
@@ -928,68 +1000,58 @@ class Document extends Container {
       }
     }
 
-    console.log('= B.Document DefExists output', { exists });
     return exists;
   }
 
+  /**
+   * Retrieves the SVG definitions section
+   *
+   * @returns The SVG defs element
+   */
   Defs() {
-    console.log('= B.Document Defs input');
-    const defs = this.svgObj.defs();
-    console.log('= B.Document Defs output', { defs });
-    return defs;
+    return this.svgObj.defs();
   }
 
+  /**
+   * Clears all definitions from the SVG defs section
+   */
   ClearDefs() {
-    console.log('= B.Document ClearDefs input');
     const defs = this.Defs();
     if (defs) {
       defs.clear();
     }
-    console.log('= B.Document ClearDefs output');
   }
 
-  ImageLoad_AddRef() {
-    console.log('= B.Document ImageLoad_AddRef input');
+  /**
+   * Increments the image load reference counter
+   * Used to track pending image loads
+   */
+  ImageLoadAddRef() {
     this.imageLoadRefCount++;
-    console.log('= B.Document ImageLoad_AddRef output', { imageLoadRefCount: this.imageLoadRefCount });
   }
 
-  ImageLoad_DecRef() {
-    console.log('= B.Document ImageLoad_DecRef input');
+  /**
+   * Decrements the image load reference counter
+   * Ensures the counter never goes below zero
+   */
+  ImageLoadDecRef() {
     this.imageLoadRefCount = Math.max(0, this.imageLoadRefCount - 1);
-    console.log('= B.Document ImageLoad_DecRef output', { imageLoadRefCount: this.imageLoadRefCount });
   }
 
-  ImageLoad_GetRefCount() {
-    console.log('= B.Document ImageLoad_GetRefCount input');
-    const refCount = this.imageLoadRefCount;
-    console.log('= B.Document ImageLoad_GetRefCount output', { refCount });
-    return refCount;
+  /**
+   * Gets the current image load reference count
+   *
+   * @returns The current reference count
+   */
+  ImageLoadGetRefCount() {
+    return this.imageLoadRefCount;
   }
 
-  ImageLoad_ResetRefCount() {
-    console.log('= B.Document ImageLoad_ResetRefCount input');
+  /**
+   * Resets the image load reference counter to zero
+   */
+  ImageLoadResetRefCount() {
     this.imageLoadRefCount = 0;
-    console.log('= B.Document ImageLoad_ResetRefCount output', { imageLoadRefCount: this.imageLoadRefCount });
-  }
-
-  static CreateShapeType = {
-    RECT: 1,
-    RRECT: 2,
-    OVAL: 3,
-    LINE: 4,
-    POLYLINE: 5,
-    POLYGON: 6,
-    PATH: 7,
-    TEXT: 8,
-    IMAGE: 9,
-    GROUP: 10,
-    LAYER: 11,
-    SYMBOL: 12,
-    POLYLINECONTAINER: 13,
-    POLYPOLYLINE: 14,
-    SHAPECOPY: 15,
-    SHAPECONTAINER: 16
   }
 }
 
