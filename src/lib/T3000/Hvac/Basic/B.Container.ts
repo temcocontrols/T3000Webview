@@ -2,18 +2,22 @@
 
 import T3Svg from "../Helper/T3Svg"
 import Element from "./B.Element"
-import Utils1 from "../Helper/Utils1"
-import ConstantData from "../Data/ConstantData"
 
 class Container extends Element {
 
+  /**
+   * Container class constructor
+   */
   constructor() {
     super();
   }
 
+  /**
+   * Adds an element to this container
+   * @param element - The element to add
+   * @param index - Optional index where to insert the element
+   */
   AddElement(element, index?) {
-    console.log('= B.Container AddElement input element, index', element, index);
-
     if (index !== undefined && this.svgObj instanceof T3Svg.Doc) {
       index++;
     }
@@ -23,100 +27,107 @@ class Container extends Element {
       element.parent = this;
       element.RefreshPaint(true);
     }
-
-    console.log('= B.Container AddElement output element', element);
   }
 
+  /**
+   * Removes an element from this container
+   * @param element - The element to remove
+   */
   RemoveElement(element) {
-    console.log('= B.Container RemoveElement input element', element);
-
-    if (!element) { return }
+    if (!element) { return; }
 
     if (element.svgObj.parent === this.svgObj) {
       this.svgObj.remove(element.svgObj);
       element.parent = null;
     }
-
-    console.log('= B.Container RemoveElement output element', element);
   }
 
+  /**
+   * Removes all elements from this container
+   */
   RemoveAll() {
-    console.log('= B.Container RemoveAll input');
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
     let childrenCount = this.svgObj.children().length;
 
     for (let i = startIndex; i < childrenCount; i++) {
       this.svgObj.removeAt(startIndex);
     }
-
-    console.log('= B.Container RemoveAll output');
   }
 
+  /**
+   * Removes an element by its internal ID
+   * @param internalID - The internal ID of the element to remove
+   */
   RemoveElementByInternalID(internalID) {
-    console.log('= B.Container RemoveElementByInternalID input internalID', internalID);
     const children = this.svgObj.children();
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
       if (child && child.internalID === internalID) {
         this.svgObj.removeAt(i);
-        console.log('= B.Container RemoveElementByInternalID removed element at index', i);
         break;
       }
     }
-
-    console.log('= B.Container RemoveElementByInternalID output');
   }
 
+  /**
+   * Gets the number of elements in this container
+   * @returns Number of elements
+   */
   ElementCount() {
-    console.log('= B.Container ElementCount input');
     let count = this.svgObj.children().length;
-    if (this.svgObj instanceof HvacSVG.Doc) {
+    if (this.svgObj instanceof T3Svg.Doc) {
       count--;
     }
-    console.log('= B.Container ElementCount output count', count);
     return count;
   }
 
+  /**
+   * Gets an element by its index in the container
+   * @param index - The index of the element
+   * @returns The element at the specified index or null if not found
+   */
   GetElementByIndex(index: number) {
-    console.log('= B.Container GetElementByIndex input index', index);
     const children = this.svgObj.children();
 
-    if (this.svgObj instanceof HvacSVG.Doc) {
+    if (this.svgObj instanceof T3Svg.Doc) {
       index++;
     }
 
     if (index < 0 || index >= children.length) {
-      console.log('= B.Container GetElementByIndex output', null);
       return null;
     }
 
-    const result = children[index].SDGObj;
-    console.log('= B.Container GetElementByIndex output', result);
-    return result;
+    return children[index].SDGObj;
   }
 
+  /**
+   * Gets an element by its ID
+   * @param id - The ID of the element to find
+   * @param userData - Optional user data to match
+   * @returns The element with the specified ID or null if not found
+   */
   GetElementByID(id: string, userData?: any) {
-    console.log('= B.Container GetElementByID input id, userData', id, userData);
     const children = this.svgObj.children();
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
       if (child && child.ID === id) {
         if (userData && child.userData !== userData) continue;
-        console.log('= B.Container GetElementByID output', child);
         return child;
       }
     }
-    console.log('= B.Container GetElementByID output', null);
     return null;
   }
 
+  /**
+   * Gets an element by its ID recursively within groups
+   * @param id - The ID of the element to find
+   * @returns The element with the specified ID or null if not found
+   */
   GetElementByIDInGroup(id: string) {
-    console.log('= B.Container GetElementByIDInGroup input id', id);
-
     function findElementByID(element) {
       const children = element.svgObj.children();
       let foundElement = null;
@@ -140,27 +151,27 @@ class Container extends Element {
       const child = children[i].SDGObj;
       if (child) {
         if (child.ID === id) {
-          console.log('= B.Container GetElementByIDInGroup output child', child);
           return child;
         }
         const foundElement = findElementByID(child);
         if (foundElement) {
-          console.log('= B.Container GetElementByIDInGroup output foundElement', foundElement);
           return foundElement;
         }
       }
     }
 
-    console.log('= B.Container GetElementByIDInGroup output', null);
     return null;
   }
 
+  /**
+   * Gets a list of all elements with the specified ID
+   * @param id - The ID to search for
+   * @returns Array of elements with the specified ID
+   */
   GetElementListWithID(id: string) {
-    console.log('= B.Container GetElementListWithID input id', id);
-
     const children = this.svgObj.children();
     const result = [];
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
@@ -169,115 +180,129 @@ class Container extends Element {
       }
     }
 
-    console.log('= B.Container GetElementListWithID output result', result);
     return result;
   }
 
+  /**
+   * Gets an element by its internal ID
+   * @param internalID - The internal ID to search for
+   * @returns The element with the specified internal ID or null if not found
+   */
   GetElementByInternalID(internalID: string) {
-    console.log('= B.Container GetElementByInternalID input internalID', internalID);
     const children = this.svgObj.children();
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
       if (child && child.internalID === internalID) {
-        console.log('= B.Container GetElementByInternalID output', child);
         return child;
       }
     }
 
-    console.log('= B.Container GetElementByInternalID output', null);
     return null;
   }
 
+  /**
+   * Finds an element by its ID recursively in the container hierarchy
+   * @param id - The ID to search for
+   * @returns The element with the specified ID or null if not found
+   */
   FindElement(id: string) {
-    console.log('= B.Container FindElement input id', id);
     const children = this.svgObj.children();
 
     for (let i = 0; i < children.length; i++) {
       const child = children[i].SDGObj;
       if (child) {
         if (child.ID === id) {
-          console.log('= B.Container FindElement output', child);
           return child;
         }
         if (child instanceof Container) {
           const foundElement = child.FindElement(id);
           if (foundElement) {
-            console.log('= B.Container FindElement output', foundElement);
             return foundElement;
           }
         }
       }
     }
 
-    console.log('= B.Container FindElement output', null);
     return null;
   }
 
+  /**
+   * Finds an element by its DOM element
+   * @param domElement - The DOM element to search for
+   * @returns The element with the specified DOM element or null if not found
+   */
   FindElementByDOMElement(domElement: HTMLElement) {
-    console.log('= B.Container FindElementByDOMElement input domElement', domElement);
     const children = this.svgObj.children();
-    let startIndex = this.svgObj instanceof HvacSVG.Doc ? 1 : 0;
+    let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
     for (let i = startIndex; i < children.length; i++) {
       const child = children[i].SDGObj;
       if (child) {
         if (child.DOMElement() === domElement) {
-          console.log('= B.Container FindElementByDOMElement output', child);
           return child;
         }
         if (child instanceof Container) {
           const foundElement = child.FindElementByDOMElement(domElement);
           if (foundElement) {
-            console.log('= B.Container FindElementByDOMElement output', foundElement);
             return foundElement;
           }
         }
       }
     }
 
-    console.log('= B.Container FindElementByDOMElement output', null);
     return null;
   }
 
+  /**
+   * Gets the index of an element in this container
+   * @param element - The element to find
+   * @returns The index of the element or -1 if not found
+   */
   GetElementIndex(element) {
-    console.log('= B.Container GetElementIndex input element', element);
     let index = this.svgObj.children().indexOf(element.svgObj);
-    if (index > 0 && this.svgObj instanceof HvacSVG.Doc) {
+    if (index > 0 && this.svgObj instanceof T3Svg.Doc) {
       index--;
     }
-    console.log('= B.Container GetElementIndex output index', index);
     return index;
   }
 
+  /**
+   * Moves an element one level forward in the z-order
+   * @param element - The element to move forward
+   */
   MoveElementForward(element) {
-    console.log('= B.Container MoveElementForward input element', element);
     if (this.GetElementIndex(element) < this.ElementCount() - 1) {
       element.svgObj.forward();
     }
-    console.log('= B.Container MoveElementForward output element', element);
   }
 
+  /**
+   * Moves an element one level backward in the z-order
+   * @param element - The element to move backward
+   */
   MoveElementBackward(element) {
-    console.log('= B.Container MoveElementBackward input element', element);
     if (this.GetElementIndex(element) > 0) {
       element.svgObj.backward();
     }
-    console.log('= B.Container MoveElementBackward output element', element);
   }
 
+  /**
+   * Moves an element to the front (top) of the z-order
+   * @param element - The element to move to front
+   */
   MoveElementToFront(element) {
-    console.log('= B.Container MoveElementToFront input element', element);
     element.svgObj.front();
-    console.log('= B.Container MoveElementToFront output element', element);
   }
 
+  /**
+   * Moves an element to the back (bottom) of the z-order
+   * @param element - The element to move to back
+   */
   MoveElementToBack(element) {
-    console.log('= B.Container MoveElementToBack input element', element);
     element.svgObj.back();
     element.svgObj.level();
-    console.log('= B.Container MoveElementToBack output element', element);
   }
 
 }
