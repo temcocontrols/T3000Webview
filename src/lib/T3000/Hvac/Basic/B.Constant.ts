@@ -78,6 +78,134 @@ class BConstant {
     '##LineThick': 1,
     '##SolidFill': '#000'
   }
+
+  /**
+   * Defines visual effect types and their properties
+   * @property DROPSHADOW - Creates a shadow effect behind an element
+   * @property CASTSHADOW - Creates a projected shadow effect
+   * @property GLOW - Creates a glowing effect around an element
+   * @property REFLECT - Creates a reflection effect
+   * @property BEVEL - Creates a beveled edge effect within an element
+   * @property GLOSS - Creates a glossy finish effect within an element
+   * @property INNERGLOW - Creates a glowing effect inside an element
+   * @property INNERSHADOW - Creates a shadow effect inside an element
+   * @property RECOLOR - Applies color transformation within an element
+   */
+  static EffectType = {
+    DROPSHADOW: {
+      id: 'SHD',
+      outside: true
+    },
+    CASTSHADOW: {
+      id: 'SHC',
+      outside: true
+    },
+    GLOW: {
+      id: 'GLW',
+      outside: true
+    },
+    REFLECT: {
+      id: 'REFL',
+      outside: true
+    },
+    BEVEL: {
+      id: 'BVL',
+      inside: true
+    },
+    GLOSS: {
+      id: 'GLOSS',
+      inside: true
+    },
+    INNERGLOW: {
+      id: 'IGLW',
+      inside: true
+    },
+    INNERSHADOW: {
+      id: 'ISHD',
+      inside: true
+    },
+    RECOLOR: {
+      id: 'RCLR',
+      inside: true
+    }
+  }
+
+  /**
+   * Defines directional options for filter and effect applications
+   * @property LEFT - Direction from left
+   * @property LEFTTOP - Direction from left top corner
+   * @property TOP - Direction from top
+   * @property RIGHTTOP - Direction from right top corner
+   * @property RIGHT - Direction from right
+   * @property RIGHTBOTTOM - Direction from right bottom corner
+   * @property BOTTOM - Direction from bottom
+   * @property LEFTBOTTOM - Direction from left bottom corner
+   * @property CENTER - Direction from center
+   */
+  static FilterDirection = {
+    LEFT: 'L',
+    LEFTTOP: 'LT',
+    TOP: 'T',
+    RIGHTTOP: 'RT',
+    RIGHT: 'R',
+    RIGHTBOTTOM: 'RB',
+    BOTTOM: 'B',
+    LEFTBOTTOM: 'LB',
+    CENTER: 'C'
+  }
+
+  /**
+   * Defines bevel effect types for edge treatments
+   * @property HARD - Sharp, defined bevel edge
+   * @property SOFT - Smooth, gradual bevel edge
+   * @property BUMP - Embossed or raised bevel effect
+   */
+  static BevelType = {
+    HARD: 'H',
+    SOFT: 'S',
+    BUMP: 'B'
+  }
+
+  /**
+   * Defines gloss effect types for surface finishes
+   * @property HARD - Distinct, polished gloss finish
+   * @property SOFT - Subtle, diffused gloss finish
+   */
+  static GlossType = {
+    HARD: 'H',
+    SOFT: 'S'
+  }
+
+  /**
+   * Defines size presets for visual effects with percentage values
+   * @property DEFAULT - Default effect size (10% of element size)
+   * @property SMALL - Small effect size (5% of element size)
+   * @property MEDIUM - Medium effect size (25% of element size)
+   * @property LARGE - Large effect size (10% of element size)
+   * @property GIANT - Very large effect size (5% of element size)
+   */
+  static EffectSize = {
+    DEFAULT: {
+      id: 'D',
+      percentage: 0.1
+    },
+    SMALL: {
+      id: 'S',
+      percentage: 0.05
+    },
+    MEDIUM: {
+      id: 'M',
+      percentage: 0.25
+    },
+    LARGE: {
+      id: 'L',
+      percentage: 0.1
+    },
+    GIANT: {
+      id: 'G',
+      percentage: 0.05
+    }
+  }
 }
 
 export default BConstant
