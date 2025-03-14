@@ -10,7 +10,7 @@ import Utils3 from "../Helper/Utils3"
 import GlobalData from '../Data/T3Gv'
 import Instance from "../Data/Instance/Instance";
 import ConstantData from "../Data/ConstantData"
-import BasicConstants from "./B.Constants";
+import BConstant from "./B.Constant";
 import ConstantData2 from "../Data/ConstantData2";
 
 class Element {
@@ -719,8 +719,8 @@ class Element {
       this.fillGradientData = {};
       this.fillGradientData.settings = {};
       this.fillGradientData.settings.stops = [];
-      this.fillGradientData.settings.type = gradientSettings.type || BasicConstants.GradientStyle.LINEAR;
-      this.fillGradientData.settings.startPos = gradientSettings.startPos || BasicConstants.GradientPos.LEFTTOP;
+      this.fillGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.LINEAR;
+      this.fillGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LEFTTOP;
       this.fillGradientData.settings.angle = gradientSettings.angle;
 
       // Process each gradient stop
@@ -1061,8 +1061,8 @@ class Element {
       if (!gradientData.gradientElem) {
         let gradientType: string;
         switch (gradientData.settings.type) {
-          case BasicConstants.GradientStyle.RADIALFILL:
-          case BasicConstants.GradientStyle.RADIAL:
+          case BConstant.GradientStyle.RADIALFILL:
+          case BConstant.GradientStyle.RADIAL:
             gradientType = "radial";
             break;
           default:
@@ -1087,7 +1087,7 @@ class Element {
         this.svgObj.add(gradientData.gradientElem, 0);
       }
 
-      isLinearGradient = gradientData.settings.type === BasicConstants.GradientStyle.LINEAR;
+      isLinearGradient = gradientData.settings.type === BConstant.GradientStyle.LINEAR;
       startPosition.x = boundingBox.x;
       startPosition.y = boundingBox.y;
       endPosition.x = startPosition.x + boundingBox.width;
@@ -1095,45 +1095,45 @@ class Element {
 
       // Adjust positions based on the start position setting
       switch (gradientData.settings.startPos) {
-        case BasicConstants.GradientPos.TOP:
+        case BConstant.GradientPos.TOP:
           startPosition.x += boundingBox.width / 2;
           endPosition.x = startPosition.x;
           gradientDistance = boundingBox.height;
           break;
-        case BasicConstants.GradientPos.RIGHTTOP:
+        case BConstant.GradientPos.RIGHTTOP:
           startPosition.x = endPosition.x;
           endPosition.x = boundingBox.x;
           break;
-        case BasicConstants.GradientPos.RIGHT:
+        case BConstant.GradientPos.RIGHT:
           startPosition.x = endPosition.x;
           startPosition.y += boundingBox.height / 2;
           endPosition.x = boundingBox.x;
           endPosition.y = startPosition.y;
           gradientDistance = boundingBox.width;
           break;
-        case BasicConstants.GradientPos.RIGHTBOTTOM:
+        case BConstant.GradientPos.RIGHTBOTTOM:
           startPosition.x = endPosition.x;
           startPosition.y = endPosition.y;
           endPosition.x = boundingBox.x;
           endPosition.y = boundingBox.y;
           break;
-        case BasicConstants.GradientPos.BOTTOM:
+        case BConstant.GradientPos.BOTTOM:
           startPosition.x += boundingBox.width / 2;
           startPosition.y = endPosition.y;
           endPosition.x = startPosition.x;
           endPosition.y = boundingBox.y;
           gradientDistance = boundingBox.height;
           break;
-        case BasicConstants.GradientPos.LEFTBOTTOM:
+        case BConstant.GradientPos.LEFTBOTTOM:
           startPosition.y = endPosition.y;
           endPosition.y = boundingBox.y;
           break;
-        case BasicConstants.GradientPos.LEFT:
+        case BConstant.GradientPos.LEFT:
           startPosition.y += boundingBox.height / 2;
           endPosition.y = startPosition.y;
           gradientDistance = boundingBox.width;
           break;
-        case BasicConstants.GradientPos.CENTER:
+        case BConstant.GradientPos.CENTER:
           if (isLinearGradient) {
             startPosition.x += boundingBox.width / 2;
             startPosition.y += boundingBox.height / 2;
@@ -1346,8 +1346,8 @@ class Element {
       this.strokeGradientData = {};
       this.strokeGradientData.settings = {};
       this.strokeGradientData.settings.stops = [];
-      this.strokeGradientData.settings.type = gradientSettings.type || BasicConstants.GradientStyle.LINEAR;
-      this.strokeGradientData.settings.startPos = gradientSettings.startPos || BasicConstants.GradientPos.LEFTTOP;
+      this.strokeGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.LINEAR;
+      this.strokeGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LEFTTOP;
       this.strokeGradientData.settings.angle = gradientSettings.angle;
 
       // Process each gradient stop
@@ -1383,7 +1383,7 @@ class Element {
 
     // Check if strokeWidth is not a number and parse it if necessary
     if (isNaN(Number(strokeWidth))) {
-      strokeWidth = Instance.Basic.Symbol.ParsePlaceholder(strokeWidth, BasicConstants.Placeholder.LineThick);
+      strokeWidth = Instance.Basic.Symbol.ParsePlaceholder(strokeWidth, BConstant.Placeholder.LineThick);
     }
 
     // Update the strokeWidth property with a numeric value

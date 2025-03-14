@@ -7,7 +7,7 @@ import Utils2 from "../Helper/Utils2"
 import Utils3 from "../Helper/Utils3"
 import Element from './B.Element'
 import ConstantData from "../Data/ConstantData"
-import BasicConstants from './B.Constants'
+import BConstant from './B.Constant'
 import Instance from '../Data/Instance/Instance';
 
 class Symbol extends Element {
@@ -48,29 +48,29 @@ class Symbol extends Element {
     console.log("= B.Symbol SetSymbolSource input:", { source });
 
     this.srcSymbolSVG = source;
-    this.fillColors = Symbol.GetPlaceholders(BasicConstants.Placeholder.FillColor, source);
-    this.lineColors = Symbol.GetPlaceholders(BasicConstants.Placeholder.LineColor, source);
-    this.lineWidths = Symbol.GetPlaceholders(BasicConstants.Placeholder.LineThick, source);
-    this.solidFills = Symbol.GetPlaceholders(BasicConstants.Placeholder.SolidFill, source);
-    this.fillTrans = Symbol.GetPlaceholders(BasicConstants.Placeholder.FillTrans, source);
-    this.lineTrans = Symbol.GetPlaceholders(BasicConstants.Placeholder.LineTrans, source);
+    this.fillColors = Symbol.GetPlaceholders(BConstant.Placeholder.FillColor, source);
+    this.lineColors = Symbol.GetPlaceholders(BConstant.Placeholder.LineColor, source);
+    this.lineWidths = Symbol.GetPlaceholders(BConstant.Placeholder.LineThick, source);
+    this.solidFills = Symbol.GetPlaceholders(BConstant.Placeholder.SolidFill, source);
+    this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
+    this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
     if (source) {
       source = source.replace(/fill-opacity="[\d.]*"/g, '').replace(/stroke-opacity="[\d.]*"/g, '');
 
       const fillTransPlaceholder = Symbol.CreatePlaceholder(
-        BasicConstants.Placeholder.FillTrans,
-        BasicConstants.PlaceholderDefaults[BasicConstants.Placeholder.FillTrans]
+        BConstant.Placeholder.FillTrans,
+        BConstant.PlaceholderDefaults[BConstant.Placeholder.FillTrans]
       );
       source = source.replace(
         new RegExp('fill="##FILLCOLOR', 'g'),
         'fill-opacity="' + fillTransPlaceholder + '" fill="##FILLCOLOR'
       );
-      this.fillTrans = Symbol.GetPlaceholders(BasicConstants.Placeholder.FillTrans, source);
+      this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
 
       const lineTransPlaceholder = Symbol.CreatePlaceholder(
-        BasicConstants.Placeholder.LineTrans,
-        BasicConstants.PlaceholderDefaults[BasicConstants.Placeholder.LineTrans]
+        BConstant.Placeholder.LineTrans,
+        BConstant.PlaceholderDefaults[BConstant.Placeholder.LineTrans]
       );
       source = source.replace(
         new RegExp('stroke="##LINECOLOR', 'g'),
@@ -79,7 +79,7 @@ class Symbol extends Element {
         new RegExp('fill="##LINECOLOR', 'g'),
         'fill-opacity="' + lineTransPlaceholder + '" fill="##LINECOLOR'
       );
-      this.lineTrans = Symbol.GetPlaceholders(BasicConstants.Placeholder.LineTrans, source);
+      this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
       this.srcSymbolSVG = source;
     }
@@ -260,7 +260,7 @@ class Symbol extends Element {
     console.log("= B.Symbol SetStrokeWidth input:", { width });
 
     if (isNaN(Number(width))) {
-      width = Number(Symbol.ParsePlaceholder(width as string, BasicConstants.Placeholder.LineThick));
+      width = Number(Symbol.ParsePlaceholder(width as string, BConstant.Placeholder.LineThick));
     }
 
     for (let i = 0; i < this.lineWidths.length; i++) {
@@ -308,7 +308,7 @@ class Symbol extends Element {
   static CreatePlaceholder(placeholderType: string, defaultValue: string = ''): string {
     console.log("= B.Symbol CreatePlaceholder input:", { placeholderType, defaultValue });
 
-    const placeholder = `${placeholderType}=${defaultValue}${BasicConstants.Placeholder.Terminator}`;
+    const placeholder = `${placeholderType}=${defaultValue}${BConstant.Placeholder.Terminator}`;
 
     console.log("= B.Symbol CreatePlaceholder output:", { placeholder });
     return placeholder;
@@ -318,8 +318,8 @@ class Symbol extends Element {
     console.log("= B.Symbol ParsePlaceholder input:", { placeholder, placeholderType });
 
     const startIndex = placeholder.indexOf('=') + 1;
-    const endIndex = placeholder.lastIndexOf(BasicConstants.Placeholder.Terminator);
-    let defaultValue = BasicConstants.PlaceholderDefaults[placeholderType];
+    const endIndex = placeholder.lastIndexOf(BConstant.Placeholder.Terminator);
+    let defaultValue = BConstant.PlaceholderDefaults[placeholderType];
 
     if (startIndex > 0 && endIndex > startIndex) {
       defaultValue = placeholder.slice(startIndex, endIndex);

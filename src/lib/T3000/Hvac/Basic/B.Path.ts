@@ -12,7 +12,7 @@ import ConstantData from "../Data/ConstantData"
 import ConstantData1 from "../Data/ConstantData1"
 import ConstantData2 from "../Data/ConstantData2"
 import Instance from "../Data/Instance/Instance";
-import BasicConstants from "./B.Constants";
+import BConstant from "./B.Constant";
 
 class Path extends Container {
 
@@ -94,7 +94,7 @@ class Path extends Container {
     console.log("= B.Path SetStrokeWidth called with strokeWidth:", strokeWidth);
 
     if (isNaN(strokeWidth) && typeof strokeWidth === 'string') {
-      strokeWidth = Instance.Basic.Symbol.ParsePlaceholder(strokeWidth, BasicConstants.Placeholder.LineThick);
+      strokeWidth = Instance.Basic.Symbol.ParsePlaceholder(strokeWidth, BConstant.Placeholder.LineThick);
     }
 
     strokeWidth = Utils1.RoundCoord(strokeWidth);

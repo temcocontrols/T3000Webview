@@ -28,7 +28,7 @@ import Rectangle from '../Model/Rectangle'
 import CRect from '../Model/CRect'
 import ConstantData2 from '../Data/ConstantData2'
 import PolyList from '../Model/PolyList'
-import BasicConstants from '../Basic/B.Constants'
+import BConstant from '../Basic/B.Constant'
 
 class BaseDrawingObject {
   public Type: string;
@@ -6143,8 +6143,8 @@ class BaseDrawingObject {
     });
 
     let gradientRecord = {
-      type: BasicConstants.GradientStyle.LINEAR,
-      startPos: BasicConstants.GradientPos.LEFTTOP,
+      type: BConstant.GradientStyle.LINEAR,
+      startPos: BConstant.GradientPos.LEFTTOP,
       stops: [] as Array<{ offset: number; color: string; opacity: number }>,
     };
 
@@ -6189,23 +6189,23 @@ class BaseDrawingObject {
 
     // Set gradient type and start position
     if (flags & ConstantData2.GradientStyle.GRAD_RADIAL) {
-      gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-      gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
+      gradientRecord.type = BConstant.GradientStyle.RADIAL;
+      gradientRecord.startPos = BConstant.GradientPos.CENTER;
     } else if (flags & ConstantData2.GradientStyle.GRAD_SHAPE) {
-      gradientRecord.type = BasicConstants.GradientStyle.RADIALFILL;
-      gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
+      gradientRecord.type = BConstant.GradientStyle.RADIALFILL;
+      gradientRecord.startPos = BConstant.GradientPos.CENTER;
     } else {
-      gradientRecord.type = BasicConstants.GradientStyle.LINEAR;
+      gradientRecord.type = BConstant.GradientStyle.LINEAR;
       if (flags & ConstantData2.GradientStyle.GRAD_TLBR) {
-        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
+        gradientRecord.startPos = BConstant.GradientPos.LEFTTOP;
       } else if (flags & ConstantData2.GradientStyle.GRAD_TRBL) {
-        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTTOP;
+        gradientRecord.startPos = BConstant.GradientPos.RIGHTTOP;
       } else if (flags & ConstantData2.GradientStyle.GRAD_VERT) {
-        gradientRecord.startPos = BasicConstants.GradientPos.TOP;
+        gradientRecord.startPos = BConstant.GradientPos.TOP;
       } else if (flags & ConstantData2.GradientStyle.GRAD_HORIZ) {
-        gradientRecord.startPos = BasicConstants.GradientPos.LEFT;
+        gradientRecord.startPos = BConstant.GradientPos.LEFT;
       } else {
-        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
+        gradientRecord.startPos = BConstant.GradientPos.LEFTTOP;
       }
     }
 
@@ -6228,52 +6228,52 @@ class BaseDrawingObject {
       stops: Array<{ color: string; opacity: number; offset: number }>;
       angle?: number;
     } = {
-      type: BasicConstants.GradientStyle.LINEAR,
-      startPos: BasicConstants.GradientPos.LEFTTOP,
+      type: BConstant.GradientStyle.LINEAR,
+      startPos: BConstant.GradientPos.LEFTTOP,
       stops: [],
     };
 
     switch (richGradient.gradienttype) {
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_LINEAR:
-        gradientRecord.type = BasicConstants.GradientStyle.LINEAR;
+        gradientRecord.type = BConstant.GradientStyle.LINEAR;
         gradientRecord.angle = richGradient.angle;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BR:
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BR:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTBOTTOM;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.RIGHTBOTTOM;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BL:
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_BL:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.LEFTBOTTOM;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.LEFTBOTTOM;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_CENTER:
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_CENTER:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.CENTER;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TR:
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TR:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.RIGHTTOP;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.RIGHTTOP;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TL:
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RECT_TL:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.LEFTTOP;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.LEFTTOP;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_BC:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.BOTTOM;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.BOTTOM;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_RADIAL_TC:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIAL;
-        gradientRecord.startPos = BasicConstants.GradientPos.TOP;
+        gradientRecord.type = BConstant.GradientStyle.RADIAL;
+        gradientRecord.startPos = BConstant.GradientPos.TOP;
         break;
       case ConstantData2.RichGradientTypes.SDFILL_RICHGRADIENT_SHAPE:
-        gradientRecord.type = BasicConstants.GradientStyle.RADIALFILL;
-        gradientRecord.startPos = BasicConstants.GradientPos.CENTER;
+        gradientRecord.type = BConstant.GradientStyle.RADIALFILL;
+        gradientRecord.startPos = BConstant.GradientPos.CENTER;
         break;
     }
 
