@@ -2,16 +2,16 @@
 
 import { plainToInstance } from 'class-transformer'
 import 'reflect-metadata'
-import T3Gv from '../Data/T3Gv'
-import StateOpt from '../Data/State/StateOpt'
-import ObjectStore from '../Data/State/ObjectStore'
-import ObjectStoreFactory from '../Data/State/ObjectStoreFactory'
-import State from '../Data/State/State'
-import StoredObject from '../Data/State/StoredObject'
-import SEDSession from '../Model/SEDSession'
-import LayersManager from '../Model/LayersManager'
-import TEDSession from '../Model/TEDSession'
-import Instance from '../Data/Instance/Instance'
+import T3Gv from '../../Data/T3Gv'
+import StateOpt from '../../Data/State/StateOpt'
+import ObjectStore from '../../Data/State/ObjectStore'
+import ObjectStoreFactory from '../../Data/State/ObjectStoreFactory'
+import State from '../../Data/State/State'
+import StoredObject from '../../Data/State/StoredObject'
+import SEDSession from '../../Model/SEDSession'
+import LayersManager from '../../Model/LayersManager'
+import TEDSession from '../../Model/TEDSession'
+import Instance from '../../Data/Instance/Instance'
 
 class DataOpt {
 

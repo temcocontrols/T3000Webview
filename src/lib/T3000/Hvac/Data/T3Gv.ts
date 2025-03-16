@@ -3,7 +3,7 @@
 import DocUtil from "../Doc/DocUtil";
 import OptUtil from "../Opt/OptUtil";
 import Base from "../Util/Base";
-import WallOpt from "../Util/WallOpt";
+import WallOpt from "../Opt/Wall/WallOpt";
 import ObjectStore from "./State/ObjectStore";
 import StateOpt from "./State/StateOpt";
 

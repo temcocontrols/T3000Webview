@@ -13,7 +13,7 @@ import ConstantData2 from '../../Data/ConstantData2'
 import Instance from "../../Data/Instance/Instance"
 import T3Constant from "../../Data/T3Constant"
 import KeyboardConstant from "./KeyboardConstant"
-import PolygonConstant from './PolygonConstant'
+import PolygonConstant from '../Polygon/PolygonConstant'
 
 class WallOpt {
 
