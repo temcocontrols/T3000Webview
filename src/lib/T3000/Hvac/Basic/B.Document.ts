@@ -20,8 +20,8 @@ import Text from './B.Text'
 import Formatter from "./B.Text.Formatter"
 import Image from './B.Image'
 import Utils1 from "../Util/Utils1"
-import ConstantData from "../Data/Constant/ConstantData"
-import OptConstant from "../Data/Constant/OptConstant"
+// import ConstantData from "../Data/Constant/ConstantData"
+// import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 
 class Document extends Container {

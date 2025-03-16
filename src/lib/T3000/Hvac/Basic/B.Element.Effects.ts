@@ -2,7 +2,7 @@
 
 import T3Svg from "../Util/T3Svg"
 import Utils2 from "../Util/Utils2"
-import OptConstant from '../Data/Constant/OptConstant'
+// import OptConstant from '../Data/Constant/OptConstant'
 import BoundInfo from '../Model/BoundInfo'
 import BConstant from "./B.Constant"
 
