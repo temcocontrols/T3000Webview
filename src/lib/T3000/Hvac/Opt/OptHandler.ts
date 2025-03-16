@@ -1,5 +1,5 @@
 
-import T3Timer from "../Helper/T3Timer";
+import T3Timer from "../Util/T3Timer";
 import QuickStyle from "../Model/QuickStyle";
 import ParagraphFormat from '../Model/ParagraphFormat';
 import GlobalData from '../Data/T3Gv';
@@ -13,9 +13,9 @@ import $ from 'jquery';
 import DefaultEvt from "../Event/EvtUtil";
 import ArrowSizes from '../Model/ArrowSizes';
 import Document from '../Basic/B.Document';
-import Utils1 from "../Helper/Utils1";
-import Utils2 from "../Helper/Utils2";
-import Utils3 from "../Helper/Utils3"
+import Utils1 from "../Util/Utils1";
+import Utils2 from "../Util/Utils2";
+import Utils3 from "../Util/Utils3"
 import BaseLine from '../Shape/S.BaseLine';
 import '../Helper/HammerTest2'
 import PolyLine from '../Shape/S.PolyLine';

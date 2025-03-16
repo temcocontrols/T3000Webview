@@ -3,10 +3,10 @@
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
-import Utils5 from '../../Helper/Utils5'
+import Utils5 from '../../Util/Utils5'
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
 import IdxUtils from '../IdxUtils'
-import T3Utils from "../../Helper/T3Utils"
+import T3Utils from "../../Util/T3Utils"
 
 class WebSocketClient {
 

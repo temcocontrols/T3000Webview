@@ -1,6 +1,6 @@
 
 
-import Utils2 from "../../Helper/Utils2"
+import Utils2 from "../../Util/Utils2"
 import Point from "../../Model/Point"
 
 class PolygonUtil {

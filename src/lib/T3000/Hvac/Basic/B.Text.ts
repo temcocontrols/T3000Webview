@@ -1,13 +1,13 @@
 
 
-import T3Svg from "../Helper/T3Svg"
+import T3Svg from "../Util/T3Svg"
 import $ from "jquery";
 import Element from "./B.Element"
 import Formatter from "./B.Text.Formatter";
 import Edit from "./B.Text.Edit";
-import Utils1 from "../Helper/Utils1"
-import Utils2 from "../Helper/Utils2"
-import Utils3 from "../Helper/Utils3"
+import Utils1 from "../Util/Utils1"
+import Utils2 from "../Util/Utils2"
+import Utils3 from "../Util/Utils3"
 import ConstantData from "../Data/ConstantData"
 import GlobalData from "../Data/T3Gv";
 

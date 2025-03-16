@@ -1,7 +1,7 @@
 
 
 import T3Gv from '../Data/T3Gv';
-import Utils2 from '../Helper/Utils2';
+import Utils2 from '../Util/Utils2';
 import $ from 'jquery';
 // import BaseDrawingObject from '../Shape/S.BaseDrawingObject'
 import Instance from '../Data/Instance/Instance'

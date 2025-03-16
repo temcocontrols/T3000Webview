@@ -1,7 +1,7 @@
 
 import DocHandler from "./DocHandler";
 import OptHandler from "./OptHandler";
-import * as Utils from '../Helper/Helper.Utils';
+import * as Utils from '../Util/Helper.Utils';
 
 class UI0 {
   public docHandler: DocHandler;

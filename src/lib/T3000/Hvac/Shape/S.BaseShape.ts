@@ -1,11 +1,11 @@
 
 
-import T3Timer from '../Helper/T3Timer'
+import T3Timer from '../Util/T3Timer'
 import BaseDrawingObject from './S.BaseDrawingObject'
 import GlobalData from '../Data/T3Gv'
-import Utils1 from '../Helper/Utils1';
-import Utils2 from "../Helper/Utils2";
-import Utils3 from "../Helper/Utils3";
+import Utils1 from '../Util/Utils1';
+import Utils2 from "../Util/Utils2";
+import Utils3 from "../Util/Utils3";
 import DefaultEvt from "../Event/EvtUtil";
 import $ from 'jquery';
 import Point from '../Model/Point';

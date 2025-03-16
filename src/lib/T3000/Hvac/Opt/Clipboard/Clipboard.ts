@@ -1,9 +1,9 @@
 
 
 import $ from 'jquery'
-import T3Gv from '../Data/T3Gv'
+import T3Gv from '../../Data/T3Gv'
 import base64js from 'base64-js'
-import ConstantData from '../Data/ConstantData'
+import ConstantData from '../../Data/ConstantData'
 
 class Clipboard {
 

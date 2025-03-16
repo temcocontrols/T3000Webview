@@ -13,7 +13,7 @@ import { computed, triggerRef, toRaw, ref } from "vue"
 import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
-import T3Utils from "../Helper/T3Utils"
+import T3Utils from "../Util/T3Utils"
 import { init } from "echarts"
 
 let panzoomInstance = null;

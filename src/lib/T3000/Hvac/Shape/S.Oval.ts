@@ -1,9 +1,9 @@
 
 
 import BaseShape from './S.BaseShape'
-import Utils1 from '../Helper/Utils1';
-import Utils2 from "../Helper/Utils2";
-import Utils3 from "../Helper/Utils3";
+import Utils1 from '../Util/Utils1';
+import Utils2 from "../Util/Utils2";
+import Utils3 from "../Util/Utils3";
 import GlobalData from '../Data/T3Gv'
 import Document from '../Basic/B.Document'
 import Element from '../Basic/B.Element';

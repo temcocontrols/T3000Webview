@@ -2,8 +2,8 @@
 
 import T3Gv from '../../Data/T3Gv'
 import PolyLineContainer from '../../Shape/S.PolyLineContainer'
-import Utils1 from "../../Helper/Utils1"
-import Utils2 from '../../Helper/Utils2'
+import Utils1 from "../../Util/Utils1"
+import Utils2 from '../../Util/Utils2'
 import Resources from '../../Data/Resources'
 import Line from "../../Shape/S.Line"
 import BaseLine from '../../Shape/S.BaseLine'

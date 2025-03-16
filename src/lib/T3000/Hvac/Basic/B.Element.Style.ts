@@ -1,10 +1,10 @@
 
 
 import $ from 'jquery';
-import T3Svg from "../Helper/T3Svg"
-import Utils1 from "../Helper/Utils1"
-import Utils2 from "../Helper/Utils2"
-import Utils3 from "../Helper/Utils3"
+import T3Svg from "../Util/T3Svg"
+import Utils1 from "../Util/Utils1"
+import Utils2 from "../Util/Utils2"
+import Utils3 from "../Util/Utils3"
 import ConstantData from "../Data/ConstantData"
 import GlobalData from '../Data/T3Gv';
 

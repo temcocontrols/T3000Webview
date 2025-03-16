@@ -2,7 +2,7 @@
 
 import GlobalData from '../../Data/GlobalData'
 import ConstantData from '../../Data/ConstantData'
-import ToolUtil from './ToolUtil';
+import ToolUtil from '../../Util/ToolUtil';
 
 class ToolOpt {
 

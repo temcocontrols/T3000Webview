@@ -1,6 +1,6 @@
 
 
-import Utils2 from "../Util/Utils2"
+import Utils2 from "./Utils2"
 import ConstantData from "../Data/ConstantData"
 import KeyboardConstant from "../Util/KeyboardConstant";
 import QuickStyle from "../Model/QuickStyle";

@@ -2,7 +2,7 @@
 import Document from '../Basic/B.Document';
 import Models from '../Data/Constant';
 import Hammer from 'hammerjs';
-import * as Utils from '../Helper/Helper.Utils';
+import * as Utils from '../Util/Helper.Utils';
 import ContentHeader from './ContentHeader';
 import UI from './UI';
 import Path from '../Basic/B.Path';

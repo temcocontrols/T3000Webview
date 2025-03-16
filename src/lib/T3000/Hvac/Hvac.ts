@@ -1,6 +1,6 @@
 
 import App from './Page/Page.Main'
-import * as Utils from './Helper/Helper.Utils'
+import * as Utils from './Util/Helper.Utils'
 import Models from './Data/Constant'
 import Doc from './Doc/DocHandler'
 import UI from './Doc/UI'
@@ -9,8 +9,8 @@ import DeviceOpt from './Opt/Socket/DeviceOpt'
 import WebSocketClient from './Opt/Socket/WebSocketClient'
 import IdxPage from './Opt/IdxPage'
 import WebViewClient from './Opt/Webview2/WebViewClient'
-import T3Utils from './Helper/T3Utils'
-import LSUtils from './Helper/LSUtils'
+import T3Utils from './Util/T3Utils'
+import LSUtils from './Util/LSUtils'
 
 const Hvac = {
   App: new App(),

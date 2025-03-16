@@ -1,13 +1,13 @@
 
 
-import T3Svg from "../Helper/T3Svg"
+import T3Svg from "../Util/T3Svg"
 import $ from "jquery";
-import "../Helper/pathseg"
+import "../Util/pathseg"
 import Container from "./B.Container";
 import Creator from "./B.Path.Creator";
-import Utils1 from "../Helper/Utils1"
-import Utils2 from "../Helper/Utils2"
-import Utils3 from "../Helper/Utils3"
+import Utils1 from "../Util/Utils1"
+import Utils2 from "../Util/Utils2"
+import Utils3 from "../Util/Utils3"
 import ConstantData from "../Data/ConstantData"
 import ConstantData1 from "../Data/ConstantData1"
 import ConstantData2 from "../Data/ConstantData2"

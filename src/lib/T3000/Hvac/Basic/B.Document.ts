@@ -1,6 +1,6 @@
 
 
-import T3Svg from "../Helper/T3Svg"
+import T3Svg from "../Util/T3Svg"
 import $ from 'jquery'
 import Rect from './B.Rect'
 import Container from './B.Container'
@@ -19,7 +19,7 @@ import ShapeCopy from './B.ShapeCopy'
 import Text from './B.Text'
 import Formatter from "./B.Text.Formatter"
 import Image from './B.Image'
-import Utils1 from "../Helper/Utils1"
+import Utils1 from "../Util/Utils1"
 import ConstantData from "../Data/Constant/ConstantData"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"

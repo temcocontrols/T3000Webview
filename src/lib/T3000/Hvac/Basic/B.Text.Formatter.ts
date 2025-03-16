@@ -1,5 +1,5 @@
-import * as Utils from '../Helper/Helper.Utils';
-import T3Svg from '../Helper/T3Svg';
+import * as Utils from '../Util/Helper.Utils';
+import T3Svg from '../Util/T3Svg';
 
 class Formatter {
   public parent: any;

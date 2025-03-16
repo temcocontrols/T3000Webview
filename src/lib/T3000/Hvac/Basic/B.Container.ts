@@ -1,6 +1,6 @@
 
 
-import T3Svg from "../Helper/T3Svg"
+import T3Svg from "../Util/T3Svg"
 import Element from "./B.Element"
 
 class Container extends Element {
