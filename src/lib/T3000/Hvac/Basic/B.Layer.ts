@@ -1,12 +1,7 @@
 
 
 import T3Svg from "../Util/T3Svg"
-import $ from "jquery";
-import Container from "./B.Container";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
+import Container from "./B.Container"
 
 class Layer extends Container {
 
@@ -19,52 +14,54 @@ class Layer extends Container {
     this.dpiScaleOnlyFlag = false;
   }
 
-  CreateElement(elementParam, optionsParam) {
-    console.log('= B.Layer CreateElement input:', elementParam, optionsParam);
+  /**
+   * Creates an SVG element and initializes it with the given parameters
+   * @param element - The element to create
+   * @param options - Configuration options for the element
+   * @returns The created SVG object
+   */
+  CreateElement(element, options) {
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
-    this.InitElement(elementParam, optionsParam);
-    console.log('= B.Layer CreateElement output:', this.svgObj);
+    this.InitElement(element, options);
     return this.svgObj;
   }
 
+  /**
+   * Sets whether scaling is allowed for this layer
+   * @param isAllowedScaling - Boolean indicating if scaling should be allowed
+   */
   AllowScaling(isAllowedScaling: boolean) {
-    console.log('= B.Layer AllowScaling input:', isAllowedScaling);
     this.scaleOKFlag = isAllowedScaling;
     if (isAllowedScaling) {
       this.dpiScaleOnlyFlag = false;
     }
-    console.log('= B.Layer AllowScaling output:', {
-      scaleOKFlag: this.scaleOKFlag,
-      dpiScaleOnlyFlag: this.dpiScaleOnlyFlag
-    });
   }
 
+  /**
+   * Sets whether only DPI scaling is allowed for this layer
+   * @param isAllowedDpiScaling - Boolean indicating if only DPI scaling should be allowed
+   */
   AllowDpiScalingOnly(isAllowedDpiScaling: boolean) {
-    console.log('= B.Layer AllowDpiScalingOnly input:', isAllowedDpiScaling);
-
     this.dpiScaleOnlyFlag = isAllowedDpiScaling;
     if (isAllowedDpiScaling) {
       this.scaleOKFlag = false;
     }
-
-    console.log('= B.Layer AllowDpiScalingOnly output:', {
-      scaleOKFlag: this.scaleOKFlag,
-      dpiScaleOnlyFlag: this.dpiScaleOnlyFlag
-    });
   }
 
+  /**
+   * Checks if scaling is allowed for this layer
+   * @returns Boolean indicating if scaling is allowed
+   */
   IsScalingAllowed() {
-    console.log('= B.Layer IsScalingAllowed input: none');
-    const result = this.scaleOKFlag;
-    console.log('= B.Layer IsScalingAllowed output:', result);
-    return result;
+    return this.scaleOKFlag;
   }
 
+  /**
+   * Checks if DPI scaling is allowed for this layer
+   * @returns Boolean indicating if DPI scaling is allowed
+   */
   IsDpiScalingAllowed() {
-    console.log('= B.Layer IsDpiScalingAllowed input: none');
-    const result = this.dpiScaleOnlyFlag;
-    console.log('= B.Layer IsDpiScalingAllowed output:', result);
-    return result;
+    return this.dpiScaleOnlyFlag;
   }
 
 }

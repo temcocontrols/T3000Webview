@@ -1,12 +1,8 @@
 
 
 import T3Svg from "../Util/T3Svg"
-import $ from "jquery";
-import Container from "./B.Container";
+import Container from "./B.Container"
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
 
 class Group extends Container {
 
@@ -16,25 +12,29 @@ class Group extends Container {
     super()
   }
 
+  /**
+   * Creates an SVG group element based on provided data and configuration
+   * @param inputData - The data used to create the element
+   * @param config - Configuration options for the element
+   * @returns The created SVG container object
+   */
   CreateElement(inputData: any, config: any) {
-    console.log("= B.Group CreateElement called with:", inputData, config);
-
     this.svgObj = new T3Svg.Container(T3Svg.create("g"));
     this.clipElem = null;
 
     this.InitElement(inputData, config);
 
-    console.log("= B.Group CreateElement returning:", this.svgObj);
     return this.svgObj;
   }
 
+  /**
+   * Calculates the bounding box geometry for the group
+   * @returns The geometry bounding box of the group
+   */
   GetGeometryBBox() {
-    console.log("= B.Group GetGeometryBBox called");
-
     if (this.geometryBBox.width < 0 || this.geometryBBox.height < 0) {
       let computedBBox: any;
       let convertedPoint: any;
-      let unusedVar: any;
       let formattingLayer = this.doc.GetFormattingLayer();
       let removedNodes: Array<any> = [];
       let originalTransform = {
@@ -52,41 +52,41 @@ class Group extends Container {
 
       this.RemoveNodesRecursively(this.svgObj.node, removedNodes);
 
-      // Add the svgObj to the formatting layer temporarily.
+      // Add the svgObj to the formatting layer temporarily
       formattingLayer.svgObj.add(this.svgObj);
 
-      // Reset transformation.
+      // Reset transformation
       this.svgObj.transform({
         x: 0,
         y: 0,
         rotation: 0
       });
 
-      // Compute bounding box.
+      // Compute bounding box
       computedBBox = this.svgObj.rbox();
       formattingLayer.svgObj.remove(this.svgObj);
 
-      // Convert the top-left coordinates.
+      // Convert the top-left coordinates
       convertedPoint = this.doc.ConvertWindowToDocCoords(computedBBox.x, computedBBox.y);
       this.geometryBBox.x = convertedPoint.x;
       this.geometryBBox.y = convertedPoint.y;
       this.geometryBBox.width = computedBBox.width;
       this.geometryBBox.height = computedBBox.height;
 
-      // Restore the original transformation.
+      // Restore the original transformation
       this.svgObj.transform({
         x: originalTransform.x,
         y: originalTransform.y,
         rotation: originalRotation
       });
 
-      // Restore the removed nodes.
+      // Restore the removed nodes
       for (let index = 0; index < removedNodes.length; index++) {
         let removed = removedNodes[index];
         removed.parent.insertBefore(removed.node, removed.sibling);
       }
 
-      // Restore svgObj to its parent if needed.
+      // Restore svgObj to its parent if needed
       if (parentContainer) {
         parentContainer.add(this.svgObj, originalPosition);
       }
@@ -94,11 +94,14 @@ class Group extends Container {
       this.UpdateTransform();
     }
 
-    console.log("= B.Group GetGeometryBBox returning:", this.geometryBBox);
     return this.geometryBBox;
   }
 
-  // Recursively remove unwanted nodes and store for restoration.
+  /**
+   * Recursively removes unwanted nodes and stores them for later restoration
+   * @param node - The DOM node to process
+   * @param removedList - Array to store removed nodes
+   */
   RemoveNodesRecursively(node: any, removedList: Array<any>) {
     const parentNode = node.parentNode;
     if (
@@ -130,10 +133,15 @@ class Group extends Container {
     }
   }
 
+  /**
+   * Sets a clipping rectangle for the group
+   * @param x - X coordinate of the clipping rectangle
+   * @param y - Y coordinate of the clipping rectangle
+   * @param width - Width of the clipping rectangle
+   * @param height - Height of the clipping rectangle
+   */
   SetClipRect(x: number, y: number, width: number, height: number): void {
-    console.log("= B.Group SetClipRect called with:", { x, y, width, height });
-
-    // Clear any previous clipping path.
+    // Clear any previous clipping path
     this.ClearClipRect();
 
     if (width && height) {
@@ -155,33 +163,28 @@ class Group extends Container {
       this.svgObj.add(clipContainer);
       this.svgObj.attr("clip-path", "url(#" + clipId + ")");
       this.clipElem = clipContainer;
-
-      console.log("= B.Group SetClipRect output:", { clipContainer, clipId });
-    } else {
-      console.log("= B.Group SetClipRect: width or height not provided. No clip path created.");
     }
   }
 
+  /**
+   * Clears any existing clipping rectangle from the group
+   */
   ClearClipRect() {
-    console.log("= B.Group ClearClipRect called");
-
     if (this.clipElem) {
-      console.log("= B.Group ClearClipRect input: clipElem exists");
       this.svgObj.remove(this.clipElem);
       this.svgObj.node.removeAttribute("clip-path");
       this.clipElem = null;
-      console.log("= B.Group ClearClipRect output: clipElem cleared");
-    } else {
-      console.log("= B.Group ClearClipRect input: no clipElem to clear");
     }
   }
 
+  /**
+   * Finds the target element for a given event
+   * @param event - The event to process
+   * @returns The target element for the event
+   */
   GetTargetForEvent(event: any): any {
-    console.log("= B.Group GetTargetForEvent called with input:", { event });
-
-    // If the event or container is not valid, return the container itself.
+    // If the event or container is not valid, return the container itself
     if (!(event && this instanceof Container)) {
-      console.log("= B.Group GetTargetForEvent early exit: invalid event or container, returning current instance");
       return this;
     }
 
@@ -189,49 +192,48 @@ class Group extends Container {
     const rootElement: any = this.DOMElement();
 
     if (!target || target === rootElement) {
-      console.log("= B.Group GetTargetForEvent: target is root element or undefined, returning current instance");
       return this;
     }
 
     let element: any = this.FindElementByDOMElement(target);
 
-    // Traverse up the DOM tree to find a matching element.
+    // Traverse up the DOM tree to find a matching element
     while (target && !element) {
       target = target.parentNode;
       element = (target === rootElement) ? this : this.FindElementByDOMElement(target);
     }
 
-    const result = element || this;
-    console.log("= B.Group GetTargetForEvent returning:", { result });
-    return result;
+    return element || this;
   }
 
+  /**
+   * Updates the fill and stroke patterns or gradients for this group and its child elements
+   * @param event - The event that triggered the refresh
+   */
   RefreshPaint(event: any): void {
-    console.log("= B.Group RefreshPaint called with input:", { event });
-
     // Update fill pattern or gradient if available
-    if (
-      this.fillPatternData
-        ? this.UpdatePattern(this.fillPatternData.ID, true)
-        : this.fillGradientData && this.UpdateGradient(this.fillGradientData.ID, true),
-      this.strokePatternData
-        ? this.UpdatePattern(this.strokePatternData.ID, false)
-        : this.strokeGradientData && this.UpdateGradient(this.strokeGradientData.ID, false),
-      event && this instanceof Group
-    ) {
+    if (this.fillPatternData) {
+      this.UpdatePattern(this.fillPatternData.ID, true);
+    } else if (this.fillGradientData) {
+      this.UpdateGradient(this.fillGradientData.ID, true);
+    }
+
+    if (this.strokePatternData) {
+      this.UpdatePattern(this.strokePatternData.ID, false);
+    } else if (this.strokeGradientData) {
+      this.UpdateGradient(this.strokeGradientData.ID, false);
+    }
+
+    if (event && this instanceof Group) {
       const elementCount = this.ElementCount();
-      console.log("= B.Group RefreshPaint processing elements:", { elementCount });
 
       for (let index = 0; index < elementCount; index++) {
         const element = this.GetElementByIndex(index);
         if (element) {
-          console.log("= B.Group RefreshPaint processing element at index:", { index });
           element.RefreshPaint(event);
         }
       }
     }
-
-    console.log("= B.Group RefreshPaint completed for input:", { event });
   }
 }
 

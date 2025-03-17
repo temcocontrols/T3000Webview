@@ -1,11 +1,6 @@
 
 
-import $ from 'jquery';
 import T3Svg from "../Util/T3Svg"
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
 import Element from "./B.Element";
 
 class Image extends Element {
@@ -14,23 +9,26 @@ class Image extends Element {
     super()
   }
 
-  CreateElement(element, type) {
-    console.log("= B.Group - CreateElement called with:", { element, type });
+  /**
+   * Creates an image SVG element
+   * @param elementConfig - The configuration for the element
+   * @param elementType - The type of the element
+   * @returns The created SVG image object
+   */
+  CreateElement(elementConfig, elementType) {
     this.svgObj = new T3Svg.Container(T3Svg.create('image'));
-    this.InitElement(element, type);
-    console.log("= B.Group - CreateElement output:", this.svgObj);
+    this.InitElement(elementConfig, elementType);
     return this.svgObj;
   }
 
-  SetURL(url: string): void {
-    console.log("= B.Group SetURL - Input:", url);
-
-    // Set the attributes and source for the SVG image element
+  /**
+   * Sets the URL for the image source
+   * @param imageUrl - The URL of the image to display
+   */
+  SetURL(imageUrl: string): void {
     this.svgObj.attr({ preserveAspectRatio: "none" });
-    this.svgObj.src = url;
-    this.svgObj.attr("xlink:href", url, T3Svg.xlink);
-
-    console.log("= B.Group SetURL - Output:", this.svgObj);
+    this.svgObj.src = imageUrl;
+    this.svgObj.attr("xlink:href", imageUrl, T3Svg.xlink);
   }
 
 }
