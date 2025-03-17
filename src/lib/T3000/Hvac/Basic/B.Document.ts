@@ -20,8 +20,8 @@ import Text from './B.Text'
 import Formatter from "./B.Text.Formatter"
 import Image from './B.Image'
 import Utils1 from "../Util/Utils1"
-// import ConstantData from "../Data/Constant/ConstantData"
-// import OptConstant from "../Data/Constant/OptConstant"
+import NvConstant from "../Data/Constant/NvConstant"
+import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 
 class Document extends Container {
@@ -75,52 +75,52 @@ class Document extends Container {
     let shape = null;
 
     switch (shapeType) {
-      case OptConstant.CSType.RECT:
+      case OptConstant.CSType.Rect:
         shape = new Rect();
         break;
-      case OptConstant.CSType.RRECT:
+      case OptConstant.CSType.RRect:
         shape = new RRect();
         break;
-      case OptConstant.CSType.OVAL:
+      case OptConstant.CSType.Oval:
         shape = new Oval();
         break;
-      case OptConstant.CSType.LINE:
+      case OptConstant.CSType.Line:
         shape = new Line();
         break;
-      case OptConstant.CSType.POLYLINE:
+      case OptConstant.CSType.Polyline:
         shape = new PolyLine();
         break;
-      case OptConstant.CSType.POLYPOLYLINE:
+      case OptConstant.CSType.PolyPolyline:
         shape = new PolyPolyLine();
         break;
-      case OptConstant.CSType.POLYLINECONTAINER:
+      case OptConstant.CSType.PolylineContainer:
         shape = new PolyLine();
         break;
-      case OptConstant.CSType.POLYGON:
+      case OptConstant.CSType.Polygon:
         shape = new Polygon();
         break;
-      case OptConstant.CSType.PATH:
+      case OptConstant.CSType.Path:
         shape = new Path();
         break;
-      case OptConstant.CSType.TEXT:
+      case OptConstant.CSType.Text:
         shape = new Text();
         break;
-      case OptConstant.CSType.IMAGE:
+      case OptConstant.CSType.Image:
         shape = new Image();
         break;
-      case OptConstant.CSType.GROUP:
+      case OptConstant.CSType.Group:
         shape = new Group();
         break;
-      case OptConstant.CSType.LAYER:
+      case OptConstant.CSType.Layer:
         shape = new Layer();
         break;
-      case OptConstant.CSType.SYMBOL:
+      case OptConstant.CSType.Symbol:
         shape = new Symbol();
         break;
-      case OptConstant.CSType.SHAPECOPY:
+      case OptConstant.CSType.ShapeCopy:
         shape = new ShapeCopy();
         break;
-      case OptConstant.CSType.SHAPECONTAINER:
+      case OptConstant.CSType.ShapeContainer:
         shape = new ShapeContainer();
         break;
       default:
@@ -180,7 +180,7 @@ class Document extends Container {
    * @returns void
    */
   GetDeviceDetail() {
-    const rect = this.CreateShape(OptConstant.CSType.RECT);
+    const rect = this.CreateShape(OptConstant.CSType.Rect);
     rect.SetFillOpacity(0);
     rect.SetStrokeWidth(0);
     rect.SetSize('100in', '100in');
@@ -660,7 +660,7 @@ class Document extends Container {
    * @returns The newly created layer object
    */
   AddLayer(layerId: string) {
-    const layer = this.CreateShape(OptConstant.CSType.LAYER);
+    const layer = this.CreateShape(OptConstant.CSType.Layer);
     layer.SetID(layerId);
     this.AddElement(layer);
     this.ApplyDocumentTransform();
@@ -771,7 +771,7 @@ class Document extends Container {
       formattingLayer = this.AddLayer('__FORMATTING__');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', ConstantData.LayerMoveType.BOTTOM);
+      this.MoveLayer('__FORMATTING__', NvConstant.LayerMoveType.Bottom);
       formattingLayer.SetOpacity(0);
       this.ApplyDocumentTransform();
     }
@@ -872,16 +872,16 @@ class Document extends Container {
     }
 
     switch (moveType) {
-      case ConstantData.LayerMoveType.BOTTOM:
+      case NvConstant.LayerMoveType.Bottom:
         targetIndex = 0;
         break;
-      case ConstantData.LayerMoveType.BEFORE:
+      case NvConstant.LayerMoveType.Before:
         targetIndex = targetLayerIndex;
         break;
-      case ConstantData.LayerMoveType.AFTER:
+      case NvConstant.LayerMoveType.After:
         targetIndex = targetLayerIndex + 1;
         break;
-      case ConstantData.LayerMoveType.TOP:
+      case NvConstant.LayerMoveType.Top:
         targetIndex = totalElements - 1;
         break;
       default:
@@ -1052,6 +1052,11 @@ class Document extends Container {
    */
   ImageLoadResetRefCount() {
     this.imageLoadRefCount = 0;
+  }
+
+  ConverWindowToDocLength(e) {
+    "use strict";
+    return e / this.docInfo.docToScreenScale
   }
 }
 

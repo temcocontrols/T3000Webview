@@ -1,17 +1,14 @@
 
 
-import $ from "jquery";
-import T3Svg from "../Util/T3Svg";
+import T3Svg from "../Util/T3Svg"
 import Effects from "./B.Element.Effects"
-import Style from "./B.Element.Style";
+import Style from "./B.Element.Style"
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import GlobalData from '../Data/T3Gv'
-import Instance from "../Data/Instance/Instance";
-import ConstantData from "../Data/ConstantData"
-import BConstant from "./B.Constant";
-import ConstantData2 from "../Data/ConstantData2";
+import Instance from "../Data/Instance/Instance"
+import BConstant from "./B.Constant"
+import BBoxModel from "../Model/BBoxModel"
+import TextConstant from "../Data/Constant/TextConstant"
+import T3Util from "../Util/T3Util"
 
 class Element {
 
@@ -28,7 +25,7 @@ class Element {
   public strokeWidth: any;
   public mirrored: any;
   public flipped: any;
-  public geometryBBox: any;
+  public geometryBBox: BBoxModel;
   public fillPatternData: any;
   public strokePatternData: any;
   public internalID: any;
@@ -45,11 +42,14 @@ class Element {
     this.svgObj = null;
   }
 
-  InitElement(svgDoc: any, parent: any) {
-    console.log('= B.Element.InitElement: input =>', { svgDoc, parent });
-
-    this.doc = svgDoc;
-    this.parent = parent;
+  /**
+   * Initializes the element with necessary document and parent references
+   * @param svgDocument - The SVG document this element belongs to
+   * @param parentElement - The parent element containing this element
+   */
+  InitElement(svgDocument: any, parentElement: any) {
+    this.doc = svgDocument;
+    this.parent = parentElement;
     this.svgObj.SDGObj = this;
     this.ID = null;
     this.style = null;
@@ -59,176 +59,182 @@ class Element {
     this.strokeWidth = 0;
     this.mirrored = false;
     this.flipped = false;
-    this.geometryBBox = {
-      x: 0,
-      y: 0,
-      width: -1,
-      height: -1
-    };
+    this.geometryBBox = new BBoxModel();
     this.fillPatternData = null;
     this.strokePatternData = null;
     this.internalID = null;
-
-    console.log('= B.Element.InitElement: output =>', {
-      doc: this.doc,
-      parent: this.parent,
-      ID: this.ID,
-      style: this.style,
-      effects: this.effects,
-      userData: this.userData,
-      cursor: this.cursor,
-      strokeWidth: this.strokeWidth,
-      mirrored: this.mirrored,
-      flipped: this.flipped,
-      geometryBBox: this.geometryBBox,
-      fillPatternData: this.fillPatternData,
-      strokePatternData: this.strokePatternData,
-      internalID: this.internalID
-    });
   }
 
+  /**
+   * Creates an element in the SVG document
+   * @param svgDocument - The SVG document to create the element in
+   * @param parentElement - The parent element that will contain this element
+   * @throws Returns initialization result
+   */
   CreateElement(svgDocument: any, parentElement: any) {
-    console.log('= B.Element.CreateElement: input =>', { svgDocument, parentElement });
     const result = this.InitElement(svgDocument, parentElement);
-    console.log('= B.Element.CreateElement: output =>', result);
     throw result;
   }
 
+  /**
+   * Gets the document this element belongs to
+   * @returns The SVG document reference
+   */
   Document() {
-    console.log('= B.Element.Document: input =>', {});
-    const result = this.doc;
-    console.log('= B.Element.Document: output =>', { result });
-    return result;
+    return this.doc;
   }
 
+  /**
+   * Gets the parent element of this element
+   * @returns The parent element reference
+   */
   Parent() {
-    console.log('= B.Element.Parent: input =>', {});
-    const result = this.parent;
-    console.log('= B.Element.Parent: output =>', { result });
-    return result;
+    return this.parent;
   }
 
+  /**
+   * Gets the DOM element associated with this element
+   * @returns The native DOM element node
+   */
   DOMElement() {
-    console.log('= B.Element.DOMElement: input =>', {});
-    const result = this.svgObj ? this.svgObj.node : null;
-    console.log('= B.Element.DOMElement: output =>', { result });
-    return result;
+    return this.svgObj ? this.svgObj.node : null;
   }
 
+  /**
+   * Checks if this element is currently in the document
+   * @returns True if the element is in the document, false otherwise
+   */
   InDocument() {
-    console.log('= B.Element.InDocument: input =>', {});
     if (!this.svgObj) {
-      const result = false;
-      console.log('= B.Element.InDocument: output =>', { result });
-      return result;
+      return false;
     }
     let parent = this.svgObj.parent;
     while (parent) {
       if (parent.type === 'svg') {
-        const result = true;
-        console.log('= B.Element.InDocument: output =>', { result });
-        return result;
+        return true;
       }
       parent = parent.parent;
     }
-    const result = false;
-    console.log('= B.Element.InDocument: output =>', { result });
-    return result;
+    return false;
   }
 
+  /**
+   * Sets the ID of this element
+   * @param newID - The new ID to assign to this element
+   */
   SetID(newID: string) {
-    console.log('= B.Element.SetID: input =>', { newID });
     this.ID = newID;
-    console.log('= B.Element.SetID: output =>', { ID: this.ID });
   }
 
+  /**
+   * Sets whether this element should be excluded from export operations
+   * @param shouldExclude - True to exclude this element from export, false to include it
+   */
   ExcludeFromExport(shouldExclude: boolean) {
-    console.log('= B.Element.ExcludeFromExport: input =>', { shouldExclude });
     if (shouldExclude) {
       this.svgObj.node.setAttribute('no-export', '1');
     } else {
       this.svgObj.node.removeAttribute('no-export');
     }
-    console.log('= B.Element.ExcludeFromExport: output =>', {});
   }
 
-  SetCustomAttribute(attributeName: string, value: string) {
-    console.log('= B.Element.SetCustomAttribute: input =>', { attributeName, value });
-    if (value) {
-      this.svgObj.node.setAttribute(attributeName, value);
+  /**
+   * Sets a custom attribute on the element
+   * @param attributeName - The name of the attribute to set
+   * @param attributeValue - The value to assign to the attribute (null to remove)
+   */
+  SetCustomAttribute(attributeName: string, attributeValue: string) {
+    if (attributeValue) {
+      this.svgObj.node.setAttribute(attributeName, attributeValue);
     } else {
       this.svgObj.node.removeAttribute(attributeName);
     }
-    console.log('= B.Element.SetCustomAttribute: output =>', { attributeName, value });
   }
 
+  /**
+   * Gets the value of a custom attribute on the element
+   * @param attributeName - The name of the attribute to retrieve
+   * @returns The attribute value or null if not set
+   */
   GetCustomAttribute(attributeName: string) {
-    console.log('= B.Element.GetCustomAttribute: input =>', { attributeName });
-    const result = this.svgObj.node.getAttribute(attributeName);
-    console.log('= B.Element.GetCustomAttribute: output =>', { result });
-    return result;
+    return this.svgObj.node.getAttribute(attributeName);
   }
 
+  /**
+   * Sets a hyperlink attribute on the element
+   * @param hyperlink - The URL or reference to set as a hyperlink
+   */
   SetHyperlinkAttribute(hyperlink: string) {
-    console.log('= B.Element.SetHyperlinkAttribute: input =>', { hyperlink });
     const resolvedHyperlink = Utils1.ResolveHyperlink(hyperlink);
     if (resolvedHyperlink) {
       this.SetCustomAttribute('_explink_', resolvedHyperlink);
     }
-    console.log('= B.Element.SetHyperlinkAttribute: output =>', { resolvedHyperlink });
   }
 
+  /**
+   * Gets the ID of this element
+   * @returns The element's ID
+   */
   GetID() {
-    console.log('= B.Element.GetID: input =>', {});
-    const result = this.ID;
-    console.log('= B.Element.GetID: output =>', { result });
-    return result;
+    return this.ID;
   }
 
+  /**
+   * Gets the internal ID of this element, generating one if it doesn't exist
+   * @returns The element's internal ID
+   */
   GetInternalID() {
-    console.log('= B.Element.GetInternalID: input =>', {});
-    const result = this.internalID || (this.internalID = Utils1.MakeGuid());
-    console.log('= B.Element.GetInternalID: output =>', { result });
-    return result;
+    return this.internalID || (this.internalID = Utils1.MakeGuid());
   }
 
+  /**
+   * Sets the internal ID as the element's ID attribute in the DOM
+   * @returns The assigned internal ID
+   */
   SetInternalID() {
-    console.log('= B.Element.SetInternalID: input =>', {});
     const internalID = this.GetInternalID();
     this.svgObj.attr('id', internalID);
-    console.log('= B.Element.SetInternalID: output =>', { internalID });
     return internalID;
   }
 
+  /**
+   * Sets custom user data associated with this element
+   * @param userData - The user data to store with this element
+   */
   SetUserData(userData: any) {
-    console.log('= B.Element.SetUserData: input =>', { userData });
     this.userData = userData;
-    console.log('= B.Element.SetUserData: output =>', { userData: this.userData });
   }
 
+  /**
+   * Gets the custom user data associated with this element
+   * @returns The stored user data
+   */
   GetUserData() {
-    console.log('= B.Element.GetUserData: input =>', {});
-    const result = this.userData;
-    console.log('= B.Element.GetUserData: output =>', { result });
-    return result;
+    return this.userData;
   }
 
+  /**
+   * Sets an event proxy for handling events on this element
+   * @param eventProxy - The event proxy object
+   */
   SetEventProxy(eventProxy: any) {
-    console.log('= B.Element.SetEventProxy: input =>', { eventProxy });
     this.eventProxy = eventProxy;
-    console.log('= B.Element.SetEventProxy: output =>', { eventProxy: this.eventProxy });
   }
 
+  /**
+   * Gets the event proxy associated with this element
+   * @returns The event proxy object
+   */
   GetEventProxy() {
-    console.log('= B.Element.GetEventProxy: input =>', {});
-    const result = this.eventProxy;
-    console.log('= B.Element.GetEventProxy: output =>', { result });
-    return result;
+    return this.eventProxy;
   }
 
+  /**
+   * Sets the size of the element
+   * @param width - The new width of the element
+   * @param height - The new height of the element
+   */
   SetSize(width: number, height: number) {
-    console.log('= B.Element.SetSize: input =>', { width, height });
-
     width = Utils1.RoundCoord(width);
     height = Utils1.RoundCoord(height);
 
@@ -239,13 +245,14 @@ class Element {
     this.geometryBBox.height = height;
 
     this.RefreshPaint();
-
-    console.log('= B.Element.SetSize: output =>', { width, height });
   }
 
+  /**
+   * Sets the position of the element
+   * @param x - The x-coordinate position
+   * @param y - The y-coordinate position
+   */
   SetPos(x: number, y: number) {
-    console.log('= B.Element.SetPos: input =>', { x, y });
-
     x = Utils1.RoundCoord(x);
     y = Utils1.RoundCoord(y);
 
@@ -257,139 +264,156 @@ class Element {
 
     this.UpdateTransform();
     this.RefreshPaint(true);
-
-    console.log('= B.Element.SetPos: output =>', { x, y });
   }
 
+  /**
+   * Gets the current position of the element
+   * @returns An object with x and y coordinates
+   */
   GetPos() {
-    console.log('= B.Element.GetPos: input =>', {});
-    const result = {
+    return {
       x: this.svgObj.trans.x,
       y: this.svgObj.trans.y
     };
-    console.log('= B.Element.GetPos: output =>', { result });
-    return result;
   }
 
-  SetCenter(x: number, y: number) {
-    console.log('= B.Element.SetCenter: input =>', { x, y });
-
+  /**
+   * Sets the center position of the element
+   * @param centerX - The x-coordinate of the center
+   * @param centerY - The y-coordinate of the center
+   */
+  SetCenter(centerX: number, centerY: number) {
     const bbox = this.CalcBBox();
-    const newX = x - bbox.width / 2;
-    const newY = y - bbox.height / 2;
+    const newX = centerX - bbox.width / 2;
+    const newY = centerY - bbox.height / 2;
 
     this.SetPos(newX, newY);
-
-    console.log('= B.Element.SetCenter: output =>', { newX, newY });
   }
 
-  SetRotation(angle: number, centerX?: number, centerY?: number) {
-    console.log('= B.Element.SetRotation: input =>', { angle, centerX, centerY });
-
-    let bbox;
-    if (centerX === undefined) {
-      bbox = this.CalcBBox();
-      centerX = bbox.cx;
+  /**
+   * Sets the rotation of the element around a specified center point
+   * @param rotationAngle - The angle in degrees to rotate the element
+   * @param centerPointX - The x-coordinate of the rotation center (defaults to element's center x)
+   * @param centerPointY - The y-coordinate of the rotation center (defaults to element's center y)
+   */
+  SetRotation(rotationAngle: number, centerPointX?: number, centerPointY?: number) {
+    let boundingBox;
+    if (centerPointX === undefined) {
+      boundingBox = this.CalcBBox();
+      centerPointX = boundingBox.cx;
     }
-    if (centerY === undefined) {
-      bbox = bbox || this.CalcBBox();
-      centerY = bbox.cy;
+    if (centerPointY === undefined) {
+      boundingBox = boundingBox || this.CalcBBox();
+      centerPointY = boundingBox.cy;
     }
 
-    centerX = Utils1.RoundCoord(centerX);
-    centerY = Utils1.RoundCoord(centerY);
-    angle = Utils1.RoundCoord(angle);
+    centerPointX = Utils1.RoundCoord(centerPointX);
+    centerPointY = Utils1.RoundCoord(centerPointY);
+    rotationAngle = Utils1.RoundCoord(rotationAngle);
 
     this.svgObj.transform({
-      rotation: angle,
-      cx: centerX,
-      cy: centerY
+      rotation: rotationAngle,
+      cx: centerPointX,
+      cy: centerPointY
     });
 
     this.UpdateTransform();
-
-    console.log('= B.Element.SetRotation: output =>', { angle, centerX, centerY });
   }
 
+  /**
+   * Gets the current rotation angle of the element
+   * @returns The rotation angle in degrees
+   */
   GetRotation() {
-    console.log('= B.Element.GetRotation: input =>', {});
-    const result = this.svgObj.trans.rotation;
-    console.log('= B.Element.GetRotation: output =>', { result });
-    return result;
+    return this.svgObj.trans.rotation;
   }
 
-  SetMirror(mirrored: boolean) {
-    console.log('= B.Element.SetMirror: input =>', { mirrored });
-    this.mirrored = mirrored;
+  /**
+   * Sets whether the element should be mirrored horizontally
+   * @param isMirrored - True to mirror the element horizontally, false otherwise
+   */
+  SetMirror(isMirrored: boolean) {
+    this.mirrored = isMirrored;
     this.UpdateTransform();
-    console.log('= B.Element.SetMirror: output =>', { mirrored: this.mirrored });
   }
 
+  /**
+   * Gets whether the element is currently mirrored horizontally
+   * @returns True if the element is mirrored, false otherwise
+   */
   GetMirror() {
-    console.log('= B.Element.GetMirror: input =>', {});
-    const result = this.mirrored;
-    console.log('= B.Element.GetMirror: output =>', { result });
-    return result;
+    return this.mirrored;
   }
 
-  SetFlip(flipped: boolean) {
-    console.log('= B.Element.SetFlip: input =>', { flipped });
-    this.flipped = flipped;
+  /**
+   * Sets whether the element should be flipped vertically
+   * @param isFlipped - True to flip the element vertically, false otherwise
+   */
+  SetFlip(isFlipped: boolean) {
+    this.flipped = isFlipped;
     this.UpdateTransform();
-    console.log('= B.Element.SetFlip: output =>', { flipped: this.flipped });
   }
 
+  /**
+   * Gets whether the element is currently flipped vertically
+   * @returns True if the element is flipped, false otherwise
+   */
   GetFlip() {
-    console.log('= B.Element.GetFlip: input =>', {});
-    const result = this.flipped;
-    console.log('= B.Element.GetFlip: output =>', { result });
-    return result;
+    return this.flipped;
   }
 
-  SetScale(scaleX: number, scaleY: number) {
-    console.log('= B.Element.SetScale: input =>', { scaleX, scaleY });
-
+  /**
+   * Sets the scaling factors for the element
+   * @param scaleFactorX - The horizontal scaling factor
+   * @param scaleFactorY - The vertical scaling factor
+   */
+  SetScale(scaleFactorX: number, scaleFactorY: number) {
     this.GetScaleElement().transform({
-      scaleX,
-      scaleY
+      scaleX: scaleFactorX,
+      scaleY: scaleFactorY
     });
 
     this.UpdateTransform();
-
-    console.log('= B.Element.SetScale: output =>', { scaleX, scaleY });
   }
 
+  /**
+   * Gets the current scaling factors of the element
+   * @returns An object containing the horizontal (scaleX) and vertical (scaleY) scaling factors
+   */
   GetScale() {
-    console.log('= B.Element.GetScale: input =>', {});
     const scaleElement = this.GetScaleElement();
-    const result = {
+    return {
       scaleX: scaleElement.trans.scaleX || 1,
       scaleY: scaleElement.trans.scaleY || 1
     };
-    console.log('= B.Element.GetScale: output =>', { result });
-    return result;
   }
 
+  /**
+   * Sets whether the element should be visible
+   * @param isVisible - True to make the element visible, false to hide it
+   */
   SetVisible(isVisible: boolean) {
-    console.log('= B.Element.SetVisible: input =>', { isVisible });
     if (isVisible) {
       this.svgObj.show();
     } else {
       this.svgObj.hide();
     }
-    console.log('= B.Element.SetVisible: output =>', { isVisible });
   }
 
+  /**
+   * Gets whether the element is currently visible
+   * @returns True if the element is visible, false otherwise
+   */
   GetVisible() {
-    console.log('= B.Element.GetVisible: input =>', {});
-    const result = this.svgObj.visible();
-    console.log('= B.Element.GetVisible: output =>', { result });
-    return result;
+    return this.svgObj.visible();
   }
 
+  /**
+   * Gets the basic bounding box of the element without transformations
+   * @returns The bounding box object with x, y, width, and height properties
+   */
   GetBBox() {
-    console.log('= B.Element.GetBBox: input =>', {});
-    let bbox;
+    let boundingBox;
     let formattingLayer = null;
 
     if (!this.parent) {
@@ -397,127 +421,151 @@ class Element {
       formattingLayer.AddElement(this);
     }
 
-    bbox = this.svgObj.bbox();
+    boundingBox = this.svgObj.bbox();
 
     if (formattingLayer) {
       formattingLayer.RemoveElement(this);
     }
 
-    console.log('= B.Element.GetBBox: output =>', { bbox });
-    return bbox;
+    return boundingBox;
   }
 
+  /**
+   * Calculates the bounding box including transformations with center points
+   * @returns The bounding box object with x, y, width, height, cx, and cy properties
+   */
   CalcBBox() {
-    console.log('= B.Element.CalcBBox: input =>', {});
     const elementFrame = this.CalcElementFrame(true);
     const result = {
       ...elementFrame,
       cx: elementFrame.x + elementFrame.width / 2,
       cy: elementFrame.y + elementFrame.height / 2
     };
-    console.log('= B.Element.CalcBBox: output =>', { result });
-    return result;
-  }
-
-  GetRBox() {
-    console.log('= B.Element.GetRBox: input =>', {});
-    let formattingLayer = null;
-    if (!this.parent) {
-      formattingLayer = this.doc.GetFormattingLayer();
-      formattingLayer.AddElement(this);
-    }
-    const rbox = this.svgObj.rbox();
-    if (formattingLayer) {
-      formattingLayer.RemoveElement(this);
-    }
-    console.log('= B.Element.GetRBox: output =>', { rbox });
-    return rbox;
-  }
-
-  UpdateTransform() {
-    console.log('= B.Element.UpdateTransform: input =>', {});
-
-    let formattingLayer = null;
-    if (!this.parent) {
-      formattingLayer = this.doc.GetFormattingLayer();
-      formattingLayer.AddElement(this);
-    }
-
-    const scaleElement = this.GetScaleElement();
-    scaleElement.transform({});
-
-    if (this.mirrored || this.flipped) {
-      let matrix;
-      const bbox = this.CalcBBox();
-      const scaleX = scaleElement.trans.scaleX || 1;
-      const scaleY = scaleElement.trans.scaleY || 1;
-
-      matrix = scaleElement.node.transform.baseVal.consolidate().matrix;
-      bbox.width /= scaleX;
-      bbox.height /= scaleY;
-
-      if (this.mirrored) {
-        matrix = matrix.flipX().translate(-bbox.width, 0);
-      }
-      if (this.flipped) {
-        matrix = matrix.flipY().translate(0, -bbox.height);
-      }
-
-      const transformString = `matrix(${Utils1.RoundCoord(matrix.a)} ${Utils1.RoundCoord(matrix.b)} ${Utils1.RoundCoord(matrix.c)} ${Utils1.RoundCoord(matrix.d)} ${Utils1.RoundCoord(matrix.e)} ${Utils1.RoundCoord(matrix.f)})`;
-      scaleElement.attr('transform', transformString);
-    }
-
-    if (formattingLayer) {
-      formattingLayer.RemoveElement(this);
-    }
-
-    Utils1.CleanGraphics();
-
-    console.log('= B.Element.UpdateTransform: output =>', {});
-  }
-
-  GetScaleElement() {
-    console.log('= B.Element.GetScaleElement: input =>', {});
-    const result = this.svgObj;
-    console.log('= B.Element.GetScaleElement: output =>', { result });
     return result;
   }
 
   /**
-   * Calculates the bounding box of the element, including transformations.
-   * @param includeTransformations - Whether to include transformations in the calculation.
-   * @returns The bounding box of the element.
+   * Gets the rotated bounding box of the element in screen coordinates
+   * @returns The rotated bounding box object
    */
-  CalcElementFrame(includeTransformations?) {
-    console.log('= B.Element.CalcElementFrame: input =>', { includeTransformations });
-
-    const geometryBBox = this.GetGeometryBBox();
-    let boundingBox = {
-      x: geometryBBox.x,
-      y: geometryBBox.y,
-      width: geometryBBox.width,
-      height: geometryBBox.height
-    };
-
-    let currentElement = this.svgObj;
-
-    while (currentElement && currentElement !== this.doc.svgObj) {
-      boundingBox.x += currentElement.trans.x;
-      boundingBox.y += currentElement.trans.y;
-      currentElement = currentElement.parent;
-
-      if (!includeTransformations) {
-        break;
-      }
+  GetRBox() {
+    let formattingLayer = null;
+    if (!this.parent) {
+      formattingLayer = this.doc.GetFormattingLayer();
+      formattingLayer.AddElement(this);
     }
-
-    console.log('= B.Element.CalcElementFrame: output =>', { boundingBox });
-    return boundingBox;
+    const rotatedBox = this.svgObj.rbox();
+    if (formattingLayer) {
+      formattingLayer.RemoveElement(this);
+    }
+    return rotatedBox;
   }
 
-  GetGeometryBBox() {
-    console.log('= B.Element.GetGeometryBBox: input => {}');
+  /**
+   * Updates the transformation matrix for this element, including handling of mirroring and flipping operations
+   * This method recalculates and applies all transformations to ensure proper rendering
+   */
+  UpdateTransform() {
+    T3Util.Log("= B.Element: UpdateTransform - Starting transformation update for element", this.ID);
 
+    let temporaryFormattingLayer = null;
+
+    // If element has no parent, temporarily add it to formatting layer for calculations
+    if (!this.parent) {
+      T3Util.Log("= B.Element: UpdateTransform - No parent found, using formatting layer");
+      temporaryFormattingLayer = this.doc.GetFormattingLayer();
+      temporaryFormattingLayer.AddElement(this);
+    }
+
+    // Get the element to which scaling should be applied
+    const scaleableElement = this.GetScaleElement();
+    scaleableElement.transform({});
+
+    // Apply mirroring and flipping transformations if needed
+    if (this.mirrored || this.flipped) {
+      let transformationMatrix;
+      const elementBoundingBox = this.CalcBBox();
+      const horizontalScale = scaleableElement.trans.scaleX || 1;
+      const verticalScale = scaleableElement.trans.scaleY || 1;
+
+      T3Util.Log("= B.Element: UpdateTransform - Processing mirror/flip with scales",
+        { horizontalScale, verticalScale });
+
+      // Get the current transformation matrix
+      transformationMatrix = scaleableElement.node.transform.baseVal.consolidate().matrix;
+
+      // Adjust dimensions for proper transformation calculations
+      elementBoundingBox.width /= horizontalScale;
+      elementBoundingBox.height /= verticalScale;
+
+      // Apply horizontal mirroring if needed
+      if (this.mirrored) {
+        T3Util.Log("= B.Element: UpdateTransform - Applying horizontal mirroring");
+        transformationMatrix = transformationMatrix.flipX().translate(-elementBoundingBox.width, 0);
+      }
+
+      // Apply vertical flipping if needed
+      if (this.flipped) {
+        T3Util.Log("= B.Element: UpdateTransform - Applying vertical flipping");
+        transformationMatrix = transformationMatrix.flipY().translate(0, -elementBoundingBox.height);
+      }
+
+      // Convert matrix to a string representation with rounded values for better performance
+      const transformationString = `matrix(${Utils1.RoundCoord(transformationMatrix.a)} ${Utils1.RoundCoord(transformationMatrix.b)} ${Utils1.RoundCoord(transformationMatrix.c)} ${Utils1.RoundCoord(transformationMatrix.d)} ${Utils1.RoundCoord(transformationMatrix.e)} ${Utils1.RoundCoord(transformationMatrix.f)})`;
+
+      // Apply the transformation string to the element
+      scaleableElement.attr('transform', transformationString);
+
+      T3Util.Log("= B.Element: UpdateTransform - Applied transformation matrix", transformationString);
+    }
+
+    // Remove the element from the temporary formatting layer if it was added
+    if (temporaryFormattingLayer) {
+      temporaryFormattingLayer.RemoveElement(this);
+      T3Util.Log("= B.Element: UpdateTransform - Removed from temporary formatting layer");
+    }
+
+    // Clean up any unused graphics resources
+    Utils1.CleanGraphics();
+
+    T3Util.Log("= B.Element: UpdateTransform - Completed transformation update");
+  }
+
+  /**
+   * Gets the element to which scaling transformations should be applied
+   * @returns The SVG element that should receive scaling transformations
+   */
+  GetScaleElement() {
+    return this.svgObj;
+  }
+
+  /**
+ * Calculates the bounding box of the element, including transformations.
+ * @param includeTransformations - Whether to include transformations in the calculation.
+ * @returns The bounding box of the element.
+ */
+  CalcElementFrame(includeTransformations?) {
+    for (
+      var geometryBBox = this.GetGeometryBBox(),
+      boundingBox = {
+        x: geometryBBox.x,
+        y: geometryBBox.y,
+        width: geometryBBox.width,
+        height: geometryBBox.height
+      },
+      currentElement = this.svgObj;
+      currentElement &&
+      currentElement !== this.doc.svgObj &&
+      (boundingBox.x += currentElement.trans.x, boundingBox.y += currentElement.trans.y, currentElement = currentElement.parent, !includeTransformations);
+    );
+    return boundingBox
+  }
+
+  /**
+   * Calculates the geometric bounding box for the element
+   * @returns The element's geometric bounding box with x, y, width, and height properties
+   */
+  GetGeometryBBox() {
     if (this.geometryBBox.width < 0 || this.geometryBBox.height < 0) {
       const formattingLayer = this.doc.GetFormattingLayer();
       const originalPosition = {
@@ -525,12 +573,12 @@ class Element {
         y: this.svgObj.trans.y
       };
       const originalRotation = this.svgObj.trans.rotation;
-      const parent = this.svgObj.parent;
-      let positionIndex = 0;
+      const parentElement = this.svgObj.parent;
+      let elementPositionIndex = 0;
 
-      if (parent) {
-        positionIndex = this.svgObj.position();
-        parent.remove(this.svgObj);
+      if (parentElement) {
+        elementPositionIndex = this.svgObj.position();
+        parentElement.remove(this.svgObj);
       }
 
       formattingLayer.svgObj.add(this.svgObj);
@@ -540,14 +588,14 @@ class Element {
         rotation: 0
       });
 
-      const rbox = this.svgObj.rbox();
+      const rotatedBox = this.svgObj.rbox();
       formattingLayer.svgObj.remove(this.svgObj);
 
-      const convertedCoords = this.doc.ConvertWindowToDocCoords(rbox.x, rbox.y);
-      this.geometryBBox.x = convertedCoords.x;
-      this.geometryBBox.y = convertedCoords.y;
-      this.geometryBBox.width = rbox.width;
-      this.geometryBBox.height = rbox.height;
+      const documentCoordinates = this.doc.ConvertWindowToDocCoords(rotatedBox.x, rotatedBox.y);
+      this.geometryBBox.x = documentCoordinates.x;
+      this.geometryBBox.y = documentCoordinates.y;
+      this.geometryBBox.width = rotatedBox.width;
+      this.geometryBBox.height = rotatedBox.height;
 
       this.svgObj.transform({
         x: originalPosition.x,
@@ -555,59 +603,71 @@ class Element {
         rotation: originalRotation
       });
 
-      if (parent) {
-        parent.add(this.svgObj, positionIndex);
+      if (parentElement) {
+        parentElement.add(this.svgObj, elementPositionIndex);
       }
 
       this.UpdateTransform();
     }
 
-    console.log('= B.Element.GetGeometryBBox: output =>', this.geometryBBox);
     return this.geometryBBox;
   }
 
+  /**
+   * Gets the bounds of any arrowheads on the element
+   * @returns Array of arrowhead bounds
+   */
   GetArrowheadBounds() {
-    return []
+    return [];
   }
 
+  /**
+   * Sets a tooltip for the element
+   * @param tooltipText - The text to show in the tooltip
+   */
   SetTooltip(tooltipText: string): void {
-    console.log('= B.Element.SetTooltip: input =>', { tooltipText });
     Element.SetTooltipOnElement(this.svgObj, tooltipText);
-    console.log('= B.Element.SetTooltip: output =>', { tooltipText });
   }
 
+  /**
+   * Sets a tooltip on a specific SVG element
+   * @param element - The SVG element to add the tooltip to
+   * @param tooltipText - The text to show in the tooltip
+   */
   static SetTooltipOnElement(element: any, tooltipText: string) {
-    console.log('= B.Element.SetTooltipOnElement: input =>', { element, tooltipText });
-
     if (element && element instanceof T3Svg.Container) {
       const titleElement = new T3Svg.Element(T3Svg.create('title'));
       titleElement.node.textContent = tooltipText;
       element.add(titleElement);
     }
-
-    console.log('= B.Element.SetTooltipOnElement: output =>', {});
   }
 
+  /**
+   * Gets the style object for this element, creating it if it doesn't exist
+   * @returns The style object for this element
+   */
   Style(): Style {
-    console.log('= B.Element.Style: input => {}');
     if (!this.style) {
       this.style = new Style(this);
     }
-    console.log('= B.Element.Style: output =>', { style: this.style });
     return this.style;
   }
 
+  /**
+   * Sets the fill color for the element
+   * @param color - The color to set for the fill
+   */
   SetFillColor(color: string): void {
-    console.log('= B.Element.SetFillColor: input =>', { color });
-
     this.svgObj.attr('fill', color);
     this.ClearColorData(true);
-
-    console.log('= B.Element.SetFillColor: output =>', { fill: color });
   }
 
+  /**
+   * Sets an image fill for the element
+   * @param imageUrl - The URL of the image to use for filling the element
+   * @param options - Options for the image fill including cropRect, scaleType, imageWidth, and imageHeight
+   */
   SetImageFill(imageUrl: string, options?: any) {
-    console.log("= B.Element.SetImageFill: input =>", { imageUrl, options });
     options = options || {};
 
     // Clear previous fill color data
@@ -654,21 +714,18 @@ class Element {
     }
 
     this.UpdatePattern(this.fillPatternData.ID, true);
-    console.log("= B.Element.SetImageFill: output =>", { fillPatternData: this.fillPatternData });
   }
 
+  /**
+   * Updates the current image fill with new options
+   * @param options - New options for the image fill including cropRect and scaleType
+   */
   UpdateImageFill(options: { cropRect?: any; scaleType?: string } = {}): void {
-    console.log("= B.Element.UpdateImageFill: input =>", { options });
-
     if (this.fillPatternData && this.fillPatternData.isImage) {
       this.fillPatternData.options.cropRect = options.cropRect || this.fillPatternData.options.cropRect;
       this.fillPatternData.options.scaleType = options.scaleType || this.fillPatternData.options.scaleType;
 
       this.UpdatePattern(this.fillPatternData.ID, true);
-
-      console.log("= B.Element.UpdateImageFill: output =>", { fillPatternData: this.fillPatternData });
-    } else {
-      console.log("= B.Element.UpdateImageFill: output =>", "No update performed. Either fillPatternData is missing or not an image.");
     }
   }
 
@@ -677,8 +734,6 @@ class Element {
    * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions
    */
   SetTextureFill(textureSettings: any): void {
-    console.log('= B.Element.SetTextureFill: input =>', { textureSettings });
-
     if (textureSettings && textureSettings.url) {
       this.ClearColorData(true);
 
@@ -700,8 +755,6 @@ class Element {
       // Update the pattern for the texture fill
       this.UpdatePattern(this.fillPatternData.ID, true);
     }
-
-    console.log('= B.Element.SetTextureFill: output =>', { fillPatternData: this.fillPatternData });
   }
 
   /**
@@ -709,8 +762,6 @@ class Element {
    * @param gradientSettings - The gradient settings including type, stops, and position
    */
   SetGradientFill(gradientSettings) {
-    console.log("= B.Element.SetGradientFill: input =>", { gradientSettings });
-
     if (gradientSettings && gradientSettings.stops && gradientSettings.stops.length) {
       // Clear previous fill color data
       this.ClearColorData(true);
@@ -719,8 +770,8 @@ class Element {
       this.fillGradientData = {};
       this.fillGradientData.settings = {};
       this.fillGradientData.settings.stops = [];
-      this.fillGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.LINEAR;
-      this.fillGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LEFTTOP;
+      this.fillGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.Linear;
+      this.fillGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LeftTop;
       this.fillGradientData.settings.angle = gradientSettings.angle;
 
       // Process each gradient stop
@@ -738,9 +789,6 @@ class Element {
       this.fillGradientData.gradientElem = null;
 
       this.UpdateGradient(this.fillGradientData.ID, true);
-      console.log("= B.Element.SetGradientFill: output =>", { fillGradientData: this.fillGradientData });
-    } else {
-      console.log("= B.Element.SetGradientFill: output =>", "No valid gradient stops provided.");
     }
   }
 
@@ -749,8 +797,6 @@ class Element {
    * @param isFill - If true, clears fill data, otherwise clears stroke data
    */
   ClearColorData(isFill: boolean) {
-    console.log("= B.Element.ClearColorData: input =>", { isFill });
-
     // Determine which data to clear based on isFill parameter
     let patternData;
     let gradientData;
@@ -784,8 +830,6 @@ class Element {
       this.strokePatternData = null;
       this.strokeGradientData = null;
     }
-
-    console.log("= B.Element.ClearColorData: output =>", { isFill });
   }
 
   /**
@@ -794,7 +838,6 @@ class Element {
    * @param isFill - If true, updates fill pattern, otherwise updates stroke pattern
    */
   UpdatePattern(patternId: string, isFill: boolean) {
-    console.log("= B.Element.UpdatePattern: input =>", { patternId, isFill });
 
     // Get the appropriate pattern data based on whether we're updating fill or stroke
     const patternData = isFill ? this.fillPatternData : this.strokePatternData;
@@ -822,8 +865,6 @@ class Element {
       const attrName = isFill ? 'fill' : 'stroke';
       this.svgObj.attr(attrName, 'url(#' + patternData.ID + ')');
     }
-
-    console.log("= B.Element.UpdatePattern: output =>", { patternId, isFill });
   }
 
   /**
@@ -831,7 +872,6 @@ class Element {
    * @param patternData - The image pattern data to update
    */
   UpdateImagePattern(patternData) {
-    console.log("= B.Element.UpdateImagePattern: input =>", { patternData });
 
     // Get the element's bounding box for calculations
     const elementFrame = this.CalcElementFrame();
@@ -942,8 +982,6 @@ class Element {
         });
       }
     }
-
-    console.log("= B.Element.UpdateImagePattern: output =>", { patternData });
   }
 
   /**
@@ -951,7 +989,6 @@ class Element {
    * @param patternData - The texture pattern data to update
    */
   UpdateTexturePattern(patternData) {
-    console.log("= B.Element.UpdateTexturePattern: input =>", { patternData });
 
     const elementFrame = this.CalcElementFrame();
     let scale, scaledImageSize, patternRect;
@@ -981,34 +1018,34 @@ class Element {
 
       // Position the pattern based on alignment option
       switch (patternData.options.alignment) {
-        case ConstantData2.TextureAlign.SDTX_TOPLEFT:
+        case TextConstant.TextureAlign.TopLeft:
           // Default position is already top-left
           break;
-        case ConstantData2.TextureAlign.SDTX_TOPCENTER:
+        case TextConstant.TextureAlign.TopCenter:
           patternRect.x += elementFrame.width / 2;
           break;
-        case ConstantData2.TextureAlign.SDTX_TOPRIGHT:
+        case TextConstant.TextureAlign.TopRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           break;
-        case ConstantData2.TextureAlign.SDTX_CENLEFT:
+        case TextConstant.TextureAlign.CenLeft:
           patternRect.y += elementFrame.height / 2;
           break;
-        case ConstantData2.TextureAlign.SDTX_CENTER:
+        case TextConstant.TextureAlign.Center:
           patternRect.x += elementFrame.width / 2;
           patternRect.y += elementFrame.height / 2;
           break;
-        case ConstantData2.TextureAlign.SDTX_CENRIGHT:
+        case TextConstant.TextureAlign.CenRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           patternRect.y += elementFrame.height / 2;
           break;
-        case ConstantData2.TextureAlign.SDTX_BOTLEFT:
+        case TextConstant.TextureAlign.BotLeft:
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;
-        case ConstantData2.TextureAlign.SDTX_BOTCENTER:
+        case TextConstant.TextureAlign.BotCenter:
           patternRect.x += elementFrame.width / 2;
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;
-        case ConstantData2.TextureAlign.SDTX_BOTRIGHT:
+        case TextConstant.TextureAlign.BotRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;
@@ -1037,8 +1074,6 @@ class Element {
         viewBox: '0 0 ' + scaledImageSize.width + ' ' + scaledImageSize.height
       });
     }
-
-    console.log("= B.Element.UpdateTexturePattern: output =>", { patternData });
   }
 
   /**
@@ -1047,7 +1082,6 @@ class Element {
    * @param isFill - If true, updates fill gradient, otherwise updates stroke gradient
    */
   UpdateGradient(gradientId: string, isFill: boolean) {
-    console.log("= B.Element.UpdateGradient: input =>", { gradientId, isFill });
 
     const boundingBox = this.GetGeometryBBox();
     let startPosition = { x: 0, y: 0 };
@@ -1061,8 +1095,8 @@ class Element {
       if (!gradientData.gradientElem) {
         let gradientType: string;
         switch (gradientData.settings.type) {
-          case BConstant.GradientStyle.RADIALFILL:
-          case BConstant.GradientStyle.RADIAL:
+          case BConstant.GradientStyle.Radialfill:
+          case BConstant.GradientStyle.Radial:
             gradientType = "radial";
             break;
           default:
@@ -1087,7 +1121,7 @@ class Element {
         this.svgObj.add(gradientData.gradientElem, 0);
       }
 
-      isLinearGradient = gradientData.settings.type === BConstant.GradientStyle.LINEAR;
+      isLinearGradient = gradientData.settings.type === BConstant.GradientStyle.Linear;
       startPosition.x = boundingBox.x;
       startPosition.y = boundingBox.y;
       endPosition.x = startPosition.x + boundingBox.width;
@@ -1095,45 +1129,45 @@ class Element {
 
       // Adjust positions based on the start position setting
       switch (gradientData.settings.startPos) {
-        case BConstant.GradientPos.TOP:
+        case BConstant.GradientPos.Top:
           startPosition.x += boundingBox.width / 2;
           endPosition.x = startPosition.x;
           gradientDistance = boundingBox.height;
           break;
-        case BConstant.GradientPos.RIGHTTOP:
+        case BConstant.GradientPos.RightTop:
           startPosition.x = endPosition.x;
           endPosition.x = boundingBox.x;
           break;
-        case BConstant.GradientPos.RIGHT:
+        case BConstant.GradientPos.Right:
           startPosition.x = endPosition.x;
           startPosition.y += boundingBox.height / 2;
           endPosition.x = boundingBox.x;
           endPosition.y = startPosition.y;
           gradientDistance = boundingBox.width;
           break;
-        case BConstant.GradientPos.RIGHTBOTTOM:
+        case BConstant.GradientPos.RightBottom:
           startPosition.x = endPosition.x;
           startPosition.y = endPosition.y;
           endPosition.x = boundingBox.x;
           endPosition.y = boundingBox.y;
           break;
-        case BConstant.GradientPos.BOTTOM:
+        case BConstant.GradientPos.Bottom:
           startPosition.x += boundingBox.width / 2;
           startPosition.y = endPosition.y;
           endPosition.x = startPosition.x;
           endPosition.y = boundingBox.y;
           gradientDistance = boundingBox.height;
           break;
-        case BConstant.GradientPos.LEFTBOTTOM:
+        case BConstant.GradientPos.LeftBottom:
           startPosition.y = endPosition.y;
           endPosition.y = boundingBox.y;
           break;
-        case BConstant.GradientPos.LEFT:
+        case BConstant.GradientPos.Left:
           startPosition.y += boundingBox.height / 2;
           endPosition.y = startPosition.y;
           gradientDistance = boundingBox.width;
           break;
-        case BConstant.GradientPos.CENTER:
+        case BConstant.GradientPos.Center:
           if (isLinearGradient) {
             startPosition.x += boundingBox.width / 2;
             startPosition.y += boundingBox.height / 2;
@@ -1240,12 +1274,9 @@ class Element {
         this.svgObj.attr("stroke", "url(#" + gradientData.ID + ")");
       }
     }
-
-    console.log("= B.Element.UpdateGradient: output =>", {});
   }
 
   RefreshPaint(shouldRefreshChildren?: boolean) {
-    console.log('= B.Element.RefreshPaint: input =>', { shouldRefreshChildren });
 
     // Update fill pattern or gradient if exists
     if (this.fillPatternData) {
@@ -1260,25 +1291,13 @@ class Element {
     } else if (this.strokeGradientData) {
       this.UpdateGradient(this.strokeGradientData.ID, false);
     }
-
-    /*
-    // If flag is set and double move is needed (currently always false)
-    if (shouldRefreshChildren && false) {
-      const count = this.ElementCount();
-      for (let index = 0; index < count; index++) {
-        const childElement = this.GetElementByIndex(index);
-        if (childElement) {
-          childElement.RefreshPaint(shouldRefreshChildren);
-        }
-      }
-    }
-    */
-
-    console.log('= B.Element.RefreshPaint: output =>', { shouldRefreshChildren });
   }
 
+  /**
+   * Retrieves the dimensions of the image used for filling the element
+   * @returns Object containing the width and height of the image fill
+   */
   GetImageFillSize() {
-    console.log('= B.Element.GetImageFillSize: input => {}');
     let size = {
       width: 0,
       height: 0
@@ -1289,23 +1308,22 @@ class Element {
       size.height = this.fillPatternData.imgHeight;
     }
 
-    console.log('= B.Element.GetImageFillSize: output =>', { width: size.width, height: size.height });
     return size;
   }
 
+  /**
+   * Sets the stroke color for the element
+   * @param color - The color to set for the element's stroke
+   */
   SetStrokeColor(color: string): void {
-    console.log('= B.Element.SetStrokeColor: input =>', { color });
     this.svgObj.attr('stroke', color);
     this.ClearColorData(false);
-    console.log('= B.Element.SetStrokeColor: output =>', { color });
   }
-
   /**
    * Sets a texture stroke for the element
    * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions
    */
   SetTextureStroke(textureSettings) {
-    console.log('= B.Element.SetTextureStroke: input =>', { textureSettings });
 
     if (textureSettings && textureSettings.url) {
       // Clear previous stroke color data
@@ -1327,8 +1345,6 @@ class Element {
       // Update the pattern for the stroke texture
       this.UpdatePattern(this.strokePatternData.ID, false);
     }
-
-    console.log('= B.Element.SetTextureStroke: output =>', { strokePatternData: this.strokePatternData });
   }
 
   /**
@@ -1336,7 +1352,6 @@ class Element {
    * @param gradientSettings - The gradient settings including type, stops, and position
    */
   SetGradientStroke(gradientSettings) {
-    console.log("= B.Element.SetGradientStroke: input =>", { gradientSettings });
 
     if (gradientSettings && gradientSettings.stops && gradientSettings.stops.length) {
       // Clear previous stroke color data
@@ -1346,8 +1361,8 @@ class Element {
       this.strokeGradientData = {};
       this.strokeGradientData.settings = {};
       this.strokeGradientData.settings.stops = [];
-      this.strokeGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.LINEAR;
-      this.strokeGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LEFTTOP;
+      this.strokeGradientData.settings.type = gradientSettings.type || BConstant.GradientStyle.Linear;
+      this.strokeGradientData.settings.startPos = gradientSettings.startPos || BConstant.GradientPos.LeftTop;
       this.strokeGradientData.settings.angle = gradientSettings.angle;
 
       // Process each gradient stop
@@ -1365,9 +1380,6 @@ class Element {
       this.strokeGradientData.gradientElem = null;
 
       this.UpdateGradient(this.strokeGradientData.ID, false);
-      console.log("= B.Element.SetGradientStroke: output =>", { strokeGradientData: this.strokeGradientData });
-    } else {
-      console.log("= B.Element.SetGradientStroke: output =>", "No valid gradient stops provided.");
     }
   }
 
@@ -1376,7 +1388,6 @@ class Element {
    * @param strokeWidth - The width of the stroke as a number or string
    */
   SetStrokeWidth(strokeWidth: number | string) {
-    console.log("= B.Element.SetStrokeWidth: input =>", { strokeWidth });
 
     // Set the initial stroke-width attribute
     this.svgObj.attr("stroke-width", strokeWidth);
@@ -1391,158 +1402,169 @@ class Element {
 
     // Update the stroke-dasharray according to the new strokeWidth
     this.svgObj.attr("stroke-dasharray", this.GetStrokePatternForWidth());
-
-    console.log("= B.Element.SetStrokeWidth: output =>", { strokeWidth: this.strokeWidth });
   }
 
+  /**
+   * Sets the dash pattern for element strokes
+   * @param dashArray - A string containing comma-separated dash pattern values
+   */
   SetStrokePattern(dashArray: string) {
-    console.log('= B.Element.SetStrokePattern: input =>', { dashArray });
-
     this.strokeDashArray = dashArray;
     const patternForWidth = this.GetStrokePatternForWidth();
     this.svgObj.attr('stroke-dasharray', patternForWidth);
-
-    console.log('= B.Element.SetStrokePattern: output =>', { strokeDashArray: this.strokeDashArray, patternForWidth });
   }
 
+  /**
+   * Calculates the stroke dash pattern adjusted for the current stroke width
+   * @returns A string containing the dash pattern values scaled by stroke width
+   */
   GetStrokePatternForWidth() {
-    console.log('= B.Element.GetStrokePatternForWidth: input => {}');
-    // Get the current stroke width
     const strokeWidth = this.strokeWidth;
     let dashArrayValues: number[] = [];
 
-    // If a dash pattern is defined, split into an array of numeric values
     if (this.strokeDashArray) {
       dashArrayValues = this.strokeDashArray.split(',').map(value => Number(value.trim()));
     }
 
-    // If no valid dash pattern or stroke width is provided, return 'none'
     if (!dashArrayValues.length || !strokeWidth) {
-      console.log('= B.Element.GetStrokePatternForWidth: output =>', 'none');
       return 'none';
     }
 
-    // Multiply each dash value by the stroke width
     const adjustedValues = dashArrayValues.map(value => value * strokeWidth);
     const result = adjustedValues.join(',');
-
-    console.log('= B.Element.GetStrokePatternForWidth: output =>', result);
     return result;
   }
 
+  /**
+   * Sets the overall opacity of the element
+   * @param opacity - The opacity value between 0 (transparent) and 1 (opaque)
+   */
   SetOpacity(opacity: number): void {
-    console.log('= B.Element.SetOpacity: input =>', { opacity });
     this.svgObj.attr('opacity', opacity);
-    console.log('= B.Element.SetOpacity: output =>', { opacity });
   }
 
+  /**
+   * Sets the opacity of just the fill component of the element
+   * @param opacity - The fill opacity value between 0 (transparent) and 1 (opaque)
+   */
   SetFillOpacity(opacity: number): void {
-    console.log('= B.Element.SetFillOpacity: input =>', { opacity });
     this.svgObj.attr('fill-opacity', opacity);
-    console.log('= B.Element.SetFillOpacity: output =>', { opacity });
   }
 
+  /**
+   * Sets the opacity of just the stroke component of the element
+   * @param opacity - The stroke opacity value between 0 (transparent) and 1 (opaque)
+   */
   SetStrokeOpacity(opacity: number): void {
-    console.log("= B.Element.SetStrokeOpacity: input =>", { opacity });
     this.svgObj.attr("stroke-opacity", opacity);
-    console.log("= B.Element.SetStrokeOpacity: output =>", { opacity });
   }
 
+  /**
+   * Sets the fill rule for the element (how overlapping paths are filled)
+   * @param fillRule - The fill rule to apply ("nonzero" or "evenodd")
+   */
   SetFillRule(fillRule: string): void {
-    console.log("= B.Element.SetFillRule: input =>", { fillRule });
     this.svgObj.attr("fill-rule", fillRule);
-    console.log("= B.Element.SetFillRule: output =>", { fillRule });
   }
 
+  /**
+   * Sets whether the element should be visible
+   * @param isVisible - If true, the element is visible; if false, it's hidden
+   */
   SetDisplayVisibility(isVisible: boolean): void {
-    console.log('= B.Element.SetDisplayVisibility: input =>', { isVisible });
     const visibility = isVisible ? '' : 'hidden';
     this.svgObj.attr('visibility', visibility);
-    console.log('= B.Element.SetDisplayVisibility: output =>', { visibility });
   }
 
+  /**
+   * Gets or creates the effects object for this element
+   * @returns The Effects object associated with this element
+   */
   Effects() {
-    console.log('= B.Element.Effects: input => {}');
-
     if (!this.effects) {
       this.effects = new Effects(this);
     }
-
-    console.log('= B.Element.Effects: output =>', { effects: this.effects });
     return this.effects;
   }
 
+  /**
+   * Sets a filter effect on the element using a filter ID
+   * @param effectID - The ID of the filter to apply
+   */
   SetEffect(effectID: string): void {
-    console.log('= B.Element.SetEffect: input =>', { effectID });
     this.svgObj.attr('filter', `url(#${effectID})`);
-    console.log('= B.Element.SetEffect: output =>', { effectID });
   }
 
+  /**
+   * Sets how the element responds to pointer events
+   * @param eventBehavior - The pointer-events value (e.g., "none", "auto", "stroke")
+   */
   SetEventBehavior(eventBehavior: string): void {
-    console.log('= B.Element.SetEventBehavior: input =>', { eventBehavior });
     this.svgObj.attr('pointer-events', eventBehavior);
-    console.log('= B.Element.SetEventBehavior: output =>', { eventBehavior });
   }
 
+  /**
+   * Gets the current pointer events behavior of the element
+   * @returns The current pointer-events attribute value
+   */
   GetEventBehavior() {
-    console.log('= B.Element.GetEventBehavior: input => {}');
-    const eventBehavior = this.svgObj.attr('pointer-events');
-    console.log('= B.Element.GetEventBehavior: output =>', { eventBehavior });
-    return eventBehavior;
+    return this.svgObj.attr('pointer-events');
   }
 
+  /**
+   * Removes the pointer-events attribute from the element
+   */
   ClearEventBehavior() {
-    console.log('= B.Element.ClearEventBehavior: input => {}');
-
-    // Remove the pointer-events attribute from the SVG node
     this.svgObj.node.removeAttribute('pointer-events');
-
-    console.log('= B.Element.ClearEventBehavior: output =>', { pointerEventsCleared: true });
   }
 
+  /**
+   * Sets the cursor style when hovering over this element
+   * @param cursorValue - The CSS class name for the cursor style
+   */
   SetCursor(cursorValue: string): void {
-    console.log('= B.Element.SetCursor: input =>', { cursorValue });
     this.cursor = cursorValue;
     if (cursorValue) {
       this.svgObj.node.setAttribute('class', cursorValue);
     } else {
       this.svgObj.node.removeAttribute('class');
     }
-    console.log('= B.Element.SetCursor: output =>', { cursor: this.cursor });
   }
 
+  /**
+   * Gets the current cursor style applied to this element
+   * @returns The current cursor style class name
+   */
   GetCursor() {
-    console.log('= B.Element.GetCursor: input => {}');
-    const result = this.cursor;
-    console.log('= B.Element.GetCursor: output =>', { cursor: result });
-    return result;
+    return this.cursor;
   }
 
+  /**
+   * Clears all cursor styles from this element
+   */
   ClearAllCursors(): void {
-    // console.log('= B.Element.ClearAllCursors: input => {}');
     Element.RemoveCursorsOnSVGObj(this.svgObj);
-    // console.log('= B.Element.ClearAllCursors: output => {}');
   }
 
-  static RemoveCursorsOnSVGObj(e: any): void {
-    // console.log('= B.Element.RemoveCursorsOnSVGObj: input =>', { e });
-
-    if (e.SDGObj) {
-      e.SDGObj.cursor = null;
+  /**
+   * Recursively removes cursor styles from an SVG object and its children
+   * @param svgObject - The SVG object to remove cursors from
+   */
+  static RemoveCursorsOnSVGObj(svgObject: any): void {
+    if (svgObject.SDGObj) {
+      svgObject.SDGObj.cursor = null;
     }
 
-    if (e.node) {
-      e.node.removeAttribute('class');
+    if (svgObject.node) {
+      svgObject.node.removeAttribute('class');
     }
 
-    if (e instanceof T3Svg.Container) {
-      const children = e.children();
+    if (svgObject instanceof T3Svg.Container) {
+      const children = svgObject.children();
       for (let i = 0; i < children.length; i++) {
         Element.RemoveCursorsOnSVGObj(children[i]);
       }
     }
-
-    // console.log('= B.Element.RemoveCursorsOnSVGObj: output =>', { completed: true });
   }
 
 }

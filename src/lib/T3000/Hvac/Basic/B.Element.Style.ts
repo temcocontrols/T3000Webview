@@ -1,12 +1,7 @@
 
 
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
-import GlobalData from '../Data/T3Gv';
+import $ from 'jquery'
+import T3Gv from '../Data/T3Gv'
 
 class Style {
 
@@ -15,49 +10,53 @@ class Style {
   public height: number;
 
   constructor(elementObject: any) {
-    console.log('B.Element.Style: Initializing with element:', elementObject);
     this.element = elementObject;
     this.width = 0;
     this.height = 0;
-    console.log('B.Element.Style: Constructor completed, initialized element object');
   }
 
   static imageSizeRequest: any;
   static imageSizeCache: any;
 
+  /**
+   * Creates a color string in hexadecimal format based on RGB values
+   * @param red - Red component (0-255)
+   * @param green - Green component (0-255)
+   * @param blue - Blue component (0-255)
+   * @returns Hexadecimal color string (e.g. "#FF00FF")
+   */
   static DefineColor(red: number, green: number, blue: number): string {
-    console.log('B.Element.Style: defineColor called with red:', red, 'green:', green, 'blue:', blue);
-
     red = Math.min(255, Math.max(0, red));
     green = Math.min(255, Math.max(0, green));
     blue = Math.min(255, Math.max(0, blue));
 
-    const color = '#' + red.toString(16).padStart(2, '0') + green.toString(16).padStart(2, '0') + blue.toString(16).padStart(2, '0');
-    console.log('B.Element.Style: defineColor output:', color);
-
-    return color;
+    return '#' + red.toString(16).padStart(2, '0') + green.toString(16).padStart(2, '0') + blue.toString(16).padStart(2, '0');
   }
 
+  /**
+   * Calculates dimensions of an image, using cache if available
+   * @param imageUrl - URL of the image to measure
+   * @param callback - Function to call with the resulting dimensions
+   * @param callbackData - Additional data to pass to the callback
+   * @param forceSvg - If true, treats the image as SVG regardless of extension
+   */
   static CalcImageSize(
     imageUrl: string,
     callback: (width: number, height: number, error: any, data: any) => void,
     callbackData: any,
     forceSvg?: boolean
   ) {
-    console.log('B.Element.Style: CalcImageSize input:', { imageUrl, callbackData, forceSvg });
-
-    const svgDoc = GlobalData.docHandler ? GlobalData.docHandler.svgDoc : null;
+    const svgDoc = T3Gv.docUtil ? T3Gv.docUtil.svgDoc : null;
     const cachedSize = Style.GetCachedImageSize(imageUrl);
 
     if (cachedSize) {
       if (svgDoc) {
-        svgDoc.ImageLoad_AddRef();
+        svgDoc.ImageLoadAddRef();
       }
       setTimeout(() => {
         callback(cachedSize.width, cachedSize.height, null, callbackData);
-        console.log('B.Element.Style: CalcImageSize output from cache:', { width: cachedSize.width, height: cachedSize.height });
         if (svgDoc) {
-          svgDoc.ImageLoad_DecRef();
+          svgDoc.ImageLoadDecRef();
         }
       }, 0);
       return;
@@ -80,79 +79,79 @@ class Style {
         Style.GetBitmapDimensions(imageUrl, callback, callbackData);
       }
     }
-
-    console.log('B.Element.Style: CalcImageSize processed request for imageUrl:', imageUrl);
   }
 
+  /**
+   * Stores image dimensions in the cache
+   * @param imageUrl - URL of the image
+   * @param width - Width of the image
+   * @param height - Height of the image
+   */
   static CacheImageSize(imageUrl: string, width: number, height: number): void {
-    console.log('B.Element.Style: CacheImageSize called with imageUrl:', imageUrl, 'width:', width, 'height:', height);
     Style.imageSizeCache = Style.imageSizeCache || {};
     Style.imageSizeCache[imageUrl.toUpperCase()] = { width, height };
-    console.log('B.Element.Style: CacheImageSize updated cache for imageUrl:', imageUrl, 'with dimensions:', { width, height });
   }
 
+  /**
+   * Retrieves cached image dimensions if available
+   * @param imageUrl - URL of the image to look up
+   * @returns Object with width and height properties, or null if not cached
+   */
   static GetCachedImageSize(imageUrl: string) {
-    console.log('B.Element.Style: GetCachedImageSize called with imageUrl:', imageUrl);
-    const cachedSize =
-      (Style.imageSizeCache &&
-        Style.imageSizeCache[imageUrl.toUpperCase()]) ||
+    return (Style.imageSizeCache &&
+      Style.imageSizeCache[imageUrl.toUpperCase()]) ||
       null;
-    console.log('B.Element.Style: GetCachedImageSize returning:', cachedSize);
-    return cachedSize;
   }
 
+  /**
+   * Processes all pending image size requests for a given URL
+   * @param imageUrl - URL of the image
+   * @param width - Width of the image
+   * @param height - Height of the image
+   * @param error - Error information, if any occurred
+   */
   static ProcessImageSizeRequest(
     imageUrl: string,
     width: number,
     height: number,
     error: any
   ): void {
-    console.log('B.Element.Style: processImageSizeRequest called with input:', {
-      imageUrl,
-      width,
-      height,
-      error
-    });
-
     if (Style.imageSizeRequest) {
       const requestKey = imageUrl.toUpperCase();
       const requests = Style.imageSizeRequest[requestKey];
 
       if (requests) {
-        // Remove the pending requests for the given imageUrl
         delete Style.imageSizeRequest[requestKey];
 
         for (let index = 0; index < requests.length; index++) {
           const request = requests[index];
           if (request && request.callback) {
-            console.log('B.Element.Style: Calling callback for request:', {
-              index,
-              requestData: request.data
-            });
             request.callback(width, height, error, request.data);
           }
         }
       }
     }
-
-    console.log('B.Element.Style: processImageSizeRequest finished processing for imageUrl:', imageUrl);
   }
 
+  /**
+   * Determines dimensions of a bitmap image by loading it
+   * @param imageUrl - URL of the image
+   * @param callback - Function to call with the resulting dimensions
+   * @param callbackData - Additional data to pass to the callback
+   */
   static GetBitmapDimensions(
     imageUrl: string,
     callback: (width: number, height: number, error: any, callbackData: any) => void,
     callbackData: any
   ) {
-    console.log('B.Element.Style: GetBitmapDimensions: Input parameters:', { imageUrl, callbackData });
     const image = new Image();
-    const svgDoc = GlobalData.docHandler ? GlobalData.docHandler.svgDoc : null;
+    const svgDoc = T3Gv.docUtil ? T3Gv.docUtil.svgDoc : null;
 
     if (svgDoc) {
-      svgDoc.ImageLoad_AddRef();
+      svgDoc.ImageLoadAddRef();
     }
 
     image.onload = function () {
-      console.log('B.Element.Style: GetBitmapDimensions: onload triggered for imageUrl:', imageUrl, 'with dimensions:', { width: this.width, height: this.height });
       if (this.width && this.height) {
         Style.CacheImageSize(imageUrl, this.width, this.height);
         Style.ProcessImageSizeRequest(imageUrl, this.width, this.height, null);
@@ -161,43 +160,42 @@ class Style {
         }
       } else {
         if (svgDoc) {
-          svgDoc.ImageLoad_DecRef();
+          svgDoc.ImageLoadDecRef();
         }
-        console.log('B.Element.Style: GetBitmapDimensions: Invalid dimensions, falling back to GetSVGDimensions for imageUrl:', imageUrl);
         Style.GetSVGDimensions(imageUrl, callback, callbackData);
       }
       if (svgDoc) {
-        svgDoc.ImageLoad_DecRef();
+        svgDoc.ImageLoadDecRef();
       }
-      console.log('B.Element.Style: GetBitmapDimensions: onload completed for imageUrl:', imageUrl);
     };
 
     image.onerror = function (errorEvent) {
-      console.log('B.Element.Style: GetBitmapDimensions: onerror triggered for imageUrl:', imageUrl, 'Error event:', errorEvent);
       Style.ProcessImageSizeRequest(imageUrl, 0, 0, { success: false });
       if (callback) {
         callback(0, 0, { success: false }, callbackData);
       }
       if (svgDoc) {
-        svgDoc.ImageLoad_DecRef();
+        svgDoc.ImageLoadDecRef();
       }
-      console.log('B.Element.Style: GetBitmapDimensions: onerror completed for imageUrl:', imageUrl);
     };
 
     image.src = imageUrl;
-    console.log('B.Element.Style: GetBitmapDimensions: Image source set for imageUrl:', imageUrl);
   }
 
+  /**
+   * Fetches and determines dimensions of an SVG image
+   * @param svgUrl - URL of the SVG image
+   * @param callback - Function to call with the resulting dimensions
+   * @param callbackData - Additional data to pass to the callback
+   */
   static GetSVGDimensions(
     svgUrl: string,
     callback?: (width: number, height: number, error: any, callbackData: any) => void,
     callbackData?: any
   ): void {
-    console.log('B.Element.Style: GetSVGDimensions called with svgUrl:', svgUrl, 'callbackData:', callbackData);
-
-    const svgDocumentHandler = GlobalData.docHandler ? GlobalData.docHandler.svgDoc : null;
+    const svgDocumentHandler = T3Gv.docUtil ? T3Gv.docUtil.svgDoc : null;
     if (svgDocumentHandler) {
-      svgDocumentHandler.ImageLoad_AddRef();
+      svgDocumentHandler.ImageLoadAddRef();
     }
 
     $.ajax({
@@ -207,7 +205,6 @@ class Style {
       contentType: 'image/svg',
       dataType: 'text',
       success: function (responseText) {
-        console.log('B.Element.Style: GetSVGDimensions AJAX success for svgUrl:', svgUrl);
         const svgSize = Style.ExtractSVGSize(responseText);
         Style.CacheImageSize(svgUrl, svgSize.width, svgSize.height);
         Style.ProcessImageSizeRequest(svgUrl, svgSize.width, svgSize.height, null);
@@ -217,13 +214,10 @@ class Style {
         }
 
         if (svgDocumentHandler) {
-          svgDocumentHandler.ImageLoad_DecRef();
+          svgDocumentHandler.ImageLoadDecRef();
         }
-
-        console.log('B.Element.Style: GetSVGDimensions returning dimensions for svgUrl:', svgUrl, svgSize);
       },
       error: function (errorEvent) {
-        console.log('B.Element.Style: GetSVGDimensions AJAX error for svgUrl:', svgUrl, 'Error:', errorEvent);
         Style.ProcessImageSizeRequest(svgUrl, 0, 0, { success: false });
 
         if (callback) {
@@ -231,21 +225,21 @@ class Style {
         }
 
         if (svgDocumentHandler) {
-          svgDocumentHandler.ImageLoad_DecRef();
+          svgDocumentHandler.ImageLoadDecRef();
         }
-
-        console.log('B.Element.Style: GetSVGDimensions returning error for svgUrl:', svgUrl);
       }
     });
   }
 
+  /**
+   * Extracts width and height information from SVG content
+   * @param svgContent - String containing SVG XML content
+   * @returns Object with width and height properties
+   */
   static ExtractSVGSize(svgContent: string): { width: number; height: number } {
-    console.log('B.Element.Style: ExtractSVGSize input: svgContent:', svgContent);
-
     const defaultSize = { width: 100, height: 100 };
     const svgTagMatch = svgContent.match(/<svg([\s\S]*?)>/i);
     if (!svgTagMatch || !svgTagMatch[1]) {
-      console.log('B.Element.Style: ExtractSVGSize output: defaultSize:', defaultSize);
       return defaultSize;
     }
 
@@ -253,6 +247,12 @@ class Style {
     let computedWidth = 0;
     let computedHeight = 0;
 
+    /**
+     * Converts a value from one unit to pixels
+     * @param value - Numeric value to convert
+     * @param unit - Unit of measurement (in, mm, cm, pt, pc, px)
+     * @returns Value converted to pixels
+     */
     function convertUnit(value: number, unit: string): number {
       let converted = 0;
       if (!unit || !value) return value;
@@ -297,9 +297,7 @@ class Style {
       }
     }
 
-    const resultSize = computedWidth && computedHeight ? { width: computedWidth, height: computedHeight } : defaultSize;
-    console.log('B.Element.Style: ExtractSVGSize output: resultSize:', resultSize);
-    return resultSize;
+    return computedWidth && computedHeight ? { width: computedWidth, height: computedHeight } : defaultSize;
   }
 
 }
