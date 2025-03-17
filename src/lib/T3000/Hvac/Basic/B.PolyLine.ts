@@ -1,13 +1,6 @@
 
 
-
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
-import Path from "./B.Path";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
+import Path from "./B.Path"
 
 class PolyLine extends Path {
 
@@ -15,47 +8,44 @@ class PolyLine extends Path {
     super()
   }
 
-  SetPoints(points: { x: number, y: number }[]) {
-    console.log("= B.PolyLine SetPoints input:", points);
-
+  /**
+   * Sets the polyline by defining its points and calculates the bounding box
+   * @param polylinePoints - Array of points with x and y coordinates that define the polyline
+   */
+  SetPoints(polylinePoints: { x: number, y: number }[]) {
     const pathCreator = this.PathCreator();
-    const min = { x: 0, y: 0 };
-    const max = { x: 0, y: 0 };
-    const length = points.length;
+    const minCoord = { x: 0, y: 0 };
+    const maxCoord = { x: 0, y: 0 };
+    const pointCount = polylinePoints.length;
 
     pathCreator.BeginPath();
 
-    if (length > 1) {
-      pathCreator.MoveTo(points[0].x, points[0].y);
-      min.x = max.x = points[0].x;
-      min.y = max.y = points[0].y;
+    if (pointCount > 1) {
+      const startPoint = polylinePoints[0];
+      pathCreator.MoveTo(startPoint.x, startPoint.y);
+      minCoord.x = maxCoord.x = startPoint.x;
+      minCoord.y = maxCoord.y = startPoint.y;
     }
 
-    for (let i = 1; i < length; i++) {
-      pathCreator.LineTo(points[i].x, points[i].y);
-      min.x = Math.min(min.x, points[i].x);
-      min.y = Math.min(min.y, points[i].y);
-      max.x = Math.max(max.x, points[i].x);
-      max.y = Math.max(max.y, points[i].y);
+    for (let i = 1; i < pointCount; i++) {
+      const currentPoint = polylinePoints[i];
+      pathCreator.LineTo(currentPoint.x, currentPoint.y);
+
+      minCoord.x = Math.min(minCoord.x, currentPoint.x);
+      minCoord.y = Math.min(minCoord.y, currentPoint.y);
+      maxCoord.x = Math.max(maxCoord.x, currentPoint.x);
+      maxCoord.y = Math.max(maxCoord.y, currentPoint.y);
     }
 
-    const pathString = pathCreator.ToString();
-    this.SetPath(pathString, {
-      x: min.x,
-      y: min.y,
-      width: max.x - min.x,
-      height: max.y - min.y
-    });
+    const pathDefinition = pathCreator.ToString();
+    const boundingBox = {
+      x: minCoord.x,
+      y: minCoord.y,
+      width: maxCoord.x - minCoord.x,
+      height: maxCoord.y - minCoord.y
+    };
 
-    console.log("= B.PolyLine SetPoints output:", {
-      pathString,
-      boundingBox: {
-        x: min.x,
-        y: min.y,
-        width: max.x - min.x,
-        height: max.y - min.y
-      }
-    });
+    this.SetPath(pathDefinition, boundingBox);
   }
 
 }

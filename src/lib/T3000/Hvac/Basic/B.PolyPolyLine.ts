@@ -1,12 +1,7 @@
 
 
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
 import Path from "./B.Path";
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
 
 class PolyPolyLine extends Path {
 
@@ -18,26 +13,32 @@ class PolyPolyLine extends Path {
     this.arrowElems = [];
   }
 
+  /**
+   * Clears all polylines from the list and rebuilds the path
+   */
   Clear() {
-    console.log("= B.PolyPolyLine Clear: Clearing polyline list");
     this.pList = [];
     this.BuildPath();
-    console.log("= B.PolyPolyLine Clear: Polyline list cleared and path rebuilt");
   }
 
+  /**
+   * Adds a polyline to the list with optional start and end arrows
+   * @param points - Array of point coordinates for the polyline
+   * @param startArrowFlag - Whether to display an arrow at the start point
+   * @param endArrowFlag - Whether to display an arrow at the end point
+   */
   AddPolyLine(points, startArrowFlag, endArrowFlag) {
-    console.log("= B.PolyPolyLine AddPolyLine: Adding polyline", { points, startArrowFlag, endArrowFlag });
     this.pList.push({
       points: points,
       sArrowFlag: startArrowFlag,
       eArrowFlag: endArrowFlag
     });
-    console.log("= B.PolyPolyLine AddPolyLine: Polyline added", this.pList);
   }
 
+  /**
+   * Builds the SVG path from the stored polylines and generates arrowheads
+   */
   BuildPath() {
-    console.log("= B.PolyPolyLine BuildPath: Input - Building path");
-
     // Remove all existing arrow children
     while (this.arrowAreaElem.children().length) {
       this.arrowAreaElem.removeAt(0);
@@ -86,7 +87,6 @@ class PolyPolyLine extends Path {
 
         // Generate arrowheads if any arrow data exists
         if (startArrowData || endArrowData) {
-          console.log("= B.PolyPolyLine BuildPath: Generating arrowheads", { startPoint, endPoint, startArrowData, endArrowData });
           this.GenerateArrowheads(startPoint, endPoint, startArrowData, endArrowData);
           arrowGenerated = true;
         }
@@ -161,22 +161,24 @@ class PolyPolyLine extends Path {
     this.geometryBBox.width = boundingMax.x - boundingMin.x;
     this.geometryBBox.height = boundingMax.y - boundingMin.y;
     this.RefreshPaint();
-
-    console.log("= B.PolyPolyLine BuildPath: Output", {
-      origPathData: pathData,
-      geometryBBox: this.geometryBBox
-    });
   }
 
+  /**
+   * Updates arrowheads by rebuilding the entire path
+   */
   UpdateArrowheads() {
-    this.BuildPath()
+    this.BuildPath();
   }
 
+  /**
+   * Generates arrowheads for a line segment between two points
+   * @param startPoint - The starting point of the line segment
+   * @param endPoint - The ending point of the line segment
+   * @param startArrow - Arrow configuration for the start point
+   * @param endArrow - Arrow configuration for the end point
+   */
   GenerateArrowheads(startPoint, endPoint, startArrow, endArrow) {
-    console.log("= B.PolyPolyLine GenerateArrowheads: Generating arrowheads", { startPoint, endPoint, startArrow, endArrow });
-
     let deltaX, deltaY, distance, startArrowDim, endArrowDim, trimAmount, startTrim, endTrim;
-    let startArrowElem = null, endArrowElem = null;
 
     if (startArrow) {
       startArrow.segPt = { x: startPoint.x, y: startPoint.y };
@@ -256,8 +258,6 @@ class PolyPolyLine extends Path {
         endArrow.arrowElem = this.CreateArrowheadElem(endArrow.arrowRec, endArrowDim, false, this.arrowheadBounds);
       }
     }
-
-    console.log("= B.PolyPolyLine GenerateArrowheads: Arrowheads generated", { startArrow, endArrow });
   }
 
 }

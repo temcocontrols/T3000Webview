@@ -1,12 +1,6 @@
 
 
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
-import Path from "./B.Path";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
+import Path from "./B.Path"
 
 class Polygon extends Path {
 
@@ -14,48 +8,42 @@ class Polygon extends Path {
     super()
   }
 
-  SetPoints(points: { x: number, y: number }[]) {
-    console.log("= B.Polygon SetPoints input:", points);
-
+  /**
+   * Sets points that define the polygon and updates the path
+   * @param polygonPoints - Array of points with x and y coordinates that define the polygon vertices
+   */
+  SetPoints(polygonPoints: { x: number, y: number }[]) {
     let pathCreator = this.PathCreator();
-    let min = { x: 0, y: 0 };
-    let max = { x: 0, y: 0 };
-    let length = points.length;
+    let minCoordinate = { x: 0, y: 0 };
+    let maxCoordinate = { x: 0, y: 0 };
+    let pointCount = polygonPoints.length;
 
     pathCreator.BeginPath();
 
-    if (length > 1) {
-      pathCreator.MoveTo(points[0].x, points[0].y);
-      min.x = max.x = points[0].x;
-      min.y = max.y = points[0].y;
+    if (pointCount > 1) {
+      pathCreator.MoveTo(polygonPoints[0].x, polygonPoints[0].y);
+      minCoordinate.x = maxCoordinate.x = polygonPoints[0].x;
+      minCoordinate.y = maxCoordinate.y = polygonPoints[0].y;
     }
 
-    for (let i = 1; i < length; i++) {
-      pathCreator.LineTo(points[i].x, points[i].y);
-      min.x = Math.min(min.x, points[i].x);
-      min.y = Math.min(min.y, points[i].y);
-      max.x = Math.max(max.x, points[i].x);
-      max.y = Math.max(max.y, points[i].y);
+    for (let i = 1; i < pointCount; i++) {
+      pathCreator.LineTo(polygonPoints[i].x, polygonPoints[i].y);
+      minCoordinate.x = Math.min(minCoordinate.x, polygonPoints[i].x);
+      minCoordinate.y = Math.min(minCoordinate.y, polygonPoints[i].y);
+      maxCoordinate.x = Math.max(maxCoordinate.x, polygonPoints[i].x);
+      maxCoordinate.y = Math.max(maxCoordinate.y, polygonPoints[i].y);
     }
 
-    if (length > 1) {
+    if (pointCount > 1) {
       pathCreator.ClosePath();
     }
 
     let pathString = pathCreator.ToString();
     this.SetPath(pathString, {
-      x: min.x,
-      y: min.y,
-      width: max.x - min.x,
-      height: max.y - min.y
-    });
-
-    console.log("= B.Polygon SetPoints output pathString:", pathString);
-    console.log("= B.Polygon SetPoints output bounding box:", {
-      x: min.x,
-      y: min.y,
-      width: max.x - min.x,
-      height: max.y - min.y
+      x: minCoordinate.x,
+      y: minCoordinate.y,
+      width: maxCoordinate.x - minCoordinate.x,
+      height: maxCoordinate.y - minCoordinate.y
     });
   }
 
