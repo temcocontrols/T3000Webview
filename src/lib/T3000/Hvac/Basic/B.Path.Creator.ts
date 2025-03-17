@@ -1,12 +1,7 @@
 
 
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
 import Path from './B.Path'
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
 
 class Creator {
 
@@ -22,15 +17,22 @@ class Creator {
     this.curPosY = 0;
   }
 
-  BeginPath() {
+  /**
+   * Initializes a new path, clearing existing path segments and resetting position
+   */
+  BeginPath(): void {
     this.pathSegs = [];
     this.curPosX = 0;
     this.curPosY = 0;
   }
 
+  /**
+   * Moves the current position to specified coordinates
+   * @param x - X coordinate to move to
+   * @param y - Y coordinate to move to
+   * @param isRelative - If true, coordinates are relative to current position
+   */
   MoveTo(x: number, y: number, isRelative: boolean): void {
-    console.log("= B.Path.Creator - MoveTo called with x:", x, "y:", y, "isRelative:", isRelative);
-
     const roundedX = Utils1.RoundCoord(x);
     const roundedY = Utils1.RoundCoord(y);
     const commandPrefix = isRelative ? 'm' : 'M';
@@ -45,22 +47,21 @@ class Creator {
       this.curPosX = roundedX;
       this.curPosY = roundedY;
     }
-
-    console.log("= B.Path.Creator - MoveTo updated position to curPosX:", this.curPosX, "curPosY:", this.curPosY);
   }
 
+  /**
+   * Draws a straight line from current position to specified coordinates
+   * @param x - X coordinate of line end point
+   * @param y - Y coordinate of line end point
+   * @param isRelative - If true, coordinates are relative to current position
+   */
   LineTo(x: number, y: number, isRelative: boolean): void {
-    console.log(`= B.Path.Creator - LineTo called with x: ${x}, y: ${y}, isRelative: ${isRelative}`);
-
     const commandPrefix = isRelative ? 'l' : 'L';
     const roundedX = Utils1.RoundCoord(x);
     const roundedY = Utils1.RoundCoord(y);
     const command = `${commandPrefix}${roundedX},${roundedY}`;
 
     this.pathSegs.push(command);
-
-    const prevPosX = this.curPosX;
-    const prevPosY = this.curPosY;
 
     if (isRelative) {
       this.curPosX += roundedX;
@@ -69,14 +70,17 @@ class Creator {
       this.curPosX = roundedX;
       this.curPosY = roundedY;
     }
-
-    console.log(`= B.Path.Creator - LineTo updated position from (${prevPosX}, ${prevPosY}) to (${this.curPosX}, ${this.curPosY}), command: ${command}`);
   }
 
+  /**
+   * Creates a quadratic Bezier curve from current position
+   * @param controlX - X coordinate of the control point
+   * @param controlY - Y coordinate of the control point
+   * @param endX - X coordinate of the end point
+   * @param endY - Y coordinate of the end point
+   * @param isRelative - If true, coordinates are relative to current position
+   */
   CurveTo(controlX: number, controlY: number, endX: number, endY: number, isRelative: boolean): void {
-    console.log("= B.Path.Creator - CurveTo called with controlX:", controlX,
-      "controlY:", controlY, "endX:", endX, "endY:", endY, "isRelative:", isRelative);
-
     const adjustedControlX = Utils1.RoundCoord(controlX);
     const adjustedControlY = Utils1.RoundCoord(controlY);
     const adjustedEndX = Utils1.RoundCoord(endX);
@@ -87,9 +91,6 @@ class Creator {
 
     this.pathSegs.push(command);
 
-    const prevPosX = this.curPosX;
-    const prevPosY = this.curPosY;
-
     if (isRelative) {
       this.curPosX += adjustedEndX;
       this.curPosY += adjustedEndY;
@@ -97,14 +98,16 @@ class Creator {
       this.curPosX = adjustedEndX;
       this.curPosY = adjustedEndY;
     }
-
-    console.log("= B.Path.Creator - CurveTo updated from (", prevPosX, ",", prevPosY,
-      ") to (", this.curPosX, ",", this.curPosY, "), command:", command);
   }
 
+  /**
+   * Creates a simple arc to the target point with automatic radius calculation
+   * @param targetX - X coordinate of the target point
+   * @param targetY - Y coordinate of the target point
+   * @param largeArcFlag - If true, arc spans more than 180 degrees
+   * @param isRelative - If true, coordinates are relative to current position
+   */
   SimpleArcTo(targetX: number, targetY: number, largeArcFlag: boolean, isRelative: boolean): void {
-    console.log("= B.Path.Creator - SimpleArcTo called with targetX:", targetX, "targetY:", targetY, "largeArcFlag:", largeArcFlag, "isRelative:", isRelative);
-
     let absoluteX = targetX;
     let absoluteY = targetY;
 
@@ -116,19 +119,24 @@ class Creator {
     const radiusX = Math.abs(absoluteX - this.curPosX);
     const radiusY = Math.abs(absoluteY - this.curPosY);
 
-    console.log("= B.Path.Creator - SimpleArcTo computed absoluteX:", absoluteX, "absoluteY:", absoluteY, "radiusX:", radiusX, "radiusY:", radiusY);
-
     if (radiusX && radiusY) {
-      console.log("= B.Path.Creator - SimpleArcTo using ArcTo with original targetX:", targetX, "targetY:", targetY);
       this.ArcTo(targetX, targetY, radiusX, radiusY, 0, largeArcFlag, false, isRelative);
-      console.log("= B.Path.Creator - SimpleArcTo ArcTo executed.");
     } else {
-      console.log("= B.Path.Creator - SimpleArcTo using LineTo with targetX:", targetX, "targetY:", targetY);
       this.LineTo(targetX, targetY, isRelative);
-      console.log("= B.Path.Creator - SimpleArcTo LineTo executed.");
     }
   }
 
+  /**
+   * Creates an elliptical arc from current position to specified coordinates
+   * @param targetX - X coordinate of the target point
+   * @param targetY - Y coordinate of the target point
+   * @param radiusX - X-axis radius of the ellipse
+   * @param radiusY - Y-axis radius of the ellipse
+   * @param xAxisRotation - Rotation of the ellipse in degrees
+   * @param sweepFlag - If true, arc takes the longer path
+   * @param largeArcFlag - If true, arc spans more than 180 degrees
+   * @param isRelative - If true, coordinates are relative to current position
+   */
   ArcTo(
     targetX: number,
     targetY: number,
@@ -139,29 +147,16 @@ class Creator {
     largeArcFlag: boolean,
     isRelative: boolean
   ): void {
-    console.log("= B.Path.Creator - ArcTo called with targetX:", targetX, "targetY:", targetY, "radiusX:", radiusX, "radiusY:", radiusY, "xAxisRotation:", xAxisRotation, "sweepFlag:", sweepFlag, "largeArcFlag:", largeArcFlag, "isRelative:", isRelative);
-
-    // Round the coordinates and radii
     const roundedTargetX = Utils1.RoundCoord(targetX);
     const roundedTargetY = Utils1.RoundCoord(targetY);
     const roundedRadiusX = Utils1.RoundCoord(radiusX);
     const roundedRadiusY = Utils1.RoundCoord(radiusY);
 
-    // Determine command letter based on whether the command is relative
     const commandLetter = isRelative ? 'a' : 'A';
-
-    // Build the arc command string following SVG arc syntax:
-    // A rx,ry x-axis-rotation large-arc-flag,sweep-flag x,y
     const command = `${commandLetter}${roundedRadiusX},${roundedRadiusY} ${xAxisRotation} ${largeArcFlag ? 1 : 0},${sweepFlag ? 1 : 0} ${roundedTargetX},${roundedTargetY}`;
 
-    // Append the command to the path segments
     this.pathSegs.push(command);
 
-    // Save previous position for logging
-    const prevPosX = this.curPosX;
-    const prevPosY = this.curPosY;
-
-    // Update the current position
     if (isRelative) {
       this.curPosX += roundedTargetX;
       this.curPosY += roundedTargetY;
@@ -169,35 +164,32 @@ class Creator {
       this.curPosX = roundedTargetX;
       this.curPosY = roundedTargetY;
     }
-
-    console.log("= B.Path.Creator - ArcTo updated position from (", prevPosX, ",", prevPosY, ") to (", this.curPosX, ",", this.curPosY, "), command:", command);
   }
 
+  /**
+   * Closes the current path by drawing a line to the beginning point
+   */
   ClosePath(): void {
-    console.log("= B.Path.Creator - ClosePath called with no parameters");
     this.pathSegs.push('z');
-    console.log("= B.Path.Creator - ClosePath output, updated pathSegs:", this.pathSegs);
   }
 
+  /**
+   * Converts the path segments array to an SVG path string
+   * @returns SVG path string representation of the path
+   */
   ToString(): string {
-    console.log("= B.Path.Creator - ToString called. Input pathSegs:", this.pathSegs);
-    const joinedPath = this.pathSegs.join(' ');
-    console.log("= B.Path.Creator - ToString output:", joinedPath);
-    return joinedPath;
+    return this.pathSegs.join(' ');
   }
 
+  /**
+   * Applies the current path to the associated element
+   * Sets the path string to the element if it's a valid Path instance
+   */
   Apply(): void {
-    console.log("= B.Path.Creator - Apply called.");
-
     const pathString: string = this.ToString();
-    console.log("= B.Path.Creator - ToString output:", pathString);
 
     if (this.element && this.element instanceof Path) {
-      console.log("= B.Path.Creator - Element is a valid Path instance. Setting path.");
       this.element.SetPath(pathString);
-      console.log("= B.Path.Creator - Path successfully set on element.");
-    } else {
-      console.log("= B.Path.Creator - Element is not an instance of Path. No action taken.");
     }
   }
 

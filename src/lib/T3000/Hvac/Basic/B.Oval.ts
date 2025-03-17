@@ -1,12 +1,8 @@
 
 
-import $ from 'jquery';
 import T3Svg from "../Util/T3Svg"
+import Element from "./B.Element"
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
-import Element from "./B.Element";
 
 class Oval extends Element {
 
@@ -14,28 +10,34 @@ class Oval extends Element {
 
   constructor() {
     super();
-    this.svgObj = null,
-      this.shapeElem = null
+    this.svgObj = null;
+    this.shapeElem = null;
   }
 
-  CreateElement(width: number, height: number) {
-    console.log("= B.Oval CreateElement input =>", { width, height });
-
+  /**
+   * Creates an oval element with specified dimensions
+   * @param elementWidth - The width of the oval
+   * @param elementHeight - The height of the oval
+   * @returns The SVG container object representing the oval
+   */
+  CreateElement(elementWidth: number, elementHeight: number) {
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.shapeElem = new T3Svg.Ellipse();
     this.svgObj.add(this.shapeElem);
 
-    this.InitElement(width, height);
+    this.InitElement(elementWidth, elementHeight);
 
-    console.log("= B.Oval CreateElement output =>", this.svgObj);
     return this.svgObj;
   }
 
-  SetSize(width: number, height: number) {
-    console.log("= B.Oval SetSize input =>", { width, height });
-
-    width = Utils1.RoundCoord(width);
-    height = Utils1.RoundCoord(height);
+  /**
+   * Sets the size of the oval element and updates its visual properties
+   * @param elementWidth - The new width of the oval
+   * @param elementHeight - The new height of the oval
+   */
+  SetSize(elementWidth: number, elementHeight: number) {
+    const width = Utils1.RoundCoord(elementWidth);
+    const height = Utils1.RoundCoord(elementHeight);
 
     this.geometryBBox.width = width;
     this.geometryBBox.height = height;
@@ -45,8 +47,6 @@ class Oval extends Element {
 
     this.UpdateTransform();
     this.RefreshPaint();
-
-    console.log("= B.Oval SetSize output =>", this.geometryBBox);
   }
 
 }
