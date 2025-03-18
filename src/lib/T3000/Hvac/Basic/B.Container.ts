@@ -58,7 +58,7 @@ class Container extends Element {
    * Removes an element by its internal ID
    * @param internalID - The internal ID of the element to remove
    */
-  RemoveElementByInternalID(internalID) {
+  RemoveElementByInternalId(internalID) {
     const children = this.svgObj.children();
     let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
@@ -108,7 +108,7 @@ class Container extends Element {
    * @param userData - Optional user data to match
    * @returns The element with the specified ID or null if not found
    */
-  GetElementByID(id: string, userData?: any) {
+  GetElementById(id: string, userData?: any) {
     const children = this.svgObj.children();
     let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 
@@ -127,7 +127,7 @@ class Container extends Element {
    * @param id - The ID of the element to find
    * @returns The element with the specified ID or null if not found
    */
-  GetElementByIDInGroup(id: string) {
+  GetElementByIdInGroup(id: string) {
     function findElementByID(element) {
       const children = element.svgObj.children();
       let foundElement = null;
@@ -168,7 +168,7 @@ class Container extends Element {
    * @param id - The ID to search for
    * @returns Array of elements with the specified ID
    */
-  GetElementListWithID(id: string) {
+  GetElementListWithId(id: string) {
     const children = this.svgObj.children();
     const result = [];
     let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
@@ -188,7 +188,7 @@ class Container extends Element {
    * @param internalID - The internal ID to search for
    * @returns The element with the specified internal ID or null if not found
    */
-  GetElementByInternalID(internalID: string) {
+  GetElementByInternalId(internalID: string) {
     const children = this.svgObj.children();
     let startIndex = this.svgObj instanceof T3Svg.Doc ? 1 : 0;
 

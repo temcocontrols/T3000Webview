@@ -168,43 +168,66 @@ class BConstant {
 
   /**
    * Defines gloss effect types for surface finishes
-   * @property HARD - Distinct, polished gloss finish
-   * @property SOFT - Subtle, diffused gloss finish
+   * @property Hard - Distinct, polished gloss finish
+   * @property Soft - Subtle, diffused gloss finish
    */
   static GlossType = {
-    HARD: 'H',
-    SOFT: 'S'
+    Hard: 'H',
+    Soft: 'S'
   }
 
   /**
    * Defines size presets for visual effects with percentage values
-   * @property DEFAULT - Default effect size (10% of element size)
-   * @property SMALL - Small effect size (5% of element size)
-   * @property MEDIUM - Medium effect size (25% of element size)
-   * @property LARGE - Large effect size (10% of element size)
-   * @property GIANT - Very large effect size (5% of element size)
+   * @property Default - Default effect size (10% of element size)
+   * @property Small - Small effect size (5% of element size)
+   * @property Medium - Medium effect size (25% of element size)
+   * @property Large - Large effect size (10% of element size)
+   * @property Giant - Very large effect size (5% of element size)
    */
   static EffectSize = {
-    DEFAULT: {
-      id: 'D',
-      percentage: 0.1
-    },
-    SMALL: {
-      id: 'S',
-      percentage: 0.05
-    },
-    MEDIUM: {
-      id: 'M',
-      percentage: 0.25
-    },
-    LARGE: {
-      id: 'L',
-      percentage: 0.1
-    },
-    GIANT: {
-      id: 'G',
-      percentage: 0.05
-    }
+    Default: { id: 'D', percentage: 0.1 },
+    Small: { id: 'S', percentage: 0.05 },
+    Medium: { id: 'M', percentage: 0.25 },
+    Large: { id: 'L', percentage: 0.1 },
+    Giant: { id: 'G', percentage: 0.05 }
+  }
+
+
+  static WordState = {
+    Wrong: 0,
+    Correct: 1,
+    NotProcessed: 2
+  }
+
+  static Globals = {
+    MaxWordSize: 100,
+    MaxServerListSize: 1400
+  }
+
+  static DictMap = {
+    en: '24941',
+    'en-gb': '25202',
+    'en-ca': '25441',
+    'pt-br': '28770',
+    da: '25697',
+    nl: '25717',
+    fi: '26217',
+    fr: '26226',
+    de: '26469',
+    it: '26996',
+    legal: '27745',
+    medical: '28001',
+    no: '25442',
+    pt: '28783',
+    es: '29552',
+    sv: '29559'
+  }
+
+  static SpellFlags = {
+    IgnoreInitCaps: 1,
+    IgnoreAllCaps: 2,
+    IgnoreMixedAlphaNum: 4,
+    IgnoreMixedCase: 8,
   }
 }
 

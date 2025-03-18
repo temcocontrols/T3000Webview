@@ -1027,25 +1027,25 @@ class Element {
         case TextConstant.TextureAlign.TopRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           break;
-        case TextConstant.TextureAlign.CenLeft:
+        case TextConstant.TextureAlign.CenterLeft:
           patternRect.y += elementFrame.height / 2;
           break;
         case TextConstant.TextureAlign.Center:
           patternRect.x += elementFrame.width / 2;
           patternRect.y += elementFrame.height / 2;
           break;
-        case TextConstant.TextureAlign.CenRight:
+        case TextConstant.TextureAlign.CenterRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           patternRect.y += elementFrame.height / 2;
           break;
-        case TextConstant.TextureAlign.BotLeft:
+        case TextConstant.TextureAlign.BottomLeft:
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;
-        case TextConstant.TextureAlign.BotCenter:
+        case TextConstant.TextureAlign.BottomCenter:
           patternRect.x += elementFrame.width / 2;
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;
-        case TextConstant.TextureAlign.BotRight:
+        case TextConstant.TextureAlign.BottomRight:
           patternRect.x = elementFrame.width - scaledImageSize.width;
           patternRect.y = elementFrame.height - scaledImageSize.height;
           break;

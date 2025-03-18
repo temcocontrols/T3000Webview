@@ -677,7 +677,7 @@ class Document extends Container {
    * @param layerId - The ID of the layer to remove
    */
   RemoveLayer(layerId: string) {
-    const layer = this.GetElementByID(layerId);
+    const layer = this.GetElementById(layerId);
     if (layer) {
       this.RemoveElement(layer);
     }

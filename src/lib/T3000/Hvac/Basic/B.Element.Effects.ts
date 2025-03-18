@@ -36,8 +36,8 @@ class Effects {
   SetEffects(effectsList?, elementBounds?) {
     let effectsId = this.GetEffectsID(effectsList, false);
     let secondaryEffects = [];
-    let widthSize = BConstant.EffectSize.DEFAULT;
-    let heightSize = BConstant.EffectSize.DEFAULT;
+    let widthSize = BConstant.EffectSize.Default;
+    let heightSize = BConstant.EffectSize.Default;
     let skipMainFilter = false;
     let primaryEffectsCount = 0;
     let effectsLength = 0;
@@ -50,15 +50,15 @@ class Effects {
     this.curBounds = elementBounds;
 
     if (elementBounds) {
-      widthSize = elementBounds.width < 500 ? BConstant.EffectSize.SMALL :
-        elementBounds.width < 1500 ? BConstant.EffectSize.MEDIUM :
-          elementBounds.width < 3000 ? BConstant.EffectSize.LARGE :
-            BConstant.EffectSize.GIANT;
+      widthSize = elementBounds.width < 500 ? BConstant.EffectSize.Small :
+        elementBounds.width < 1500 ? BConstant.EffectSize.Medium :
+          elementBounds.width < 3000 ? BConstant.EffectSize.Large :
+            BConstant.EffectSize.Giant;
 
-      heightSize = elementBounds.height < 500 ? BConstant.EffectSize.SMALL :
-        elementBounds.height < 1500 ? BConstant.EffectSize.MEDIUM :
-          elementBounds.height < 3000 ? BConstant.EffectSize.LARGE :
-            BConstant.EffectSize.GIANT;
+      heightSize = elementBounds.height < 500 ? BConstant.EffectSize.Small :
+        elementBounds.height < 1500 ? BConstant.EffectSize.Medium :
+          elementBounds.height < 3000 ? BConstant.EffectSize.Large :
+            BConstant.EffectSize.Giant;
     }
 
     // Separate primary and secondary effects
@@ -292,23 +292,6 @@ class Effects {
   }
 
   /**
-   * Calculates the horizontal offset for a secondary effect based on vertical and horizontal offsets
-   * @param horizontalOffset - The original horizontal offset value
-   * @param verticalOffset - The vertical offset value
-   * @returns Calculated horizontal offset for the effect
-   */
-  static CalcSecondaryEffectOffset(horizontalOffset, verticalOffset) {
-    let absoluteVerticalOffset = Math.abs(verticalOffset);
-    let adjustedHorizontalOffset = Math.max(-absoluteVerticalOffset, 2 * horizontalOffset);
-    adjustedHorizontalOffset = Math.min(adjustedHorizontalOffset, absoluteVerticalOffset);
-
-    let angle = (adjustedHorizontalOffset / absoluteVerticalOffset) * 45;
-    let result = absoluteVerticalOffset / Math.tan((90 - angle) * Math.PI / 180);
-
-    return result;
-  }
-
-  /**
    * Clears all visual effects from the element
    */
   ClearEffects() {
@@ -334,19 +317,6 @@ class Effects {
     let scaledHeight = elementBounds.height * workArea.docToScreenScale * heightRatio;
 
     return scaledWidth > 4096 || scaledHeight > 4096;
-  }
-
-  /**
-   * Determines if an effect is considered a secondary effect
-   * @param effect - The effect object to evaluate
-   * @returns Boolean indicating whether the effect is a secondary effect
-   */
-  static IsSecondaryEffect(effect) {
-    return !(!effect || !effect.type) && (
-      effect.params.asSecondary ||
-      effect.type.id === BConstant.EffectType.CASTSHADOW.id ||
-      effect.type.id === BConstant.EffectType.REFLECT.id
-    );
   }
 
   /**
@@ -754,7 +724,7 @@ class Effects {
     let lightElement;
     let effectSize = parameters.size || 2;
     let effectDirection = parameters.dir || BConstant.FilterDirection.LEFTTOP;
-    let glossType = parameters.type || BConstant.GlossType.SOFT;
+    let glossType = parameters.type || BConstant.GlossType.Soft;
     let glossColor = parameters.color || '#ffffff';
     let specularConstant = 1;
     let azimuth = 0;
@@ -785,7 +755,7 @@ class Effects {
         azimuth = 315;
     }
 
-    if (glossType == BConstant.GlossType.HARD) {
+    if (glossType == BConstant.GlossType.Hard) {
       specularConstant = 1.2;
     }
 
@@ -1051,6 +1021,38 @@ class Effects {
     });
     container.add(element);
   }
+
+
+  /**
+   * Calculates the horizontal offset for a secondary effect based on vertical and horizontal offsets
+   * @param horizontalOffset - The original horizontal offset value
+   * @param verticalOffset - The vertical offset value
+   * @returns Calculated horizontal offset for the effect
+   */
+  static CalcSecondaryEffectOffset(horizontalOffset, verticalOffset) {
+    let absoluteVerticalOffset = Math.abs(verticalOffset);
+    let adjustedHorizontalOffset = Math.max(-absoluteVerticalOffset, 2 * horizontalOffset);
+    adjustedHorizontalOffset = Math.min(adjustedHorizontalOffset, absoluteVerticalOffset);
+
+    let angle = (adjustedHorizontalOffset / absoluteVerticalOffset) * 45;
+    let result = absoluteVerticalOffset / Math.tan((90 - angle) * Math.PI / 180);
+
+    return result;
+  }
+
+  /**
+   * Determines if an effect is considered a secondary effect
+   * @param effect - The effect object to evaluate
+   * @returns Boolean indicating whether the effect is a secondary effect
+   */
+  static IsSecondaryEffect(effect) {
+    return !(!effect || !effect.type) && (
+      effect.params.asSecondary ||
+      effect.type.id === BConstant.EffectType.CASTSHADOW.id ||
+      effect.type.id === BConstant.EffectType.REFLECT.id
+    );
+  }
+
 }
 
 export default Effects
