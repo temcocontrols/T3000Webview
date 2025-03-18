@@ -1,12 +1,8 @@
 
 
 import T3Svg from "../Util/T3Svg"
-import $ from "jquery";
-import Element from "./B.Element";
+import Element from "./B.Element"
 import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
 
 class Rect extends Element {
 
@@ -18,22 +14,28 @@ class Rect extends Element {
     this.shapeElem = null;
   }
 
+  /**
+   * Creates a rectangular SVG element based on provided data
+   * @param elementData - The base data for the element
+   * @param transformData - The transformation data for positioning and sizing
+   * @returns The created SVG container object
+   */
   CreateElement(elementData, transformData) {
-    console.log('= B.Rect CreateElement input:', { elementData, transformData });
-
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.shapeElem = new T3Svg.Rect();
     this.svgObj.add(this.shapeElem);
 
     this.InitElement(elementData, transformData);
 
-    console.log('= B.Rect CreateElement output svgObj:', this.svgObj);
     return this.svgObj;
   }
 
+  /**
+   * Sets the size of the rectangular element
+   * @param newWidth - The desired width for the rectangle
+   * @param newHeight - The desired height for the rectangle
+   */
   SetSize(newWidth: number, newHeight: number) {
-    console.log('= B.Rect SetSize input:', { newWidth, newHeight });
-
     const roundedWidth = Utils1.RoundCoord(newWidth);
     const roundedHeight = Utils1.RoundCoord(newHeight);
 
@@ -45,8 +47,6 @@ class Rect extends Element {
 
     this.UpdateTransform();
     this.RefreshPaint();
-
-    console.log('= B.Rect SetSize output geometryBBox:', this.geometryBBox);
   }
 
 }

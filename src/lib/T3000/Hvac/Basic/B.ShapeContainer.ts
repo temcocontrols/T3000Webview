@@ -1,12 +1,7 @@
 
 
-import $ from 'jquery';
 import T3Svg from "../Util/T3Svg"
-import Group from "./B.Group";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
+import Group from "./B.Group"
 
 class ShapeContainer extends Group {
 
@@ -16,219 +11,257 @@ class ShapeContainer extends Group {
     super()
   }
 
+  /**
+   * Creates a new SVG element container
+   * @param element - The element to create
+   * @param type - The element type
+   * @returns The created SVG object
+   */
   CreateElement(element: any, type: any) {
-    console.log("= B.ShapeContainer CreateElement input:", { element, type });
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.InitElement(element, type);
     this.shapeGroup = new Group();
     this.shapeGroup.CreateElement(element, type);
     super.AddElement(this.shapeGroup);
-    console.log("= B.ShapeContainer CreateElement output:", this.svgObj);
     return this.svgObj;
   }
 
+  /**
+   * Adds an element to the container
+   * @param element - The element to add
+   * @param type - The element type
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the add operation
+   */
   AddElement(element: any, type: any, useSuper: boolean) {
-    console.log("= B.ShapeContainer AddElement input:", { element, type, useSuper });
-    let result;
     if (useSuper) {
-      result = super.AddElement(element, type);
+      return super.AddElement(element, type);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.AddElement(element, type) : void 0;
+      return this.shapeGroup ? this.shapeGroup.AddElement(element, type) : undefined;
     }
-    console.log("= B.ShapeContainer AddElement output:", result);
-    return result;
   }
 
+  /**
+   * Removes an element from the container
+   * @param element - The element to remove
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the remove operation
+   */
   RemoveElement(element: any, useSuper: boolean) {
-    console.log("= B.ShapeContainer RemoveElement input:", { element, useSuper });
-    let result;
     if (useSuper) {
-      result = super.RemoveElement(element);
+      return super.RemoveElement(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.RemoveElement(element) : void 0;
+      return this.shapeGroup ? this.shapeGroup.RemoveElement(element) : undefined;
     }
-    console.log("= B.ShapeContainer RemoveElement output:", result);
-    return result;
   }
 
+  /**
+   * Removes all elements from the container
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the remove all operation
+   */
   RemoveAll(useSuper: boolean) {
-    console.log("= B.ShapeContainer RemoveAll input:", { useSuper });
-    let result;
     if (useSuper) {
-      result = super.RemoveAll();
+      return super.RemoveAll();
     } else {
-      result = this.shapeGroup ? this.shapeGroup.RemoveAll() : void 0;
+      return this.shapeGroup ? this.shapeGroup.RemoveAll() : undefined;
     }
-    console.log("= B.ShapeContainer RemoveAll output:", result);
-    return result;
   }
 
-  RemoveElementByInternalID(internalID: string, useSuper: boolean) {
-    console.log("= B.ShapeContainer RemoveElementByInternalID input:", { internalID, useSuper });
-    let result;
+  /**
+   * Removes element by its internal ID
+   * @param internalID - The internal ID of the element to remove
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the remove operation
+   */
+  RemoveElementByInternalId(internalID: string, useSuper: boolean) {
     if (useSuper) {
-      result = super.RemoveElementByInternalID(internalID);
+      return super.RemoveElementByInternalId(internalID);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.RemoveElementByInternalID(internalID) : void 0;
+      return this.shapeGroup ? this.shapeGroup.RemoveElementByInternalId(internalID) : undefined;
     }
-    console.log("= B.ShapeContainer RemoveElementByInternalID output:", result);
-    return result;
   }
 
+  /**
+   * Returns the count of elements in the container
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The number of elements
+   */
   ElementCount(useSuper: boolean) {
-    console.log("= B.ShapeContainer ElementCount input:", { useSuper });
-    let result;
     if (useSuper) {
-      result = super.ElementCount();
+      return super.ElementCount();
     } else {
-      result = this.shapeGroup ? this.shapeGroup.ElementCount() : 0;
+      return this.shapeGroup ? this.shapeGroup.ElementCount() : 0;
     }
-    console.log("= B.ShapeContainer ElementCount output:", result);
-    return result;
   }
 
+  /**
+   * Gets an element at the specified index
+   * @param index - The index of the element to retrieve
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The element at the specified index or null if not found
+   */
   GetElementByIndex(index: number, useSuper: boolean) {
-    console.log("= B.ShapeContainer GetElementByIndex input:", { index, useSuper });
-    let result;
     if (useSuper) {
-      result = super.GetElementByIndex(index);
+      return super.GetElementByIndex(index);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementByIndex(index) : null;
+      return this.shapeGroup ? this.shapeGroup.GetElementByIndex(index) : null;
     }
-    console.log("= B.ShapeContainer GetElementByIndex output:", result);
-    return result;
   }
 
-  GetElementByID(elementID: string, useSuper: boolean, additionalParam: any) {
-    console.log("= B.ShapeContainer GetElementByID input:", { elementID, useSuper, additionalParam });
-    let result;
+  /**
+   * Finds an element by its ID
+   * @param elementID - The ID of the element to find
+   * @param useSuper - Whether to use parent class implementation
+   * @param additionalParam - Additional parameters for the search
+   * @returns The found element or null if not found
+   */
+  GetElementById(elementID: string, useSuper: boolean, additionalParam: any) {
     if (useSuper) {
-      result = super.GetElementByID(elementID, additionalParam);
+      return super.GetElementById(elementID, additionalParam);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementByID(elementID, additionalParam) : null;
+      return this.shapeGroup ? this.shapeGroup.GetElementById(elementID, additionalParam) : null;
     }
-    console.log("= B.ShapeContainer GetElementByID output:", result);
-    return result;
   }
 
-  GetElementByIDInGroup(elementID: string, useSuper: boolean) {
-    console.log("= B.ShapeContainer GetElementByIDInGroup input:", { elementID, useSuper });
-    let result;
+  /**
+   * Finds an element by its ID within the group
+   * @param elementID - The ID of the element to find
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The found element or null if not found
+   */
+  GetElementByIdInGroup(elementID: string, useSuper: boolean) {
     if (useSuper) {
-      result = super.GetElementByIDInGroup(elementID);
+      return super.GetElementByIdInGroup(elementID);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementByIDInGroup(elementID) : null;
+      return this.shapeGroup ? this.shapeGroup.GetElementByIdInGroup(elementID) : null;
     }
-    console.log("= B.ShapeContainer GetElementByIDInGroup output:", result);
-    return result;
   }
 
-  GetElementListWithID(elementID: string, useSuper: boolean) {
-    console.log("= B.ShapeContainer GetElementListWithID input:", { elementID, useSuper });
-    let result;
+  /**
+   * Gets a list of elements with the given ID
+   * @param elementID - The ID to search for
+   * @param useSuper - Whether to use parent class implementation
+   * @returns Array of elements matching the ID
+   */
+  GetElementListWithId(elementID: string, useSuper: boolean) {
     if (useSuper) {
-      result = super.GetElementListWithID(elementID);
+      return super.GetElementListWithId(elementID);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementListWithID(elementID) : [];
+      return this.shapeGroup ? this.shapeGroup.GetElementListWithId(elementID) : [];
     }
-    console.log("= B.ShapeContainer GetElementListWithID output:", result);
-    return result;
   }
 
-  GetElementByInternalID(internalID: string, useSuper: boolean) {
-    console.log("= B.ShapeContainer GetElementByInternalID input:", { internalID, useSuper });
-    let result;
+  /**
+   * Finds an element by its internal ID
+   * @param internalID - The internal ID to search for
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The found element or null if not found
+   */
+  GetElementByInternalId(internalID: string, useSuper: boolean) {
     if (useSuper) {
-      result = super.GetElementByInternalID(internalID);
+      return super.GetElementByInternalId(internalID);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementByInternalID(internalID) : null;
+      return this.shapeGroup ? this.shapeGroup.GetElementByInternalId(internalID) : null;
     }
-    console.log("= B.ShapeContainer GetElementByInternalID output:", result);
-    return result;
   }
 
-  FindElement(element, useSuper) {
-    console.log("= B.ShapeContainer FindElement input:", { element, useSuper });
-    let result;
+  /**
+   * Finds an element in the container
+   * @param element - The element to find
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The found element or null if not found
+   */
+  FindElement(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.FindElement(element);
+      return super.FindElement(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.FindElement(element) : null;
+      return this.shapeGroup ? this.shapeGroup.FindElement(element) : null;
     }
-    console.log("= B.ShapeContainer FindElement output:", result);
-    return result;
   }
 
-  FindElementByDOMElement(domElement, useSuper) {
-    console.log("= B.ShapeContainer FindElementByDOMElement input:", { domElement, useSuper });
-    let result;
+  /**
+   * Finds an element by its DOM element
+   * @param domElement - The DOM element to search for
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The found element or null if not found
+   */
+  FindElementByDOMElement(domElement: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.FindElementByDOMElement(domElement);
+      return super.FindElementByDOMElement(domElement);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.FindElementByDOMElement(domElement) : null;
+      return this.shapeGroup ? this.shapeGroup.FindElementByDOMElement(domElement) : null;
     }
-    console.log("= B.ShapeContainer FindElementByDOMElement output:", result);
-    return result;
   }
 
-  GetElementIndex(element, useSuper) {
-    console.log("= B.ShapeContainer GetElementIndex input:", { element, useSuper });
-    let result;
+  /**
+   * Gets the index of an element in the container
+   * @param element - The element to find the index for
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The index of the element or -1 if not found
+   */
+  GetElementIndex(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.GetElementIndex(element);
+      return super.GetElementIndex(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.GetElementIndex(element) : -1;
+      return this.shapeGroup ? this.shapeGroup.GetElementIndex(element) : -1;
     }
-    console.log("= B.ShapeContainer GetElementIndex output:", result);
-    return result;
   }
 
-  MoveElementForward(element, useSuper) {
-    console.log("= B.ShapeContainer MoveElementForward input:", { element, useSuper });
-    let result;
+  /**
+   * Moves an element one position forward in the z-order
+   * @param element - The element to move forward
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the move operation
+   */
+  MoveElementForward(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.MoveElementForward(element);
+      return super.MoveElementForward(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.MoveElementForward(element) : void 0;
+      return this.shapeGroup ? this.shapeGroup.MoveElementForward(element) : undefined;
     }
-    console.log("= B.ShapeContainer MoveElementForward output:", result);
-    return result;
   }
 
-  MoveElementBackward(element, useSuper) {
-    console.log("= B.ShapeContainer MoveElementBackward input:", { element, useSuper });
-    let result;
+  /**
+   * Moves an element one position backward in the z-order
+   * @param element - The element to move backward
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the move operation
+   */
+  MoveElementBackward(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.MoveElementBackward(element);
+      return super.MoveElementBackward(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.MoveElementBackward(element) : void 0;
+      return this.shapeGroup ? this.shapeGroup.MoveElementBackward(element) : undefined;
     }
-    console.log("= B.ShapeContainer MoveElementBackward output:", result);
-    return result;
   }
 
-  MoveElementToFront(element, useSuper) {
-    console.log("= B.ShapeContainer MoveElementToFront input:", { element, useSuper });
-    let result;
+  /**
+   * Moves an element to the front of the z-order
+   * @param element - The element to move to front
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the move operation
+   */
+  MoveElementToFront(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.MoveElementToFront(element);
+      return super.MoveElementToFront(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.MoveElementToFront(element) : void 0;
+      return this.shapeGroup ? this.shapeGroup.MoveElementToFront(element) : undefined;
     }
-    console.log("= B.ShapeContainer MoveElementToFront output:", result);
-    return result;
   }
 
-  MoveElementToBack(element, useSuper) {
-    console.log("= B.ShapeContainer MoveElementToBack input:", { element, useSuper });
-    let result;
+  /**
+   * Moves an element to the back of the z-order
+   * @param element - The element to move to back
+   * @param useSuper - Whether to use parent class implementation
+   * @returns The result of the move operation
+   */
+  MoveElementToBack(element: any, useSuper: boolean) {
     if (useSuper) {
-      result = super.MoveElementToBack(element);
+      return super.MoveElementToBack(element);
     } else {
-      result = this.shapeGroup ? this.shapeGroup.MoveElementToBack(element) : void 0;
+      return this.shapeGroup ? this.shapeGroup.MoveElementToBack(element) : undefined;
     }
-    console.log("= B.ShapeContainer MoveElementToBack output:", result);
-    return result;
   }
 
 }

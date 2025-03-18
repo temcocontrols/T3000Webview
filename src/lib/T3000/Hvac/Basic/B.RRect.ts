@@ -1,12 +1,5 @@
 
 
-import $ from 'jquery';
-import T3Svg from "../Util/T3Svg"
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
-
 import Path from "./B.Path";
 
 class RRect extends Path {
@@ -20,35 +13,43 @@ class RRect extends Path {
     this.ry = 0;
   }
 
-  SetRRectSize(width: number, height: number, radiusX: number, radiusY: number) {
-    console.log("= B.RRect SetRRectSize input:", { width, height, radiusX, radiusY });
-
-    if (radiusX >= width / 2) {
-      radiusX = (width - 1) / 2;
+  /**
+   * Sets the dimensions and corner radii of the rounded rectangle
+   * @param width - The width of the rounded rectangle
+   * @param height - The height of the rounded rectangle
+   * @param cornerRadiusX - The horizontal radius of the corner curves
+   * @param cornerRadiusY - The vertical radius of the corner curves
+   */
+  SetRRectSize(width: number, height: number, cornerRadiusX: number, cornerRadiusY: number) {
+    // Ensure corner radii don't exceed half the width/height
+    if (cornerRadiusX >= width / 2) {
+      cornerRadiusX = (width - 1) / 2;
     }
-    if (radiusY >= height / 2) {
-      radiusY = (height - 1) / 2;
+    if (cornerRadiusY >= height / 2) {
+      cornerRadiusY = (height - 1) / 2;
     }
 
-    this.rx = radiusX;
-    this.ry = radiusY;
+    this.rx = cornerRadiusX;
+    this.ry = cornerRadiusY;
 
     const pathCreator = this.PathCreator();
-    const innerWidth = width - 2 * radiusX;
-    const innerHeight = height - 2 * radiusY;
+    const innerWidth = width - 2 * cornerRadiusX;
+    const innerHeight = height - 2 * cornerRadiusY;
 
     pathCreator.BeginPath();
-    if (radiusX && radiusY) {
-      pathCreator.MoveTo(0, radiusY);
-      pathCreator.SimpleArcTo(radiusX, -radiusY, true, true);
+    if (cornerRadiusX && cornerRadiusY) {
+      // Draw rounded rectangle with curved corners
+      pathCreator.MoveTo(0, cornerRadiusY);
+      pathCreator.SimpleArcTo(cornerRadiusX, -cornerRadiusY, true, true);
       pathCreator.LineTo(innerWidth, 0, true);
-      pathCreator.SimpleArcTo(radiusX, radiusY, true, true);
+      pathCreator.SimpleArcTo(cornerRadiusX, cornerRadiusY, true, true);
       pathCreator.LineTo(0, innerHeight, true);
-      pathCreator.SimpleArcTo(-radiusX, radiusY, true, true);
+      pathCreator.SimpleArcTo(-cornerRadiusX, cornerRadiusY, true, true);
       pathCreator.LineTo(-innerWidth, 0, true);
-      pathCreator.SimpleArcTo(-radiusX, -radiusY, true, true);
+      pathCreator.SimpleArcTo(-cornerRadiusX, -cornerRadiusY, true, true);
       pathCreator.ClosePath();
     } else {
+      // Draw regular rectangle if no corner radius
       pathCreator.MoveTo(0, 0);
       pathCreator.LineTo(width, 0, true);
       pathCreator.LineTo(0, height, true);
@@ -58,14 +59,15 @@ class RRect extends Path {
 
     const pathString = pathCreator.ToString();
     this.SetPath(pathString, { x: 0, y: 0, width, height });
-
-    console.log("= B.RRect SetRRectSize output:", { radiusX: this.rx, radiusY: this.ry, path: pathString });
   }
 
+  /**
+   * Sets the dimensions of the rounded rectangle while preserving corner radii
+   * @param width - The width of the rounded rectangle
+   * @param height - The height of the rounded rectangle
+   */
   SetSize(width: number, height: number): void {
-    console.log("= B.RRect SetSize input:", { width, height });
     this.SetRRectSize(width, height, this.rx, this.ry);
-    console.log("= B.RRect SetSize output:", { rx: this.rx, ry: this.ry });
   }
 
 }
