@@ -1,14 +1,10 @@
 
 
-import $ from 'jquery';
 import T3Svg from "../Util/T3Svg"
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
 import Element from './B.Element'
-import ConstantData from "../Data/ConstantData"
 import BConstant from './B.Constant'
-import Instance from '../Data/Instance/Instance';
+import Instance from '../Data/Instance/Instance'
+import $ from 'jquery'
 
 class Symbol extends Element {
 
@@ -25,9 +21,13 @@ class Symbol extends Element {
     super()
   }
 
+  /**
+   * Creates a new SVG element for the symbol
+   * @param element - The element to create
+   * @param type - The element type
+   * @returns The created SVG object
+   */
   CreateElement(element, type) {
-    console.log("= B.Symbol CreateElement input:", { element, type });
-
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.shapeElem = new T3Svg.Container(T3Svg.create('g'));
     this.svgObj.add(this.shapeElem);
@@ -40,13 +40,14 @@ class Symbol extends Element {
     this.lineTrans = [];
     this.srcSymbolSVG = '';
 
-    console.log("= B.Symbol CreateElement output:", this.svgObj);
     return this.svgObj;
   }
 
+  /**
+   * Sets the SVG source for the symbol and processes placeholders
+   * @param source - The SVG source string
+   */
   SetSymbolSource(source: string) {
-    console.log("= B.Symbol SetSymbolSource input:", { source });
-
     this.srcSymbolSVG = source;
     this.fillColors = Symbol.GetPlaceholders(BConstant.Placeholder.FillColor, source);
     this.lineColors = Symbol.GetPlaceholders(BConstant.Placeholder.LineColor, source);
@@ -60,24 +61,24 @@ class Symbol extends Element {
 
       const fillTransPlaceholder = Symbol.CreatePlaceholder(
         BConstant.Placeholder.FillTrans,
-        BConstant.PlaceholderDefaults[BConstant.Placeholder.FillTrans]
+        BConstant.PlaceholderDefault[BConstant.Placeholder.FillTrans]
       );
       source = source.replace(
-        new RegExp('fill="##FILLCOLOR', 'g'),
-        'fill-opacity="' + fillTransPlaceholder + '" fill="##FILLCOLOR'
+        new RegExp('fill="##FillColor', 'g'),
+        'fill-opacity="' + fillTransPlaceholder + '" fill="##FillColor'
       );
       this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
 
       const lineTransPlaceholder = Symbol.CreatePlaceholder(
         BConstant.Placeholder.LineTrans,
-        BConstant.PlaceholderDefaults[BConstant.Placeholder.LineTrans]
+        BConstant.PlaceholderDefault[BConstant.Placeholder.LineTrans]
       );
       source = source.replace(
-        new RegExp('stroke="##LINECOLOR', 'g'),
-        'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LINECOLOR'
+        new RegExp('stroke="##LineColor', 'g'),
+        'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LineColor'
       ).replace(
-        new RegExp('fill="##LINECOLOR', 'g'),
-        'fill-opacity="' + lineTransPlaceholder + '" fill="##LINECOLOR'
+        new RegExp('fill="##LineColor', 'g'),
+        'fill-opacity="' + lineTransPlaceholder + '" fill="##LineColor'
       );
       this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
@@ -85,20 +86,13 @@ class Symbol extends Element {
     }
 
     this.RebuildSymbol();
-    console.log("= B.Symbol SetSymbolSource output:", { srcSymbolSVG: this.srcSymbolSVG });
   }
 
+  /**
+   * Rebuilds the symbol with current properties by replacing placeholders
+   * in the SVG source and adding the elements to the DOM
+   */
   RebuildSymbol() {
-    console.log("= B.Symbol RebuildSymbol input:", {
-      srcSymbolSVG: this.srcSymbolSVG,
-      fillColors: this.fillColors,
-      lineColors: this.lineColors,
-      lineWidths: this.lineWidths,
-      solidFills: this.solidFills,
-      fillTrans: this.fillTrans,
-      lineTrans: this.lineTrans
-    });
-
     let svgContent = `<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>${this.srcSymbolSVG}</svg>`;
     const parser = new DOMParser();
 
@@ -120,23 +114,22 @@ class Symbol extends Element {
       this.shapeElem.node.appendChild(this.svgObj.node.ownerDocument.importNode(element, true));
       element = element.nextSibling;
     }
-
-    console.log("= B.Symbol RebuildSymbol output:", {
-      shapeElem: this.shapeElem,
-      svgObj: this.svgObj
-    });
   }
 
+  /**
+   * Returns the element to be scaled
+   * @returns The shape element for scaling
+   */
   GetScaleElement() {
-    console.log("= B.Symbol GetScaleElement input:", {});
-    const result = this.shapeElem;
-    console.log("= B.Symbol GetScaleElement output:", { result });
-    return result;
+    return this.shapeElem;
   }
 
+  /**
+   * Sets the fill color for all fill placeholders in the symbol
+   * @param color - The fill color to set
+   * @param skipClear - Whether to skip clearing existing color data
+   */
   SetFillColor(color: string, skipClear: boolean) {
-    console.log("= B.Symbol SetFillColor input:", { color, skipClear });
-
     let updated = false;
 
     if (!skipClear) {
@@ -158,13 +151,13 @@ class Symbol extends Element {
     if (updated) {
       this.RebuildSymbol();
     }
-
-    console.log("= B.Symbol SetFillColor output:", { fillColors: this.fillColors, solidFills: this.solidFills });
   }
 
+  /**
+   * Sets a texture fill for the symbol
+   * @param patternData - The pattern data for the texture fill
+   */
   SetTextureFill(patternData) {
-    console.log("= B.Symbol SetTextureFill input:", { patternData });
-
     Instance.Basic.Element.SetTextureFill.call(this, patternData);
     const currentFill = this.svgObj.attr('fill');
     this.svgObj.attr('fill', '');
@@ -174,16 +167,13 @@ class Symbol extends Element {
       this.SetFillColor(currentFill, true);
       this.svgObj.add(this.fillPatternData.patternElem, 0);
     }
-
-    console.log("= B.Symbol SetTextureFill output:", {
-      fillPatternData: this.fillPatternData,
-      currentFill
-    });
   }
 
+  /**
+   * Sets a gradient fill for the symbol
+   * @param gradientData - The gradient data for the fill
+   */
   SetGradientFill(gradientData) {
-    console.log("= B.Symbol SetGradientFill input:", { gradientData });
-
     Instance.Basic.Element.SetGradientFill.call(this, gradientData);
     const currentFill = this.svgObj.attr('fill');
     this.svgObj.attr('fill', '');
@@ -193,16 +183,14 @@ class Symbol extends Element {
       this.SetFillColor(currentFill, true);
       this.svgObj.add(this.fillGradientData.gradientElem, 0);
     }
-
-    console.log("= B.Symbol SetGradientFill output:", {
-      fillGradientData: this.fillGradientData,
-      currentFill
-    });
   }
 
+  /**
+   * Sets the stroke color for all line placeholders in the symbol
+   * @param color - The stroke color to set
+   * @param skipClear - Whether to skip clearing existing color data
+   */
   SetStrokeColor(color: string, skipClear: boolean) {
-    console.log("= B.Symbol SetStrokeColor input:", { color, skipClear });
-
     if (!skipClear) {
       this.ClearColorData(false);
     }
@@ -214,13 +202,13 @@ class Symbol extends Element {
     if (this.lineColors.length) {
       this.RebuildSymbol();
     }
-
-    console.log("= B.Symbol SetStrokeColor output:", { lineColors: this.lineColors });
   }
 
+  /**
+   * Sets a texture stroke for the symbol
+   * @param patternData - The pattern data for the texture stroke
+   */
   SetTextureStroke(patternData) {
-    console.log("= B.Symbol SetTextureStroke input:", { patternData });
-
     Instance.Basic.Element.SetTextureStroke.call(this, patternData);
     const currentStroke = this.svgObj.attr('stroke');
     this.svgObj.attr('stroke', '');
@@ -230,16 +218,13 @@ class Symbol extends Element {
       this.SetStrokeColor(currentStroke, true);
       this.svgObj.add(this.strokePatternData.patternElem, 0);
     }
-
-    console.log("= B.Symbol SetTextureStroke output:", {
-      strokePatternData: this.strokePatternData,
-      currentStroke
-    });
   }
 
+  /**
+   * Sets a gradient stroke for the symbol
+   * @param gradientData - The gradient data for the stroke
+   */
   SetGradientStroke(gradientData) {
-    console.log("= B.Symbol SetGradientStroke input:", { gradientData });
-
     Instance.Basic.Element.SetGradientStroke.call(this, gradientData);
     const currentStroke = this.svgObj.attr('stroke');
     this.svgObj.attr('stroke', '');
@@ -249,16 +234,13 @@ class Symbol extends Element {
       this.SetStrokeColor(currentStroke, true);
       this.svgObj.add(this.strokeGradientData.gradientElem, 0);
     }
-
-    console.log("= B.Symbol SetGradientStroke output:", {
-      strokeGradientData: this.strokeGradientData,
-      currentStroke
-    });
   }
 
+  /**
+   * Sets the stroke width for all line width placeholders in the symbol
+   * @param width - The stroke width to set
+   */
   SetStrokeWidth(width: string | number) {
-    console.log("= B.Symbol SetStrokeWidth input:", { width });
-
     if (isNaN(Number(width))) {
       width = Number(Symbol.ParsePlaceholder(width as string, BConstant.Placeholder.LineThick));
     }
@@ -270,13 +252,13 @@ class Symbol extends Element {
     if (this.lineWidths.length) {
       this.RebuildSymbol();
     }
-
-    console.log("= B.Symbol SetStrokeWidth output:", { lineWidths: this.lineWidths });
   }
 
+  /**
+   * Sets the fill opacity for all fill transparency placeholders in the symbol
+   * @param opacity - The fill opacity to set (0-1)
+   */
   SetFillOpacity(opacity: number) {
-    console.log("= B.Symbol SetFillOpacity input:", { opacity });
-
     for (let i = 0; i < this.fillTrans.length; i++) {
       this.fillTrans[i].val = opacity;
     }
@@ -284,13 +266,13 @@ class Symbol extends Element {
     if (this.fillTrans.length) {
       this.RebuildSymbol();
     }
-
-    console.log("= B.Symbol SetFillOpacity output:", { fillTrans: this.fillTrans });
   }
 
+  /**
+   * Sets the stroke opacity for all line transparency placeholders in the symbol
+   * @param opacity - The stroke opacity to set (0-1)
+   */
   SetStrokeOpacity(opacity: number) {
-    console.log("= B.Symbol SetStrokeOpacity input:", { opacity });
-
     for (let i = 0; i < this.lineTrans.length; i++) {
       this.lineTrans[i].val = opacity;
     }
@@ -298,40 +280,50 @@ class Symbol extends Element {
     if (this.lineTrans.length) {
       this.RebuildSymbol();
     }
-
-    console.log("= B.Symbol SetStrokeOpacity output:", { lineTrans: this.lineTrans });
   }
 
+  /**
+   * Sets the stroke pattern
+   * @param event - The event data for the stroke pattern
+   */
   SetStrokePattern(event) {
   }
 
+  /**
+   * Creates a placeholder string with the specified type and default value
+   * @param placeholderType - The type of placeholder
+   * @param defaultValue - The default value for the placeholder
+   * @returns The created placeholder string
+   */
   static CreatePlaceholder(placeholderType: string, defaultValue: string = ''): string {
-    console.log("= B.Symbol CreatePlaceholder input:", { placeholderType, defaultValue });
-
-    const placeholder = `${placeholderType}=${defaultValue}${BConstant.Placeholder.Terminator}`;
-
-    console.log("= B.Symbol CreatePlaceholder output:", { placeholder });
-    return placeholder;
+    return `${placeholderType}=${defaultValue}${BConstant.Placeholder.Terminator}`;
   }
 
+  /**
+   * Parses the value from a placeholder string
+   * @param placeholder - The placeholder string to parse
+   * @param placeholderType - The type of placeholder
+   * @returns The parsed value from the placeholder
+   */
   static ParsePlaceholder(placeholder: string, placeholderType: string): string {
-    console.log("= B.Symbol ParsePlaceholder input:", { placeholder, placeholderType });
-
     const startIndex = placeholder.indexOf('=') + 1;
     const endIndex = placeholder.lastIndexOf(BConstant.Placeholder.Terminator);
-    let defaultValue = BConstant.PlaceholderDefaults[placeholderType];
+    let defaultValue = BConstant.PlaceholderDefault[placeholderType];
 
     if (startIndex > 0 && endIndex > startIndex) {
       defaultValue = placeholder.slice(startIndex, endIndex);
     }
 
-    console.log("= B.Symbol ParsePlaceholder output:", { defaultValue });
     return defaultValue;
   }
 
+  /**
+   * Gets all placeholders of a specific type from a source string
+   * @param placeholderType - The type of placeholder to search for
+   * @param source - The source string to search in
+   * @returns Array of placeholders with their values
+   */
   static GetPlaceholders(placeholderType: string, source: string) {
-    console.log("= B.Symbol GetPlaceholders input:", { placeholderType, source });
-
     const placeholders = [];
     if (!source) return placeholders;
 
@@ -347,16 +339,19 @@ class Symbol extends Element {
       }
     }
     catch (e) {
-      console.error("= B.Symbol GetPlaceholders error:", e);
+      console.error("Error getting placeholders:", e);
     }
 
-    console.log("= B.Symbol GetPlaceholders output:", { placeholders });
     return placeholders;
   }
 
+  /**
+   * Replaces all placeholders in the source string with their values
+   * @param placeholders - Array of placeholders with their values
+   * @param source - The source string with placeholders
+   * @returns The source string with placeholders replaced by their values
+   */
   static ReplacePlaceholder(placeholders, source) {
-    console.log("= B.Symbol ReplacePlaceholder input:", { placeholders, source });
-
     let result = source;
     if (!source) return result;
 
@@ -364,7 +359,6 @@ class Symbol extends Element {
       result = result.replace(new RegExp(placeholders[i].placeholder, 'g'), placeholders[i].val);
     }
 
-    console.log("= B.Symbol ReplacePlaceholder output:", { result });
     return result;
   }
 

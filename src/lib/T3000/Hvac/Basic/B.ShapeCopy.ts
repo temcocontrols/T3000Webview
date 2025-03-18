@@ -1,12 +1,7 @@
 
 
-import $ from 'jquery';
 import T3Svg from "../Util/T3Svg"
-import Element from "./B.Element";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
-import ConstantData from "../Data/ConstantData"
+import Element from "./B.Element"
 
 class ShapeCopy extends Element {
 
@@ -18,23 +13,26 @@ class ShapeCopy extends Element {
     this.shapeElem = null;
   }
 
-  CreateElement(element, type) {
-    console.log('= B.ShapeCopy CreateElement input:', { element, type });
-
+  /**
+   * Creates a new SVG element as a copy of another element
+   * @param sourceElement - The source element to copy from
+   * @param elementType - The type of element to create
+   * @returns The created SVG container object
+   */
+  CreateElement(sourceElement, elementType) {
     this.svgObj = new T3Svg.Container(T3Svg.create('use'));
-    this.InitElement(element, type);
+    this.InitElement(sourceElement, elementType);
 
-    console.log('= B.ShapeCopy CreateElement output:', this.svgObj);
     return this.svgObj;
   }
 
-  SetElementSource(element) {
-    console.log('= B.ShapeCopy SetElementSource input:', { element });
-
-    const internalID = element.SetInternalID();
+  /**
+   * Sets the source reference for this shape copy
+   * @param sourceElement - The element to reference as the source
+   */
+  SetElementSource(sourceElement) {
+    const internalID = sourceElement.SetInternalID();
     this.svgObj.attr('xlink:href', `#${internalID}`, 'http://www.w3.org/1999/xlink');
-
-    console.log('= B.ShapeCopy SetElementSource output:', this.svgObj);
   }
 
 }

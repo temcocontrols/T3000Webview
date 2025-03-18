@@ -1,14 +1,12 @@
 
 
-import $ from "jquery";
-import T3Svg from "../Util/T3Svg";
-import Utils1 from "../Util/Utils1"
-import Utils2 from "../Util/Utils2"
-import Utils3 from "../Util/Utils3"
+import $ from "jquery"
 import Creator from './B.Path.Creator'
-import GlobalData from '../Data/T3Gv'
-import ConstantData from "../Data/ConstantData"
-import ConstantData2 from "../Data/ConstantData2";
+import T3Gv from '../Data/T3Gv'
+import NvConstant from "../Data/Constant/NvConstant"
+import OptConstant from "../Data/Constant/OptConstant"
+import KeyboardConstant from "../Opt/Keyboard/KeyboardConstant"
+import CursorConstant from "../Data/Constant/CursorConstant"
 
 class Edit {
 
@@ -35,8 +33,12 @@ class Edit {
   public textEntrySelEnd: number;
   public inputFocusTimer: any;
 
-  constructor(parent: any) {
-    this.parent = parent;
+  /**
+   * Constructor for the Edit class
+   * @param parentComponent - The parent component that owns this Edit instance
+   */
+  constructor(parentComponent: any) {
+    this.parent = parentComponent;
     this.isActive = false;
     this.selStart = -1;
     this.selEnd = -1;
@@ -51,11 +53,13 @@ class Edit {
     this.anchorWord = null;
     this.savedCursorState = this.parent.cursorState;
     this.TableDrag = false;
-    console.log('B.Text.Edit: Constructor initialized with parent:', parent);
   }
 
+  /**
+   * Begins the table drag operation
+   * Disables cursor, clears selection, and prepares for drag operation
+   */
   BeginTableDrag() {
-    console.log('B.Text.Edit: BeginTableDrag called');
     this.TableDrag = true;
     this.DeactivateCursor();
     this.ClearSelection();
@@ -64,26 +68,33 @@ class Edit {
     this.curHit = null;
   }
 
-  SetVirtualKeyboardHook(virtualKeyboardHook: any, textEntryField: any) {
-    console.log('B.Text.Edit: SetVirtualKeyboardHook called with virtualKeyboardHook:', virtualKeyboardHook, 'textEntryField:', textEntryField);
-    this.virtualKeyboardHook = virtualKeyboardHook;
-    this.InitTextEntry(textEntryField);
-    console.log('B.Text.Edit: SetVirtualKeyboardHook completed');
+  /**
+   * Sets the virtual keyboard hook and initializes text entry
+   * @param virtualKeyboardHandler - The handler function for virtual keyboard events
+   * @param textEntryFieldElement - The text entry field element to initialize
+   */
+  SetVirtualKeyboardHook(virtualKeyboardHandler: any, textEntryFieldElement: any) {
+    this.virtualKeyboardHook = virtualKeyboardHandler;
+    this.InitTextEntry(textEntryFieldElement);
   }
 
-  Activate(event, shouldSpellCheck) {
-    console.log('B.Text.Edit: Activate called with event:', event, 'shouldSpellCheck:', shouldSpellCheck);
+  /**
+   * Activates the text edit functionality
+   * @param eventData - The event that triggered the activation
+   * @param shouldSpellCheck - Whether to perform spell checking after activation
+   */
+  Activate(eventData, shouldSpellCheck) {
     this.isActive = true;
     this.inActiveSel = false;
     this.lastClickTime = 0;
     this.selStart = -1;
     this.selEnd = -1;
     this.selAnchor = -1;
-    this.parent.decorationAreaElem.attr('pointer-events', ConstantData.EventBehavior.NONE);
-    this.parent.clickAreaElem.attr('pointer-events', ConstantData.EventBehavior.HIDDEN_ALL);
+    this.parent.decorationAreaElem.attr('pointer-events', OptConstant.EventBehavior.None);
+    this.parent.clickAreaElem.attr('pointer-events', OptConstant.EventBehavior.HiddenAll);
     this.parent.CallEditCallback('activate');
     this.savedCursorState = this.parent.cursorState;
-    this.parent.cursorState = ConstantData.CursorState.NONE;
+    this.parent.cursorState = CursorConstant.CursorState.None;
     this.activateInit = true;
     this.lastKeyProcessed = false;
 
@@ -95,18 +106,18 @@ class Edit {
       this.InitTextEntry(this.textEntryField);
     }
 
-    if (event) {
-      event.gesture = {
+    if (eventData) {
+      eventData.gesture = {
         center: {
-          clientX: event.clientX,
-          clientY: event.clientY
+          clientX: eventData.clientX,
+          clientY: eventData.clientY
         }
       };
-      this.HandleMouseDown(event);
+      this.HandleMouseDown(eventData);
       if (shouldSpellCheck) {
         this.parent.DoSpellCheck();
       } else {
-        this.HandleMouseUp(event);
+        this.HandleMouseUp(eventData);
       }
       if (this.virtualKeyboardHook) {
         this.virtualKeyboardHook(this.parent, true);
@@ -119,14 +130,16 @@ class Edit {
       this.parent.DoSpellCheck();
     }
 
-    this.parent.SetCursorState(ConstantData.CursorState.EDITLINK);
+    this.parent.SetCursorState(CursorConstant.CursorState.EditLink);
     this.UpdateTextEntryField(false);
     this.parent.RenderDataFieldHilites();
-    console.log('B.Text.Edit: Activate completed');
   }
 
+  /**
+   * Deactivates the text edit functionality and cleans up state
+   * @param event - The event that triggered the deactivation (optional)
+   */
   Deactivate(event: any) {
-    console.log('B.Text.Edit: Deactivate called with event:', event);
     this.isActive = false;
     this.inActiveSel = false;
     this.selStart = -1;
@@ -141,7 +154,7 @@ class Edit {
 
     this.parent.clickAreaElem.node.removeAttribute('pointer-events');
 
-    if (this.parent.cursorState === ConstantData.CursorState.EDITLINK) {
+    if (this.parent.cursorState === CursorConstant.CursorState.EditLink) {
       this.parent.SetCursorState(this.savedCursorState);
     }
 
@@ -158,18 +171,25 @@ class Edit {
     if (this.textEntryField) {
       this.textEntryField.off('input');
     }
-
-    console.log('B.Text.Edit: Deactivate completed');
   }
 
+  /**
+   * Checks if the editor is currently active
+   * @returns Boolean indicating if editor is active
+   */
   IsActive() {
-    console.log('B.Text.Edit: IsActive called');
     return this.isActive;
   }
 
+  /**
+   * Sets the text selection range
+   * @param start - The starting position of the selection
+   * @param end - The ending position of the selection
+   * @param line - The line information for the cursor (optional)
+   * @param anchor - The anchor position for the selection (optional)
+   * @param updateTextEntry - Whether to update the text entry field (optional)
+   */
   SetSelection(start: number, end: number, line: any, anchor: number, updateTextEntry?: boolean) {
-    console.log('B.Text.Edit: SetSelection called with start:', start, 'end:', end, 'line:', line, 'anchor:', anchor, 'updateTextEntry:', updateTextEntry);
-
     if (start >= 0 && start === end) {
       this.SetInsertPos(start, { rLine: line });
     } else {
@@ -182,33 +202,39 @@ class Edit {
     if (!updateTextEntry) {
       this.UpdateTextEntryField(true);
     }
-
-    console.log('B.Text.Edit: SetSelection completed with selStart:', this.selStart, 'selEnd:', this.selEnd, 'selAnchor:', this.selAnchor);
   }
 
+  /**
+   * Clears the current text selection
+   */
   ClearSelection() {
-    console.log('B.Text.Edit: ClearSelection called');
     this.selStart = -1;
     this.selEnd = -1;
     this.selAnchor = -1;
     this.UpdateSelection();
-    console.log('B.Text.Edit: ClearSelection completed');
   }
 
+  /**
+   * Gets the current text selection information
+   * @returns Object containing selection details (start, end, line, anchor)
+   */
   GetSelection() {
-    console.log('B.Text.Edit: GetSelection called');
     const selection = {
       start: this.selStart,
       end: this.selEnd,
       line: this.cursorLine,
       anchor: this.selAnchor
     };
-    console.log('B.Text.Edit: GetSelection returning', selection);
     return selection;
   }
 
+  /**
+   * Sets the insert position (cursor position) in the text
+   * @param position - The position to place the cursor
+   * @param lineInfo - Information about the line where the cursor is placed (optional)
+   * @param updateTextEntry - Whether to update the text entry field (optional)
+   */
   SetInsertPos(position: number, lineInfo?: any, updateTextEntry?: boolean) {
-    console.log('B.Text.Edit: SetInsertPos called with position:', position, 'lineInfo:', lineInfo, 'updateTextEntry:', updateTextEntry);
     this.selStart = position;
     this.selEnd = position;
     this.selAnchor = position;
@@ -220,11 +246,12 @@ class Edit {
       this.UpdateTextEntryField(true);
     }
     this.parent.CallEditCallback('select');
-    console.log('B.Text.Edit: SetInsertPos completed');
   }
 
+  /**
+   * Updates the visual representation of the text selection
+   */
   UpdateSelection() {
-    console.log('B.Text.Edit: UpdateSelection called');
     let renderedRange, pathCreator;
     pathCreator = new Creator();
     this.DeactivateCursor();
@@ -246,32 +273,37 @@ class Edit {
         this.parent.HideSelection();
       }
     }
-    console.log('B.Text.Edit: UpdateSelection completed');
   }
 
+  /**
+   * Deactivates and hides the text cursor
+   */
   DeactivateCursor() {
-    console.log('B.Text.Edit: DeactivateCursor called');
     this.parent.HideInputCursor();
     this.cursorPos = -1;
     this.cursorLine = undefined;
-    console.log('B.Text.Edit: DeactivateCursor completed');
   }
 
+  /**
+   * Updates the visual representation and position of the cursor
+   */
   UpdateCursor() {
-    console.log('B.Text.Edit: UpdateCursor called with cursorPos:', this.cursorPos);
     if (this.cursorPos < 0) {
       this.DeactivateCursor();
     } else {
       const charInfo = this.parent.formatter.GetRenderedCharInfo(this.cursorPos, this.cursorLine);
       this.parent.ShowInputCursor(charInfo.left, charInfo.top, charInfo.bottom);
     }
-    console.log('B.Text.Edit: UpdateCursor completed');
   }
 
+  /**
+   * Handles mouse down events for text selection
+   * @param event - The mouse down event
+   * @returns Boolean indicating if the event was handled
+   */
   HandleMouseDown(event) {
-    console.log('B.Text.Edit: HandleMouseDown called with event:', event);
     const isShiftKey = event && (event.shiftKey || (event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.shiftKey));
-    const isRightClick = GlobalData.optManager.IsRightClick(event);
+    const isRightClick = T3Gv.opt.IsRightClick(event);
     const currentTime = Date.now();
     this.activateInit = false;
 
@@ -280,7 +312,7 @@ class Edit {
       const clientY = event.gesture.center.clientY;
       const coords = this.parent.doc.ConvertWindowToElemCoords(clientX, clientY, this.parent.textElem.node);
 
-      if (!this.parent.linksDisabled && (this.parent.cursorState === ConstantData.CursorState.EDITLINK || this.parent.cursorState === ConstantData.CursorState.LINKONLY)) {
+      if (!this.parent.linksDisabled && (this.parent.cursorState === CursorConstant.CursorState.EditLink || this.parent.cursorState === CursorConstant.CursorState.LinkOnly)) {
         const hyperlink = this.parent.formatter.GetHyperlinkAtPoint(coords);
         if (hyperlink) {
           this.parent.CallEditCallback('hyperlink', hyperlink.url);
@@ -345,10 +377,14 @@ class Edit {
     }
   }
 
+  /**
+   * Handles mouse move events for text selection
+   * @param event - The mouse move event
+   * @returns Boolean indicating if the event was handled
+   */
   HandleMouseMove(event) {
-    console.log('B.Text.Edit: HandleMouseMove called with event:', event);
     let hitInfo, wordInfo, dataField;
-    const coords = {};
+    const coords = { x: 0, y: 0 };
 
     if (this.inActiveSel) {
       this.activateInit = false;
@@ -405,20 +441,22 @@ class Edit {
       }
 
       this.SetSelection(this.selStart, this.selEnd, undefined, this.selAnchor);
-      console.log('B.Text.Edit: HandleMouseMove completed with selStart:', this.selStart, 'selEnd:', this.selEnd);
       return false;
     }
   }
 
+  /**
+   * Handles mouse up events for text selection
+   * @param event - The mouse up event
+   * @returns Boolean indicating if the event was handled
+   */
   HandleMouseUp(event) {
-    console.log('B.Text.Edit: HandleMouseUp called with event:', event);
     if (this.inActiveSel) {
       this.activateInit = false;
       if (this.TableDrag) {
         this.TableDrag = false;
         this.inActiveSel = false;
         this.parent.CallEditCallback('dragoutside_mouseup');
-        console.log('B.Text.Edit: HandleMouseUp completed with TableDrag');
         return false;
       } else {
         this.inActiveSel = false;
@@ -430,14 +468,17 @@ class Edit {
           this.parent.CallEditCallback('selectrange');
         }
         this.curHit = null;
-        console.log('B.Text.Edit: HandleMouseUp completed with selection');
         return false;
       }
     }
   }
 
+  /**
+   * Handles key press events for character input
+   * @param event - The key press event
+   * @returns Boolean indicating if the event was handled
+   */
   HandleKeyPress(event) {
-    console.log('B.Text.Edit: HandleKeyPress called with event:', event);
     const charCode = event.charCode ? event.charCode : event.keyCode;
     let char = String.fromCharCode(charCode);
     const isShiftKey = event && (event.shiftKey || (event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.shiftKey));
@@ -459,22 +500,19 @@ class Edit {
     if (char === '\t') {
       this.parent.CallEditCallback('keyend', keyInfo);
       this.lastKeyProcessed = true;
-      console.log('B.Text.Edit: HandleKeyPress completed with tab key');
       return true;
     }
 
     if (char === '\r' || char === '\n') {
-      keyInfo.keyCode = ConstantData2.Keys.Enter;
+      keyInfo.keyCode = KeyboardConstant.Keys.Enter;
       if (this.parent.CallEditCallback('keyend', keyInfo)) {
         this.lastKeyProcessed = true;
-        console.log('B.Text.Edit: HandleKeyPress completed with enter key');
         return true;
       }
       if (!wasActivateInit) {
         if (isCtrlKey) {
           this.lastKeyProcessed = true;
           this.parent.Paste(char, false);
-          console.log('B.Text.Edit: HandleKeyPress completed with paste');
           return true;
         }
       }
@@ -482,23 +520,24 @@ class Edit {
 
     if (this.parent.CallEditCallback('charfilter', char) === false) {
       this.lastKeyProcessed = true;
-      console.log('B.Text.Edit: HandleKeyPress completed with charfilter');
       return true;
     }
 
     if (wasActivateInit) {
       this.lastKeyProcessed = true;
       this.parent.Paste(char, false);
-      console.log('B.Text.Edit: HandleKeyPress completed with paste on activateInit');
       return true;
     }
 
-    console.log('B.Text.Edit: HandleKeyPress completed');
     return false;
   }
 
+  /**
+   * Handles key down events for navigation and special keys
+   * @param event - The key down event
+   * @returns Boolean indicating if the event was handled
+   */
   HandleKeyDown(event) {
-    console.log('B.Text.Edit: HandleKeyDown called with event:', event);
     const isShiftKey = event && (event.shiftKey || (event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.shiftKey));
     const isCtrlKey = event && (event.ctrlKey || (event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.ctrlKey));
 
@@ -527,12 +566,14 @@ class Edit {
       default:
         return false;
     }
-    console.log('B.Text.Edit: HandleKeyDown completed');
     return true;
   }
 
+  /**
+   * Handles delete and backspace key operations
+   * @param keyCode - The key code (8 for backspace, 46 for delete)
+   */
   HandleDeleteKey(keyCode) {
-    console.log('B.Text.Edit: HandleDeleteKey called with keyCode:', keyCode);
     const start = this.selStart;
     const length = this.selEnd - this.selStart;
 
@@ -551,11 +592,15 @@ class Edit {
         this.parent.Delete();
       }
     }
-    console.log('B.Text.Edit: HandleDeleteKey completed');
   }
 
+  /**
+   * Handles cursor navigation keys (arrows, home, end)
+   * @param keyCode - The key code for the pressed key
+   * @param isShiftKey - Whether shift key is pressed
+   * @param isCtrlKey - Whether control key is pressed
+   */
   HandleCursorKey(keyCode, isShiftKey, isCtrlKey) {
-    console.log('B.Text.Edit: HandleCursorKey called with keyCode:', keyCode, 'isShiftKey:', isShiftKey, 'isCtrlKey:', isCtrlKey);
     let cursorInfo = { index: -1, line: undefined };
     let newIndex = -1;
     let isBoundaryKey = false;
@@ -575,36 +620,36 @@ class Edit {
     }
 
     switch (keyCode) {
-      case ConstantData2.Keys.Tab:
+      case KeyboardConstant.Keys.Tab:
         cursorInfo.index = -1;
         break;
-      case ConstantData2.Keys.End:
+      case KeyboardConstant.Keys.End:
         cursorInfo = this.parent.formatter.GetAdjacentChar(newIndex, this.cursorLine, 'end', keyInfo);
         isBoundaryKey = true;
         break;
-      case ConstantData2.Keys.Home:
+      case KeyboardConstant.Keys.Home:
         cursorInfo = this.parent.formatter.GetAdjacentChar(newIndex, this.cursorLine, 'home', keyInfo);
         isBoundaryKey = true;
         break;
-      case ConstantData2.Keys.Left_Arrow:
+      case KeyboardConstant.Keys.Left_Arrow:
         if (hasSelection && !isShiftKey) {
           newIndex = this.selStart;
         }
         cursorInfo = !hasSelection || isShiftKey || isCtrlKey ? this.parent.formatter.GetAdjacentChar(newIndex, this.cursorLine, 'prev', keyInfo) : { index: newIndex };
         break;
-      case ConstantData2.Keys.Up_Arrow:
+      case KeyboardConstant.Keys.Up_Arrow:
         if (hasSelection && !isShiftKey) {
           newIndex = this.selStart;
         }
         cursorInfo = this.parent.formatter.GetAdjacentChar(newIndex, this.cursorLine, 'up', keyInfo);
         break;
-      case ConstantData2.Keys.Right_Arrow:
+      case KeyboardConstant.Keys.Right_Arrow:
         if (hasSelection && !isShiftKey) {
           newIndex = this.selEnd;
         }
         cursorInfo = !hasSelection || isShiftKey || isCtrlKey ? this.parent.formatter.GetAdjacentChar(newIndex, this.cursorLine, 'next', keyInfo) : { index: newIndex };
         break;
-      case ConstantData2.Keys.Down_Arrow:
+      case KeyboardConstant.Keys.Down_Arrow:
         if (hasSelection && !isShiftKey) {
           newIndex = this.selEnd;
         }
@@ -636,11 +681,13 @@ class Edit {
     } else {
       this.parent.CallEditCallback('keyend', keyInfo);
     }
-    console.log('B.Text.Edit: HandleCursorKey completed');
   }
 
+  /**
+   * Initializes the text entry field for input handling
+   * @param textEntryField - The DOM element to use as a text entry field
+   */
   InitTextEntry(textEntryField) {
-    console.log('B.Text.Edit: InitTextEntry called with textEntryField:', textEntryField);
     this.textEntryField = $(textEntryField);
     this.textEntrySelStart = 0;
     this.textEntrySelEnd = 0;
@@ -653,11 +700,12 @@ class Edit {
       return false;
     });
     this.ResetTextEntry();
-    console.log('B.Text.Edit: InitTextEntry completed');
   }
 
+  /**
+   * Ensures the text entry field has focus when needed
+   */
   ResetTextEntry() {
-    console.log('B.Text.Edit: ResetTextEntry called');
     if (this.isActive && this.textEntryField && this.textEntryField.css('visibility') !== 'hidden') {
       if (this.inputFocusTimer == null) {
         this.inputFocusTimer = setInterval(() => {
@@ -674,18 +722,13 @@ class Edit {
       clearInterval(this.inputFocusTimer);
       this.inputFocusTimer = undefined;
     }
-    console.log('B.Text.Edit: ResetTextEntry completed');
   }
 
-  static SetInputSelection(inputElement, start, end) {
-    console.log('B.Text.Edit: SetInputSelection called with start:', start, 'end:', end);
-    inputElement.selectionStart = start;
-    inputElement.selectionEnd = end;
-    console.log('B.Text.Edit: SetInputSelection completed');
-  }
-
-  UpdateTextEntryField(updateText) {
-    console.log('B.Text.Edit: UpdateTextEntryField called with updateText:', updateText);
+  /**
+   * Updates the text entry field with current selection
+   * @param updateText - Whether to update the text content in addition to selection
+   */
+  UpdateTextEntryField(updateText?) {
     if (this.isActive && this.textEntryField && this.textEntryField[0] !== undefined) {
       const inputElement = this.textEntryField[0];
       this.ResetTextEntry();
@@ -701,11 +744,16 @@ class Edit {
       this.textEntrySelStart = start;
       this.textEntrySelEnd = end;
     }
-    console.log('B.Text.Edit: UpdateTextEntryField completed');
   }
 
+  /**
+   * Validates if an edit operation results in the expected text
+   * @param newText - The text being inserted
+   * @param oldText - The original text before edit
+   * @param fullText - The expected resulting text
+   * @returns Boolean indicating if the edit is valid
+   */
   ValidateEdit(newText, oldText, fullText) {
-    console.log('B.Text.Edit: ValidateEdit called with newText:', newText, 'oldText:', oldText, 'fullText:', fullText);
     const start = this.selStart;
     const length = this.selEnd - this.selStart;
     let before = '';
@@ -724,13 +772,13 @@ class Edit {
       combinedText = before + newText + after;
     }
 
-    const isValid = combinedText === fullText;
-    console.log('B.Text.Edit: ValidateEdit completed with isValid:', isValid);
-    return isValid;
+    return combinedText === fullText;
   }
 
+  /**
+   * Handles updates to the text entry field when text is input
+   */
   HandleTextEntryFieldUpdate() {
-    console.log('B.Text.Edit: HandleTextEntryFieldUpdate called');
     if (this.isActive && this.textEntryField) {
       this.activateInit = false;
       if (this.lastKeyProcessed) {
@@ -754,9 +802,9 @@ class Edit {
 
         let diffResult = null;
         if (this.ValidateEdit(insertedText, oldText, newText)) {
-          console.log('B.Text.Edit: ValidateEdit passed');
+          // Valid edit
         } else {
-          diffResult = Basic.Text.DiffStrings(oldText, newText);
+          diffResult = false;
           this.selStart = diffResult.pos;
           this.selEnd = diffResult.pos + diffResult.replace;
           insertedText = diffResult.str;
@@ -783,9 +831,18 @@ class Edit {
         this.textEntrySelEnd = selectionEnd;
       }
     }
-    console.log('B.Text.Edit: HandleTextEntryFieldUpdate completed');
   }
 
+  /**
+   * Sets the selection range in an input element
+   * @param inputElement - The DOM input element
+   * @param start - The start position of the selection
+   * @param end - The end position of the selection
+   */
+  static SetInputSelection(inputElement, start, end) {
+    inputElement.selectionStart = start;
+    inputElement.selectionEnd = end;
+  }
 }
 
 export default Edit
