@@ -1,10 +1,11 @@
-
-
+/**
+ * Class containing constants related to text styling, alignment, and display
+ * Used throughout the HVAC interface for text rendering and formatting
+ */
 class TextConstant {
-
   /**
-   * Defines text styling face options for text elements
-   * Each value represents a binary flag that can be combined
+   * Text face styles for basic formatting
+   * Used to control the appearance of text
    */
   static TextFace = {
     Bold: 1,
@@ -12,19 +13,20 @@ class TextConstant {
     Underline: 4,
     Superscript: 16,
     Subscript: 32,
-    Strikethrough: 64
+    Strike: 64
   }
 
   /**
-   * Defines text flags for special text behaviors
+   * Text flags for special text behaviors
+   * Currently only defines the bad spelling flag
    */
   static TextFlags = {
-    TenFBadSpell: 32
+    BadSpell: 32
   }
 
   /**
-   * Defines numeric codes for different text style properties
-   * Used for internal style management
+   * Style code constants for text formatting
+   * Used to identify different style properties in the text rendering system
    */
   static TextStyleCodes = {
     Font: 0,
@@ -41,8 +43,8 @@ class TextConstant {
   }
 
   /**
-   * Defines justification values for text alignment
-   * Values can be combined for horizontal and vertical alignment
+   * Text justification constants using numeric codes
+   * Defines alignment options for positioning text
    */
   static TextJust = {
     Left: 0,
@@ -53,8 +55,8 @@ class TextConstant {
   }
 
   /**
-   * Defines text alignment options using semantic string values
-   * For positioning text within containers
+   * Text alignment options using string values
+   * Provides more readable alignment options for modern interfaces
    */
   static TextAlign = {
     Left: 'left',
@@ -69,8 +71,8 @@ class TextConstant {
   }
 
   /**
-   * Defines texture alignment options for positioning textures
-   * Values represent the 9 possible alignment positions
+   * Texture alignment constants for positioning textures
+   * Defines how textures are positioned relative to their containers
    */
   static TextureAlign = {
     TopLeft: 1,
@@ -83,6 +85,14 @@ class TextConstant {
     BottomCenter: 8,
     BottomRight: 9
   }
+
+  /**
+   * Default placeholder text strings
+   * Used as initial values or placeholders in editable text fields
+   */
+  static ReplaceTextStrings = [
+    ''
+  ]
 }
 
 export default TextConstant
