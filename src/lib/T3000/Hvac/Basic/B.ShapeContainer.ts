@@ -3,6 +3,37 @@
 import T3Svg from "../Util/T3Svg"
 import Group from "./B.Group"
 
+/**
+ * Represents a container for SVG shapes that extends the functionality of a Group.
+ *
+ * This class encapsulates operations for managing SVG elements using an internal shape group.
+ * It provides methods to create, add, remove, and manipulate SVG elements and their z-order.
+ *
+ * Each public API individually uses the "useSuper" flag to determine whether to delegate the
+ * operation to the base class implementation or to the encapsulated shape group.
+ *
+ * @example
+ * // Create a new ShapeContainer instance
+ * const shapeContainer = new ShapeContainer();
+ *
+ * // Create and initialize an SVG element container
+ * const svgElement = shapeContainer.CreateElement(someElement, 'g');
+ *
+ * // Add an SVG element to the container, using the shape group implementation
+ * shapeContainer.AddElement(anotherElement, 'rect', false);
+ *
+ * // Remove an element using the base class method
+ * shapeContainer.RemoveElement(someElement, true);
+ *
+ * // Get the number of SVG elements in the container
+ * const count = shapeContainer.ElementCount(false);
+ *
+ * @remarks
+ * Utilize the "useSuper" parameter across various methods to control whether the action
+ * is managed by the inherited Group behavior or the specialized shapeGroup behavior.
+ *
+ * @see Group
+ */
 class ShapeContainer extends Group {
 
   public shapeGroup: any;

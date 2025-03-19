@@ -6,6 +6,45 @@ import BConstant from './B.Constant'
 import Instance from '../Data/Instance/Instance'
 import $ from 'jquery'
 
+/**
+ * Represents an SVG symbol element that supports dynamic modification and placeholder replacement.
+ *
+ * This class provides methods to create an SVG container element (including its shape element),
+ * dynamically update the symbol's appearance by setting its fill and stroke properties (colors, opacities,
+ * gradients, textures, etc.), and rebuild the symbol based on predefined placeholders in an SVG source.
+ *
+ * @remarks
+ * The class works by first creating an SVG element via the CreateElement method, setting an SVG source
+ * with placeholders via SetSymbolSource, and then updating these placeholders with concrete values using
+ * various setter methods (e.g., SetFillColor, SetStrokeColor, SetStrokeWidth, etc.). The placeholders are
+ * formatted strings that tie into default and dynamic values to ensure consistent, customizable rendering.
+ *
+ * @example
+ * ```typescript
+ * // Create an instance of Symbol and initialize with an SVG container element
+ * const symbol = new Symbol();
+ * const svgContainer = symbol.CreateElement({  element data  }, 'customType');
+ *
+ * // Set an SVG source containing placeholders for fill and stroke colors
+ * const svgSource = `<g>
+ *   <rect x="0" y="0" width="100" height="100" fill="##FillColor" stroke="##LineColor" stroke-width="##LineThick"/>
+ * </g>`;
+ * symbol.SetSymbolSource(svgSource);
+ *
+ * // Update the symbol's fill and stroke properties
+ * symbol.SetFillColor('#FF5733', false);
+ * symbol.SetStrokeColor('#3333FF', false);
+ * symbol.SetStrokeWidth(3);
+ *
+ * // Optionally set transparency settings
+ * symbol.SetFillOpacity(0.7);
+ * symbol.SetStrokeOpacity(0.9);
+ *
+ * // The symbol is now updated and can be added to the DOM accordingly
+ * ```
+ *
+ * @public
+ */
 class Symbol extends Element {
 
   public shapeElem: any;

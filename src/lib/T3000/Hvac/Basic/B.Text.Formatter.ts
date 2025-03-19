@@ -13,6 +13,47 @@ import CursorConstant from "../Data/Constant/CursorConstant";
 import T3Util from "../Util/T3Util";
 import BConstant from "./B.Constant";
 
+/**
+ * The Formatter class is responsible for managing text content, formatting styles,
+ * and rendering operations. It handles tasks such as setting and retrieving text,
+ * applying style changes, spell checking, hyperlink management, paragraph styling,
+ * and calculating text dimensions within given layout constraints.
+ *
+ * @remarks
+ * This class interacts with underlying runtime data to maintain text and style information,
+ * and it performs several operations including:
+ *
+ * - Setting text and updating character/paragraph styles via methods like SetText, SetRuntimeText, and SetFormat.
+ * - Recalculating and rendering formatted text with specified limits through SetLimits, CalcFromRuntime, and RenderFormattedText.
+ * - Spell checking with functions like SetSpellCheck, UpdateSpellCheck, and AdjustSpellCheck.
+ * - Hit testing and navigation support with methods like GetHitInfo, GetRenderedCharInfo, and GetAdjacentChar.
+ * - Handling hyperlink assignments and removal with methods such as SetHyperlink, GetHyperlinkAtOffset, and ClearHyperlink.
+ * - Managing bullet rendering, underlines, and other formatting overlays.
+ *
+ * @example
+ * ```typescript
+ * // Create an instance of Formatter with a given parent context.
+ * const formatter = new Formatter(parent);
+ *
+ * // Set the text content with default formatting.
+ * formatter.SetText("Hello, world!");
+ *
+ * // Define the text display limits.
+ * formatter.SetLimits({ minWidth: 100, maxWidth: 300 });
+ *
+ * // Enable rendering to recalculate the formatted text.
+ * formatter.SetRenderingEnabled(true);
+ *
+ * // Retrieve and log the dimensions of the formatted text.
+ * const { width, height } = formatter.GetTextFormatSize();
+ * console.log(`Formatted text dimensions: ${width} x ${height}`);
+ *
+ * // Render the formatted text into provided SVG containers.
+ * formatter.RenderFormattedText(svgTextContainer, svgFormattingLayer);
+ * ```
+ *
+ * @public
+ */
 class Formatter {
 
   public parent: any;

@@ -6,6 +6,63 @@ import './B.Text'
 import $ from "jquery"
 import T3Util from '../Util/T3Util';
 
+/**
+ * The Spell class provides comprehensive spell checking functionality for text elements
+ * within a document. It supports both local and remote spell checking, management of a word
+ * cache, and a custom user dictionary that can be loaded from and saved to a server.
+ *
+ * Key features:
+ * - Initialization of the spell checking system and user dictionary.
+ * - Enabling/disabling spell checking and querying its status.
+ * - Spell checking individual text objects or all text objects in a document.
+ * - Local spell checking using a cache to quickly determine word correctness and retrieve suggestions.
+ * - Remote spell checking for words requiring further server-side analysis.
+ * - Dynamic management of the user dictionary (adding, removing, clearing words) with persistent storage.
+ * - Fuzzy matching to provide user dictionary-based suggestion recommendations.
+ * - Support for ignore rules (e.g., all uppercase words, initial capitals, mixed alphanumeric words).
+ * - Contextual spell menu support that displays correction suggestions and allows replace, add, or ignore actions.
+ *
+ * Example usage:
+ *
+ * ```typescript
+ * // Assume 'doc' is an instance of a document containing text elements.
+ * const spellChecker = new Spell(doc);
+ *
+ * // Initialize the spell checker with the browser's default dictionary.
+ * spellChecker.Initialize();
+ *
+ * // Load user-specific dictionary entries.
+ * spellChecker.UserInitialize();
+ *
+ * // Activate spell checking.
+ * spellChecker.SetActive(true);
+ *
+ * // Get a text object from the document (assuming it supports spell checking).
+ * const textObject = doc.GetElementByIndex(0); // Retrieval method based on the document structure.
+ *
+ * // Check the spelling for the text object, forcing a recheck of all words.
+ * spellChecker.CheckSpellingForTextObj(textObject, true);
+ *
+ * // Display the spell menu at a specific character index and position.
+ * spellChecker.ShowSpellMenu(textObject, 5, 100, 150);
+ *
+ * // Add a custom word to the user's dictionary.
+ * spellChecker.AddWord("customterm");
+ *
+ * // Retrieve the list of words currently ignored during the session.
+ * const ignoredWords = spellChecker.GetIgnoreList();
+ * console.log("Ignored Words:", ignoredWords);
+ * ```
+ *
+ * @remarks
+ * The Spell class interacts with several external modules/constants:
+ * - BConstant: Provides various constants, including dictionary mappings, spell flags, and word states.
+ * - Text: Represents a text element that supports spelling check functionality.
+ * - T3Util: Utility functions used for logging and other helper operations.
+ * - FuzzySet: Implements fuzzy matching to assist with generating suggestions from the user dictionary.
+ *
+ * @public
+ */
 class Spell {
 
   public doc: any;

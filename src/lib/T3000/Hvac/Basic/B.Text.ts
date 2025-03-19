@@ -9,6 +9,46 @@ import T3Gv from "../Data/T3Gv"
 import CursorConstant from "../Data/Constant/CursorConstant"
 import T3Util from "../Util/T3Util"
 
+/**
+ * Represents an advanced text editor element with SVG rendering, inline editing,
+ * text formatting, hyperlink management, data field integration, and spell checking.
+ *
+ * This class provides a comprehensive set of methods to:
+ * - Create and initialize a text element in an SVG container.
+ * - Manage text content including setting, getting, deleting, pasting, and formatting text.
+ * - Support rich text features such as paragraph alignment, vertical alignment, and text selection.
+ * - Handle hyperlinks by setting, retrieving, and deleting them from selected text ranges.
+ * - Integrate data fields for dynamic content display and update using external data sources.
+ * - Monitor and update the UI via callbacks, cursor state management, and live spell checking.
+ *
+ * @example
+ * // Create a new Text element and attach it to an SVG container.
+ * const textEditor = new Text();
+ * const options = { someOption: 'value' };
+ * const svgContainer = textEditor.CreateElement(containerElement, options);
+ *
+ * // Set initial text content with formatting.
+ * textEditor.SetText("Hello, world!", { fontSize: 16, fontWeight: "bold" });
+ *
+ * // Activate the text editor to allow inline editing.
+ * textEditor.Activate(inputEvent, { additionalData: true });
+ *
+ * // Update selected text format to italic.
+ * textEditor.SetSelectedFormat({ fontStyle: "italic" });
+ *
+ * // Paste new content and update the element.
+ * textEditor.Paste("New content", false, true);
+ *
+ * // Retrieve the entire text after modifications.
+ * const fullText = textEditor.GetText(0, textEditor.GetTextLength());
+ *
+ * @remarks
+ * The Text class internally utilizes a Formatter for its text processing and an Edit
+ * component for handling user interactions. It also supports dynamic resizing, data binding,
+ * spell check integration, and customizable callbacks to reflect changes in the UI.
+ *
+ * @category Components
+ */
 class Text extends Element {
 
   public formatter: Formatter;

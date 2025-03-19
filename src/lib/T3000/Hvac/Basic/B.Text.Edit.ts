@@ -8,6 +8,85 @@ import OptConstant from "../Data/Constant/OptConstant"
 import KeyboardConstant from "../Opt/Keyboard/KeyboardConstant"
 import CursorConstant from "../Data/Constant/CursorConstant"
 
+/**
+ * Represents a text editing controller that manages text selection, cursor rendering,
+ * and input (keyboard and mouse) handling for dynamic text manipulation.
+ *
+ * This class provides functionality to activate and deactivate text editing, initialize
+ * a text entry field for capturing user input, manage visual selection and cursor states,
+ * and support integration with virtual keyboards. It coordinates with a parent component
+ * that must supply formatting services, callback mechanisms, and additional UI elements.
+ *
+ * Key features include:
+ * - Activating/deactivating the text editing mode.
+ * - Handling mouse events (mousedown, mousemove, mouseup) for text selection, hyperlink detection,
+ *   and table drag operations.
+ * - Processing keyboard events for character input, navigation (arrow keys, Home/End), and deletion (backspace, delete).
+ * - Synchronizing a hidden text entry DOM element with the visual text content.
+ * - Providing spell check, data field update, and selection update callbacks.
+ *
+ * @example
+ * // Example Usage:
+ *
+ *   // Assume parentComponent provides all required methods and properties:
+ *   const parentComponent = {
+ *     cursorState: 0,
+ *     decorationAreaElem: $('#decorationArea'),
+ *     clickAreaElem: $('#clickArea'),
+ *     textElem: { node: document.getElementById('textContent'), trans: { x: 0, y: 0 } },
+ *     formatter: {
+ *       GetRenderedRange: (start, end) => { return []; },
+ *       GetRenderedCharInfo: (cursorPos, cursorLine) => { return { left: 0, top: 0, bottom: 0 }; },
+ *       GetWordAtIndex: (index) => { return { start: 0, end: 0 }; },
+ *       GetHyperlinkAtPoint: (coords) => { return null; },
+ *       GetHitInfo: (coords) => { return { index: 0 }; },
+ *       GetDataField: (index) => { return null; },
+ *       rtData: { text: "Initial text" }
+ *     },
+ *     doc: {
+ *       ConvertWindowToElemCoords: (x, y, node) => { return { x: x, y: y }; }
+ *     },
+ *     geometryBBox: { width: 500, height: 300 },
+ *     GetTextLength: () => { return 100; },
+ *     SetSelectionVisible: (visible) => { console.log("Selection_visible:", visible); },
+ *     ClearDataFieldHilites: () => { console.log("Data field hilites cleared."); },
+ *     CallEditCallback: (eventName, ...args) => { console.log("Callback:", eventName, args); },
+ *     SetCursorState: (state) => { console.log("Cursor state set to", state); },
+ *     HideSelection: () => { console.log("Selection hidden"); },
+ *     ShowSelection: (pathString) => { console.log("Selection shown with path", pathString); },
+ *     HideInputCursor: () => { console.log("Input cursor hidden"); },
+ *     ShowInputCursor: (left, top, bottom) => { console.log("Input cursor shown at", left, top, bottom); },
+ *     UpdateTextObject: () => { console.log("Text object updated"); },
+ *     Paste: (text, flag1, flag2?) => { console.log("Pasted text", text); },
+ *     Delete: (flag?) => { console.log("Text deleted"); },
+ *     DoSpellCheck: () => { console.log("Spell check performed"); },
+ *     activeEditStyle: 0,
+ *     GetPos: () => { return { x: 10, y: 10 }; }
+ *   };
+ *
+ *   // Instantiate the Edit class listener:
+ *   const textEdit = new Edit(parentComponent);
+ *
+ *   // Activate text editing with an event; enable spell check:
+ *   textEdit.Activate({
+ *     clientX: 150,
+ *     clientY: 150,
+ *     gesture: { center: { clientX: 150, clientY: 150 } }
+ *   }, true);
+ *
+ *   // Attach a virtual keyboard hook and initialize the text entry field:
+ *   textEdit.SetVirtualKeyboardHook((parent, activated) => {
+ *     console.log(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
+ *   }, document.getElementById('textEntry'));
+ *
+ *   // Manipulate text selection:
+ *   textEdit.SetSelection(5, 10, undefined, 5, true);
+ *
+ *   // Finally, deactivate the editor when done:
+ *   textEdit.Deactivate(null);
+ *
+ * @public
+ */
 class Edit {
 
   public parent: any;
