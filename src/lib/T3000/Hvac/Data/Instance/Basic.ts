@@ -21,48 +21,70 @@ import ShapeCopy from "../../Basic/B.ShapeCopy"
 import Symbol from "../../Basic/B.Symbol"
 import Edit from "../../Basic/B.Text.Edit"
 
+/**
+ * Basic module that provides access to core HVAC UI components
+ * Contains references to essential drawing and UI elements used throughout the application
+ */
 const Basic = {
-  Container: null,
-  Effect: null,
-  Style: null,
-  Element: null,
-  Group: null,
-  Image: null,
-  Layer: null,
-  Line: null,
-  Oval: null,
-  Creator: null,
-  Path: null,
-  Polygon: null,
-  PolyLine: null,
-  PolyPolyLine: null,
-  Rect: null,
-  RRect: null,
-  ShapeContainer: null,
-  ShapeCopy: null,
-  Symbol: null,
-  Edit: null,
-}
+  /** Container component for grouping elements */
+  Container,
 
-Basic.Container = Container;
-Basic.Effect = Effect;
-Basic.Style = Style;
-Basic.Element = Element;
-Basic.Group = Group;
-Basic.Image = Image;
-Basic.Layer = Layer;
-Basic.Line = Line;
-Basic.Oval = Oval;
-Basic.Creator = Creator;
-Basic.Path = Path;
-Basic.Polygon = Polygon;
-Basic.PolyLine = PolyLine;
-Basic.PolyPolyLine = PolyPolyLine;
-Basic.Rect = Rect;
-Basic.RRect = RRect;
-Basic.ShapeContainer = ShapeContainer;
-Basic.ShapeCopy = ShapeCopy;
-Basic.Symbol = Symbol;
-Basic.Edit = Edit;
+  /** Provides visual effects for elements */
+  Effect,
+
+  /** Handles styling properties for elements */
+  Style,
+
+  /** Base element class for UI components */
+  Element,
+
+  /** Component for grouping related elements */
+  Group,
+
+  /** Component for displaying images */
+  Image,
+
+  /** Layer component for z-index management */
+  Layer,
+
+  /** Component for drawing lines */
+  Line,
+
+  /** Component for drawing oval/circle shapes */
+  Oval,
+
+  /** Utility for creating paths */
+  Creator,
+
+  /** Component for drawing custom paths */
+  Path,
+
+  /** Component for drawing polygons */
+  Polygon,
+
+  /** Component for drawing connected line segments */
+  PolyLine,
+
+  /** Component for drawing multiple polylines */
+  PolyPolyLine,
+
+  /** Component for drawing rectangles */
+  Rect,
+
+  /** Component for drawing rounded rectangles */
+  RRect,
+
+  /** Container specifically for shapes */
+  ShapeContainer,
+
+  /** Utility for copying shapes */
+  ShapeCopy,
+
+  /** Component for reusable symbol elements */
+  Symbol,
+
+  /** Component for editable text fields */
+  Edit
+};
 
 export default Basic
