@@ -3,6 +3,45 @@
 import T3Svg from "../Util/T3Svg"
 import Element from "./B.Element"
 
+/**
+ * A container class that manages a collection of elements within an SVG structure.
+ * Container extends Element and provides methods for adding, removing, finding,
+ * and manipulating the z-order of child elements.
+ *
+ * This class serves as a base for any component that needs to contain and manage
+ * multiple SVG elements in a parent-child relationship.
+ *
+ * @extends Element
+ *
+ * @example
+ * // Create a new container
+ * const container = new Container();
+ *
+ * // Create and add elements to the container
+ * const circle = new Circle();
+ * const rect = new Rectangle();
+ * container.AddElement(circle);
+ * container.AddElement(rect, 0); // Add at specific index
+ *
+ * // Find elements
+ * const foundElement = container.GetElementById("myElementId");
+ * const elementAtIndex = container.GetElementByIndex(0);
+ *
+ * // Remove elements
+ * container.RemoveElement(circle);
+ * container.RemoveElementByInternalId("internalId123");
+ *
+ * // Manipulate z-order
+ * container.MoveElementToFront(rect);
+ * container.MoveElementBackward(anotherElement);
+ *
+ * // Get information
+ * const count = container.ElementCount();
+ * const index = container.GetElementIndex(rect);
+ *
+ * // Remove all elements
+ * container.RemoveAll();
+ */
 class Container extends Element {
 
   /**

@@ -3,6 +3,30 @@
 import T3Svg from "../Util/T3Svg"
 import Element from "./B.Element";
 
+/**
+ * The Image class provides functionality for creating and manipulating an SVG image element.
+ * It extends the base Element class and uses the T3Svg library to create and configure SVG elements.
+ *
+ * @remarks
+ * The class creates an SVG "image" element, initializes it with a given configuration, and allows the source URL
+ * to be set via the SetURL method. The image is configured to not preserve its aspect ratio to allow for custom scaling.
+ *
+ * @example
+ * Here's an example of how to create an SVG image element and set its source URL:
+ *
+ * ```typescript
+ * // Create an instance of the Image class
+ * const image = new Image();
+ *
+ * // Create the SVG image element with configuration and element type
+ * const svgImage = image.CreateElement({ id: 'myImage' }, 'customImage');
+ *
+ * // Set the source URL of the image
+ * image.SetURL('https://example.com/path/to/image.png');
+ * ```
+ *
+ * @class
+ */
 class Image extends Element {
 
   constructor() {

@@ -3,6 +3,37 @@
 import $ from 'jquery'
 import T3Gv from '../Data/T3Gv'
 
+/**
+ * Style class for managing element styling and image dimensions in the T3000 HVAC system.
+ *
+ * This class provides utilities for:
+ * - Color definition and manipulation
+ * - Image dimension calculation and caching
+ * - SVG and bitmap processing
+ *
+ * The class implements an efficient image size caching system to avoid redundant
+ * calculations and network requests when the same image is used multiple times.
+ *
+ * @example
+ * // Define a custom color
+ * const purple = Style.DefineColor(128, 0, 255);
+ * console.log(purple); // Outputs: #8000ff
+ *
+ * // Calculate image dimensions
+ * Style.CalcImageSize('path/to/image.svg',
+ *   (width, height, error, data) => {
+ *     if (!error) {
+ *       console.log(`Image dimensions: ${width}x${height}`);
+ *       console.log(`Custom data:`, data);
+ *     }
+ *   },
+ *   { id: 'myImage' }
+ * );
+ *
+ * // Create a style instance for an element
+ * const myElement = document.getElementById('hvacElement');
+ * const elementStyle = new Style(myElement);
+ */
 class Style {
 
   public element: any;

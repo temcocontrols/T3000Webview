@@ -5,6 +5,58 @@ import OptConstant from '../Data/Constant/OptConstant'
 import BoundInfo from '../Model/BoundInfo'
 import BConstant from "./B.Constant"
 
+/**
+ * Handles visual effects for SVG elements in the T3000 HVAC system.
+ * This class provides methods to apply, customize, and manage various visual effects
+ * such as drop shadows, glows, bevels, and reflections on SVG elements.
+ *
+ * The Effects class manages both primary effects (applied directly to the element)
+ * and secondary effects (which may create additional elements).
+ *
+ * @remarks
+ * Effects are applied through SVG filters and are rendered based on the element's bounds.
+ * The class automatically handles filter sizing constraints to ensure compatibility
+ * across different browsers and screen sizes.
+ *
+ * @example
+ * // Create an effects instance for an SVG element
+ * const elementEffects = new Effects(svgElement);
+ *
+ * // Apply a drop shadow effect
+ * elementEffects.SetEffects([{
+ *   type: BConstant.EffectType.DROPSHADOW,
+ *   params: {
+ *     xOff: 5,
+ *     yOff: 5,
+ *     size: 2,
+ *     color: '#000000'
+ *   }
+ * }]);
+ *
+ * @example
+ * // Apply multiple effects together
+ * elementEffects.SetEffects([
+ *   {
+ *     type: BConstant.EffectType.GLOW,
+ *     params: {
+ *       size: 3,
+ *       color: '#ff0000'
+ *     }
+ *   },
+ *   {
+ *     type: BConstant.EffectType.BEVEL,
+ *     params: {
+ *       size: 2,
+ *       dir: BConstant.FilterDirection.LEFTTOP,
+ *       type: BConstant.BevelType.SOFT
+ *     }
+ *   }
+ * ]);
+ *
+ * @example
+ * // Clear all effects from an element
+ * elementEffects.ClearEffects();
+ */
 class Effects {
 
   /**

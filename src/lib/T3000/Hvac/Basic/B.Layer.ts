@@ -3,6 +3,30 @@
 import T3Svg from "../Util/T3Svg"
 import Container from "./B.Container"
 
+/**
+ * Represents a graphical layer that handles creation and configuration of SVG elements with scaling options.
+ *
+ * @remarks
+ * This class extends Container and integrates with the T3Svg library to manipulate and initialize SVG objects.
+ * It offers two modes of scaling: standard scaling and DPI-specific scaling, which are mutually exclusive.
+ *
+ * @example
+ * // Create a new Layer instance
+ * const layer = new Layer();
+ *
+ * // Enable standard scaling and check
+ * layer.AllowScaling(true);
+ * console.log(layer.IsScalingAllowed()); // Expected output: true
+ *
+ * // Alternatively, enable DPI-only scaling
+ * layer.AllowDpiScalingOnly(true);
+ * console.log(layer.IsDpiScalingAllowed()); // Expected output: true
+ *
+ * // Create an SVG element with specified parameters
+ * const svgElement = layer.CreateElement('g', { width: 200, height: 200 });
+ *
+ * @public
+ */
 class Layer extends Container {
 
   public scaleOKFlag: boolean;

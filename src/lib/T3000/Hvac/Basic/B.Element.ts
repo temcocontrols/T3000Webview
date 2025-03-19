@@ -10,6 +10,48 @@ import BBoxModel from "../Model/BBoxModel"
 import TextConstant from "../Data/Constant/TextConstant"
 import T3Util from "../Util/T3Util"
 
+/**
+ * Represents a comprehensive SVG element with properties and methods for managing its position, size,
+ * rotation, transformations (including mirroring, flipping, and scaling), styles (fill, stroke, gradients, and textures),
+ * custom attributes, and events. This class acts as a base element for advanced SVG manipulation,
+ * allowing for integrated transformation updates, bounding box calculations, and effect management.
+ *
+ * @example
+ * // Example usage of the Element class:
+ *
+ * // Assume svgDocument is an instance of the SVG document and parentElement is a valid parent element.
+ * const svgDocument = getSvgDocument(); // User-defined function to obtain the SVG document.
+ * const parentElement = svgDocument.getElementById('parent');
+ *
+ * // Create and initialize the element.
+ * const myElement = new Element();
+ * myElement.InitElement(svgDocument, parentElement);
+ *
+ * // Set the element's properties.
+ * myElement.SetPos(100, 150);
+ * myElement.SetSize(250, 200);
+ * myElement.SetRotation(30);
+ * myElement.SetFillColor('#FF5733');
+ *
+ * // Apply a gradient fill.
+ * myElement.SetGradientFill({
+ *   type: 'linear',
+ *   stops: [
+ *     { offset: 0, color: '#FFFFFF', opacity: 1 },
+ *     { offset: 1, color: '#000000', opacity: 1 }
+ *   ],
+ *   startPos: 'LeftTop',
+ *   angle: 0
+ * });
+ *
+ * // Append the DOM element to the parent.
+ * parentElement.appendChild(myElement.DOMElement());
+ *
+ * @remarks
+ * This class depends on several utility modules (e.g., Utils1, T3Util, T3Svg) and constants (e.g., BConstant, TextConstant)
+ * that need to be present in the execution environment. The methods provided handle both direct attribute manipulation
+ * on the underlying SVG element and more complex tasks such as calculating transformed bounding boxes and updating patterns.
+ */
 class Element {
 
   //#region Properties

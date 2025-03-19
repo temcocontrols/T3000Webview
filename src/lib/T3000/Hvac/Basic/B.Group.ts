@@ -4,6 +4,42 @@ import T3Svg from "../Util/T3Svg"
 import Container from "./B.Container"
 import Utils1 from "../Util/Utils1"
 
+/**
+ * Represents an SVG group container that encapsulates and manages a collection of SVG elements.
+ *
+ * This class extends the Container functionality to support operations such as creating the SVG group,
+ * calculating the bounding box geometry, applying clipping rectangles, handling event targeting, and
+ * refreshing paint properties (such as fill and stroke patterns or gradients) on child elements.
+ *
+ * @remarks
+ * The Group class is designed to work with the T3Svg library and integrates with document coordinate conversion,
+ * formatting layers, and transformation restoration. It also supports the removal and restoration of DOM nodes
+ * for proper geometry calculation.
+ *
+ * @example
+ * Here's an example demonstrating how to create an SVG group, set a clipping rectangle, calculate its bounding box,
+ * and trigger a repaint:
+ *
+ * ```typescript
+ * // Creating a new Group instance
+ * const group = new Group();
+ *
+ * // Create the SVG group element with input data and configuration
+ * const svgGroupElement = group.CreateElement(inputData, config);
+ *
+ * // Set a clipping rectangle on the group to constrain its render area
+ * group.SetClipRect(10, 10, 200, 100);
+ *
+ * // Retrieve the bounding box geometry of the group
+ * const bbox = group.GetGeometryBBox();
+ * console.log('Bounding Box:', bbox);
+ *
+ * // Trigger an update of paint properties (fill, stroke) for the group and its children
+ * group.RefreshPaint(event);
+ * ```
+ *
+ * @public
+ */
 class Group extends Container {
 
   public clipElem: any;

@@ -24,6 +24,55 @@ import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 
+/**
+ * Represents the main drawing canvas for HVAC elements in T3000.
+ *
+ * The Document class serves as the primary container for all visual elements in the HVAC
+ * visualization system. It manages document initialization, coordinate transformations,
+ * scaling, and layer management. This class handles the SVG rendering surface and provides
+ * methods for creating and manipulating shapes, managing document properties, and
+ * converting coordinates between different reference systems.
+ *
+ * Key responsibilities:
+ * - SVG document initialization and configuration
+ * - Shape creation and management
+ * - Layer management (adding, removing, ordering)
+ * - Coordinate transformations between document, window, and element spaces
+ * - Scaling and DPI management
+ * - Text formatting and caching
+ *
+ * @remarks
+ * The Document class extends Container and maintains a hierarchical structure of
+ * visual elements. It uses SVG for rendering and provides abstractions for working
+ * with complex drawing operations.
+ *
+ * @example
+ * // Create a new document in a div with id "hvacCanvas"
+ * const availableFonts = ['Arial', 'Verdana', 'Times New Roman'];
+ * const doc = new Document('hvacCanvas', availableFonts);
+ *
+ * // Set document properties
+ * doc.SetDocumentSize(1000, 800);
+ * doc.SetDocumentDPI(96);
+ * doc.SetDocumentScale(1.5);
+ *
+ * // Create and add a layer
+ * const mainLayer = doc.AddLayer('mainLayer');
+ * doc.SetDocumentLayer('mainLayer');
+ *
+ * // Create and add shapes
+ * const rect = doc.CreateShape(OptConstant.CSType.Rect);
+ * rect.SetSize(100, 50);
+ * rect.SetPosition(200, 150);
+ * mainLayer.AddElement(rect);
+ *
+ * // Convert between coordinate systems
+ * const windowCoords = doc.ConvertDocToWindowCoords(300, 200);
+ * const docCoords = doc.ConvertWindowToDocCoords(windowCoords.x, windowCoords.y);
+ *
+ * // Apply transformations
+ * doc.ApplyDocumentTransform();
+ */
 class Document extends Container {
 
   /**
