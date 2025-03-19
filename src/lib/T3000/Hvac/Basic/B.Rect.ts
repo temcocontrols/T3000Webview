@@ -4,6 +4,30 @@ import T3Svg from "../Util/T3Svg"
 import Element from "./B.Element"
 import Utils1 from "../Util/Utils1"
 
+/**
+ * Represents a rectangular SVG element.
+ *
+ * @remarks
+ * The Rect class extends the Element class and provides functionality to create and manipulate a rectangular
+ * SVG element. Internally, it uses a container for grouping SVG elements and a rectangle shape element to render
+ * a rectangle. The class contains methods to initialize the element with provided data and to adjust its size,
+ * which in turn update the underlying SVG container and shape.
+ *
+ * @example
+ * // Create an instance of Rect
+ * const rect = new Rect();
+ *
+ * // Initialize the SVG element using creation data and transformation data
+ * const svgContainer = rect.CreateElement(
+ *   { Provide element configuration data here },
+ *   { Provide transformation configuration data here }
+ * );
+ *
+ * // Adjust the size of the rectangle to 200x100
+ * rect.SetSize(200, 100);
+ *
+ * // The `svgContainer` now contains a rectangular SVG element sized to 200x100 pixels.
+ */
 class Rect extends Element {
 
   public shapeElem: any;

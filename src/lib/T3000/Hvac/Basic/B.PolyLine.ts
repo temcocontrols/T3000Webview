@@ -2,6 +2,37 @@
 
 import Path from "./B.Path"
 
+/**
+ * Represents a polyline path composed of multiple connected points.
+ *
+ * The PolyLine class extends the Path class and provides functionality to define a polyline
+ * using an array of points with x and y coordinates. It calculates both a string representation
+ * of the path and its bounding box based on the provided points.
+ *
+ * The bounding box is determined by computing the minimum and maximum coordinates among the points.
+ * The first point initializes the path and sets the initial bounding box, and subsequent points
+ * are added to extend the path and update the bounding box accordingly.
+ *
+ * @remarks
+ * - Uses a helper called PathCreator to construct the path string.
+ * - The bounding box is represented as an object with x, y, width, and height properties.
+ * - If the provided points array has one or fewer points, the path is not fully created.
+ *
+ * @example
+ * Here is an example of how to use the PolyLine class:
+ * ```typescript
+ * const polyline = new PolyLine();
+ * const points = [
+ *   { x: 10, y: 20 },
+ *   { x: 15, y: 25 },
+ *   { x: 20, y: 20 }
+ * ];
+ * polyline.SetPoints(points);
+ *
+ * // The polyline now contains a computed path definition and a bounding box:
+ * // boundingBox: { x: 10, y: 20, width: 10, height: 5 }
+ * ```
+ */
 class PolyLine extends Path {
 
   constructor() {

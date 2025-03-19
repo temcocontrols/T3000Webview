@@ -4,6 +4,28 @@ import T3Svg from "../Util/T3Svg"
 import Element from "./B.Element"
 import Utils1 from "../Util/Utils1"
 
+/**
+ * Represents an oval SVG element.
+ *
+ * This class extends the base Element class and encapsulates the creation and manipulation
+ * of an oval shape using SVG elements. It leverages the T3Svg library to construct and adjust
+ * the visual representation of the oval.
+ *
+ * @remarks
+ * The oval element is constructed by creating a container for SVG elements, and a specific
+ * Ellipse element is added to define the shape of the oval. The class provides methods to create
+ * and resize the oval element while maintaining its geometric properties.
+ *
+ * @example
+ * // Create an Oval instance and initialize an oval element with specific dimensions.
+ * const oval = new Oval();
+ * const svgContainer = oval.CreateElement(150, 100);
+ *
+ * // Later, update the size of the oval element.
+ * oval.SetSize(200, 150);
+ *
+ * @class
+ */
 class Oval extends Element {
 
   public shapeElem: any;

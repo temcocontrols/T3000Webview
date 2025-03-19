@@ -3,18 +3,48 @@
 import Path from "./B.Path";
 import Utils1 from "../Util/Utils1"
 
+/**
+ * PolyPolyLine class extends Path to manage and display multiple polylines
+ * with optional arrowheads on their segments.
+ *
+ * This class allows:
+ * - Adding multiple polyline segments.
+ * - Clearing and rebuilding the path.
+ * - Generating arrowheads at the start and/or end of polyline segments.
+ * - Calculating and updating the bounding box of the geometry.
+ *
+ * Example usage:
+ * ----------------------------------------------------------------------------
+ * import PolyPolyLine from "./B.PolyPolyLine";
+ *
+ * // Instantiate a new PolyPolyLine
+ * const polyLine = new PolyPolyLine();
+ *
+ * // Add a polyline with arrow only at the start point
+ * polyLine.AddPolyLine([{ x: 10, y: 10 }, { x: 50, y: 50 }], true, false);
+ *
+ * // Build the path for the added polyline
+ * polyLine.BuildPath();
+ *
+ * // Optionally, update arrowheads later if necessary
+ * polyLine.UpdateArrowheads();
+ * ----------------------------------------------------------------------------
+ */
 class PolyPolyLine extends Path {
 
+  // List to store multiple polylines and their corresponding arrow flags
   public pList: any;
 
   constructor() {
     super();
+    // Array holding polyline definitions
     this.pList = [];
+    // Array storing all SVG arrow elements for later management
     this.arrowElems = [];
   }
 
   /**
-   * Clears all polylines from the list and rebuilds the path
+   * Clears all polylines from the list and rebuilds the SVG path.
    */
   Clear() {
     this.pList = [];
@@ -22,10 +52,10 @@ class PolyPolyLine extends Path {
   }
 
   /**
-   * Adds a polyline to the list with optional start and end arrows
-   * @param points - Array of point coordinates for the polyline
-   * @param startArrowFlag - Whether to display an arrow at the start point
-   * @param endArrowFlag - Whether to display an arrow at the end point
+   * Adds a polyline to the list with optional start and end arrow flags.
+   * @param points - Array of point coordinates for the polyline.
+   * @param startArrowFlag - Whether to display an arrow at the start point.
+   * @param endArrowFlag - Whether to display an arrow at the end point.
    */
   AddPolyLine(points, startArrowFlag, endArrowFlag) {
     this.pList.push({
@@ -36,10 +66,16 @@ class PolyPolyLine extends Path {
   }
 
   /**
-   * Builds the SVG path from the stored polylines and generates arrowheads
+   * Builds the SVG path from the stored polylines and generates arrowheads.
+   *
+   * - Removes previous arrow elements.
+   * - Iterates through each polyline and its segments.
+   * - Calculates bounding box dimensions.
+   * - Adjusts segment endpoints if arrowheads are applied.
+   * - Falls back to a default arrowhead if none are generated.
    */
   BuildPath() {
-    // Remove all existing arrow children
+    // Remove all existing arrow elements from the arrow area
     while (this.arrowAreaElem.children().length) {
       this.arrowAreaElem.removeAt(0);
     }
@@ -61,6 +97,7 @@ class PolyPolyLine extends Path {
       let endArrowData = null;
       const pointsCount = this.pList[polyIndex].points.length;
 
+      // Loop through each segment of the polyline
       for (let pointIndex = 0; pointIndex < pointsCount - 1; pointIndex++) {
         const isFirstSegmentOfPolyline = pointIndex === 0;
         const isLastSegmentOfPolyline = pointIndex === pointsCount - 2;
@@ -68,7 +105,7 @@ class PolyPolyLine extends Path {
         const startPoint = this.pList[polyIndex].points[pointIndex];
         let endPoint = this.pList[polyIndex].points[pointIndex + 1];
 
-        // Prepare arrowhead data for start and end of segment if available
+        // If the segment is the first and the flag is set, prepare start arrow data
         if (isFirstSegmentOfPolyline && this.pList[polyIndex].sArrowFlag && this.sArrowRec) {
           startArrowData = {
             arrowRec: this.sArrowRec,
@@ -77,6 +114,7 @@ class PolyPolyLine extends Path {
           };
         }
 
+        // If the segment is the last and the flag is set, prepare end arrow data
         if (isLastSegmentOfPolyline && this.pList[polyIndex].eArrowFlag && this.eArrowRec) {
           endArrowData = {
             arrowRec: this.eArrowRec,
@@ -85,13 +123,13 @@ class PolyPolyLine extends Path {
           };
         }
 
-        // Generate arrowheads if any arrow data exists
+        // Generate arrowheads if any arrow data exists for the segment
         if (startArrowData || endArrowData) {
           this.GenerateArrowheads(startPoint, endPoint, startArrowData, endArrowData);
           arrowGenerated = true;
         }
 
-        // Update the bounding box
+        // Update the bounding box values using the segment's points
         if (isFirstSegment) {
           boundingMin.x = Math.min(startPoint.x, endPoint.x);
           boundingMin.y = Math.min(startPoint.y, endPoint.y);
@@ -105,17 +143,18 @@ class PolyPolyLine extends Path {
         }
         isFirstSegment = false;
 
-        // Adjust start and end points based on arrowheads if generated
+        // Adjust the starting point if a start arrow is generated
         if (startArrowData) {
           currentPoint = startArrowData.segPt;
         } else {
           currentPoint = startPoint;
         }
+        // Adjust the ending point if an end arrow is generated
         if (endArrowData) {
           endPoint = endArrowData.segPt;
         }
 
-        // Plot the path
+        // Plot the path based on the current polyline segment
         if (isFirstSegmentOfPolyline) {
           pathCreator.MoveTo(currentPoint.x, currentPoint.y);
         } else if (!isLastSegmentOfPolyline) {
@@ -126,7 +165,7 @@ class PolyPolyLine extends Path {
         }
       }
 
-      // Add arrow elements to the arrow area
+      // Add generated arrow elements to the arrow area for rendering
       if (startArrowData) {
         this.arrowAreaElem.add(startArrowData.arrowElem);
         this.arrowElems.push(startArrowData.arrowElem);
@@ -137,7 +176,7 @@ class PolyPolyLine extends Path {
       }
     }
 
-    // Fallback arrowhead generation if none was added
+    // If no arrow was generated and a valid point exists, create a fallback arrowhead at the last point
     if (!arrowGenerated && currentPoint) {
       const fallbackArrowData = {
         arrowRec: this.EmptyArrowhead(),
@@ -145,12 +184,12 @@ class PolyPolyLine extends Path {
         arrowDisp: false,
         arrowElem: null
       };
-      // Using the last known endPoint from the loop to generate arrowhead
       this.GenerateArrowheads(currentPoint, currentPoint, fallbackArrowData, null);
       this.arrowAreaElem.add(fallbackArrowData.arrowElem);
       this.arrowElems.push(fallbackArrowData.arrowElem);
     }
 
+    // Finalize the path and update the transform and geometry bounding box
     const pathData = pathCreator.ToString();
     this.origPathData = pathData;
     this.pathElem.plot(pathData);
@@ -164,22 +203,28 @@ class PolyPolyLine extends Path {
   }
 
   /**
-   * Updates arrowheads by rebuilding the entire path
+   * Updates arrowheads by triggering a rebuild of the entire path.
    */
   UpdateArrowheads() {
     this.BuildPath();
   }
 
   /**
-   * Generates arrowheads for a line segment between two points
-   * @param startPoint - The starting point of the line segment
-   * @param endPoint - The ending point of the line segment
-   * @param startArrow - Arrow configuration for the start point
-   * @param endArrow - Arrow configuration for the end point
+   * Generates arrowheads for a line segment between two points.
+   *
+   * Assigns calculated coordinates, angles, and offsets to the arrow configuration.
+   * Checks both the start and end arrow data if provided.
+   * Also calculates trimming of the line segment so that arrowheads do not overlap with the line.
+   *
+   * @param startPoint - The starting point of the line segment.
+   * @param endPoint - The ending point of the line segment.
+   * @param startArrow - Arrow configuration for the start point.
+   * @param endArrow - Arrow configuration for the end point.
    */
   GenerateArrowheads(startPoint, endPoint, startArrow, endArrow) {
     let deltaX, deltaY, distance, startArrowDim, endArrowDim, trimAmount, startTrim, endTrim;
 
+    // Initialize start arrow properties if provided
     if (startArrow) {
       startArrow.segPt = { x: startPoint.x, y: startPoint.y };
       startArrow.attachPt = { x: startPoint.x, y: startPoint.y };
@@ -188,6 +233,7 @@ class PolyPolyLine extends Path {
       startArrow.angle = 180;
     }
 
+    // Initialize end arrow properties if provided
     if (endArrow) {
       endArrow.segPt = { x: endPoint.x, y: endPoint.y };
       endArrow.attachPt = { x: endPoint.x, y: endPoint.y };
@@ -196,20 +242,21 @@ class PolyPolyLine extends Path {
       endArrow.angle = 0;
     }
 
+    // Calculate the distance and direction between the two points
     deltaX = endPoint.x - startPoint.x;
     deltaY = endPoint.y - startPoint.y;
     distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
+    // Retrieve arrowhead dimensions, including trim amount needed for arrowhead spacing
     if (startArrow) {
       startArrowDim = this.CalcArrowheadDim(startArrow.arrowRec, startArrow.arrowSize, startArrow.arrowDisp);
     }
-
     if (endArrow) {
       endArrowDim = this.CalcArrowheadDim(endArrow.arrowRec, endArrow.arrowSize, endArrow.arrowDisp);
     }
-
     trimAmount = (startArrowDim ? startArrowDim.trimAmount : 0) + (endArrowDim ? endArrowDim.trimAmount : 0);
 
+    // Adjust trim amounts if the total trim exceeds the distance between points
     if (trimAmount > distance) {
       startTrim = (startArrowDim ? startArrowDim.trimAmount : 0) / trimAmount * distance;
       endTrim = (endArrowDim ? endArrowDim.trimAmount : 0) / trimAmount * distance;
@@ -218,6 +265,7 @@ class PolyPolyLine extends Path {
       endTrim = endArrowDim ? endArrowDim.trimAmount : 0;
     }
 
+    // Calculate adjusted positions and angles if there is a valid distance
     if (distance) {
       const unitX = deltaX / distance;
       const unitY = deltaY / distance;
@@ -242,6 +290,7 @@ class PolyPolyLine extends Path {
         endArrow.offset.y = endArrow.attachPt.y - endArrowDim.attachY;
       }
 
+      // Create the SVG element for the start arrowhead if dimensions are available
       if (startArrowDim) {
         startArrowDim.offsetX = startArrow.offset.x;
         startArrowDim.offsetY = startArrow.offset.y;
@@ -250,6 +299,7 @@ class PolyPolyLine extends Path {
         startArrow.arrowElem = this.CreateArrowheadElem(startArrow.arrowRec, startArrowDim, true, this.arrowheadBounds);
       }
 
+      // Create the SVG element for the end arrowhead if dimensions are available
       if (endArrowDim) {
         endArrowDim.offsetX = endArrow.offset.x;
         endArrowDim.offsetY = endArrow.offset.y;
@@ -259,7 +309,6 @@ class PolyPolyLine extends Path {
       }
     }
   }
-
 }
 
 export default PolyPolyLine

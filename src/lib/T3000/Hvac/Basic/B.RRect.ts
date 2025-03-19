@@ -2,6 +2,39 @@
 
 import Path from "./B.Path";
 
+
+/**
+ * Represents a rounded rectangle path that can be drawn with curved corners.
+ *
+ * This class extends Path and provides methods to define a rounded rectangle
+ * with specific dimensions and customizable corner radii. The class ensures
+ * that the corner radii do not exceed half the width or height of the rectangle,
+ * thereby preserving valid and visually appealing rounded corners.
+ *
+ * The main methods include:
+ *
+ * - SetRRectSize(width: number, height: number, cornerRadiusX: number, cornerRadiusY: number):
+ *   Defines the overall dimensions of the rectangle and its corner radii.
+ *   It calculates the inner width and height based on given radii and constructs the
+ *   path accordingly. If either corner radius is zero, a standard rectangle path
+ *   is created.
+ *
+ * - SetSize(width: number, height: number):
+ *   Updates the rectangle dimensions while preserving the last set corner radii.
+ *
+ * @example
+ * // Create a new rounded rectangle instance
+ * const roundedRect = new RRect();
+ *
+ * // Set a rounded rectangle with width 100, height 50, and corner radii of 10 for both axes
+ * roundedRect.SetRRectSize(100, 50, 10, 10);
+ *
+ * // Later, update the size while keeping the existing corner radii
+ * roundedRect.SetSize(150, 75);
+ *
+ * @remarks
+ * The class uses an internal path creator to build the path string for rendering the shape.
+ */
 class RRect extends Path {
 
   public rx: number;

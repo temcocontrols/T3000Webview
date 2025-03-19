@@ -3,6 +3,32 @@
 import Path from './B.Path'
 import Utils1 from "../Util/Utils1"
 
+/**
+ * The Creator class is responsible for building SVG path commands.
+ *
+ * This class maintains an internal state for the current position and a list of path segments,
+ * enabling the construction of complex SVG paths through methods like BeginPath, MoveTo, LineTo,
+ * CurveTo, SimpleArcTo, ArcTo, and ClosePath. It also provides an Apply method to set the generated
+ * path string on an associated element if it is a valid Path instance.
+ *
+ * @example
+ * // Create a new instance of Creator and generate a simple SVG path
+ * const creator = new Creator();
+ * creator.BeginPath();
+ * creator.MoveTo(10, 10, false);
+ * creator.LineTo(20, 20, false);
+ * creator.CurveTo(25, 25, 40, 40, false);
+ * creator.ClosePath();
+ * const svgPathString = creator.ToString();
+ * console.log(svgPathString); // Outputs the SVG path commands as a string.
+ *
+ * @remarks
+ * - Use MoveTo to set an absolute or relative starting point.
+ * - Use LineTo to draw straight lines from the current position.
+ * - Use CurveTo to draw quadratic Bezier curves.
+ * - SimpleArcTo and ArcTo are provided for drawing elliptical arcs.
+ * - The Apply method can be used to update the path of an associated SVG element.
+ */
 class Creator {
 
   public element: any;

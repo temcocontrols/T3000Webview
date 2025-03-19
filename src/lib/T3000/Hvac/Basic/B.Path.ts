@@ -9,6 +9,41 @@ import Instance from "../Data/Instance/Instance";
 import BConstant from "./B.Constant";
 import OptConstant from "../Data/Constant/OptConstant";
 
+/**
+ * Represents an SVG path with configurable stroke properties and optional arrowheads at either end.
+ *
+ * This class extends the Container class to provide functionality for drawing and manipulating
+ * SVG paths. It supports the creation and updating of the path's geometry, the calculation and
+ * placement of arrowheads based on specified metrics, and the adjustment of stroke attributes such
+ * as width, color, and dash patterns.
+ *
+ * Key Features:
+ * - Creation of SVG path and arrow containers.
+ * - Configuration of arrowheads including the calculation of dimensions, rotation, and positioning.
+ * - Ability to update the stroke width, stroke color, dash patterns, and gradients.
+ * - Functionality to trim the path from either the start or the end.
+ * - Computes the bounding box of the path geometry.
+ *
+ * Example Usage:
+ *
+ * const path = new Path();
+ *
+ * // Create the SVG elements and add them to a parent element
+ * const svgContainer = path.CreateElement(svgDoc, parent);
+ *
+ * // Define SVG path data and set it on the path element
+ * path.SetPath("M10,10 L100,100");
+ *
+ * // Configure arrowheads with custom definitions, sizes, and display options
+ * path.SetArrowheads(startArrowDef, 5, endArrowDef, 5, true, true);
+ *
+ * // Update stroke properties: width, color and dash pattern
+ * path.SetStrokeWidth(2);
+ * path.SetStrokeColor("#FF0000");
+ * path.SetStrokePattern("5,5");
+ *
+ * // The path now displays with the specified styling and arrowhead markers.
+ */
 class Path extends Container {
 
   public pathCreator: any;
