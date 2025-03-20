@@ -72,7 +72,6 @@ class Rect extends Element {
     this.UpdateTransform();
     this.RefreshPaint();
   }
-
 }
 
 export default Rect

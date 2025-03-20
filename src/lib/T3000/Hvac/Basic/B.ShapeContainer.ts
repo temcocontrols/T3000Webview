@@ -294,7 +294,6 @@ class ShapeContainer extends Group {
       return this.shapeGroup ? this.shapeGroup.MoveElementToBack(element) : undefined;
     }
   }
-
 }
 
 export default ShapeContainer

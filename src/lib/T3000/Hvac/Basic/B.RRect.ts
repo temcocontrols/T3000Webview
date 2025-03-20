@@ -102,7 +102,6 @@ class RRect extends Path {
   SetSize(width: number, height: number): void {
     this.SetRRectSize(width, height, this.rx, this.ry);
   }
-
 }
 
 export default RRect

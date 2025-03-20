@@ -5,7 +5,7 @@ import $ from 'jquery';
 import Utils1 from "../Util/Utils1"
 import Utils3 from "../Util/Utils3"
 import DefaultFmtText from '../Model/DefaultFmtText'
-import DefaultRuntimeText from '../Model/DefaultRuntimeText'
+import DefaultRtText from '../Model/DefaultRtText'
 import DefaultStyle from "../Model/DefaultStyle";
 import Instance from "../Data/Instance/Instance";
 import OptConstant from "../Data/Constant/OptConstant";
@@ -73,7 +73,7 @@ class Formatter {
     this.parent = parent;
     this.limits = { minWidth: 0, maxWidth: 0 };
     this.fmtText = new DefaultFmtText();
-    this.rtData = new DefaultRuntimeText();
+    this.rtData = new DefaultRtText();
     this.renderedLines = [];
     this.wordList = null;
     this.renderingEnabled = !0;
@@ -3658,7 +3658,6 @@ class Formatter {
     T3Util.Log("B.Text.Formatter: FormatDataFieldID output:", formattedID);
     return formattedID;
   }
-
 }
 
 export default Formatter

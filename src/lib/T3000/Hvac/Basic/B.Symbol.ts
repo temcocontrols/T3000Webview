@@ -400,7 +400,6 @@ class Symbol extends Element {
 
     return result;
   }
-
 }
 
 export default Symbol

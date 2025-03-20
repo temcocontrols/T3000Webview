@@ -92,7 +92,6 @@ class Polygon extends Path {
       height: maxCoordinate.y - minCoordinate.y
     });
   }
-
 }
 
 export default Polygon

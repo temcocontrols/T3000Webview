@@ -51,7 +51,6 @@ class ShapeCopy extends Element {
     const internalID = sourceElement.SetInternalID();
     this.svgObj.attr('xlink:href', `#${internalID}`, 'http://www.w3.org/1999/xlink');
   }
-
 }
 
 export default ShapeCopy

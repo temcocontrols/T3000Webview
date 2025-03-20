@@ -646,7 +646,7 @@ class Spell {
    * When a user selects "Add to Dictionary" from the spell check menu,
    * this function adds the word to the user dictionary
    */
-  HandleMenu_Add() {
+  HandleMenuAdd() {
     T3Util.Log("B.Text.Spell: Handling menu 'Add to Dictionary' action");
 
     if (this.spellMenuData) {
@@ -668,7 +668,7 @@ class Spell {
    * When a user selects "Ignore" from the spell check menu,
    * this function adds the word to the ignore list
    */
-  HandleMenu_Ignore() {
+  HandleMenuIgnore() {
     T3Util.Log("B.Text.Spell: Handling menu 'Ignore' action");
 
     if (this.spellMenuData) {
@@ -692,7 +692,7 @@ class Spell {
    *
    * @param suggestionIndex - The index of the selected suggestion in the suggestions array
    */
-  HandleMenu_Suggest(suggestionIndex) {
+  HandleMenuSuggest(suggestionIndex) {
 
     if (
       !this.spellMenuData ||

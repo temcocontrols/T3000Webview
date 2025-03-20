@@ -78,7 +78,6 @@ class PolyLine extends Path {
 
     this.SetPath(pathDefinition, boundingBox);
   }
-
 }
 
 export default PolyLine
