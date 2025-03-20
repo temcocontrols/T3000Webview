@@ -5,6 +5,45 @@ import T3Gv from "../T3Gv"
 import Utils1 from "../../Util/Utils1"
 import StoredObject from "./StoredObject"
 
+/**
+ * A container class for storing and managing objects with state operations.
+ *
+ * This class provides methods to:
+ * - Save new objects or update existing objects, while marking them as "dirty" if needed.
+ * - Retrieve objects by their unique identifier using GetObject.
+ * - Retrieve collections of objects based on their type using GetObjects.
+ * - Delete objects from the store and update the state accordingly using DeleteObject.
+ * - Create preserved blocks or new blocks with specified properties.
+ * - Overwrite the collection of stored objects using SetStoredObjects.
+ *
+ * @remarks
+ * The class is designed to work alongside an external state management system, which is used to track and handle state changes (for example, via T3Gv.state).
+ * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.isObject) to be available in the environment.
+ *
+ * @example
+ * Here's an example of how to create an instance of ObjectStore and operate on stored objects:
+ *
+ * const store = new ObjectStore();
+ *
+ * // Create a new block with a type and data
+ * const newBlock = store.CreateBlock('Sensor', { temperature: 22.5 });
+ *
+ * // Save the new block to the store (and add to current state by default)
+ * const newBlockId = store.SaveObject(newBlock);
+ *
+ * // Retrieve the block by its ID
+ * const retrievedBlock = store.GetObject(newBlockId);
+ * console.log(retrievedBlock);
+ *
+ * // Get all stored objects of type 'Sensor'
+ * const sensorBlocks = store.GetObjects('Sensor');
+ * console.log(sensorBlocks);
+ *
+ * // Delete the block and update current state
+ * store.DeleteObject(newBlockId);
+ *
+ * @category Data Management
+ */
 class ObjectStore {
 
   /** Object ID */

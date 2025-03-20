@@ -1,6 +1,39 @@
 
 import ObjectStore from './ObjectStore'
 
+/**
+ * Factory class to create and manage object stores.
+ *
+ * This class provides a method to create a new object store that can be initialized with an optional
+ * array of objects. The store comes with three primary methods:
+ *
+ * - Set: Updates the store with a new array of objects. This method ensures that the provided value is a valid array,
+ *   throwing errors for invalid input (null or non-array).
+ * - Get: Retrieves the current list of objects stored.
+ * - Clear: Empties the store by setting its contents to an empty array.
+ *
+ * @remarks
+ * The design encapsulates the store variable inside the factory method, exposing only the methods to manipulate the
+ * store (Set, Get, and Clear), thus promoting controlled access to the stored objects.
+ *
+ * @example
+ * const factory = new ObjectStoreFactory();
+ *
+ * // Creating a store with initial objects
+ * const store = factory.Create([{ id: 1, name: "Object 1" }, { id: 2, name: "Object 2" }]);
+ *
+ * // Retrieving objects from the store
+ * console.log(store.Get()); // Output: [{ id: 1, name: "Object 1" }, { id: 2, name: "Object 2" }]
+ *
+ * // Updating the store with a new set of objects
+ * store.Set([{ id: 3, name: "Object 3" }]);
+ *
+ * // Clearing the store
+ * store.Clear();
+ * console.log(store.Get()); // Output: []
+ *
+ * @public
+ */
 class ObjectStoreFactory {
   /**
    * Creates a new object store with optional initial objects

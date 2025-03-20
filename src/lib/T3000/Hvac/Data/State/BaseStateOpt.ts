@@ -1,5 +1,56 @@
 import State from "./State"
 
+/**
+ * BaseStateOpt provides a foundational implementation for managing application states.
+ *
+ * This class encapsulates state management functionality for tracking, preserving,
+ * and restoring states within an application. It is designed to support features like
+ * undo/redo operations, state synchronization, and state backup in case of exceptions.
+ *
+ * @remarks
+ * The main responsibilities of BaseStateOpt include:
+ * - Preserving the current state using PreserveState(). This is essential for capturing
+ *   a snapshot of the current state for backup or undo purposes.
+ * - Synchronizing new objects with existing states via SyncObjectsWithCreateStates() to
+ *   ensure that newly created objects are consistent with the current state history.
+ * - Retrieving and managing state history with methods such as GetUndoState(), RestorePrevState(),
+ *   and RestoreNextState(), which facilitate undo and redo actions.
+ * - Performing exception cleanup using ExceptionCleanup() to ensure that inconsistent states
+ *   are handled gracefully during runtime errors.
+ * - Managing state items through operations like AddToCurrentState(), CurrentStateReplace(),
+ *   CurrentStateDelete(), and ReplaceInCurrentState() for dynamic state modification.
+ * - Resetting undo states with ResetUndoStates() and ResetToSpecificState() to clear or adjust
+ *   the state history based on application needs.
+ * - Clearing future (redo) states using ClearFutureUndoStates() for maintaining a consistent
+ *   state history after a new branch of changes.
+ * - Debugging state management by dumping state information through DumpStates() with customizable options.
+ *
+ * @example
+ * The following example demonstrates basic usage of BaseStateOpt:
+ *
+ * ```typescript
+ * // Create an instance of BaseStateOpt
+ * const baseState = new BaseStateOpt();
+ *
+ * // Preserve the current state for later restoration
+ * baseState.PreserveState();
+ *
+ * // Add a new item to the current state
+ * baseState.AddToCurrentState({ id: 1, value: 'Initial state data' });
+ *
+ * // Optionally, replace an existing item in the current state (if it exists)
+ * baseState.CurrentStateReplace({ id: 1, value: 'Updated state data' }, true);
+ *
+ * // Retrieve the current state (if any)
+ * const currentState = baseState.GetCurrentState();
+ * console.log('Current State:', currentState);
+ *
+ * // Reset all undo states to initial values
+ * baseState.ResetUndoStates();
+ * ```
+ *
+ * @public
+ */
 class BaseStateOpt {
 
   /**
