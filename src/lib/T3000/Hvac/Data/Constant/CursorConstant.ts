@@ -1,5 +1,34 @@
 
 
+/**
+ * Provides a collection of constants for cursor management in UI components.
+ *
+ * @remarks
+ * This class defines constant mappings and configurations used to:
+ * - Map logical cursor types to their corresponding CSS class names (CursorType).
+ * - Group common cursor type identifiers into logical categories (CursorTypes).
+ * - Set up file paths and filenames for knob-related cursor images (Knob).
+ * - Represent various cursor interaction states (CursorState).
+ *
+ * Each static property in the class plays a role in standardizing cursor appearance and behavior across the application,
+ * ensuring consistency and ease of maintenance.
+ *
+ * @example
+ * Using the CursorConstant class to apply settings:
+ *
+ * // Applying a cursor CSS class to an HTML element for pointer functionality.
+ * element.classList.add(CursorConstant.CursorType.POINTER);
+ *
+ * // Constructing the full path for a knob image:
+ * const knobImagePath = `${CursorConstant.Knob.Path}${CursorConstant.Knob.DiagonLeft}`;
+ *
+ * // Implementing logic based on a specific cursor interaction state.
+ * if (currentCursorState === CursorConstant.CursorState.EditLink) {
+ *   // Enable link editing functionalities.
+ * }
+ *
+ * @public
+ */
 class CursorConstant {
 
   /**

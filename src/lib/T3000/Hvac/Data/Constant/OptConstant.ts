@@ -1,6 +1,49 @@
+
 /**
- * Constants used throughout the HVAC application
- * Contains enumerations for shape types, events, drawing parameters and other system constants
+ * A comprehensive repository of constant definitions used for canvas drawing and object manipulation.
+ *
+ * @remarks
+ * The OptConstant class serves as a centralized location for various enumerated constants
+ * that govern the behavior of a drawing/graphic engine. It includes definitions such as:
+ *
+ * - Canvas shape type identifiers (via CSType and ShapeType) for distinguishing among different
+ *   drawing elements like Rectangles, Circles, Text, and Images.
+ * - Event behavior constants that determine how interaction events are propagated (e.g., Normal,
+ *   Inside, Outside, Hidden, etc.).
+ * - Export format types (PNG, SVG, JPEG) for saving or transferring drawings.
+ * - Various line and segment type definitions (LineTypes, LineType, SVGPathSeg) that are essential
+ *   for rendering different line styles and curves.
+ * - System-wide measurement and layout parameters (Common) including maximum dimensions, conversion
+ *   factors, and default styling properties.
+ * - Flags and type identifiers for additional object behaviors (ObjMoreFlags, ExtraFlags, etc.).
+ * - Connector, session, and action trigger identifiers that support manipulation and interactivity
+ *   within diagrams.
+ *
+ * These constants are designed to ensure consistency in configuration and behavior, making it
+ * easier to develop and maintain complex drawing applications.
+ *
+ * @example
+ * Accessing and using some constants defined in the OptConstant class:
+ *
+ * // Retrieve a canvas shape type constant for a rectangle
+ * const rectType = OptConstant.CSType.Rect;
+ * console.log("Rectangle type identifier:", rectType);
+ *
+ * // Determine the event behavior for a shape
+ * const eventBehavior = OptConstant.EventBehavior.Normal;
+ * console.log("Normal event behavior:", eventBehavior);
+ *
+ * // Use an export format constant
+ * const exportFormat = OptConstant.ExportType.PNG;
+ * if (exportFormat === OptConstant.ExportType.PNG) {
+ *   console.log("Exporting drawing as PNG image.");
+ * }
+ *
+ * // Example: Using a system-wide measurement constant
+ * const maxCanvasDimension = OptConstant.Common.DimMax;
+ * console.log("Maximum canvas dimension allowed:", maxCanvasDimension);
+ *
+ * @public
  */
 class OptConstant {
 
@@ -512,7 +555,7 @@ class OptConstant {
     ActionArrow: 11,           // Action arrow
     DimTextNoEdit: 12,         // Non-editable dimension text
     AreaDimLine: 13,           // Area dimension line
-    GraphLine: 14,             // Graph line
+    // GraphLine: 14,             // Graph line
     CoordinateLine: 21         // Coordinate line
   }
 
@@ -524,7 +567,7 @@ class OptConstant {
     None: 1,    // No content
     Text: 2,    // Text content
     Table: 3,   // Table content
-    Graph: 4    // Graph content
+    // Graph: 4    // Graph content
   }
 
   /**

@@ -1,6 +1,41 @@
+
 /**
- * Constants used throughout the HVAC application
- * This class provides centralized access to various enumeration values and configuration constants
+ * Provides a centralized collection of constant values used throughout the application.
+ *
+ * This class aggregates various constant definitions including:
+ * - Text editor operation codes and growth behavior.
+ * - Ruler units, fill types, color definitions, and style defaults.
+ * - Graph types, flags, and axis configurations for graphical representations.
+ * - Dimensions and hop configurations for layout details.
+ * - Layer flags, types, container arrangements, and editing states.
+ * - Geometric constants, object and text flags along with image scaling modes.
+ * - Additional configuration options such as list codes, hit testing, hook flags,
+ *   session flags, and extra types for UI components.
+ *
+ * @remarks
+ * The constants in this class are used to ensure consistency across various parts of the
+ * application. They help standardize behaviors in text editing, graphic rendering, object
+ * management, and UI layout by providing well-defined values.
+ *
+ * @example
+ * // Accessing a text editor operation code:
+ * const lastOp = NvConstant.TextElemLastOpt.Paste;
+ *
+ * // Setting a ruler unit for measurement:
+ * const unit = NvConstant.RulerUnit.Inches;
+ *
+ * // Using a color to define a UI element:
+ * const primaryColor = NvConstant.Colors.Hilite;
+ *
+ * // Enabling layer-related behavior:
+ * const layerVisible = Boolean(NvConstant.LayerFlags.Visible);
+ *
+ * // Applying an object flag during a hit test:
+ * if (hitCode === NvConstant.HitCodes.Inside) {
+ *   console.log("User clicked inside the object");
+ * }
+ *
+ * @public
  */
 class NvConstant {
 
