@@ -1,5 +1,40 @@
 
 
+/**
+ * Represents a collection of constants used as object type identifiers in a drawing system.
+ *
+ * This class holds a static property that maps descriptive names of shapes and curves
+ * to their corresponding numeric identifiers. The identifiers are used throughout the system
+ * to distinguish between different object types, such as standard shapes, directional lines,
+ * segmented lines, arrays of objects, and various types of curves (e.g., bezier and spline curves).
+ *
+ * @remarks
+ * - The `ObjectTypes` property contains values for a range of drawing elements, from basic shapes
+ *   like `Shape` and `LineD` to more advanced curve representations like `Nurbs` and `Cubebez`.
+ * - It is intended to provide a centralized set of constants that help ensure consistency in
+ *   object type identification across the application.
+ *
+ * @example
+ * Here's an example of how to use the `ShapeConstant` class:
+ *
+ * ```typescript
+ * // Retrieve the identifier for a standard shape
+ * const standardShapeType = ShapeConstant.ObjectTypes.Shape;
+ *
+ * // Use the identifier to check the type of an object in a drawing system
+ * function handleShapeType(type: number): void {
+ *   if (type === ShapeConstant.ObjectTypes.Freehand) {
+ *     console.log('Processing a freehand drawing');
+ *   } else {
+ *     console.log('Processing a different type of shape');
+ *   }
+ * }
+ *
+ * handleShapeType(standardShapeType);
+ * ```
+ *
+ * @beta
+ */
 class ShapeConstant {
 
   /**

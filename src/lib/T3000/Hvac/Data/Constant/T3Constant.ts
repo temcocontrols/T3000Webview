@@ -1,5 +1,38 @@
+
 /**
- * Class containing constants used throughout the T3000 application
+ * Represents a collection of application-wide constants used to control UI behaviors,
+ * document context, clipboard content types, and gradient styling.
+ *
+ * @remarks
+ * The T3Constant class contains static objects grouped as follows:
+ * - CursorDisplayMode: Defines the states for cursor visibility (none, shown, or hidden).
+ * - DocContext: Contains settings for document interaction, such as text alignment and typing permissions.
+ * - ClipboardType: Enumerates the types of content available in the clipboard (none, text, LM-specific, and image).
+ * - GradientStyle: Provides bit flags for various gradient styles (middle, horizontal, vertical, diagonal, reversed, shape-based, and radial)
+ *   which can be combined to define complex UI gradients.
+ *
+ * @example
+ * An example demonstrating how these constants might be used in the application:
+ *
+ * // Set the cursor to be visible in the UI
+ * const cursorMode = T3Constant.CursorDisplayMode.Show;
+ * setCursorVisibility(cursorMode);
+ *
+ * // Check if the application allows typing in the designated work area
+ * if (T3Constant.DocContext.CanTypeInWorkArea) {
+ *   enableTyping();
+ * }
+ *
+ * // Use the clipboard type to conditionally handle pasted text
+ * if (clipboard.type === T3Constant.ClipboardType.Text) {
+ *   processTextClipboard(clipboard.data);
+ * }
+ *
+ * // Apply a radial gradient style to the background of an element
+ * const gradient = T3Constant.GradientStyle.GradRadial;
+ * applyGradientStyle(element, gradient);
+ *
+ * @public
  */
 class T3Constant {
   /**

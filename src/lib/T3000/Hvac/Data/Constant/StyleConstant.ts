@@ -1,5 +1,35 @@
+
 /**
- * Constants related to styling in the HVAC system
+ * Class containing constants for various styling options used in the Temco Controls UI.
+ *
+ * This class centralizes numerous style-related constants, such as color filters,
+ * fill and outline effects, paragraph style codes, format painter modes, image directory
+ * identifiers, and rich gradient types. These constants are used to standardize the
+ * styling and rendering of UI elements, making the code more maintainable and easier
+ * to understand.
+ *
+ * @example
+ * // Accessing color filter constants for ignoring certain style attributes:
+ * const filters = StyleConstant.ColorFilters;
+ * if (filters.NCFill & filters.NCAll) {
+ *   console.log("Ignoring fill color as specified in the style settings.");
+ * }
+ *
+ * // Applying a fill effect for an element based on a predefined constant:
+ * const fillEffect = StyleConstant.FillEffect.Gloss;
+ * switch (fillEffect) {
+ *   case StyleConstant.FillEffect.None:
+ *     // Render element without any fill effect.
+ *     break;
+ *   case StyleConstant.FillEffect.Gloss:
+ *     // Render element with a glossy effect.
+ *     break;
+ *   // Add additional cases for other fill effects as necessary.
+ * }
+ *
+ * @remarks
+ * This class is tailored for use in the context of the Temco Controls system, where complex
+ * UI styling requires a robust set of predefined constants to control various style attributes.
  */
 class StyleConstant {
   /**
