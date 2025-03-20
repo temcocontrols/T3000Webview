@@ -218,7 +218,6 @@ class Creator {
       this.element.SetPath(pathString);
     }
   }
-
 }
 
 export default Creator

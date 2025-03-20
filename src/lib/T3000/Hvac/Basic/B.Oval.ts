@@ -70,7 +70,6 @@ class Oval extends Element {
     this.UpdateTransform();
     this.RefreshPaint();
   }
-
 }
 
 export default Oval

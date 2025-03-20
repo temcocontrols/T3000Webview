@@ -44,7 +44,6 @@ class Line extends Path {
       height: Math.abs(endY - startY),
     });
   }
-
 }
 
 export default Line

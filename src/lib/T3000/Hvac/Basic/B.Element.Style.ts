@@ -330,7 +330,6 @@ class Style {
 
     return computedWidth && computedHeight ? { width: computedWidth, height: computedHeight } : defaultSize;
   }
-
 }
 
 export default Style

@@ -87,7 +87,6 @@ class Layer extends Container {
   IsDpiScalingAllowed() {
     return this.dpiScaleOnlyFlag;
   }
-
 }
 
 export default Layer

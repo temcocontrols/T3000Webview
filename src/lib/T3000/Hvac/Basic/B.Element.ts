@@ -672,19 +672,6 @@ class Element {
   }
 
   /**
-   * Sets a tooltip on a specific SVG element
-   * @param element - The SVG element to add the tooltip to
-   * @param tooltipText - The text to show in the tooltip
-   */
-  static SetTooltipOnElement(element: any, tooltipText: string) {
-    if (element && element instanceof T3Svg.Container) {
-      const titleElement = new T3Svg.Element(T3Svg.create('title'));
-      titleElement.node.textContent = tooltipText;
-      element.add(titleElement);
-    }
-  }
-
-  /**
    * Gets the style object for this element, creating it if it doesn't exist
    * @returns The style object for this element
    */
@@ -1609,6 +1596,18 @@ class Element {
     }
   }
 
+  /**
+   * Sets a tooltip on a specific SVG element
+   * @param element - The SVG element to add the tooltip to
+   * @param tooltipText - The text to show in the tooltip
+   */
+  static SetTooltipOnElement(element: any, tooltipText: string) {
+    if (element && element instanceof T3Svg.Container) {
+      const titleElement = new T3Svg.Element(T3Svg.create('title'));
+      titleElement.node.textContent = tooltipText;
+      element.add(titleElement);
+    }
+  }
 }
 
 export default Element

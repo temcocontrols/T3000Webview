@@ -1074,7 +1074,6 @@ class Effects {
     container.add(element);
   }
 
-
   /**
    * Calculates the horizontal offset for a secondary effect based on vertical and horizontal offsets
    * @param horizontalOffset - The original horizontal offset value
@@ -1104,7 +1103,6 @@ class Effects {
       effect.type.id === BConstant.EffectType.REFLECT.id
     );
   }
-
 }
 
 export default Effects

@@ -343,7 +343,6 @@ class Container extends Element {
     element.svgObj.back();
     element.svgObj.level();
   }
-
 }
 
 export default Container

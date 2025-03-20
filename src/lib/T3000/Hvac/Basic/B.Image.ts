@@ -54,7 +54,6 @@ class Image extends Element {
     this.svgObj.src = imageUrl;
     this.svgObj.attr("xlink:href", imageUrl, T3Svg.xlink);
   }
-
 }
 
 export default Image
