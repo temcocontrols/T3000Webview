@@ -21,9 +21,52 @@ import ShapeCopy from "../../Basic/B.ShapeCopy"
 import Symbol from "../../Basic/B.Symbol"
 import Edit from "../../Basic/B.Text.Edit"
 
+
 /**
- * Basic module that provides access to core HVAC UI components
- * Contains references to essential drawing and UI elements used throughout the application
+ * The Basic object groups together a set of UI component functions that facilitate the creation and manipulation
+ * of various graphical elements. Each property serves a distinct role in rendering, styling, and managing UI elements.
+ *
+ * @remarks
+ * The properties in Basic include:
+ * - Container: A component used to group child elements together.
+ * - Effect: Provides visual effects to enhance element appearance.
+ * - Style: Manages styling properties applied to UI elements.
+ * - Element: Serves as a base class for core UI component functionality.
+ * - Group: Organizes related UI elements into a cohesive group.
+ * - Image: Handles the display and management of image elements.
+ * - Layer: Manages stacking context and z-index for proper element layering.
+ * - Line: Facilitates drawing straight lines.
+ * - Oval: Supports drawing oval or circular shapes.
+ * - Creator: A utility for building paths for custom graphic elements.
+ * - Path: Allows drawing custom SVG-like paths.
+ * - Polygon: Enables drawing of polygon shapes.
+ * - PolyLine: Used for drawing connected line segments.
+ * - PolyPolyLine: Renders multiple sets of polyline sequences.
+ * - Rect: Provides the capability to draw rectangular shapes.
+ * - RRect: Handles drawing of rounded rectangles.
+ * - ShapeContainer: Specializes in the organization of shape elements.
+ * - ShapeCopy: A utility for duplicating shapes with ease.
+ * - Symbol: Creates reusable symbol elements within the UI.
+ * - Edit: Manages editable text fields within components.
+ *
+ * @example
+ * // Import the Basic module (adjust the path as necessary)
+ * import { Basic } from './path/to/Basic';
+ *
+ * // Create a new container for UI elements
+ * const container = new Basic.Container();
+ *
+ * // Create an image element and add it to the container
+ * const image = new Basic.Image();
+ * container.addChild(image);
+ *
+ * // Apply an effect to the image for enhanced appearance
+ * const effect = new Basic.Effect();
+ * effect.applyTo(image);
+ *
+ * // Utilize other components as needed to build your UI layout...
+ *
+ * @public
  */
 const Basic = {
   /** Container component for grouping elements */

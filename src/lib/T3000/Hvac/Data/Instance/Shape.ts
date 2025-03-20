@@ -22,8 +22,56 @@ import SegmentedLine from "../../Shape/S.SegmentedLine"
 import ShapeContainer from "../../Shape/S.ShapeContainer"
 import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol"
 
+
 /**
- * Collection of shape classes for HVAC visualization
+ * The Shape object is a centralized registry for various shape and symbol implementations
+ * used in HVAC diagramming. It aggregates classes that provide the functionality to draw,
+ * render, and compose various graphical elements ranging from basic geometric shapes to
+ * complex symbols. These elements are essential for representing HVAC components such as
+ * pipes, ducts, equipment, and annotations in both 2D and 3D.
+ *
+ * The collection includes:
+ * - ArcLine: For drawing smooth curved line segments, ideal for curved pipe sections.
+ * - ArcSegmentedLine: Similar to ArcLine but composed of multiple segments, suitable for
+ *   complex curves.
+ * - BaseDrawObject: Provides common drawing functionality for all drawable elements.
+ * - BaseLine: A foundational class for line-based shapes, ensuring consistent behavior
+ *   across different line types.
+ * - BaseShape: The abstract underpinning for all shapes, encapsulating shared attributes
+ *   and methods.
+ * - BaseSymbol: A base class for symbols used within HVAC diagrams, offering shared
+ *   symbol-specific behavior.
+ * - BitmapSymbol: Enables the inclusion of raster-based images within the diagrams.
+ * - Connector: Represents a connecting element between different components in a diagram.
+ * - D3Symbol: A three-dimensional symbol class for realistic representation of objects.
+ * - FreehandLine: Supports the drawing of irregular and custom freehand paths.
+ * - GroupSymbol: Allows multiple shapes to be grouped, making it easier to manage and render them as a single unit.
+ * - Line: Implements a basic straight line between two points.
+ * - Oval: Represents oval or elliptical shapes, common in HVAC schematics.
+ * - Polygon: Provides support for multi-sided closed figures suitable for complex geometrical representations.
+ * - PolyLine: Constructs open paths consisting of multiple connected segments.
+ * - PolyLineContainer: Organizes and manages collections of polyline objects.
+ * - Rect: A straightforward rectangular shape often used in equipment or duct representations.
+ * - RRect: A variant of the rectangle that features rounded corners for enhanced aesthetics.
+ * - SegmentedLine: Builds multi-segmented straight lines, useful for sectional representations.
+ * - ShapeContainer: A container for grouping multiple shape objects together.
+ * - SVGFragmentSymbol: Facilitates the inclusion of scalable vector graphics (SVG) into diagrams.
+ *
+ * @example
+ * // Import the Shape registry.
+ * import { Shape } from './Shape';
+ *
+ * // Example of creating and drawing a basic line:
+ * const startPoint = { x: 0, y: 0 };
+ * const endPoint = { x: 100, y: 100 };
+ * const line = new Shape.Line(startPoint, endPoint);
+ * line.draw();
+ *
+ * // Example of grouping shapes:
+ * const rectangle = new Shape.Rect({ x: 10, y: 10, width: 200, height: 100 });
+ * const oval = new Shape.Oval({ x: 50, y: 50, rx: 30, ry: 20 });
+ * const groupSymbol = new Shape.GroupSymbol([rectangle, oval]);
+ * groupSymbol.render();
  */
 const Shape = {
   /**
