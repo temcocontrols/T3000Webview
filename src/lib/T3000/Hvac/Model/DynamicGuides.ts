@@ -1,5 +1,29 @@
 
 
+/**
+ * Represents a collection of dynamic guide positions for HVAC models.
+ *
+ * @remarks
+ * The DynamicGuides class is used to maintain a set of guide properties that represent various positional anchors
+ * such as corners, centers, and wall boundaries. Each property is initially set to null and is expected to be assigned
+ * with configuration objects representing specific guide points.
+ *
+ * @example
+ * Here's how you might instantiate and utilize the DynamicGuides class:
+ *
+ * ```typescript
+ * const guides = new DynamicGuides();
+ *
+ * // Assign positioning data to each guide
+ * guides.above_left = { x: 10, y: 0 };
+ * guides.below_left = { x: 10, y: 100 };
+ * guides.above_right = { x: 90, y: 0 };
+ * guides.below_right = { x: 90, y: 100 };
+ *
+ * // When configuring your HVAC layout, these guide points can help align components.
+ * console.log('Left-Top Guide:', guides.left_top);
+ * ```
+ */
 class DynamicGuides {
 
   public above_left: any;

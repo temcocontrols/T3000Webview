@@ -1,37 +1,38 @@
 
 
+/**
+ * Represents a bounding box defined by position and dimensions.
+ *
+ * The BBoxModel class encapsulates a basic rectangular shape using the properties:
+ * - x: The horizontal position.
+ * - y: The vertical position.
+ * - width: The width of the bounding box. A value of -1 indicates an uninitialized dimension.
+ * - height: The height of the bounding box. A value of -1 indicates an uninitialized dimension.
+ *
+ * The default constructor initializes the bounding box at the origin (0, 0) with both width and height set to -1.
+ *
+ * @example
+ * // Creating an instance of BBoxModel
+ * const bbox = new BBoxModel();
+ *
+ * // Accessing properties of the bounding box
+ * console.log(`Position: (${bbox.x}, ${bbox.y})`);
+ * console.log(`Dimensions: width=${bbox.width}, height=${bbox.height}`);
+ */
 class BBoxModel {
 
-  /**
-   * X-coordinate of the bounding box
-   */
   x: number;
-
-  /**
-   * Y-coordinate of the bounding box
-   */
   y: number;
-
-  /**
-   * Width of the bounding box
-   */
   width: number;
-
-  /**
-   * Height of the bounding box
-   */
   height: number;
 
-  /**
-   * Creates a new BBoxModel instance with default values
-   * x and y are initialized to 0, width and height to -1
-   */
   constructor() {
     this.x = 0;
     this.y = 0;
     this.width = -1;
     this.height = -1;
   }
+
 }
 
 export default BBoxModel
