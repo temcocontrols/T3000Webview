@@ -1,6 +1,6 @@
 
 
-// import ToolOpt from "../Opt/Business/ToolOpt"
+import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
 
 class EvtOpt {
@@ -101,7 +101,7 @@ class EvtOpt {
    */
   BindLibraryEvent() {
     $("#btn_try_library").on("click", (event) => {
-      EvtOpt.toolOpt.ClickSymbolAct(event);
+      // EvtOpt.toolOpt.ClickSymbolAct(event);
       EvtOpt.toolOpt.DragDropSymbolAct(event);
     });
   }
