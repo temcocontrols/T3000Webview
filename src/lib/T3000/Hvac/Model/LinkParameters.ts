@@ -1,7 +1,51 @@
 
 
-import ConstantData from "../Data/ConstantData"
+import NvConstant from "../Data/Constant/NvConstant"
 
+/**
+ * Represents the linking parameters used in HVAC model configurations.
+ *
+ * This class encapsulates various properties required for managing connection
+ * states, historical indices, join configurations, and auto-insertion details within
+ * an HVAC control system. It is primarily responsible for maintaining the state of
+ * connections between system components including connection hooks, join data, and
+ * auto-healing properties.
+ *
+ * @remarks
+ * The properties include:
+ * - Connection indices and points, which track current and historical states.
+ * - Hook flags and indices for managing connections that involve linking components.
+ * - Join data values and source join data for joining configurations.
+ * - Arrays for storing lists of connection points and auto-generated segments.
+ * - Boolean flags for features such as auto insertion, drop-on-line functionality, and auto healing.
+ *
+ * This class is designed to work seamlessly as part of an HVAC control module where
+ * precise management of linked components is critical.
+ *
+ * @example
+ * Here is an example of how to initialize and utilize an instance of LinkParameters:
+ *
+ * ```typescript
+ * // Create a new instance of LinkParameters
+ * const linkParams = new LinkParameters();
+ *
+ * // Configure the connection index and point
+ * linkParams.ConnectIndex = 5;
+ * linkParams.ConnectPt = { x: 100, y: 200 };
+ *
+ * // Set auto insertion and auto-heal properties
+ * linkParams.AutoInsert = true;
+ * linkParams.AutoHeal = true;
+ * linkParams.AutoHealID = 10;
+ *
+ * // Use the instance within your HVAC control logic
+ * if (linkParams.AutoInsert) {
+ *   // Perform auto insertion logic here
+ * }
+ *
+ * // Further usage of linkParams for managing joining and connection hooks...
+ * ```
+ */
 class LinkParameters {
 
   //#region Properties
@@ -90,7 +134,7 @@ class LinkParameters {
     this.cpt = [];
     this.ContainerPt = [];
     this.AllowJoin = 0;
-    this.savedEditState = ConstantData.EditState.DEFAULT;
+    this.savedEditState = NvConstant.EditState.Default;
 
     //#endregion
   }
