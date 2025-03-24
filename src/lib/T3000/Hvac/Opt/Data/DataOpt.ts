@@ -8,11 +8,37 @@ import ObjectStore from '../../Data/State/ObjectStore'
 import ObjectStoreFactory from '../../Data/State/ObjectStoreFactory'
 import State from '../../Data/State/State'
 import StoredObject from '../../Data/State/StoredObject'
-import SEDSession from '../../Model/SEDSession'
+import SDData from '../../Model/SDData'
 import LayersManager from '../../Model/LayersManager'
-import TEDSession from '../../Model/TEDSession'
+import TEData from '../../Model/TEData'
 import Instance from '../../Data/Instance/Instance'
+import LayerUtil from '../Opt/LayerUtil'
 
+/**
+ * Class for managing data operations in T3000 HVAC system.
+ *
+ * This utility class handles persistent storage operations between the application
+ * and localStorage, managing application state, clipboard content, object stores,
+ * and sequence IDs. It provides methods for initializing, saving, and converting
+ * stored data.
+ *
+ * @example
+ * // Initialize all stored data from localStorage
+ * DataOpt.InitStoredData();
+ *
+ * @example
+ * // Save all application data to localStorage
+ * DataOpt.SaveToLocalStorage();
+ *
+ * @example
+ * // Initialize state and object store with default values
+ * DataOpt.InitStateAndStore();
+ *
+ * @example
+ * // Load and save specific data
+ * const savedState = DataOpt.LoadData(DataOpt.STATE_KEY);
+ * DataOpt.SaveData(DataOpt.STATE_KEY, newState);
+ */
 class DataOpt {
 
   /**
@@ -124,9 +150,9 @@ class DataOpt {
     const storedObject = plainToInstance(StoredObject, storedObjectJson);
     const objectData = storedObject.Data;
 
-    if (objectData.Type === 'SEDSession') {
-      const sedSessionData = plainToInstance(SEDSession, objectData);
-      storedObject.Data = sedSessionData;
+    if (objectData.Type === 'SDData') {
+      const sdDataData = plainToInstance(SDData, objectData);
+      storedObject.Data = sdDataData;
       storedObject.Data.dimensions = 146;
     }
 
@@ -135,12 +161,12 @@ class DataOpt {
       storedObject.Data = layersManagerData;
     }
 
-    if (objectData.Type === 'TEDSession') {
-      const tedSessionData = plainToInstance(TEDSession, objectData);
-      storedObject.Data = tedSessionData;
+    if (objectData.Type === 'TEData') {
+      const tDataData = plainToInstance(TEData, objectData);
+      storedObject.Data = tDataData;
     }
 
-    if (objectData.Type === 'BaseDrawingObject') {
+    if (objectData.Type === 'BaseDrawObject') {
       // SHAPE: 0, LINE: 1, CONNECTOR: 3
       if (objectData.DrawingObjectBaseClass === 1) {
         if (objectData?.T3Type === "PolyLineContainer") {
@@ -167,6 +193,16 @@ class DataOpt {
           const polygonData = plainToInstance(Instance.Shape.Polygon, objectData);
           storedObject.Data = polygonData;
         }
+
+        if (objectData.ShapeType === "GroupSymbol") {
+          const groupSymbolData = plainToInstance(Instance.Shape.GroupSymbol, objectData);
+          storedObject.Data = groupSymbolData;
+        }
+
+        if (objectData.ShapeType === "SVGFragmentSymbol") {
+          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, objectData);
+          storedObject.Data = svgFragmentSymbolData;
+        }
       }
 
       if (objectData.DrawingObjectBaseClass === 3) {
@@ -183,7 +219,7 @@ class DataOpt {
    * Includes clipboard, state, object store and current object sequence ID
    */
   static SaveToLocalStorage(): void {
-    const visibleZList = T3Gv.opt.VisibleZList();
+    const visibleZList = LayerUtil.VisibleZList();
 
     // Save clipboard
     this.SaveData(this.CLIPBOARD_KEY, T3Gv.clipboard);
