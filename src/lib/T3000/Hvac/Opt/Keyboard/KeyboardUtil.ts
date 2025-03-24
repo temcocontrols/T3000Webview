@@ -1,7 +1,45 @@
 
 
 import KeyboardConstant from "./KeyboardConstant"
+import T3Util from "../../Util/T3Util";
 
+/**
+ * Utility class for creating and managing keyboard commands in the T3000 application.
+ *
+ * This class provides functionality to build keyboard commands with specific contexts,
+ * modifier keys, and actions, allowing for customizable keyboard shortcuts throughout
+ * the application.
+ *
+ * @example
+ * ```typescript
+ * // Create a keyboard utility
+ * const keyboardUtil = new KeyboardUtil();
+ *
+ * // Build a simple command
+ * keyboardUtil.BuildCommand(
+ *   'save',
+ *   KeyboardConstant.Contexts.Editor,
+ *   KeyboardConstant.ModifierKeys.Ctrl,
+ *   'S',
+ *   function() { this.saveDocument(); },
+ *   documentManager
+ * );
+ *
+ * // Execute the command
+ * keyboardUtil.Execute();
+ *
+ * // Build a command with parameters
+ * keyboardUtil.BuildCommand(
+ *   'openFile',
+ *   KeyboardConstant.Contexts.Main,
+ *   KeyboardConstant.ModifierKeys.Ctrl,
+ *   'O',
+ *   function(filename, readOnly) { this.openFile(filename, readOnly); },
+ *   fileManager,
+ *   ['example.txt', true]
+ * );
+ * ```
+ */
 class KeyboardUtil {
 
   public Name: string;
@@ -27,7 +65,7 @@ class KeyboardUtil {
    * @param commandParams - Parameters to pass to the command function
    */
   BuildCommand(name, context, modifierKey, keyCode, commandFunction, commandParent, commandParams?) {
-    console.log('U.KeyboardUtil: Creating keyboard command', name, context, modifierKey, keyCode);
+    T3Util.Log('U.KeyboardUtil: Creating keyboard command', name, context, modifierKey, keyCode);
 
     this.Name = name !== null ? name : null;
     this.Context = context !== null ? context : KeyboardConstant.Contexts.None;
@@ -46,11 +84,13 @@ class KeyboardUtil {
      * @returns Result of the command execution
      */
     this.Execute = function () {
-      console.log('U.KeyboardUtil: Executing command', this.Name);
+      T3Util.Log('U.KeyboardUtil: Executing command', this.Name);
       const result = this.Command.apply(this.CommandParent, this.CommandParams);
-      console.log('U.KeyboardUtil: Command execution complete', this.Name);
+      T3Util.Log('U.KeyboardUtil: Command execution complete', this.Name);
       return result;
     };
+
+    return this;
   }
 }
 

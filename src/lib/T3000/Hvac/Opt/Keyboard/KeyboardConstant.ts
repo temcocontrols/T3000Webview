@@ -1,12 +1,41 @@
 
 
+/**
+ * Provides constant definitions for keyboard interactions in the T3000 HVAC system.
+ *
+ * This class contains static mappings for keyboard contexts, modifier keys, key codes,
+ * and special keys that are used throughout the application for handling keyboard events.
+ *
+ * @example
+ * // Check if a key event is a navigation key
+ * function isNavigationKey(event: KeyboardEvent): boolean {
+ *   return KeyboardConstant.NonTextKeys.includes(event.keyCode);
+ * }
+ *
+ * @example
+ * // Handle keyboard shortcuts with modifiers
+ * function handleKeyDown(event: KeyboardEvent, context: number): void {
+ *   const isCtrlPressed = event.ctrlKey;
+ *   const modifierKey = isCtrlPressed ? KeyboardConstant.ModifierKeys.Ctrl : KeyboardConstant.ModifierKeys.None;
+ *
+ *   if (context === KeyboardConstant.Contexts.Automation &&
+ *       modifierKey === KeyboardConstant.ModifierKeys.Ctrl &&
+ *       event.keyCode === KeyboardConstant.Keys.S) {
+ *     // Handle Ctrl+S in Automation context
+ *     event.preventDefault();
+ *     saveAutomation();
+ *   }
+ * }
+ */
 class KeyboardConstant {
-
+  /**
+   * Defines different contexts for keyboard interactions
+   * Used to determine which keyboard shortcuts are active in different application states
+   */
   static Contexts = {
-    None: - 1,
+    None: -1,
     All: 0,
     Text: 1,
-    Table: 2,
     Automation: 3,
     DimensionText: 4,
     WallOpt: 5,
@@ -14,8 +43,12 @@ class KeyboardConstant {
     Navigation: 7,
     AutomationNoCtrl: 8,
     ReadOnly: 9
-  }
+  };
 
+  /**
+   * Defines modifier key combinations
+   * Used to create complex keyboard shortcuts
+   */
   static ModifierKeys = {
     None: 0,
     Ctrl: 1,
@@ -24,8 +57,12 @@ class KeyboardConstant {
     Ctrl_Alt: 4,
     Ctrl_Shift: 5,
     Shift_Alt: 6
-  }
+  };
 
+  /**
+   * Maps keyboard key names to their corresponding key codes
+   * Used for detecting specific keys in keyboard events
+   */
   static Keys = {
     Backspace: 8,
     Tab: 9,
@@ -95,7 +132,7 @@ class KeyboardConstant {
     Numpad_7: 103,
     Numpad_8: 104,
     Numpad_9: 105,
-    Nultiply: 106,
+    Multiply: 106, // Fixed typo from "Nultiply"
     Add: 107,
     Subtract: 109,
     Decimal_Point: 110,
@@ -123,10 +160,14 @@ class KeyboardConstant {
     Grave_Accent: 192,
     Open_Bracket: 219,
     Back_Slash: 220,
-    Close_Braket: 221,
+    Close_Bracket: 221, // Fixed typo from "Close_Braket"
     Single_Quote: 222
-  }
+  };
 
+  /**
+   * List of special keys that are not considered text input
+   * Used to filter keyboard events for text editing operations
+   */
   static NonTextKeys = [
     KeyboardConstant.Keys.Backspace,
     KeyboardConstant.Keys.Tab,
@@ -137,7 +178,7 @@ class KeyboardConstant {
     KeyboardConstant.Keys.Down_Arrow,
     KeyboardConstant.Keys.Delete,
     KeyboardConstant.Keys.Escape
-  ]
+  ];
 }
 
-export default KeyboardConstant
+export default KeyboardConstant;
