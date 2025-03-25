@@ -32,6 +32,7 @@ import OptCMUtil from "../Opt/OptCMUtil"
 import DrawUtil from "../Opt/DrawUtil"
 import ToolActUtil from "../Opt/ToolActUtil"
 import LMEvtUtil from "../Opt/LMEvtUtil"
+import ToolSvgData from "./ToolSvgData"
 
 class ToolUtil {
 
@@ -1189,7 +1190,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolData, useDragDrop);
 
     // Clear any previous replace symbol ID
-    T3Gv.opt.ReplaceSymbolID = null;
+    // T3Gv.opt.ReplaceSymbolID = null;
 
     // SVG fragment definitions
     const pumpSymbolSVG = '<g><g fill="##FillColor=#7F7F7F##" transform="translate(0,0)"><g class="pump"> <circle stroke="##LineColor=#000000##" cy="16" cx="15.955" r="9.9609003" class="pump-background" /> <g transform="translate(16,16)"> <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="##LineColor=#000000##" stroke-width="##LineThick=1##"/></g></g></g></g>';
@@ -1532,6 +1533,28 @@ class ToolUtil {
     `;
 
     symbolObject.SVGFragment = RoomHumidity;
+
+    // Add the symbol to the drawing using drag-drop mode
+    if (symbolObject) {
+      DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
+      // T3Gv.opt.MouseStampNewShape(symbolObject, true, true, false, null, null);
+    }
+
+    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol output: void");
+  }
+
+  ToolDragDropSymbol(symbolType, useDragDrop) {
+    T3Util.Log("U.ToolUtil.dragDropSymbol - Input:", symbolType, useDragDrop);
+
+    // Prepare symbol data
+    var symbolObject = ToolSvgData.GetSvgData(symbolType);
+    this.ToolDragDropNewSymbol(symbolObject, useDragDrop);
+
+    T3Util.Log("U.ToolUtil.dragDropSymbol - Output: void");
+  }
+
+  ToolDragDropNewSymbol(symbolObject, useDragDrop) {
+    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolObject, useDragDrop);
 
     // Add the symbol to the drawing using drag-drop mode
     if (symbolObject) {

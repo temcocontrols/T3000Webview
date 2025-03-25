@@ -615,6 +615,10 @@ class ToolOpt {
       T3Gv.opt.ExceptionCleanup(e)
     }
   }
+
+  LibToolShape(symbolType, useDragDrop) {
+    this.tul.ToolDragDropSymbol(symbolType, useDragDrop);
+  }
 }
 
 export default ToolOpt
