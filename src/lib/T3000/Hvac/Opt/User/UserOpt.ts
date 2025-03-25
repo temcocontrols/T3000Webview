@@ -1,21 +1,21 @@
 
 
-import UserSettings from "../../Model/UserSetting";
+import UserSetting from "../../Model/UserSetting";
 import T3Gv from "../../Data/T3Gv";
 
 class UserOpt {
 
-  public userSettings: UserSettings;
+  public userSetting: UserSetting;
 
   constructor() {
-    this.userSettings = new UserSettings();
+    this.userSetting = new UserSetting();
   }
 
   /**
    * Initializes the user settings
    */
   Initialize() {
-    T3Gv.userSettings = this.userSettings;
+    T3Gv.userSetting = this.userSetting;
   }
 }
 
