@@ -5,40 +5,6 @@
   */
 class PolygonConstant {
 
-  // static ShapeTypes = {
-  //   SED_S_Photo: - 2,
-  //   SED_S_Table: - 1,
-  //   SED_S_Text: 0,
-  //   SED_S_Image: 1,
-  //   SED_S_Rect: 2,
-  //   SED_S_RRect: 3,
-  //   SED_S_Oval: 4,
-  //   SED_S_Pgm: 5,
-  //   SED_S_Diam: 6,
-  //   SED_S_Doc: 7,
-  //   SED_S_Term: 8,
-  //   SED_S_Circ: 9,
-  //   SED_S_ArrR: 10,
-  //   SED_S_ArrL: 11,
-  //   SED_S_ArrT: 12,
-  //   SED_S_ArrB: 13,
-  //   SED_S_Tri: 14,
-  //   SED_S_TriB: 15,
-  //   SED_S_Input: 16,
-  //   SED_S_Trap: 17,
-  //   SED_S_TrapB: 18,
-  //   SED_S_Oct: 19,
-  //   SED_S_Store: 20,
-  //   SED_S_Hex: 21,
-  //   SED_S_Pent: 22,
-  //   SED_S_PentL: 23,
-  //   SED_S_Delay: 24,
-  //   SED_S_Disp: 25,
-  //   SED_S_Poly: 26,
-  //   SED_S_MeasureArea: 27,
-  //   SED_S_Last: 27
-  // }
-
   /**
    * Enumeration of shape types used in the system
    * Each value represents a specific shape for rendering and processing

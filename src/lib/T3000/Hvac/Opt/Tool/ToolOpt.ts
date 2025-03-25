@@ -1,8 +1,15 @@
 
 
-import GlobalData from '../../Data/GlobalData'
-import ConstantData from '../../Data/ConstantData'
-import ToolUtil from '../../Util/ToolUtil';
+import T3Gv from "../../Data/T3Gv"
+import NvConstant from "../../Data/Constant/NvConstant"
+import ToolUtil from './ToolUtil'
+import T3Util from "../../Util/T3Util";
+import OptConstant from "../../Data/Constant/OptConstant";
+import SelectUtil from "../Opt/SelectUtil";
+import DataUtil from "../Data/DataUtil";
+import StyleConstant from "../../Data/Constant/StyleConstant";
+import DrawUtil from "../Opt/DrawUtil";
+import UIUtil from "../UI/UIUtil";
 
 class ToolOpt {
 
@@ -18,47 +25,47 @@ class ToolOpt {
    * @returns void
    */
   SelectAct(event) {
-    console.log('O.ToolOpt.SelectAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.SelectAct - Input:', { event });
 
-    const selectionToolSticky = false;
+    // const selectionToolSticky = false;
 
-    this.tul.CancelModalOperation();
+    this.tul.CancelOperation();
 
-    if (selectionToolSticky) {
-      GlobalData.optManager.ResetObjectDraw();
-    }
+    // if (selectionToolSticky) {
+    //   T3Gv.opt.ResetObjectDraw();
+    // }
 
-    let selectionModeAttr = "";// event.currentTarget.attributes.getNamedItem(ConstantData.Constants.Attr_SelectionMode);
-    let isMultipleSelection = false;
+    // let selectionModeAttr = "";// event.currentTarget.attributes.getNamedItem(NvConstant.Constants.Attr_SelectionMode);
+    // let isMultipleSelection = false;
 
-    if (selectionModeAttr) {
-      switch (selectionModeAttr) {
-        case 'multiple':
-          isMultipleSelection = true;
-          break;
-        case 'all':
-          GlobalData.optManager.SelectAllObjects();
-          console.log('O.ToolOpt.SelectAct - Output: Selected all objects');
-          return;
-        case 'lines':
-          GlobalData.optManager.SelectAllObjects([
-            ConstantData.DrawingObjectBaseClass.LINE,
-            ConstantData.DrawingObjectBaseClass.CONNECTOR
-          ]);
-          console.log('O.ToolOpt.SelectAct - Output: Selected all line objects');
-          break;
-        case 'shapes':
-          GlobalData.optManager.SelectAllObjects([ConstantData.DrawingObjectBaseClass.SHAPE]);
-          console.log('O.ToolOpt.SelectAct - Output: Selected all shape objects');
-          break;
-      }
-    }
+    // if (selectionModeAttr) {
+    //   switch (selectionModeAttr) {
+    //     case 'multiple':
+    //       isMultipleSelection = true;
+    //       break;
+    //     case 'all':
+    //       T3Gv.opt.SelectAllObjects();
+    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all objects');
+    //       return;
+    //     case 'lines':
+    //       T3Gv.opt.SelectAllObjects([
+    //         OptConstant.DrawObjectBaseClass.Line,
+    //         OptConstant.DrawObjectBaseClass.Connector
+    //       ]);
+    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all line objects');
+    //       break;
+    //     case 'shapes':
+    //       T3Gv.opt.SelectAllObjects([OptConstant.DrawObjectBaseClass.Shape]);
+    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all shape objects');
+    //       break;
+    //   }
+    // }
 
-    if (isMultipleSelection) {
-      // ConstantData.DocumentContext.SelectionToolMultiple = true;
-    }
+    // if (isMultipleSelection) {
+    //   // NvConstant.DocumentContext.SelectionToolMultiple = true;
+    // }
 
-    console.log('O.ToolOpt.SelectAct - Output:', { isMultipleSelection, selectionMode: selectionModeAttr });
+    // T3Util.Log('O.ToolOpt.SelectAct - Output:', { isMultipleSelection, selectionMode: selectionModeAttr });
   }
 
   /**
@@ -67,13 +74,13 @@ class ToolOpt {
     * @returns void
     */
   DrawWall(event) {
-    console.log('O.ToolOpt.DrawWall - Input:', { event });
+    T3Util.Log('O.ToolOpt.DrawWall - Input:', { event });
 
     const defaultWallThickness = 0.5;
     this.tul.SetDefaultWallThickness(defaultWallThickness, null);
     this.tul.DrawNewWallShape(null, null);
 
-    console.log('O.ToolOpt.DrawWall - Output: Initialized wall drawing with thickness', defaultWallThickness);
+    T3Util.Log('O.ToolOpt.DrawWall - Output: Initialized wall drawing with thickness', defaultWallThickness);
   }
 
   /**
@@ -83,11 +90,11 @@ class ToolOpt {
    * @returns void
    */
   StampShapeFromToolAct(event, shapeType) {
-    console.log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
+    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
 
     this.tul.StampOrDragDropNewShape(event, shapeType);
 
-    console.log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
+    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
   }
 
   /**
@@ -96,12 +103,12 @@ class ToolOpt {
    * @returns void
    */
   ToolLineAct(event) {
-    console.log('O.ToolOpt.ToolLineAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ToolLineAct - Input:', { event });
 
     // Parameters: lineType=2, isPolygon=false, isClosed=false
     this.tul.DrawNewLineShape(2, false, false);
 
-    console.log('O.ToolOpt.ToolLineAct - Output: Drew new line shape');
+    T3Util.Log('O.ToolOpt.ToolLineAct - Output: Drew new line shape');
   }
 
   /**
@@ -111,16 +118,16 @@ class ToolOpt {
    * @returns null if angle is null, void otherwise
    */
   RotateAct(event, angle) {
-    console.log('O.ToolOpt.RotateAct - Input:', { event, angle });
+    T3Util.Log('O.ToolOpt.RotateAct - Input:', { event, angle });
 
     if (angle === null) {
-      console.log('O.ToolOpt.RotateAct - Output: No action, angle was null');
+      T3Util.Log('O.ToolOpt.RotateAct - Output: No action, angle was null');
       return null;
     }
 
     this.tul.RotateShapes(360 - angle);
 
-    console.log('O.ToolOpt.RotateAct - Output: Rotated shapes by angle', 360 - angle);
+    T3Util.Log('O.ToolOpt.RotateAct - Output: Rotated shapes by angle', 360 - angle);
   }
 
   /**
@@ -129,16 +136,16 @@ class ToolOpt {
    * @returns null if alignmentType is null, void otherwise
    */
   ShapeAlignAct(alignmentType) {
-    console.log('O.ToolOpt.ShapeAlignAct - Input:', { alignmentType });
+    T3Util.Log('O.ToolOpt.ShapeAlignAct - Input:', { alignmentType });
 
     if (alignmentType === null) {
-      console.log('O.ToolOpt.ShapeAlignAct - Output: No action, alignmentType was null');
+      T3Util.Log('O.ToolOpt.ShapeAlignAct - Output: No action, alignmentType was null');
       return null;
     }
 
     this.tul.AlignShapes(alignmentType);
 
-    console.log('O.ToolOpt.ShapeAlignAct - Output: Aligned shapes with type', alignmentType);
+    T3Util.Log('O.ToolOpt.ShapeAlignAct - Output: Aligned shapes with type', alignmentType);
   }
 
   /**
@@ -147,11 +154,11 @@ class ToolOpt {
    * @returns void
    */
   GroupAct(event) {
-    console.log('O.ToolOpt.GroupAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.GroupAct - Input:', { event });
 
-    this.tul.GroupSelectedShapes();
+    this.tul.GroupSelected();
 
-    console.log('O.ToolOpt.GroupAct - Output: Grouped selected shapes');
+    T3Util.Log('O.ToolOpt.GroupAct - Output: Grouped selected shapes');
   }
 
   /**
@@ -159,12 +166,12 @@ class ToolOpt {
    * @param event - The DOM event that triggered the action
    * @returns void
    */
-  UngroupAct(event) {
-    console.log('O.ToolOpt.UngroupAct - Input:', { event });
+  UnGroupAct(event) {
+    T3Util.Log('O.ToolOpt.UngroupAct - Input:', { event });
 
-    this.tul.UngroupSelectedShapes();
+    this.tul.UnGroupSelected();
 
-    console.log('O.ToolOpt.UngroupAct - Output: Ungrouped selected shapes');
+    T3Util.Log('O.ToolOpt.UngroupAct - Output: Ungrouped selected shapes');
   }
 
   /**
@@ -173,11 +180,11 @@ class ToolOpt {
    * @returns void
    */
   ShapeFlipHorizontalAct(event) {
-    console.log('O.ToolOpt.ShapeFlipHorizontalAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ShapeFlipHorizontalAct - Input:', { event });
 
     this.tul.FlipHorizontal();
 
-    console.log('O.ToolOpt.ShapeFlipHorizontalAct - Output: Flipped shapes horizontally');
+    T3Util.Log('O.ToolOpt.ShapeFlipHorizontalAct - Output: Flipped shapes horizontally');
   }
 
   /**
@@ -186,11 +193,11 @@ class ToolOpt {
    * @returns void
    */
   ShapeFlipVerticalAct(event) {
-    console.log('O.ToolOpt.ShapeFlipVerticalAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ShapeFlipVerticalAct - Input:', { event });
 
     this.tul.FlipVertical();
 
-    console.log('O.ToolOpt.ShapeFlipVerticalAct - Output: Flipped shapes vertically');
+    T3Util.Log('O.ToolOpt.ShapeFlipVerticalAct - Output: Flipped shapes vertically');
   }
 
   /**
@@ -200,11 +207,11 @@ class ToolOpt {
    * @returns void
    */
   MakeSameSizeAct(event, sizeOption) {
-    console.log('O.ToolOpt.MakeSameSizeAct - Input:', { event, sizeOption });
+    T3Util.Log('O.ToolOpt.MakeSameSizeAct - Input:', { event, sizeOption });
 
     this.tul.MakeSameSize(sizeOption);
 
-    console.log('O.ToolOpt.MakeSameSizeAct - Output: Made shapes same size with option', sizeOption);
+    T3Util.Log('O.ToolOpt.MakeSameSizeAct - Output: Made shapes same size with option', sizeOption);
   }
 
   /**
@@ -213,11 +220,11 @@ class ToolOpt {
    * @returns void
    */
   ShapeBringToFrontAct(event) {
-    console.log('O.ToolOpt.ShapeBringToFrontAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ShapeBringToFrontAct - Input:', { event });
 
     this.tul.BringToFrontOf();
 
-    console.log('O.ToolOpt.ShapeBringToFrontAct - Output: Brought shapes to front');
+    T3Util.Log('O.ToolOpt.ShapeBringToFrontAct - Output: Brought shapes to front');
   }
 
   /**
@@ -226,11 +233,11 @@ class ToolOpt {
    * @returns void
    */
   ShapeSendToBackAct(event) {
-    console.log('O.ToolOpt.ShapeSendToBackAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ShapeSendToBackAct - Input:', { event });
 
     this.tul.SendToBackOf();
 
-    console.log('O.ToolOpt.ShapeSendToBackAct - Output: Sent shapes to back');
+    T3Util.Log('O.ToolOpt.ShapeSendToBackAct - Output: Sent shapes to back');
   }
 
   /**
@@ -239,12 +246,12 @@ class ToolOpt {
    * @returns void
    */
   PasteAct(event) {
-    console.log('O.ToolOpt.PasteAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.PasteAct - Input:', { event });
 
     // Parameter: isRightClick=false
     this.tul.Paste(false);
 
-    console.log('O.ToolOpt.PasteAct - Output: Pasted objects');
+    T3Util.Log('O.ToolOpt.PasteAct - Output: Pasted objects');
   }
 
   /**
@@ -253,12 +260,12 @@ class ToolOpt {
    * @returns void
    */
   PasteActRightClickAct(event) {
-    console.log('O.ToolOpt.PasteActRightClickAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.PasteActRightClickAct - Input:', { event });
 
     // Parameter: isRightClick=true
     this.tul.Paste(true);
 
-    console.log('O.ToolOpt.PasteActRightClickAct - Output: Pasted objects with right click context');
+    T3Util.Log('O.ToolOpt.PasteActRightClickAct - Output: Pasted objects with right click context');
   }
 
   /**
@@ -267,11 +274,11 @@ class ToolOpt {
    * @returns void
    */
   CopyAct(event) {
-    console.log('O.ToolOpt.CopyAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.CopyAct - Input:', { event });
 
     this.tul.Copy();
 
-    console.log('O.ToolOpt.CopyAct - Output: Copied selected objects');
+    T3Util.Log('O.ToolOpt.CopyAct - Output: Copied selected objects');
   }
 
   /**
@@ -280,11 +287,11 @@ class ToolOpt {
    * @returns void
    */
   CutAct(event) {
-    console.log('O.ToolOpt.CutAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.CutAct - Input:', { event });
 
     this.tul.Cut();
 
-    console.log('O.ToolOpt.CutAct - Output: Cut selected objects');
+    T3Util.Log('O.ToolOpt.CutAct - Output: Cut selected objects');
   }
 
   /**
@@ -293,11 +300,11 @@ class ToolOpt {
    * @returns void
    */
   DeleteAct(event) {
-    console.log('O.ToolOpt.DeleteAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.DeleteAct - Input:', { event });
 
     this.tul.DeleteSelectedObjects();
 
-    console.log('O.ToolOpt.DeleteAct - Output: Deleted selected objects');
+    T3Util.Log('O.ToolOpt.DeleteAct - Output: Deleted selected objects');
   }
 
   /**
@@ -306,11 +313,11 @@ class ToolOpt {
    * @returns void
    */
   UndoAct(event) {
-    console.log('O.ToolOpt.UndoAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.UndoAct - Input:', { event });
 
     this.tul.Undo();
 
-    console.log('O.ToolOpt.UndoAct - Output: Undid last operation');
+    T3Util.Log('O.ToolOpt.UndoAct - Output: Undid last operation');
   }
 
   /**
@@ -319,11 +326,11 @@ class ToolOpt {
    * @returns void
    */
   RedoAct(event) {
-    console.log('O.ToolOpt.RedoAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.RedoAct - Input:', { event });
 
     this.tul.Redo();
 
-    console.log('O.ToolOpt.RedoAct - Output: Redid last undone operation');
+    T3Util.Log('O.ToolOpt.RedoAct - Output: Redid last undone operation');
   }
 
   /**
@@ -332,11 +339,11 @@ class ToolOpt {
    * @returns void
    */
   CommitFilePickerSelectionAct(event) {
-    console.log('O.ToolOpt.CommitFilePickerSelectionAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.CommitFilePickerSelectionAct - Input:', { event });
 
     this.tul.SaveAs();
 
-    console.log('O.ToolOpt.CommitFilePickerSelectionAct - Output: Saved file');
+    T3Util.Log('O.ToolOpt.CommitFilePickerSelectionAct - Output: Saved file');
   }
 
   /**
@@ -345,11 +352,11 @@ class ToolOpt {
    * @returns void
    */
   DuplicateAct(event) {
-    console.log('O.ToolOpt.DuplicateAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.DuplicateAct - Input:', { event });
 
     this.tul.Duplicate();
 
-    console.log('O.ToolOpt.DuplicateAct - Output: Duplicated selected objects');
+    T3Util.Log('O.ToolOpt.DuplicateAct - Output: Duplicated selected objects');
   }
 
   /**
@@ -358,11 +365,11 @@ class ToolOpt {
    * @returns void
    */
   MeasureDistanceAct(event) {
-    console.log('O.ToolOpt.MeasureDistanceAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.MeasureDistanceAct - Input:', { event });
 
-    GlobalData.gBusinessManager.AddMeasureLine(event);
+    T3Gv.wallOpt.AddMeasureLine(event);
 
-    console.log('O.ToolOpt.MeasureDistanceAct - Output: Added measurement line');
+    T3Util.Log('O.ToolOpt.MeasureDistanceAct - Output: Added measurement line');
   }
 
   /**
@@ -371,11 +378,11 @@ class ToolOpt {
    * @returns void
    */
   MeasureAreaAct(event) {
-    console.log('O.ToolOpt.MeasureAreaAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.MeasureAreaAct - Input:', { event });
 
-    GlobalData.gBusinessManager.AddMeasureArea(event);
+    T3Gv.wallOpt.AddMeasureArea(event);
 
-    console.log('O.ToolOpt.MeasureAreaAct - Output: Added measurement area');
+    T3Util.Log('O.ToolOpt.MeasureAreaAct - Output: Added measurement area');
   }
 
   /**
@@ -384,12 +391,12 @@ class ToolOpt {
    * @returns void
    */
   ClickSymbolAct(event) {
-    console.log('O.ToolOpt.ClickSymbolAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.ClickSymbolAct - Input:', { event });
 
     const symbolId = "d6e019b9-110d-4990-8897-eade69451d92";
     this.tul.StampOrDragDropNewSymbol(symbolId, false);
 
-    console.log('O.ToolOpt.ClickSymbolAct - Output: Pre-loaded symbol', symbolId);
+    T3Util.Log('O.ToolOpt.ClickSymbolAct - Output: Pre-loaded symbol', symbolId);
   }
 
   /**
@@ -398,11 +405,215 @@ class ToolOpt {
    * @returns void
    */
   DragDropSymbolAct(event) {
-    console.log('O.ToolOpt.DragDropSymbolAct - Input:', { event });
+    T3Util.Log('O.ToolOpt.DragDropSymbolAct - Input:', { event });
 
     this.tul.DragDropSymbol(event, true);
 
-    console.log('O.ToolOpt.DragDropSymbolAct - Output: Handled symbol drag and drop');
+    T3Util.Log('O.ToolOpt.DragDropSymbolAct - Output: Handled symbol drag and drop');
+  }
+
+  /**
+   * Sets or imports a background image for the canvas
+   * @param event - The event or image data for the background
+   * @param isLayerImage - Flag determining whether to import as a layer image (true) or set as background (false)
+   * @returns void
+   */
+  LibSetBackgroundImageAct(event, isLayerImage) {
+    T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Input:', { event, isLayerImage });
+
+    try {
+      // Close any ongoing edits first
+      T3Gv.opt.CloseEdit(true, true);
+
+      // const imgUrl = "https://tse2-mm.cn.bing.net/th/id/OIP-C.MBfLtlEN6uCfRHikngEd3QHaO3?rs=1&pid=ImgDetMain";
+      const imgUrl = "C:\\Users\\Double\\Desktop\\RE5cNdq.jpg";
+
+      // Create a file input element to select an image
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+
+      fileInput.onchange = (e) => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Error: No file selected');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const fileDataUrl = reader.result as string;
+
+          if (isLayerImage) {
+            T3Gv.opt.ImportBackgroundLayerImage(file);
+          } else {
+            T3Gv.opt.SetBackgroundImage(file);
+          }
+
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Output: Set background image', { asLayer: isLayerImage });
+        };
+
+        reader.onerror = () => {
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Error: Failed to read file');
+        };
+
+        reader.readAsDataURL(file);
+      };
+
+      // Open file dialog
+      fileInput.click();
+
+      // Use the hardcoded URL as a fallback
+      let fileDataUrl = imgUrl;
+
+
+      // if (isLayerImage) {
+      //   T3Gv.opt.ImportBackgroundLayerImage(fileDataUrl);
+      // } else {
+      //   T3Gv.opt.SetBackgroundImage(fileDataUrl);
+      // }
+
+      T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Output: Set background image', { asLayer: isLayerImage });
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+      T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Error:', error);
+    }
+  }
+
+  /**
+   * Locks the selected object or right-clicked object
+   * @param isRightClick - Flag indicating if the action was triggered by a right-click
+   * @returns void
+   */
+  LibLockAct(isRightClick) {
+    T3Util.Log('O.ToolOpt.LibLockAct - Input:', { isRightClick });
+
+    try {
+      // Determine the target to lock based on whether this is a right-click action
+      const targetId = isRightClick
+        ? T3Gv.opt.rClickParam?.targetId
+        : SelectUtil.GetTargetSelect();
+
+      // Close any open edits first
+      T3Gv.opt.CloseEdit(true);
+
+      // Lock the target object
+      T3Gv.opt.Lock(targetId, true);
+
+      T3Util.Log('O.ToolOpt.LibLockAct - Output: Locked object with ID', targetId);
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+      T3Util.Log('O.ToolOpt.LibLockAct - Error:', error);
+    }
+  }
+
+  /**
+   * Sets the background color for the canvas
+   * @param color - The color to set as the background
+   * @returns void
+   */
+  LibSetBackgroundColorAct(color) {
+    T3Util.Log('O.ToolOpt.LibSetBackgroundColorAct - Input:', { color });
+
+    try {
+      // Close any ongoing edits first
+      T3Gv.opt.CloseEdit(true, true);
+
+      // // Begin collaborative editing if enabled
+      // if (SDJS.Collab.AllowMessage()) {
+      //   SDJS.Collab.BeginSecondaryEdit();
+      // }
+
+      // Get the current data object
+      const dataObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+
+      // Get the current background color
+      let currentColor = dataObject.background.Paint.Color;
+
+      // If background is transparent, treat current color as white
+      if (dataObject.background.Paint.FillType === NvConstant.FillTypes.Transparent) {
+        currentColor = NvConstant.Colors.White;
+      }
+
+      // Handle transparent color case
+      let displayColor = color;
+      if (color === NvConstant.Colors.Trans) {
+        displayColor = NvConstant.Colors.White;
+      }
+
+      // Update the UI text color to complement the new background
+      UIUtil.ChangeBackgroundTextColor(displayColor, currentColor);
+
+      // Set the background properties based on color choice
+      if (color === NvConstant.Colors.Trans) {
+        dataObject.background.Paint.FillType = NvConstant.FillTypes.Transparent;
+        dataObject.background.Paint.Color = NvConstant.Colors.White;
+      } else {
+        dataObject.background.Paint.FillType = NvConstant.FillTypes.Solid;
+        dataObject.background.Paint.Color = color;
+      }
+
+      // Set opacity to fully opaque
+      dataObject.background.Paint.Opacity = 1;
+
+      // Apply the background color change
+      UIUtil.SetBackgroundColor();
+
+      // // Handle collaborative messaging if enabled
+      // if (SDJS.Collab.AllowMessage()) {
+      //   const message = {
+      //     color: color
+      //   };
+      //   SDJS.Collab.BuildMessage(SDJS.ListManager.CollabMessages.SetBackgroundColor, message, false);
+      // }
+
+      // Complete the operation
+      DrawUtil.CompleteOperation();
+
+      T3Util.Log('O.ToolOpt.LibSetBackgroundColorAct - Output: Set background color', color);
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+      T3Util.Log('O.ToolOpt.LibSetBackgroundColorAct - Error:', error);
+    }
+  }
+
+  LibImportSVGSymbolAct(e) {
+    try {
+      T3Gv.opt.CloseEdit();
+
+      // Create a file input element to select an image
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+
+      fileInput.onchange = (e) => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Error: No file selected');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const fileDataUrl = reader.result as string;
+
+          T3Gv.opt.ImportSVGSymbol(file)
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Output: Set background image', { e: e });
+        };
+
+        reader.onerror = () => {
+          T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Error: Failed to read file');
+        };
+
+        reader.readAsDataURL(file);
+      };
+
+      // Open file dialog
+      fileInput.click();
+
+    } catch (e) {
+      T3Gv.opt.ExceptionCleanup(e)
+    }
   }
 }
 

@@ -3,6 +3,34 @@
 import Utils2 from "../../Util/Utils2"
 import Point from "../../Model/Point"
 
+/**
+ * Utility class for generating geometric polygon shapes used in HVAC visualization components.
+ *
+ * This class provides static methods to create various 2D polygon shapes with normalized coordinates,
+ * where points are typically represented as {x, y} objects with values between 0 and 1.
+ * These normalized shapes can then be scaled to actual pixel dimensions as needed.
+ *
+ * Each shape generation method follows a consistent pattern:
+ * - Takes a dimensions object with width and height properties
+ * - Takes an optional parameter for customizing the shape (e.g., offset, corner size)
+ * - Returns an array of points that define the polygon
+ *
+ * The generated shapes include basic geometric forms (triangles, diamonds),
+ * directional elements (arrows), and specialized HVAC symbols (terminal, storage, display).
+ *
+ * @example
+ * // Generate a diamond shape
+ * const dimensions = { width: 100, height: 100 };
+ * const diamondPoints = PolygonUtil.generateDiamond(dimensions, 0);
+ *
+ * // Generate a right arrow with custom head size
+ * const arrowDimensions = { width: 200, height: 100 };
+ * const arrowPoints = PolygonUtil.generateRightArrow(arrowDimensions, 50);
+ *
+ * // Generate a storage shape with curved sides
+ * const storageDimensions = { width: 150, height: 100 };
+ * const storagePoints = PolygonUtil.generateStorage(storageDimensions, 30, 0);
+ */
 class PolygonUtil {
 
   constructor() { }
