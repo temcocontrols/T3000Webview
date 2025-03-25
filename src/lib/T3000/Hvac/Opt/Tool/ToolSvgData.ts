@@ -153,7 +153,7 @@ class ToolSvgData {
   }
 
   static RoomHumiditySvgData() {
-    const RoomHumidity =
+    const roomHumidity =
       `
 
 
@@ -194,58 +194,58 @@ class ToolSvgData {
       </g>
   </g>
     `;
-    return RoomHumidity;
+    return roomHumidity;
 
   }
 
   static RoomTemperatureSvgData() {
-    const RoomTemperature =
+    const roomTemperature =
       `
-    <g transform="matrix(0.76419842,0,0,0.76419842,-3.2187002,-3.2187002)">
-      <circle
-        r="11.288136"
-        cy="16"
-        cx="16"
-        style="
-          opacity: 1;
-          fill:  ##FillColor=#FFFFFF##;
-          fill-opacity: 1;
-          fill-rule: nonzero;
-          stroke:##FillColor=#000000##;
-          stroke-width: 1;
-          stroke-linecap: butt;
-          stroke-linejoin: round;
-          stroke-miterlimit: 4;
-          stroke-dasharray: none;
-          stroke-opacity: 1;
-        "
+    <g transform="translate(0,0)">
+    <circle
+      r="30"
+      cy="30"
+      cx="30"
+      style="
+        opacity: 1;
+        fill: #FFFFFF;
+        fill-opacity: 1;
+        fill-rule: nonzero;
+        stroke:#000000;
+        stroke-width: 1.5;
+        stroke-linecap: butt;
+        stroke-linejoin: round;
+        stroke-miterlimit: 4;
+        stroke-dasharray: none;
+        stroke-opacity: 1;
+      "
+    />
+    <g
+      transform="translate(30,30)"
+      style="
+        font-style: normal;
+        font-weight: normal;
+        font-size: 51px;
+        line-height: 125%;
+        font-family: Sans;
+        letter-spacing: 0px;
+        word-spacing: 0px;
+        fill:#000000;
+        fill-opacity: 1;
+        stroke: none;
+        stroke-width: 1px;
+        stroke-linecap: butt;
+        stroke-linejoin: miter;
+        stroke-opacity: 1;
+      "
+    >
+      <path
+        d="m -10,-15 h 20 v 5 h -7.5 v 20 h -5 v -20 h -7.5 z"
       />
-      <g
-        transform="translate(32.100664,13.086915)"
-        style="
-          font-style: normal;
-          font-weight: normal;
-          font-size: 20.2897px;
-          line-height: 125%;
-          font-family: Sans;
-          letter-spacing: 0px;
-          word-spacing: 0px;
-          fill:##FillColor=#000000##;
-          fill-opacity: 1;
-          stroke: none;
-          stroke-width: 1px;
-          stroke-linecap: butt;
-          stroke-linejoin: miter;
-          stroke-opacity: 1;
-        "
-      >
-        <path
-          d="m -22.356997,-4.4825641 h 12.5126658 v 1.6842067 H -15.095093 V 10.308734 h -2.011141 V -2.7983574 h -5.250763 z"
-        />
-      </g>
     </g>
+  </g>
     `;
-    return RoomTemperature;
+    return roomTemperature;
   }
 
   static TemperatureSvgData() {
@@ -274,12 +274,70 @@ class ToolSvgData {
   }
 
   static HeatPumpSvgData() {
-    return "";
+
+    const heatPump =
+      `
+
+      <g
+    class="heat-pump"
+    stroke-linejoin="round"
+    stroke="#000000"
+    transform="translate(30, 0)"
+    fill="#28c3c6"
+  >
+    <rect
+      class="inner"
+      height="60"
+      width="60"
+      y="0"
+      x="-30"
+      stroke-width="1.5"
+    ></rect>
+    <g
+      transform="matrix(2 0 0 2 -30 -1)"
+      stroke-linecap="round"
+      stroke-miterlimit="1"
+      stroke-width="1.5"
+    >
+      <path
+        d="m16.234 16.944 8.6837-6.894-8.6837-6.894v3.447h-13.152v6.894h13.152z"
+        fill="#ce2824"
+      ></path>
+      <path
+        d="m15.766 28.844-8.6837-6.894 8.6837-6.894v3.447h13.152v6.894h-13.152z"
+        fill="#3238db"
+      ></path>
+    </g>
+  </g>
+
+    `;
+    return heatPump;
   }
 
   static PumpSvgData() {
-    const pumpSvg = '<g><g fill="##FillColor=#7F7F7F##" transform="translate(0,0)"><g class="pump"> <circle stroke="##LineColor=#000000##" cy="16" cx="15.955" r="9.9609003" class="pump-background" /> <g transform="translate(16,16)"> <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="##LineColor=#000000##" stroke-width="##LineThick=1##"/></g></g></g></g>';
-    return pumpSvg;
+    const pump =
+      `
+      <g fill="#28c3c6" transform="translate(0,0)">
+    <g class="pump">
+      <circle
+        stroke="##LineColor=#000000##"
+        cy="30"
+        cx="30"
+        r="30"
+        class="pump-background"
+      />
+      <g transform="translate(30,30)">
+        <path
+          d="M -15,23.4107 V -23.4107 L 26.234,0 Z"
+          class="rotating-middle"
+          stroke="##LineColor=#000000##"
+          stroke-width="1.933"
+        />
+      </g>
+    </g>
+  </g>
+    `;
+    return pump;
   }
 
   static ValueThreeWaySvgData() {
