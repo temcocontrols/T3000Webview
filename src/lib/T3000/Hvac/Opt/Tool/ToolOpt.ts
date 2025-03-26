@@ -619,6 +619,23 @@ class ToolOpt {
   LibToolShape(symbolType, useDragDrop) {
     this.tul.ToolDragDropSymbol(symbolType, useDragDrop);
   }
+
+  LibAddNoteAct() {
+    try {
+      T3Gv.opt.EditNote()
+    } catch (e) {
+      T3Gv.opt.ExceptionCleanup(e)
+    }
+  }
+
+  LibAddCommentAct() {
+    try {
+      T3Gv.opt.CloseEdit(),
+        T3Gv.opt.EditComments()
+    } catch (e) {
+      T3Gv.opt.ExceptionCleanup(e)
+    }
+  }
 }
 
 export default ToolOpt
