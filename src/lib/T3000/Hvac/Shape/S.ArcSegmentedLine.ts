@@ -1,50 +1,90 @@
 
 
 import SegmentedLine from './S.SegmentedLine'
-import Utils1 from '../Util/Utils1';
 import Utils2 from "../Util/Utils2";
 import Utils3 from "../Util/Utils3";
-import GlobalData from '../Data/T3Gv'
-import Document from '../Basic/B.Document'
-import Element from '../Basic/B.Element';
-import ConstantData from '../Data/ConstantData'
-import PolySeg from '../Model/PolySeg'
+import T3Gv from '../Data/T3Gv'
+import NvConstant from '../Data/Constant/NvConstant'
 import Instance from '../Data/Instance/Instance';
-import ConstantData2 from '../Data/ConstantData2'
+import OptConstant from '../Data/Constant/OptConstant';
+import T3Util from '../Util/T3Util';
+import TextConstant from '../Data/Constant/TextConstant';
+import Point from '../Model/Point';
 
+/**
+ * Class representing an arc segmented line in an HVAC visualization system.
+ *
+ * @class ArcSegmentedLine
+ * @extends {SegmentedLine}
+ * @description
+ * The ArcSegmentedLine class renders a line with multiple segments connected by arcs,
+ * providing a smoother visual representation compared to straight segmented lines.
+ * It is commonly used in HVAC diagrams to represent curved pipe or duct connections.
+ *
+ * Key features:
+ * - Creates SVG representations with proper arc connections between segments
+ * - Supports styling including color, opacity, line thickness, and patterns
+ * - Handles both simple segments and complex multi-segment paths
+ * - Provides slop elements for better interaction and selection
+ * - Supports text positioning relative to the curved line
+ *
+ * @example
+ * ```typescript
+ * // Create a new arc segmented line
+ * const arcLine = new ArcSegmentedLine({
+ *   StartPoint: new Point(100, 100),
+ *   EndPoint: new Point(300, 300),
+ *   StyleRecord: {
+ *     Line: {
+ *       Paint: {
+ *         Color: '#FF0000',
+ *         Opacity: 1.0
+ *       },
+ *       Thickness: 2,
+ *       LinePattern: 0
+ *     }
+ *   }
+ * });
+ *
+ * // Add to SVG context
+ * const svgContainer = svgContext.CreateShape(OptConstant.CSType.ShapeContainer);
+ * const renderedShape = arcLine.CreateShape(svgContext, false);
+ * svgContainer.AddElement(renderedShape);
+ * ```
+ */
 class ArcSegmentedLine extends SegmentedLine {
 
   constructor(options: any) {
-    console.log("S.ArcSegmentedLine - Constructor input:", options);
+    T3Util.Log("S.ArcSegmentedLine - Constructor input:", options);
     options = options || {};
-    options.LineType = options.LineType || ConstantData.LineType.ARCSEGLINE;
+    options.LineType = options.LineType || OptConstant.LineType.ARCSEGLINE;
     super(options);
-    console.log("S.ArcSegmentedLine - Constructor output initialized with:", options);
+    T3Util.Log("S.ArcSegmentedLine - Constructor output initialized with:", options);
   }
 
   CreateShape(svgContext, isPreviewMode) {
-    console.log("S.ArcSegmentedLine - CreateShape input:", { svgContext, isPreviewMode });
+    T3Util.Log("S.ArcSegmentedLine - CreateShape input:", { svgContext, isPreviewMode });
 
     let shapePath, shapeSlop, pointsArray = [];
-    if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) {
-      console.log("S.ArcSegmentedLine - CreateShape output:", null);
+    if (this.flags & NvConstant.ObjFlags.NotVisible) {
+      T3Util.Log("S.ArcSegmentedLine - CreateShape output:", null);
       return null;
     }
 
     let polyPointsResult;
-    const containerShape = svgContext.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
+    const containerShape = svgContext.CreateShape(OptConstant.CSType.ShapeContainer);
     const isSimpleSegment = (this.hoplist.nhops === 0);
 
     if (isSimpleSegment) {
-      shapePath = svgContext.CreateShape(ConstantData.CreateShapeType.PATH);
-      shapeSlop = svgContext.CreateShape(ConstantData.CreateShapeType.PATH);
+      shapePath = svgContext.CreateShape(OptConstant.CSType.Path);
+      shapeSlop = svgContext.CreateShape(OptConstant.CSType.Path);
     } else {
-      shapePath = svgContext.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-      shapeSlop = svgContext.CreateShape(ConstantData.CreateShapeType.POLYLINE);
+      shapePath = svgContext.CreateShape(OptConstant.CSType.Polyline);
+      shapeSlop = svgContext.CreateShape(OptConstant.CSType.Polyline);
     }
 
-    shapePath.SetID(ConstantData.SVGElementClass.SHAPE);
-    shapeSlop.SetID(ConstantData.SVGElementClass.SLOP);
+    shapePath.SetID(OptConstant.SVGElementClass.Shape);
+    shapeSlop.SetID(OptConstant.SVGElementClass.Slop);
     shapeSlop.ExcludeFromExport(true);
 
     this.CalcFrame();
@@ -71,12 +111,12 @@ class ArcSegmentedLine extends SegmentedLine {
     shapePath.SetSize(shapeWidth, shapeHeight);
 
     if (isSimpleSegment) {
-      pointsArray = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, null);
+      pointsArray = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, OptConstant.Common.MaxPolyPoints, true, true, null);
       polyPointsResult = this.UpdateSVG(shapePath, pointsArray);
     } else {
-      pointsArray = this.GetPolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      pointsArray = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true);
       if (this.hoplist.nhops !== 0) {
-        const hopsResult = GlobalData.optManager.InsertHops(this, pointsArray, pointsArray.length);
+        const hopsResult = T3Gv.opt.InsertHops(this, pointsArray, pointsArray.length);
         pointsArray = pointsArray.slice(0, hopsResult.npts);
       }
       shapePath.SetPoints(pointsArray);
@@ -101,12 +141,12 @@ class ArcSegmentedLine extends SegmentedLine {
     shapeSlop.SetFillColor('none');
     shapeSlop.SetOpacity(0);
     if (isPreviewMode) {
-      shapeSlop.SetEventBehavior(ConstantData2.EventBehavior.HIDDEN_OUT);
+      shapeSlop.SetEventBehavior(OptConstant.EventBehavior.HiddenOut);
     } else {
-      shapeSlop.SetEventBehavior(ConstantData2.EventBehavior.NONE);
+      shapeSlop.SetEventBehavior(OptConstant.EventBehavior.None);
     }
 
-    shapeSlop.SetStrokeWidth(strokeWidth + ConstantData.Defines.SED_Slop);
+    shapeSlop.SetStrokeWidth(strokeWidth + OptConstant.Common.Slop);
     containerShape.AddElement(shapePath);
     containerShape.AddElement(shapeSlop);
 
@@ -116,12 +156,12 @@ class ArcSegmentedLine extends SegmentedLine {
     containerShape.isShape = true;
     this.AddIcons(svgContext, containerShape);
 
-    console.log("S.ArcSegmentedLine - CreateShape output:", containerShape);
+    T3Util.Log("S.ArcSegmentedLine - CreateShape output:", containerShape);
     return containerShape;
   }
 
   UpdateSVG(svgElement, points) {
-    console.log("S.ArcSegmentedLine - updateSVG input:", { svgElement, points });
+    T3Util.Log("S.ArcSegmentedLine - updateSVG input:", { svgElement, points });
 
     // Create the path creator from the svg element.
     const arcCreator = svgElement.PathCreator();
@@ -174,12 +214,12 @@ class ArcSegmentedLine extends SegmentedLine {
 
     const pathDefinition = arcCreator.ToString();
     svgElement.SetPath(pathDefinition);
-    console.log("S.ArcSegmentedLine - updateSVG output:", pathDefinition);
+    T3Util.Log("S.ArcSegmentedLine - updateSVG output:", pathDefinition);
     return pathDefinition;
   }
 
   GetPolyPoints(numPoints: number, useRelativeCoordinates: boolean, includeStartPoint: boolean, unusedFlag: any, unusedParam: any) {
-    console.log("S.ArcSegmentedLine - GetPolyPoints input:", { numPoints, useRelativeCoordinates, includeStartPoint, unusedFlag, unusedParam });
+    T3Util.Log("S.ArcSegmentedLine - GetPolyPoints input:", { numPoints, useRelativeCoordinates, includeStartPoint, unusedFlag, unusedParam });
 
     let basePoints: Point[],
       index: number,
@@ -195,7 +235,7 @@ class ArcSegmentedLine extends SegmentedLine {
       resultPoints: Point[] = [];
 
     // Obtain base points from SegmentedLine's implementation.
-    basePoints = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, ConstantData.Defines.NPOLYPTS, true, true, false, null);
+    basePoints = Instance.Shape.SegmentedLine.prototype.GetPolyPoints.call(this, OptConstant.Common.MaxPolyPoints, true, true, false, null);
     boundingRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
 
     // Check if the starting and ending directions are zero and the bounding rectangle is degenerate.
@@ -211,7 +251,7 @@ class ArcSegmentedLine extends SegmentedLine {
           resultPoints[index].y += boundingRect.y;
         }
       }
-      console.log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
+      T3Util.Log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
       return resultPoints;
     }
 
@@ -257,7 +297,7 @@ class ArcSegmentedLine extends SegmentedLine {
           resultPoints.push(new Point(currentX, currentY));
           resultPoints[resultPoints.length - 1].notclockwise = !isClockwise;
         } else {
-          GlobalData.optManager.EllipseToPoints(resultPoints, numPoints / 2, prevX, currentX, prevY, currentY, isClockwise);
+          T3Gv.opt.EllipseToPoints(resultPoints, numPoints / 2, prevX, currentX, prevY, currentY, isClockwise);
         }
       }
       if (!useRelativeCoordinates) {
@@ -270,23 +310,23 @@ class ArcSegmentedLine extends SegmentedLine {
       resultPoints = Instance.Shape.BaseLine.prototype.GetPolyPoints.call(this, numPoints, useRelativeCoordinates, true, null);
     }
 
-    console.log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
+    T3Util.Log("S.ArcSegmentedLine - GetPolyPoints output:", resultPoints);
     return resultPoints;
   }
 
   GetTextOnLineParams(event: any) {
-    console.log("S.ArcSegmentedLine - GetTextOnLineParams input:", event);
+    T3Util.Log("S.ArcSegmentedLine - GetTextOnLineParams input:", event);
 
     if (this.segl.pts.length !== 3) {
       const result = Instance.Shape.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
-      console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
+      T3Util.Log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
       return result;
     }
 
     switch (this.TextAlign) {
-      case ConstantData.TextAlign.TOPCENTER:
-      case ConstantData.TextAlign.CENTER:
-      case ConstantData.TextAlign.BOTTOMCENTER: {
+      case TextConstant.TextAlign.TopCenter:
+      case TextConstant.TextAlign.Center:
+      case TextConstant.TextAlign.BottomCenter: {
         const polyPoints = this.GetPolyPoints(22, false, false, false, null);
         const rotatedPoints: Point[] = [];
         const textParams = {
@@ -296,7 +336,7 @@ class ArcSegmentedLine extends SegmentedLine {
         };
 
         textParams.Frame = Utils2.Pt2Rect(polyPoints[0], polyPoints[9]);
-        const angle = GlobalData.optManager.SD_GetClockwiseAngleBetween2PointsInRadians(polyPoints[0], polyPoints[9]);
+        const angle = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(polyPoints[0], polyPoints[9]);
 
         rotatedPoints.push(new Point(polyPoints[0].x, polyPoints[0].y));
         rotatedPoints.push(new Point(polyPoints[9].x, polyPoints[9].y));
@@ -313,17 +353,16 @@ class ArcSegmentedLine extends SegmentedLine {
         textParams.EndPoint.y = rotatedPoints[1].y;
         textParams.CenterProp = 0.3;
 
-        console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", textParams);
+        T3Util.Log("S.ArcSegmentedLine - GetTextOnLineParams output:", textParams);
         return textParams;
       }
       default: {
         const result = Instance.Shape.SegmentedLine.prototype.GetTextOnLineParams.call(this, event);
-        console.log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
+        T3Util.Log("S.ArcSegmentedLine - GetTextOnLineParams output:", result);
         return result;
       }
     }
   }
-
 }
 
 export default ArcSegmentedLine
