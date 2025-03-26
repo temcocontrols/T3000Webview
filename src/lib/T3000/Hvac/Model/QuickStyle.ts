@@ -54,7 +54,7 @@ class QuickStyle {
   public StyleRecord: any;
 
   constructor() {
-    this.Name = 'Style7';
+    this.Name = 't3';
     this.Fill = new FillData();
     this.Border = new LineData();
     this.OutsideEffect = new OutsideEffectData();

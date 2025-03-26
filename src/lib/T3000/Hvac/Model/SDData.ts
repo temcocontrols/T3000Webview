@@ -3,7 +3,7 @@
 import { Type } from 'class-transformer'
 import 'reflect-metadata'
 import RulerConfig from "./RulerConfig"
-import PageRecord from "./PageRecord"
+import PageSetting from "./PageSetting"
 import NvConstant from "../Data/Constant/NvConstant"
 // import RecentSymbol from "./RecentSymbol"
 import FillData from "./FillData"
@@ -21,7 +21,7 @@ import OptConstant from '../Data/Constant/OptConstant'
  * the behavior of HVAC control interfaces.
  *
  * The class is initialized with default values using constants and instances of helper classes such as SDDefault,
- * SDGraphDefault, FillData, RulerConfig, and PageRecord. These defaults ensure a consistent starting state for new
+ * SDGraphDefault, FillData, RulerConfig, and PageSetting. These defaults ensure a consistent starting state for new
  * sessions.
  *
  * @example
@@ -83,11 +83,12 @@ import OptConstant from '../Data/Constant/OptConstant'
  * @property {boolean} EnableSpellCheck - Flag indicating whether spell check is enabled.
  *
  * @property {RulerConfig} rulerConfig - Configuration settings for on-screen rulers.
- * @property {PageRecord} Page - Represents the page record associated with the session.
+ * @property {PageSetting} Page - Represents the page setting associated with the session.
  *
  * @property {number} CommentListID - Identifier for the comment list associated with the session.
  * @property {number} CommentID - Identifier for a specific comment within the session.
  */
+
 class SDData {
 
   //#region Properties
@@ -143,8 +144,8 @@ class SDData {
   @Type(() => RulerConfig)
   public rulerConfig: RulerConfig;
 
-  @Type(() => PageRecord)
-  public Page: PageRecord;
+  @Type(() => PageSetting)
+  public Page: PageSetting;
 
   // @Type(() => RecentSymbol)
   // public RecentSymbols: RecentSymbol[];
@@ -158,8 +159,16 @@ class SDData {
 
     //#region Initialize Properties
 
+    // Get current screen dimensions
+
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+
+    // Set the default dim to screen width and height
+    // this.dim = { x: 1000, y: 750 };
+    this.dim = { x: screenWidth, y: screenHeight };
+
     this.Type = StateConstant.StoredObjectType.SDDataObject;
-    this.dim = { x: 1000, y: 750 };
     this.flags = OptConstant.SessionFlags.LLink | OptConstant.SessionFlags.FreeHand | OptConstant.SessionFlags.NoTreeOverlap;
     this.tselect = -1;
     this.dupdisp = { x: 0, y: 0 };
@@ -201,7 +210,7 @@ class SDData {
     this.CurrentTheme = '';
     this.EnableSpellCheck = true;
     this.rulerConfig = new RulerConfig();
-    this.Page = new PageRecord();
+    this.Page = new PageSetting();
     // this.RecentSymbols = [];
     this.CommentListID = -1;
     this.CommentID = -1;
