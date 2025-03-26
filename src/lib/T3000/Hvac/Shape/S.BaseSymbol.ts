@@ -1,24 +1,59 @@
 
 
 import BaseShape from './S.BaseShape'
-import Utils1 from '../Util/Utils1';
 import Utils2 from "../Util/Utils2";
-import Utils3 from "../Util/Utils3";
-import GlobalData from '../Data/T3Gv'
-import Document from '../Basic/B.Document'
-import Element from '../Basic/B.Element';
-import ConstantData from '../Data/ConstantData'
+import T3Gv from '../Data/T3Gv'
+import NvConstant from '../Data/Constant/NvConstant'
 import $ from 'jquery';
+import OptConstant from '../Data/Constant/OptConstant';
+import CursorConstant from '../Data/Constant/CursorConstant';
+import T3Util from '../Util/T3Util';
+import OptCMUtil from '../Opt/Opt/OptCMUtil';
 
+/**
+ * Represents a base symbol shape in the T3000 HVAC visualization system.
+ * This class extends BaseShape to provide specialized symbol handling with
+ * interactive manipulation capabilities including resizing, rotation, and flipping.
+ *
+ * BaseSymbol manages:
+ * - Symbol data initialization and rendering
+ * - Interactive control knobs for manipulation (resize, rotate)
+ * - User interaction handling during symbol editing
+ * - Visual state management including locked and growth constraints
+ *
+ * @extends BaseShape
+ *
+ * @example
+ * ```typescript
+ * // Create a new symbol with custom options
+ * const symbolOptions = {
+ *   nativeDataArrayBuffer: myDataBuffer,
+ *   SymbolData: mySymbolData,
+ *   // Other shape options like position, size, etc.
+ *   x: 100,
+ *   y: 100,
+ *   width: 200,
+ *   height: 150
+ * };
+ *
+ * const mySymbol = new BaseSymbol(symbolOptions);
+ *
+ * // Add to a document
+ * svgDocument.AddElement(mySymbol);
+ *
+ * // Flip the symbol horizontally
+ * mySymbol.Flip(OptConstant.ExtraFlags.FlipHoriz);
+ * ```
+ */
 class BaseSymbol extends BaseShape {
 
   constructor(options: any) {
     // Log input parameters
-    console.log("S.BaseSymbol - Constructor input:", options);
+    T3Util.Log("S.BaseSymbol - Constructor input:", options);
 
     // Ensure options is initialized and set readable property names
     options = options || {};
-    options.ObjGrow = ConstantData.GrowBehavior.PROPORTIONAL;
+    options.ObjGrow = OptConstant.GrowBehavior.ProPortional;
     options.ResizeAspectConstrain = true;
 
     // Call the parent constructor with the modified options
@@ -29,36 +64,36 @@ class BaseSymbol extends BaseShape {
     this.SymbolData = options.SymbolData || null;
 
     // Log the state after construction
-    console.log("S.BaseSymbol - Constructor output:", this);
+    T3Util.Log("S.BaseSymbol - Constructor output:", this);
   }
 
   CreateActionTriggers2(svgDocument: any, triggerId: any, actionHandler: any, releaseHandler: any) {
-    console.log("S.BaseSymbol - CreateActionTriggers2 input:", { svgDocument, triggerId, actionHandler, releaseHandler });
+    T3Util.Log("S.BaseSymbol - CreateActionTriggers2 input:", { svgDocument, triggerId, actionHandler, releaseHandler });
     const result = super.CreateActionTriggers(svgDocument, triggerId, actionHandler, releaseHandler);
-    console.log("S.BaseSymbol - CreateActionTriggers2 output:", result);
+    T3Util.Log("S.BaseSymbol - CreateActionTriggers2 output:", result);
     return result;
   }
 
   CreateActionTriggers(svgDocument, triggerId, actionHandler, releaseHandler) {
-    console.log("S.BaseSymbol - CreateActionTriggers input:", { svgDocument, triggerId, actionHandler, releaseHandler });
+    T3Util.Log("S.BaseSymbol - CreateActionTriggers input:", { svgDocument, triggerId, actionHandler, releaseHandler });
 
     // List of cursor types for resize handles
     const resizeCursorTypes = [
-      Element.CursorType.RESIZE_LT,
-      Element.CursorType.RESIZE_T,
-      Element.CursorType.RESIZE_RT,
-      Element.CursorType.RESIZE_R,
-      Element.CursorType.RESIZE_RB,
-      Element.CursorType.RESIZE_B,
-      Element.CursorType.RESIZE_LB,
-      Element.CursorType.RESIZE_L
+      CursorConstant.CursorType.RESIZE_LT,
+      CursorConstant.CursorType.RESIZE_T,
+      CursorConstant.CursorType.RESIZE_RT,
+      CursorConstant.CursorType.RESIZE_R,
+      CursorConstant.CursorType.RESIZE_RB,
+      CursorConstant.CursorType.RESIZE_B,
+      CursorConstant.CursorType.RESIZE_LB,
+      CursorConstant.CursorType.RESIZE_L
     ];
 
     // Create a group shape to hold all knob elements
-    const knobGroup = svgDocument.CreateShape(ConstantData.CreateShapeType.GROUP);
+    const knobGroup = svgDocument.CreateShape(OptConstant.CSType.Group);
 
-    const knobSize = ConstantData.Defines.SED_KnobSize;
-    const rotatedKnobSize = ConstantData.Defines.SED_RKnobSize;
+    const knobSize = OptConstant.Common.KnobSize;
+    const rotatedKnobSize = OptConstant.Common.RKnobSize;
     let docToScreenScale = svgDocument.docInfo.docToScreenScale;
     if (svgDocument.docInfo.docScale <= 0.5) {
       docToScreenScale *= 2;
@@ -93,7 +128,7 @@ class BaseSymbol extends BaseShape {
     // Default configuration for knob creation
     const knobConfig = {
       svgDoc: svgDocument,
-      shapeType: ConstantData.CreateShapeType.RECT,
+      shapeType: OptConstant.CSType.Rect,
       x: 0,
       y: 0,
       knobSize: scaleKnobSize,
@@ -113,7 +148,7 @@ class BaseSymbol extends BaseShape {
     }
 
     // Check if the symbol is locked or not growable
-    if (this.flags & ConstantData.ObjFlags.SEDO_Lock) {
+    if (this.flags & NvConstant.ObjFlags.Lock) {
       knobConfig.fillColor = 'gray';
       knobConfig.locked = true;
     } else if (this.NoGrow()) {
@@ -121,12 +156,12 @@ class BaseSymbol extends BaseShape {
       knobConfig.strokeColor = 'red';
       // Override all cursor types if shape cannot grow
       for (let index = 0; index < 8; index++) {
-        adjustedCursorTypes[index] = Element.CursorType.DEFAULT;
+        adjustedCursorTypes[index] = CursorConstant.CursorType.DEFAULT;
       }
     }
 
     // Create top-left knob
-    knobConfig.knobID = ConstantData.ActionTriggerType.TOPLEFT;
+    knobConfig.knobID = OptConstant.ActionTriggerType.TopLeft;
     knobConfig.cursorType = adjustedCursorTypes[0];
     let knobElement = this.GenericKnob(knobConfig);
     knobGroup.AddElement(knobElement);
@@ -135,7 +170,7 @@ class BaseSymbol extends BaseShape {
     knobConfig.x = frameWidth - scaleKnobSize;
     knobConfig.y = 0;
     knobConfig.cursorType = adjustedCursorTypes[2];
-    knobConfig.knobID = ConstantData.ActionTriggerType.TOPRIGHT;
+    knobConfig.knobID = OptConstant.ActionTriggerType.TopRight;
     knobElement = this.GenericKnob(knobConfig);
     knobGroup.AddElement(knobElement);
 
@@ -143,7 +178,7 @@ class BaseSymbol extends BaseShape {
     knobConfig.x = frameWidth - scaleKnobSize;
     knobConfig.y = frameHeight - scaleKnobSize;
     knobConfig.cursorType = adjustedCursorTypes[4];
-    knobConfig.knobID = ConstantData.ActionTriggerType.BOTTOMRIGHT;
+    knobConfig.knobID = OptConstant.ActionTriggerType.BottomRight;
     knobElement = this.GenericKnob(knobConfig);
     knobGroup.AddElement(knobElement);
 
@@ -151,17 +186,17 @@ class BaseSymbol extends BaseShape {
     knobConfig.x = 0;
     knobConfig.y = frameHeight - scaleKnobSize;
     knobConfig.cursorType = adjustedCursorTypes[6];
-    knobConfig.knobID = ConstantData.ActionTriggerType.BOTTOMLEFT;
+    knobConfig.knobID = OptConstant.ActionTriggerType.BottomLeft;
     knobElement = this.GenericKnob(knobConfig);
     knobGroup.AddElement(knobElement);
 
     // Conditionally create the rotate knob if allowed
-    if (!GlobalData.optManager.bTouchInitiated && !knobConfig.locked && !this.NoGrow()) {
-      knobConfig.shapeType = ConstantData.CreateShapeType.OVAL;
+    if (!T3Gv.opt.touchInitiated && !knobConfig.locked && !this.NoGrow()) {
+      knobConfig.shapeType = OptConstant.CSType.Oval;
       knobConfig.x = frameWidth - 3 * scaleRotatedKnobSize;
       knobConfig.y = frameHeight / 2 - scaleRotatedKnobSize / 2;
-      knobConfig.cursorType = Element.CursorType.ROTATE;
-      knobConfig.knobID = ConstantData.ActionTriggerType.ROTATE;
+      knobConfig.cursorType = CursorConstant.CursorType.ROTATE;
+      knobConfig.knobID = OptConstant.ActionTriggerType.Rotate;
       knobConfig.fillColor = 'white';
       knobConfig.fillOpacity = 0.001;
       knobConfig.strokeSize = 1.5;
@@ -174,88 +209,87 @@ class BaseSymbol extends BaseShape {
     knobGroup.SetSize(frameWidth, frameHeight);
     knobGroup.SetPos(adjustedFrame.x, adjustedFrame.y);
     knobGroup.isShape = true;
-    knobGroup.SetID(ConstantData.Defines.Action + triggerId);
+    knobGroup.SetID(OptConstant.Common.Action + triggerId);
 
-    console.log("S.BaseSymbol - CreateActionTriggers output:", knobGroup);
+    T3Util.Log("S.BaseSymbol - CreateActionTriggers output:", knobGroup);
     return knobGroup;
   }
 
   ChangeShape(event: any, targetElement: any, newProperties: any, previousState: any, additionalData: any): boolean {
-    console.log("S.BaseSymbol - ChangeShape input:", { event, targetElement, newProperties, previousState, additionalData });
+    T3Util.Log("S.BaseSymbol - ChangeShape input:", { event, targetElement, newProperties, previousState, additionalData });
     const result = false;
-    console.log("S.BaseSymbol - ChangeShape output:", result);
+    T3Util.Log("S.BaseSymbol - ChangeShape output:", result);
     return result;
   }
 
   Flip(flipFlags: number) {
-    console.log("S.BaseSymbol - Flip input:", flipFlags);
+    T3Util.Log("S.BaseSymbol - Flip input:", flipFlags);
 
     // Retrieve the element by block ID (for potential further operations)
-    GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
 
     // Process horizontal flip if the corresponding flag is set in the input parameter
-    if (flipFlags & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
-      const isCurrentlyFlippedHoriz = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipHoriz) !== 0;
+    if (flipFlags & OptConstant.ExtraFlags.FlipHoriz) {
+      const isCurrentlyFlippedHoriz = (this.extraflags & OptConstant.ExtraFlags.FlipHoriz) !== 0;
       this.extraflags = Utils2.SetFlag(
         this.extraflags,
-        ConstantData.ExtraFlags.SEDE_FlipHoriz,
+        OptConstant.ExtraFlags.FlipHoriz,
         !isCurrentlyFlippedHoriz
       );
     }
 
     // Process vertical flip if the corresponding flag is set in the input parameter
-    if (flipFlags & ConstantData.ExtraFlags.SEDE_FlipVert) {
-      const isCurrentlyFlippedVert = (this.extraflags & ConstantData.ExtraFlags.SEDE_FlipVert) !== 0;
+    if (flipFlags & OptConstant.ExtraFlags.FlipVert) {
+      const isCurrentlyFlippedVert = (this.extraflags & OptConstant.ExtraFlags.FlipVert) !== 0;
       this.extraflags = Utils2.SetFlag(
         this.extraflags,
-        ConstantData.ExtraFlags.SEDE_FlipVert,
+        OptConstant.ExtraFlags.FlipVert,
         !isCurrentlyFlippedVert
       );
     }
 
-    console.log("S.BaseSymbol - Flip output:", this.extraflags);
+    T3Util.Log("S.BaseSymbol - Flip output:", this.extraflags);
   }
 
-  LM_ActionPreTrack(event: any, trigger: any): void {
-    console.log("S.BaseSymbol - LM_ActionPreTrack input:", { event, trigger });
+  LMActionPreTrack(event: any, trigger: any): void {
+    T3Util.Log("S.BaseSymbol - LMActionPreTrack input:", { event, trigger });
 
     if (this.DataID !== -1) {
-      if (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA ||
-        this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB) {
-        GlobalData.optManager.theActionSVGObject.textElem.SetVisible(false);
+      if (this.TextFlags & NvConstant.TextFlags.AttachA ||
+        this.TextFlags & NvConstant.TextFlags.AttachB) {
+        T3Gv.opt.actionSvgObject.textElem.SetVisible(false);
       }
     }
 
     if (this.rflags) {
-      this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
-      this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
+      this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Width, false);
+      this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
-    console.log("S.BaseSymbol - LM_ActionPreTrack output: completed");
+    T3Util.Log("S.BaseSymbol - LMActionPreTrack output: completed");
   }
 
-  LM_ActionPostRelease(event: any): void {
-    console.log("S.BaseSymbol - LM_ActionPostRelease input:", event);
+  LMActionPostRelease(event: any): void {
+    T3Util.Log("S.BaseSymbol - LMActionPostRelease input:", event);
 
     if (this.DataID !== -1) {
       if (
-        (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachA) ||
-        (this.TextFlags & ConstantData.TextFlags.SED_TF_AttachB)
+        (this.TextFlags & NvConstant.TextFlags.AttachA) ||
+        (this.TextFlags & NvConstant.TextFlags.AttachB)
       ) {
-        GlobalData.optManager.theActionSVGObject.textElem.SetVisible(true);
+        T3Gv.opt.actionSvgObject.textElem.SetVisible(true);
       }
     }
 
-    GlobalData.optManager.SetEditMode(ConstantData.EditState.DEFAULT);
-    GlobalData.optManager.UpdateLinks();
-    GlobalData.optManager.LinkParams = null;
+    OptCMUtil.SetEditMode(NvConstant.EditState.Default);
+    T3Gv.opt.UpdateLinks();
+    T3Gv.opt.linkParams = null;
 
     this.sizedim.width = this.Frame.width;
     this.sizedim.height = this.Frame.height;
 
-    console.log("S.BaseSymbol - LM_ActionPostRelease output: completed");
+    T3Util.Log("S.BaseSymbol - LMActionPostRelease output: completed");
   }
-
 }
 
 export default BaseSymbol
