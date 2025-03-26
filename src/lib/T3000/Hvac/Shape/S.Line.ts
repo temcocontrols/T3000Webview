@@ -4,16 +4,61 @@ import BaseLine from './S.BaseLine'
 import Utils1 from '../Util/Utils1';
 import Utils2 from "../Util/Utils2";
 import Utils3 from "../Util/Utils3";
-import GlobalData from '../Data/T3Gv';
+import T3Gv from '../Data/T3Gv';
 import Point from '../Model/Point'
-import Document from '../Basic/B.Document'
-import Element from '../Basic/B.Element'
-import ConstantData from '../Data/ConstantData'
-import PolySeg from '../Model/PolySeg'
-import SelectionAttributes from '../Model/SelectionAttributes'
-import ConstantData2 from '../Data/ConstantData2'
+import NvConstant from '../Data/Constant/NvConstant'
+import SelectionAttr from '../Model/SelectionAttr'
 import Instance from '../Data/Instance/Instance';
+import DSConstant from '../Opt/DS/DSConstant';
+import OptConstant from '../Data/Constant/OptConstant';
+import CursorConstant from '../Data/Constant/CursorConstant';
+import T3Util from '../Util/T3Util';
+import DataUtil from '../Opt/Data/DataUtil';
+import UIUtil from '../Opt/UI/UIUtil';
+import OptCMUtil from '../Opt/Opt/OptCMUtil';
+import DrawUtil from '../Opt/Opt/DrawUtil';
+import PolyUtil from '../Opt/Opt/PolyUtil';
+import HookUtil from '../Opt/Opt/HookUtil';
 
+/**
+ * Represents a line shape in the T3000 HVAC drawing system.
+ * Extends BaseLine to provide specialized line drawing functionality.
+ *
+ * The Line class supports various line styles, arrows, and measurements, and can be
+ * displayed with different visual properties like thickness, color, and pattern.
+ * It handles rendering as SVG, user interaction, dimension annotations, and line manipulations
+ * such as adding corners, flipping, and precise positioning.
+ *
+ * @extends BaseLine
+ * @example
+ * ```typescript
+ * // Create a basic line from (100, 100) to (300, 200)
+ * const lineParams = {
+ *   StartPoint: { x: 100, y: 100 },
+ *   EndPoint: { x: 300, y: 200 },
+ *   StyleRecord: {
+ *     Line: {
+ *       Paint: { Color: '#FF0000', Opacity: 1 },
+ *       Thickness: 2,
+ *       LinePattern: 0
+ *     }
+ *   }
+ * };
+ *
+ * // Instantiate the line
+ * const myLine = new Line(lineParams);
+ *
+ * // Add the line to the SVG container
+ * const svgContainer = T3Gv.opt.svgObjectLayer;
+ * const lineShape = myLine.CreateShape(svgContainer, false);
+ *
+ * // Adjust line end point
+ * myLine.AdjustLineEnd(lineShape, 400, 250);
+ *
+ * // Add a corner to convert to polyline
+ * myLine.AddCorner(null, { x: 350, y: 100 });
+ * ```
+ */
 class Line extends BaseLine {
 
   public StartPoint: Point;
@@ -34,14 +79,14 @@ class Line extends BaseLine {
   constructor(lineParam: any = {}) {
 
     lineParam = lineParam || {};
-    lineParam.LineType = ConstantData.LineType.LINE;
+    lineParam.LineType = OptConstant.LineType.LINE;
 
     super(lineParam);
 
     this.StartPoint = lineParam.StartPoint || { x: 0, y: 0 };
     this.EndPoint = lineParam.EndPoint || { x: 0, y: 0 };
     this.FixedPoint = lineParam.FixedPoint || [0, 0];
-    this.LineOrientation = lineParam.LineOrientation || ConstantData.LineOrientation.NONE;
+    this.LineOrientation = lineParam.LineOrientation || OptConstant.LineOrientation.None;
     this.hoplist = lineParam.hoplist || { nhops: 0, hops: [] };
     this.ArrowheadData = lineParam.ArrowheadData || [];
     this.ShortRef = lineParam.ShortRef || 0;
@@ -57,7 +102,7 @@ class Line extends BaseLine {
   }
 
   GetLineShapePolyPoints(numPoints: number, adjustForFrame: boolean) {
-    console.log('S.Line - Input:', { numPoints, adjustForFrame });
+    T3Util.Log('S.Line - Input:', { numPoints, adjustForFrame });
 
     let points: Point[] = [];
     let shapeParam = this.shapeparam;
@@ -73,7 +118,7 @@ class Line extends BaseLine {
 
     switch (shortRef) {
       case 0:
-      case ConstantData2.LineTypes.SED_LS_MeasuringTape:
+      case OptConstant.LineTypes.LsMeasuringTape:
         points.push(new Point(this.StartPoint.x, this.StartPoint.y));
         points.push(new Point(this.EndPoint.x, this.EndPoint.y));
         break;
@@ -160,16 +205,16 @@ class Line extends BaseLine {
       }
     }
 
-    console.log('S.Line - Output:', points);
+    T3Util.Log('S.Line - Output:', points);
     return points;
   }
 
   CreateShape(svgContainer, isHidden) {
-    console.log('S.Line - Input:', { svgContainer, isHidden });
+    T3Util.Log('S.Line - Input:', { svgContainer, isHidden });
 
-    if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) return null;
+    if (this.flags & NvConstant.ObjFlags.NotVisible) return null;
 
-    let shapeContainer = svgContainer.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
+    let shapeContainer = svgContainer.CreateShape(OptConstant.CSType.ShapeContainer);
     let shapeElement = null;
     let shortRef = this.ShortRef;
     let lineColor = '#000000';
@@ -181,13 +226,13 @@ class Line extends BaseLine {
       shortRef = 0;
     }
 
-    let isSimpleLine = (shortRef === 0 || shortRef == ConstantData2.LineTypes.SED_LS_MeasuringTape) && this.hoplist.nhops === 0;
+    let isSimpleLine = (shortRef === 0 || shortRef == OptConstant.LineTypes.LsMeasuringTape) && this.hoplist.nhops === 0;
 
-    shapeElement = isSimpleLine ? svgContainer.CreateShape(ConstantData.CreateShapeType.LINE) : svgContainer.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-    shapeElement.SetID(ConstantData.SVGElementClass.SHAPE);
+    shapeElement = isSimpleLine ? svgContainer.CreateShape(OptConstant.CSType.Line) : svgContainer.CreateShape(OptConstant.CSType.Polyline);
+    shapeElement.SetID(OptConstant.SVGElementClass.Shape);
 
-    let slopElement = isSimpleLine ? svgContainer.CreateShape(ConstantData.CreateShapeType.LINE) : svgContainer.CreateShape(ConstantData.CreateShapeType.POLYLINE);
-    slopElement.SetID(ConstantData.SVGElementClass.SLOP);
+    let slopElement = isSimpleLine ? svgContainer.CreateShape(OptConstant.CSType.Line) : svgContainer.CreateShape(OptConstant.CSType.Polyline);
+    slopElement.SetID(OptConstant.SVGElementClass.Slop);
     slopElement.ExcludeFromExport(true);
 
     this.CalcFrame();
@@ -195,7 +240,7 @@ class Line extends BaseLine {
     let styleRecord = this.StyleRecord;
 
     if (styleRecord == null) {
-      let sessionBlock = GlobalData.optManager.GetObjectPtr(GlobalData.optManager.theSEDSessionBlockID, false);
+      let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (sessionBlock) {
         styleRecord = sessionBlock.def.style;
       }
@@ -227,9 +272,9 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      points = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      points = this.GetLineShapePolyPoints(OptConstant.Common.MaxPolyPoints, true);
       if (this.hoplist.nhops !== 0) {
-        let hopResult = GlobalData.optManager.InsertHops(this, points, points.length);
+        let hopResult = T3Gv.opt.InsertHops(this, points, points.length);
         points = points.slice(0, hopResult.npts);
       }
       shapeElement.SetPoints(points);
@@ -259,11 +304,11 @@ class Line extends BaseLine {
     slopElement.SetFillColor('none');
     slopElement.SetOpacity(0);
     if (isHidden) {
-      slopElement.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+      slopElement.SetEventBehavior(OptConstant.EventBehavior.HiddenOut);
     } else {
-      slopElement.SetEventBehavior(Element.EventBehavior.NONE);
+      slopElement.SetEventBehavior(OptConstant.EventBehavior.None);
     }
-    slopElement.SetStrokeWidth(lineThickness + ConstantData.Defines.SED_Slop);
+    slopElement.SetStrokeWidth(lineThickness + OptConstant.Common.Slop);
 
     shapeContainer.AddElement(shapeElement);
     shapeContainer.AddElement(slopElement);
@@ -271,91 +316,84 @@ class Line extends BaseLine {
     this.ApplyStyles(shapeElement, styleRecord);
     this.ApplyEffects(shapeContainer, false, true);
 
-    if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_GANTT_BAR) {
-      GlobalData.optManager.GanttSetPercentCompleteEffectOnBar(this, shapeElement, styleRecord);
-    }
-
     shapeContainer.isShape = true;
     this.AddIcons(svgContainer, shapeContainer);
 
-    console.log('S.Line - Output:', shapeContainer);
+    T3Util.Log('S.Line - Output:', shapeContainer);
     return shapeContainer;
   }
 
   SetCursors() {
-    console.log('S.Line - Input:', { currentModalOperation: GlobalData.optManager.currentModalOperation });
+    T3Util.Log('S.Line - Input:', { crtOpt: T3Gv.opt.crtOpt });
 
     let shapeElement;
-    const shapeContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    const shapeContainer = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
 
-    if (GlobalData.optManager.currentModalOperation === Instance.Shape.ModalOperations.ADDCORNER) {
-      shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+    if (T3Gv.opt.crtOpt === OptConstant.OptTypes.AddCorner) {
+      shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
       if (shapeElement) {
-        shapeElement.SetCursor(Element.CursorType.CROSSHAIR);
+        shapeElement.SetCursor(CursorConstant.CursorType.CROSSHAIR);
       }
     } else {
-      this.BaseDrawingObject_SetCursors();
+      this.BaseDrawingObjectSetCursors();
     }
 
-    console.log('S.Line - Output:', { shapeElement });
+    T3Util.Log('S.Line - Output:', { shapeElement });
   }
 
-  BaseDrawingObject_SetCursors() {
-    console.log('S.Line - Input:', { BlockID: this.BlockID, flags: this.flags });
+  BaseDrawingObjectSetCursors() {
+    T3Util.Log('S.Line - Input:', { BlockID: this.BlockID, flags: this.flags });
 
-    const shapeContainer = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+    const shapeContainer = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     let isDimensionTextActive = false;
 
-    if (!(this.flags & ConstantData.ObjFlags.SEDO_Lock) && shapeContainer) {
-      if (GlobalData.optManager.GetEditMode() === ConstantData.EditState.DEFAULT) {
-        const shapeElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    if (!(this.flags & NvConstant.ObjFlags.Lock) && shapeContainer) {
+      if (OptCMUtil.GetEditMode() === NvConstant.EditState.Default) {
+        const shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
         if (shapeElement) {
-          if (this.objecttype === ConstantData.ObjectTypes.SD_OBJT_FRAME_CONTAINER) {
-            shapeElement.SetCursor(Element.CursorType.DEFAULT);
+          if (this.objecttype === NvConstant.FNObjectTypes.FrameContainer) {
+            shapeElement.SetCursor(CursorConstant.CursorType.DEFAULT);
           } else {
-            shapeElement.SetCursor(Element.CursorType.ADD);
+            shapeElement.SetCursor(CursorConstant.CursorType.ADD);
           }
         }
 
-        const hyperlinkIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.HYPERLINK);
-        if (hyperlinkIcon) hyperlinkIcon.SetCursor(Element.CursorType.POINTER);
+        const hyperlinkIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.HyperLink);
+        if (hyperlinkIcon) hyperlinkIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const trelloLinkIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.TRELLOLINK);
-        if (trelloLinkIcon) trelloLinkIcon.SetCursor(Element.CursorType.POINTER);
+        const notesIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Notes);
+        if (notesIcon) notesIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const notesIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.NOTES);
-        if (notesIcon) notesIcon.SetCursor(Element.CursorType.POINTER);
+        const expandedViewIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.ExpandedView);
+        if (expandedViewIcon) expandedViewIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const expandedViewIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.EXPANDEDVIEW);
-        if (expandedViewIcon) expandedViewIcon.SetCursor(Element.CursorType.POINTER);
+        const commentIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Comment);
+        if (commentIcon) commentIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const commentIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.COMMENT);
-        if (commentIcon) commentIcon.SetCursor(Element.CursorType.POINTER);
+        const attachmentIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Attachment);
+        if (attachmentIcon) attachmentIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const attachmentIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.ATTACHMENT);
-        if (attachmentIcon) attachmentIcon.SetCursor(Element.CursorType.POINTER);
+        const fieldDataIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.FieldData);
+        if (fieldDataIcon) fieldDataIcon.SetCursor(CursorConstant.CursorType.POINTER);
 
-        const fieldDataIcon = shapeContainer.GetElementByID(ConstantData.ShapeIconType.FIELDDATA);
-        if (fieldDataIcon) fieldDataIcon.SetCursor(Element.CursorType.POINTER);
+        const slopElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
+        if (slopElement) slopElement.SetCursor(CursorConstant.CursorType.ADD);
 
-        const slopElement = shapeContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
-        if (slopElement) slopElement.SetCursor(Element.CursorType.ADD);
-
-        const activeEditElement = GlobalData.optManager.svgDoc.GetActiveEdit();
+        const activeEditElement = T3Gv.opt.svgDoc.GetActiveEdit();
         if (this.DataID && this.DataID >= 0 && shapeContainer.textElem) {
           if (shapeContainer.textElem === activeEditElement) {
-            shapeElement.SetCursor(Element.CursorType.TEXT);
-            shapeContainer.textElem.SetCursorState(ConstantData.CursorState.EDITLINK);
+            shapeElement.SetCursor(CursorConstant.CursorType.TEXT);
+            shapeContainer.textElem.SetCursorState(CursorConstant.CursorState.EditLink);
           } else {
-            shapeContainer.textElem.SetCursorState(ConstantData.CursorState.LINKONLY);
+            shapeContainer.textElem.SetCursorState(CursorConstant.CursorState.LinkOnly);
           }
         }
 
-        if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Always ||
-          (this.Dimensions & ConstantData.DimensionFlags.SED_DF_Select && this.IsSelected())) {
-          const dimensionTextElements = shapeContainer.GetElementListWithID(ConstantData.SVGElementClass.DIMENSIONTEXT);
+        if (this.Dimensions & NvConstant.DimensionFlags.Always ||
+          (this.Dimensions & NvConstant.DimensionFlags.Select && this.IsSelected())) {
+          const dimensionTextElements = shapeContainer.GetElementListWithId(OptConstant.SVGElementClass.DimText);
           for (let i = 0; i < dimensionTextElements.length; i++) {
-            dimensionTextElements[i].SetCursorState(ConstantData.CursorState.EDITONLY);
+            dimensionTextElements[i].SetCursorState(CursorConstant.CursorState.EditOnly);
             if (dimensionTextElements[i] === activeEditElement) {
               isDimensionTextActive = true;
             }
@@ -370,15 +408,15 @@ class Line extends BaseLine {
       }
     }
 
-    console.log('S.Line - Output:', { shapeContainer, isDimensionTextActive });
+    T3Util.Log('S.Line - Output:', { shapeContainer, isDimensionTextActive });
   }
 
   AdjustLineStart(svgContainer, startX, startY, endX, endY, enforceMinimum) {
-    console.log('S.Line - Input:', { svgContainer, startX, startY, endX, endY, enforceMinimum });
+    T3Util.Log('S.Line - Input:', { svgContainer, startX, startY, endX, endY, enforceMinimum });
 
     let points = [];
-    let shapeElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-    let slopElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+    let shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
+    let slopElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Slop);
 
     this.StartPoint.x = startX;
     this.StartPoint.y = startY;
@@ -388,7 +426,7 @@ class Line extends BaseLine {
     }
 
     let adjustForLineAngleSnap = false;
-    if (GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0) {
+    if (T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0) {
       adjustForLineAngleSnap = true;
     }
 
@@ -406,7 +444,7 @@ class Line extends BaseLine {
     shapeElement.SetSize(this.Frame.width, this.Frame.height);
 
     let polyPoints = [];
-    let isSimpleLine = (this.ShortRef === 0 || this.ShortRef == ConstantData2.LineTypes.SED_LS_MeasuringTape) && this.hoplist.nhops === 0;
+    let isSimpleLine = (this.ShortRef === 0 || this.ShortRef == OptConstant.LineTypes.LsMeasuringTape) && this.hoplist.nhops === 0;
 
     if (isSimpleLine) {
       shapeElement.SetPoints(
@@ -416,7 +454,7 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      polyPoints = this.GetLineShapePolyPoints(OptConstant.Common.MaxPolyPoints, true);
       shapeElement.SetPoints(polyPoints);
     }
 
@@ -436,8 +474,8 @@ class Line extends BaseLine {
     this.CalcFrame();
 
     if (this.rflags) {
-      this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
-      this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
+      this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Width, false);
+      this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
     svgContainer.SetSize(this.Frame.width, this.Frame.height);
@@ -452,7 +490,7 @@ class Line extends BaseLine {
         this.EndPoint.y - this.Frame.y
       );
     } else {
-      polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+      polyPoints = this.GetLineShapePolyPoints(OptConstant.Common.MaxPolyPoints, true);
       shapeElement.SetPoints(polyPoints);
     }
 
@@ -472,7 +510,7 @@ class Line extends BaseLine {
     this.UpdateDimensionLines(svgContainer);
     this.UpdateCoordinateLines(svgContainer);
 
-    new SelectionAttributes();
+    new SelectionAttr();
     let rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
     points.push(new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y));
     points.push(new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y));
@@ -481,23 +519,23 @@ class Line extends BaseLine {
     let deltaY = points[0].y - points[1].y;
     Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    GlobalData.optManager.UpdateDisplayCoordinates(this.Frame, this.StartPoint, ConstantData.CursorTypes.Grow, this);
+    UIUtil.UpdateDisplayCoordinates(this.Frame, this.StartPoint, CursorConstant.CursorTypes.Grow, this);
 
     if (this.DataID !== -1) {
-      this.LM_ResizeSVGTextObject(svgContainer, this, this.Frame);
+      this.LMResizeSVGTextObject(svgContainer, this, this.Frame);
     }
 
-    console.log('S.Line - Output:', { shapeElement, slopElement, points });
+    T3Util.Log('S.Line - Output:', { shapeElement, slopElement, points });
   }
 
   AdjustLineEnd(svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap) {
-    console.log("S.Connector - Input:", { svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap });
+    T3Util.Log("S.Connector - Input:", { svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap });
 
     let points = [];
     let shapeElement, slopElement;
     if (svgContainer) {
-      shapeElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE);
-      slopElement = svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP);
+      shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
+      slopElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Slop);
     }
 
     // Update endpoint and enforce minimum constraints
@@ -506,7 +544,7 @@ class Line extends BaseLine {
     this.EnforceMinimum(false);
 
     // Determine if line angle snap adjustment is needed
-    const linkParamsExist = GlobalData.optManager.LinkParams && GlobalData.optManager.LinkParams.ConnectIndex >= 0;
+    const linkParamsExist = T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0;
     const adjustForSnap = forceAngleSnap || linkParamsExist;
 
     if (adjustForSnap) {
@@ -525,7 +563,7 @@ class Line extends BaseLine {
       let polyPoints = [];
       const isSimpleLine =
         (this.ShortRef === 0 ||
-          this.ShortRef === ConstantData2.LineTypes.SED_LS_MeasuringTape) &&
+          this.ShortRef === OptConstant.LineTypes.LsMeasuringTape) &&
         this.hoplist.nhops === 0;
 
       if (isSimpleLine) {
@@ -536,7 +574,7 @@ class Line extends BaseLine {
           this.EndPoint.y - this.Frame.y
         );
       } else {
-        polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+        polyPoints = this.GetLineShapePolyPoints(OptConstant.Common.MaxPolyPoints, true);
         shapeElement.SetPoints(polyPoints);
       }
 
@@ -554,8 +592,8 @@ class Line extends BaseLine {
       }
 
       if (this.rflags) {
-        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Width, false);
-        this.rflags = Utils2.SetFlag(this.rflags, ConstantData.FloatingPointDim.SD_FP_Height, false);
+        this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Width, false);
+        this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
       }
 
       // Recalculate frame and update container again
@@ -572,7 +610,7 @@ class Line extends BaseLine {
           this.EndPoint.y - this.Frame.y
         );
       } else {
-        polyPoints = this.GetLineShapePolyPoints(ConstantData.Defines.NPOLYPTS, true);
+        polyPoints = this.GetLineShapePolyPoints(OptConstant.Common.MaxPolyPoints, true);
         shapeElement.SetPoints(polyPoints);
       }
 
@@ -592,7 +630,7 @@ class Line extends BaseLine {
       this.UpdateDimensionLines(svgContainer);
       this.UpdateCoordinateLines(svgContainer);
 
-      new SelectionAttributes();
+      new SelectionAttr();
       const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
       points.push(new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y));
       points.push(new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y));
@@ -602,42 +640,42 @@ class Line extends BaseLine {
       const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
       const deepCopiedEndPoint = Utils1.DeepCopy(this.EndPoint);
 
-      GlobalData.optManager.UpdateDisplayCoordinates(this.Frame, deepCopiedEndPoint, ConstantData.CursorTypes.Grow, this);
+      UIUtil.UpdateDisplayCoordinates(this.Frame, deepCopiedEndPoint, CursorConstant.CursorTypes.Grow, this);
 
       if (
-        (GlobalData.optManager.theContentHeader.flags & ConstantData.ContentHeaderFlags.CT_DA_NoAuto) &&
+        (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) &&
         (deepCopiedEndPoint.x !== this.EndPoint.x || deepCopiedEndPoint.y !== this.EndPoint.y)
       ) {
-        const error = new Error(Resources.Strings.Error_Bounds);
+        const error = new Error("bounds error");
         error.name = "1";
         throw error;
       }
 
       if (this.DataID !== -1) {
-        this.LM_ResizeSVGTextObject(svgContainer, this, this.Frame);
+        this.LMResizeSVGTextObject(svgContainer, this, this.Frame);
       }
     }
 
-    console.log("S.Connector - Output:", {
-      shapeElement: svgContainer ? svgContainer.GetElementByID(ConstantData.SVGElementClass.SHAPE) : null,
-      slopElement: svgContainer ? svgContainer.GetElementByID(ConstantData.SVGElementClass.SLOP) : null
+    T3Util.Log("S.Connector - Output:", {
+      shapeElement: svgContainer ? svgContainer.GetElementById(OptConstant.SVGElementClass.Shape) : null,
+      slopElement: svgContainer ? svgContainer.GetElementById(OptConstant.SVGElementClass.Slop) : null
     });
   }
 
   Flip(flipFlags: number) {
-    console.log('S.Line - Input:', { flipFlags });
+    T3Util.Log('S.Line - Input:', { flipFlags });
 
     let temp;
     let swapped = false;
 
-    if (GlobalData.optManager.ob = Utils1.DeepCopy(this), flipFlags & ConstantData.ExtraFlags.SEDE_FlipVert) {
+    if (T3Gv.opt.ob = Utils1.DeepCopy(this), flipFlags & OptConstant.ExtraFlags.FlipVert) {
       temp = this.StartPoint.y;
       this.StartPoint.y = this.EndPoint.y;
       this.EndPoint.y = temp;
       swapped = true;
     }
 
-    if (flipFlags & ConstantData.ExtraFlags.SEDE_FlipHoriz) {
+    if (flipFlags & OptConstant.ExtraFlags.FlipHoriz) {
       temp = this.StartPoint.x;
       this.StartPoint.x = this.EndPoint.x;
       this.EndPoint.x = temp;
@@ -645,34 +683,34 @@ class Line extends BaseLine {
     }
 
     if (swapped) {
-      const shapeElement = GlobalData.optManager.svgObjectLayer.GetElementByID(this.BlockID);
+      const shapeElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
       this.UpdateDimensionLines(shapeElement);
 
       if (this.DataID !== -1) {
-        this.LM_ResizeSVGTextObject(shapeElement, this, this.Frame);
+        this.LMResizeSVGTextObject(shapeElement, this, this.Frame);
       }
 
-      if (GlobalData.optManager.ob.Frame) {
-        GlobalData.optManager.MaintainLink(
+      if (T3Gv.opt.ob.Frame) {
+        HookUtil.MaintainLink(
           this.BlockID,
           this,
-          GlobalData.optManager.ob,
-          ConstantData.ActionTriggerType.ROTATE
+          T3Gv.opt.ob,
+          OptConstant.ActionTriggerType.Rotate
         );
       }
 
-      GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
     }
 
-    GlobalData.optManager.ob = {};
-    console.log('S.Line - Output:', { swapped });
+    T3Gv.opt.ob = {};
+    T3Util.Log('S.Line - Output:', { swapped });
   }
 
   AddCorner(event, point) {
-    console.log('S.Line - Input:', { event, point });
+    T3Util.Log('S.Line - Input:', { event, point });
 
     let angle, rotatedPoints, newPoints = [], tempPoints = [], isStartPoint = false;
-    GlobalData.optManager.ob = Utils1.DeepCopy(this);
+    T3Gv.opt.ob = Utils1.DeepCopy(this);
 
     newPoints = [
       { x: this.StartPoint.x, y: this.StartPoint.y },
@@ -687,10 +725,10 @@ class Line extends BaseLine {
     Utils3.RotatePointsAboutCenter(this.Frame, -radians, newPoints);
 
     if (Math.abs(newPoints[1].y - newPoints[2].y) <= this.StyleRecord.Line.Thickness) {
-      if (Collab.AllowMessage()) {
-        Collab.BeginSecondaryEdit();
-        const message = { BlockID: this.BlockID, point: { x: point.x, y: point.y } };
-      }
+      // if (Collab.AllowMessage()) {
+      //   Collab.BeginSecondaryEdit();
+      //   const message = { BlockID: this.BlockID, point: { x: point.x, y: point.y } };
+      // }
 
       newPoints[2].y = newPoints[0].y;
       if (Math.abs(newPoints[1].x - newPoints[2].x) > Math.abs(newPoints[0].x - newPoints[2].x)) {
@@ -713,9 +751,9 @@ class Line extends BaseLine {
       }
 
       this.CalcFrame();
-      GlobalData.optManager.MaintainLink(this.BlockID, this, GlobalData.optManager.ob, ConstantData.ActionTriggerType.MODIFYSHAPE);
-      GlobalData.optManager.SetLinkFlag(this.BlockID, ConstantData.LinkFlags.SED_L_MOVE | ConstantData.LinkFlags.SED_L_CHANGE);
-      GlobalData.optManager.UpdateLinks();
+      HookUtil.MaintainLink(this.BlockID, this, T3Gv.opt.ob, OptConstant.ActionTriggerType.ModifyShape);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE);
+      T3Gv.opt.UpdateLinks();
 
       const newLineData = {
         StartPoint: { x: tempPoints[0].x, y: tempPoints[0].y },
@@ -727,49 +765,49 @@ class Line extends BaseLine {
       };
 
       const newLine = new Instance.Shape.Line(newLineData);
-      const newBlockID = GlobalData.optManager.AddNewObject(newLine, false, true);
+      const newBlockID = DrawUtil.AddNewObject(newLine, false, true);
       const joinID = isStartPoint
-        ? GlobalData.optManager.PolyLJoin(newBlockID, ConstantData.HookPts.SED_KTL, this.BlockID, ConstantData.HookPts.SED_KTL, false)
-        : GlobalData.optManager.PolyLJoin(newBlockID, ConstantData.HookPts.SED_KTL, this.BlockID, ConstantData.HookPts.SED_KTR, false);
+        ? PolyUtil.PolyLJoin(newBlockID, OptConstant.HookPts.KTL, this.BlockID, OptConstant.HookPts.KTL, false)
+        : PolyUtil.PolyLJoin(newBlockID, OptConstant.HookPts.KTL, this.BlockID, OptConstant.HookPts.KTR, false);
 
-      const joinedObject = GlobalData.optManager.GetObjectPtr(joinID, false);
-      const joinedElement = GlobalData.optManager.svgObjectLayer.GetElementByID(joinID);
+      const joinedObject = DataUtil.GetObjectPtr(joinID, false);
+      const joinedElement = T3Gv.opt.svgObjectLayer.GetElementById(joinID);
 
-      let dimensionText = Number(GlobalData.docHandler.rulerSettings.majorScale).toString();
-      switch (GlobalData.docHandler.rulerSettings.units) {
-        case ConstantData.RulerUnits.SED_Feet:
-          if (this.Dimensions & ConstantData.DimensionFlags.SED_DF_ShowFeetAsInches) {
-            dimensionText = `${12 * GlobalData.docHandler.rulerSettings.majorScale}"`;
+      let dimensionText = Number(T3Gv.docUtil.rulerConfig.majorScale).toString();
+      switch (T3Gv.docUtil.rulerConfig.units) {
+        case NvConstant.RulerUnit.Feet:
+          if (this.Dimensions & NvConstant.DimensionFlags.ShowFeetAsInches) {
+            dimensionText = `${12 * T3Gv.docUtil.rulerConfig.majorScale}"`;
           } else {
             dimensionText += "'";
           }
           break;
-        case ConstantData.RulerUnits.SED_Inches:
+        case NvConstant.RulerUnit.Inches:
           dimensionText += '"';
           break;
       }
 
       joinedObject.UpdateDimensionFromText(joinedElement, dimensionText, { segment: 2 });
-      GlobalData.optManager.AddToDirtyList(this.BlockID);
+      DataUtil.AddToDirtyList(this.BlockID);
 
-      Collab.ClearCreateList();
-      Collab.AddToCreateList(joinID);
+      // Collab.ClearCreateList();
+      // Collab.AddToCreateList(joinID);
 
-      if (Collab.AllowMessage()) {
-        if (Collab.IsSecondary() && Collab.CreateList.length) {
-          message.CreateList = [joinID];
-        }
-        Collab.BuildMessage(ConstantData.CollabMessages.AddCorner, message, false);
-      }
+      // if (Collab.AllowMessage()) {
+      //   if (Collab.IsSecondary() && Collab.CreateList.length) {
+      //     message.CreateList = [joinID];
+      //   }
+      //   Collab.BuildMessage(NvConstant.CollabMessages.AddCorner, message, false);
+      // }
 
-      GlobalData.optManager.CompleteOperation(null);
+      DrawUtil.CompleteOperation(null);
     }
 
-    console.log('S.Line - Output:', { newPoints, tempPoints, isStartPoint });
+    T3Util.Log('S.Line - Output:', { newPoints, tempPoints, isStartPoint });
   }
 
   UseEdges(enableX: boolean, enableY: boolean, alignX: boolean, alignY: boolean, startPoint: Point, endPoint: Point) {
-    console.log('S.Line - Input:', { enableX, enableY, alignX, alignY, startPoint, endPoint });
+    T3Util.Log('S.Line - Input:', { enableX, enableY, alignX, alignY, startPoint, endPoint });
 
     let offsetX = 0, offsetY = 0, newWidth = 0, newHeight = 0, deltaX = 0, deltaY = 0;
     let shouldAdjust = false;
@@ -811,7 +849,7 @@ class Line extends BaseLine {
     }
 
     if (shouldAdjust) {
-      GlobalData.optManager.GetObjectPtr(this.BlockID, true);
+      DataUtil.GetObjectPtr(this.BlockID, true);
       if (deltaX || deltaY) {
         this.OffsetShape(deltaX, deltaY);
       }
@@ -820,12 +858,12 @@ class Line extends BaseLine {
         if (offsetY) newHeight = this.Frame.height + offsetY;
         this.SetSize(newWidth, newHeight, 0);
       }
-      GlobalData.optManager.AddToDirtyList(this.BlockID);
+      DataUtil.AddToDirtyList(this.BlockID);
     }
 
-    console.log('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });
+    T3Util.Log('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });
     return shouldAdjust;
   }
 }
 
-export default Line
+export default Line;
