@@ -1666,7 +1666,7 @@ class ShapeUtil {
    * @returns A rectangle object with x, y, width, and height properties
    */
   static ToSDJSRect(winRect, scaleFactor) {
-    let rect: any;
+    let rect: any = {};
 
     // Convert position
     rect.x = winRect.left * scaleFactor;
