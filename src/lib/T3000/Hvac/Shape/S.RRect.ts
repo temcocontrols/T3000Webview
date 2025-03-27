@@ -1,31 +1,53 @@
 
 
 import BaseShape from './S.BaseShape'
-import Utils1 from '../Util/Utils1';
 import Utils2 from "../Util/Utils2";
 import Utils3 from "../Util/Utils3";
-import GlobalData from '../Data/T3Gv'
-import DefaultEvt from "../Event/EvtUtil";
+import T3Gv from '../Data/T3Gv'
 import Point from '../Model/Point'
-import Document from '../Basic/B.Document'
-import Element from '../Basic/B.Element';
-import BaseDrawingObject from './S.BaseDrawingObject'
 import $ from 'jquery'
-import ConstantData from '../Data/ConstantData'
+import NvConstant from '../Data/Constant/NvConstant'
+import PolygonConstant from '../Opt/Polygon/PolygonConstant';
+import OptConstant from '../Data/Constant/OptConstant';
+import T3Util from '../Util/T3Util';
+import UIUtil from '../Opt/UI/UIUtil';
+import Instance from '../Data/Instance/Instance';
+import PolyUtil from '../Opt/Opt/PolyUtil';
 
+/**
+ * Represents a rounded rectangle shape in the T3000 HVAC system.
+ *
+ * @class RRect
+ * @extends BaseShape
+ * @description
+ * The RRect class implements a rounded rectangle shape with configurable corner radius.
+ * It supports both fixed and proportional corner sizes, SVG rendering, resizing operations,
+ * style customization, and intersection calculations for connection points.
+ *
+ * Key features:
+ * - SVG shape generation with main shape, slop (for interaction), and optional hatch pattern
+ * - Corner size calculation based on shape parameters and dimensions
+ * - Shape resize operations that maintain corner proportions
+ * - Polygon point generation for perimeter calculations
+ * - Integration with the T3000 drawing system
+ *
+ * The corner radius can be either:
+ * - Proportional to the shape's smallest dimension (default)
+ * - Fixed size when the FixedRR flag is set in moreflags
+ */
 class RRect extends BaseShape {
 
   constructor(inputParams: any) {
-    console.log("= S.RRect: constructor input:", inputParams);
+    T3Util.Log("= S.RRect: constructor input:", inputParams);
     const params = inputParams || {};
-    params.ShapeType = ConstantData.ShapeType.RRECT;
+    params.ShapeType = OptConstant.ShapeType.RRect;
     super(params);
-    this.dataclass = ConstantData.SDRShapeTypes.SED_S_RRect;
-    console.log("= S.RRect: constructor output:", this);
+    this.dataclass = PolygonConstant.ShapeTypes.ROUNDED_RECTANGLE;
+    T3Util.Log("= S.RRect: constructor output:", this);
   }
 
   GetCornerSize(inputCornerSize?: number) {
-    console.log("= S.RRect: GetCornerSize input:", inputCornerSize);
+    T3Util.Log("= S.RRect: GetCornerSize input:", inputCornerSize);
 
     const shapeWidth = this.Frame.width;
     const shapeHeight = this.Frame.height;
@@ -39,32 +61,32 @@ class RRect extends BaseShape {
       minDimension = inputCornerSize;
     }
 
-    if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_FixedRR) {
-      let fixedDimension = ConstantData.Defines.RRectFixedDim * this.shapeparam;
+    if (this.moreflags & OptConstant.ObjMoreFlags.FixedRR) {
+      let fixedDimension = OptConstant.Common.RRectFixedDim * this.shapeparam;
       const maxAllowed = 0.4 * minDimension;
       if (fixedDimension > maxAllowed) {
         fixedDimension = maxAllowed;
       }
-      console.log("= S.RRect: GetCornerSize output:", fixedDimension);
+      T3Util.Log("= S.RRect: GetCornerSize output:", fixedDimension);
       return fixedDimension;
     }
 
     const resultDimension = minDimension * this.shapeparam;
-    console.log("= S.RRect: GetCornerSize output:", resultDimension);
+    T3Util.Log("= S.RRect: GetCornerSize output:", resultDimension);
     return resultDimension;
   }
 
   CreateShape(svgDoc: any, addEventSlop: boolean) {
-    console.log("= S.RRect: CreateShape input:", { svgDoc, addEventSlop });
+    T3Util.Log("= S.RRect: CreateShape input:", { svgDoc, addEventSlop });
 
-    if (this.flags & ConstantData.ObjFlags.SEDO_NotVisible) {
-      console.log("= S.RRect: CreateShape output:", null);
+    if (this.flags & NvConstant.ObjFlags.NotVisible) {
+      T3Util.Log("= S.RRect: CreateShape output:", null);
       return null;
     }
 
-    const shapeContainer = svgDoc.CreateShape(ConstantData.CreateShapeType.SHAPECONTAINER);
-    const mainShape = svgDoc.CreateShape(ConstantData.CreateShapeType.RRECT);
-    mainShape.SetID(ConstantData.SVGElementClass.SHAPE);
+    const shapeContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
+    const mainShape = svgDoc.CreateShape(OptConstant.CSType.RRect);
+    mainShape.SetID(OptConstant.SVGElementClass.Shape);
 
     const extendedFrame = $.extend(true, {}, this.Frame);
     let style = this.StyleRecord;
@@ -96,17 +118,17 @@ class RRect extends BaseShape {
     this.ApplyStyles(mainShape, style);
     this.ApplyEffects(shapeContainer, false, false);
 
-    const slopShape = svgDoc.CreateShape(ConstantData.CreateShapeType.RRECT);
+    const slopShape = svgDoc.CreateShape(OptConstant.CSType.RRect);
     slopShape.SetStrokeColor('white');
     slopShape.SetFillColor('none');
     slopShape.SetOpacity(0);
-    slopShape.SetStrokeWidth(strokeThickness + ConstantData.Defines.SED_Slop);
+    slopShape.SetStrokeWidth(strokeThickness + OptConstant.Common.Slop);
     if (addEventSlop) {
-      slopShape.SetEventBehavior(Element.EventBehavior.HIDDEN_OUT);
+      slopShape.SetEventBehavior(OptConstant.EventBehavior.HiddenOut);
     } else {
-      slopShape.SetEventBehavior(Element.EventBehavior.NONE);
+      slopShape.SetEventBehavior(OptConstant.EventBehavior.None);
     }
-    slopShape.SetID(ConstantData.SVGElementClass.SLOP);
+    slopShape.SetID(OptConstant.SVGElementClass.Slop);
     slopShape.ExcludeFromExport(true);
     slopShape.SetRRectSize(width, height, cornerSize, cornerSize);
 
@@ -114,8 +136,8 @@ class RRect extends BaseShape {
 
     const hatchType = style.Fill.Hatch;
     if (hatchType && hatchType !== 0) {
-      const hatchShape = svgDoc.CreateShape(ConstantData.CreateShapeType.RRECT);
-      hatchShape.SetID(ConstantData.SVGElementClass.HATCH);
+      const hatchShape = svgDoc.CreateShape(OptConstant.CSType.RRect);
+      hatchShape.SetID(OptConstant.SVGElementClass.Hatch);
       hatchShape.SetSize(width, height);
       hatchShape.SetRRectSize(width, height, cornerSize, cornerSize);
       hatchShape.SetStrokeWidth(0);
@@ -124,16 +146,16 @@ class RRect extends BaseShape {
     }
 
     shapeContainer.isShape = true;
-    const tableData = this.GetTable(false);
-    if (tableData) {
-      GlobalData.optManager.LM_AddSVGTableObject(this, svgDoc, shapeContainer, tableData);
-    }
+    // const tableData = this.GetTable(false);
+    // if (tableData) {
+    //   T3Gv.opt.LM_AddSVGTableObject(this, svgDoc, shapeContainer, tableData);
+    // }
 
     if (this.DataID >= 0) {
-      this.LM_AddSVGTextObject(svgDoc, shapeContainer);
+      this.LMAddSVGTextObject(svgDoc, shapeContainer);
     }
 
-    console.log("= S.RRect: CreateShape output:", shapeContainer);
+    T3Util.Log("= S.RRect: CreateShape output:", shapeContainer);
     return shapeContainer;
   }
 
@@ -142,7 +164,7 @@ class RRect extends BaseShape {
     newDimensions: any,
     drawingContainer: any
   ) {
-    console.log("= S.RRect: Resize input:", {
+    T3Util.Log("= S.RRect: Resize input:", {
       svgElement,
       newDimensions,
       drawingContainer
@@ -154,7 +176,7 @@ class RRect extends BaseShape {
     const previousBBox = $.extend(true, {}, this.prevBBox);
     const dimensionClone = $.extend(true, {}, newDimensions);
     const inflatedDimensions = $.extend(true, {}, newDimensions);
-    const offset = GlobalData.optManager.svgDoc.CalculateRotatedOffsetForResize(
+    const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(
       previousBBox,
       dimensionClone,
       rotation
@@ -174,15 +196,15 @@ class RRect extends BaseShape {
       inflatedDimensions.y + offset.y
     );
 
-    const mainShape = svgElement.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    const mainShape = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
     mainShape.SetSize(inflatedDimensions.width, inflatedDimensions.height);
 
-    const slopShape = svgElement.GetElementByID(ConstantData.SVGElementClass.SLOP);
+    const slopShape = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
     if (slopShape) {
       slopShape.SetSize(inflatedDimensions.width, inflatedDimensions.height);
     }
 
-    const hatchShape = svgElement.GetElementByID(ConstantData.SVGElementClass.HATCH);
+    const hatchShape = svgElement.GetElementById(OptConstant.SVGElementClass.Hatch);
     if (hatchShape) {
       hatchShape.SetSize(newDimensions.width, newDimensions.height);
     }
@@ -213,14 +235,15 @@ class RRect extends BaseShape {
       );
     }
 
-    if (this.GetTable(false)) {
-      GlobalData.optManager.Table_ResizeSVGTableObject(
-        svgElement,
-        drawingContainer,
-        newDimensions
-      );
-    } else {
-      this.LM_ResizeSVGTextObject(
+    // if (this.GetTable(false)) {
+    //   T3Gv.opt.Table_ResizeSVGTableObject(
+    //     svgElement,
+    //     drawingContainer,
+    //     newDimensions
+    //   );
+    // } else
+    {
+      this.LMResizeSVGTextObject(
         svgElement,
         drawingContainer,
         newDimensions
@@ -229,19 +252,19 @@ class RRect extends BaseShape {
 
     svgElement.SetRotation(rotation);
     this.UpdateDimensionLines(svgElement);
-    GlobalData.optManager.UpdateDisplayCoordinates(
+    UIUtil.UpdateDisplayCoordinates(
       newDimensions,
       null,
       null,
       this
     );
 
-    console.log("= S.RRect: Resize output:", offset);
+    T3Util.Log("= S.RRect: Resize output:", offset);
     return offset;
   }
 
   ResizeInTextEdit(svgElement: any, newDimensions: any) {
-    console.log("= S.RRect: ResizeInTextEdit input:", { svgElement, newDimensions });
+    T3Util.Log("= S.RRect: ResizeInTextEdit input:", { svgElement, newDimensions });
 
     const rotation = svgElement.GetRotation();
     this.SetDimensionLinesVisibility(svgElement, false);
@@ -250,7 +273,7 @@ class RRect extends BaseShape {
     const dimensionClone = $.extend(true, {}, newDimensions);
     const inflatedDimensions = $.extend(true, {}, newDimensions);
 
-    const offset = GlobalData.optManager.svgDoc.CalculateRotatedOffsetForResize(
+    const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(
       oldFrame,
       dimensionClone,
       rotation
@@ -270,26 +293,26 @@ class RRect extends BaseShape {
       inflatedDimensions.y + offset.y
     );
 
-    const shapeEl = svgElement.GetElementByID(ConstantData.SVGElementClass.SHAPE);
+    const shapeEl = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
     if (shapeEl) {
       shapeEl.SetSize(inflatedDimensions.width, inflatedDimensions.height);
     }
 
-    const slopEl = svgElement.GetElementByID(ConstantData.SVGElementClass.SLOP);
+    const slopEl = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
     if (slopEl) {
       slopEl.SetSize(inflatedDimensions.width, inflatedDimensions.height);
     }
 
-    if (this.GetTable(false)) {
-      GlobalData.optManager.Table_ResizeSVGTableObject(
-        svgElement,
-        this,
-        newDimensions,
-        true
-      );
-    }
+    // if (this.GetTable(false)) {
+    //   T3Gv.opt.Table_ResizeSVGTableObject(
+    //     svgElement,
+    //     this,
+    //     newDimensions,
+    //     true
+    //   );
+    // }
 
-    const hatchEl = svgElement.GetElementByID(ConstantData.SVGElementClass.HATCH);
+    const hatchEl = svgElement.GetElementById(OptConstant.SVGElementClass.Hatch);
     if (hatchEl) {
       hatchEl.SetSize(inflatedDimensions.width, inflatedDimensions.height);
     }
@@ -333,19 +356,21 @@ class RRect extends BaseShape {
 
     svgElement.SetRotation(rotation);
     this.UpdateDimensionLines(svgElement);
-    GlobalData.optManager.UpdateDisplayCoordinates(newDimensions, null, null, this);
+    UIUtil.UpdateDisplayCoordinates(newDimensions, null, null, this);
 
-    console.log("= S.RRect: ResizeInTextEdit output:", offset);
+    T3Util.Log("= S.RRect: ResizeInTextEdit output:", offset);
     return offset;
   }
 
   GetPolyPoints(
+    divisionCount: number,
     applyPositionOffset: boolean,
     unusedParamA: any,
     shouldInflateFrame: boolean,
     unusedParamI: any
   ) {
-    console.log("= S.RRect: GetPolyPoints input:", {
+    T3Util.Log("= S.RRect: GetPolyPoints input:", {
+      divisionCount,
       applyPositionOffset,
       unusedParamA,
       shouldInflateFrame,
@@ -375,9 +400,10 @@ class RRect extends BaseShape {
     tempRect.height = 2 * cornerSize;
 
     // Top-left corner
-    GlobalData.optManager.PolyYCurve(
+    PolyUtil.PolyYCurve(
       pointsArray,
       tempRect,
+      divisionCount / 2,
       0,
       0,
       0,
@@ -390,9 +416,10 @@ class RRect extends BaseShape {
     tempRect.y = rectCopy.height - 2 * cornerSize;
     tempRect.width = cornerSize;
     tempRect.height = 2 * cornerSize;
-    GlobalData.optManager.PolyYCurve(
+    PolyUtil.PolyYCurve(
       pointsArray,
       tempRect,
+      divisionCount / 2,
       0,
       0,
       cornerSize,
@@ -405,9 +432,10 @@ class RRect extends BaseShape {
     tempRect.y = rectCopy.height;
     tempRect.width = cornerSize;
     tempRect.height = -2 * cornerSize;
-    GlobalData.optManager.PolyYCurve(
+    PolyUtil.PolyYCurve(
       pointsArray,
       tempRect,
+      divisionCount / 2,
       0,
       0,
       0,
@@ -420,9 +448,10 @@ class RRect extends BaseShape {
     tempRect.y = 2 * cornerSize;
     tempRect.width = cornerSize;
     tempRect.height = -2 * cornerSize;
-    GlobalData.optManager.PolyYCurve(
+    PolyUtil.PolyYCurve(
       pointsArray,
       tempRect,
+      divisionCount / 2,
       0,
       0,
       -cornerSize,
@@ -441,57 +470,57 @@ class RRect extends BaseShape {
       }
     }
 
-    console.log("= S.RRect: GetPolyPoints output:", pointsArray);
+    T3Util.Log("= S.RRect: GetPolyPoints output:", pointsArray);
     return pointsArray;
   }
 
   ExtendLines() {
-    console.log("= S.RRect: ExtendLines input:", {});
+    // T3Util.Log("= S.RRect: ExtendLines input:", {});
 
-    const tableData = this.GetTable(false);
-    if (tableData) {
-      GlobalData.optManager.Table_ExtendLines(this, tableData);
-    }
+    // const tableData = this.GetTable(false);
+    // if (tableData) {
+    //   T3Gv.opt.Table_ExtendLines(this, tableData);
+    // }
 
-    console.log("= S.RRect: ExtendLines output:", { tableDataFound: !!tableData });
+    // T3Util.Log("= S.RRect: ExtendLines output:", { tableDataFound: !!tableData });
   }
 
-  ExtendCell(cellIndex: number, extensionData: any, additionalOptions: any) {
-    console.log("= S.RRect: ExtendCell input:", { cellIndex, extensionData, additionalOptions });
+  // ExtendCell(cellIndex: number, extensionData: any, additionalOptions: any) {
+  //   T3Util.Log("= S.RRect: ExtendCell input:", { cellIndex, extensionData, additionalOptions });
 
-    const table = this.GetTable(false);
-    if (!table) {
-      console.log("= S.RRect: ExtendCell output:", null);
-      return null;
-    }
+  //   // const table = this.GetTable(false);
+  //   // if (!table) {
+  //   //   T3Util.Log("= S.RRect: ExtendCell output:", null);
+  //   //   return null;
+  //   // }
 
-    const extendedCells = GlobalData.optManager.Table_ExtendCell(
-      this,
-      table,
-      cellIndex,
-      extensionData,
-      additionalOptions
-    );
+  //   // const extendedCells = T3Gv.opt.Table_ExtendCell(
+  //   //   this,
+  //   //   table,
+  //   //   cellIndex,
+  //   //   extensionData,
+  //   //   additionalOptions
+  //   // );
 
-    if (extendedCells) {
-      const svgFrame = this.GetSVGFrame(this.Frame);
-      const offsetX = this.inside.x - svgFrame.x;
-      const offsetY = this.inside.y - svgFrame.y;
+  //   if (extendedCells) {
+  //     const svgFrame = this.GetSVGFrame(this.Frame);
+  //     const offsetX = this.inside.x - svgFrame.x;
+  //     const offsetY = this.inside.y - svgFrame.y;
 
-      if (offsetX || offsetY) {
-        for (let i = 0, len = extendedCells.length; i < len; i++) {
-          extendedCells[i].x += offsetX;
-          extendedCells[i].y += offsetY;
-        }
-      }
+  //     if (offsetX || offsetY) {
+  //       for (let i = 0, len = extendedCells.length; i < len; i++) {
+  //         extendedCells[i].x += offsetX;
+  //         extendedCells[i].y += offsetY;
+  //       }
+  //     }
 
-      console.log("= S.RRect: ExtendCell output:", extendedCells);
-      return extendedCells;
-    }
+  //     T3Util.Log("= S.RRect: ExtendCell output:", extendedCells);
+  //     return extendedCells;
+  //   }
 
-    console.log("= S.RRect: ExtendCell output:", null);
-    return null;
-  }
+  //   T3Util.Log("= S.RRect: ExtendCell output:", null);
+  //   return null;
+  // }
 
   GetPerimPts(
     eventObj: any,
@@ -501,7 +530,7 @@ class RRect extends BaseShape {
     optionalParam: any,
     eventData: any
   ) {
-    console.log("= S.RRect: GetPerimPts input:", {
+    T3Util.Log("= S.RRect: GetPerimPts input:", {
       eventObj,
       hookPoints,
       anchorType,
@@ -514,29 +543,29 @@ class RRect extends BaseShape {
     const localPoints: any[] = [];
     const interSectionData: any = {};
     const tmpIntersect: number[] = [0, 0];
-    const baseDim = ConstantData.Defines.SED_CDim;
+    const baseDim = OptConstant.Common.DimMax;
     const totalHooks = hookPoints.length;
 
     // Special check
     if (
       totalHooks === 1 &&
-      hookPoints[0].y === -ConstantData.SEDA_Styles.SEDA_CoManager &&
+      hookPoints[0].y === -OptConstant.AStyles.CoManager &&
       this.IsCoManager(interSectionData)
     ) {
       outputPoints.push(new Point(interSectionData.x, interSectionData.y));
       if (hookPoints[0].id != null) {
         outputPoints[0].id = hookPoints[0].id;
       }
-      console.log("= S.RRect: GetPerimPts output:", outputPoints);
+      T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
       return outputPoints;
     }
 
     // If anchorType is KAT and optionalParam is null
-    if (anchorType === ConstantData.HookPts.SED_KAT && optionalParam == null) {
+    if (anchorType === OptConstant.HookPts.KAT && optionalParam == null) {
       // Double === todo
-      console.log("= S.RRect: GetPerimPts output:", outputPoints);
+      T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
       // Return from base
-      return new BaseDrawingObject(this).GetPerimPts(
+      return new Instance.Shape.BaseDrawObject(this).GetPerimPts(
         eventObj,
         hookPoints,
         anchorType,
@@ -546,36 +575,36 @@ class RRect extends BaseShape {
       );
     }
 
-    const tableData = this.GetTable(false);
-    if (optionalParam != null && tableData) {
-      const tablePoints = GlobalData.optManager.Table_GetPerimPts(
-        this,
-        tableData,
-        optionalParam,
-        hookPoints
-      );
-      if (tablePoints) {
-        outputPoints = tablePoints;
-        if (!keepRotation) {
-          const rotationAngle = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
-          Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, outputPoints);
-        }
-        console.log("= S.RRect: GetPerimPts output:", outputPoints);
-        return outputPoints;
-      }
-    }
+    // const tableData = this.GetTable(false);
+    // if (optionalParam != null && tableData) {
+    //   const tablePoints = T3Gv.opt.Table_GetPerimPts(
+    //     this,
+    //     tableData,
+    //     optionalParam,
+    //     hookPoints
+    //   );
+    //   if (tablePoints) {
+    //     outputPoints = tablePoints;
+    //     if (!keepRotation) {
+    //       const rotationAngle = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
+    //       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, outputPoints);
+    //     }
+    //     T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
+    //     return outputPoints;
+    //   }
+    // }
 
-    const useConnect = !!(this.flags & ConstantData.ObjFlags.SEDO_UseConnect);
-    const useTableRows = !!(this.hookflags & ConstantData.HookFlags.SED_LC_TableRows && tableData);
+    const useConnect = !!(this.flags & NvConstant.ObjFlags.UseConnect);
+    // const useTableRows = !!(this.hookflags & NvConstant.HookFlags.LcTableRows && tableData);
 
-    if (useConnect || useTableRows) {
+    if (useConnect /*|| useTableRows*/) {
       for (let i = 0; i < totalHooks; i++) {
         outputPoints[i] = { x: 0, y: 0, id: 0 };
         outputPoints[i].x =
-          (hookPoints[i].x / ConstantData.Defines.SED_CDim) * this.Frame.width +
+          (hookPoints[i].x / OptConstant.Common.DimMax) * this.Frame.width +
           this.Frame.x;
         outputPoints[i].y =
-          (hookPoints[i].y / ConstantData.Defines.SED_CDim) * this.Frame.height +
+          (hookPoints[i].y / OptConstant.Common.DimMax) * this.Frame.height +
           this.Frame.y;
         if (hookPoints[i].id != null) {
           outputPoints[i].id = hookPoints[i].id;
@@ -583,7 +612,7 @@ class RRect extends BaseShape {
       }
     } else {
       // Double === todo
-      outputPoints = new BaseDrawingObject(this).GetPerimPts(
+      outputPoints = new BaseDrawObject(this).GetPerimPts(
         eventObj,
         hookPoints,
         anchorType,
@@ -596,9 +625,9 @@ class RRect extends BaseShape {
       if (this.Frame.height < minSize) {
         minSize = this.Frame.height;
       }
-      const cornerFactor = this.GetCornerSize() * ConstantData.Defines.SED_RoundFactor;
+      const cornerFactor = this.GetCornerSize() * OptConstant.Common.RoundFactor;
       const polyPoints = this.GetPolyPoints(
-        ConstantData.Defines.NPOLYPTS,
+        OptConstant.Common.MaxPolyPoints,
         false,
         false,
         false,
@@ -619,7 +648,7 @@ class RRect extends BaseShape {
           outputPoints[idx].x -= cornerFactor;
           outputPoints[idx].y -= cornerFactor;
         } else if (hookPoints[idx].x < baseDim / 4) {
-          const count = GlobalData.optManager.PolyGetIntersect(
+          const count = PolyUtil.PolyGetIntersect(
             polyPoints,
             outputPoints[idx].y,
             tmpIntersect,
@@ -633,7 +662,7 @@ class RRect extends BaseShape {
             }
           }
         } else if (hookPoints[idx].x > (3 * baseDim) / 4) {
-          const count = GlobalData.optManager.PolyGetIntersect(
+          const count = PolyUtil.PolyGetIntersect(
             polyPoints,
             outputPoints[idx].y,
             tmpIntersect,
@@ -647,7 +676,7 @@ class RRect extends BaseShape {
             }
           }
         } else if (hookPoints[idx].y < baseDim / 4) {
-          const count = GlobalData.optManager.PolyGetIntersect(
+          const count = PolyUtil.PolyGetIntersect(
             polyPoints,
             outputPoints[idx].x,
             tmpIntersect,
@@ -661,7 +690,7 @@ class RRect extends BaseShape {
             }
           }
         } else if (hookPoints[idx].y > (3 * baseDim) / 4) {
-          const count = GlobalData.optManager.PolyGetIntersect(
+          const count = PolyUtil.PolyGetIntersect(
             polyPoints,
             outputPoints[idx].x,
             tmpIntersect,
@@ -682,16 +711,16 @@ class RRect extends BaseShape {
     }
 
     if (!keepRotation) {
-      const rotationAngle = -this.RotationAngle / (180 / ConstantData.Geometry.PI);
+      const rotationAngle = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, outputPoints);
     }
 
-    console.log("= S.RRect: GetPerimPts output:", outputPoints);
+    T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
     return outputPoints;
   }
 
   SetShapeIndent(applyAdjustment: boolean) {
-    console.log("= S.RRect: SetShapeIndent input:", applyAdjustment);
+    T3Util.Log("= S.RRect: SetShapeIndent input:", applyAdjustment);
 
     // Read the inside dimensions
     const insideWidth = this.inside.width;
@@ -700,11 +729,11 @@ class RRect extends BaseShape {
     const minDimension = insideHeight > insideWidth ? insideWidth : insideHeight;
     // Default shape parameter
     let shapeParam = this.shapeparam;
-    const roundFactor = ConstantData.Defines.SED_RoundFactor;
+    const roundFactor = OptConstant.Common.RoundFactor;
     let rectDimension: number = minDimension;
 
     // When fixed rounded rectangle flag is set, adjust the shape parameter
-    if (this.moreflags & ConstantData.ObjMoreFlags.SED_MF_FixedRR) {
+    if (this.moreflags & OptConstant.ObjMoreFlags.FixedRR) {
       rectDimension = minDimension;
       if (applyAdjustment) {
         // Increase rectDimension by twice the corner size adjusted by roundFactor
@@ -736,7 +765,7 @@ class RRect extends BaseShape {
     this.tindent.right = this.right_sindent * insideWidth / divisorWidth;
     this.tindent.bottom = this.bottom_sindent * insideHeight / divisorHeight;
 
-    console.log("= S.RRect: SetShapeIndent output:", {
+    T3Util.Log("= S.RRect: SetShapeIndent output:", {
       left_sindent: this.left_sindent,
       top_sindent: this.top_sindent,
       right_sindent: this.right_sindent,
@@ -746,9 +775,9 @@ class RRect extends BaseShape {
   }
 
   SetShapeProperties(properties: any): boolean {
-    console.log("= S.RRect: SetShapeProperties input:", properties);
+    T3Util.Log("= S.RRect: SetShapeProperties input:", properties);
     let updated = false;
-    const fixedRFlag = ConstantData.ObjMoreFlags.SED_MF_FixedRR;
+    const fixedRFlag = OptConstant.ObjMoreFlags.FixedRR;
 
     if (properties.hasrrectselected) {
       if (((this.moreflags & fixedRFlag) > 0) === properties.rrectfixed && properties.rrectparam === this.shapeparam) {
@@ -759,7 +788,7 @@ class RRect extends BaseShape {
         this.SetSize(
           this.Frame.width,
           0,
-          ConstantData.ActionTriggerType.LINELENGTH
+          OptConstant.ActionTriggerType.LineLength
         );
         updated = true;
       }
@@ -770,10 +799,9 @@ class RRect extends BaseShape {
       updated = true;
     }
 
-    console.log("= S.RRect: SetShapeProperties output:", updated);
+    T3Util.Log("= S.RRect: SetShapeProperties output:", updated);
     return updated;
   }
-
 }
 
 export default RRect
