@@ -643,7 +643,7 @@ class Line extends BaseLine {
       UIUtil.UpdateDisplayCoordinates(this.Frame, deepCopiedEndPoint, CursorConstant.CursorTypes.Grow, this);
 
       if (
-        (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) &&
+        (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) &&
         (deepCopiedEndPoint.x !== this.EndPoint.x || deepCopiedEndPoint.y !== this.EndPoint.y)
       ) {
         const error = new Error("bounds error");

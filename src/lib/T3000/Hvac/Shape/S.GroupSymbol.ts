@@ -714,11 +714,11 @@ class GroupSymbol extends BaseSymbol {
 
       result.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       result.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-      result.ctp = T3Gv.opt.contentHeader;
+      result.ctp = T3Gv.opt.header;
       result.GroupOffset.x = 0;
       result.GroupOffset.y = 0;
       result.WriteGroupBlock = true;
-      result.fontlist = T3Gv.opt.contentHeader.FontList;
+      result.fontlist = T3Gv.opt.header.FontList;
 
       T3Gv.docUtil.svgDoc.GetWorkArea();
       result.docDpi = T3Gv.docUtil.svgDoc.docInfo.docDpi;
@@ -751,6 +751,8 @@ class GroupSymbol extends BaseSymbol {
   WriteShapeData(outputStream, writeOptions) {
     T3Util.Log("S.GroupSymbol - WriteShapeData input:", { outputStream, writeOptions });
 
+    return;
+
     let numShapes: number, shapeObj: any, buffer: any, codeLength: any;
     let nativeStorageResult = new WResult();
     let dataId = this.DataID;
@@ -779,7 +781,7 @@ class GroupSymbol extends BaseSymbol {
 
       nativeStorageResult.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       nativeStorageResult.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-      nativeStorageResult.ctp = T3Gv.opt.contentHeader;
+      nativeStorageResult.ctp = T3Gv.opt.header;
 
       if (this.InitialGroupBounds.x > 0 || this.InitialGroupBounds.y > 0) {
         nativeStorageResult.GroupOffset.x = this.Frame.x + writeOptions.GroupOffset.x;
