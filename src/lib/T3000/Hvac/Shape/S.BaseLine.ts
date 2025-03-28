@@ -1942,7 +1942,7 @@ class BaseLine extends BaseDrawObject {
       return false;
     }
 
-    if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
       const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (rotatedStartPoint.x > sessionObject.dim.x || rotatedStartPoint.y > sessionObject.dim.y || rotatedEndPoint.x > sessionObject.dim.x || rotatedEndPoint.y > sessionObject.dim.y) {
         T3Util.Log("= S.BaseLine: Rotation resulted in coordinates outside session dimensions, returning false");
@@ -3568,7 +3568,11 @@ class BaseLine extends BaseDrawObject {
   }
 
   WriteShapeData(outputStream, options) {
+
+
     T3Util.Log("= S.BaseLine: WriteShapeData called with input:", { outputStream: outputStream, options: options });
+
+    return;
 
     // Initialize attach flag and a temporary DataID holder.
     let attachFlag = 0;
@@ -4073,7 +4077,7 @@ class BaseLine extends BaseDrawObject {
 
     // Set constraints if the text is not growing vertically.
     if (this.TextGrow !== NvConstant.TextGrowBehavior.Vertical) {
-      textShape.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, trect.height);
+      textShape.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, trect.height);
     }
 
     // Disable hyperlinks if the text object is in a group.

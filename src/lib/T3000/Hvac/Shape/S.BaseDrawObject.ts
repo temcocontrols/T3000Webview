@@ -2425,8 +2425,8 @@ class BaseDrawObject {
         textShape.SetEditCallback(this.DimensionEditCallback, this);
       }
 
-      textShape.SetFormat(T3Gv.opt.contentHeader.DimensionFontStyle);
-      textShape.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0);
+      textShape.SetFormat(T3Gv.opt.header.DimensionFontStyle);
+      textShape.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
       textShape.SetRenderingEnabled(true);
 
       if (isAreaDimension) {
@@ -2530,8 +2530,8 @@ class BaseDrawObject {
       textShape.SetEditCallback(this.DimensionEditCallback, this);
     }
 
-    textShape.SetFormat(T3Gv.opt.contentHeader.DimensionFontStyle);
-    textShape.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0);
+    textShape.SetFormat(T3Gv.opt.header.DimensionFontStyle);
+    textShape.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
     textShape.SetRenderingEnabled(true);
 
     if (isAreaDimension) {
@@ -2631,7 +2631,7 @@ class BaseDrawObject {
       dimensionInfo.text.SetUserData(angleChangeData);
       dimensionInfo.text.SetID(OptConstant.SVGElementClass.DimText);
       dimensionInfo.text.SetEditCallback(this.DimensionEditCallback, this);
-      dimensionInfo.text.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0);
+      dimensionInfo.text.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
       dimensionInfo.text.SetRenderingEnabled(true);
       dimensionInfo.text.SetPos(dimensionInfo.textRect.x, dimensionInfo.textRect.y);
 
@@ -2922,7 +2922,7 @@ class BaseDrawObject {
 
     // Create text shape
     textShape = T3Gv.opt.svgDoc.CreateShape(OptConstant.CSType.Text);
-    textShape.SetFormat(T3Gv.opt.contentHeader.DimensionFontStyle);
+    textShape.SetFormat(T3Gv.opt.header.DimensionFontStyle);
     textShape.SetText(text);
     textDimensions = textShape.GetTextMinDimensions();
 
@@ -2982,8 +2982,8 @@ class BaseDrawObject {
 
     textShape = T3Gv.opt.svgDoc.CreateShape(OptConstant.CSType.Text);
     textShape.SetText(text);
-    textShape.SetFormat(T3Gv.opt.contentHeader.DimensionFontStyle);
-    textShape.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0);
+    textShape.SetFormat(T3Gv.opt.header.DimensionFontStyle);
+    textShape.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
 
     this.GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
 

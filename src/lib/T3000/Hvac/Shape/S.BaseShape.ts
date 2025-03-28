@@ -835,7 +835,7 @@ class BaseShape extends BaseDrawObject {
 
           if (this.TextGrow === NvConstant.TextGrowBehavior.Horizontal) {
             textElement.SetConstraints(
-              T3Gv.opt.contentHeader.MaxWorkDim.x,
+              T3Gv.opt.header.MaxWorkDim.x,
               this.trect.width,
               this.trect.height
             );
@@ -1802,7 +1802,7 @@ class BaseShape extends BaseDrawObject {
       if (Math.floor(effectiveBox.y) < 0) return true;
 
       // Check if box exceeds document dimensions
-      if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+      if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
         const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         if (effectiveBox.x + effectiveBox.width > sessionBlock.dim.x) return true;
         if (effectiveBox.y + effectiveBox.height > sessionBlock.dim.y) return true;
@@ -2047,7 +2047,7 @@ class BaseShape extends BaseDrawObject {
         // Verify text fit after movement
         const textRect = shapeObject.trect;
         const textWidth = (this.TextGrow === NvConstant.TextGrowBehavior.Horizontal)
-          ? T3Gv.opt.contentHeader.MaxWorkDim.x
+          ? T3Gv.opt.header.MaxWorkDim.x
           : textRect.width;
 
         if (T3Gv.opt.actionSvgObject && T3Gv.opt.actionSvgObject.textElem) {
@@ -2251,7 +2251,7 @@ class BaseShape extends BaseDrawObject {
         if (rotatedBounds.x < 0) break;
         if (rotatedBounds.y < 0) break;
 
-        if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+        if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
           const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
           if (rotatedBounds.x + rotatedBounds.width > sessionBlock.dim.x) break;
           if (rotatedBounds.y + rotatedBounds.height > sessionBlock.dim.y) break;
@@ -2450,7 +2450,7 @@ class BaseShape extends BaseDrawObject {
 
         // Calculate text fit based on growth constraints
         const maxTextWidth = (this.TextGrow === NvConstant.TextGrowBehavior.Horizontal)
-          ? T3Gv.opt.contentHeader.MaxWorkDim.x
+          ? T3Gv.opt.header.MaxWorkDim.x
           : adjustedTextRect.width;
 
         textFitResult = textElement
@@ -2672,7 +2672,7 @@ class BaseShape extends BaseDrawObject {
       coords.y = frameRect.top;
     }
 
-    if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
       const sessionBlock = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
       if (coords.x > sessionBlock.dim.x - frameRect.right) {
         coords.x = sessionBlock.dim.x - frameRect.right;
@@ -5638,7 +5638,7 @@ class BaseShape extends BaseDrawObject {
         this.TextFlags & NvConstant.TextFlags.AttachA
       ) switch (
         c.SetRenderingEnabled(!0),
-        c.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0),
+        c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0),
         (p = c.GetTextMinDimensions()).width,
         p.height,
         this.TextAlign
@@ -5660,7 +5660,7 @@ class BaseShape extends BaseDrawObject {
               c.SetParagraphAlignment(TextConstant.TextAlign.Center)
         } else if (this.TextFlags & NvConstant.TextFlags.AttachB) switch (
           c.SetRenderingEnabled(!0),
-          c.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0),
+          c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0),
           (p = c.GetTextMinDimensions()).width,
           this.TextAlign
         ) {
@@ -5685,7 +5685,7 @@ class BaseShape extends BaseDrawObject {
                 this.Frame.height + this.TMargins.bottom
               ),
                 c.SetParagraphAlignment(TextConstant.TextAlign.Center)
-          } else this.TextGrow == NvConstant.TextGrowBehavior.Horizontal ? c.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, i.width, i.height) : c.SetConstraints(i.width, i.width, i.height);
+          } else this.TextGrow == NvConstant.TextGrowBehavior.Horizontal ? c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, i.width, i.height) : c.SetConstraints(i.width, i.width, i.height);
       c.SetRenderingEnabled(!0),
         c.SetEditCallback(T3Gv.opt.TextCallback, t)
     }
@@ -5715,7 +5715,7 @@ class BaseShape extends BaseDrawObject {
               r.SetPos(a.width / 2 - n.width / 2, - n.height - this.TMargins.top),
                 r.SetParagraphAlignment(TextConstant.TextAlign.Center)
           }
-          r.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0)
+          r.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0)
         } else if (this.TextFlags & NvConstant.TextFlags.AttachB) {
           switch ((n = r.GetTextMinDimensions()).width, this.TextAlign) {
             case TextConstant.TextAlign.TopLeft:
@@ -5734,12 +5734,12 @@ class BaseShape extends BaseDrawObject {
               r.SetPos(a.width / 2 - n.width / 2, a.height + this.TMargins.bottom),
                 r.SetParagraphAlignment(TextConstant.TextAlign.Center)
           }
-          r.SetConstraints(T3Gv.opt.contentHeader.MaxWorkDim.x, 0, 0)
+          r.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0)
         } else {
           r.SetPos(i.x - a.x, i.y - a.y);
           var o = i.width;
           this.TextGrow == NvConstant.TextGrowBehavior.Horizontal &&
-            (o = T3Gv.opt.contentHeader.MaxWorkDim.x),
+            (o = T3Gv.opt.header.MaxWorkDim.x),
             r.SetConstraints(o, i.width, i.height)
         }
       }
@@ -5753,6 +5753,8 @@ class BaseShape extends BaseDrawObject {
    */
   WriteShapeData(outputStream, options) {
     T3Util.Log("S.BasicShape - WriteShapeData input:", { outputStream, options });
+
+    return;
 
     let blobBytes, emfBlobBytes;
     let textDataId = this.DataID;
