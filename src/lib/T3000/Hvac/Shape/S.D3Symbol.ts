@@ -565,6 +565,8 @@ class D3Symbol extends BaseSymbol {
   WriteShapeData(outputStream, options) {
     T3Util.Log("S.D3Symbol: WriteShapeData - Input:", { outputStream, options });
 
+    return;
+
     Instance.Shape.BaseSymbol.prototype.WriteShapeData.call(this, outputStream, options);
 
     if (this.d3Settings) {

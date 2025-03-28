@@ -821,6 +821,8 @@ class FreehandLine extends BaseLine {
   WriteShapeData(outputStream, options) {
     T3Util.Log('S.FreehandLine.WriteShapeData - Input:', { outputStream, options });
 
+    return;
+
     // Get a copy of freehand points (true means relative to frame)
     let freehandPoints = Utils1.DeepCopy(this).GetFreehandPoints(true);
 
