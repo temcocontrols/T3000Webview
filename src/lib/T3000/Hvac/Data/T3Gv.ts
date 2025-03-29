@@ -1,8 +1,7 @@
 
 
 import DocUtil from "../Doc/DocUtil";
-import OptUtil from "../Opt/OptUtil";
-import Base from "../Util/Base";
+import OptUtil from "../Opt/Opt/OptUtil";
 import WallOpt from "../Opt/Wall/WallOpt";
 import ObjectStore from "./State/ObjectStore";
 import StateOpt from "./State/StateOpt";
@@ -21,7 +20,6 @@ class T3Gv {
   static maxUndo: number = 25;            // Maximum number of undo operations stored
   static state: StateOpt;                 // Application state utility
   static stdObj: ObjectStore;             // Standard object storage
-  static baseOpt: Base;                   // Base options configuration
   static userSetting: any;                // User preferences and settings
 
   // Event handlers
@@ -30,6 +28,11 @@ class T3Gv {
   static Evt_LM_ShapeDoubleTap: any;       // Event for when shape is double tapped
   static Evt_StampObjectDragEnd: any;      // Event for when stamp object dragging ends
   static Evt_LM_MouseStampObjectDone: any; // Event for when mouse stamp object operation completes
+
+  static ArrowheadLookupTable: any = [];   // Arrowhead lookup table
+  static ArrowheadSizeTable: any = [];     // Arrowhead size table
+
+  static gFmtTextObj: any;                 // Global formatted text object
 }
 
 export default T3Gv

@@ -7,6 +7,7 @@ import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import KeyboardConstant from "../Opt/Keyboard/KeyboardConstant"
 import CursorConstant from "../Data/Constant/CursorConstant"
+import MouseUtil from "../Event/MouseUtil"
 
 /**
  * Represents a text editing controller that manages text selection, cursor rendering,
@@ -382,7 +383,7 @@ class Edit {
    */
   HandleMouseDown(event) {
     const isShiftKey = event && (event.shiftKey || (event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.shiftKey));
-    const isRightClick = T3Gv.opt.IsRightClick(event);
+    const isRightClick = MouseUtil.IsRightClick(event);
     const currentTime = Date.now();
     this.activateInit = false;
 

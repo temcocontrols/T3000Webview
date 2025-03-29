@@ -282,6 +282,8 @@ class Effects {
    * @param heightSize - Height sizing information for the effect
    */
   SetSecondaryEffect(effect, elementBounds, widthSize, heightSize) {
+    return;
+
     let verticalOffset, verticalRatio, offsetY, offsetX, angle, horizontalOffset;
     let effectsId = 's' + this.GetEffectsID([effect], true);
 
@@ -378,7 +380,7 @@ class Effects {
    * @returns String identifier for the effects combination
    */
   GetEffectsID(effectsList, isSecondary) {
-    let effectsId = 'FX';
+    let effectsId = 'T3';
     let outsideEffectsCount = 0;
     let insideEffectsCount = 0;
     let effectsLength = effectsList && effectsList.length || 0;

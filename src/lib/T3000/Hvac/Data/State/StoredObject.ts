@@ -4,6 +4,38 @@ import StateConstant from "./StateConstant"
 import T3Gv from "../T3Gv"
 import Utils1 from "../../Util/Utils1"
 
+/**
+ * Represents a stored object with associated metadata and persistence operations.
+ *
+ * @remarks
+ * The StoredObject class encapsulates data along with its identifier, type, and state flags.
+ * It supports operations for creation and update based on its parameters, and conditionally adds the object
+ * to a global storage for state management. When the object is persisted, further updates will modify the existing
+ * stored instance.
+ *
+ * Features include:
+ * - Unique identifier tracking
+ * - Dirty flag management to mark unsaved changes
+ * - Type validation and data encapsulation
+ * - Conditional persistence to a global storage object provided by T3Gv.stdObj
+ *
+ * @example
+ * Here's how you can instantiate and work with a StoredObject:
+ *
+ * ```typescript
+ * // Create a new stored object with ID 1, type 100, some data, marked as dirty, and persisted.
+ * const myObject = new StoredObject(1, 100, { value: 'example data' }, true, true, true);
+ *
+ * // Update an existing object: if an object with ID 1 is already persisted in global storage,
+ * // the constructor will update its type, data, and dirty state.
+ * const updatedObject = new StoredObject(1, 200, { value: 'updated data' }, false, true, true);
+ *
+ * // Delete the object from persistence.
+ * myObject.Delete();
+ * ```
+ *
+ * @public
+ */
 class StoredObject {
 
   /**

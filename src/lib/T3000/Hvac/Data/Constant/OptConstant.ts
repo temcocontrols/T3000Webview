@@ -491,7 +491,9 @@ class OptConstant {
           FillType: 1
         }
       }
-    }
+    },
+
+    MaxTotalLayers: 32
   }
 
   /**
@@ -499,6 +501,7 @@ class OptConstant {
    * Controls special behaviors for objects
    */
   public static ExtraFlags = {
+    NoColor: 1,                  // No color
     FlipHoriz: 8,                // Flip horizontally
     FlipVert: 16,                // Flip vertically
     NoRotate: 32,                // Prevent rotation
@@ -830,6 +833,13 @@ class OptConstant {
     AddCorner: 5,        // Add corner
     DrawPolyline: 6,     // Draw polyline
     FormatPainter: 7,    // Format painter
+  }
+
+  static GuideDistanceTypes = {
+    Room: 1,
+    Horizontal_Wall: 2,
+    Vertical_Wall: 3,
+    PolyWall: 4
   }
 }
 

@@ -116,7 +116,7 @@ class ObjectStore {
    * @param objectId - The ID of the object to retrieve
    * @returns The found object or null if not found
    */
-  GetObject(objectId: number): any {
+  GetObject(objectId: number): ObjectStore {
     if (objectId == null) return null;
 
     for (let t = 0; t < this.StoredObjects.length; t++) {

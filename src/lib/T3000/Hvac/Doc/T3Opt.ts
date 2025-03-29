@@ -12,6 +12,8 @@ import EvtOpt from '../Event/EvtOpt';
 import KeyboardOpt from '../Opt/Keyboard/KeyboardOpt';
 import UserOpt from '../Opt/User/UserOpt';
 import SvgUtil from '../Opt/Opt/SvgUtil';
+import Quasar from 'quasar';
+import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references
@@ -83,7 +85,11 @@ class T3Opt {
   /**
    * Initializes the document operation system
    */
-  Initialize() {
+  Initialize(quasarInstance: any) {
+
+    T3Gv.quasar = quasarInstance;
+    QuasarUtil.quasar = quasarInstance;
+
     // Initialize data state and store
     DataOpt.InitStateAndStore();
 

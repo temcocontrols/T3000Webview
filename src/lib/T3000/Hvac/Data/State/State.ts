@@ -3,6 +3,52 @@ import StateBase from './StateBase'
 import Utils1 from '../../Util/Utils1'
 import ObjectStore from './ObjectStore'
 
+/**
+ * Represents the state of an HVAC system with mechanisms to manage a collection of stored objects.
+ *
+ * This class extends the base state functionality by integrating a prioritized list of objects, which
+ * can be manipulated using deep cloning to ensure immutability outside the state instance. The class
+ * provides methods to add a new stored object, replace all stored objects with a new collection, and
+ * retrieve a deep copy of the current stored objects.
+ *
+ * @remarks
+ * - When adding or setting stored objects, the methods perform deep clones of the objects using the
+ *   utility function to prevent unintended side effects.
+ * - Throws an error if any provided object or required properties (e.g., the object itself or its type)
+ *   are null.
+ *
+ * @example
+ * Here's an example demonstrating how to create and manipulate a State instance:
+ *
+ * ```typescript
+ * // Assume ObjectStore and Utils1.CloneBlock are defined elsewhere
+ *
+ * // Initialize some ObjectStore items
+ * const initialStoredObjects: ObjectStore[] = [
+ *   { Type: 'TemperatureSensor', additional properties },
+ * { Type: 'HumiditySensor',  additional properties }
+  * ];
+ *
+ * // Create a new State instance
+ * const hvacState = new State(1, 'HVAC Initial State', initialStoredObjects, 5, true);
+ *
+ * // Add a new stored object
+ * const newObject: ObjectStore = { Type: 'PressureSensor',  additional properties };
+ * hvacState.AddStoredObject(newObject);
+ *
+ * // Replace stored objects with a new array
+ * const updatedObjects: ObjectStore[] = [
+ * { Type: 'CO2Sensor',  additional properties }
+  * ];
+ * hvacState.SetStoredObjects(updatedObjects);
+ *
+ * // Retrieve a deep copy of the stored objects
+ * const currentObjects = hvacState.GetStoredObjects();
+ * console.log(currentObjects);
+ * ```
+ *
+ * @public
+ */
 class State extends StateBase {
 
   /**

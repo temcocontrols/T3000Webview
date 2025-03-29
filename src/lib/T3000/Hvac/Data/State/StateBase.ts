@@ -1,6 +1,29 @@
 
 import T3Gv from "../T3Gv"
 
+/**
+ * Represents the base state of a system element, encapsulating common properties such as a unique identifier,
+ * the creator's identity, state type, and open/closed status.
+ *
+ * @remarks
+ * - The state is initialized with default values if parameters are not provided:
+ *   - ID defaults to -1.
+ *   - CreatedBy defaults to null.
+ *   - StateType defaults to null.
+ *   - IsOpen defaults to true.
+ * - The current object sequence identifier (currentObjSeqId) is automatically set using the global variable T3Gv.currentObjSeqId.
+ *
+ * @example
+ * ```typescript
+ * // Create a new state with specific values:
+ * const state = new StateBase(1, "UserA", 100, false);
+ *
+ * // Alternatively, create a state using default values:
+ * const defaultState = new StateBase();
+ *
+ * console.log(`State ID: ${state.ID}, Open: ${state.IsOpen}`);
+ * ```
+ */
 class StateBase {
 
   /** State identifier */
@@ -29,7 +52,7 @@ class StateBase {
     this.ID = stateId != null ? stateId : -1;
     this.CreatedBy = creatorName || null;
     this.StateType = stateTypeId || null;
-    this.IsOpen = isStateOpen != null ? isStateOpen : true;
+    this.IsOpen = false;// isStateOpen != null ? isStateOpen : true;
     this.currentObjSeqId = T3Gv.currentObjSeqId;
   }
 }

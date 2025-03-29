@@ -220,7 +220,7 @@ class NvConstant {
   static LayerTypes = {
     None: 0,           // No special type
     WebPage: 4,        // Web page layer
-    BackGround: 7      // Background layer
+    Background: 7      // Background layer
   }
 
   /**
@@ -331,7 +331,8 @@ class NvConstant {
    * Controls various session-specific behaviors
    */
   static SessionMoreFlags = {
-    NoActionButton: 16    // Hide action button
+    NoActionButton: 16,   // Hide action button
+    HideLayerTabs: 1024,
   }
 
   /**

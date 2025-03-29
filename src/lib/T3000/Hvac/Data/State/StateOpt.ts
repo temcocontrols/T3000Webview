@@ -1,11 +1,62 @@
 
 import BaseStateOpt from './BaseStateOpt'
 import T3Gv from '../T3Gv'
-import Globals from '../Globals'
 import Utils1 from '../../Util/Utils1'
 import State from './State'
 import $ from 'jquery'
+import StateConstant from './StateConstant'
 
+/**
+ * Manages state transitions and undo/redo operations for HVAC system control objects.
+ *
+ * The StateOpt class extends the BaseStateOpt and provides methods to add, update, delete, and
+ * restore states. It encapsulates logic for synchronizing created states with global objects and
+ * maintaining a history of state changes, thereby allowing undo and redo operations. This class
+ * handles exceptions to maintain state integrity by rolling back to prior states when errors occur.
+ *
+ * Key functionalities include:
+ * - Preserving and synchronizing states with CREATE operations.
+ * - Providing undo and redo capabilities via RestorePrevState and RestoreNextState.
+ * - Cleaning up after exceptions to ensure the current state remains valid.
+ * - Adding objects to the current state and creating new states if required while keeping the undo
+ *   history within the maximum allowed limit.
+ * - Managing object restoration from states with proper handling for different operation types (CREATE,
+ *   UPDATE, DELETE).
+ *
+ * @example
+ * // Instantiate and use the StateOpt class.
+ * const stateOpt = new StateOpt();
+ *
+ * // Create an object to add to the state (assuming proper definition of StateOperationType constants).
+ * const newObject = {
+ *   ID: 101,
+ *   Data: { temperature: 25, humidity: 50 },
+ *   StateOperationTypeID: StateConstant.StateOperationType.CREATE
+ * };
+ *
+ * // Add the new object to the current state.
+ * stateOpt.AddToCurrentState(newObject);
+ *
+ * // Check if undo/redo operations are available.
+ * const { undo, redo } = stateOpt.GetUndoState();
+ * if (undo) {
+ *   // Undo the last state change.
+ *   stateOpt.RestorePrevState();
+ * }
+ *
+ * if (redo) {
+ *   // Redo the previously undone state change.
+ *   stateOpt.RestoreNextState();
+ * }
+ *
+ * // Finalize the current state to close it.
+ * stateOpt.PreserveState();
+ *
+ * @remarks
+ * - This class relies on global objects (e.g., T3Gv, Utils1, StateConstant) available in the application scope.
+ * - The maximum number of undo operations is configured via T3Gv.maxUndo.
+ * - ExceptionCleanup ensures that in the event of an error, the state is rolled back to the most consistent state.
+ */
 class StateOpt extends BaseStateOpt {
 
   /**
@@ -35,7 +86,7 @@ class StateOpt extends BaseStateOpt {
    * // Operation Types: CREATE: 1, UPDATE: 2, DELETE: 3
    */
   SyncObjectsWithCreateStates() {
-    const globalStateOperation = Globals.StateOperationType;
+    const globalStateOperation = StateConstant.StateOperationType;
     const cloneBlock = Utils1.CloneBlock;
     const currentState = this.States[this.CurrentStateID];
     const totalStoredObjects = currentState.StoredObjects.length;
@@ -105,7 +156,7 @@ class StateOpt extends BaseStateOpt {
    * Handles different operation types (CREATE, UPDATE, DELETE) appropriately
    */
   RestoreObjectStoreFromState() {
-    const operationTypes = Globals.StateOperationType;
+    const operationTypes = StateConstant.StateOperationType;
     const cloneBlock = Utils1.CloneBlock;
 
     try {
@@ -168,7 +219,7 @@ class StateOpt extends BaseStateOpt {
    */
   AddToCurrentState(newObject) {
     const StateClass = State;
-    const operationTypes = Globals.StateOperationType;
+    const operationTypes = StateConstant.StateOperationType;
     let createNewState = true;
     const currentState = this.GetCurrentState();
     let newState = null;
