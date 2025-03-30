@@ -56,31 +56,31 @@ class BaseStateOpt {
   /**
    * The ID of the current state
    */
-  public CurrentStateID: number;
+  public currentStateId: number;
 
   /**
    * The count of history states
    */
-  public HistoryState: number;
+  public historyState: number;
 
   /**
    * The count of dropped states
    */
-  public DroppedStates: number;
+  public droppedStates: number;
 
   /**
    * Collection of all states
    */
-  public States: State[];
+  public states: State[];
 
   /**
    * Initializes a new instance of BaseStateOpt
    */
   constructor() {
-    this.CurrentStateID = -1;
-    this.HistoryState = 0;
-    this.DroppedStates = 0;
-    this.States = [];
+    this.currentStateId = -1;
+    this.historyState = 0;
+    this.droppedStates = 0;
+    this.states = [];
   }
 
   /**
@@ -116,7 +116,7 @@ class BaseStateOpt {
   /**
    * Restores object store from a state
    */
-  RestoreObjectStoreFromState(): void { }
+  RestoreDataStoreFromState(): void { }
 
   /**
    * Gets the current state
@@ -154,10 +154,10 @@ class BaseStateOpt {
    * Resets all undo states to initial values
    */
   ResetUndoStates(): void {
-    this.CurrentStateID = -1;
-    this.DroppedStates = 0;
-    this.HistoryState = 0;
-    this.States = [];
+    this.currentStateId = -1;
+    this.droppedStates = 0;
+    this.historyState = 0;
+    this.states = [];
   }
 
   /**

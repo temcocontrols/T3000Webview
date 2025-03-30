@@ -1,7 +1,7 @@
 
 import StateBase from './StateBase'
 import Utils1 from '../../Util/Utils1'
-import ObjectStore from './ObjectStore'
+import DataStore from './DataStore'
 
 /**
  * Represents the state of an HVAC system with mechanisms to manage a collection of stored objects.
@@ -21,10 +21,10 @@ import ObjectStore from './ObjectStore'
  * Here's an example demonstrating how to create and manipulate a State instance:
  *
  * ```typescript
- * // Assume ObjectStore and Utils1.CloneBlock are defined elsewhere
+ * // Assume DataStore and Utils1.CloneBlock are defined elsewhere
  *
- * // Initialize some ObjectStore items
- * const initialStoredObjects: ObjectStore[] = [
+ * // Initialize some DataStore items
+ * const initialStoredObjects: DataStore[] = [
  *   { Type: 'TemperatureSensor', additional properties },
  * { Type: 'HumiditySensor',  additional properties }
   * ];
@@ -33,11 +33,11 @@ import ObjectStore from './ObjectStore'
  * const hvacState = new State(1, 'HVAC Initial State', initialStoredObjects, 5, true);
  *
  * // Add a new stored object
- * const newObject: ObjectStore = { Type: 'PressureSensor',  additional properties };
+ * const newObject: DataStore = { Type: 'PressureSensor',  additional properties };
  * hvacState.AddStoredObject(newObject);
  *
  * // Replace stored objects with a new array
- * const updatedObjects: ObjectStore[] = [
+ * const updatedObjects: DataStore[] = [
  * { Type: 'CO2Sensor',  additional properties }
   * ];
  * hvacState.SetStoredObjects(updatedObjects);
@@ -54,7 +54,7 @@ class State extends StateBase {
   /**
    * Collection of stored objects managed by this state
    */
-  public StoredObjects: ObjectStore[];
+  public storedObjects: DataStore[];
 
   /**
    * Initializes a new instance of the State class
@@ -64,9 +64,9 @@ class State extends StateBase {
    * @param rank - Priority/order ranking of the state
    * @param isActive - Whether the state is currently active
    */
-  constructor(id?: number, name?: string, storedObjects?: ObjectStore[], rank?: number, isActive?: boolean) {
+  constructor(id?: number, name?: string, storedObjects?: DataStore[], rank?: number, isActive?: boolean) {
     super(id, name, rank, isActive);
-    this.StoredObjects = storedObjects || [];
+    this.storedObjects = storedObjects || [];
   }
 
   /**
@@ -74,10 +74,10 @@ class State extends StateBase {
    * @param objectToStore - The object to add to the collection
    * @throws Error if the object or its type property is null
    */
-  AddStoredObject(objectToStore: ObjectStore): void {
+  AddStoredObject(objectToStore: DataStore): void {
     if (objectToStore == null) throw new Error('Stored object is null');
     if (objectToStore.Type == null) throw new Error('Stored object type is null');
-    this.StoredObjects.push(Utils1.CloneBlock(objectToStore));
+    this.storedObjects.push(Utils1.CloneBlock(objectToStore));
   }
 
   /**
@@ -85,18 +85,18 @@ class State extends StateBase {
    * @param objectsToStore - Array of objects to store
    * @throws Error if the objects array is null
    */
-  SetStoredObjects(objectsToStore: ObjectStore[]): void {
+  SetStoredObjects(objectsToStore: DataStore[]): void {
     if (objectsToStore == null) throw new Error('Stored objects array is null');
     const clonedObjects = objectsToStore.map(item => Utils1.CloneBlock(item));
-    this.StoredObjects = clonedObjects;
+    this.storedObjects = clonedObjects;
   }
 
   /**
    * Retrieves a copy of all stored objects
    * @returns Deep copy of all stored objects
    */
-  GetStoredObjects(): ObjectStore[] {
-    return this.StoredObjects.map(item => Utils1.CloneBlock(item));
+  GetStoredObjects(): DataStore[] {
+    return this.storedObjects.map(item => Utils1.CloneBlock(item));
   }
 }
 
