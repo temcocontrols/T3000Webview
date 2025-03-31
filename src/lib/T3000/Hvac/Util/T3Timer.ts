@@ -13,7 +13,6 @@ class T3Timer {
    * @param context - The context in which callbacks will be executed
    */
   constructor(context?: any) {
-    console.log('T.T3Timer: Creating new timer instance', { context });
     this.context = context || window;
   }
 
@@ -24,11 +23,9 @@ class T3Timer {
    * @returns A unique timer identifier
    */
   public setInterval(callback: Function, intervalMs: number): number {
-    console.log('T.T3Timer: Setting interval', { callback: callback.name || 'anonymous', intervalMs });
     const timerId = T3Timer.getNewTimerId();
     const callExpression = T3Timer.buildCallExpression(this.context, timerId, arguments);
     T3Timer.timerRegistry[timerId].timer = window.setInterval(callExpression, intervalMs);
-    console.log('T.T3Timer: Interval set with ID', timerId);
     return timerId;
   }
 
@@ -39,11 +36,9 @@ class T3Timer {
    * @returns A unique timer identifier
    */
   public setTimeout(callback: Function, delayMs: number): number {
-    console.log('T.T3Timer: Setting timeout', { callback: callback.name || 'anonymous', delayMs });
     const timerId = T3Timer.getNewTimerId();
     T3Timer.buildCallExpression(this.context, timerId, arguments);
     T3Timer.timerRegistry[timerId].timer = window.setTimeout(() => T3Timer.executeOnce(timerId), delayMs);
-    console.log('T.T3Timer: Timeout set with ID', timerId);
     return timerId;
   }
 
@@ -52,13 +47,9 @@ class T3Timer {
    * @param timerId - The identifier returned by setInterval
    */
   public clearInterval(timerId: number): void {
-    console.log('T.T3Timer: Clearing interval', { timerId });
     if (T3Timer.timerRegistry[timerId]) {
       window.clearInterval(T3Timer.timerRegistry[timerId].timer);
       T3Timer.timerRegistry[timerId] = null;
-      console.log('T.T3Timer: Interval cleared', { timerId });
-    } else {
-      console.log('T.T3Timer: No interval found with ID', timerId);
     }
   }
 
@@ -67,13 +58,9 @@ class T3Timer {
    * @param timerId - The identifier returned by setTimeout
    */
   public clearTimeout(timerId: number): void {
-    console.log('T.T3Timer: Clearing timeout', { timerId });
     if (T3Timer.timerRegistry[timerId]) {
       window.clearTimeout(T3Timer.timerRegistry[timerId].timer);
       T3Timer.timerRegistry[timerId] = null;
-      console.log('T.T3Timer: Timeout cleared', { timerId });
-    } else {
-      console.log('T.T3Timer: No timeout found with ID', timerId);
     }
   }
 
@@ -85,7 +72,6 @@ class T3Timer {
    * @returns A string representing the function call
    */
   private static buildCallExpression(context: any, timerId: number, args: IArguments): string {
-    console.log('T.T3Timer: Building call expression', { timerId });
     let callExpression = '';
     T3Timer.timerRegistry[timerId] = [];
 
@@ -109,7 +95,6 @@ class T3Timer {
     callExpression += ');';
     T3Timer.timerRegistry[timerId].call = callExpression;
 
-    console.log('T.T3Timer: Call expression built', { callExpression });
     return callExpression;
   }
 
@@ -118,15 +103,10 @@ class T3Timer {
    * @param timerId - The timer identifier to execute and clean up
    */
   private static executeOnce(timerId: number): void {
-    console.log('T.T3Timer: Executing one-time call', { timerId });
     if (T3Timer.timerRegistry[timerId]) {
       const callExpression = T3Timer.timerRegistry[timerId].call;
-      console.log('T.T3Timer: Evaluating expression', { callExpression });
       eval(callExpression);
       T3Timer.timerRegistry[timerId] = null;
-      console.log('T.T3Timer: One-time call executed and cleaned up', { timerId });
-    } else {
-      console.log('T.T3Timer: No timer found with ID', timerId);
     }
   }
 
@@ -137,7 +117,6 @@ class T3Timer {
   private static getNewTimerId(): number {
     let timerId = 0;
     while (T3Timer.timerRegistry[timerId]) timerId++;
-    console.log('T.T3Timer: Generated new timer ID', { timerId });
     return timerId;
   }
 }

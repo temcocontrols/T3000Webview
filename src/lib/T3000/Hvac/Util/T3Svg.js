@@ -339,8 +339,6 @@ SVG.extend(SVG.Element, {
    * @returns {SVG.Element|*} The element itself when setting, or the data value when getting
    */
   data: function (key, value) {
-    console.log("USE HVAC SVG TO SET DATA", key, value);
-
     if (arguments.length < 2) {
       try {
         return JSON.parse(this.attr("data-" + key));
@@ -2505,7 +2503,7 @@ SVG.Text &&
  * @example
  * // Add a click handler to a rectangle
  * rect.click(function(event) {
- *   console.log('Rectangle was clicked!', event);
+ *   T3Util.Log('Rectangle was clicked!', event);
  * });
  */
 [
@@ -2553,13 +2551,13 @@ SVG.Text &&
 extend(Element.prototype, {});
 extend(Element, {
   t1: function () {
-    console.log(
+    T3Util.Log(
       `Hvac.SVG.js extend svg.js Element ${this.type.toString()}---------------------------------------`,
       this
     );
   },
   // data: function () {
-  //   console.log("extend Element data", this);
+  //   T3Util.Log("extend Element data", this);
   // },
 });
 */

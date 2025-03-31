@@ -509,7 +509,7 @@
      * @param {Event} event - The touch/mouse event to check
      * @returns {boolean} True if the event occurred in a scrollbar
      */
-    inWorkAreaScrollbar: function (event) {
+    inWksBar: function (event) {
       if (!window.docUtil) {
         return false;
       }
@@ -593,7 +593,7 @@
         var result;
 
         // Skip if touch is in scrollbar area
-        if (window.docUtil && eventName == eventStart && v.inWorkAreaScrollbar(event)) {
+        if (window.docUtil && eventName == eventStart && v.inWksBar(event)) {
           return;
         }
 
