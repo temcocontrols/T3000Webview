@@ -130,16 +130,444 @@
     height: 100%;
     /* background-color: #0d09ec; */
   }
+
+  .main-panel {
+    margin-left: 0px;
+    position: absolute;
+    width: 100%;
+    /* background-color: rgb(223, 178, 178); */
+  }
+
+  #main-toolbar {
+    position: fixed;
+    left: 0;
+    padding-top: 0;
+    padding-left: 0px;
+    z-index: 1;
+    width: 100%;
+    max-height: none;
+    /* background-color: #fff; */
+    height: 93px;
+    /* background-color: antiquewhite; */
+  }
+
+  .left-panel {
+    position: fixed;
+    top: 93px;
+    z-index: 1;
+    bottom: 0;
+    left: 0px;
+    right: 0;
+    overflow: hidden;
+    /* background-color: #f5f5f5; */
+    width: 105px;
+    border-right: 1px solid #ddd;
+    z-index: 4;
+    /* background-color: brown; */
+  }
+
+  .main-panel {
+    margin-left: 0px;
+    /* background-color: cornsilk; */
+  }
+
+  #work-area {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: none;
+    padding-left: 105px;
+    margin-top: 93px;
+    width: auto;
+    /* background-color: #40e4e4; */
+  }
+
+  #document-area {
+    position: relative;
+    /* background-color: #e3e4e5; */
+    height: 100%;
+    /* background-color: rgb(227, 153, 190); */
+  }
+
+  .document-ruler-corner {
+    width: 20px;
+    height: 20px;
+    user-select: none;
+    left: 99px;
+    top: 0px;
+    /* background-color: #ebeced; */
+    overflow: hidden;
+    position: absolute;
+    /* background-color: rgb(229, 112, 112); */
+  }
+
+  .document-ruler-top {
+    /* background-color: #ebeced; */
+    overflow: hidden;
+    position: absolute;
+    user-select: none;
+    left: 119px;
+    top: 0px;
+    /* width: 976.8px; */
+    width: 100%;
+    height: 20px;
+    /* background-color: rgb(166, 166, 223); */
+  }
+
+  .document-ruler-left {
+    /* background-color: #ebeced; */
+    overflow: hidden;
+    position: absolute;
+    user-select: none;
+    left: 99px;
+    top: 20px;
+    width: 20px;
+    /* height: 175.4px; */
+    height: auto;
+    /* background-color: yellow; */
+  }
+
+  #svg-area {
+    scrollbar-width: thin;
+    position: absolute;
+    /* background-color: #fff; */
+    left: 119px;
+    top: 20px;
+    /* width: 976.8px; */
+    width: 100%;
+    /* height: 175.4px; */
+    height: auto;
+    overflow: hidden scroll;
+    user-select: none;
+    background-color: #20b2aa;
+  }
+
+  .doc-toolbar {
+    background-color: transparent;
+    bottom: 10px;
+    right: 10px;
+    padding-left: 187px;
+    padding-right: 10px;
+    border: none;
+    display: flex;
+    align-items: flex-end;
+    height: auto;
+    width: auto;
+    position: absolute;
+    left: 0;
+    /* background-color: #00ffff; */
+  }
 </style>
 
 <template>
   <q-page style="background-color: #ebeced;">
-    <div class="full-area">
 
-      <div class="top-area">
+    <div id="_crossTabClipboardDiv"
+         style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
+      <div id="_IEclipboardDiv" contenteditable="true"></div>
+      <input id="_clipboardInput" type="text" value=" ">
+    </div>
+
+
+    <div id="main-app">
+      <div id="main-panel" class="main-panel">
+        <!-- <div id="main-toolbar" class="main-toolbar">
+    <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
+
+  </div> -->
+        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
+                       :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
+                       :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
+                       :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
+                       :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+        </NewTopToolBar>
+        <div class="main-area">
+          <div id="left-panel" class="left-panel">
+            <!-- left bar -->
+            <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+                          :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+                          @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+                          @tool-dropped="toolDropped" />
+          </div>
+
+
+          <div id="work-area" class="main-panel">
+
+            <div style="display: block;">
+              <button id="btn_try_select">Select</button>
+
+              &nbsp;
+              <button id="btn_try_library">Library</button>
+
+              &nbsp;
+              <button id="btn_try_line">Line</button>
+
+              &nbsp;
+              <button id="btn_try_line1">Line1</button>
+
+              &nbsp;
+              <button id="btn_try_wall">Wall</button>
+
+              &nbsp;
+              <button id="btn_try_Rect">Rect </button>
+
+              &nbsp;
+              <button id="btn_try_Oval">Oval</button>
+
+              &nbsp;
+              <button id="btn_try_Image">Image</button>
+
+              &nbsp;
+              <button id="btn_try_Circ">Circ</button>
+
+              &nbsp;
+              <button id="btn_try_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_ArrR">ArrR</button>
+
+              &nbsp;
+              <button id="btn_try_ArrL">ArrL</button>
+
+              &nbsp;
+              <button id="btn_try_ArrT">ArrT</button>
+
+              &nbsp;
+              <button id="btn_try_ArrB">ArrB</button>
+
+              &nbsp;
+              <button id="btn_try_Roate45">Roate 45</button>
+
+              &nbsp;
+              <button id="btn_try_Roate90">Roate 90</button>
+
+              &nbsp;
+              <button id="btn_try_Align_lefts">Align_lefts</button>
+
+              &nbsp;
+              <button id="btn_try_Align_centers">Align_centers</button>
+
+              &nbsp;
+              <button id="btn_try_Align_rights">Align_rights</button>
+
+              &nbsp;
+              <button id="btn_try_Align_tops">Align_tops</button>
+
+              &nbsp;
+              <button id="btn_try_Align_middles">Align_middles</button>
+
+              &nbsp;
+              <button id="btn_try_Align_bottoms">Align_bottoms</button>
+
+              &nbsp;
+              <button id="btn_try_Group">Group</button>
+
+              &nbsp;
+              <button id="btn_try_UnGroup">Ungroup</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Horizontal">Flip_Horizontal</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Vertical">Flip_Vertical</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Height">Same_Height</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Width">Same_Width</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Both">Same_Both</button>
+
+              &nbsp;
+              <button id="btn_try_BringToFront">BringToFront</button>
+
+              &nbsp;
+              <button id="btn_try_SendToBack">SendToBack</button>
+
+              &nbsp;
+              <button id="btn_try_Paste">Paste</button>
+
+              &nbsp;
+              <button id="btn_try_Copy">Copy</button>
+
+              &nbsp;
+              <button id="btn_try_Cut">Cut</button>
+
+              &nbsp;
+              <button id="btn_try_Delete">Delete</button>
+
+              &nbsp;
+              <button id="btn_try_Undo">Undo</button>
+
+              &nbsp;
+              <button id="btn_try_Redo">Redo</button>
+
+              &nbsp;
+              <button id="btn_try_Save">Save</button>
+
+              &nbsp;
+              <button id="btn_try_Duplicate">Duplicate</button>
+
+              &nbsp;
+              <button id="btn_try_Clear">Clear</button>
+
+              &nbsp;
+              <button id="btn_try_Measure">Measure</button>
+
+              &nbsp;
+              <button id="btn_try_AreaMeasure">AreaMeasure</button>
+
+              <br />
+              &nbsp;
+              <button id="btn_try_Lib_Select">Select</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Box">Box</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Icon">Icon</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SwitchIcon">Switch Icon</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Led">Led</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_RoomHumidity">Room Humidity</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_RoomTemperature">Room Temperature</button>
+
+
+              &nbsp;
+              <button id="btn_try_Lib_Temperature">Temperature</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Boiler">Boiler</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_HeatPump">Heat Pump</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Pump">Pump</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ValueThreeWay">Value Three-Way</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ValueTwoWay">Value Two-Way</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Duct">Duct</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Fan">Fan</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_CoolingCoil">Cooling Coil</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_HeatingCoil">Heating Coil</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Filter">Filter</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Humidifier">Humidifier</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Humidity">Humidity</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Pressure">Pressure</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Damper">Damper</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Temperature2">Temperature 2</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ThermalWheel">Thermal Wheel</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Enthalpy">Enthalpy</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Flow">Flow</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Guage">Guage</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Dial">Dial</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Value">Value</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_IconWithTitle">Icon with Title</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundColor">Background Color</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundImage">Background Image</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ImportSVGSymbol">Import SVG Symbol</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Lock">Lock</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_AddNote">Add Note</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_AddComment">Add Comment</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Hyperlink">Hyperlink</button>
+            </div>
+
+
+            <div id="document-area">
+              <div id="c-ruler" class="document-ruler-corner">
+                c-ruler
+              </div>
+              <div id="h-ruler" class="document-ruler-top">
+              </div>
+              <div id="v-ruler" class="document-ruler-left">
+              </div>
+              <div id="svg-area" class="svg-area">
+              </div>
+            </div>
+
+            <div id="doc-toolbar" class="doc-toolbar">
+
+              <!-- <BottomToolbar @bottomSliderbarEvent="T3000.Hvac.App.BottomSliderbarEvent">
+        </BottomToolbar> -->
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--<div class="full-area">
+
+      <div class="top-area">-->
         <!-- Top Toolbar -->
         <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
+        <!--<top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
                      :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
                      :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom"
                      :rulersGridVisible="rulersGridVisible" v-if="isBuiltInEdge" />
@@ -153,9 +581,9 @@
       </div>
 
       <div class="main-area">
-        <div class="side-bar" v-if="!locked">
+        <div class="side-bar" v-if="!locked">-->
           <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+          <!--<ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
                         :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
                         @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
                         @tool-dropped="toolDropped" :isBuiltInEdge="isBuiltInEdge" />
@@ -172,18 +600,18 @@
             <div class="hv-grid" v-if="!locked && rulersGridVisible">
               <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
             </div>
-            <div class="viewport-wrapper" @scroll="handleScroll">
+            <div class="viewport-wrapper" @scroll="handleScroll">-->
               <!-- Navigation Buttons -->
-              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
+              <!--<div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">-->
                 <!-- Go Back Button -->
-                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
+                <!--<q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
                        color="primary" @click="navGoBack">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong>Go back</strong>
                   </q-tooltip>
-                </q-btn>
+                </q-btn>-->
                 <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
+                <!--<q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
                        :color="locked ? 'primary' : 'normal'" @click="lockToggle" v-if="isBuiltInEdge">
                   <q-tooltip anchor="top middle" self="bottom middle">
                     <strong v-if="!locked">Lock</strong>
@@ -199,15 +627,15 @@
                     <strong v-else>Unlock</strong>
                   </q-tooltip>
                 </q-btn>
-              </div>
+              </div>-->
               <!-- Viewport Area -->
-              <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
+              <!--<div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
                    @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
-                  ">
+                  ">-->
                 <!-- Cursor Icon -->
-                <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
+                <!--<q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
                   ? selectedTool.icon
                   : selectedTool.type === 'libItem'
                     ? 'space_dashboard'
@@ -215,15 +643,15 @@
                   " size="sm" :style="{
                     left: cursorIconPos.x + 0 + 'px',
                     top: cursorIconPos.y + 'px',
-                  }" />
+                  }" />-->
                 <!-- Vue Selecto for Selectable Items -->
-                <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
+                <!--<vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
                              :hitRate="20" :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']"
                              :ratio="0" :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
                              @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-                </vue-selecto>
+                </vue-selecto>-->
                 <!-- Moveable Component for Draggable/Resizable Items -->
-                <div ref="viewport">
+                <!--<div ref="viewport">
 
                   <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
                                 :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
@@ -248,13 +676,13 @@
                                 @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
                                 @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd"
                                 :renderDirections='["n", "nw", "ne", "s", "se", "sw", "e", "w"]'>
-                  </vue-moveable>
+                  </vue-moveable>-->
 
                   <!-- Context Menu -->
-                  <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
-                    <q-list>
+                  <!--<q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
+                    <q-list>-->
                       <!-- Copy Option -->
-                      <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
+                      <!--<q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -265,9 +693,9 @@
                           <q-chip>Ctrl + C</q-chip>
                         </q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Duplicate Option -->
-                      <q-item dense clickable v-close-popup @click="duplicateSelected">
+                      <!--<q-item dense clickable v-close-popup @click="duplicateSelected">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -278,9 +706,9 @@
                           <q-chip>Ctrl + D</q-chip>
                         </q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Group Option -->
-                      <q-item dense clickable v-close-popup @click="groupSelected">
+                      <!--<q-item dense clickable v-close-popup @click="groupSelected">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -302,9 +730,9 @@
                           <q-chip>Ctrl + Shift + G</q-chip>
                         </q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Add to Library Option -->
-                      <q-item dense clickable v-close-popup @click="addToLibrary">
+                      <!--<q-item dense clickable v-close-popup @click="addToLibrary">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -315,39 +743,39 @@
                           <q-chip>Ctrl + L</q-chip>
                         </q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Bring to Front Option -->
-                      <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
+                      <!--<q-item dense clickable v-close-popup @click="bringSelectedToFront()">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
                         </q-item-section>
                         <q-item-section class="py-2">Bring to front</q-item-section>
-                      </q-item>
+                      </q-item>-->
                       <!-- Send to Back Option -->
-                      <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
+                      <!--<q-item dense clickable v-close-popup @click="sendSelectedToBack()">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
                         </q-item-section>
                         <q-item-section class="py-2">Send to Back</q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Rotate 90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected()">
+                      <!--<q-item dense clickable v-close-popup @click="rotate90Selected()">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
                         </q-item-section>
                         <q-item-section>Rotate 90°</q-item-section>
-                      </q-item>
+                      </q-item>-->
                       <!-- Rotate -90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
+                      <!--<q-item dense clickable v-close-popup @click="rotate90Selected(true)">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
                         </q-item-section>
                         <q-item-section>Rotate -90°</q-item-section>
                       </q-item>
-                      <q-separator />
+                      <q-separator />-->
                       <!-- Delete Option -->
-                      <q-item dense clickable v-close-popup @click="deleteSelected">
+                      <!--<q-item dense clickable v-close-popup @click="deleteSelected">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -357,9 +785,9 @@
                         <q-item-section side>
                           <q-chip>Delete</q-chip>
                         </q-item-section>
-                      </q-item>
+                      </q-item>-->
                       <!-- Weld Option -->
-                      <q-item dense clickable v-close-popup @click="weldSelected">
+                      <!--<q-item dense clickable v-close-popup @click="weldSelected">
                         <q-item-section avatar>
                           <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
                         </q-item-section>
@@ -562,7 +990,7 @@
         </div>
       </div>
 
-    </div>
+    </div>-->
 
     <!-- Object config sidebar -->
     <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
@@ -897,6 +1325,8 @@
   // Lifecycle hook for component mount
   onMounted(() => {
 
+    T3000.Hvac.UI.Initialize($q); // Initialize the HVAC UI
+
     // // Set global navigation properties
     // globalNav.value.title = "HVAC Drawer";
     // globalNav.value.back = null;
@@ -963,9 +1393,9 @@
     //   restDocumentAreaPosition(e.getTransform());
     // });
 
-    Hvac.IdxPage.initQuasar($q);
+    //Hvac.IdxPage.initQuasar($q);
 
-    Hvac.IdxPage.initPage();
+    //Hvac.IdxPage.initPage();
 
 
     // // Request initial data and panels list if in a webview
