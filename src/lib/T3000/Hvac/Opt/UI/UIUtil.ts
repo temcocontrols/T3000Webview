@@ -19,6 +19,7 @@ import TextUtil from "../Opt/TextUtil";
 import SelectUtil from "../Opt/SelectUtil";
 import SvgUtil from "../Opt/SvgUtil";
 import LayerUtil from '../Opt/LayerUtil';
+import QuasarUtil from '../Quasar/QuasarUtil';
 
 class UIUtil {
 
@@ -29,7 +30,7 @@ class UIUtil {
    * @param positionY - The Y position where to show the dropdown
    * @returns void
    */
-  static ShowContextMenu(element, positionX, positionY) {
+  static ShowContextMenu(isShow, element, positionX, positionY) {
     // const self = this;
 
     // // Hide all currently visible dropdowns
@@ -50,6 +51,12 @@ class UIUtil {
     //   // Show the dropdown at the specified position
     //   self.Dropdowns.ShowDropdown(element, positionX, positionY);
     // });
+
+    QuasarUtil.ShowContextMenu(isShow);
+  }
+
+  static ShowObjectConfig(isShow) {
+    QuasarUtil.ShowObjectConfig(isShow);
   }
 
   static ShowFrame(isShowFrame: boolean) {
@@ -183,7 +190,7 @@ class UIUtil {
   static GetDocDirtyState(): boolean {
     T3Util.Log("O.Opt GetDocDirtyState - Input: no parameters");
 
-    const isDirty = T3Gv.opt.contentHeader.DocIsDirty;
+    const isDirty = T3Gv.opt.header.DocIsDirty;
 
     T3Util.Log("O.Opt GetDocDirtyState - Output:", isDirty);
     return isDirty;
@@ -202,13 +209,13 @@ class UIUtil {
     T3Util.Log("O.Opt SetDocDirtyState - Input:", { isDirty, allowReplaceWhenClean });
 
     // Set the document dirty state
-    T3Gv.opt.contentHeader.DocIsDirty = isDirty;
+    T3Gv.opt.header.DocIsDirty = isDirty;
 
     // Update the AllowReplace flag based on dirty state
     if (isDirty) {
-      T3Gv.opt.contentHeader.AllowReplace = false;
+      T3Gv.opt.header.AllowReplace = false;
     } else if (allowReplaceWhenClean === true) {
-      T3Gv.opt.contentHeader.AllowReplace = true;
+      T3Gv.opt.header.AllowReplace = true;
     }
 
     T3Util.Log("O.Opt SetDocDirtyState - Output: Document dirty state set to", isDirty);
@@ -692,8 +699,8 @@ class UIUtil {
     let newWidth;
     let newHeight;
     let sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-    let paperSize = T3Gv.opt.contentHeader.Page.papersize;
-    let margins = T3Gv.opt.contentHeader.Page.margins;
+    let paperSize = T3Gv.opt.header.Page.papersize;
+    let margins = T3Gv.opt.header.Page.margins;
     let pageWidth = paperSize.x - (margins.left + margins.right);
     let pageHeight = paperSize.y - (margins.top + margins.bottom);
     let newDocumentSize = { x: 0, y: 0 };
@@ -712,18 +719,18 @@ class UIUtil {
 
     // Apply minimum size constraints if using edges but not on edge layer
     if (shouldUseEdges && !isUsingEdgeLayer) {
-      if (newHeight < T3Gv.opt.contentHeader.Page.minsize.y) {
-        newHeight = T3Gv.opt.contentHeader.Page.minsize.y;
+      if (newHeight < T3Gv.opt.header.Page.minsize.y) {
+        newHeight = T3Gv.opt.header.Page.minsize.y;
         needMinHeightEnforcement = true;
       }
-      if (newWidth < T3Gv.opt.contentHeader.Page.minsize.x) {
-        newWidth = T3Gv.opt.contentHeader.Page.minsize.x;
+      if (newWidth < T3Gv.opt.header.Page.minsize.x) {
+        newWidth = T3Gv.opt.header.Page.minsize.x;
         needMinWidthEnforcement = true;
       }
     }
 
     // Handle page-based layouts
-    if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.Pages && !isUsingEdgeLayer) {
+    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.Pages && !isUsingEdgeLayer) {
       let widthInPages = Math.ceil(newWidth / pageWidth);
       let heightInPages = Math.ceil(newHeight / pageHeight);
 
@@ -771,7 +778,7 @@ class UIUtil {
       }
 
       // Honor no-auto-grow flag
-      if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+      if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
         if (newDocumentSize.x < sessionData.dim.x) newDocumentSize.x = sessionData.dim.x;
         if (newDocumentSize.y < sessionData.dim.y) newDocumentSize.y = sessionData.dim.y;
       }
@@ -798,22 +805,22 @@ class UIUtil {
             newDocumentSize.y = pageHeight;
           }
 
-          if (!(T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto)) {
-            T3Gv.opt.contentHeader.Page.minsize.y = newDocumentSize.y;
-            T3Gv.opt.contentHeader.Page.minsize.x = newDocumentSize.x;
+          if (!(T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto)) {
+            T3Gv.opt.header.Page.minsize.y = newDocumentSize.y;
+            T3Gv.opt.header.Page.minsize.x = newDocumentSize.x;
           }
         } else {
-          T3Gv.opt.contentHeader.Page.minsize.x = pageWidth;
-          T3Gv.opt.contentHeader.Page.minsize.y = pageHeight;
+          T3Gv.opt.header.Page.minsize.x = pageWidth;
+          T3Gv.opt.header.Page.minsize.y = pageHeight;
         }
       }
 
       // Apply minimum size constraints
-      if (newDocumentSize.x < T3Gv.opt.contentHeader.Page.minsize.x) {
-        newDocumentSize.x = T3Gv.opt.contentHeader.Page.minsize.x;
+      if (newDocumentSize.x < T3Gv.opt.header.Page.minsize.x) {
+        newDocumentSize.x = T3Gv.opt.header.Page.minsize.x;
       }
-      if (newDocumentSize.y < T3Gv.opt.contentHeader.Page.minsize.y) {
-        newDocumentSize.y = T3Gv.opt.contentHeader.Page.minsize.y;
+      if (newDocumentSize.y < T3Gv.opt.header.Page.minsize.y) {
+        newDocumentSize.y = T3Gv.opt.header.Page.minsize.y;
       }
     }
 
@@ -832,7 +839,7 @@ class UIUtil {
     } else {
       // Handle no-auto-grow constraint
       if (
-        T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto &&
+        T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto &&
         !allowOverride &&
         (!isGrowing || isExactPageMultiple(sessionData.dim, pageWidth, pageHeight))
       ) {
@@ -857,7 +864,13 @@ class UIUtil {
       this.ResizeSVGDocument();
     }
 
-    T3Util.Log('O.Opt FitDocumentWorkArea - Output:', {
+    // T3Util.Log('O.Opt FitDocumentWorkArea - Output:', {
+    //   newSize: newDocumentSize,
+    //   documentSizeChanged,
+    //   isGrowing
+    // });
+
+    console.log('O.Opt FitDocumentWorkArea - Output:', {
       newSize: newDocumentSize,
       documentSizeChanged,
       isGrowing
