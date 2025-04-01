@@ -84,8 +84,10 @@ class HeaderInfo {
   public AllowReplace: boolean;
   public FontList: any[];
   public SymbolSearchString: any;
-  public Save_HistoryState: any;
+  // public Save_HistoryState: any;
   public ParentPageID: any;
+
+  public clipboardJson: any;
 
   constructor() {
     this.Initialize();
@@ -112,12 +114,13 @@ class HeaderInfo {
     this.lp_list = new LibList();
     this.ClipboardBuffer = null;
     this.ClipboardType = T3Constant.ClipboardType.None;
+    this.clipboardJson = null;
     this.holidaymask = 0;
     this.DocIsDirty = !1;
     this.AllowReplace = !0;
     this.FontList = [];
     this.SymbolSearchString = '';
-    this.Save_HistoryState = - 1;
+    // this.Save_HistoryState = - 1;
     this.ParentPageID = '';
   }
 }
