@@ -76,133 +76,195 @@ import SVGImporter from "../../Shape/S.SVGImporter"
  */
 const Shape = {
   /**
-   * Arc line shape for drawing curved lines
-   * Useful for representing curved pipe sections or ducts
+   * Creates and manages arc lines for drawing curved segments
+   * @param startPoint - The starting point of the arc
+   * @param endPoint - The ending point of the arc
+   * @param controlPoint - The point that controls the curve of the arc
+   * @returns Arc line shape object
    */
   ArcLine,
 
   /**
-   * Arc segmented line shape for drawing curved lines with segments
-   * Useful for representing complex curved paths with multiple points
+   * Creates curved lines composed of multiple arc segments
+   * @param points - Array of points defining the segmented arc line
+   * @param controlPoints - Array of control points for each segment
+   * @returns Arc segmented line shape object
    */
   ArcSegmentedLine,
 
   /**
-   * Base drawing object that provides common functionality for all drawable elements
-   * Serves as the foundation for other shape classes
+   * Base drawing object that provides fundamental drawing capabilities
+   * @param properties - Base properties for the drawing object
+   * @returns Base drawing object
    */
   BaseDrawObject,
 
   /**
-   * Base line shape that provides common functionality for line-based shapes
-   * Serves as the foundation for specialized line classes
+   * Provides common functionality for all line-based shapes
+   * @param startPoint - The beginning point of the line
+   * @param endPoint - The ending point of the line
+   * @param properties - Additional line properties
+   * @returns Base line object
    */
   BaseLine,
 
   /**
-   * Base shape providing common functionality for all shapes
-   * The fundamental building block for all shape types
+   * Fundamental building block for all shape types with shared attributes
+   * @param properties - Common shape properties
+   * @returns Base shape object
    */
   BaseShape,
 
   /**
-   * Base symbol class for all symbol types
-   * Provides common functionality for symbols used in HVAC diagrams
+   * Base class for all symbol types used in HVAC diagrams
+   * @param properties - Symbol properties including position and style
+   * @returns Base symbol object
    */
   BaseSymbol,
 
   /**
-   * Bitmap symbol for including raster images in diagrams
-   * Used for incorporating photos or pre-rendered graphics
+   * Handles raster images for including in HVAC diagrams
+   * @param imageSource - Source URL or data for the bitmap
+   * @param position - Position information for the image
+   * @param dimensions - Width and height of the image
+   * @returns Bitmap symbol object
    */
   BitmapSymbol,
 
   /**
-   * Connector shape for joining elements in diagrams
-   * Used to create connections between components in HVAC systems
+   * Creates connection points between diagram elements
+   * @param sourceElement - The element where connection begins
+   * @param targetElement - The element where connection ends
+   * @param connectionType - Type of connector to create
+   * @returns Connector object
    */
   Connector,
 
   /**
-   * 3D symbol for representing three-dimensional objects
-   * Allows for more realistic representation of equipment
+   * Handles three-dimensional representations of HVAC components
+   * @param modelData - 3D model information
+   * @param position - Position coordinates for the 3D symbol
+   * @param scale - Scaling factors for the 3D model
+   * @returns 3D symbol object
    */
   D3Symbol,
 
   /**
-   * Freehand line for drawing irregular paths
-   * Useful for annotations or custom paths that don't follow geometric patterns
+   * Creates irregular hand-drawn paths for annotations
+   * @param points - Array of points defining the freehand path
+   * @param properties - Style and behavior properties
+   * @returns Freehand line object
    */
   FreehandLine,
 
   /**
-   * Group symbol for combining multiple shapes into a single unit
-   * Allows for organizing and manipulating collections of shapes
+   * Combines multiple shapes into a single manageable unit
+   * @param shapes - Array of shapes to include in the group
+   * @param groupProperties - Properties for the entire group
+   * @returns Group symbol object
    */
   GroupSymbol,
 
   /**
-   * Basic line shape connecting two points
-   * Fundamental element for creating straight connections
+   * Creates a straight line between two points
+   * @param startPoint - The beginning point of the line
+   * @param endPoint - The ending point of the line
+   * @param lineProperties - Style properties for the line
+   * @returns Line object
    */
   Line,
 
   /**
-   * Oval shape for representing circular or elliptical elements
-   * Used for various HVAC components like dampers or round ducts
+   * Creates circular or elliptical shapes for representing components
+   * @param center - Center point of the oval
+   * @param radiusX - Horizontal radius of the oval
+   * @param radiusY - Vertical radius of the oval
+   * @returns Oval shape object
    */
   Oval,
 
   /**
-   * Polygon shape for creating multi-sided closed shapes
-   * Used for representing complex geometrical forms
+   * Creates multi-sided closed shapes for complex geometrical forms
+   * @param points - Array of points defining the polygon vertices
+   * @param properties - Style and behavior properties
+   * @returns Polygon shape object
    */
   Polygon,
 
   /**
-   * Polyline shape for creating multi-segment open paths
-   * Used for representing complex piping or duct runs
+   * Creates multi-segment open paths for complex piping or ducts
+   * @param points - Array of points defining the polyline
+   * @param properties - Style and behavior properties
+   * @returns Polyline object
    */
   PolyLine,
 
   /**
-   * Container for polylines to manage multiple paths
-   * Helps organize and manipulate collections of polylines
+   * Manages collections of polylines for organization
+   * @param polylines - Array of polyline objects to contain
+   * @param containerProperties - Properties for the container
+   * @returns Polyline container object
    */
   PolyLineContainer,
 
   /**
-   * Rectangle shape for representing rectangular elements
-   * Common shape for representing equipment, ducts, or rooms
+   * Creates rectangular shapes for equipment or structural elements
+   * @param position - Top-left corner position of the rectangle
+   * @param width - Width of the rectangle
+   * @param height - Height of the rectangle
+   * @returns Rectangle shape object
    */
   Rect,
 
   /**
-   * Rounded rectangle shape for representing elements with rounded corners
-   * Provides a more aesthetically pleasing alternative to standard rectangles
+   * Creates rectangles with rounded corners for aesthetic presentation
+   * @param position - Top-left corner position of the rounded rectangle
+   * @param width - Width of the rounded rectangle
+   * @param height - Height of the rounded rectangle
+   * @param cornerRadius - Radius for the rounded corners
+   * @returns Rounded rectangle shape object
    */
   RRect,
 
   /**
-   * Segmented line for creating multi-segment straight lines
-   * Used for creating paths with multiple straight sections
+   * Creates multi-segment straight lines for complex paths
+   * @param points - Array of points defining the line segments
+   * @param properties - Style and behavior properties
+   * @returns Segmented line object
    */
   SegmentedLine,
 
   /**
-   * Container for shapes to manage multiple elements
-   * Helps organize and manipulate collections of shapes
+   * Manages collections of shapes as a single unit
+   * @param shapes - Array of shapes to include in the container
+   * @param containerProperties - Properties for the container
+   * @returns Shape container object
    */
   ShapeContainer,
 
   /**
-   * SVG fragment symbol for including vector graphics in diagrams
-   * Allows for scalable vector elements to be included in drawings
+   * Incorporates vector graphics elements into HVAC diagrams
+   * @param svgContent - SVG content as string or document fragment
+   * @param position - Position information for the SVG
+   * @param dimensions - Size information for the SVG
+   * @returns SVG fragment symbol object
    */
   SVGFragmentSymbol,
 
+  /**
+   * Imports and processes bitmap images for use in diagrams
+   * @param imageSource - Source URL or data for the bitmap
+   * @param importOptions - Options for importing the image
+   * @returns Bitmap importer object
+   */
   BitmapImporter,
 
+  /**
+   * Imports and processes SVG graphics for use in diagrams
+   * @param svgSource - Source URL or string content of the SVG
+   * @param importOptions - Options for importing the SVG
+   * @returns SVG importer object
+   */
   SVGImporter
 }
 

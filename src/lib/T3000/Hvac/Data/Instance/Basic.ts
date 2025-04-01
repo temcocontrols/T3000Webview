@@ -69,64 +69,144 @@ import Edit from "../../Basic/B.Text.Edit"
  * @public
  */
 const Basic = {
-  /** Container component for grouping elements */
+  /**
+   * Container component for grouping elements together
+   * Creates a structured container to hold and organize child UI elements
+   * @returns Container instance that can be used to group UI components
+   */
   Container,
 
-  /** Provides visual effects for elements */
+  /**
+   * Visual effects provider for enhancing element appearance
+   * Applies various effects like shadows, glows, and filters to elements
+   * @returns Effect instance that can be applied to UI elements
+   */
   Effect,
 
-  /** Handles styling properties for elements */
+  /**
+   * Styling manager for UI elements
+   * Handles colors, borders, fills, and other visual properties
+   * @returns Style instance to control element appearance
+   */
   Style,
 
-  /** Base element class for UI components */
+  /**
+   * Base element class providing core UI component functionality
+   * Serves as the foundation for other specialized UI elements
+   * @returns Element instance with basic rendering capabilities
+   */
   Element,
 
-  /** Component for grouping related elements */
+  /**
+   * Logical grouping component for related UI elements
+   * Allows collective operations on multiple elements at once
+   * @returns Group instance for organizing related elements
+   */
   Group,
 
-  /** Component for displaying images */
+  /**
+   * Image display and management component
+   * Handles loading, rendering, and manipulating image assets
+   * @returns Image instance for displaying visual content
+   */
   Image,
 
-  /** Layer component for z-index management */
+  /**
+   * Layer management for controlling element stacking
+   * Controls z-index and rendering order of elements
+   * @returns Layer instance for proper element layering
+   */
   Layer,
 
-  /** Component for drawing lines */
+  /**
+   * Component for drawing straight lines
+   * Creates vector line segments with configurable properties
+   * @returns Line instance for rendering line elements
+   */
   Line,
 
-  /** Component for drawing oval/circle shapes */
+  /**
+   * Component for drawing oval or circular shapes
+   * Creates elliptical shapes with customizable dimensions
+   * @returns Oval instance for circular/oval rendering
+   */
   Oval,
 
-  /** Utility for creating paths */
+  /**
+   * Utility for building custom graphic paths
+   * Provides methods to construct complex vector paths
+   * @returns Creator instance for path generation
+   */
   Creator,
 
-  /** Component for drawing custom paths */
+  /**
+   * Component for drawing custom SVG-like paths
+   * Renders complex vector shapes using path commands
+   * @returns Path instance for custom shape rendering
+   */
   Path,
 
-  /** Component for drawing polygons */
+  /**
+   * Component for drawing closed polygon shapes
+   * Creates multi-point closed shapes with straight edges
+   * @returns Polygon instance for rendering polygon elements
+   */
   Polygon,
 
-  /** Component for drawing connected line segments */
+  /**
+   * Component for drawing connected line segments
+   * Creates open shapes with multiple connected points
+   * @returns PolyLine instance for multi-segment lines
+   */
   PolyLine,
 
-  /** Component for drawing multiple polylines */
+  /**
+   * Component for rendering multiple polyline sequences
+   * Manages and draws collections of polylines as a single unit
+   * @returns PolyPolyLine instance for complex line structures
+   */
   PolyPolyLine,
 
-  /** Component for drawing rectangles */
+  /**
+   * Component for drawing rectangular shapes
+   * Creates four-sided shapes with right angles
+   * @returns Rect instance for rectangle rendering
+   */
   Rect,
 
-  /** Component for drawing rounded rectangles */
+  /**
+   * Component for drawing rounded rectangles
+   * Creates rectangles with customizable corner radii
+   * @returns RRect instance for rounded rectangle rendering
+   */
   RRect,
 
-  /** Container specifically for shapes */
+  /**
+   * Specialized container for organizing shape elements
+   * Provides optimized management for shape-based components
+   * @returns ShapeContainer instance for shape organization
+   */
   ShapeContainer,
 
-  /** Utility for copying shapes */
+  /**
+   * Utility for duplicating shapes and their properties
+   * Creates identical copies of existing shape elements
+   * @returns ShapeCopy instance for element duplication
+   */
   ShapeCopy,
 
-  /** Component for reusable symbol elements */
+  /**
+   * Component for creating reusable symbol elements
+   * Defines elements that can be instantiated multiple times
+   * @returns Symbol instance for reusable graphics
+   */
   Symbol,
 
-  /** Component for editable text fields */
+  /**
+   * Component for managing editable text fields
+   * Handles text input, formatting, and interaction
+   * @returns Edit instance for text editing capabilities
+   */
   Edit
 };
 
