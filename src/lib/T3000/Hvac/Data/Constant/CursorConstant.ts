@@ -17,7 +17,7 @@
  * Using the CursorConstant class to apply settings:
  *
  * // Applying a cursor CSS class to an HTML element for pointer functionality.
- * element.classList.add(CursorConstant.CursorType.POINTER);
+ * element.classList.add(CursorConstant.CursorType.Pointer);
  *
  * // Constructing the full path for a knob image:
  * const knobImagePath = `${CursorConstant.Knob.Path}${CursorConstant.Knob.DiagonLeft}`;

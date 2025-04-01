@@ -12,7 +12,6 @@
  * - TextJust: Numeric codes for basic text justification and alignment (e.g. Left, Right, Center, Top, Bottom).
  * - TextAlign: More readable alignment options using string values (e.g. "top-left", "center", "bottom-right").
  * - TextureAlign: Numeric constants used to determine the alignment of textures relative to their containers.
- * - ReplaceTextStrings: Default placeholder strings used in editable text fields.
  *
  * @remarks
  * These constants help maintain consistent text rendering across the application by providing a centralized definition
@@ -31,9 +30,6 @@
  *
  * // Using string-based text alignment:
  * const centeredAlignment = TextConstant.TextAlign.Center;
- *
- * // Accessing a default placeholder text:
- * const defaultPlaceholder = TextConstant.ReplaceTextStrings[0]; // "Click To Add"
  *
  * @public
  */
@@ -120,19 +116,6 @@ class TextConstant {
     BottomCenter: 8,
     BottomRight: 9
   }
-
-  /**
-   * Default placeholder text strings
-   * Used as initial values or placeholders in editable text fields
-   */
-  static ReplaceTextStrings = [
-    'Click To Add',
-    'Double Click To Add',
-    'Click to Add Text',
-    'Double Click to Add Text',
-    'Enter Person',
-    'Enter Task'
-  ]
 }
 
 export default TextConstant
