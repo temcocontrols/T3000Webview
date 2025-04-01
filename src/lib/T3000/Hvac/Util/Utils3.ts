@@ -1,8 +1,8 @@
 
 
 import Utils2 from "./Utils2"
-import ConstantData from "../Data/ConstantData"
-// import KeyboardConstant from "../Util/KeyboardConstant";
+import NvConstant from "../Data/Constant/NvConstant"
+import KeyboardConstant from "../Opt/Keyboard/KeyboardConstant";
 import QuickStyle from "../Model/QuickStyle";
 
 class Utils3 {
@@ -68,7 +68,7 @@ class Utils3 {
 
           // If point is in vertical line rectangle
           if (Utils2.pointInRect(rect, testPoint)) {
-            hitCode = ConstantData.HitCodes.SED_Border;
+            hitCode = NvConstant.HitCodes.Border;
             hitSegmentIndex = i;
             xHit = points[i].x;
             yHit = testPoint.y;
@@ -95,7 +95,7 @@ class Utils3 {
 
           // If point is in horizontal line rectangle
           if (Utils2.pointInRect(rect, testPoint)) {
-            hitCode = ConstantData.HitCodes.SED_Border;
+            hitCode = NvConstant.HitCodes.Border;
             hitSegmentIndex = i;
             yHit = points[i].y;
             xHit = testPoint.x;
@@ -130,7 +130,7 @@ class Utils3 {
             // Check if point is within threshold of the line
             if (testPoint.y <= yOnLine + distanceThreshold &&
               testPoint.y >= yOnLine - distanceThreshold) {
-              hitCode = ConstantData.HitCodes.SED_Border;
+              hitCode = NvConstant.HitCodes.Border;
               hitSegmentIndex = i;
               yHit = yOnLine;
               xHit = testPoint.x;
@@ -159,7 +159,7 @@ class Utils3 {
             // Check if point is within threshold of the line
             if (testPoint.x <= xIntersect + distanceThreshold &&
               testPoint.x >= xIntersect - distanceThreshold) {
-              hitCode = ConstantData.HitCodes.SED_Border;
+              hitCode = NvConstant.HitCodes.Border;
               hitSegmentIndex = i;
               xHit = xIntersect;
               yHit = testPoint.y;
