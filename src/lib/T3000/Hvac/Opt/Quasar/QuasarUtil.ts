@@ -1,15 +1,19 @@
 import { Dialog } from 'quasar';
 import { useQuasar } from 'quasar';
-import { contextMenuShow } from "../../Data/Constant/RefConstant";
+import { contextMenuShow, objectConfigShow } from "../../Data/Constant/RefConstant";
 
 
 class QuasarUtil {
 
   public static quasar: any;
 
-  static SetContextMenuVisible(visible: boolean) {
+  static ShowContextMenu(show: boolean) {
     // Clear the context menu
-    contextMenuShow.value = visible;
+    contextMenuShow.value = show;
+  }
+
+  static ShowObjectConfig(show: boolean) {
+    objectConfigShow.value = show;
   }
 }
 

@@ -45,6 +45,8 @@ import LayerUtil from '../Opt/LayerUtil'
 import UIUtil from '../UI/UIUtil'
 import ToolActUtil from '../Opt/ToolActUtil'
 import ExportUtil from '../Opt/ExportUtil'
+import ImageRecord from '../../Model/ImageRecord'
+import DataOpt from '../Data/DataOpt'
 
 class ShapeUtil {
 
@@ -530,6 +532,260 @@ class ShapeUtil {
 
   static UnsupportedTypes = []
 
+  static ReadSymbolFromJson(buffer, jsonData, positionX, positionY, offset, ignoreErrors, renderObjects,
+    selectedObjects, adjustPosition, skipLinks, noTextBlocks,
+    libraryFlags, allowAddEMFHash, outputDimensions, isSymbolFlag) {
+    let objectsToDelete;
+    let objectCount;
+    let index;
+    let linksCount;
+    let object;
+    let boundingRect;
+    let offsetX;
+    let offsetY;
+    let newWidth;
+    let newHeight;
+    let changedObject;
+    let applyColorChanges = false;
+    let result = new ShapeUtil.Result();
+
+    let formattedTextObject = null;
+    let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+    let objectsToRemove = [];
+
+    result.isTemplate = false;
+    result.IgnoreHeader = true;
+    result.sdp = new SDData();
+    result.sdp.def.style = Utils1.DeepCopy(sessionBlock.def.style);
+    result.isSymbol = isSymbolFlag !== 0;
+    // result.gHash = new HashController();
+    result.tLMB = new LayersManager();
+    result.AllowAddEMFHash = allowAddEMFHash;
+    ShapeUtil.FragmentLoad_RefCount = 0;
+
+    if (libraryFlags) {
+      if ((libraryFlags.ObjectAttributeFlags & DSConstant.LibraryFlags.SEDL_NoColor) === 0) {
+        result.SetColorChanges = true;
+        result.ColorFilter = libraryFlags.ColorFilter;
+      }
+      applyColorChanges = true;
+    }
+
+    if (noTextBlocks) {
+      result.NoTextBlocks = true;
+    }
+
+    if (positionX != null) {
+      result.SymbolPosition.x = positionX;
+    }
+
+    if (positionY != null) {
+      result.SymbolPosition.y = positionY;
+    }
+
+    let errorCode = ShapeUtil.ReadJson(buffer, jsonData, result, offset, false, ShapeUtil.ReadSymbolFromJsonComplete);
+
+
+    // let errorCode = {};
+    // if (errorCode && errorCode != ShapeUtil.Errors.WaitingForCallBack) {
+    //   return ignoreErrors ? result.error : errorCode;
+    // }
+
+    if (result.WarnMeta) {
+      if (ignoreErrors) return ShapeUtil.Errors.WarnMeta;
+      alert('Metafile not read');
+    }
+
+    if (outputDimensions && errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
+      outputDimensions.x = result.sdp.dim.x;
+      outputDimensions.y = result.sdp.dim.y;
+    }
+
+    if (errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
+      const isPlanningDocument = UIUtil.IsPlanningDocument();
+      const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+
+      objectCount = result.zList.length;
+      for (index = 0; index < objectCount; index++) {
+        object = DataUtil.GetObjectPtr(result.zList[index], false);
+
+        // if (object.objecttype === NvConstant.FNObjectTypes.SD_OBJT_BPMN_POOL) {
+        //   DSUtil.ConvertBPMNPool(object);
+        // }
+
+        let tableID = -1;
+        if (object.datasetID >= 0) {
+          tableID = TODO.STData.GetTableID(object.datasetID, TODO.DataTableNames.PLANNING_TASKS);
+        }
+
+        let targetLayer;
+        if (isPlanningDocument && object.Layer != null &&
+          (tableID >= 0 /*|| object.objecttype === NvConstant.FNObjectTypes.SD_OBJT_MINDMAP_CONNECTOR*/)) {
+          targetLayer = layersManager.layers[object.Layer].zList;
+        } else {
+          targetLayer = layersManager.layers[layersManager.activelayer].zList;
+          object.Layer = layersManager.activelayer;
+        }
+
+        targetLayer.push(result.zList[index]);
+
+        // if (result.IsVisio && object && object.ShapeType === OptConstant.ShapeType.GroupSymbol &&
+        //   object.InitialGroupBounds.x < 0) {
+        //   object.InitialGroupBounds.x = 1;
+        // }
+
+        DataUtil.AddToDirtyList(result.zList[index]);
+
+        if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
+          selectedObjects.selectedList.push(result.zList[index]);
+        }
+
+        if (result.STData == null) {
+          object.datasetTableID = -1;
+          object.datasetElemID = -1;
+          object.datasetID = -1;
+          object.datasetType = -1;
+          object.dataStyleOverride = null;
+        }
+      }
+
+      if (objectsToRemove.length) {
+        DataUtil.DeleteObjects(objectsToRemove);
+      }
+
+      // FROM SDData_Transfer
+      if (result.STData && T3Gv.opt.STData_Transfer) {
+        T3Gv.opt.STData_Transfer(result.zList, result.STData, applyColorChanges);
+      }
+
+      linksCount = result.links.length;
+      if (!skipLinks && linksCount > 0) {
+        let linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+        for (index = 0; index < linksCount; index++) {
+          linksBlock.push(result.links[index]);
+        }
+
+        linksBlock.sort(function (a, b) {
+          return a.targetid - b.targetid;
+        });
+      }
+
+      // Calculate bounding rectangle for all objects
+      let objectWithBoundsCount = 0;
+      for (index = 0; index < objectCount; index++) {
+        object = DataUtil.GetObjectPtr(result.zList[index], false);
+        if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
+          if (objectWithBoundsCount === 0) {
+            boundingRect = new Rectangle(object.r.x, object.r.y, object.r.width, object.r.height);
+          } else {
+            Utils2.UnionRect(object.r, boundingRect, boundingRect);
+          }
+          objectWithBoundsCount++;
+        }
+      }
+
+      if (boundingRect) {
+        if (adjustPosition) {
+          offsetX = boundingRect.x < 0 ? -boundingRect.x : 0;
+          offsetY = boundingRect.y < 0 ? -boundingRect.y : 0;
+        } else {
+          offsetX = 0;
+          offsetY = 0;
+        }
+
+        // Apply offset if needed
+        if (offsetX || offsetY) {
+          for (index = 0; index < objectCount; index++) {
+            object = DataUtil.GetObjectPtr(result.zList[index], false);
+            if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
+              object.OffsetShape(offsetX, offsetY);
+            }
+          }
+        }
+
+        if (adjustPosition) {
+          boundingRect.x += offsetX;
+          boundingRect.y += offsetY;
+          offsetX = 0;
+          offsetY = 0;
+          newWidth = 0;
+          newHeight = 0;
+
+          const originalDimensions = {
+            x: sessionBlock.dim.x,
+            y: sessionBlock.dim.y
+          };
+
+          // Check if we need to adjust document size
+          if (boundingRect.x + boundingRect.width > sessionBlock.dim.x) {
+            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+              offsetX = boundingRect.x + boundingRect.width - sessionBlock.dim.x;
+              newWidth = 0;
+            } else {
+              newWidth = boundingRect.x + boundingRect.width;
+              sessionBlock.dim.x = newWidth;
+            }
+          }
+
+          if (boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
+            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+              offsetY = boundingRect.y + boundingRect.height - sessionBlock.dim.y;
+            } else {
+              newHeight = boundingRect.y + boundingRect.height;
+              sessionBlock.dim.y = newHeight;
+            }
+          }
+
+          if (newWidth || newHeight) {
+            const layersManagerBlock = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+            const layerCount = layersManagerBlock.nlayers;
+            let activeLayerUsesEdges = false;
+            let anyVisibleLayerUsesEdges = false;
+
+            if (layersManagerBlock.layers[layersManagerBlock.activelayer].flags & NvConstant.LayerFlags.UseEdges) {
+              activeLayerUsesEdges = true;
+            }
+
+            for (index = 0; index < layerCount; index++) {
+              if ((layersManagerBlock.layers[index].flags & NvConstant.LayerFlags.UseEdges) &&
+                (layersManagerBlock.layers[index].flags & NvConstant.LayerFlags.Visible) ||
+                activeLayerUsesEdges) {
+                anyVisibleLayerUsesEdges = true;
+                break;
+              }
+            }
+
+            if (anyVisibleLayerUsesEdges) {
+              T3Gv.opt.UpdateEdgeLayers([], originalDimensions, sessionBlock.dim);
+            }
+
+            T3Gv.docUtil.ResizeDocument(sessionBlock.dim.x, sessionBlock.dim.y);
+          } else if (offsetX || offsetY) {
+            // If we need to shift objects to stay within bounds
+            for (index = 0; index < objectCount; index++) {
+              object = DataUtil.GetObjectPtr(result.zList[index], false);
+              if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
+                object.OffsetShape(-offsetX, -offsetY);
+              }
+            }
+          }
+        }
+      }
+
+      if (!skipLinks && adjustPosition) {
+        T3Gv.opt.UpdateLinks();
+      }
+
+      if (renderObjects) {
+        SvgUtil.RenderDirtySVGObjects();
+      } else if (objectCount === 1) {
+        T3Gv.opt.RenderDirtySVGObjectsNoSetMouse();
+      }
+
+      return result.error;
+    }
+  }
+
   /**
    * Reads a symbol from a buffer and creates objects in the document
    * @param buffer - The source buffer containing symbol data
@@ -731,7 +987,7 @@ class ShapeUtil {
 
           // Check if we need to adjust document size
           if (boundingRect.x + boundingRect.width > sessionBlock.dim.x) {
-            if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
               offsetX = boundingRect.x + boundingRect.width - sessionBlock.dim.x;
               newWidth = 0;
             } else {
@@ -741,7 +997,7 @@ class ShapeUtil {
           }
 
           if (boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
-            if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
               offsetY = boundingRect.y + boundingRect.height - sessionBlock.dim.y;
             } else {
               newHeight = boundingRect.y + boundingRect.height;
@@ -808,250 +1064,151 @@ class ShapeUtil {
    * @param callback - Optional callback function for async operations
    * @returns Error code if an error occurred, or ShapeUtil.Errors.WaitingForCallBack for async operations
    */
-  static ReadBuffer(buffer, result, offset, ignoreErrors, callback) {
-    // Initialize a data stream from the buffer
+  static ReadBuffer(storageKeyOrData, result, offset, ignoreErrors, callback) {
     const opCodes = DSConstant.OpNameCode;
-    let dataStream = new T3DataStream(buffer);
-    let minimumFileVersion = DSConstant.SDF_MINFVERSION;
 
-    // Symbol files require a higher minimum version
-    if (result.isSymbol) {
-      minimumFileVersion = DSConstant.SDF_MINSVERSION;
-    }
+    // Determine if input is a storage key or direct JSON data
+    let jsonData = null;
 
-    // Set endianness and handle offset
-    dataStream.endianness = T3DataStream.LITTLE_ENDIAN;
-
-    // Handle offset logic
-    if (offset === 4) {
-      // Get content length from first 4 bytes
-      const contentLength = dataStream.readUint32() + 4;
-      if (contentLength < dataStream._byteLength) {
-        dataStream._byteLength = contentLength;
+    try {
+      if (typeof storageKeyOrData === 'string') {
+        // Check if it's a storage key
+        if (storageKeyOrData.startsWith('T3_draw')) {
+          // Retrieve data from localStorage
+          const storedData = localStorage.getItem(storageKeyOrData);
+          if (storedData) {
+            jsonData = JSON.parse(storedData);
+          }
+        } else {
+          // Try to parse as direct JSON string
+          jsonData = JSON.parse(storageKeyOrData);
+        }
+      } else if (typeof storageKeyOrData === 'object') {
+        // Already a JSON object
+        jsonData = storageKeyOrData;
       }
-    } else if (offset) {
-      // Skip specified number of bytes
-      dataStream.readUint8Array(offset);
-    }
-
-    // Read header structure
-    let fileHeader = dataStream.readStruct(DSStruct.T3HeaderOnlyStruct);
-    dataStream = null;
-
-    // Validate file header and signature
-    if (!fileHeader || !fileHeader.start || fileHeader.start != ShapeUtil.Signature) {
+    } catch (error) {
+      console.error("Error parsing JSON data:", error);
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
 
-    // Check that codes array exists and has elements
-    if (!(fileHeader.codes.length >= 1)) {
+    // Validate that we have valid JSON data
+    if (!jsonData || !jsonData.signature || jsonData.signature !== ShapeUtil.Signature) {
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
 
-    // Check for version code
-    if (fileHeader.codes[0].code !== DSConstant.OpNameCode.cVersion) {
-      result.error = ShapeUtil.Errors.UnknownFile;
-      return result.error;
-    }
+    // Set up result object properties based on JSON metadata
+    result.PVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
+    result.FVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
+    result.coordScaleFactor = 1; // Modern JSON format uses 1:1 coordinates
+    result.updatetext = true;
 
-    // Check minimum version compatibility
-    if (fileHeader.codes[0].data.MinVer > DSConstant.SDF_FVERSION) {
-      result.error = ShapeUtil.Errors.Version;
-      return result.error;
-    }
-
-    // Check if file version is too old
-    if (fileHeader.codes[0].data.FVersion < minimumFileVersion) {
-      result.error = ShapeUtil.Errors.MinVersion;
-      return result.error;
-    }
-
-    // Set conversion flags based on file version
-    if (fileHeader.codes[0].data.FVersion < DSConstant.SDF_FVERSION) {
-      result.ConvertOnSave = true;
-      if (fileHeader.codes[0].data.FVersion <= DSConstant.FVERSIONVSM &&
-        (!result.isTemplate && !result.isSymbol || result.AllowAddEMFHash)) {
-        result.AddEMFHash = true;
-      }
-    }
-
-    // Handle different source platform formats
-    switch (fileHeader.codes[0].data.Platform) {
-      case DSConstant.Platforms.SDF_SDJSBLOCK:
-      case DSConstant.Platforms.SDF_SDJS:
-        // Native format, no special handling needed
-        break;
-      case DSConstant.Platforms.SDF_VISIO:
+    // Set platform information
+    if (jsonData.platform) {
+      if (jsonData.platform === "VISIO") {
         result.IsVisio = true;
-        break;
-      case DSConstant.Platforms.SDF_VISIOLUCID:
+      } else if (jsonData.platform === "VISIOLUCID") {
         result.IsVisio = true;
         result.IsLucid = true;
-        break;
-      default:
-        // Add EMF hash for non-template, non-symbol content, if allowed
-        if ((!result.isTemplate && !result.isSymbol || result.AllowAddEMFHash)) {
-          result.AddEMFHash = true;
-        }
-        result.FromWindows = true;
+      }
     }
 
-    // Set async validation flag if needed
-    if (result.AddEMFHash && !result.isSymbol && !ignoreErrors) {
-      result.ValidateHashesAsync = true;
+    // Set up ruler configuration if present
+    if (jsonData.rulerConfig) {
+      result.rulerConfig = jsonData.rulerConfig;
     }
 
-    // Store version information
-    result.PVersion = fileHeader.codes[0].data.PVersion;
-    result.FVersion = fileHeader.codes[0].data.FVersion;
-
-    // Calculate coordinate scale factor based on resolution
-    if (result.FVersion < DSConstant.SDF_FVERSION2022) {
-      result.coordScaleFactor = T3Gv.docUtil.svgDoc.docInfo.docDpi / fileHeader.codes[0].data.drawres;
-    } else {
-      result.coordScaleFactor = 1;
-    }
-
-    // Set block reading flag for block format
-    if (fileHeader.codes[0].data.Platform === DSConstant.Platforms.SDF_SDJSBLOCK) {
+    // Process whether this is blocks data
+    if (jsonData.isBlockFormat) {
       result.ReadBlocks = true;
     }
 
-    // Enable text updating
-    result.updatetext = true;
-
-    // Read full file structure
-    dataStream = new T3DataStream(buffer);
-    dataStream.endianness = T3DataStream.LITTLE_ENDIAN;
-
-    // Handle offset logic (repeated)
-    if (offset === 4) {
-      const contentLength = dataStream.readUint32() + 4;
-      if (contentLength < dataStream._byteLength) {
-        dataStream._byteLength = contentLength;
-      }
-    } else if (offset) {
-      dataStream.readUint8Array(offset);
-    }
-
-    // Read full file structure
-    fileHeader = dataStream.readStruct(DSStruct.T3Struct);
-    dataStream = null;
-
-    // Process file contents
-    if (result.ValidateHashesAsync && callback) {
-      // Handle asynchronous validation
-      return ShapeUtil.ValidateHashCodes(null, fileHeader, opCodes, result, ignoreErrors, callback) ||
-        ShapeUtil.Errors.WaitingForCallBack;
+    // If we have a callback and need async processing
+    if (callback && result.ValidateHashesAsync) {
+      return ShapeUtil.Errors.WaitingForCallBack;
     } else {
       // Process synchronously
-      ShapeUtil.ReadSymbolFromBufferComplete(fileHeader, result, ignoreErrors);
+      ShapeUtil.ReadSymbolFromBufferComplete(jsonData, result, ignoreErrors);
       return result.error;
     }
   }
 
   /**
-   * Processes parsed buffer data and creates drawing objects from it
-   * @param parsedData - The parsed file header and data structures
+   * Processes parsed JSON data and creates drawing objects from it
+   * @param jsonData - The parsed JSON data containing drawing information
    * @param result - Object containing processing results and generated content
    * @param ignoreErrors - Whether to ignore certain types of errors during processing
    * @returns Error code if an error occurred, 0 otherwise
    */
-  static ReadSymbolFromBufferComplete(parsedData, result, ignoreErrors) {
+  static ReadSymbolFromBufferComplete(jsonData, result, ignoreErrors) {
     try {
-      const opCodes = DSConstant.OpNameCode;
       const CDim = OptConstant.Common.DimMax;
       const minConnectorSegments = OptConstant.ConnectorDefines.NSkip;
-      let dataBlockLoaded = false;
-      let codeIndex, objectCount, objectIndex, segmentIndex, objectId, object, layer;
-      let hookLength, hookCount, textParent, svgElement, ganttInfo;
+      let objectCount, objectIndex, segmentIndex, objectId, object;
+      let hookLength, hookCount, textParent, svgElement;
 
-      // Process all codes until end of file
-      for (codeIndex = 1; parsedData.codes[codeIndex].code != opCodes.cEndFile; codeIndex++) {
-        switch (parsedData.codes[codeIndex].code) {
-          // Block directory information
-          case opCodes.cBlockDirectory:
-            result.hasBlockDirectory = true;
-            break;
-
-          // Process Smart Draw data blocks
-          case opCodes.SDF_C_SDDATABLOCK:
-            TODO.STData.LoadDataSets(parsedData.codes[codeIndex].data.bytes, true, true, result);
-            dataBlockLoaded = true;
-            break;
-
-          // Process compressed data block
-          case opCodes.cSdData64c:
-            if (!dataBlockLoaded) {
-              TODO.STData.LoadDataSets(parsedData.codes[codeIndex].data.bytes, true, true, result);
-              dataBlockLoaded = true;
-            }
-            break;
-
-          // Process 64-bit data block if version supports it
-          case opCodes.cSdData64:
-            if (!dataBlockLoaded && result.PVersion >= DSConstant.SDF_PVERSION861) {
-              TODO.STData.LoadDataSets(parsedData.codes[codeIndex].data.bytes, true, false, result);
-              dataBlockLoaded = true;
-            }
-            break;
-
-          // Skip metadata blocks
-          case opCodes.cSdData:
-          // case opCodes.SDF_C_GUIDSTR:
-          // case opCodes.SDF_C_SDTS_TIMESTAMPS:
-          case opCodes.cThumbnail:
-          case opCodes.cCThumbnail:
-          case opCodes.cKeyWords:
-          case opCodes.cDescription:
-          // case opCodes.SDF_C_FILEPATH:
-          case opCodes.cTrialData:
-          case opCodes.cCmsData:
-          case opCodes.cTLicense:
-            break;
-
-          // Process header section
-          case opCodes.cHeader:
-            codeIndex = ShapeUtil.ReadHeader(parsedData, codeIndex, result, opCodes);
-            if (result.error) {
-              return result.error;
-            }
-            break;
-
-          // Process drawing objects in different file versions
-          case opCodes.cDraw12:
-            codeIndex = ShapeUtil.ReadDraw(parsedData, codeIndex, result, opCodes, opCodes.cDraw12End);
-            if (codeIndex < 0) break;
-            break;
-
-          case opCodes.cDraw8:
-            codeIndex = ShapeUtil.ReadDraw(parsedData, codeIndex, result, opCodes, opCodes.cDraw8End);
-            if (codeIndex < 0) break;
-            break;
-
-          case opCodes.cDraw:
-            codeIndex = ShapeUtil.ReadDraw(parsedData, codeIndex, result, opCodes, opCodes.cDrawEnd);
-            if (codeIndex < 0) break;
-            break;
-
-          // Process any other blocks with begin/end structure
-          default:
-            if (parsedData.codes[codeIndex].code & DSConstant.SDF_BEGIN) {
-              codeIndex = ShapeUtil.ReadFrame(
-                parsedData,
-                codeIndex,
-                (parsedData.codes[codeIndex].code & DSConstant.SDF_MASK) | DSConstant.SDF_END
-              );
-            }
+      // Process header information if available
+      if (jsonData.data && jsonData.data.header) {
+        // Set document properties from header
+        if (jsonData.data.header.type === "fullDocument") {
+          if (jsonData.data.header.smartpanelname) {
+            T3Gv.opt.header.smartpanelname = jsonData.data.header.smartpanelname;
+          }
+          if (jsonData.data.header.importSourcePath) {
+            T3Gv.opt.header.importSourcePath = jsonData.data.header.importSourcePath;
+          }
+          // Copy other header properties as needed
         }
-
-        if (codeIndex < 0) break;
       }
 
-      // Remap links if no errors so far
-      if (result.error === 0) {
+      // Process structured data if available
+      if (jsonData.data && jsonData.data.structuredData) {
+        result.STData = jsonData.data.structuredData;
+      }
+
+      // Process drawing content
+      if (jsonData.data && jsonData.data.drawing) {
+        // Process styles
+        if (jsonData.data.drawing.styles && jsonData.data.drawing.styles.length > 0) {
+          result.lpStyles = jsonData.data.drawing.styles.map(style => {
+            return new QuickStyle(style);
+          });
+        }
+
+        // Process layers
+        if (jsonData.data.drawing.layers && jsonData.data.drawing.layers.length > 0) {
+          result.tLMB.layers = jsonData.data.drawing.layers;
+          result.tLMB.nlayers = jsonData.data.drawing.layers.length;
+          result.tLMB.activelayer = jsonData.data.drawing.activeLayer || 0;
+        }
+
+        // Process objects
+        if (jsonData.data.drawing.objects && jsonData.data.drawing.objects.length > 0) {
+          // Create objects from JSON
+          jsonData.data.drawing.objects.forEach(objData => {
+
+            const shapeData = DataOpt.ConvertPlanObjectToShape(objData);
+
+            // Create appropriate object based on type
+            const newBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.BaseDrawObject, shapeData);
+
+            // Copy properties from JSON to the new object
+            // Object.assign(newBlock.Data, objData);
+
+
+            newBlock.Data = Utils1.DeepCopy(newBlock.Data);
+
+            // Add to result list
+            result.zList.push(newBlock.ID);
+            result.IDMap[objData.UniqueID] = newBlock.ID;
+          });
+        }
+      }
+
+      // Remap links if no errors so far and we have links to process
+      if (result.error === 0 && result.links && result.links.length > 0) {
         ShapeUtil.ReMapLinks(result.IDMap, result.links, result, ignoreErrors);
       }
 
@@ -1077,24 +1234,14 @@ class ShapeUtil {
           baseClass = OptConstant.DrawObjectBaseClass.Shape;
         }
 
-        // // Check for Gantt chart with incompatible version
-        // if (result.PVersion < ShapeUtil.SDF_PVERSION861 &&
-        //   object.objecttype === NvConstant.FNObjectTypes.SD_OBJT_GANTT_CHART) {
-        //   result.error = ShapeUtil.Errors.MinVersionProjectChart;
-        //   return -1;
-        // }
-
         // Process objects based on their base class
         switch (baseClass) {
           case OptConstant.DrawObjectBaseClass.Line:
             // Handle different line types
             switch (object.LineType) {
-              case OptConstant.LineType.POLYLINE:
-                break;
-
               case OptConstant.LineType.SEGLINE:
               case OptConstant.LineType.ARCSEGLINE:
-                // Ensure segmented lines are properly formatted
+                // Format segmented lines
                 const originalOrigin = {
                   x: object.Frame.x,
                   y: object.Frame.y
@@ -1115,17 +1262,13 @@ class ShapeUtil {
                 if (originalOrigin.x < 0 || originalOrigin.y < 0) {
                   object.SetShapeOrigin(originalOrigin.x, originalOrigin.y);
                 }
-            }
-
-            // Set text object for older versions
-            if (object.DataID >= 0 && result.PVersion < DSConstant.SDF_PVERSION859 && result.ReadBlocks) {
-              object.SetTextObject(object.DataID);
+                break;
             }
             break;
 
           case OptConstant.DrawObjectBaseClass.Connector:
-            // Clean up connectors with no hooks
-            if (object.hooks.length === 0) {
+            // Clean up empty connectors
+            if (object.hooks.length === 0 && object.arraylist && object.arraylist.hook) {
               hookLength = object.arraylist.hook.length;
               hookCount = hookLength - minConnectorSegments;
 
@@ -1146,6 +1289,8 @@ class ShapeUtil {
               }
             }
             break;
+
+          // Process other shape types as needed
 
           case OptConstant.DrawObjectBaseClass.Shape:
             // Handle shapes with line thickness (border)
@@ -1253,54 +1398,18 @@ class ShapeUtil {
             }
         }
 
-        // Handle graph formatting if needed
-        const graph = object.GetGraph(false);
-        if (graph !== null) {
-          T3Gv.opt.GraphFormat(object, graph, object.Frame, true);
-        }
-
-        // // Handle table formatting if needed
-        // textTable = object.GetTable(false);
-        // if (textTable) {
-        //   if (object.subtype !== NvConstant.ObjectSubTypes.SD_SUBT_MEETINGTASK &&
-        //     object.subtype !== NvConstant.ObjectSubTypes.SD_SUBT_MEETINGPERSON &&
-        //     object.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_TIMELINE) {
-        //     T3Gv.opt.Table_Format(object, textTable, object.TextGrow, false);
-        //   }
-        // }
-        // // Handle text formatting for Visio objects
-        // else
-
+        // Process text for Visio objects and resize as needed
         if (object.DataID >= 0 && result.updatetext) {
           if (result.IsVisio) {
+            // Handle Visio text specifics
             object.StyleRecord.name = OptConstant.Common.TextBlockStyle;
 
             if (object.moreflags & OptConstant.ObjMoreFlags.SED_MF_VisioText && !result.ReadingGroup) {
               object.StyleRecord.Fill.Paint.FillType = NvConstant.FillTypes.Transparent;
               object.StyleRecord.Line.Thickness = 0;
 
-              const parentId = -1;// T3Gv.opt.SD_GetVisioTextParent(object.BlockID);
-              textParent = DataUtil.GetObjectPtr(parentId, false);
-
-              if (textParent) {
-                textParent.just = object.just;
-                textParent.vjust = object.vjust;
-
-                // Center alignment handling for Visio text
-                if (object.hookdisp.x === 0 &&
-                  object.hookdisp.y === 0 &&
-                  object.hooks[0].connect.x === CDim / 2 &&
-                  object.hooks[0].connect.y === CDim / 2 &&
-                  textParent.ShapeType !== OptConstant.ShapeType.GroupSymbol &&
-                  textParent.DrawingObjectBaseClass !== OptConstant.DrawObjectBaseClass.Line) {
-                  object.sizedim.width = object.trect.width;
-                  object.sizedim.height = object.trect.height;
-                }
-
-                if (textParent.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Line) {
-                  textParent.TextDirection = false;
-                }
-              }
+              // Handle parent-text relationships
+              // (simplified from original for clarity)
             }
           }
 
@@ -1310,52 +1419,17 @@ class ShapeUtil {
           svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
 
           if (svgElement) {
-            // Special handling for Visio line text
-            if (result.IsVisio &&
-              object.DrawingObjectBaseClass == OptConstant.DrawObjectBaseClass.Line) {
-              const textAlignment = ShapeUtil.TextAlignToJust(object.TextAlign);
-
-              if (svgElement.textElem.formatter.renderedLines.length === 1 &&
-                textAlignment.just === TextConstant.TextAlign.Center) {
-                object.TextGrow = NvConstant.TextGrowBehavior.Horizontal;
-                object.sizedim.width = OptConstant.Common.MinDim;
-                T3Gv.opt.TextResizeCommon(objectId, false, true);
-              }
-            }
-
-            // Clean up SVG element and reset collab flag
+            // Clean up SVG element after processing
             T3Gv.opt.svgObjectLayer.RemoveElement(svgElement);
-            // Collab.NoRedrawFromSameEditor = false;
           }
-        }
-      }
-
-      // Set file version information for non-symbol files
-      if (result.isSymbol === false) {
-        if (result.VisioFileVersion) {
-          T3Gv.opt.FileVersion = ShapeUtil.SDF_FVERSION2022;
-        }
-
-        // FROM SDDataDatasetIDByName
-        // Check for planning or fielded data datasets and update version
-        const hasPlanningData = TODO.STData.GetSTDataDatasetIDByName(
-          result.STData,
-          TODO.DataSetNameList[TODO.DataSetNameListIndexes.DATASET_PLANNING]
-        ) >= 0;
-
-        const hasFieldedData = TODO.STData.GetSTDataDatasetIDByName(
-          result.STData,
-          TODO.DataSetNameList[TODO.DataSetNameListIndexes.DATASET_FIELDEDDATA]
-        ) >= 0;
-
-        if (hasPlanningData || hasFieldedData) {
-          T3Gv.opt.FileVersion = ShapeUtil.SDF_FVERSION2022;
         }
       }
 
       return result.error;
     } catch (error) {
-      throw error;
+      console.error("Error processing JSON data:", error);
+      result.error = ShapeUtil.Errors.BadFormat;
+      return result.error;
     }
   }
 
@@ -1408,7 +1482,7 @@ class ShapeUtil {
     let linksBlock;
     let tableObject;
     let connectorsToProcess = [];
-    let linkFlags = DSConstant.LinkFlags.SED_L_MOVE;
+    let linkFlags = DSConstant.LinkFlags.Move;
     let skipCount = OptConstant.ConnectorDefines.NSkip;
     let textData = {};
     let coordinateDimension = OptConstant.Common.DimMax;
@@ -1462,7 +1536,7 @@ class ShapeUtil {
                 if (linksBlock == null) {
                   linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
                 }
-                T3Gv.opt.InsertLink(linksBlock, objectId, currentHook, DSConstant.LinkFlags.SED_L_MOVE);
+                T3Gv.opt.InsertLink(linksBlock, objectId, currentHook, DSConstant.LinkFlags.Move);
               }
 
               // Special handling for Visio segmented lines
@@ -2279,7 +2353,7 @@ class ShapeUtil {
 
     // Special handling for Genograms panel if not a symbol
     if (!resultObject.isSymbol &&
-      T3Gv.opt.contentHeader.smartpanelname === 'Genograms') {
+      T3Gv.opt.header.smartpanelname === 'Genograms') {
       // Enable linking lines
       sessionObject.flags = Utils2.SetFlag(sessionObject.flags, sessionFlags.SEDS_LLink, true);
       // Hide connector expansion handles
@@ -3057,7 +3131,7 @@ class ShapeUtil {
 
         case opCodes.cDrawImage8:
           // Process image record data
-          imageRecord = new TODO.ImageRecord();
+          imageRecord = new ImageRecord();
           imageRecord.croprect = codeData.codes[codeIndex].data.croprect;
           imageRecord.scale = codeData.codes[codeIndex].data.scale;
           imageRecord.imageflags = codeData.codes[codeIndex].data.imageflags;
@@ -4299,7 +4373,7 @@ class ShapeUtil {
           n.ImageURL = e.codes[t].data.name;
           break;
         case r.cDrawImage8:
-          (s = new TODO.ImageRecord).mr = e.codes[t].data.mr,
+          (s = new ImageRecord()).mr = e.codes[t].data.mr,
             s.croprect = e.codes[t].data.croprect,
             s.scale = e.codes[t].data.scale,
             s.imageflags = e.codes[t].data.imageflags,
@@ -5489,7 +5563,7 @@ class ShapeUtil {
     // Get current session, layer manager and content header
     result.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     result.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-    result.ctp = T3Gv.opt.contentHeader;
+    result.ctp = T3Gv.opt.header;
 
     // Mark as selection-only operation
     result.selectonly = true;
@@ -5511,75 +5585,132 @@ class ShapeUtil {
     // Update layer information for selected objects
     LayerUtil.UpdateObjectLayerIndices(result);
 
-    // Write objects to buffer with selection-only flag
+    console.log("=U.ShapeUtil WriteSelect result=", result);
+
+    // Write objects to localStorage with selection-only flag
     return ShapeUtil.WriteBuffer(result, true, true, ignoreDataCheck);
   }
 
   /**
-   * Serializes drawing data to an  buffer for file storage or clipboard operations
+   * Serializes drawing data to a JSON format and stores it in localStorage
    *
-   * This function creates a binary data stream in the Smart Draw Format (SDF), containing all
+   * This function creates a JSON representation of the drawing data, containing all
    * necessary document information including objects, styles, layers, and metadata.
    * It can produce either a complete document or just selected objects for clipboard/drag operations.
    *
    * @param resultObject - Object containing document data, styling, and processing context
    * @param isSelectOnly - Flag indicating if only selected objects should be written
-   * @param returnRawBuffer - Flag indicating if raw buffer should be returned instead of Blob
+   * @param returnRawData - Flag indicating if raw JSON should be returned instead of storage key
    * @param ignoreDataCheck - Flag to ignore data validation checks
-   * @returns Buffer or Blob containing the serialized document, or null if an error occurred
+   * @returns JSON string or storage key containing the serialized document, or null if an error occurred
    */
-  static WriteBuffer(resultObject, isSelectOnly, returnRawBuffer, ignoreDataCheck) {
-    // Create a new data stream buffer
-    const buffer = new ArrayBuffer(10);
-    const dataStream = new T3DataStream(buffer);
+  static WriteBuffer(resultObject, isSelectOnly, returnRawData, ignoreDataCheck) {
+    try {
+      // Create JSON structure to hold serialized data
+      const jsonData = {
+        signature: ShapeUtil.Signature,
+        version: resultObject.WriteWin32 ? ShapeUtil.FVERSION2015 : T3Gv.opt.FileVersion,
+        platform: "JSON",
+        timestamp: new Date().getTime(),
+        isSelectOnly: isSelectOnly,
+        data: {}
+      };
 
-    // Set endianness and write signature
-    dataStream.endianness = T3DataStream.LITTLE_ENDIAN;
-    dataStream.writeCString(ShapeUtil.Signature, ShapeUtil.Signature.length);
+      // Set coordinate scale factor
+      resultObject.coordScaleFactor = resultObject.WriteWin32 ?
+        (ShapeUtil.DRAWRES / T3Gv.docUtil.svgDoc.docInfo.docDpi) : 1;
 
-    // Handle special file format versions and set coordinate scale factor
-    if (resultObject.WriteWin32) {
-      ShapeUtil.WriteCVersion(dataStream, DSConstant.Platforms.SDF_SDJS, ShapeUtil.FVERSION2015);
-      resultObject.coordScaleFactor = ShapeUtil.DRAWRES / T3Gv.docUtil.svgDoc.docInfo.docDpi;
-    } else {
-      ShapeUtil.WriteCVersion(
-        dataStream,
-        DSConstant.Platforms.SDF_SDJS,
-        T3Gv.opt.FileVersion
-      );
-    }
+      // Set ruler configuration
+      jsonData.rulerConfig = {
+        ...T3Gv.docUtil.rulerConfig,
+        show: T3Gv.docUtil.docConfig.showRulers
+      };
+      resultObject.rulerConfig = jsonData.rulerConfig;
 
-    // Set ruler configuration
-    resultObject.rulerConfig = T3Gv.docUtil.rulerConfig;
-    resultObject.rulerConfig.show = T3Gv.docUtil.docConfig.showRulers;
+      // Add header information based on operation mode
+      if (isSelectOnly) {
+        jsonData.data.header = { type: "selectOnly" };
+      } else {
+        jsonData.data.header = {
+          type: "fullDocument",
+          smartpanelname: T3Gv.opt.header.smartpanelname,
+          importSourcePath: T3Gv.opt.header.importSourcePath,
+          BusinessModule: T3Gv.opt.header.BusinessModule,
+          SymbolSearchString: T3Gv.opt.header.SymbolSearchString,
+          orgcharttable: T3Gv.opt.header.orgcharttable,
+          smarthelpname: T3Gv.opt.header.smarthelpname,
+          ParentPageID: T3Gv.opt.header.ParentPageID
+        };
+      }
 
-    // Write appropriate header based on operation mode
-    if (isSelectOnly) {
-      ShapeUtil.WriteSelectHeader(dataStream, resultObject);
-      if (resultObject.error) return null;
-    } else {
-      ShapeUtil.WriteHeader(dataStream, resultObject, null);
-      if (resultObject.error) return null;
-    }
+      // Add structured data if available and not ignored
+      if (T3Gv.opt.header.STDataID >= 0 && !ignoreDataCheck) {
+        const stData = DataUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
+        jsonData.data.structuredData = stData ? JSON.parse(JSON.stringify(stData)) : null;
+      }
 
-    // Write structured data if available and not ignored
-    if (T3Gv.opt.contentHeader.STDataID >= 0 && !ignoreDataCheck) {
-      // FROM SDData
-      ShapeUtil.WriteSTDATA(dataStream, resultObject);
-    }
+      // Process and add drawing content
+      const drawingData = {
+        objects: [],
+        styles: [],
+        layers: []
+      };
 
-    // Write the drawing content
-    ShapeUtil.WriteDraw(dataStream, resultObject);
+      // Add styles
+      ShapeUtil.BuildStyleList(resultObject);
+      drawingData.styles = resultObject.lpStyles.map(style => JSON.parse(JSON.stringify(style)));
 
-    // Return null on error, otherwise return the appropriate buffer format
-    if (resultObject.error) {
+      // Add layers
+      if (resultObject.tLMB && resultObject.tLMB.layers) {
+        drawingData.layers = resultObject.tLMB.layers.map(layer => ({
+          name: layer.name,
+          flags: layer.flags,
+          layertype: layer.layertype,
+          zList: layer.zList ? [...layer.zList] : []
+        }));
+        drawingData.activeLayer = resultObject.tLMB.activelayer;
+      }
+
+      // Process objects
+      const objectCount = resultObject.zList.length;
+      for (let i = 0; i < objectCount; i++) {
+        const objectId = resultObject.zList[i];
+        const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+
+        if (drawingObject) {
+          const serializedObject = JSON.parse(JSON.stringify(drawingObject));
+
+          // Handle special properties that need custom serialization
+          if (drawingObject.DataID > 0) {
+            const textObject = DataUtil.GetObjectPtr(drawingObject.DataID, false);
+            if (textObject) {
+              serializedObject.textContent = textObject.runtimeText || "";
+            }
+          }
+
+          drawingData.objects.push(serializedObject);
+        }
+      }
+
+      // Add drawing data to JSON structure
+      jsonData.data.drawing = drawingData;
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(jsonData);
+
+      // Generate a unique storage key
+      // const storageKey = `T3000_Drawing_${new Date().getTime()}`;
+      const storageKey = "t3_draw";
+
+      // Store in localStorage
+      localStorage.setItem(storageKey, jsonString);
+
+      // Return raw data or storage key based on parameters
+      return (isSelectOnly || returnRawData) ? jsonString : storageKey;
+
+    } catch (error) {
+      console.error("Error serializing drawing to JSON:", error);
       return null;
-    } else {
-      // Write end of file marker
-      dataStream.writeUint16(DSConstant.OpNameCode.cEndFile);
-
-      // Return raw buffer or Blob based on parameters
-      return (isSelectOnly || returnRawBuffer) ? dataStream.buffer : new Blob([dataStream.buffer]);
     }
   }
 
@@ -5699,7 +5830,7 @@ class ShapeUtil {
       if (!resultObject.WriteBlocks) {
         ShapeUtil.WriteString(
           dataStream,
-          T3Gv.opt.contentHeader.importSourcePath,
+          T3Gv.opt.header.importSourcePath,
           opCodes.SDF_C_IMPORT_SOURCE_PATH,
           resultObject
         );
@@ -5711,7 +5842,7 @@ class ShapeUtil {
     if (skipCodes == null || skipCodes.indexOf(opCodes.cBusinessModule) == -1) {
       ShapeUtil.WriteString(
         dataStream,
-        T3Gv.opt.contentHeader.BusinessModule,
+        T3Gv.opt.header.BusinessModule,
         opCodes.cBusinessModule,
         resultObject
       );
@@ -5721,7 +5852,7 @@ class ShapeUtil {
     if (skipCodes == null || skipCodes.indexOf(opCodes.cSymbolSearchString) == -1) {
       ShapeUtil.WriteString(
         dataStream,
-        T3Gv.opt.contentHeader.SymbolSearchString,
+        T3Gv.opt.header.SymbolSearchString,
         opCodes.cSymbolSearchString,
         resultObject
       );
@@ -5729,8 +5860,8 @@ class ShapeUtil {
 
     // Write organization chart table information if not explicitly skipped
     if (skipCodes == null || skipCodes.indexOf(opCodes.cOrgChartTable) == -1) {
-      // if (T3Gv.opt.contentHeader.orgcharttable.length) {
-      //   let tableIndex = TODO.OrgChartTables.indexOf(T3Gv.opt.contentHeader.orgcharttable);
+      // if (T3Gv.opt.header.orgcharttable.length) {
+      //   let tableIndex = TODO.OrgChartTables.indexOf(T3Gv.opt.header.orgcharttable);
 
       //   if (tableIndex >= 0) {
       //     // Write standard org chart table
@@ -5742,7 +5873,7 @@ class ShapeUtil {
       //     );
       //   } else {
       //     // Check if it's a mind map table
-      //     // tableIndex = TODO.MindMapTables.indexOf(T3Gv.opt.contentHeader.orgcharttable);
+      //     // tableIndex = TODO.MindMapTables.indexOf(T3Gv.opt.header.orgcharttable);
 
       //     // if (tableIndex >= 0) {
       //     //   ShapeUtil.WriteString(
@@ -5758,7 +5889,7 @@ class ShapeUtil {
       //   if (tableIndex < 0) {
       //     ShapeUtil.WriteString(
       //       dataStream,
-      //       T3Gv.opt.contentHeader.orgcharttable,
+      //       T3Gv.opt.header.orgcharttable,
       //       opCodes.cOrgChartTable,
       //       resultObject
       //     );
@@ -5770,16 +5901,16 @@ class ShapeUtil {
     if (skipCodes == null) {
       ShapeUtil.WriteString(
         dataStream,
-        T3Gv.opt.contentHeader.smarthelpname,
+        T3Gv.opt.header.smarthelpname,
         opCodes.cGuide,
         resultObject
       );
 
       // Write parent page ID if available
-      if (T3Gv.opt.contentHeader.ParentPageID.length) {
+      if (T3Gv.opt.header.ParentPageID.length) {
         ShapeUtil.WriteString(
           dataStream,
-          T3Gv.opt.contentHeader.ParentPageID,
+          T3Gv.opt.header.ParentPageID,
           opCodes.cParentPageId,
           resultObject
         );
@@ -6076,10 +6207,10 @@ class ShapeUtil {
       linetoolindex: ShapeUtil.JStoWinLineTool(NvConstant.DocumentContext.LineTool),
       shapetoolindex: NvConstant.DocumentContext.ShapeTool,
       datetime2007: 0,
-      holidaymask: T3Gv.opt.contentHeader.holidaymask,
+      holidaymask: T3Gv.opt.header.holidaymask,
       datetime1: 0,
       datetime2: 0,
-      // nonworkingdays: T3Gv.opt.contentHeader.nonworkingdays,
+      // nonworkingdays: T3Gv.opt.header.nonworkingdays,
       swimlaneformat: NvConstant.DocumentContext.SwimlaneFormat,
       autocontainer: autoContainer,
       actascontainer: actAsContainer,
@@ -8445,6 +8576,10 @@ class ShapeUtil {
     SaveAs: 13
   }
 
+  static SaveAllBlocks(stateId?, deltaState?) {
+    return;
+  }
+
   /**
    * Saves all blocks to the storage format
    *
@@ -8455,7 +8590,10 @@ class ShapeUtil {
    * @param stateId - The state identifier to save from
    * @param deltaState - The delta state information
    */
-  static SaveAllBlocks(stateId?, deltaState?) {
+  static SaveAllBlocks1(stateId?, deltaState?) {
+
+    console.log("=U.ShapeUtil.SaveAllBlocks", stateId, deltaState);
+    return;
     if (true) {
       if (false) {
         const pendingActionCount = T3Gv.opt.socketAction.length;
@@ -8739,7 +8877,7 @@ class ShapeUtil {
       case objectTypes.STDataObject:
         // Handle data objects
         if (countOnly) return true;
-        if (T3Gv.opt.contentHeader.STDataID >= 0) {
+        if (T3Gv.opt.header.STDataID >= 0) {
           //from SDDataBlock
           serializedBlock = ShapeUtil.WriteSTDataBlock(resultObject, blockIndex);
         }
@@ -8764,6 +8902,10 @@ class ShapeUtil {
     return serializedBlock;
   }
 
+  static SaveChangedBlocks(stateId, deltaState, targetStateId?, customStoredObjects?) {
+    return;
+  }
+
   /**
    * Saves blocks that have changed between states to the storage format
    *
@@ -8778,7 +8920,11 @@ class ShapeUtil {
    * @param targetStateId - Optional target state ID (defaults to source state if not provided)
    * @param customStoredObjects - Optional specific objects to save instead of all from the state
    */
-  static SaveChangedBlocks(stateId, deltaState, targetStateId?, customStoredObjects?) {
+  static SaveChangedBlocks1(stateId, deltaState, targetStateId?, customStoredObjects?) {
+
+    console.log('=U.ShapeUtil SaveChangedBlocks', stateId, deltaState, targetStateId, customStoredObjects);
+    return;
+
     try {
 
       // Prepare result object and track deleted objects
@@ -8792,14 +8938,14 @@ class ShapeUtil {
       }
 
       // Get objects from the state
-      const stateObjects = T3Gv.state.States[stateId].StoredObjects;
+      const stateObjects = T3Gv.state.states[stateId].storedObjects;
       const objectCount = stateObjects.length;
 
       // Initialize result object with document context
       resultObject.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-      resultObject.ctp = T3Gv.opt.contentHeader;
+      resultObject.ctp = T3Gv.opt.header;
       resultObject.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-      resultObject.fontlist = T3Gv.opt.contentHeader.FontList;
+      resultObject.fontlist = T3Gv.opt.header.FontList;
       resultObject.richGradients = T3Gv.opt.richGradients;
       resultObject.WriteBlocks = true;
 
@@ -8828,44 +8974,44 @@ class ShapeUtil {
       }
 
       // Update content header flags with current configuration
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.ShowGrid,
         T3Gv.docUtil.docConfig.showGrid
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.ShowRulers,
         T3Gv.docUtil.docConfig.showRulers
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.SnapToGridC,
         T3Gv.docUtil.docConfig.centerSnap && T3Gv.docUtil.docConfig.enableSnap
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.SnapToGridTL,
         !T3Gv.docUtil.docConfig.centerSnap && T3Gv.docUtil.docConfig.enableSnap
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.ShowPageDividers,
         T3Gv.docUtil.docConfig.showPageDivider
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.SnapToShapesOff,
         T3Gv.docUtil.docConfig.snapToShapes == 0
       );
 
-      T3Gv.opt.contentHeader.flags = Utils2.SetFlag(
-        T3Gv.opt.contentHeader.flags,
+      T3Gv.opt.header.flags = Utils2.SetFlag(
+        T3Gv.opt.header.flags,
         OptConstant.CntHeaderFlags.ShowRulers,
         T3Gv.docUtil.docConfig.showRulers
       );
@@ -8881,20 +9027,20 @@ class ShapeUtil {
 
       // Process objects from next state if delta is negative (undoing changes)
       if (deltaState < 0 && stateId + 1 < T3Gv.state.States.length) {
-        const nextStateObjects = T3Gv.state.States[stateId + 1].StoredObjects;
+        const nextStateObjects = T3Gv.state.states[stateId + 1].storedObjects;
         const nextStateObjectCount = nextStateObjects.length;
 
         for (let objIndex = 0; objIndex < nextStateObjectCount; objIndex++) {
           const currentObject = nextStateObjects[objIndex];
 
           // Handle created objects in the next state
-          if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.CREATE) {
+          if (currentObject.stateOptTypeId === StateConstant.StateOperationType.CREATE) {
             if (ShapeUtil.GetBlockName(currentObject, true)) {
               blockCount++;
             }
           }
           // Handle deleted objects in the next state
-          else if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+          else if (currentObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
             if (ShapeUtil.GetBlockName(currentObject, true)) {
               if (ShapeUtil.BuildObjectBlock(currentObject, resultObject, true, 0)) {
                 blockCount++;
@@ -8932,7 +9078,7 @@ class ShapeUtil {
         const currentObject = objectsToProcess[objIndex];
 
         // Handle deleted objects
-        if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+        if (currentObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
           if (ShapeUtil.GetBlockName(currentObject, true)) {
             blockCount++;
           }
@@ -8948,7 +9094,7 @@ class ShapeUtil {
       // Set block count and operation properties
       resultObject.nblocks = blockCount;
       resultObject.BlockAction = ShapeUtil.BlockActions.Normal;
-      resultObject.state = targetStateId + T3Gv.state.DroppedStates;
+      resultObject.state = targetStateId + T3Gv.state.droppedStates;
 
       // Adjust delta state
       if (deltaState === 1) {
@@ -8965,14 +9111,14 @@ class ShapeUtil {
 
       // Process objects from the next state if working with negative delta
       if (deltaState < 0 && stateId + 1 < T3Gv.state.States.length) {
-        const nextStateObjects = T3Gv.state.States[stateId + 1].StoredObjects;
+        const nextStateObjects = T3Gv.state.states[stateId + 1].storedObjects;
         const nextStateObjectCount = nextStateObjects.length;
 
         for (let objIndex = 0; objIndex < nextStateObjectCount; objIndex++) {
           const currentObject = nextStateObjects[objIndex];
 
           // Handle created objects in next state - mark for deletion
-          if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.CREATE) {
+          if (currentObject.stateOptTypeId === StateConstant.StateOperationType.CREATE) {
             if (ShapeUtil.GetBlockName(currentObject, true, blockMetadata)) {
               serializedBlock = ShapeUtil.WriteActionBlock(
                 resultObject,
@@ -8985,7 +9131,7 @@ class ShapeUtil {
             }
           }
           // Handle deleted objects in next state
-          else if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+          else if (currentObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
             const objectInstance = T3Gv.stdObj.GetObject(currentObject.ID);
             serializedBlock = ShapeUtil.BuildObjectBlock(objectInstance, resultObject, false, blockIndex);
             // Increment handled in BuildObjectBlock
@@ -9017,7 +9163,7 @@ class ShapeUtil {
         const currentObject = objectsToProcess[objIndex];
 
         // Handle deleted objects
-        if (currentObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+        if (currentObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
           if (ShapeUtil.GetBlockName(currentObject, true, blockMetadata)) {
             serializedBlock = ShapeUtil.WriteActionBlock(
               resultObject,
@@ -9658,7 +9804,7 @@ class ShapeUtil {
               case OptConstant.LineType.MOVETO:
                 drawingObject.polylist.flags = Utils2.SetFlag(
                   drawingObject.polylist.flags,
-                  DSConstant.PolyListFlags.SD_PLF_HasMoveTo,
+                  DSConstant.PolyListFlags.HasMoveTo,
                   true
                 );
                 polySegment.param = segmentData.param;
@@ -9669,7 +9815,7 @@ class ShapeUtil {
               case OptConstant.LineType.MOVETO_NEWPOLY:
                 drawingObject.polylist.flags = Utils2.SetFlag(
                   drawingObject.polylist.flags,
-                  DSConstant.PolyListFlags.SD_PLF_HasPolyPoly,
+                  DSConstant.PolyListFlags.HasPolyPoly,
                   true
                 );
                 polySegment.param = segmentData.param;
@@ -9702,7 +9848,7 @@ class ShapeUtil {
             // Mark polylist as using explicit points
             drawingObject.polylist.flags = Utils2.SetFlag(
               drawingObject.polylist.flags,
-              DSConstant.PolyListFlags.SD_PLF_WasExplict,
+              DSConstant.PolyListFlags.WasExplict,
               true
             );
 
@@ -9757,7 +9903,7 @@ class ShapeUtil {
       }
 
       // Convert polyline format if needed
-      if ((drawingObject.polylist.flags & DSConstant.PolyListFlags.SD_PLF_FreeHand) === 0) {
+      if ((drawingObject.polylist.flags & DSConstant.PolyListFlags.FreeHand) === 0) {
         ShapeUtil.ConvertToPolyL(drawingObject);
       }
 
@@ -9990,7 +10136,7 @@ class ShapeUtil {
    */
   static ConvertToPolyL(drawingObject) {
     if (drawingObject.polylist &&
-      (drawingObject.polylist.flags & DSConstant.PolyListFlags.SD_PLF_FreeHand) === 0) {
+      (drawingObject.polylist.flags & DSConstant.PolyListFlags.FreeHand) === 0) {
 
       const lineTypes = OptConstant.LineType;
       const arcQuadrants = OptConstant.ArcQuad;
@@ -10046,7 +10192,7 @@ class ShapeUtil {
       // Mark polyline as processed with freehand flag
       drawingObject.polylist.flag = Utils2.SetFlag(
         drawingObject.polylist.flags,
-        DSConstant.PolyListFlags.SD_PLF_FreeHand,
+        DSConstant.PolyListFlags.FreeHand,
         true
       );
     }
@@ -10108,8 +10254,8 @@ class ShapeUtil {
     const segmentFlags = DSConstant.PolySegFlags;
     const lineTypeEnum = OptConstant.LineType;
 
-    if (drawingObject.polylist.flags & polyFlags.SD_PLF_HasMoveTo ||
-      drawingObject.polylist.flags & polyFlags.SD_PLF_HasPolyPoly) {
+    if (drawingObject.polylist.flags & polyFlags.HasMoveTo ||
+      drawingObject.polylist.flags & polyFlags.HasPolyPoly) {
 
       const segmentCount = drawingObject.polylist.segs.length;
       hasComplexGeometry = true;
@@ -10117,8 +10263,8 @@ class ShapeUtil {
       // Get initial segment and create first geometry model
       currentSegment = drawingObject.polylist.segs[0];
       currentGeometry = new PolyGeomMd(
-        (currentSegment.flags & segmentFlags.SD_PLS_NoFill) > 0,
-        (currentSegment.flags & segmentFlags.SD_PLS_NoLine) > 0,
+        (currentSegment.flags & segmentFlags.NoFill) > 0,
+        (currentSegment.flags & segmentFlags.NoLine) > 0,
         false,
         0,
         0
@@ -10141,8 +10287,8 @@ class ShapeUtil {
 
             // Create new geometry
             currentGeometry = new PolyGeomMd(
-              (currentSegment.flags & segmentFlags.SD_PLS_NoFill) > 0,
-              (currentSegment.flags & segmentFlags.SD_PLS_NoLine) > 0,
+              (currentSegment.flags & segmentFlags.NoFill) > 0,
+              (currentSegment.flags & segmentFlags.NoLine) > 0,
               false,
               segmentMarkers[segmentIndex - 1],
               0
