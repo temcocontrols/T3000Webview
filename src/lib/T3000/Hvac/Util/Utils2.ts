@@ -3,6 +3,7 @@ import $ from 'jquery'
 import Point from '../Model/Point'
 import Style from '../Basic/B.Element.Style';
 import T3Gv from '../Data/T3Gv';
+import T3Util from './T3Util';
 
 class Utils2 {
 
@@ -79,13 +80,11 @@ class Utils2 {
     rect: { x: number; y: number; width: number; height: number },
     point: { x: number; y: number }
   ): boolean {
-    console.log("= S.BaseDrawingObject - Input rect:", rect, "point:", point);
     const isInside =
       point.x >= rect.x &&
       point.x < rect.x + rect.width &&
       point.y >= rect.y &&
       point.y < rect.y + rect.height;
-    console.log("= S.BaseDrawingObject - Output:", isInside);
     return isInside;
   }
 
@@ -966,8 +965,6 @@ class Utils2 {
    * @param event - The DOM event to suppress default actions and bubbling
    */
   static StopPropagationAndDefaults(event) {
-    console.log("U.Utils2 - StopPropagationAndDefaults input:", event);
-
     // Prevent default event behavior
     event.preventDefault();
 
@@ -979,8 +976,6 @@ class Utils2 {
       event.gesture.preventDefault();
       event.gesture.stopPropagation();
     }
-
-    console.log("U.Utils2 - StopPropagationAndDefaults completed");
   }
 
   /**
@@ -1250,7 +1245,7 @@ class Utils2 {
     length = points.length;
 
     for (let i = 0; i < length - 1; i++) {
-      angle = T3Gv.optManager.SD_GetCounterClockwiseAngleBetween2Points(points[i], points[i + 1]);
+      angle = T3Gv.opt.GetCounterClockwiseAngleBetween2Points(points[i], points[i + 1]);
 
       if (i > 0) {
         angleDifference = angle - previousAngle;
@@ -1327,6 +1322,15 @@ class Utils2 {
     return $('<div>').text(text).html();
   }
 
+  static IsRectangleFullyEnclosed(outerRect: { x: number; y: number; width: number; height: number }, innerRect: { x: number; y: number; width: number; height: number }): boolean {
+    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Input:", { outerRect, innerRect });
+    const isEnclosed = innerRect.x >= outerRect.x &&
+      innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
+      innerRect.y >= outerRect.y &&
+      innerRect.y + innerRect.height <= outerRect.y + outerRect.height;
+    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Output:", isEnclosed);
+    return isEnclosed;
+  }
 }
 
 export default Utils2

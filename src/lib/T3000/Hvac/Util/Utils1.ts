@@ -1,38 +1,49 @@
 
 
-import HvacModels from '../Data/Constant';
-import StoredObject from '../Data/State/StoredObject';
-import T3Gv from '../Data/T3Gv';
+import HvConstant from '../Data/Constant/HvConstant'
+import DataObj from '../Data/State/DataObj'
+import T3Gv from '../Data/T3Gv'
 import SegmentData from '../Model/SegmentData'
 import $ from 'jquery'
-import ConstantData from '../Data/ConstantData'
+import StateConstant from '../Data/State/StateConstant'
+import { Dialog } from 'quasar'
 
 class Utils1 {
 
   /**
-   * Logs messages to console if not in production environment
-   * Provides conditional logging functionality for development and testing
-   * @param message - The main message to log
-   * @param additionalParams - Optional additional parameters to log
+   * Displays an alert message to the user
+   * @param message - The message to display (replaces "Error: " if provided)
+   * @param additionalText - Additional text to append to the message
+   * @param okCallback - Callback function to execute when the user acknowledges the alert
    */
-  static Log = (message, ...additionalParams) => {
-    if (HvacModels.Default.Environment.toLowerCase() !== "prd") {
-      if (additionalParams == null || additionalParams.length === 0) {
-        this.Log.apply(console, [message]);
-      } else {
-        this.Log.apply(console, [message].concat(additionalParams));
-      }
-    }
-  }
+  static Alert(message, additionalText, okCallback) {
+    // Earlier in the code, add Dialog to the imports
 
-  /**
-   * Utility test function for debugging and demonstration purposes
-   * Logs a test message along with the provided parameters
-   * @param param1 - First parameter to test with
-   * @param param2 - Second parameter to test with
-   */
-  static UtilsTest = (param1, param2) => {
-    console.log('This is a test function', param1, param2);
+    // Then in the Alert method:
+    let displayMessage = "Error: ";
+
+    if (message) {
+      displayMessage = message;
+    }
+
+    if (additionalText) {
+      displayMessage += additionalText;
+    }
+
+    Dialog.create({
+      title: 'Alert',
+      message: displayMessage,
+      ok: {
+        label: 'OK',
+        color: 'primary',
+        handler: () => {
+          if (typeof okCallback === 'function') {
+            okCallback();
+          }
+        }
+      },
+      persistent: true
+    });
   }
 
   /**
@@ -41,9 +52,7 @@ class Utils1 {
    * @returns Boolean indicating if value is an object
    */
   static isObject(value) {
-    console.log('U.Util1 isObject input:', { value });
     const result = value !== null && typeof value === 'object';
-    console.log('U.Util1 isObject output:', { result });
     return result;
   }
 
@@ -53,8 +62,6 @@ class Utils1 {
    * @returns A deep copy of the original object
    */
   static CloneBlock(sourceObject) {
-    console.log('U.Util1 CloneBlock input:', { sourceObject });
-
     const getInstance = Utils1.GetObjectInstance;
 
     if (sourceObject === null || typeof sourceObject !== "object") {
@@ -68,7 +75,6 @@ class Utils1 {
       clonedObject.Data = Utils1.DeepCopy(sourceObject.Data);
     }
 
-    console.log('U.Util1 CloneBlock output:', { clonedObject });
     return clonedObject;
   }
 
@@ -78,22 +84,20 @@ class Utils1 {
    * @returns A new instance of the appropriate type
    */
   static GetObjectInstance(storedObject) {
-    console.log('U.Util1 GetObjectInstance input:', { storedObject });
-
     if (storedObject === null || typeof storedObject !== "object") {
       throw new Error("Parameter is not an object");
     }
 
     let result;
 
-    if (storedObject.constructor === StoredObject) {
-      result = new StoredObject(null, null, null, false, false, true);
+    if (storedObject.constructor === DataObj) {
+      result = new DataObj(null, null, null, false, false, true);
     } else if (storedObject instanceof Array) {
       result = [];
     } else {
       result = undefined;
 
-      $.each(ConstantData.StoredObjectType, function (key, type) {
+      $.each(StateConstant.StoredObjectType, function (key, type) {
         try {
           if (storedObject.Type === type) {
             result = new storedObject.constructor({});
@@ -105,7 +109,6 @@ class Utils1 {
       });
     }
 
-    console.log('U.Util1 GetObjectInstance output:', { result });
     return result;
   }
 
@@ -114,10 +117,8 @@ class Utils1 {
    * @returns New unique object ID
    */
   static GenerateObjectID() {
-    console.log('U.Util1 GenerateObjectID called');
-    T3Gv.CURRENT_SEQ_OBJECT_ID += 1;
-    console.log('U.Util1 GenerateObjectID output:', { id: T3Gv.CURRENT_SEQ_OBJECT_ID });
-    return T3Gv.CURRENT_SEQ_OBJECT_ID;
+    T3Gv.currentObjSeqId += 1;
+    return T3Gv.currentObjSeqId;
   }
 
   /**
@@ -125,8 +126,6 @@ class Utils1 {
    * Ensures compatibility across browsers
    */
   static PatchArrayBufferSlice() {
-    console.log('U.Util1 PatchArrayBufferSlice called');
-
     if (!ArrayBuffer.prototype.slice) {
       ArrayBuffer.prototype.slice = function (start, end) {
         const srcBuffer = new Uint8Array(this);
@@ -147,7 +146,6 @@ class Utils1 {
       };
     }
 
-    console.log('U.Util1 PatchArrayBufferSlice completed');
   }
 
   /**
@@ -155,12 +153,10 @@ class Utils1 {
    * @returns Boolean indicating if current state is open
    */
   static IsStateOpen() {
-    console.log('U.Util1 IsStateOpen called');
+    const result = T3Gv.state.currentStateId > 0 &&
+      T3Gv.state.states[T3Gv.state.currentStateId].IsOpen;
 
-    const result = T3Gv.stateManager.CurrentStateID > 0 &&
-      T3Gv.stateManager.States[T3Gv.stateManager.CurrentStateID].IsOpen;
-
-    console.log('U.Util1 IsStateOpen output:', { result });
+    console.log("=U.Utils1 - IsStateOpen:", result);
     return result;
   }
 
@@ -170,10 +166,7 @@ class Utils1 {
    * @returns Deep copy of the input value
    */
   static DeepCopy(source) {
-    console.log('U.Util1 DeepCopy input:', { source });
-
     if (source == null) {
-      console.log('U.Util1 DeepCopy output: null');
       return null;
     }
 
@@ -188,27 +181,23 @@ class Utils1 {
         copy.push(Utils1.DeepCopy(source[i]));
       }
 
-      console.log('U.Util1 DeepCopy output (array):', { copy });
       return copy;
     }
 
     // Handle primitives
     if (sourceType === "string" || sourceType === "number" ||
       sourceType === "boolean" || sourceType === "function") {
-      console.log('U.Util1 DeepCopy output (primitive):', { source });
       return source;
     }
 
     // Handle Blob
     if (source instanceof Blob) {
       const result = source.slice();
-      console.log('U.Util1 DeepCopy output (Blob):', { result });
       return result;
     }
 
     // Handle Uint8Array
     if (source instanceof Uint8Array) {
-      console.log('U.Util1 DeepCopy output (Uint8Array):', { source });
       return source;
     }
 
@@ -238,11 +227,9 @@ class Utils1 {
         }
       }
 
-      console.log('U.Util1 DeepCopy output (object):', { copy });
       return copy;
     }
 
-    console.log('U.Util1 DeepCopy output: null (unhandled type)');
     return null;
   }
 
@@ -462,8 +449,6 @@ class Utils1 {
    * @returns Angle in degrees (0-359) with 0 being East, 90 South, 180 West, 270 North
    */
   static CalcSegmentAngle(startPoint, endPoint) {
-    console.log('U.Util1 CalcSegmentAngle input:', { startPoint, endPoint });
-
     const deltaX = endPoint.x - startPoint.x;
     const deltaY = endPoint.y - startPoint.y;
     let angle;
@@ -483,7 +468,6 @@ class Utils1 {
       }
     }
 
-    console.log('U.Util1 CalcSegmentAngle output:', { angle });
     return angle;
   }
 
@@ -495,8 +479,6 @@ class Utils1 {
    * @returns New point after rotation
    */
   static RotatePoint(centerPoint, pointToRotate, angleDegrees) {
-    console.log('U.Util1 RotatePoint input:', { centerPoint, pointToRotate, angleDegrees });
-
     // Convert angle to radians (negative for clockwise rotation)
     const angleRadians = Math.PI * -angleDegrees / 180;
 
@@ -517,7 +499,6 @@ class Utils1 {
       y: -relativeX * sinAngle + relativeY * cosAngle + centerPoint.y
     };
 
-    console.log('U.Util1 RotatePoint output:', { rotatedPoint });
     return rotatedPoint;
   }
 
@@ -529,8 +510,6 @@ class Utils1 {
    * @returns New point after offset
    */
   static OffsetPointAtAngle(point, angleDegrees, distance) {
-    console.log('U.Util1 OffsetPointAtAngle input:', { point, angleDegrees, distance });
-
     // Create a deep copy of the point
     const newPoint = Utils1.DeepCopy(point);
 
@@ -540,11 +519,9 @@ class Utils1 {
       // Then rotate around the original point by the specified angle
       const result = this.RotatePoint(point, newPoint, angleDegrees);
 
-      console.log('U.Util1 OffsetPointAtAngle output:', { result });
       return result;
     }
 
-    console.log('U.Util1 OffsetPointAtAngle output (no offset):', { newPoint });
     return newPoint;
   }
 
@@ -557,9 +534,6 @@ class Utils1 {
    * @param rayLength - Length of ray extensions
    */
   static CalcExtendedOffsetSegment(segment, offset, scale, rayLength) {
-    console.log('U.Util1 CalcExtendedOffsetSegment input:',
-      { segment, offset, scale, rayLength });
-
     // Calculate segment angle (direction)
     const segmentAngle = this.CalcSegmentAngle(
       segment.origSeg.start,
@@ -624,7 +598,6 @@ class Utils1 {
     // Store segment angle for future reference
     segment.angle = segmentAngle;
 
-    console.log('U.Util1 CalcExtendedOffsetSegment output:', { segment });
   }
 
   /**
@@ -637,9 +610,6 @@ class Utils1 {
    * @returns Boolean indicating if intersection exists
    */
   static CalcSegmentIntersect(segment1Start, segment1End, segment2Start, segment2End, intersectionPoint) {
-    console.log('U.Util1 CalcSegmentIntersect input:',
-      { segment1Start, segment1End, segment2Start, segment2End });
-
     const denominator = (segment2End.y - segment2Start.y) * (segment1End.x - segment1Start.x) -
       (segment2End.x - segment2Start.x) * (segment1End.y - segment1Start.y);
 
@@ -680,29 +650,21 @@ class Utils1 {
           intersectionPoint.x = (segment2Start.x + segment1End.x) / 2;
           intersectionPoint.y = (segment2Start.y + segment1End.y) / 2;
 
-          console.log('U.Util1 CalcSegmentIntersect output (collinear overlap):',
-            { intersectionPoint, result: true });
-
           return true;
         }
       }
 
-      console.log('U.Util1 CalcSegmentIntersect output:', { result: false });
       return false;
     }
 
     // Check if intersection point is within both segments
     if (uA < 0 || uA > 1 || uB < 0 || uB > 1) {
-      console.log('U.Util1 CalcSegmentIntersect output:', { result: false });
       return false;
     }
 
     // Calculate intersection point
     intersectionPoint.x = segment1Start.x + uA * (segment1End.x - segment1Start.x);
     intersectionPoint.y = segment1Start.y + uA * (segment1End.y - segment1Start.y);
-
-    console.log('U.Util1 CalcSegmentIntersect output:',
-      { intersectionPoint, result: true });
 
     return true;
   }
@@ -714,14 +676,11 @@ class Utils1 {
    * @returns Object with x and y coordinates of center point
    */
   static GetSegmentCenterPoint(startPoint, endPoint) {
-    console.log('U.Util1 GetSegmentCenterPoint input:', { startPoint, endPoint });
-
     const centerPoint = {
       x: (startPoint.x + endPoint.x) / 2,
       y: (startPoint.y + endPoint.y) / 2
     };
 
-    console.log('U.Util1 GetSegmentCenterPoint output:', { centerPoint });
     return centerPoint;
   }
 
@@ -732,8 +691,6 @@ class Utils1 {
    * @returns 0 if equal, 1 if angle1 > angle2, -1 if angle1 < angle2
    */
   static compareAngle(angle1, angle2) {
-    console.log('U.Util1 compareAngle input:', { angle1, angle2 });
-
     let result;
     if (angle1 === angle2) {
       result = 0;
@@ -743,7 +700,6 @@ class Utils1 {
       result = angle1 < angle2 - 180 ? 1 : -1;
     }
 
-    console.log('U.Util1 compareAngle output:', { result });
     return result;
   }
 
@@ -754,8 +710,6 @@ class Utils1 {
    * @returns Angle difference in range [-180, 180]
    */
   static DeltaAngle(angle1, angle2) {
-    console.log('U.Util1 DeltaAngle input:', { angle1, angle2 });
-
     let delta = angle1 - angle2;
     if (delta > 180) {
       delta -= 360;
@@ -763,7 +717,6 @@ class Utils1 {
       delta += 360;
     }
 
-    console.log('U.Util1 DeltaAngle output:', { delta });
     return delta;
   }
 
@@ -774,13 +727,10 @@ class Utils1 {
    * @returns The larger of the x or y deltas
    */
   static DeltaPoints(point1, point2) {
-    console.log('U.Util1 DeltaPoints input:', { point1, point2 });
-
     const deltaX = Math.abs(point1.x - point2.x);
     const deltaY = Math.abs(point1.y - point2.y);
     const result = deltaX > deltaY ? deltaX : deltaY;
 
-    console.log('U.Util1 DeltaPoints output:', { result });
     return result;
   }
 
@@ -793,9 +743,6 @@ class Utils1 {
    * @returns Total angle change
    */
   static GetSegmentsDeltaAngle(segments, totalSegments, startIndex, endIndex) {
-    console.log('U.Util1 GetSegmentsDeltaAngle input:',
-      { segments, totalSegments, startIndex, endIndex });
-
     let totalDelta = 0;
     let currentIndex = startIndex;
 
@@ -809,7 +756,6 @@ class Utils1 {
       startIndex = currentIndex;
     }
 
-    console.log('U.Util1 GetSegmentsDeltaAngle output:', { totalDelta });
     return totalDelta;
   }
 
@@ -822,12 +768,7 @@ class Utils1 {
    * @returns Boolean indicating if segments form an obtuse angle
    */
   static AreSegmentsObtuse(segments, totalSegments, startIndex, endIndex) {
-    console.log('U.Util1 AreSegmentsObtuse input:',
-      { segments, totalSegments, startIndex, endIndex });
-
     const result = this.GetSegmentsDeltaAngle(segments, totalSegments, startIndex, endIndex) > 0;
-
-    console.log('U.Util1 AreSegmentsObtuse output:', { result });
     return result;
   }
 
@@ -839,16 +780,11 @@ class Utils1 {
    * @returns Boolean indicating if segments are adjacent
    */
   static AreSegmentsAjacent(totalSegments, currentIndex, adjacentIndex) {
-    console.log('U.Util1 AreSegmentsAjacent input:',
-      { totalSegments, currentIndex, adjacentIndex });
-
     if (adjacentIndex < 0) {
       adjacentIndex = totalSegments - 1;
     }
 
     const result = adjacentIndex === currentIndex - 1;
-
-    console.log('U.Util1 AreSegmentsAjacent output:', { result });
     return result;
   }
 
@@ -863,9 +799,6 @@ class Utils1 {
    * @param ray - Ray length
    */
   static InsertSegment(segments, index, start, end, offset, scale, ray) {
-    console.log('U.Util1 InsertSegment input:',
-      { segments, index, start, end, offset, scale, ray });
-
     const newSegment = new SegmentData();
     newSegment.extSeg.start = start;
     newSegment.extSeg.end = end;
@@ -878,8 +811,6 @@ class Utils1 {
     newSegment.extSeg.endRay = this.OffsetPointAtAngle(end, newSegment.angle, ray);
 
     segments.splice(index, 0, newSegment);
-
-    console.log('U.Util1 InsertSegment output:', { newSegment });
   }
 
   /**
@@ -891,8 +822,6 @@ class Utils1 {
    * @returns Boolean indicating if segments are in alignment
    */
   static SegmentsInAlignment(segments, totalSegments, segmentIndex1, segmentIndex2) {
-    console.log('U.Util1 SegmentsInAlignment input:',
-      { segments, totalSegments, segmentIndex1, segmentIndex2 });
 
     // Angle to rotate segments to align with x-axis
     const rotationAngle = -segments[segmentIndex2].angle;
@@ -924,8 +853,6 @@ class Utils1 {
     const result = rotatedStart1.x > rotatedEnd.x &&
       rotatedEnd1.x > rotatedEnd.x &&
       rotatedStart1.x <= rotatedEnd1.x;
-
-    console.log('U.Util1 SegmentsInAlignment output:', { result });
     return result;
   }
 
@@ -935,11 +862,7 @@ class Utils1 {
    * @returns Boolean indicating if segment is empty
    */
   static isEmptySeg(segment) {
-    console.log('U.Util1 isEmptySeg input:', { segment });
-
     const result = segment.start.x === segment.end.x && segment.start.y === segment.end.y;
-
-    console.log('U.Util1 isEmptySeg output:', { result });
     return result;
   }
 
@@ -950,11 +873,7 @@ class Utils1 {
    * @returns Boolean indicating if at start position
    */
   static isStart(index, flag) {
-    console.log('U.Util1 isStart input:', { index, flag });
-
     const result = index === 0 && !flag;
-
-    console.log('U.Util1 isStart output:', { result });
     return result;
   }
 
@@ -966,11 +885,7 @@ class Utils1 {
    * @returns Boolean indicating if at end position
    */
   static isEnd(index, length, flag) {
-    console.log('U.Util1 isEnd input:', { index, length, flag });
-
     const result = index === length - 1 && !flag;
-
-    console.log('U.Util1 isEnd output:', { result });
     return result;
   }
 
@@ -980,11 +895,7 @@ class Utils1 {
    * @returns String with trailing whitespace removed
    */
   static TrimTrailing(text) {
-    console.log('U.Util1 TrimTrailing input:', { text });
-
     const result = text.replace(/\s+$/g, '');
-
-    console.log('U.Util1 TrimTrailing output:', { result });
     return result;
   }
 
@@ -994,11 +905,8 @@ class Utils1 {
    * @returns String with leading whitespace removed
    */
   static TrimLeading(text) {
-    console.log('U.Util1 TrimLeading input:', { text });
 
     const result = text.replace(/^\s+/g, '');
-
-    console.log('U.Util1 TrimLeading output:', { result });
     return result;
   }
 
@@ -1007,7 +915,6 @@ class Utils1 {
    * Currently an empty implementation
    */
   static CleanGraphics() {
-    console.log('U.Util1 CleanGraphics called');
   }
 
   /**
@@ -1015,8 +922,6 @@ class Utils1 {
    * @returns String containing a randomly generated GUID
    */
   static MakeGuid() {
-    console.log('U.Util1 MakeGuid called');
-
     const result = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'.replace(
       /a/g,
       function () {
@@ -1025,7 +930,6 @@ class Utils1 {
       }
     );
 
-    console.log('U.Util1 MakeGuid output:', { result });
     return result;
   }
 }
