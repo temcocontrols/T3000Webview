@@ -1,0 +1,92 @@
+
+.cur-default {
+  cursor: default
+}
+
+.cur-pointer {
+  cursor: pointer
+}
+
+.cur-text {
+  cursor: text
+}
+
+.cur-move {
+  cursor: move
+}
+
+.cur-n-resize {
+  cursor: n-resize
+}
+
+.cur-e-resize {
+  cursor: e-resize
+}
+
+.cur-s-resize {
+  cursor: s-resize
+}
+
+.cur-w-resize {
+  cursor: w-resize
+}
+
+.cur-ns-resize {
+  cursor: ns-resize
+}
+
+.cur-ew-resize {
+  cursor: ew-resize
+}
+
+.cur-ne-resize {
+  cursor: ne-resize
+}
+
+.cur-nw-resize {
+  cursor: nw-resize
+}
+
+.cur-se-resize {
+  cursor: se-resize
+}
+
+.cur-sw-resize {
+  cursor: sw-resize
+}
+
+.cur-nesw-resize {
+  cursor: nesw-resize
+}
+
+.cur-nwse-resize {
+  cursor: nwse-resize
+}
+
+.cur-anchor {
+  cursor: url("assets/cursor/cur1012.cur"), pointer
+}
+
+.cur-rotate {
+  cursor: url("assets/cursor/rotate.cur"), move
+}
+
+.cur-pencil {
+  cursor: url("assets/cursor/edit.cur"), pointer
+}
+
+.cur-pencil-close {
+  cursor: url("assets/cursor/edit-close.cur"), pointer
+}
+
+.cur-add {
+  cursor: url("assets/cursor/cur1012.cur"), pointer
+}
+
+.cur-stamp {
+  cursor: url("assets/cursor/cur1012.cur"), pointer
+}
+
+.cur-cross {
+  cursor: url("assets/cursor/cross.svg") 18 18, pointer
+}
