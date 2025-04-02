@@ -261,8 +261,242 @@
   }
 </style>
 
+<style>
+  .cur-auto {
+    cursor: auto
+  }
+
+  .cur-default {
+    cursor: default
+  }
+
+  .cur-none {
+    cursor: none
+  }
+
+  .cur-context-menu {
+    cursor: context-menu
+  }
+
+  .cur-help {
+    cursor: help
+  }
+
+  .cur-pointer {
+    cursor: pointer
+  }
+
+  .cur-progress {
+    cursor: progress
+  }
+
+  .cur-wait {
+    cursor: wait
+  }
+
+  .cur-cell {
+    cursor: cell
+  }
+
+  .cur-text {
+    cursor: text
+  }
+
+  .cur-vertical-text {
+    cursor: vertical-text
+  }
+
+  .cur-alias {
+    cursor: alias
+  }
+
+  .cur-grab {
+    cursor: grab
+  }
+
+  .cur-copy {
+    cursor: copy
+  }
+
+  .cur-move {
+    cursor: move
+  }
+
+  .cur-no-drop {
+    cursor: no-drop
+  }
+
+  .cur-not-allowed {
+    cursor: not-allowed
+  }
+
+  .cur-all-scroll {
+    cursor: all-scroll
+  }
+
+  .cur-col-resize {
+    cursor: col-resize
+  }
+
+  .cur-row-resize {
+    cursor: row-resize
+  }
+
+  .cur-n-resize {
+    cursor: n-resize
+  }
+
+  .cur-e-resize {
+    cursor: e-resize
+  }
+
+  .cur-s-resize {
+    cursor: s-resize
+  }
+
+  .cur-w-resize {
+    cursor: w-resize
+  }
+
+  .cur-ns-resize {
+    cursor: ns-resize
+  }
+
+  .cur-ew-resize {
+    cursor: ew-resize
+  }
+
+  .cur-ne-resize {
+    cursor: ne-resize
+  }
+
+  .cur-nw-resize {
+    cursor: nw-resize
+  }
+
+  .cur-se-resize {
+    cursor: se-resize
+  }
+
+  .cur-sw-resize {
+    cursor: sw-resize
+  }
+
+  .cur-nesw-resize {
+    cursor: nesw-resize
+  }
+
+  .cur-nwse-resize {
+    cursor: nwse-resize
+  }
+
+  .cur-zoom-in {
+    cursor: -webkit-zoom-in
+  }
+
+  .cur-zoom-out {
+    cursor: -webkit-zoom-out
+  }
+
+  .cur-zoom-grab {
+    cursor: -webkit-zoom-grab
+  }
+
+  .cur-zoom-grabbing {
+    cursor: -webkit-zoom-grabbing
+  }
+
+  .cur-anchor {
+    cursor: url("assetsassets/cursor/anchor.cur"), pointer
+  }
+
+  .cur-paint {
+    cursor: url("assets/cursor/paint.cur"), default
+  }
+
+  .cur-rotate {
+    cursor: url("assets/cursor/rotate.cur"), move
+  }
+
+  .cur-droplib,
+  .addSymbolCursor,
+  .addSymbolCursor button,
+  .addSymbolCursor button label {
+    cursor: url("assets/cursor/droplib.cur"), copy
+  }
+
+  .cur-pencil-x {
+    cursor: url("assets/cursor/pencil-x.cur"), pointer
+  }
+
+  .cur-pencil {
+    cursor: url("assets/cursor/edit.cur"), pointer
+  }
+
+  .cur-pencil-close {
+    cursor: url("assets/cursor/edit-close.cur"), pointer
+  }
+
+  .cur-add {
+    cursor: url("assets/cursor/cur1012.cur"), pointer
+  }
+
+  .cur-stamp {
+    cursor: url("assets/cursor/cur1012.cur"), pointer
+  }
+
+  .cur-arr-down {
+    cursor: url("assets/cursor/cur1022.cur"), pointer
+  }
+
+  .cur-arr-right {
+    cursor: url("assets/cursor/cur1023.cur"), pointer
+  }
+
+  .cur-brush {
+    cursor: url("assets/cursor/cur1025.cur"), pointer
+  }
+
+  .cur-brush-edit {
+    cursor: url("assets/cursor/cur1026.cur"), pointer
+  }
+
+  .cur-brush-cell {
+    cursor: url("assets/cursor/cur1027.cur"), pointer
+  }
+
+  .cur-brush-table {
+    cursor: url("assets/cursor/cur1028.cur"), pointer
+  }
+
+  .cur-add-right {
+    cursor: url("assets/cursor/cur1048.cur"), pointer
+  }
+
+  .cur-add-left {
+    cursor: url("assets/cursor/cur1049.cur"), pointer
+  }
+
+  .cur-add-up {
+    cursor: url("assets/cursor/cur1050.cur"), pointer
+  }
+
+  .cur-add-down {
+    cursor: url("assets/cursor/cur1051.cur"), pointer
+  }
+
+  .cur-add-plus {
+    cursor: url("assets/cursor/cur1045.cur"), pointer
+  }
+
+  .cur-crosshair {
+    cursor: url("assets/cursor/crosshair.svg") 18 18, pointer
+  }
+</style>
+
+
 <template>
-  <q-page style="background-color: #ebeced;">
+  <q-page>
 
     <div id="_crossTabClipboardDiv"
          style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
