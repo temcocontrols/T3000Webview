@@ -266,10 +266,10 @@ class KeyboardOpt {
 
         // Check if typing in work area is disabled
         if (T3Constant.DocContext.CanTypeInWorkArea === false) {
-          if (keyCode === KeyboardConstant.Keys.Escape) {
-            T3Gv.opt.Comment_Cancel();
-            T3Util.Log('U.KeyboardUtil: Comment cancelled');
-          }
+          // if (keyCode === KeyboardConstant.Keys.Escape) {
+          //   T3Gv.opt.Comment_Cancel();
+          //   T3Util.Log('U.KeyboardUtil: Comment cancelled');
+          // }
           return;
         }
 
@@ -308,7 +308,7 @@ class KeyboardOpt {
         if (keyCode === KeyboardConstant.Keys.Escape) {
           T3Gv.opt.DeactivateAllTextEdit(false);
           if (T3Gv.opt.bInNoteEdit) {
-            T3Gv.opt.Note_CloseEdit();
+            // T3Gv.opt.Note_CloseEdit();
           }
           SvgUtil.RenderAllSVGSelectionStates();
           event.stopPropagation();

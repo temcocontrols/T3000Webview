@@ -19,13 +19,13 @@ class ObjectUtil {
    * @returns The data of the retrieved object, or null if the object is not found
    */
   static GetObjectPtr(objectId, preserveObjectBlock?) {
-    T3Util.Log('O.Opt GetObjectPtr - Input:', { objectId, preserveObjectBlock });
+    // T3Util.Log('O.Opt GetObjectPtr - Input:', { objectId, preserveObjectBlock });
 
     const targetObject = T3Gv.stdObj.GetObject(objectId);
 
     // Return null if object not found or ID is invalid
     if (targetObject == null || objectId < 0) {
-      T3Util.Log('O.Opt GetObjectPtr - Output: null (invalid object ID or not found)');
+      // T3Util.Log('O.Opt GetObjectPtr - Output: null (invalid object ID or not found)');
       return null;
     }
 
@@ -34,7 +34,7 @@ class ObjectUtil {
       ? T3Gv.stdObj.PreserveBlock(objectId).Data
       : targetObject.Data;
 
-    T3Util.Log('O.Opt GetObjectPtr - Output:', objectData);
+    // T3Util.Log('O.Opt GetObjectPtr - Output:', objectData);
     return objectData;
   }
 
@@ -89,7 +89,7 @@ class ObjectUtil {
           SelectUtil.RemoveFromSelectedList(objectId);
 
           // Mark for deletion in links
-          OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.SED_L_DELT);
+          OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.DeleteTarget);
 
           // Process hooks
           hookCount = objectData.hooks.length;
@@ -172,7 +172,7 @@ class ObjectUtil {
       }
 
       // Only proceed if we have a valid state ID
-      if (T3Gv.state.CurrentStateID >= 0) {
+      if (T3Gv.state.currentStateId >= 0) {
         // Check if state is currently open (being modified)
         const isStateOpen = Utils1.IsStateOpen();
 
@@ -188,7 +188,7 @@ class ObjectUtil {
         if (!shouldKeepStateOpen && isStateOpen) {
           if (UIUtil.GetDocDirtyState()) {
             // Save only blocks that have changed
-            ShapeUtil.SaveChangedBlocks(T3Gv.state.CurrentStateID, 1);
+            // ShapeUtil.SaveChangedBlocks(T3Gv.state.currentStateId, 1);
           } else {
             // Save all blocks if doc isn't already marked dirty
             ShapeUtil.SaveAllBlocks();

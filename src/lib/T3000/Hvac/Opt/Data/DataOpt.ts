@@ -4,10 +4,10 @@ import { plainToInstance } from 'class-transformer'
 import 'reflect-metadata'
 import T3Gv from '../../Data/T3Gv'
 import StateOpt from '../../Data/State/StateOpt'
-import ObjectStore from '../../Data/State/ObjectStore'
-import ObjectStoreFactory from '../../Data/State/ObjectStoreFactory'
+import DataStore from '../../Data/State/DataStore'
+import DataStoreFactory from '../../Data/State/DataStoreFactory'
 import State from '../../Data/State/State'
-import StoredObject from '../../Data/State/StoredObject'
+import DataObj from '../../Data/State/DataObj'
 import SDData from '../../Model/SDData'
 import LayersManager from '../../Model/LayersManager'
 import TEData from '../../Model/TEData'
@@ -54,7 +54,7 @@ class DataOpt {
   /**
    * Constant key for storing object store data in localStorage
    */
-  static readonly OBJECT_STORE_KEY: string = "T3.objectStore";
+  static readonly OBJECT_STORE_KEY: string = "T3.dataStore";
 
   /**
    * Constant key for storing current object sequence ID in localStorage
@@ -68,7 +68,7 @@ class DataOpt {
   static InitStoredData(): void {
     this.InitClipboard();
     this.InitState();
-    this.InitObjectStore();
+    this.InitDataStore();
     this.InitCurrentSequenceId();
   }
 
@@ -93,15 +93,15 @@ class DataOpt {
 
     const stateVal = plainToInstance(StateOpt, stateJson);
 
-    for (let i = 0; i < stateVal.States.length; i++) {
-      const state = plainToInstance(State, stateVal.States[i]);
+    for (let i = 0; i < stateVal.states.length; i++) {
+      const state = plainToInstance(State, stateVal.states[i]);
 
-      for (let j = 0; j < state.StoredObjects.length; j++) {
-        const storedObject = this.ConvertStoredObject(state.StoredObjects[j]);
-        state.StoredObjects[j] = storedObject as unknown as ObjectStore;
+      for (let j = 0; j < state.storedObjects.length; j++) {
+        const storedObject = this.ConvertStoredObject(state.storedObjects[j]);
+        state.storedObjects[j] = storedObject as unknown as DataStore;
       }
 
-      stateVal.States[i] = state;
+      stateVal.states[i] = state;
     }
 
     T3Gv.state = stateVal;
@@ -111,21 +111,21 @@ class DataOpt {
    * Initializes the object store by loading data from localStorage
    * Converts stored JSON objects to their appropriate class instances
    */
-  static InitObjectStore(): void {
-    const objectStoreJson = this.LoadData(this.OBJECT_STORE_KEY);
+  static InitDataStore(): void {
+    const dataStoreJson = this.LoadData(this.OBJECT_STORE_KEY);
 
-    if (objectStoreJson === null) {
+    if (dataStoreJson === null) {
       return;
     }
 
-    const objectStore = plainToInstance(ObjectStore, objectStoreJson);
+    const dataStore = plainToInstance(DataStore, dataStoreJson);
 
-    for (let i = 0; i < objectStore.StoredObjects.length; i++) {
-      const storedObject = this.ConvertStoredObject(objectStore.StoredObjects[i]);
-      objectStore.StoredObjects[i] = storedObject as unknown as ObjectStore;
+    for (let i = 0; i < dataStore.storedObjects.length; i++) {
+      const storedObject = this.ConvertStoredObject(dataStore.storedObjects[i]);
+      dataStore.storedObjects[i] = storedObject as unknown as DataStore;
     }
 
-    T3Gv.stdObj = objectStore;
+    T3Gv.stdObj = dataStore;
   }
 
   /**
@@ -146,8 +146,8 @@ class DataOpt {
    * @param storedObjectJson - The stored object in JSON format
    * @returns The converted stored object instance
    */
-  static ConvertStoredObject(storedObjectJson: any): StoredObject {
-    const storedObject = plainToInstance(StoredObject, storedObjectJson);
+  static ConvertStoredObject(storedObjectJson: any): DataObj {
+    const storedObject = plainToInstance(DataObj, storedObjectJson);
     const objectData = storedObject.Data;
 
     if (objectData.Type === 'SDData') {
@@ -214,6 +214,58 @@ class DataOpt {
     return storedObject;
   }
 
+  static ConvertPlanObjectToShape(dataObj: any) {
+
+    let shapeData;
+
+    if (dataObj.Type === 'BaseDrawObject') {
+      // SHAPE: 0, LINE: 1, CONNECTOR: 3
+      if (dataObj.DrawingObjectBaseClass === 1) {
+        if (dataObj?.T3Type === "PolyLineContainer") {
+          const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, dataObj);
+          shapeData = polyLineContainerData;
+        } else {
+          const lineData = plainToInstance(Instance.Shape.Line, dataObj);
+          shapeData = lineData;
+        }
+      }
+
+      if (dataObj.DrawingObjectBaseClass === 0) {
+        if (dataObj.ShapeType === 'Oval') {
+          const ovalData = plainToInstance(Instance.Shape.Oval, dataObj);
+          shapeData = ovalData;
+        }
+
+        if (dataObj.ShapeType === 'Rect') {
+          const rectData = plainToInstance(Instance.Shape.Rect, dataObj);
+          shapeData = rectData;
+        }
+
+        if (dataObj.ShapeType === 'Polygon') {
+          const polygonData = plainToInstance(Instance.Shape.Polygon, dataObj);
+          shapeData = polygonData;
+        }
+
+        if (dataObj.ShapeType === "GroupSymbol") {
+          const groupSymbolData = plainToInstance(Instance.Shape.GroupSymbol, dataObj);
+          shapeData = groupSymbolData;
+        }
+
+        if (dataObj.ShapeType === "SVGFragmentSymbol") {
+          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, dataObj);
+          shapeData = svgFragmentSymbolData;
+        }
+      }
+
+      if (dataObj.DrawingObjectBaseClass === 3) {
+        const connectorData = plainToInstance(Instance.Shape.Connector, dataObj);
+        shapeData = connectorData;
+      }
+    }
+
+    return shapeData;
+  }
+
   /**
    * Saves all current application data to localStorage
    * Includes clipboard, state, object store and current object sequence ID
@@ -269,9 +321,9 @@ class DataOpt {
    */
   static InitStateAndStore(): void {
     T3Gv.state = new StateOpt();
-    T3Gv.stdObj = new ObjectStore();
+    T3Gv.stdObj = new DataStore();
     T3Gv.currentObjSeqId = 0;
-    T3Gv.clipboard = new ObjectStoreFactory().Create();
+    T3Gv.clipboard = new DataStoreFactory().Create();
   }
 }
 
