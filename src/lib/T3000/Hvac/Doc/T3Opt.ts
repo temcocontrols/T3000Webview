@@ -4,9 +4,6 @@ import DocUtil from './DocUtil';
 import OptUtil from '../Opt/Opt/OptUtil';
 import WallOpt from "../Opt/Wall/WallOpt";
 import Clipboard from '../Opt/Clipboard/Clipboard'
-import Instance from '../Data/Instance/Instance';
-import Shape from '../Data/Instance/Shape';
-import Basic from '../Data/Instance/Basic';
 import DataOpt from '../Opt/Data/DataOpt';
 import EvtOpt from '../Event/EvtOpt';
 import KeyboardOpt from '../Opt/Keyboard/KeyboardOpt';
@@ -14,6 +11,9 @@ import UserOpt from '../Opt/User/UserOpt';
 import SvgUtil from '../Opt/Opt/SvgUtil';
 import Quasar from 'quasar';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
+import Basic from '../Data/Instance/Basic';
+import Shape from '../Data/Instance/Shape';
+import Instance, { initializeInstance } from "../Data/Instance/Instance";
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references
@@ -121,8 +121,8 @@ class T3Opt {
     // Bind element control events
     this.evtOpt.BindElemCtlEvent();
 
-    // Initialize instances
-    this.InitInstance();
+    // Initialize Instance with modules to avoid circular references
+    initializeInstance(Basic, Shape);
 
     // Initialize clipboard
     Clipboard.Init();
@@ -134,14 +134,6 @@ class T3Opt {
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
-  }
-
-  /**
-   * Initializes instance types
-   */
-  InitInstance() {
-    Instance.Shape = Shape;
-    Instance.Basic = Basic;
   }
 }
 

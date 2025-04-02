@@ -1425,7 +1425,7 @@ class DocUtil {
     rulerPathElement.SetStrokeColor("#000");
     rulerPathElement.SetStrokeWidth(".5");
     rulerDocument.AddElement(rulerPathElement);
-    rulerDocument.SetCursor(CursorConstant.CursorType.DEFAULT);
+    rulerDocument.SetCursor(CursorConstant.CursorType.Default);
 
     // Determine if labels need decimal precision
     let requiresDecimalFormat = false;
