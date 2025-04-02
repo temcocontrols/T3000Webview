@@ -82,6 +82,46 @@ class EvtOpt {
       // Measurement tools
       this.BindMeasureEvent();
       this.BindAreaMeasureEvent();
+
+      this.BindLibSelectEvent();
+      this.BindLibBoxEvent();
+      this.BindLibTextEvent();
+      this.BindLibIconEvent();
+      this.BindLibSwitchIconEvent();
+      this.BindLibLedEvent();
+      this.BindLibRoomHumidityEvent();
+      this.BindLibRoomTemperatureEvent();
+      this.BindLibTemperatureEvent();
+      this.BindLibBoilerEvent();
+      this.BindLibHeatPumpEvent();
+      this.BindLibPumpEvent();
+      this.BindLibValueThreeWayEvent();
+      this.BindLibValueTwoWayEvent();
+      this.BindLibDuctEvent();
+      this.BindLibFanEvent();
+      this.BindLibCoolingCoilEvent();
+      this.BindLibHeatingCoilEvent();
+      this.BindLibFilterEvent();
+      this.BindLibHumidifierEvent();
+      this.BindLibHumidityEvent();
+      this.BindLibPressureEvent();
+      this.BindLibDamperEvent();
+      this.BindLibTemperature2Event();
+      this.BindLibThermalWheelEvent();
+      this.BindLibEnthalpyEvent();
+      this.BindLibFlowEvent();
+      this.BindLibGuageEvent();
+      this.BindLibDialEvent();
+      this.BindLibValueEvent();
+      this.BindLibIconWithTitleEvent();
+      this.BindLibSetBackgroundColorEvent();
+      this.BindLibSetBackgroundImageEvent();
+      this.BindLibImportSVGSymbolEvent();
+      this.BindLibLockEvent();
+      this.BindLibAddNoteEvent();
+      this.BindLibAddCommentEvent();
+      this.BindLibHyperlinkEvent();
+
     });
   }
 
@@ -527,6 +567,235 @@ class EvtOpt {
   BindAreaMeasureEvent() {
     $("#btn_try_AreaMeasure").on("pointerdown", (event) => {
       EvtOpt.toolOpt.MeasureAreaAct(event);
+    });
+  }
+
+  BindLibSelectEvent() {
+    $("#btn_try_Lib_Select").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibSelectAct(event);
+    });
+  }
+
+  BindLibBoxEvent() {
+    $("#btn_try_Lib_Box").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Box", true);
+    });
+  }
+
+  BindLibTextEvent() {
+    $("#btn_try_Lib_Text").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Text", true);
+    });
+  }
+
+  BindLibIconEvent() {
+    $("#btn_try_Lib_Icon").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Icon", true);
+    });
+  }
+
+  BindLibSwitchIconEvent() {
+    $("#btn_try_Lib_SwitchIcon").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("SwitchIcon", true);
+    });
+  }
+
+  BindLibLedEvent() {
+    $("#btn_try_Lib_Led").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Led", true);
+    });
+  }
+
+  BindLibRoomHumidityEvent() {
+    $("#btn_try_Lib_RoomHumidity").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("RoomHumidity", true);
+    });
+  }
+
+  BindLibRoomTemperatureEvent() {
+    $("#btn_try_Lib_RoomTemperature").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("RoomTemperature", true);
+    });
+  }
+
+  BindLibTemperatureEvent() {
+    $("#btn_try_Lib_Temperature").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Temperature", true);
+    });
+  }
+
+  BindLibBoilerEvent() {
+    $("#btn_try_Lib_Boiler").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Boiler", true);
+    });
+  }
+
+  BindLibHeatPumpEvent() {
+    $("#btn_try_Lib_HeatPump").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+    });
+  }
+
+  BindLibPumpEvent() {
+    $("#btn_try_Lib_Pump").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Pump", true);
+    });
+  }
+
+  BindLibValueThreeWayEvent() {
+    $("#btn_try_Lib_ValueThreeWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+    });
+  }
+
+  BindLibValueTwoWayEvent() {
+    $("#btn_try_Lib_ValueTwoWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+    });
+  }
+
+  BindLibDuctEvent() {
+    $("#btn_try_Lib_Duct").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct", true);
+    });
+  }
+
+  BindLibFanEvent() {
+    $("#btn_try_Lib_Fan").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Fan", true);
+    });
+  }
+
+  BindLibCoolingCoilEvent() {
+    $("#btn_try_Lib_CoolingCoil").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("CoolingCoil", true);
+    });
+  }
+
+  BindLibHeatingCoilEvent() {
+    $("#btn_try_Lib_HeatingCoil").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("HeatingCoil", true);
+    });
+  }
+
+  BindLibFilterEvent() {
+    $("#btn_try_Lib_Filter").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Filter", true);
+    });
+  }
+
+  BindLibHumidifierEvent() {
+    $("#btn_try_Lib_Humidifier").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Humidifier", true);
+    });
+  }
+
+  BindLibHumidityEvent() {
+    $("#btn_try_Lib_Humidity").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Humidity", true);
+    });
+  }
+
+  BindLibPressureEvent() {
+    $("#btn_try_Lib_Pressure").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Pressure", true);
+    });
+  }
+
+  BindLibDamperEvent() {
+    $("#btn_try_Lib_Damper").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Damper", true);
+    });
+  }
+
+  BindLibTemperature2Event() {
+    $("#btn_try_Lib_Temperature2").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Temperature2", true);
+    });
+  }
+
+  BindLibThermalWheelEvent() {
+    $("#btn_try_Lib_ThermalWheel").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ThermalWheel", true);
+    });
+  }
+
+  BindLibEnthalpyEvent() {
+    $("#btn_try_Lib_Enthalpy").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Enthalpy", true);
+    });
+  }
+
+  BindLibFlowEvent() {
+    $("#btn_try_Lib_Flow").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Flow", true);
+    });
+  }
+
+  BindLibGuageEvent() {
+    $("#btn_try_Lib_Guage").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Guage", true);
+    });
+  }
+
+  BindLibDialEvent() {
+    $("#btn_try_Lib_Dial").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Dial", true);
+    });
+  }
+
+  BindLibValueEvent() {
+    $("#btn_try_Lib_Value").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Value", true);
+    });
+  }
+
+  BindLibIconWithTitleEvent() {
+    $("#btn_try_Lib_IconWithTitle").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("IconWithTitle", true);
+    });
+  }
+
+  BindLibSetBackgroundColorEvent() {
+    $("#btn_try_Lib_SetBackgroundColor").on("pointerdown", (event) => {
+      // EvtOpt.toolOpt.LibSetBackgroundColorAct("#20b2aa");
+      EvtOpt.toolOpt.LibSetBackgroundColorAct("#ffffff");
+    });
+  }
+
+  BindLibSetBackgroundImageEvent() {
+    $("#btn_try_Lib_SetBackgroundImage").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibSetBackgroundImageAct(event, false);
+    });
+  }
+
+  BindLibImportSVGSymbolEvent() {
+    $("#btn_try_Lib_ImportSVGSymbol").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibImportSVGSymbolAct(event);
+    });
+  }
+
+  BindLibLockEvent() {
+    $("#btn_try_Lib_Lock").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibLockAct(event);
+    });
+  }
+
+  BindLibAddNoteEvent() {
+    $("#btn_try_Lib_AddNote").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibAddNoteAct(event);
+    });
+  }
+
+  BindLibAddCommentEvent() {
+    $("#btn_try_Lib_AddComment").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibAddCommentAct(event);
+    });
+  }
+
+  BindLibHyperlinkEvent() {
+    $("#btn_try_Lib_Hyperlink").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibHyperlinkAct(event);
     });
   }
 }

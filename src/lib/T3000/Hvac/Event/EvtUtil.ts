@@ -18,6 +18,7 @@ import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
+import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
 /**
  * Utility class for handling various user interaction events on an SVG document.
@@ -119,6 +120,10 @@ class EvtUtil {
     // For left-clicks, clear selection
     if (!isRightClick) {
       SelectUtil.ClearSelectionClick();
+
+      //Clear the context menu
+      // contextMenuShow.value = false;
+      UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
     }
 
     // Allow typing in work area
@@ -264,6 +269,9 @@ class EvtUtil {
       if (MouseUtil.IsRightClick(event)) {
         event.preventDefault();
         event.stopPropagation();
+
+        // contextMenuShow.value = false;
+        UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
 
         T3Util.Log("E.Evt WorkAreaHammerDragStart output: right-click handled");
         return false;
@@ -518,6 +526,8 @@ class EvtUtil {
               shape.SetRolloverActions(T3Gv.opt.svgDoc, shapeElement);
             }
           }
+
+          UIUtil.ShowObjectConfig(true);
 
           T3Util.Log("E.Evt ShapeTap output: normal tap processed");
           return false;
@@ -1035,7 +1045,7 @@ class EvtUtil {
     T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
 
     // Cancel any active rubber band selection
-    T3Gv.opt.RubberBandSelectCancel();
+    SelectUtil.RubberBandSelectCancel();
 
     // Release any active move operation
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
@@ -1222,9 +1232,9 @@ class EvtUtil {
               SelectUtil.UpdateSelectionAttributes(null);
 
               if (event.gesture) {
-                T3Gv.opt.TERegisterEvents(textElement.svgObj.SDGObj, event.gesture.srcEvent);
+                TextUtil.TERegisterEvents(textElement.svgObj.SDGObj, event.gesture.srcEvent);
               } else {
-                T3Gv.opt.TERegisterEvents(textElement.svgObj.SDGObj, event);
+                TextUtil.TERegisterEvents(textElement.svgObj.SDGObj, event);
               }
 
               event.stopPropagation();
@@ -1292,9 +1302,9 @@ class EvtUtil {
 
               // Register text editing event handlers
               if (event.gesture) {
-                T3Gv.opt.TERegisterEvents(textElement, event.gesture.srcEvent);
+                TextUtil.TERegisterEvents(textElement, event.gesture.srcEvent);
               } else {
-                T3Gv.opt.TERegisterEvents(textElement, event);
+                TextUtil.TERegisterEvents(textElement, event);
               }
 
               event.stopPropagation();
