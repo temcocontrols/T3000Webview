@@ -1075,7 +1075,7 @@ class Text extends Element {
       newCursorState === CursorConstant.CursorState.EditOnly ||
       newCursorState === CursorConstant.CursorState.EditLink
     ) {
-      this.SetCursor(CursorConstant.CursorType.TEXT);
+      this.SetCursor(CursorConstant.CursorType.Text);
     }
 
     // If hyperlinks are enabled and the new state supports them, update the hyperlink cursor

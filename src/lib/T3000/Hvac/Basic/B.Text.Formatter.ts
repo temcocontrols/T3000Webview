@@ -1788,7 +1788,7 @@ class Formatter {
         if (this.rtData.styles[styleIndex].hyperlink >= 0) {
           element = this.renderedLines[lineIndex].runs[runIndex].elem;
           if (element) {
-            element.node.setAttribute('class', CursorConstant.CursorType.POINTER);
+            element.node.setAttribute('class', CursorConstant.CursorType.Pointer);
           }
         }
       }
