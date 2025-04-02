@@ -166,19 +166,33 @@ class Clipboard {
           return;
         }
 
-        if (!T3Gv.opt.isMobilePlatform) {
-          // Skip if focus is not on clipboard elements for cut/copy
-          if ((clipboardAction === "cut" || clipboardAction === "copy") &&
-            $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
-            return;
-          }
+        // if (!T3Gv.opt.isMobilePlatform) {
+        //   // Skip if focus is not on clipboard elements for cut/copy
+        //   if ((clipboardAction === "cut" || clipboardAction === "copy") &&
+        //     $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
+        //     return;
+        //   }
 
-          // Skip if paste and focus is on other input elements
-          if (clipboardAction === "paste" &&
-            ($("input:focus").length > 0 || $("textarea:focus").length > 0) &&
-            $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
-            return;
-          }
+        //   // Skip if paste and focus is on other input elements
+        //   if (clipboardAction === "paste" &&
+        //     ($("input:focus").length > 0 || $("textarea:focus").length > 0) &&
+        //     $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
+        //     return;
+        //   }
+        // }
+
+
+        // Skip if focus is not on clipboard elements for cut/copy
+        if ((clipboardAction === "cut" || clipboardAction === "copy") &&
+          $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
+          return;
+        }
+
+        // Skip if paste and focus is on other input elements
+        if (clipboardAction === "paste" &&
+          ($("input:focus").length > 0 || $("textarea:focus").length > 0) &&
+          $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
+          return;
         }
 
         // Get clipboard data from appropriate source
@@ -735,11 +749,11 @@ class Clipboard {
     const isAnyInputFocused = $("input:focus").length > 0;
     const isAnySelectFocused = $("select:focus").length > 0;
     const isAnyTextareaFocused = $("textarea:focus").length > 0;
-    const isMobilePlatform = T3Gv.opt.isMobilePlatform;
+    // const isMobilePlatform = T3Gv.opt.isMobilePlatform;
 
     // Focus on clipboard input only if no other input elements are focused
     // or if we're on a mobile platform
-    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) || isMobilePlatform) {
+    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) /*|| isMobilePlatform*/) {
       Clipboard.clipboardInputElement.val(" ");
       Clipboard.clipboardInputElement.focus().select();
     }
@@ -856,13 +870,14 @@ class Clipboard {
 
       // Determine clipboard content type
       if (T3Gv.opt.imageClipboard && T3Gv.opt.imageClipboard.size > 0) {
-        T3Gv.opt.contentHeader.ClipboardType = T3Constant.ClipboardType.Image;
+        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.Image;
       } else {
-        T3Gv.opt.contentHeader.ClipboardType = T3Constant.ClipboardType.Text;
+        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.Text;
       }
 
       // Clear clipboard buffer and execute paste
-      T3Gv.opt.contentHeader.ClipboardBuffer = null;
+      T3Gv.opt.header.ClipboardBuffer = null;
+      T3Gv.opt.header.clipboardJson = null;
       ToolActUtil.PasteObjects();
       return;
     }
@@ -884,7 +899,7 @@ class Clipboard {
    */
   static GetCutCopyText() {
     const isMobile = /mobile|ip(ad|hone|od)|android|silk/i.test(navigator.userAgent);
-    const isTextClipboard = T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.Text;
+    const isTextClipboard = T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Text;
     const textClipboard = T3Gv.opt.textClipboard;
 
     if (!isTextClipboard || textClipboard == null) {
@@ -905,12 +920,12 @@ class Clipboard {
     const isMobile = /mobile|ip(ad|hone|od)|android|silk/i.test(navigator.userAgent);
     let clipboardContent = "";
 
-    if (T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.Text && T3Gv.opt.textClipboard) {
+    if (T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Text && T3Gv.opt.textClipboard) {
       clipboardContent += T3Gv.opt.textClipboard ? T3Gv.opt.textClipboard.text : "";
     }
 
     const clipboardHeader = {
-      clipboardType: T3Gv.opt.contentHeader.ClipboardType,
+      clipboardType: T3Gv.opt.header.ClipboardType,
       timestamp: this.lastCutCopyTimestamp
     };
 
@@ -918,7 +933,7 @@ class Clipboard {
       clipboardContent += `<div>${additionalHtmlContent}</div>`;
     }
 
-    if (T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.Text) {
+    if (T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Text) {
       const textData = JSON.stringify(T3Gv.opt.textClipboard);
       const textBytes = new Uint8Array(textData.length);
       for (let i = 0; i < textData.length; i++) {
@@ -927,13 +942,13 @@ class Clipboard {
       clipboardContent += base64js.fromByteArray(textBytes);
     }
 
-    if (T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.LM) {
-      const lmBytes = new Uint8Array(T3Gv.opt.contentHeader.ClipboardBuffer);
+    if (T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.LM) {
+      const lmBytes = new Uint8Array(T3Gv.opt.header.ClipboardBuffer);
       clipboardContent += base64js.fromByteArray(lmBytes);
     }
 
-    // if (T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.Table) {
-    //   const tableData = JSON.stringify(T3Gv.opt.contentHeader.ClipboardBuffer);
+    // if (T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Table) {
+    //   const tableData = JSON.stringify(T3Gv.opt.header.ClipboardBuffer);
     //   const tableBytes = new Uint8Array(tableData.length);
     //   for (let i = 0; i < tableData.length; i++) {
     //     tableBytes[i] = tableData.charCodeAt(i);
