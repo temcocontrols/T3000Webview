@@ -582,7 +582,7 @@ class ShapeContainer extends Rect {
         const createdIds: any[] = [];
         HookUtil.UpdateHook(closest < 0 ? someVariable : closest, -1, this.BlockID, hookPointID, hookLocation, null);
         createdIds.push(closest < 0 ? someVariable : closest);
-        OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
         DrawUtil.CompleteOperation(createdIds);
       }
     }
@@ -897,7 +897,7 @@ class ShapeContainer extends Rect {
         if (childObject) {
           // Update position if needed
           if (childObject.Frame.y !== runningY) {
-            OptCMUtil.SetLinkFlag(childObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(childObject.BlockID, DSConstant.LinkFlags.Move);
           }
 
           // Track maximum width for the column
@@ -937,13 +937,13 @@ class ShapeContainer extends Rect {
           currentObject &&
           (currentObject.Frame.x + currentObject.Frame.width / 2) !== (containerInstance.Frame.x + listItems[j].pt.x)
         ) {
-          OptCMUtil.SetLinkFlag(currentObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(currentObject.BlockID, DSConstant.LinkFlags.Move);
           needsUpdate = true;
         }
       }
 
       if (needsUpdate) {
-        OptCMUtil.SetLinkFlag(containerInstance.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(containerInstance.BlockID, DSConstant.LinkFlags.Move);
       }
 
       return { start: currentIndex, colwidth: finalColumnWidth, top: runningY };
@@ -975,7 +975,7 @@ class ShapeContainer extends Rect {
         if (childObject) {
           // Update position if needed
           if (childObject.Frame.y / 2 !== currentBaseY) {
-            OptCMUtil.SetLinkFlag(childObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(childObject.BlockID, DSConstant.LinkFlags.Move);
           }
           objectWidth = childObject.Frame.width;
           objectHeight = childObject.Frame.height;
@@ -1021,13 +1021,13 @@ class ShapeContainer extends Rect {
           currentObject &&
           (currentObject.Frame.y + currentObject.Frame.height / 2) !== (basePoint.y + listItems[j].pt.y)
         ) {
-          OptCMUtil.SetLinkFlag(currentObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(currentObject.BlockID, DSConstant.LinkFlags.Move);
           needsUpdate = true;
         }
       }
 
       if (needsUpdate) {
-        OptCMUtil.SetLinkFlag(containerInstance.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(containerInstance.BlockID, DSConstant.LinkFlags.Move);
       }
 
       return { start: currentIndex, rowht: finalRowHeight, left: runningX };
@@ -1186,7 +1186,7 @@ class ShapeContainer extends Rect {
         const connectedObject = this.hooks.length ? DataUtil.GetObjectPtr(this.hooks[0].objid, false) : null;
         if (connectedObject && connectedObject instanceof ShapeContainer) {
           connectedObject.flags = Utils2.SetFlag(connectedObject.flags, NvConstant.ObjFlags.Obj1, true);
-          OptCMUtil.SetLinkFlag(connectedObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(connectedObject.BlockID, DSConstant.LinkFlags.Move);
         }
 
         // Apply offsets if needed
@@ -1708,7 +1708,7 @@ class ShapeContainer extends Rect {
           );
 
           // Mark container for layout update
-          OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
         }
 
         let offsetX = 0,
@@ -1742,7 +1742,7 @@ class ShapeContainer extends Rect {
               OptConstant.ObjMoreFlags.ContainerChild,
               false
             );
-            OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
           }
         }
 

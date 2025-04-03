@@ -1,6 +1,5 @@
 import T3Util from "../Util/T3Util";
 
-
 /**
  * A utility class for importing and processing SVG files.
  *
