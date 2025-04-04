@@ -302,13 +302,13 @@ class SvgUtil {
             hammerInstance.on('dragstart', T3Gv.Evt_ShapeDragStart);
 
             // if (this.isMobilePlatform) {
-            //   T3Gv.Evt_LM_ShapeHold = EvtUtil.Evt_ShapeHoldFactory(drawingData);
-            //   hammerInstance.on('hold', T3Gv.Evt_LM_ShapeHold);
+            //   T3Gv.Evt_LMShapeHold = EvtUtil.Evt_ShapeHoldFactory(drawingData);
+            //   hammerInstance.on('hold', T3Gv.Evt_LMShapeHold);
             // }
 
             if (drawingData.AllowTextEdit() || drawingData.AllowDoubleClick()) {
-              T3Gv.Evt_LM_ShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
-              hammerInstance.on('doubletap', T3Gv.Evt_LM_ShapeDoubleTap);
+              T3Gv.Evt_LMShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
+              hammerInstance.on('doubletap', T3Gv.Evt_LMShapeDoubleTap);
             }
 
             shapeContainer.SetEventProxy(hammerInstance);

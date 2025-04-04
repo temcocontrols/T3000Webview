@@ -80,11 +80,11 @@ class TextUtil {
           messageData.theTEWasResized = true;
           OptCMUtil.SetLinkFlag(
             session.theActiveTextEditObjectID,
-            DSConstant.LinkFlags.SED_L_MOVE
+            DSConstant.LinkFlags.Move
           );
 
           if (drawingObject.hooks.length) {
-            OptCMUtil.SetLinkFlag(drawingObject.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(drawingObject.hooks[0].objid, DSConstant.LinkFlags.Move);
           }
 
           session.theTEWasResized = false;
@@ -116,12 +116,12 @@ class TextUtil {
           ? 0 === textEditor.GetTextMinDimensions().width
           : 0 === textEditor.GetTextMinDimensions().width || textEditor.GetText() === ' ';
 
-        // Handle reversal of standard text replacement
-        if (isTextEmpty && this.ReverseReplaceStdText(drawingObject, textEditor)) {
-          isTextEmpty = false;
-          runtimeText = textEditor.GetRuntimeText();
-          selectedRange = textEditor.GetSelectedRange();
-        }
+        // // Handle reversal of standard text replacement
+        // if (isTextEmpty && this.ReverseReplaceStdText(drawingObject, textEditor)) {
+        //   isTextEmpty = false;
+        //   runtimeText = textEditor.GetRuntimeText();
+        //   selectedRange = textEditor.GetSelectedRange();
+        // }
 
         // Get formatting style from the editor
         const formatStyle = textEditor.formatter.GetFormatAtOffset(0);
@@ -432,53 +432,21 @@ class TextUtil {
     T3Util.Log("O.Opt RegisterLastTEOp - Output: Completed");
   }
 
-  /**
-   * Attempts to reverse standard text replacement by pasting the original text into the target clipboard.
-   * @param source - The source object containing text and table information.
-   * @param clipboard - The target clipboard object which supports the Paste method.
-   * @returns True if the reverse replacement occurred, otherwise false.
-   */
-  static ReverseReplaceStdText(source: any, clipboard: any): boolean {
-    T3Util.Log("O.Opt ReverseReplaceStdText - Input:", { source, clipboard });
-    let resultText: string;
-    // let tableData: any;
-    let replaceIndex = -1;
+  // /**
+  //  * Attempts to reverse standard text replacement by pasting the original text into the target clipboard.
+  //  * @param source - The source object containing text and table information.
+  //  * @param clipboard - The target clipboard object which supports the Paste method.
+  //  * @returns True if the reverse replacement occurred, otherwise false.
+  //  */
+  // static ReverseReplaceStdText(source: any, clipboard: any): boolean {
+  //   T3Util.Log("O.Opt ReverseReplaceStdText - Input:", { source, clipboard });
+  //   let resultText: string;
+  //   // let tableData: any;
+  //   let replaceIndex = -1;
 
-    // // Check if there is a table associated with the source object
-    // if (tableData = source.GetTable(true)) {
-    //   if (tableData.select >= 0) {
-    //     const selectedCell = tableData.cells[tableData.select];
-    //     if (selectedCell.flags & TODO.Table.CellFlags.SDT_F_Clickhere) {
-    //       switch (selectedCell.celltype) {
-    //         case TODO.Table.CellTypes.SDT_CT_PERSON:
-    //           replaceIndex = TextConstant.ReplaceTextStrings.Indexes.PersonClick;
-    //           break;
-    //         default:
-    //           replaceIndex = (source.TextFlags & NvConstant.TextFlags.OneClick)
-    //             ? TextConstant.ReplaceTextStrings.Indexes.Click
-    //             : TextConstant.ReplaceTextStrings.Indexes.DoubleClick;
-    //       }
-    //       resultText = TextConstant.ReplaceTextStrings[replaceIndex];
-    //       clipboard.Paste(resultText);
-    //       selectedCell.flags = Utils2.SetFlag(selectedCell.flags, TODO.Table.CellFlags.SDT_F_Clickhere, false);
-    //       T3Util.Log("O.Opt ReverseReplaceStdText - Output:", true);
-    //       return true;
-    //     }
-    //   }
-    // } else
-    // if (source.TextFlags & NvConstant.TextFlags.Clickhere) {
-    //   resultText = (source.TextFlags & NvConstant.TextFlags.OneClick)
-    //     ? TextConstant.ReplaceTextStrings[TextConstant.ReplaceTextStrings.Indexes.Click]
-    //     : TextConstant.ReplaceTextStrings[TextConstant.ReplaceTextStrings.Indexes.DoubleClick];
-    //   clipboard.Paste(resultText);
-    //   source.TextFlags = Utils2.SetFlag(source.TextFlags, NvConstant.TextFlags.Clickhere, false);
-    //   T3Util.Log("O.Opt ReverseReplaceStdText - Output:", true);
-    //   return true;
-    // }
-
-    T3Util.Log("O.Opt ReverseReplaceStdText - Output:", false);
-    return false;
-  }
+  //   T3Util.Log("O.Opt ReverseReplaceStdText - Output:", false);
+  //   return false;
+  // }
 
   /**
        * Updates the SD text object style based on the given text style settings.
@@ -828,7 +796,7 @@ class TextUtil {
                       let svgFrame = shape.GetSVGFrame(newFrame);
                       textElement.SetPos(textRect.x - svgFrame.x, textRect.y - svgFrame.y);
                       textElement.SetConstraints(
-                        T3Gv.opt.contentHeader.MaxWorkDim.x,
+                        T3Gv.opt.header.MaxWorkDim.x,
                         textRect.width,
                         textRect.height
                       );
@@ -869,7 +837,7 @@ class TextUtil {
 
                     // Update link flags
                     if (!skipLinkFlagUpdate) {
-                      this.ResizeSetLinkFlag(shapeId, DSConstant.LinkFlags.SED_L_MOVE);
+                      this.ResizeSetLinkFlag(shapeId, DSConstant.LinkFlags.Move);
                     }
                   }
                 }
@@ -1594,7 +1562,7 @@ class TextUtil {
 
       // Finalize UI setup
       if (!textData) {
-        svgElement.SetCursor(CursorConstant.CursorType.TEXT);
+        svgElement.SetCursor(CursorConstant.CursorType.Text);
 
         if (targetSelectionId) {
           SvgUtil.ShowSVGSelectionState(targetSelectionId, false);
