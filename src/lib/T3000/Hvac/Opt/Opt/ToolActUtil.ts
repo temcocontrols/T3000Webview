@@ -29,6 +29,8 @@ import ToolAct2Util from './ToolAct2Util';
 
 class ToolActUtil {
 
+  public static rflags;
+
   static Undo(restoreSequence?: boolean, cancelModalOperation?: boolean): boolean {
     T3Util.Log("O.Opt Undo - Input:", { restoreSequence, cancelModalOperation });
 
@@ -49,7 +51,7 @@ class ToolActUtil {
     if (T3Gv.opt.nudgeOpen) {
       T3Gv.opt.CloseOpenNudge();
     }
-    if (T3Gv.state.CurrentStateID <= 0) {
+    if (T3Gv.state.currentStateId <= 0) {
       T3Util.Log("O.Opt Undo - Output:", false);
       return false;
     }
@@ -76,7 +78,7 @@ class ToolActUtil {
 
     // Update sequence ID if required
     if (restoreSequence) {
-      T3Gv.currentObjSeqId = T3Gv.state.States[T3Gv.state.CurrentStateID].currentObjSeqId;
+      T3Gv.currentObjSeqId = T3Gv.state.states[T3Gv.state.currentStateId].currentObjSeqId;
     }
 
     // Restore previous state and update history if necessary
@@ -85,8 +87,8 @@ class ToolActUtil {
       T3Gv.state.AddToHistoryState();
     }
 
-    const currentStateID = T3Gv.state.CurrentStateID;
-    OptCMUtil.RebuildURLs(currentStateID + 1, false);
+    const currentStateId = T3Gv.state.currentStateId;
+    OptCMUtil.RebuildURLs(currentStateId + 1, false);
     UIUtil.ResizeSVGDocument();
     HookUtil.UpdateLineHops(true);
 
@@ -103,8 +105,8 @@ class ToolActUtil {
     }
 
     // Update page settings if changed
-    if (T3Gv.docUtil.PagesNotEqual(sessionObject.Page, T3Gv.opt.contentHeader.Page)) {
-      T3Gv.opt.contentHeader.Page = Utils1.DeepCopy(sessionObject.Page);
+    if (T3Gv.docUtil.PagesNotEqual(sessionObject.Page, T3Gv.opt.header.Page)) {
+      T3Gv.opt.header.Page = Utils1.DeepCopy(sessionObject.Page);
     }
 
     // Ensure an active outline is selected if no selection exists
@@ -148,7 +150,7 @@ class ToolActUtil {
 
     // Save changed blocks if state was not open before undo
     if (!isStateOpen) {
-      ShapeUtil.SaveChangedBlocks(currentStateID, -1);
+      // ShapeUtil.SaveChangedBlocks(currentStateId, -1);
     }
 
     T3Util.Log("O.Opt Undo - Output:", true);
@@ -173,7 +175,7 @@ class ToolActUtil {
       OptCMUtil.CancelOperation();
     }
     // Check if we're already at the last state
-    else if (T3Gv.state.CurrentStateID + 1 >= T3Gv.state.States.length) {
+    else if (T3Gv.state.currentStateId + 1 >= T3Gv.state.states.length) {
       T3Util.Log("O.Opt Redo - Output: false (already at last state)");
       return false;
     }
@@ -209,10 +211,10 @@ class ToolActUtil {
     T3Gv.state.RestoreNextState();
     T3Gv.state.AddToHistoryState();
 
-    const currentStateId = T3Gv.state.CurrentStateID;
+    const currentStateId = T3Gv.state.currentStateId;
 
     // Rebuild URLs for the new state
-    OptCMUtil.RebuildURLs(T3Gv.state.CurrentStateID - 1, true);
+    OptCMUtil.RebuildURLs(T3Gv.state.currentStateId - 1, true);
 
     // Resize and update the SVG document
     UIUtil.ResizeSVGDocument();
@@ -233,8 +235,8 @@ class ToolActUtil {
     }
 
     // Update page settings if changed
-    if (T3Gv.docUtil.PagesNotEqual(updatDataData.Page, T3Gv.opt.contentHeader.Page)) {
-      T3Gv.opt.contentHeader.Page = Utils1.DeepCopy(updatDataData.Page);
+    if (T3Gv.docUtil.PagesNotEqual(updatDataData.Page, T3Gv.opt.header.Page)) {
+      T3Gv.opt.header.Page = Utils1.DeepCopy(updatDataData.Page);
     }
 
     // Get the current selection list
@@ -287,7 +289,7 @@ class ToolActUtil {
 
     // Save changed blocks if state wasn't open
     if (!isStateOpen) {
-      ShapeUtil.SaveChangedBlocks(currentStateId, 1);
+      // ShapeUtil.SaveChangedBlocks(currentStateId, 1);
     }
 
     T3Util.Log("O.Opt Redo - Output: true");
@@ -300,25 +302,25 @@ class ToolActUtil {
    * when objects are deleted or their image URLs change during redo operations
    */
   static RedoDeleteURLs() {
-    const currentStateId = T3Gv.state.CurrentStateID;
+    const currentStateId = T3Gv.state.currentStateId;
 
     // Skip if there are no future states to process
-    if (currentStateId + 1 >= T3Gv.state.States.length) {
+    if (currentStateId + 1 >= T3Gv.state.states.length) {
       return;
     }
 
     // Get the next state (the one we're redoing to)
-    const nextState = T3Gv.state.States[currentStateId + 1];
-    const storedObjectsCount = nextState.StoredObjects.length;
+    const nextState = T3Gv.state.states[currentStateId + 1];
+    const storedObjectsCount = nextState.storedObjects.length;
 
     // Process each stored object in the next state
     for (let i = 0; i < storedObjectsCount; i++) {
-      const storedObject = nextState.StoredObjects[i];
+      const storedObject = nextState.storedObjects[i];
 
       // Handle drawing objects
       if (storedObject.Type === StateConstant.StoredObjectType.BaseDrawObject) {
         // If the object is being deleted in this state
-        if (storedObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+        if (storedObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
           const objectBlock = T3Gv.stdObj.GetObject(storedObject.ID);
 
           if (objectBlock) {
@@ -348,7 +350,7 @@ class ToolActUtil {
       // // Handle table objects
       // else if (storedObject.Type === StateConstant.StoredObjectType.TABLE_OBJECT) {
       //   // If the table is being deleted
-      //   if (storedObject.StateOperationTypeID === StateConstant.StateOperationType.DELETE) {
+      //   if (storedObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
       //     const tableBlock = T3Gv.stdObj.GetObject(storedObject.ID);
 
       //     if (tableBlock) {
@@ -435,7 +437,7 @@ class ToolActUtil {
         currentObject.rflags = Utils2.SetFlag(currentObject.rflags, NvConstant.FloatingPointDim.Width, false);
         currentObject.rflags = Utils2.SetFlag(currentObject.rflags, NvConstant.FloatingPointDim.Height, false);
       }
-      OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.Move);
       DataUtil.AddToDirtyList(objectId);
     }
 
@@ -488,9 +490,9 @@ class ToolActUtil {
         // }
         for (index = 0; index < count; index++) {
           currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
-          OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
           if (currentObject.hooks.length) {
-            OptCMUtil.SetLinkFlag(currentObject.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(currentObject.hooks[0].objid, DSConstant.LinkFlags.Move);
           }
           DataUtil.AddToDirtyList(selectedObjects[index]);
           if (isRotationQualified(currentObject)) {
@@ -649,8 +651,8 @@ class ToolActUtil {
       if ((textEditSession.theActiveTextEditObjectID !== -1 || T3Gv.opt.bInNoteEdit)) {
         // Case 1.1: Paste table content if the clipboard has table data
         // if (textEditSession.theActiveTableObjectID >= 0 &&
-        //   this.contentHeader.ClipboardType === T3Constant.ClipboardType.Table &&
-        //   this.contentHeader.ClipboardBuffer) {
+        //   this.header.ClipboardType === T3Constant.ClipboardType.Table &&
+        //   this.header.ClipboardBuffer) {
         //   // this.Table_PasteCellContent(textEditSession.theActiveTableObjectID);
         //   T3Util.Log("O.Opt PasteObjects - Output: Table content pasted");
         //   return;
@@ -698,7 +700,7 @@ class ToolActUtil {
         T3Gv.opt.textClipboard.text &&
         T3Gv.opt.textClipboard.text !== '\r\n') {
         if (SelectUtil.GetTargetSelect() !== -1) {
-          this.TargetPasteText();
+          TextUtil.TargetPasteText();
           T3Util.Log("O.Opt PasteObjects - Output: Text pasted to target");
           return;
         }
@@ -706,7 +708,7 @@ class ToolActUtil {
 
       // Case 4: Handle image clipboard content
       if (T3Gv.opt.imageClipboard &&
-        T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.Image) {
+        T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Image) {
         T3Gv.opt.SetBackgroundImage(T3Gv.opt.imageClipboard, 0);
         T3Util.Log("O.Opt PasteObjects - Output: Image pasted as background");
         return;
@@ -715,8 +717,8 @@ class ToolActUtil {
       // // Case 5: Handle table cell content paste
       // if (textEditSession.theActiveTableObjectID >= 0) {
       //   const hasTableClipboard = (
-      //     this.contentHeader.ClipboardType === T3Constant.ClipboardType.Table &&
-      //     this.contentHeader.ClipboardBuffer
+      //     this.header.ClipboardType === T3Constant.ClipboardType.Table &&
+      //     this.header.ClipboardBuffer
       //   );
 
       //   const hasTextClipboard = (
@@ -735,10 +737,10 @@ class ToolActUtil {
       // Default case: Close any active edit and paste LM content
       T3Gv.opt.CloseEdit(false);
 
-      if (T3Gv.opt.contentHeader.ClipboardBuffer &&
-        T3Gv.opt.contentHeader.ClipboardType === T3Constant.ClipboardType.LM) {
+      if (T3Gv.opt.header.ClipboardBuffer &&
+        T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.LM) {
         // Collab.BeginSecondaryEdit();
-        this.PasteLM(T3Gv.opt.contentHeader.ClipboardBuffer);
+        this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         T3Util.Log("O.Opt PasteObjects - Output: LM content pasted");
       } else {
         T3Util.Log("O.Opt PasteObjects - Output: No pasteable content found");
@@ -857,7 +859,7 @@ class ToolActUtil {
             currentDirtyFrame = currentObject.FramezList;
           }
 
-          OptCMUtil.SetLinkFlag(selectedObjects[i], DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(selectedObjects[i], DSConstant.LinkFlags.Move);
           DataUtil.AddToDirtyList(selectedObjects[i], true);
           currentAlignRect = currentObject.GetAlignRect();
 
@@ -970,7 +972,7 @@ class ToolActUtil {
             this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
           }
           if (shape instanceof Instance.Shape.PolyLineContainer) {
-            OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.Move);
             DataUtil.AddToDirtyList(selectedList[tempCounter]);
             rotatedSubList = shape.RotateAllInContainer(shape.BlockID, angleDegrees);
             if (rotatedSubList && rotatedSubList.length) {
@@ -997,7 +999,7 @@ class ToolActUtil {
         for (tempCounter = 0; tempCounter < totalSelected; tempCounter++) {
           shape = DataUtil.GetObjectPtr(selectedList[tempCounter], true);
           if (!(shape instanceof Instance.Shape.PolyLineContainer)) {
-            OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.Move);
             DataUtil.AddToDirtyList(selectedList[tempCounter]);
             if (shape instanceof Instance.Shape.BaseLine) {
               if (shape instanceof Instance.Shape.PolyLine) {
@@ -1041,7 +1043,7 @@ class ToolActUtil {
               shape.RotationAngle = angleDegrees;
               shape.UpdateFrame(shape.Frame);
 
-              if (T3Gv.opt.contentHeader.flags & OptConstant.CntHeaderFlags.NoAuto) {
+              if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
                 let rightBoundary = shape.r.x + shape.r.width;
                 let bottomBoundary = shape.r.y + shape.r.height;
                 let offsetX = 0, offsetY = 0;
@@ -1204,8 +1206,9 @@ class ToolActUtil {
           T3Gv.opt.textClipboard = copiedText;
         }
         // SDUI.Commands.MainController.Selection.SetPasteEnable(this.textClipboard != null);
-        T3Gv.opt.contentHeader.ClipboardBuffer = null;
-        T3Gv.opt.contentHeader.ClipboardType = T3Constant.ClipboardType.Text;
+        T3Gv.opt.header.ClipboardBuffer = null;
+        T3Gv.opt.header.clipboardJson = null;
+        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.Text;
       }
       clipboardContent = T3Gv.opt.textClipboard;
       T3Util.Log("O.Opt CopyObjects - Output:", clipboardContent);
@@ -1229,7 +1232,11 @@ class ToolActUtil {
 
     const selectedObjectBlock = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
     SelectUtil.UpdateSelectionAttributes(selectedObjectBlock);
-    clipboardContent = T3Gv.opt.contentHeader.ClipboardBuffer;
+
+    clipboardContent = T3Gv.opt.header.ClipboardBuffer;
+
+    clipboardContent = T3Gv.opt.header.clipboardJson;
+
     T3Util.Log("O.Opt CopyObjects - Output:", clipboardContent);
     return clipboardContent;
   }
@@ -1239,18 +1246,15 @@ class ToolActUtil {
      * @param buffer - The buffer containing the object data.
      * @returns An array of selected object IDs that were pasted.
      */
-  static PasteLM(buffer: string): number[] {
+  static PasteLM(buffer: string, jsonData: any): number[] {
     T3Util.Log("O.Opt PasteLM - Input:", buffer);
+
 
     const resultWrapper = { selectedList: [] as number[] };
     // Determine the paste position: use global paste point if set, otherwise get paste position.
     const pastePosition = T3Gv.opt.PastePoint || this.GetPastePosition();
     let messagePayload: any = {};
 
-    // if (Collab.AllowMessage()) {
-    //   messagePayload.ClipboardString = Collab.BufferToString(buffer);
-    //   messagePayload.pastepos = Utils1.DeepCopy(pastePosition);
-    // }
 
     // Read symbol from buffer and update resultWrapper.selectedList accordingly.
     ShapeUtil.ReadSymbolFromBuffer(
@@ -1267,6 +1271,7 @@ class ToolActUtil {
       false,
       false
     );
+
 
     T3Gv.opt.PastePoint = null;
     DrawUtil.CompleteOperation(resultWrapper.selectedList);
@@ -1347,6 +1352,10 @@ class ToolActUtil {
    * @returns void
    */
   static CutObjects(isFromCutButton?: boolean): void {
+
+    // localStorage.setItem('before-cut-stdObj', JSON.stringify(T3Gv.stdObj));
+    // localStorage.setItem('before-cut-state', JSON.stringify(T3Gv.state));
+
     T3Util.Log("O.Opt CutObjects - Input:", { isFromCutButton });
     try {
       // If a cut is already in progress from a button and this call is from a button, cancel further processing.
@@ -1372,8 +1381,9 @@ class ToolActUtil {
           // Collab.BeginSecondaryEdit();
           TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Cut);
           activeTextEditor.Delete();
-          T3Gv.opt.contentHeader.ClipboardBuffer = null;
-          T3Gv.opt.contentHeader.ClipboardType = T3Constant.ClipboardType.Text;
+          T3Gv.opt.header.ClipboardBuffer = null;
+          T3Gv.opt.header.clipboardJson = null;
+          T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.Text;
           TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
         }
         T3Util.Log("O.Opt CutObjects - Output:", "Text cut completed.");
@@ -1400,6 +1410,10 @@ class ToolActUtil {
       this.CopyObjectsCommon(false);
       this.DeleteSelectedObjectsCommon();
 
+      localStorage.setItem('after-cut-stdObj', JSON.stringify(T3Gv.stdObj));
+      localStorage.setItem('after-cut-state', JSON.stringify(T3Gv.state));
+
+
       T3Util.Log("O.Opt CutObjects - Output:", "Graphic objects cut completed.");
     } catch (error) {
       T3Gv.opt.RestorePrimaryStateManager();
@@ -1419,6 +1433,14 @@ class ToolActUtil {
 
     // Retrieve the currently selected objects.
     const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+
+
+    // const theCutObj = DataUtil.GetObjectPtr(selectedObjects[0], false);
+    // localStorage.setItem('the-cut-obj', JSON.stringify(theCutObj));
+
+    // T3Gv.cutObj = theCutObj;
+
+
 
     // // If there are selected objects and we're in a MindMap planning document, commit the visual outline.
     // if (selectedObjects.length && this.IsPlanningDocument() === NvConstant.LayerTypes.SD_LAYERT_MINDMAP) {
@@ -1458,17 +1480,23 @@ class ToolActUtil {
       }
 
       // If returnBuffer flag is true, return the sorted zList and written buffer.
-      if (returnBuffer) {
-        T3Util.Log("O.Opt CopyObjectsCommon - Output:", { zList: sortedObjects, buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false) });
-        return {
-          zList: sortedObjects,
-          buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false)
-        };
-      }
+      // if (returnBuffer) {
+      //   T3Util.Log("O.Opt CopyObjectsCommon - Output:", { zList: sortedObjects, buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false) });
+      //   return {
+      //     zList: sortedObjects,
+      //     buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false)
+      //   };
+      // }
 
       // Otherwise update the clipboard buffer and clipboard type.
-      T3Gv.opt.contentHeader.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
-      T3Gv.opt.contentHeader.ClipboardType = T3Constant.ClipboardType.LM;
+      T3Gv.opt.header.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
+
+      // var dataToStore = ShapeUtil.WriteJson(sortedObjects);
+      // T3Gv.opt.header.clipboardJson = JSON.stringify(dataToStore);
+      // console.log("=U.ToolActUtil.CopyObjectsCommon - Output: Clipboard Json =", T3Gv.opt.header.clipboardJson);
+      // console.log("=u.ToolActUtil before data ", selectedObjects)
+
+      T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
 
       // Refresh the selected objects list by removing any objects that are not visible.
       const updatedSelectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
@@ -1666,7 +1694,7 @@ class ToolActUtil {
     // Update link flags for containers
     const containerCount = containerIds.length;
     for (index = 0; index < containerCount; index++) {
-      OptCMUtil.SetLinkFlag(containerIds[index], DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(containerIds[index], DSConstant.LinkFlags.Move);
     }
 
     // Update all links
@@ -2207,7 +2235,7 @@ class ToolActUtil {
 
     // If there was any actual offset, update links and mark as dirty
     if (offsetX || offsetY) {
-      OptCMUtil.SetLinkFlag(shapeId, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(shapeId, DSConstant.LinkFlags.Move);
       DataUtil.AddToDirtyList(shapeId, true);
     }
 
