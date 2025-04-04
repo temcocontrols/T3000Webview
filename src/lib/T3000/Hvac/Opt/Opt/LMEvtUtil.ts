@@ -331,18 +331,6 @@ class LMEvtUtil {
         T3Util.Log("O.Opt LMShapeIconClick - Output: true (Note toggled)");
         return true;
 
-      // case OptConstant.ShapeIconType.ExpandTable:
-      //   // Handle expand table icon
-      //   const cellForExpand = drawingObject.IsNoteCell(userData);
-      //   T3Util.Log("O.Opt LMShapeIconClick - Output: false (Table expanded)");
-      //   break;
-
-      // case OptConstant.ShapeIconType.CollapseTable:
-      //   // Handle collapse table icon
-      //   const cellForCollapse = drawingObject.IsNoteCell(userData);
-      //   T3Util.Log("O.Opt LMShapeIconClick - Output: false (Table collapsed)");
-      //   break;
-
       case OptConstant.ShapeIconType.FieldData:
         // Handle field data icon
         let isShiftPressed = event.shiftKey;
@@ -767,37 +755,10 @@ class LMEvtUtil {
         drawingObject.Dimensions & NvConstant.DimensionFlags.Area) {
         DataUtil.AddToDirtyList(objectId);
       }
-
-      // // Add to collaboration message data if needed
-      // if (Collab.AllowMessage()) {
-      //   moveMessageData.moveList.push(objectId);
-      //   moveMessageData.thePointList.push(Utils1.DeepCopy(objectPosition));
-      // }
     }
-
-    // // Build and send collaboration message
-    // let collabMessage = null;
-    // if (Collab.AllowMessage()) {
-    //   moveMessageData.linkParams = Utils1.DeepCopy(T3Gv.opt.linkParams);
-    //   collabMessage = Collab.BuildMessage(
-    //     NvConstant.CollabMessages.MoveObjects,
-    //     moveMessageData,
-    //     false,
-    //     true
-    //   );
-    // }
 
     // Finalize the move operation
     this.LMMovePostRelease(true, moveData);
-
-    // // Send collaboration message if needed
-    // if (collabMessage) {
-    //   if (Collab.IsSecondary() && Collab.CreateList.length) {
-    //     collabMessage.Data.CreateList = [];
-    //     collabMessage.Data.CreateList = collabMessage.Data.CreateList.concat(Collab.CreateList);
-    //   }
-    //   Collab.SendMessage(collabMessage);
-    // }
 
     // Handle duplicate operation tracking
     if (!moveData && T3Gv.opt.lastOpDuplicate) {
@@ -899,17 +860,6 @@ class LMEvtUtil {
       // Handle object connections
       else if (T3Gv.opt.linkParams &&
         (T3Gv.opt.linkParams.ConnectIndex >= 0 || T3Gv.opt.linkParams.InitialHook >= 0)) {
-
-        // // Allow flow chart business logic to handle the hook if needed
-        // if (T3Gv.gFlowChartManager) {
-        //   flowChartHookResult = T3Gv.gFlowChartManager.FlowChartHook(
-        //     this.dragTargetId,
-        //     this.linkParams.InitialHook,
-        //     this.linkParams.ConnectIndex,
-        //     this.linkParams.HookIndex,
-        //     this.linkParams.ConnectPt
-        //   );
-        // }
 
         // If flow chart handling didn't succeed, handle the connection based on hook flag
         if (!flowChartHookResult) {
@@ -1038,12 +988,6 @@ class LMEvtUtil {
       return false;
     }
 
-    // // Lock messages and begin secondary edit for collaboration
-    // if (Collab.AllowMessage()) {
-    //   Collab.LockMessages();
-    //   Collab.BeginSecondaryEdit();
-    // }
-
     // Handle format painter mode
     if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
       targetId = svgElement.GetID();
@@ -1081,33 +1025,6 @@ class LMEvtUtil {
       if (targetObject) {
         drawingObject = targetObject.Data;
 
-        if (/*drawingObject.IsSwimlane()*/false) {
-          // if (clickedElementId === OptConstant.Common.TableCellNoHit) {
-          //   tableObject = drawingObject.GetTable(false);
-          //   const cellIndex = this.Table_GetCellClicked(drawingObject, event);
-
-          //   if (
-          //     cellIndex >= 0 &&
-          //     tableObject.cells[cellIndex].flags & TODO.Table.CellFlags.SDT_F_NoText &&
-          //     !isRightClick
-          //   ) {
-          //     SelectUtil.StartRubberBandSelect(event);
-          //     T3Util.Log("O.Opt LMSetupMove - Output: false (Started rubber band select on swimlane)");
-          //     return false;
-          //   }
-          // } else
-
-          if (
-            drawingObject.objecttype === NvConstant.FNObjectTypes.FrameContainer &&
-            clickedElementId === OptConstant.SVGElementClass.Shape &&
-            !isRightClick
-          ) {
-            SelectUtil.StartRubberBandSelect(event);
-            T3Util.Log("O.Opt LMSetupMove - Output: false (Started rubber band select on frame container)");
-            return false;
-          }
-        }
-
         // Check for one-click text objects
         isOneClickTextObject = (drawingObject.TextFlags & NvConstant.TextFlags.OneClick) > 0;
         if (isRightClick) {
@@ -1119,99 +1036,24 @@ class LMEvtUtil {
         }
       }
 
-      // Handle active table and special element types
-      // const activeTableId = this.Table_GetActiveID();
-      // tableObject = drawingObject.GetTable(false);
+      // Handle non-active table elements
+      switch (clickedElementId) {
 
-      // if (activeTableId === this.dragTargetId || (isOneClickTextObject && tableObject !== null)) {
-      //   switch (clickedElementId) {
-      //     case OptConstant.SVGElementClass.Shape:
-      //     case OptConstant.Common.TableSelection:
-      //     case OptConstant.Common.TableCells:
-      //       const windowCoordinates = this.svgDoc.ConvertWindowToDocCoords(
-      //         event.gesture.center.clientX,
-      //         event.gesture.center.clientY
-      //       );
-      //       if (Utils2.pointInRect(drawingObject.trect, windowCoordinates)) {
-      //         clickedElementId = OptConstant.Common.TableCellHit;
-      //       }
-      //       break;
-      //     case OptConstant.SVGElementClass.Text:
-      //       if (clickedElementUserData >= 0) {
-      //         clickedElementId = OptConstant.Common.TableTextHit;
-      //       }
-      //       break;
-      //     case OptConstant.SVGElementClass.Slop:
-      //     case OptConstant.SVGElementClass.BackgroundImage:
-      //       isOneClickTextObject = false;
-      //       break;
-      //   }
-      // } else
-
-      {
-        // Handle non-active table elements
-        switch (clickedElementId) {
-          //  case OptConstant.Common.TableRowHitHidden:
-          // case OptConstant.Common.TableRowHit:
-          // case OptConstant.Common.TableRowSelection:
-          // case OptConstant.Common.TableColHit:
-          // case OptConstant.Common.TableColHitHidden:
-          // case OptConstant.Common.TableColSelection:
-          // case OptConstant.Common.TableCellHit:
-          // case OptConstant.Common.TableCells:
-          case OptConstant.SVGElementClass.BackgroundImage:
-            clickedElementId = '';
-            break;
-          case OptConstant.SVGElementClass.Slop:
-            T3Gv.opt.DeactivateAllTextEdit(false);
-            isOneClickTextObject = false;
-            break;
-        }
+        case OptConstant.SVGElementClass.BackgroundImage:
+          clickedElementId = '';
+          break;
+        case OptConstant.SVGElementClass.Slop:
+          T3Gv.opt.DeactivateAllTextEdit(false);
+          isOneClickTextObject = false;
+          break;
       }
 
       // Handle actions based on the clicked element type
       switch (clickedElementId) {
-        // case OptConstant.Common.GraphTextHit:
-        //   this.Graph_SetupAction(event, this.dragTargetId, clickedElementId, clickedElementUserData);
-        //   T3Util.Log("O.Opt LMSetupMove - Output: false (Graph text hit)");
-        //   return false;
 
         case OptConstant.SVGElementClass.BackgroundImage:
-          // case OptConstant.Common.TableCellHit:
-          // case OptConstant.Common.TableTextHit:
-          // case OptConstant.Common.TableCells:
-          // case OptConstant.Common.TableRowZone:
-          // case OptConstant.Common.TableColZone:
-          // const actionResult = this.Table_SetupAction(event, this.dragTargetId, clickedElementId, clickedElementUserData);
-          // if (actionResult === true || actionResult === -1) {
-          //   T3Util.Log("O.Opt LMSetupMove - Output: Setup action handled");
-          //   return actionResult;
-          // }
+
           break;
-
-        // case OptConstant.Common.TableRowHitHidden:
-        // case OptConstant.Common.TableRowHit:
-        // case OptConstant.Common.TableRowSelection:
-        //   if (drawingObject && this.TableHideUI(drawingObject)) {
-        //     T3Util.Log("O.Opt LMSetupMove - Output: false (Table UI hidden)");
-        //     return false;
-        //   }
-        //   const rowData = clickedElement.GetUserData();
-        //   this.Table_SetupAction(event, this.dragTargetId, OptConstant.Common.TableRowHit, rowData);
-        //   T3Util.Log("O.Opt LMSetupMove - Output: false (Table row action)");
-        //   return false;
-
-        // case OptConstant.Common.TableColHit:
-        // case OptConstant.Common.TableColHitHidden:
-        // case OptConstant.Common.TableColSelection:
-        //   if (drawingObject && this.TableHideUI(drawingObject)) {
-        //     T3Util.Log("O.Opt LMSetupMove - Output: false (Table UI hidden)");
-        //     return false;
-        //   }
-        //   const colData = clickedElement.GetUserData();
-        //   this.Table_SetupAction(event, this.dragTargetId, OptConstant.Common.TableColHit, colData);
-        //   T3Util.Log("O.Opt LMSetupMove - Output: false (Table column action)");
-        //   return false;
 
         case OptConstant.Common.HitAreas:
           const hitAreaData = clickedElement.GetUserData();
@@ -1230,12 +1072,6 @@ class LMEvtUtil {
         return false;
       }
     }
-
-    // // Close table editing if needed
-    // if (tableObject && targetObject && this.Table_CloseEdit(targetObject, tableObject)) {
-    //   const selectedList = DataUtil.GetObjectPtr(this.theSelectedListBlockID, false);
-    //   this.UpdateSelectionAttributes(selectedList);
-    // }
 
     // Handle selection
     if (!SelectUtil.SelectObjectFromClick(event, svgElement, true)) {
@@ -1267,11 +1103,6 @@ class LMEvtUtil {
     const connectorEndInfo = {};
     const genogramPartnerInfo = {};
     const flowchartShapeInfo = {};
-
-    // Handle special object types
-    // if (this.IsLoneFlowchartShape(drawingObject, flowchartShapeInfo)) {
-    //   T3Gv.opt.dragTargetId = flowchartShapeInfo.id;
-    // } else
 
     if (T3Gv.opt.IsConnectorEndShape(drawingObject, null, connectorEndInfo)) {
       T3Gv.opt.dragTargetId = connectorEndInfo.id;
@@ -1453,9 +1284,6 @@ class LMEvtUtil {
           return;
         }
       }
-
-      // // If setup was successful, continue with move operation
-      // Collab.UnLockMessages();
 
       // Set edit mode if not in a modal operation
       if (T3Gv.opt.crtOpt === OptConstant.OptTypes.None) {
@@ -1658,13 +1486,6 @@ class LMEvtUtil {
     return false;
   }
 
-
-
-
-
-
-
-
   /**
    * Handles clicks on test icons in the SVG document
    * @param event - The event that triggered the icon click
@@ -1691,12 +1512,6 @@ class LMEvtUtil {
 
       // Handle different element types
       switch (elementId) {
-        // case OptConstant.Common.TableRowHit:
-        // case OptConstant.Common.TableRowHitHidden:
-        // case OptConstant.Common.TableRowSelection:
-        //   // Table row handling - no default action
-        //   break;
-
         case OptConstant.Common.HitAreas:
           // Handle hit area click
           const hitAreaData = targetElement.GetUserData();
@@ -1807,8 +1622,6 @@ class LMEvtUtil {
           // Initialize dynamic guides for snapping
           const dynamicGuides = new DynamicGuides();
           const objectIds = [T3Gv.opt.dragTargetId];
-
-          //DynamicSnapsGetSnapObjects(selectedObject, bounds, dynamicGuides, snapDistance, includeCenters, restrictToVisible)
 
           // Calculate snap points and update guides
           DynamicUtil.DynamicSnapsGetSnapObjects(snapTargetId, targetRectCopy, dynamicGuides, objectIds, null, snapOptions);

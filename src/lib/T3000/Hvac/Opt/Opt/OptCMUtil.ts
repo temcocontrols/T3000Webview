@@ -178,34 +178,34 @@ class OptCMUtil {
     if (!actualCursorType) {
       switch (stateMode) {
         case NvConstant.EditState.Stamp:
-          actualCursorType = CursorConstant.CursorType.STAMP;
+          actualCursorType = CursorConstant.CursorType.Stamp;
           break;
         case NvConstant.EditState.Text:
-          actualCursorType = CursorConstant.CursorType.TEXT;
+          actualCursorType = CursorConstant.CursorType.Text;
           break;
         case NvConstant.EditState.FormatPaint:
-          actualCursorType = CursorConstant.CursorType.PAINT;
+          actualCursorType = CursorConstant.CursorType.Paint;
           break;
         case NvConstant.EditState.LinkConnect:
-          actualCursorType = CursorConstant.CursorType.ANCHOR;
+          actualCursorType = CursorConstant.CursorType.Anchor;
           break;
         case NvConstant.EditState.LinkJoin:
-          actualCursorType = CursorConstant.CursorType.EDIT_CLOSE;
+          actualCursorType = CursorConstant.CursorType.EditClose;
           break;
         case NvConstant.EditState.Edit:
-          actualCursorType = CursorConstant.CursorType.EDIT;
+          actualCursorType = CursorConstant.CursorType.Edit;
           break;
         case NvConstant.EditState.DragControl:
-          actualCursorType = CursorConstant.CursorType.NESW_RESIZE;
+          actualCursorType = CursorConstant.CursorType.NeswResize;
           break;
         case NvConstant.EditState.DragShape:
-          actualCursorType = CursorConstant.CursorType.MOVE;
+          actualCursorType = CursorConstant.CursorType.Move;
           break;
         case NvConstant.EditState.Grab:
-          actualCursorType = CursorConstant.CursorType.GRAB;
+          actualCursorType = CursorConstant.CursorType.Grab;
           break;
         default:
-          actualCursorType = CursorConstant.CursorType.DEFAULT;
+          actualCursorType = CursorConstant.CursorType.Default;
       }
     }
 
@@ -259,12 +259,6 @@ class OptCMUtil {
           this.ResetHammerGesture('dragstart', T3Gv.wallOpt.AddCorner, T3Gv.Evt_ShapeDragStart);
         }
         break;
-      // case OptConstant.OptTypes.SplitWall:
-      //   if (T3Gv.wallOpt && T3Gv.wallOpt.SplitWall) {
-      //     this.ResetHammerGesture('dragstart', T3Gv.wallOpt.SplitWall, T3Gv.Evt_ShapeDragStart);
-      //     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
-      //   }
-      //   break;
     }
     T3Util.Log("O.Opt CancelOperation - Output: completed");
   }
@@ -316,16 +310,6 @@ class OptCMUtil {
             }
           }
         }
-        // // Handle table objects with CREATE operations
-        // else if (storedObject.Type === StateConstant.StoredObjectType.TABLE_OBJECT &&
-        //   storedObject.stateOptTypeId === StateConstant.StateOperationType.CREATE) {
-        //   tableObject = T3Gv.stdObj.GetObject(storedObject.ID);
-
-        //   if (tableObject) {
-        //     tableData = tableObject.Data;
-        //     this.Table_RebuildURLs(tableData);
-        //   }
-        // }
       }
     }
 
@@ -397,29 +381,6 @@ class OptCMUtil {
           }
         }
       }
-      // // Handle table objects
-      // else if (storedObject.Type === StateConstant.StoredObjectType.TABLE_OBJECT) {
-      //   if (storedObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
-      //     if (!isNextState) {
-      //       tableObject = T3Gv.stdObj.GetObject(storedObject.ID);
-
-      //       if (tableObject) {
-      //         tableData = tableObject.Data;
-      //         T3Gv.opt.Table_RebuildURLs(tableData);
-      //       }
-      //     }
-      //   } else {
-      //     storedData = storedObject.Data;
-      //     tableObject = T3Gv.stdObj.GetObject(storedObject.ID);
-
-      //     if (tableObject) {
-      //       tableData = tableObject.Data;
-      //       this.Table_RefreshURLs(storedData, tableData, false);
-      //     } else {
-      //       this.Table_DeleteURLs(storedData);
-      //     }
-      //   }
-      // }
     }
 
     T3Util.Log("O.Opt RebuildURLs - Output: URLs rebuilt for state:", stateId);
