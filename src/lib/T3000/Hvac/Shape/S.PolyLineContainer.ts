@@ -660,7 +660,7 @@ class PolyLineContainer extends PolyLine {
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
-    OptCMUtil.SetLinkFlag(event, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(event, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
 
     if (this.arcobj) {
@@ -764,9 +764,9 @@ class PolyLineContainer extends PolyLine {
     let newY = rotatedPoints[segmentIndex].y;
     this.AdjustPolySeg(event, adjustedX, adjustedY, newX, newY, hitSegmentData, true, 0);
 
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     for (let i = 0; i < this.hooks.length; i++) {
-      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
     }
 
     T3Gv.opt.ActionTriggerData = segmentIndex;

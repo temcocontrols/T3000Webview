@@ -2202,7 +2202,7 @@ class SegmentedLine extends BaseLine {
       this.AdjustLineStart(svgElement, this.StartPoint.x + deltaWidth, this.StartPoint.y + deltaHeight, 0);
     }
 
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     T3Util.Log("= S.SegmentedLine: SetSize output", { deltaWidth, deltaHeight, isEndAdjusted });
   }
 
@@ -2362,7 +2362,7 @@ class SegmentedLine extends BaseLine {
           OptConstant.ActionTriggerType.Rotate
         );
       }
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     }
 
     T3Gv.opt.ob = {};
@@ -3284,7 +3284,7 @@ class SegmentedLine extends BaseLine {
 
     // Recalculate the frame and mark element as modified
     this.CalcFrame(true);
-    OptCMUtil.SetLinkFlag(elementId, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(elementId, DSConstant.LinkFlags.Move);
     DataUtil.AddToDirtyList(elementId);
 
     T3Util.Log("= S.SegmentedLine: LinkGrow output", {
