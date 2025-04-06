@@ -1281,7 +1281,7 @@ class BaseDrawObject {
   AfterModifyShape(shape: any, additionalData: any): void {
     T3Util.Log("= S.BaseDrawObject: AfterModifyShape input:", { shape, additionalData });
 
-    OptCMUtil.SetLinkFlag(shape, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(shape, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
 
     T3Util.Log("= S.BaseDrawObject: AfterModifyShape output: links updated");
@@ -1290,7 +1290,7 @@ class BaseDrawObject {
   AfterRotateShape(shape: any): void {
     T3Util.Log("= S.BaseDrawObject: AfterRotateShape input:", shape);
 
-    OptCMUtil.SetLinkFlag(shape, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(shape, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
 
     T3Util.Log("= S.BaseDrawObject: AfterRotateShape output: links updated");
@@ -1385,10 +1385,10 @@ class BaseDrawObject {
     // Show the appropriate contextual menu based on read-only status
     if (T3Gv.docUtil.IsReadOnly()) {
       // Show read-only context menu
-      UIUtil.ShowContextMenu("", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
     } else {
       // Show editable context menu
-      UIUtil.ShowContextMenu("", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
     }
 
     T3Util.Log("= S.BaseDrawObject: RightClick output: Contextual menu shown");
@@ -2348,8 +2348,8 @@ class BaseDrawObject {
 
     if (targetPoints && isPointInRect) {
       HookUtil.UpdateHook(hookedObject.BlockID, 0, this.BlockID, hookedObject.hooks[0].hookpt, targetPoints[0]);
-      OptCMUtil.SetLinkFlag(hookedObject.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(hookedObject.BlockID, DSConstant.LinkFlags.Move);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
       T3Gv.opt.UpdateLinks();
       HookUtil.UpdateHook(hookedObject.BlockID, 0, this.BlockID, hookedObject.hooks[0].hookpt, targetPoints[0]);
     } else {

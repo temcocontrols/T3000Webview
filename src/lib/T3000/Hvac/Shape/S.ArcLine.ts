@@ -911,7 +911,7 @@ class ArcLine extends BaseLine {
           OptConstant.ActionTriggerType.Rotate
         );
       }
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     }
 
     // Reset the backup object
