@@ -415,7 +415,7 @@ class ToolAct2Util {
     for (i = 0; i < containerCount; i++) {
       OptCMUtil.SetLinkFlag(
         shapeContainerIds[i],
-        DSConstant.LinkFlags.SED_L_MOVE
+        DSConstant.LinkFlags.Move
       );
     }
 
