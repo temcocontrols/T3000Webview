@@ -130,11 +130,6 @@ class Oval extends BaseShape {
 
     shapeContainer.isShape = true;
 
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Gv.opt.LM_AddSVGTableObject(this, renderer, shapeContainer, table);
-    // }
-
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);
     }
@@ -190,41 +185,7 @@ class Oval extends BaseShape {
 
   ExtendLines() {
     T3Util.Log('S.Oval: ExtendLines called');
-
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Util.Log('S.Oval: Input table:', table);
-    //   T3Gv.opt.Table_ExtendLines(this, table);
-    //   T3Util.Log('S.Oval: Table lines extended');
-    // }
   }
-
-  // ExtendCell(cellIndex, rowIndex, columnIndex) {
-  //   T3Util.Log('S.Oval: Input parameters:', { cellIndex, rowIndex, columnIndex });
-
-  //   const table = this.GetTable(false);
-  //   if (table) {
-  //     const extendedCells = T3Gv.opt.Table_ExtendCell(this, table, cellIndex, rowIndex, columnIndex);
-  //     if (extendedCells) {
-  //       const svgFrame = this.GetSVGFrame(this.Frame);
-  //       const offsetX = this.inside.x - svgFrame.x;
-  //       const offsetY = this.inside.y - svgFrame.y;
-
-  //       if (offsetX || offsetY) {
-  //         for (let i = 0; i < extendedCells.length; i++) {
-  //           extendedCells[i].x += offsetX;
-  //           extendedCells[i].y += offsetY;
-  //         }
-  //       }
-
-  //       T3Util.Log('S.Oval: Output extendedCells:', extendedCells);
-  //       return extendedCells;
-  //     }
-  //   }
-
-  //   T3Util.Log('S.Oval: No table found or no cells extended');
-  //   return null;
-  // }
 
   GetPerimeterPoints(event, points, hookType, isClosed, tableIndex, isReversed) {
     T3Util.Log('S.Oval: Input parameters:', { event, points, hookType, isClosed, tableIndex, isReversed });
@@ -251,24 +212,9 @@ class Oval extends BaseShape {
       return perimeterPoints;
     }
 
-    // let table = this.GetTable(false);
-    // if (tableIndex != null && table) {
-    //   let tablePerimeterPoints = T3Gv.opt.Table_GetPerimPts(this, table, tableIndex, points);
-    //   if (tablePerimeterPoints) {
-    //     perimeterPoints = tablePerimeterPoints;
-    //     if (!isClosed) {
-    //       let rotationAngle = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
-    //       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, perimeterPoints);
-    //     }
-    //     T3Util.Log('S.Oval: Output perimeterPoints:', perimeterPoints);
-    //     return perimeterPoints;
-    //   }
-    // }
-
     let useConnect = this.flags & NvConstant.ObjFlags.UseConnect;
-    // let useTableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
 
-    if (useConnect /*|| useTableRows*/) {
+    if (useConnect) {
       for (let i = 0; i < points.length; i++) {
         perimeterPoints[i] = {
           x: points[i].x / dimension * frameWidth + this.Frame.x,

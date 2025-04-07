@@ -1387,58 +1387,6 @@ class BaseLine extends BaseDrawObject {
     if (!isSecondary) {
       LMEvtUtil.UnbindActionClickHammerEvents();
       this.ResetAutoScrollTimer();
-
-      // if (Collab.AllowMessage()) {
-      //   const actionData = {
-      //     BlockID: T3Gv.opt.actionStoredObjectId,
-      //     actionTriggerId: T3Gv.opt.actionTriggerId,
-      //     rotateEndRotation: T3Gv.opt.rotateEndRotation,
-      //     rotatePivotX: T3Gv.opt.rotatePivotX,
-      //     rotatePivotY: T3Gv.opt.rotatePivotY,
-      //     rotateStartPoint: Utils1.DeepCopy(T3Gv.opt.rotateStartPoint),
-      //     CurveAdjust: this.CurveAdjust,
-      //     IsReversed: this.IsReversed,
-      //     Frame: Utils1.DeepCopy(this.Frame),
-      //     StartPoint: Utils1.DeepCopy(this.StartPoint),
-      //     EndPoint: Utils1.DeepCopy(this.EndPoint),
-      //   };
-
-      //   if (T3Gv.opt.actionTriggerData) {
-      //     actionData.hitSegment = T3Gv.opt.actionTriggerData.hitSegment;
-      //     actionData.moveAngle = T3Gv.opt.actionTriggerData.moveAngle;
-      //   }
-
-      //   if (T3Gv.opt.ob.Frame) {
-      //     actionData.ob = {
-      //       StartPoint: Utils1.DeepCopy(T3Gv.opt.ob.StartPoint),
-      //       EndPoint: Utils1.DeepCopy(T3Gv.opt.ob.EndPoint),
-      //       Frame: Utils1.DeepCopy(T3Gv.opt.ob.Frame),
-      //       CurveAdjust: T3Gv.opt.ob.CurveAdjust,
-      //       IsReversed: T3Gv.opt.ob.IsReversed,
-      //     };
-      //   }
-
-      //   if (T3Gv.opt.linkParams) {
-      //     actionData.linkParams = Utils1.DeepCopy(T3Gv.opt.linkParams);
-      //   }
-
-      //   if (this.segl) {
-      //     actionData.segl = Utils1.DeepCopy(this.segl);
-      //   }
-
-      //   if (this.polylist) {
-      //     actionData.polylist = Utils1.DeepCopy(this.polylist);
-      //   }
-
-      //   if (this.pointlist) {
-      //     actionData.pointlist = Utils1.DeepCopy(this.pointlist);
-      //   }
-
-      //   if (T3Gv.opt.actionTriggerId === OptConstant.ActionTriggerType.DimLineAdj) {
-      //     actionData.dimensionDeflectionH = this.dimensionDeflectionH;
-      //     actionData.dimensionDeflectionV = this.dimensionDeflectionV;
-      //   }
-      // }
     }
 
     switch (T3Gv.opt.actionTriggerId) {
@@ -2612,7 +2560,7 @@ class BaseLine extends BaseDrawObject {
           strokeSize: 1,
           strokeColor: '#777777',
           KnobID: 0,
-          cursorType: CursorConstant.CursorType.ANCHOR
+          cursorType: CursorConstant.CursorType.Anchor
         };
         if (isJoin) {
           knobParams.fillColor = 'none';
@@ -2632,7 +2580,7 @@ class BaseLine extends BaseDrawObject {
           strokeSize: 1,
           strokeColor: '#777777',
           KnobID: 0,
-          cursorType: CursorConstant.CursorType.ANCHOR
+          cursorType: CursorConstant.CursorType.Anchor
         };
         if (isJoin) {
           knobParams.fillColor = 'none';
@@ -3049,9 +2997,14 @@ class BaseLine extends BaseDrawObject {
 
     // Handle the lineStamp flag: if set, unbind mousemove on non-mobile platforms
     if (T3Gv.opt.lineStamp) {
-      if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+      // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+      //   T3Gv.opt.WorkAreaHammer.off('mousemove');
+      // }
+
+      if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');
       }
+
       T3Gv.opt.lineStamp = false;
     }
 
@@ -3119,12 +3072,20 @@ class BaseLine extends BaseDrawObject {
         Math.abs(deltaY) < movementThreshold
       ) {
         T3Gv.opt.lineStamp = true;
-        if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+        // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+        //   T3Gv.opt.WorkAreaHammer.on(
+        //     "mousemove",
+        //     EvtUtil.Evt_DrawTrackHandlerFactory(this)
+        //   );
+        // }
+
+        if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.on(
             "mousemove",
             EvtUtil.Evt_DrawTrackHandlerFactory(this)
           );
         }
+
         T3Util.Log("= S.BaseLine: LMDrawRelease - negligible movement; early exit.");
         return;
       }
@@ -3169,9 +3130,14 @@ class BaseLine extends BaseDrawObject {
 
       // Unbind temporary mousemove events if set via lineStamp, then reset flag
       if (T3Gv.opt.lineStamp) {
-        if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+        // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+        //   T3Gv.opt.WorkAreaHammer.off("mousemove");
+        // }
+
+        if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.off("mousemove");
         }
+
         T3Gv.opt.lineStamp = false;
       }
 
@@ -3525,9 +3491,14 @@ class BaseLine extends BaseDrawObject {
     LMEvtUtil.UnbindActionClickHammerEvents();
 
     if (T3Gv.opt.lineStamp) {
-      if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+      // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
+      //   T3Gv.opt.WorkAreaHammer.off('mousemove');
+      // }
+
+      if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');
       }
+
       T3Gv.opt.lineStamp = false;
     }
 
@@ -3565,79 +3536,6 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
-  }
-
-  WriteShapeData(outputStream, options) {
-
-
-    T3Util.Log("= S.BaseLine: WriteShapeData called with input:", { outputStream: outputStream, options: options });
-
-    return;
-
-    // Initialize attach flag and a temporary DataID holder.
-    let attachFlag = 0;
-    let dataIdForWrite = -1;
-
-    // Process only if DataID is valid.
-    if (this.DataID >= 0) {
-      T3Util.Log("= S.BaseLine: DataID is valid:", this.DataID);
-
-      // Evaluate vertical justification from text alignment.
-      const textAlignWin = ShapeUtil.TextAlignToWin(this.TextAlign);
-      switch (textAlignWin.vjust) {
-        case TextConstant.TextJust.Top:
-        case TextConstant.TextJust.Bottom:
-          T3Util.Log("= S.BaseLine: Vertical justification is TOP or BOTTOM");
-          break;
-      }
-
-      // Set attachFlag based on LineTextX. Default is AttachC.
-      attachFlag = NvConstant.TextFlags.AttachC;
-      if (this.LineTextX) {
-        attachFlag = NvConstant.TextFlags.AttachC;
-        T3Util.Log("= S.BaseLine: LineTextX is set; using AttachC flag");
-      }
-
-      // Clear all attach flags (AttachA, AttachB, AttachC, and AttachD).
-      this.TextFlags = Utils2.SetFlag(
-        this.TextFlags,
-        NvConstant.TextFlags.AttachA |
-        NvConstant.TextFlags.AttachB |
-        NvConstant.TextFlags.AttachC |
-        NvConstant.TextFlags.AttachD,
-        false
-      );
-      T3Util.Log("= S.BaseLine: Cleared attach flags; current TextFlags:", this.TextFlags);
-
-      // Set the specific attach flag.
-      this.TextFlags = Utils2.SetFlag(this.TextFlags, attachFlag, true);
-      T3Util.Log("= S.BaseLine: Set attach flag (", attachFlag, "); current TextFlags:", this.TextFlags);
-
-      // Set the horizontal text flag based on TextDirection.
-      this.TextFlags = Utils2.SetFlag(
-        this.TextFlags,
-        NvConstant.TextFlags.HorizText,
-        !this.TextDirection
-      );
-      T3Util.Log("= S.BaseLine: Set horizontal text flag (", !this.TextDirection, "); current TextFlags:", this.TextFlags);
-    }
-
-    if (options.WriteBlocks) {
-      dataIdForWrite = this.DataID;
-    }
-
-    // Write text parameters to ShapeUtil.
-    T3Util.Log("= S.BaseLine: Writing text parameters with DataID:", dataIdForWrite);
-    ShapeUtil.WriteTextParams(outputStream, this, dataIdForWrite, options);
-
-    // Write arrowhead attributes.
-    T3Util.Log("= S.BaseLine: Writing arrowhead attributes");
-    ShapeUtil.WriteArrowheads(outputStream, options, this);
-
-    T3Util.Log("= S.BaseLine: WriteShapeData completed with output:", {
-      DataID: this.DataID,
-      TextFlags: this.TextFlags
-    });
   }
 
   ChangeBackgroundColor(newColor: string, currentColor: string): void {
@@ -4249,9 +4147,9 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: Retrieved shapeElement and slopElement", { shapeElement, slopElement });
 
     // Look up arrowhead definitions using constants.
-    let startArrow = T3Gv.ArrowheadLookupTable[this.StartArrowID];
-    let endArrow = T3Gv.ArrowheadLookupTable[this.EndArrowID];
-    const arrowSize = T3Gv.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
+    let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
+    const arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
     T3Util.Log("= S.BaseLine: Arrow lookup:", { startArrow, endArrow, arrowSize });
 
     // If arrow id is zero, set the corresponding arrow to null.
@@ -4361,7 +4259,7 @@ class BaseLine extends BaseDrawObject {
       } else if (this.NoGrow()) {
         knobParams.fillColor = 'red';
         knobParams.strokeColor = 'red';
-        knobParams.cursorType = CursorConstant.CursorType.DEFAULT;
+        knobParams.cursorType = CursorConstant.CursorType.Default;
       }
 
       // Set the position and ID for the LINESTART knob
@@ -4390,7 +4288,7 @@ class BaseLine extends BaseDrawObject {
       actionKnob = this.GenericKnob(knobParams);
       if (this.objecttype === NvConstant.FNObjectTypes.FlWall && actionKnob.SetURL) {
         actionKnob.SetURL(
-          knobParams.cursorType === CursorConstant.CursorType.NWSE_RESIZE
+          knobParams.cursorType === CursorConstant.CursorType.NwseResize
             ? CursorConstant.Knob.Path + CursorConstant.Knob.DiagonLeft
             : CursorConstant.Knob.Path + CursorConstant.Knob.DiagonRight
         );
@@ -4418,7 +4316,7 @@ class BaseLine extends BaseDrawObject {
       actionKnob = this.GenericKnob(knobParams);
       if (this.objecttype === NvConstant.FNObjectTypes.FlWall && actionKnob.SetURL) {
         actionKnob.SetURL(
-          knobParams.cursorType === CursorConstant.CursorType.NWSE_RESIZE
+          knobParams.cursorType === CursorConstant.CursorType.NwseResize
             ? CursorConstant.Knob.Path + CursorConstant.Knob.DiagonLeft
             : CursorConstant.Knob.Path + CursorConstant.Knob.DiagonRight
         );
@@ -4446,7 +4344,7 @@ class BaseLine extends BaseDrawObject {
         } else {
           knobParams.y = this.EndPoint.y + 3 * scaledRotKnobSize * Math.sin(angleTan) - this.Frame.y + scaledKnobSize / 2 - scaledRotKnobSize / 2;
         }
-        knobParams.cursorType = CursorConstant.CursorType.ROTATE;
+        knobParams.cursorType = CursorConstant.CursorType.Rotate;
         knobParams.knobID = OptConstant.ActionTriggerType.Rotate;
         knobParams.fillColor = 'white';
         knobParams.fillOpacity = 0.001;
@@ -4769,7 +4667,7 @@ class BaseLine extends BaseDrawObject {
             strokeSize: 1,
             strokeColor: strokeColor,
             KnobID: 0,
-            cursorType: CursorConstant.CursorType.CROSSHAIR
+            cursorType: CursorConstant.CursorType.Cross
           };
 
           T3Util.Log("= S.BaseLine: DebugLineHops knobParams:", knobParams);
