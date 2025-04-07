@@ -203,9 +203,9 @@ class PolyLine extends BaseLine {
 
     const mainShape = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopShape = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-    let startArrow = T3Gv.ArrowheadLookupTable[this.StartArrowID];
-    let endArrow = T3Gv.ArrowheadLookupTable[this.EndArrowID];
-    const arrowSize = T3Gv.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
+    let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
+    const arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
 
     if (startArrow.id === 0) startArrow = null;
     if (endArrow.id === 0) endArrow = null;
@@ -1233,7 +1233,7 @@ class PolyLine extends BaseLine {
       // If growing is not allowed, use red color and default cursor.
       knobProps.fillColor = "red";
       knobProps.strokeColor = "red";
-      knobProps.cursorType = CursorConstant.CursorType.DEFAULT;
+      knobProps.cursorType = CursorConstant.CursorType.Default;
     }
 
     // Create the start knob if the polyline is not closed.
@@ -1257,11 +1257,11 @@ class PolyLine extends BaseLine {
         }
       }
       if (this.NoGrow()) {
-        knobProps.cursorType = CursorConstant.CursorType.DEFAULT;
+        knobProps.cursorType = CursorConstant.CursorType.Default;
       }
       let startKnob = this.GenericKnob(knobProps);
       if (cornerKnobImages && startKnob && startKnob.SetURL) {
-        startKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NWSE_RESIZE ? cornerKnobImages.nwse : cornerKnobImages.nesw);
+        startKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NwseResize ? cornerKnobImages.nwse : cornerKnobImages.nesw);
       }
       actionTriggersGroup.AddElement(startKnob);
     }
@@ -1299,11 +1299,11 @@ class PolyLine extends BaseLine {
       }
     }
     if (this.NoGrow()) {
-      knobProps.cursorType = CursorConstant.CursorType.DEFAULT;
+      knobProps.cursorType = CursorConstant.CursorType.Default;
     }
     let endKnob = this.GenericKnob(knobProps);
     if (cornerKnobImages && endKnob.SetURL) {
-      endKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NWSE_RESIZE ? cornerKnobImages.nwse : cornerKnobImages.nesw);
+      endKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NwseResize ? cornerKnobImages.nwse : cornerKnobImages.nesw);
       endKnob.ExcludeFromExport(true);
     }
     actionTriggersGroup.AddElement(endKnob);
@@ -1336,7 +1336,7 @@ class PolyLine extends BaseLine {
       knobProps.y = this.polylist.segs[segmentIndex].pt.y + this.StartPoint.y - frame.y;
       knobProps.cursorType = this.CalcCursorForSegment(this.polylist.segs[segmentIndex - 1].pt, this.polylist.segs[segmentIndex + 1].pt, true);
       if (this.NoGrow()) {
-        knobProps.cursorType = CursorConstant.CursorType.DEFAULT;
+        knobProps.cursorType = CursorConstant.CursorType.Default;
       }
       knobProps.knobID = OptConstant.ActionTriggerType.PolyNode;
       let nodeKnob = this.GenericKnob(knobProps);
@@ -1344,7 +1344,7 @@ class PolyLine extends BaseLine {
       if (nodeKnob) {
         nodeKnob.SetUserData(segmentIndex);
         if (cornerKnobImages && nodeKnob.SetURL) {
-          nodeKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NWSE_RESIZE ? cornerKnobImages.nwse : cornerKnobImages.nesw);
+          nodeKnob.SetURL(knobProps.cursorType === CursorConstant.CursorType.NwseResize ? cornerKnobImages.nwse : cornerKnobImages.nesw);
           nodeKnob.ExcludeFromExport(true);
         }
         actionTriggersGroup.AddElement(nodeKnob);
@@ -1431,7 +1431,7 @@ class PolyLine extends BaseLine {
       // Save the rotate knob position in the object.
       this.RotateKnobPt.x = knobProps.x + frame.x;
       this.RotateKnobPt.y = knobProps.y + frame.y;
-      knobProps.cursorType = CursorConstant.CursorType.ROTATE;
+      knobProps.cursorType = CursorConstant.CursorType.Rotate;
       knobProps.knobID = OptConstant.ActionTriggerType.Rotate;
       knobProps.fillColor = "white";
       knobProps.fillOpacity = 0.5;
@@ -2849,10 +2849,10 @@ class PolyLine extends BaseLine {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    if (!T3Gv.opt.isMobilePlatform) {
-      $(window).unbind("mousemove");
-      T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    }
+    // if (!T3Gv.opt.isMobilePlatform) {
+    $(window).unbind("mousemove");
+    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
+    // }
 
     this.ResetAutoScrollTimer();
     T3Gv.opt.linkParams = null;
@@ -2877,49 +2877,49 @@ class PolyLine extends BaseLine {
       const self = this;
       T3Gv.opt.WorkAreaHammer.off("dragstart");
 
-      if (T3Gv.opt.isMobilePlatform) {
-        T3Gv.opt.WorkAreaHammer.on(
-          "dragstart",
-          EvtUtil.Evt_PolyLineDrawDragStart
-        );
-        T3Gv.opt.WorkAreaHammer.on(
-          "drag",
-          EvtUtil.Evt_DrawTrackHandlerFactory(this)
-        );
-        T3Gv.opt.WorkAreaHammer.on(
-          "dragend",
-          EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
-        );
-      }
+      // if (T3Gv.opt.isMobilePlatform) {
+      //   T3Gv.opt.WorkAreaHammer.on(
+      //     "dragstart",
+      //     EvtUtil.Evt_PolyLineDrawDragStart
+      //   );
+      //   T3Gv.opt.WorkAreaHammer.on(
+      //     "drag",
+      //     EvtUtil.Evt_DrawTrackHandlerFactory(this)
+      //   );
+      //   T3Gv.opt.WorkAreaHammer.on(
+      //     "dragend",
+      //     EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
+      //   );
+      // }
 
       T3Gv.opt.WorkAreaHammer.on(
         "doubletap",
         EvtUtil.Evt_DrawReleaseHandlerFactory(this)
       );
 
-      if (!T3Gv.opt.isMobilePlatform) {
-        T3Gv.opt.WorkAreaHammer.on(
-          "tap",
-          EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
-        );
-        T3Gv.opt.WorkAreaHammer.on(
-          "drag",
-          EvtUtil.Evt_DrawTrackHandlerFactory(this)
-        );
-        T3Gv.opt.WorkAreaHammer.on(
-          "dragend",
-          EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
-        );
-        $(window).bind("mousemove", function (mouseEvent) {
-          try {
-            self.LMDrawTrack(mouseEvent);
-          } catch (error) {
-            self.LMDrawClickExceptionCleanup(error);
-            T3Gv.opt.ExceptionCleanup(error);
-            throw error;
-          }
-        });
-      }
+      // if (!T3Gv.opt.isMobilePlatform) {
+      T3Gv.opt.WorkAreaHammer.on(
+        "tap",
+        EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
+      );
+      T3Gv.opt.WorkAreaHammer.on(
+        "drag",
+        EvtUtil.Evt_DrawTrackHandlerFactory(this)
+      );
+      T3Gv.opt.WorkAreaHammer.on(
+        "dragend",
+        EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
+      );
+      $(window).bind("mousemove", function (mouseEvent) {
+        try {
+          self.LMDrawTrack(mouseEvent);
+        } catch (error) {
+          self.LMDrawClickExceptionCleanup(error);
+          T3Gv.opt.ExceptionCleanup(error);
+          throw error;
+        }
+      });
+      // }
 
       T3Util.Log("S.PolyLine: LMDrawClick output", { message: "Click handled successfully" });
     } catch (error) {
@@ -2937,10 +2937,10 @@ class PolyLine extends BaseLine {
       event.gesture.stopDetect();
     }
     LMEvtUtil.UnbindActionClickHammerEvents();
-    if (!T3Gv.opt.isMobilePlatform) {
-      $(window).unbind("mousemove");
-      T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    }
+    // if (!T3Gv.opt.isMobilePlatform) {
+    $(window).unbind("mousemove");
+    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
+    // }
 
     // Calculate distance between the last two segments
     const segmentCount = this.polylist.segs.length;
@@ -3149,249 +3149,6 @@ class PolyLine extends BaseLine {
         );
       }
     }
-  }
-
-  WriteShapeData(outputStream, options, usePolyListDimensions) {
-    T3Util.Log("S.PolyLine: WriteShapeData input", { outputStream, options, usePolyListDimensions });
-
-    var segIndex, tempLineType, polyWidth, polyHeight, tempOffsetX, tempOffsetY;
-    var polyID = -1;
-    var emfHash = null;
-    var polyPoints = [];
-    var indexArray = [];
-    var tempArray = [];
-    // Make a deep copy of this polyline object.
-    var polyObj = Utils1.DeepCopy(this);
-    var writeCode = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cDrawPoly);
-    var hasEMFHashWritten = false;
-
-    // If line thickness is defined, the polyline is closed, and segments exist,
-    if (
-      polyObj.StyleRecord.Line.BThick &&
-      polyObj.polylist &&
-      polyObj.polylist.closed &&
-      polyObj.polylist.segs &&
-      polyObj.polylist.segs.length
-    ) {
-      // If the object is an instance of a Polygon shape, convert it.
-      var polyConverted;
-      if (polyObj instanceof Instance.Shape.Polygon) {
-        // Create a temporary polygon container.
-        polyConverted = new Instance.Shape.PolyLine({ Frame: polyObj.Frame, inside: polyObj.inside });
-        polyConverted.polylist = polyObj.polylist;
-        polyConverted.StartPoint = polyObj.StartPoint;
-        polyConverted.EndPoint = polyObj.EndPoint;
-      } else {
-        polyConverted = polyObj;
-      }
-
-      // Get poly points.
-      polyPoints = polyConverted.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, false, indexArray);
-      if (indexArray.length > 0) {
-        tempArray.push(new Point(polyPoints[0].x, polyPoints[0].y));
-        for (segIndex = 0; segIndex < indexArray.length; segIndex++) {
-          tempArray.push(new Point(polyPoints[indexArray[segIndex]].x, polyPoints[indexArray[segIndex]].y));
-        }
-      } else {
-        tempArray = Utils1.DeepCopy(polyPoints);
-      }
-      // Inflate the line according to the thickness.
-      polyPoints = T3Gv.opt.InflateLine(tempArray, polyObj.StyleRecord.Line.BThick, true, false);
-      polyObj.StartPoint.x = polyPoints[0].x;
-      polyObj.StartPoint.y = polyPoints[0].y;
-      polyObj.EndPoint.x = polyPoints[polyPoints.length - 1].x;
-      polyObj.EndPoint.y = polyPoints[polyPoints.length - 1].y;
-      // Keep the original segments.
-      var originalSegments = Utils1.DeepCopy(polyObj.polylist.segs);
-      polyObj.polylist.segs = [];
-      for (segIndex = 0; segIndex < polyPoints.length; segIndex++) {
-        // Create new segment adjusted to the new start point.
-        polyObj.polylist.segs.push(new PolySeg(1, polyPoints[segIndex].x - polyObj.StartPoint.x, polyPoints[segIndex].y - polyObj.StartPoint.y));
-        if (segIndex < originalSegments.length) {
-          polyObj.polylist.segs[segIndex].LineType = originalSegments[segIndex].LineType;
-          polyObj.polylist.segs[segIndex].ShortRef = originalSegments[segIndex].ShortRef;
-          polyObj.polylist.segs[segIndex].dataclass = originalSegments[segIndex].dataclass;
-          polyObj.polylist.segs[segIndex].dimDeflection = originalSegments[segIndex].dimDeflection;
-          polyObj.polylist.segs[segIndex].flags = originalSegments[segIndex].flags;
-          polyObj.polylist.segs[segIndex].param = originalSegments[segIndex].param;
-          polyObj.polylist.segs[segIndex].weight = originalSegments[segIndex].weight;
-        }
-      }
-      // If the object is an instance of BaseLine then recalc the frame.
-      if (polyObj instanceof BaseLine) {
-        polyObj.CalcFrame();
-      }
-      // If the object is a Polygon shape instance, apply scaling.
-      else if (polyObj instanceof Instance.Shape.Polygon) {
-        var thickness = polyObj.StyleRecord.Line.BThick;
-        var scaleWidth = polyObj.Frame.width / (polyObj.Frame.width + 2 * thickness);
-        var scaleHeight = polyObj.Frame.height / (polyObj.Frame.height + 2 * thickness);
-        var offsetXCalc = polyObj.Frame.x * scaleWidth - polyObj.Frame.x + thickness;
-        var offsetYCalc = polyObj.Frame.y * scaleHeight - polyObj.Frame.y + thickness;
-        polyObj.ScaleObject(offsetXCalc, offsetYCalc, null, 0, scaleWidth, scaleHeight, false);
-      }
-    }
-
-    // Calculate dimensions and offsets based on the 'usePolyListDimensions' flag.
-    if (usePolyListDimensions) {
-      polyWidth = ShapeUtil.ToSDWinCoords(polyObj.polylist.dim.x, options.coordScaleFactor);
-      polyHeight = ShapeUtil.ToSDWinCoords(polyObj.polylist.dim.y, options.coordScaleFactor);
-      tempOffsetX = polyObj.polylist.offset.x;
-      tempOffsetY = polyObj.polylist.offset.y;
-    } else {
-      polyWidth = ShapeUtil.ToSDWinCoords(polyObj.Frame.width, options.coordScaleFactor);
-      polyHeight = ShapeUtil.ToSDWinCoords(polyObj.Frame.height, options.coordScaleFactor);
-      tempOffsetX = polyObj.StartPoint.x - polyObj.Frame.x;
-      tempOffsetY = polyObj.StartPoint.y - polyObj.Frame.y;
-    }
-
-    // Get instance ID.
-    var instanceID = options.WriteBlocks ? this.BlockID : options.polyid++;
-    if (options.WriteWin32) {
-      var polyStruct = {
-        InstID: instanceID,
-        n: polyObj.polylist.segs.length,
-        dim: { x: 0, y: 0 },
-        flags: polyObj.polylist.flags,
-        ldim: { x: polyWidth, y: polyHeight }
-      };
-      outputStream.writeStruct(DSConstant.PolyListStruct20, polyStruct);
-    } else {
-      polyStruct = {
-        InstID: instanceID,
-        n: polyObj.polylist.segs.length,
-        flags: polyObj.polylist.flags,
-        ldim: { x: polyWidth, y: polyHeight }
-      };
-      outputStream.writeStruct(DSConstant.PolyListStruct24, polyStruct);
-    }
-
-    ShapeUtil.WriteLength(outputStream, writeCode);
-    // Write out each polyline segment.
-    for (segIndex = 0; segIndex < polyObj.polylist.segs.length; segIndex++) {
-      var segWinX = ShapeUtil.ToSDWinCoords(polyObj.polylist.segs[segIndex].pt.x + tempOffsetX, options.coordScaleFactor);
-      var segWinY = ShapeUtil.ToSDWinCoords(polyObj.polylist.segs[segIndex].pt.y + tempOffsetY, options.coordScaleFactor);
-      tempLineType = ShapeUtil.LineTypeToWin32Type(
-        polyObj.polylist.segs[segIndex].LineType,
-        polyObj.polylist.segs[segIndex].dataclass,
-        polyObj.polylist.segs[segIndex].ShortRef,
-        polyObj.polylist.segs[segIndex].param,
-        polyObj.polylist.segs[segIndex].weight,
-        options
-      );
-
-      // Special handling for arc lines.
-      if (polyObj.polylist.segs[segIndex].LineType === OptConstant.LineType.ARCLINE) {
-        if (segIndex > 0 &&
-          Math.abs(polyObj.polylist.segs[segIndex].pt.y - polyObj.polylist.segs[segIndex - 1].pt.y) < 1 / 6 &&
-          polyObj.polylist.segs[segIndex].pt.x < polyObj.polylist.segs[segIndex - 1].pt.x) {
-          tempLineType.param = -tempLineType.param;
-        }
-      }
-
-      if (options.WriteWin32) {
-        var segStruct = {
-          otype: tempLineType.otype,
-          dataclass: tempLineType.dataclass,
-          ShortRef: tempLineType.ShortRef,
-          param: tempLineType.param,
-          pt: { x: 0, y: 0 },
-          lpt: { x: segWinX, y: segWinY },
-          dimDeflection: ShapeUtil.ToSDWinCoords(polyObj.polylist.segs[segIndex].dimDeflection, options.coordScaleFactor),
-          flags: polyObj.polylist.segs[segIndex].flags,
-          weight: polyObj.polylist.segs[segIndex].weight
-        };
-        writeCode = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cDrawPolySeg);
-        outputStream.writeStruct(DSConstant.PolySegStruct40, segStruct);
-      } else {
-        var segStructAlt = {
-          otype: tempLineType.otype,
-          dataclass: tempLineType.dataclass,
-          ShortRef: tempLineType.ShortRef,
-          param: tempLineType.param,
-          lpt: { x: segWinX, y: segWinY },
-          dimDeflection: ShapeUtil.ToSDWinCoords(polyObj.polylist.segs[segIndex].dimDeflection, options.coordScaleFactor),
-          flags: polyObj.polylist.segs[segIndex].flags,
-          weight: polyObj.polylist.segs[segIndex].weight
-        };
-        writeCode = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cDrawPolySeg);
-        outputStream.writeStruct(DSConstant.PolySegStruct50, segStructAlt);
-      }
-      ShapeUtil.WriteLength(outputStream, writeCode);
-    }
-
-    // Write polyline end code.
-    outputStream.writeUint16(DSConstant.OpNameCode.cDrawPolyEnd);
-
-    if (!(usePolyListDimensions)) {
-      if (this.DataID >= 0) {
-        // Adjust text flags based on text alignment.
-        switch (ShapeUtil.TextAlignToWin(this.TextAlign).vjust) {
-          case TextConstant.TextJust.Top:
-          case TextConstant.TextJust.Bottom:
-            break;
-        }
-        var textFlag = NvConstant.TextFlags.AttachC;
-        if (this.LineTextX) {
-          textFlag = NvConstant.TextFlags.AttachC;
-        }
-        this.TextFlags = Utils2.SetFlag(this.TextFlags, NvConstant.TextFlags.AttachA | NvConstant.TextFlags.AttachB | NvConstant.TextFlags.AttachC | NvConstant.TextFlags.AttachD, false);
-        this.TextFlags = Utils2.SetFlag(this.TextFlags, textFlag, true);
-        this.TextFlags = Utils2.SetFlag(this.TextFlags, NvConstant.TextFlags.HorizText, !this.TextDirection);
-      }
-      if ((options.WriteBlocks) && (polyID = this.DataID),
-        ShapeUtil.WriteTextParams(outputStream, this, polyID, options),
-        this.EMFHash && !hasEMFHashWritten) {
-        ShapeUtil.WriteString8(outputStream, this.EMFHash, DSConstant.OpNameCode.cEmfHash, options);
-        hasEMFHashWritten = true;
-      }
-      var emfBlobBytes = this.GetEMFBlobBytes();
-      if (emfBlobBytes) {
-        ShapeUtil.WriteImageHeader(outputStream, this, options);
-        if (this.EMFHash && !hasEMFHashWritten) {
-          ShapeUtil.WriteString8(outputStream, this.EMFHash, DSConstant.OpNameCode.cEmfHash, options);
-        }
-        if (options.WriteBlocks || options.WriteGroupBlock) {
-          ShapeUtil.WriteEMFBlobBytesID(outputStream, this.EMFBlobBytesID, StyleConstant.ImageDir.Meta, options);
-        } else {
-          ShapeUtil.WriteBlob(outputStream, emfBlobBytes.Bytes, DSConstant.OpNameCode.cDrawMeta);
-        }
-        var blobBytes = this.GetBlobBytes();
-        if (blobBytes) {
-          if (options.WriteBlocks || options.WriteGroupBlock) {
-            ShapeUtil.WriteBlobBytesID(outputStream, this.BlobBytesID, StyleConstant.ImageDir.Png, options);
-          } else {
-            ShapeUtil.WriteBlob(outputStream, blobBytes.Bytes, DSConstant.OpNameCode.cDrawPreviewPng);
-          }
-        }
-      } else {
-        var altBlobBytes = this.GetBlobBytes();
-        if (altBlobBytes) {
-          ShapeUtil.WriteImageHeader(outputStream, this, options);
-          switch (altBlobBytes.ImageDir) {
-            case StyleConstant.ImageDir.Jpg:
-              ShapeUtil.WriteImageHeader(outputStream, this, options);
-              if (options.WriteBlocks || options.WriteGroupBlock) {
-                ShapeUtil.WriteBlobBytesID(outputStream, this.BlobBytesID, StyleConstant.ImageDir.Jpg, options);
-              } else {
-                ShapeUtil.WriteBlob(outputStream, altBlobBytes.Bytes, DSConstant.OpNameCode.cDrawJpg);
-              }
-              break;
-            case StyleConstant.ImageDir.Png:
-              ShapeUtil.WriteImageHeader(outputStream, this, options);
-              if (options.WriteBlocks || options.WriteGroupBlock) {
-                ShapeUtil.WriteBlobBytesID(outputStream, this.BlobBytesID, StyleConstant.ImageDir.Png, options);
-              } else {
-                ShapeUtil.WriteBlob(outputStream, altBlobBytes.Bytes, DSConstant.OpNameCode.cDrawPng);
-              }
-              break;
-          }
-        }
-      }
-      ShapeUtil.WriteArrowheads(outputStream, options, this);
-    }
-
-    T3Util.Log("S.PolyLine: WriteShapeData output");
   }
 
   PrGetNURBSPoints(
@@ -5124,10 +4881,10 @@ class PolyLine extends BaseLine {
     LMEvtUtil.UnbindActionClickHammerEvents();
     T3Gv.opt.WorkAreaHammer.off("doubletap");
 
-    if (!T3Gv.opt.isMobilePlatform) {
-      $(window).unbind("mousemove");
-      T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    }
+    // if (!T3Gv.opt.isMobilePlatform) {
+    $(window).unbind("mousemove");
+    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
+    // }
 
     this.ResetAutoScrollTimer();
     DataUtil.AddToDirtyList(this.BlockID);

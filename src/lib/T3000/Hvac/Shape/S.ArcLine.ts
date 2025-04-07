@@ -465,7 +465,7 @@ class ArcLine extends BaseLine {
     let knob = this.GenericKnob(knobConfig);
     if (this.objecttype === NvConstant.FNObjectTypes.FlWall && knob.SetURL) {
       knob.SetURL(
-        knobConfig.cursorType === CursorConstant.CursorType.NWSE_RESIZE
+        knobConfig.cursorType === CursorConstant.CursorType.NwseResize
           ? CursorConstant.Knob.Path + CursorConstant.Knob.DiagonLeft
           : CursorConstant.Knob.Path + CursorConstant.Knob.DiagonRight
       );
@@ -493,7 +493,7 @@ class ArcLine extends BaseLine {
     knob = this.GenericKnob(knobConfig);
     if (this.objecttype === NvConstant.FNObjectTypes.FlWall && knob.SetURL) {
       knob.SetURL(
-        knobConfig.cursorType === CursorConstant.CursorType.NWSE_RESIZE
+        knobConfig.cursorType === CursorConstant.CursorType.NwseResize
           ? CursorConstant.Knob.Path + CursorConstant.Knob.DiagonLeft
           : CursorConstant.Knob.Path + CursorConstant.Knob.DiagonRight
       );
@@ -505,7 +505,7 @@ class ArcLine extends BaseLine {
     knobConfig.shapeType = OptConstant.CSType.Rect;
     knobConfig.cursorType = this.CalcCursorForSegment(this.StartPoint, this.EndPoint, true);
     if (this.NoGrow()) {
-      knobConfig.cursorType = CursorConstant.CursorType.DEFAULT;
+      knobConfig.cursorType = CursorConstant.CursorType.Default;
     }
     let centerX = this.StartPoint.x;
     let centerY = this.StartPoint.y;
@@ -535,7 +535,7 @@ class ArcLine extends BaseLine {
         knobConfig.x = this.StartPoint.x - 2 * adjustedReducedKnobSize * Math.cos(angle) - rect.x;
         knobConfig.y = this.StartPoint.y - 2 * adjustedReducedKnobSize * Math.sin(angle) - rect.y;
       }
-      knobConfig.cursorType = CursorConstant.CursorType.ROTATE;
+      knobConfig.cursorType = CursorConstant.CursorType.Rotate;
       knobConfig.knobID = OptConstant.ActionTriggerType.Rotate;
       knobConfig.fillColor = 'white';
       knobConfig.fillOpacity = 0.001;
@@ -627,9 +627,9 @@ class ArcLine extends BaseLine {
   RegenerateGenerateArc(svgDoc) {
     T3Util.Log("= S.ArcLine RegenerateGenerateArc input:", { svgDoc });
 
-    let startArrow = T3Gv.ArrowheadLookupTable[this.StartArrowID];
-    let endArrow = T3Gv.ArrowheadLookupTable[this.EndArrowID];
-    let arrowSize = T3Gv.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
+    let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
+    let arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
 
     if (startArrow.id === 0) {
       startArrow = null;
@@ -701,9 +701,9 @@ class ArcLine extends BaseLine {
     T3Util.Log("= S.ArcLine RegenerateGenerateArcForHops input:", { svgDoc });
 
     // Retrieve arrowhead definitions and arrow size
-    let startArrow = T3Gv.ArrowheadLookupTable[this.StartArrowID];
-    let endArrow = T3Gv.ArrowheadLookupTable[this.EndArrowID];
-    let arrowSize = T3Gv.ArrowheadSizeTable[this.ArrowSizeIndex];
+    let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
+    let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
+    let arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
 
     if (startArrow.id === 0) {
       startArrow = null;

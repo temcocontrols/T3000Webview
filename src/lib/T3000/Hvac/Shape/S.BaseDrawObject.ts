@@ -1457,12 +1457,6 @@ class BaseDrawObject {
     paraFormat.spacing = 0;
 
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
-    // const activeTableID = T3Gv.opt.Table_GetActiveID();
-
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Gv.opt.Table_GetTextParaFormat(table, paraFormat, svgElement, this.BlockID !== activeTableID, e, null);
-    // } else
 
     if (this.DataID && this.DataID >= 0) {
       const textElement = svgElement.textElem;
@@ -1508,19 +1502,12 @@ class BaseDrawObject {
     const textFace = TextConstant.TextFace;
     let txtFmtData = new TextFmtData();
     let defaultStyle = new DefaultStyle();
-    // const activeTableID = T3Gv.opt.Table_GetActiveID();
     const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Deep copy the StyleRecord's Text settings and update font information from session block
     txtFmtData = Utils1.DeepCopy(this.StyleRecord.Text);
     txtFmtData.FontId = -1;
     txtFmtData.FontName = sessionBlock.def.lf.fontName;
-
-    // Try to get the table for text formatting
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Gv.opt.Table_GetTextFormat(table, txtFmtData, null, activeTableID !== this.BlockID, textOptions);
-    // } else
 
     if (this.DataID !== null && this.DataID >= 0) {
       const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
@@ -1536,7 +1523,7 @@ class BaseDrawObject {
         if (selectedFormat) {
           if (returnTextFormat) {
             txtFmtData.FontSize = TextUtil.FontSizeToPoints(selectedFormat.size);
-            txtFmtData.FontId = -1;// T3Gv.opt.GetFontIdByName(selectedFormat.font);
+            txtFmtData.FontId = -1;
             txtFmtData.FontName = selectedFormat.font;
             isBold = (selectedFormat.weight === 'bold');
             txtFmtData.Face = Utils2.SetFlag(txtFmtData.Face, textFace.Bold, isBold);
@@ -5034,28 +5021,11 @@ class BaseDrawObject {
     polyPoints.push(new Point(frame.x, frame.y + frame.height));
   }
 
-  SetBackgroundImageURL(imageURL: string): void {
-    T3Util.Log("= S.BaseDrawObject: SetBackgroundImageURL - Input:", { imageURL });
-
-    // TODO: Add implementation to set the background image URL.
-    // For example:
-    // this.backgroundImageURL = imageURL;
-
-    T3Util.Log("= S.BaseDrawObject: SetBackgroundImageURL - Output: Completed");
-  }
-
-  WriteShapeData(outputStream: any, options: any) {
-    T3Util.Log("= S.BaseDrawObject: WriteShapeData - Input:", { outputStream, options });
-
-    // TODO: Add your implementation logic here
-
-    T3Util.Log("= S.BaseDrawObject: WriteShapeData - Output: Completed");
-  }
+  SetBackgroundImageURL(imageURL: string): void { }
 
   CalcTextPosition(inputPosition: any): any {
     T3Util.Log("= S.BaseDrawObject: CalcTextPosition - Input:", inputPosition);
 
-    // TODO: Add the logic to calculate the text position.
     // For now, we return a placeholder position.
     const calculatedPosition = { x: 0, y: 0 };
 
@@ -5092,42 +5062,6 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: GetOleBlobBytes output:", oleBlob);
     return oleBlob;
   }
-
-  // GetTable(preserve: boolean = false): any {
-  //   T3Util.Log("= S.BaseDrawObject: GetTable - Input:", { preserve });
-  //   let table = null;
-  //   if (this.TableID >= 0) {
-  //     table = DataUtil.GetObjectPtr(this.TableID, preserve);
-  //   }
-  //   T3Util.Log("= S.BaseDrawObject: GetTable - Output:", table);
-  //   return table;
-  // }
-
-  // SetTable(table: any) {
-  //   T3Util.Log("= S.BaseDrawObject: SetTable input:", { table });
-  //   if (this.TableID >= 0) {
-  //     if (table == null) {
-  //       const existingTable = T3Gv.stdObj.GetObject(this.TableID);
-  //       if (existingTable) {
-  //         existingTable.Delete();
-  //         T3Util.Log("= S.BaseDrawObject: SetTable output: deleted existing table");
-  //       }
-  //       this.TableID = -1;
-  //     } else {
-  //       const preservedTable = T3Gv.stdObj.PreserveBlock(this.TableID);
-  //       if (preservedTable) {
-  //         preservedTable.Data = table;
-  //         T3Util.Log("= S.BaseDrawObject: SetTable output: updated existing table");
-  //       }
-  //     }
-  //   } else {
-  //     // const newTable = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TABLE_OBJECT, table);
-  //     // if (newTable) {
-  //     //   this.TableID = newTable.ID;
-  //     //   T3Util.Log("= S.BaseDrawObject: SetTable output: created new table with ID", this.TableID);
-  //     // }
-  //   }
-  // }
 
   GetGraph(preserve: boolean = false): any {
     T3Util.Log("= S.BaseDrawObject: GetGraph input:", { preserve });
@@ -5240,20 +5174,6 @@ class BaseDrawObject {
       T3Util.Log("= S.BaseDrawObject: AllowTextEdit - Output: false (FromEditShapeOutline is true)");
       return false;
     }
-
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   let cellIndex = -1;
-    //   if (T3Gv.opt.Table_GetActiveID() === table.BlockID) {
-    //     cellIndex = table.select;
-    //   }
-    //   if (cellIndex < 0) {
-    //     cellIndex = T3Gv.opt.Table_GetFirstTextCell(table);
-    //   }
-    //   const allowCellEdit = T3Gv.opt.Table_AllowCellTextEdit(table, cellIndex);
-    //   T3Util.Log("= S.BaseDrawObject: AllowTextEdit - Output:", allowCellEdit, "(Table cell text edit check)");
-    //   return allowCellEdit;
-    // }
 
     T3Util.Log("= S.BaseDrawObject: AllowTextEdit - Output: true (No table present)");
     return true;
@@ -5402,7 +5322,7 @@ class BaseDrawObject {
       let iconParams = {
         svgDoc: svgDoc,
         iconSize: this.iconSize,
-        cursorType: CursorConstant.CursorType.POINTER
+        cursorType: CursorConstant.CursorType.Pointer
       };
 
       // Data action icon if available
@@ -5503,7 +5423,6 @@ class BaseDrawObject {
   GetHyperlink(input: string): string {
     T3Util.Log("= S.BaseDrawObject: GetHyperlink - Input:", input);
     let hyperlinkIndex: number | undefined;
-    // const table = this.GetTable(false);
 
     if (input) {
       if (typeof input === "string" && input.split) {
@@ -5514,18 +5433,8 @@ class BaseDrawObject {
       }
     }
 
-    // else if (table && table.select >= 0) {
-    //   hyperlinkIndex = table.select;
-    // }
-
     let result: string;
-    // if (table && typeof hyperlinkIndex === "number" && hyperlinkIndex >= 0 && hyperlinkIndex < table.cells.length) {
-    //   result = table.cells[hyperlinkIndex].hyperlink;
-    // } else
-
-    {
-      result = this.HyperlinkText;
-    }
+    result = this.HyperlinkText;
 
     T3Util.Log("= S.BaseDrawObject: GetHyperlink - Output:", result);
     return result;
@@ -5535,7 +5444,6 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: IsNoteCell - Input:", cellIdentifier);
 
     let cellIndex: number | undefined;
-    // const table = this.GetTable(false);
 
     if (cellIdentifier) {
       if (typeof cellIdentifier.split === "function") {
@@ -5545,14 +5453,8 @@ class BaseDrawObject {
         }
       }
     }
-    // else if (table && table.select >= 0) {
-    //   cellIndex = table.select;
-    // }
 
     let noteCell = null;
-    // if (table && typeof cellIndex === "number" && cellIndex >= 0 && cellIndex < table.cells.length) {
-    //   noteCell = table.cells[cellIndex];
-    // }
 
     T3Util.Log("= S.BaseDrawObject: IsNoteCell - Output:", noteCell);
     return noteCell;
@@ -5571,35 +5473,35 @@ class BaseDrawObject {
         const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
         if (shapeElement) {
           if (this.objecttype === NvConstant.FNObjectTypes.FrameContainer) {
-            shapeElement.SetCursor(CursorConstant.CursorType.DEFAULT);
+            shapeElement.SetCursor(CursorConstant.CursorType.Default);
           } else {
-            shapeElement.SetCursor(CursorConstant.CursorType.ADD);
+            shapeElement.SetCursor(CursorConstant.CursorType.Add);
           }
         }
 
         // Set cursors for various icon elements to POINTER
         let iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.HyperLink);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.Notes);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.ExpandedView);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.Comment);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.Attachment);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         iconElement = svgElement.GetElementById(OptConstant.ShapeIconType.FieldData);
-        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+        if (iconElement) iconElement.SetCursor(CursorConstant.CursorType.Pointer);
 
         // Set cursor for "slope" element
         const slopeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
         if (slopeElement) {
-          slopeElement.SetCursor(CursorConstant.CursorType.ADD);
+          slopeElement.SetCursor(CursorConstant.CursorType.Add);
         }
 
         // Check for active text editing element
@@ -5607,7 +5509,7 @@ class BaseDrawObject {
         if (this.DataID && this.DataID >= 0 && svgElement.textElem) {
           if (svgElement.textElem === activeEditElement) {
             if (shapeElement) {
-              shapeElement.SetCursor(CursorConstant.CursorType.TEXT);
+              shapeElement.SetCursor(CursorConstant.CursorType.Text);
             }
             svgElement.textElem.SetCursorState(CursorConstant.CursorState.EditLink);
           } else {
@@ -6371,11 +6273,14 @@ class BaseDrawObject {
     }
 
     // Set runtime effects for current object based on mobile platform
-    if (T3Gv.opt.isMobilePlatform) {
-      this.SetRuntimeEffects(false);
-    } else {
-      this.SetRuntimeEffects(true);
-    }
+    // if (T3Gv.opt.isMobilePlatform) {
+    //   this.SetRuntimeEffects(false);
+    // } else {
+    //   this.SetRuntimeEffects(true);
+    // }
+
+    this.SetRuntimeEffects(true);
+
     this.SetCursors();
     T3Gv.opt.curHiliteShape = this.BlockID;
     const self = this; // preserve context for event handler
@@ -6400,31 +6305,31 @@ class BaseDrawObject {
     angle = 10 * Math.round(angle / 10);
 
     // Initialize the cursor with a default value.
-    let cursor: string = CursorConstant.CursorType.RESIZE_LR;
+    let cursor: string = CursorConstant.CursorType.ResizeLR;
 
     // Determine the cursor type based on the angle.
     if ((angle > 0 && angle < 90) || (angle > 180 && angle < 270)) {
-      cursor = CursorConstant.CursorType.NWSE_RESIZE;
+      cursor = CursorConstant.CursorType.NwseResize;
     } else if ((angle > 90 && angle < 180) || (angle > 270 && angle < 360)) {
-      cursor = CursorConstant.CursorType.NESW_RESIZE;
+      cursor = CursorConstant.CursorType.NeswResize;
     } else if (angle === 90 || angle === 270) {
-      cursor = CursorConstant.CursorType.RESIZE_TB;
+      cursor = CursorConstant.CursorType.ResizeTB;
     }
 
     // Optionally swap the cursor type.
     if (swap) {
       switch (cursor) {
-        case CursorConstant.CursorType.RESIZE_LR:
-          cursor = CursorConstant.CursorType.RESIZE_TB;
+        case CursorConstant.CursorType.ResizeLR:
+          cursor = CursorConstant.CursorType.ResizeTB;
           break;
-        case CursorConstant.CursorType.RESIZE_TB:
-          cursor = CursorConstant.CursorType.RESIZE_LR;
+        case CursorConstant.CursorType.ResizeTB:
+          cursor = CursorConstant.CursorType.ResizeLR;
           break;
-        case CursorConstant.CursorType.NWSE_RESIZE:
-          cursor = CursorConstant.CursorType.NESW_RESIZE;
+        case CursorConstant.CursorType.NwseResize:
+          cursor = CursorConstant.CursorType.NeswResize;
           break;
-        case CursorConstant.CursorType.NESW_RESIZE:
-          cursor = CursorConstant.CursorType.NWSE_RESIZE;
+        case CursorConstant.CursorType.NeswResize:
+          cursor = CursorConstant.CursorType.NwseResize;
           break;
       }
     }
