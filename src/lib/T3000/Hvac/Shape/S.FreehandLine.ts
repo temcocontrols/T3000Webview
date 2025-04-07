@@ -346,7 +346,7 @@ class FreehandLine extends BaseLine {
       fillOpacity: 1,
       strokeSize: 1,
       strokeColor: '#777777',
-      cursorType: CursorConstant.CursorType.RESIZE_LT,
+      cursorType: CursorConstant.CursorType.ResizeLT,
       locked: false
     };
 
@@ -360,14 +360,14 @@ class FreehandLine extends BaseLine {
 
     // Top left knob
     knobConfig.knobID = OptConstant.ActionTriggerType.TopLeft;
-    knobConfig.cursorType = CursorConstant.CursorType.RESIZE_LT;
+    knobConfig.cursorType = CursorConstant.CursorType.ResizeLT;
     let knob = this.GenericKnob(knobConfig);
     triggerGroup.AddElement(knob);
 
     // Top right knob
     knobConfig.x = width - scaledKnobSize;
     knobConfig.y = 0;
-    knobConfig.cursorType = CursorConstant.CursorType.RESIZE_RT;
+    knobConfig.cursorType = CursorConstant.CursorType.ResizeRT;
     knobConfig.knobID = OptConstant.ActionTriggerType.TopRight;
     knob = this.GenericKnob(knobConfig);
     triggerGroup.AddElement(knob);
@@ -375,7 +375,7 @@ class FreehandLine extends BaseLine {
     // Bottom right knob
     knobConfig.x = width - scaledKnobSize;
     knobConfig.y = height - scaledKnobSize;
-    knobConfig.cursorType = CursorConstant.CursorType.RESIZE_RB;
+    knobConfig.cursorType = CursorConstant.CursorType.ResizeRB;
     knobConfig.knobID = OptConstant.ActionTriggerType.BottomRight;
     knob = this.GenericKnob(knobConfig);
     triggerGroup.AddElement(knob);
@@ -383,7 +383,7 @@ class FreehandLine extends BaseLine {
     // Bottom left knob
     knobConfig.x = 0;
     knobConfig.y = height - scaledKnobSize;
-    knobConfig.cursorType = CursorConstant.CursorType.RESIZE_LB;
+    knobConfig.cursorType = CursorConstant.CursorType.ResizeLB;
     knobConfig.knobID = OptConstant.ActionTriggerType.BottomLeft;
     knob = this.GenericKnob(knobConfig);
     triggerGroup.AddElement(knob);
@@ -733,10 +733,10 @@ class FreehandLine extends BaseLine {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    if (!T3Gv.opt.isMobilePlatform) {
-      $(window).unbind('mousemove');
-      T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
-    }
+    // if (!T3Gv.opt.isMobilePlatform) {
+    $(window).unbind('mousemove');
+    T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
+    // }
 
     this.ResetAutoScrollTimer();
 
@@ -802,53 +802,15 @@ class FreehandLine extends BaseLine {
 
       T3Gv.opt.WorkAreaHammer.off('dragstart');
 
-      if (!T3Gv.opt.isMobilePlatform) {
-        T3Gv.opt.WorkAreaHammer.on('drag', Evt_DrawTrackHandlerFactory(this));
-        T3Gv.opt.WorkAreaHammer.on('dragend', Evt_DrawReleaseHandlerFactory(this));
-      }
+      // if (!T3Gv.opt.isMobilePlatform) {
+      T3Gv.opt.WorkAreaHammer.on('drag', Evt_DrawTrackHandlerFactory(this));
+      T3Gv.opt.WorkAreaHammer.on('dragend', Evt_DrawReleaseHandlerFactory(this));
+      // }
     } catch (error) {
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
-  }
-
-  /**
-   * Writes the freehand line attributes to the Shape Format Util file
-   * @param writer - The file writer object
-   * @param options - Options for writing
-   */
-  WriteShapeData(outputStream, options) {
-    T3Util.Log('S.FreehandLine.WriteShapeData - Input:', { outputStream, options });
-
-    return;
-
-    // Get a copy of freehand points (true means relative to frame)
-    let freehandPoints = Utils1.DeepCopy(this).GetFreehandPoints(true);
-
-    // Write the freehand line opcode
-    let codePosition = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cFreeHandLine);
-
-    // Prepare the data structure
-    let pointData,
-      lineData = {
-        InstID: this.BlockID,
-        npts: freehandPoints.length,
-        pts: []
-      };
-
-    // Convert all points
-    let pointCount = freehandPoints.length;
-    for (let i = 0; i < pointCount; i++) {
-      pointData = new Point(freehandPoints[i].x, freehandPoints[i].y);
-      lineData.pts.push(pointData);
-    }
-
-    // Write the structure to the file
-    outputStream.writeStruct(DSConstant.FreehandLineStruct, lineData);
-    ShapeUtil.WriteLength(outputStream, codePosition);
-
-    T3Util.Log('S.FreehandLine.WriteShapeData - Output:', { freehandPoints });
   }
 }
 

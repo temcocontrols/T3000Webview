@@ -57,10 +57,6 @@ class BitmapImporter {
     const imageType = imageFile.type;
     T3Gv.opt.bitmapImportMimeType = imageType;
 
-    // if (!(imageFile instanceof File)) {
-    //   return;
-    // }
-
     // Handle JPEG/PNG files differently from SVG and other formats
     if (imageType === 'image/jpeg' || imageType === 'image/png') {
       T3Gv.opt.bitmapImportOriginalSize = imageFile.size;
@@ -127,27 +123,6 @@ class BitmapImporter {
       if (imageType === "image/jpeg" || imageType === "image/png") {
         T3Gv.opt.bitmapImportOriginalSize = imageFile.size;
         T3Gv.opt.scaledBitmapCallback = onCompleteCallback;
-
-        // fileReader = new FileReader();
-        // fileReader.onload = function (event) {
-        //   T3Gv.opt.bitmapImportEXIFdata = null;
-        //   T3Gv.opt.bitmapImportFile = imageFile;
-        //   T3Gv.opt.bitmapImportResult = event.target.result;
-        //   // EXIF.getData(imageFile, GotEXIF);
-        //   console.log('File loaded successfully');
-
-        //   //url, blob, bytes, messageData
-        //   // if (onCompleteCallback) {
-        //   //   onCompleteCallback(objectUrl, blob, byteArray);
-        //   // }
-        // };
-
-        // fileReader.readAsDataURL(imageFile);
-
-        // fileReader.onerror = (event) => {
-        //   console.error('Error reading file:', fileReader.error);
-        // };
-
 
         fileReader = new FileReader();
         fileReader.onload = function () {
