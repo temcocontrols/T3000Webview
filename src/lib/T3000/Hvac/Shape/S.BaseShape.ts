@@ -42,6 +42,8 @@ import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import DynamicUtil from '../Opt/Opt/DynamicUtil';
+import { useQuasar } from 'quasar';
+import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
 /**
  * BaseShape is the foundation class for all shape types in the T3000 HVAC drawing system.
@@ -3199,7 +3201,7 @@ class BaseShape extends BaseDrawObject {
       //       T3Gv.opt.theActionTable.ht != tableObject.ht) {
       //     this.sizedim.height = this.Frame.height;
       //   }
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
       //   applyFormatPainting();
       //   break;
 
@@ -3208,7 +3210,7 @@ class BaseShape extends BaseDrawObject {
       //       T3Gv.opt.theActionTable.wd != tableObject.wd) {
       //     this.sizedim.width = this.Frame.width;
       //   }
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
       //   applyFormatPainting();
       //   break;
 
@@ -3227,7 +3229,7 @@ class BaseShape extends BaseDrawObject {
       //   break;
 
       // case OptConstant.ActionTriggerType.TABLE_EDIT:
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
       //   break;
 
       // Width adjustment cases
@@ -3802,7 +3804,7 @@ class BaseShape extends BaseDrawObject {
         if (childShape) {
           const childLinkFlag = linkFlags ? linkFlags[childShape.BlockID] : null;
           childShape.OffsetShape(offsetX, offsetY, childLinkFlag);
-          OptCMUtil.SetLinkFlag(childShapeId, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(childShapeId, DSConstant.LinkFlags.Move);
           DataUtil.AddToDirtyList(childShapeId);
         }
       }
@@ -4330,10 +4332,10 @@ class BaseShape extends BaseDrawObject {
         }
       }
 
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
 
       for (let i = 0; i < this.hooks.length; i++) {
-        OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
       }
 
       if (this instanceof Instance.Shape.Polygon) {
@@ -6179,9 +6181,9 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Set link flags for this shape and all connected hook objects
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     for (let i = 0, hooksCount = this.hooks.length; i < hooksCount; i++) {
-      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
     }
 
     DataUtil.AddToDirtyList(this.BlockID);
@@ -7003,7 +7005,7 @@ class BaseShape extends BaseDrawObject {
               containerList.List[index].extra = 0;
             }
             // Update link flag for containerShape and mark it as an object type
-            OptCMUtil.SetLinkFlag(containerShape.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(containerShape.BlockID, DSConstant.LinkFlags.Move);
             containerShape.flags = Utils2.SetFlag(containerShape.flags, NvConstant.ObjFlags.Obj1, true);
 
             // Log output with updated extra value and return
@@ -7132,7 +7134,7 @@ class BaseShape extends BaseDrawObject {
     // Get the object that was clicked
     let clickedObject = DataUtil.GetObjectPtr(elementId, false);
 
-    return;
+    // return;
 
     if (clickedObject && clickedObject instanceof BaseDrawObject) {
       // Special handling for shape containers
@@ -7153,20 +7155,22 @@ class BaseShape extends BaseDrawObject {
             event.gesture.center.clientX,
             event.gesture.center.clientY
           );
+
+
           return;
         }
 
-        const containerCell = T3Gv.opt.ContainerIsInCell(clickedObject);
-        if (containerCell) {
-          T3Gv.opt.rClickParam = new RightClickMd();
-          T3Gv.opt.rClickParam.targetId = svgElement.GetID();
-          T3Gv.opt.rClickParam.hitPoint.x = documentCoords.x;
-          T3Gv.opt.rClickParam.hitPoint.y = documentCoords.y;
-          T3Gv.opt.rClickParam.locked = (this.flags & NvConstant.ObjFlags.Lock) > 0;
+        // const containerCell = T3Gv.opt.ContainerIsInCell(clickedObject);
+        // if (containerCell) {
+        //   T3Gv.opt.rClickParam = new RightClickMd();
+        //   T3Gv.opt.rClickParam.targetId = svgElement.GetID();
+        //   T3Gv.opt.rClickParam.hitPoint.x = documentCoords.x;
+        //   T3Gv.opt.rClickParam.hitPoint.y = documentCoords.y;
+        //   T3Gv.opt.rClickParam.locked = (this.flags & NvConstant.ObjFlags.Lock) > 0;
 
-          T3Gv.opt.Table_ShowContainerMenu(containerCell, event);
-          return;
-        }
+        //   T3Gv.opt.Table_ShowContainerMenu(containerCell, event);
+        //   return;
+        // }
       }
 
       // Try to select the object from click event
@@ -7413,7 +7417,7 @@ class BaseShape extends BaseDrawObject {
       // }
       else {
         // Get the parent element ID for Visio text
-        elementId = -1;// T3Gv.opt.SD_GetVisioTextParent(elementId);
+        // elementId = -1;// T3Gv.opt.SD_GetVisioTextParent(elementId);
         T3Gv.opt.rClickParam.targetId = elementId;
 
         // Get the object associated with the element
@@ -7544,11 +7548,17 @@ class BaseShape extends BaseDrawObject {
                 }
                 break;
               default:
-                SDUI.Commands.MainController.ShowContextualMenu(
-                  SDUI.Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                  event.gesture.center.clientX,
-                  event.gesture.center.clientY
-                );
+                // SDUI.Commands.MainController.ShowContextualMenu(
+                //   SDUI.Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
+                //   event.gesture.center.clientX,
+                //   event.gesture.center.clientY
+                // );
+
+
+                UIUtil.ShowContextMenu(true, "default", event.gesture.center.clientX, event.gesture.center.clientY);
+
+                // Log context menu display
+                T3Util.Log("S.BaseShape - RightClick: Displayed Quasar context menu");
             }
         }
       }
