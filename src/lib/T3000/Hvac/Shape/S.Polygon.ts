@@ -852,7 +852,7 @@ class Polygon extends BaseShape {
             InstID: polyId,
             n: vertexCount,
             dim: { x: 0, y: 0 },
-            flags: DSConstant.PolyListFlags.SD_PLF_FreeHand,
+            flags: DSConstant.PolyListFlags.FreeHand,
             ldim: { x: width, y: height }
           };
           outputStream.writeStruct(DSConstant.PolyListStruct20, polyListStruct);
@@ -860,7 +860,7 @@ class Polygon extends BaseShape {
           polyListStruct = {
             InstID: polyId,
             n: vertexCount,
-            flags: DSConstant.PolyListFlags.SD_PLF_FreeHand,
+            flags: DSConstant.PolyListFlags.FreeHand,
             ldim: { x: width, y: height }
           };
           outputStream.writeStruct(DSConstant.PolyListStruct24, polyListStruct);
@@ -974,11 +974,11 @@ class Polygon extends BaseShape {
 
     OptCMUtil.SetLinkFlag(
       this.BlockID,
-      DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE
+      DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
     );
 
     if (this.hooks.length) {
-      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.Move);
     }
 
     this.NeedsSIndentCount = true;

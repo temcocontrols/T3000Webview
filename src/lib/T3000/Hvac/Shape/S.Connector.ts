@@ -1685,7 +1685,7 @@ class Connector extends BaseDrawObject {
 
     OptAhUtil.FindTreeTop(
       connector,
-      DSConstant.LinkFlags.SED_L_MOVE,
+      DSConstant.LinkFlags.Move,
       {
         topconnector: -1,
         topshape: -1,
@@ -2457,7 +2457,7 @@ class Connector extends BaseDrawObject {
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
 
     T3Util.Log("S.Connector: SetSize output:", { arraylist: this.arraylist, rflags: this.rflags });
   }
@@ -3341,7 +3341,7 @@ class Connector extends BaseDrawObject {
       this.PrFormat(T3Gv.opt.actionStoredObjectId);
       OptCMUtil.SetLinkFlag(
         T3Gv.opt.actionStoredObjectId,
-        DSConstant.LinkFlags.SED_L_MOVE
+        DSConstant.LinkFlags.Move
       );
       T3Gv.opt.UpdateLinks();
 
@@ -3593,7 +3593,7 @@ class Connector extends BaseDrawObject {
             }
           }
           if (retrievedObject.hooks.length) {
-            OptCMUtil.SetLinkFlag(retrievedObject.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+            OptCMUtil.SetLinkFlag(retrievedObject.hooks[0].objid, DSConstant.LinkFlags.Move);
           }
         }
         break;
@@ -4103,11 +4103,11 @@ class Connector extends BaseDrawObject {
           this.CollapseAssistant();
         }
       }
-      OptCMUtil.SetLinkFlag(connectorBlockId, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(connectorBlockId, DSConstant.LinkFlags.Move);
       if (noTreeOverlap) {
         OptAhUtil.FindTreeTop(
           this,
-          DSConstant.LinkFlags.SED_L_MOVE,
+          DSConstant.LinkFlags.Move,
           {
             topconnector: -1,
             topshape: -1,
@@ -4117,7 +4117,7 @@ class Connector extends BaseDrawObject {
       } else {
         const objectPtr = DataUtil.GetObjectPtr(connectorBlockId, true);
         if (objectPtr && objectPtr.hooks.length) {
-          OptCMUtil.SetLinkFlag(objectPtr.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(objectPtr.hooks[0].objid, DSConstant.LinkFlags.Move);
         }
       }
       this.PrFormat(connectorBlockId);
@@ -5072,7 +5072,7 @@ class Connector extends BaseDrawObject {
       } else {
         childArrayId = T3Gv.opt.FindChildArray(firstHookId, -1);
         if (childArrayId >= 0) {
-          OptCMUtil.SetLinkFlag(firstHookId, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(firstHookId, DSConstant.LinkFlags.Move);
         }
       }
     }
@@ -5156,7 +5156,7 @@ class Connector extends BaseDrawObject {
           );
 
           remainingHooks = 0;
-          OptCMUtil.SetLinkFlag(parentObjectId, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(parentObjectId, DSConstant.LinkFlags.Move);
         }
       }
 
@@ -5703,7 +5703,7 @@ class Connector extends BaseDrawObject {
           (
             Utils2.IsEqual(ee.h, te.h) &&
             Utils2.IsEqual(ee.v, te.v) ||
-            OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE)
+            OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.Move)
           )
       } else te.h = 0,
         te.v = 0;
@@ -5773,11 +5773,11 @@ class Connector extends BaseDrawObject {
         Utils2.IsEqual(this.arraylist.profile.vdist, ae.vdist) ||
         p &&
         (
-          OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE)
+          OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move)
           ,
           OptAhUtil.FindTreeTop(
             this,
-            DSConstant.LinkFlags.SED_L_MOVE,
+            DSConstant.LinkFlags.Move,
             {
               topconnector: - 1,
               topshape: - 1,
@@ -8107,7 +8107,7 @@ class Connector extends BaseDrawObject {
         this.hooks[0].hookpt === OptConstant.HookPts.LT;
 
       // Force an update to the linked object.
-      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.Move);
 
       if (this.vertical) {
         if (isBothSides) {
@@ -8247,7 +8247,7 @@ class Connector extends BaseDrawObject {
     }
 
     // Set link flag for the current connector and mark it for reformatting.
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change);
     this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, true);
     // Fix the hook based on the propagate flag.
     this.FixHook(propagate, false);
@@ -8259,7 +8259,7 @@ class Connector extends BaseDrawObject {
       if (hookedObject && hookedObject.hooks.length) {
         // Update hook point for the hooked object.
         hookedObject.hooks[0].hookpt = this.GetBestHook(currentHook.id, hookedObject.hooks[0].hookpt, hookedObject.hooks[0].connect);
-        OptCMUtil.SetLinkFlag(currentHook.id, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(currentHook.id, DSConstant.LinkFlags.Move);
         if (hookedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
           // Recursively set direction for connector type objects.
           hookedObject.SetDirection(invertStyle, toggleOrientation, true);
@@ -8436,12 +8436,12 @@ class Connector extends BaseDrawObject {
     }
 
     if (propagateCollapse && this.hooks.length > 0) {
-      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[0].objid, DSConstant.LinkFlags.Move);
     }
 
     if (((this.extraflags & collapseExtraFlag) > 0) != collapseState || !propagateCollapse) {
       if (propagateCollapse || updateLinkFlags) {
-        OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
       }
       if (!propagateCollapse && collapseState) {
         this.flags = Utils2.SetFlag(this.flags, notVisibleFlag, collapseState);
@@ -8573,7 +8573,7 @@ class Connector extends BaseDrawObject {
       for (hookIndex = 0; hookIndex < totalMatches; hookIndex++) {
         currentConnector = DataUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
         currentConnector.arraylist.matchsizelen = 0;
-        OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+        OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.Move);
         // Determine the new stub index for formatting
         const newStubIndex = (currentConnector.hooks[0].hookpt === hookPoints.SED_LL ||
           currentConnector.hooks[0].hookpt === hookPoints.SED_LT)
@@ -8606,7 +8606,7 @@ class Connector extends BaseDrawObject {
         for (hookIndex = 0; hookIndex < totalMatches; hookIndex++) {
           currentConnector = DataUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
           currentConnector.arraylist.matchsizelen = 0;
-          OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.Move);
           currentConnector.PrFormat(currentConnector.BlockID);
           matchList[hookIndex].bkdist = currentConnector.arraylist.hook[connectorDefines.A_Bk].endpoint.h -
             currentConnector.arraylist.hook[connectorDefines.A_Bk].startpoint.h;
