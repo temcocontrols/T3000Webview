@@ -769,7 +769,7 @@ class BaseLine extends BaseDrawObject {
         this.AdjustLineStart(svgElement, this.StartPoint.x + widthDifference, this.StartPoint.y + heightDifference, 0, true);
       }
 
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     } else {
       this.UpdateDimensions(newWidth);
     }
@@ -904,7 +904,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     this.CalcFrame(true);
-    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     DataUtil.AddToDirtyList(blockID);
 
     T3Util.Log("= S.BaseLine: LinkGrow updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
@@ -1460,7 +1460,7 @@ class BaseLine extends BaseDrawObject {
         if (T3Gv.opt.ob.Frame) {
           HookUtil.MaintainLink(T3Gv.opt.actionStoredObjectId, this, T3Gv.opt.ob, T3Gv.opt.actionTriggerId);
           T3Gv.opt.ob = {};
-          OptCMUtil.SetLinkFlag(T3Gv.opt.actionStoredObjectId, DSConstant.LinkFlags.SED_L_MOVE);
+          OptCMUtil.SetLinkFlag(T3Gv.opt.actionStoredObjectId, DSConstant.LinkFlags.Move);
           T3Gv.opt.UpdateLinks();
         }
     }
@@ -1640,7 +1640,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     // Set link flag and update links
-    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
 
     T3Util.Log("= S.BaseLine: AfterRotateShape completed for blockID:", blockID);
@@ -1669,7 +1669,7 @@ class BaseLine extends BaseDrawObject {
       T3Util.Log("= S.BaseLine: Reset floating point dimensions flags");
     }
 
-    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
     T3Util.Log("= S.BaseLine: Set link flag and updated links");
 
@@ -1737,7 +1737,7 @@ class BaseLine extends BaseDrawObject {
       }
 
       // Set link flag and update links
-      OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
       T3Gv.opt.UpdateLinks();
 
       // Clear linkParams
@@ -2781,7 +2781,7 @@ class BaseLine extends BaseDrawObject {
         targetObj.RotationAngle = apparentAngle;
         OptCMUtil.SetLinkFlag(
           this.BlockID,
-          DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE
+          DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
         );
         DataUtil.AddToDirtyList(targetId);
         T3Util.Log("= S.BaseLine: ChangeTarget updated targetObj.RotationAngle to:", apparentAngle);
@@ -4971,11 +4971,11 @@ class BaseLine extends BaseDrawObject {
         );
       } else {
         // Show the context menu
-        UIUtil.ShowContextMenu("", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(true, "", event.gesture.center.clientX, event.gesture.center.clientY);
       }
     } else {
       // Show the context menu when no text is being edited
-      UIUtil.ShowContextMenu("", event.gesture.center.clientX, event.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "", event.gesture.center.clientX, event.gesture.center.clientY);
     }
 
     T3Util.Log("= S.BaseLine: RightClick completed");
@@ -5109,12 +5109,12 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: UpdateDimensionFromText completed");
 
     // Set link flag for the current block
-    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+    OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     T3Util.Log("= S.BaseLine: Set link flag for BlockID", this.BlockID);
 
     // Set link flag for each hooked object
     for (let i = 0; i < this.hooks.length; i++) {
-      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
       T3Util.Log("= S.BaseLine: Set link flag for hook object with id", this.hooks[i].objid);
     }
 
@@ -5175,14 +5175,14 @@ class BaseLine extends BaseDrawObject {
     // Set link flags for this object.
     OptCMUtil.SetLinkFlag(
       this.BlockID,
-      DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE
+      DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
     );
 
     // Set link flags for each hooked object.
     for (hookIndex = 0; hookIndex < this.hooks.length; hookIndex++) {
       OptCMUtil.SetLinkFlag(
         this.hooks[hookIndex].objid,
-        DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE
+        DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
       );
     }
 

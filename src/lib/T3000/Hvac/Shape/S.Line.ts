@@ -699,7 +699,7 @@ class Line extends BaseLine {
         );
       }
 
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
     }
 
     T3Gv.opt.ob = {};
@@ -752,7 +752,7 @@ class Line extends BaseLine {
 
       this.CalcFrame();
       HookUtil.MaintainLink(this.BlockID, this, T3Gv.opt.ob, OptConstant.ActionTriggerType.ModifyShape);
-      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.SED_L_MOVE | DSConstant.LinkFlags.SED_L_CHANGE);
+      OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change);
       T3Gv.opt.UpdateLinks();
 
       const newLineData = {
