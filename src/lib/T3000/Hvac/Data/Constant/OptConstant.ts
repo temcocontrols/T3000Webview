@@ -493,7 +493,8 @@ class OptConstant {
       }
     },
 
-    MaxTotalLayers: 32
+    MaxTotalLayers: 32,
+    MaxLongDim: 1e7
   }
 
   /**

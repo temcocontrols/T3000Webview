@@ -81,7 +81,6 @@ class StateConstant {
     HNativeObject: 'hNative',
     HNativeWinObject: 'hNativeWindows',
     BlobBytesObject: 'BlobBytes',
-    // GraphObject: 'Graph',
     STDataObject: 'STData',
     ExpandedViewObject: 'ExpandedView',
     CommentBlock: 'CommentBlock',

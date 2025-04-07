@@ -1672,56 +1672,6 @@ class DocUtil {
   }
 
   /**
-   * Updates the visibility of page dividers based on document configuration
-   * Shows or hides page divider lines according to settings and print flags
-   * Ensures consistent display across document views
-   * @returns boolean - True if visibility was changed, false otherwise
-   */
-  // UpdatePageDividerVisibility(): boolean {
-  //   T3Util.Log("= U.DocUtil: UpdatePageDividerVisibility - Input:", {
-  //     showPageDivider: this.docConfig.showPageDivider,
-  //     printFlags: T3Gv.opt.header.Page.printflags,
-  //     layerExists: !!(this.svgDoc && this.svgDoc.GetLayer(this.pageDividerLayer))
-  //   });
-
-  //   // Get the page divider layer from the SVG document
-  //   const pageDividerLayer = this.svgDoc ? this.svgDoc.GetLayer(this.pageDividerLayer) : null;
-
-  //   // Get print flags from the document configuration
-  //   const documentPrintFlags = T3Gv.opt.header.Page.printflags;
-
-  //   // Determine if page dividers should be shown based on print flags and config
-  //   const shouldShowDividers =
-  //     !(documentPrintFlags & ShapeConstant.PrintFlags.SEP_OnePage) &&
-  //     !(documentPrintFlags & ShapeConstant.PrintFlags.SEP_CustomPageSize) &&
-  //     this.docConfig.showPageDivider;
-
-  //   // If page divider layer doesn't exist, exit with false
-  //   if (!pageDividerLayer) {
-  //     T3Util.Log("= U.DocUtil: UpdatePageDividerVisibility - Output:", {
-  //       message: "Page divider layer not found."
-  //     });
-  //     return false;
-  //   }
-
-  //   // If visibility state is already correct, no change needed
-  //   if (shouldShowDividers === pageDividerLayer.GetVisible()) {
-  //     T3Util.Log("= U.DocUtil: UpdatePageDividerVisibility - Output:", {
-  //       message: "Visibility unchanged.",
-  //       currentVisibility: pageDividerLayer.GetVisible()
-  //     });
-  //     return false;
-  //   } else {
-  //     // Update visibility and return true to indicate change
-  //     pageDividerLayer.SetVisible(shouldShowDividers);
-  //     T3Util.Log("= U.DocUtil: UpdatePageDividerVisibility - Output:", {
-  //       updatedVisibility: shouldShowDividers
-  //     });
-  //     return true;
-  //   }
-  // }
-
-  /**
    * Updates the page divider lines in the document
    * Draws horizontal and vertical lines to indicate page boundaries
    * Creates visual guides that show where pages will break during printing
