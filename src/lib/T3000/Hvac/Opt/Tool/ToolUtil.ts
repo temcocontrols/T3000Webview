@@ -2075,7 +2075,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt SelectAllObjects input: no parameters");
 
     try {
-      T3Gv.opt.SelectAllObjects();
+      SelectUtil.SelectAllObjects();
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
     }
