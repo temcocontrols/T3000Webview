@@ -275,18 +275,8 @@ class D3Symbol extends BaseSymbol {
       return foundIndex;
     };
 
-    // // Retrieve the field data table
-    // const fieldDataTable = TODO.STData.GetFieldedDataTable(this.fieldDataTableID);
-    // if (!fieldDataTable) {
-    //   T3Util.Log("S.D3Symbol: MapData - No field data table found.");
-    //   return;
-    // }
-
     // Collect element IDs from fieldDataTable rows (starting from index 3)
     const elementIDs: any[] = [];
-    // for (let row = 3; row < fieldDataTable.Rows.length; row++) {
-    //   elementIDs.push(fieldDataTable.Rows[row].ID);
-    // }
 
     // Loop through each public parameter and map data if possible.
     publicParams.forEach((paramName: string) => {
@@ -560,23 +550,6 @@ class D3Symbol extends BaseSymbol {
     }
 
     T3Util.Log("S.D3Symbol: SetD3Settings - Output d3Settings:", this.d3Settings);
-  }
-
-  WriteShapeData(outputStream, options) {
-    T3Util.Log("S.D3Symbol: WriteShapeData - Input:", { outputStream, options });
-
-    return;
-
-    Instance.Shape.BaseSymbol.prototype.WriteShapeData.call(this, outputStream, options);
-
-    if (this.d3Settings) {
-      const d3SettingsString = this.ExportD3Settings();
-      if (d3SettingsString) {
-        ShapeUtil.WriteString(outputStream, d3SettingsString, DSConstant.OpNameCode.cD3Settings, options);
-      }
-    }
-
-    T3Util.Log("S.D3Symbol: WriteShapeData - Completed");
   }
 
   Resize(svgElement, newSize, additionalParams) {
