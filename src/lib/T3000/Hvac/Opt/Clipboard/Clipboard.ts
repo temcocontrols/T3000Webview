@@ -166,22 +166,6 @@ class Clipboard {
           return;
         }
 
-        // if (!T3Gv.opt.isMobilePlatform) {
-        //   // Skip if focus is not on clipboard elements for cut/copy
-        //   if ((clipboardAction === "cut" || clipboardAction === "copy") &&
-        //     $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
-        //     return;
-        //   }
-
-        //   // Skip if paste and focus is on other input elements
-        //   if (clipboardAction === "paste" &&
-        //     ($("input:focus").length > 0 || $("textarea:focus").length > 0) &&
-        //     $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
-        //     return;
-        //   }
-        // }
-
-
         // Skip if focus is not on clipboard elements for cut/copy
         if ((clipboardAction === "cut" || clipboardAction === "copy") &&
           $("#_clipboardInput:focus,#_IEclipboardDiv:focus,#T3TouchProxy:focus").length <= 0) {
@@ -946,15 +930,6 @@ class Clipboard {
       const lmBytes = new Uint8Array(T3Gv.opt.header.ClipboardBuffer);
       clipboardContent += base64js.fromByteArray(lmBytes);
     }
-
-    // if (T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.Table) {
-    //   const tableData = JSON.stringify(T3Gv.opt.header.ClipboardBuffer);
-    //   const tableBytes = new Uint8Array(tableData.length);
-    //   for (let i = 0; i < tableData.length; i++) {
-    //     tableBytes[i] = tableData.charCodeAt(i);
-    //   }
-    //   clipboardContent += base64js.fromByteArray(tableBytes);
-    // }
 
     clipboardContent += "'/>";
     clipboardContent += "</div>";

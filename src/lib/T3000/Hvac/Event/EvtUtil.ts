@@ -236,7 +236,7 @@ class EvtUtil {
     }
 
     // Check if we should start panning instead of selection
-    const shouldPan = /*T3Gv.opt.isMobilePlatform ||*/
+    const shouldPan =
       LMEvtUtil.IsWheelClick(event) ||
       T3Constant.DocContext.SpacebarDown;
 
@@ -263,14 +263,12 @@ class EvtUtil {
       }
 
       Utils2.StopPropagationAndDefaults(event);
-      // T3Gv.opt.SetUIAdaptation(event);
 
       // Handle right clicks separately
       if (MouseUtil.IsRightClick(event)) {
         event.preventDefault();
         event.stopPropagation();
 
-        // contextMenuShow.value = false;
         UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
 
         T3Util.Log("E.Evt WorkAreaHammerDragStart output: right-click handled");
@@ -299,14 +297,6 @@ class EvtUtil {
     const optTypes = OptConstant.OptTypes;
 
     try {
-      // // Cancel any special mode operations if active
-      // switch (T3Gv.opt.crtOpt) {
-      //   case modalOperations.ADDCORNER:
-      //   case modalOperations.SPLITWALL:
-      //     T3Gv.gFloorplanManager.AddCornerCancel();
-      //     break;
-      // }
-
       // If auto-scrolling is in progress and returns false, exit early
       if (!DrawUtil.AutoScrollCommon(
         event,
@@ -405,9 +395,6 @@ class EvtUtil {
     const isRightClick = MouseUtil.IsRightClick(hammerEvent);
 
     if (!isRightClick) {
-      // Set UI adaptation based on event
-      // T3Gv.opt.SetUIAdaptation(hammerEvent);
-
       // Start the drawing operation
       DrawUtil.StartNewObjectDraw(hammerEvent);
 
@@ -495,7 +482,6 @@ class EvtUtil {
 
       // Prevent default browser behavior
       Utils2.StopPropagationAndDefaults(tapEvent);
-      // T3Gv.opt.SetUIAdaptation(tapEvent);
 
       // Check if this is a right-click
       const isRightClick = MouseUtil.IsRightClick(tapEvent);
@@ -580,9 +566,6 @@ class EvtUtil {
         T3Util.Log("E.Evt ShapeDragStart output: prevented in stamp mode");
         return false;
       }
-
-      // Set UI adaptation for current platform/device
-      // T3Gv.opt.SetUIAdaptation(event);
 
       // Handle right-click differently
       if (MouseUtil.IsRightClick(event)) {
@@ -687,9 +670,6 @@ class EvtUtil {
         return false;
       }
 
-      // Set UI adaptation for current device/platform
-      // T3Gv.opt.SetUIAdaptation(event);
-
       // Process based on current modal operation state
       switch (T3Gv.opt.crtOpt) {
         case OptConstant.OptTypes.None:
@@ -700,58 +680,14 @@ class EvtUtil {
           }
 
           // Check if this is a table or graph object
-          // const isTable = shape.GetTable(false);
           const isGraph = shape.GetGraph(false);
 
-          // // Handle special D3 symbol types (gauges and charts)
-          // if (shape.objecttype === NvConstant.FNObjectTypes.D3Symbol) {
-          //   switch (shape.codeLibID) {
-          //     case 'RadialGauge':
-          //     case 'LinearGauge':
-          //       T3Gv.opt.EditGauge();
-          //       T3Util.Log("E.Evt ShapeDoubleTap output: gauge editor opened");
-          //       return false;
-
-          //     case 'BarChart':
-          //     case 'PieChart':
-          //     case 'LineChart':
-          //     case 'SankeyChart':
-          //       T3Gv.opt.EditGraph();
-          //       T3Util.Log("E.Evt ShapeDoubleTap output: graph editor opened");
-          //       return false;
-          //   }
-          // }
           // Handle container shapes
-          // else
           if (shape instanceof Instance.Shape.ShapeContainer) {
             shape.DoubleClick(event);
             T3Util.Log("E.Evt ShapeDoubleTap output: container double-click handled");
             return false;
           }
-
-          // // Handle tables
-          // if (isTable) {
-          //   T3Gv.opt.Table_SetupAction(
-          //     event,
-          //     shape.BlockID,
-          //     OptConstant.Common.TableCellHit,
-          //     -1
-          //   );
-          //   T3Util.Log("E.Evt ShapeDoubleTap output: table action setup");
-          //   return false;
-          // }
-
-          // // Handle graphs
-          // if (isGraph) {
-          //   T3Gv.opt.Graph_SetupAction(
-          //     event,
-          //     shape.BlockID,
-          //     OptConstant.Common.GraphTextHit,
-          //     -1
-          //   );
-          //   T3Util.Log("E.Evt ShapeDoubleTap output: graph action setup");
-          //   return false;
-          // }
 
           // Default behavior: activate text editing
           const shapeElement = T3Gv.opt.svgObjectLayer.GetElementById(shape.tag);
@@ -932,7 +868,6 @@ class EvtUtil {
 
       // Process the drag completion and place the stamp object
       DrawUtil.DragDropObjectDone(event, stampObject);
-      // T3Gv.opt.MouseStampObjectDone(event, stampObject);
 
       T3Util.Log("E.Evt StampObjectDragEnd output: object placement completed");
       return true;

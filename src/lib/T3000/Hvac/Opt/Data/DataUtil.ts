@@ -135,18 +135,6 @@ class ObjectUtil {
           T3Gv.opt.svgOverlayLayer.RemoveElement(overlayElement);
         }
       }
-
-      // Process parent objects
-      objectCount = parentObjects.length;
-      for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
-        switch (parentObjects[objectIndex].objecttype) {
-          // case NvConstant.FNObjectTypes.SD_OBJT_NG_TIMELINE:
-          //   if (DataUtil.GetObjectPtr(parentObjects[objectIndex].BlockID) != null) {
-          //     T3Gv.opt.Timeline_Format(parentObjects[objectIndex]);
-          //   }
-          //   break;
-        }
-      }
     }
 
     T3Util.Log("O.Opt DeleteObjects - Output: Objects deleted:", objectCount);
@@ -186,13 +174,6 @@ class ObjectUtil {
 
         // Save blocks and update dirty state if needed
         if (!shouldKeepStateOpen && isStateOpen) {
-          if (UIUtil.GetDocDirtyState()) {
-            // Save only blocks that have changed
-            // ShapeUtil.SaveChangedBlocks(T3Gv.state.currentStateId, 1);
-          } else {
-            // Save all blocks if doc isn't already marked dirty
-            ShapeUtil.SaveAllBlocks();
-          }
           // Mark document as having unsaved changes
           UIUtil.SetDocDirtyState(true);
         }

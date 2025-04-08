@@ -111,9 +111,6 @@ class T3Opt {
     window.onkeyup = KeyboardOpt.OnKeyUp;
     window.onkeypress = KeyboardOpt.OnKeyPress;
 
-    // Build keyboard commands
-    // this.keyBoardOpt.BuildCommands();
-
     // Expose handlers to window for external access
     window.docUtil = T3Gv.docUtil;
     window.wallOpt = T3Gv.wallOpt;
