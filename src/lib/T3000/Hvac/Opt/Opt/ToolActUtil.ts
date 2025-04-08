@@ -144,9 +144,6 @@ class ToolActUtil {
 
     // Update selection attributes and comments panels
     SelectUtil.UpdateSelectionAttributes(selectedList);
-    // T3Gv.opt.CommentIdleTab();
-    // T3Gv.opt.Comment_UpdatePanel(null);
-    // T3Gv.opt.Comment_UpdateDropDown();
 
     // Save changed blocks if state was not open before undo
     if (!isStateOpen) {
@@ -223,11 +220,6 @@ class ToolActUtil {
     // Get updated session data after state restoration
     const updatDataData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
-    // // Update spell check if needed
-    // if (wasSpellCheckEnabled !== updatDataData.EnableSpellCheck) {
-    //   SDUI.Commands.MainController.Document.SetSpellCheck(updatDataData.EnableSpellCheck, false);
-    // }
-
     // Update rulers if changed
     const currentRulerSettings = T3Gv.docUtil.rulerConfig;
     if (T3Gv.docUtil.RulersNotEqual(updatDataData.rulerConfig, currentRulerSettings)) {
@@ -287,11 +279,6 @@ class ToolActUtil {
     // Update selection attributes
     SelectUtil.UpdateSelectionAttributes(selectedList);
 
-    // Save changed blocks if state wasn't open
-    if (!isStateOpen) {
-      // ShapeUtil.SaveChangedBlocks(currentStateId, 1);
-    }
-
     T3Util.Log("O.Opt Redo - Output: true");
     return true;
   }
@@ -347,28 +334,6 @@ class ToolActUtil {
           }
         }
       }
-      // // Handle table objects
-      // else if (storedObject.Type === StateConstant.StoredObjectType.TABLE_OBJECT) {
-      //   // If the table is being deleted
-      //   if (storedObject.stateOptTypeId === StateConstant.StateOperationType.DELETE) {
-      //     const tableBlock = T3Gv.stdObj.GetObject(storedObject.ID);
-
-      //     if (tableBlock) {
-      //       const tableData = tableBlock.Data;
-      //       this.Table_DeleteURLs(tableData);
-      //     }
-      //   }
-      //   // If the table is being modified
-      //   else {
-      //     const tableBlock = T3Gv.stdObj.GetObject(storedObject.ID);
-
-      //     if (tableBlock) {
-      //       const currentTableData = tableBlock.Data;
-      //       const nextTableData = storedObject.Data;
-      //       this.Table_RefreshURLs(currentTableData, nextTableData, true);
-      //     }
-      //   }
-      // }
     }
   }
 
@@ -398,10 +363,6 @@ class ToolActUtil {
     const targetFrame = $.extend(true, {}, targetObject.Frame);
     const targetHeight = targetFrame.height;
     const targetWidth = targetFrame.width;
-
-    // if (Collab.AllowMessage()) {
-    //   Collab.BeginSecondaryEdit();
-    // }
 
     // Resize each selected object (skipping the target object)
     for (let index = 0; index < selectedCount; ++index) {
@@ -441,10 +402,6 @@ class ToolActUtil {
       DataUtil.AddToDirtyList(objectId);
     }
 
-    // if (Collab.AllowMessage()) {
-    //   const messageData = { makeSameSizeOption: sizeOption };
-    //   Collab.BuildMessage(NvConstant.CollabMessages.MakeSameSize, messageData, true);
-    // }
     DrawUtil.CompleteOperation(null);
     T3Util.Log("O.Opt MakeSameSize - Output:", "Completed");
   }
@@ -485,9 +442,6 @@ class ToolActUtil {
 
       if (cannotFlipFound) {
       } else {
-        // if (Collab.AllowMessage()) {
-        //   Collab.BeginSecondaryEdit();
-        // }
         for (index = 0; index < count; index++) {
           currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
           OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
@@ -501,12 +455,6 @@ class ToolActUtil {
             currentObject.Flip(flipType);
           }
         }
-        // if (Collab.AllowMessage()) {
-        //   const messageData = {
-        //     flip: flipType
-        //   };
-        //   Collab.BuildMessage(NvConstant.CollabMessages.FlipShapes, messageData, true);
-        // }
         DrawUtil.CompleteOperation(null);
       }
     }
@@ -575,10 +523,6 @@ class ToolActUtil {
       if (associatedCount !== 0) {
         const visibleZList = LayerUtil.VisibleZList();
         if (visibleZList.length >= 1) {
-          // // Begin collaboration message if allowed.
-          // if (Collab.AllowMessage()) {
-          //   Collab.BeginSecondaryEdit();
-          // }
 
           // Create an array of indices of associated objects according to visible Z list order.
           const indexArray: number[] = [];
@@ -608,12 +552,6 @@ class ToolActUtil {
           // Update line hops if necessary.
           HookUtil.UpdateLineHops(true);
 
-          // // Build and send a collaboration message if allowed.
-          // if (Collab.AllowMessage()) {
-          //   const messageData = { theTargetLayer: targetLayerIndex };
-          //   Collab.BuildMessage(NvConstant.CollabMessages.SendToBackOfSpecificLayer, messageData, true);
-          // }
-
           // If updateSelectedBlock parameter is not specified, update the selected list block.
           if (updateSelectedBlock == null) {
             const preservedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID);
@@ -642,21 +580,8 @@ class ToolActUtil {
       let activeEditor;
       let tableObject;
       const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-      // const activeTableId = this.Table_GetActiveID();
-
-      // if (activeTableId >= 0) {
-      //   tableObject = DataUtil.GetObjectPtr(activeTableId, false);
-      // }
 
       if ((textEditSession.theActiveTextEditObjectID !== -1 || T3Gv.opt.bInNoteEdit)) {
-        // Case 1.1: Paste table content if the clipboard has table data
-        // if (textEditSession.theActiveTableObjectID >= 0 &&
-        //   this.header.ClipboardType === T3Constant.ClipboardType.Table &&
-        //   this.header.ClipboardBuffer) {
-        //   // this.Table_PasteCellContent(textEditSession.theActiveTableObjectID);
-        //   T3Util.Log("O.Opt PasteObjects - Output: Table content pasted");
-        //   return;
-        // }
 
         // Case 1.2: Paste text if the clipboard has text content
         if (T3Gv.opt.textClipboard && T3Gv.opt.textClipboard.text) {
@@ -714,26 +639,6 @@ class ToolActUtil {
         return;
       }
 
-      // // Case 5: Handle table cell content paste
-      // if (textEditSession.theActiveTableObjectID >= 0) {
-      //   const hasTableClipboard = (
-      //     this.header.ClipboardType === T3Constant.ClipboardType.Table &&
-      //     this.header.ClipboardBuffer
-      //   );
-
-      //   const hasTextClipboard = (
-      //     this.textClipboard &&
-      //     this.textClipboard.text &&
-      //     this.textClipboard.text !== '\r\n'
-      //   );
-
-      //   if (hasTableClipboard || hasTextClipboard) {
-      //     // this.Table_PasteCellContent(textEditSession.theActiveTableObjectID);
-      //     T3Util.Log("O.Opt PasteObjects - Output: Content pasted into table cell");
-      //     return;
-      //   }
-      // }
-
       // Default case: Close any active edit and paste LM content
       T3Gv.opt.CloseEdit(false);
 
@@ -763,59 +668,41 @@ class ToolActUtil {
       suppressCollabMessage
     });
 
-    // const activeTableId = this.Table_GetActiveID();
-    // if (activeTableId >= 0 && preserveSelection == null) {
-    //   this.Table_DeleteCellContent(activeTableId);
-    // } else
-
-    {
-      let idsCount = 0;
-      if (objectIds) {
-        idsCount = objectIds.length;
+    let idsCount = 0;
+    if (objectIds) {
+      idsCount = objectIds.length;
+    }
+    if (SelectUtil.AreSelectedObjects() || idsCount !== 0) {
+      if (!preserveSelection) {
+        T3Gv.opt.CloseEdit();
       }
-      if (SelectUtil.AreSelectedObjects() || idsCount !== 0) {
-        // if (Collab.AllowMessage()) {
-        //   Collab.BeginSecondaryEdit();
-        // }
-        if (!preserveSelection) {
-          T3Gv.opt.CloseEdit();
-        }
-        let deleteResult, nextSelect = OptAhUtil.GetNextSelect(), deleteList = [];
-        const selectedObjects = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID).Data;
-        const objectsToDelete = objectIds || selectedObjects;
+      let deleteResult, nextSelect = OptAhUtil.GetNextSelect(), deleteList = [];
+      const selectedObjects = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID).Data;
+      const objectsToDelete = objectIds || selectedObjects;
 
-        deleteResult = T3Gv.opt.AddtoDelete(objectsToDelete, false, null);
-        if (deleteResult >= 0) {
-          nextSelect = deleteResult;
-        }
-        // if (Collab.AllowMessage() && !suppressCollabMessage) {
-        //   const messageObj = {
-        //     listToDelete: Utils1.DeepCopy(objectsToDelete)
-        //   };
-        //   Collab.BuildMessage(NvConstant.CollabMessages.DeleteObjects, messageObj, false);
-        // }
-        const objectsCount = objectsToDelete.length;
-        DataUtil.DeleteObjects(objectsToDelete, false);
-
-        // if (objectsCount && this.IsPlanningDocument() === NvConstant.LayerTypes.SD_LAYERT_MINDMAP) {
-        //   ListManager.TaskMap.CommitVisualOutline();
-        // }
-
-        if (!preserveSelection) {
-          selectedObjects.splice(0);
-          if (nextSelect >= 0) {
-            deleteList.push(nextSelect);
-          } else {
-            SelectUtil.SetTargetSelect(-1, true);
-          }
-        }
-        // this.Comment_UpdatePanel(null);
-        if (!suppressCompleteOperation) {
-          DrawUtil.CompleteOperation(deleteList);
-        }
-        T3Util.Log("O.Opt DeleteSelectedObjectsCommon - Output:", true);
-        return true;
+      deleteResult = T3Gv.opt.AddtoDelete(objectsToDelete, false, null);
+      if (deleteResult >= 0) {
+        nextSelect = deleteResult;
       }
+
+      const objectsCount = objectsToDelete.length;
+      DataUtil.DeleteObjects(objectsToDelete, false);
+
+      if (!preserveSelection) {
+        selectedObjects.splice(0);
+        if (nextSelect >= 0) {
+          deleteList.push(nextSelect);
+        } else {
+          SelectUtil.SetTargetSelect(-1, true);
+        }
+      }
+
+      if (!suppressCompleteOperation) {
+        DrawUtil.CompleteOperation(deleteList);
+      }
+
+      T3Util.Log("O.Opt DeleteSelectedObjectsCommon - Output:", true);
+      return true;
     }
   }
 
@@ -837,8 +724,6 @@ class ToolActUtil {
         lineThickness = targetObject.StyleRecord.Line.Thickness;
         let currentAlignRect, currentDirtyFrame;
         let currentObject = null;
-
-        // Collab.BeginSecondaryEdit();
 
         for (let i = 0; i < numSelected; ++i) {
           if (selectedObjects[i] === targetSelected) {
@@ -912,10 +797,6 @@ class ToolActUtil {
         }
 
         if (alignmentPerformed) {
-          // if (Collab.AllowMessage()) {
-          //   const messageData = { shapeAlign: alignmentType };
-          //   // Collab.BuildMessage(NvConstant.CollabMessages.AlignShapes, messageData, true);
-          // }
           DrawUtil.CompleteOperation(null);
         } else {
           T3Util.Log("O.Opt AlignShapes - Output: AlignHooked & UnBlockMessages");
@@ -1075,11 +956,11 @@ class ToolActUtil {
   }
 
   /**
-     * Duplicates the currently selected objects with an optional displacement
-     * @param fromMove - If true, duplicates objects without displacement
-     * @param editOverride - Optional secondary edit object for override parameters
-     * @returns Array of duplicated object IDs
-     */
+   * Duplicates the currently selected objects with an optional displacement
+   * @param fromMove - If true, duplicates objects without displacement
+   * @param editOverride - Optional secondary edit object for override parameters
+   * @returns Array of duplicated object IDs
+   */
   static DuplicateObjects(fromMove, editOverride) {
     T3Util.Log("O.Opt DuplicateObjects - Input:", { fromMove, editOverride });
 
@@ -1087,8 +968,6 @@ class ToolActUtil {
       selectedList: []
     };
 
-    // Begin secondary edit and close any active edits
-    // Collab.BeginSecondaryEdit();
     T3Gv.opt.CloseEdit();
 
     // Only proceed if there are selected objects
@@ -1163,20 +1042,6 @@ class ToolActUtil {
           }
         }
       }
-
-      // // Send collaboration message if needed
-      // if (!editOverride && Collab.AllowMessage()) {
-      //   if (Collab.IsSecondary()) {
-      //     messageData.CreateList = Utils1.DeepCopy(selectedList);
-      //   }
-
-      //   Collab.AddNewBlockToSecondary(selectedList);
-      //   Collab.BuildMessage(
-      //     NvConstant.CollabMessages.Duplicate,
-      //     messageData,
-      //     false
-      //   );
-      // }
     }
 
     T3Util.Log("O.Opt DuplicateObjects - Output:", result.selectedList);
@@ -1191,7 +1056,6 @@ class ToolActUtil {
     T3Util.Log("O.Opt CopyObjects - Input:");
 
     const activeTextEditorSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-    // const activeTableId = this.Table_GetActiveID();
     let clipboardContent: any;
 
     if (
@@ -1205,7 +1069,6 @@ class ToolActUtil {
         if (copiedText) {
           T3Gv.opt.textClipboard = copiedText;
         }
-        // SDUI.Commands.MainController.Selection.SetPasteEnable(this.textClipboard != null);
         T3Gv.opt.header.ClipboardBuffer = null;
         T3Gv.opt.header.clipboardJson = null;
         T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.Text;
@@ -1215,20 +1078,13 @@ class ToolActUtil {
       return clipboardContent;
     }
 
-    // if (activeTableId >= 0) {
-    //   this.Table_CopyCellContent(activeTableId);
-    //   this.textClipboard = null;
-    // } else
-
-    {
-      if (!SelectUtil.AreSelectedObjects()) {
-        T3Util.Log("O.Opt CopyObjects - Output: No selected objects");
-        return;
-      }
-      T3Gv.opt.CloseEdit();
-      this.CopyObjectsCommon(false);
-      T3Gv.opt.textClipboard = null;
+    if (!SelectUtil.AreSelectedObjects()) {
+      T3Util.Log("O.Opt CopyObjects - Output: No selected objects");
+      return;
     }
+    T3Gv.opt.CloseEdit();
+    this.CopyObjectsCommon(false);
+    T3Gv.opt.textClipboard = null;
 
     const selectedObjectBlock = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
     SelectUtil.UpdateSelectionAttributes(selectedObjectBlock);
@@ -1242,19 +1098,17 @@ class ToolActUtil {
   }
 
   /**
-     * Pastes objects from the provided buffer at the computed paste position.
-     * @param buffer - The buffer containing the object data.
-     * @returns An array of selected object IDs that were pasted.
-     */
+   * Pastes objects from the provided buffer at the computed paste position.
+   * @param buffer - The buffer containing the object data.
+   * @returns An array of selected object IDs that were pasted.
+   */
   static PasteLM(buffer: string, jsonData: any): number[] {
     T3Util.Log("O.Opt PasteLM - Input:", buffer);
-
 
     const resultWrapper = { selectedList: [] as number[] };
     // Determine the paste position: use global paste point if set, otherwise get paste position.
     const pastePosition = T3Gv.opt.PastePoint || this.GetPastePosition();
     let messagePayload: any = {};
-
 
     // Read symbol from buffer and update resultWrapper.selectedList accordingly.
     ShapeUtil.ReadSymbolFromBuffer(
@@ -1272,17 +1126,8 @@ class ToolActUtil {
       false
     );
 
-
     T3Gv.opt.PastePoint = null;
     DrawUtil.CompleteOperation(resultWrapper.selectedList);
-
-    // if (Collab.AllowMessage()) {
-    //   if (Collab.IsSecondary()) {
-    //     messagePayload.CreateList = Utils1.DeepCopy(resultWrapper.selectedList);
-    //   }
-    //   Collab.AddNewBlockToSecondary(resultWrapper.selectedList);
-    //   Collab.BuildMessage(NvConstant.CollabMessages.PasteObjects, messagePayload, false);
-    // }
 
     T3Util.Log("O.Opt PasteLM - Output:", resultWrapper.selectedList);
     return resultWrapper.selectedList;
@@ -1353,9 +1198,6 @@ class ToolActUtil {
    */
   static CutObjects(isFromCutButton?: boolean): void {
 
-    // localStorage.setItem('before-cut-stdObj', JSON.stringify(T3Gv.stdObj));
-    // localStorage.setItem('before-cut-state', JSON.stringify(T3Gv.state));
-
     T3Util.Log("O.Opt CutObjects - Input:", { isFromCutButton });
     try {
       // If a cut is already in progress from a button and this call is from a button, cancel further processing.
@@ -1390,15 +1232,6 @@ class ToolActUtil {
         return;
       }
 
-      // // If a table cell is active, perform table cut operations.
-      // const activeTableId = this.Table_GetActiveID();
-      // if (activeTableId >= 0) {
-      //   this.Table_CopyCellContent(activeTableId);
-      //   this.Table_DeleteCellContent(activeTableId, null);
-      //   T3Util.Log("O.Opt CutObjects - Output:", "Table cell cut completed.");
-      //   return;
-      // }
-
       // If there are no selected objects, exit.
       if (!SelectUtil.AreSelectedObjects()) {
         T3Util.Log("O.Opt CutObjects - Output:", "No selected objects to cut.");
@@ -1410,8 +1243,8 @@ class ToolActUtil {
       this.CopyObjectsCommon(false);
       this.DeleteSelectedObjectsCommon();
 
-      localStorage.setItem('after-cut-stdObj', JSON.stringify(T3Gv.stdObj));
-      localStorage.setItem('after-cut-state', JSON.stringify(T3Gv.state));
+      // localStorage.setItem('after-cut-stdObj', JSON.stringify(T3Gv.stdObj));
+      // localStorage.setItem('after-cut-state', JSON.stringify(T3Gv.state));
 
 
       T3Util.Log("O.Opt CutObjects - Output:", "Graphic objects cut completed.");
@@ -1434,19 +1267,6 @@ class ToolActUtil {
     // Retrieve the currently selected objects.
     const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
 
-
-    // const theCutObj = DataUtil.GetObjectPtr(selectedObjects[0], false);
-    // localStorage.setItem('the-cut-obj', JSON.stringify(theCutObj));
-
-    // T3Gv.cutObj = theCutObj;
-
-
-
-    // // If there are selected objects and we're in a MindMap planning document, commit the visual outline.
-    // if (selectedObjects.length && this.IsPlanningDocument() === NvConstant.LayerTypes.SD_LAYERT_MINDMAP) {
-    //   ListManager.TaskMap.CommitVisualOutline();
-    // }
-
     // Prepare deletion options with connectors flag set to false.
     const options = { connectors: false };
     T3Gv.opt.AddtoDelete(selectedObjects, true, options);
@@ -1455,7 +1275,6 @@ class ToolActUtil {
     if (selectedCount !== 0) {
       // If connectors are flagged and returnBuffer is false, close the secondary edit and filter for clipboard.
       if (options.connectors && !returnBuffer) {
-        // Collab.CloseSecondaryEdit();
         return this.FilterFiletoClipboard(selectedObjects, returnBuffer);
       }
 
@@ -1479,22 +1298,8 @@ class ToolActUtil {
         sortedObjects.push(sortedObjId);
       }
 
-      // If returnBuffer flag is true, return the sorted zList and written buffer.
-      // if (returnBuffer) {
-      //   T3Util.Log("O.Opt CopyObjectsCommon - Output:", { zList: sortedObjects, buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false) });
-      //   return {
-      //     zList: sortedObjects,
-      //     buffer: ShapeUtil.WriteSelect(sortedObjects, false, true, false)
-      //   };
-      // }
-
       // Otherwise update the clipboard buffer and clipboard type.
       T3Gv.opt.header.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
-
-      // var dataToStore = ShapeUtil.WriteJson(sortedObjects);
-      // T3Gv.opt.header.clipboardJson = JSON.stringify(dataToStore);
-      // console.log("=U.ToolActUtil.CopyObjectsCommon - Output: Clipboard Json =", T3Gv.opt.header.clipboardJson);
-      // console.log("=u.ToolActUtil before data ", selectedObjects)
 
       T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
 
@@ -1513,11 +1318,11 @@ class ToolActUtil {
   }
 
   /**
-     * Ungroups a shape by extracting its constituent shapes and applying any transformations
-     * @param groupId - ID of the group to ungroup
-     * @param maintainLinksFlag - Flag to determine how to maintain links (true for value 2, false for normal behavior)
-     * @returns void
-     */
+   * Ungroups a shape by extracting its constituent shapes and applying any transformations
+   * @param groupId - ID of the group to ungroup
+   * @param maintainLinksFlag - Flag to determine how to maintain links (true for value 2, false for normal behavior)
+   * @returns void
+   */
   static UngroupShape(groupId, maintainLinksFlag?) {
     T3Util.Log("O.Opt UngroupShape - Input:", { groupId, maintainLinksFlag });
 
@@ -1655,12 +1460,6 @@ class ToolActUtil {
         }
       }
 
-      // // Scale table if present
-      // const tableData = currentShape.GetTable(true);
-      // if (tableData) {
-      //   this.Table_ScaleTable(currentShape, tableData, scaleX, scaleY);
-      // }
-
       // Mark as no longer in a group
       currentShape.bInGroup = false;
 
@@ -1718,313 +1517,16 @@ class ToolActUtil {
   }
 
   /**
-     * Groups selected objects into a single group shape
-     * @param returnValueFlag - Flag to determine if function should return the group ID
-     * @param customSelectionList - Optional custom selection list to use instead of current selection
-     * @param skipValidation - If true, skips validation checks for grouping
-     * @param preventRedraw - If true, prevents automatic redrawing of SVG objects
-     * @param enableCollaboration - If true, enables collaboration messaging
-     * @returns The ID of the new group or false if grouping failed
-     */
+   * Groups selected objects into a single group shape
+   * @param returnValueFlag - Flag to determine if function should return the group ID
+   * @param customSelectionList - Optional custom selection list to use instead of current selection
+   * @param skipValidation - If true, skips validation checks for grouping
+   * @param preventRedraw - If true, prevents automatic redrawing of SVG objects
+   * @param enableCollaboration - If true, enables collaboration messaging
+   * @returns The ID of the new group or false if grouping failed
+   */
   static GroupSelected(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration) {
-
     new ToolAct2Util().GroupSelectedShapes(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration);
-    return;
-
-    T3Util.Log("O.Opt GroupSelected - Input:", {
-      returnValueFlag,
-      customSelectionList: customSelectionList?.length || "undefined",
-      skipValidation,
-      preventRedraw,
-      enableCollaboration
-    });
-
-    let objectIndex;
-    let objectRect;
-    let hasNoRotateObject = false;
-    let commentIds = [];
-    let visibleObjectList = LayerUtil.ActiveVisibleZList();
-
-    // If skipValidation is true, use the entire Z-list
-    if (skipValidation) {
-      visibleObjectList = LayerUtil.ZList();
-    }
-
-    const totalVisibleObjects = visibleObjectList.length;
-    if (totalVisibleObjects === 0) {
-      T3Util.Log("O.Opt GroupSelected - Output: false (no visible objects)");
-      return false;
-    }
-
-    // Get the list of objects to be grouped
-    const selectionList = customSelectionList ||
-      T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
-    const selectionCount = selectionList.length;
-
-    if (selectionCount <= 1) {
-      T3Util.Log("O.Opt GroupSelected - Output: false (less than 2 objects selected)");
-      return false;
-    }
-
-    // Get the move list (objects that will be grouped)
-    const objectsToGroup = customSelectionList ||
-      SelectUtil.GetMoveList(-1, true, true, false, {}, false);
-
-    // Validate that objects can be grouped
-    if (!skipValidation) {
-      // Check if all objects allow grouping
-      if (!DrawUtil.AllowGroup(objectsToGroup)) {
-        T3Util.Log("O.Opt GroupSelected - Output: false (grouping not allowed)");
-        return false;
-      }
-
-      // Check if objects are linked to objects outside the group
-      if (T3Gv.opt.IsLinkedOutside(objectsToGroup)) {
-        T3Util.Log("O.Opt GroupSelected - Output: false (linked outside)");
-        return false;
-      }
-
-      // Check if the group contains non-deletable objects
-      if (T3Gv.opt.IsGroupNonDelete()) {
-        T3Util.Log("O.Opt GroupSelected - Output: false (contains non-deletable objects)");
-        return false;
-      }
-    }
-
-    // // Set up collaboration if enabled
-    // let collaborationMessage;
-    // if (enableCollaboration && Collab.AllowMessage()) {
-    //   Collab.BeginSecondaryEdit();
-    //   const messageData = {};
-    //   collaborationMessage = Collab.BuildMessage(
-    //     NvConstant.CollabMessages.GroupSelected,
-    //     messageData,
-    //     true,
-    //     true
-    //   );
-    // }
-
-    // Temporarily remove dimensions to calculate proper bounding rectangle
-    const dimensionObjects = temporarilyRemoveDimensions(objectsToGroup);
-
-    // Calculate bounding rectangle for all objects in the group
-    const boundingRect = T3Gv.opt.GetListSRect(objectsToGroup);
-
-    // Restore dimensions
-    restoreDimensions(objectsToGroup, dimensionObjects);
-
-    // Create a filtered list of visible objects that are in objectsToGroup
-    const filteredObjects = [];
-    for (objectIndex = 0; objectIndex < totalVisibleObjects; ++objectIndex) {
-      if (objectsToGroup.indexOf(visibleObjectList[objectIndex]) !== -1) {
-        filteredObjects.push(visibleObjectList[objectIndex]);
-      }
-    }
-
-    // Get the links list with preserved state
-    const linksList = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
-    let currentObject = null;
-
-    // Adjust objects' positions relative to the group's bounding rectangle
-    for (objectIndex = 0; objectIndex < filteredObjects.length; ++objectIndex) {
-      currentObject = DataUtil.GetObjectPtr(filteredObjects[objectIndex], true);
-
-      // Store comment IDs for later adjustment
-      if (currentObject.CommentID >= 0) {
-        commentIds.push(currentObject.CommentID);
-      }
-
-      // Adjust object frame relative to group origin
-      const objectFrame = currentObject.Frame;
-      objectFrame.x -= boundingRect.x;
-      objectFrame.y -= boundingRect.y;
-
-      // Check if any object disallows rotation
-      if (currentObject.NoRotate()) {
-        hasNoRotateObject = true;
-      }
-
-      // Mark object as being in a group
-      currentObject.bInGroup = true;
-
-      // For line-based objects, adjust start and end points
-      if (
-        currentObject instanceof Instance.Shape.BaseLine ||
-        currentObject instanceof Instance.Shape.Connector ||
-        (currentObject.StartPoint !== undefined && currentObject.EndPoint !== undefined)
-      ) {
-        currentObject.StartPoint.x -= boundingRect.x;
-        currentObject.StartPoint.y -= boundingRect.y;
-        currentObject.EndPoint.x -= boundingRect.x;
-        currentObject.EndPoint.y -= boundingRect.y;
-      }
-
-      // If object is already a group symbol, clean up its native data
-      if (currentObject.NativeID >= 0 &&
-        currentObject.ShapeType === OptConstant.ShapeType.GroupSymbol) {
-        const nativeBlock = T3Gv.stdObj.PreserveBlock(currentObject.NativeID);
-        if (nativeBlock) {
-          nativeBlock.Delete();
-        }
-        currentObject.NativeID = -1;
-      }
-
-      // Update the object's frame
-      currentObject.UpdateFrame(objectFrame);
-    }
-
-    // Create group object data
-    const groupData = {
-      Frame: {
-        x: boundingRect.x,
-        y: boundingRect.y,
-        width: boundingRect.width,
-        height: boundingRect.height
-      },
-      TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-      ShapesInGroup: filteredObjects,
-      InitialGroupBounds: {
-        x: boundingRect.x,
-        y: boundingRect.y,
-        width: boundingRect.width,
-        height: boundingRect.height
-      }
-    };
-
-    // Create the group symbol
-    const groupSymbol = new Instance.Shape.GroupSymbol(groupData);
-
-    // If any object in group can't rotate, mark group as non-rotatable
-    if (hasNoRotateObject) {
-      groupSymbol.extraflags = Utils2.SetFlag(
-        groupSymbol.extraflags,
-        OptConstant.ExtraFlags.NoRotate,
-        true
-      );
-    }
-
-    // Get the z-list with preserved state
-    LayerUtil.ZListPreserve();
-
-    // Add the new group to the document
-    const newGroupId = DrawUtil.AddNewObject(groupSymbol, true, false);
-
-    // // Handle collaboration for the new group
-    // if (enableCollaboration && Collab.AllowMessage()) {
-    //   Collab.AddNewBlockToSecondary(newGroupId);
-
-    //   if (Collab.IsSecondary()) {
-    //     const messageData = { CreateList: [newGroupId] };
-    //     collaborationMessage.messageData = messageData;
-    //   }
-    // }
-
-    // Adjust style settings for the group
-    if (groupSymbol.StyleRecord) {
-      if (groupSymbol.StyleRecord.Line) {
-        groupSymbol.StyleRecord.Line.Thickness = 0;
-      }
-
-      if (groupSymbol.StyleRecord.OutsideEffect) {
-        groupSymbol.StyleRecord.OutsideEffect.OutsideType = 0;
-        groupSymbol.StyleRecord.OutsideEffect.OutsideExtent_Bottom = 0;
-        groupSymbol.StyleRecord.OutsideEffect.OutsideExtent_Left = 0;
-        groupSymbol.StyleRecord.OutsideEffect.OutsideExtent_Right = 0;
-        groupSymbol.StyleRecord.OutsideEffect.OutsideExtent_Top = 0;
-      }
-
-      groupSymbol.UpdateFrame();
-    }
-
-    // Remove the grouped objects from z-lists and links
-    for (objectIndex = 0; objectIndex < filteredObjects.length; ++objectIndex) {
-      LayerUtil.RemoveFromAllZLists(filteredObjects[objectIndex]);
-      HookUtil.DeleteLink(
-        linksList,
-        filteredObjects[objectIndex],
-        -1,
-        null,
-        0,
-        true
-      );
-    }
-
-    // Handle comments for grouped objects
-    if (commentIds.length) {
-      T3Gv.opt.Comment_Group(commentIds);
-    }
-
-    // Get the updated visible list
-    visibleObjectList = LayerUtil.ActiveVisibleZList();
-    const updatedVisibleCount = visibleObjectList.length;
-
-    // Convert group to native format if available
-    groupSymbol.ConvertToNative(T3Gv.opt.richGradients, skipValidation);
-
-    // // Send collaboration message if enabled
-    // if (enableCollaboration && Collab.AllowMessage()) {
-    //   Collab.SendMessage(collaborationMessage);
-    // }
-
-    // Complete the operation and select the new group
-    DrawUtil.CompleteOperation([visibleObjectList[updatedVisibleCount - 1]], returnValueFlag);
-
-    // Render all objects if not prevented
-    if (!preventRedraw && !skipValidation) {
-      SvgUtil.RenderAllSVGObjects();
-    }
-
-    // Clear the move list
-    T3Gv.opt.moveList = null;
-
-    T3Util.Log("O.Opt GroupSelected - Output:", newGroupId);
-    return newGroupId;
-
-    /**
-     * Helper function to temporarily remove dimensions from objects
-     * @param objectList - List of objects to process
-     * @returns Array of saved dimension data
-     */
-    function temporarilyRemoveDimensions(objectList) {
-      const dimensionData = [];
-
-      for (let i = 0, len = objectList.length; i < len; i++) {
-        const currentObject = DataUtil.GetObjectPtr(objectList[i], true);
-
-        // Save dimensions that need to be preserved
-        if (
-          currentObject.Dimensions & NvConstant.DimensionFlags.Always ||
-          currentObject.Dimensions & NvConstant.DimensionFlags.Select
-        ) {
-          dimensionData.push({
-            index: i,
-            dimensions: currentObject.Dimensions
-          });
-
-          currentObject.Dimensions = 0;
-          currentObject.UpdateFrame();
-        }
-      }
-
-      return dimensionData;
-    }
-
-    /**
-     * Helper function to restore dimensions to objects
-     * @param objectList - List of objects to process
-     * @param dimensionData - Array of saved dimension data
-     */
-    function restoreDimensions(objectList, dimensionData) {
-      for (let i = 0, len = dimensionData.length; i < len; i++) {
-        const objectToRestore = DataUtil.GetObjectPtr(
-          objectList[dimensionData[i].index],
-          true
-        );
-
-        objectToRestore.Dimensions = dimensionData[i].dimensions;
-        objectToRestore.UpdateFrame();
-      }
-    }
   }
 
   /**
@@ -2033,88 +1535,15 @@ class ToolActUtil {
   */
   static UnGroupSelected() {
     new ToolAct2Util().UngroupSelectedShapes();
-    return;
-
-    T3Util.Log("O.Opt UnGroupSelected - Input: none");
-
-    const activeVisibleShapes = LayerUtil.ActiveVisibleZList();
-    if (activeVisibleShapes.length === 0) {
-      T3Util.Log("O.Opt UnGroupSelected - Output: false (no active visible shapes)");
-      return false;
-    }
-    const selectedShapes = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
-    const numSelectedShapes = selectedShapes.length;
-    if (numSelectedShapes === 0) {
-      T3Util.Log("O.Opt UnGroupSelected - Output: false (no selected shapes)");
-      return false;
-    }
-
-    let containsGroup = false;
-    let currentShape = null;
-    for (let index = 0; index < numSelectedShapes; index++) {
-      currentShape = DataUtil.GetObjectPtr(selectedShapes[index], false);
-      if (currentShape instanceof Instance.Shape.GroupSymbol) {
-        containsGroup = true;
-        break;
-      }
-      if (currentShape.NativeID >= 0) {
-        containsGroup = true;
-        break;
-      }
-    }
-
-    if (containsGroup) {
-      // if (Collab.AllowMessage()) {
-      //   Collab.BeginSecondaryEdit();
-      //   const messageObject = {};
-      //   const message = Collab.BuildMessage(NvConstant.CollabMessages.UnGroup, messageObject, true, true);
-      // }
-      let currentSelectedShapes = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true).slice(0);
-      let resultShapeList: number[] = [];
-      for (let index = 0; index < numSelectedShapes; index++) {
-        currentShape = DataUtil.GetObjectPtr(currentSelectedShapes[index], false);
-        const shapeId = currentSelectedShapes[index];
-        if (currentShape instanceof Instance.Shape.GroupSymbol) {
-          resultShapeList = resultShapeList.concat(currentShape.ShapesInGroup);
-          this.UngroupShape(shapeId);
-        } else if (currentShape.NativeID >= 0) {
-          const ungroupResult = T3Gv.opt.UngroupNative(shapeId, false, true);
-          if (ungroupResult) {
-            // if (Collab.AllowMessage()) {
-            //   Collab.AddNewBlockToSecondary(ungroupResult[0]);
-            // }
-            DataUtil.DeleteObjects([shapeId], false);
-            resultShapeList = resultShapeList.concat(ungroupResult);
-            containsGroup = true;
-          }
-        } else {
-          resultShapeList.push(shapeId);
-        }
-      }
-      if (containsGroup) {
-        SvgUtil.RenderAllSVGObjects();
-        SelectUtil.SelectObjects(resultShapeList);
-        // if (Collab.AllowMessage()) {
-        //   const messageObject = {};
-        //   if (Collab.IsSecondary() && Collab.CreateList.length) {
-        //     messageObject.CreateList = [];
-        //     messageObject.CreateList = messageObject.CreateList.concat(Collab.CreateList);
-        //   }
-        //   Collab.SendMessage(message);
-        // }
-        DrawUtil.CompleteOperation(resultShapeList);
-      }
-    }
-    T3Util.Log("O.Opt UnGroupSelected - Output: operation completed");
   }
 
   /**
-     * Rotates a rectangle by a specified angle around a center point
-     * @param rectangle - The rectangle to rotate
-     * @param centerPoint - The point to rotate around
-     * @param angleDegrees - Rotation angle in degrees
-     * @returns A new rectangle that bounds the rotated points
-     */
+   * Rotates a rectangle by a specified angle around a center point
+   * @param rectangle - The rectangle to rotate
+   * @param centerPoint - The point to rotate around
+   * @param angleDegrees - Rotation angle in degrees
+   * @returns A new rectangle that bounds the rotated points
+   */
   static RotateRect(rectangle, centerPoint, angleDegrees) {
     T3Util.Log("O.Opt RotateRect - Input:", { rectangle, centerPoint, angleDegrees });
 
@@ -2197,12 +1626,12 @@ class ToolActUtil {
   }
 
   /**
-    * Offsets a shape's position by the specified amounts
-    * @param shapeId - ID of the shape to offset
-    * @param offsetX - Amount to offset in X direction
-    * @param offsetY - Amount to offset in Y direction
-    * @param autoGrowSettings - Optional auto-grow settings
-    */
+   * Offsets a shape's position by the specified amounts
+   * @param shapeId - ID of the shape to offset
+   * @param offsetX - Amount to offset in X direction
+   * @param offsetY - Amount to offset in Y direction
+   * @param autoGrowSettings - Optional auto-grow settings
+   */
   static OffsetShape(shapeId: number, offsetX: number, offsetY: number, autoGrowSettings?: any) {
     T3Util.Log("O.Opt OffsetShape - Input:", {
       shapeId,
@@ -2212,16 +1641,16 @@ class ToolActUtil {
     });
 
     // Track the shape bounds
-    const shapeBounds = {};
+    let shapeBounds = { x: 0, y: 0 };
 
     // Get a preserved copy of the shape object for modification
-    const shapeObject = T3Gv.stdObj.PreserveBlock(shapeId);
+    let shapeObject = T3Gv.stdObj.PreserveBlock(shapeId);
 
     // Initialize auto-grow if settings provided
     DrawUtil.InitializeAutoGrowDrag(autoGrowSettings);
 
     // Get the actual shape data
-    const shapeData = shapeObject.Data;
+    let shapeData = shapeObject.Data;
 
     // Apply the offset to the shape
     shapeData.OffsetShape(offsetX, offsetY);
