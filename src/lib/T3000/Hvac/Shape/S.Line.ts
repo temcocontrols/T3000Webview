@@ -332,7 +332,7 @@ class Line extends BaseLine {
     if (T3Gv.opt.crtOpt === OptConstant.OptTypes.AddCorner) {
       shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
       if (shapeElement) {
-        shapeElement.SetCursor(CursorConstant.CursorType.CROSSHAIR);
+        shapeElement.SetCursor(CursorConstant.CursorType.Cross);
       }
     } else {
       this.BaseDrawingObjectSetCursors();
@@ -352,37 +352,37 @@ class Line extends BaseLine {
         const shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
         if (shapeElement) {
           if (this.objecttype === NvConstant.FNObjectTypes.FrameContainer) {
-            shapeElement.SetCursor(CursorConstant.CursorType.DEFAULT);
+            shapeElement.SetCursor(CursorConstant.CursorType.Default);
           } else {
-            shapeElement.SetCursor(CursorConstant.CursorType.ADD);
+            shapeElement.SetCursor(CursorConstant.CursorType.Add);
           }
         }
 
         const hyperlinkIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.HyperLink);
-        if (hyperlinkIcon) hyperlinkIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (hyperlinkIcon) hyperlinkIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const notesIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Notes);
-        if (notesIcon) notesIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (notesIcon) notesIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const expandedViewIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.ExpandedView);
-        if (expandedViewIcon) expandedViewIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (expandedViewIcon) expandedViewIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const commentIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Comment);
-        if (commentIcon) commentIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (commentIcon) commentIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const attachmentIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.Attachment);
-        if (attachmentIcon) attachmentIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (attachmentIcon) attachmentIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const fieldDataIcon = shapeContainer.GetElementById(OptConstant.ShapeIconType.FieldData);
-        if (fieldDataIcon) fieldDataIcon.SetCursor(CursorConstant.CursorType.POINTER);
+        if (fieldDataIcon) fieldDataIcon.SetCursor(CursorConstant.CursorType.Pointer);
 
         const slopElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-        if (slopElement) slopElement.SetCursor(CursorConstant.CursorType.ADD);
+        if (slopElement) slopElement.SetCursor(CursorConstant.CursorType.Add);
 
         const activeEditElement = T3Gv.opt.svgDoc.GetActiveEdit();
         if (this.DataID && this.DataID >= 0 && shapeContainer.textElem) {
           if (shapeContainer.textElem === activeEditElement) {
-            shapeElement.SetCursor(CursorConstant.CursorType.TEXT);
+            shapeElement.SetCursor(CursorConstant.CursorType.Text);
             shapeContainer.textElem.SetCursorState(CursorConstant.CursorState.EditLink);
           } else {
             shapeContainer.textElem.SetCursorState(CursorConstant.CursorState.LinkOnly);
@@ -725,10 +725,6 @@ class Line extends BaseLine {
     Utils3.RotatePointsAboutCenter(this.Frame, -radians, newPoints);
 
     if (Math.abs(newPoints[1].y - newPoints[2].y) <= this.StyleRecord.Line.Thickness) {
-      // if (Collab.AllowMessage()) {
-      //   Collab.BeginSecondaryEdit();
-      //   const message = { BlockID: this.BlockID, point: { x: point.x, y: point.y } };
-      // }
 
       newPoints[2].y = newPoints[0].y;
       if (Math.abs(newPoints[1].x - newPoints[2].x) > Math.abs(newPoints[0].x - newPoints[2].x)) {
@@ -789,17 +785,6 @@ class Line extends BaseLine {
 
       joinedObject.UpdateDimensionFromText(joinedElement, dimensionText, { segment: 2 });
       DataUtil.AddToDirtyList(this.BlockID);
-
-      // Collab.ClearCreateList();
-      // Collab.AddToCreateList(joinID);
-
-      // if (Collab.AllowMessage()) {
-      //   if (Collab.IsSecondary() && Collab.CreateList.length) {
-      //     message.CreateList = [joinID];
-      //   }
-      //   Collab.BuildMessage(NvConstant.CollabMessages.AddCorner, message, false);
-      // }
-
       DrawUtil.CompleteOperation(null);
     }
 

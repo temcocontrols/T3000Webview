@@ -385,20 +385,15 @@ class GroupSymbol extends BaseSymbol {
 
     // Define the list of resize cursors in a clockwise order starting from the top-left
     const resizeCursorList = [
-      CursorConstant.CursorType.RESIZE_LT,
-      CursorConstant.CursorType.RESIZE_T,
-      CursorConstant.CursorType.RESIZE_RT,
-      CursorConstant.CursorType.RESIZE_R,
-      CursorConstant.CursorType.RESIZE_RB,
-      CursorConstant.CursorType.RESIZE_B,
-      CursorConstant.CursorType.RESIZE_LB,
-      CursorConstant.CursorType.RESIZE_L
+      CursorConstant.CursorType.ResizeLT,
+      CursorConstant.CursorType.ResizeT,
+      CursorConstant.CursorType.ResizeRT,
+      CursorConstant.CursorType.ResizeR,
+      CursorConstant.CursorType.ResizeRB,
+      CursorConstant.CursorType.ResizeB,
+      CursorConstant.CursorType.ResizeLB,
+      CursorConstant.CursorType.ResizeL
     ];
-
-    // if (T3Gv.opt.Table_GetActiveID() === this.BlockID) {
-    //   T3Util.Log("S.GroupSymbol - BaseShapeCreateActionTriggers output:", null);
-    //   return null;
-    // }
 
     let actionTriggerGroup = svgDocument.CreateShape(OptConstant.CSType.Group);
     const knobSize = OptConstant.Common.KnobSize;
@@ -483,14 +478,14 @@ class GroupSymbol extends BaseSymbol {
       useSideKnobs = false;
       knobProps.strokeColor = 'red';
       orderedCursorList = [
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT,
-        CursorConstant.CursorType.DEFAULT
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default,
+        CursorConstant.CursorType.Default
       ];
     }
 
@@ -613,7 +608,7 @@ class GroupSymbol extends BaseSymbol {
           const deltaX = polyPoints[k].x - polyPoints[k - 1].x;
           const deltaY = polyPoints[k].y - polyPoints[k - 1].y;
           if (Utils2.sqrt(deltaX * deltaX + deltaY * deltaY) > minSidePointLength) {
-            knobProps.cursorType = deltaX * deltaX > deltaY * deltaY ? CursorConstant.CursorType.RESIZE_TB : CursorConstant.CursorType.RESIZE_LR;
+            knobProps.cursorType = deltaX * deltaX > deltaY * deltaY ? CursorConstant.CursorType.ResizeTB : CursorConstant.CursorType.ResizeLR;
             knobProps.x = polyPoints[k - 1].x + deltaX / 2;
             knobProps.y = polyPoints[k - 1].y + deltaY / 2;
             let polyKnob = this.GenericKnob(knobProps);
@@ -642,7 +637,7 @@ class GroupSymbol extends BaseSymbol {
       knobProps.shapeType = OptConstant.CSType.Oval;
       knobProps.x = isTextGrowHorizontal ? frameWidth + adjustedSmallKnobSize : frameWidth - 3 * adjustedSmallKnobSize;
       knobProps.y = frameHeight / 2 - adjustedSmallKnobSize / 2;
-      knobProps.cursorType = CursorConstant.CursorType.ROTATE;
+      knobProps.cursorType = CursorConstant.CursorType.Rotate;
       knobProps.knobID = OptConstant.ActionTriggerType.Rotate;
       knobProps.fillColor = 'white';
       knobProps.fillOpacity = 0.001;
@@ -748,64 +743,6 @@ class GroupSymbol extends BaseSymbol {
     }
   }
 
-  WriteShapeData(outputStream, writeOptions) {
-    T3Util.Log("S.GroupSymbol - WriteShapeData input:", { outputStream, writeOptions });
-
-    return;
-
-    let numShapes: number, shapeObj: any, buffer: any, codeLength: any;
-    let nativeStorageResult = new WResult();
-    let dataId = this.DataID;
-
-    // Modify dataId if text attachment flags are set and we are not writing blocks
-    if ((this.TextFlags & NvConstant.TextFlags.AttachB ||
-      this.TextFlags & NvConstant.TextFlags.AttachA) &&
-      !writeOptions.WriteBlocks) {
-      dataId = -1;
-    }
-
-    nativeStorageResult.richGradients = T3Gv.opt.richGradients;
-
-    ShapeUtil.WriteTextParams(outputStream, this, dataId, writeOptions);
-
-    if (writeOptions.WriteBlocks) {
-      ShapeUtil.WriteNativeID(outputStream, this.NativeID, writeOptions);
-    } else if (this.NativeID && (numShapes = this.ShapesInGroup.length)) {
-      for (let i = 0; i < numShapes; i++) {
-        const shapeId = this.ShapesInGroup[i];
-        nativeStorageResult.zList.push(shapeId);
-        shapeObj = DataUtil.GetObjectPtr(shapeId, false);
-        shapeObj.layer = this.Layer;
-        shapeObj.GetTextures(nativeStorageResult.TextureList);
-      }
-
-      nativeStorageResult.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-      nativeStorageResult.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-      nativeStorageResult.ctp = T3Gv.opt.header;
-
-      if (this.InitialGroupBounds.x > 0 || this.InitialGroupBounds.y > 0) {
-        nativeStorageResult.GroupOffset.x = this.Frame.x + writeOptions.GroupOffset.x;
-        nativeStorageResult.GroupOffset.y = this.Frame.y + writeOptions.GroupOffset.y;
-      } else {
-        nativeStorageResult.GroupOffset.x = writeOptions.GroupOffset.x;
-        nativeStorageResult.GroupOffset.y = writeOptions.GroupOffset.y;
-      }
-
-      nativeStorageResult.WriteGroupBlock = writeOptions.WriteGroupBlock;
-      nativeStorageResult.WriteWin32 = writeOptions.WriteWin32;
-
-      T3Gv.docUtil.svgDoc.GetWorkArea();
-      nativeStorageResult.docDpi = T3Gv.docUtil.svgDoc.docInfo.docDpi;
-
-      buffer = ShapeUtil.WriteBuffer(nativeStorageResult, true, true, true);
-      codeLength = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cNativeStorage);
-      DSUtil.writeNativeBuffer(outputStream, buffer);
-      ShapeUtil.WriteLength(outputStream, codeLength);
-    }
-
-    T3Util.Log("S.GroupSymbol - WriteShapeData output executed");
-  }
-
   DeleteObject() {
     T3Util.Log("S.GroupSymbol - DeleteObject input: none");
     const shapesInGroup = this.ShapesInGroup;
@@ -831,18 +768,6 @@ class GroupSymbol extends BaseSymbol {
     let hookObject = null;
     let tempHookElement = null;
     let hooksBackup = [];
-
-    // // Delete Table object if exists
-    // if (this.TableID !== -1) {
-    //   let tablePointer = DataUtil.GetObjectPtr(this.TableID, true);
-    //   if (tablePointer) {
-    //     T3Gv.opt.Table_DeleteObject(tablePointer);
-    //   }
-    //   currentObject = T3Gv.stdObj.GetObject(this.TableID);
-    //   if (currentObject) {
-    //     currentObject.Delete();
-    //   }
-    // }
 
     // Delete Data object if exists
     if (this.DataID !== -1) {
@@ -909,11 +834,6 @@ class GroupSymbol extends BaseSymbol {
         this.hooks = hooksBackup;
       }
     }
-
-    // // Delete Comment object if exists
-    // if (this.CommentID >= 0) {
-    //   T3Gv.opt.CommentObjectDelete(this);
-    // }
 
     T3Util.Log("S.GroupSymbol - BaseDrawObjectDeleteObject output: executed");
   }

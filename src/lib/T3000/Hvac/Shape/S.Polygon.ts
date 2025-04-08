@@ -392,10 +392,6 @@ class Polygon extends BaseShape {
     }
 
     containerShape.isShape = true;
-    // const tableData = this.GetTable(false);
-    // if (tableData) {
-    //   T3Gv.opt.LM_AddSVGTableObject(this, svgDoc, containerShape, tableData);
-    // }
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(svgDoc, containerShape);
     }
@@ -454,12 +450,7 @@ class Polygon extends BaseShape {
         }
       }
 
-      // if (this.GetTable(false)) {
-      //   T3Gv.opt.Table_ResizeSVGTableObject(svgDoc, actionTriggerType, newSize);
-      // } else
-      {
-        this.LMResizeSVGTextObject(svgDoc, actionTriggerType, newSize);
-      }
+      this.LMResizeSVGTextObject(svgDoc, actionTriggerType, newSize);
 
       svgDoc.SetRotation(rotation);
       this.UpdateDimensionLines(svgDoc);
@@ -519,10 +510,6 @@ class Polygon extends BaseShape {
       slopElement.SetSize(adjustedFrame.width, adjustedFrame.height);
     }
 
-    // if (this.GetTable(false)) {
-    //   T3Gv.opt.Table_ResizeSVGTableObject(svgDoc, this, newSize, true);
-    // }
-
     const hatchElement = svgDoc.GetElementById(OptConstant.SVGElementClass.Hatch);
     if (hatchElement) {
       hatchElement.SetPoints(points);
@@ -550,9 +537,6 @@ class Polygon extends BaseShape {
 
     const isContinuousConnection = this.flags & NvConstant.ObjFlags.ContConn && target !== null && (hookFlags & NvConstant.HookFlags.LcNoContinuous) === 0;
     const hasConnectPoints = this.flags & NvConstant.ObjFlags.UseConnect && this.ConnectPoints;
-    // const table = this.GetTable(false);
-    // const hasTableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
-    // const isNoTableLink = !hasTableRows && (this.flags & NvConstant.ObjFlags.NoTableLink);
 
     let tableTargetPoint = {};
     let foundTableTarget = false;
@@ -585,41 +569,7 @@ class Polygon extends BaseShape {
     return defaultPoints;
   }
 
-  ExtendLines() {
-    // T3Util.Log('S.Polygon: ExtendLines input:', { table: this.GetTable(false) });
-
-    // // const table = this.GetTable(false);
-    // // if (table) {
-    // //   T3Gv.opt.Table_ExtendLines(this, table);
-    // // }
-
-    // T3Util.Log('S.Polygon: ExtendLines output:', { table });
-  }
-
-  // ExtendCell(columnIndex, rowIndex, extendValue) {
-  //   T3Util.Log('S.Polygon: ExtendCell input:', { columnIndex, rowIndex, extendValue });
-
-  //   const table = this.GetTable(false);
-  //   if (table) {
-  //     const extendedCells = T3Gv.opt.Table_ExtendCell(this, table, columnIndex, rowIndex, extendValue);
-  //     if (extendedCells) {
-  //       const svgFrame = this.GetSVGFrame(this.Frame);
-  //       const offsetX = this.inside.x - svgFrame.x;
-  //       const offsetY = this.inside.y - svgFrame.y;
-
-  //       if (offsetX || offsetY) {
-  //         for (let i = 0; i < extendedCells.length; i++) {
-  //           extendedCells[i].x += offsetX;
-  //           extendedCells[i].y += offsetY;
-  //         }
-  //       }
-  //       T3Util.Log('S.Polygon: ExtendCell output:', extendedCells);
-  //       return extendedCells;
-  //     }
-  //   }
-  //   T3Util.Log('S.Polygon: ExtendCell output: null');
-  //   return null;
-  // }
+  ExtendLines() { }
 
   GetPerimeterPoints(event, pointsArray, hookType, rotateFlag, tableID, additionalParams) {
     T3Util.Log('S.Polygon: GetPerimeterPoints input:', { event, pointsArray, hookType, rotateFlag, tableID, additionalParams });
@@ -642,23 +592,8 @@ class Polygon extends BaseShape {
       return perimeterPoints;
     }
 
-    // const table = this.GetTable(false);
-    // if (tableID != null && table) {
-    //   const tablePerimeterPoints = T3Gv.opt.Table_GetPerimPts(this, table, tableID, pointsArray);
-    //   if (tablePerimeterPoints) {
-    //     perimeterPoints = tablePerimeterPoints;
-    //     if (!rotateFlag) {
-    //       rotatedPoints = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
-    //       Utils3.RotatePointsAboutCenter(this.Frame, rotatedPoints, perimeterPoints);
-    //     }
-    //     T3Util.Log('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
-    //     return perimeterPoints;
-    //   }
-    // }
-
     const pointsLength = pointsArray.length;
     const useConnectFlag = this.flags & NvConstant.ObjFlags.UseConnect;
-    // const tableRowsFlag = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
 
     if (useConnectFlag /*|| tableRowsFlag*/) {
       for (let i = 0; i < pointsLength; i++) {
@@ -828,67 +763,6 @@ class Polygon extends BaseShape {
       right: this.tindent.right,
       bottom: this.tindent.bottom
     });
-  }
-
-  WriteShapeData(outputStream, context) {
-    T3Util.Log('S.Polygon: WriteShapeData input:', { outputStream, context });
-
-    return;
-
-    let vertexCount, width, height, polyId, vertexX, vertexY, polySegment;
-    if (this.dataclass && this.dataclass === PolygonConstant.ShapeTypes.POLYGON) {
-      if (this.polylist) {
-        Instance.Shape.PolyLine.prototype.WriteShapeData.call(this, outputStream, context, true);
-      } else {
-        let code = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cDrawPoly);
-        vertexCount = this.VertexArray.length;
-        width = ShapeUtil.ToSDWinCoords(this.Frame.width, context.coordScaleFactor);
-        height = ShapeUtil.ToSDWinCoords(this.Frame.height, context.coordScaleFactor);
-        polyId = context.WriteBlocks ? this.BlockID : context.polyid++;
-
-        let polyListStruct;
-        if (context.WriteWin32) {
-          polyListStruct = {
-            InstID: polyId,
-            n: vertexCount,
-            dim: { x: 0, y: 0 },
-            flags: DSConstant.PolyListFlags.FreeHand,
-            ldim: { x: width, y: height }
-          };
-          outputStream.writeStruct(DSConstant.PolyListStruct20, polyListStruct);
-        } else {
-          polyListStruct = {
-            InstID: polyId,
-            n: vertexCount,
-            flags: DSConstant.PolyListFlags.FreeHand,
-            ldim: { x: width, y: height }
-          };
-          outputStream.writeStruct(DSConstant.PolyListStruct24, polyListStruct);
-        }
-        ShapeUtil.WriteLength(outputStream, code);
-
-        for (let i = 0; i < vertexCount; i++) {
-          vertexX = this.VertexArray[i].x * width;
-          vertexY = this.VertexArray[i].y * height;
-          polySegment = {
-            otype: NvConstant.FNObjectTypes.SED_LineD,
-            dataclass: 0,
-            ShortRef: 0,
-            param: 0,
-            pt: { x: 0, y: 0 },
-            lpt: { x: vertexX, y: vertexY },
-            dimDeflection: 0
-          };
-          code = ShapeUtil.WriteCode(outputStream, DSConstant.OpNameCode.cDrawPolySeg);
-          outputStream.writeStruct(DSConstant.PolySegStruct, polySegment);
-          ShapeUtil.WriteLength(outputStream, code);
-        }
-        outputStream.writeUint16(DSConstant.OpNameCode.cDrawPolyEnd);
-      }
-    }
-    super.WriteShapeData(outputStream, context);
-
-    T3Util.Log('S.Polygon: WriteShapeData output:', { outputStream, context });
   }
 
   Flip(flipType) {
