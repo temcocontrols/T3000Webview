@@ -367,7 +367,7 @@ class ToolOpt {
   MeasureDistanceAct(event) {
     T3Util.Log('O.ToolOpt.MeasureDistanceAct - Input:', { event });
 
-    T3Gv.wallOpt.AddMeasureLine(event);
+    T3Gv.wallOpt.AddMeasureLine();
 
     T3Util.Log('O.ToolOpt.MeasureDistanceAct - Output: Added measurement line');
   }
@@ -380,7 +380,7 @@ class ToolOpt {
   MeasureAreaAct(event) {
     T3Util.Log('O.ToolOpt.MeasureAreaAct - Input:', { event });
 
-    T3Gv.wallOpt.AddMeasureArea(event);
+    T3Gv.wallOpt.AddMeasureArea();
 
     T3Util.Log('O.ToolOpt.MeasureAreaAct - Output: Added measurement area');
   }
