@@ -168,8 +168,8 @@ class PolyUtil {
     let checkIndex = 0;
     let pointCount = polylinePoints.length;
     let intersectionCount = 0;
-    let currentPoint = {};
-    let nextPoint = {};
+    let currentPoint = { x: 0, y: 0 };
+    let nextPoint = { x: 0, y: 0 };
     let deltaX, deltaY, tempValue;
     let minValue, maxValue;
     let intersectX, intersectY;
@@ -364,8 +364,8 @@ class PolyUtil {
     const arcCosine = Math.acos(normalizedX);
 
     // Initialize points for calculations
-    const startRotated = {};
-    const endRotated = {};
+    let startRotated = { x: 0, y: 0 };
+    let endRotated = { x: 0, y: 0 };
 
     // Adjust angle based on quadrant
     let angle;
@@ -423,7 +423,7 @@ class PolyUtil {
       y: -relativeX * sinAngle + relativeY * cosAngle + midpoint.y
     };
 
-    let centerPoint = {};
+    let centerPoint = { x: 0, y: 0 };
     let isBelowCenter = false;
 
     // Process connection line if provided
@@ -525,14 +525,14 @@ class PolyUtil {
     }
 
     // Calculate sine and cosine of the angle
-    const sinAngle = Math.sin(arcSine);
-    const cosAngle = Math.cos(arcSine);
+    let sinAngle = Math.sin(arcSine);
+    let cosAngle = Math.cos(arcSine);
 
     // Initialize points for rotations
-    const resultPoint = {};
-    const startRotated = {};
-    const targetRotated = {};
-    const endRotated = {};
+    let resultPoint = { x: 0, y: 0 };
+    let startRotated = { x: 0, y: 0 };
+    let targetRotated = { x: 0, y: 0 };
+    let endRotated = { x: 0, y: 0 };
 
     // Calculate rotated coordinates for start point
     let relativeX = startPoint.x - centerPoint.x;
@@ -574,7 +574,7 @@ class PolyUtil {
     }
 
     // Calculate y component using Pythagorean theorem
-    const yComponent = SDJS.Utils.sqrt(radius * radius - relativeX * relativeX);
+    const yComponent = Utils2.sqrt(radius * radius - relativeX * relativeX);
 
     // Set y position based on whether point is above or below center
     if (isAboveCenter) {
@@ -656,7 +656,7 @@ class PolyUtil {
 
     // Get arc points for hit testing
     let arcPoints = arcSegment.GetPolyPoints(
-      SDJS.ListManager.Defines.NPOLYPTS,
+      OptConstant.Common.MaxPolyPoints,
       false,
       false,
       false,
@@ -682,13 +682,13 @@ class PolyUtil {
       intersectionPoint.y = lineStartY;
 
       // Check if the point is on the arc segment
-      if (SDJS.ListManager.LM.prototype.LineDStyleHit(
+      if (Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint)) {
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint)) {
         return true;
       }
 
@@ -698,13 +698,13 @@ class PolyUtil {
       intersectionPoint.y = lineStartY;
 
       // Check if the point is on the arc segment
-      return SDJS.ListManager.LM.prototype.LineDStyleHit(
+      return Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint);
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint);
     }
     // Check for vertical line case
     else if (isLineVertical) {
@@ -717,7 +717,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the two possible Y coordinates
-      let yOffset = SDJS.Utils.sqrt(discriminant);
+      let yOffset = Utils2.sqrt(discriminant);
 
       // First possible intersection point
       let y1 = yOffset + arcCenter.y;
@@ -725,13 +725,13 @@ class PolyUtil {
       intersectionPoint.y = y1;
 
       // Check if the point is on the arc segment
-      if (SDJS.ListManager.LM.prototype.LineDStyleHit(
+      if (Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint)) {
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint)) {
         return true;
       }
 
@@ -741,13 +741,13 @@ class PolyUtil {
       intersectionPoint.y = y2;
 
       // Check if the point is on the arc segment
-      return SDJS.ListManager.LM.prototype.LineDStyleHit(
+      return Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint);
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint);
     }
     // General case: sloped line
     else {
@@ -764,7 +764,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the square root of discriminant
-      let sqrtDiscriminant = SDJS.Utils.sqrt(discriminant);
+      let sqrtDiscriminant = Utils2.sqrt(discriminant);
 
       // First possible intersection point
       let x1 = (-b + sqrtDiscriminant) / (2 * a);
@@ -773,13 +773,13 @@ class PolyUtil {
       intersectionPoint.y = y1;
 
       // Check if the point is on the arc segment
-      if (SDJS.ListManager.LM.prototype.LineDStyleHit(
+      if (Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint)) {
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint)) {
         return true;
       }
 
@@ -790,13 +790,13 @@ class PolyUtil {
       intersectionPoint.y = y2;
 
       // Check if the point is on the arc segment
-      return SDJS.ListManager.LM.prototype.LineDStyleHit(
+      return Utils3.LineDStyleHit(
         arcPoints,
         intersectionPoint,
         arcSegment.StyleRecord.lineThickness,
         0,
         null
-      ) || Utils2.PtInRect(arcSegment.Frame, intersectionPoint);
+      ) || Utils2.pointInRect(arcSegment.Frame, intersectionPoint);
     }
   }
 
@@ -811,9 +811,9 @@ class PolyUtil {
     let deltaX, deltaY, distance, maxDistance;
     let lineLength, normalizedDeltaY, normalizedDeltaX;
     let startPoint, endPoint, anchorPoint;
-    let connectLine = {};
+    let connectLine = { startpt: 0, endpt: 0 };
     let adjustedPoint = { x: 0, y: 0 };
-    let arcCenterPoint = {};
+    let arcCenterPoint = { x: 0, y: 0 };
 
     // Use the target line as reference if none provided
     if (referenceLine === null) {
@@ -841,12 +841,12 @@ class PolyUtil {
     adjustedPoint.y = pointToAdjust.y;
 
     // Convert arc point to chord point for arc lines
-    if (referenceLine.LineType === SDJS.ListManager.LineType.ARCLINE) {
+    if (referenceLine.LineType === OptConstant.LineType.ARCLINE) {
       adjustedPoint = this.ArcToChord(startPoint, endPoint, adjustedPoint, connectLine, referenceLine);
     }
 
     // Calculate the vector from anchor point to adjustedPoint based on action type
-    if (actionType === SDJS.ListManager.ActionTriggerType.LINESTART) {
+    if (actionType === OptConstant.ActionTriggerType.LineStart) {
       deltaX = adjustedPoint.x - endPoint.x;
       deltaY = adjustedPoint.y - endPoint.y;
     } else {
@@ -868,7 +868,7 @@ class PolyUtil {
     }
 
     // Set anchor point and calculate vector based on action type
-    if (actionType === SDJS.ListManager.ActionTriggerType.LINESTART) {
+    if (actionType === OptConstant.ActionTriggerType.LineStart) {
       anchorPoint = endPoint;
       deltaX = -(endPoint.x - startPoint.x);
       deltaY = -(endPoint.y - startPoint.y);
@@ -901,7 +901,7 @@ class PolyUtil {
     }
 
     // Convert chord point back to arc point for arc lines
-    if (targetLine.LineType === SDJS.ListManager.LineType.ARCLINE) {
+    if (targetLine.LineType === OptConstant.LineType.ARCLINE) {
       const arcInfo = targetLine.CalcRadiusAndCenter(
         targetLine.StartPoint.x,
         targetLine.StartPoint.y,
@@ -936,8 +936,8 @@ class PolyUtil {
    * @returns Always returns true
    */
   static GetMaxDim(point) {
-    point.x = SDJS.ListManager.Defines.SD_MaxLongDim;
-    point.y = SDJS.ListManager.Defines.SD_MaxLongDim;
+    point.x = OptConstant.Common.MaxLongDim;
+    point.y = OptConstant.Common.MaxLongDim;
     return true;
   }
 
@@ -955,7 +955,7 @@ class PolyUtil {
     let index;
     let curvePoints = [];
     let tempPoints = [];
-    let curveRect = {};
+    let curveRect = { x: 0, y: 0, width: 0, height: 0 };
 
     if (isRightSide) {
       // Right side curves
@@ -966,7 +966,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = -2 * curveSize;
 
-        gListManager.PolyYCurve(tempPoints, curveRect, 20, 0, 0, 0, -curveSize, true);
+        Utils2.PolyYCurve(tempPoints, curveRect, 20, 0, 0, 0, -curveSize, true);
 
         // Reverse points order
         for (index = tempPoints.length - 1; index >= 0; index--) {
@@ -979,7 +979,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = -2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, -curveSize, 0, true);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, -curveSize, 0, true);
       } else if (directionX > 0 && directionY < 0) {
         // Right-up direction
         curveRect.x = originX;
@@ -987,7 +987,7 @@ class PolyUtil {
         curveRect.width = -curveSize;
         curveRect.height = 2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, curveSize, 0, true);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, curveSize, 0, true);
       } else if (directionX < 0 && directionY < 0) {
         // Left-up direction
         curveRect.x = originX;
@@ -995,7 +995,7 @@ class PolyUtil {
         curveRect.width = -curveSize;
         curveRect.height = -2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, -curveSize, 0, true);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, -curveSize, 0, true);
       }
     } else {
       // Left side curves
@@ -1006,7 +1006,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = 2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, curveSize, false);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, curveSize, false);
       } else if (directionX < 0 && directionY > 0) {
         // Left-down direction
         curveRect.x = originX;
@@ -1014,7 +1014,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = 2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, curveSize, true);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, curveSize, true);
       } else if (directionX > 0 && directionY < 0) {
         // Right-up direction
         curveRect.x = originX - curveSize;
@@ -1022,7 +1022,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = -2 * curveSize;
 
-        gListManager.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, -curveSize, false);
+        Utils2.PolyYCurve(curvePoints, curveRect, 20, 0, 0, 0, -curveSize, false);
       } else if (directionX < 0 && directionY < 0) {
         // Left-up direction
         curveRect.x = originX;
@@ -1030,7 +1030,7 @@ class PolyUtil {
         curveRect.width = curveSize;
         curveRect.height = 2 * curveSize;
 
-        gListManager.PolyYCurve(tempPoints, curveRect, 20, 0, 0, curveSize, 0, true);
+        Utils2.PolyYCurve(tempPoints, curveRect, 20, 0, 0, curveSize, 0, true);
 
         // Reverse points order
         for (index = tempPoints.length - 1; index >= 0; index--) {
@@ -1075,7 +1075,7 @@ class PolyUtil {
 
     // Temporary points and objects
     let tempPoint = { x: 0, y: 0 };
-    let tempPoint2 = {};
+    let tempPoint2 = { x: 0, y: 0 };
 
     // Constants
     const KNOB_SIZE = OptConstant.Common.KnobSize;
@@ -1200,7 +1200,7 @@ class PolyUtil {
         objecttype: sourceObject.objecttype,
         Dimensions: sourceObject.Dimensions,
         dataclass: PolygonConstant.ShapeTypes.POLYGON,
-        polylist: new PolyList()
+        polylist: new PolyList(),
       };
 
       // Set arrow properties (use non-zero values from either source)
@@ -1258,7 +1258,7 @@ class PolyUtil {
       }
 
       // Create the new polyline object
-      mainPolyline = wallOpt.AddNewPolyLine(sourceObject.objecttype, newPolylineData) || new Instance.Shape.PolyLine(newPolylineData);
+      mainPolyline = T3Gv.wallOpt.AddNewPolyLine(sourceObject.objecttype, newPolylineData) || new Instance.Shape.PolyLine(newPolylineData);
       secondaryPolyline = targetObject;
       needsRender = true;
     }
@@ -1779,8 +1779,8 @@ class PolyUtil {
       ShortRef: 0
     };
 
-    const points = [];
-    const rotationCenter = {};
+    let points = [];
+    let rotationCenter = { x: 0, y: 0 };
 
     // Add the points to the array
     points.push(new Point(startPoint.x, startPoint.y));
@@ -1828,7 +1828,7 @@ class PolyUtil {
     } else {
       if (target.y > origin.y) {
         // Bottom-right quadrant
-        result.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        result.ShortRef = OptConstant.ArcQuad.PLA_BR;
 
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_BL;

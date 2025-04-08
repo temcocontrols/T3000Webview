@@ -825,14 +825,14 @@ class SelectUtil {
    *
    * @param typeFilter - Optional array of object types to filter by
    */
-  static SelectAllObjects(typeFilter) {
+  static SelectAllObjects(typeFilter?) {
     T3Util.Log("U.Util1 SelectAllObjects - Input:", { typeFilter });
 
     let svgElement;
     let currentObject;
     const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     let textLength = 0;
-    const shapeContainerType = ShapeConstant.ObjectTypes.ShapeContainer;
+    let shapeContainerType = ShapeConstant.ObjectTypes.ShapeContainer;
 
     // Handle active text edit mode
     if (textEditSession.theActiveTextEditObjectID >= 0) {
@@ -853,81 +853,76 @@ class SelectUtil {
       T3Gv.opt.CloseEdit(true);
     }
 
-    // Handle active table edit mode
-    if (textEditSession.theActiveTableObjectID >= 0) {
-      currentObject = DataUtil.GetObjectPtr(textEditSession.theActiveTableObjectID, true);
+    // // Handle active table edit mode
+    // if (textEditSession.theActiveTableObjectID >= 0) {
+    //   currentObject = DataUtil.GetObjectPtr(textEditSession.theActiveTableObjectID, true);
 
-      if (currentObject) {
-        const tableData = currentObject.GetTable(false);
+    //   if (currentObject) {
+    //     // const tableData = currentObject.GetTable(false);
 
-        if (tableData) {
-          svgElement = T3Gv.opt.svgObjectLayer.GetElementById(textEditSession.theActiveTableObjectID);
-          tableData.select = 0;
+    //     // if (tableData) {
+    //     //   svgElement = T3Gv.opt.svgObjectLayer.GetElementById(textEditSession.theActiveTableObjectID);
+    //     //   tableData.select = 0;
 
-          const changedCellList = [];
-          const oldSelectionList = [];
-          const columnCount = tableData.cols.length;
-          const rowCount = tableData.rows.length;
+    //     //   const changedCellList = [];
+    //     //   const oldSelectionList = [];
+    //     //   const columnCount = tableData.cols.length;
+    //     //   const rowCount = tableData.rows.length;
 
-          this.Table_SelectCells(
-            tableData,
-            0,
-            rowCount - 1,
-            -1,
-            columnCount - 1,
-            true,
-            changedCellList,
-            false,
-            oldSelectionList
-          );
+    //     //   this.Table_SelectCells(
+    //     //     tableData,
+    //     //     0,
+    //     //     rowCount - 1,
+    //     //     -1,
+    //     //     columnCount - 1,
+    //     //     true,
+    //     //     changedCellList,
+    //     //     false,
+    //     //     oldSelectionList
+    //     //   );
 
-          this.LM_SelectSVGTableObject(currentObject, T3Gv.opt.svgDoc, svgElement, changedCellList, oldSelectionList);
-          DrawUtil.CompleteOperation();
-          T3Util.Log("U.Util1 SelectAllObjects - Output: All cells selected");
-        }
-      }
-    }
+    //     //   this.LM_SelectSVGTableObject(currentObject, T3Gv.opt.svgDoc, svgElement, changedCellList, oldSelectionList);
+    //     //   DrawUtil.CompleteOperation();
+    //     //   T3Util.Log("U.Util1 SelectAllObjects - Output: All cells selected");
+    //     // }
+    //   }
+    // }
     // Handle regular object selection
-    else {
-      let objectIndex;
-      const objectsToSelect = [];
-      let visibleObjects = LayerUtil.ActiveVisibleZList();
-      visibleObjects = T3Gv.opt.RemoveNotVisible(visibleObjects);
-      const objectCount = visibleObjects.length;
-      let filterCount = 0;
-      let isClosedPolyline = false;
+    // else {
+    let objectIndex;
+    const objectsToSelect = [];
+    let visibleObjects = LayerUtil.ActiveVisibleZList();
+    visibleObjects = T3Gv.opt.RemoveNotVisible(visibleObjects);
+    const objectCount = visibleObjects.length;
+    let filterCount = 0;
+    let isClosedPolyline = false;
 
-      if (typeFilter) {
-        filterCount = typeFilter.length;
-      }
+    if (typeFilter) {
+      filterCount = typeFilter.length;
+    }
 
-      for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-        currentObject = DataUtil.GetObjectPtr(visibleObjects[objectIndex], false);
+    for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
+      currentObject = DataUtil.GetObjectPtr(visibleObjects[objectIndex], false);
 
-        // Skip container objects that are in cells
-        if (currentObject.objecttype === shapeContainerType && this.ContainerIsInCell(currentObject)) {
+      // Skip objects that don't match filter criteria
+      if (filterCount > 0) {
+        isClosedPolyline = !!(
+          typeFilter.indexOf(OptConstant.DrawObjectBaseClass.Shape) !== -1 &&
+          currentObject instanceof Instance.Shape.PolyLineContainer &&
+          currentObject.polylist &&
+          currentObject.polylist.closed
+        );
+
+        if (
+          typeFilter.indexOf(currentObject.DrawingObjectBaseClass) === -1 &&
+          !isClosedPolyline
+        ) {
           continue;
         }
-
-        // Skip objects that don't match filter criteria
-        if (filterCount > 0) {
-          isClosedPolyline = !!(
-            typeFilter.indexOf(OptConstant.DrawObjectBaseClass.Shape) !== -1 &&
-            currentObject instanceof Instance.Shape.PolyLineContainer &&
-            currentObject.polylist &&
-            currentObject.polylist.closed
-          );
-
-          if (
-            typeFilter.indexOf(currentObject.DrawingObjectBaseClass) === -1 &&
-            !isClosedPolyline
-          ) {
-            continue;
-          }
-        }
-
-        objectsToSelect.push(visibleObjects[objectIndex]);
       }
+
+      objectsToSelect.push(visibleObjects[objectIndex]);
+      // }
 
       SelectUtil.SelectObjects(objectsToSelect, false, false);
       T3Util.Log("U.Util1 SelectAllObjects - Output: Selected", objectsToSelect.length, "objects");

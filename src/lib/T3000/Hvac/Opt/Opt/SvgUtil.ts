@@ -228,7 +228,7 @@ class SvgUtil {
         const count = filteredVisibleObjectIds.length;
         for (let idx = 0; idx < count; idx++) {
           const id = filteredVisibleObjectIds[idx];
-          const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(id);
+          const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(id.toString());
           if (svgElement) {
             T3Gv.opt.svgObjectLayer.RemoveElement(svgElement);
             T3Gv.opt.svgObjectLayer.AddElement(svgElement, idx);
@@ -415,7 +415,7 @@ class SvgUtil {
     // Attempt to retrieve the overlay SVG element for the action.
     let overlayElement = T3Gv.opt.svgOverlayLayer.GetElementById(actionElementId);
     // Retrieve the main SVG object element.
-    const objectElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
+    const objectElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId.toString());
     // Get the object data pointer.
     const objectData = DataUtil.GetObjectPtr(objectId, false);
 
@@ -439,7 +439,7 @@ class SvgUtil {
           if (!objectData.NoGrow()) {
             const domElement = overlayElement.DOMElement();
             const hammerInstance = Hammer(domElement);
-            hammerInstance.on('tap', Evt_ActionTriggerTap);
+            hammerInstance.on('tap', EvtUtil.Evt_ActionTriggerTap);
             hammerInstance.on('dragstart', ((currentObject) => {
               return (event: any) => {
                 currentObject.LMActionClick(event);

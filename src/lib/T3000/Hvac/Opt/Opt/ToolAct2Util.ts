@@ -67,14 +67,6 @@ class ToolAct2Util {
       }
     }
 
-    // // Initialize collaboration if enabled
-    // let collaborationMessage, collaborationData;
-    // if (enableCollaboration && SDJS.Collab.AllowMessage()) {
-    //   SDJS.Collab.BeginSecondaryEdit();
-    //   collaborationData = {};
-    //   collaborationMessage = SDJS.Collab.BuildMessage(SDJS.ListManager.CollabMessages.GroupSelectedShapes, collaborationData, true, true);
-    // }
-
     // Handle dimensions of objects
     const preserveDimensions = function (objects) {
       const savedDimensions = [];
@@ -197,15 +189,6 @@ class ToolAct2Util {
     LayerUtil.ZListPreserve();
     const newGroupID = DrawUtil.AddNewObject(groupSymbol, true, false);
 
-    // // Handle collaboration
-    // if (enableCollaboration && SDJS.Collab.AllowMessage()) {
-    //   SDJS.Collab.AddNewBlockToSecondary(newGroupID);
-    //   if (SDJS.Collab.IsSecondary()) {
-    //     collaborationData.CreateList = [];
-    //     collaborationData.CreateList.push(newGroupID);
-    //   }
-    // }
-
     // Adjust style properties of the group
     if (groupSymbol.StyleRecord) {
       if (groupSymbol.StyleRecord.Line) {
@@ -238,11 +221,6 @@ class ToolAct2Util {
 
     // Convert group to native format
     groupSymbol.ConvertToNative(T3Gv.opt.richGradients, useAllShapes);
-
-    // // Send collaboration message if enabled
-    // if (enableCollaboration && SDJS.Collab.AllowMessage()) {
-    //   SDJS.Collab.SendMessage(collaborationMessage);
-    // }
 
     // Complete the operation
     DrawUtil.CompleteOperation([visibleShapes[visibleShapeCount - 1]], action);
@@ -278,7 +256,6 @@ class ToolAct2Util {
     let flipHorizFlag = OptConstant.ExtraFlags.FlipHoriz;
 
     let groupShape = DataUtil.GetObjectPtr(groupShapeId, true);
-    // let visioTextChildId = DataUtil.SD_GetVisioTextChild(groupShapeId);
     let shapeContainerIds = [];
     let groupFrame = groupShape.Frame;
     let centerPoint = {
@@ -381,11 +358,6 @@ class ToolAct2Util {
         }
       }
 
-      // tableData = currentShape.GetTable(true);
-      // if (tableData) {
-      //   this.Table_ScaleTable(currentShape, tableData, scaleFactorX, scaleFactorY);
-      // }
-
       currentShape.bInGroup = false;
 
       DataUtil.AddToDirtyList(shapesInGroup[i]);
@@ -423,22 +395,6 @@ class ToolAct2Util {
 
     groupShape.ShapesInGroup = [];
     DataUtil.DeleteObjects([groupShapeId], false);
-
-    // if (visioTextChildId >= 0) {
-    //   targetShape = gListManager.GetObjectPtr(visioTextChildId);
-    //   targetShape.moreflags = SDJS.Utils.SetFlag(
-    //     targetShape.moreflags,
-    //     SDJS.ListManager.ObjMoreFlags.SED_MF_VisioText,
-    //     false
-    //   );
-    //   targetShape.associd = -1;
-    //   this.BringObjectToFrontofLayer(visioTextChildId);
-    // }
-
-    // if (commentIds.length) {
-    //   gListManager.Comment_Ungroup(commentIds);
-    // }
-
     SvgUtil.RenderDirtySVGObjects();
   }
 
@@ -488,18 +444,6 @@ class ToolAct2Util {
     }
 
     if (hasGroupShape) {
-      // // Initialize collaboration if enabled
-      // let collaborationData, collaborationMessage;
-      // if (SDJS.Collab.AllowMessage()) {
-      //   SDJS.Collab.BeginSecondaryEdit();
-      //   collaborationData = {};
-      //   collaborationMessage = SDJS.Collab.BuildMessage(
-      //     SDJS.ListManager.CollabMessages.UngroupSelectedShapes,
-      //     collaborationData,
-      //     true,
-      //     true
-      //   );
-      // }
 
       // Create a copy of the selected shapes
       const shapesCopy = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true).slice(0);
@@ -518,9 +462,6 @@ class ToolAct2Util {
           nativeGroupResult = T3Gv.opt.UngroupNative(shapeId, false, true);
 
           if (nativeGroupResult) {
-            // if (SDJS.Collab.AllowMessage()) {
-            //   SDJS.Collab.AddNewBlockToSecondary(nativeGroupResult[0]);
-            // }
             DataUtil.DeleteObjects([shapeId], false);
             resultShapes = resultShapes.concat(nativeGroupResult);
             hasGroupShape = true;
@@ -534,16 +475,6 @@ class ToolAct2Util {
         // Render and select the ungrouped shapes
         SvgUtil.RenderAllSVGObjects();
         SelectUtil.SelectObjects(resultShapes);
-
-        // // Handle collaboration message
-        // if (SDJS.Collab.AllowMessage()) {
-        //   if (SDJS.Collab.IsSecondary() && SDJS.Collab.CreateList.length) {
-        //     collaborationData.CreateList = [];
-        //     collaborationData.CreateList = collaborationData.CreateList.concat(SDJS.Collab.CreateList);
-        //   }
-        //   SDJS.Collab.SendMessage(collaborationMessage);
-        // }
-
         DrawUtil.CompleteOperation(resultShapes);
       }
     }

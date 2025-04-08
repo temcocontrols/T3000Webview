@@ -137,7 +137,7 @@ class OptUtil {
    * Variables for tracking the current editing action
    */
   public noUndo: boolean;            // Flag to disable undo recording
-  public actionStoredObjectId: string;  // ID of the object being acted upon
+  public actionStoredObjectId: number;  // ID of the object being acted upon
   public actionSvgObject: any;       // SVG object being acted upon
   public actionTriggerId: number;    // ID of the action trigger
   public actionTriggerData: any;  // Data associated with the trigger
@@ -2117,7 +2117,7 @@ class OptUtil {
       resultContainer.id = connectorObject.hooks[0].objid;
 
       if (parentConnector.extraflags & OptConstant.ExtraFlags.NoDelete) {
-        resultContainer.nshapes = parentConnector.arraylist.hook.length - ConnectorDefines.NSkip;
+        resultContainer.nshapes = parentConnector.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
         if (resultContainer.nshapes < 0) {
           resultContainer.nshapes = 0;
         }
@@ -2235,8 +2235,8 @@ class OptUtil {
   SetShapeOriginNoDirty(objectId, newX, newY) {
     T3Util.Log("O.Opt SetShapeOriginNoDirty - Input:", { objectId, newX, newY });
 
-    const originalPosition = {};
-    const objectData = T3Gv.stdObj.PreserveBlock(objectId).Data;
+    let originalPosition = { x: 0, y: 0 };
+    let objectData = T3Gv.stdObj.PreserveBlock(objectId).Data;
 
     originalPosition.x = objectData.Frame.x;
     originalPosition.y = objectData.Frame.y;
@@ -2513,8 +2513,8 @@ class OptUtil {
     if (shapeObject.RotationAngle !== 0) {
       let points;
       let rotationAngleRadians;
-      const originalFrame = {};
-      const centerPoint = {};
+      let originalFrame = {};
+      let centerPoint = { x: 0, y: 0 };
 
       // Calculate center point of the shape
       centerPoint.x = shapeObject.Frame.x + shapeObject.Frame.width / 2;
@@ -2845,6 +2845,132 @@ class OptUtil {
   }
 
   /**
+   * Determines if two lines intersect and returns the intersection point
+   *
+   * This function calculates whether two line segments intersect by:
+   * 1. Computing the slopes of both line segments
+   * 2. Handling special cases (vertical and horizontal lines)
+   * 3. Finding the intersection point if it exists
+   * 4. Storing the result in the provided resultPoint object
+   *
+   * @param startPoint1 - First point of the first line segment
+   * @param endPoint1 - Second point of the first line segment
+   * @param startPoint2 - First point of the second line segment
+   * @param endPoint2 - Second point of the second line segment
+   * @param bounds - Optional bounding rectangle for validation
+   * @param resultPoint - Object to store the intersection coordinates
+   * @returns True if the lines intersect, false otherwise
+   */
+  GetIntersectPt(startPoint1, endPoint1, startPoint2, endPoint2, bounds, resultPoint) {
+    let deltaX1, deltaY1, slope1, deltaX2, deltaY2, slope2, slopeDifference;
+    let intersectX, intersectY;
+    let x1, y1, x2, y2;
+    let isFirstVertical = false;
+    let isSecondVertical = false;
+
+    /**
+     * Checks if two points have nearly the same x-coordinate (within 0.2 units)
+     * @param point1 - First point to compare
+     * @param point2 - Second point to compare
+     * @returns True if x-coordinates are almost equal
+     */
+    function isPointsHaveSameX(point1, point2) {
+      return Math.abs(point1.x - point2.x) < 0.2;
+    }
+
+    /**
+     * Checks if two points have nearly the same y-coordinate (within 0.2 units)
+     * @param point1 - First point to compare
+     * @param point2 - Second point to compare
+     * @returns True if y-coordinates are almost equal
+     */
+    function isPointsHaveSameY(point1, point2) {
+      return Math.abs(point1.y - point2.y) < 0.2;
+    }
+
+    // Calculate the differences between coordinates for first line
+    deltaX1 = endPoint1.x - startPoint1.x;
+    deltaY1 = endPoint1.y - startPoint1.y;
+
+    // Determine if first line is vertical or calculate its slope
+    if (isPointsHaveSameX(startPoint1, endPoint1)) {
+      isFirstVertical = true;
+      intersectX = endPoint1.x;
+      slope1 = 1; // Arbitrary value, not used for vertical lines
+    } else if (isPointsHaveSameY(startPoint1, endPoint1)) {
+      intersectY = endPoint1.y;
+      slope1 = 0;
+    } else {
+      slope1 = deltaY1 / deltaX1;
+    }
+
+    // Store starting coordinates of first line
+    x1 = startPoint1.x;
+    y1 = startPoint1.y;
+
+    // Calculate the differences between coordinates for second line
+    deltaX2 = endPoint2.x - startPoint2.x;
+    deltaY2 = endPoint2.y - startPoint2.y;
+
+    // Determine if second line is vertical or calculate its slope
+    if (isPointsHaveSameX(startPoint2, endPoint2)) {
+      isSecondVertical = true;
+      intersectX = endPoint2.x;
+      slope2 = 1; // Arbitrary value, not used for vertical lines
+    } else if (isPointsHaveSameY(startPoint2, endPoint2)) {
+      intersectY = endPoint2.y;
+      slope2 = 0;
+    } else {
+      slope2 = deltaY2 / deltaX2;
+    }
+
+    // Store starting coordinates of second line
+    x2 = startPoint2.x;
+    y2 = startPoint2.y;
+
+    // Check if lines are parallel or both vertical
+    if (slope1 === slope2 || (isFirstVertical && isSecondVertical)) {
+      return false;
+    }
+
+    // Calculate intersection point based on line types
+    if (!isSecondVertical && !isFirstVertical) {
+      // Neither line is vertical, use formula for intersection
+      slopeDifference = slope2 - slope1;
+      if (Math.abs(slopeDifference) < 1e-4) {
+        return false; // Lines are nearly parallel
+      }
+      intersectX = (y1 - y2 + slope2 * x2 - slope1 * x1) / slopeDifference;
+    }
+
+    // Calculate y-coordinate based on line configurations
+    if (isFirstVertical && !isSecondVertical) {
+      // First line is vertical, second isn't
+      intersectY = y2 + slope2 * (x1 - x2);
+    } else if (isSecondVertical && !isFirstVertical) {
+      // Second line is vertical, first has zero slope
+      if (slope1 === 0) {
+        // Check if intersection is within bounds
+        if (bounds) {
+          intersectY = endPoint2.y;
+          if (!(intersectY >= bounds.y && intersectY <= bounds.y + bounds.height)) {
+            intersectY = -1;
+          }
+        }
+      }
+    } else if (slope2) {
+      // Calculate intersectY using slope of first line
+      intersectY = y1 + slope1 * (intersectX - x1);
+    }
+
+    // Store intersection point in result object
+    resultPoint.x = intersectX;
+    resultPoint.y = intersectY;
+
+    return true;
+  }
+
+  /**
    * Checks if a point intersects with an arc or curved shape
    * @param drawingObject - The object containing the arc to check
    * @param testPoint - The point to test for intersection
@@ -2949,7 +3075,7 @@ class OptUtil {
 
     let outlinePoints = [];
     let tempPoints = [];
-    let segmentInfo = {};
+    let segmentInfo = { segmentsInserted: false };
 
     // Helper function to calculate distance between two points
     function getDistance(point1, point2) {
@@ -2977,7 +3103,7 @@ class OptUtil {
     // Helper function to scale a polygon uniformly around its center
     function scalePolygon(polygonPoints, offsetDistance) {
       let scaledPoints = [];
-      let boundingRect = {};
+      let boundingRect = { x: 0, y: 0, width: 0, height: 0 };
 
       // Make a deep copy of the points and calculate bounding rectangle
       scaledPoints = Utils1.DeepCopy(polygonPoints);
@@ -3645,7 +3771,7 @@ class OptUtil {
       // Find links for this hooked object and add their targets
       linkIndex = OptCMUtil.FindLink(linksList, hookObjectId, true);
       if (linkIndex >= 0) {
-        targetList = this.AddToHookList(
+        targetList = HookUtil.AddToHookList(
           linksList,
           targetList,
           linkIndex,
@@ -3958,12 +4084,12 @@ class OptUtil {
                   }
                 } else if (tempObj.arraylist.styleflags & OptConstant.AStyles.CoManager) {
                   if (isForced) {
-                    tempId = tempObj.arraylist.hook[connectorDefines.SEDA_NSkip].id;
+                    tempId = tempObj.arraylist.hook[connectorDefines.NSkip].id;
                     if (objectIds.indexOf(parentConnector) < 0) {
                       objectIds.push(parentConnector);
                     }
                     let hookCount = tempObj.arraylist.hook.length;
-                    for (let hookIndex = connectorDefines.SEDA_NSkip; hookIndex < hookCount; hookIndex++) {
+                    for (let hookIndex = connectorDefines.NSkip; hookIndex < hookCount; hookIndex++) {
                       let hookId = tempObj.arraylist.hook[hookIndex].id;
                       if (objectIds.indexOf(hookId) < 0) {
                         objectIds.push(hookId);
@@ -3971,7 +4097,7 @@ class OptUtil {
                     }
                   } else {
                     let hookCount = tempObj.arraylist.hook.length;
-                    for (let hookIndex = connectorDefines.SEDA_NSkip; hookIndex < hookCount; hookIndex++) {
+                    for (let hookIndex = connectorDefines.NSkip; hookIndex < hookCount; hookIndex++) {
                       let hookId = tempObj.arraylist.hook[hookIndex].id;
                       if (objectIds.indexOf(hookId) < 0) {
                         flagSkip = true;
@@ -4267,7 +4393,7 @@ class OptUtil {
     }
 
     // Collect all objects connected to the source object
-    this.AddToHookList(
+    HookUtil.AddToHookList(
       links,
       connectedObjects,
       linkStartIndex,
@@ -4296,7 +4422,7 @@ class OptUtil {
             connectionPoints[lineObjectIds.length - 1] = currentObject.hooks[hookIndex].connect;
 
             // Store direction based on hook point
-            if (currentObject.hooks[hookIndex].hookpt === hookPoints.SED_KTL) {
+            if (currentObject.hooks[hookIndex].hookpt === hookPoints.KTL) {
               directionTypes.push(currentObject.segl.firstdir);
             } else {
               directionTypes.push(currentObject.segl.lastdir);
@@ -4311,7 +4437,7 @@ class OptUtil {
       // Try to match objects by direction
       for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
         switch (directionTypes[objectIndex]) {
-          case hookPoints.SED_KTC:
+          case hookPoints.KTC:
             northObject = lineObjectIds[objectIndex];
             if (southObject !== undefined) {
               lineObjectIds[0] = northObject;
@@ -4321,7 +4447,7 @@ class OptUtil {
             }
             break;
 
-          case hookPoints.SED_KBC:
+          case hookPoints.KBC:
             southObject = lineObjectIds[objectIndex];
             if (northObject !== undefined) {
               lineObjectIds[0] = northObject;
@@ -4331,7 +4457,7 @@ class OptUtil {
             }
             break;
 
-          case hookPoints.SED_KLC:
+          case hookPoints.KLC:
             westObject = lineObjectIds[objectIndex];
             if (eastObject !== undefined) {
               lineObjectIds[0] = westObject;
@@ -4341,7 +4467,7 @@ class OptUtil {
             }
             break;
 
-          case hookPoints.SED_KRC:
+          case hookPoints.KRC:
             eastObject = lineObjectIds[objectIndex];
             if (westObject !== undefined) {
               lineObjectIds[0] = westObject;
@@ -4379,12 +4505,12 @@ class OptUtil {
       }
 
       // Get bounding rectangles for both objects
-      const firstRect = Utils2.Pt2Rect(currentObject.StartPoint, currentObject.EndPoint);
-      const secondRect = Utils2.Pt2Rect(secondObject.StartPoint, secondObject.EndPoint);
+      let firstRect = Utils2.Pt2Rect(currentObject.StartPoint, currentObject.EndPoint);
+      let secondRect = Utils2.Pt2Rect(secondObject.StartPoint, secondObject.EndPoint);
 
       // Get links for both objects
-      const firstObjectLinks = T3Gv.opt.GetPolyLineLinks(lineObjectIds[0], 0);
-      const secondObjectLinks = T3Gv.opt.GetPolyLineLinks(lineObjectIds[1], 0);
+      let firstObjectLinks = T3Gv.opt.GetPolyLineLinks(lineObjectIds[0], 0);
+      let secondObjectLinks = T3Gv.opt.GetPolyLineLinks(lineObjectIds[1], 0);
 
       // Find hook indices
       for (objectCount = currentObject.hooks.length, objectIndex = 0; objectIndex < objectCount; objectIndex++) {
@@ -6470,7 +6596,7 @@ class OptUtil {
     let segmentCount;
     let hasPolyList;
     let selectionList = [];
-    let originalFrame = {};
+    let originalFrame = { x: 0, y: 0, width: 0, height: 0 };
 
     // Use provided object or get by ID
     if (existingObject) {
@@ -6478,7 +6604,7 @@ class OptUtil {
       hasPolyList = true;
       originalFrame = $.extend(true, {}, shapeObject.Frame);
     } else {
-      shapeObject = this.GetObjectPtr(objectId, false);
+      shapeObject = DataUtil.GetObjectPtr(objectId, false);
 
       // Initialize polylist if needed
       if (shapeObject.polylist == null) {
@@ -6568,7 +6694,7 @@ class OptUtil {
    */
   GetClosedPolyDim(shapeObject) {
     let polyPoints;
-    let boundingRect = {};
+    let boundingRect = { x: 0, y: 0, width: 0, height: 0 };
 
     if (shapeObject.polylist) {
       // Create a deep copy of the shape to work with

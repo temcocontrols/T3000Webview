@@ -48,18 +48,11 @@ class TextUtil {
     if (T3Gv.opt.textEntryTimer != null) {
       clearTimeout(T3Gv.opt.textEntryTimer);
       T3Gv.opt.textEntryTimer = null;
-
-      // const wasMessagesLocked = Collab.AreMessagesLocked();
-      // Collab.LockMessages();
       this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
-      // if (!wasMessagesLocked) {
-      //   // Collab.UnLockMessages();
-      // }
     }
 
     // Process only if there's an active text editing object
     if (session.theActiveTextEditObjectID != -1) {
-      // Collab.BeginSecondaryEdit();
       session = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
 
       let selectedRange;
@@ -99,12 +92,6 @@ class TextUtil {
         if (drawingObject instanceof Instance.Shape.D3Symbol) {
           isNotInTable = false;
         }
-
-        // // Check if object has a table
-        // let tableData = drawingObject.GetTable(false);
-        // if (tableData) {
-        //   isNotInTable = false;
-        // }
       }
 
       // Handle active editor state
@@ -116,13 +103,6 @@ class TextUtil {
           ? 0 === textEditor.GetTextMinDimensions().width
           : 0 === textEditor.GetTextMinDimensions().width || textEditor.GetText() === ' ';
 
-        // // Handle reversal of standard text replacement
-        // if (isTextEmpty && this.ReverseReplaceStdText(drawingObject, textEditor)) {
-        //   isTextEmpty = false;
-        //   runtimeText = textEditor.GetRuntimeText();
-        //   selectedRange = textEditor.GetSelectedRange();
-        // }
-
         // Get formatting style from the editor
         const formatStyle = textEditor.formatter.GetFormatAtOffset(0);
 
@@ -130,24 +110,6 @@ class TextUtil {
         if (isNotInTable) {
           // Apply style directly to the object
           this.TextStyleToSDText(drawingObject.StyleRecord.Text, formatStyle.style);
-        } else {
-          // // Apply style to the table cell
-          // let tableData = drawingObject.GetTable(true);
-          // if (tableData) {
-          //   tableSelectedIndex = tableData.select;
-
-          //   // Find the cell index if not already selected
-          //   if (tableData.select < 0 && drawingObject.DataID >= 0) {
-          //     for (cellCount = tableData.cells.length, objectIndex = 0; objectIndex < cellCount; objectIndex++) {
-          //       if (tableData.cells[objectIndex].DataID === drawingObject.DataID) {
-          //         tableData.select = objectIndex;
-          //         break;
-          //       }
-          //     }
-          //   }
-
-          //   this.Table_SaveTextStyle(tableData, formatStyle.style);
-          // }
         }
 
         isTextOnlyObject = !!(drawingObject.flags & NvConstant.ObjFlags.TextOnly);
@@ -158,34 +120,7 @@ class TextUtil {
           if (textDataObject) {
             textDataObject.runtimeText = runtimeText;
             textDataObject.selrange = selectedRange;
-
             textDataObject = DataUtil.GetObjectPtr(textDataId, true);
-
-            // Create collaboration message if enabled
-            // if (Collab.AllowMessage()) {
-            //   messageData.BlockID = drawingObject.BlockID;
-            //   messageData.runtimeText = Utils1.DeepCopy(runtimeText);
-            //   messageData.selrange = Utils1.DeepCopy(selectedRange);
-            //   messageData.empty = isTextEmpty;
-            //   messageData.isTextLabel = isTextOnlyObject;
-            //   messageData.closetable = shouldCloseTable;
-
-            //   // Add additional information for tables or connectors
-            //   if (tableData) {
-            //     messageData.TableSelect = tableData.select >= 0
-            //       ? tableData.cells[tableData.select].uniqueid
-            //       : -1;
-            //   } else if (drawingObject && drawingObject instanceof SDJS.Connector) {
-            //     messageData.DataID = drawingObject.DataID;
-            //   }
-
-            //   Collab.BuildMessage(NvConstant.CollabMessages.Text_End, messageData, false);
-            // }
-
-            // // Restore table selection
-            // if (tableSelectedIndex != null) {
-            //   tableData.select = tableSelectedIndex;
-            // }
 
             // Mark the object as dirty if not in a table
             if (session.theActiveTableObjectID < 0) {
@@ -251,44 +186,7 @@ class TextUtil {
       session.theTEWasResized = false;
       session.theTELastOp = NvConstant.TextElemLastOpt.Init;
 
-      // // Handle table deactivation
-      // if (drawingObject && drawingObject.GetTable) {
-      //   let tableData = drawingObject.GetTable(true);
-      //   if (tableData) {
-      //     this.Table_DeActivateText(drawingObject, tableData);
-      //     drawingObject.DataID = -1;
-      //   }
-
-      //   // Handle graph deactivation
-      //   let graphData = drawingObject.GetGraph(true);
-      //   if (graphData) {
-      //     this.Graph_DeActivateText(drawingObject, graphData);
-      //     drawingObject.DataID = -1;
-      //   }
-
-      //   // Special operation mng handling
-      //   if (graphData == null && tableData == null) {
-      //     const optMng = OptAhUtil.GetGvSviOpt(drawingObject.BlockID);
-      //     if (optMng) {
-      //       const textElement = T3Gv.opt.svgObjectLayer.GetElementById(drawingObject.BlockID).GetElementById(OptConstant.SVGElementClass.Text);
-      //       optMng.ShapeSaveData(drawingObject, textElement);
-      //     }
-      //   }
-      // }
-
-      // Reset state and finalize operation
-      // const wasMessagesLocked = Collab.AreMessagesLocked();
-      // Collab.LockMessages();
       this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Init);
-
-      // if (!wasMessagesLocked) {
-      //   Collab.UnLockMessages();
-      // }
-
-      // Handle table release if requested
-      // if (shouldCloseTable) {
-      //   this.Table_Release(false);
-      // }
 
       // Complete operation if needed and not prevented
       if (operationRequired && !preventCompleteOperation) {
@@ -297,8 +195,6 @@ class TextUtil {
         DataUtil.PreserveUndoState(false);
         SvgUtil.RenderDirtySVGObjects();
       }
-
-      // Collab.UnBlockMessages();
     }
 
     T3Util.Log("O.Opt DeactivateTextEdit - Output: Text edit deactivated");
@@ -318,7 +214,6 @@ class TextUtil {
 
     // Only proceed if not in note edit mode.
     if (!T3Gv.opt.bInNoteEdit) {
-      // Collab.BeginSecondaryEdit();
       const session = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       const previousOp = session.theTELastOp;
 
@@ -384,20 +279,14 @@ class TextUtil {
                 // Retrieve updated objects
                 const activeTextEditObjUpdated = DataUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
                 textObject = DataUtil.GetObjectPtr(textDataId, true);
-                // const tableObject = activeTextEditObjUpdated.GetTable(true);
-                // Optionally process table related logic here if necessary.
               }
 
-              if (lastOp === opConstants.Timeout /*&& Collab.AllowMessage()*/) {
+              if (lastOp === opConstants.Timeout) {
                 // Prepare collaboration message for text edit timeout.
                 const messageData: any = {};
                 messageData.BlockID = session.theActiveTextEditObjectID;
                 const messageTarget = DataUtil.GetObjectPtr(messageData.BlockID, false);
-                // let tableObj: any = messageTarget.GetTable(false);
 
-                // if (tableObj) {
-                //   messageData.TableSelect = tableObj.select >= 0 ? tableObj.cells[tableObj.select].uniqueid : -1;
-                // } else
                 if (messageTarget && messageTarget instanceof Instance.Shape.Connector) {
                   messageData.DataID = messageTarget.DataID;
                 }
@@ -408,9 +297,7 @@ class TextUtil {
                 messageData.maxWidth = TextParams.maxWidth;
                 messageData.minHeight = TextParams.minHeight;
 
-                // Collab.BuildMessage(NvConstant.CollabMessages.Text_Edit, messageData, false);
                 TextParams.minWidth = null;
-                // Collab.UnBlockMessages();
               }
             }
           }
@@ -425,42 +312,22 @@ class TextUtil {
         clearTimeout(T3Gv.opt.textEntryTimer);
         T3Gv.opt.textEntryTimer = null;
         T3Gv.opt.textEntryTimer = setTimeout(T3Gv.opt.TextEdit_PauseTyping, 1000);
-      } else if (shouldUnblock) {
-        // Collab.UnBlockMessages();
       }
     }
     T3Util.Log("O.Opt RegisterLastTEOp - Output: Completed");
   }
 
-  // /**
-  //  * Attempts to reverse standard text replacement by pasting the original text into the target clipboard.
-  //  * @param source - The source object containing text and table information.
-  //  * @param clipboard - The target clipboard object which supports the Paste method.
-  //  * @returns True if the reverse replacement occurred, otherwise false.
-  //  */
-  // static ReverseReplaceStdText(source: any, clipboard: any): boolean {
-  //   T3Util.Log("O.Opt ReverseReplaceStdText - Input:", { source, clipboard });
-  //   let resultText: string;
-  //   // let tableData: any;
-  //   let replaceIndex = -1;
-
-  //   T3Util.Log("O.Opt ReverseReplaceStdText - Output:", false);
-  //   return false;
-  // }
-
   /**
-       * Updates the SD text object style based on the given text style settings.
-       * @param sdText - The SD text object whose style will be updated.
-       * @param textStyle - The text style parameters containing font, size, weight, style, baseOffset, decoration, color, and color transparency.
-       */
+   * Updates the SD text object style based on the given text style settings.
+   * @param sdText - The SD text object whose style will be updated.
+   * @param textStyle - The text style parameters containing font, size, weight, style, baseOffset, decoration, color, and color transparency.
+   */
   static TextStyleToSDText(sdText, textStyle) {
     T3Util.Log("O.Opt TextStyleToSDText - Input:", { sdText, textStyle });
 
     // Convert the font size from percentage to points (72 points per inch conversion)
     sdText.FontSize = Math.round(72 * textStyle.size / 100);
-
-    // Determine the font identifier based on the font name provided in textStyle
-    sdText.FontId = -1;//this.GetFontIdByName(textStyle.font);
+    sdText.FontId = -1;
 
     // Set font properties
     sdText.FontName = textStyle.font;
@@ -536,11 +403,11 @@ class TextUtil {
   }
 
   /**
-     * Calculates the default initial text style based on the input style settings.
-     * @param inputStyle - An object containing text style properties including:
-     *                     FontName, FontSize, FontType, Face, and Paint properties.
-     * @returns A DefaultStyle object with computed style properties.
-     */
+   * Calculates the default initial text style based on the input style settings.
+   * @param inputStyle - An object containing text style properties including:
+   *                     FontName, FontSize, FontType, Face, and Paint properties.
+   * @returns A DefaultStyle object with computed style properties.
+   */
   static CalcDefaultInitialTextStyle(inputStyle) {
     T3Util.Log("O.Opt CalcDefaultInitialTextStyle - Input:", inputStyle);
 
@@ -678,7 +545,6 @@ class TextUtil {
             let newFrame = null;
 
             // Check if shape is in a group
-            // const table = shape.GetTable(false);
             const graph = shape.GetGraph(false);
             const isInGroup = shape.bInGroup === true;
 
@@ -694,43 +560,14 @@ class TextUtil {
 
                   newFrame = $.extend(true, {}, shape.Frame);
 
-                  // // Handle table text growth
-                  // if (table && table.select >= 0) {
-                  //   const updatedTable = shape.GetTable(false);
-                  //   growResult = this.Table_TextGrow(
-                  //     shape,
-                  //     updatedTable,
-                  //     updatedTable.select,
-                  //     shape.TextGrow,
-                  //     textMinDimensions,
-                  //     null
-                  //   );
+                  // Standard text growth
+                  shape.TRectToFrame(minTextRect, false);
 
-                  //   textRect.width = growResult.x;
-                  //   textRect.height = growResult.y;
-                  //   shape.TRectToFrame(textRect, false);
+                  let widthChange = shape.Frame.width - newFrame.width;
+                  if (Utils2.IsEqual(widthChange, 0)) widthChange = 0;
 
-                  //   let widthChange = shape.Frame.width - newFrame.width;
-                  //   if (Utils2.IsEqual(widthChange, 0)) widthChange = 0;
-
-                  //   let heightChange = shape.Frame.height - newFrame.height;
-                  //   if (Utils2.IsEqual(heightChange, 0)) heightChange = 0;
-
-                  //   wasTableResize = true;
-                  // } else
-
-                  {
-                    // Standard text growth
-                    shape.TRectToFrame(minTextRect, false);
-
-                    let widthChange = shape.Frame.width - newFrame.width;
-                    if (Utils2.IsEqual(widthChange, 0)) widthChange = 0;
-
-                    let heightChange = shape.Frame.height - newFrame.height;
-                    if (Utils2.IsEqual(heightChange, 0)) heightChange = 0;
-
-                    // wasTableResize = false;
-                  }
+                  let heightChange = shape.Frame.height - newFrame.height;
+                  if (Utils2.IsEqual(heightChange, 0)) heightChange = 0;
 
                   // Adjust position based on text alignment
                   if (widthChange) {
@@ -844,12 +681,7 @@ class TextUtil {
                 break;
 
               case NvConstant.TextGrowBehavior.Vertical:
-              // Similar structure to Horizontal case but with vertical growth logic
-              // ...
-
               case NvConstant.TextGrowBehavior.ProPortional:
-              // Proportional resize logic
-              // ...
             }
           }
         }
@@ -1207,12 +1039,12 @@ class TextUtil {
   }
 
   /**
-     * Converts a given font size value to points based on the document's DPI.
-     * Logs the input value and output result using the prefix "O.Opt".
-     *
-     * @param fontSizeValue - The font size value to convert.
-     * @returns The font size in points, or -1 if the input is invalid.
-     */
+   * Converts a given font size value to points based on the document's DPI.
+   * Logs the input value and output result using the prefix "O.Opt".
+   *
+   * @param fontSizeValue - The font size value to convert.
+   * @returns The font size in points, or -1 if the input is invalid.
+   */
   static FontSizeToPoints(fontSizeValue: number): number {
     T3Util.Log("O.Opt FontSizeToPoints - Input:", fontSizeValue);
 
@@ -1273,8 +1105,6 @@ class TextUtil {
     if (targetId !== -1) {
       const targetObject = DataUtil.GetObjectPtr(targetId, false);
       if (targetObject && targetObject.AllowTextEdit()) {
-        // Begin secondary edit operation
-        // Collab.BeginSecondaryEdit();
 
         // Get the DOM element for the target text object and activate text edit mode
         const textElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1299,9 +1129,9 @@ class TextUtil {
   }
 
   /**
-     * Gets the ID of the object currently being edited for text
-     * @returns The ID of the active text edit object, or null if none
-     */
+  * Gets the ID of the object currently being edited for text
+  * @returns The ID of the active text edit object, or null if none
+  */
   static GetActiveTextEdit() {
     T3Util.Log("O.Opt GetActiveTextEdit - Input: No parameters");
 
@@ -1317,12 +1147,12 @@ class TextUtil {
   }
 
   /**
-     * Activates text editing for the specified drawing object
-     * @param drawingElement - The SVG drawing element
-     * @param event - The event that triggered activation (can be null)
-     * @param preventSelectionChange - Flag to prevent selection change
-     * @param textData - Optional data for collaborative text editing
-     */
+   * Activates text editing for the specified drawing object
+   * @param drawingElement - The SVG drawing element
+   * @param event - The event that triggered activation (can be null)
+   * @param preventSelectionChange - Flag to prevent selection change
+   * @param textData - Optional data for collaborative text editing
+   */
   static ActivateTextEdit(drawingElement, event?, preventSelectionChange?, textData?) {
     T3Util.Log('O.Opt ActivateTextEdit - Input:', {
       drawingElementId: drawingElement?.ID,
@@ -1349,19 +1179,6 @@ class TextUtil {
       T3Util.Log('O.Opt ActivateTextEdit - Output: Object invalid or locked');
       return;
     }
-
-    // // Handle tables
-    // const table = drawingObject.GetTable(false);
-    // if (table && event) {
-    //   const cellIndex = T3Gv.opt.Table_GetCellClicked(drawingObject, event);
-    //   if (cellIndex >= 0 && !T3Gv.opt.Table_AllowCellTextEdit(table, cellIndex)) {
-    //     T3Util.Log('O.Opt ActivateTextEdit - Output: Cell text editing not allowed');
-    //     return;
-    //   }
-    // } else if (table && this.Table_GetFirstTextCell(table) < 0) {
-    //   T3Util.Log('O.Opt ActivateTextEdit - Output: No text cells available in table');
-    //   return;
-    // }
 
     eventData.BlockID = objectId;
 
@@ -1390,9 +1207,6 @@ class TextUtil {
     } else {
       eventData = textData.Data;
     }
-
-    // // Begin collaborative editing session
-    // Collab.BeginSecondaryEdit();
 
     // Get a preserved copy of the object
     const preservedObject = DataUtil.GetObjectPtr(objectId, true);
@@ -1462,30 +1276,6 @@ class TextUtil {
         preservedTextEditSession.theTEWasEdited = false;
       }
 
-      // // Handle table selection
-      // if (table) {
-      //   if (table.select >= 0) {
-      //     eventData.TableSelect = table.cells[table.select].uniqueid;
-      //   } else {
-      //     eventData.TableSelect = -1;
-      //   }
-      // }
-
-      // Configure editing environment based on whether it's a table
-      if (!textData) {
-        // if (table) {
-        //   this.Table_Load(objectId);
-        // } else {
-        //   this.Table_Release(false);
-
-        //   // Move text element to front if not attached to something
-        //   if ((drawingObject.TextFlags & NvConstant.TextFlags.AttachA) == 0 &&
-        //     (drawingObject.TextFlags & NvConstant.TextFlags.AttachB) == 0) {
-        //     T3Gv.opt.svgObjectLayer.MoveElementToFront(svgElement);
-        //   }
-        // }
-      }
-
       // Register events and handle text selection
       if (!textData) {
         if (event && event.gesture) {
@@ -1547,12 +1337,6 @@ class TextUtil {
           NvConstant.TextFlags.Clickhere,
           false
         );
-      } else {
-        // Replace standard placeholder text if needed
-        if ((!textData /*&& !Collab.IsSecondary()*/) ||
-          (textData /*&& textData.EditorID === Collab.EditorID*/)) {
-          // this.ReplaceStdText(preservedObject, currentText, svgElement.textElem);
-        }
       }
 
       // Update selection range
@@ -1573,14 +1357,6 @@ class TextUtil {
 
       // Preserve undo state and send collaboration message
       DataUtil.PreserveUndoState(false);
-
-      // if (Collab.AllowMessage()) {
-      //   Collab.BuildMessage(NvConstant.CollabMessages.Text_Init, eventData, false);
-      // }
-
-      // if ((event && event.type !== 'dragstart') || event == null) {
-      //   Collab.UnBlockMessages();
-      // }
 
       T3Util.Log('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
     } else {
@@ -1620,25 +1396,6 @@ class TextUtil {
     // Get SVG element for the object
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(drawingObject.tag);
 
-    // Find the text element to check
-    if (DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false).theActiveTextEditObjectID !== drawingObject.BlockID) {
-      // const table = drawingObject.GetTable(false);
-
-      // if (table) {
-      //   const cellIndex = T3Gv.opt.Table_GetCellClicked(drawingObject, eventPosition);
-
-      //   if (cellIndex >= 0) {
-      //     const cell = table.cells[cellIndex];
-      //     if (cell.DataID >= 0 && svgElement) {
-      //       svgElement.textElem = svgElement.GetElementById(
-      //         OptConstant.SVGElementClass.Text,
-      //         cell.DataID
-      //       );
-      //     }
-      //   }
-      // }
-    }
-
     // Get the text element
     const textElement = svgElement ? svgElement.textElem : null;
 
@@ -1651,10 +1408,6 @@ class TextUtil {
     const hyperlinkUrl = textElement.GetHyperlinkAtLocation(eventPosition);
 
     if (hyperlinkUrl) {
-      // Handle hyperlink click - commented out as it references SDUI
-      // SDUI.Commands.MainController.Hyperlinks.FollowHyperlink(hyperlinkUrl);
-
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: true (hyperlink found)");
       return true;
     }
 
@@ -1666,16 +1419,6 @@ class TextUtil {
     T3Util.Log('O.Opt NoteIsShowing - Input:', { noteShapeId, noteTableCell });
 
     let isShowing = false;
-
-    if (T3Gv.opt.curNoteShape === noteShapeId) {
-      // if (noteTableCell) {
-      //   if (this.curNoteTableCell && this.curNoteTableCell.uniqueid === noteTableCell.uniqueid) {
-      //     isShowing = true;
-      //   }
-      // } else if (this.curNoteTableCell == null) {
-      //   isShowing = true;
-      // }
-    }
 
     T3Util.Log('O.Opt NoteIsShowing - Output:', isShowing);
     return isShowing;
@@ -1737,50 +1480,11 @@ class TextUtil {
     return T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TextObject, textObject).ID;
   }
 
-  static UpdateFieldDataTooltipPos(e, t) {
-    // if (this.FieldedDataTooltipVisible() && (e || t)) {
-    //   var a = SDUI.Commands.MainController.Dropdowns.GetDropdown(Resources.Controls.Dropdowns.EditDataValues.Id);
-    //   if (a && a.Control) {
-    //     var r = a.Control.css('left').replace('px', ''),
-    //       i = a.Control.css('top').replace('px', '');
-    //     r = parseFloat(r),
-    //       i = parseFloat(i),
-    //       isNaN(r) ||
-    //       isNaN(i) ||
-    //       (
-    //         r += e,
-    //         i += t,
-    //         a.Control.css('left', r + 'px'),
-    //         a.Control.css('top', i + 'px')
-    //       )
-    //   }
-    // }
-  }
+  static UpdateFieldDataTooltipPos(e, t) { }
 
-  static HandleDataTooltipClose(isCompleteOperation) {
-    // T3Util.Log('O.Opt HandleDataTooltipClose - Input:', { isCompleteOperation });
+  static HandleDataTooltipClose(isCompleteOperation) { }
 
-    // this.ClearFieldDataDatePicker();
-
-    // if (this.ActiveDataTT && this.ActiveDataTT.dataChanged) {
-    //   this.CompleteOperation(null, isCompleteOperation);
-    //   this.ActiveDataTT.dataChanged = false;
-    // }
-
-    // T3Util.Log('O.Opt HandleDataTooltipClose - Output: done');
-  }
-
-  static ClearFieldDataDatePicker() {
-    // T3Util.Log('O.Opt ClearFieldDataDatePicker - Input:');
-
-    // if (this._curDatePickerElem && this._curDatePickerElem.datepicker) {
-    //   this._curDatePickerElem.datepicker('hide');
-    // }
-
-    // this._curDatePickerElem = null;
-
-    // T3Util.Log('O.Opt ClearFieldDataDatePicker - Output: DatePicker cleared');
-  }
+  static ClearFieldDataDatePicker() { }
 
   static HandleTextFormatAttributes(textObject, objectIndex) {
     T3Util.Log('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
@@ -1910,8 +1614,6 @@ class TextUtil {
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse up method.
       dragEndHandler.HandleMouseUp(pointerEvent);
-      T3Util.Log("O.Opt TEDragEndHandler - Calling Collab.UnBlockMessages()");
-      // Collab.UnBlockMessages();
       T3Util.Log("O.Opt TEDragEndHandler - Output: Mouse up handled and messages unblocked");
       return false;
     };

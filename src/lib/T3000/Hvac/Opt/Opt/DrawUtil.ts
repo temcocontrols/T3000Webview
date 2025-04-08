@@ -130,10 +130,6 @@ class DrawUtil {
       T3Gv.opt.dragBBoxList = [];
       T3Gv.opt.dragElementList = [];
       T3Gv.opt.actionSvgObject = null;
-
-      // if (Collab.AllowMessage()) {
-      //   Collab.CloseSecondaryEdit();
-      // }
     }
 
     // Reset edit mode
@@ -199,8 +195,6 @@ class DrawUtil {
     }
 
     // Set the selection tool to the default select tool.
-    // Commands.MainController.Selection.SetSelectionTool(Resources.Tools.Select, false);
-
     T3Util.Log("O.Opt CancelObjectDraw - Output: Object draw canceled.");
   }
 
@@ -388,8 +382,6 @@ class DrawUtil {
       // If cursor is outside document, cancel the operation
       if (isOutsideWorkArea) {
         this.CancelObjectStamp(true);
-        // Collab.UnLockMessages();
-        // Collab.UnBlockMessages();
         T3Util.Log("O.Opt MouseStampObjectDone - Output: Canceled (outside work area)");
         return;
       }
@@ -448,7 +440,6 @@ class DrawUtil {
             drawingObject.UpdateFrame(drawingObject.Frame);
             frameData = Utils1.DeepCopy(drawingObject.Frame);
             messageData.FrameList.push(frameData);
-            // Collab.AddNewBlockToSecondary(objectId);
             drawingObject.dataStyleOverride = null;
           }
         }
@@ -475,7 +466,6 @@ class DrawUtil {
           T3Gv.opt.drawShape.UpdateFrame(T3Gv.opt.drawShape.Frame);
           frameData = Utils1.DeepCopy(T3Gv.opt.drawShape.Frame);
           messageData.FrameList.push(frameData);
-          // Collab.AddNewBlockToSecondary(this.drawShape.BlockID);
         }
 
         // Get the updated object
@@ -551,15 +541,6 @@ class DrawUtil {
       T3Gv.opt.actionStoredObjectId = -1;
       T3Gv.opt.actionSvgObject = null;
       UIUtil.SetModalOperation(OptConstant.OptTypes.None);
-
-      // // Send collaboration message if available
-      // if (collabMessage) {
-      //   if (Collab.IsSecondary() && Collab.CreateList.length) {
-      //     collabMessage.Data.CreateList = [];
-      //     collabMessage.Data.CreateList = collabMessage.Data.CreateList.concat(Collab.CreateList);
-      //   }
-      //   Collab.SendMessage(collabMessage);
-      // }
 
       // Complete the operation
       this.CompleteOperation(objectsToSelect);
@@ -695,9 +676,6 @@ class DrawUtil {
         return;
       }
 
-      // Begin collaborative edit session and create new shape
-      // Collab.BeginSecondaryEdit();
-
       this.MouseAddNewShape(T3Gv.opt.useDefaultStyle);
       T3Gv.opt.newObjectVisible = true;
       T3Util.Log("O.Opt MouseStampObjectMove - Created new shape with ID:", T3Gv.opt.actionStoredObjectId);
@@ -817,8 +795,6 @@ class DrawUtil {
         positionedRect = $.extend(true, {}, targetRect);
         positionedRect.x = currentPosition.x - targetRect.width / 2;
         positionedRect.y = currentPosition.y - targetRect.height / 2;
-
-        //DynamicSnapsGetSnapObjects(selectedObject, bounds, dynamicGuides, snapDistance, includeCenters, restrictToVisible)
 
         // Get snap points
         const snapResult = DynamicUtil.DynamicSnapsGetSnapObjects(
@@ -1166,19 +1142,6 @@ class DrawUtil {
       let isOutsideWorkArea = false;
       const objectsToSelect = [];
 
-      // // Check if cursor is outside the document's visible area
-      // if (event.gesture.center.clientX >= docInfo.dispX + docInfo.dispWidth) {
-      //   isOutsideWorkArea = true;
-      // }
-
-      // if (event.gesture.center.clientX < T3Gv.opt.svgDoc.docInfo.dispX) {
-      //   isOutsideWorkArea = true;
-      // }
-
-      // if (event.gesture.center.clientY < T3Gv.opt.svgDoc.docInfo.dispY) {
-      //   isOutsideWorkArea = true;
-      // }
-
       // Check if cursor is outside the document's visible area
       if (event.clientX >= docInfo.dispX + docInfo.dispWidth) {
         isOutsideWorkArea = true;
@@ -1205,12 +1168,6 @@ class DrawUtil {
         T3Util.Log("DragDropObjectDone - Output: Canceled (no link parameters)");
         return;
       }
-
-      // Get document coordinates from window coordinates
-      // let docCoordinates = this.svgDoc.ConvertWindowToDocCoords(
-      //   event.gesture.center.clientX,
-      //   event.gesture.center.clientY
-      // );
 
       let docCoordinates = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
         event.clientX,
@@ -1283,20 +1240,12 @@ class DrawUtil {
               zList,
               T3Gv.opt.drawShape.objecttype
             );
-            // messageData.ReplaceSpecialObjectID = replacedObjectId;
           }
 
           // Update frame and store for collaboration
           T3Gv.opt.drawShape.UpdateFrame(T3Gv.opt.drawShape.Frame);
           frameData = Utils1.DeepCopy(T3Gv.opt.drawShape.Frame);
           messageData.FrameList.push(frameData);
-
-          // Include rotation angle for auto-insert objects
-          if (T3Gv.opt.linkParams.AutoInsert) {
-            // messageData.RotationAngle = this.drawShape.RotationAngle;
-          }
-
-          // Collab.AddNewBlockToSecondary(this.drawShape.BlockID);
         }
 
         // Get latest version of the action object
@@ -1365,15 +1314,6 @@ class DrawUtil {
       // Finish the stamp operation
       LMEvtUtil.LMStampPostRelease(true);
 
-      // Send collaboration message if available
-      // if (collabMessage) {
-      //   if (Collab.IsSecondary() && Collab.CreateList.length) {
-      //     collabMessage.Data.CreateList = [];
-      //     collabMessage.Data.CreateList = collabMessage.Data.CreateList.concat(Collab.CreateList);
-      //   }
-      //   Collab.SendMessage(collabMessage);
-      // }
-
       // Clean up dynamic guides
       DynamicUtil.DynamicSnapsRemoveGuides(T3Gv.opt.dynamicGuides);
       T3Gv.opt.dynamicGuides = null;
@@ -1409,10 +1349,6 @@ class DrawUtil {
     // Reset empty lists
     T3Gv.opt.emptyEMFList = [];
     T3Gv.opt.emptySymbolList = [];
-
-    // // Unlock collaboration messages
-    // Collab.UnLockMessages();
-    // Collab.UnBlockMessages();
 
     T3Util.Log('O.Opt DragDrop_ExceptionCleanup - Output: Cleanup completed');
   }
@@ -1451,9 +1387,6 @@ class DrawUtil {
         T3Util.Log(`O.Opt StampObjectMove - Output: Cursor outside document boundaries`);
         return;
       }
-
-      // // Begin collaborative edit session and create new shape
-      // Collab.BeginSecondaryEdit();
 
       this.MouseAddNewShape(T3Gv.opt.useDefaultStyle);
       T3Gv.opt.newObjectVisible = true;
@@ -1622,8 +1555,6 @@ class DrawUtil {
   static StampTextObjectOnTapDone(event, optionalParam) {
     T3Util.Log("O.Opt StampTextObjectOnTapDone - Input:", { event, optionalParam });
 
-    // T3Gv.opt.SetUIAdaptation(event);
-
     let objectIds = [];
     let docCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       event.gesture.center.clientX,
@@ -1653,8 +1584,6 @@ class DrawUtil {
     T3Gv.opt.drawShape.sizedim.height = T3Gv.opt.drawShape.Frame.height;
 
     T3Gv.opt.drawShape.UpdateFrame(T3Gv.opt.drawShape.Frame);
-
-    // Collab.AddNewBlockToSecondary(this.drawShape.BlockID);
 
     let collaborationData = {};
 
@@ -1725,10 +1654,6 @@ class DrawUtil {
 
     const WorkAreaHammerTap = (tapEvent) => {
       try {
-        // T3Gv.opt.SetUIAdaptation(tapEvent);
-        // if (Collab.AllowMessage()) {
-        //   Collab.BeginSecondaryEdit();
-        // }
         this.AddNewObject(shape, operation, false);
         const activeLayerZList = LayerUtil.ActiveLayerZList();
         const activeCount = activeLayerZList.length;
@@ -1794,10 +1719,6 @@ class DrawUtil {
           return;
         }
 
-        // if (Collab.AllowMessage()) {
-        //   Collab.BeginSecondaryEdit();
-        // }
-
         // Map associated object IDs to their indices in the visible Z list.
         let indexArray: number[] = [];
         for (let i = 0; i < associatedCount; i++) {
@@ -1823,11 +1744,6 @@ class DrawUtil {
         }
 
         HookUtil.UpdateLineHops(true);
-
-        // if (Collab.AllowMessage()) {
-        //   const messageData = { theTargetLayer: targetLayerIndex };
-        //   Collab.BuildMessage(NvConstant.CollabMessages.BringToFrontOfSpecificLayer, messageData, true);
-        // }
 
         if (updateSelectedBlock == null) {
           const preservedSelectedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID);
@@ -2066,11 +1982,6 @@ class DrawUtil {
 
       if (targetObject) {
 
-        // // Tasks don't support duplication
-        // if (targetObject.subtype === objectSubTypes.SD_SUBT_TASK) {
-        //   isCtrlKeyPressed = false;
-        // }
-
         // Objects with dataset elements don't support duplication
         if (targetObject.datasetElemID >= 0) {
           isCtrlKeyPressed = false;
@@ -2088,24 +1999,10 @@ class DrawUtil {
     // Always return false as the commented out code depends on SDUI which might not be available
     T3Util.Log("O.Opt CheckDragIsOverCustomLibrary - Output: false");
     return false;
-
-    /* Original implementation:
-    return event != null &&
-      (SDUI.Commands.MainController.Symbols &&
-       SDUI.Commands.MainController.Symbols.IsCursorOverSymbolLibraryGallery(
-       event.gesture.center.clientX,
-       event.gesture.center.clientY,
-       true)
-      );
-    */
   }
 
   static AutoScrollCommon(event, snapEnabled, callback) {
     T3Util.Log("O.Opt AutoScrollCommon - Input:", { event, snapEnabled, callback });
-
-    // if (callback == "HODDAS") {
-    //   callback = this.HandleObjectDragDoAutoScroll;
-    // }
 
     let clientX: number, clientY: number;
     let requiresAutoScroll = false;
@@ -2318,34 +2215,19 @@ class DrawUtil {
   ) {
     T3Util.Log("O.Opt CompleteOperation - Input:", { selectionObjects, preserveUndoState, fitOption, unusedParameter });
 
-    // if (!Collab.NoRedrawFromSameEditor) {
-    //   this.HideAllSVGSelectionStates();
-    // }
-
-    // if (!this.collaboration.NoRedrawFromSameEditor) {
     SvgUtil.HideAllSVGSelectionStates();
-    // }
 
     DynamicUtil.DynamicSnapsRemoveGuides(T3Gv.opt.dynamicGuides);
     T3Gv.opt.dynamicGuides = null;
     T3Gv.opt.UpdateLinks();
     HookUtil.UpdateLineHops(true);
 
-    // const noRedraw = Collab.NoRedrawFromSameEditor;
-    // const noRedraw = this.collaboration.NoRedrawFromSameEditor;
-
     SvgUtil.RenderDirtySVGObjects();
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
 
-    // if (T3Gv.gTestException) {
-    //   const error = new Error("in-complete operation");
-    //   error.name = '1';
-    //   throw error;
-    // }
-
-    if (selectionObjects /*&& Collab.AllowSelectionChange()*/) {
+    if (selectionObjects) {
       SelectUtil.SelectObjects(selectionObjects, false, true);
-    } else /*if (!noRedraw)*/ {
+    } else {
       SvgUtil.RenderAllSVGSelectionStates();
     }
 
@@ -2355,10 +2237,6 @@ class DrawUtil {
 
     const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
     T3Gv.docUtil.ShowCoordinates(true);
-
-    // if (Collab.AllowSelectionChange()) {
-    //   this.UpdateSelectionAttributes(selectedList);
-    // }
 
     T3Gv.opt.lastOpDuplicate = false;
     T3Gv.opt.ScrollObjectIntoView(-1, false);
