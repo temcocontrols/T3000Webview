@@ -79,14 +79,14 @@ class BaseSymbol extends BaseShape {
 
     // List of cursor types for resize handles
     const resizeCursorTypes = [
-      CursorConstant.CursorType.RESIZE_LT,
-      CursorConstant.CursorType.RESIZE_T,
-      CursorConstant.CursorType.RESIZE_RT,
-      CursorConstant.CursorType.RESIZE_R,
-      CursorConstant.CursorType.RESIZE_RB,
-      CursorConstant.CursorType.RESIZE_B,
-      CursorConstant.CursorType.RESIZE_LB,
-      CursorConstant.CursorType.RESIZE_L
+      CursorConstant.CursorType.ResizeLT,
+      CursorConstant.CursorType.ResizeT,
+      CursorConstant.CursorType.ResizeRT,
+      CursorConstant.CursorType.ResizeR,
+      CursorConstant.CursorType.ResizeRB,
+      CursorConstant.CursorType.ResizeB,
+      CursorConstant.CursorType.ResizeLB,
+      CursorConstant.CursorType.ResizeL
     ];
 
     // Create a group shape to hold all knob elements
@@ -156,7 +156,7 @@ class BaseSymbol extends BaseShape {
       knobConfig.strokeColor = 'red';
       // Override all cursor types if shape cannot grow
       for (let index = 0; index < 8; index++) {
-        adjustedCursorTypes[index] = CursorConstant.CursorType.DEFAULT;
+        adjustedCursorTypes[index] = CursorConstant.CursorType.Default;
       }
     }
 
@@ -195,7 +195,7 @@ class BaseSymbol extends BaseShape {
       knobConfig.shapeType = OptConstant.CSType.Oval;
       knobConfig.x = frameWidth - 3 * scaleRotatedKnobSize;
       knobConfig.y = frameHeight / 2 - scaleRotatedKnobSize / 2;
-      knobConfig.cursorType = CursorConstant.CursorType.ROTATE;
+      knobConfig.cursorType = CursorConstant.CursorType.Rotate;
       knobConfig.knobID = OptConstant.ActionTriggerType.Rotate;
       knobConfig.fillColor = 'white';
       knobConfig.fillOpacity = 0.001;
