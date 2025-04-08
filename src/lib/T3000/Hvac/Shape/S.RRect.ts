@@ -146,10 +146,6 @@ class RRect extends BaseShape {
     }
 
     shapeContainer.isShape = true;
-    // const tableData = this.GetTable(false);
-    // if (tableData) {
-    //   T3Gv.opt.LM_AddSVGTableObject(this, svgDoc, shapeContainer, tableData);
-    // }
 
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(svgDoc, shapeContainer);
@@ -235,20 +231,11 @@ class RRect extends BaseShape {
       );
     }
 
-    // if (this.GetTable(false)) {
-    //   T3Gv.opt.Table_ResizeSVGTableObject(
-    //     svgElement,
-    //     drawingContainer,
-    //     newDimensions
-    //   );
-    // } else
-    {
-      this.LMResizeSVGTextObject(
-        svgElement,
-        drawingContainer,
-        newDimensions
-      );
-    }
+    this.LMResizeSVGTextObject(
+      svgElement,
+      drawingContainer,
+      newDimensions
+    );
 
     svgElement.SetRotation(rotation);
     this.UpdateDimensionLines(svgElement);
@@ -302,15 +289,6 @@ class RRect extends BaseShape {
     if (slopEl) {
       slopEl.SetSize(inflatedDimensions.width, inflatedDimensions.height);
     }
-
-    // if (this.GetTable(false)) {
-    //   T3Gv.opt.Table_ResizeSVGTableObject(
-    //     svgElement,
-    //     this,
-    //     newDimensions,
-    //     true
-    //   );
-    // }
 
     const hatchEl = svgElement.GetElementById(OptConstant.SVGElementClass.Hatch);
     if (hatchEl) {
@@ -475,52 +453,7 @@ class RRect extends BaseShape {
   }
 
   ExtendLines() {
-    // T3Util.Log("= S.RRect: ExtendLines input:", {});
-
-    // const tableData = this.GetTable(false);
-    // if (tableData) {
-    //   T3Gv.opt.Table_ExtendLines(this, tableData);
-    // }
-
-    // T3Util.Log("= S.RRect: ExtendLines output:", { tableDataFound: !!tableData });
   }
-
-  // ExtendCell(cellIndex: number, extensionData: any, additionalOptions: any) {
-  //   T3Util.Log("= S.RRect: ExtendCell input:", { cellIndex, extensionData, additionalOptions });
-
-  //   // const table = this.GetTable(false);
-  //   // if (!table) {
-  //   //   T3Util.Log("= S.RRect: ExtendCell output:", null);
-  //   //   return null;
-  //   // }
-
-  //   // const extendedCells = T3Gv.opt.Table_ExtendCell(
-  //   //   this,
-  //   //   table,
-  //   //   cellIndex,
-  //   //   extensionData,
-  //   //   additionalOptions
-  //   // );
-
-  //   if (extendedCells) {
-  //     const svgFrame = this.GetSVGFrame(this.Frame);
-  //     const offsetX = this.inside.x - svgFrame.x;
-  //     const offsetY = this.inside.y - svgFrame.y;
-
-  //     if (offsetX || offsetY) {
-  //       for (let i = 0, len = extendedCells.length; i < len; i++) {
-  //         extendedCells[i].x += offsetX;
-  //         extendedCells[i].y += offsetY;
-  //       }
-  //     }
-
-  //     T3Util.Log("= S.RRect: ExtendCell output:", extendedCells);
-  //     return extendedCells;
-  //   }
-
-  //   T3Util.Log("= S.RRect: ExtendCell output:", null);
-  //   return null;
-  // }
 
   GetPerimPts(
     eventObj: any,
@@ -575,29 +508,9 @@ class RRect extends BaseShape {
       );
     }
 
-    // const tableData = this.GetTable(false);
-    // if (optionalParam != null && tableData) {
-    //   const tablePoints = T3Gv.opt.Table_GetPerimPts(
-    //     this,
-    //     tableData,
-    //     optionalParam,
-    //     hookPoints
-    //   );
-    //   if (tablePoints) {
-    //     outputPoints = tablePoints;
-    //     if (!keepRotation) {
-    //       const rotationAngle = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
-    //       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, outputPoints);
-    //     }
-    //     T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
-    //     return outputPoints;
-    //   }
-    // }
-
     const useConnect = !!(this.flags & NvConstant.ObjFlags.UseConnect);
-    // const useTableRows = !!(this.hookflags & NvConstant.HookFlags.LcTableRows && tableData);
 
-    if (useConnect /*|| useTableRows*/) {
+    if (useConnect) {
       for (let i = 0; i < totalHooks; i++) {
         outputPoints[i] = { x: 0, y: 0, id: 0 };
         outputPoints[i].x =

@@ -140,7 +140,7 @@ class PolyLineContainer extends PolyLine {
     } else if (this.NoGrow()) {
       knobParams.fillColor = "red";
       knobParams.strokeColor = "red";
-      knobParams.cursorType = CursorConstant.CursorType.DEFAULT;
+      knobParams.cursorType = CursorConstant.CursorType.Default;
     }
 
     if ((segmentCount = this.polylist.segs.length) !== 0) {
@@ -148,7 +148,7 @@ class PolyLineContainer extends PolyLine {
         for (let i = 1; i < segmentCount; i++) {
           knobParams.cursorType = this.CalcCursorForAngle(this.GetSegmentAdjustAngle(i));
           if (this.NoGrow()) {
-            knobParams.cursorType = CursorConstant.CursorType.DEFAULT;
+            knobParams.cursorType = CursorConstant.CursorType.Default;
           }
 
           switch (this.polylist.segs[i].LineType) {
@@ -891,7 +891,7 @@ class PolyLineContainer extends PolyLine {
       currentOperation === OptConstant.OptTypes.AddCorner) {
       const slopElement = element.GetElementById(OptConstant.SVGElementClass.Slop);
       if (slopElement) {
-        slopElement.SetCursor(CursorConstant.CursorType.CROSSHAIR);
+        slopElement.SetCursor(CursorConstant.CursorType.Cross);
       }
     } else {
       this.BaseShapeSetCursors();
@@ -909,36 +909,27 @@ class PolyLineContainer extends PolyLine {
 
     switch (editMode) {
       case NvConstant.EditState.Default:
-        // const activeTableID = T3Gv.opt.Table_GetActiveID();
-        // const table = this.GetTable(false);
 
-        // if (table && (isOneClick || this.BlockID === activeTableID)) {
-        //   T3Gv.opt.Table_SetCursors(svgElement, this, table, false);
-        // } else
-        {
-          // if (table) {
-          //   T3Gv.opt.Table_SetCursors(svgElement, this, table, true);
-          // }
-          this.BaseDrawingObjectSetCursors();
+        this.BaseDrawingObjectSetCursors();
 
-          if (isOneClick) {
-            const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
-            if (shapeElement) {
-              shapeElement.SetCursor(CursorConstant.CursorType.TEXT);
-            }
-            const slopElement = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
+        if (isOneClick) {
+          const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
+          if (shapeElement) {
+            shapeElement.SetCursor(CursorConstant.CursorType.Text);
           }
+          const slopElement = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
         }
+
         break;
 
       case NvConstant.EditState.FormatPaint:
         const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
         if (shapeElement) {
-          shapeElement.SetCursor(CursorConstant.CursorType.PAINT);
+          shapeElement.SetCursor(CursorConstant.CursorType.Paint);
         }
         const slopElement = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
         if (slopElement) {
-          slopElement.SetCursor(CursorConstant.CursorType.PAINT);
+          slopElement.SetCursor(CursorConstant.CursorType.Paint);
         }
         break;
 
@@ -960,9 +951,9 @@ class PolyLineContainer extends PolyLine {
         const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
         if (shapeElement) {
           if (this.objecttype === NvConstant.FNObjectTypes.FrameContainer) {
-            shapeElement.SetCursor(CursorConstant.CursorType.DEFAULT);
+            shapeElement.SetCursor(CursorConstant.CursorType.Default);
           } else {
-            shapeElement.SetCursor(CursorConstant.CursorType.ADD);
+            shapeElement.SetCursor(CursorConstant.CursorType.Add);
           }
         }
 
@@ -978,19 +969,19 @@ class PolyLineContainer extends PolyLine {
         iconTypes.forEach(iconType => {
           const iconElement = svgElement.GetElementById(iconType);
           if (iconElement) {
-            iconElement.SetCursor(CursorConstant.CursorType.POINTER);
+            iconElement.SetCursor(CursorConstant.CursorType.Pointer);
           }
         });
 
         const slopElement = svgElement.GetElementById(OptConstant.SVGElementClass.Slop);
         if (slopElement) {
-          slopElement.SetCursor(CursorConstant.CursorType.ADD);
+          slopElement.SetCursor(CursorConstant.CursorType.Add);
         }
 
         const activeEditElement = T3Gv.opt.svgDoc.GetActiveEdit();
         if (this.DataID && this.DataID >= 0 && svgElement.textElem) {
           if (svgElement.textElem === activeEditElement) {
-            shapeElement.SetCursor(CursorConstant.CursorType.TEXT);
+            shapeElement.SetCursor(CursorConstant.CursorType.Text);
             svgElement.textElem.SetCursorState(CursorConstant.CursorState.EditLink);
           } else {
             svgElement.textElem.SetCursorState(CursorConstant.CursorState.LinkOnly);

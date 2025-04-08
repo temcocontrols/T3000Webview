@@ -144,11 +144,6 @@ class Rect extends BaseShape {
       const slopHeight = height;
       const slopWidth = width;
 
-      // // Increase slop size for certain shape types
-      // if ((this.objecttype === NvConstant.FNObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER)) {
-      //   slopSize *= 3;
-      // }
-
       let slopShape;
       if (cornerRadius > 0) {
         slopShape = renderer.CreateShape(OptConstant.CSType.RRect);
@@ -202,17 +197,6 @@ class Rect extends BaseShape {
     // Mark as shape
     shapeContainer.isShape = true;
 
-    // // Add table and graph objects if present
-    // const table = null; // this.GetTable(false); - Commented out in original code
-    // if (table) {
-    //   T3Gv.opt.LM_AddSVGTableObject(this, renderer, shapeContainer, table);
-    // }
-
-    // const graph = this.GetGraph(false);
-    // if (graph) {
-    //   T3Gv.opt.LM_AddSVGGraphObject(this, renderer, shapeContainer, graph);
-    // }
-
     // Add text if there's data
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);
@@ -221,14 +205,14 @@ class Rect extends BaseShape {
     return shapeContainer;
   }
 
-  GetCornerSize(inputSize) {
+  GetCornerSize(inputSize?) {
     T3Util.Log("= S.Rect GetCornerSize Input:", inputSize);
     const cornerSize = this.RRectGetCornerSize(inputSize);
     T3Util.Log("= S.Rect GetCornerSize Output:", cornerSize);
     return cornerSize;
   }
 
-  RRectGetCornerSize(inputSize) {
+  RRectGetCornerSize(inputSize?) {
     T3Util.Log("= S.Rect RRectGetCornerSize Input:", inputSize);
 
     let width = this.Frame.width;
@@ -352,59 +336,8 @@ class Rect extends BaseShape {
   ExtendLines(extend) {
     T3Util.Log("= S.Rect ExtendLines Input:", extend);
     const cornerSize = this.RRectGetCornerSize();
-    if (cornerSize > 0 || extend) {
-      // this.RRect_ExtendLines();
-    }
     T3Util.Log("= S.Rect ExtendLines Output");
   }
-
-  // RRect_ExtendLines() {
-  //   // T3Util.Log("= S.Rect RRect_ExtendLines Input");
-
-  //   // var table = this.GetTable(false);
-  //   // if (table) {
-  //   //   T3Gv.opt.Table_ExtendLines(this, table);
-  //   // }
-
-  //   // T3Util.Log("= S.Rect RRect_ExtendLines Output");
-  // }
-
-  // ExtendCell(event, type, arg) {
-  //   T3Util.Log("= S.Rect ExtendCell Input:", { event, type, arg });
-  //   const cornerSize = this.RRectGetCornerSize();
-  //   let result;
-  //   if (cornerSize > 0) {
-  //     result = this.RRect_ExtendCell(event, type, arg);
-  //   }
-  //   T3Util.Log("= S.Rect ExtendCell Output:", result);
-  //   return result;
-  // }
-
-  // RRect_ExtendCell(event, type, arg) {
-  //   T3Util.Log("= S.Rect RRect_ExtendCell Input:", { event, type, arg });
-
-  //   var table = this.GetTable(false);
-  //   let result = null;
-
-  //   if (table) {
-  //     result = T3Gv.opt.Table_ExtendCell(this, table, event, type, arg);
-
-  //     if (result) {
-  //       var offsetX = this.inside.x - this.Frame.x;
-  //       var offsetY = this.inside.y - this.Frame.y;
-
-  //       if (offsetX || offsetY) {
-  //         for (let i = 0; i < result.length; i++) {
-  //           result[i].x += offsetX;
-  //           result[i].y += offsetY;
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   T3Util.Log("= S.Rect RRect_ExtendCell Output:", result);
-  //   return result;
-  // }
 
   SetShapeIndent(indentOptions) {
     T3Util.Log("= S.Rect SetShapeIndent Input:", indentOptions);
@@ -509,17 +442,6 @@ class Rect extends BaseShape {
 
   ApplyCurvature(curvatureParam) {
     T3Util.Log("= S.Rect ApplyCurvature Input:", curvatureParam);
-
-    // var table = this.GetTable(false);
-    // if (table) {
-    //   var firstRow = table.rows[0];
-    //   for (var i = 0; i < firstRow.ncells; i++) {
-    //     if (table.cells[i].flags & TODO.Table.CellFlags.SDT_F_UseExpandedRectAsFrame) {
-    //       T3Util.Log("= S.Rect ApplyCurvature Output: No action taken due to expanded rect as frame");
-    //       return;
-    //     }
-    //   }
-    // }
 
     var shapeProperties = {
       hasrrectselected: true,
