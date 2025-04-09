@@ -100,6 +100,7 @@ class WallOpt {
     // Set additional line properties
     wallStyle.Line.BThick = wallStyle.Line.Thickness / 2;
     wallStyle.Line.LinePattern = 0;
+    wallStyle.Line.Paint.Color = '#000000';
 
     T3Util.Log('= WallOpt AddWall o', wallStyle);
 

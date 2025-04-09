@@ -264,68 +264,6 @@ class UIUtil {
           OptCMUtil.SetEditMode(NvConstant.EditState.FormatPaint);
         }
       }
-      // // CASE 2: If a table is active, set up table format painter
-      // else if (activeTableId >= 0) {
-      //   if ((tableObject = DataUtil.GetObjectPtr(activeTableId, false)) &&
-      //     (tableCell = tableObject.GetTable(false))) {
-
-      //     // If a cell is selected
-      //     if (tableCell.select >= 0) {
-      //       this.crtOpt = OptConstant.OptTypes.FormatPainter;
-      //       this.formatPainterSticky = makeSticky;
-      //       this.formatPainterMode = StyleConstant.FormatPainterModes.Table;
-      //       this.formatPainterStyle = {
-      //         StyleRecord: {}
-      //       };
-
-      //       const selectedCell = tableCell.cells[tableCell.select];
-      //       this.formatPainterStyle.Text = Utils1.DeepCopy(selectedCell.Text);
-      //       this.formatPainterStyle.hline = Utils1.DeepCopy(selectedCell.hline);
-      //       this.formatPainterStyle.vline = Utils1.DeepCopy(selectedCell.vline);
-      //       this.formatPainterStyle.Fill = Utils1.DeepCopy(selectedCell.fill);
-      //       this.formatPainterStyle.vjust = selectedCell.vjust;
-      //       this.formatPainterStyle.just = selectedCell.just;
-      //       this.formatPainterText = TextUtil.CalcDefaultInitialTextStyle(this.formatPainterStyle.Text);
-
-      //       const paraFormat = {};
-      //       paraFormat.just = selectedCell.just;
-      //       paraFormat.bullet = 'none';
-      //       paraFormat.spacing = 0;
-
-      //       const tableElement = this.svgObjectLayer.GetElementById(tableObject.BlockID);
-      //       this.Table_GetTextParaFormat(tableCell, paraFormat, tableElement, false, false, tableCell.select);
-      //       this.formatPainterParaFormat = paraFormat;
-      //       OptCMUtil.SetEditMode(NvConstant.EditState.FormatPaint);
-      //     }
-      //     // If a row is selected
-      //     else if (tableCell.rselect >= 0) {
-      //       this.crtOpt = OptConstant.OptTypes.FormatPainter;
-      //       this.formatPainterSticky = makeSticky;
-      //       this.formatPainterMode = StyleConstant.FormatPainterModes.Table;
-      //       this.formatPainterStyle = {
-      //         StyleRecord: {}
-      //       };
-
-      //       tableRow = tableCell.rows[tableCell.rselect];
-      //       const firstCell = tableCell.cells[tableRow.start + tableRow.segments[0].start];
-      //       this.formatPainterStyle.hline = Utils1.DeepCopy(firstCell.hline);
-      //       OptCMUtil.SetEditMode(NvConstant.EditState.FormatPaint);
-      //     }
-      //     // If a column is selected
-      //     else if (tableCell.cselect >= 0) {
-      //       this.crtOpt = OptConstant.OptTypes.FormatPainter;
-      //       this.formatPainterSticky = makeSticky;
-      //       this.formatPainterMode = StyleConstant.FormatPainterModes.Table;
-      //       this.formatPainterStyle = {
-      //         StyleRecord: {}
-      //       };
-
-      //       tableCol = tableCell.cols[tableCell.cselect];
-      //       this.formatPainterStyle.vline = Utils1.DeepCopy(tableCol.vline);
-      //       OptCMUtil.SetEditMode(NvConstant.EditState.FormatPaint);
-      //     }
-      //   }
-      // }
       // CASE 3: If a shape/object is selected, set up object format painter
       else if ((targetObject = SelectUtil.GetTargetSelect()) >= 0 &&
         (tableObject = DataUtil.GetObjectPtr(targetObject, false))) {
