@@ -55,7 +55,7 @@
 class DocConfig {
   public showRulers: boolean = true;
   public showGrid: boolean = true;
-  public enableSnap: boolean = true;
+  public enableSnap: boolean = false;
   public centerSnap: boolean = true;
   public zoom: boolean = true;
   public zoomLevels: any;

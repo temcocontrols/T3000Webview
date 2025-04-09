@@ -53,7 +53,7 @@ class LineData {
   constructor() {
 
     //'#00FF00'
-    this.Paint = new PaintData(NvConstant.Colors.Gray);
+    this.Paint = new PaintData(NvConstant.Colors.Black);
     this.Hatch = 0;
     this.LineEffect = 0;
     this.Thickness = NvConstant.StyleDefaults.DefThick;

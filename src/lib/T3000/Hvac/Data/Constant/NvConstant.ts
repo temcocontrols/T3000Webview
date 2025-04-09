@@ -79,7 +79,7 @@ class NvConstant {
     Hilite: '#0099FF',   // Highlight color
     Select: '#00FF00',   // Selection color
     Trans: 4294967295,   // Transparent color (special value)
-    Gray: '#C0C0C0'
+    Gray: '#C0C0C0',
   }
 
   /**
