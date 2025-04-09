@@ -24,6 +24,9 @@ import OptCMUtil from "./OptCMUtil";
 import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import PolyUtil from './PolyUtil';
+import UIUtil from '../UI/UIUtil';
+import HookUtil from './HookUtil';
+import ToolActUtil from './ToolActUtil';
 
 class TextUtil {
 
@@ -650,7 +653,7 @@ class TextUtil {
                         y: originalFrame.y + originalFrame.height / 2
                       };
 
-                      let originalRotatedRect = T3Gv.opt.RotateRect(
+                      let originalRotatedRect = ToolActUtil.RotateRect(
                         originalFrame,
                         rotationCenter,
                         shape.RotationAngle
@@ -661,7 +664,7 @@ class TextUtil {
                         y: newFrame.y + newFrame.height / 2
                       };
 
-                      let newRotatedRect = T3Gv.opt.RotateRect(
+                      let newRotatedRect = ToolActUtil.RotateRect(
                         newFrame,
                         rotationCenter,
                         shape.RotationAngle
@@ -674,7 +677,7 @@ class TextUtil {
 
                     // Update link flags
                     if (!skipLinkFlagUpdate) {
-                      this.ResizeSetLinkFlag(shapeId, DSConstant.LinkFlags.Move);
+                      HookUtil.ResizeSetLinkFlag(shapeId, DSConstant.LinkFlags.Move);
                     }
                   }
                 }
@@ -1652,6 +1655,170 @@ class TextUtil {
         }
       }
     }
+  }
+
+  /**
+   * Automatically scrolls the document view to keep the text cursor visible during text editing.
+   * This function finds the current cursor position and adjusts the document scroll position
+   * to ensure the cursor remains in view.
+   *
+   * @param objectId - The ID of the text object being edited
+   */
+  static TextAutoScroll(objectId) {
+    // Check if there's an active text edit session
+    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+
+    if (textEditSession.theActiveTextEditObjectID !== -1) {
+      // Get the SVG element for the object
+      const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
+
+      if (svgElement && svgElement.textElem) {
+        // Get the current cursor position
+        const cursorPosition = svgElement.textElem.GetInputCursorPos();
+
+        if (cursorPosition) {
+          // Convert window coordinates to document coordinates
+          const documentCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
+            cursorPosition.x2,
+            cursorPosition.y2
+          );
+
+          // Scroll to make the cursor position visible
+          T3Gv.docUtil.ScrollToPosition(documentCoords.x, documentCoords.y);
+        }
+      }
+    }
+  }
+
+  /**
+   * Ensures that a text frame stays within the boundaries of the document.
+   * This function checks if the given frame extends beyond document boundaries and
+   * adjusts its position to keep it within bounds, while respecting minimum height requirements.
+   *
+   * @param frame - The rectangle frame to check and adjust
+   * @param minimumHeight - The minimum height the frame must maintain
+   * @returns True if the frame was successfully pinned within bounds, throws an error if impossible
+   */
+  static TextPinFrame(frame, minimumHeight) {
+    const edgeSlop = OptConstant.Common.EdgeSlop;
+
+    // Ensure the frame doesn't go beyond the left or top edge
+    if (frame.x < edgeSlop) {
+      frame.x = edgeSlop;
+    }
+
+    if (frame.y < edgeSlop) {
+      frame.y = edgeSlop;
+    }
+
+    // Only check right/bottom boundaries if NoAuto flag is set
+    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+      const documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+
+      // Check if frame extends beyond right edge
+      let overflow = frame.x + frame.width - documentData.dim.x + edgeSlop;
+      if (overflow > 0 && frame.x >= overflow) {
+        frame.x -= overflow;
+      }
+
+      // Check if frame extends beyond bottom edge
+      overflow = frame.y + frame.height - documentData.dim.y + edgeSlop;
+      if (overflow > 0) {
+        // If we can't move the frame up due to minimum height constraints, throw an error
+        if (!(frame.y - minimumHeight >= overflow)) {
+          const error = new Error("SDUI.Resources.Strings.Error_Bounds");
+          error.name = "1";
+          throw error;
+        }
+
+        // Move the frame up to stay in bounds
+        frame.y -= overflow;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks if the document page needs to be resized to accommodate text that extends beyond the current boundaries.
+   * This function automatically expands the document dimensions when text content extends beyond the current page,
+   * but only if the NoAuto flag is not set in the document header.
+   *
+   * @param drawingObject - The drawing object containing the text
+   * @param newWidth - The new width that may extend beyond current page boundaries
+   * @param newHeight - The new height that may extend beyond current page boundaries
+   */
+  static TextResizeNeedPageResize(drawingObject, newWidth, newHeight) {
+    // Only resize if auto-resize is allowed (NoAuto flag is not set)
+    if (!(T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto)) {
+      let newDimensions;
+      let documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+
+      // Check if the width extends beyond current document width
+      if (newWidth > documentData.dim.x) {
+        // Calculate new document dimensions by adding a page width
+        documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+        newDimensions = {
+          x: documentData.dim.x + T3Gv.opt.header.Page.papersize.x -
+            (T3Gv.opt.header.Page.margins.left + T3Gv.opt.header.Page.margins.right),
+          y: documentData.dim.y
+        };
+
+        // Update edge layers and document dimensions
+        T3Gv.opt.UpdateEdgeLayers([], documentData.dim, newDimensions);
+        documentData.dim.x += T3Gv.opt.header.Page.papersize.x -
+          (T3Gv.opt.header.Page.margins.left + T3Gv.opt.header.Page.margins.right);
+        UIUtil.ResizeSVGDocument();
+      }
+
+      // Check if the height extends beyond current document height
+      if (newHeight > documentData.dim.y) {
+        // Calculate new document dimensions by adding a page height
+        documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+        newDimensions = {
+          x: documentData.dim.x,
+          y: documentData.dim.y + T3Gv.opt.header.Page.papersize.y -
+            (T3Gv.opt.header.Page.margins.top + T3Gv.opt.header.Page.margins.bottom)
+        };
+
+        // Update edge layers and document dimensions
+        T3Gv.opt.UpdateEdgeLayers([], documentData.dim, newDimensions);
+        documentData.dim.y += T3Gv.opt.header.Page.papersize.y -
+          (T3Gv.opt.header.Page.margins.top + T3Gv.opt.header.Page.margins.bottom);
+        UIUtil.ResizeSVGDocument();
+      }
+    }
+  }
+
+  /**
+   * Initializes an empty text element with default formatting.
+   * This function sets up text formatting for a newly created empty text object by:
+   * 1. Getting the default text style from the drawing object
+   * 2. Calculating the initial style parameters
+   * 3. Setting and then clearing a space character to apply formatting
+   *
+   * @param drawingObject - The drawing object that will contain the text
+   * @param svgElement - The SVG element representing the drawing object
+   */
+  static InitEmptyText(drawingObject, svgElement) {
+    // Get default text parameters from the drawing object
+    const paragraphStyle = {};
+    const textDefault = drawingObject.GetTextDefault(paragraphStyle);
+    const initialTextStyle = this.CalcDefaultInitialTextStyle(textDefault);
+    const verticalAlignment = paragraphStyle.vjust;
+
+    // Set a space character to apply formatting
+    svgElement.textElem.SetText(" ");
+    svgElement.textElem.SetFormat(initialTextStyle);
+    svgElement.textElem.SetParagraphStyle(paragraphStyle);
+
+    // Set vertical alignment for shapes
+    if (drawingObject instanceof Instance.Shape.BaseShape) {
+      svgElement.textElem.SetVerticalAlignment(verticalAlignment);
+    }
+
+    // Clear the text to leave an empty but formatted text field
+    svgElement.textElem.SetText("");
   }
 }
 

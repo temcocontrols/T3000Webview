@@ -24,6 +24,11 @@ class Rectangle {
   public y: number;
   public width: number;
   public height: number;
+    firstconnector_x: number;
+    h: number;
+    hdist: number;
+    v: number;
+    vdist: number;
 
   constructor(x?: number, y?: number, width?: number, height?: number) {
     this.x = x || 0;

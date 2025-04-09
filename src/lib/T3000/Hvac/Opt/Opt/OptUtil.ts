@@ -52,6 +52,8 @@ import DynamicUtil from './DynamicUtil';
 import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
+import KeyboardConstant from '../Keyboard/KeyboardConstant';
+import ConstantData from '../../Data/ConstantData';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -385,6 +387,12 @@ class OptUtil {
 
   public actionTableLastX: any;
   public actionTableLastY: any;
+  OldConnectorExtra: number;
+  OldConnectorWd: any;
+  OldConnectorHt: number;
+  OldConnectorGap: number;
+  ConnectorList: any;
+  ConnectorWidthList: any;
 
   //#endregion
 
@@ -6730,6 +6738,206 @@ class OptUtil {
         }
       }
     }
+  }
+
+  /**
+   * Handles text editing events and callbacks in the editor
+   *
+   * This function processes various text-related events such as:
+   * - Activation and deactivation of text editing
+   * - Keyboard navigation (tab, arrows, enter)
+   * - Text selection and formatting
+   * - Drag operations inside text objects
+   * - Spellcheck functionality
+   * - Hyperlink interaction
+   *
+   * It coordinates between the text editor component and business logic managers,
+   * maintaining state about the currently active text editing session.
+   *
+   * @param eventType - The type of text event (activate, deactivate, keyend, edit, etc.)
+   * @param eventData - Data specific to the event type (keycode, coordinates, etc.)
+   * @param editorComponent - The text editor component instance
+   * @param targetObject - The object where text editing is occurring
+   * @returns Boolean value indicating if the event was handled (in some cases)
+   */
+  TextCallback(eventType, eventData, editorComponent, targetObject) {
+    let targetSelection;
+    let selectionAttributes;
+    let runtimeText;
+    let objectData;
+    let changedBlocks;
+    let tableObject;
+    let dataId;
+    let objectId = targetObject.ID;
+    let currentObject = null;
+    let isInvalidSpellCheck = false;
+
+    try {
+      // Get the text editing session data
+      const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+
+      // Handle spellcheck event
+      if (eventType === "spellcheck") {
+        currentObject = DataUtil.GetObjectPtr(objectId, false);
+
+        if (currentObject) {
+          tableObject = currentObject.GetTable(false);
+
+          if (tableObject) {
+            // Check if spellcheck is valid for this table cell
+            dataId = editorComponent.GetUserData();
+            isInvalidSpellCheck = !(tableObject.select >= 0) || tableObject.cells[tableObject.select].DataID != dataId;
+          }
+        }
+
+        // Mark as invalid if no active edit
+        if (T3Gv.opt.svgDoc.GetActiveEdit() == null) {
+          isInvalidSpellCheck = true;
+        }
+      }
+
+      // Exit early if not the active text edit object or invalid spellcheck
+      if (sessionData.theActiveTextEditObjectID != objectId || isInvalidSpellCheck) {
+        if (eventType === "spellcheck") {
+          currentObject = DataUtil.GetObjectPtr(objectId, false);
+
+          if (currentObject) {
+            tableObject = currentObject.GetTable(false);
+            dataId = tableObject ? editorComponent.GetUserData() : currentObject.DataID;
+
+            // Save spellcheck changes if needed
+            if (dataId > 0 && editorComponent) {
+              runtimeText = editorComponent.GetRuntimeText();
+              objectData = DataUtil.GetObjectPtr(dataId, Utils1.IsStateOpen());
+
+              if (objectData) {
+                objectData.runtimeText = runtimeText;
+              }
+
+              // Save changes if not in open state
+              if (!Utils1.IsStateOpen()) {
+                changedBlocks = [];
+                changedBlocks.push(T3Gv.stdObj.GetObject(dataId));
+              }
+            }
+          }
+        }
+        return;
+      }
+
+      // Handle different event types
+      switch (eventType) {
+        case "dragoutside":
+          // Handle drag events outside the text area
+          if ((currentObject = DataUtil.GetObjectPtr(objectId, false)) &&
+            (tableObject = currentObject.GetTable(false)) &&
+            tableObject.select >= 0) {
+
+            const textParams = currentObject.GetTextParams(false);
+            const dragPosition = eventData;
+            const adjustedPosition = {};
+
+            // Adjust position relative to frame
+            adjustedPosition.x = dragPosition.x + currentObject.Frame.x;
+            adjustedPosition.y = dragPosition.y + currentObject.Frame.y;
+
+            const textRect = textParams.trect;
+
+            // If drag is outside text rectangle, start table drag
+            if (!Utils2.pointInRect(textRect, adjustedPosition)) {
+              if (editorComponent.editor.isActive) {
+                editorComponent.editor.BeginTableDrag();
+              }
+
+              adjustedPosition.y -= currentObject.trect.y;
+              adjustedPosition.x -= currentObject.trect.x;
+            }
+          }
+          break;
+
+        case "keyend":
+          // Handle keyboard navigation events
+          switch (eventData.keyCode) {
+          }
+          return true;
+          break;
+
+        case "edit":
+          // Handle text editing
+          TextUtil.TextAutoScroll(objectId);
+          TextUtil.TextResizeCommon(objectId);
+          break;
+
+        case "didresize":
+          // Handle resize events
+          break;
+
+        case "click":
+          // Handle click events for text
+          if (sessionData.theTELastOp != NvConstant.TextElemLastOpt.Init) {
+            TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Select);
+          }
+          break;
+
+        case "selectrange":
+          // Handle text selection
+          break;
+
+        case "hyperlink":
+          // Handle hyperlink clicks
+          break;
+
+        case "select":
+          // Handle text selection events
+          break;
+
+        case "charfilter":
+          // Handle character filtering
+          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          if (!currentObject) {
+            return true;
+          }
+
+          return true;
+        case "deactivate":
+          break;
+      }
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+    }
+  }
+
+  LinesAddCurve(isVertical: boolean, factorPrimary: number, factorSecondary: number, arg3: any, y: any, curveAmount: any): any[] {
+    // throw new Error('Method not implemented.');
+  }
+
+  DeleteBlock(textid: any) {
+    // throw new Error('Method not implemented.');
+  }
+
+  ChangeObjectTextAttributes(BlockID: number, fontName: string, fontAttributes: any, fontFace: string, fontSize: number, opacity: number, element: any, additionalParams: any) {
+    // throw new Error('Method not implemented.');
+  }
+
+  DeSelect(deselectedList: any[]) {
+    // throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Pauses the text entry timer and registers a timeout operation
+   *
+   * This function handles the pause in text typing by:
+   * 1. Clearing any existing text entry timer
+   * 2. Setting the timer reference to null
+   * 3. Registering a timeout operation with the text element
+   *
+   * It's typically called when user input has stopped for a period
+   * of time to trigger cleanup or state transitions in the text editor.
+   */
+  TextEdit_PauseTyping() {
+    clearTimeout(T3Gv.opt.textEntryTimer);
+    T3Gv.opt.textEntryTimer = null;
+    TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
   }
 }
 

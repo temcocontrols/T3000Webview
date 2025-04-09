@@ -47,6 +47,7 @@ import ToolActUtil from '../Opt/ToolActUtil'
 import ExportUtil from '../Opt/ExportUtil'
 import ImageRecord from '../../Model/ImageRecord'
 import DataOpt from '../Data/DataOpt'
+import TextUtil from '../Opt/TextUtil'
 
 class ShapeUtil {
 
@@ -920,7 +921,7 @@ class ShapeUtil {
 
           // Render and resize text
           SvgUtil.AddSVGObject(null, objectId, true, false);
-          T3Gv.opt.TextResizeCommon(objectId, false, true);
+          TextUtil.TextResizeCommon(objectId, false, true);
           svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
 
           if (svgElement) {
