@@ -89,6 +89,7 @@ class Connector extends BaseDrawObject {
   public theMinTextDim: { width: number, height: number };
   public TextFlags: number;
   public EndPoint: { x: number, y: number };
+  lasttexthook: number;
 
   constructor(options) {
     T3Util.Log('S.Connector: Input options:', options);
@@ -523,6 +524,9 @@ class Connector extends BaseDrawObject {
     }
     T3Util.Log("S.Connector: ApplyStyles output - shape:", shape);
   }
+  CreateRIchGradientRecord(GradientFlags: any): any {
+    throw new Error('Method not implemented.');
+  }
 
   GetDimensionPoints() {
     T3Util.Log("S.Connector: GetDimensionPoints input:", { Dimensions: this.Dimensions, Frame: this.Frame });
@@ -532,8 +536,14 @@ class Connector extends BaseDrawObject {
     let totalLength = 0;
     let deltaX = 0;
     let deltaY = 0;
-    let startPoint: { x: number; y: number } = {};
-    let endPoint: { x: number; y: number } = {};
+    let startPoint: { x: number; y: number } = {
+      x: 0,
+      y: 0
+    };
+    let endPoint: { x: number; y: number } = {
+      x: 0,
+      y: 0
+    };
     let rotationAngle: number;
 
     if (this.Dimensions & NvConstant.DimensionFlags.EndPts) {
@@ -807,7 +817,7 @@ class Connector extends BaseDrawObject {
               factorPrimary = -1;
             }
           }
-          curveSegment = T3Gv.opt.Lines_AddCurve(isVertical, factorPrimary, factorSecondary, polyPoints[index].x + polyPoints[index].curvex, polyPoints[index].y, curveAmount);
+          curveSegment = T3Gv.opt.LinesAddCurve(isVertical, factorPrimary, factorSecondary, polyPoints[index].x + polyPoints[index].curvex, polyPoints[index].y, curveAmount);
         } else {
           // For horizontal orientation, use curvex and curvey appropriately
           if (polyPoints[index].curvex > 0) {
@@ -825,7 +835,7 @@ class Connector extends BaseDrawObject {
               factorPrimary = -1;
             }
           }
-          curveSegment = T3Gv.opt.Lines_AddCurve(isVertical, factorPrimary, factorSecondary, polyPoints[index].x, polyPoints[index].y + polyPoints[index].curvey, curveAmount);
+          curveSegment = T3Gv.opt.LinesAddCurve(isVertical, factorPrimary, factorSecondary, polyPoints[index].x, polyPoints[index].y + polyPoints[index].curvey, curveAmount);
         }
         shapeElement.AddPolyLine(curveSegment, false, false);
       }
@@ -5598,6 +5608,9 @@ class Connector extends BaseDrawObject {
         )
     }
   }
+  _InsertStepIntoProfile(steps: any, j: any) {
+    throw new Error('Method not implemented.');
+  }
 
   GetAngleDisp(hook) {
     T3Util.Log("S.Connector: GetAngleDisp called with hook:", hook);
@@ -6340,7 +6353,12 @@ class Connector extends BaseDrawObject {
     const skipHookCount = OptConstant.ConnectorDefines.NSkip;
     // Structure to hold child info (index, id and hook point)
     let childInfo = { lindex: -1, id: -1, hookpt: 0 };
-    let currentFrame: Rectangle = {};
+    let currentFrame: Rectangle = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
+    };
     let hookPoints: Point[] = [];
     let perimPoints: Point[];
 

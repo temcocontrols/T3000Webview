@@ -3846,7 +3846,7 @@ class BaseLine extends BaseDrawObject {
           if (bgObj) {
             bgObj.SetRotation(angleDegrees, posX, posY);
           }
-          this.linetrect = T3Gv.opt.RotateRect(this.linetrect, centerPoint, angleDegrees);
+          this.linetrect = ToolActUtil.RotateRect(this.linetrect, centerPoint, angleDegrees);
         } else if (bgObj) {
           bgObj.SetRotation(0, posX, posY);
         }
@@ -3914,9 +3914,9 @@ class BaseLine extends BaseDrawObject {
       this.linetrect.height = textHeight;
       centerPoint.x += this.Frame.x;
       centerPoint.y += this.Frame.y;
-      this.linetrect = T3Gv.opt.RotateRect(this.linetrect, centerPoint, angleDegrees);
+      this.linetrect = ToolActUtil.RotateRect(this.linetrect, centerPoint, angleDegrees);
       let tempRect = $.extend(true, {}, this.linetrect);
-      T3Gv.opt.TextPinFrame(this.linetrect, textHeight);
+      TextUtil.TextPinFrame(this.linetrect, textHeight);
       this.linetrect.x = this.linetrect.x - this.Frame.x;
       this.linetrect.y = this.linetrect.y - this.Frame.y;
       this.UpdateFrame();
