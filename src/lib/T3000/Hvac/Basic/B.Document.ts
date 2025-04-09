@@ -74,6 +74,9 @@ import DocInfo from "../Model/DocInfo"
  * doc.ApplyDocumentTransform();
  */
 class Document extends Container {
+  GetSpellCheck() {
+      throw new Error('Method not implemented.')
+  }
 
   /**
    * Document class that represents the main drawing canvas for HVAC elements

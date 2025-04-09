@@ -209,6 +209,9 @@ class OptConstant {
    * Contains various measurement values, dimensions and default settings
    */
   static Common = {
+
+    EdgeSlop:5,
+
     /**
      * Maximum canvas dimension in drawing units
      * Used as a bound for drawing space calculations
