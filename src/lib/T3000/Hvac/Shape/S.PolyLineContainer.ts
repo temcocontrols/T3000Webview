@@ -1211,7 +1211,8 @@ class PolyLineContainer extends PolyLine {
 
           for (let j = startSegment; j < endSegment; j++) {
             const hitResult = new HitResult(-1, 0, null);
-            let point = { x: polyPoints[j - 1].x, y: polyPoints[j - 1].y };
+
+            let point = { x: polyPoints[j - 1]?.x, y: polyPoints[j - 1]?.y };
 
             if (!obj.Hit(point, false, false, hitResult)) {
               point = { x: polyPoints[j].x, y: polyPoints[j].y };

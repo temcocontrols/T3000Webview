@@ -805,59 +805,40 @@ class BaseShape extends BaseDrawObject {
     return defaultText;
   }
 
-  // SetTableProperties(properties: any, option: any): any {
-  //   T3Util.Log("= S.BaseShape - SetTableProperties input:", { properties, option });
-
-  //   if (this.GetTable(false)) {
-  //     const result = T3Gv.opt.Table_SetProperties(this, properties, option, true);
-  //     T3Util.Log("= S.BaseShape - SetTableProperties output:", result);
-  //     return result;
-  //   }
-
-  //   T3Util.Log("= S.BaseShape - SetTableProperties output: no table found");
-  //   return undefined;
-  // }
 
   SetTextGrow(textGrowBehavior: any): void {
     T3Util.Log("= S.BaseShape - SetTextGrow input:", textGrowBehavior);
 
-    // if (this.GetTable(false)) {
-    //   T3Gv.opt.Table_ChangeTextAttributes(this, null, null, null, null, null, textGrowBehavior, false);
-    //   T3Util.Log("= S.BaseShape - SetTextGrow output: Table text attributes changed");
-    // } else
+    // Update the TextGrow property
+    this.TextGrow = textGrowBehavior;
 
-    {
-      // Update the TextGrow property
-      this.TextGrow = textGrowBehavior;
+    if (this.DataID >= 0) {
+      const shapeElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
+      if (shapeElement) {
+        const textElement = shapeElement.textElem;
 
-      if (this.DataID >= 0) {
-        const shapeElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
-        if (shapeElement) {
-          const textElement = shapeElement.textElem;
-
-          if (this.TextGrow === NvConstant.TextGrowBehavior.Horizontal) {
-            textElement.SetConstraints(
-              T3Gv.opt.header.MaxWorkDim.x,
-              this.trect.width,
-              this.trect.height
-            );
-            T3Util.Log("= S.BaseShape - SetTextGrow applied Horizontal constraints");
-          } else {
-            const shapeCopy = Utils1.DeepCopy(this);
-            const frameCopy = Utils1.DeepCopy(this.Frame);
-            frameCopy.width = this.sizedim.width;
-            shapeCopy.UpdateFrame(frameCopy);
-            textElement.SetConstraints(
-              shapeCopy.trect.width,
-              shapeCopy.trect.width,
-              this.trect.height
-            );
-            T3Util.Log("= S.BaseShape - SetTextGrow applied Vertical constraints");
-          }
+        if (this.TextGrow === NvConstant.TextGrowBehavior.Horizontal) {
+          textElement.SetConstraints(
+            T3Gv.opt.header.MaxWorkDim.x,
+            this.trect.width,
+            this.trect.height
+          );
+          T3Util.Log("= S.BaseShape - SetTextGrow applied Horizontal constraints");
+        } else {
+          const shapeCopy = Utils1.DeepCopy(this);
+          const frameCopy = Utils1.DeepCopy(this.Frame);
+          frameCopy.width = this.sizedim.width;
+          shapeCopy.UpdateFrame(frameCopy);
+          textElement.SetConstraints(
+            shapeCopy.trect.width,
+            shapeCopy.trect.width,
+            this.trect.height
+          );
+          T3Util.Log("= S.BaseShape - SetTextGrow applied Vertical constraints");
         }
-        T3Gv.opt.TextResizeCommon(this.BlockID, true);
-        T3Util.Log("= S.BaseShape - SetTextGrow: TextResizeCommon called");
       }
+      T3Gv.opt.TextResizeCommon(this.BlockID, true);
+      T3Util.Log("= S.BaseShape - SetTextGrow: TextResizeCommon called");
       T3Util.Log("= S.BaseShape - SetTextGrow output:", this.TextGrow);
     }
   }
@@ -944,55 +925,6 @@ class BaseShape extends BaseDrawObject {
       preservedBlock.Data = newShape;
       newShape.moreflags = Utils2.SetFlag(newShape.moreflags, OptConstant.ObjMoreFlags.FixedRR, false);
 
-      // Handle table adjustments if a table exists for the new shape
-      // tableResult = newShape.GetTable(true);
-      // if (tableResult) {
-      //   if (this.hookflags & NvConstant.HookFlags.LcTableRows) {
-      //     newShape.hookflags = Utils2.SetFlag(newShape.hookflags, NvConstant.HookFlags.LcTableRows, true);
-      //   }
-      //   newShape.UpdateFrame(newShape.Frame);
-      //   rectCopy = Utils1.DeepCopy(newShape.trect);
-      //   newShape.sizedim.width = newShape.Frame.width;
-      //   newShape.sizedim.height = newShape.Frame.height;
-      //   T3Gv.opt.theActionTable = Utils1.DeepCopy(tableResult);
-      //   resizedTable = T3Gv.opt.Table_Resize(
-      //     newShape,
-      //     tableResult,
-      //     T3Gv.opt.theActionTable,
-      //     rectCopy.width,
-      //     rectCopy.height
-      //   );
-      //   if (resizedTable.x > rectCopy.width + 0.1 || resizedTable.y > rectCopy.height + 0.1) {
-      //     const aspectRatioOriginal = newShape.sizedim.width / newShape.sizedim.height;
-      //     rectCopy.width = resizedTable.x;
-      //     rectCopy.height = resizedTable.y;
-      //     newShape.TRectToFrame(rectCopy);
-      //     const currentAspectRatio = newShape.Frame.width / newShape.Frame.height;
-      //     if (currentAspectRatio > aspectRatioOriginal) {
-      //       newShape.Frame.height = newShape.Frame.width / aspectRatioOriginal;
-      //       newShape.UpdateFrame(newShape.Frame);
-      //       T3Gv.opt.Table_Resize(
-      //         newShape,
-      //         tableResult,
-      //         T3Gv.opt.theActionTable,
-      //         newShape.trect.width,
-      //         newShape.trect.height
-      //       );
-      //     } else if (currentAspectRatio < aspectRatioOriginal) {
-      //       newShape.Frame.width = newShape.Frame.height * aspectRatioOriginal;
-      //       newShape.UpdateFrame(newShape.Frame);
-      //       T3Gv.opt.Table_Resize(
-      //         newShape,
-      //         tableResult,
-      //         T3Gv.opt.theActionTable,
-      //         newShape.trect.width,
-      //         newShape.trect.height
-      //       );
-      //     }
-      //   }
-      //   T3Gv.opt.theActionTable = null;
-      // } else
-
       if (newShape.DataID >= 0) {
         // When there is no table, update based on text element sizing
         newShape.UpdateFrame(newShape.Frame);
@@ -1063,13 +995,7 @@ class BaseShape extends BaseDrawObject {
       this.ChangeTextAttributes(styleConfig, oldColor);
     }
 
-    // Update text margin if provided
-    // const table = this.GetTable(false);
     if (properties.tmargin != null) {
-      // if (table) {
-      //   changed = T3Gv.opt.Table_ChangeTextMargin(this, properties.tmargin);
-      // } else
-
       if (this.TMargins.left !== properties.tmargin) {
         this.TMargins.left = properties.tmargin;
         this.TMargins.right = properties.tmargin;
@@ -1261,8 +1187,6 @@ class BaseShape extends BaseDrawObject {
   GetClosestConnectPoint(point: { x: number; y: number }): boolean {
     T3Util.Log("= S.BaseShape - GetClosestConnectPoint input:", point);
 
-    // const table = this.GetTable(false);
-    // const useTableRows = (this.hookflags & NvConstant.HookFlags.LcTableRows) && table;
     const useConnect = (this.flags & NvConstant.ObjFlags.UseConnect) && this.ConnectPoints;
     let connectPoints: Array<{ x: number; y: number }> = [];
     const connectDimension = OptConstant.Common.DimMax;
@@ -1588,46 +1512,6 @@ class BaseShape extends BaseDrawObject {
       let fillIsTransparent = (this.StyleRecord.Fill.Paint.FillType === NvConstant.FillTypes.Transparent);
       // Override fill transparent check.
       fillIsTransparent = false;
-      if (!fillIsTransparent) {
-        // const tableObj = this.GetTable(false);
-        // if (tableObj) {
-        //   let cellCount = tableObj.cells.length;
-        //   let transparentCellIndex = -1;
-        //   for (let i = 0; i < cellCount; i++) {
-        //     const cell = tableObj.cells[i];
-        //     if (cell.fill.Paint.FillType === NvConstant.FillTypes.Transparent) {
-        //       if (transparentCellIndex === -1) {
-        //         transparentCellIndex = i;
-        //       }
-        //     } else if (transparentCellIndex >= 0) {
-        //       transparentCellIndex = -2;
-        //       break;
-        //     }
-        //   }
-        //   if (transparentCellIndex >= 0) {
-        //     // Adjust the base rectangle using the transparent cell's frame.
-        //     const cellFrame = tableObj.cells[transparentCellIndex].frame;
-        //     let newRect = {
-        //       x: cellFrame.x,
-        //       y: cellFrame.y,
-        //       width: tableObj.wd - cellFrame.x,
-        //       height: tableObj.ht - cellFrame.y
-        //     };
-        //     Utils2.OffsetRect(newRect, this.trect.x, this.trect.y);
-        //     baseRect = newRect;
-        //     if (this.RotationAngle !== 0) {
-        //       const originalFrame = $.extend(true, {}, this.Frame);
-        //       this.Frame = newRect;
-        //       basePoly = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, false, null);
-        //       this.Frame = originalFrame;
-        //       const rotationRadians = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
-        //       Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, basePoly);
-        //     }
-        //   } else {
-        //     fillIsTransparent = false;
-        //   }
-        // }
-      }
 
       // Determine the starting index based on this object's BlockID in the visible Z list.
       let startIndex = 0;
@@ -1781,7 +1665,6 @@ class BaseShape extends BaseDrawObject {
 
     // Reference to current shape object
     const currentShape = this;
-    const tableObject = null;//this.GetTable(false);
     const areSnapsOverridden = T3Gv.opt.OverrideSnaps(event);
 
     // Function to check if new box position is valid (not outside boundaries)
@@ -2337,7 +2220,7 @@ class BaseShape extends BaseDrawObject {
 
     // Determine if we should update the text frame
     let shouldUpdateTextFrame = true;
-    const tableObject = null; // this.GetTable(false); - commented out in original code
+    const tableObject = null;
 
     // Handle special cases for text frame updates
     if (actionType === -1) {
@@ -2382,42 +2265,12 @@ class BaseShape extends BaseDrawObject {
         targetHeight = this.trect.height;
       }
 
-      // // Adjust dimensions based on action type
-      // switch (actionType) {
-      //   case OptConstant.ActionTriggerType.TableRow:
-      //     targetHeight = null;
-      //     break;
-      //   case OptConstant.ActionTriggerType.TableCol:
-      //     targetWidth = null;
-      // }
-
       // If either dimension needs updating, resize the table
       if (targetWidth || targetHeight) {
-        // const originalTableHeight = T3Gv.opt.theActionTable.ht;
-        // const updatedTableObject = null; // this.GetTable(true); - commented out in original code
-
-        // // Resize the table with new dimensions
-        // resizedTableDimensions = T3Gv.opt.Table_Resize(
-        //   this,
-        //   updatedTableObject,
-        //   T3Gv.opt.theActionTable,
-        //   targetWidth,
-        //   targetHeight
-        // );
-
-        // // If the height changed and we are in a resize action, update bounding box
-        // if (!Utils2.IsEqual(resizedTableDimensions.y, originalTableHeight) && (actionType || isLineThicknessAction)) {
-        //   const updatedShape = Utils1.DeepCopy(this);
-        //   updatedShape.trect.width = resizedTableDimensions.x;
-        //   updatedShape.trect.height = resizedTableDimensions.y;
-        //   updatedShape.TRectToFrame(updatedShape.trect, true);
-        //   T3Gv.opt.actionNewBBox.height = updatedShape.Frame.height;
-        // }
-
         // If the dimensions changed significantly or if this is a length action with height change
         const widthChanged = resizedTableDimensions.x - this.trect.width > 0.1;
         const heightChanged = resizedTableDimensions.y - this.trect.height > 0.1;
-        const heightChangedInLengthAction = true;// !Utils2.IsEqual(resizedTableDimensions.y, originalTableHeight) && isLineLengthAction;
+        const heightChangedInLengthAction = true;
 
         if (widthChanged || heightChanged || heightChangedInLengthAction) {
           if (widthChanged && heightChanged && !actionType) {
@@ -2974,52 +2827,10 @@ class BaseShape extends BaseDrawObject {
         // Handle different action trigger types
         let tableObject;
         switch (T3Gv.opt.actionTriggerId) {
-          // case OptConstant.ActionTriggerType.TableRow:
-          //   tableObject = actionObject.GetTable(false);
-          //   if (tableObject) {
-          //     const rowInfo = T3Gv.opt.Table_GetRowAndSegment(T3Gv.opt.actionTriggerData);
-          //     T3Gv.opt.Table_SelectRowDivider(actionObject, rowInfo.row, false);
-          //   }
-          //   isTableOperation = true;
-          //   break;
-
-          // case OptConstant.ActionTriggerType.TableCol:
-          //   tableObject = actionObject.GetTable(false);
-          //   if (tableObject) {
-          //     const colInfo = T3Gv.opt.Table_GetColumnAndSegment(T3Gv.opt.actionTriggerData);
-          //     let columnIndex = colInfo.column;
-
-          //     if (this.objecttype === NvConstant.FNObjectTypes.SD_OBJT_SWIMLANE_COLS && this.RotationAngle) {
-          //       colInfo.column++;
-          //     }
-
-          //     if (columnIndex >= 0) {
-          //       T3Gv.opt.Table_SelectColDivider(actionObject, columnIndex, false);
-          //     }
-
-          //     if (true) { // Previously Collab.AllowMessage()
-          //       collaborationData.ColumnWidth = tableObject.cols[colInfo.column].x;
-          //       if (colInfo.column > 0) {
-          //         collaborationData.ColumnWidth -= tableObject.cols[colInfo.column - 1].x;
-          //       }
-          //     }
-          //   }
-          //   isTableOperation = true;
-          //   needUpdateWidth = true;
-          //   break;
-
-          // case OptConstant.ActionTriggerType.TABLE_SELECT:
-          // case OptConstant.ActionTriggerType.TABLE_ROWSELECT:
-          // case OptConstant.ActionTriggerType.TABLE_COLSELECT:
-          //   isTableOperation = true;
-          //   if (!false) { // Previously !Collab.IsPrimary()
-          //     collaborationData = null;
-          //   }
-          //   break;
 
           case OptConstant.ActionTriggerType.MovePolySeg:
             isTableOperation = true;
-            if (true) { // Previously Collab.AllowMessage()
+            if (true) {
               const shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
               collaborationData.left_sindent = shapeObject.left_sindent;
               collaborationData.right_sindent = shapeObject.right_sindent;
@@ -3042,7 +2853,7 @@ class BaseShape extends BaseDrawObject {
             break;
 
           case OptConstant.ActionTriggerType.DimLineAdj:
-            if (true) { // Previously Collab.AllowMessage()
+            if (true) {
               collaborationData.dimensionDeflectionH = this.dimensionDeflectionH;
               collaborationData.dimensionDeflectionV = this.dimensionDeflectionV;
             }
@@ -3179,58 +2990,14 @@ class BaseShape extends BaseDrawObject {
       }
     };
 
-    // // Skip update links for special container cases
-    // if (this.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER) {
-    //   T3Gv.opt.UpdateLinks();
-    // }
-
     // Clear link parameters
     T3Gv.opt.linkParams = null;
-
-    // For table operations (commented out as table support is disabled)
-    // const tableObject = this.GetTable(false);
 
     // Reset edit mode to default
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
     // Handle different actions based on trigger type
     switch (T3Gv.opt.actionTriggerId) {
-      // Table-related cases (commented out as table support is disabled)
-      // case OptConstant.ActionTriggerType.TableRow:
-      //   if (T3Gv.opt.theActionTable && tableObject &&
-      //       T3Gv.opt.theActionTable.ht != tableObject.ht) {
-      //     this.sizedim.height = this.Frame.height;
-      //   }
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
-      //   applyFormatPainting();
-      //   break;
-
-      // case OptConstant.ActionTriggerType.TableCol:
-      //   if (T3Gv.opt.theActionTable && tableObject &&
-      //       T3Gv.opt.theActionTable.wd != tableObject.wd) {
-      //     this.sizedim.width = this.Frame.width;
-      //   }
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
-      //   applyFormatPainting();
-      //   break;
-
-      // case OptConstant.ActionTriggerType.TABLE_SELECT:
-      // case OptConstant.ActionTriggerType.TABLE_ROWSELECT:
-      // case OptConstant.ActionTriggerType.TABLE_COLSELECT:
-      //   if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
-      //     if (T3Gv.opt.formatPainterMode === OptConstant.formatPainterModes.OBJECT) {
-      //       var activeTableId = T3Gv.opt.Table_GetActiveID();
-      //       T3Gv.opt.Table_PasteFormat(activeTableId, T3Gv.opt.formatPainterStyle, false);
-      //     }
-      //     if (T3Gv.opt.formatPainterSticky !== true) {
-      //      UIUtil.SetFormatPainter(true, false);
-      //     }
-      //   }
-      //   break;
-
-      // case OptConstant.ActionTriggerType.TABLE_EDIT:
-      //   T3Gv.opt.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
-      //   break;
 
       // Width adjustment cases
       case OptConstant.ActionTriggerType.CenterLeft:
@@ -3419,12 +3186,6 @@ class BaseShape extends BaseDrawObject {
     // Store bounding box information for the action
     T3Gv.opt.actionBBox = $.extend(true, {}, objectFrame);
     T3Gv.opt.actionNewBBox = $.extend(true, {}, objectFrame);
-
-    // // Handle tables if present
-    // const tableObject = this.GetTable(false);
-    // if (tableObject) {
-    //   T3Gv.opt.theActionTable = Utils1.DeepCopy(tableObject);
-    // }
 
     // Hide overlay layer during the action
     LayerUtil.HideOverlayLayer();
@@ -3911,10 +3672,6 @@ class BaseShape extends BaseDrawObject {
 
     Utils2.SubRect(this.trect, this.tindent);
 
-    // if (this.GetTable(false) == null) {
-    //   Utils2.SubRect(this.trect, this.TMargins);
-    // }
-
     T3Util.Log("= S.BaseShape - UpdateFrame output:", {
       r: this.r,
       inside: this.inside,
@@ -4256,10 +4013,6 @@ class BaseShape extends BaseDrawObject {
     const originalFrame = Utils1.DeepCopy(this.Frame);
     this.inside = new Rectangle(rect.x, rect.y, rect.width, rect.height);
 
-    // if (this.GetTable(false) == null) {
-    //   Utils2.Add2Rect(this.inside, this.TMargins);
-    // }
-
     this.SetShapeIndent(true);
     Utils2.Add2Rect(this.inside, this.tindent);
     this.Frame = Utils1.DeepCopy(this.inside);
@@ -4464,11 +4217,9 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("= S.BaseShape - GetHookPoints input");
 
     let connectPoints = this.flags & NvConstant.ObjFlags.UseConnect && this.ConnectPoints;
-    // let table = this.GetTable(false);
-    // let isTableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
 
-    if (connectPoints /*|| isTableRows*/) {
-      let points = connectPoints ? this.ConnectPoints : this.ConnectPoints;//T3Gv.opt.Table_GetRowConnectPoints(this, table);
+    if (connectPoints) {
+      let points = connectPoints ? this.ConnectPoints : this.ConnectPoints;
       let hookPoints = [];
 
       for (let i = 0; i < points.length; i++) {
@@ -4736,15 +4487,6 @@ class BaseShape extends BaseDrawObject {
       return perimeterPoints;
     }
 
-    // const tableObject = this.GetTable(false);
-    // if (table != null && tableObject) {
-    //   tablePoints = T3Gv.opt.Table_GetPerimPts(this, tableObject, table, targetPoints);
-    //   if (tablePoints) {
-    //     perimeterPoints = tablePoints;
-    //     isCoManager = true;
-    //   }
-    // }
-
     if (!isCoManager) {
       for (let i = 0; i < targetPoints.length; i++) {
         perimeterPoints[i] = {
@@ -4787,24 +4529,9 @@ class BaseShape extends BaseDrawObject {
       return perimeterPoints;
     }
 
-    // const tableObject = this.GetTable(false);
-    // if (table != null && tableObject) {
-    //   const tablePerimPts = T3Gv.opt.Table_GetPerimPts(this, tableObject, table, targetPoints);
-    //   if (tablePerimPts) {
-    //     perimeterPoints = tablePerimPts;
-    //     if (!rotate) {
-    //       const rotationRadians = -this.RotationAngle / (180 / NvConstant.Geometry.PI);
-    //       Utils3.RotatePointsAboutCenter(this.Frame, rotationRadians, perimeterPoints);
-    //     }
-    //     T3Util.Log("= S.BaseShape - RRectGetPerimPts output:", perimeterPoints);
-    //     return perimeterPoints;
-    //   }
-    // }
-
     const useConnect = this.flags & NvConstant.ObjFlags.UseConnect;
-    // const tableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && tableObject;
 
-    if (useConnect /*|| tableRows*/) {
+    if (useConnect) {
       for (let i = 0; i < targetPoints.length; i++) {
         perimeterPoints[i] = {
           x: targetPoints[i].x / dimension * this.Frame.width + this.Frame.x,
@@ -4920,8 +4647,7 @@ class BaseShape extends BaseDrawObject {
     let targetPoints = [];
     const isContinuousConnection = this.flags & NvConstant.ObjFlags.ContConn && event !== null;
     const useConnectPoints = this.flags & NvConstant.ObjFlags.UseConnect && this.ConnectPoints;
-    // const table = this.GetTable(false);
-    // const isTableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
+
     let customTargetPoint = {};
     let hasCustomTargetPoint = false;
     const dimension = OptConstant.Common.DimMax;
@@ -5119,12 +4845,7 @@ class BaseShape extends BaseDrawObject {
         }
       }
 
-      // const table = this.GetTable(false);
       const graph = this.GetGraph(true);
-
-      // if (table) {
-      //   T3Gv.opt.Table_ResizeSVGTableObject(element, drawingObject, newSize);
-      // } else
 
       if (graph) {
         T3Gv.opt.GraphFormat(this, graph, this.Frame, true);
@@ -5175,11 +4896,6 @@ class BaseShape extends BaseDrawObject {
     if (slopElement) {
       slopElement.SetSize(inflatedFrame.width, inflatedFrame.height);
     }
-
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Gv.opt.Table_ResizeSVGTableObject(element, this, newSize, true);
-    // }
 
     const hatchElement = element.GetElementById(OptConstant.SVGElementClass.Hatch);
     if (hatchElement) {
@@ -5586,7 +5302,7 @@ class BaseShape extends BaseDrawObject {
       }, this.Frame),
       i = Utils1.DeepCopy(this.trect),
       n = - 1,
-      o = null;//this.GetTable(!1);
+      o = null;
     if (o) {
       if (!(o.select >= 0)) return;
       var s = o.cells[o.select];

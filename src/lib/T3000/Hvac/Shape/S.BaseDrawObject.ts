@@ -1872,33 +1872,16 @@ class BaseDrawObject {
 
     // Only process if any of these parameters are provided
     if (fillColor || strokeColor || isBold || isItalic || paramS) {
-      // if (this.GetTable(true)) {
-      //   T3Gv.opt.Table_ChangeTextAttributes(
-      //     this,
-      //     fillColor,
-      //     strokeColor,
-      //     paramI,
-      //     isItalic,
-      //     paramN,
-      //     null,
-      //     false,
-      //     paramO,
-      //     paramS
-      //   );
-      // } else
-
-      {
-        T3Gv.opt.ChangeObjectTextAttributes(
-          this.BlockID,
-          fillColor,
-          strokeColor,
-          paramI,
-          isItalic,
-          paramN,
-          paramO,
-          paramS
-        );
-      }
+      T3Gv.opt.ChangeObjectTextAttributes(
+        this.BlockID,
+        fillColor,
+        strokeColor,
+        paramI,
+        isItalic,
+        paramN,
+        paramO,
+        paramS
+      );
     }
 
     T3Util.Log("= S.BaseDrawObject: ChangeTextAttributes output: text attributes changed");
@@ -1914,10 +1897,6 @@ class BaseDrawObject {
       this.colorfilter
     );
     const initialThickness = this.StyleRecord.Line.Thickness;
-
-    // if (this.GetTable(false)) {
-    //   T3Gv.opt.Table_ApplyProperties(this, filteredStyle, styleInput, false);
-    // } else
 
     if (
       filteredStyle.StyleRecord &&
@@ -5667,12 +5646,6 @@ class BaseDrawObject {
         textures.push(textTexture);
       }
     }
-
-    // // Process table textures if table exists
-    // const table = this.GetTable(false);
-    // if (table) {
-    //   T3Gv.opt.Table_GetTextures(table, textures);
-    // }
 
     T3Util.Log("= S.BaseDrawObject: GetTextures - Output:", { textures });
   }

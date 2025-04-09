@@ -3118,35 +3118,27 @@ class PolyLine extends BaseLine {
         );
       }
 
-      // Show appropriate text menu - spell checking or standard text menu
-      if (spellIndex >= 0) {
-        T3Gv.opt.svgDoc.GetSpellCheck().ShowSpellMenu(
-          editElement,
-          spellIndex,
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
-      } else {
-        SDUI.Commands.MainController.ShowContextualMenu(
-          SDUI.Resources.Controls.ContextMenus.TextMenu.Id.toLowerCase(),
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
-      }
+      // // Show appropriate text menu - spell checking or standard text menu
+      // if (spellIndex >= 0) {
+      //   T3Gv.opt.svgDoc.GetSpellCheck().ShowSpellMenu(
+      //     editElement,
+      //     spellIndex,
+      //     event.gesture.center.clientX,
+      //     event.gesture.center.clientY
+      //   );
+      // } else {
+      //   SDUI.Commands.MainController.ShowContextualMenu(
+      //     SDUI.Resources.Controls.ContextMenus.TextMenu.Id.toLowerCase(),
+      //     event.gesture.center.clientX,
+      //     event.gesture.center.clientY
+      //   );
+      // }
     } else {
       // Show object-specific context menu
       if (this.objecttype === NvConstant.FNObjectTypes.FlWall) {
-        SDUI.Commands.MainController.ShowContextualMenu(
-          SDUI.Resources.Controls.ContextMenus.PolyWall.Id.toLowerCase(),
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
+        // Do not show context menu
       } else {
-        SDUI.Commands.MainController.ShowContextualMenu(
-          SDUI.Resources.Controls.ContextMenus.PolyLine.Id.toLowerCase(),
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
+        // Do not show context menu
       }
     }
   }

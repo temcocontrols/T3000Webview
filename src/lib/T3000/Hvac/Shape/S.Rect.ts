@@ -409,7 +409,6 @@ class Rect extends BaseShape {
       if (isFixedRRectChanged || isShapeParamChanged) {
         this.moreflags = Utils2.SetFlag(this.moreflags, fixedRRectFlag, properties.rrectfixed);
         this.shapeparam = properties.rrectparam;
-        // this.GetTable(true);
 
         if (this.shapeparam === 0) {
           this.left_sindent = 0;
