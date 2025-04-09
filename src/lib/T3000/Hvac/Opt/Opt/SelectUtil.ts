@@ -853,42 +853,6 @@ class SelectUtil {
       T3Gv.opt.CloseEdit(true);
     }
 
-    // // Handle active table edit mode
-    // if (textEditSession.theActiveTableObjectID >= 0) {
-    //   currentObject = DataUtil.GetObjectPtr(textEditSession.theActiveTableObjectID, true);
-
-    //   if (currentObject) {
-    //     // const tableData = currentObject.GetTable(false);
-
-    //     // if (tableData) {
-    //     //   svgElement = T3Gv.opt.svgObjectLayer.GetElementById(textEditSession.theActiveTableObjectID);
-    //     //   tableData.select = 0;
-
-    //     //   const changedCellList = [];
-    //     //   const oldSelectionList = [];
-    //     //   const columnCount = tableData.cols.length;
-    //     //   const rowCount = tableData.rows.length;
-
-    //     //   this.Table_SelectCells(
-    //     //     tableData,
-    //     //     0,
-    //     //     rowCount - 1,
-    //     //     -1,
-    //     //     columnCount - 1,
-    //     //     true,
-    //     //     changedCellList,
-    //     //     false,
-    //     //     oldSelectionList
-    //     //   );
-
-    //     //   this.LM_SelectSVGTableObject(currentObject, T3Gv.opt.svgDoc, svgElement, changedCellList, oldSelectionList);
-    //     //   DrawUtil.CompleteOperation();
-    //     //   T3Util.Log("U.Util1 SelectAllObjects - Output: All cells selected");
-    //     // }
-    //   }
-    // }
-    // Handle regular object selection
-    // else {
     let objectIndex;
     const objectsToSelect = [];
     let visibleObjects = LayerUtil.ActiveVisibleZList();
@@ -922,7 +886,6 @@ class SelectUtil {
       }
 
       objectsToSelect.push(visibleObjects[objectIndex]);
-      // }
 
       SelectUtil.SelectObjects(objectsToSelect, false, false);
       T3Util.Log("U.Util1 SelectAllObjects - Output: Selected", objectsToSelect.length, "objects");

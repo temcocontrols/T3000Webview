@@ -1055,21 +1055,10 @@ class HookUtil {
           return hookIndex;
         }
 
-        // If there is a cell ID, verify it exists in the table
-        // const tableData = targetObject.GetTable(false);
-        // const cellExists = this.Table_GetCellWithID(tableData, sourceObject.hooks[hookIndex].cellid);
-
-        // if (cellExists) {
-        //   T3Util.Log("O.Opt VerifyLink - Output: Valid table cell link found at index", hookIndex);
-        //   return hookIndex;
-        // } else
-
-        {
-          // Mark link for deletion if cell doesn't exist
-          linkData.flags = Utils2.SetFlag(linkData.flags, linkFlags.DeleteLink, true);
-          T3Util.Log("O.Opt VerifyLink - Output: Cell doesn't exist (-1)");
-          return -1;
-        }
+        // Mark link for deletion if cell doesn't exist
+        linkData.flags = Utils2.SetFlag(linkData.flags, linkFlags.DeleteLink, true);
+        T3Util.Log("O.Opt VerifyLink - Output: Cell doesn't exist (-1)");
+        return -1;
       }
     }
 

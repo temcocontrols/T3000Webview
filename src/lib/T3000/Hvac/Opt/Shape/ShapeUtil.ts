@@ -274,9 +274,6 @@ class ShapeUtil {
     this.ColorFilter = 0;
     this.HashRecords = [];
     this.PaperType = 'letter';
-    this.IsVisio = !1;
-    this.IsLucid = !1;
-    this.VisioFileVersion = !1;
     this.ReadTexture = - 1;
     this.STData = null;
     this.FromWindows = !1;
@@ -389,23 +386,10 @@ class ShapeUtil {
       for (index = 0; index < objectCount; index++) {
         object = DataUtil.GetObjectPtr(result.zList[index], false);
 
-        // if (object.objecttype === NvConstant.FNObjectTypes.SD_OBJT_BPMN_POOL) {
-        //   DSUtil.ConvertBPMNPool(object);
-        // }
-
-        let tableID = -1;
-        if (object.datasetID >= 0) {
-          tableID = TODO.STData.GetTableID(object.datasetID, TODO.DataTableNames.PLANNING_TASKS);
-        }
-
         let targetLayer;
-        if (isPlanningDocument && object.Layer != null &&
-          (tableID >= 0 /*|| object.objecttype === NvConstant.FNObjectTypes.SD_OBJT_MINDMAP_CONNECTOR*/)) {
-          targetLayer = layersManager.layers[object.Layer].zList;
-        } else {
-          targetLayer = layersManager.layers[layersManager.activelayer].zList;
-          object.Layer = layersManager.activelayer;
-        }
+
+        targetLayer = layersManager.layers[layersManager.activelayer].zList;
+        object.Layer = layersManager.activelayer;
 
         targetLayer.push(result.zList[index]);
 
@@ -610,16 +594,6 @@ class ShapeUtil {
     result.FVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
     result.coordScaleFactor = 1; // Modern JSON format uses 1:1 coordinates
     result.updatetext = true;
-
-    // Set platform information
-    if (jsonData.platform) {
-      if (jsonData.platform === "VISIO") {
-        result.IsVisio = true;
-      } else if (jsonData.platform === "VISIOLUCID") {
-        result.IsVisio = true;
-        result.IsLucid = true;
-      }
-    }
 
     // Set up ruler configuration if present
     if (jsonData.rulerConfig) {
@@ -906,18 +880,6 @@ class ShapeUtil {
 
         // Process text for Visio objects and resize as needed
         if (object.DataID >= 0 && result.updatetext) {
-          if (result.IsVisio) {
-            // Handle Visio text specifics
-            object.StyleRecord.name = OptConstant.Common.TextBlockStyle;
-
-            if (object.moreflags & OptConstant.ObjMoreFlags.SED_MF_VisioText && !result.ReadingGroup) {
-              object.StyleRecord.Fill.Paint.FillType = NvConstant.FillTypes.Transparent;
-              object.StyleRecord.Line.Thickness = 0;
-
-              // Handle parent-text relationships
-              // (simplified from original for clarity)
-            }
-          }
 
           // Render and resize text
           SvgUtil.AddSVGObject(null, objectId, true, false);
@@ -1003,51 +965,6 @@ class ShapeUtil {
                   linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
                 }
                 T3Gv.opt.InsertLink(linksBlock, objectId, currentHook, DSConstant.LinkFlags.Move);
-              }
-
-              // Special handling for Visio segmented lines
-              if (resultObject.IsVisio &&
-                currentObject &&
-                currentObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Line &&
-                currentObject.LineType === OptConstant.LineType.SEGLINE &&
-                currentObject.segl) {
-
-                targetObject = DataUtil.GetObjectPtr(currentObject.hooks[currentHook].objid, false);
-
-                // Adjust connection point for rotated objects
-                if (targetObject.RotationAngle) {
-                  rotationRect = {
-                    x: 0,
-                    y: 0,
-                    width: coordinateDimension,
-                    height: coordinateDimension
-                  };
-
-                  rotationAngle = targetObject.RotationAngle / (180 / NvConstant.Geometry.PI);
-                  rotatedPoints = [];
-                  rotatedPoints.push(currentObject.hooks[currentHook].connect);
-                  Utils3.RotatePointsAboutCenter(rotationRect, rotationAngle, rotatedPoints);
-                }
-
-                // Handle edge connections for shapes
-                if (targetObject &&
-                  targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape &&
-                  ShapeUtil.ConnectedToEdge(currentObject.hooks[currentHook].connect)) {
-
-                  if (currentObject.hooks[currentHook].hookpt === OptConstant.HookPts.KTL) {
-                    currentObject.segl.firstdir = targetObject.GetSegLFace(
-                      currentObject.hooks[currentHook].connect,
-                      currentObject.StartPoint,
-                      currentObject.StartPoint
-                    );
-                  } else {
-                    currentObject.segl.lastdir = targetObject.GetSegLFace(
-                      currentObject.hooks[currentHook].connect,
-                      currentObject.EndPoint,
-                      currentObject.EndPoint
-                    );
-                  }
-                }
               }
             } else {
               // Remove invalid hooks and clear container child flag

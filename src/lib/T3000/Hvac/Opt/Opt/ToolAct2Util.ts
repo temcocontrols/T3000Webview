@@ -240,7 +240,6 @@ class ToolAct2Util {
    * 2. Repositions and scales them based on the group's current dimensions
    * 3. Handles flipping, rotation, and text scaling
    * 4. Maintains links between shapes
-   * 5. Manages comments and Visio text associations
    * 6. Removes the original group container
    *
    * @param groupShapeId - The ID of the group shape to ungroup
