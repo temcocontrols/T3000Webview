@@ -195,7 +195,7 @@
 
           </q-tab-panel>
           <q-tab-panel name="newui" class="newui-panel">
-            <div style="display: block;">
+            <div style="display: block; margin-left: 10px; padding-top: 5px;">
               <button id="btn_try_select">Select</button>
 
               &nbsp;
