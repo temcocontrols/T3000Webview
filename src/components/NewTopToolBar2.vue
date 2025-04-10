@@ -133,6 +133,11 @@
   background-color: #e5e7eb;
   color: #2a2a2a;
 }
+
+.newui-panel {
+  height: 53px;
+  padding: 0px;
+}
 </style>
 
 <template>
@@ -166,10 +171,11 @@
         <q-tabs v-model="tab" dense class="right-tab text-white" active-color="#fff" indicator-color="#fff" align="left"
           narrow-indicator>
           <q-tab name="home" no-caps label="Home" @click="navigateTo('/')" />
-          <q-tab name="file" no-caps label="File"  @click="navigateTo('/')"/>
+          <q-tab name="file" no-caps label="File" @click="navigateTo('/')" />
           <q-tab name="device" no-caps
-            :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`"  @click="navigateTo('/')"/>
-          <q-tab name="newui" no-caps label="New UI"/>
+            :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`"
+            @click="navigateTo('/')" />
+          <q-tab name="newui" no-caps label="New UI" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
@@ -187,6 +193,250 @@
 
           <q-tab-panel name="device" class="device-panel">
 
+          </q-tab-panel>
+          <q-tab-panel name="newui" class="newui-panel">
+            <div style="display: block;">
+              <button id="btn_try_select">Select</button>
+
+              &nbsp;
+              <button id="btn_try_library">Library</button>
+
+              &nbsp;
+              <button id="btn_try_line">Line</button>
+
+              &nbsp;
+              <button id="btn_try_line1">Line1</button>
+
+              &nbsp;
+              <button id="btn_try_wall">Wall</button>
+
+              &nbsp;
+              <button id="btn_try_Rect">Rect </button>
+
+              &nbsp;
+              <button id="btn_try_Oval">Oval</button>
+
+              &nbsp;
+              <button id="btn_try_Image">Image</button>
+
+              &nbsp;
+              <button id="btn_try_Circ">Circ</button>
+
+              &nbsp;
+              <button id="btn_try_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_ArrR">ArrR</button>
+
+              &nbsp;
+              <button id="btn_try_ArrL">ArrL</button>
+
+              &nbsp;
+              <button id="btn_try_ArrT">ArrT</button>
+
+              &nbsp;
+              <button id="btn_try_ArrB">ArrB</button>
+
+              &nbsp;
+              <button id="btn_try_Roate45">Roate 45</button>
+
+              &nbsp;
+              <button id="btn_try_Roate90">Roate 90</button>
+
+              &nbsp;
+              <button id="btn_try_Align_lefts">Align_lefts</button>
+
+              &nbsp;
+              <button id="btn_try_Align_centers">Align_centers</button>
+
+              &nbsp;
+              <button id="btn_try_Align_rights">Align_rights</button>
+
+              &nbsp;
+              <button id="btn_try_Align_tops">Align_tops</button>
+
+              &nbsp;
+              <button id="btn_try_Align_middles">Align_middles</button>
+
+              &nbsp;
+              <button id="btn_try_Align_bottoms">Align_bottoms</button>
+
+              &nbsp;
+              <button id="btn_try_Group">Group</button>
+
+              &nbsp;
+              <button id="btn_try_UnGroup">Ungroup</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Horizontal">Flip_Horizontal</button>
+
+              &nbsp;
+              <button id="btn_try_Flip_Vertical">Flip_Vertical</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Height">Same_Height</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Width">Same_Width</button>
+
+              &nbsp;
+              <button id="btn_try_Same_Both">Same_Both</button>
+
+              &nbsp;
+              <button id="btn_try_BringToFront">BringToFront</button>
+
+              &nbsp;
+              <button id="btn_try_SendToBack">SendToBack</button>
+
+              &nbsp;
+              <button id="btn_try_Paste">Paste</button>
+
+              &nbsp;
+              <button id="btn_try_Copy">Copy</button>
+
+              &nbsp;
+              <button id="btn_try_Cut">Cut</button>
+
+              &nbsp;
+              <button id="btn_try_Delete">Delete</button>
+
+              &nbsp;
+              <button id="btn_try_Undo">Undo</button>
+
+              &nbsp;
+              <button id="btn_try_Redo">Redo</button>
+
+              &nbsp;
+              <button id="btn_try_Save">Save</button>
+
+              &nbsp;
+              <button id="btn_try_Duplicate">Duplicate</button>
+
+              &nbsp;
+              <button id="btn_try_Clear">Clear</button>
+
+              &nbsp;
+              <button id="btn_try_Measure">Measure</button>
+
+              &nbsp;
+              <button id="btn_try_AreaMeasure">AreaMeasure</button>
+
+              <!-- <br />
+              &nbsp;
+              <button id="btn_try_Lib_Select">Select</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Box">Box</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Text">Text</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Icon">Icon</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SwitchIcon">Switch Icon</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Led">Led</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_RoomHumidity">Room Humidity</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_RoomTemperature">Room Temperature</button> -->
+
+              <!--
+              &nbsp;
+              <button id="btn_try_Lib_Temperature">Temperature</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Boiler">Boiler</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_HeatPump">Heat Pump</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Pump">Pump</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ValueThreeWay">Value Three-Way</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ValueTwoWay">Value Two-Way</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Duct">Duct</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Fan">Fan</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_CoolingCoil">Cooling Coil</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_HeatingCoil">Heating Coil</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Filter">Filter</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Humidifier">Humidifier</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Humidity">Humidity</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Pressure">Pressure</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Damper">Damper</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Temperature2">Temperature 2</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ThermalWheel">Thermal Wheel</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Enthalpy">Enthalpy</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Flow">Flow</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Guage">Guage</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Dial">Dial</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Value">Value</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_IconWithTitle">Icon with Title</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundColor">Background Color</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundImage">Background Image</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_ImportSVGSymbol">Import SVG Symbol</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Lock">Lock</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_AddNote">Add Note</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_AddComment">Add Comment</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_Hyperlink">Hyperlink</button> -->
+            </div>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
@@ -253,7 +503,7 @@ export default defineComponent({
     const deviceTabTitle = ref('Device (-)');
     const router = useRouter();
 
-    const navigateTo=(routeName)=> {
+    const navigateTo = (routeName) => {
 
       console.log(router);
       router.push({ path: routeName });
