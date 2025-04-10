@@ -175,7 +175,8 @@
           <q-tab name="device" no-caps
             :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`"
             @click="navigateTo('/')" />
-          <q-tab name="newui" no-caps label="New UI" />
+          <q-tab name="newui" no-caps label="New UI" >
+          </q-tab>
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
