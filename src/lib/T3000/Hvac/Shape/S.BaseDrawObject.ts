@@ -5770,7 +5770,6 @@ class BaseDrawObject {
               }
             });
           } else if (this.collabGlowColor) {
-            // Use collaboration glow color if available
             effectsArray.push({
               type: BConstant.EffectType.GLOW,
               params: {

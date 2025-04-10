@@ -33,6 +33,7 @@ import HookUtil from '../Opt/Opt/HookUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
+import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
 /**
  * Represents a connector drawing object that connects elements in a diagram.
@@ -1653,19 +1654,11 @@ class Connector extends BaseDrawObject {
         );
       } else {
         // Show text menu
-        SDUI.Commands.MainController.ShowContextualMenu(
-          SDUI.Resources.Controls.ContextMenus.TextMenu.Id.toLowerCase(),
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
+        QuasarUtil.ShowContextMenu(true);
       }
     } else {
       // Show connector menu
-      SDUI.Commands.MainController.ShowContextualMenu(
-        SDUI.Resources.Controls.ContextMenus.Connector.Id.toLowerCase(),
-        event.gesture.center.clientX,
-        event.gesture.center.clientY
-      );
+      QuasarUtil.ShowContextMenu(true);
     }
   }
 
@@ -1674,15 +1667,6 @@ class Connector extends BaseDrawObject {
 
     T3Gv.opt.CloseEdit();
     let connector = this;
-
-    // if (Collab.AllowMessage()) {
-    //   Collab.BeginSecondaryEdit();
-    //   const messageData = {
-    //     BlockID: this.BlockID,
-    //     theHitAreaID: hitAreaID
-    //   };
-    //   connector = DataUtil.GetObjectPtr(connector.BlockID, false);
-    // }
 
     switch (hitAreaID) {
       case OptConstant.HitAreaType.ConnCollapse:
@@ -1702,10 +1686,6 @@ class Connector extends BaseDrawObject {
         foundtree: false
       }
     );
-
-    // if (Collab.AllowMessage()) {
-    //   Collab.BuildMessage(NvConstant.CollabMessages.HitAreaClick, messageData, false, false);
-    // }
 
     DrawUtil.CompleteOperation(null);
 
@@ -3306,34 +3286,10 @@ class Connector extends BaseDrawObject {
         this.ResetAutoScrollTimer();
       }
 
-      // Collaboration message handling (commented out)
-      // if (Collab.AllowMessage()) {
-      //   let messageData = {};
-      //   messageData.BlockID = T3Gv.opt.actionStoredObjectId;
-      //   messageData.actionTriggerId = T3Gv.opt.actionTriggerId;
-      //   messageData.Frame = Utils1.DeepCopy(this.Frame);
-      //   messageData.StartPoint = Utils1.DeepCopy(this.StartPoint);
-      //   messageData.EndPoint = Utils1.DeepCopy(this.EndPoint);
-      //   messageData.arraylist = Utils1.DeepCopy(this.arraylist);
-      //   Collab.BuildMessage(NvConstant.CollabMessages.Action_Connector, messageData, false);
-      // }
-
       // Handle specific action trigger types
       switch (T3Gv.opt.actionTriggerId) {
         case OptConstant.ActionTriggerType.LineStart:
         case OptConstant.ActionTriggerType.LineEnd:
-          // // Special handling for cause-effect branch connectors
-          // if (this.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH) {
-          //   if (this.hooks.length) {
-          //     targetObject = DataUtil.GetObjectPtr(this.hooks[0].objid, true);
-          //     if (targetObject &&
-          //       targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector &&
-          //       targetObject.arraylist.styleflags & OptConstant.AStyles.MatchSize) {
-          //       targetObject.MatchSize(true, this.arraylist.wd);
-          //     }
-          //   }
-          // } else
-
           {
             // Ensure hook extra values don't go below negative connector width
             hookCount = this.arraylist.hook.length;

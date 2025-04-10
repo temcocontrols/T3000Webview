@@ -140,69 +140,6 @@ class D3Symbol extends BaseSymbol {
     return shapeContainer;
   }
 
-  RenderControl(svgDocument, shapeContainer) {
-    T3Util.Log("S.D3Symbol: RenderControl start. Input parameters:", { svgDocument, shapeContainer });
-
-    const frame = this.Frame;
-    const renderParams = this.GetRenderParams();
-    const shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
-    const slopElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-    const codeLibrary = this.LoadCodeLibrary();
-
-    if (slopElement) {
-      slopElement.SetSize(frame.width, frame.height);
-    }
-
-    if (shapeElement) {
-      $(shapeElement.DOMElement()).empty();
-      if (codeLibrary && renderParams) {
-        codeLibrary.Render(shapeElement.DOMElement(), renderParams);
-      }
-    }
-
-    T3Util.Log("S.D3Symbol: RenderControl completed.");
-  }
-
-  LoadCodeLibrary() {
-    T3Util.Log("S.D3Symbol: LoadCodeLibrary called with d3Settings:", this.d3Settings);
-
-    // Retrieve d3Settings and moduleID
-    const d3Settings = this.d3Settings;
-    const moduleID = d3Settings ? d3Settings.moduleID : null;
-
-    if (!moduleID) {
-      T3Util.Log("S.D3Symbol: LoadCodeLibrary output - moduleID is null. Returning null.");
-      return null;
-    }
-
-    // Check if the current code library corresponds to the moduleID
-    let codeLibrary = moduleID === this.codeLibID ? this.codeLib : null;
-
-    // If the library is not loaded or moduleID has changed, load a new one
-    if (!codeLibrary || moduleID !== this.codeLibID) {
-      codeLibrary = SDUI.Utils.GetSymbolCode(moduleID);
-    }
-
-    // Update internal library tracking
-    this.codeLibID = moduleID;
-    this.codeLib = codeLibrary;
-
-    // Determine settings based on the code library features
-    const allowsFullDataTable = codeLibrary && typeof codeLibrary.AllowFullDataTable === "function"
-      ? codeLibrary.AllowFullDataTable()
-      : false;
-    const proportionalResize = codeLibrary && typeof codeLibrary.ProportionalResize === "function"
-      ? codeLibrary.ProportionalResize()
-      : false;
-
-    this.bMultiDataRecsAllowed = allowsFullDataTable;
-    this.ObjGrow = proportionalResize ? OptConstant.GrowBehavior.ProPortional : OptConstant.GrowBehavior.All;
-    this.ResizeAspectConstrain = proportionalResize === true;
-
-    T3Util.Log("S.D3Symbol: LoadCodeLibrary output - Loaded codeLibrary:", codeLibrary);
-    return codeLibrary;
-  }
-
   MapData(mappedData: any): void {
     T3Util.Log("S.D3Symbol: MapData - Input:", mappedData);
 
@@ -366,31 +303,7 @@ class D3Symbol extends BaseSymbol {
   }
 
   UpdateSizeFromSettings() {
-    T3Util.Log("S.D3Symbol: UpdateSizeFromSettings - Start");
 
-    const renderParams = this.GetRenderParams();
-    const codeLibrary = this.LoadCodeLibrary();
-    const frame = this.Frame;
-
-    if (renderParams && codeLibrary && codeLibrary.CalcSizeFromSettings) {
-      const newSize = codeLibrary.CalcSizeFromSettings(renderParams);
-
-      if (newSize.width !== frame.width || newSize.height !== frame.height) {
-        frame.width = newSize.width;
-        frame.height = newSize.height;
-        this.UpdateFrame(frame);
-        this.Resize(
-          T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID),
-          frame,
-          this
-        );
-        DataUtil.AddToDirtyList(this.BlockID);
-      }
-
-      T3Util.Log("S.D3Symbol: UpdateSizeFromSettings - New size:", newSize);
-    }
-
-    T3Util.Log("S.D3Symbol: UpdateSizeFromSettings - End");
   }
 
   GetRenderParams() {
@@ -539,57 +452,11 @@ class D3Symbol extends BaseSymbol {
   }
 
   SetD3Settings(settings) {
-    T3Util.Log("S.D3Symbol: SetD3Settings - Input settings:", settings);
 
-    this.d3Settings = D3Symbol.DefaultD3Settings(settings);
-    const codeLibrary = this.LoadCodeLibrary();
-
-    if (codeLibrary) {
-      const renderParams = codeLibrary.GetRenderParams(true);
-      this.d3Settings = $.extend(true, this.d3Settings, renderParams);
-    }
-
-    T3Util.Log("S.D3Symbol: SetD3Settings - Output d3Settings:", this.d3Settings);
   }
 
   Resize(svgElement, newSize, additionalParams) {
-    T3Util.Log("S.D3Symbol: Resize - Input parameters:", { svgElement, newSize, additionalParams });
 
-    if (svgElement == null) {
-      return null;
-    }
-
-    const renderParams = this.GetRenderParams();
-    const codeLibrary = this.LoadCodeLibrary();
-
-    if (codeLibrary && codeLibrary.ResizeSettings) {
-      const resizeSettings = codeLibrary.ResizeSettings(renderParams, newSize.width, newSize.height, true);
-      if (resizeSettings) {
-        for (let i = 0; i < resizeSettings.length; i++) {
-          const setting = resizeSettings[i];
-          if (this.d3Settings.renderSettings[setting] && renderParams[setting]) {
-            this.d3Settings.renderSettings[setting].value = renderParams[setting].value;
-          }
-        }
-      }
-
-      if (renderParams.width) {
-        newSize.width = renderParams.width.value;
-      }
-      if (renderParams.height) {
-        newSize.height = renderParams.height.value;
-      }
-
-      if (this.Frame.width !== newSize.width || this.Frame.height !== newSize.height) {
-        this.UpdateFrame(newSize);
-      }
-    }
-
-    const result = Instance.Shape.BaseShape.prototype.Resize.call(this, svgElement, newSize, additionalParams);
-    this.RenderControl(T3Gv.opt.svgDoc, svgElement);
-
-    T3Util.Log("S.D3Symbol: Resize - Output result:", result);
-    return result;
   }
 
   ChangeTextAttributes(newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration) {

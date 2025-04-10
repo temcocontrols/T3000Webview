@@ -626,8 +626,6 @@ class BaseLine extends BaseDrawObject {
       if (shouldRedraw) {
         if (shapeElement) {
           T3Gv.opt.svgObjectLayer.RemoveElement(shapeElement);
-          // Collab.NoRedrawFromSameEditor = false;
-          // T3Gv.opt.collaboration.NoRedrawFromSameEditor = false;
         }
         shapeElement = this.CreateShape(T3Gv.opt.svgDoc, false);
       } else if (shapeElement) {
@@ -1575,8 +1573,6 @@ class BaseLine extends BaseDrawObject {
     if (this.r.x < 0 || this.r.y < 0) {
       T3Util.Log("= S.BaseLine: Rectangle coordinates are negative, performing undo operation");
       ToolActUtil.Undo();
-      // Collab.UnLockMessages();
-      // Collab.UnBlockMessages();
       return;
     }
 
@@ -1831,9 +1827,6 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.actionStoredObjectId = -1;
     T3Gv.opt.actionSvgObject = null;
 
-    // Unblock messages
-    // Collab.UnBlockMessages();
-
     T3Util.Log("= S.BaseLine: LMActionClickExpCleanup completed");
   }
 
@@ -1855,9 +1848,6 @@ class BaseLine extends BaseDrawObject {
         T3Util.Log("= S.BaseLine: LMActionClick - LMSetupActionClick returned false");
         return;
       }
-
-      // Collab.BeginSecondaryEdit();
-
       const actionObjectPtr = DataUtil.GetObjectPtr(blockID, false);
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_ActionTrackHandlerFactory(actionObjectPtr));
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_ActionReleaseHandlerFactory(actionObjectPtr));
@@ -3099,15 +3089,6 @@ class BaseLine extends BaseDrawObject {
         event.gesture.stopDetect();
       }
       this.ResetAutoScrollTimer();
-
-      // Verify if movement is long enough when using overlay; if not, cancel the modal operation
-      if (
-        T3Gv.opt.fromOverlayLayer &&
-        (deltaX * deltaX + deltaY * deltaY) < minLength * minLength
-      ) {
-        // T3Util.Log("= S.BaseLine: LMDrawRelease - movement below minimum length; canceling modal operation.");
-        // return SDUI.Commands.MainController.Shapes.CancelOperation();
-      }
 
       // Preserve current linkParams for messaging output
       const localLinkParams = {

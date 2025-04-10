@@ -1110,8 +1110,6 @@ class PolyLineContainer extends PolyLine {
 
     if (lastObject && (lastObject.r.x < 0 || lastObject.r.y < 0)) {
       ToolActUtil.Undo();
-      // Collab.UnLockMessages();
-      // Collab.UnBlockMessages();
     }
 
     T3Util.Log("= S.PolyLineContainer: Output enclosedObjects:", enclosedObjects);

@@ -958,14 +958,6 @@ class PolyLine extends BaseLine {
     }
 
     if (svgElement != null && this.polylist.segs[cornerSegmentIndex] !== undefined) {
-      // // Collaboration message support.
-      // if (Collab.AllowMessage()) {
-      //   Collab.BeginSecondaryEdit();
-      //   const collabData = {
-      //     BlockID: this.BlockID,
-      //     point: { x: cornerPoint.x, y: cornerPoint.y }
-      //   };
-      // }
 
       // Preserve hooks related to this block.
       hookList = HookUtil.GetHookList(linksObject, hookList, this.BlockID, this, NvConstant.ListCodes.MoveHook, {});
@@ -1124,9 +1116,6 @@ class PolyLine extends BaseLine {
       }
 
       SvgUtil.ShowSVGSelectionState(svgElement.GetID(), true);
-      // if (Collab.AllowMessage()) {
-      //   Collab.BuildMessage(NvConstant.CollabMessages.AddCorner, { BlockID: this.BlockID, point: { x: cornerPoint.x, y: cornerPoint.y } }, false);
-      // }
       DrawUtil.CompleteOperation(null);
     }
 
@@ -2034,8 +2023,6 @@ class PolyLine extends BaseLine {
 
       if (this.r.x < 0 || this.r.y < 0) {
         ToolActUtil.Undo();
-        // Collab.UnLockMessages();
-        // Collab.UnBlockMessages();
         return;
       }
 
@@ -2955,45 +2942,6 @@ class PolyLine extends BaseLine {
 
     this.ResetAutoScrollTimer();
 
-    // // If collaboration messages are allowed, prepare and build a message payload
-    // if (Collab.AllowMessage()) {
-    //   const messagePayload = {
-    //     attributes: {}
-    //   };
-
-    //   messagePayload.attributes.StyleRecord = Utils1.DeepCopy(T3Gv.opt.drawShape.StyleRecord);
-    //   messagePayload.attributes.StartArrowID = T3Gv.opt.drawShape.StartArrowID;
-    //   messagePayload.attributes.EndArrowID = T3Gv.opt.drawShape.EndArrowID;
-    //   messagePayload.attributes.StartArrowDisp = T3Gv.opt.drawShape.StartArrowDisp;
-    //   messagePayload.attributes.ArrowSizeIndex = T3Gv.opt.drawShape.ArrowSizeIndex;
-    //   messagePayload.attributes.TextGrow = T3Gv.opt.drawShape.TextGrow;
-    //   messagePayload.attributes.TextAlign = T3Gv.opt.drawShape.TextAlign;
-    //   messagePayload.attributes.TextDirection = T3Gv.opt.drawShape.TextDirection;
-    //   messagePayload.attributes.Dimensions = T3Gv.opt.drawShape.Dimensions;
-    //   messagePayload.attributes.StartPoint = Utils1.DeepCopy(T3Gv.opt.drawShape.StartPoint);
-    //   messagePayload.attributes.EndPoint = Utils1.DeepCopy(T3Gv.opt.drawShape.EndPoint);
-    //   messagePayload.attributes.Frame = Utils1.DeepCopy(T3Gv.opt.drawShape.Frame);
-    //   messagePayload.attributes.extraflags = OptConstant.ExtraFlags.SideKnobs;
-    //   if (this.polylist) {
-    //     messagePayload.attributes.polylist = Utils1.DeepCopy(this.polylist);
-    //   }
-
-    //   messagePayload.LineTool = NvConstant.DocumentContext.LineTool;
-    //   Collab.AddNewBlockToSecondary(T3Gv.opt.drawShape.BlockID);
-    //   if (Collab.IsSecondary()) {
-    //     messagePayload.CreateList = [T3Gv.opt.drawShape.BlockID];
-    //   }
-    //   messagePayload.linkParams = Utils1.DeepCopy(T3Gv.opt.linkParams);
-    //   messagePayload.Actions = [];
-
-    //   let action = new Collab.MessageAction(NvConstant.CollabMessageActions.CreateLine);
-    //   messagePayload.Actions.push(action);
-    //   action = new Collab.MessageAction(NvConstant.CollabMessageActions.LinkObject);
-    //   messagePayload.Actions.push(action);
-
-    //   Collab.BuildMessage(NvConstant.CollabMessages.AddLine, messagePayload, false);
-    // }
-
     this.LMDrawPostRelease(T3Gv.opt.actionStoredObjectId);
     DrawUtil.PostObjectDraw();
 
@@ -3117,22 +3065,6 @@ class PolyLine extends BaseLine {
           event.gesture.center.clientY
         );
       }
-
-      // // Show appropriate text menu - spell checking or standard text menu
-      // if (spellIndex >= 0) {
-      //   T3Gv.opt.svgDoc.GetSpellCheck().ShowSpellMenu(
-      //     editElement,
-      //     spellIndex,
-      //     event.gesture.center.clientX,
-      //     event.gesture.center.clientY
-      //   );
-      // } else {
-      //   SDUI.Commands.MainController.ShowContextualMenu(
-      //     SDUI.Resources.Controls.ContextMenus.TextMenu.Id.toLowerCase(),
-      //     event.gesture.center.clientX,
-      //     event.gesture.center.clientY
-      //   );
-      // }
     } else {
       // Show object-specific context menu
       if (this.objecttype === NvConstant.FNObjectTypes.FlWall) {

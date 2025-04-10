@@ -2810,7 +2810,7 @@ class BaseShape extends BaseDrawObject {
         isTableOperation = false;
         let collaborationData;
 
-        if (true) { // Previously Collab.AllowMessage()
+        if (true) {
           collaborationData = {
             BlockID: T3Gv.opt.actionStoredObjectId,
             ActionTriggerID: T3Gv.opt.actionTriggerId,
@@ -6286,7 +6286,6 @@ class BaseShape extends BaseDrawObject {
                 T3Constant.DocContext.HTMLFocusControl.blur) {
                 T3Constant.DocContext.HTMLFocusControl.blur();
               }
-              SDUI.Commands.MainController.Dropdowns.HideAllDropdowns();
               const overlayElement = T3Gv.opt.svgOverlayLayer.FindElementByDOMElement(evt.currentTarget);
               if (overlayElement) {
                 const targetForEvt = overlayElement.GetTargetForEvent(evt);
@@ -6586,29 +6585,6 @@ class BaseShape extends BaseDrawObject {
     let clickedObject = DataUtil.GetObjectPtr(elementId, false);
 
     if (clickedObject && clickedObject instanceof BaseDrawObject) {
-      // Special handling for shape containers
-      if (clickedObject && clickedObject.objecttype === NvConstant.FNObjectTypes.ShapeContainer) {
-        if (SDUI.AppSettings.Application === SDUI.Resources.Application.Builder) {
-          SelectUtil.SelectObjectFromClick(event, svgElement);
-          SDUI.Resources.DocumentContext.CurrentContainerList = clickedObject.ContainerList;
-
-          // Setup right click parameters
-          T3Gv.opt.rClickParam = new RightClickMd();
-          T3Gv.opt.rClickParam.targetId = svgElement.GetID();
-          T3Gv.opt.rClickParam.hitPoint.x = documentCoords.x;
-          T3Gv.opt.rClickParam.hitPoint.y = documentCoords.y;
-          T3Gv.opt.rClickParam.locked = (this.flags & NvConstant.ObjFlags.Lock) > 0;
-
-          SDUI.Commands.MainController.ShowContextualMenu(
-            SDUI.Resources.Controls.ContextMenus.BuilderSmartContainer.Id.toLowerCase(),
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-
-
-          return;
-        }
-      }
 
       // Try to select the object from click event
       if (!SelectUtil.SelectObjectFromClick(event, svgElement)) {
@@ -6676,46 +6652,9 @@ class BaseShape extends BaseDrawObject {
         const textEditor = T3Gv.opt.svgDoc.GetActiveEdit();
         let spellCheckIndex = -1;
         const selectedRange = textEditor.GetSelectedRange();
-        const contextMenu = this.HasFieldData() ?
-          SDUI.Resources.Controls.ContextMenus.TextMenuData :
-          SDUI.Resources.Controls.ContextMenus.TextMenu;
 
         if (textEditor) {
           spellCheckIndex = textEditor.GetSpellAtLocation(
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-        }
-
-        // Show appropriate menu based on context
-        if (spellCheckIndex >= 0) {
-          T3Gv.opt.svgDoc.GetSpellCheck().ShowSpellMenu(
-            textEditor,
-            spellCheckIndex,
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-        } else if (selectedRange.end > selectedRange.start) {
-          SDUI.Commands.MainController.ShowContextualMenu(
-            contextMenu.Id.toLowerCase(),
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-        } else if (this.objecttype === NvConstant.FNObjectTypes.UIElement) {
-          SDUI.Commands.MainController.ShowContextualMenu(
-            SDUI.Resources.Controls.ContextMenus.Wireframe.Id.toLowerCase(),
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-        } else if (this.objecttype === NvConstant.FNObjectTypes.GanttChart) {
-          SDUI.Commands.MainController.ShowContextualMenu(
-            SDUI.Resources.Controls.ContextMenus.Gantt.Id.toLowerCase(),
-            event.gesture.center.clientX,
-            event.gesture.center.clientY
-          );
-        } else {
-          SDUI.Commands.MainController.ShowContextualMenu(
-            contextMenu.Id.toLowerCase(),
             event.gesture.center.clientX,
             event.gesture.center.clientY
           );
@@ -6729,126 +6668,26 @@ class BaseShape extends BaseDrawObject {
 
         // Show appropriate context menu based on object type
         switch (clickedObject.objecttype) {
-          case NvConstant.FNObjectTypes.D3Symbol:
-            switch (clickedObject.codeLibID) {
-              case "RadialGauge":
-              case "LinearGauge":
-                SDUI.Commands.MainController.ShowContextualMenu(
-                  SDUI.Resources.Controls.ContextMenus.Gauge.Id.toLowerCase(),
-                  event.gesture.center.clientX,
-                  event.gesture.center.clientY
-                );
-                break;
-              case "BarChart":
-              case "PieChart":
-              case "LineChart":
-              case "SankeyChart":
-                SDUI.Commands.MainController.ShowContextualMenu(
-                  SDUI.Resources.Controls.ContextMenus.Graph.Id.toLowerCase(),
-                  event.gesture.center.clientX,
-                  event.gesture.center.clientY
-                );
-                break;
-            }
-            break;
-          case NvConstant.FNObjectTypes.UIElement:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.Wireframe.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.BPMNActivity:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.BPMN_Activity.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.BPMNEventStart:
-          case NvConstant.FNObjectTypes.BPMNEventIntermediate:
-          case NvConstant.FNObjectTypes.BPMNEventEnd:
-          case NvConstant.FNObjectTypes.BPMNEventStartNI:
-          case NvConstant.FNObjectTypes.BPMNEventIntermediateNI:
-          case NvConstant.FNObjectTypes.BPMNEventIntermediateThrow:
-            gLineDrawBPMNEventManager.GetLineRightClickMenuID(clickedObject.objecttype);
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.BPMN_Event.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.BPMNGateway:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.BPMN_Gateway.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.BPMNDataObject:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.BPMN_Data.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.BPMNChoreography:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.BPMN_Choreo.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
-          case NvConstant.FNObjectTypes.SwimLaneCols:
-          case NvConstant.FNObjectTypes.SwimLaneRows:
-          case NvConstant.FNObjectTypes.SwimLaneGrid:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.Swimlane.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
-            break;
+
+
           case NvConstant.FNObjectTypes.FrameContainer:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.Frame.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
+           QuasarUtil.ShowContextMenu(true);
             break;
           case NvConstant.FNObjectTypes.Multiplicity:
-            SDUI.Commands.MainController.ShowContextualMenu(
-              SDUI.Resources.Controls.ContextMenus.Multiplicity.Id.toLowerCase(),
-              event.gesture.center.clientX,
-              event.gesture.center.clientY
-            );
+            QuasarUtil.ShowContextMenu(true);
             break;
           case NvConstant.FNObjectTypes.ShapeContainer:
-            if (SDUI.AppSettings.Application === SDUI.Resources.Application.Builder) {
-              SDUI.Commands.MainController.ShowContextualMenu(
-                SDUI.Resources.Controls.ContextMenus.SmartContainer.Id.toLowerCase(),
-                event.gesture.center.clientX,
-                event.gesture.center.clientY
-              );
-              break;
-            }
+            QuasarUtil.ShowContextMenu(true);
           default:
             // Handle specific shape types
             switch (clickedObject.ShapeType) {
-              case shapeTypes.RECTANGLE:
-              case shapeTypes.ROUNDED_RECTANGLE:
+              case shapeTypes.RRect:
+              case shapeTypes.RRect:
                 if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
                   clickedObject.EMFHash && clickedObject.EMFHash.length) {
-                  SDUI.Commands.MainController.ShowContextualMenu(
-                    SDUI.Resources.Controls.ContextMenus.Default.Id.toLowerCase(),
-                    event.gesture.center.clientX,
-                    event.gesture.center.clientY
-                  );
+                    QuasarUtil.ShowContextMenu(true);
                 } else {
-                  SDUI.Commands.MainController.ShowContextualMenu(
-                    SDUI.Resources.Controls.ContextMenus.RectContextMenu.Id.toLowerCase(),
-                    event.gesture.center.clientX,
-                    event.gesture.center.clientY
-                  );
+                  QuasarUtil.ShowContextMenu(true);
                 }
                 break;
               default:
