@@ -285,7 +285,6 @@ class TextUtil {
               }
 
               if (lastOp === opConstants.Timeout) {
-                // Prepare collaboration message for text edit timeout.
                 const messageData: any = {};
                 messageData.BlockID = session.theActiveTextEditObjectID;
                 const messageTarget = DataUtil.GetObjectPtr(messageData.BlockID, false);
@@ -1726,9 +1725,7 @@ class TextUtil {
       if (overflow > 0) {
         // If we can't move the frame up due to minimum height constraints, throw an error
         if (!(frame.y - minimumHeight >= overflow)) {
-          const error = new Error("SDUI.Resources.Strings.Error_Bounds");
-          error.name = "1";
-          throw error;
+          T3Util.Log("O.Opt TextPinFrame - Error: Frame cannot be pinned within bounds");
         }
 
         // Move the frame up to stay in bounds

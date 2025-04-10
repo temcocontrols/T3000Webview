@@ -75,35 +75,11 @@ class UIUtil {
   }
 
   static UpdateDisplayCoordinates(dimensions, position, cursorType, drawingObject) {
-    // T3Util.Log("O.Opt UpdateDisplayCoordinates - Input:", {
-    //   dimensions,
-    //   position,
-    //   cursorType,
-    //   drawingObject: drawingObject ? drawingObject.BlockID : null
-    // });
 
     // Set default cursor type if not provided
     if (cursorType == null) {
-      // cursorType = CollabOverlayContoller.CursorTypes.Default;
       cursorType = "DEFAULT";
     }
-
-    // // Handle collaboration cursor movement
-    // if (Collab.IsCollaborating() && position) {
-    //   const currentTime = Date.now();
-    //   if (currentTime - Collab.MoveTimestamp > Collab.MoveDelay) {
-    //     const message = {
-    //       CursorType: cursorType
-    //     };
-    //     Collab.Animation_BuildMessage(
-    //       position.x,
-    //       position.y,
-    //       NvConstant.Collab_AnimationMessages.CursorMove,
-    //       message
-    //     );
-    //     Collab.MoveTimestamp = currentTime;
-    //   }
-    // }
 
     // Update ruler displays if rulers are enabled
     if (T3Gv.docUtil.docConfig.showRulers) {

@@ -371,7 +371,6 @@ class OptUtil {
    * Collaboration state variables
    * Variables for multi-user editing
    */
-  // public collaboration: Collaboration;   // Collaboration manager
   public commentUserIDs: any[];          // User IDs for comments
   public activeExpandedView: any;        // Currently expanded view
   public alternateStateManagerVars: any; // Alternate state variables
@@ -736,7 +735,6 @@ class OptUtil {
      * Initialize properties for multi-user collaboration
      * These track state during collaborative editing
      */
-    // this.collaboration = new Collaboration();    // Collaboration manager
     this.commentUserIDs = [];                    // User IDs for comments
     this.activeExpandedView = null;              // Currently expanded view
     this.alternateStateManagerVars = {           // Alternate state variables
@@ -5805,9 +5803,6 @@ class OptUtil {
           showFeetAsInches
         );
 
-        // Update ribbon dimensions (commented out as it's using SDUI)
-        // SDUI.Commands.MainController.UpdateRibbonDimensions(SelectionAttr);
-
         // Update guides display if they exist
         if (dynamicGuides) {
           DynamicUtil.DynamicSnapsUpdateGuides(dynamicGuides, snapTargetId, adjustedTargetRect);
@@ -5829,12 +5824,6 @@ class OptUtil {
           width: objectRect.width,
           height: objectRect.height
         };
-
-        // Collab.SendSVGEvent(
-        //   this.moveList[index],
-        //   OptConstant.CollabSVGEventTypes.ObjectMove,
-        //   newRect
-        // );
       }
     }
 
@@ -5934,11 +5923,6 @@ class OptUtil {
           backgroundLayerIndex = layerIndex;
           break;
         }
-      }
-
-      // If collaborating, ensure we're working with a modifiable copy
-      if (/*Collab.AllowMessage() && (Collab.BeginSecondaryEdit(),*/false) {
-        layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, true);
       }
 
       // If no background layer exists, create one
@@ -6360,24 +6344,11 @@ class OptUtil {
         shouldLock = (currentObject.flags & lockFlag) === 0;
       }
 
-      // Begin secondary edit if collaborating
-      if (false/*Collab.AllowMessage()*/) {
-        /*Collab.BeginSecondaryEdit()*/;
-      }
-
       // Apply lock/unlock to all selected objects
       for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
         currentObject = DataUtil.GetObjectPtr(selectedObjects[objectIndex], true);
         currentObject.flags = Utils2.SetFlag(currentObject.flags, lockFlag, shouldLock);
         DataUtil.AddToDirtyList(selectedObjects[objectIndex]);
-      }
-
-      // Send collaboration message if collaborating
-      if (false/*Collab.AllowMessage()*/) {
-        const messageData = {
-          BlockID: objectId
-        };
-        /*Collab.BuildMessage(NvConstant.CollabMessages.Lock, messageData, true)*/
       }
 
       // Complete the operation

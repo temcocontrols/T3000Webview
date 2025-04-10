@@ -46,30 +46,6 @@ class ToolUtil {
 
     // Initial render of all SVG selection states
     SvgUtil.RenderAllSVGSelectionStates();
-
-    // // Check if we're currently using the wall tool
-    // const isCurrentlyWallTool = T3Constant.DocContext.SelectionTool === ToolConstant.Tools.Wall;
-
-    // // Update context with new tool settings
-    // T3Constant.DocContext.SelectionTool = toolType;
-    // T3Constant.DocContext.SelectionToolSticky = isSticky;
-    // T3Constant.DocContext.SelectionToolMultiple = false;
-
-    // // Additional handling for wall tool transitions
-    // if (toolType !== ToolConstant.Tools.Wall) {
-    //   T3Constant.DocContext.UsingWallTool = false;
-
-    //   // If we were previously using the wall tool, re-render all states
-    //   if (isCurrentlyWallTool) {
-    //     T3Gv.opt.RenderAllSVGSelectionStates();
-    //   }
-    // }
-
-    // T3Util.Log('O.ActiveSelection.SetSelectionTool - Output:', {
-    //   updatedTool: T3Constant.DocContext.SelectionTool,
-    //   isSticky: T3Constant.DocContext.SelectionToolSticky,
-    //   usingWallTool: T3Constant.DocContext.UsingWallTool
-    // });
   }
 
   /**
@@ -84,8 +60,6 @@ class ToolUtil {
     OptCMUtil.CancelOperation();
 
     if (!skipMessageHandling) {
-      // Collab.UnLockMessages();
-      // Collab.UnBlockMessages();
     }
 
     T3Util.Log("O.ToolOpt CancelOperation output: false");
@@ -653,66 +627,18 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampTextLabel output: void");
   }
 
-  StampCallback(e, t) {
-    if (t.bActivateText) {
-      var a = T3Gv.opt.svgObjectLayer.GetElementById(e);
-      TextUtil.ActivateTextEdit(a)
+  /**
+   * Callback function executed after a shape is stamped onto the drawing
+   * @param objectId - ID of the stamped object
+   * @param options - Options for post-stamp processing
+   * @param options.bActivateText - Whether to activate text editing for the stamped object
+   * @returns void
+   */
+  StampCallback(objectId, options) {
+    if (options.bActivateText) {
+      const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
+      TextUtil.ActivateTextEdit(svgElement);
     }
-  }
-
-  StampTextLabelV0(e, t) {
-    SDUI.Commands.MainController.Selection.SetSelectionTool(SDUI.Resources.Tools.Tool_Text, e);
-    var a = gListManager.GetObjectPtr(gListManager.theTEDSessionBlockID, !1);
-    if (t || -1 == a.theActiveTextEditObjectID) {
-      if (!t) {
-        var r = gListManager.GetTargetSelect();
-        if (r >= 0) {
-          var i = gListManager.GetObjectPtr(r, !1);
-          if (i && i.AllowTextEdit()) {
-            var n = gListManager.svgObjectLayer.GetElementById(r);
-            return gListManager.ActivateTextEdit(n),
-              void gListManager.UpdateTools()
-          }
-        }
-      }
-    } else
-      gListManager.DeactivateTextEdit();
-    var o = objectStore.GetObject(gListManager.theSEDSessionBlockID).Data
-      , s = SDUI.Resources.FindStyle(SDJS.ListManager.Defines.TextBlockStyle);
-    null == s && (s = o.def.style);
-    var l = {
-      StyleRecord: $.extend(!0, {}, s),
-      Frame: {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0
-      },
-      TMargins: {
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0
-      },
-      TextGrow: SDJS.ListManager.TextGrowBehavior.HORIZONTAL,
-      TextAlign: SDJS.ListManager.TextAlign.LEFT,
-      flags: SDJS.ListManager.ObjFlags.SEDO_TextOnly
-    };
-    null == l.StyleRecord.Line && (l.StyleRecord.Line = SDJS.Editor.DeepCopy(s.Border)),
-      l.StyleRecord.Line.Thickness = 0;
-    var S = new SDJS.ListManager.Rect(l)
-      , c = SDJS.Editor.DeepCopy(o.def.style);
-    c.Text.Paint = SDJS.Editor.DeepCopy(s.Text.Paint),
-      S.StyleRecord.Text = c.Text;
-    var u = gListManager.CalcDefaultInitialTextStyle(S.StyleRecord.Text)
-      , p = gListManager.svgDoc.CalcStyleMetrics(u);
-    gListManager.stampShapeOffsetX = 0,
-      gListManager.stampShapeOffsetY = p.ascent,
-      S.Frame.height = p.height,
-      e || gListManager.DeactivateTextEdit(!1),
-      gListManager.StampNewTextShapeOnTap(S, !1, !1, !1, e, this.StampCallback, {
-        bActivateText: !0
-      })
   }
 
   /**

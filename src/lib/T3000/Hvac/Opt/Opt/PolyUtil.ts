@@ -1640,10 +1640,6 @@ class PolyUtil {
     // Add new object if we created a new polyline
     if (needsRender) {
       resultBlockId = DrawUtil.AddNewObject(mainPolyline, false, true);
-      // Uncomment if needed:
-      // Collab.AddNewBlockToSecondary(resultBlockId);
-      // Collab.ClearCreateList();
-      // Collab.AddToCreateList(resultBlockId);
       needsRender = true;
       DataUtil.AddToDirtyList(resultBlockId);
     } else {

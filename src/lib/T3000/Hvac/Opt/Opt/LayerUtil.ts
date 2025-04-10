@@ -550,7 +550,6 @@ class LayerUtil {
 
     // Check if maximum layer limit has been reached
     if (layersManager.nlayers >= OptConstant.Common.MaxTotalLayers) {
-      // SDJS.Utils.Alert(SDUI.Resources.Strings.MaxLayersReached, null);
       return false;
     }
 

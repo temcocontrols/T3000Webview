@@ -519,11 +519,6 @@ class ToolOpt {
       // Close any ongoing edits first
       T3Gv.opt.CloseEdit(true, true);
 
-      // // Begin collaborative editing if enabled
-      // if (SDJS.Collab.AllowMessage()) {
-      //   SDJS.Collab.BeginSecondaryEdit();
-      // }
-
       // Get the current data object
       const dataObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
@@ -558,14 +553,6 @@ class ToolOpt {
 
       // Apply the background color change
       UIUtil.SetBackgroundColor();
-
-      // // Handle collaborative messaging if enabled
-      // if (SDJS.Collab.AllowMessage()) {
-      //   const message = {
-      //     color: color
-      //   };
-      //   SDJS.Collab.BuildMessage(SDJS.ListManager.CollabMessages.SetBackgroundColor, message, false);
-      // }
 
       // Complete the operation
       DrawUtil.CompleteOperation();

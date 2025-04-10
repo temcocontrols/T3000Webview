@@ -46,6 +46,7 @@ import ConstantData1 from "../Data/ConstantData1"
 import TextObject from "../Model/TextObject"
 import DynamicGuides from "../Model/DynamicGuides"
 import ConstantData2 from "../Data/ConstantData2"
+import T3Gv from "../Data/T3Gv";
 // import ShapeAttrUtil from "../Util/ShapeAttrUtil"
 
 class OptHandler{
@@ -745,12 +746,9 @@ class OptHandler{
     $.extend(true, selectionAttributes, this.SelectionState);
 
     // Handle pixel to point conversion for font size if needed
-    if (GlobalData.docHandler.rulerSettings.showpixels && selectionAttributes.fontsize >= 0) {
+    if (T3Gv.docUtil.rulerConfig.showpixels && selectionAttributes.fontsize >= 0) {
       selectionAttributes.fontsize = this.PixelstoPoints(selectionAttributes.fontsize);
     }
-
-    // Update UI with selection state (commented out as it's referencing SDUI)
-    // SDUI.Commands.MainController.UpdateActiveSelection(selectionAttributes, false);
 
     console.log('O.Opt UpdateSelectionAttributes - Output:', {
       nselect: this.SelectionState.nselect,
@@ -2301,10 +2299,7 @@ class OptHandler{
       GlobalData.optManager.theRubberBandStartY = 0;
       GlobalData.optManager.theRubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
 
-      // Unlock and unblock collaboration messages, and reset undo state.
-      Collab.UnLockMessages();
-      Collab.UnBlockMessages();
-      GlobalData.optManager.InUndo = false;
+      T3Gv.opt.InUndo = false;
     } catch (cleanupError) {
       console.error("O.Opt RubberBandSelectExceptionCleanup - Cleanup Error:", cleanupError);
       throw cleanupError;

@@ -674,7 +674,6 @@ class LMEvtUtil {
       this.LMMovePostRelease(false);
       SvgUtil.RenderAllSVGSelectionStates();
       T3Gv.opt.moveList = null;
-      // Collab.UnBlockMessages();
 
       T3Util.Log("O.Opt LMMoveRelease - Output: Early exit condition met");
       return;
@@ -1232,8 +1231,6 @@ class LMEvtUtil {
     T3Gv.opt.dragGotMove = false;
     T3Gv.opt.UnbindShapeMoveHammerEvents();
     DrawUtil.ResetAutoScrollTimer();
-    // Collab.UnLockMessages();
-    // Collab.UnBlockMessages();
 
     T3Util.Log('O.Opt LMMoveExceptionCleanup - Output: Cleanup completed');
 
@@ -1274,12 +1271,9 @@ class LMEvtUtil {
       // Handle different setup results
       if (setupResult !== true) {
         if (setupResult === -1) {
-          // Collab.UnLockMessages();
           T3Util.Log("O.Opt LMMoveClick - Output: Setup failed with -1, unlocked messages");
           return;
         } else {
-          // Collab.UnLockMessages();
-          // Collab.UnBlockMessages();
           T3Util.Log("O.Opt LMMoveClick - Output: Setup failed, unlocked and unblocked messages");
           return;
         }

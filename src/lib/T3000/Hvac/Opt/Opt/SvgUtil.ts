@@ -158,17 +158,6 @@ class SvgUtil {
   static RenderDirtySVGObjectsCommon(renderSelectionStates: boolean) {
     T3Util.Log("O.Opt RenderDirtySVGObjectsCommon - Input:", { renderSelectionStates });
 
-    // If no redraw is set from the same editor, clear dirty list and reset flag.
-    // if (Collab.NoRedrawFromSameEditor) {
-    //   this.dirtyList.length = 0;
-    //   Collab.NoRedrawFromSameEditor = false;
-    // }
-
-    // if (this.collaboration.NoRedrawFromSameEditor) {
-    //   this.dirtyList.length = 0;
-    //   // this.collaboration.NoRedrawFromSameEditor = false;
-    // }
-
     // Process if there are dirty objects.
     if (T3Gv.opt.dirtyList.length !== 0) {
       // Get all visible object IDs and active visible object IDs.
@@ -348,10 +337,6 @@ class SvgUtil {
    */
   static RenderAllSVGObjects(): void {
     T3Util.Log("O.Opt RenderAllSVGObjects - Input: no parameters");
-
-    // Allow full redraw from the editor
-    // Collab.NoRedrawFromSameEditor = false;
-    // this.collaboration.NoRedrawFromSameEditor = false;
 
     // Retrieve the lists of objects to be rendered
     const visibleObjectList = LayerUtil.VisibleZList();

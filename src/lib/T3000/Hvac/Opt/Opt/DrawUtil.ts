@@ -1994,10 +1994,6 @@ class DrawUtil {
   }
 
   static CheckDragIsOverCustomLibrary(event) {
-    T3Util.Log("O.Opt CheckDragIsOverCustomLibrary - Input:", event);
-
-    // Always return false as the commented out code depends on SDUI which might not be available
-    T3Util.Log("O.Opt CheckDragIsOverCustomLibrary - Output: false");
     return false;
   }
 

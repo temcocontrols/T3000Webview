@@ -753,9 +753,6 @@ class SelectUtil {
       T3Gv.opt.rubberBandStartY = 0;
       T3Gv.opt.rubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
 
-      // Unlock and unblock collaboration messages, and reset undo state.
-      // Collab.UnLockMessages();
-      // Collab.UnBlockMessages();
       T3Gv.opt.noUndo = false;
     } catch (cleanupError) {
       console.error("O.Opt RubberBandSelectExceptionCleanup - Cleanup Error:", cleanupError);

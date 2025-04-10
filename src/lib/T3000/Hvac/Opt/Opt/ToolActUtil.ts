@@ -95,7 +95,6 @@ class ToolActUtil {
     // Update spell check settings if changed
     const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (spellCheckEnabled !== sessionBlock.EnableSpellCheck) {
-      // SDUI.Commands.MainController.Document.SetSpellCheck(sessionBlock.EnableSpellCheck, false);
     }
 
     // Update ruler settings if necessary
@@ -598,7 +597,6 @@ class ToolActUtil {
           // Paste text into active editor
           activeEditor = T3Gv.opt.svgDoc.GetActiveEdit();
           if (activeEditor) {
-            // Collab.BeginSecondaryEdit();
             TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Paste);
             activeEditor.Paste(T3Gv.opt.textClipboard, true);
             TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
@@ -644,7 +642,6 @@ class ToolActUtil {
 
       if (T3Gv.opt.header.ClipboardBuffer &&
         T3Gv.opt.header.ClipboardType === T3Constant.ClipboardType.LM) {
-        // Collab.BeginSecondaryEdit();
         this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         T3Util.Log("O.Opt PasteObjects - Output: LM content pasted");
       } else {
