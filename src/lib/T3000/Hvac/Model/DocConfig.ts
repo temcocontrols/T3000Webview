@@ -64,7 +64,8 @@ class DocConfig {
   public spellCheck: boolean = true;
   public spellDict: boolean = true;
   public spellFlags: boolean = true;
-  public snapToShapes: boolean = true
+  public snapToShapes: boolean = true;
+  public backgroundColor: string = "#FFFFFF"; // Default background color
 }
 
 export default DocConfig

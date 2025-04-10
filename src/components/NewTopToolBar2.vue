@@ -226,16 +226,16 @@
               <button id="btn_try_Text">Text</button>
 
               &nbsp;
-              <button id="btn_try_ArrR">ArrR</button>
+              <button id="btn_try_ArrR">Arr Right</button>
 
               &nbsp;
-              <button id="btn_try_ArrL">ArrL</button>
+              <button id="btn_try_ArrL">Arr Left</button>
 
               &nbsp;
-              <button id="btn_try_ArrT">ArrT</button>
+              <button id="btn_try_ArrT">Arr Top</button>
 
               &nbsp;
-              <button id="btn_try_ArrB">ArrB</button>
+              <button id="btn_try_ArrB">Arr Bottom</button>
 
               &nbsp;
               <button id="btn_try_Roate45">Roate 45</button>
