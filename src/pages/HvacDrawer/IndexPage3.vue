@@ -511,12 +511,12 @@
     <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" />
 
   </div> -->
-        <NewTopToolBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
+        <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
                        :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
                        :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
                        :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
                        :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
-        </NewTopToolBar>
+        </NewTopToolBar2>
         <div class="main-area">
           <div id="left-panel" class="left-panel">
             <!-- left bar -->
@@ -1415,7 +1415,7 @@
   import NewTopBar from "src/components/NewTopBar.vue";
   import T3000 from "src/lib/T3000/T3000";
   import DeviceInfo from "src/components/DeviceInfo.vue";
-  import NewTopToolBar from "src/components/NewTopToolBar.vue";
+  import NewTopToolBar2 from "src/components/NewTopToolBar2.vue";
 
   // New import for Data
   import Data from "src/lib/T3000/Hvac/Data/Data";

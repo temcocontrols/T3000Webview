@@ -169,6 +169,7 @@
           <q-tab name="file" no-caps label="File" />
           <q-tab name="device" no-caps
             :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`" />
+          <q-tab name="newui" no-caps label="New UI" @click="navigateTo('hvac/t2')" />
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
@@ -500,6 +501,7 @@
 <script lang="ts">
 
 import { defineComponent, ref, watch, onMounted } from 'vue'
+import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
 import { tools, user } from "../lib/common"
 import { devVersion } from '../lib/T3000/Hvac/Data/T3Data'
@@ -553,6 +555,13 @@ export default defineComponent({
 
     const currentDevice = ref(null);
     const deviceTabTitle = ref('Device (-)');
+    const router = useRouter();
+
+    const navigateTo=(routeName)=> {
+
+      console.log(router);
+      router.push({ path: routeName });
+    }
 
     const $q = useQuasar();
     function menuActionEmit(action, val = null) {
@@ -589,6 +598,8 @@ export default defineComponent({
       deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
     });
 
+
+
     return {
       tab: ref('home'),
       navGoBack,
@@ -601,7 +612,8 @@ export default defineComponent({
       showMoreDevices,
       currentDevice,
       deviceTabTitle,
-      devVersion
+      devVersion,
+      navigateTo
     };
   },
 });
