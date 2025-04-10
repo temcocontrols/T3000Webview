@@ -198,14 +198,14 @@
             <div style="display: block; margin-left: 10px; padding-top: 5px;">
               <button id="btn_try_select">Select</button>
 
-              &nbsp;
-              <button id="btn_try_library">Library</button>
+              <!-- &nbsp;
+              <button id="btn_try_library">Library</button> -->
 
               &nbsp;
               <button id="btn_try_line">Line</button>
 
-              &nbsp;
-              <button id="btn_try_line1">Line1</button>
+              <!-- &nbsp;
+              <button id="btn_try_line1">Line1</button> -->
 
               &nbsp;
               <button id="btn_try_wall">Wall</button>
@@ -216,8 +216,8 @@
               &nbsp;
               <button id="btn_try_Oval">Oval</button>
 
-              &nbsp;
-              <button id="btn_try_Image">Image</button>
+              <!-- &nbsp;
+              <button id="btn_try_Image">Image</button> -->
 
               &nbsp;
               <button id="btn_try_Circ">Circ</button>
@@ -244,22 +244,22 @@
               <button id="btn_try_Roate90">Roate 90</button>
 
               &nbsp;
-              <button id="btn_try_Align_lefts">Align_lefts</button>
+              <button id="btn_try_Align_lefts">Align lefts</button>
 
               &nbsp;
-              <button id="btn_try_Align_centers">Align_centers</button>
+              <button id="btn_try_Align_centers">Align centers</button>
 
               &nbsp;
-              <button id="btn_try_Align_rights">Align_rights</button>
+              <button id="btn_try_Align_rights">Align rights</button>
 
               &nbsp;
-              <button id="btn_try_Align_tops">Align_tops</button>
+              <button id="btn_try_Align_tops">Align tops</button>
 
               &nbsp;
-              <button id="btn_try_Align_middles">Align_middles</button>
+              <button id="btn_try_Align_middles">Align middles</button>
 
               &nbsp;
-              <button id="btn_try_Align_bottoms">Align_bottoms</button>
+              <button id="btn_try_Align_bottoms">Align bottoms</button>
 
               &nbsp;
               <button id="btn_try_Group">Group</button>
@@ -268,25 +268,25 @@
               <button id="btn_try_UnGroup">Ungroup</button>
 
               &nbsp;
-              <button id="btn_try_Flip_Horizontal">Flip_Horizontal</button>
+              <button id="btn_try_Flip_Horizontal">Flip Horizontal</button>
 
               &nbsp;
-              <button id="btn_try_Flip_Vertical">Flip_Vertical</button>
+              <button id="btn_try_Flip_Vertical">Flip Vertical</button>
 
               &nbsp;
-              <button id="btn_try_Same_Height">Same_Height</button>
+              <button id="btn_try_Same_Height">Same Height</button>
 
               &nbsp;
-              <button id="btn_try_Same_Width">Same_Width</button>
+              <button id="btn_try_Same_Width">Same Width</button>
 
               &nbsp;
-              <button id="btn_try_Same_Both">Same_Both</button>
+              <button id="btn_try_Same_Both">Same Both</button>
 
               &nbsp;
-              <button id="btn_try_BringToFront">BringToFront</button>
+              <button id="btn_try_BringToFront">Bring To Front</button>
 
               &nbsp;
-              <button id="btn_try_SendToBack">SendToBack</button>
+              <button id="btn_try_SendToBack">Send To Back</button>
 
               &nbsp;
               <button id="btn_try_Paste">Paste</button>
@@ -316,10 +316,16 @@
               <button id="btn_try_Clear">Clear</button>
 
               &nbsp;
+              <button id="btn_try_Lib_SetBackgroundColor">Background Color</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_SetBackgroundImage">Image</button>
+
+              <!-- &nbsp;
               <button id="btn_try_Measure">Measure</button>
 
               &nbsp;
-              <button id="btn_try_AreaMeasure">AreaMeasure</button>
+              <button id="btn_try_AreaMeasure">AreaMeasure</button> -->
 
               <!-- <br />
               &nbsp;

@@ -758,8 +758,8 @@ class EvtOpt {
 
   BindLibSetBackgroundColorEvent() {
     $("#btn_try_Lib_SetBackgroundColor").on("pointerdown", (event) => {
-      // EvtOpt.toolOpt.LibSetBackgroundColorAct("#20b2aa");
-      EvtOpt.toolOpt.LibSetBackgroundColorAct("#ffffff");
+      EvtOpt.toolOpt.LibSetBackgroundColorAct("#20b2aa");
+      // EvtOpt.toolOpt.LibSetBackgroundColorAct("#ffffff");
     });
   }
 

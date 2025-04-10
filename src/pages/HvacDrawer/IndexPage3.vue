@@ -183,7 +183,7 @@
   height: auto;
   overflow: hidden scroll;
   user-select: none;
-  background-color: #20b2aa;
+  background-color: #ffffff;
 }
 
 .doc-toolbar {
