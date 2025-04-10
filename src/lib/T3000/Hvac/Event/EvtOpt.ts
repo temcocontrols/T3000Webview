@@ -573,7 +573,7 @@ class EvtOpt {
 
   BindLibSelectEvent() {
     $("#btn_try_Lib_Select").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibSelectAct(event);
+      EvtOpt.toolOpt.SelectAct(event);
     });
   }
 
@@ -759,13 +759,13 @@ class EvtOpt {
 
   BindLibSetBackgroundColorEvent() {
     $("#btn_try_Lib_SetBackgroundColor").on("pointerdown", (event) => {
-      if(T3Gv.docUtil.docConfig.backgroundColor=="#FFFFFF"){
+      if (T3Gv.docUtil.docConfig.backgroundColor == "#FFFFFF") {
         EvtOpt.toolOpt.LibSetBackgroundColorAct("#20b2aa");
-        T3Gv.docUtil.docConfig.backgroundColor="#20b2aa";
+        T3Gv.docUtil.docConfig.backgroundColor = "#20b2aa";
       }
-      else{
+      else {
         EvtOpt.toolOpt.LibSetBackgroundColorAct("#FFFFFF");
-        T3Gv.docUtil.docConfig.backgroundColor="#FFFFFF";
+        T3Gv.docUtil.docConfig.backgroundColor = "#FFFFFF";
       }
     });
   }
@@ -804,6 +804,143 @@ class EvtOpt {
     $("#btn_try_Lib_Hyperlink").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibHyperlinkAct(event);
     });
+  }
+
+  HandleSidebarToolEvent(selectedTool: any) {
+    console.log("Selected tool: ", selectedTool);
+
+
+    if (selectedTool.value.name == "Temperature") {
+      EvtOpt.toolOpt.LibToolShape("Temperature", true);
+    }
+
+    if (selectedTool.value.name == "Boiler") {
+      EvtOpt.toolOpt.LibToolShape("Boiler", true);
+    }
+
+    if (selectedTool.value.name == "Heatpump") {
+      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+    }
+
+    if (selectedTool.value.name == "Pump") {
+      EvtOpt.toolOpt.LibToolShape("Pump", true);
+    }
+
+    if (selectedTool.value.name == "ValveThreeWay") {
+      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+    }
+
+    if (selectedTool.value.name == "ValveTwoWay") {
+      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+    }
+
+    if (selectedTool.value.name == "Duct") {
+      // EvtOpt.toolOpt.LibToolShape("Duct", true);
+    }
+
+    if (selectedTool.value.name == "Fan") {
+      EvtOpt.toolOpt.LibToolShape("Fan", true);
+    }
+
+    if (selectedTool.value.name == "CoolingCoil") {
+      EvtOpt.toolOpt.LibToolShape("CoolingCoil", true);
+    }
+
+    if (selectedTool.value.name == "HeatingCoil") {
+      EvtOpt.toolOpt.LibToolShape("HeatingCoil", true);
+    }
+
+    if (selectedTool.value.name == "Filter") {
+      EvtOpt.toolOpt.LibToolShape("Filter", true);
+    }
+
+    if (selectedTool.value.name == "Humidifier") {
+      EvtOpt.toolOpt.LibToolShape("Humidifier", true);
+    }
+
+    if (selectedTool.value.name == "Humidity") {
+      EvtOpt.toolOpt.LibToolShape("Humidity", true);
+    }
+
+    if (selectedTool.value.name == "Pressure") {
+      EvtOpt.toolOpt.LibToolShape("Pressure", true);
+    }
+
+    if (selectedTool.value.name == "Damper") {
+      EvtOpt.toolOpt.LibToolShape("Damper", true);
+    }
+
+    if (selectedTool.value.name == "ThermalWheel") {
+      EvtOpt.toolOpt.LibToolShape("ThermalWheel", true);
+    }
+
+    if (selectedTool.value.name == "Enthalpy") {
+      EvtOpt.toolOpt.LibToolShape("Enthalpy", true);
+    }
+
+    if (selectedTool.value.name == "Flow") {
+      EvtOpt.toolOpt.LibToolShape("Flow", true);
+    }
+
+    if (selectedTool.value.name == "RoomHumidity") {
+      EvtOpt.toolOpt.LibToolShape("RoomHumidity", true);
+    }
+
+    if (selectedTool.value.name == "RoomTemperature") {
+      EvtOpt.toolOpt.LibToolShape("RoomTemperature", true);
+    }
+
+    if (selectedTool.value.name == "Guage") {
+      // EvtOpt.toolOpt.LibToolShape("Guage", true);
+    }
+
+    if (selectedTool.value.name == "Dial") {
+      // EvtOpt.toolOpt.LibToolShape("Dial", true);
+    }
+
+    if (selectedTool.value.name == "Value") {
+      // EvtOpt.toolOpt.LibToolShape("Value", true);
+    }
+
+    if (selectedTool.value.name == "Wall") {
+      EvtOpt.toolOpt.DrawWall(event);
+    }
+
+    if (selectedTool.value.name == "G_Circle") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9);
+    }
+
+    if (selectedTool.value.name == "G_Rectangle") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+    }
+
+    if (selectedTool.value.name == "g_arr_right") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10);
+    }
+
+    if (selectedTool.value.name == "Oval") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4);
+    }
+
+    if (selectedTool.value.name == "Switch") {
+      EvtOpt.toolOpt.LibToolShape("SwitchIcon", true);
+    }
+
+    if (selectedTool.value.name == "LED") {
+      EvtOpt.toolOpt.LibToolShape("Led", true);
+    }
+
+    if (selectedTool.value.name == "Text") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel');
+    }
+
+    if (selectedTool.value.name == "Box") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+    }
+
+    if (selectedTool.value.name == "Pointer") {
+      EvtOpt.toolOpt.SelectAct(event);
+    }
   }
 }
 

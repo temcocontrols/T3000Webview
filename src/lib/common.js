@@ -77,7 +77,7 @@ export const tools = [
   {
     name: "Pointer",
     label: "Select",
-    icon: "svguse:icons.svg#cursor|0 0 320 512",
+    icon: "svguse:icons.svg#cursor|0 0 280 200",
     cat: ["Basic"],
   },
   {

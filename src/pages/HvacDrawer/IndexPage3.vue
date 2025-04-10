@@ -1559,11 +1559,14 @@ function drawObject(size, pos, tool) {
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
+  console.log("= IdxPage selectTool", tool, type);
   selectedTool.value = tool;
   if (typeof tool === "string") {
     selectedTool.value = tools.find((item) => item.name === tool);
   }
   selectedTool.value.type = type;
+
+  T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
 }
 
 // // Refresh the moveable object's rectangle after a short delay
@@ -3407,18 +3410,20 @@ function toggleRulersGrid(val) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
-  drawObject(
-    //{ width: 60, height: 60 },
-    size,
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
-    tool
-  );
+  // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // drawObject(
+  //   //{ width: 60, height: 60 },
+  //   size,
+  //   {
+  //     clientX: ev.clientX,
+  //     clientY: ev.clientY,
+  //     top: ev.clientY,
+  //     left: ev.clientX,
+  //   },
+  //   tool
+  // );
+
+  console.log("toolDropped->tool", ev,tool);
 }
 
 const updateWeldModel = (weldModel, itemList) => {

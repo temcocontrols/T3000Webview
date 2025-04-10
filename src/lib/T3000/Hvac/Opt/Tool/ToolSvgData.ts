@@ -149,8 +149,8 @@ class ToolSvgData {
 
     const toggleOff =
       `
-      <g transform="scale(0.14,0.14) translate(-520,3)">
-    <use style="fill:##FillColor=#659dc5##" xlink:href="icons.svg#toggle_off"></use>
+      <g transform="scale(0.08,0.08) translate(-370,3)">
+    <use style="fill:##FillColor=#659dc5##" xlink:href="icons.svg#toggle_off1"></use>
 </g>
     `;
 
