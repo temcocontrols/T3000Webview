@@ -228,11 +228,9 @@
               @tool-dropped="toolDropped" />
           </div>
 
-
           <div id="work-area" class="main-panel">
             <div id="document-area">
               <div id="c-ruler" class="document-ruler-corner">
-                c-ruler
               </div>
               <div id="h-ruler" class="document-ruler-top">
               </div>
@@ -241,7 +239,6 @@
               <div id="svg-area" class="svg-area">
               </div>
             </div>
-
             <div id="doc-toolbar" class="doc-toolbar">
             </div>
           </div>

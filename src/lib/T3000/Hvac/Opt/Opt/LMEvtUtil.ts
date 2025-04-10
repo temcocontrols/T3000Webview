@@ -30,6 +30,7 @@ import DynamicUtil from './DynamicUtil';
 import TextUtil from './TextUtil';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import UIUtil from '../UI/UIUtil';
+import ToolActUtil from './ToolActUtil';
 
 class LMEvtUtil {
 
@@ -541,7 +542,7 @@ class LMEvtUtil {
           }
 
           // Duplicate the objects
-          const duplicatedObjects = this.DuplicateObjects(true);
+          const duplicatedObjects = ToolActUtil.DuplicateObjects(true);
 
           // Update selection list to duplicated objects
           selectedList.length = 0;

@@ -1064,7 +1064,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt Duplicate input: no parameters");
 
     try {
-      T3Gv.opt.DuplicateObjects();
+      ToolActUtil.DuplicateObjects();
       T3Util.Log("O.ToolOpt Duplicate output: void");
     } catch (error) {
       T3Gv.opt.RestorePrimaryStateManager();
