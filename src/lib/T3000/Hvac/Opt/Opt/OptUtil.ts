@@ -53,7 +53,7 @@ import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import KeyboardConstant from '../Keyboard/KeyboardConstant';
-import ConstantData from '../../Data/ConstantData';
+// import ConstantData from '../../Data/ConstantData';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
