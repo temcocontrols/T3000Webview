@@ -6,8 +6,8 @@ import T3Opt from './Doc/T3Opt';
 // import App from './Page/Page.Main'
 // import * as Utils from './Util/Helper.Utils'
 // import Models from './Data/Constant'
-import Doc from './Doc/DocHandler'
-import UI from './Doc/UI'
+// import Doc from './Doc/DocHandler'
+// import UI from './Doc/UI'
 import KeyCommand from './Opt/Opt.KeyCommand'
 import DeviceOpt from './Opt/Socket/DeviceOpt'
 import WebSocketClient from './Opt/Socket/WebSocketClient'
@@ -15,6 +15,7 @@ import IdxPage from './Opt/IdxPage'
 import WebViewClient from './Opt/Webview2/WebViewClient'
 import T3Utils from './Util/T3Utils'
 import LSUtils from './Util/LSUtils'
+import DocUtil from './Doc/DocUtil';
 const Hvac = {
   App: new App(),
   // Doc: new Doc(),
@@ -22,7 +23,7 @@ const Hvac = {
   Utils: Utils,
   Models: Models,
   // App: new App(),
-  Doc: new Doc(),
+  Doc: new DocUtil(),
   // UI: new UI(),
   KeyCommand: new KeyCommand(),
   // Utils: Utils,
