@@ -6680,8 +6680,7 @@ class BaseShape extends BaseDrawObject {
             QuasarUtil.ShowContextMenu(true);
           default:
             // Handle specific shape types
-            switch (clickedObject.ShapeType) {
-              case shapeTypes.RRect:
+            switch (clickedObject.ShapeType) { 
               case shapeTypes.RRect:
                 if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
                   clickedObject.EMFHash && clickedObject.EMFHash.length) {
