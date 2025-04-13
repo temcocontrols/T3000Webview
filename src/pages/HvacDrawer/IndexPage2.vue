@@ -11,23 +11,16 @@
 }
 
 .side-bar {
-  background-color: #f4f4f4;
+  /* background-color: #f4f4f4; */
   width: 106px;
 }
 
 .work-area {
-
   top: 0px;
   bottom: 0px;
   left: 0px;
   right: 0px;
   width: auto;
-  /* background-color: aquamarine; */
-  /*
-   padding-left: v-bind("documentAreaPosition.workAreaPadding");
-   position: fixed;
-   margin-top: 37px;
-  */
   flex: 1;
   margin-top: 1px;
   position: relative;
@@ -35,17 +28,16 @@
 
 .document-area {
   position: relative;
-  background-color: #e3e4e5;
+  /* background-color: #ebeced; */
   height: 100%;
-  /* background: red; */
-  height: calc(100vh - 38px);
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
 
 .c-ruler {
   width: 20px;
   height: 20px;
-  background-color: #ebeced;
-  /* background-color: blue; */
+  /* background-color: #ebeced; */
   position: absolute;
   overflow: hidden;
   left: 1px;
@@ -55,32 +47,29 @@
 .h-ruler {
   position: absolute;
   overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #416990; */
+  /* background-color: #ebeced; */
   top: 1px;
   left: 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.hRulerWOffset"));
-  height: 20px
+  height: 20px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
 }
 
 .v-ruler {
   position: absolute;
   overflow: hidden;
-  background-color: #ebeced;
-  /* background-color: #0f77de; */
+  /* background-color: #ebeced; */
   width: 20px;
   left: 1px;
   top: 22px;
-  height: calc(100vh - 60px);
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
 
 .hv-grid {
   position: absolute;
-  background-color: #ebeced;
-  /* background-color: #b25b5b; */
+  /* background-color: #ebeced; */
   inset: 22px 0px 0px 22px;
-  /* width: calc(100vw - 166px); */
-  /* height: calc(100vh - 97px); */
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
   overflow: hidden;
 }
 
@@ -89,422 +78,183 @@
   background-color: transparent;
   scrollbar-width: thin;
   inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.wpwWOffset"));
-  height: calc(100vh - 60px);
-  /* overflow: hidden scroll; */
-  overflow: scroll;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
 }
 
 .viewport {
-  /* width: 100%;
-  height: calc(100vh - 36px);
-  overflow: scroll;
-  position: relative;
-  background-image: repeating-linear-gradient(#d2d0d0 0 1px, transparent 1px 100%), repeating-linear-gradient(90deg, #d2d0d0 0 1px, transparent 1px 100%);
-  background-size: 20px 20px; */
-
-  /* background-color: rgb(7, 115, 115); */
-  /* width: calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-  height: calc(100vh - 68px); */
-  width: v-bind("documentAreaPosition.wiewPortWH.width");
-  height: v-bind("documentAreaPosition.wiewPortWH.height");
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
 }
 
 .default-svg {
   width: 100%;
   height: 100%;
-  /* background-color: #0d09ec; */
+}
+
+.main-panel {
+  margin-left: 0px;
+  position: absolute;
+  width: 100%;
+}
+
+#main-toolbar {
+  position: fixed;
+  left: 0;
+  padding-top: 0;
+  padding-left: 0px;
+  z-index: 1;
+  width: 100%;
+  max-height: none;
+  height: 93px;
+}
+
+.left-panel {
+  position: fixed;
+  top: 90px;
+  z-index: 1;
+  bottom: 0;
+  left: 0px;
+  right: 0;
+  overflow: hidden;
+  width: 105px;
+  /* border-right: 1px solid #ddd; */
+  z-index: 4;
+}
+
+.main-panel {
+  margin-left: 0px;
+}
+
+#work-area {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 105px;
+  margin-top: 93px;
+  width: auto;
+}
+
+#document-area {
+  position: relative;
+  height: 100%;
+}
+
+.document-ruler-corner {
+  width: 20px;
+  height: 20px;
+  user-select: none;
+  left: 99px;
+  top: 0px;
+  overflow: hidden;
+  position: absolute;
+}
+
+.document-ruler-top {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 119px;
+  top: 0px;
+  width: 100%;
+  height: 20px;
+}
+
+.document-ruler-left {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 99px;
+  top: 20px;
+  width: 20px;
+  height: auto;
+}
+
+#svg-area {
+  scrollbar-width: thin;
+  position: absolute;
+  left: 119px;
+  top: 20px;
+  width: 100%;
+  height: auto;
+  overflow: hidden scroll;
+  user-select: none;
+  background-color: #ffffff;
+}
+
+.doc-toolbar {
+  background-color: transparent;
+  bottom: 10px;
+  right: 10px;
+  padding-left: 187px;
+  padding-right: 10px;
+  border: none;
+  display: flex;
+  align-items: flex-end;
+  height: auto;
+  width: auto;
+  position: absolute;
+  left: 0;
 }
 </style>
 
 <template>
   <q-page>
-    <div class="full-area">
 
-      <div class="top-area">
-        <!-- Top Toolbar -->
-        <!-- <NewTopBar :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" /> -->
-        <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
-          :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
-          :disable-redo="locked || redoHistory.length < 1" :disable-paste="locked || !clipboardFull" :zoom="zoom" />
-      </div>
-      <div class="main-area">
-        <div class="side-bar" v-if="!locked">
-          <!-- Tools Sidebar -->
-          <ToolsSidebar v-if="!locked" :selected-tool="selectedTool" :images="library.images"
-            :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-            @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-            @tool-dropped="toolDropped" />
-        </div>
-        <div class="work-area">
-          <div class="document-area">
-            <div class="c-ruler"></div>
-            <div class="h-ruler">
-              <HRuler id="h-ruler" :documentArea="documentAreaPosition"></HRuler>
-            </div>
-            <div class="v-ruler">
-              <VRuler id="v-ruler" :documentArea="documentAreaPosition"></VRuler>
-            </div>
-            <div class="hv-grid">
-              <HVGrid id="hv-grid" :documentArea="documentAreaPosition"></HVGrid>
-            </div>
-            <div class="viewport-wrapper" @scroll="handleScroll">
-              <!-- Navigation Buttons -->
-              <div class="flex fixed top-20 ml-10 z-50 nav-btns" :class="{ locked: locked }">
-                <!-- Go Back Button -->
-                <q-btn v-if="grpNav?.length > 1" icon="arrow_back" class="back-btn mr-2" dense round size="md"
-                  color="primary" @click="navGoBack">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong>Go back</strong>
-                  </q-tooltip>
-                </q-btn>
-                <!-- Lock/Unlock Button -->
-                <q-btn :icon="locked ? 'lock_outline' : 'lock_open'" class="lock-btn" flat round dense size="md"
-                  :color="locked ? 'primary' : 'normal'" @click="lockToggle">
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    <strong v-if="!locked">Lock</strong>
-                    <strong v-else>Unlock</strong>
-                  </q-tooltip>
-                </q-btn>
+    <div id="_crossTabClipboardDiv"
+      style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
+      <div id="_IEclipboardDiv" contenteditable="true"></div>
+      <input id="_clipboardInput" type="text" value=" ">
+    </div>
+
+
+    <div id="main-app">
+      <div id="main-panel" class="main-panel">
+        <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
+          :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
+          :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
+          :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+        </NewTopToolBar2>
+        <div class="main-area">
+          <div id="left-panel" class="left-panel">
+            <ToolsSidebar2 v-if="!locked" :selected-tool="selectedTool" :images="library.images"
+              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+              @tool-dropped="toolDropped" />
+          </div>
+
+          <div id="work-area" class="main-panel">
+            <div id="document-area">
+              <div id="c-ruler" class="document-ruler-corner">
               </div>
-              <!-- Viewport Area -->
-              <div class="viewport" tabindex="0" @mousemove="viewportMouseMoved" @click.right="viewportRightClick"
-                @dragover="($event) => {
-                  $event.preventDefault();
-                }
-                  ">
-                <!-- Cursor Icon -->
-                <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
-                  ? selectedTool.icon
-                  : selectedTool.type === 'libItem'
-                    ? 'space_dashboard'
-                    : 'photo'
-                  " size="sm" :style="{
-                    left: cursorIconPos.x + 0 + 'px',
-                    top: cursorIconPos.y + 'px',
-                  }" />
-                <!-- Vue Selecto for Selectable Items -->
-                <vue-selecto ref="selecto" dragContainer=".viewport" :selectableTargets="!locked ? targets : []"
-                  :hitRate="20" :selectByClick="!locked" :selectFromInside="true" :toggleContinueSelect="['shift']"
-                  :ratio="0" :boundContainer="true" :getElementRect="getElementInfo" @dragStart="onSelectoDragStart"
-                  @selectEnd="onSelectoSelectEnd" @dragEnd="onSelectoDragEnd" :dragCondition="selectoDragCondition">
-                </vue-selecto>
-                <!-- Moveable Component for Draggable/Resizable Items -->
-                <div ref="viewport">
-
-                  <div id="svg-area">
-                    <!-- <svg id="default-svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="720" height="540"
-                      xmlns:xlink="http://www.w3.org/1999/xlink" xlink="http://www.w3.org/1999/xlink"
-                      style="position:relative;overflow:hidden;" class="default-svg">
-                      <WallExterior v-for="(item, index) in appState.items.filter(x => x.type === 'Int_Ext_Wall')"
-                        ref="objectsRef" :item="item" :key="item.id + item.type + index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </svg> -->
-
-                    <!-- <div v-for="(item) in appState.items.filter(x => x.type === 'Int_Ext_Wall')" :key="item.id">
-                      <WallExterior
-                        ref="objectsRef" :item="item" :key="item.id + item.type + item.index"
-                        :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                        @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                        @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                      </WallExterior>
-                    </div> -->
-                  </div>
-
-                  <vue-moveable ref="moveable" :draggable="!locked" :resizable="!locked" :rotatable="!locked"
-                    :keepRatio="keepRatio" :target="appState.selectedTargets" :snappable="snappable && !locked"
-                    :snapThreshold="10" :isDisplaySnapDigit="true" :snapGap="true" :snapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :elementSnapDirections="{
-                      top: true,
-                      right: true,
-                      bottom: true,
-                      left: true,
-                    }" :snapDigit="0" :elementGuidelines="appState.elementGuidelines" :origin="true"
-                    :throttleResize="0" :throttleRotate="0" rotationPosition="top" :originDraggable="true"
-                    :originRelative="true" :defaultGroupRotate="0" defaultGroupOrigin="50% 50%"
-                    :padding="{ left: 0, top: 0, right: 0, bottom: 0 }" @clickGroup="onClickGroup"
-                    @drag-start="onDragStart" @drag="onDrag" @drag-end="onDragEnd" @dragGroupStart="onDragGroupStart"
-                    @dragGroup="onDragGroup" @dragGroupEnd="onDragGroupEnd" @resizeStart="onResizeStart"
-                    @resize="onResize" @resizeEnd="onResizeEnd" @rotateStart="onRotateStart" @rotate="onRotate"
-                    @rotateEnd="onRotateEnd" @resizeGroupStart="onResizeGroupStart" @resizeGroup="onResizeGroup"
-                    @resizeGroupEnd="onResizeGroupEnd" @rotateGroupStart="onRotateGroupStart"
-                    @rotateGroup="onRotateGroup" @rotateGroupEnd="onRotateGroupEnd"
-                    :renderDirections='["n", "nw", "ne", "s", "se", "sw", "e", "w"]'>
-                  </vue-moveable>
-
-                  <!-- Context Menu -->
-                  <q-menu v-if="contextMenuShow" touch-position target=".moveable-area" context-menu>
-                    <q-list>
-                      <!-- Copy Option -->
-                      <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Copy</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + C</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Duplicate Option -->
-                      <q-item dense clickable v-close-popup @click="duplicateSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Duplicate</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + D</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Group Option -->
-                      <q-item dense clickable v-close-popup @click="groupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Group</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-item dense clickable v-close-popup @click="ungroupSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="join_inner" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Ungroup</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + Shift + G</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Add to Library Option -->
-                      <q-item dense clickable v-close-popup @click="addToLibrary">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Add to Library</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + L</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Bring to Front Option -->
-                      <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Bring to front</q-item-section>
-                      </q-item>
-                      <!-- Send to Back Option -->
-                      <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section class="py-2">Send to Back</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Rotate 90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected()">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate 90°</q-item-section>
-                      </q-item>
-                      <!-- Rotate -90 Degrees Option -->
-                      <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Rotate -90°</q-item-section>
-                      </q-item>
-                      <q-separator />
-                      <!-- Delete Option -->
-                      <q-item dense clickable v-close-popup @click="deleteSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label>Delete</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-chip>Delete</q-chip>
-                        </q-item-section>
-                      </q-item>
-                      <!-- Weld Option -->
-                      <q-item dense clickable v-close-popup @click="weldSelected">
-                        <q-item-section avatar>
-                          <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
-                        </q-item-section>
-                        <q-item-section>Weld Selected</q-item-section>
-                        <q-item-section side>
-                          <q-chip>Ctrl + B</q-chip>
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-
-                  <div v-for="(item, index) in appState.items" :key="item.id" ref="targets"
-                    :style="`position: absolute; transform: translate(${item.translate[0]}px, ${item.translate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY}); width: ${item.width}px; height: ${item.height}px; z-index: ${item.zindex};`"
-                    :id="`moveable-item-${item.id}`" @mousedown.right="selectByRightClick" class="moveable-item-wrapper"
-                    :class="`moveable-item-index-${index}`">
-
-                    <q-menu v-if="!locked && appState.selectedTargets?.length === 1" touch-position context-menu>
-                      <q-list>
-                        <q-item dense clickable v-close-popup @click="linkT3EntryDialogAction">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="link" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Link</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label>Copy</q-item-label>
-                          </q-item-section>
-                          <q-item-section side>
-                            <q-chip>Ctrl + C</q-chip>
-                          </q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="duplicateObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="file_copy" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Duplicate</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="rotate90(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate 90°</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="rotate90(item, true)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Rotate -90°</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="flipH(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Flip horizontal</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="flipV(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip" color="grey-7" text-color="white"
-                              style="transform: rotate(90deg)" />
-                          </q-item-section>
-                          <q-item-section>Flip vertical</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="bringToFront(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Bring to front</q-item-section>
-                        </q-item>
-                        <q-item dense clickable v-close-popup @click="sendToBack(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Send to Back</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable>
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="transform" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Convert to</q-item-section>
-                          <q-item-section side>
-                            <q-icon name="keyboard_arrow_right" />
-                          </q-item-section>
-                          <q-menu anchor="top end" self="top start" auto-close>
-                            <q-list>
-                              <q-item v-for="t in tools.filter(
-                                (i) =>
-                                  i.name !== item.type &&
-                                  !['Duct', 'Pointer', 'Text'].includes(i.name)
-                              )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
-                                <q-item-section avatar>
-                                  <q-avatar size="sm" :icon="t.icon" color="grey-7" text-color="white" />
-                                </q-item-section>
-                                <q-item-section>{{ t.name }}</q-item-section>
-                              </q-item>
-                            </q-list>
-                          </q-menu>
-                        </q-item>
-                        <q-separator />
-                        <q-item dense clickable v-close-popup @click="removeObject(item)">
-                          <q-item-section avatar>
-                            <q-avatar size="sm" icon="remove" color="grey-7" text-color="white" />
-                          </q-item-section>
-                          <q-item-section>Remove</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-
-                    <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
-                      :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateWeldModel" />
-
-                    <CanvasShape v-if="
-                      item.cat === 'General' ||
-                      item.type === 'Weld_General' ||
-                      item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
-                      :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
-                      @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
-                      @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
-                    </CanvasShape>
-
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
-                      :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
-                      @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
-                      @update-weld-model="updateJoinWall">
-                    </WallExterior>
-
-                  </div>
-                </div>
+              <div id="h-ruler" class="document-ruler-top">
               </div>
+              <div id="v-ruler" class="document-ruler-left">
+              </div>
+              <div id="svg-area" class="svg-area">
+              </div>
+            </div>
+            <div id="doc-toolbar" class="doc-toolbar">
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Object config sidebar -->
-    <ObjectConfig :object="appState.items[appState.activeItemIndex]"
-      v-if="!locked && appState.items[appState.activeItemIndex] && (appState.activeItemIndex || appState.activeItemIndex === 0)"
-      @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+    <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
+      (appState.activeItemIndex || appState.activeItemIndex === 0) &&
+      (appState.selectedTargets.length >
+        0)" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"
+      @DisplayFieldValueChanged="DisplayFieldValueChanged" />
   </q-page>
-  <!-- Link entry dialog -->
+
   <q-dialog v-model="linkT3EntryDialog.active">
     <q-card style="min-width: 650px">
       <q-card-section class="row items-center q-pb-none">
@@ -561,6 +311,66 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="insertT3EntryDialog.active">
+    <!-- <a>This is a test q-dialog></a> -->
+    <q-card style="min-width: 650px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Insert Entry</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section style="height: 70vh" class="scroll">
+        <div class="flex">
+          <q-btn icon="refresh" flat @click="reloadPanelsData">
+            <q-tooltip anchor="top middle" self="bottom middle">
+              <strong>Reload panels data</strong>
+            </q-tooltip>
+          </q-btn>
+          <q-select :option-label="entryLabel" label="Type or select Entry" option-value="id" filled use-input
+            hide-selected fill-input input-debounce="0" v-model="insertT3EntryDialog.data" :options="selectPanelOptions"
+            @filter="selectPanelFilterFn" class="grow" @update:model-value="insertT3EntrySelect(value)" autofocus
+            @focus="insertT3DefaultLoadData">
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section class="grow">
+                  <q-item-label>{{ entryLabel(scope.opt) }}</q-item-label>
+                </q-item-section>
+                <q-item-section avatar class="pl-1 min-w-0">
+                  <q-chip size="sm" icon="label_important">Panel: {{ scope.opt.pid }}</q-chip>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+        <div class="flex flex-col items-center mt-4">
+          <q-circular-progress v-if="T3000_Data.loadingPanel !== null" indeterminate show-value
+            :value="loadingPanelsProgress" size="270px" :thickness="0.22" color="light-blue" track-color="grey-3"
+            class="q-ma-md overflow-hidden">
+            <div class="text-xl text-center">
+              <div>{{ loadingPanelsProgress }}%</div>
+              <div>
+                Loading Panel #{{
+                  T3000_Data.panelsList[T3000_Data.loadingPanel].panel_number
+                }}
+              </div>
+            </div>
+          </q-circular-progress>
+        </div>
+      </q-card-section>
+
+      <!-- <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+      </q-card-actions> -->
+    </q-card>
+  </q-dialog>
+
   <!-- Edit Gauge/Dial dialog -->
   <GaugeSettingsDialog v-model:active="gaugeSettingsDialog.active" :data="gaugeSettingsDialog.data"
     @saved="gaugeSettingsSave" />
@@ -580,25 +390,35 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="deviceModel.active">
+    <q-card style="min-width: 900px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Devices List</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+      <q-separator />
+      <DeviceInfo :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel" @testSendMsg="testSendMsg">
+      </DeviceInfo>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, toRaw, triggerRef } from "vue";
+
+import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
 import { useQuasar, useMeta } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
-import { VueSelecto } from "vue3-selecto";
 import KeyController /* , { getCombi, getKey } */ from "keycon";
 import { cloneDeep } from "lodash";
-import panzoom from "panzoom";
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
-import ToolsSidebar from "../../components/ToolsSidebar.vue";
+import ToolsSidebar2 from "../../components/ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-// import { tools, T3_Types, getObjectActiveValue, user, globalNav, demoDeviceData } from "../../lib/common";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
-
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -611,38 +431,39 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
+import DeviceInfo from "src/components/DeviceInfo.vue";
+import NewTopToolBar2 from "src/components/NewTopToolBar2.vue";
+
+// New import for Data
+import Data from "src/lib/T3000/Hvac/Data/Data";
+import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
+import Hvac from "src/lib/T3000/Hvac/Hvac"
+import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
+
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
-  savedNotify
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
+  savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
+import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
+
+// const isBuiltInEdge = ref(false);
 
 // Meta information for the application
 // Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-// Ruler & Grid default value
-const documentAreaPosition = ref(
-  {
-    workAreaPadding: "110px", hRulerWOffset: "128px", wpwWOffset: "128px", wpWOffset: "136px",
-    hRuler: { width: 0, height: 20 },
-    vRuler: { width: 20, height: 0 },
-    hvGrid: { width: 0, height: 0 },
-
-    //width:  calc(100vw - v-bind("documentAreaPosition.wpWOffset"));
-    //height: calc(100vh - 68px);
-    wiewPortWH: { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" }
-  });
-
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
-const moveable = ref(null); // Reference to the moveable component instance
+// const moveable = ref(null); // Reference to the moveable component instance
 const selecto = ref(null); // Reference to the selecto component instance
 // const viewport = ref(null); // Reference to the viewport element
 const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 // const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+
+// const insertT3EntryDialog = ref({ activate: false, data: {} })
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -658,9 +479,9 @@ const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: f
 // const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
 
-// Panel options for selection
+// // Panel options for selection
 // const selectPanelOptions = ref(T3000_Data.value.panelsData);
-let getPanelsInterval = null; // Interval for fetching panel data
+// let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
@@ -673,7 +494,11 @@ const loadingPanelsProgress = computed(() => {
 
 const clipboardFull = ref(false); // State of the clipboard
 
+
+const zoom = Hvac.IdxPage.zoom;
+
 // Dev mode only
+
 if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
@@ -683,7 +508,7 @@ if (process.env.DEV) {
 }
 
 // Initialization of empty project and library structures
-let panzoomInstance = null;
+// let panzoomInstance = null;
 // const emptyProject = {
 //   version: process.env.VERSION,
 //   items: [],
@@ -705,296 +530,480 @@ let panzoomInstance = null;
 // State references for the library and application state
 // const library = ref(cloneDeep(emptyLib));
 // const appState = ref(cloneDeep(emptyProject));
-const undoHistory = ref([]); // History for undo actions
-const redoHistory = ref([]); // History for redo actions
+// const undoHistory = ref([]); // History for undo actions
+// const redoHistory = ref([]); // History for redo actions
 // const locked = ref(false); // State to lock or unlock the interface
 // const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-const handleScroll = (event) => {
+// const rulersGridVisible = ref(true);
 
-  // Reset the h,v ruler's width for scrolling
-  documentAreaPosition.value.vRuler.height += event.target.scrollTop;
-  documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
+// const deviceModel = ref({ active: false, data: {} });
+// const deviceAppState = ref([]);
 
-  // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
-  // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+// const handleScroll = (event) => {
 
-  // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+//   // Reset the h,v ruler's width for scrolling
+//   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
+//   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
 
-  document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
-  document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
-};
+//   // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
+//   // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
+
+//   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
+
+//   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
+//   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+// };
 
 // Lifecycle hook for component mount
 onMounted(() => {
-  // Set global navigation properties
-  globalNav.value.title = "HVAC Drawer";
-  globalNav.value.back = null;
-  globalNav.value.home = "/";
-  isLoggedIn(); // Check if user is logged in
 
-  // Restore app state from local storage if not in a webview
-  if (!window.chrome?.webview?.postMessage) {
-    const localState = localStorage.getItem("appState");
-    if (localState) {
-      appState.value = JSON.parse(localState);
-    }
-  }
+  T3000.Hvac.UI.Initialize($q); // Initialize the HVAC UI
 
-  // Save the state before the window is unloaded
-  window.addEventListener("beforeunload", function (event) {
-    save();
-  });
+  // // Set global navigation properties
+  // globalNav.value.title = "HVAC Drawer";
+  // globalNav.value.back = null;
+  // globalNav.value.home = "/";
 
-  // Initialize panzoom for viewport
-  panzoomInstance = panzoom(viewport.value, {
-    maxZoom: 4,
-    minZoom: 0.1,
-    zoomDoubleClickSpeed: 1,
-    filterKey: function (/* e, dx, dy, dz */) {
-      // don't let panzoom handle this event:
-      return true;
-    },
-    beforeMouseDown: function (e) {
-      // allow mouse-down panning only if altKey is down. Otherwise - ignore
-      var shouldIgnore = !e.altKey;
-      return shouldIgnore;
-    },
-    // Add the focal point for zooming to be the center of the viewport
-    transformOrigin: { x: 0.5, y: 0.5 },
-  });
+  // isLoggedIn(); // Check if user is logged in
 
-  // Update the viewport transform on panzoom transform event
-  panzoomInstance.on("transform", function (e) {
+  // // Restore app state from local storage if not in a webview
+  // if (!window.chrome?.webview?.postMessage) {
+  //   const localState = localStorage.getItem("appState");
+  //   if (localState) {
+  //     appState.value = JSON.parse(localState);
+  //     rulersGridVisible.value = appState.value.rulersGridVisible;
+  //   }
+  // }
 
-    const pzTrs = e.getTransform();
-    // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-    // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+  // if (window.chrome?.webview) {
+  //   isBuiltInEdge.value = true;
+  //   documentAreaPosition.value.widthOffset = '128px';
+  //   documentAreaPosition.value.heightOffset = '68px';
 
-    appState.value.viewportTransform = e.getTransform();
-    triggerRef(appState);
+  //   viewportMargins.top = 56;
+  // }
+  // else {
+  //   isBuiltInEdge.value = false;
+  //   viewportMargins.top = 95 + 20 + 2;
+  // }
 
-    restDocumentAreaPosition(e.getTransform());
-  });
+  // // Save the state before the window is unloaded
+  // window.addEventListener("beforeunload", function (event) {
+  //   // save();
+  //   Hvac.IdxPage.clearAutoSaveInterval();
+  //   Hvac.WsClient.clearInitialDataInterval();
+  // });
 
-  // Request initial data and panels list if in a webview
-  window.chrome?.webview?.postMessage({
-    action: 1, // GET_INITIAL_DATA
-  });
-  window.chrome?.webview?.postMessage({
-    action: 4, // GET_PANELS_LIST
-  });
+  // // Initialize panzoom for viewport
+  // panzoomInstance = panzoom(viewport.value, {
+  //   maxZoom: 4,
+  //   minZoom: 0.1,
+  //   zoomDoubleClickSpeed: 1,
+  //   filterKey: function (/* e, dx, dy, dz */) {
+  //     // don't let panzoom handle this event:
+  //     return true;
+  //   },
+  //   beforeMouseDown: function (e) {
+  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
+  //     var shouldIgnore = !e.altKey;
+  //     return shouldIgnore;
+  //   },
+  //   // Add the focal point for zooming to be the center of the viewport
+  //   // transformOrigin: { x: 0.5, y: 0.5 },
+  // });
 
-  // Set intervals for fetching panel and entry data if in a webview
-  if (window.chrome?.webview?.postMessage) {
-    getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
-      action: 4, // GET_PANELS_LIST
-    });
+  // // Update the viewport transform on panzoom transform event
+  // panzoomInstance.on("transform", function (e) {
 
-    setInterval(function () {
-      if (getLinkedEntries().length === 0) return;
-      window.chrome?.webview?.postMessage({
-        action: 6, // GET_ENTRIES
-        data: getLinkedEntries().map((ii) => {
-          return {
-            panelId: ii.t3Entry.pid,
-            index: ii.t3Entry.index,
-            type: T3_Types[ii.t3Entry.type],
-          };
-        }),
-      });
-    }, 10000);
-  }
+  //   const pzTrs = e.getTransform();
+  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
+  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
+
+  //   appState.value.viewportTransform = e.getTransform();
+  //   triggerRef(appState);
+
+  //   restDocumentAreaPosition(e.getTransform());
+  // });
+
+  //Hvac.IdxPage.initQuasar($q);
+
+  //Hvac.IdxPage.initPage();
+
+
+  // // Request initial data and panels list if in a webview
+  // window.chrome?.webview?.postMessage({
+  //   action: 1, // GET_INITIAL_DATA
+  // });
+
+  // window.chrome?.webview?.postMessage({
+  //   action: 4, // GET_PANELS_LIST
+  // });
+
+  // // Set intervals for fetching panel and entry data if in a webview
+  // if (window.chrome?.webview?.postMessage) {
+  //   getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
+  //     action: 4, // GET_PANELS_LIST
+  //   });
+
+  //   setInterval(function () {
+  //     if (getLinkedEntries().length === 0) return;
+  //     window.chrome?.webview?.postMessage({
+  //       action: 6, // GET_ENTRIES
+  //       data: getLinkedEntries().map((ii) => {
+  //         return {
+  //           panelId: ii.t3Entry.pid,
+  //           index: ii.t3Entry.index,
+  //           type: T3_Types[ii.t3Entry.type],
+  //         };
+  //       }),
+  //     });
+  //   }, 10000);
+  // }
 
   // Refresh moveable guides after a short delay
-  setTimeout(() => {
-    refreshMoveableGuides();
-  }, 100);
+  // setTimeout(() => {
+  //   refreshMoveableGuides();
+  // }, 100);
 
-  // Viewport wrapper scroll event listener
-  const div = document.querySelector('.viewport-wrapper');
-  div.addEventListener('scroll', handleScroll);
+  // // Viewport wrapper scroll event listener
+  // const div = document.querySelector('.viewport-wrapper');
+  // div.addEventListener('scroll', handleScroll);
 
-  // Init ruler and grid default value
-  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+  // // Init ruler and grid default value
+  // documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+  // documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+  // documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+
+  // If accessed from an external browser
+  // initExternalBrowserOpt();
 });
+
+// function initExternalBrowserOpt() {
+
+//   if (isBuiltInEdge.value) {
+//     return;
+//   }
+
+//   // connect to the ws://localhost:9104 websocket server
+//   Hvac.WsClient.connect();
+
+//   // check if need to show the device list dialog
+//   setTimeout(() => {
+//     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//     if (!currentDevice) {
+//       deviceModel.value.active = true;
+//     }
+//     else {
+//       deviceModel.value.active = false;
+//       deviceModel.value.data = currentDevice;
+
+//       console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+
+//       // load device appstate
+//       //Hvac.DeviceOpt.refreshDeviceAppState();
+//       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
+
+//       // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+//       // console.log('=== indexPage.deviceModel changed', deviceModel.value);
+//     }
+//   }, 1000);
+
+//   setInterval(function () {
+//     if (getLinkedEntries().length === 0) return;
+
+//     const data = getLinkedEntries().map((ii) => {
+//       return {
+//         panelId: ii.t3Entry.pid,
+//         index: ii.t3Entry.index,
+//         type: T3_Types[ii.t3Entry.type],
+//       };
+//     });
+
+//     Hvac.WsClient.GetEntries(data);
+
+//     /*
+//     window.chrome?.webview?.postMessage({
+//       action: 6, // GET_ENTRIES
+//       data: getLinkedEntries().map((ii) => {
+//         return {
+//           panelId: ii.t3Entry.pid,
+//           index: ii.t3Entry.index,
+//           type: T3_Types[ii.t3Entry.type],
+//         };
+//       }),
+//     });
+//     */
+//   }, 10000);
+// }
+
+function updateDeviceModel(isActive, data) {
+  console.log('= Idx updateDeviceModel ===', isActive, data)
+  deviceModel.value.active = isActive;
+  deviceModel.value.data = data;
+
+  // load device appstate
+  // Hvac.DeviceOpt.refreshDeviceAppState();
+}
+
+function showMoreDevices() {
+
+  // clear the dirty selection data
+  Hvac.DeviceOpt.clearDirtyCurrentDevice();
+
+  deviceModel.value.active = true;
+
+  // clear the shape selection
+  appState.value.selectedTarget = [];
+  appState.value.selectedTargets = [];
+  appState.value.activeItemIndex = null;
+
+  // refresh the graphic panel data
+  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+}
+
+/*
+function refreshDeviceAppState() {
+  const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
+  // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
+
+  if (existAppState) {
+    // appState.value = cloneDeep(existAppState);
+    appState.value = existAppState;
+  }
+  else {
+    appState.value = cloneDeep(emptyProject);
+    appState.value.rulersGridVisible = rulersGridVisible.value;
+  }
+}
+*/
+
+// function saveDeviceAppState(clearSelected) {
+//   // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+
+//   if (clearSelected) {
+//     appState.value.selectedTargets = [];
+//   }
+
+//   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
+
+//   // Post a save action to T3
+//   const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+//   const panelId = currentDevice.deviceId;
+//   const graphicId = currentDevice.graphic;
+
+//   Hvac.WsClient.SaveGraphic(panelId, graphicId);
+// }
+
+onBeforeUnmount(() => {
+
+})
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
-  if (panzoomInstance?.dispose) return;
-  panzoomInstance.dispose();
+  // appState.value.selectedTargets = [];
+
+  // if (panzoomInstance?.dispose) return;
+  // panzoomInstance?.dispose();
+
+  Hvac.IdxPage.clearAutoSaveInterval();
+  Hvac.WsClient.clearInitialDataInterval();
+  Hvac.IdxPage.clearIdx();
 });
 
 // Handle messages from the webview
-window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("Received a message from webview", arg.data);
-  if ("action" in arg.data) {
-    // Handle various actions based on message data
-    if (arg.data.action === "GET_PANELS_LIST_RES") {
-      if (arg.data.data?.length) {
-        T3000_Data.value.panelsList = arg.data.data;
-        T3000_Data.value.loadingPanel = 0;
-        window.chrome?.webview?.postMessage({
-          action: 0, // GET_PANEL_DATA
-          panelId: T3000_Data.value.panelsList[0].panel_number,
-        });
-      }
-    } else if (arg.data.action === "UPDATE_ENTRY_RES") {
-      // Handle update entry response
-    } else if (arg.data.action === "GET_INITIAL_DATA_RES") {
-      if (arg.data.data) {
-        arg.data.data = JSON.parse(arg.data.data);
-      }
-      appState.value = arg.data.data;
-      grpNav.value = [arg.data.entry];
-      if (arg.data.library) {
-        arg.data.library = JSON.parse(arg.data.library);
-        library.value = arg.data.library;
-      }
-      setTimeout(() => {
-        refreshMoveableGuides();
-      }, 100);
-    } else if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-      if (arg.data.data) {
-        arg.data.data = JSON.parse(arg.data.data);
-      }
-      appState.value = arg.data.data;
-      if (grpNav.value.length > 1) {
-        const navItem = grpNav.value[grpNav.value.length - 2];
-        if (
-          navItem.index !== arg.data.entry.index ||
-          navItem.pid !== arg.data.entry.pid
-        ) {
-          grpNav.value.push(arg.data.entry);
-        } else {
-          grpNav.value.pop();
-        }
-      } else {
-        grpNav.value.push(arg.data.entry);
-      }
+// window.chrome?.webview?.addEventListener("message", (arg) => {
+//   console.log("= Idx Received a message from webview", arg.data.action, arg.data);
 
-      setTimeout(() => {
-        refreshMoveableGuides();
-      }, 100);
-    } else if (arg.data.action === "GET_PANEL_DATA_RES") {
-      if (getPanelsInterval && arg.data?.panel_id) {
-        clearInterval(getPanelsInterval);
-      }
-      if (arg.data?.panel_id) {
-        if (
-          T3000_Data.value.loadingPanel !== null &&
-          T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1
-        ) {
-          T3000_Data.value.loadingPanel++;
-          const index = T3000_Data.value.loadingPanel;
-          window.chrome?.webview?.postMessage({
-            action: 0, // GET_PANEL_DATA
-            panelId: T3000_Data.value.panelsList[index].panel_number,
-          });
-        }
-        if (
-          T3000_Data.value.loadingPanel !== null &&
-          T3000_Data.value.loadingPanel ===
-          T3000_Data.value.panelsList.length - 1
-        ) {
-          T3000_Data.value.loadingPanel = null;
-        }
+//   // Handle various actions based on message data
+//   if (!"action" in arg.data) return;
 
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-        T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-          arg.data.data
-        );
-        T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-          (item) => item.pid !== arg.data.panel_id
-        );
-        T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(
-          arg.data.ranges
-        );
-
-        refreshLinkedEntries(arg.data.data);
-      }
-    } else if (arg.data.action === "GET_ENTRIES_RES") {
-      arg.data.data.forEach((item) => {
-        const itemIndex = T3000_Data.value.panelsData.findIndex(
-          (ii) =>
-            ii.index === item.index &&
-            ii.type === item.type &&
-            ii.pid === item.pid
-        );
-        if (itemIndex !== -1) {
-          T3000_Data.value.panelsData[itemIndex] = item;
-        }
-      });
-
-      if (!linkT3EntryDialog.value.active) {
-        selectPanelOptions.value = T3000_Data.value.panelsData;
-      }
-      refreshLinkedEntries(arg.data.data);
-    } else if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-      if (arg.data.data?.status === true) {
-        if (!savedNotify.value) return;
-        $q.notify({
-          message: "Saved successfully.",
-          color: "primary",
-          icon: "check_circle",
-          actions: [
-            {
-              label: "Dismiss",
-              color: "white",
-              handler: () => {
-                /* ... */
-              },
-            },
-          ],
-        });
-      } else {
-        $q.notify({
-          message: "Error, not saved!",
-          color: "negative",
-          icon: "error",
-          actions: [
-            {
-              label: "Dismiss",
-              color: "white",
-              handler: () => {
-                /* ... */
-              },
-            },
-          ],
-        });
-      }
-    } else if (arg.data.action === "SAVE_IMAGE_RES") {
-      library.value.imagesCount++;
-      library.value.images.push({
-        id: "IMG-" + library.value.imagesCount,
-        name: arg.data.data.name,
-        path: arg.data.data.path,
-        online: false,
-      });
-      saveLib();
-    }
+/* move to WebViewClient.ts
+if (arg.data.action === "GET_PANELS_LIST_RES") {
+  if (arg.data.data?.length) {
+    T3000_Data.value.panelsList = arg.data.data;
+    T3000_Data.value.loadingPanel = 0;
+    window.chrome?.webview?.postMessage({
+      action: 0, // GET_PANEL_DATA
+      panelId: T3000_Data.value.panelsList[0].panel_number,
+    });
   }
-});
+}
+*/
+
+// if (arg.data.action === "UPDATE_ENTRY_RES") {
+//   // Handle update entry response
+// }
+
+/*
+if (arg.data.action === "GET_INITIAL_DATA_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
+  }
+
+  appState.value = arg.data.data;
+  rulersGridVisible.value = appState.value.rulersGridVisible;
+
+  grpNav.value = [arg.data.entry];
+  if (arg.data.library) {
+    arg.data.library = JSON.parse(arg.data.library);
+    library.value = arg.data.library;
+  }
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
+
+/*
+if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
+  if (arg.data.data) {
+    arg.data.data = JSON.parse(arg.data.data);
+  }
+  appState.value = arg.data.data;
+  if (grpNav.value.length > 1) {
+    const navItem = grpNav.value[grpNav.value.length - 2];
+    if (
+      navItem.index !== arg.data.entry.index ||
+      navItem.pid !== arg.data.entry.pid
+    ) {
+      grpNav.value.push(arg.data.entry);
+    } else {
+      grpNav.value.pop();
+    }
+  } else {
+    grpNav.value.push(arg.data.entry);
+  }
+
+  setTimeout(() => {
+    IdxUtils.refreshMoveableGuides();
+  }, 100);
+}
+*/
+
+// if (arg.data.action === "GET_PANEL_DATA_RES") {
+//   // if (getPanelsInterval && arg.data?.panel_id) {
+//   //   clearInterval(getPanelsInterval);
+//   // }
+
+//   if (arg.data?.panel_id) {
+//     Hvac.IdxPage.clearGetPanelsInterval();
+//   }
+
+//   if (arg.data?.panel_id) {
+
+//     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
+//     if (check1) {
+//       T3000_Data.value.loadingPanel++;
+//       const index = T3000_Data.value.loadingPanel;
+//       window.chrome?.webview?.postMessage({
+//         action: 0, // GET_PANEL_DATA
+//         panelId: T3000_Data.value.panelsList[index].panel_number,
+//       });
+//     }
+
+//     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
+//     if (check2) {
+//       T3000_Data.value.loadingPanel = null;
+//     }
+
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
+
+//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
+//       arg.data.data
+//     );
+
+//     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
+
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
+//       (item) => item.pid !== arg.data.panel_id
+//     );
+
+//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
+
+//     refreshLinkedEntries(arg.data.data);
+//   }
+// }
+
+// if (arg.data.action === "GET_ENTRIES_RES") {
+//   arg.data.data.forEach((item) => {
+//     const itemIndex = T3000_Data.value.panelsData.findIndex(
+//       (ii) =>
+//         ii.index === item.index &&
+//         ii.type === item.type &&
+//         ii.pid === item.pid
+//     );
+//     if (itemIndex !== -1) {
+//       T3000_Data.value.panelsData[itemIndex] = item;
+//     }
+//   });
+
+//   if (!linkT3EntryDialog.value.active) {
+//     selectPanelOptions.value = T3000_Data.value.panelsData;
+//   }
+//   refreshLinkedEntries(arg.data.data);
+// }
+
+// if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
+//   if (arg.data.data?.status === true) {
+//     if (!savedNotify.value) return;
+//     $q.notify({
+//       message: "Saved successfully.",
+//       color: "primary",
+//       icon: "check_circle",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   } else {
+//     $q.notify({
+//       message: "Error, not saved!",
+//       color: "negative",
+//       icon: "error",
+//       actions: [
+//         {
+//           label: "Dismiss",
+//           color: "white",
+//           handler: () => {
+//             /* ... */
+//           },
+//         },
+//       ],
+//     });
+//   }
+// }
+
+// if (arg.data.action === "SAVE_IMAGE_RES") {
+//   library.value.imagesCount++;
+//   library.value.images.push({
+//     id: "IMG-" + library.value.imagesCount,
+//     name: arg.data.data.name,
+//     path: arg.data.data.path,
+//     online: false,
+//   });
+//   saveLib();
+// }
+
+// });
 
 function viewportMouseMoved(e) {
-  // T3000.Hvac.Utils.Log("0 Viewport mouse moved", e);
-
   // Move object icon with mouse
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
   // console.log('Viewport mouse moved cursorIconPos:', "mouse",
-  //   [e.clientX, e.clientY], "cursor", [cursorIconPos.value.x, cursorIconPos.value.y], "vm", [viewportMargins.left, viewportMargins.top],
-  //   'appState.vp', [appState.value.viewportTransform.x, appState.value.viewportTransform.y]);
 
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
@@ -1026,144 +1035,19 @@ function viewportMouseMoved(e) {
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
     appState.value.items[appState.value.activeItemIndex].width = distance;
-
-    // appState.value.items[appState.value.activeItemIndex - 1].rotate = angle;
-
-    T3000.Hvac.App.AutoJoinWall(appState, mouseX, mouseY, angle, distance);
-
     refreshObjects();
   }
 }
-
-// Handles the start of a selecto drag event
-function onSelectoDragStart(e) {
-  T3000.Hvac.Utils.Log('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
-  T3000.Hvac.Utils.Log('1 onSelectoDragStart', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
-
-  const target = e.inputEvent.target;
-  if (
-    moveable.value.isMoveableElement(target) ||
-    appState.value.selectedTargets.some(
-      (t) => t === target || t.contains(target)
-    )
-  ) {
-    e.stop();
-  }
-}
-
-// Ends a selecto drag event and handles object drawing based on tool type
-function onSelectoDragEnd(e) {
-  T3000.Hvac.Utils.Log('2 onSelectoDragEnd', "e=", e);
-  T3000.Hvac.Utils.Log('2 onSelectoDragEnd', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
-
-  const size = { width: e.rect.width, height: e.rect.height };
-  const pos = {
-    clientX: e.clientX,
-    clientY: e.clientY,
-    top: e.rect.top,
-    left: e.rect.left,
-  };
-  if (
-    (selectedTool.value.name === "Pointer" ||
-      size.width < 20 ||
-      size.height < 20) &&
-    !continuesObjectTypes.includes(selectedTool.value.name)
-  ) {
-    isDrawing.value = false;
-    return;
-  }
-  if (
-    continuesObjectTypes.includes(selectedTool.value.name) &&
-    size.height < 20
-  ) {
-    size.height = selectedTool.value.height;
-  }
-
-  // Check has previous drawed wall
-  const previousWall = appState.value.items
-    .filter((item) => item.type === "Int_Ext_Wall")
-    .pop();
-
-  console.log('onSelectoDragEnd', "previousWall=", previousWall);
-
-  // if (previousWall != null && previousWall !== undefined) {
-  //   previousWall.width += 10;
-  // }
-
-  const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item.type)) {
-    setTimeout(() => {
-      isDrawing.value = true;
-      appState.value.selectedTargets = [];
-      appState.value.items[appState.value.activeItemIndex].rotate = 0;
-      startTransform.value = cloneDeep(item.translate);
-    }, 100);
-  }
-}
-
-// Handles the end of a selecto select event
-function onSelectoSelectEnd(e) {
-  T3000.Hvac.Utils.Log('3 onSelectoSelectEnd', "e=", e, e.isDragStart);
-  T3000.Hvac.Utils.Log('3 onSelectoSelectEnd', "AppState=", appState.value.items, "ActiveItemIndex=", appState.value.activeItemIndex);
-
-  appState.value.selectedTargets = e.selected;
-  if (e.selected && !e.inputEvent.ctrlKey) {
-    const selectedItems = appState.value.items.filter((i) =>
-      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
-    );
-    const selectedGroups = [
-      ...new Set(
-        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
-      ),
-    ];
-    selectedGroups.forEach((gId) => {
-      selectGroup(gId);
-    });
-  }
-
-  if (appState.value.selectedTargets.length === 1) {
-    appState.value.activeItemIndex = appState.value.items.findIndex(
-      (item) =>
-        `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
-    );
-  } else {
-    appState.value.activeItemIndex = null;
-  }
-
-  if (e.isDragStart) {
-    e.inputEvent.preventDefault();
-
-    setTimeout(() => {
-      moveable.value.dragStart(e.inputEvent);
-    });
-  }
-
-  if (appState.value.selectedTargets.length > 1 && !locked.value) {
-    setTimeout(() => {
-      contextMenuShow.value = true;
-    }, 100);
-  } else {
-    contextMenuShow.value = false;
-  }
-
-  refreshMoveableGuides(); // Refresh the moveable guidelines after selection
-
-  setTimeout(() => {
-    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
-    T3000.Hvac.App.StartAutoJoinWall(appState);
-  }, 100);
-}
-
-// Refreshes the guidelines for the moveable elements
-function refreshMoveableGuides() {
-  appState.value.elementGuidelines = [];
-  const lines = document.querySelectorAll(
-    `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
-  );
-  Array.from(lines).forEach(function (el) {
-    appState.value.elementGuidelines.push(el);
-  });
-}
+// // Refreshes the guidelines for the moveable elements
+// function refreshMoveableGuides() {
+//   appState.value.elementGuidelines = [];
+//   const lines = document.querySelectorAll(
+//     `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
+//   );
+//   Array.from(lines).forEach(function (el) {
+//     appState.value.elementGuidelines.push(el);
+//   });
+// }
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
@@ -1181,7 +1065,8 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      save(); // Save the current state
+      console.log("= IdxPage addActionToHistory", title);
+      save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1226,7 +1111,9 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    save(); // Save the state after drag end
+
+    console.log('= IdxPage onDragEnd:', e, item.translate);
+    save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -1259,6 +1146,70 @@ function onDragGroupEnd(e) {
   } else {
     refreshObjects(); // Refresh objects
   }
+}
+
+// Handles the start of a selecto drag event
+function onSelectoDragStart(e) {
+  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
+  const target = e.inputEvent.target;
+  if (
+    moveable.value.isMoveableElement(target) ||
+    appState.value.selectedTargets.some(
+      (t) => t === target || t.contains(target)
+    )
+  ) {
+    e.stop();
+  }
+}
+
+// Handles the end of a selecto select event
+function onSelectoSelectEnd(e) {
+  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
+  appState.value.selectedTargets = e.selected;
+  if (e?.selected && !e?.inputEvent?.ctrlKey) {
+    const selectedItems = appState.value.items.filter((i) =>
+      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
+    );
+    const selectedGroups = [
+      ...new Set(
+        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
+      ),
+    ];
+    selectedGroups.forEach((gId) => {
+      selectGroup(gId);
+    });
+  }
+
+  if (appState.value.selectedTargets.length === 1) {
+    appState.value.activeItemIndex = appState.value.items.findIndex(
+      (item) =>
+        `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+    );
+  } else {
+    appState.value.activeItemIndex = null;
+  }
+
+  if (e.isDragStart) {
+    e.inputEvent.preventDefault();
+
+    setTimeout(() => {
+      moveable.value.dragStart(e.inputEvent);
+    });
+  }
+
+  if (appState.value.selectedTargets.length > 1 && !locked.value) {
+    setTimeout(() => {
+      contextMenuShow.value = true;
+    }, 100);
+  } else {
+    contextMenuShow.value = false;
+  }
+
+  IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
+
+  setTimeout(() => {
+    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+  }, 100);
 }
 
 // Selects a group of elements by their group ID
@@ -1307,6 +1258,12 @@ function onResize(e) {
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
+
+  // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
+  if (e.lastEvent === null || e.lastEvent === undefined) {
+    return;
+  }
+
   const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
 
   appState.value.items[itemIndex].width = e.lastEvent.width;
@@ -1426,8 +1383,8 @@ function addObject(item, group = undefined, addToHistory = true) {
 }
 
 // const viewportMargins = {
-//   // top: 36,
-//   top: 38 + 20 + 2,
+//   // top: 36,93
+//   top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
 //   left: 106 + 20 + 2,
 // };
 
@@ -1468,7 +1425,7 @@ function addLibItem(items, size, pos) {
         true
       );
       setTimeout(() => {
-        refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       }, 1);
     }, 10);
   }, 10);
@@ -1483,6 +1440,44 @@ function addLibItem(items, size, pos) {
     );
     refreshMoveable();
   }, 60); */
+}
+
+// Ends a selecto drag event and handles object drawing based on tool type
+function onSelectoDragEnd(e) {
+  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
+
+  const size = { width: e.rect.width, height: e.rect.height };
+  const pos = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    top: e.rect.top,
+    left: e.rect.left,
+  };
+  if (
+    (selectedTool.value.name === "Pointer" ||
+      size.width < 20 ||
+      size.height < 20) &&
+    !continuesObjectTypes.includes(selectedTool.value.name)
+  ) {
+    isDrawing.value = false;
+    return;
+  }
+  if (
+    continuesObjectTypes.includes(selectedTool.value.name) &&
+    size.height < 20
+  ) {
+    size.height = selectedTool.value.height;
+  }
+
+  const item = drawObject(size, pos);
+  if (item && continuesObjectTypes.includes(item.type)) {
+    setTimeout(() => {
+      isDrawing.value = true;
+      appState.value.selectedTargets = [];
+      appState.value.items[appState.value.activeItemIndex].rotate = 0;
+      startTransform.value = cloneDeep(item.translate);
+    }, 100);
+  }
 }
 
 // Draws an object based on the provided size, position, and tool settings
@@ -1561,21 +1556,24 @@ function drawObject(size, pos, tool) {
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
+  console.log("= IdxPage selectTool", tool, type);
   selectedTool.value = tool;
   if (typeof tool === "string") {
     selectedTool.value = tools.find((item) => item.name === tool);
   }
   selectedTool.value.type = type;
+
+  T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
 }
 
-// Refresh the moveable object's rectangle after a short delay
-function refreshMoveable() {
-  // const targetsCache = cloneDeep(appState.value.selectedTargets);
-  // appState.value.selectedTargets = [];
-  setTimeout(() => {
-    moveable.value.updateRect();
-  }, 1);
-}
+// // Refresh the moveable object's rectangle after a short delay
+// function refreshMoveable() {
+//   // const targetsCache = cloneDeep(appState.value.selectedTargets);
+//   // appState.value.selectedTargets = [];
+//   setTimeout(() => {
+//     moveable.value.updateRect();
+//   }, 1);
+// }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
@@ -1586,7 +1584,7 @@ function rotate90(item, minues = false) {
   } else {
     item.rotate = item.rotate - 90;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item horizontally
@@ -1597,7 +1595,7 @@ function flipH(item) {
   } else {
     item.scaleX = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item vertically
@@ -1608,7 +1606,7 @@ function flipV(item) {
   } else {
     item.scaleY = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Bring an item to the front by increasing its z-index
@@ -1669,10 +1667,22 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
+
+  /*
+  // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
+  // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+  // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
   if (!obj.t3Entry) return;
   let fieldVal = obj.t3Entry[key];
+
+  const tempFieldBefore = fieldVal;
+
+  if (Math.abs(fieldVal) >= 1000) {
+    fieldVal = fieldVal / 1000;
+  }
+
   if (key === "value" || key === "control") {
-    refreshObjectStatus(obj);
+    IdxUtils.refreshObjectStatus(obj);
   }
   window.chrome?.webview?.postMessage({
     action: 3, // UPDATE_ENTRY
@@ -1682,6 +1692,18 @@ function T3UpdateEntryField(key, obj) {
     entryIndex: obj.t3Entry.index,
     entryType: T3_Types[obj.t3Entry.type],
   });
+
+  console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+  */
+
+  Hvac.IdxPage.T3UpdateEntryField(key, obj);
+}
+
+// Trigger the save event when user changed the "Display Field" value
+function DisplayFieldValueChanged(value) {
+  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
+  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
+  save(false, true);
 }
 
 // Define a condition for drag events in Selecto
@@ -1691,26 +1713,26 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySave() {
+  console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
+  // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
   addActionToHistory("Link object to T3000 entry");
-  if (
-    !appState.value.items[appState.value.activeItemIndex].settings
-      .t3EntryDisplayField
-  ) {
-    if (
-      appState.value.items[appState.value.activeItemIndex].label === undefined
-    ) {
-      appState.value.items[
-        appState.value.activeItemIndex
-      ].settings.t3EntryDisplayField = "id";
+
+  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
     } else {
-      appState.value.items[
-        appState.value.activeItemIndex
-      ].settings.t3EntryDisplayField = "label";
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
     }
   }
-  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
-    toRaw(linkT3EntryDialog.value.data)
-  );
+
+  // set the default to be divided by 1000
+  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+  if (checkHasValue) {
+    linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
+  }
+
+  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
+
   // Change the icon based on the linked entry type
   if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
     let icon = "fa-solid fa-camera-retro";
@@ -1725,40 +1747,168 @@ function linkT3EntrySave() {
     }
     appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
   }
-  refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+
+  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
   linkT3EntryDialog.value.data = null;
   linkT3EntryDialog.value.active = false;
 }
 
-// Refresh the status of an object based on its T3 entry
-function refreshObjectStatus(item) {
-  if (item.t3Entry && item.settings?.active !== undefined) {
-    item.settings.active = getObjectActiveValue(item);
+// Filter function for selecting panels in the UI
+function selectPanelFilterFn(val, update) {
+  if (val === "") {
+    update(() => {
+      selectPanelOptions.value = T3000_Data.value.panelsData;
+
+      // here you have access to "ref" which
+      // is the Vue reference of the QSelect
+    });
+    return;
   }
 
-  if (
-    item.t3Entry &&
-    item.t3Entry.decom !== undefined &&
-    item.settings?.inAlarm !== undefined
-  ) {
-    item.settings.inAlarm = !!item.t3Entry.decom;
-  }
+  update(() => {
+    const keyword = val.toUpperCase();
+    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
+      (item) =>
+        item.command.toUpperCase().indexOf(keyword) > -1 ||
+        item.description?.toUpperCase().indexOf(keyword) > -1 ||
+        item.label?.toUpperCase().indexOf(keyword) > -1
+    );
+  });
 }
+
+const insertCount = ref(0);
+
+// Insert Key Function
+function insertT3EntrySelect(value) {
+  addActionToHistory("Insert object to T3000 entry");
+
+  const posIncrease = insertCount.value * 80;
+
+  // Add a shape to graphic area
+  const size = { width: 60, height: 60 };
+  const pos = { clientX: 300, clientY: 100, top: 100, left: 200 + posIncrease };
+  const tempTool = tools.find((item) => item.name === 'Pump');
+  const item = drawObject(size, pos, tempTool);
+
+  // Set the added shape to active
+  const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+  appState.value.activeItemIndex = itemIndex;
+
+  // Link to T3 entry
+  insertT3EntryOnSave();
+
+  insertCount.value++;
+
+  // console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+}
+
+function insertT3EntryOnSave() {
+  addActionToHistory("Link object to T3000 entry");
+  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+    } else {
+      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+    }
+  }
+
+  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
+    toRaw(insertT3EntryDialog.value.data)
+  )
+
+  // Change the icon based on the linked entry type
+  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+    let icon = "fa-solid fa-camera-retro";
+    if (insertT3EntryDialog.value.data.type === "GRP") {
+      icon = "fa-solid fa-camera-retro";
+    } else if (insertT3EntryDialog.value.data.type === "SCHEDULE") {
+      icon = "schedule";
+    } else if (insertT3EntryDialog.value.data.type === "PROGRAM") {
+      icon = "fa-solid fa-laptop-code";
+    } else if (insertT3EntryDialog.value.data.type === "HOLIDAY") {
+      icon = "calendar_month";
+    }
+    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+  }
+  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  insertT3EntryDialog.value.data = null;
+  insertT3EntryDialog.value.active = false;
+}
+
+function insertT3DefaultLoadData() {
+  // selectPanelOptions.value = T3000_Data.value.panelsData;
+  // selectPanelFilterFn('', (fn) => {
+  //   selectPanelOptions.value = T3000_Data.value.panelsData;
+  // });
+  // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
+}
+
+// // Refresh the status of an object based on its T3 entry
+// function refreshObjectStatus(item) {
+//   if (item.t3Entry && item.settings?.active !== undefined) {
+//     item.settings.active = getObjectActiveValue(item);
+//   }
+
+//   if (
+//     item.t3Entry &&
+//     item.t3Entry.decom !== undefined &&
+//     item.settings?.inAlarm !== undefined
+//   ) {
+//     item.settings.inAlarm = !!item.t3Entry.decom;
+//   }
+// }
 
 // Save the current app state, optionally displaying a notification
-function save(notify = false) {
-  savedNotify.value = notify;
-  const data = cloneDeep(toRaw(appState.value));
-  data.selectedTargets = [];
-  data.elementGuidelines = [];
-  window.chrome?.webview?.postMessage({
-    action: 2, // SAVE_GRAPHIC
-    data,
-  });
-  if (!window.chrome?.webview?.postMessage) {
-    localStorage.setItem("appState", JSON.stringify(data));
-  }
+function save(notify = false, saveToT3 = false) {
+  Hvac.IdxPage.save(notify, saveToT3);
 }
+
+function refreshMoveable() {
+  Hvac.IdxPage.refreshMoveable();
+}
+
+// function save(notify = false) {
+//   console.log('= Idx save notify', rulersGridVisible.value);
+//   savedNotify.value = notify;
+//   const data = cloneDeep(toRaw(appState.value));
+
+//   // recalculate the items count
+//   const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
+//   data.itemsCount = nonZeroWidthItemsCount;
+//   // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
+//   // console.log('==== Save appState:', appState.value);
+//   console.log('= Idx save data', data);
+
+//   data.selectedTargets = [];
+//   data.elementGuidelines = [];
+
+//   if (isBuiltInEdge.value) {
+//     // window.chrome?.webview?.postMessage({
+//     //   action: 2, // SAVE_GRAPHIC
+//     //   data,
+//     // });
+//     Hvac.WebClient.SaveGraphicData(null, null, data);
+//   }
+//   else {
+//     localStorage.setItem("appState", JSON.stringify(data));
+
+//     // save device data and related appState
+//     if (!isBuiltInEdge.value) {
+//       saveDeviceAppState();
+//     }
+//   }
+
+//   /*
+//   window.chrome?.webview?.postMessage({
+//     action: 2, // SAVE_GRAPHIC
+//     data,
+//   });
+
+//   if (!window.chrome?.webview?.postMessage) {
+//     localStorage.setItem("appState", JSON.stringify(data));
+//   }
+//   */
+// }
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
@@ -1771,24 +1921,35 @@ function newProject() {
       persistent: true,
     })
       .onOk(() => {
+        /*
         appState.value = cloneDeep(emptyProject);
         undoHistory.value = [];
         redoHistory.value = [];
         refreshMoveable();
+
         if (!window.chrome?.webview?.postMessage) {
           localStorage.removeItem("appState");
         }
+        */
+
+        Hvac.IdxPage.newProject();
       })
       .onCancel(() => { });
     return;
   }
+
+  /*
   appState.value = cloneDeep(emptyProject);
   undoHistory.value = [];
   redoHistory.value = [];
   refreshMoveable();
+
   if (!window.chrome?.webview?.postMessage) {
     localStorage.removeItem("appState");
   }
+  */
+
+  Hvac.IdxPage.newProject();
 }
 
 // Handle keyup event for keyboard control
@@ -1838,14 +1999,14 @@ keycon.keydown((e) => {
   }
   // Refresh the moveable object after movement
   if (["up", "down", "left", "right"].includes(e.key)) {
-    refreshMoveable();
+    Hvac.IdxPage.refreshMoveable();
   }
 });
 
 // Save the current state when "Ctrl + S" is pressed
 keycon.keydown(["ctrl", "s"], (e) => {
   e.inputEvent.preventDefault();
-  save(true);
+  save(true, true);
 });
 
 // Undo the last action when "Ctrl + Z" is pressed
@@ -1906,13 +2067,19 @@ keycon.keydown(["ctrl", "b"], (e) => {
   weldSelected();
 });
 
+// Insert function
+keycon.keydown(["insert"], (e) => {
+  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
+  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
+});
+
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogAction() {
+  console.log('= Idx linkT3EntryDialogAction appState:', appState.value);
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
-  linkT3EntryDialog.value.data = cloneDeep(
-    appState.value.items[appState.value.activeItemIndex]?.t3Entry
-  );
+  linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
 }
 
 // Delete selected objects from the app state
@@ -2192,30 +2359,7 @@ function weldSelected() {
     }
   });
 
-  refreshMoveable();
-}
-
-// Filter function for selecting panels in the UI
-function selectPanelFilterFn(val, update) {
-  if (val === "") {
-    update(() => {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-
-      // here you have access to "ref" which
-      // is the Vue reference of the QSelect
-    });
-    return;
-  }
-
-  update(() => {
-    const keyword = val.toUpperCase();
-    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-      (item) =>
-        item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description?.toUpperCase().indexOf(keyword) > -1 ||
-        item.label?.toUpperCase().indexOf(keyword) > -1
-    );
-  });
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Undo the last action
@@ -2227,7 +2371,7 @@ function undoAction() {
   });
   appState.value = cloneDeep(undoHistory.value[0].state);
   undoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Redo the last undone action
@@ -2239,7 +2383,7 @@ function redoAction() {
   });
   appState.value = cloneDeep(redoHistory.value[0].state);
   redoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2260,6 +2404,10 @@ function readFile(file) {
 // Save an image to the library or online storage
 async function saveLibImage(file) {
   if (user.value) {
+
+    console.log('= Idx saveLibImage file', file);
+    console.log('= Idx saveLibImage user', user.value);
+
     liveApi
       .post("hvacTools", {
         json: {
@@ -2294,7 +2442,14 @@ async function saveLibImage(file) {
     fileData: await readFile(file.data),
   };
 
-  window.chrome?.webview?.postMessage(message);
+  if (isBuiltInEdge.value) {
+    Hvac.WebClient.SaveImage(message);
+  }
+  else {
+    Hvac.WsClient.SaveImage(message);
+  }
+
+  // window.chrome?.webview?.postMessage(message);
 }
 
 const gaugeSettingsDialog = ref({
@@ -2336,12 +2491,12 @@ function exportToJsonAction() {
   a.click();
 }
 
-// Get all items linked to a T3 entry
-function getLinkedEntries() {
-  const items = appState.value.items;
-  if (items.length === 0) return [];
-  return toRaw(appState.value).items.filter((i) => i.t3Entry);
-}
+// // Get all items linked to a T3 entry
+// function getLinkedEntries() {
+//   const items = appState.value.items;
+//   if (items.length === 0) return [];
+//   return toRaw(appState.value).items.filter((i) => i.t3Entry);
+// }
 
 // Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
@@ -2387,9 +2542,9 @@ function executeImportFromJson() {
         appState.value = importedState;
         importJsonDialog.value.data = null;
         setTimeout(() => {
-          refreshMoveableGuides();
+          IdxUtils.refreshMoveableGuides();
         }, 100);
-        refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2402,28 +2557,28 @@ function executeImportFromJson() {
   appState.value = importedState;
   importJsonDialog.value.data = null;
   setTimeout(() => {
-    refreshMoveableGuides();
+    IdxUtils.refreshMoveableGuides();
   }, 100);
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
-// Computed property for zoom control
-const zoom = computed({
-  // Getter for zoom value
-  get() {
-    return parseInt(appState.value.viewportTransform.scale * 100);
-  },
-  // Setter for zoom value
-  set(newValue) {
-    if (!newValue) return;
-    appState.value.viewportTransform.scale = newValue / 100;
-    panzoomInstance.smoothZoomAbs(
-      appState.value.viewportTransform.x,
-      appState.value.viewportTransform.y,
-      newValue / 100
-    );
-  },
-});
+// // Computed property for zoom control
+// const zoom = computed({
+//   // Getter for zoom value
+//   get() {
+//     return parseInt(appState.value.viewportTransform.scale * 100);
+//   },
+//   // Setter for zoom value
+//   set(newValue) {
+//     if (!newValue) return;
+//     appState.value.viewportTransform.scale = newValue / 100;
+//     panzoomInstance.smoothZoomAbs(
+//       appState.value.viewportTransform.x,
+//       appState.value.viewportTransform.y,
+//       newValue / 100
+//     );
+//   },
+// });
 
 // Duplicate the selected items in the app state
 function duplicateSelected() {
@@ -2494,17 +2649,6 @@ function ungroupSelected() {
   }
 }
 
-// Control zoom actions for the app
-function zoomAction(action = "in", val = null) {
-  if (action === "out") {
-    zoom.value -= 10;
-  } else if (action === "set") {
-    zoom.value = val;
-  } else {
-    zoom.value += 10;
-  }
-}
-
 // Handle the menu action for the top toolbar
 function handleMenuAction(action, val) {
   const item = appState.value.items[appState.value.activeItemIndex];
@@ -2519,7 +2663,7 @@ function handleMenuAction(action, val) {
       exportToJsonAction();
       break;
     case "save":
-      save(true);
+      save(true, true);
       break;
     case "undoAction":
       undoAction();
@@ -2570,13 +2714,13 @@ function handleMenuAction(action, val) {
       removeObject(item);
       break;
     case "zoomOut":
-      zoomAction("out");
+      Hvac.IdxPage.zoomAction("out");
       break;
     case "zoomIn":
-      zoomAction();
+      Hvac.IdxPage.zoomAction();
       break;
     case "zoomSet":
-      zoomAction("set", val);
+      Hvac.IdxPage.zoomAction("set", val);
       break;
     case "copy":
       saveSelectedToClipboard();
@@ -2590,6 +2734,9 @@ function handleMenuAction(action, val) {
     case "convertObjectType":
       convertObjectType(item, val);
       break;
+    case "toggleRulersGrid":
+      toggleRulersGrid(val);
+      break;
     default:
       break;
   }
@@ -2598,31 +2745,50 @@ function handleMenuAction(action, val) {
 // Reload panel data by requesting the panels list
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
+
+  /*
   window.chrome?.webview?.postMessage({
     action: 4, // GET_PANELS_LIST
   });
+  */
+
+  if (isBuiltInEdge.value) {
+    Hvac.WebClient.GetPanelsList();
+  }
+  else {
+    Hvac.WsClient.GetPanelsList();
+  }
 }
 
-// Refresh linked entries with updated panel data
-function refreshLinkedEntries(panelData) {
-  appState.value.items
-    .filter((i) => i.t3Entry?.type)
-    .forEach((item) => {
-      const linkedEntry = panelData.find(
-        (ii) =>
-          ii.index === item.t3Entry.index &&
-          ii.type === item.t3Entry.type &&
-          ii.pid === item.t3Entry.pid
-      );
-      if (linkedEntry && linkedEntry.id) {
-        item.t3Entry = linkedEntry;
-        refreshObjectStatus(item);
-      }
-    });
-}
+// // Refresh linked entries with updated panel data
+// function refreshLinkedEntries(panelData) {
+//   appState.value.items
+//     .filter((i) => i.t3Entry?.type)
+//     .forEach((item) => {
+//       const linkedEntry = panelData.find(
+//         (ii) =>
+//           ii.index === item.t3Entry.index &&
+//           ii.type === item.t3Entry.type &&
+//           ii.pid === item.t3Entry.pid
+//       );
+//       if (linkedEntry && linkedEntry.id) {
+
+//         const tempBefore = linkedEntry.value;
+
+//         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
+//         linkedEntry.value = newLkValue;
+//         item.t3Entry = linkedEntry;
+
+//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
+
+//         refreshObjectStatus(item);
+//       }
+//     });
+// }
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
+  // console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -2642,38 +2808,83 @@ function lockToggle() {
   }
 
   // Update the document area position based on the lock state
-  restDocumentAreaPosition();
+  IdxPage.restDocumentAreaPosition();
 }
 
-function restDocumentAreaPosition(pzXY) {
-  const div = document.querySelector('.full-area');
-  documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
-  documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
-  documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
-  documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+// function restDocumentAreaPosition(pzXY) {
+//   const div = document.querySelector('.full-area');
+//   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
+//   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
+//   documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
+//   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
+//   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
+//   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
+//   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
+//   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
 
-  documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
-}
+//   if (isBuiltInEdge.value) {
+//     documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
+//   }
+//   else {
+//     documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
+//   }
+// }
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
+
+  setTheSettingContextMenuVisible();
+
+  // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
+
+    const message = {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.t3Entry.pid,
+      entryIndex: item.t3Entry.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.LoadGraphicEntry(message);
+    }
+    else {
+      Hvac.WsClient.LoadGraphicEntry(message);
+    }
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
       panelId: item.t3Entry.pid,
       entryIndex: item.t3Entry.index,
     });
+    */
+
   } else if (["SCHEDULE", "PROGRAM", "HOLIDAY"].includes(item.t3Entry?.type)) {
+
+    const message = {
+      action: 8, // OPEN_ENTRY_EDIT_WINDOW
+      panelId: item.t3Entry.pid,
+      entryType: T3_Types[item.t3Entry.type],
+      entryIndex: item.t3Entry.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.OpenEntryEditWindow(message);
+    }
+    else {
+      Hvac.WsClient.OpenEntryEditWindow(message);
+    }
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 8, // OPEN_ENTRY_EDIT_WINDOW
       panelId: item.t3Entry.pid,
       entryType: T3_Types[item.t3Entry.type],
       entryIndex: item.t3Entry.index,
     });
+    */
   } else if (
     item.t3Entry?.auto_manual === 1 &&
     item.t3Entry?.digital_analog === 0 &&
@@ -2684,19 +2895,197 @@ function objectClicked(item) {
   }
 }
 
+// Updates an entry value
+function changeEntryValue(refItem, newVal, control) {
+  // console.log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
+  const key = control ? "control" : "value";
+  const item = appState.value.items.find((i) => i.id === refItem.id);
+  item.t3Entry[key] = newVal;
+  T3UpdateEntryField(key, item);
+}
+
+// Toggles the auto/manual mode of an item
+function autoManualToggle(item) {
+  // console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', item, locked.value);
+  if (!locked.value) return;
+  item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
+  T3UpdateEntryField("auto_manual", item);
+}
+
+const topContextToggleVisible = ref(false);
+
+const showSettingMenu = ref(false);
+const toggleModeValue = ref('Auto');
+const toggleValueValue = ref('Off');
+const toggleValueDisable = ref(false);
+const toggleValueShow = ref(false);
+
+const toggleNumberDisable = ref(false);
+const toggleNumberShow = ref(false);
+const toggleNumberValue = ref(0);
+
+
+function ObjectRightClicked(item, ev) {
+  // ev.preventDefault();
+
+  // console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  // console.log('ObjectRightClicked->ev,item', item);
+
+  if (item.t3Entry !== null) {
+
+    showSettingMenu.value = true;
+
+    // console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
+
+    // Load the default auto_manual value
+    if (item.t3Entry.auto_manual === 1) {
+      toggleModeValue.value = "Manual";
+      toggleValueDisable.value = false;
+      toggleNumberDisable.value = false;
+    }
+    else {
+      toggleModeValue.value = "Auto";
+      toggleValueDisable.value = true;
+      toggleNumberDisable.value = true;
+    }
+
+    // Show on/off value field only if the digital_analog is 0, otherwise show different value field (Input / Dropdown)
+
+    if (item.t3Entry.digital_analog === 0) {
+      toggleValueShow.value = true;
+    }
+    else {
+      toggleValueShow.value = false;
+    }
+
+    // Load the default control value
+    if (item.t3Entry.control === 1) {
+      toggleValueValue.value = "On";
+    }
+    else {
+      toggleValueValue.value = "Off";
+    }
+
+    // Set digital_analog field and value
+    if (item.t3Entry.digital_analog === 1 && item.t3Entry.range !== 101) {
+      toggleNumberShow.value = true;
+      toggleNumberValue.value = item.t3Entry.value * 1;/// 1000;
+    }
+    else {
+      toggleNumberShow.value = false;
+    }
+  }
+  else {
+    showSettingMenu.value = false;
+  }
+}
+
+function toggleClicked(item, type, ev) {
+  // ev.preventDefault();
+  // console.log('toggleClicked->item,type', item, type, ev);
+  // console.log('toggleClicked->toggleModeValue,toggleValueValue',
+  //   toggleModeValue.value, toggleValueValue.value);
+  // console.log('toggleClicked->before item', item.t3Entry)
+
+  if (type === "mode") {
+
+    // Disable the value field if the mode is set to Auto
+    if (toggleModeValue.value === "Auto") {
+      toggleValueDisable.value = true;
+      toggleNumberDisable.value = true;
+    }
+    else {
+      toggleValueDisable.value = false;
+      toggleNumberDisable.value = false;
+    }
+
+    item.t3Entry.auto_manual = toggleModeValue.value === "Auto" ? 0 : 1;
+    T3UpdateEntryField("auto_manual", item);
+  }
+
+  if (type == "value") {
+    item.t3Entry.control = toggleValueValue.value === "Off" ? 0 : 1;
+    T3UpdateEntryField("control", item);
+  }
+
+  if (type === "number-value") {
+    item.t3Entry.value = toggleNumberValue.value * 1;// * 1000;
+    T3UpdateEntryField("value", item);
+  }
+
+  save(false, true);
+
+  // console.log('toggleClicked->after item', item.t3Entry)
+}
+
+function setTheSettingContextMenuVisible() {
+
+  if (appState.value.selectedTargets.length > 1) {
+    topContextToggleVisible.value = false;
+    toggleValueShow.value = false;
+    toggleNumberShow.value = false;
+
+  } else {
+    if (appState.value.selectedTargets.length === 1) {
+      const selectedItem = appState.value.items.find(
+        (item) => `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+      )
+
+      if (selectedItem.t3Entry !== null) {
+        topContextToggleVisible.value = true;
+        ObjectRightClicked(selectedItem, null);
+      }
+      else {
+        topContextToggleVisible.value = false;
+        toggleValueShow.value = false;
+        toggleNumberShow.value = false;
+      }
+    }
+  }
+}
+
 // Navigate back in the group navigation history
 function navGoBack() {
   if (grpNav.value.length > 1) {
     const item = grpNav.value[grpNav.value.length - 2];
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 7, // LOAD_GRAPHIC_ENTRY
       panelId: item.pid,
       entryIndex: item.index,
     });
+    */
+
+    const message = {
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.pid,
+      entryIndex: item.index,
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.LoadGraphicEntry(message);
+    }
+    else {
+      Hvac.WsClient.LoadGraphicEntry(message);
+    }
   } else {
+
+    /*
     window.chrome?.webview?.postMessage({
       action: 1, // GET_INITIAL_DATA
     });
+    */
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.GetInitialData();
+    }
+    else {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice.panelId;
+      const graphicId = currentDevice.graphic;
+      Hvac.WsClient.GetInitialData(panelId, graphicId, true);
+    }
   }
 }
 
@@ -2707,6 +3096,9 @@ function objectSettingsUnchanged() {
 
 // Add selected items to the library
 async function addToLibrary() {
+
+  // TODO
+
   if (appState.value.selectedTargets.length < 1 || locked.value) return;
   const selectedItems = appState.value.items.filter((i) =>
     appState.value.selectedTargets.some(
@@ -2742,7 +3134,7 @@ async function addToLibrary() {
           items: createdItem.items,
           online: isOnline,
         });
-        saveLib();
+        IdxUtils.saveLib();
       })
       .catch((err) => {
         $q.notify({
@@ -2757,7 +3149,7 @@ async function addToLibrary() {
     items: libItems,
     online: isOnline,
   });
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Bring selected objects to the front by increasing their z-index
@@ -2795,7 +3187,7 @@ function rotate90Selected(minues = false) {
     },
     true
   );
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Save selected items to the clipboard
@@ -2838,25 +3230,19 @@ function pasteFromClipboard() {
   }, 10);
 }
 
-// Saves the library data to the webview
-function saveLib() {
-  // Filter out online images and objects from the library
-  const libImages = toRaw(library.value.images.filter((item) => !item.online));
-  const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
+// // Saves the library data to the webview
+// function saveLib() {
+//   // Filter out online images and objects from the library
+//   const libImages = toRaw(library.value.images.filter((item) => !item.online));
+//   const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
 
-  // Post a message to the webview with the saved data
-  window.chrome?.webview?.postMessage({
-    action: 10, // SAVE_LIBRARY_DATA
-    data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
-  });
-}
+//   // Post a message to the webview with the saved data
+//   window.chrome?.webview?.postMessage({
+//     action: 10, // SAVE_LIBRARY_DATA
+//     data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
+//   });
+// }
 
-// Toggles the auto/manual mode of an item
-function autoManualToggle(item) {
-  if (!locked.value) return;
-  item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
-  T3UpdateEntryField("auto_manual", item);
-}
 
 // Deletes a library item
 function deleteLibItem(item) {
@@ -2885,7 +3271,7 @@ function deleteLibItem(item) {
   if (itemIndex !== -1) {
     library.value.objLib.splice(itemIndex, 1);
   }
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Renames a library item
@@ -2919,7 +3305,7 @@ function renameLibItem(item, name) {
   if (itemIndex !== -1) {
     library.value.objLib[itemIndex].label = name;
   }
-  saveLib();
+  IdxUtils.saveLib();
 }
 
 // Deletes a library image
@@ -2950,22 +3336,30 @@ function deleteLibImage(item) {
     library.value.images.splice(itemIndex, 1);
     if (!item.online) {
       // Delete the image from the webview
+
+      if (library.value.images.length <= 0) {
+        return;
+      }
+
       const imagePath = cloneDeep(library.value.images[itemIndex].path);
+
+      /*
       window.chrome?.webview?.postMessage({
         action: 11, // DELETE_IMAGE
         data: toRaw(imagePath),
       });
-      saveLib();
+      */
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.DeleteImage(toRaw(imagePath));
+      }
+      else {
+        Hvac.WsClient.DeleteImage(toRaw(imagePath));
+      }
+
+      IdxUtils.saveLib();
     }
   }
-}
-
-// Updates an entry value
-function changeEntryValue(refItem, newVal, control) {
-  const key = control ? "control" : "value";
-  const item = appState.value.items.find((i) => i.id === refItem.id);
-  item.t3Entry[key] = newVal;
-  T3UpdateEntryField(key, item);
 }
 
 // Converts an object to a different type
@@ -3005,20 +3399,28 @@ function convertObjectType(item, type) {
   item.settings = newSettings;
 }
 
+function toggleRulersGrid(val) {
+  rulersGridVisible.value = val === "Enable" ? true : false;
+  appState.value.rulersGridVisible = rulersGridVisible.value;
+  save(false, false);
+}
+
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
-  const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
-  drawObject(
-    //{ width: 60, height: 60 },
-    size,
-    {
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-      top: ev.clientY,
-      left: ev.clientX,
-    },
-    tool
-  );
+  // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // drawObject(
+  //   //{ width: 60, height: 60 },
+  //   size,
+  //   {
+  //     clientX: ev.clientX,
+  //     clientY: ev.clientY,
+  //     top: ev.clientY,
+  //     left: ev.clientX,
+  //   },
+  //   tool
+  // );
+
+  console.log("toolDropped->tool", ev,tool);
 }
 
 const updateWeldModel = (weldModel, itemList) => {
@@ -3028,41 +3430,6 @@ const updateWeldModel = (weldModel, itemList) => {
     }
   });
 };
-
-const updateJoinWall = (Mx, My, id) => {
-  console.log('IndexPage.vue->updateJoinWall->wallModel', Mx, My, id);
-
-  appState.value.items.map((item) => {
-
-    if (item.type === "Int_Ext_Wall" && item.id === id - 1) {
-
-      const trsx = item.translate[0];
-      const trsy = item.translate[1];
-
-      if (item.translate[0] !== Mx || item.translate[1] !== My) {
-
-        console.log('IndexPage.vue->updateJoinWall->wallModel 2', Mx, My, id);
-
-        if (trsx < Mx && trsy > My) {
-          item.translate[0] = trsx;
-        }
-
-        if (trsy < My) {
-          item.translate[1] = trsy;
-        }
-
-
-        setTimeout(() => {
-          // moveable-item-1
-          refreshObjects();
-        }, 100);
-
-
-      }
-    }
-  });
-
-}
 
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {
@@ -3091,6 +3458,31 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
   });
 };
 
+function viewportLeftClick(ev) {
+  // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
+  ev.preventDefault();
+
+  const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
+    && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
+
+  if (check) {
+    // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
+
+    // Manually create a shape at the mouse current position
+
+    var ePosition = {
+      rect: { width: 60, height: 60, top: ev.clientY, left: ev.clientX },
+      clientX: ev.clientX,
+      clientY: ev.clientY
+    };
+
+    onSelectoDragEnd(ePosition);
+
+    // Release the tool
+    selectTool(tools[0]);
+  }
+}
+
 // Handles a right-click event on the viewport
 function viewportRightClick(ev) {
   ev.preventDefault();
@@ -3108,56 +3500,56 @@ function viewportRightClick(ev) {
   }
 }
 
-// Checks if the user is logged in
-function isLoggedIn() {
-  const hasToken = $q.cookies.has("token");
-  if (!hasToken) {
-    user.value = null;
-    return;
-  }
+// // Checks if the user is logged in
+// function isLoggedIn() {
+//   const hasToken = $q.cookies.has("token");
+//   if (!hasToken) {
+//     user.value = null;
+//     return;
+//   }
 
-  // Get the user's data from the API
-  liveApi
-    .get("hvacTools")
-    .then(async (res) => {
-      const data = await res.json();
-      if (data.length > 0) {
-        data?.forEach((oItem) => {
-          addOnlineLibImage(oItem);
-        });
-      }
-    })
-    .catch((err) => {
-      console.log(err);
-    });
+//   // Get the user's data from the API
+//   liveApi
+//     .get("hvacTools")
+//     .then(async (res) => {
+//       const data = await res.json();
+//       if (data.length > 0) {
+//         data?.forEach((oItem) => {
+//           addOnlineLibImage(oItem);
+//         });
+//       }
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//     });
 
-  liveApi
-    .get("hvacObjectLibs")
-    .then(async (res) => {
-      const data = await res.json();
-      if (data.length > 0) {
-        data.forEach((oItem) => {
-          library.value.objLib.push({
-            id: oItem.id,
-            label: oItem.label,
-            items: oItem.items,
-            online: true,
-          });
-        });
-      }
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-  liveApi
-    .get("me")
-    .then(async (res) => {
-      user.value = await res.json();
-    })
-    .catch((err) => {
-      // Not logged in
-    });
-}
+//   liveApi
+//     .get("hvacObjectLibs")
+//     .then(async (res) => {
+//       const data = await res.json();
+//       if (data.length > 0) {
+//         data.forEach((oItem) => {
+//           library.value.objLib.push({
+//             id: oItem.id,
+//             label: oItem.label,
+//             items: oItem.items,
+//             online: true,
+//           });
+//         });
+//       }
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//     });
+//   liveApi
+//     .get("me")
+//     .then(async (res) => {
+//       user.value = await res.json();
+//     })
+//     .catch((err) => {
+//       // Not logged in
+//     });
+// }
 
 // Adds the online images to the library
 function addOnlineLibImage(oItem) {
@@ -3176,6 +3568,7 @@ function addOnlineLibImage(oItem) {
   });
 }
 </script>
+
 <style>
 .viewport .selected {
   color: #fff;

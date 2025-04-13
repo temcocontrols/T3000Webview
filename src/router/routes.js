@@ -16,25 +16,10 @@ const routes = [
     component: () => import("layouts/MainLayout.vue"),
     children: [
       {
-        path: "",
-        name: "hvac1",
-        component: () => import("pages/HvacDrawer/IndexPage2.vue"),
-      },
-      {
         path: "t2",
         name: "hvac2",
-        component: () => import("pages/HvacDrawer/IndexPage3.vue"),
-      },
-      {
-        path: "t3",
-        name: "hvac3",
-        component: () => import("pages/HvacDrawer/IndexPage4.vue"),
-      },
-      {
-        path: "t5",
-        name: "hvac5",
-        component: () => import("pages/HvacDrawer/IndexPage5.vue"),
-      },
+        component: () => import("pages/HvacDrawer/IndexPage2.vue"),
+      }, 
     ],
   },
   {
