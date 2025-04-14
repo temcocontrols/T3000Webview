@@ -145,8 +145,8 @@ class OptUtil {
   public actionTriggerData: any;  // Data associated with the trigger
   public actionStartX: number;       // Starting X coordinate for action
   public actionStartY: number;       // Starting Y coordinate for action
-  // public actionTableLastX: number;   // Last X coordinate for table actions
-  // public actionTableLastY: number;   // Last Y coordinate for table actions
+  public actionTableLastX: number;   // Last X coordinate for table actions
+  public actionTableLastY: number;   // Last Y coordinate for table actions
   public actionOldExtra: number;     // Previous extra state data
   public actionBBox: any;            // Original bounding box
   public actionNewBBox: any;         // New bounding box after action
@@ -384,8 +384,6 @@ class OptUtil {
   public ob: any;
   public PastePoint: any;
 
-  public actionTableLastX: any;
-  public actionTableLastY: any;
   OldConnectorExtra: number;
   OldConnectorWd: any;
   OldConnectorHt: number;
@@ -423,12 +421,7 @@ class OptUtil {
     this.optSlt = null;                     // Visual representation of selection area
     this.optSltStartX = 0;                  // X position where selection started
     this.optSltStartY = 0;                  // Y position where selection started
-    this.optSltFrame = {                    // Actual selection rectangle coordinates
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0
-    };
+    this.optSltFrame = { x: 0, y: 0, width: 0, height: 0 }; // Actual selection rectangle coordinates
     // #endregion
 
     // #region Drag & Drop Operations
@@ -471,8 +464,8 @@ class OptUtil {
     this.actionTriggerData = 0;                 // Data associated with the trigger
     this.actionStartX = 0;                      // X coordinate where action started
     this.actionStartY = 0;                      // Y coordinate where action started
-    // this.actionTableLastX = 0;                  // Last X coordinate for table actions
-    // this.actionTableLastY = 0;                  // Last Y coordinate for table actions
+    this.actionTableLastX = 0;                  // Last X coordinate for table actions
+    this.actionTableLastY = 0;                  // Last Y coordinate for table actions
     this.actionOldExtra = 0;                    // Previous extra state data
     this.actionBBox = {};                       // Original bounding box
     this.actionNewBBox = {};                    // New bounding box after action
