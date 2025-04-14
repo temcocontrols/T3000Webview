@@ -6077,7 +6077,7 @@ class BaseShape extends BaseDrawObject {
           let horizontalOffset = 0;
           let verticalOffset = 0;
 
-          // If there is an ongoing action (stored object, drag, or rubber band) then add a mouseout event
+          // If there is an ongoing action (stored object, drag, or opt slt) then add a mouseout event
           if (T3Gv.opt.actionStoredObjectId !== -1 ||
             T3Gv.opt.dragBBoxList.length !== 0 ||
             T3Gv.opt.optSlt) {

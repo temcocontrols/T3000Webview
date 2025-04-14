@@ -26,7 +26,7 @@ import QuasarUtil from '../Opt/Quasar/QuasarUtil';
  * The EvtUtil class provides a collection of static methods to process and manage events such as:
  *
  * - Mouse movement: Tracks the cursor, converts window to document coordinates, and updates UI displays.
- * - Hammer tap, drag, pan, and pinch gestures: Supports rubber band selection, panning, zooming,
+ * - Hammer tap, drag, pan, and pinch gestures: Supports opt slt selection, panning, zooming,
  *   shape tapping, drawing operations, and long-press actions.
  * - Shape interactions: Handles tap, double-tap, drag start, drag, and hold events for interacting with individual SVG shapes.
  * - Drawing and stamping operations: Provides factory functions for tracking drawing progress,
@@ -216,7 +216,7 @@ class EvtUtil {
 
   /**
    * Handles the start of drag gestures in the SVG work area
-   * Initiates either panning or rubber band selection based on input conditions
+   * Initiates either panning or opt slt selection based on input conditions
    * @param event - The hammer drag start event
    * @returns false to prevent default browser behavior
    */
@@ -275,17 +275,17 @@ class EvtUtil {
         return false;
       }
 
-      // Start rubber band selection
+      // Start opt slt selection
       SelectUtil.StartOptSltSelect(event);
 
-      T3Util.Log("E.Evt WorkAreaHammerDragStart output: rubber band selection started");
+      T3Util.Log("E.Evt WorkAreaHammerDragStart output: opt slt selection started");
       return false;
     }
   }
 
   /**
-   * Handles rubber band drag events to update selection area
-   * Updates the rubber band selection frame as the user drags the mouse
+   * Handles opt slt drag events to update selection area
+   * Updates the opt slt selection frame as the user drags the mouse
    * Includes auto-scrolling when dragging near document edges
    * @param event - The drag event from the hammer.js gesture system
    */
@@ -314,15 +314,15 @@ class EvtUtil {
 
       T3Util.Log("E.Evt OptSltDrag processing: coordinates", documentCoordinates);
 
-      // Update the rubber band selection shape
+      // Update the opt slt selection shape
       SelectUtil.OptSltSelectMoveCommon(
         documentCoordinates.x,
         documentCoordinates.y
       );
 
-      T3Util.Log("E.Evt OptSltDrag output: rubber band updated");
+      T3Util.Log("E.Evt OptSltDrag output: opt slt updated");
     } catch (error) {
-      // Handle exceptions during rubber band selection
+      // Handle exceptions during opt slt selection
       SelectUtil.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       T3Util.Log("E.Evt OptSltDrag error:", error);
@@ -331,8 +331,8 @@ class EvtUtil {
   }
 
   /**
-   * Handles the completion of a rubber band selection drag operation
-   * Finalizes selection of objects within the rubber band area and cleans up selection state
+   * Handles the completion of a opt slt selection drag operation
+   * Finalizes selection of objects within the opt slt area and cleans up selection state
    * @param event - The drag end event from the hammer.js gesture system
    */
   static Evt_OptSltDragEnd(event) {
@@ -342,11 +342,11 @@ class EvtUtil {
     Utils2.StopPropagationAndDefaults(event);
 
     try {
-      // Clean up event handlers used for rubber band selection
+      // Clean up event handlers used for opt slt selection
       SelectUtil.UnbindOptSltHammerEvents();
       DrawUtil.ResetAutoScrollTimer();
 
-      // Get the final rubber band selection area
+      // Get the final opt slt selection area
       const optSltFrame = T3Gv.opt.optSltFrame;
 
       // Select all objects within the selection rectangle
@@ -356,11 +356,11 @@ class EvtUtil {
         event.gesture.srcEvent.shiftKey
       );
 
-      // Remove the visual rubber band selection indicator
+      // Remove the visual opt slt selection indicator
       T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
 
-      // Reset rubber band selection state
-      T3Util.Log("E.Evt OptSltDragEnd processing: resetting rubber band state");
+      // Reset opt slt selection state
+      T3Util.Log("E.Evt OptSltDragEnd processing: resetting opt slt state");
       T3Gv.opt.optSlt = null;
       T3Gv.opt.optSltStartX = 0;
       T3Gv.opt.optSltStartY = 0;
@@ -979,7 +979,7 @@ class EvtUtil {
   static Evt_WorkAreaHammerPan(event) {
     T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
 
-    // Cancel any active rubber band selection
+    // Cancel any active opt slt selection
     SelectUtil.OptSltSelectCancel();
 
     // Release any active move operation

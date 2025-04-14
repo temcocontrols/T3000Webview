@@ -415,9 +415,9 @@ class OptUtil {
     this.sVGroot = null;                        // Root SVG DOM element
     // #endregion
 
-    // #region Selection & Rubber Band
+    // #region Selection & opt slt
     /**
-     * Set up properties for rubber band selection
+     * Set up properties for opt slt selection
      * These properties track state during rectangular selection operations
      */
     this.optSlt = null;                     // Visual representation of selection area

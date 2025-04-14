@@ -563,15 +563,15 @@ class SelectUtil {
       optSltShape.SetPos(startCoordinates.x, startCoordinates.y);
       T3Gv.opt.svgOverlayLayer.AddElement(optSltShape);
 
-      T3Util.Log('O.Opt StartOptSltSelect - Rubber band shape created:', optSltShape);
+      T3Util.Log('O.Opt StartOptSltSelect - Opt Slt shape created:', optSltShape);
       T3Gv.opt.optSlt = optSltShape;
       T3Gv.opt.EndStampSession();
 
-      // Bind hammer events for the rubber band dragging
+      // Bind hammer events for the opt slt dragging
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_OptSltDrag);
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_OptSltDragEnd);
 
-      T3Util.Log('O.Opt StartOptSltSelect - Output rubber band set successfully:', T3Gv.opt.optSlt);
+      T3Util.Log('O.Opt StartOptSltSelect - Output opt slt set successfully:', T3Gv.opt.optSlt);
     } catch (error) {
       T3Util.Log('O.Opt StartOptSltSelect - Error:', error);
       this.OptSltSelectExceptionCleanup(error);
@@ -714,16 +714,16 @@ class SelectUtil {
     T3Util.Log("O.Opt OptSltSelectExceptionCleanup - Input:", exception);
 
     try {
-      // Unbind rubber band related hammer events and reset auto-scroll timer.
+      // Unbind opt slt related hammer events and reset auto-scroll timer.
       this.UnbindOptSltHammerEvents();
       DrawUtil.ResetAutoScrollTimer();
 
-      // Remove the rubber band element from the overlay layer if it exists.
+      // Remove the opt slt element from the overlay layer if it exists.
       if (T3Gv.opt.optSlt) {
         T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
       }
 
-      // Reset rubber band properties.
+      // Reset opt slt properties.
       T3Gv.opt.optSlt = null;
       T3Gv.opt.optSltStartX = 0;
       T3Gv.opt.optSltStartY = 0;
@@ -775,7 +775,7 @@ class SelectUtil {
       DrawUtil.ResetAutoScrollTimer();
       T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
 
-      // Reset rubber band properties
+      // Reset opt slt properties
       T3Gv.opt.optSlt = null;
       T3Gv.opt.optSltStartX = 0;
       T3Gv.opt.optSltStartY = 0;
@@ -787,7 +787,7 @@ class SelectUtil {
       };
     }
 
-    T3Util.Log("O.Opt OptSltSelectCancel - Output: Rubber band selection canceled");
+    T3Util.Log("O.Opt OptSltSelectCancel - Output: Opt slt selection canceled");
   }
 
   /**
