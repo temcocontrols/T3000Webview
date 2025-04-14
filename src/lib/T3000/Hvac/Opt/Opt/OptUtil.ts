@@ -81,7 +81,7 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
  * optUtil.SetFormatPainter(false, true); // Enable format painter in sticky mode
  *
  * // Access and modify selected objects
- * const selectedList = optUtil.GetObjectPtr(optUtil.theSelectedListBlockID, false);
+ * const selectedList = optUtil.GetObjectPtr(optUtil.selectObjsBlockId, false);
  * optUtil.UpdateSelectionAttributes(selectedList);
  *
  * // Manage document scale/zoom
@@ -229,9 +229,9 @@ class OptUtil {
    * Block IDs for persistent object storage
    * References to stored objects in the object manager
    */
-  public theSelectedListBlockID: number; // ID for object selection storage
-  public sdDataBlockId: number;      // ID for shape editing data
-  public teDataBlockId: number;      // ID for text editing session data
+  public selectObjsBlockId: number;      // ID for object selection storage
+  public sdDataBlockId: number;          // ID for shape editing data
+  public teDataBlockId: number;          // ID for text editing session data
   public layersManagerBlockId: number;   // ID for layer management data
   public linksBlockId: number;           // ID for connection links data
 
@@ -566,9 +566,9 @@ class OptUtil {
      * Initialize persistent storage block IDs
      * These reference stored objects in the object manager
      */
-    this.theSelectedListBlockID = -1;           // ID for selected objects list
-    this.sdDataBlockId = -1;                // ID for shape editing data
-    this.teDataBlockId = -1;                // ID for text editing session data
+    this.selectObjsBlockId = -1;                // ID for selected objects list
+    this.sdDataBlockId = -1;                    // ID for shape editing data
+    this.teDataBlockId = -1;                    // ID for text editing session data
     this.layersManagerBlockId = -1;             // ID for layer management data
     this.linksBlockId = -1;                     // ID for connection links data
     // #endregion
@@ -750,7 +750,7 @@ class OptUtil {
       StateConstant.StoredObjectType.SelectedListObject,
       []
     );
-    this.theSelectedListBlockID = selectedListBlock.ID;
+    this.selectObjsBlockId = selectedListBlock.ID;
 
     // Create shape data block
     const sdData = new SDData();
@@ -1340,7 +1340,7 @@ class OptUtil {
       SvgUtil.RenderAllSVGObjects();
 
       const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
-      const selectedList = DataUtil.GetObjectPtr(this.theSelectedListBlockID, false);
+      const selectedList = DataUtil.GetObjectPtr(this.selectObjsBlockId, false);
       SelectUtil.UpdateSelectionAttributes(selectedList);
 
       T3Util.Log('O.Opt ExceptionCleanup - Output: done');
@@ -5124,7 +5124,7 @@ class OptUtil {
     T3Util.Log("O.Opt IsGroupNonDelete - Input: no parameters");
 
     const selectedObjects = DataUtil.GetObjectPtr(
-      T3Gv.opt.theSelectedListBlockID,
+      T3Gv.opt.selectObjsBlockId,
       false
     );
     let currentObject = null;
@@ -6322,7 +6322,7 @@ class OptUtil {
    */
   Lock(objectId, forceToggle?) {
     // Get the list of selected objects
-    const selectedObjects = T3Gv.stdObj.GetObject(this.theSelectedListBlockID).Data;
+    const selectedObjects = T3Gv.stdObj.GetObject(this.selectObjsBlockId).Data;
     const objectCount = selectedObjects.length;
 
     // Proceed only if there are selected objects or if forceToggle is true

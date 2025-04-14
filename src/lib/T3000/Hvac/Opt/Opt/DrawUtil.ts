@@ -1703,7 +1703,7 @@ class DrawUtil {
   static BringToFrontOfSpecificLayer(targetLayerIndex: number, updateSelectedBlock?: any): void {
     T3Util.Log("O.Opt BringToFrontOfSpecificLayer - Input:", { targetLayerIndex, updateSelectedBlock });
 
-    const selectedObjectBlock = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID);
+    const selectedObjectBlock = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     let selectedObjectList = Utils1.DeepCopy(selectedObjectBlock.Data);
     const selectedCount = selectedObjectList.length;
 
@@ -1746,7 +1746,7 @@ class DrawUtil {
         HookUtil.UpdateLineHops(true);
 
         if (updateSelectedBlock == null) {
-          const preservedSelectedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID);
+          const preservedSelectedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.selectObjsBlockId);
           preservedSelectedBlock.Data = associatedList;
         }
 
@@ -2231,7 +2231,7 @@ class DrawUtil {
       DataUtil.PreserveUndoState(false);
     }
 
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     T3Gv.docUtil.ShowCoordinates(true);
 
     T3Gv.opt.lastOpDuplicate = false;

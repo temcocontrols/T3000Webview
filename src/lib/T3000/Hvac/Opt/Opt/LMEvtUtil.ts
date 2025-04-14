@@ -522,7 +522,7 @@ class LMEvtUtil {
         // Check if we need to duplicate objects (Ctrl+drag)
         if (DrawUtil.DragDuplicate(event)) {
           // Get selection list and session data
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true);
+          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
           const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
           // Store current selection for duplication
@@ -654,7 +654,7 @@ class LMEvtUtil {
     )) {
       // Handle dropping over custom library
       if (DrawUtil.CheckDragIsOverCustomLibrary(event)) {
-        const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+        const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
         // Add moved objects to selection if not already there
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
@@ -1537,7 +1537,7 @@ class LMEvtUtil {
 
     // Disable auto-insert if multiple objects are selected or alt key is pressed
     if (T3Gv.opt.linkParams.AutoInsert) {
-      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       if (selectedObjects.length > 1) {
         T3Gv.opt.linkParams.AutoInsert = false;
       }

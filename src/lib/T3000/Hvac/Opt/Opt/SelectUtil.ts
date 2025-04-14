@@ -82,7 +82,7 @@ class SelectUtil {
     }
 
     // Get the selected list and check if object is already selected
-    const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     var indexInSelectedList = $.inArray(objectId, selectedList);
 
     // Prepare array with object to select
@@ -133,7 +133,7 @@ class SelectUtil {
       }
 
       // Get the current selection list
-      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, preserveSelectionState);
+      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveSelectionState);
 
       // Get the currently targeted object
       selectedIndex = SelectUtil.GetTargetSelect();
@@ -480,7 +480,7 @@ class SelectUtil {
 
     // Get the current selected list (without preserving state)
     const selectedList = DataUtil.GetObjectPtr(
-      T3Gv.opt.theSelectedListBlockID,
+      T3Gv.opt.selectObjsBlockId,
       false
     );
 
@@ -491,7 +491,7 @@ class SelectUtil {
     if (objectIndex !== -1) {
       // Get a preserved copy of the selected list for modification
       const preservedList = DataUtil.GetObjectPtr(
-        T3Gv.opt.theSelectedListBlockID,
+        T3Gv.opt.selectObjsBlockId,
         true
       );
 
@@ -741,7 +741,7 @@ class SelectUtil {
 
   static ClearAnySelection(preserveBlock: boolean) {
     T3Util.Log("O.Opt ClearAnySelection - Input:", { preserveBlock });
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, preserveBlock);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveBlock);
     if (selectedList.length !== 0) {
       SelectUtil.SetTargetSelect(-1, preserveBlock);
       SvgUtil.HideAllSVGSelectionStates();
@@ -974,7 +974,7 @@ class SelectUtil {
 
   static AreSelectedObjects(): boolean {
     T3Util.Log("O.Opt AreSelectedObjects - Input: No parameters");
-    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID);
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     const hasSelection = selectedObjects !== null && selectedObjects.Data.length !== 0;
     T3Util.Log("O.Opt AreSelectedObjects - Output:", hasSelection);
     return hasSelection;
@@ -1765,7 +1765,7 @@ class SelectUtil {
       // Get either visible objects or selected objects based on flag
       objectsList = useVisibleList
         ? LayerUtil.ActiveVisibleZList().slice(0)
-        : DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false).slice(0);
+        : DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false).slice(0);
 
       // Process each object in the list
       for (index = 0; index < objectsList.length; index++) {

@@ -26,7 +26,7 @@ class SvgUtil {
     // Get the visible objects list and the currently selected objects
     const visibleObjectIds = LayerUtil.ActiveVisibleZList();
     const visibleObjectCount = visibleObjectIds.length;
-    const selectedObjectsList = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedObjectsList = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const targetSelectedId = SelectUtil.GetTargetSelect();
 
     // List of dimension element types to check for visibility
@@ -138,7 +138,7 @@ class SvgUtil {
   static HideAllSVGSelectionStates() {
     T3Util.Log('O.Opt HideAllSVGSelectionStates: input');
 
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     T3Gv.opt.SetDimensionVisibility(selectedList, false);
 
     if (!T3Gv.opt.fromOverlayLayer) {

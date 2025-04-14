@@ -334,7 +334,7 @@ class Clipboard {
    */
   static GenerateImageInfo1() {
     const imageInfo = {};
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     if (!selectedObjects || selectedObjects.length === 0) {
       return Promise.resolve(null);
@@ -375,7 +375,7 @@ class Clipboard {
 
   static GenerateImageInfo() {
     const e = {},
-      t = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, !1);
+      t = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, !1);
     return t &&
       0 !== t.length ? function (e) {
         return new Promise(

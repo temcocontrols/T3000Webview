@@ -1450,7 +1450,7 @@ class HookUtil {
     T3Util.Log("O.Opt HandleMultipleSelectionHooks - Input: No parameters");
 
     // Get selected objects
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     if (selectedList.length <= 1) {
       T3Util.Log("O.Opt HandleMultipleSelectionHooks - Output: false (Only one object selected)");
       return false;

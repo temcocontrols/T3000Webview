@@ -164,7 +164,7 @@ class OptAhUtil {
    */
   static GetNextSelect() {
     const currentSelectedId = SelectUtil.GetTargetSelect();
-    const currentListSelection = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const currentListSelection = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     let nextSelection = -1;
 
     if (currentSelectedId >= 0) {

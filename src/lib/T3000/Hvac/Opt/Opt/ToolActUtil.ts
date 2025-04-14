@@ -109,7 +109,7 @@ class ToolActUtil {
     }
 
     // Ensure an active outline is selected if no selection exists
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const tDataAfter = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     if (tDataAfter.theActiveOutlineObjectID !== -1 && selectedList.length === 0) {
       const activeOutlineObjects: number[] = [];
@@ -231,7 +231,7 @@ class ToolActUtil {
     }
 
     // Get the current selection list
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     // Handle outline objects if needed
     const updatedTextEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -346,7 +346,7 @@ class ToolActUtil {
    */
   static MakeSameSize(sizeOption) {
     T3Util.Log("O.Opt MakeSameSize - Input:", { sizeOption });
-    const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const selectedCount = selectedList.length;
     if (selectedCount <= 1) {
       T3Util.Log("O.Opt MakeSameSize - Output:", "Not enough objects selected");
@@ -418,7 +418,7 @@ class ToolActUtil {
         Math.abs(shape.RotationAngle % 90) < 20;
     };
 
-    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const count = selectedObjects.length;
 
     if (count !== 0) {
@@ -510,7 +510,7 @@ class ToolActUtil {
     T3Util.Log("O.Opt SendToBackOfSpecificLayer - Input:", { targetLayerIndex, updateSelectedBlock });
 
     // Get the selected object block from the global object store.
-    const selectedObjectBlock = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID);
+    const selectedObjectBlock = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     let selectedList = selectedObjectBlock.Data;
     const selectedCount = selectedList.length;
 
@@ -553,7 +553,7 @@ class ToolActUtil {
 
           // If updateSelectedBlock parameter is not specified, update the selected list block.
           if (updateSelectedBlock == null) {
-            const preservedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID);
+            const preservedBlock = T3Gv.stdObj.PreserveBlock(T3Gv.opt.selectObjsBlockId);
             preservedBlock.Data = associatedList;
           }
           // Re-render all SVG objects and complete the operation.
@@ -674,7 +674,7 @@ class ToolActUtil {
         T3Gv.opt.CloseEdit();
       }
       let deleteResult, nextSelect = OptAhUtil.GetNextSelect(), deleteList = [];
-      const selectedObjects = T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID).Data;
+      const selectedObjects = T3Gv.stdObj.PreserveBlock(T3Gv.opt.selectObjsBlockId).Data;
       const objectsToDelete = objectIds || selectedObjects;
 
       deleteResult = T3Gv.opt.AddtoDelete(objectsToDelete, false, null);
@@ -707,7 +707,7 @@ class ToolActUtil {
     T3Util.Log("O.Opt AlignShapes - Input:", { alignmentType });
     let offsetX, offsetY;
     let alignmentPerformed = false;
-    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const numSelected = selectedObjects.length;
 
     if (numSelected !== 0) {
@@ -806,7 +806,7 @@ class ToolActUtil {
 
   static RotateShapes(angleDegrees: number, selectionOverride?: any[]) {
     T3Util.Log("O.Opt RotateShapes - Input:", { angleDegrees, selectionOverride });
-    let selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    let selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     let sdData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (selectionOverride) {
       selectedList = selectionOverride;
@@ -992,7 +992,7 @@ class ToolActUtil {
 
       // Get the current selection list
       const selectedList = DataUtil.GetObjectPtr(
-        T3Gv.opt.theSelectedListBlockID,
+        T3Gv.opt.selectObjsBlockId,
         false
       );
 
@@ -1083,7 +1083,7 @@ class ToolActUtil {
     this.CopyObjectsCommon(false);
     T3Gv.opt.textClipboard = null;
 
-    const selectedObjectBlock = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedObjectBlock = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     SelectUtil.UpdateSelectionAttributes(selectedObjectBlock);
 
     clipboardContent = T3Gv.opt.header.ClipboardBuffer;
@@ -1262,7 +1262,7 @@ class ToolActUtil {
     T3Util.Log("O.Opt CopyObjectsCommon - Input:", { returnBuffer });
 
     // Retrieve the currently selected objects.
-    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
 
     // Prepare deletion options with connectors flag set to false.
     const options = { connectors: false };
@@ -1301,7 +1301,7 @@ class ToolActUtil {
       T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
 
       // Refresh the selected objects list by removing any objects that are not visible.
-      const updatedSelectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      const updatedSelectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       for (let i = updatedSelectedObjects.length - 1; i >= 0; i--) {
         const currentObject = DataUtil.GetObjectPtr(updatedSelectedObjects[i], false);
         if (currentObject && (currentObject.flags & NvConstant.ObjFlags.NotVisible)) {

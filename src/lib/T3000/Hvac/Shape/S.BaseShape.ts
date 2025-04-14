@@ -6070,7 +6070,7 @@ class BaseShape extends BaseDrawObject {
           const baseArrowSlop = OptConstant.Common.BaseArrowSlop / screenScale;
           const connectorArrowSlop = OptConstant.Common.ConnectorArrowSlop / screenScale;
           let knobSizeOffset = 0;
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
           if (selectedList && selectedList.indexOf(currentBlockId) !== -1) {
             knobSizeOffset = OptConstant.Common.KnobSize / 2;
           }
