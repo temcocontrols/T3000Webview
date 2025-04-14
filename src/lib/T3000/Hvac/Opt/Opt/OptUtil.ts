@@ -4057,7 +4057,7 @@ class OptUtil {
                   if (connectorHookCount - connectorUsageCount > 1 || connectorEndInfo.pasted || isForced) {
                     objectIds.push(parentConnector);
                     if ((tempObj.extraflags & OptConstant.ExtraFlags.NoDelete)) {
-                      tempObj.extraflags = SDJS.Utils.SetFlag(tempObj.extraflags, OptConstant.ExtraFlags.NoDelete, false);
+                      tempObj.extraflags = Utils2.SetFlag(tempObj.extraflags, OptConstant.ExtraFlags.NoDelete, false);
                     }
                     OptAhUtil.GetConnectorTree(parentConnector, objectIds);
                     if (!connectorEndInfo.pasted) {
@@ -4154,7 +4154,7 @@ class OptUtil {
                     flagSkip = true;
                   }
                 }
-                childObj.flags = SDJS.Utils.SetFlag(childObj.flags, NvConstant.ObjFlags.Obj1, true);
+                childObj.flags = Utils2.SetFlag(childObj.flags, NvConstant.ObjFlags.Obj1, true);
                 OptCMUtil.SetLinkFlag(childId, DSConstant.LinkFlags.Move);
               }
               childSearchIndex = childId;

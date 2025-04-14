@@ -633,8 +633,8 @@ class ShapeUtil {
       if (jsonData.data && jsonData.data.header) {
         // Set document properties from header
         if (jsonData.data.header.type === "fullDocument") {
-          if (jsonData.data.header.smartpanelname) {
-            T3Gv.opt.header.smartpanelname = jsonData.data.header.smartpanelname;
+          if (jsonData.data.header.panelName) {
+            T3Gv.opt.header.panelName = jsonData.data.header.panelName;
           }
           if (jsonData.data.header.importSourcePath) {
             T3Gv.opt.header.importSourcePath = jsonData.data.header.importSourcePath;
@@ -1213,12 +1213,12 @@ class ShapeUtil {
       } else {
         jsonData.data.header = {
           type: "fullDocument",
-          smartpanelname: T3Gv.opt.header.smartpanelname,
+          panelName: T3Gv.opt.header.panelName,
           importSourcePath: T3Gv.opt.header.importSourcePath,
           BusinessModule: T3Gv.opt.header.BusinessModule,
           SymbolSearchString: T3Gv.opt.header.SymbolSearchString,
           orgcharttable: T3Gv.opt.header.orgcharttable,
-          smarthelpname: T3Gv.opt.header.smarthelpname,
+          lpName: T3Gv.opt.header.lpName,
           ParentPageID: T3Gv.opt.header.ParentPageID
         };
       }

@@ -235,7 +235,7 @@ class HookUtil {
           hasCoManagerFlag = connectorObject.arraylist.styleflags & OptConstant.AStyles.CoManager;
           if (
             hasCoManagerFlag &&
-            connectorObject.arraylist.hook.length - SDJS.ConnectorDefines.NSkip >= 1
+            connectorObject.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip >= 1
           ) {
             T3Util.Log("O.Opt CNChangeHook - Output: Skipped (co-manager limit reached)");
             return;

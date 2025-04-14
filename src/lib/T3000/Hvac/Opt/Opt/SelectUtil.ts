@@ -901,18 +901,6 @@ class SelectUtil {
       return DSConstant.Contexts.NoteText;
     }
 
-    // // Check if a table is active.
-    // if (this.Table_GetActiveID() !== -1) {
-    //   selectionContexts.push(DSConstant.Contexts.Table);
-    //   selectionContexts.push(DSConstant.Contexts.Text);
-    //   optMng = OptAhUtil.GetGvSviOpt();
-    //   if (optMng) {
-    //     selectionContexts.push(DSConstant.Contexts.Automation);
-    //   }
-    //   T3Util.Log("O.Opt GetSelectionContext - Output:", selectionContexts);
-    //   return selectionContexts;
-    // }
-
     // Handle default target selection.
     let targetObjectId = SelectUtil.GetTargetSelect();
     if (targetObjectId === 0) {
