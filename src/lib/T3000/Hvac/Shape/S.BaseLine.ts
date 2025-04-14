@@ -2538,27 +2538,28 @@ class BaseLine extends BaseDrawObject {
       position.height = knobSize;
 
       let knobParams = null;
-      if (T3Gv.opt.touchInitiated) {
-        knobParams = {
-          svgDoc,
-          shapeType: OptConstant.CSType.Oval,
-          x: knobSize / 2,
-          y: knobSize / 2,
-          knobSize,
-          fillColor: 'black',
-          fillOpacity: 0.25,
-          strokeSize: 1,
-          strokeColor: '#777777',
-          KnobID: 0,
-          cursorType: CursorConstant.CursorType.Anchor
-        };
-        if (isJoin) {
-          knobParams.fillColor = 'none';
-          knobParams.strokeSize = 2;
-          knobParams.strokeColor = 'black';
-          knobParams.cursorType = CursorConstant.CursorType.CUR_JOIN;
-        }
-      } else {
+      // if (T3Gv.opt.touchInitiated) {
+      //   knobParams = {
+      //     svgDoc,
+      //     shapeType: OptConstant.CSType.Oval,
+      //     x: knobSize / 2,
+      //     y: knobSize / 2,
+      //     knobSize,
+      //     fillColor: 'black',
+      //     fillOpacity: 0.25,
+      //     strokeSize: 1,
+      //     strokeColor: '#777777',
+      //     KnobID: 0,
+      //     cursorType: CursorConstant.CursorType.Anchor
+      //   };
+      //   if (isJoin) {
+      //     knobParams.fillColor = 'none';
+      //     knobParams.strokeSize = 2;
+      //     knobParams.strokeColor = 'black';
+      //     knobParams.cursorType = CursorConstant.CursorType.CUR_JOIN;
+      //   }
+      // } else
+      {
         knobParams = {
           svgDoc,
           shapeType: OptConstant.CSType.Oval,

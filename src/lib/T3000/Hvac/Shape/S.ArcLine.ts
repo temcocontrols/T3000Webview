@@ -519,9 +519,9 @@ class ArcLine extends BaseLine {
     group.AddElement(knob);
 
     // Add ROTATE knob if allowed.
-    if (T3Gv.opt.touchInitiated) {
-      allowKnob = false;
-    }
+    // if (T3Gv.opt.touchInitiated) {
+    //   allowKnob = false;
+    // }
     if (allowKnob && !knobConfig.locked && !this.NoGrow()) {
       knobConfig.shapeType = OptConstant.CSType.Oval;
       let angle = Math.atan((this.EndPoint.y - this.StartPoint.y) / (this.EndPoint.x - this.StartPoint.x));

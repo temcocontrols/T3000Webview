@@ -191,7 +191,7 @@ class BaseSymbol extends BaseShape {
     knobGroup.AddElement(knobElement);
 
     // Conditionally create the rotate knob if allowed
-    if (!T3Gv.opt.touchInitiated && !knobConfig.locked && !this.NoGrow()) {
+    if (/*!T3Gv.opt.touchInitiated &&*/ !knobConfig.locked && !this.NoGrow()) {
       knobConfig.shapeType = OptConstant.CSType.Oval;
       knobConfig.x = frameWidth - 3 * scaleRotatedKnobSize;
       knobConfig.y = frameHeight / 2 - scaleRotatedKnobSize / 2;

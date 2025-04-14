@@ -1407,7 +1407,7 @@ class PolyLine extends BaseLine {
 
     // If the document is not touch initiated and the object is not locked and can grow,
     // create a rotate knob.
-    if (!T3Gv.opt.touchInitiated && !knobProps.locked && !this.NoGrow()) {
+    if (/*!T3Gv.opt.touchInitiated &&*/ !knobProps.locked && !this.NoGrow()) {
       knobProps.shapeType = OptConstant.CSType.Oval;
       // Position the rotate knob roughly at the top-right corner of the frame.
       if (frame.width < frame.height) {
