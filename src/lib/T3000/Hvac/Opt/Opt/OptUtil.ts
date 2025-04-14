@@ -60,7 +60,7 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
  *
  * OptUtil provides core functionality for the T3000 HVAC graphics editor, handling operations like:
  * - SVG document initialization and manipulation
- * - Selection management and rubber band selection
+ * - Selection management and rectangle selection
  * - Drag and drop operations
  * - Object formatting and styling
  * - Text editing and formatting
@@ -74,8 +74,8 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
  * const optUtil = new OptUtil();
  * optUtil.Initialize();
  *
- * // Use rubber band selection to select multiple objects
- * optUtil.StartRubberBandSelect(mouseEvent);
+ * // Use rectangle selection to select multiple objects
+ * optUtil.StartOptSltSelect(mouseEvent);
  *
  * // Handle format painter operations
  * optUtil.SetFormatPainter(false, true); // Enable format painter in sticky mode
@@ -104,13 +104,13 @@ class OptUtil {
   public sVGroot: any;               // Root SVG DOM element
 
   /**
-   * Rubber band selection variables
+   * Rectangle selection variables
    * Used for implementing rectangular selection behavior
    */
-  public rubberBand: any;            // Reference to selection rectangle element
-  public rubberBandStartX: number;   // Starting X coordinate for selection
-  public rubberBandStartY: number;   // Starting Y coordinate for selection
-  public rubberBandFrame: any;       // Bounding rectangle of selection area
+  public optSlt: any;            // Reference to selection rectangle element
+  public optSltStartX: number;   // Starting X coordinate for selection
+  public optSltStartY: number;   // Starting Y coordinate for selection
+  public optSltFrame: any;       // Bounding rectangle of selection area
 
   /**
    * Drag operation state variables
@@ -420,10 +420,10 @@ class OptUtil {
      * Set up properties for rubber band selection
      * These properties track state during rectangular selection operations
      */
-    this.rubberBand = null;                     // Visual representation of selection area
-    this.rubberBandStartX = 0;                  // X position where selection started
-    this.rubberBandStartY = 0;                  // Y position where selection started
-    this.rubberBandFrame = {                    // Actual selection rectangle coordinates
+    this.optSlt = null;                     // Visual representation of selection area
+    this.optSltStartX = 0;                  // X position where selection started
+    this.optSltStartY = 0;                  // Y position where selection started
+    this.optSltFrame = {                    // Actual selection rectangle coordinates
       x: 0,
       y: 0,
       width: 0,
@@ -5859,26 +5859,26 @@ class OptUtil {
     T3Util.Log("O.Opt HandleStampDragDoAutoScroll - Output: Position updated", documentCoords);
   }
 
-  RubberBandSelectDoAutoScroll() {
-    T3Util.Log("O.Opt RubberBandSelectDoAutoScroll - Input: starting auto scroll");
+  OptSltSelectDoAutoScroll() {
+    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Input: starting auto scroll");
 
     // Schedule auto-scroll callback to run every 100ms
-    T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("RubberBandSelectDoAutoScroll", 100);
+    T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("OptSltSelectDoAutoScroll", 100);
 
     // Convert window coordinates (autoScrollXPos, autoScrollYPos) to document coordinates
     const documentCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       T3Gv.opt.autoScrollXPos,
       T3Gv.opt.autoScrollYPos
     );
-    T3Util.Log(`O.Opt RubberBandSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
+    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
 
     // Scroll the document to the computed position
     T3Gv.docUtil.ScrollToPosition(documentCoords.x, documentCoords.y);
-    T3Util.Log(`O.Opt RubberBandSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
+    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
 
-    // Move the rubber band selection rectangle based on the new coordinates
-    SelectUtil.RubberBandSelectMoveCommon(documentCoords.x, documentCoords.y);
-    T3Util.Log("O.Opt RubberBandSelectDoAutoScroll - Output: Rubber band selection moved");
+    // Move the rectangle selection rectangle based on the new coordinates
+    SelectUtil.OptSltSelectMoveCommon(documentCoords.x, documentCoords.y);
+    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Output: Rectangle selection moved");
   }
 
   /**

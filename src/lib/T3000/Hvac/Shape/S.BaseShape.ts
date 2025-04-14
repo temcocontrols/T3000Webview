@@ -6080,7 +6080,7 @@ class BaseShape extends BaseDrawObject {
           // If there is an ongoing action (stored object, drag, or rubber band) then add a mouseout event
           if (T3Gv.opt.actionStoredObjectId !== -1 ||
             T3Gv.opt.dragBBoxList.length !== 0 ||
-            T3Gv.opt.rubberBand) {
+            T3Gv.opt.optSlt) {
             // When mouse leaves, clear effects and cursors
             rolloverElement.svgObj.mouseout(() => {
               self.SetRuntimeEffects(false);
@@ -6680,7 +6680,7 @@ class BaseShape extends BaseDrawObject {
             QuasarUtil.ShowContextMenu(true);
           default:
             // Handle specific shape types
-            switch (clickedObject.ShapeType) { 
+            switch (clickedObject.ShapeType) {
               case shapeTypes.RRect:
                 if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
                   clickedObject.EMFHash && clickedObject.EMFHash.length) {

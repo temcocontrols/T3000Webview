@@ -517,35 +517,17 @@ class SelectUtil {
     T3Util.Log("O.Opt RemoveFromSelectedList - Output: Object removed from selection");
   }
 
-  static StartRubberBandSelect(event: any) {
-    T3Util.Log('O.Opt StartRubberBandSelect - Input event:', event);
+  static StartOptSltSelect(event: any) {
+    T3Util.Log('O.Opt StartOptSltSelect - Input event:', event);
     try {
       if (T3Gv.docUtil.IsReadOnly()) {
-        T3Util.Log('O.Opt StartRubberBandSelect - Document is read-only; aborting.');
+        T3Util.Log('O.Opt StartOptSltSelect - Document is read-only; aborting.');
         return;
       }
 
-      // if (this.cachedWidth) {
-      //   try {
-      //     T3Gv.opt.CloseEdit();
-      //     T3Gv.opt.ChangeWidth(this.cachedWidth);
-      //   } catch (error) {
-      //     T3Gv.opt.ExceptionCleanup(error);
-      //     throw error;
-      //   }
-      // }
-      // if (this.cachedHeight) {
-      //   try {
-      //     T3Gv.opt.CloseEdit();
-      //     T3Gv.opt.ChangeHeight(this.cachedHeight);
-      //   } catch (error) {
-      //     T3Gv.opt.ExceptionCleanup(error);
-      //     throw error;
-      //   }
-      // }
       if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
         if (T3Gv.opt.formatPainterSticky) {
-          T3Util.Log('O.Opt StartRubberBandSelect - formatPainterSticky active; aborting.');
+          T3Util.Log('O.Opt StartOptSltSelect - formatPainterSticky active; aborting.');
           return;
         }
         UIUtil.SetFormatPainter(true, false);
@@ -555,25 +537,19 @@ class SelectUtil {
       DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       T3Gv.opt.CloseEdit();
 
-      // Create the rubber band shape as a rectangle
-      const rubberBandShape = T3Gv.opt.svgDoc.CreateShape(OptConstant.CSType.Rect);
-      rubberBandShape.SetStrokeColor('black');
-      // if (T3Gv.opt.isAndroid) {
-      //   rubberBandShape.SetFillColor('none');
-      //   rubberBandShape.SetFillOpacity(0);
-      // } else
+      // Create the opt select shape as a rectangle
+      const optSltShape = T3Gv.opt.svgDoc.CreateShape(OptConstant.CSType.Rect);
+      optSltShape.SetStrokeColor('black');
 
-      {
-        rubberBandShape.SetFillColor('black');
-        rubberBandShape.SetFillOpacity(0.03);
-      }
+      optSltShape.SetFillColor('black');
+      optSltShape.SetFillOpacity(0.03);
 
       const zoomFactorInverse = 1 / T3Gv.docUtil.GetZoomFactor();
-      rubberBandShape.SetStrokeWidth(1 * zoomFactorInverse);
+      optSltShape.SetStrokeWidth(1 * zoomFactorInverse);
 
       if (/*!T3Gv.opt.isAndroid*/ true) {
         const strokePattern = 2 * zoomFactorInverse + ',' + zoomFactorInverse;
-        rubberBandShape.SetStrokePattern(strokePattern);
+        optSltShape.SetStrokePattern(strokePattern);
       }
 
       // Convert window coordinates to document coordinates
@@ -581,24 +557,24 @@ class SelectUtil {
         event.gesture.center.clientX,
         event.gesture.center.clientY
       );
-      T3Gv.opt.rubberBandStartX = startCoordinates.x;
-      T3Gv.opt.rubberBandStartY = startCoordinates.y;
-      rubberBandShape.SetSize(1, 1);
-      rubberBandShape.SetPos(startCoordinates.x, startCoordinates.y);
-      T3Gv.opt.svgOverlayLayer.AddElement(rubberBandShape);
+      T3Gv.opt.optSltStartX = startCoordinates.x;
+      T3Gv.opt.optSltStartY = startCoordinates.y;
+      optSltShape.SetSize(1, 1);
+      optSltShape.SetPos(startCoordinates.x, startCoordinates.y);
+      T3Gv.opt.svgOverlayLayer.AddElement(optSltShape);
 
-      T3Util.Log('O.Opt StartRubberBandSelect - Rubber band shape created:', rubberBandShape);
-      T3Gv.opt.rubberBand = rubberBandShape;
+      T3Util.Log('O.Opt StartOptSltSelect - Rubber band shape created:', optSltShape);
+      T3Gv.opt.optSlt = optSltShape;
       T3Gv.opt.EndStampSession();
 
       // Bind hammer events for the rubber band dragging
-      T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_RubberBandDrag);
-      T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_RubberBandDragEnd);
+      T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_OptSltDrag);
+      T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_OptSltDragEnd);
 
-      T3Util.Log('O.Opt StartRubberBandSelect - Output rubber band set successfully:', T3Gv.opt.rubberBand);
+      T3Util.Log('O.Opt StartOptSltSelect - Output rubber band set successfully:', T3Gv.opt.optSlt);
     } catch (error) {
-      T3Util.Log('O.Opt StartRubberBandSelect - Error:', error);
-      this.RubberBandSelectExceptionCleanup(error);
+      T3Util.Log('O.Opt StartOptSltSelect - Error:', error);
+      this.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
@@ -669,21 +645,21 @@ class SelectUtil {
     T3Util.Log("O.Opt SelectAllInRect - Output: Selection processing completed");
   }
 
-  static RubberBandSelectMoveCommon(mouseX: number, mouseY: number) {
-    T3Util.Log('O.Opt RubberBandSelectMoveCommon - Input:', { mouseX, mouseY });
+  static OptSltSelectMoveCommon(mouseX: number, mouseY: number) {
+    T3Util.Log('O.Opt OptSltSelectMoveCommon - Input:', { mouseX, mouseY });
 
-    if (T3Gv.opt.rubberBand === null) {
+    if (T3Gv.opt.optSlt === null) {
       return;
     }
 
     const currentX = mouseX;
     const currentY = mouseY;
-    const startX = T3Gv.opt.rubberBandStartX;
-    const startY = T3Gv.opt.rubberBandStartY;
+    const startX = T3Gv.opt.optSltStartX;
+    const startY = T3Gv.opt.optSltStartY;
 
     if (currentX >= startX && currentY >= startY) {
-      T3Gv.opt.rubberBand.SetSize(currentX - startX, currentY - startY);
-      T3Gv.opt.rubberBandFrame = {
+      T3Gv.opt.optSlt.SetSize(currentX - startX, currentY - startY);
+      T3Gv.opt.optSltFrame = {
         x: startX,
         y: startY,
         width: currentX - startX,
@@ -691,18 +667,18 @@ class SelectUtil {
       };
     } else if (currentY < startY) {
       if (currentX >= startX) {
-        T3Gv.opt.rubberBand.SetSize(currentX - startX, startY - currentY);
-        T3Gv.opt.rubberBand.SetPos(startX, currentY);
-        T3Gv.opt.rubberBandFrame = {
+        T3Gv.opt.optSlt.SetSize(currentX - startX, startY - currentY);
+        T3Gv.opt.optSlt.SetPos(startX, currentY);
+        T3Gv.opt.optSltFrame = {
           x: startX,
           y: currentY,
           width: currentX - startX,
           height: startY - currentY
         };
       } else {
-        T3Gv.opt.rubberBand.SetSize(startX - currentX, startY - currentY);
-        T3Gv.opt.rubberBand.SetPos(currentX, currentY);
-        T3Gv.opt.rubberBandFrame = {
+        T3Gv.opt.optSlt.SetSize(startX - currentX, startY - currentY);
+        T3Gv.opt.optSlt.SetPos(currentX, currentY);
+        T3Gv.opt.optSltFrame = {
           x: currentX,
           y: currentY,
           width: startX - currentX,
@@ -710,9 +686,9 @@ class SelectUtil {
         };
       }
     } else if (currentX < startX) {
-      T3Gv.opt.rubberBand.SetSize(startX - currentX, currentY - startY);
-      T3Gv.opt.rubberBand.SetPos(currentX, startY);
-      T3Gv.opt.rubberBandFrame = {
+      T3Gv.opt.optSlt.SetSize(startX - currentX, currentY - startY);
+      T3Gv.opt.optSlt.SetPos(currentX, startY);
+      T3Gv.opt.optSltFrame = {
         x: currentX,
         y: startY,
         width: startX - currentX,
@@ -720,46 +696,46 @@ class SelectUtil {
       };
     }
 
-    T3Util.Log('O.Opt RubberBandSelectMoveCommon - Output:', { rubberBandFrame: T3Gv.opt.rubberBandFrame });
+    T3Util.Log('O.Opt OptSltSelectMoveCommon - Output:', { optSltFrame: T3Gv.opt.optSltFrame });
   }
 
-  static UnbindRubberBandHammerEvents() {
-    T3Util.Log('O.Opt UnbindRubberBandHammerEvents - Input');
+  static UnbindOptSltHammerEvents() {
+    T3Util.Log('O.Opt UnbindOptSltHammerEvents - Input');
 
     if (T3Gv.opt.WorkAreaHammer) {
       T3Gv.opt.WorkAreaHammer.off('drag');
       T3Gv.opt.WorkAreaHammer.off('dragend');
     }
 
-    T3Util.Log('O.Opt UnbindRubberBandHammerEvents - Output: done');
+    T3Util.Log('O.Opt UnbindOptSltHammerEvents - Output: done');
   }
 
-  static RubberBandSelectExceptionCleanup(exception: any): never {
-    T3Util.Log("O.Opt RubberBandSelectExceptionCleanup - Input:", exception);
+  static OptSltSelectExceptionCleanup(exception: any): never {
+    T3Util.Log("O.Opt OptSltSelectExceptionCleanup - Input:", exception);
 
     try {
       // Unbind rubber band related hammer events and reset auto-scroll timer.
-      this.UnbindRubberBandHammerEvents();
+      this.UnbindOptSltHammerEvents();
       DrawUtil.ResetAutoScrollTimer();
 
       // Remove the rubber band element from the overlay layer if it exists.
-      if (T3Gv.opt.rubberBand) {
-        T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.rubberBand);
+      if (T3Gv.opt.optSlt) {
+        T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
       }
 
       // Reset rubber band properties.
-      T3Gv.opt.rubberBand = null;
-      T3Gv.opt.rubberBandStartX = 0;
-      T3Gv.opt.rubberBandStartY = 0;
-      T3Gv.opt.rubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
+      T3Gv.opt.optSlt = null;
+      T3Gv.opt.optSltStartX = 0;
+      T3Gv.opt.optSltStartY = 0;
+      T3Gv.opt.optSltFrame = { x: 0, y: 0, width: 0, height: 0 };
 
       T3Gv.opt.noUndo = false;
     } catch (cleanupError) {
-      console.error("O.Opt RubberBandSelectExceptionCleanup - Cleanup Error:", cleanupError);
+      console.error("O.Opt OptSltSelectExceptionCleanup - Cleanup Error:", cleanupError);
       throw cleanupError;
     }
 
-    T3Util.Log("O.Opt RubberBandSelectExceptionCleanup - Output: Cleanup completed");
+    T3Util.Log("O.Opt OptSltSelectExceptionCleanup - Output: Cleanup completed");
     throw exception;
   }
 
@@ -784,10 +760,10 @@ class SelectUtil {
     T3Util.Log('O.Opt ClearSelectionClick: output');
   }
 
-  static RubberBandSelectCancel(event?) {
-    T3Util.Log("O.Opt RubberBandSelectCancel - Input:", event);
+  static OptSltSelectCancel(event?) {
+    T3Util.Log("O.Opt OptSltSelectCancel - Input:", event);
 
-    if (T3Gv.opt.rubberBand) {
+    if (T3Gv.opt.optSlt) {
       // Unbind related event handlers
       T3Gv.opt.WorkAreaHammer.off('drag');
       T3Gv.opt.WorkAreaHammer.off('dragend');
@@ -797,13 +773,13 @@ class SelectUtil {
 
       // Clean up resources
       DrawUtil.ResetAutoScrollTimer();
-      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.rubberBand);
+      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
 
       // Reset rubber band properties
-      T3Gv.opt.rubberBand = null;
-      T3Gv.opt.rubberBandStartX = 0;
-      T3Gv.opt.rubberBandStartY = 0;
-      T3Gv.opt.rubberBandFrame = {
+      T3Gv.opt.optSlt = null;
+      T3Gv.opt.optSltStartX = 0;
+      T3Gv.opt.optSltStartY = 0;
+      T3Gv.opt.optSltFrame = {
         x: 0,
         y: 0,
         width: 0,
@@ -811,7 +787,7 @@ class SelectUtil {
       };
     }
 
-    T3Util.Log("O.Opt RubberBandSelectCancel - Output: Rubber band selection canceled");
+    T3Util.Log("O.Opt OptSltSelectCancel - Output: Rubber band selection canceled");
   }
 
   /**

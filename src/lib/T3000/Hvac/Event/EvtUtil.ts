@@ -276,7 +276,7 @@ class EvtUtil {
       }
 
       // Start rubber band selection
-      SelectUtil.StartRubberBandSelect(event);
+      SelectUtil.StartOptSltSelect(event);
 
       T3Util.Log("E.Evt WorkAreaHammerDragStart output: rubber band selection started");
       return false;
@@ -289,8 +289,8 @@ class EvtUtil {
    * Includes auto-scrolling when dragging near document edges
    * @param event - The drag event from the hammer.js gesture system
    */
-  static Evt_RubberBandDrag(event) {
-    T3Util.Log("E.Evt RubberBandDrag input:", event);
+  static Evt_OptSltDrag(event) {
+    T3Util.Log("E.Evt OptSltDrag input:", event);
 
     // Prevent default browser behavior
     Utils2.StopPropagationAndDefaults(event);
@@ -301,7 +301,7 @@ class EvtUtil {
       if (!DrawUtil.AutoScrollCommon(
         event,
         false,
-        'RubberBandSelectDoAutoScroll'
+        'OptSltSelectDoAutoScroll'
       )) {
         return;
       }
@@ -312,20 +312,20 @@ class EvtUtil {
         event.gesture.center.clientY
       );
 
-      T3Util.Log("E.Evt RubberBandDrag processing: coordinates", documentCoordinates);
+      T3Util.Log("E.Evt OptSltDrag processing: coordinates", documentCoordinates);
 
       // Update the rubber band selection shape
-      SelectUtil.RubberBandSelectMoveCommon(
+      SelectUtil.OptSltSelectMoveCommon(
         documentCoordinates.x,
         documentCoordinates.y
       );
 
-      T3Util.Log("E.Evt RubberBandDrag output: rubber band updated");
+      T3Util.Log("E.Evt OptSltDrag output: rubber band updated");
     } catch (error) {
       // Handle exceptions during rubber band selection
-      SelectUtil.RubberBandSelectExceptionCleanup(error);
+      SelectUtil.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("E.Evt RubberBandDrag error:", error);
+      T3Util.Log("E.Evt OptSltDrag error:", error);
       throw error;
     }
   }
@@ -335,44 +335,44 @@ class EvtUtil {
    * Finalizes selection of objects within the rubber band area and cleans up selection state
    * @param event - The drag end event from the hammer.js gesture system
    */
-  static Evt_RubberBandDragEnd(event) {
-    T3Util.Log("E.Evt RubberBandDragEnd input:", event);
+  static Evt_OptSltDragEnd(event) {
+    T3Util.Log("E.Evt OptSltDragEnd input:", event);
 
     // Prevent default browser behavior
     Utils2.StopPropagationAndDefaults(event);
 
     try {
       // Clean up event handlers used for rubber band selection
-      SelectUtil.UnbindRubberBandHammerEvents();
+      SelectUtil.UnbindOptSltHammerEvents();
       DrawUtil.ResetAutoScrollTimer();
 
       // Get the final rubber band selection area
-      const rubberBandFrame = T3Gv.opt.rubberBandFrame;
+      const optSltFrame = T3Gv.opt.optSltFrame;
 
       // Select all objects within the selection rectangle
       // If shift key is pressed, add to existing selection instead of replacing
       SelectUtil.SelectAllInRect(
-        rubberBandFrame,
+        optSltFrame,
         event.gesture.srcEvent.shiftKey
       );
 
       // Remove the visual rubber band selection indicator
-      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.rubberBand);
+      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
 
       // Reset rubber band selection state
-      T3Util.Log("E.Evt RubberBandDragEnd processing: resetting rubber band state");
-      T3Gv.opt.rubberBand = null;
-      T3Gv.opt.rubberBandStartX = 0;
-      T3Gv.opt.rubberBandStartY = 0;
-      T3Gv.opt.rubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
+      T3Util.Log("E.Evt OptSltDragEnd processing: resetting rubber band state");
+      T3Gv.opt.optSlt = null;
+      T3Gv.opt.optSltStartX = 0;
+      T3Gv.opt.optSltStartY = 0;
+      T3Gv.opt.optSltFrame = { x: 0, y: 0, width: 0, height: 0 };
 
-      T3Util.Log("E.Evt RubberBandDragEnd output: selection completed");
+      T3Util.Log("E.Evt OptSltDragEnd output: selection completed");
 
     } catch (error) {
       // Clean up if an error occurs during selection
-      SelectUtil.RubberBandSelectExceptionCleanup(error);
+      SelectUtil.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("E.Evt RubberBandDragEnd error:", error);
+      T3Util.Log("E.Evt OptSltDragEnd error:", error);
       throw error;
     }
   }
@@ -925,7 +925,7 @@ class EvtUtil {
     event.gesture.stopDetect();
 
     // Cancel any active selections or moves
-    SelectUtil.RubberBandSelectCancel();
+    SelectUtil.OptSltSelectCancel();
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
       LMEvtUtil.LMMoveRelease(event);
     }
@@ -980,7 +980,7 @@ class EvtUtil {
     T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
 
     // Cancel any active rubber band selection
-    SelectUtil.RubberBandSelectCancel();
+    SelectUtil.OptSltSelectCancel();
 
     // Release any active move operation
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
@@ -1058,7 +1058,7 @@ class EvtUtil {
     event.gesture.stopDetect();
 
     // Cancel any active selections or moves
-    T3Gv.opt.RubberBandSelectCancel();
+    T3Gv.opt.OptSltSelectCancel();
     if (T3Gv.opt.moveList &&
       T3Gv.opt.moveList.length) {
       LMEvtUtil.LMMoveRelease(event);
