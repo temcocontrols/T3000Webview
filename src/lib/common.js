@@ -77,7 +77,7 @@ export const tools = [
   {
     name: "Pointer",
     label: "Select",
-    icon: "svguse:icons.svg#cursor|0 0 320 512",
+    icon: "svguse:icons.svg#cursor|0 0 280 200",
     cat: ["Basic"],
   },
   {
@@ -125,12 +125,12 @@ export const tools = [
     icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
     cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#000",
-        type: "color",
-        label: "Background Color",
-        id: 1,
-      },
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
       fillColor: {
         value: "#659dc5",
         type: "color",
@@ -145,12 +145,12 @@ export const tools = [
     icon: "svguse:icons.svg#g_circle|0 0 24 24",
     cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#000",
-        type: "color",
-        label: "Background Color",
-        id: 1,
-      },
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
       fillColor: {
         value: "#659dc5",
         type: "color",
@@ -165,12 +165,12 @@ export const tools = [
     icon: "svguse:icons.svg#g_step|0 0 24 24",
     cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#000",
-        type: "color",
-        label: "Background Color",
-        id: 1,
-      },
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
       fillColor: {
         value: "#659dc5",
         type: "color",
@@ -185,12 +185,12 @@ export const tools = [
     icon: "svguse:icons.svg#g_hexagon|0 0 24 24",
     cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#000",
-        type: "color",
-        label: "Background Color",
-        id: 1,
-      },
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
       fillColor: {
         value: "#659dc5",
         type: "color",

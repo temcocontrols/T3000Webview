@@ -3,10 +3,10 @@
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
-import Utils5 from '../../Helper/Utils5'
+import Utils5 from '../../Util/Utils5'
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
 import IdxUtils from '../IdxUtils'
-import T3Utils from "../../Helper/T3Utils"
+import T3Utils from "../../Util/T3Utils"
 
 class WebSocketClient {
 
@@ -122,7 +122,8 @@ class WebSocketClient {
   public sendMessage(message: string) {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
-      console.log('= Ws send to T3', message);
+      const currentDateTime = new Date().toLocaleString();
+      console.log('= Ws send to T3 at', currentDateTime, message);
     } else {
       console.log('= Ws send message | socket is not open | wait for.  Ready state:', this.socket.readyState);
       this.socket.onopen = () => {
@@ -161,6 +162,8 @@ class WebSocketClient {
     const panelId = data.panelId;
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice == undefined) return;
+
     const graphicId = currentDevice.graphic;
 
     // get the serial_number base on panelId
@@ -190,6 +193,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.panelId;
     const graphicId = currentDevice.graphic;
 
@@ -217,6 +222,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
@@ -243,6 +250,8 @@ class WebSocketClient {
     */
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = data.panelId || currentDevice.panenId;
     const graphicId = currentDevice.graphic;
 
@@ -286,28 +295,10 @@ class WebSocketClient {
     // this.sendMessage(JSON.stringify({ action: MessageType.GET_INITIAL_DATA }));
   }
 
+  // action: 2,  // SAVE_GRAPHIC_DATA / SAVE_GRAPHIC_DATA_RES ✔
   public SaveGraphic(panelId, graphicId, data?: {}) {
-    // action: 2, // SAVE_GRAPHIC
-
-    // data => appState load the appState from localStorage
-    const storedAppState = !data ? localStorage.getItem('appState') : data;
-
-    let parsedAppState;
-    if (typeof storedAppState === 'string') {
-      try {
-        parsedAppState = JSON.parse(storedAppState);
-      } catch (error) {
-        console.error('Failed to parse storedAppState:', error);
-        parsedAppState = {};
-      }
-    } else {
-      parsedAppState = storedAppState;
-    }
-
-    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, parsedAppState);
+    this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, graphicId, data);
     this.sendMessage(this.messageData);
-
-    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_GRAPHIC }));
   }
 
   public UpdateEntry(data: any) {
@@ -343,6 +334,8 @@ class WebSocketClient {
     // action: 6, // GET_ENTRIES
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;
     const serialNumber = currentDevice.serialNumber;
@@ -401,6 +394,8 @@ class WebSocketClient {
     // action: 11, // DELETE_IMAGE
 
     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+    if (currentDevice === null || currentDevice === undefined) return;
+
     const panelId = currentDevice.deviceId;
     const graphicId = currentDevice.graphic;
 
@@ -415,16 +410,38 @@ class WebSocketClient {
   //#region Process Messages
 
   // Implement your message processing logic here
+
+  private printLog(parsedData) {
+    try {
+      if (parsedData.action == "GET_INITIAL_DATA_RES") {
+        const data = JSON.parse(parsedData.data);
+        const entry = parsedData.entry;
+        const library = JSON.parse(parsedData.library);
+        console.log('= Ws received parsed data:', { action: "GET_INITIAL_DATA_RES", data, entry, library });
+      }
+      else {
+        console.log('= Ws received parsed data:', parsedData);
+      }
+    }
+    catch (error) {
+      console.log('= Ws print log error', error);
+    }
+  }
+
   private processMessage(data: any) {
+
+    console.log('= Ws received origin data', data);
+
     try {
       const parsedData = JSON.parse(data);
-      console.log('= Ws received parsed data:', parsedData);
 
       const hasError = parsedData.error !== undefined || parsedData?.status === false;
       if (hasError) {
         this.handleError(parsedData);
         return;
       }
+
+      this.printLog(parsedData);
 
       this.processMessageData(parsedData);
       this.showSuccess(parsedData);

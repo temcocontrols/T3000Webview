@@ -125,9 +125,6 @@ class IdxUtils {
           let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
           linkedEntry.value = newLkValue;
           item.t3Entry = linkedEntry;
-
-          console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
-
           IdxUtils.refreshObjectStatus(item);
         }
       });
@@ -174,20 +171,23 @@ class IdxUtils {
   static saveGraphicData(msgData, $q) {
     if (msgData.data?.status === true) {
       if (!savedNotify.value) return;
-      $q.notify({
-        message: "Saved successfully.",
-        color: "primary",
-        icon: "check_circle",
-        actions: [
-          {
-            label: "Dismiss",
-            color: "white",
-            handler: () => {
-              /* ... */
-            },
-          },
-        ],
-      });
+      // $q.notify({
+      //   message: "Saved successfully.",
+      //   color: "primary",
+      //   icon: "check_circle",
+      //   actions: [
+      //     {
+      //       label: "Dismiss",
+      //       color: "white",
+      //       handler: () => {
+      //         /* ... */
+      //       },
+      //     },
+      //   ],
+      // });
+
+      console.log('= IdxUtils Saved successfully.');
+
     } else {
       $q.notify({
         message: "Error, not saved!",
@@ -204,6 +204,29 @@ class IdxUtils {
         ],
       });
     }
+  }
+
+  static getUnitText(t3Entry) {
+    const range = IdxUtils.getEntryRange(t3Entry);
+    let unitText = "";
+
+    if (t3Entry.range > 100) {
+      const rangeValue = range.options?.find(
+        (item) => item.value === t3Entry.value
+      )
+      unitText = rangeValue?.name || "";
+    }
+    else if (t3Entry.digital_analog === 1) {
+      unitText = range?.unit || "";
+    } else if (t3Entry.digital_analog === 0) {
+      if (t3Entry.control) {
+        unitText = range?.on || "";
+      } else {
+        unitText = range?.off || "";
+      }
+    }
+
+    return unitText;
   }
 }
 

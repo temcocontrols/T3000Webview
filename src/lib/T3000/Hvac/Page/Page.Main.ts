@@ -1,5 +1,5 @@
-import HvacModels from "../Data/Data.Constant";
-import * as Utils from '../Helper/Helper.Utils';
+import HvacModels from "../Data/Constant";
+import * as Utils from '../Util/Helper.Utils';
 import { cloneDeep } from "lodash";
 import Doc from "../Doc/DocHandler";
 import UI from "../Doc/UI";

@@ -19,15 +19,11 @@
 -->
 <template>
   <div class="moveable-item" :class="{
-    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(
-      item.type
-    ),
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(item.type),
     'overflow-hidden': item.type === 'Text',
     [item.type]: item.type,
     'with-bg': item.settings.bgColor,
-    'with-title':
-      item.settings.title ||
-      (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
+    'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
     <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }" v-if="item.settings.title"
       @click="$emit('objectClicked')">
@@ -45,7 +41,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg"
             @click="$emit('autoManualToggle')">
@@ -128,6 +124,11 @@
       <Weld v-else-if="item.type === 'Weld'" class="weld" v-bind:weldModel="item"
         @update-weld-model="updateWeldModel" />
       <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
+
+      <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
+      <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
+      <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
+      <StepEl v-else-if="item.type === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -169,6 +170,11 @@ import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
 import Wall from "./ObjectTypes/Wall.vue";
 import Weld from "./ObjectTypes/Weld.vue";
 
+import CircleEl from "./Basic/Circle.vue";
+import RectangleEl from "./Basic/Rectangle.vue";
+import HexagonEl from "./Basic/Hexagon.vue";
+import StepEl from "./Basic/Step.vue";
+
 export default defineComponent({
   name: "ObjectType",
   components: {
@@ -203,6 +209,10 @@ export default defineComponent({
     RoomTemperature,
     Wall,
     Weld,
+    CircleEl,
+    RectangleEl,
+    HexagonEl,
+    StepEl
   },
   props: {
     item: {
@@ -221,20 +231,24 @@ export default defineComponent({
     "updateWeldModel",
   ],
   setup(props, { emit }) {
+
+    console.log('= Object Type', props.item);
+
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
     });
 
     const dispalyText = computed(() => {
 
-      console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
-        props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
+      // console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
+      //   props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
 
       if (!props.item.t3Entry) {
         return "";
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
+      console.log('= Ot range,t3e', range, props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
@@ -320,11 +334,9 @@ export default defineComponent({
             color: [i.color],
           };
         });
-    });
+    })
 
     function changeValue(type) {
-      // console.log('==== ChangeValue', type);
-      // debugger
       if (props.item.t3Entry.auto_manual === 0) return;
       let control = false;
       let newVal = props.item.t3Entry.value;
@@ -340,7 +352,6 @@ export default defineComponent({
         );
 
         if (type === "decrease" && rangeIndex < rangeOptions.length - 1) {
-          // console.log('=========== decrease ===========');
           //newVal = rangeOptions[rangeIndex + 1].value * 1000;
           newVal = rangeOptions[rangeIndex + 1].value;
         } else if (type === "increase" && rangeIndex > 0) {
@@ -387,7 +398,7 @@ export default defineComponent({
 
     const updateWeldModel = (weldModel, itemList) => {
       emit("updateWeldModel", weldModel, itemList);
-    };
+    }
 
     return {
       range,

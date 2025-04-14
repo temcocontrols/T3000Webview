@@ -7,6 +7,7 @@ import DeviceItem from "./DeviceItem"
 
 import T3Data from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
+import Hvac from "../../Hvac"
 
 class DeviceOpt {
 
@@ -134,7 +135,7 @@ class DeviceOpt {
       return 0;
     }
 
-    const deviceAppStateLS = this.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
 
     if (deviceAppStateLS) {
       const device = deviceAppStateLS.find(
@@ -159,7 +160,7 @@ class DeviceOpt {
     if (!tempAppState || !currentDevice) return;
 
     const parsedTempAppState = JSON.parse(tempAppState);
-    const deviceAppStateLS = this.loadDeviceAppStateLS() || [];
+    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS() || [];
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
@@ -217,14 +218,6 @@ class DeviceOpt {
     }
   }
 
-  loadDeviceAppStateLS() {
-    const deviceAppStateLS = localStorage.getItem('deviceAppState');
-    if (deviceAppStateLS) {
-      return JSON.parse(deviceAppStateLS);
-    }
-    return null;
-  }
-
   // use "deviceModel" as a ref here, when do updating it's value, it will also update the ui component value
   saveDeviceAppState(deviceAppState, deviceModel, appState) {
 
@@ -241,7 +234,7 @@ class DeviceOpt {
     }
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = this.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -254,11 +247,7 @@ class DeviceOpt {
     )
 
     if (!deviceExists) {
-
-      // clear the selected target
       const newAppState = cloneDeep(appState);
-      // newAppState.value.selectedTarget = [];
-
       const dasItem = { device: currentDevice, appState: newAppState };
       deviceAppState.value.push(dasItem);
     }
@@ -267,13 +256,13 @@ class DeviceOpt {
         const check = opt?.device?.device === currentDevice?.device && opt?.device?.graphic === currentDevice?.graphic;
         if (check) {
           const newAppState = cloneDeep(appState);
-          // newAppState.value.selectedTarget = [];
           opt.appState = newAppState;
         }
       });
     }
 
-    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
+    // localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
+    Hvac.LSUtils.saveDeviceAppState(deviceAppState.value);
 
     // load the element count
     this.refreshCurrentDeviceCount(deviceModel);
@@ -282,7 +271,7 @@ class DeviceOpt {
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = this.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -306,7 +295,7 @@ class DeviceOpt {
   refreshCurrentDeviceCount(deviceModel) {
 
     // current device's element count
-    const appStateLs = this.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
     const currentDevice = this.getCurrentDevice();
 
     if (appStateLs) {
@@ -328,7 +317,7 @@ class DeviceOpt {
   // Refresh the graphic panel element count
   refreshGraphicPanelElementCount(currentDevice) {
 
-    const appStateLs = this.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
     if (!appStateLs) return;
 
     /*
@@ -479,7 +468,7 @@ class DeviceOpt {
     this.saveAppState(appState.value);
 
     // set the ls deviceAppState related value
-    const deviceAppStateLS = this.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
 
     if (!deviceAppStateLS) return;
 

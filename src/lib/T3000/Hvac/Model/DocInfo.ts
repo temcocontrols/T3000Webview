@@ -1,40 +1,60 @@
 
 
+/**
+ * Represents the document and display configuration information.
+ *
+ * This class encapsulates various properties related to the display parameters (e.g., dimensions, DPI),
+ * document dimensions, scroll positions, and scaling factors. It serves as a data model to aid in the
+ * calculation and management of document rendering details such as converting document space to screen space,
+ * applying DPI scaling, and tracking scroll bounds.
+ *
+ * @example
+ * // Create and initialize a DocInfo instance with custom display and document parameters
+ * const docInfo = new DocInfo();
+ * docInfo.dispWidth = 1920;
+ * docInfo.dispHeight = 1080;
+ * docInfo.dispDpiX = 96;
+ * docInfo.dispDpiY = 96;
+ *
+ * docInfo.docWidth = 800;
+ * docInfo.docHeight = 600;
+ * docInfo.docDpi = 72;
+ *
+ * // Calculate additional scaling factors here, if needed,
+ * // such as setting docToScreenScale or determining the visible document area.
+ *
+ * @remarks
+ * All numerical properties are initialized to zero by the constructor.
+ * This class is intended for use in contexts where detailed knowledge of both display and document metrics
+ * is necessary for operations like rendering, zooming, and scrolling.
+ */
 class DocInfo {
-
-  //#region Properties
-
-  public dispX: number;
-  public dispY: number;
-  public dispWidth: number;
-  public dispHeight: number;
-  public dispDpiX: number;
-  public dispDpiY: number;
-  public scrollX: number;
-  public scrollY: number;
-  public docDpi: number;
-  public docScale: number;
-  public docWidth: number;
-  public docHeight: number;
-  public docToScreenScale: number;
-  public docDpiScale: number;
-  public docVisX: number;
-  public docVisY: number;
-  public docVisWidth: number;
-  public docVisHeight: number;
-  public docScreenX: number;
-  public docScreenY: number;
-  public docScreenWidth: number;
-  public docScreenHeight: number;
-  public maxScrollX: number;
-  public maxScrollY: number;
-
-  //#endregion
+  dispX: number;
+  dispY: number;
+  dispWidth: number;
+  dispHeight: number;
+  dispDpiX: number;
+  dispDpiY: number;
+  scrollX: number;
+  scrollY: number;
+  docDpi: number;
+  docScale: number;
+  docWidth: number;
+  docHeight: number;
+  docToScreenScale: number;
+  docDpiScale: number;
+  docVisX: number;
+  docVisY: number;
+  docVisWidth: number;
+  docVisHeight: number;
+  docScreenX: number;
+  docScreenY: number;
+  docScreenWidth: number;
+  docScreenHeight: number;
+  maxScrollX: number;
+  maxScrollY: number;
 
   constructor() {
-
-    //#region Initialize Properties
-
     this.dispX = 0;
     this.dispY = 0;
     this.dispWidth = 0;
@@ -59,9 +79,7 @@ class DocInfo {
     this.docScreenHeight = 0;
     this.maxScrollX = 0;
     this.maxScrollY = 0;
-
-    //#endregion
   }
 }
 
-export default DocInfo
+export default DocInfo;

@@ -4,23 +4,23 @@
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg
+  globalMsg, loadSettings
 } from "../Data/T3Data"
 import { liveApi } from '../../../api'
 import { useQuasar, useMeta } from "quasar"
 import panzoom from "panzoom"
-import { computed, triggerRef, toRaw } from "vue"
+import { computed, triggerRef, toRaw, ref } from "vue"
 import Hvac from "../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
+import T3Utils from "../Util/T3Utils"
+import { init } from "echarts"
 
 let panzoomInstance = null;
-// let getPanelsInterval = null; // Interval for fetching panel data
 
 class IdxPage {
 
   private webview = (window as any).chrome?.webview;
-  // private panzoomInstance: any;
   public zoom: any;
   public getPanelsInterval: any;
   public autoSaveInterval: any;
@@ -29,14 +29,12 @@ class IdxPage {
   public $q: any;
 
   constructor() {
-    // this.panzoomInstance = null;
     this.initZoom();
   }
 
   // wrap code for IndexPage's onMounted event
   initPage() {
     Hvac.WebClient.initMessageHandler();
-
     this.initGlobalNav();
     this.isLoggedIn();
     this.restoreAppState();
@@ -44,9 +42,27 @@ class IdxPage {
     this.initPanzoom();
     this.initMessageClient();
     this.initScorller();
-
     this.initAutoSaveInterval();
     this.initWindowListener();
+    this.refreshMoveableGuides();
+    this.resetPanzoom();
+  }
+
+  initPage5() {
+    Hvac.WebClient.initMessageHandler();
+    this.initGlobalNav();
+    this.isLoggedIn();
+    this.restoreAppState();
+    this.setDocMarginOffset();
+    // this.initPanzoom();
+    this.initMessageClient();
+    // this.initScorller();
+    this.initAutoSaveInterval();
+    this.initWindowListener5();
+    this.refreshMoveableGuides();
+    // this.resetPanzoom();
+
+    Hvac.UI.Initialize(); // Initialize the HVAC UI
   }
 
   initQuasar(quasar) {
@@ -55,16 +71,43 @@ class IdxPage {
     Hvac.T3Utils.initQuasar(this.$q);
   }
 
+  // Control zoom actions for the app
+  zoomAction(action: string = "in", val: number = null) {
+    if (action === "out") {
+      this.zoom.value -= 10;
+    } else if (action === "set") {
+      this.zoom.value = val;
+    } else {
+      this.zoom.value += 10;
+    }
+
+    console.log('= Idx zoomAction', this.zoom.value);
+  }
+
   initWindowListener() {
     // Save the state before the window is unloaded
     window.addEventListener("beforeunload", function (event) {
-      // save();
+      // save(true, true);
       Hvac.IdxPage.clearAutoSaveInterval();
       Hvac.WsClient.clearInitialDataInterval();
     });
 
     window.addEventListener("resize", () => {
       IdxPage.restDocumentAreaPosition(null);
+      // console.log('= Idx window resize', documentAreaPosition.value);
+    });
+  }
+
+  initWindowListener5() {
+    // Save the state before the window is unloaded
+    window.addEventListener("beforeunload", function (event) {
+      // save(true, true);
+      Hvac.IdxPage.clearAutoSaveInterval();
+      Hvac.WsClient.clearInitialDataInterval();
+    });
+
+    window.addEventListener("resize", () => {
+      // IdxPage.restDocumentAreaPosition(null);
       // console.log('= Idx window resize', documentAreaPosition.value);
     });
   }
@@ -78,14 +121,13 @@ class IdxPage {
 
   // Restore app state from local storage if not in a webview
   restoreAppState() {
-
     if (this.webview?.postMessage) {
       return;
     }
 
-    const localState = localStorage.getItem("appState");
+    const localState = Hvac.LSUtils.loadParsedAppStateLS();
     if (localState) {
-      appState.value = JSON.parse(localState);
+      appState.value = localState;
       rulersGridVisible.value = appState.value.rulersGridVisible;
     }
   }
@@ -106,7 +148,13 @@ class IdxPage {
 
   // Initialize panzoom for viewport
   initPanzoom() {
-    panzoomInstance = panzoom(viewport.value, {
+    const beforeWheel = function (e) {
+      console.log('= Idx p zoom Mouse clientX:', e.clientX, 'clientY:', e.clientY);
+      // Allow panzoom to handle the wheel event
+      return false;
+    }
+
+    const options = {
       maxZoom: 4,
       minZoom: 0.1,
       zoomDoubleClickSpeed: 1,
@@ -120,20 +168,53 @@ class IdxPage {
         return shouldIgnore;
       },
       // Add the focal point for zooming to be the center of the viewport
-      // transformOrigin: { x: 0.5, y: 0.5 },
-    });
+      beforeWheel: beforeWheel,
+    }
+
+    panzoomInstance = panzoom(viewport.value, options);
 
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
-
-      const pzTrs = e.getTransform();
-      // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-      // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
-
+      // console.log('= Idx p zoom transform', e.getTransform());
       appState.value.viewportTransform = e.getTransform();
+
       triggerRef(appState);
 
       IdxPage.restDocumentAreaPosition(e.getTransform());
+      Hvac.T3Utils.setLocalSettings('transform', e.getTransform());
+    });
+  }
+
+  resetPanzoom() {
+    const transform = Hvac.T3Utils.getLocalSettings('transform');
+
+    if (transform) {
+      // panzoomInstance.zoomAbs(transform.x, transform.y, transform.scale);
+      // panzoomInstance.moveTo(transform.x, transform.y);
+    }
+  }
+
+  // Computed property for zoom control
+  initZoom() {
+    this.zoom = computed({
+      // Getter for zoom value
+      get() {
+        const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
+        console.log('= Idx p zoom get', zoomVal);
+        return zoomVal;
+      },
+      // Setter for zoom value
+      set(newValue) {
+        console.log('= Idx p zoom set', newValue);
+        if (!newValue) return;
+
+        const scale = newValue / 100;
+        const x = appState.value.viewportTransform.x;
+        const y = appState.value.viewportTransform.y;
+
+        appState.value.viewportTransform.scale = scale;
+        panzoomInstance.zoomAbs(x, y, scale);
+      },
     });
   }
 
@@ -155,26 +236,6 @@ class IdxPage {
     else {
       documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
     }
-  }
-
-  initZoom() {
-    // Computed property for zoom control
-    this.zoom = computed({
-      // Getter for zoom value
-      get() {
-        return parseInt(appState.value.viewportTransform.scale * 100 + "");
-      },
-      // Setter for zoom value
-      set(newValue) {
-        if (!newValue) return;
-        appState.value.viewportTransform.scale = newValue / 100;
-        panzoomInstance.smoothZoomAbs(
-          appState.value.viewportTransform.x,
-          appState.value.viewportTransform.y,
-          newValue / 100
-        );
-      },
-    });
   }
 
   // Refresh moveable guides after a short delay
@@ -444,7 +505,7 @@ class IdxPage {
 
       // set ls deviceAppState's current appState to empty
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-      const deviceAppState = Hvac.DeviceOpt.loadDeviceAppStateLS();
+      const deviceAppState = Hvac.LSUtils.loadDeviceAppStateLS();
 
       if (currentDevice) {
         const deviceState = deviceAppState.find(
@@ -477,73 +538,68 @@ class IdxPage {
     }, 1);
   }
 
-  // Save the current app state, optionally displaying a notification
-  save(notify = false) {
-    console.log('= Idx save notify,rulers-grid-visible', notify, rulersGridVisible.value);
-
+  // Wrap a new function for saving data to localstorage and T3000
+  save(notify: boolean = false, saveToT3: boolean = false) {
     savedNotify.value = notify;
+    this.saveToLocal();
+
+    if (saveToT3) {
+      this.saveToT3000();
+    }
+  }
+
+  prepareSaveData() {
     const data = cloneDeep(toRaw(appState.value));
 
-    // recalculate the items count
-    const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
-    data.itemsCount = nonZeroWidthItemsCount;
-    console.log('= Idx save data', data);
+    // Recalculate the items count
+    data.itemsCount = data.items.filter(item => item.width !== 0).length;
 
     data.selectedTargets = [];
     data.elementGuidelines = [];
     data.rulersGridVisible = rulersGridVisible.value;
 
+    return data;
+  }
+
+  // Save the current app state to localstorage, optionally displaying a notification
+  saveToLocal() {
+    // Prepare data
+    const data = this.prepareSaveData();
+
+    Hvac.LSUtils.saveAppState(data);
+
+    if (!isBuiltInEdge.value) {
+      // Save current appState to ls deviceAppState
+      Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+    }
+  }
+
+  // Save data to T3000
+  saveToT3000() {
+    // Prepare data
+    const data = this.prepareSaveData();
+
     if (isBuiltInEdge.value) {
-      // window.chrome?.webview?.postMessage({
-      //   action: 2, // SAVE_GRAPHIC
-      //   data,
-      // });
       Hvac.WebClient.SaveGraphicData(null, null, data);
     }
     else {
-      localStorage.setItem("appState", JSON.stringify(data));
-
       const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
       if (msgType) {
-        console.log('= Idx save with initial data been loaded with error, cancel auto save');
+        console.log('= Idx save to T3000 with initial data status error, cancel auto save');
         return;
       }
 
-      // save device data and related appState
-      this.saveDeviceAppState(true);
-    }
+      // Post a save action to T3
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.deviceId;
+      const graphicId = currentDevice?.graphic;
 
-    /*
-    window.chrome?.webview?.postMessage({
-      action: 2, // SAVE_GRAPHIC
-      data,
-    });
-
-    if (!window.chrome?.webview?.postMessage) {
-      localStorage.setItem("appState", JSON.stringify(data));
-    }
-    */
-  }
-
-  saveDeviceAppState(clearSelected) {
-    // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
-
-    if (clearSelected) {
-      appState.value.selectedTargets = [];
-    }
-
-    Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
-
-    // Post a save action to T3
-    const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-    const panelId = currentDevice?.deviceId;
-    const graphicId = currentDevice?.graphic;
-
-    if (panelId && graphicId) {
-      Hvac.WsClient.SaveGraphic(panelId, graphicId);
-    }
-    else {
-      console.log('= Idx saveDeviceAppState current device is null');
+      if (panelId && graphicId) {
+        Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
+      }
+      else {
+        console.log('= Idx save to T3000 current device is null');
+      }
     }
   }
 
@@ -553,7 +609,7 @@ class IdxPage {
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
         console.log('= Idx auto save every 30s', new Date().toLocaleString());
-        this.save(true);
+        this.save(true, true);
       }, 30000);
     }, 10000);
   }

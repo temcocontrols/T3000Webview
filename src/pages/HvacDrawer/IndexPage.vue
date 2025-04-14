@@ -542,14 +542,13 @@
 
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.cat !== 'General' && item.type !== 'Int_Ext_Wall'"
+                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'"
                       :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
-                      item.cat === 'General' ||
                       item.type === 'Weld_General' ||
                       item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
@@ -1408,7 +1407,8 @@ function addActionToHistory(title) {
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      // save(); // Save the current state
+      console.log("= IdxPage addActionToHistory", title);
+      save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
   }
@@ -1453,7 +1453,9 @@ function onDragEnd(e) {
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.translate = e.lastEvent.beforeTranslate;
-    // save(); // Save the state after drag end
+
+    console.log('= IdxPage onDragEnd:', e, item.translate);
+    save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
 }
@@ -1506,7 +1508,7 @@ function onSelectoDragStart(e) {
 function onSelectoSelectEnd(e) {
   // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
   appState.value.selectedTargets = e.selected;
-  if (e.selected && !e.inputEvent.ctrlKey) {
+  if (e?.selected && !e?.inputEvent?.ctrlKey) {
     const selectedItems = appState.value.items.filter((i) =>
       e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
     );
@@ -1765,7 +1767,7 @@ function addLibItem(items, size, pos) {
         true
       );
       setTimeout(() => {
-        refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       }, 1);
     }, 10);
   }, 10);
@@ -1921,7 +1923,7 @@ function rotate90(item, minues = false) {
   } else {
     item.rotate = item.rotate - 90;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item horizontally
@@ -1932,7 +1934,7 @@ function flipH(item) {
   } else {
     item.scaleX = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Flip an item vertically
@@ -1943,7 +1945,7 @@ function flipV(item) {
   } else {
     item.scaleY = 1;
   }
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Bring an item to the front by increasing its z-index
@@ -2040,7 +2042,7 @@ function T3UpdateEntryField(key, obj) {
 function DisplayFieldValueChanged(value) {
   // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
   // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
-  save(false);
+  save(false, true);
 }
 
 // Define a condition for drag events in Selecto
@@ -2196,8 +2198,12 @@ function insertT3DefaultLoadData() {
 // }
 
 // Save the current app state, optionally displaying a notification
-function save(notify = false) {
-  Hvac.IdxPage.save(notify);
+function save(notify = false, saveToT3 = false) {
+  Hvac.IdxPage.save(notify, saveToT3);
+}
+
+function refreshMoveable() {
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // function save(notify = false) {
@@ -2332,14 +2338,14 @@ keycon.keydown((e) => {
   }
   // Refresh the moveable object after movement
   if (["up", "down", "left", "right"].includes(e.key)) {
-    refreshMoveable();
+    Hvac.IdxPage.refreshMoveable();
   }
 });
 
 // Save the current state when "Ctrl + S" is pressed
 keycon.keydown(["ctrl", "s"], (e) => {
   e.inputEvent.preventDefault();
-  save(true);
+  save(true, true);
 });
 
 // Undo the last action when "Ctrl + Z" is pressed
@@ -2692,7 +2698,7 @@ function weldSelected() {
     }
   });
 
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Undo the last action
@@ -2704,7 +2710,7 @@ function undoAction() {
   });
   appState.value = cloneDeep(undoHistory.value[0].state);
   undoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Redo the last undone action
@@ -2716,7 +2722,7 @@ function redoAction() {
   });
   appState.value = cloneDeep(redoHistory.value[0].state);
   redoHistory.value.shift();
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2737,6 +2743,10 @@ function readFile(file) {
 // Save an image to the library or online storage
 async function saveLibImage(file) {
   if (user.value) {
+
+    console.log('= Idx saveLibImage file', file);
+    console.log('= Idx saveLibImage user',user.value);
+
     liveApi
       .post("hvacTools", {
         json: {
@@ -2873,7 +2883,7 @@ function executeImportFromJson() {
         setTimeout(() => {
           IdxUtils.refreshMoveableGuides();
         }, 100);
-        refreshMoveable();
+        Hvac.IdxPage.refreshMoveable();
       })
       .onCancel(() => {
         importJsonDialog.value.active = false;
@@ -2888,7 +2898,7 @@ function executeImportFromJson() {
   setTimeout(() => {
     IdxUtils.refreshMoveableGuides();
   }, 100);
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // // Computed property for zoom control
@@ -2978,17 +2988,6 @@ function ungroupSelected() {
   }
 }
 
-// Control zoom actions for the app
-function zoomAction(action = "in", val = null) {
-  if (action === "out") {
-    zoom.value -= 10;
-  } else if (action === "set") {
-    zoom.value = val;
-  } else {
-    zoom.value += 10;
-  }
-}
-
 // Handle the menu action for the top toolbar
 function handleMenuAction(action, val) {
   const item = appState.value.items[appState.value.activeItemIndex];
@@ -3003,7 +3002,7 @@ function handleMenuAction(action, val) {
       exportToJsonAction();
       break;
     case "save":
-      save(true);
+      save(true, true);
       break;
     case "undoAction":
       undoAction();
@@ -3054,13 +3053,13 @@ function handleMenuAction(action, val) {
       removeObject(item);
       break;
     case "zoomOut":
-      zoomAction("out");
+      Hvac.IdxPage.zoomAction("out");
       break;
     case "zoomIn":
-      zoomAction();
+      Hvac.IdxPage.zoomAction();
       break;
     case "zoomSet":
-      zoomAction("set", val);
+      Hvac.IdxPage.zoomAction("set", val);
       break;
     case "copy":
       saveSelectedToClipboard();
@@ -3353,7 +3352,7 @@ function toggleClicked(item, type, ev) {
     T3UpdateEntryField("value", item);
   }
 
-  save(false);
+  save(false, true);
 
   // console.log('toggleClicked->after item', item.t3Entry)
 }
@@ -3527,7 +3526,7 @@ function rotate90Selected(minues = false) {
     },
     true
   );
-  refreshMoveable();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Save selected items to the clipboard
@@ -3676,6 +3675,11 @@ function deleteLibImage(item) {
     library.value.images.splice(itemIndex, 1);
     if (!item.online) {
       // Delete the image from the webview
+
+      if(library.value.images.length<=0){
+        return;
+      }
+
       const imagePath = cloneDeep(library.value.images[itemIndex].path);
 
       /*
@@ -3737,7 +3741,7 @@ function convertObjectType(item, type) {
 function toggleRulersGrid(val) {
   rulersGridVisible.value = val === "Enable" ? true : false;
   appState.value.rulersGridVisible = rulersGridVisible.value;
-  // save(false);
+  save(false, false);
 }
 
 // Handles a tool being dropped
@@ -3884,22 +3888,22 @@ function viewportRightClick(ev) {
 //     });
 // }
 
-// // Adds the online images to the library
-// function addOnlineLibImage(oItem) {
-//   const iIndex = library.value.images.findIndex(
-//     (obj) => obj.id === "IMG-" + oItem.id
-//   );
-//   if (iIndex !== -1) {
-//     library.value.images.splice(iIndex, 1);
-//   }
-//   library.value.images.push({
-//     id: "IMG-" + oItem.id,
-//     dbId: oItem.id,
-//     name: oItem.name,
-//     path: process.env.API_URL + "/file/" + oItem.file.path,
-//     online: true,
-//   });
-// }
+// Adds the online images to the library
+function addOnlineLibImage(oItem) {
+  const iIndex = library.value.images.findIndex(
+    (obj) => obj.id === "IMG-" + oItem.id
+  );
+  if (iIndex !== -1) {
+    library.value.images.splice(iIndex, 1);
+  }
+  library.value.images.push({
+    id: "IMG-" + oItem.id,
+    dbId: oItem.id,
+    name: oItem.name,
+    path: process.env.API_URL + "/file/" + oItem.file.path,
+    online: true,
+  });
+}
 </script>
 
 <style>
