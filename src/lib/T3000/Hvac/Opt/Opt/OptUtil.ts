@@ -198,12 +198,12 @@ class OptUtil {
    * Touch and gesture variables
    * Support for touch interaction
    */
-  public isGestureCapable: boolean;      // Whether device supports touch/gestures
-  public touchInitiated: boolean;        // Whether touch interaction started
-  public touchPanStarted: boolean;       // Whether panning via touch started
-  public touchPanX: number;              // X position for touch panning
-  public touchPanY: number;              // Y position for touch panning
-  public bIsFullScreen: boolean;         // Whether in fullscreen mode
+  // public isGestureCapable: boolean;      // Whether device supports touch/gestures
+  // public touchInitiated: boolean;        // Whether touch interaction started
+  // public touchPanStarted: boolean;       // Whether panning via touch started
+  // public touchPanX: number;              // X position for touch panning
+  // public touchPanY: number;              // Y position for touch panning
+  // public bIsFullScreen: boolean;         // Whether in fullscreen mode
 
   /**
    * UI elements and event handlers
@@ -528,15 +528,15 @@ class OptUtil {
     this.inAutoScroll = false;                  // Whether auto-scroll is active
 
     // Touch gesture properties
-    this.isGestureCapable = 'ontouchstart' in window ||
-      ('onpointerdown' in window &&
-        navigator.maxTouchPoints &&
-        navigator.maxTouchPoints > 1);  // Device supports touch
-    this.touchInitiated = false;                // Whether touch interaction started
-    this.touchPanStarted = false;               // Whether panning via touch started
-    this.touchPanX = 0;                         // X position for touch panning
-    this.touchPanY = 0;                         // Y position for touch panning
-    this.bIsFullScreen = false;                 // Whether in fullscreen mode
+    // this.isGestureCapable = 'ontouchstart' in window ||
+    //   ('onpointerdown' in window &&
+    //     navigator.maxTouchPoints &&
+    //     navigator.maxTouchPoints > 1);  // Device supports touch
+    // this.touchInitiated = false;                // Whether touch interaction started
+    // this.touchPanStarted = false;               // Whether panning via touch started
+    // this.touchPanX = 0;                         // X position for touch panning
+    // this.touchPanY = 0;                         // Y position for touch panning
+    // this.bIsFullScreen = false;                 // Whether in fullscreen mode
     // #endregion
 
     // #region UI Elements & Event Handlers

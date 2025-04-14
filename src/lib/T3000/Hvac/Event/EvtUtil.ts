@@ -197,22 +197,22 @@ class EvtUtil {
    * @param event - The hammer pan end event
    * @returns false to prevent default browser behavior
    */
-  static Evt_WorkAreaHammerPanEnd(event?) {
-    T3Util.Log("E.Evt WorkAreaHammerPanEnd input:", event);
+  // static Evt_WorkAreaHammerPanEnd(event?) {
+  //   T3Util.Log("E.Evt WorkAreaHammerPanEnd input:", event);
 
-    // Reset touch pan state
-    T3Gv.opt.touchPanStarted = false;
+  //   // Reset touch pan state
+  //   // T3Gv.opt.touchPanStarted = false;
 
-    // Remove pan-related event handlers
-    T3Gv.opt.WorkAreaHammer.off("drag");
-    T3Gv.opt.WorkAreaHammer.off("dragend");
+  //   // Remove pan-related event handlers
+  //   T3Gv.opt.WorkAreaHammer.off("drag");
+  //   T3Gv.opt.WorkAreaHammer.off("dragend");
 
-    // Restore default edit mode
-    OptCMUtil.SetEditMode(NvConstant.EditState.Default);
+  //   // Restore default edit mode
+  //   OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-    T3Util.Log("E.Evt WorkAreaHammerPanEnd output: pan state reset, edit mode restored to default");
-    return false;
-  };
+  //   T3Util.Log("E.Evt WorkAreaHammerPanEnd output: pan state reset, edit mode restored to default");
+  //   return false;
+  // };
 
   /**
    * Handles the start of drag gestures in the SVG work area
@@ -236,31 +236,33 @@ class EvtUtil {
     }
 
     // Check if we should start panning instead of selection
-    const shouldPan =
-      LMEvtUtil.IsWheelClick(event) ||
-      T3Constant.DocContext.SpacebarDown;
+    // const shouldPan =
+    //   LMEvtUtil.IsWheelClick(event) ||
+    //   T3Constant.DocContext.SpacebarDown;
 
-    if (shouldPan) {
-      // Initialize or continue panning
-      if (!T3Gv.opt.touchPanStarted) {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // if (shouldPan) {
+    //   // Initialize or continue panning
+    //   if (!T3Gv.opt.touchPanStarted) {
+    //     T3Gv.opt.touchPanStarted = true;
+    //     T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    //     T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
-        // Bind pan-related event handlers
-        T3Gv.opt.WorkAreaHammer.on('mousemove', EvtUtil.Evt_WorkAreaHammerPan);
-        T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_WorkAreaHammerPanEnd);
+    //     // Bind pan-related event handlers
+    //     T3Gv.opt.WorkAreaHammer.on('mousemove', EvtUtil.Evt_WorkAreaHammerPan);
+    //     T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_WorkAreaHammerPanEnd);
 
-        Utils2.StopPropagationAndDefaults(event);
-      }
+    //     Utils2.StopPropagationAndDefaults(event);
+    //   }
 
-      T3Util.Log("E.Evt WorkAreaHammerDragStart output: pan mode started");
-      return false;
-    } else {
+    //   T3Util.Log("E.Evt WorkAreaHammerDragStart output: pan mode started");
+    //   return false;
+    // } else
+
+    {
       // End any existing pan operation
-      if (T3Gv.opt.touchPanStarted) {
-        EvtUtil.Evt_WorkAreaHammerPanEnd();
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   EvtUtil.Evt_WorkAreaHammerPanEnd();
+      // }
 
       Utils2.StopPropagationAndDefaults(event);
 
@@ -905,20 +907,20 @@ class EvtUtil {
 
     // If scale is greater than threshold, handle as pan instead of pinch
     if (event.gesture.scale > 0.666) {
-      if (T3Gv.opt.touchPanStarted) {
-        return EvtUtil.Evt_WorkAreaHammerPan(event);
-      } else {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   return EvtUtil.Evt_WorkAreaHammerPan(event);
+      // } else {
+      //   T3Gv.opt.touchPanStarted = true;
+      //   T3Gv.opt.touchPanX = event.gesture.center.clientX;
+      //   T3Gv.opt.touchPanY = event.gesture.center.clientY;
+      // }
       return false;
     }
 
-    // Reset touch state for pinch gesture
-    T3Gv.opt.touchPanStarted = false;
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // // Reset touch state for pinch gesture
+    // T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
     // Prevent default behavior and stop gesture detection
     Utils2.StopPropagationAndDefaults(event);
@@ -976,55 +978,55 @@ class EvtUtil {
    * @param event - The hammer pan event
    * @returns false to prevent default browser behavior
    */
-  static Evt_WorkAreaHammerPan(event) {
-    T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
+  // static Evt_WorkAreaHammerPan(event) {
+  //   T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
 
-    // Cancel any active opt slt selection
-    SelectUtil.OptSltSelectCancel();
+  //   // Cancel any active opt slt selection
+  //   SelectUtil.OptSltSelectCancel();
 
-    // Release any active move operation
-    if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-      LMEvtUtil.LMMoveRelease(event);
-    }
+  //   // Release any active move operation
+  //   if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
+  //     LMEvtUtil.LMMoveRelease(event);
+  //   }
 
-    // Set edit mode to indicate grabbing/panning
-    OptCMUtil.SetEditMode(NvConstant.EditState.Grab);
+  //   // Set edit mode to indicate grabbing/panning
+  //   OptCMUtil.SetEditMode(NvConstant.EditState.Grab);
 
-    // Prevent default browser behavior
-    Utils2.StopPropagationAndDefaults(event);
+  //   // Prevent default browser behavior
+  //   Utils2.StopPropagationAndDefaults(event);
 
-    // Get work area information
-    T3Gv.docUtil.svgDoc.GetWorkArea();
+  //   // Get work area information
+  //   T3Gv.docUtil.svgDoc.GetWorkArea();
 
-    // Get current touch position
-    const clientX = event.gesture.center.clientX;
-    const clientY = event.gesture.center.clientY;
+  //   // Get current touch position
+  //   const clientX = event.gesture.center.clientX;
+  //   const clientY = event.gesture.center.clientY;
 
-    // Calculate distance moved since last event
-    const deltaX = clientX - T3Gv.opt.touchPanX;
-    const deltaY = clientY - T3Gv.opt.touchPanY;
+  //   // Calculate distance moved since last event
+  //   const deltaX = clientX ;//- T3Gv.opt.touchPanX;
+  //   const deltaY = clientY ;//- T3Gv.opt.touchPanY;
 
-    // Get current scroll position
-    const svgArea = $("#svgarea");
-    const scrollLeft = svgArea.scrollLeft();
-    const scrollTop = svgArea.scrollTop();
+  //   // Get current scroll position
+  //   const svgArea = $("#svgarea");
+  //   const scrollLeft = svgArea.scrollLeft();
+  //   const scrollTop = svgArea.scrollTop();
 
-    // Update scroll position based on pan movement
-    T3Gv.docUtil.SetScroll(scrollLeft - deltaX, scrollTop - deltaY);
+  //   // Update scroll position based on pan movement
+  //   T3Gv.docUtil.SetScroll(scrollLeft - deltaX, scrollTop - deltaY);
 
-    // Save current touch position for next event
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+  //   // Save current touch position for next event
+  //   // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+  //   // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
-    T3Util.Log("E.Evt WorkAreaHammerPan output: scroll updated", {
-      deltaX: deltaX,
-      deltaY: deltaY,
-      newScrollLeft: scrollLeft - deltaX,
-      newScrollTop: scrollTop - deltaY
-    });
+  //   T3Util.Log("E.Evt WorkAreaHammerPan output: scroll updated", {
+  //     deltaX: deltaX,
+  //     deltaY: deltaY,
+  //     newScrollLeft: scrollLeft - deltaX,
+  //     newScrollTop: scrollTop - deltaY
+  //   });
 
-    return false;
-  };
+  //   return false;
+  // };
 
   /**
    * Handles pinch-out gesture events on the work area
@@ -1038,20 +1040,20 @@ class EvtUtil {
 
     // If scale is less than threshold, handle as pan instead of pinch
     if (event.gesture.scale < 1.333) {
-      if (T3Gv.opt.touchPanStarted) {
-        return EvtUtil.Evt_WorkAreaHammerPan(event);
-      } else {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   return EvtUtil.Evt_WorkAreaHammerPan(event);
+      // } else {
+      //   T3Gv.opt.touchPanStarted = true;
+      //   T3Gv.opt.touchPanX = event.gesture.center.clientX;
+      //   T3Gv.opt.touchPanY = event.gesture.center.clientY;
+      // }
       return false;
     }
 
-    // Reset touch state for pinch gesture
-    T3Gv.opt.touchPanStarted = false;
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // // Reset touch state for pinch gesture
+    // T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
     // Prevent default behavior and stop gesture detection
     Utils2.StopPropagationAndDefaults(event);
@@ -1115,7 +1117,7 @@ class EvtUtil {
     T3Util.Log("E.Evt WorkAreaHammerPinchEnd input:", event);
 
     // Reset touch pan state
-    T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanStarted = false;
 
     T3Util.Log("E.Evt WorkAreaHammerPinchEnd output: touch pan state reset");
   }

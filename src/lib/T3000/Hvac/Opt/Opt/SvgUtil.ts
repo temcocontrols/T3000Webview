@@ -102,11 +102,11 @@ class SvgUtil {
           hammerInstance.on('tap', EvtUtil.Evt_ActionTriggerTap);
           hammerInstance.on('dragstart', createActionClickHandler(drawingObject));
 
-          if (T3Gv.opt.isGestureCapable) {
-            hammerInstance.on('pinchin', EvtUtil.Evt_WorkAreaHammerPinchIn);
-            hammerInstance.on('pinchout', EvtUtil.Evt_WorkAreaHammerPinchOut);
-            hammerInstance.on('transformend', EvtUtil.Evt_WorkAreaHammerPinchEnd);
-          }
+          // if (T3Gv.opt.isGestureCapable) {
+          //   hammerInstance.on('pinchin', EvtUtil.Evt_WorkAreaHammerPinchIn);
+          //   hammerInstance.on('pinchout', EvtUtil.Evt_WorkAreaHammerPinchOut);
+          //   hammerInstance.on('transformend', EvtUtil.Evt_WorkAreaHammerPinchEnd);
+          // }
 
           actionTriggerElement.SetEventProxy(hammerInstance);
         }
