@@ -6242,14 +6242,7 @@ class BaseDrawObject {
         previousShape.SetRuntimeEffects(false);
         previousShape.ClearCursors();
       }
-    }
-
-    // Set runtime effects for current object based on mobile platform
-    // if (T3Gv.opt.isMobilePlatform) {
-    //   this.SetRuntimeEffects(false);
-    // } else {
-    //   this.SetRuntimeEffects(true);
-    // }
+    } 
 
     this.SetRuntimeEffects(true);
 

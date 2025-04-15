@@ -2988,10 +2988,7 @@ class BaseLine extends BaseDrawObject {
 
     // Handle the lineStamp flag: if set, unbind mousemove on non-mobile platforms
     if (T3Gv.opt.lineStamp) {
-      // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
-      //   T3Gv.opt.WorkAreaHammer.off('mousemove');
-      // }
-
+      
       if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');
       }
@@ -3062,13 +3059,7 @@ class BaseLine extends BaseDrawObject {
         Math.abs(deltaX) < movementThreshold &&
         Math.abs(deltaY) < movementThreshold
       ) {
-        T3Gv.opt.lineStamp = true;
-        // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
-        //   T3Gv.opt.WorkAreaHammer.on(
-        //     "mousemove",
-        //     EvtUtil.Evt_DrawTrackHandlerFactory(this)
-        //   );
-        // }
+        T3Gv.opt.lineStamp = true; 
 
         if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.on(
@@ -3111,10 +3102,7 @@ class BaseLine extends BaseDrawObject {
       }
 
       // Unbind temporary mousemove events if set via lineStamp, then reset flag
-      if (T3Gv.opt.lineStamp) {
-        // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
-        //   T3Gv.opt.WorkAreaHammer.off("mousemove");
-        // }
+      if (T3Gv.opt.lineStamp) { 
 
         if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.off("mousemove");
@@ -3472,10 +3460,7 @@ class BaseLine extends BaseDrawObject {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    if (T3Gv.opt.lineStamp) {
-      // if (!T3Gv.opt.isMobilePlatform && T3Gv.opt.WorkAreaHammer) {
-      //   T3Gv.opt.WorkAreaHammer.off('mousemove');
-      // }
+    if (T3Gv.opt.lineStamp) { 
 
       if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');

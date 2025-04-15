@@ -732,12 +732,10 @@ class FreehandLine extends BaseLine {
     }
 
     LMEvtUtil.UnbindActionClickHammerEvents();
-
-    // if (!T3Gv.opt.isMobilePlatform) {
+     
     $(window).unbind('mousemove');
     T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
-    // }
-
+     
     this.ResetAutoScrollTimer();
 
     // Prepare shape attributes
@@ -801,11 +799,8 @@ class FreehandLine extends BaseLine {
       };
 
       T3Gv.opt.WorkAreaHammer.off('dragstart');
-
-      // if (!T3Gv.opt.isMobilePlatform) {
       T3Gv.opt.WorkAreaHammer.on('drag', Evt_DrawTrackHandlerFactory(this));
       T3Gv.opt.WorkAreaHammer.on('dragend', Evt_DrawReleaseHandlerFactory(this));
-      // }
     } catch (error) {
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);

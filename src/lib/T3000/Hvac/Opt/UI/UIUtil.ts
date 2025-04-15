@@ -528,14 +528,7 @@ class UIUtil {
     T3Util.Log("O.Opt GetUIAdaptation - Input:", event);
 
     let isTouchInterface = false;
-
-    // // Check if we're already on a mobile platform
-    // if (T3Gv.opt.isMobilePlatform) {
-    //   isTouchInterface = true;
-    // }
-    // // Handle gesture events (from Hammer.js)
-    // else
-
+ 
     if (event.gesture) {
       // Check for pointer events
       if ('onpointerdown' in window) {

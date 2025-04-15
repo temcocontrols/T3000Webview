@@ -2836,10 +2836,8 @@ class PolyLine extends BaseLine {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
-    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
+    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick); 
 
     this.ResetAutoScrollTimer();
     T3Gv.opt.linkParams = null;
@@ -2862,29 +2860,13 @@ class PolyLine extends BaseLine {
       this.EndPoint = { x: initialX, y: initialY };
 
       const self = this;
-      T3Gv.opt.WorkAreaHammer.off("dragstart");
-
-      // if (T3Gv.opt.isMobilePlatform) {
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "dragstart",
-      //     EvtUtil.Evt_PolyLineDrawDragStart
-      //   );
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "drag",
-      //     EvtUtil.Evt_DrawTrackHandlerFactory(this)
-      //   );
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "dragend",
-      //     EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
-      //   );
-      // }
+      T3Gv.opt.WorkAreaHammer.off("dragstart"); 
 
       T3Gv.opt.WorkAreaHammer.on(
         "doubletap",
         EvtUtil.Evt_DrawReleaseHandlerFactory(this)
       );
 
-      // if (!T3Gv.opt.isMobilePlatform) {
       T3Gv.opt.WorkAreaHammer.on(
         "tap",
         EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
@@ -2905,8 +2887,7 @@ class PolyLine extends BaseLine {
           T3Gv.opt.ExceptionCleanup(error);
           throw error;
         }
-      });
-      // }
+      }); 
 
       T3Util.Log("S.PolyLine: LMDrawClick output", { message: "Click handled successfully" });
     } catch (error) {
@@ -2924,10 +2905,8 @@ class PolyLine extends BaseLine {
       event.gesture.stopDetect();
     }
     LMEvtUtil.UnbindActionClickHammerEvents();
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
 
     // Calculate distance between the last two segments
     const segmentCount = this.polylist.segs.length;
@@ -4805,10 +4784,8 @@ class PolyLine extends BaseLine {
     LMEvtUtil.UnbindActionClickHammerEvents();
     T3Gv.opt.WorkAreaHammer.off("doubletap");
 
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
 
     this.ResetAutoScrollTimer();
     DataUtil.AddToDirtyList(this.BlockID);
