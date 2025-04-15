@@ -101,13 +101,7 @@ class SvgUtil {
 
           hammerInstance.on('tap', EvtUtil.Evt_ActionTriggerTap);
           hammerInstance.on('dragstart', createActionClickHandler(drawingObject));
-
-          // if (T3Gv.opt.isGestureCapable) {
-          //   hammerInstance.on('pinchin', EvtUtil.Evt_WorkAreaHammerPinchIn);
-          //   hammerInstance.on('pinchout', EvtUtil.Evt_WorkAreaHammerPinchOut);
-          //   hammerInstance.on('transformend', EvtUtil.Evt_WorkAreaHammerPinchEnd);
-          // }
-
+            
           actionTriggerElement.SetEventProxy(hammerInstance);
         }
       }
@@ -289,12 +283,7 @@ class SvgUtil {
           if (!T3Gv.docUtil.IsReadOnly()) {
             T3Gv.Evt_ShapeDragStart = EvtUtil.Evt_ShapeDragStartFactory(drawingData);
             hammerInstance.on('dragstart', T3Gv.Evt_ShapeDragStart);
-
-            // if (this.isMobilePlatform) {
-            //   T3Gv.Evt_LMShapeHold = EvtUtil.Evt_ShapeHoldFactory(drawingData);
-            //   hammerInstance.on('hold', T3Gv.Evt_LMShapeHold);
-            // }
-
+             
             if (drawingData.AllowTextEdit() || drawingData.AllowDoubleClick()) {
               T3Gv.Evt_LMShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
               hammerInstance.on('doubletap', T3Gv.Evt_LMShapeDoubleTap);
@@ -303,7 +292,7 @@ class SvgUtil {
             shapeContainer.SetEventProxy(hammerInstance);
           }
 
-          if (/*!this.isMobilePlatform &&*/ !T3Gv.docUtil.IsReadOnly()) {
+          if ( !T3Gv.docUtil.IsReadOnly()) {
             shapeContainer.svgObj.mouseover(function (event) {
               let elementId = this.SDGObj.GetID();
               let drawingObj = DataUtil.GetObjectPtr(elementId, false);

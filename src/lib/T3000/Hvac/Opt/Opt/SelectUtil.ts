@@ -106,8 +106,6 @@ class SelectUtil {
         this.SelectObjects(objectsToSelect, isMultipleSelection, false);
         return !!preserveSelection;
       }
-
-      // return !isMultipleSelection || (this.SelectObjects(objectsToSelect, isMultipleSelection, !1), !!preserveSelection);
     }
   }
 
@@ -606,7 +604,7 @@ class SelectUtil {
           const objectData = object.Data;
 
           // Skip shape containers that are in cells
-          if (objectData.objecttype !== shapeContainerType /*|| !this.ContainerIsInCell(objectData)*/) {
+          if (objectData.objecttype !== shapeContainerType) {
             let objectFrame = objectData.Frame;
 
             // If the object is rotated, calculate its actual bounding box
@@ -1616,8 +1614,7 @@ class SelectUtil {
           // If containerObject is provided and is a ShapeContainer type, skip connectors.
           if (
             containerObject &&
-            (containerObject instanceof Instance.Shape.ShapeContainer /*||
-                containerObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_TABLE_WITH_SHAPECONTAINER*/) &&
+            (containerObject instanceof Instance.Shape.ShapeContainer ) &&
             currentObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
           ) {
             continue;

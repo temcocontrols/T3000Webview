@@ -221,16 +221,6 @@ class HookUtil {
             return;
           }
 
-          // if (connectorObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH) {
-          //   T3Util.Log("O.Opt CNChangeHook - Output: Skipped (cause-effect branch)");
-          //   return;
-          // }
-
-          // if (connectorObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_GENOGRAM_BRANCH) {
-          //   T3Util.Log("O.Opt CNChangeHook - Output: Skipped (genogram branch)");
-          //   return;
-          // }
-
           // Check for co-manager flags
           hasCoManagerFlag = connectorObject.arraylist.styleflags & OptConstant.AStyles.CoManager;
           if (
@@ -250,27 +240,12 @@ class HookUtil {
           objectType = connectorObject.objecttype;
           objectSubtype = connectorObject.subtype;
 
-          // // Update subtype for special object types
-          // if (
-          //   sourceObject.subtype === NvConstant.ObjectSubTypes.SD_SUBT_TASKMAP ||
-          //   sourceObject.subtype === NvConstant.ObjectSubTypes.SD_SUBT_HUBMAP
-          // ) {
-          //   sourceObject.subtype = objectSubtype;
-          // }
-
           // Find child array for the current object
           connectorId = T3Gv.opt.FindChildArray(sourceObject.BlockID, -1);
 
           // Create a new connector if needed
           if (connectorId < 0) {
-            // // Get appropriate connector style based on object type
-            // if (connectorObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_DECISIONTREE_CONNECTOR) {
-            //   connectorStyle = gDecisionTreeManager.GetChildConnectorStyle(sourceObject);
-            // } else
-
-            {
-              connectorStyle = OptAhUtil.GetChildConnectorStyle(sourceObject);
-            }
+            connectorStyle = OptAhUtil.GetChildConnectorStyle(sourceObject);
 
             // Create new connector
             connectorId = OptAhUtil.AddConnector(100, 100, connectorStyle, sourceObject.BlockID);
@@ -287,12 +262,7 @@ class HookUtil {
             // Set connector properties
             childConnector.objecttype = objectType;
             childConnector.subtype = objectSubtype;
-
-            // // Set text flags for decision tree connectors
-            // if (objectType === NvConstant.FNObjectTypes.SD_OBJT_DECISIONTREE_CONNECTOR) {
-            //   childConnector.TextFlags = NvConstant.TextFlags.AttachC;
-            // }
-
+             
             // Set connection point based on connector type
             if (hasCoManagerFlag) {
               connectionPoint.x = 0;
@@ -315,12 +285,7 @@ class HookUtil {
             OptCMUtil.SetLinkFlag(sourceObject.BlockID, DSConstant.LinkFlags.Move);
             childConnector.PrFormat(connectorId);
             DataUtil.AddToDirtyList(connectorId);
-          }
-
-          // // Special handling for mind map connectors
-          // if (objectType === NvConstant.FNObjectTypes.SD_OBJT_MINDMAP_CONNECTOR) {
-          //   gMindMapManager.ChangeHook(sourceObject, hookIndex, isAdding, hookData);
-          // }
+          } 
         }
       }
     }

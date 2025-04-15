@@ -8,8 +8,7 @@ import DataUtil from "../Data/DataUtil";
 import RulerUtil from "../UI/RulerUtil";
 import LayerUtil from "./LayerUtil";
 import PolyUtil from "./PolyUtil";
-
-
+ 
 class DynamicUtil {
 
   /**

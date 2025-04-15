@@ -82,16 +82,7 @@ class LMEvtUtil {
           false
         );
       } else if (T3Gv.opt.linkParams && (T3Gv.opt.linkParams.ConnectIndex >= 0 || T3Gv.opt.linkParams.InitialHook >= 0)) {
-        // If connection indexes or an initial hook exists, handle flow chart hook logic
-        // if (T3Gv.gFlowChartManager) {
-        //   flowHookResult = T3Gv.gFlowChartManager.FlowChartHook(
-        //     this.actionStoredObjectId,
-        //     this.linkParams.InitialHook,
-        //     this.linkParams.ConnectIndex,
-        //     this.linkParams.HookIndex,
-        //     this.linkParams.ConnectPt
-        //   );
-        // }
+         
         if (!flowHookResult) {
           if (T3Gv.opt.linkParams.ConnectHookFlag === NvConstant.HookFlags.LcAutoInsert) {
             this.SD_AutoInsertShape(T3Gv.opt.actionStoredObjectId, T3Gv.opt.linkParams.ConnectIndex);

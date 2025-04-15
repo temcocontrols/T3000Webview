@@ -463,25 +463,14 @@ class LayerUtil {
     const currentActiveLayerType = layers[layersManager.activelayer].layertype;
 
     // Proceed if the layer index is valid
-    if (layerIndex >= 0 && layerIndex < totalLayers) {
-      // // Handle special case when switching from a MindMap layer
-      // if (currentActiveLayerType === NvConstant.LayerTypes.MindMap) {
-      //   T3Util.CommitVisualOutline();
-      // }
-
+    if (layerIndex >= 0 && layerIndex < totalLayers) { 
       // Update the active layer index
       const layersManagerPreserved = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
       layersManagerPreserved.activelayer = layerIndex;
 
       // Handle specific layer type activations
       const newLayerType = layers[layerIndex].layerType;
-      switch (newLayerType) {
-        // case NvConstant.LayerTypes.MindMap:
-        //   this.LoadMindMapTools();
-        //   break;
-        // case NvConstant.LayerTypes.Gantt:
-        //   this.LoadGanttChartTools();
-        //   break;
+      switch (newLayerType) { 
       }
 
       // Update selection for the new active layer
