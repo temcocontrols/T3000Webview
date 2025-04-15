@@ -261,6 +261,8 @@
       "noChange",
     ],
     setup(props, { emit }) {
+
+      // Test for popup object config for new ui
       let initialObject =
       {
         "active": false,
@@ -302,7 +304,7 @@
 
       const item = computed({
         get() {
-          return props.object;
+          return initialObject;//props.object;
         },
         // setter
         set(newValue, oldValue) {
@@ -312,11 +314,13 @@
       });
 
       const settings = computed(() => {
-        return tools.find((i) => i.name === props.object.type)?.settings || {};
+        /* return tools.find((i) => i.name === props.object.type)?.settings || {};*/
+        return tools.find((i) => i.name === initialObject.type)?.settings || {};
       });
 
       const rangeOptions = computed(() => {
-        const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(
+        /* const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(*/
+        const items = IdxUtils.getEntryRange(initialObject.t3Entry)?.options?.filter(
           (i) => i.status === 1
         );
         const ranges = cloneDeep(items);
@@ -396,7 +400,7 @@
       }
 
       const unitText = computed(() => {
-        return "   " + IdxUtils.getUnitText(item.value.t3Entry);
+        return ` ${IdxUtils.getUnitText(item.value.t3Entry)}`;
       });
 
       return {
