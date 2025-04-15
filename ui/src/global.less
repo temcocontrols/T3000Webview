@@ -1,0 +1,192 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+}
+
+.colorWeak {
+  filter: invert(80%);
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-pro-sider.ant-layout-sider.ant-pro-sider-fixed {
+  left: unset;
+}
+
+canvas {
+  display: block;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+@media (max-width: 768px) {
+  .ant-table {
+    width: 100%;
+    overflow-x: auto;
+
+    &-thead>tr,
+    &-tbody>tr {
+
+      >th,
+      >td {
+        white-space: pre;
+
+        >span {
+          display: block;
+        }
+      }
+    }
+  }
+}
+
+.ant-menu-item-selected {
+  font-weight: 600;
+}
+
+.ant-layout-sider {
+  // background: yellow !important;
+}
+
+.ant-menu-item {
+  // background: blueviolet !important;
+}
+
+.ant-layout-sider-children {
+  // background: burlywood !important;
+  padding-inline: 0px !important;
+
+  .ant-menu-item-selected {
+    ::after {
+      content: "";
+      position: absolute;
+      display: block;
+      top: 0px;
+      bottom: 0px;
+      right: 0px;
+      width: 2px;
+      height: 100%;
+      background: rgb(0, 100, 200);
+    }
+  }
+}
+
+.ant-menu-sub {
+  // background: aliceblue !important;
+  padding-inline-start: 0px !important;
+
+  .ant-menu-item {
+    padding-inline-start: 48px !important;
+  }
+}
+
+
+.ant-menu-item-group-title {
+  order: 0 !important;
+  -moz-box-flex: 0 !important;
+  flex: 0 1 auto !important;
+  align-self: auto !important;
+  font-weight: 700 !important;
+  color: rgb(51, 51, 51) !important;
+  font-size: 12px !important;
+}
+
+// .ant-menu-item-group-list {
+//   .ant-menu-item {
+//     padding-left: 48px !important;
+//   }
+// }
+
+//Double Test 
+//整个右侧的样式，padding-inline-start 左边的间距，padding-inline-end 不能写的太小，会造成页面默认横向滚动，这里写成10px
+.ant-pro-page-container-children-container {
+  background: '#94c6b5' !important;
+  padding-inline-start: 25px !important;
+  padding-inline-end: 10px !important;
+}
+
+.ant-pro-page-container-warp-page-header {
+  background: '#99ccb1' !important;
+  padding-inline-start: 25px !important;
+  padding-inline-end: 0px !important;
+}
+
+//STYLE0001
+//2023-12-08 将这里的样式修改换到组件内部，不做全局修改，组件内部在外层赋值一个变量，并用后代选择器来更改
+//Pro Table 左右边距, 如果这里改成全局的，会造成 pro-card 所有的样式被更改，使用自定义样式
+
+// .ant-pro-card {
+//   // background: aquamarine !important;
+
+//   .ant-pro-card-body {
+//     padding-inline-start: 0px !important;
+//     padding-inline-end: 18px !important;
+//   }
+// }
+
+// 使用Css-in-js 替代 app/style.ts
+/*
+.ant-pro-table-list-toolbar-title {
+  ::before {
+    display: block;
+    position: absolute;
+    top: 6px;
+    left: 0;
+    content: "";
+    height: 12px;
+    border-left: 3px solid #0cc0c9;
+  }
+}
+*/
+
+.ant-pro-table-extra {
+  // border: 1px solid skyblue;
+}
+
+.ant-pro-table-list-toolbar {
+  //整块表单头部
+  // border: 1px solid rgb(0, 100, 200);
+}
+
+.ant-pro-table-list-toolbar-container {
+
+  //ProTable顶部的标题和工具栏的边距
+  padding-block: 8px;
+}
+
+//pro table 左右边距调整后，需要将底部的操作栏右边距调整为 24px=>20px
+.ant-pro-footer-bar {
+  //原来为24px ，更改为20px ，
+   padding-inline-end: 22px !important;
+}
+
+//右边container， 最小高度 100vh，footer固定在页面底部
+.ant-pro-layout-container{
+  min-height: 100vh !important;
+}
+
+//顶部面包屑置顶
+.ant-page-header-breadcrumb{
+  padding-block-start: 0px !important;
+}
+
+//顶部的logo的宽度，将顶部菜单向右间距190px
+.ant-pro-top-nav-header-main-left{
+  width: 190px;
+}

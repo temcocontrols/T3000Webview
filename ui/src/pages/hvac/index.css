@@ -1,0 +1,206 @@
+.full-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-area {
+  display: flex;
+  flex: 1;
+}
+
+.side-bar {
+  /* background-color: #f4f4f4; */
+  width: 106px;
+}
+
+.work-area {
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  width: auto;
+  flex: 1;
+  margin-top: 1px;
+  position: relative;
+}
+
+.document-area {
+  position: relative;
+  /* background-color: #ebeced; */
+  height: 100%;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.c-ruler {
+  width: 20px;
+  height: 20px;
+  /* background-color: #ebeced; */
+  position: absolute;
+  overflow: hidden;
+  left: 1px;
+  top: 1px;
+}
+
+.h-ruler {
+  position: absolute;
+  overflow: hidden;
+  /* background-color: #ebeced; */
+  top: 1px;
+  left: 22px;
+  height: 20px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+}
+
+.v-ruler {
+  position: absolute;
+  overflow: hidden;
+  /* background-color: #ebeced; */
+  width: 20px;
+  left: 1px;
+  top: 22px;
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.hv-grid {
+  position: absolute;
+  /* background-color: #ebeced; */
+  inset: 22px 0px 0px 22px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
+}
+
+.viewport-wrapper {
+  position: relative;
+  background-color: transparent;
+  scrollbar-width: thin;
+  inset: 22px 0px 0px 22px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
+}
+
+.viewport {
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.default-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.main-panel {
+  margin-left: 0px;
+  position: absolute;
+  width: 100%;
+}
+
+#main-toolbar {
+  position: fixed;
+  left: 0;
+  padding-top: 0;
+  padding-left: 0px;
+  z-index: 1;
+  width: 100%;
+  max-height: none;
+  height: 93px;
+}
+
+.left-panel {
+  position: fixed;
+  top: 90px;
+  z-index: 1;
+  bottom: 0;
+  left: 0px;
+  right: 0;
+  overflow: hidden;
+  width: 105px;
+  /* border-right: 1px solid #ddd; */
+  z-index: 4;
+}
+
+.main-panel {
+  margin-left: 0px;
+}
+
+#work-area {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 105px;
+  margin-top: 93px;
+  width: auto;
+}
+
+#document-area {
+  position: relative;
+  height: 100%;
+}
+
+.document-ruler-corner {
+  width: 20px;
+  height: 20px;
+  user-select: none;
+  left: 99px;
+  top: 0px;
+  overflow: hidden;
+  position: absolute;
+}
+
+.document-ruler-top {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 119px;
+  top: 0px;
+  width: 100%;
+  height: 20px;
+}
+
+.document-ruler-left {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 99px;
+  top: 20px;
+  width: 20px;
+  height: auto;
+}
+
+#svg-area {
+  scrollbar-width: thin;
+  position: absolute;
+  left: 119px;
+  top: 20px;
+  width: 100%;
+  height: auto;
+  overflow: hidden scroll;
+  user-select: none;
+  background-color: #ffffff;
+}
+
+.doc-toolbar {
+  background-color: transparent;
+  bottom: 10px;
+  right: 10px;
+  padding-left: 187px;
+  padding-right: 10px;
+  border: none;
+  display: flex;
+  align-items: flex-end;
+  height: auto;
+  width: auto;
+  position: absolute;
+  left: 0;
+}
+
+
+.clipboard-div{
+  position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;
+}
