@@ -166,15 +166,7 @@ class KeyboardOpt {
    */
   static HandleKeyDown(event, keyCode, modifierKey) {
     T3Util.Log('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
-
-    // // Handle touch pan with space key
-    // if (T3Gv.opt.touchPanStarted && keyCode == KeyboardConstant.Keys.Space) {
-    //   event.stopPropagation();
-    //   event.preventDefault();
-    //   T3Util.Log('U.KeyboardUtil: Prevented default for space during touch pan');
-    //   return;
-    // }
-
+      
     let selectionObj;
     let isTextContext = false;
     let deferredTextEdit = false;
@@ -265,11 +257,7 @@ class KeyboardOpt {
         }
 
         // Check if typing in work area is disabled
-        if (T3Constant.DocContext.CanTypeInWorkArea === false) {
-          // if (keyCode === KeyboardConstant.Keys.Escape) {
-          //   T3Gv.opt.Comment_Cancel();
-          //   T3Util.Log('U.KeyboardUtil: Comment cancelled');
-          // }
+        if (T3Constant.DocContext.CanTypeInWorkArea === false) { 
           return;
         }
 
@@ -307,8 +295,7 @@ class KeyboardOpt {
       if (isTextContext) {
         if (keyCode === KeyboardConstant.Keys.Escape) {
           T3Gv.opt.DeactivateAllTextEdit(false);
-          if (T3Gv.opt.bInNoteEdit) {
-            // T3Gv.opt.Note_CloseEdit();
+          if (T3Gv.opt.bInNoteEdit) { 
           }
           SvgUtil.RenderAllSVGSelectionStates();
           event.stopPropagation();
@@ -353,15 +340,7 @@ class KeyboardOpt {
 
     let isTextContext = false;
     let toolUtil = new ToolUtil();
-
-    // // Handle touch pan with space key
-    // if (T3Gv.opt.touchPanStarted && charCode == KeyboardConstant.Keys.Space) {
-    //   T3Util.Log('U.KeyboardUtil: Preventing default for space during touch pan');
-    //   event.stopPropagation();
-    //   event.preventDefault();
-    //   return;
-    // }
-
+     
     // Check if modals are not visible (using true instead of the original modal check)
     if (true) {
       // Handle clipboard operations in Firefox

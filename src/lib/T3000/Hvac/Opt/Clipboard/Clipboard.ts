@@ -733,11 +733,10 @@ class Clipboard {
     const isAnyInputFocused = $("input:focus").length > 0;
     const isAnySelectFocused = $("select:focus").length > 0;
     const isAnyTextareaFocused = $("textarea:focus").length > 0;
-    // const isMobilePlatform = T3Gv.opt.isMobilePlatform;
-
+  
     // Focus on clipboard input only if no other input elements are focused
     // or if we're on a mobile platform
-    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) /*|| isMobilePlatform*/) {
+    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) ) {
       Clipboard.clipboardInputElement.val(" ");
       Clipboard.clipboardInputElement.focus().select();
     }
