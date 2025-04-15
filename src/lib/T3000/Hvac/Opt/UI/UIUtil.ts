@@ -30,7 +30,7 @@ class UIUtil {
    * @param positionY - The Y position where to show the dropdown
    * @returns void
    */
-  static ShowContextMenu(isShow, element, positionX, positionY) { 
+  static ShowContextMenu(isShow, element, positionX, positionY) {
     QuasarUtil.ShowContextMenu(isShow);
   }
 
@@ -49,7 +49,6 @@ class UIUtil {
     }
 
     // Double show frame details
-
     T3Util.Log('O.Opt ShowFrame - Output: Frame visibility set to', isShowFrame);
   }
 
@@ -88,33 +87,6 @@ class UIUtil {
 
         // Helper function to format number values for display (assuming it's defined elsewhere)
         const formatValue = (value) => value ? value : "";
-
-        // // Update UI controls with the dimension values
-        // const workArea = Resources.Controls.WorkArea;
-
-        // const leftEdit = workArea.LeftEdit;
-        // leftEdit.GetControl();
-        // if (leftEdit.Control) {
-        //   leftEdit.Control[0].value = formatValue(NumberToString(xLength, useFeet));
-        // }
-
-        // const topEdit = workArea.TopEdit;
-        // topEdit.GetControl();
-        // if (topEdit.Control) {
-        //   topEdit.Control[0].value = formatValue(NumberToString(yLength, useFeet));
-        // }
-
-        // const widthEdit = workArea.WidthEdit;
-        // widthEdit.GetControl();
-        // if (widthEdit.Control) {
-        //   widthEdit.Control[0].value = formatValue(NumberToString(width, useFeet));
-        // }
-
-        // const heightEdit = workArea.HeightEdit;
-        // heightEdit.GetControl();
-        // if (heightEdit.Control) {
-        //   heightEdit.Control[0].value = formatValue(NumberToString(height, useFeet));
-        // }
       }
 
       // Constrain position to document bounds
@@ -128,13 +100,13 @@ class UIUtil {
       }
     }
 
-    // T3Util.Log("O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
+    T3Util.Log("O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
   }
 
   static ShowXY(showCoordinates) {
-    // T3Util.Log("O.Opt ShowXY - Input:", { showCoordinates });
-    // Show the x and y coordinates of the mouse pointer
-    // T3Util.Log("O.Opt ShowXY - Output: Coordinates display updated");
+    T3Util.Log("O.Opt ShowXY - Input:", { showCoordinates });
+    //Show the x and y coordinates of the mouse pointer
+    T3Util.Log("O.Opt ShowXY - Output: Coordinates display updated");
   }
 
   /**
@@ -399,19 +371,6 @@ class UIUtil {
           dim: undefined as { x: number; y: number } | undefined
         };
         const textureId = fillSettings.Texture;
-
-        // // Check if the texture exists in the texture list.
-        // if (T3Gv.opt.TextureList.Textures[textureId]) {
-        //   const textureInfo = T3Gv.opt.TextureList.Textures[textureId];
-        //   textureFill.dim = textureInfo.dim;
-        //   textureFill.url = textureInfo.ImageURL;
-        //   textureFill.scale = T3Gv.opt.CalcTextureScale(fillSettings.TextureScale, textureFill.dim.x);
-        //   sessionObject.background.Paint.TextureScale.Scale = textureFill.scale;
-        //   if (!textureFill.url) {
-        //     textureFill.url = Constants.FilePath_CMSRoot + Constants.FilePath_Textures + textureInfo.filename;
-        //   }
-        //   backgroundElement.SetTextureFill(textureFill);
-        // }
       } else {
         backgroundElement.SetFillColor('none');
       }
@@ -507,7 +466,7 @@ class UIUtil {
     T3Util.Log("O.Opt GetUIAdaptation - Input:", event);
 
     let isTouchInterface = false;
- 
+
     if (event.gesture) {
       // Check for pointer events
       if ('onpointerdown' in window) {
@@ -750,13 +709,7 @@ class UIUtil {
       this.ResizeSVGDocument();
     }
 
-    // T3Util.Log('O.Opt FitDocumentWorkArea - Output:', {
-    //   newSize: newDocumentSize,
-    //   documentSizeChanged,
-    //   isGrowing
-    // });
-
-    console.log('O.Opt FitDocumentWorkArea - Output:', {
+    T3Util.Log('O.Opt FitDocumentWorkArea - Output:', {
       newSize: newDocumentSize,
       documentSizeChanged,
       isGrowing
@@ -777,7 +730,6 @@ class UIUtil {
         (i = DataUtil.GetObjectPtr(n[r], !1)) && i.ChangeBackgroundColor(e, t)
     }
   }
-
 }
 
 export default UIUtil

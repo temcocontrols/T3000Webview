@@ -227,8 +227,7 @@ class RulerUtil {
     }
 
     return denominator;
-  }
-
+  } 
 }
 
 export default RulerUtil

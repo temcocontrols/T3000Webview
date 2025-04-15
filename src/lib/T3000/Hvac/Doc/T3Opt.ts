@@ -67,9 +67,7 @@ class T3Opt {
   /**
    * Event operations handler for managing UI event bindings
    */
-  public evtOpt: EvtOpt;
-
-  // public keyBoardOpt: KeyboardOpt;
+  public evtOpt: EvtOpt; 
 
   public userOpt: UserOpt;
 
