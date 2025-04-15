@@ -375,9 +375,10 @@
       @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" >
     </ObjectConfig> -->
 
-    <ObjectConfig v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+    <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged" />
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"> 
+    </ObjectConfig2>
 
   </q-page>
 
@@ -544,6 +545,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar2 from "../../components/ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
+import ObjectConfig2 from "../../components/ObjectConfig2.vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
