@@ -30,28 +30,7 @@ class UIUtil {
    * @param positionY - The Y position where to show the dropdown
    * @returns void
    */
-  static ShowContextMenu(isShow, element, positionX, positionY) {
-    // const self = this;
-
-    // // Hide all currently visible dropdowns
-    // TODO.Dropdowns.HideAllDropdowns();
-
-    // // Load the placeholder content
-    // this.GetHtmlPartialLoader().LoadPlaceholder(element, false, (success) => {
-    //   // If loading was successful, disable dropdown links
-    //   if (success === true) {
-    //     self.DisableDropdownLinks(element);
-    //   }
-
-    //   // Setup the dropdown
-    //   self.RebuildDropdown(element);
-    //   self.Selection.EnableDisableButtons(element);
-    //   self.Selection.HighlightDropdownSelection(element);
-
-    //   // Show the dropdown at the specified position
-    //   self.Dropdowns.ShowDropdown(element, positionX, positionY);
-    // });
-
+  static ShowContextMenu(isShow, element, positionX, positionY) { 
     QuasarUtil.ShowContextMenu(isShow);
   }
 

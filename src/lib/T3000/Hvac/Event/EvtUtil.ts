@@ -122,7 +122,6 @@ class EvtUtil {
       SelectUtil.ClearSelectionClick();
 
       //Clear the context menu
-      // contextMenuShow.value = false;
       UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
     }
 
