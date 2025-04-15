@@ -167,13 +167,13 @@ class KeyboardOpt {
   static HandleKeyDown(event, keyCode, modifierKey) {
     T3Util.Log('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
 
-    // Handle touch pan with space key
-    if (T3Gv.opt.touchPanStarted && keyCode == KeyboardConstant.Keys.Space) {
-      event.stopPropagation();
-      event.preventDefault();
-      T3Util.Log('U.KeyboardUtil: Prevented default for space during touch pan');
-      return;
-    }
+    // // Handle touch pan with space key
+    // if (T3Gv.opt.touchPanStarted && keyCode == KeyboardConstant.Keys.Space) {
+    //   event.stopPropagation();
+    //   event.preventDefault();
+    //   T3Util.Log('U.KeyboardUtil: Prevented default for space during touch pan');
+    //   return;
+    // }
 
     let selectionObj;
     let isTextContext = false;
@@ -354,13 +354,13 @@ class KeyboardOpt {
     let isTextContext = false;
     let toolUtil = new ToolUtil();
 
-    // Handle touch pan with space key
-    if (T3Gv.opt.touchPanStarted && charCode == KeyboardConstant.Keys.Space) {
-      T3Util.Log('U.KeyboardUtil: Preventing default for space during touch pan');
-      event.stopPropagation();
-      event.preventDefault();
-      return;
-    }
+    // // Handle touch pan with space key
+    // if (T3Gv.opt.touchPanStarted && charCode == KeyboardConstant.Keys.Space) {
+    //   T3Util.Log('U.KeyboardUtil: Preventing default for space during touch pan');
+    //   event.stopPropagation();
+    //   event.preventDefault();
+    //   return;
+    // }
 
     // Check if modals are not visible (using true instead of the original modal check)
     if (true) {

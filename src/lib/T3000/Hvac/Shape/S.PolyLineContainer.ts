@@ -1062,8 +1062,8 @@ class PolyLineContainer extends PolyLine {
 
     LayerUtil.ActiveVisibleZList();
     let enclosedObjects = [];
-    T3Gv.stdObj.PreserveBlock(T3Gv.opt.theSelectedListBlockID);
-    let selectedObject = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID);
+    T3Gv.stdObj.PreserveBlock(T3Gv.opt.selectObjsBlockId);
+    let selectedObject = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     let selectedData = selectedObject.Data;
     let originalData = Utils1.DeepCopy(selectedData);
 
@@ -1096,7 +1096,7 @@ class PolyLineContainer extends PolyLine {
 
     SelectUtil.SelectObjects(enclosedObjects, false, false);
     let groupID = ToolActUtil.GroupSelected(true, null, false, false, false);
-    selectedData = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    selectedData = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
 
     let groupObject = DataUtil.GetObjectPtr(groupID, true);
     T3Gv.opt.svgObjectLayer.GetElementById(groupObject.BlockID).SetRotation(rotationAngle);

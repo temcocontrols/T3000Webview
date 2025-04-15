@@ -620,7 +620,7 @@ class GroupSymbol extends BaseSymbol {
     }
 
     // Add the rotate knob if rotation is enabled
-    const disableRotation = this.NoRotate() || this.NoGrow() || T3Gv.opt.touchInitiated || knobProps.locked;
+    const disableRotation = this.NoRotate() || this.NoGrow() /*|| T3Gv.opt.touchInitiated */|| knobProps.locked;
     const isNarrow = frame.width < 44;
     let hasConnectorHook = this.hooks.length > 0;
     if (hasConnectorHook) {

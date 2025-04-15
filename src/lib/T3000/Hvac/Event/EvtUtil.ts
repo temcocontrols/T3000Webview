@@ -26,7 +26,7 @@ import QuasarUtil from '../Opt/Quasar/QuasarUtil';
  * The EvtUtil class provides a collection of static methods to process and manage events such as:
  *
  * - Mouse movement: Tracks the cursor, converts window to document coordinates, and updates UI displays.
- * - Hammer tap, drag, pan, and pinch gestures: Supports rubber band selection, panning, zooming,
+ * - Hammer tap, drag, pan, and pinch gestures: Supports opt slt selection, panning, zooming,
  *   shape tapping, drawing operations, and long-press actions.
  * - Shape interactions: Handles tap, double-tap, drag start, drag, and hold events for interacting with individual SVG shapes.
  * - Drawing and stamping operations: Provides factory functions for tracking drawing progress,
@@ -197,26 +197,26 @@ class EvtUtil {
    * @param event - The hammer pan end event
    * @returns false to prevent default browser behavior
    */
-  static Evt_WorkAreaHammerPanEnd(event?) {
-    T3Util.Log("E.Evt WorkAreaHammerPanEnd input:", event);
+  // static Evt_WorkAreaHammerPanEnd(event?) {
+  //   T3Util.Log("E.Evt WorkAreaHammerPanEnd input:", event);
 
-    // Reset touch pan state
-    T3Gv.opt.touchPanStarted = false;
+  //   // Reset touch pan state
+  //   // T3Gv.opt.touchPanStarted = false;
 
-    // Remove pan-related event handlers
-    T3Gv.opt.WorkAreaHammer.off("drag");
-    T3Gv.opt.WorkAreaHammer.off("dragend");
+  //   // Remove pan-related event handlers
+  //   T3Gv.opt.WorkAreaHammer.off("drag");
+  //   T3Gv.opt.WorkAreaHammer.off("dragend");
 
-    // Restore default edit mode
-    OptCMUtil.SetEditMode(NvConstant.EditState.Default);
+  //   // Restore default edit mode
+  //   OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-    T3Util.Log("E.Evt WorkAreaHammerPanEnd output: pan state reset, edit mode restored to default");
-    return false;
-  };
+  //   T3Util.Log("E.Evt WorkAreaHammerPanEnd output: pan state reset, edit mode restored to default");
+  //   return false;
+  // };
 
   /**
    * Handles the start of drag gestures in the SVG work area
-   * Initiates either panning or rubber band selection based on input conditions
+   * Initiates either panning or opt slt selection based on input conditions
    * @param event - The hammer drag start event
    * @returns false to prevent default browser behavior
    */
@@ -236,31 +236,33 @@ class EvtUtil {
     }
 
     // Check if we should start panning instead of selection
-    const shouldPan =
-      LMEvtUtil.IsWheelClick(event) ||
-      T3Constant.DocContext.SpacebarDown;
+    // const shouldPan =
+    //   LMEvtUtil.IsWheelClick(event) ||
+    //   T3Constant.DocContext.SpacebarDown;
 
-    if (shouldPan) {
-      // Initialize or continue panning
-      if (!T3Gv.opt.touchPanStarted) {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // if (shouldPan) {
+    //   // Initialize or continue panning
+    //   if (!T3Gv.opt.touchPanStarted) {
+    //     T3Gv.opt.touchPanStarted = true;
+    //     T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    //     T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
-        // Bind pan-related event handlers
-        T3Gv.opt.WorkAreaHammer.on('mousemove', EvtUtil.Evt_WorkAreaHammerPan);
-        T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_WorkAreaHammerPanEnd);
+    //     // Bind pan-related event handlers
+    //     T3Gv.opt.WorkAreaHammer.on('mousemove', EvtUtil.Evt_WorkAreaHammerPan);
+    //     T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_WorkAreaHammerPanEnd);
 
-        Utils2.StopPropagationAndDefaults(event);
-      }
+    //     Utils2.StopPropagationAndDefaults(event);
+    //   }
 
-      T3Util.Log("E.Evt WorkAreaHammerDragStart output: pan mode started");
-      return false;
-    } else {
+    //   T3Util.Log("E.Evt WorkAreaHammerDragStart output: pan mode started");
+    //   return false;
+    // } else
+
+    {
       // End any existing pan operation
-      if (T3Gv.opt.touchPanStarted) {
-        EvtUtil.Evt_WorkAreaHammerPanEnd();
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   EvtUtil.Evt_WorkAreaHammerPanEnd();
+      // }
 
       Utils2.StopPropagationAndDefaults(event);
 
@@ -275,22 +277,22 @@ class EvtUtil {
         return false;
       }
 
-      // Start rubber band selection
-      SelectUtil.StartRubberBandSelect(event);
+      // Start opt slt selection
+      SelectUtil.StartOptSltSelect(event);
 
-      T3Util.Log("E.Evt WorkAreaHammerDragStart output: rubber band selection started");
+      T3Util.Log("E.Evt WorkAreaHammerDragStart output: opt slt selection started");
       return false;
     }
   }
 
   /**
-   * Handles rubber band drag events to update selection area
-   * Updates the rubber band selection frame as the user drags the mouse
+   * Handles opt slt drag events to update selection area
+   * Updates the opt slt selection frame as the user drags the mouse
    * Includes auto-scrolling when dragging near document edges
    * @param event - The drag event from the hammer.js gesture system
    */
-  static Evt_RubberBandDrag(event) {
-    T3Util.Log("E.Evt RubberBandDrag input:", event);
+  static Evt_OptSltDrag(event) {
+    T3Util.Log("E.Evt OptSltDrag input:", event);
 
     // Prevent default browser behavior
     Utils2.StopPropagationAndDefaults(event);
@@ -301,7 +303,7 @@ class EvtUtil {
       if (!DrawUtil.AutoScrollCommon(
         event,
         false,
-        'RubberBandSelectDoAutoScroll'
+        'OptSltSelectDoAutoScroll'
       )) {
         return;
       }
@@ -312,67 +314,67 @@ class EvtUtil {
         event.gesture.center.clientY
       );
 
-      T3Util.Log("E.Evt RubberBandDrag processing: coordinates", documentCoordinates);
+      T3Util.Log("E.Evt OptSltDrag processing: coordinates", documentCoordinates);
 
-      // Update the rubber band selection shape
-      SelectUtil.RubberBandSelectMoveCommon(
+      // Update the opt slt selection shape
+      SelectUtil.OptSltSelectMoveCommon(
         documentCoordinates.x,
         documentCoordinates.y
       );
 
-      T3Util.Log("E.Evt RubberBandDrag output: rubber band updated");
+      T3Util.Log("E.Evt OptSltDrag output: opt slt updated");
     } catch (error) {
-      // Handle exceptions during rubber band selection
-      SelectUtil.RubberBandSelectExceptionCleanup(error);
+      // Handle exceptions during opt slt selection
+      SelectUtil.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("E.Evt RubberBandDrag error:", error);
+      T3Util.Log("E.Evt OptSltDrag error:", error);
       throw error;
     }
   }
 
   /**
-   * Handles the completion of a rubber band selection drag operation
-   * Finalizes selection of objects within the rubber band area and cleans up selection state
+   * Handles the completion of a opt slt selection drag operation
+   * Finalizes selection of objects within the opt slt area and cleans up selection state
    * @param event - The drag end event from the hammer.js gesture system
    */
-  static Evt_RubberBandDragEnd(event) {
-    T3Util.Log("E.Evt RubberBandDragEnd input:", event);
+  static Evt_OptSltDragEnd(event) {
+    T3Util.Log("E.Evt OptSltDragEnd input:", event);
 
     // Prevent default browser behavior
     Utils2.StopPropagationAndDefaults(event);
 
     try {
-      // Clean up event handlers used for rubber band selection
-      SelectUtil.UnbindRubberBandHammerEvents();
+      // Clean up event handlers used for opt slt selection
+      SelectUtil.UnbindOptSltHammerEvents();
       DrawUtil.ResetAutoScrollTimer();
 
-      // Get the final rubber band selection area
-      const rubberBandFrame = T3Gv.opt.rubberBandFrame;
+      // Get the final opt slt selection area
+      const optSltFrame = T3Gv.opt.optSltFrame;
 
       // Select all objects within the selection rectangle
       // If shift key is pressed, add to existing selection instead of replacing
       SelectUtil.SelectAllInRect(
-        rubberBandFrame,
+        optSltFrame,
         event.gesture.srcEvent.shiftKey
       );
 
-      // Remove the visual rubber band selection indicator
-      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.rubberBand);
+      // Remove the visual opt slt selection indicator
+      T3Gv.opt.svgOverlayLayer.RemoveElement(T3Gv.opt.optSlt);
 
-      // Reset rubber band selection state
-      T3Util.Log("E.Evt RubberBandDragEnd processing: resetting rubber band state");
-      T3Gv.opt.rubberBand = null;
-      T3Gv.opt.rubberBandStartX = 0;
-      T3Gv.opt.rubberBandStartY = 0;
-      T3Gv.opt.rubberBandFrame = { x: 0, y: 0, width: 0, height: 0 };
+      // Reset opt slt selection state
+      T3Util.Log("E.Evt OptSltDragEnd processing: resetting opt slt state");
+      T3Gv.opt.optSlt = null;
+      T3Gv.opt.optSltStartX = 0;
+      T3Gv.opt.optSltStartY = 0;
+      T3Gv.opt.optSltFrame = { x: 0, y: 0, width: 0, height: 0 };
 
-      T3Util.Log("E.Evt RubberBandDragEnd output: selection completed");
+      T3Util.Log("E.Evt OptSltDragEnd output: selection completed");
 
     } catch (error) {
       // Clean up if an error occurs during selection
-      SelectUtil.RubberBandSelectExceptionCleanup(error);
+      SelectUtil.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("E.Evt RubberBandDragEnd error:", error);
+      T3Util.Log("E.Evt OptSltDragEnd error:", error);
       throw error;
     }
   }
@@ -905,27 +907,27 @@ class EvtUtil {
 
     // If scale is greater than threshold, handle as pan instead of pinch
     if (event.gesture.scale > 0.666) {
-      if (T3Gv.opt.touchPanStarted) {
-        return EvtUtil.Evt_WorkAreaHammerPan(event);
-      } else {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   return EvtUtil.Evt_WorkAreaHammerPan(event);
+      // } else {
+      //   T3Gv.opt.touchPanStarted = true;
+      //   T3Gv.opt.touchPanX = event.gesture.center.clientX;
+      //   T3Gv.opt.touchPanY = event.gesture.center.clientY;
+      // }
       return false;
     }
 
-    // Reset touch state for pinch gesture
-    T3Gv.opt.touchPanStarted = false;
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // // Reset touch state for pinch gesture
+    // T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
     // Prevent default behavior and stop gesture detection
     Utils2.StopPropagationAndDefaults(event);
     event.gesture.stopDetect();
 
     // Cancel any active selections or moves
-    SelectUtil.RubberBandSelectCancel();
+    SelectUtil.OptSltSelectCancel();
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
       LMEvtUtil.LMMoveRelease(event);
     }
@@ -976,55 +978,55 @@ class EvtUtil {
    * @param event - The hammer pan event
    * @returns false to prevent default browser behavior
    */
-  static Evt_WorkAreaHammerPan(event) {
-    T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
+  // static Evt_WorkAreaHammerPan(event) {
+  //   T3Util.Log("E.Evt WorkAreaHammerPan input:", event);
 
-    // Cancel any active rubber band selection
-    SelectUtil.RubberBandSelectCancel();
+  //   // Cancel any active opt slt selection
+  //   SelectUtil.OptSltSelectCancel();
 
-    // Release any active move operation
-    if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-      LMEvtUtil.LMMoveRelease(event);
-    }
+  //   // Release any active move operation
+  //   if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
+  //     LMEvtUtil.LMMoveRelease(event);
+  //   }
 
-    // Set edit mode to indicate grabbing/panning
-    OptCMUtil.SetEditMode(NvConstant.EditState.Grab);
+  //   // Set edit mode to indicate grabbing/panning
+  //   OptCMUtil.SetEditMode(NvConstant.EditState.Grab);
 
-    // Prevent default browser behavior
-    Utils2.StopPropagationAndDefaults(event);
+  //   // Prevent default browser behavior
+  //   Utils2.StopPropagationAndDefaults(event);
 
-    // Get work area information
-    T3Gv.docUtil.svgDoc.GetWorkArea();
+  //   // Get work area information
+  //   T3Gv.docUtil.svgDoc.GetWorkArea();
 
-    // Get current touch position
-    const clientX = event.gesture.center.clientX;
-    const clientY = event.gesture.center.clientY;
+  //   // Get current touch position
+  //   const clientX = event.gesture.center.clientX;
+  //   const clientY = event.gesture.center.clientY;
 
-    // Calculate distance moved since last event
-    const deltaX = clientX - T3Gv.opt.touchPanX;
-    const deltaY = clientY - T3Gv.opt.touchPanY;
+  //   // Calculate distance moved since last event
+  //   const deltaX = clientX ;//- T3Gv.opt.touchPanX;
+  //   const deltaY = clientY ;//- T3Gv.opt.touchPanY;
 
-    // Get current scroll position
-    const svgArea = $("#svgarea");
-    const scrollLeft = svgArea.scrollLeft();
-    const scrollTop = svgArea.scrollTop();
+  //   // Get current scroll position
+  //   const svgArea = $("#svgarea");
+  //   const scrollLeft = svgArea.scrollLeft();
+  //   const scrollTop = svgArea.scrollTop();
 
-    // Update scroll position based on pan movement
-    T3Gv.docUtil.SetScroll(scrollLeft - deltaX, scrollTop - deltaY);
+  //   // Update scroll position based on pan movement
+  //   T3Gv.docUtil.SetScroll(scrollLeft - deltaX, scrollTop - deltaY);
 
-    // Save current touch position for next event
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+  //   // Save current touch position for next event
+  //   // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+  //   // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
-    T3Util.Log("E.Evt WorkAreaHammerPan output: scroll updated", {
-      deltaX: deltaX,
-      deltaY: deltaY,
-      newScrollLeft: scrollLeft - deltaX,
-      newScrollTop: scrollTop - deltaY
-    });
+  //   T3Util.Log("E.Evt WorkAreaHammerPan output: scroll updated", {
+  //     deltaX: deltaX,
+  //     deltaY: deltaY,
+  //     newScrollLeft: scrollLeft - deltaX,
+  //     newScrollTop: scrollTop - deltaY
+  //   });
 
-    return false;
-  };
+  //   return false;
+  // };
 
   /**
    * Handles pinch-out gesture events on the work area
@@ -1038,27 +1040,27 @@ class EvtUtil {
 
     // If scale is less than threshold, handle as pan instead of pinch
     if (event.gesture.scale < 1.333) {
-      if (T3Gv.opt.touchPanStarted) {
-        return EvtUtil.Evt_WorkAreaHammerPan(event);
-      } else {
-        T3Gv.opt.touchPanStarted = true;
-        T3Gv.opt.touchPanX = event.gesture.center.clientX;
-        T3Gv.opt.touchPanY = event.gesture.center.clientY;
-      }
+      // if (T3Gv.opt.touchPanStarted) {
+      //   return EvtUtil.Evt_WorkAreaHammerPan(event);
+      // } else {
+      //   T3Gv.opt.touchPanStarted = true;
+      //   T3Gv.opt.touchPanX = event.gesture.center.clientX;
+      //   T3Gv.opt.touchPanY = event.gesture.center.clientY;
+      // }
       return false;
     }
 
-    // Reset touch state for pinch gesture
-    T3Gv.opt.touchPanStarted = false;
-    T3Gv.opt.touchPanX = event.gesture.center.clientX;
-    T3Gv.opt.touchPanY = event.gesture.center.clientY;
+    // // Reset touch state for pinch gesture
+    // T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanX = event.gesture.center.clientX;
+    // T3Gv.opt.touchPanY = event.gesture.center.clientY;
 
     // Prevent default behavior and stop gesture detection
     Utils2.StopPropagationAndDefaults(event);
     event.gesture.stopDetect();
 
     // Cancel any active selections or moves
-    T3Gv.opt.RubberBandSelectCancel();
+    T3Gv.opt.OptSltSelectCancel();
     if (T3Gv.opt.moveList &&
       T3Gv.opt.moveList.length) {
       LMEvtUtil.LMMoveRelease(event);
@@ -1115,7 +1117,7 @@ class EvtUtil {
     T3Util.Log("E.Evt WorkAreaHammerPinchEnd input:", event);
 
     // Reset touch pan state
-    T3Gv.opt.touchPanStarted = false;
+    // T3Gv.opt.touchPanStarted = false;
 
     T3Util.Log("E.Evt WorkAreaHammerPinchEnd output: touch pan state reset");
   }

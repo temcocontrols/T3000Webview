@@ -746,7 +746,7 @@ class DocUtil {
     const workArea = this.svgDoc.GetWorkArea();
 
     // Get selected objects
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     // Calculate bounding rectangle for view centering
     let boundingRect = selectedObjects.length
@@ -813,7 +813,7 @@ class DocUtil {
     // Center view on content unless skipCentering is true
     if (!skipCentering) {
       const workArea = this.svgDoc.GetWorkArea();
-      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       // Get bounding rectangle of selection or entire document
       let boundingRect = selectedObjects.length
@@ -2014,7 +2014,7 @@ class DocUtil {
         this.ShowCoordinates(true);
 
         // Update selection attributes for the currently selected object(s)
-        const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+        const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
         SelectUtil.UpdateSelectionAttributes(selectedObjects);
 
         T3Util.Log("= U.DocUtil: RulerHandleDoubleClick - Output:", { updatedOrigins: originUpdates, selectedObjects });

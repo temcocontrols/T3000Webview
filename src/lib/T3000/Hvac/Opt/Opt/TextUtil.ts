@@ -144,7 +144,7 @@ class TextUtil {
           drawingObject = null;
 
           // Remove from selection list
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true);
+          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
           const indexInSelection = selectedList.indexOf(session.theActiveTextEditObjectID);
 
           if (indexInSelection >= 0) {
@@ -1198,7 +1198,7 @@ class TextUtil {
       }
 
       // Handle selection state
-      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       if (selectedList.indexOf(objectId) === -1 || selectedList.length > 1) {
         objectsToSelect.push(objectId);
         SelectUtil.SelectObjects(objectsToSelect, false, true);

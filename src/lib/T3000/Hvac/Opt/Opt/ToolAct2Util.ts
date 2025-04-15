@@ -42,7 +42,7 @@ class ToolAct2Util {
     }
 
     // Get list of shapes to group
-    const selectionList = customSelectionList || T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectionList = customSelectionList || T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const selectedCount = selectionList.length;
     if (selectedCount <= 1) {
       return false;
@@ -416,7 +416,7 @@ class ToolAct2Util {
     }
 
     // Get selected objects
-    const selectedShapes = T3Gv.stdObj.GetObject(T3Gv.opt.theSelectedListBlockID).Data;
+    const selectedShapes = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
     const selectedCount = selectedShapes.length;
 
     // Check if there are selected objects
@@ -445,7 +445,7 @@ class ToolAct2Util {
     if (hasGroupShape) {
 
       // Create a copy of the selected shapes
-      const shapesCopy = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true).slice(0);
+      const shapesCopy = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true).slice(0);
       let resultShapes = [];
 
       // Process each selected shape

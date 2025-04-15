@@ -124,7 +124,7 @@ class WallOpt {
     };
 
     // Get current selection and create a copy to restore after adding the wall
-    const selectionList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectionList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const currentSelection = Utils1.DeepCopy(selectionList);
 
     // Create a new wall line
@@ -152,7 +152,7 @@ class WallOpt {
       this.ToggleAddingWalls();
 
       // Get currently selected objects
-      let selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      let selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         // Reset object draw state and selection properties
@@ -169,7 +169,7 @@ class WallOpt {
 
       // Re-select any previously selected objects
       let objectsToSelect = [];
-      selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+      selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         objectsToSelect = Utils1.DeepCopy(selectedObjects);

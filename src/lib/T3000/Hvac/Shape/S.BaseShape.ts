@@ -454,7 +454,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Add rotation knob if allowed and appropriate
-    const canRotate = !(this.NoRotate() || this.NoGrow() || T3Gv.opt.touchInitiated ||
+    const canRotate = !(this.NoRotate() || this.NoGrow() /*|| T3Gv.opt.touchInitiated */||
       knobConfig.locked || isNarrowShape || hasConnectorHooks);
 
     if (canRotate) {
@@ -6070,17 +6070,17 @@ class BaseShape extends BaseDrawObject {
           const baseArrowSlop = OptConstant.Common.BaseArrowSlop / screenScale;
           const connectorArrowSlop = OptConstant.Common.ConnectorArrowSlop / screenScale;
           let knobSizeOffset = 0;
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
           if (selectedList && selectedList.indexOf(currentBlockId) !== -1) {
             knobSizeOffset = OptConstant.Common.KnobSize / 2;
           }
           let horizontalOffset = 0;
           let verticalOffset = 0;
 
-          // If there is an ongoing action (stored object, drag, or rubber band) then add a mouseout event
+          // If there is an ongoing action (stored object, drag, or opt slt) then add a mouseout event
           if (T3Gv.opt.actionStoredObjectId !== -1 ||
             T3Gv.opt.dragBBoxList.length !== 0 ||
-            T3Gv.opt.rubberBand) {
+            T3Gv.opt.optSlt) {
             // When mouse leaves, clear effects and cursors
             rolloverElement.svgObj.mouseout(() => {
               self.SetRuntimeEffects(false);
@@ -6680,7 +6680,7 @@ class BaseShape extends BaseDrawObject {
             QuasarUtil.ShowContextMenu(true);
           default:
             // Handle specific shape types
-            switch (clickedObject.ShapeType) { 
+            switch (clickedObject.ShapeType) {
               case shapeTypes.RRect:
                 if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
                   clickedObject.EMFHash && clickedObject.EMFHash.length) {

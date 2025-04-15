@@ -12,12 +12,12 @@ import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils2 from "../../Util/Utils2";
 import DataUtil from "../Data/DataUtil";
-import DSConstant from "../DS/DSConstant";
 import UIUtil from "../UI/UIUtil";
 import DrawUtil from "./DrawUtil";
 import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import DSUtil from '../DS/DSUtil';
+import Instance from '../../Data/Instance/Instance';
 
 class OptCMUtil {
 
@@ -400,240 +400,378 @@ class OptCMUtil {
     return isBlobUrl;
   }
 
-  static ShapeToPolyLine(e, t, a, r) {
-    var i,
-      n,
-      o,
-      s,
-      l = [],
-      S = {};
-    if (r) (i = r), (s = !0), (S = $.extend(!0, {}, i.Frame));
-    else {
-      null == (i = DataUtil.GetObjectPtr(e, !1)).polylist
-        ? ((i.polylist = i.GetPolyList()), (i.StartPoint = {}), (i.EndPoint = {}))
-        : (s = !0);
-      var c = T3Gv.stdObj.PreserveBlock(e);
-      if (null == c) return;
-      (i = c.Data), (S = $.extend(!0, {}, i.Frame));
-    }
-    if (s) {
-      if (!i.polylist) return null;
-      if (
-        (T3Gv.opt.GetClosedPolyDim(i),
-          !SDJS.Utils.IsEqual(i.polylist.dim.x, S.width))
-      ) {
-        var u = Utils2.DeepCopy(i);
-        (u.inside = $.extend(!0, {}, i.Frame)),
-          SDJS.ListManager.PolyLine.prototype.ScaleObject.call(
-            u,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ),
-          (i.polylist = u.polylist);
-      }
-    }
-    return (
-      (o = i.polylist.segs.length),
-      (i.StartPoint.x =
-        i.Frame.x + i.polylist.segs[0].pt.x + i.polylist.offset.x),
-      (i.StartPoint.y =
-        i.Frame.y + i.polylist.segs[0].pt.y + i.polylist.offset.y),
-      (i.EndPoint.x =
-        i.Frame.x + i.polylist.segs[o - 1].pt.x + i.polylist.offset.x),
-      (i.EndPoint.y =
-        i.Frame.y + i.polylist.segs[o - 1].pt.y + i.polylist.offset.y),
-      ((n = t
-        ? new SDJS.ListManager.PolyLineContainer(i)
-        : new SDJS.ListManager.PolyLine(i)).BlockID = i.BlockID),
-      (n.polylist.Shape_Rotation = i.RotationAngle),
-      (n.polylist.Shape_DataID = i.DataID),
-      (n.RotationAngle = 0),
-      (n.DataID = -1),
-      r || (c.Data = n),
-      a ||
-      (DataUtil.AddToDirtyList(e),
-        SvgUtil.RenderDirtySVGObjects(),
-        l.push(e),
-        SelectUtil.SelectObjects(l, !1, !0)),
-      (n.inside = $.extend(!0, {}, i.Frame)),
-      n
-    );
-  }
+  /**
+   * Converts a shape object to a polyline representation
+   * This function takes a shape and converts it to a polyline format, handling scaling,
+   * rotation, and positioning. It can work with existing polyline data or generate new polyline
+   * representation from shape data.
+   *
+   * @param shapeId - The ID of the shape object to convert
+   * @param createContainer - If true, creates a PolyLineContainer, otherwise creates a PolyLine
+   * @param skipSelection - If true, skips selection of the resulting object
+   * @param existingShape - Optional existing shape object to use instead of fetching by ID
+   * @returns The converted polyline object or null if conversion fails
+   */
+  static ShapeToPolyLine(shapeId, createContainer, skipSelection, existingShape) {
+    let shapeObject;
+    let polylineObject;
+    let segmentCount;
+    let dataPreserved = false;
+    const selectedObjects = [];
+    let originalFrame = {};
 
-  static PutInFrontofObject(e, t) {
-    var a,
-      r = DataUtil.GetObjectPtr(this.theLayersManagerBlockID, !0),
-      i = r.layers[r.activelayer].zList,
-      n = i.indexOf(e),
-      o = i.indexOf(t);
-    if (n >= 0 && o >= 0)
-      if (o < n) {
-        for (a = o; a < n; a++)
-          (i[a] = i[a + 1]), DataUtil.AddToDirtyList(i[a]);
-        (i[n] = t), DataUtil.AddToDirtyList(t);
+    if (existingShape) {
+      shapeObject = existingShape;
+      dataPreserved = true;
+      originalFrame = $.extend(true, {}, shapeObject.Frame);
+    } else {
+      shapeObject = DataUtil.GetObjectPtr(shapeId, false);
+
+      if (shapeObject.polylist == null) {
+        shapeObject.polylist = shapeObject.GetPolyList();
+        shapeObject.StartPoint = {};
+        shapeObject.EndPoint = {};
       } else {
-        for (a = o; a > n + 1; a--)
-          (i[a] = i[a - 1]), DataUtil.AddToDirtyList(i[a]);
-        (i[n + 1] = t), DataUtil.AddToDirtyList(t);
+        dataPreserved = true;
       }
+
+      const preservedBlock = T3Gv.stdObj.PreserveBlock(shapeId);
+      if (preservedBlock == null) {
+        return;
+      }
+
+      shapeObject = preservedBlock.Data;
+      originalFrame = $.extend(true, {}, shapeObject.Frame);
+    }
+
+    if (dataPreserved) {
+      if (!shapeObject.polylist) {
+        return null;
+      }
+
+      T3Gv.opt.GetClosedPolyDim(shapeObject);
+
+      if (!Utils2.IsEqual(shapeObject.polylist.dim.x, originalFrame.width)) {
+        const tempObject = Utils2.DeepCopy(shapeObject);
+        tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+
+        Instance.Shape.PolyLine.prototype.ScaleObject.call(
+          tempObject,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        );
+
+        shapeObject.polylist = tempObject.polylist;
+      }
+    }
+
+    segmentCount = shapeObject.polylist.segs.length;
+
+    shapeObject.StartPoint.x =
+      shapeObject.Frame.x + shapeObject.polylist.segs[0].pt.x + shapeObject.polylist.offset.x;
+    shapeObject.StartPoint.y =
+      shapeObject.Frame.y + shapeObject.polylist.segs[0].pt.y + shapeObject.polylist.offset.y;
+
+    shapeObject.EndPoint.x =
+      shapeObject.Frame.x + shapeObject.polylist.segs[segmentCount - 1].pt.x + shapeObject.polylist.offset.x;
+    shapeObject.EndPoint.y =
+      shapeObject.Frame.y + shapeObject.polylist.segs[segmentCount - 1].pt.y + shapeObject.polylist.offset.y;
+
+    polylineObject = createContainer
+      ? new Instance.Shape.PolyLineContainer(shapeObject)
+      : new Instance.Shape.PolyLine(shapeObject);
+
+    polylineObject.BlockID = shapeObject.BlockID;
+    polylineObject.polylist.Shape_Rotation = shapeObject.RotationAngle;
+    polylineObject.polylist.Shape_DataID = shapeObject.DataID;
+    polylineObject.RotationAngle = 0;
+    polylineObject.DataID = -1;
+
+    if (!existingShape) {
+      preservedBlock.Data = polylineObject;
+    }
+
+    if (!skipSelection) {
+      DataUtil.AddToDirtyList(shapeId);
+      SvgUtil.RenderDirtySVGObjects();
+      selectedObjects.push(shapeId);
+      SelectUtil.SelectObjects(selectedObjects, false, true);
+    }
+
+    polylineObject.inside = $.extend(true, {}, shapeObject.Frame);
+
+    return polylineObject;
   }
 
-  static InsertHops(e, t, a) {
-    var r,
-      i,
-      n,
-      o,
-      s,
-      l,
-      S,
-      c,
-      u,
-      p,
-      d,
-      D,
-      g = e.hoplist.nhops,
-      h = {},
-      m = new Point(),
-      C = new Point(),
-      y = new Point(),
-      f = new Point(),
-      L = [],
-      I = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1);
-    for (D = I.hopdim.x, d = I.hopdim.y, r = g - 1; r >= 0; r--) if (!e.hoplist.hops[r].cons) {
-      for (
-        c = i = e.hoplist.hops[r].segment,
-        s = r,
-        p = r;
-        s > 0 &&
-        e.hoplist.hops[s - 1].cons;
-      ) c = e.hoplist.hops[s - 1].segment,
-        p = s - 1,
-        s--;
-      if (!(i < a)) return {
-        bSuccess: !1,
-        npts: a
+  /**
+   * Rearranges objects in a layer's z-order by moving an object in front of another
+   * This function manipulates the z-order of objects in the active layer by changing
+   * their positions in the layer's zList array.
+   *
+   * @param targetObjectId - The object ID that will be the reference position
+   * @param objectToMoveId - The object ID that will be moved in front of the target
+   */
+  static PutInFrontofObject(targetObjectId, objectToMoveId) {
+    const layerManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const zList = layerManager.layers[layerManager.activelayer].zList;
+    const targetIndex = zList.indexOf(targetObjectId);
+    const objectToMoveIndex = zList.indexOf(objectToMoveId);
+
+    if (targetIndex < 0 || objectToMoveIndex < 0) {
+      return;
+    }
+
+    if (objectToMoveIndex < targetIndex) {
+      // Move up in z-order
+      for (let i = objectToMoveIndex; i < targetIndex; i++) {
+        zList[i] = zList[i + 1];
+        DataUtil.AddToDirtyList(zList[i]);
+      }
+      zList[targetIndex] = objectToMoveId;
+      DataUtil.AddToDirtyList(objectToMoveId);
+    } else {
+      // Move down in z-order
+      for (let i = objectToMoveIndex; i > targetIndex + 1; i--) {
+        zList[i] = zList[i - 1];
+        DataUtil.AddToDirtyList(zList[i]);
+      }
+      zList[targetIndex + 1] = objectToMoveId;
+      DataUtil.AddToDirtyList(objectToMoveId);
+    }
+  }
+
+  /**
+   * Inserts "hop" segments into a polyline to represent line jumps/crossovers
+   * This function finds appropriate places in the polyline to insert visual breaks
+   * or "hops" where the line should appear to jump over other elements.
+   *
+   * @param hopObject - The object containing hop information
+   * @param pointsArray - The array of points representing the polyline
+   * @param startIndex - The starting index for insertion
+   * @returns Object with success status and the new number of points
+   */
+  static InsertHops(hopObject, pointsArray, startIndex) {
+    let segmentIndex, insertSegment, hopStart, currentIndex;
+    let endIndex, consecutiveIndex, numPoints, hopWidth, hopHeight;
+    let result, startPoint = new Point(), endPoint = new Point();
+    let hopStartPt = new Point(), hopEndPt = new Point();
+    let hopPoints = [];
+    const sdData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+
+    hopWidth = sdData.hopdim.x;
+    hopHeight = sdData.hopdim.y;
+    const hopCount = hopObject.hoplist.nhops;
+
+    // Process hops in reverse order to handle nested hops correctly
+    for (segmentIndex = hopCount - 1; segmentIndex >= 0; segmentIndex--) {
+      if (!hopObject.hoplist.hops[segmentIndex].cons) {
+        insertSegment = hopObject.hoplist.hops[segmentIndex].segment;
+        hopStart = segmentIndex;
+        consecutiveIndex = segmentIndex;
+
+        // Find consecutive hops
+        while (hopStart > 0 && hopObject.hoplist.hops[hopStart - 1].cons) {
+          insertSegment = hopObject.hoplist.hops[hopStart - 1].segment;
+          consecutiveIndex = hopStart - 1;
+          hopStart--;
+        }
+
+        if (insertSegment >= startIndex) {
+          return { bSuccess: false, npts: startIndex };
+        }
+
+        // Insert points for the hop
+        result = this.InsertPoints(pointsArray, startIndex, insertSegment, 2);
+        startIndex = result.npts;
+
+        if (result.bSuccess) {
+          pointsArray[insertSegment] = {
+            x: hopObject.hoplist.hops[consecutiveIndex].pt.x,
+            y: hopObject.hoplist.hops[consecutiveIndex].pt.y
+          };
+
+          pointsArray[insertSegment + 1] = {
+            x: hopObject.hoplist.hops[segmentIndex].pt.x,
+            y: hopObject.hoplist.hops[segmentIndex].pt.y
+          };
+
+          // Handle segment position adjustment
+          if (insertSegment < insertSegment) {
+            for (currentIndex = insertSegment; currentIndex < startIndex; currentIndex++) {
+              pointsArray[insertSegment + currentIndex - insertSegment] = {
+                x: pointsArray[currentIndex].x,
+                y: pointsArray[currentIndex].y
+              };
+            }
+            startIndex -= (insertSegment - insertSegment);
+          }
+
+          insertSegment = insertSegment;
+          endIndex = insertSegment + 1;
+          currentIndex = numPoints = insertSegment + 1;
+
+          // Trim polyline for start arrow
+          result = this.PolyTrimForArrow(pointsArray, 0, numPoints, hopWidth, hopWidth, startPoint, endPoint, false);
+          numPoints = result.npts;
+          startPoint = result.spt;
+          endPoint = result.ept;
+
+          if (numPoints < currentIndex) {
+            for (currentIndex = currentIndex; currentIndex < startIndex; currentIndex++) {
+              pointsArray[numPoints + currentIndex - currentIndex] = {
+                x: pointsArray[currentIndex].x,
+                y: pointsArray[currentIndex].y
+              };
+            }
+            startIndex -= (currentIndex - numPoints);
+            endIndex -= (currentIndex - numPoints);
+          }
+
+          hopStartPt = { x: startPoint.x, y: startPoint.y };
+
+          // Process end points
+          currentIndex = numPoints = startIndex - endIndex;
+          result = this.PolyTrimForArrow(pointsArray, endIndex, numPoints, hopWidth, hopWidth, startPoint, endPoint, true);
+          numPoints = result.npts;
+          startPoint = result.spt;
+
+          if (numPoints < currentIndex) {
+            startIndex -= (currentIndex - numPoints);
+          }
+
+          hopEndPt = { x: (endPoint = result.ept).x, y: endPoint.y };
+
+          // Build the visual hop
+          result = this.BuildHop(sdData.hopstyle, hopHeight, hopStartPt, hopEndPt, numPoints);
+          hopPoints = result.pts;
+          numPoints = result.npts;
+
+          // Insert the hop points
+          result = this.InsertPoints(pointsArray, startIndex, numPoints, numPoints);
+          startIndex = result.npts;
+
+          if (result.bSuccess) {
+            for (currentIndex = 0; currentIndex < numPoints; currentIndex++) {
+              pointsArray[numPoints + currentIndex] = {
+                x: hopPoints[currentIndex].x,
+                y: hopPoints[currentIndex].y
+              };
+            }
+          }
+        }
+      }
+    }
+
+    return { bSuccess: true, npts: startIndex };
+  }
+
+  /**
+   * Trims a polyline to accommodate arrow rendering
+   * This function adjusts the start or end points of a polyline segment to ensure
+   * there's proper space for rendering arrow decorations.
+   *
+   * @param pointsArray - Array of points representing the polyline
+   * @param startIndex - Start index in the points array
+   * @param pointCount - Number of points to process
+   * @param width - Width parameter for trimming calculation
+   * @param height - Height parameter for trimming calculation
+   * @param startPoint - Output parameter for the start point
+   * @param endPoint - Output parameter for the end point
+   * @param isReversed - If true, processes the polyline in reverse direction
+   * @returns Object containing the processed data and points
+   */
+  static PolyTrimForArrow(pointsArray, startIndex, pointCount, width, height, startPoint, endPoint, isReversed) {
+    let findPoint = new Point();
+    let result = {findpt: findPoint, npts: pointCount};
+    let output = {spt: {}, ept: {}, pts: [], npts: 0};
+
+    // Find the appropriate length and point
+    result = this.PolyFindLength(pointsArray, startIndex, pointCount, height, isReversed, false, findPoint);
+    findPoint = result.findpt;
+    pointCount = result.npts;
+
+    // Set start and end points based on direction
+    if (isReversed) {
+      output.spt = {
+        x: pointsArray[startIndex].x,
+        y: pointsArray[startIndex].y
       };
-      if (a = (h = this.InsertPoints(t, a, i, 2)).npts, h.bSuccess) {
-        if (
-          t[i] = {
-            x: e.hoplist.hops[p].pt.x,
-            y: e.hoplist.hops[p].pt.y
-          },
-          t[i + 1] = {
-            x: e.hoplist.hops[r].pt.x,
-            y: e.hoplist.hops[r].pt.y
-          },
-          c < i
-        ) {
-          for (s = i; s < a; s++) t[c + s - i] = {
-            x: t[s].x,
-            y: t[s].y
-          };
-          a -= i - c
-        }
-        if (
-          n = (i = c) + 1,
-          o = u = c + 1,
-          u = (h = this.PolyTrimForArrow(t, 0, u, D, D, m, C, !1)).npts,
-          m = h.spt,
-          C = h.ept,
-          u < o
-        ) {
-          for (s = o; s < a; s++) t[u + s - o] = {
-            x: t[s].x,
-            y: t[s].y
-          };
-          a -= o - u,
-            n -= o - u
-        }
-        if (
-          y = {
-            x: m.x,
-            y: m.y
-          },
-          o = l = a - n,
-          l = (h = this.PolyTrimForArrow(t, n, l, D, D, m, C, !0)).npts,
-          m = h.spt,
-          l < o &&
-          (a -= o - l),
-          f = {
-            x: (C = h.ept).x,
-            y: C.y
-          },
-          L = (h = this.BuildHop(I.hopstyle, d, y, f, S)).pts,
-          S = h.npts,
-          a = (h = this.InsertPoints(t, a, u, S)).npts,
-          h.bSuccess
-        ) for (s = 0; s < S; s++) t[u + s] = {
-          x: L[s].x,
-          y: L[s].y
-        }
-      }
+      output.ept = {
+        x: findPoint.x,
+        y: findPoint.y
+      };
+    } else {
+      output.ept = {
+        x: pointsArray[startIndex + pointCount - 1].x,
+        y: pointsArray[startIndex + pointCount - 1].y
+      };
+      output.spt = {
+        x: findPoint.x,
+        y: findPoint.y
+      };
     }
-    return {
-      bSuccess: !0,
-      npts: a
-    }
+
+    // Find additional points with the width parameter
+    result = this.PolyFindLength(pointsArray, startIndex, pointCount, width, isReversed, true, findPoint);
+    findPoint = result.findpt;
+    pointCount = result.npts;
+    output.pts = result.pts;
+    output.npts = pointCount;
+
+    return output;
   }
 
-  static PolyTrimForArrow(e, t, a, r, i, n, o, s) {
-    var l = new Point()
-      , S = {}
-      , c = {};
-    return l = (S = this.PolyFindLength(e, t, a, i, s, !1, l)).findpt,
-      a = S.npts,
-      s ? (c.spt = {
-        x: e[t].x,
-        y: e[t].y
-      },
-        c.ept = {
-          x: l.x,
-          y: l.y
-        }) : (c.ept = {
-          x: e[t + a - 1].x,
-          y: e[t + a - 1].y
-        },
-          c.spt = {
-            x: l.x,
-            y: l.y
-          }),
-      l = (S = this.PolyFindLength(e, t, a, r, s, !0, l)).findpt,
-      a = S.npts,
-      c.pts = S.pts,
-      c.npts = a,
-      c
-  }
-
-  static InsertPoints(e, t, a, r) {
-    var i;
-    if (t + r > SDJS.ListManager.Defines.SED_MaxPoints)
+  /**
+   * Inserts new points into a polyline array at a specific position
+   * This function creates space in the points array to accommodate additional points,
+   * shifting existing points as needed and initializing the new points.
+   *
+   * @param pointsArray - The array of points to modify
+   * @param totalPoints - Current total number of points in the array
+   * @param insertPosition - Position where new points should be inserted
+   * @param pointsToInsert - Number of new points to insert
+   * @returns Object with success status and the new total point count
+   */
+  static InsertPoints(pointsArray, totalPoints, insertPosition, pointsToInsert) {
+    // Check if inserting would exceed the maximum allowed points
+    if (totalPoints + pointsToInsert > OptConstant.Common.MaxPolyPoints) {
       return {
-        bSuccess: !1,
-        npts: t
+        bSuccess: false,
+        npts: totalPoints
       };
-    for (i = 0; i < r; ++i) {
-      var n = new SDJS.ListManager.Point;
-      e.push(n)
     }
-    for (i = t - 1; i >= a; i--)
-      e[i + r] = {
-        x: e[i].x,
-        y: e[i].y
+
+    // Add empty points to the end of the array
+    for (let i = 0; i < pointsToInsert; ++i) {
+      const newPoint = new Point();
+      pointsArray.push(newPoint);
+    }
+
+    // Shift existing points to make room for new points
+    for (let i = totalPoints - 1; i >= insertPosition; i--) {
+      pointsArray[i + pointsToInsert] = {
+        x: pointsArray[i].x,
+        y: pointsArray[i].y
       };
-    for (t += r,
-      i = a; i < a + r; i++)
-      e[i] = {
-        x: i - a,
-        y: i - a
+    }
+
+    // Initialize new points with placeholder values
+    totalPoints += pointsToInsert;
+    for (let i = insertPosition; i < insertPosition + pointsToInsert; i++) {
+      pointsArray[i] = {
+        x: i - insertPosition,
+        y: i - insertPosition
       };
+    }
+
     return {
-      bSuccess: !0,
-      npts: t
-    }
+      bSuccess: true,
+      npts: totalPoints
+    };
   }
 
   static GetEditMode() {

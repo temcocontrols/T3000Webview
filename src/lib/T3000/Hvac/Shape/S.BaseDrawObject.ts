@@ -2016,7 +2016,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: IsSelected input: none");
 
     const blockID = this.BlockID;
-    const selectedList = T3Gv.opt.theSelectedListBlockID.Data;
+    const selectedList = T3Gv.opt.selectObjsBlockId.Data;
     const isSelected = $.inArray(blockID, selectedList) >= 0;
 
     T3Util.Log("= S.BaseDrawObject: IsSelected output:", isSelected);

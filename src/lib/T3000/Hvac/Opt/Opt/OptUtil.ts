@@ -60,7 +60,7 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
  *
  * OptUtil provides core functionality for the T3000 HVAC graphics editor, handling operations like:
  * - SVG document initialization and manipulation
- * - Selection management and rubber band selection
+ * - Selection management and rectangle selection
  * - Drag and drop operations
  * - Object formatting and styling
  * - Text editing and formatting
@@ -74,14 +74,14 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
  * const optUtil = new OptUtil();
  * optUtil.Initialize();
  *
- * // Use rubber band selection to select multiple objects
- * optUtil.StartRubberBandSelect(mouseEvent);
+ * // Use rectangle selection to select multiple objects
+ * optUtil.StartOptSltSelect(mouseEvent);
  *
  * // Handle format painter operations
  * optUtil.SetFormatPainter(false, true); // Enable format painter in sticky mode
  *
  * // Access and modify selected objects
- * const selectedList = optUtil.GetObjectPtr(optUtil.theSelectedListBlockID, false);
+ * const selectedList = optUtil.GetObjectPtr(optUtil.selectObjsBlockId, false);
  * optUtil.UpdateSelectionAttributes(selectedList);
  *
  * // Manage document scale/zoom
@@ -104,13 +104,13 @@ class OptUtil {
   public sVGroot: any;               // Root SVG DOM element
 
   /**
-   * Rubber band selection variables
+   * Rectangle selection variables
    * Used for implementing rectangular selection behavior
    */
-  public rubberBand: any;            // Reference to selection rectangle element
-  public rubberBandStartX: number;   // Starting X coordinate for selection
-  public rubberBandStartY: number;   // Starting Y coordinate for selection
-  public rubberBandFrame: any;       // Bounding rectangle of selection area
+  public optSlt: any;            // Reference to selection rectangle element
+  public optSltStartX: number;   // Starting X coordinate for selection
+  public optSltStartY: number;   // Starting Y coordinate for selection
+  public optSltFrame: any;       // Bounding rectangle of selection area
 
   /**
    * Drag operation state variables
@@ -145,8 +145,8 @@ class OptUtil {
   public actionTriggerData: any;  // Data associated with the trigger
   public actionStartX: number;       // Starting X coordinate for action
   public actionStartY: number;       // Starting Y coordinate for action
-  // public actionTableLastX: number;   // Last X coordinate for table actions
-  // public actionTableLastY: number;   // Last Y coordinate for table actions
+  public actionTableLastX: number;   // Last X coordinate for table actions
+  public actionTableLastY: number;   // Last Y coordinate for table actions
   public actionOldExtra: number;     // Previous extra state data
   public actionBBox: any;            // Original bounding box
   public actionNewBBox: any;         // New bounding box after action
@@ -198,12 +198,12 @@ class OptUtil {
    * Touch and gesture variables
    * Support for touch interaction
    */
-  public isGestureCapable: boolean;      // Whether device supports touch/gestures
-  public touchInitiated: boolean;        // Whether touch interaction started
-  public touchPanStarted: boolean;       // Whether panning via touch started
-  public touchPanX: number;              // X position for touch panning
-  public touchPanY: number;              // Y position for touch panning
-  public bIsFullScreen: boolean;         // Whether in fullscreen mode
+  // public isGestureCapable: boolean;      // Whether device supports touch/gestures
+  // public touchInitiated: boolean;        // Whether touch interaction started
+  // public touchPanStarted: boolean;       // Whether panning via touch started
+  // public touchPanX: number;              // X position for touch panning
+  // public touchPanY: number;              // Y position for touch panning
+  // public bIsFullScreen: boolean;         // Whether in fullscreen mode
 
   /**
    * UI elements and event handlers
@@ -229,9 +229,9 @@ class OptUtil {
    * Block IDs for persistent object storage
    * References to stored objects in the object manager
    */
-  public theSelectedListBlockID: number; // ID for object selection storage
-  public sdDataBlockId: number;      // ID for shape editing data
-  public teDataBlockId: number;      // ID for text editing session data
+  public selectObjsBlockId: number;      // ID for object selection storage
+  public sdDataBlockId: number;          // ID for shape editing data
+  public teDataBlockId: number;          // ID for text editing session data
   public layersManagerBlockId: number;   // ID for layer management data
   public linksBlockId: number;           // ID for connection links data
 
@@ -384,8 +384,6 @@ class OptUtil {
   public ob: any;
   public PastePoint: any;
 
-  public actionTableLastX: any;
-  public actionTableLastY: any;
   OldConnectorExtra: number;
   OldConnectorWd: any;
   OldConnectorHt: number;
@@ -415,20 +413,15 @@ class OptUtil {
     this.sVGroot = null;                        // Root SVG DOM element
     // #endregion
 
-    // #region Selection & Rubber Band
+    // #region Selection & opt slt
     /**
-     * Set up properties for rubber band selection
+     * Set up properties for opt slt selection
      * These properties track state during rectangular selection operations
      */
-    this.rubberBand = null;                     // Visual representation of selection area
-    this.rubberBandStartX = 0;                  // X position where selection started
-    this.rubberBandStartY = 0;                  // Y position where selection started
-    this.rubberBandFrame = {                    // Actual selection rectangle coordinates
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0
-    };
+    this.optSlt = null;                     // Visual representation of selection area
+    this.optSltStartX = 0;                  // X position where selection started
+    this.optSltStartY = 0;                  // Y position where selection started
+    this.optSltFrame = { x: 0, y: 0, width: 0, height: 0 }; // Actual selection rectangle coordinates
     // #endregion
 
     // #region Drag & Drop Operations
@@ -471,8 +464,8 @@ class OptUtil {
     this.actionTriggerData = 0;                 // Data associated with the trigger
     this.actionStartX = 0;                      // X coordinate where action started
     this.actionStartY = 0;                      // Y coordinate where action started
-    // this.actionTableLastX = 0;                  // Last X coordinate for table actions
-    // this.actionTableLastY = 0;                  // Last Y coordinate for table actions
+    this.actionTableLastX = 0;                  // Last X coordinate for table actions
+    this.actionTableLastY = 0;                  // Last Y coordinate for table actions
     this.actionOldExtra = 0;                    // Previous extra state data
     this.actionBBox = {};                       // Original bounding box
     this.actionNewBBox = {};                    // New bounding box after action
@@ -535,15 +528,15 @@ class OptUtil {
     this.inAutoScroll = false;                  // Whether auto-scroll is active
 
     // Touch gesture properties
-    this.isGestureCapable = 'ontouchstart' in window ||
-      ('onpointerdown' in window &&
-        navigator.maxTouchPoints &&
-        navigator.maxTouchPoints > 1);  // Device supports touch
-    this.touchInitiated = false;                // Whether touch interaction started
-    this.touchPanStarted = false;               // Whether panning via touch started
-    this.touchPanX = 0;                         // X position for touch panning
-    this.touchPanY = 0;                         // Y position for touch panning
-    this.bIsFullScreen = false;                 // Whether in fullscreen mode
+    // this.isGestureCapable = 'ontouchstart' in window ||
+    //   ('onpointerdown' in window &&
+    //     navigator.maxTouchPoints &&
+    //     navigator.maxTouchPoints > 1);  // Device supports touch
+    // this.touchInitiated = false;                // Whether touch interaction started
+    // this.touchPanStarted = false;               // Whether panning via touch started
+    // this.touchPanX = 0;                         // X position for touch panning
+    // this.touchPanY = 0;                         // Y position for touch panning
+    // this.bIsFullScreen = false;                 // Whether in fullscreen mode
     // #endregion
 
     // #region UI Elements & Event Handlers
@@ -573,9 +566,9 @@ class OptUtil {
      * Initialize persistent storage block IDs
      * These reference stored objects in the object manager
      */
-    this.theSelectedListBlockID = -1;           // ID for selected objects list
-    this.sdDataBlockId = -1;                // ID for shape editing data
-    this.teDataBlockId = -1;                // ID for text editing session data
+    this.selectObjsBlockId = -1;                // ID for selected objects list
+    this.sdDataBlockId = -1;                    // ID for shape editing data
+    this.teDataBlockId = -1;                    // ID for text editing session data
     this.layersManagerBlockId = -1;             // ID for layer management data
     this.linksBlockId = -1;                     // ID for connection links data
     // #endregion
@@ -757,7 +750,7 @@ class OptUtil {
       StateConstant.StoredObjectType.SelectedListObject,
       []
     );
-    this.theSelectedListBlockID = selectedListBlock.ID;
+    this.selectObjsBlockId = selectedListBlock.ID;
 
     // Create shape data block
     const sdData = new SDData();
@@ -1347,7 +1340,7 @@ class OptUtil {
       SvgUtil.RenderAllSVGObjects();
 
       const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
-      const selectedList = DataUtil.GetObjectPtr(this.theSelectedListBlockID, false);
+      const selectedList = DataUtil.GetObjectPtr(this.selectObjsBlockId, false);
       SelectUtil.UpdateSelectionAttributes(selectedList);
 
       T3Util.Log('O.Opt ExceptionCleanup - Output: done');
@@ -4064,7 +4057,7 @@ class OptUtil {
                   if (connectorHookCount - connectorUsageCount > 1 || connectorEndInfo.pasted || isForced) {
                     objectIds.push(parentConnector);
                     if ((tempObj.extraflags & OptConstant.ExtraFlags.NoDelete)) {
-                      tempObj.extraflags = SDJS.Utils.SetFlag(tempObj.extraflags, OptConstant.ExtraFlags.NoDelete, false);
+                      tempObj.extraflags = Utils2.SetFlag(tempObj.extraflags, OptConstant.ExtraFlags.NoDelete, false);
                     }
                     OptAhUtil.GetConnectorTree(parentConnector, objectIds);
                     if (!connectorEndInfo.pasted) {
@@ -4161,7 +4154,7 @@ class OptUtil {
                     flagSkip = true;
                   }
                 }
-                childObj.flags = SDJS.Utils.SetFlag(childObj.flags, NvConstant.ObjFlags.Obj1, true);
+                childObj.flags = Utils2.SetFlag(childObj.flags, NvConstant.ObjFlags.Obj1, true);
                 OptCMUtil.SetLinkFlag(childId, DSConstant.LinkFlags.Move);
               }
               childSearchIndex = childId;
@@ -5131,7 +5124,7 @@ class OptUtil {
     T3Util.Log("O.Opt IsGroupNonDelete - Input: no parameters");
 
     const selectedObjects = DataUtil.GetObjectPtr(
-      T3Gv.opt.theSelectedListBlockID,
+      T3Gv.opt.selectObjsBlockId,
       false
     );
     let currentObject = null;
@@ -5859,26 +5852,26 @@ class OptUtil {
     T3Util.Log("O.Opt HandleStampDragDoAutoScroll - Output: Position updated", documentCoords);
   }
 
-  RubberBandSelectDoAutoScroll() {
-    T3Util.Log("O.Opt RubberBandSelectDoAutoScroll - Input: starting auto scroll");
+  OptSltSelectDoAutoScroll() {
+    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Input: starting auto scroll");
 
     // Schedule auto-scroll callback to run every 100ms
-    T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("RubberBandSelectDoAutoScroll", 100);
+    T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("OptSltSelectDoAutoScroll", 100);
 
     // Convert window coordinates (autoScrollXPos, autoScrollYPos) to document coordinates
     const documentCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       T3Gv.opt.autoScrollXPos,
       T3Gv.opt.autoScrollYPos
     );
-    T3Util.Log(`O.Opt RubberBandSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
+    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
 
     // Scroll the document to the computed position
     T3Gv.docUtil.ScrollToPosition(documentCoords.x, documentCoords.y);
-    T3Util.Log(`O.Opt RubberBandSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
+    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
 
-    // Move the rubber band selection rectangle based on the new coordinates
-    SelectUtil.RubberBandSelectMoveCommon(documentCoords.x, documentCoords.y);
-    T3Util.Log("O.Opt RubberBandSelectDoAutoScroll - Output: Rubber band selection moved");
+    // Move the rectangle selection rectangle based on the new coordinates
+    SelectUtil.OptSltSelectMoveCommon(documentCoords.x, documentCoords.y);
+    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Output: Rectangle selection moved");
   }
 
   /**
@@ -6329,7 +6322,7 @@ class OptUtil {
    */
   Lock(objectId, forceToggle?) {
     // Get the list of selected objects
-    const selectedObjects = T3Gv.stdObj.GetObject(this.theSelectedListBlockID).Data;
+    const selectedObjects = T3Gv.stdObj.GetObject(this.selectObjsBlockId).Data;
     const objectCount = selectedObjects.length;
 
     // Proceed only if there are selected objects or if forceToggle is true

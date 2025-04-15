@@ -253,7 +253,7 @@ class LayerUtil {
     let frontmostIndex = -1;
     let backmostIndex = 0;
 
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const selectedCount = selectedObjects.length;
 
     if (selectedCount === 0) {
@@ -501,7 +501,7 @@ class LayerUtil {
     T3Util.Log("O.Opt AdjustSelectedListAfterLayerChange - Input");
 
     // Get the current selected objects list with preservation
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, true);
+    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
     const currentTargetSelection = SelectUtil.GetTargetSelect();
     const selectedCount = selectedList.length;
     const filteredSelection = [];

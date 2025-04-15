@@ -558,7 +558,7 @@ class SVGFragmentSymbol extends BaseSymbol {
       !(
         this.NoRotate() ||
         this.NoGrow() ||
-        T3Gv.opt.touchInitiated ||
+        /*T3Gv.opt.touchInitiated ||*/
         knobConfig.locked ||
         tooSmallForRotation ||
         hasConnectorHooks

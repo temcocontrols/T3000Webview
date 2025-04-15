@@ -55,7 +55,7 @@ class Clipboard {
    * Indicates if the current device is capable of gesture interactions
    * Determined by checking if "ontouchstart" exists in window or if pointer events are supported with multiple touch points
    */
-  static isGestureCapable: boolean;
+  // static isGestureCapable: boolean;
 
   /**
    * Indicates if the current browser is Safari (not Chrome or other variants)
@@ -113,8 +113,8 @@ class Clipboard {
   static Init(options?) {
     // Detect device and browser capabilities
     this.isMobileDevice = /mobile|ip(ad|hone|od)|android|silk/i.test(navigator.userAgent);
-    this.isGestureCapable = "ontouchstart" in window ||
-      ("onpointerdown" in window && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    // this.isGestureCapable = "ontouchstart" in window ||
+    //   ("onpointerdown" in window && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
     this.isSafariBrowser = navigator.appVersion.includes("Safari") &&
       !navigator.appVersion.includes("Chrome") &&
       !navigator.appVersion.includes("CrMo") &&
@@ -130,7 +130,7 @@ class Clipboard {
     this.clipboardInputElement = $("#_clipboardInput");
 
     // Special handling for iOS Safari on Mac
-    if (this.isMacOS && this.isGestureCapable && this.isMobileDevice && this.isSafariBrowser && this.isIOSDevice) {
+    if (this.isMacOS /*&& this.isGestureCapable */&& this.isMobileDevice && this.isSafariBrowser && this.isIOSDevice) {
       Clipboard.clipboardInputElement.attr("readonly", "readonly");
       const crossTabDiv = $("#_crossTabClipboardDiv");
       crossTabDiv.css("left", "-100px");
@@ -334,7 +334,7 @@ class Clipboard {
    */
   static GenerateImageInfo1() {
     const imageInfo = {};
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, false);
+    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     if (!selectedObjects || selectedObjects.length === 0) {
       return Promise.resolve(null);
@@ -375,7 +375,7 @@ class Clipboard {
 
   static GenerateImageInfo() {
     const e = {},
-      t = DataUtil.GetObjectPtr(T3Gv.opt.theSelectedListBlockID, !1);
+      t = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, !1);
     return t &&
       0 !== t.length ? function (e) {
         return new Promise(
