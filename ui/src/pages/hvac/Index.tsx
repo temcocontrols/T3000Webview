@@ -12,6 +12,7 @@ import ObjectConfig from '../../components/Hvac/ObjectConfig';
 
 import type { MenuProps } from 'antd';
 import { Dropdown } from 'antd';
+import SvgWithAntdInside from '@/components/Hvac/SvgWithAntdInside';
 
 
 const items: MenuProps['items'] = [
@@ -50,6 +51,7 @@ const Index: React.FC = () => {
 
     <>
 
+
       <div id="_crossTabClipboardDiv" className='clipboard-div'>
         <div id="_IEclipboardDiv" contentEditable="true"></div>
         <input id="_clipboardInput" type="text" value=""></input>
@@ -59,6 +61,7 @@ const Index: React.FC = () => {
         <div id="main-panel" className="main-panel">
           <div className="top-area">
             <Topbar></Topbar>
+
           </div>
 
           <div className="main-area">
@@ -75,11 +78,13 @@ const Index: React.FC = () => {
                 </div>
                 <div id="v-ruler" className="document-ruler-left">
                 </div>
+                <SvgWithAntdInside></SvgWithAntdInside>
 
                 <Dropdown menu={{ items }} trigger={['contextMenu']}>
                   <div id="svg-area" className="svg-area">
                   </div>
                 </Dropdown>
+
               </div>
               <div id="doc-toolbar" className="doc-toolbar">
               </div>
@@ -89,6 +94,8 @@ const Index: React.FC = () => {
       </div>
 
       <ObjectConfig ></ObjectConfig>
+
+
 
     </>
   );
