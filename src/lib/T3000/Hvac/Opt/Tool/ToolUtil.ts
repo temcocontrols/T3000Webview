@@ -10,7 +10,7 @@ import $ from "jquery"
 import Polygon from "../../Shape/S.Polygon"
 import RRect from "../../Shape/S.RRect"
 import Oval from "../../Shape/S.Oval"
-import Clipboard from "../Clipboard/Clipboard"
+import T3Clipboard from "../Clipboard/T3Clipboard"
 import NvConstant from "../../Data/Constant/NvConstant"
 import PolySeg from "../../Model/PolySeg"
 import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol"
@@ -865,7 +865,7 @@ class ToolUtil {
         T3Gv.opt.PastePoint = T3Gv.opt.rClickParam.hitPoint;
       }
 
-      Clipboard.PasteFromUIaction();
+      T3Clipboard.PasteFromUIaction();
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
       throw error;

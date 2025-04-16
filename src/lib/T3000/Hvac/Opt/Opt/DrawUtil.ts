@@ -29,6 +29,7 @@ import SvgUtil from "./SvgUtil";
 import ToolActUtil from "./ToolActUtil";
 import TextUtil from './TextUtil';
 import DynamicUtil from './DynamicUtil';
+import T3Clipboard from '../Clipboard/T3Clipboard';
 
 class DrawUtil {
 
@@ -2237,8 +2238,8 @@ class DrawUtil {
     T3Gv.opt.lastOpDuplicate = false;
     T3Gv.opt.ScrollObjectIntoView(-1, false);
 
-    if (Clipboard && Clipboard.FocusOnClipboardInput) {
-      Clipboard.FocusOnClipboardInput();
+    if (T3Clipboard && T3Clipboard.FocusOnClipboardInput) {
+      T3Clipboard.FocusOnClipboardInput();
     }
 
     T3Util.Log("O.Opt CompleteOperation - Output: Operation completed.");

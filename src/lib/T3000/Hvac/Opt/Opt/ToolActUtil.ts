@@ -26,6 +26,7 @@ import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import TextUtil from "./TextUtil";
 import ToolAct2Util from './ToolAct2Util';
+import T3Clipboard from '../Clipboard/T3Clipboard';
 
 class ToolActUtil {
 
@@ -585,7 +586,7 @@ class ToolActUtil {
         // Case 1.2: Paste text if the clipboard has text content
         if (T3Gv.opt.textClipboard && T3Gv.opt.textClipboard.text) {
           // Handle IE-specific line ending issues
-          if (Clipboard.isIe) {
+          if (T3Clipboard.isInternetExplorer) {
             const textLength = T3Gv.opt.textClipboard.text.length;
             if (textLength >= 2 &&
               T3Gv.opt.textClipboard.text[textLength - 2] === '\r' &&
