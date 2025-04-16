@@ -71,20 +71,20 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 class DocUtil {
 
   // Document configuration properties
-  public docConfig: DocConfig;
+  public docConfig: DocConfig | undefined;
   public rulerConfig: RulerConfig;
 
   // DOM element IDs
-  public workAreaID: string;
-  public svgAreaID: string;
-  public hRulerAreaID: string;
-  public vRulerAreaID: string;
-  public cRulerAreaID: string;
+  public workAreaID: string | undefined;
+  public svgAreaID: string | undefined;
+  public hRulerAreaID: string | undefined;
+  public vRulerAreaID: string | undefined;
+  public cRulerAreaID: string | undefined;
 
   // Document objects
-  public svgDoc: Document;
-  public hRulerDoc: Document;
-  public vRulerDoc: Document;
+  public svgDoc: Document | undefined;
+  public hRulerDoc: Document | undefined;
+  public vRulerDoc: Document | undefined;
 
   // Layer names
   public gridLayer: string = '_doc_grid';

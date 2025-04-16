@@ -759,14 +759,7 @@ class EvtOpt {
 
   BindLibSetBackgroundColorEvent() {
     $("#btn_try_Lib_SetBackgroundColor").on("pointerdown", (event) => {
-      if (T3Gv.docUtil.docConfig.backgroundColor == "#FFFFFF") {
-        EvtOpt.toolOpt.LibSetBackgroundColorAct("#20b2aa");
-        T3Gv.docUtil.docConfig.backgroundColor = "#20b2aa";
-      }
-      else {
-        EvtOpt.toolOpt.LibSetBackgroundColorAct("#FFFFFF");
-        T3Gv.docUtil.docConfig.backgroundColor = "#FFFFFF";
-      }
+      EvtOpt.toolOpt.SetBackgroundColor(event);
     });
   }
 
