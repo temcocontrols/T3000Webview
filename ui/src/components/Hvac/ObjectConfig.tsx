@@ -24,6 +24,7 @@ const ObjectConfig: React.FC = () => {
         placement="right"
         onClose={() => DrawerUtil.setDrawerOpen(false)}
         open={isOpen}
+        mask={false}
       >
         <p>Drawer Content</p>
       </Drawer>

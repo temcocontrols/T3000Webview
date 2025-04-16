@@ -1,7 +1,5 @@
-
-
-.left-sidebar{
-  overflow:scroll;
+.left-sidebar {
+  overflow: scroll;
   scrollbar-width: thin;
 
   /* background-color: #2a2a2a; */
