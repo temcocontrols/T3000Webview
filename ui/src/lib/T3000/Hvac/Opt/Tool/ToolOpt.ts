@@ -617,11 +617,25 @@ class ToolOpt {
 
   LibAddCommentAct() {
     try {
-      T3Gv.opt.CloseEdit(),
-        T3Gv.opt.EditComments()
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.EditComments();
     } catch (e) {
       T3Gv.opt.ExceptionCleanup(e)
     }
+  }
+
+  SetBackgroundColor() {
+    this.LibSetBackgroundColorAct("#20b2aa");
+
+    // T3Gv.docUtil.docConfig.backgroundColor = "#20b2aa";
+    // if (T3Gv.docUtil.docConfig.backgroundColor === "#FFFFFF") {
+    //   this.LibSetBackgroundColorAct("#20b2aa");
+    //   T3Gv.docUtil.docConfig.backgroundColor = "#20b2aa";
+    // }
+    // else {
+    //   this.LibSetBackgroundColorAct("#FFFFFF");
+    //   T3Gv.docUtil.docConfig.backgroundColor = "#FFFFFF";
+    // }
   }
 }
 

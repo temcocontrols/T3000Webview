@@ -56,7 +56,7 @@ class QuasarUtil {
   static ShowObjectConfig(show: boolean) {
     RefConstant.objectConfigShow = show;
     // setContext(show);
-    DrawerUtil.setDrawerOpen(true)
+    DrawerUtil.setDrawerOpen(show)
     console.log("RefConstant.objectConfigShow", RefConstant.objectConfigShow);
   }
 }
