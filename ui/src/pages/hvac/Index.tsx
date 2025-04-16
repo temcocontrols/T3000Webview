@@ -44,82 +44,51 @@ const Index: React.FC = () => {
     T3000.Hvac.UI.Initialize(); // Initialize the HVAC UI
 
     // Add any necessary style adjustments for the SVG here
-  }, []); // Empty dependency array to ensure it runs only once
-
+  }, []);
 
   return (
 
     <>
 
+      <div id="_crossTabClipboardDiv" className='clipboard-div'>
+        <div id="_IEclipboardDiv" contentEditable="true"></div>
+        <input id="_clipboardInput" type="text" value=""></input>
+      </div>
 
+      <div id="main-app">
+        <div id="main-panel" className="main-panel">
+          <div className="top-area">
+            <Topbar></Topbar>
+          </div>
 
-
-
-      {/* <div
-        style={{
-          color: colorTextTertiary,
-          background: colorBgLayout,
-          height: 200,
-          textAlign: 'center',
-          lineHeight: '200px',
-        }}
-      >
-        Right Click on here
-      </div> */}
-
-
-
-
-
-
-
-
-
-
-        <div id="_crossTabClipboardDiv" className='clipboard-div'>
-          <input
-            id="_clipboardInput"
-            type="text"
-            value=" "
-            aria-label="Clipboard Input"
-            title="Clipboard Input Field"
-          />
-          <input id="_clipboardInput" type="text" value=" "></input>
-        </div>
-
-        <div id="main-app">
-          <div id="main-panel" className="main-panel">
-            <div className="top-area">
-              <Topbar></Topbar>
+          <div className="main-area">
+            <div id="left-panel" className="left-panel">
+              <LeftSidebar></LeftSidebar>
             </div>
 
-            <div className="main-area">
-              <div id="left-panel" className="left-panel">
-                <LeftSidebar></LeftSidebar>
+            <div id="work-area" className="main-panel">
+
+              <div id="document-area">
+                <div id="c-ruler" className="document-ruler-corner">
+                </div>
+                <div id="h-ruler" className="document-ruler-top">
+                </div>
+                <div id="v-ruler" className="document-ruler-left">
+                </div>
+
+                <Dropdown menu={{ items }} trigger={['contextMenu']}>
+                  <div id="svg-area" className="svg-area">
+                  </div>
+                </Dropdown>
               </div>
-
-              <div id="work-area" className="main-panel">
-
-                <div id="document-area">
-                  <div id="c-ruler" className="document-ruler-corner">
-                  </div>
-                  <div id="h-ruler" className="document-ruler-top">
-                  </div>
-                  <div id="v-ruler" className="document-ruler-left">
-                  </div>
-                  <Dropdown menu={{ items }} trigger={['contextMenu']}>
-                    <div id="svg-area" className="svg-area">
-                    </div>
-                  </Dropdown>
-                </div>
-                <div id="doc-toolbar" className="doc-toolbar">
-                </div>
+              <div id="doc-toolbar" className="doc-toolbar">
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <ObjectConfig ></ObjectConfig>
+      <ObjectConfig ></ObjectConfig>
 
     </>
   );
