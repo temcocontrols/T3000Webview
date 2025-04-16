@@ -40,6 +40,9 @@
 
 import RefConstant from "../../Data/Constant/RefConstant";
 
+import { setContext } from '@/pages/hvac/MyContext';
+import DrawerUtil from '@/components/Hvac/UiStateUtil';
+
 class QuasarUtil {
 
   public static quasar: any;
@@ -47,10 +50,14 @@ class QuasarUtil {
   static ShowContextMenu(show: boolean) {
     // Clear the context menu
     RefConstant.contextMenuShow = show;
+    console.log("RefConstant.contextMenuShow", RefConstant.contextMenuShow);
   }
 
   static ShowObjectConfig(show: boolean) {
     RefConstant.objectConfigShow = show;
+    // setContext(show);
+    DrawerUtil.setDrawerOpen(true)
+    console.log("RefConstant.objectConfigShow", RefConstant.objectConfigShow);
   }
 }
 
