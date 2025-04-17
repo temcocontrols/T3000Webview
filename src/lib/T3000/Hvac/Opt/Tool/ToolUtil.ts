@@ -34,6 +34,9 @@ import ToolActUtil from "../Opt/ToolActUtil"
 import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
 
+import VueCircle from "src/components/Basic/Circle.vue";
+
+
 class ToolUtil {
 
   /**
@@ -365,6 +368,9 @@ class ToolUtil {
       case shapeTypes.OVAL:
         context.StampCircle(result, false);
         break;
+      case shapeTypes.ForeignObject:
+        context.StampVueComponent(result, false);
+        break;
       default:
         context.StampShape(shapeType, result, false);
     }
@@ -526,6 +532,80 @@ class ToolUtil {
     DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);
 
     T3Util.Log("O.ToolOpt StampCircle output: void");
+  }
+
+  StampVueComponent(isDragDropMode, isSquare) {
+
+
+    // T3Util.Log("O.ToolOpt VueCircle input:", isDragDropMode, isSquare);
+
+    // let width, height;
+
+    // // Set dimensions based on whether we want a circle or oval
+    // if (isSquare) {
+    //   width = OptConstant.Common.ShapeSquare;
+    //   height = OptConstant.Common.ShapeSquare;
+    // } else {
+    //   width = OptConstant.Common.ShapeWidth;
+    //   height = OptConstant.Common.ShapeHeight;
+    // }
+
+    // // Initial position off-screen
+    // const initialX = -1000;
+    // const initialY = -1000;
+    // let shapeAttributes = null;
+
+    // // Configure shape attributes
+    // if (isSquare) {
+    //   shapeAttributes = {
+    //     Frame: {
+    //       x: initialX,
+    //       y: initialY,
+    //       width: 100,
+    //       height: 100
+    //     },
+    //     TextGrow: NvConstant.TextGrowBehavior.ProPortional,
+    //     ObjGrow: OptConstant.GrowBehavior.ProPortional
+    //   };
+    // } else {
+    //   shapeAttributes = {
+    //     Frame: {
+    //       x: initialX,
+    //       y: initialY,
+    //       width: width,
+    //       height: height
+    //     },
+    //     TextGrow: NvConstant.TextGrowBehavior.ProPortional
+    //   };
+    // }
+
+    // // Create the oval shape
+    // const ovalShape = new Oval(shapeAttributes);
+
+    // // Use mouse stamp method to place the shape
+    // DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);
+
+    // T3Util.Log("O.ToolOpt StampCircle output: void");
+
+
+    // Create a foreignObject with a Vue component
+  //  import MyVueComponent from '@/components/MyVueComponent.vue';
+
+   // Get your document instance
+   const doc =T3Gv.opt.svgDoc;;// your document instance;
+   const layer = doc.GetDocumentLayer();
+
+   // Create a foreignObject with Vue component
+   const foreignObj = doc.CreateVueComponent(200, 150, VueCircle, {
+     message: 'Hello from SVG!',
+     color: 'blue'
+   });
+
+   // Position the foreign object
+   foreignObj.SetPosition(100, 100);
+
+   // Add it to a layer
+   layer.AddElement(foreignObj);
   }
 
   /**
@@ -2026,6 +2106,11 @@ class ToolUtil {
 
   Save() {
     this.SaveAs();
+  }
+
+  VueForeignObject() {
+
+    this.tul.StampOrDragDropNewShape(event, shapeType);
   }
 }
 
