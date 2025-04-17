@@ -2,7 +2,7 @@
 import T3Svg from '../Util/T3Svg';
 import Container from './B.Container';
 import Group from "./B.Group";
-
+import Element from './B.Element';
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
@@ -11,16 +11,24 @@ import Group from "./B.Group";
  * vector graphics and HTML/CSS layout. This is particularly useful for integrating
  * Vue components directly into the SVG drawing.
  */
-class ForeignObject extends Group  {
+class ForeignObject extends Element  {
   public vueInstance: any = null;
   public shapeGroup: any;
+  public svgObj;
+  public foreignObj;
 
   CreateElement(element: any, type: any) {
+    /*
     this.svgObj = new T3Svg.Container(T3Svg.create('foreignObject'));
     this.InitElement(element, type);
     this.shapeGroup = new Group();
     this.shapeGroup.CreateElement(element, type);
     super.AddElement(this.shapeGroup);
+    return this.svgObj;
+    */
+
+    this.svgObj = new T3Svg.Container(T3Svg.create('foreignObject'));
+    this.InitElement(element, type);
     return this.svgObj;
   }
 
