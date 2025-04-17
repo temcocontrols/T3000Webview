@@ -3186,7 +3186,6 @@ class Formatter {
   }
 
   DefaultPStyle() {
-    //'use strict';
     return {
       just: 'left',
       bullet: 'none',
