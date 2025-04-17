@@ -1115,18 +1115,40 @@ class Document extends Container {
   }
 
   /**
- * Creates a foreignObject with a Vue component mounted inside it
- *
- * This is a convenience method that creates a foreignObject element and mounts
- * the specified Vue component within it. The foreignObject is properly sized and
- * can be positioned and further customized after creation.
- *
- * @param width - Width of the foreignObject
- * @param height - Height of the foreignObject
- * @param vueComponent - Vue component constructor to mount
- * @param props - Optional props to pass to the Vue component
- * @returns The created foreignObject element with the Vue component
- */
+  * Creates a foreignObject with a Vue component mounted inside it
+  *
+  * This is a convenience method that creates a foreignObject element and mounts
+  * the specified Vue component within it. The foreignObject is properly sized and
+  * can be positioned and further customized after creation.
+  *
+  * @param width - Width of the foreignObject
+  * @param height - Height of the foreignObject
+  * @param vueComponent - Vue component constructor to mount
+  * @param props - Optional props to pass to the Vue component
+  * @returns The created foreignObject element with the Vue component
+  */
+
+  /* Example usage:
+   // Create a foreignObject with a Vue component
+   import MyVueComponent from '@/components/MyVueComponent.vue';
+
+   // Get your document instance
+   const doc = your document instance;
+   const layer = doc.GetDocumentLayer();
+
+   // Create a foreignObject with Vue component
+   const foreignObj = doc.CreateVueComponent(200, 150, MyVueComponent, {
+     message: 'Hello from SVG!',
+     color: 'blue'
+   });
+
+   // Position the foreign object
+   foreignObj.SetPosition(100, 100);
+
+   // Add it to a layer
+   layer.AddElement(foreignObj);
+   */
+
   CreateVueComponent(width: number, height: number, vueComponent: any, props: any = {}) {
     const foreignObject = this.CreateShape(OptConstant.CSType.ForeignObject) as ForeignObject;
 
@@ -1138,5 +1160,6 @@ class Document extends Container {
     return foreignObject;
   }
 }
+
 
 export default Document
