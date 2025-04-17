@@ -1,6 +1,7 @@
 
 
 import T3Gv from "../Data/T3Gv";
+import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
 
@@ -14,6 +15,9 @@ class EvtOpt {
    */
   BindElemCtlEvent() {
     $(document).ready(() => {
+
+      this.BindVueForeignObjectEvent();
+
       // Selection and basic tools
       this.BindSelectEvent();
       this.BindLibraryEvent();
@@ -122,7 +126,6 @@ class EvtOpt {
       this.BindLibAddNoteEvent();
       this.BindLibAddCommentEvent();
       this.BindLibHyperlinkEvent();
-
     });
   }
 
@@ -941,6 +944,12 @@ class EvtOpt {
     if (selectedTool.value.name == "Pointer") {
       EvtOpt.toolOpt.SelectAct(event);
     }
+  }
+
+  BindVueForeignObjectEvent(){
+    $("#btn_try_vue_foreignObject").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject);
+    });
   }
 }
 

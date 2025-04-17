@@ -1,5 +1,8 @@
 
+import T3Svg from '../Util/T3Svg';
 import Container from './B.Container';
+import Group from "./B.Group";
+
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
@@ -8,8 +11,18 @@ import Container from './B.Container';
  * vector graphics and HTML/CSS layout. This is particularly useful for integrating
  * Vue components directly into the SVG drawing.
  */
-class ForeignObject extends Container {
+class ForeignObject extends Group  {
   public vueInstance: any = null;
+  public shapeGroup: any;
+
+  CreateElement(element: any, type: any) {
+    this.svgObj = new T3Svg.Container(T3Svg.create('foreignObject'));
+    this.InitElement(element, type);
+    this.shapeGroup = new Group();
+    this.shapeGroup.CreateElement(element, type);
+    super.AddElement(this.shapeGroup);
+    return this.svgObj;
+  }
 
   /**
    * Sets the size of this foreignObject
@@ -51,13 +64,31 @@ class ForeignObject extends Container {
         // Add to foreignObject
         this.svgObj.node.appendChild(mountPoint);
 
-        // Create and mount Vue instance
-        const ComponentClass = Vue.default.extend(vueComponent);
-        this.vueInstance = new ComponentClass({
-          propsData: props
-        });
-
-        this.vueInstance.$mount(mountPoint);
+        // Create and mount Vue instance - handle different module formats
+        // Check for Vue 3 first, as it's the most likely version
+        if (Vue.createApp) {
+          // Vue 3
+          this.vueInstance = Vue.createApp(vueComponent, props);
+          this.vueInstance.mount(mountPoint);
+        } else if (Vue.default && typeof (Vue.default as any).extend === 'function') {
+          // Vue with default export (Vue 2)
+          const ComponentClass = (Vue.default as any).extend(vueComponent);
+          this.vueInstance = new ComponentClass({
+            propsData: props
+          });
+          this.vueInstance.$mount(mountPoint);
+        } else if (typeof (Vue as any).extend === 'function') {
+          // Direct Vue export (Vue 2)
+          const ComponentClass = (Vue as any).extend(vueComponent);
+          this.vueInstance = new ComponentClass({
+            propsData: props
+          });
+          this.vueInstance.$mount(mountPoint);
+        } else {
+          // Vue 3
+          this.vueInstance = Vue.createApp(vueComponent, props);
+          this.vueInstance.mount(mountPoint);
+        }
       });
     } catch (error) {
       console.error('Failed to mount Vue component:', error);

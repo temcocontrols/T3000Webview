@@ -322,6 +322,9 @@
               &nbsp;
               <button id="btn_try_Lib_SetBackgroundImage">Image</button>
 
+              &nbsp;
+              <button id="btn_try_vue_foreignObject">Vue Component</button>
+
               <!-- &nbsp;
               <button id="btn_try_Measure">Measure</button>
 
