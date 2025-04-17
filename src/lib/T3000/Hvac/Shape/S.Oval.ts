@@ -11,6 +11,7 @@ import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import PolyUtil from '../Opt/Opt/PolyUtil';
+import VueCircle from '../../../../components/Basic/Circle.vue';
 
 /**
  * Represents an oval shape in the HVAC visualization system.
@@ -129,6 +130,26 @@ class Oval extends BaseShape {
     }
 
     shapeContainer.isShape = true;
+
+    // Test for add new Vue component inside SVG Shape
+    // Create a foreignObject with Vue component
+    const foreignObj = renderer.CreateVueComponent(60, 60, VueCircle, {
+      message: 'Hello from SVG!',
+      color: 'blue'
+    });
+
+    foreignObj.SetPos(0,-50);
+
+    const foreignContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
+    foreignContainer.AddElement(foreignObj);
+
+    foreignContainer.SetID(111);
+    foreignContainer.SetSize(100, 100);
+
+    // Set the position of the foreignObject inside the foreignContainer
+    foreignContainer.SetPos(0, 0);
+
+    shapeContainer.AddElement(foreignContainer);
 
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);
