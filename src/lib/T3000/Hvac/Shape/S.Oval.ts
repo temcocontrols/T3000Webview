@@ -134,7 +134,8 @@ class Oval extends BaseShape {
 
     // Test for add new Vue component inside SVG Shape
     // Update to use ForeignObjUtil
-    const foreignObj = ForeignObjUtil.CreateVueCircle(renderer);
+    // const foreignObj = ForeignObjUtil.CreateVueCircle(renderer);
+    const foreignObj = ForeignObjUtil.CreateVueObjectType(renderer);
     shapeContainer.AddElement(foreignObj);
 
     if (this.DataID >= 0) {
