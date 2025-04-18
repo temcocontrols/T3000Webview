@@ -78,13 +78,12 @@ class ForeignObject extends Element {
         if (Vue.createApp) {
           // Vue 3
           this.vueInstance = Vue.createApp(vueComponent, props);
-          // Install Quasar plugin with configuration
-          const quasarPlugin =Quasar.default || Quasar;
-          this.vueInstance.use(quasarPlugin, {
-            config: { },
-            plugins: quasarPlugin.plugins ? Object.values(quasarPlugin.plugins) : [],
+          // Install Quasar plugin for Vue 3
+          const quasarModule = Quasar.default || Quasar;
+          this.vueInstance.use(quasarModule.Quasar || quasarModule, {
+            config: {},
+            plugins: {},
           });
-          this.vueInstance.config.globalProperties.$q = quasarPlugin;
           this.vueInstance.mount(mountPoint);
         } else if (Vue.default && typeof (Vue.default as any).extend === 'function') {
           // Vue with default export (Vue 2)
