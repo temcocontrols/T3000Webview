@@ -149,7 +149,6 @@ class IdxPage {
   // Initialize panzoom for viewport
   initPanzoom() {
     const beforeWheel = function (e) {
-      console.log('= Idx p zoom Mouse clientX:', e.clientX, 'clientY:', e.clientY);
       // Allow panzoom to handle the wheel event
       return false;
     }
@@ -175,7 +174,6 @@ class IdxPage {
 
     // Update the viewport transform on panzoom transform event
     panzoomInstance.on("transform", function (e) {
-      // console.log('= Idx p zoom transform', e.getTransform());
       appState.value.viewportTransform = e.getTransform();
 
       triggerRef(appState);
@@ -200,12 +198,10 @@ class IdxPage {
       // Getter for zoom value
       get() {
         const zoomVal = parseInt(appState.value.viewportTransform.scale * 100 + "");
-        console.log('= Idx p zoom get', zoomVal);
         return zoomVal;
       },
       // Setter for zoom value
       set(newValue) {
-        console.log('= Idx p zoom set', newValue);
         if (!newValue) return;
 
         const scale = newValue / 100;

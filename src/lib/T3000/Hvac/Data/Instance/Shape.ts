@@ -23,6 +23,7 @@ import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol"
 import BaseDrawObject from "../../Shape/S.BaseDrawObject"
 import BitmapImporter from "../../Shape/S.BitmapImporter"
 import SVGImporter from "../../Shape/S.SVGImporter"
+import ForeignObject from '../../Shape/S.ForeignObject';
 
 /**
  * The Shape object is a centralized registry for various shape and symbol implementations
@@ -265,7 +266,9 @@ const Shape = {
    * @param importOptions - Options for importing the SVG
    * @returns SVG importer object
    */
-  SVGImporter
+  SVGImporter,
+
+  ForeignObject
 }
 
 export default Shape

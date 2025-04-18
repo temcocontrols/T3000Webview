@@ -1808,8 +1808,6 @@ class BaseDrawObject {
       EndPoint: this.EndPoint
     });
 
-    "use strict";
-
     const scaleX = this.Frame.width / this.polylist.dim.x;
     const scaleY = this.Frame.height / this.polylist.dim.y;
     const center = { x: this.Frame.x + this.Frame.width / 2, y: this.Frame.y + this.Frame.height / 2 };
@@ -6242,7 +6240,7 @@ class BaseDrawObject {
         previousShape.SetRuntimeEffects(false);
         previousShape.ClearCursors();
       }
-    } 
+    }
 
     this.SetRuntimeEffects(true);
 

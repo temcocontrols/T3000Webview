@@ -51,7 +51,9 @@ class PolygonConstant {
     MEASURE_AREA: 27,
 
     // Reference constant for the last shape type
-    LAST_SHAPE: 27
+    LAST_SHAPE: 27,
+
+    ForeignObject: 28, // Reference to the ForeignObject class for rendering
   }
 }
 

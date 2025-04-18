@@ -26,46 +26,7 @@ class ToolOpt {
    */
   SelectAct(event) {
     T3Util.Log('O.ToolOpt.SelectAct - Input:', { event });
-
-    // const selectionToolSticky = false;
-
     this.tul.CancelOperation();
-
-    // if (selectionToolSticky) {
-    //   T3Gv.opt.ResetObjectDraw();
-    // }
-
-    // let selectionModeAttr = "";// event.currentTarget.attributes.getNamedItem(NvConstant.Constants.Attr_SelectionMode);
-    // let isMultipleSelection = false;
-
-    // if (selectionModeAttr) {
-    //   switch (selectionModeAttr) {
-    //     case 'multiple':
-    //       isMultipleSelection = true;
-    //       break;
-    //     case 'all':
-    //       T3Gv.opt.SelectAllObjects();
-    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all objects');
-    //       return;
-    //     case 'lines':
-    //       T3Gv.opt.SelectAllObjects([
-    //         OptConstant.DrawObjectBaseClass.Line,
-    //         OptConstant.DrawObjectBaseClass.Connector
-    //       ]);
-    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all line objects');
-    //       break;
-    //     case 'shapes':
-    //       T3Gv.opt.SelectAllObjects([OptConstant.DrawObjectBaseClass.Shape]);
-    //       T3Util.Log('O.ToolOpt.SelectAct - Output: Selected all shape objects');
-    //       break;
-    //   }
-    // }
-
-    // if (isMultipleSelection) {
-    //   // NvConstant.DocumentContext.SelectionToolMultiple = true;
-    // }
-
-    // T3Util.Log('O.ToolOpt.SelectAct - Output:', { isMultipleSelection, selectionMode: selectionModeAttr });
   }
 
   /**
@@ -622,6 +583,14 @@ class ToolOpt {
     } catch (e) {
       T3Gv.opt.ExceptionCleanup(e)
     }
+  }
+
+  VueForeignObjectAct(event, shapeType){
+    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
+
+    this.tul.StampOrDragDropNewShape(event, shapeType);
+
+    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
   }
 }
 

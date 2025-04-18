@@ -1,6 +1,7 @@
 
 
 import DocUtil from "../Doc/DocUtil";
+import T3Clipboard from "../Opt/Clipboard/T3Clipboard";
 import OptUtil from "../Opt/Opt/OptUtil";
 import WallOpt from "../Opt/Wall/WallOpt";
 import DataStore from "./State/DataStore";
@@ -12,7 +13,7 @@ class T3Gv {
    * T3Gv class manages global variables and state for the T3000 application.
    * This class provides centralized access to common utilities, settings, and event handlers.
    */
-  static clipboard: any;                  // Stores clipboard data for copy/paste operations
+  static clipboard: T3Clipboard;                  // Stores clipboard data for copy/paste operations
   static currentObjSeqId: number;         // Tracks the current object sequence ID
   static docUtil: DocUtil;                // Document utility helper
   static opt: OptUtil;                    // Operation utility helper

@@ -10,6 +10,7 @@ import DocUtil from "../../Doc/DocUtil"
 import KeyboardUtil from "./KeyboardUtil"
 import T3Util from "../../Util/T3Util"
 import SvgUtil from "../Opt/SvgUtil"
+import T3Clipboard from "../Clipboard/T3Clipboard"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -166,7 +167,7 @@ class KeyboardOpt {
    */
   static HandleKeyDown(event, keyCode, modifierKey) {
     T3Util.Log('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
-      
+
     let selectionObj;
     let isTextContext = false;
     let deferredTextEdit = false;
@@ -192,8 +193,8 @@ class KeyboardOpt {
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
       keyCode == 86 || keyCode == 118    // 'V' or 'v'
     )) {
-      if (Clipboard.isFF) {
-        Clipboard.FocusOnIEclipboardDiv();
+      if (T3Clipboard.isFirefox) {
+        T3Clipboard.FocusOnIEclipboardDiv();
         T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
     } else {
@@ -257,7 +258,7 @@ class KeyboardOpt {
         }
 
         // Check if typing in work area is disabled
-        if (T3Constant.DocContext.CanTypeInWorkArea === false) { 
+        if (T3Constant.DocContext.CanTypeInWorkArea === false) {
           return;
         }
 
@@ -295,7 +296,7 @@ class KeyboardOpt {
       if (isTextContext) {
         if (keyCode === KeyboardConstant.Keys.Escape) {
           T3Gv.opt.DeactivateAllTextEdit(false);
-          if (T3Gv.opt.bInNoteEdit) { 
+          if (T3Gv.opt.bInNoteEdit) {
           }
           SvgUtil.RenderAllSVGSelectionStates();
           event.stopPropagation();
@@ -340,7 +341,7 @@ class KeyboardOpt {
 
     let isTextContext = false;
     let toolUtil = new ToolUtil();
-     
+
     // Check if modals are not visible (using true instead of the original modal check)
     if (true) {
       // Handle clipboard operations in Firefox
@@ -348,9 +349,9 @@ class KeyboardOpt {
         (charCode == 67 || charCode == 99 || // 'C' or 'c'
           charCode == 88 || charCode == 120 || // 'X' or 'x'
           charCode == 86 || charCode == 118)) { // 'V' or 'v'
-        if (Clipboard.isFF) {
+        if (T3Clipboard.isFirefox) {
           T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
-          Clipboard.FocusOnIEclipboardDiv();
+          T3Clipboard.FocusOnIEclipboardDiv();
         }
       } else if (T3Constant.DocContext.CanTypeInWorkArea !== false && !T3Gv.docUtil.IsReadOnly()) {
         // Check if we're in a text editing context

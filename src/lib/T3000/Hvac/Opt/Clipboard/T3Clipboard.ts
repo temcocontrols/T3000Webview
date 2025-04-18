@@ -11,7 +11,7 @@ import ToolActUtil from '../Opt/ToolActUtil'
 /**
  * A utility class for handling clipboard operations with cross-browser and cross-platform support.
  *
- * The Clipboard class provides methods for cut, copy, and paste operations across different browsers
+ * The T3Clipboard class provides methods for cut, copy, and paste operations across different browsers
  * and devices, handling the complexities of various clipboard APIs and browser-specific behaviors.
  * It supports text, HTML, and image content types, and provides fallbacks for browsers with limited
  * clipboard access.
@@ -25,15 +25,15 @@ import ToolActUtil from '../Opt/ToolActUtil'
  *
  * @example
  * // Initialize clipboard functionality
- * Clipboard.Init();
+ * T3Clipboard.Init();
  *
  * @example
  * // Programmatically trigger a paste operation from UI
- * Clipboard.PasteFromUIaction();
+ * T3Clipboard.PasteFromUIaction();
  *
  * @example
  * // Check if browser supports async clipboard API
- * if (Clipboard.CanUseAsyncClipboard()) {
+ * if (T3Clipboard.CanUseAsyncClipboard()) {
  *   // Use modern clipboard features
  * } else {
  *   // Use fallback methods
@@ -41,9 +41,9 @@ import ToolActUtil from '../Opt/ToolActUtil'
  *
  * @example
  * // Set focus to clipboard input for keyboard shortcuts
- * Clipboard.FocusOnClipboardInput();
+ * T3Clipboard.FocusOnClipboardInput();
  */
-class Clipboard {
+class T3Clipboard {
 
   /**
    * Indicates if the current device is a mobile device
@@ -119,7 +119,7 @@ class Clipboard {
       !navigator.appVersion.includes("Chrome") &&
       !navigator.appVersion.includes("CrMo") &&
       !navigator.appVersion.includes("CriOS");
-    this.isMacOS = /(mac os x)/i.test(navigator.userAgent) && !Clipboard.isMobileDevice;
+    this.isMacOS = /(mac os x)/i.test(navigator.userAgent) && !T3Clipboard.isMobileDevice;
     this.isInternetExplorer = navigator.userAgent.toLowerCase().includes("msie") ||
       navigator.userAgent.toLowerCase().includes("trident");
     this.isFirefox = navigator.userAgent.toLowerCase().includes("firefox");
@@ -131,7 +131,7 @@ class Clipboard {
 
     // Special handling for iOS Safari on Mac
     if (this.isMacOS /*&& this.isGestureCapable */&& this.isMobileDevice && this.isSafariBrowser && this.isIOSDevice) {
-      Clipboard.clipboardInputElement.attr("readonly", "readonly");
+      T3Clipboard.clipboardInputElement.attr("readonly", "readonly");
       const crossTabDiv = $("#_crossTabClipboardDiv");
       crossTabDiv.css("left", "-100px");
       crossTabDiv.css("top", "-100px");
@@ -142,7 +142,7 @@ class Clipboard {
     // Add special event listeners for IE and Firefox
     if (this.isInternetExplorer || this.isFirefox) {
       document.addEventListener("beforepaste", () => {
-        Clipboard.FocusOnIEclipboardDiv();
+        T3Clipboard.FocusOnIEclipboardDiv();
       });
     }
 
@@ -193,21 +193,21 @@ class Clipboard {
 
         // Handle cut/copy operations
         if (clipboardAction === "cut" || clipboardAction === "copy") {
-          const hasNoTextContent = !(() => Clipboard.GetCutCopyText())();
-          const canUseAsyncClipboard = Clipboard.CanUseAsyncClipboard();
+          const hasNoTextContent = !(() => T3Clipboard.GetCutCopyText())();
+          const canUseAsyncClipboard = T3Clipboard.CanUseAsyncClipboard();
 
           if (canUseAsyncClipboard && hasNoTextContent) {
-            Clipboard.GenerateImageInfo().then((imageInfo) => {
-              Clipboard.DoCutCopy(event, clipboardAction, canUseAsyncClipboard, clipboardData, imageInfo);
+            T3Clipboard.GenerateImageInfo().then((imageInfo) => {
+              T3Clipboard.DoCutCopy(event, clipboardAction, canUseAsyncClipboard, clipboardData, imageInfo);
             });
           } else {
-            Clipboard.DoCutCopy(event, clipboardAction, canUseAsyncClipboard, clipboardData);
+            T3Clipboard.DoCutCopy(event, clipboardAction, canUseAsyncClipboard, clipboardData);
           }
         }
 
         // Handle paste operations
         if (clipboardAction === "paste") {
-          Clipboard.PasteFromSystemEvent(clipboardData);
+          T3Clipboard.PasteFromSystemEvent(clipboardData);
         }
 
         if (isTouchProxyFocused) {
@@ -217,10 +217,10 @@ class Clipboard {
     });
 
     // Add mouse up handler to maintain focus on clipboard input
-    $(document).mouseup(Clipboard.FocusOnClipboardInput);
+    $(document).mouseup(T3Clipboard.FocusOnClipboardInput);
 
     // Initialize focus on clipboard input
-    Clipboard.FocusOnClipboardInput();
+    T3Clipboard.FocusOnClipboardInput();
   }
 
   /**
@@ -234,9 +234,9 @@ class Clipboard {
   static CanUseAsyncClipboard() {
     // Return false for browsers that don't fully support the async clipboard API
     return !(
-      Clipboard.isInternetExplorer ||
-      Clipboard.isFirefox ||
-      Clipboard.isSafariBrowser
+      T3Clipboard.isInternetExplorer ||
+      T3Clipboard.isFirefox ||
+      T3Clipboard.isSafariBrowser
     );
   }
 
@@ -267,7 +267,7 @@ class Clipboard {
 
     // Use modern async clipboard API if supported
     if (canUseAsyncClipboard) {
-      if (!Clipboard.ValidateAsyncClipboardApi()) {
+      if (!T3Clipboard.ValidateAsyncClipboardApi()) {
         return;
       }
 
@@ -307,7 +307,7 @@ class Clipboard {
       if (this.isInternetExplorer) {
         systemClipboardData.setData("Text", this.GetCutCopyText());
         this.IEclipboardDiv.html(this.GetCutCopyHTML());
-        Clipboard.FocusOnIEclipboardDiv();
+        T3Clipboard.FocusOnIEclipboardDiv();
 
         setTimeout(() => {
           this.FocusOnClipboardInput();
@@ -471,7 +471,7 @@ class Clipboard {
    */
   static PasteFF(clipboardEvent) {
     // Extract plain text
-    T3Gv.opt.textClipboard = Clipboard.PlainTextToSDObj(clipboardEvent.getData("Text"));
+    T3Gv.opt.textClipboard = T3Clipboard.PlainTextToSDObj(clipboardEvent.getData("Text"));
 
     // Extract HTML content if available
     const htmlData = clipboardEvent.getData("text/html");
@@ -480,14 +480,14 @@ class Clipboard {
     }
 
     // Move focus to the IE clipboard div (used for Firefox too)
-    Clipboard.FocusOnIEclipboardDiv();
+    T3Clipboard.FocusOnIEclipboardDiv();
 
     // Process any images in the clipboard after a small delay
     setTimeout(() => {
       // Check if the clipboard contains image data
-      if (Clipboard.IEclipboardDiv.html().match(/<img src=['"]data/gi)) {
+      if (T3Clipboard.IEclipboardDiv.html().match(/<img src=['"]data/gi)) {
         // Extract the image from the HTML content
-        const imgElement = $(Clipboard.IEclipboardDiv[0].childNodes[0]);
+        const imgElement = $(T3Clipboard.IEclipboardDiv[0].childNodes[0]);
         const imgSrc = imgElement.attr("src");
 
         // Split the data URI into metadata and base64 parts
@@ -509,11 +509,11 @@ class Clipboard {
       }
 
       // Complete the paste operation
-      Clipboard.Paste();
+      T3Clipboard.Paste();
 
       // Clean up and reset focus
-      Clipboard.IEclipboardDiv.empty();
-      Clipboard.FocusOnClipboardInput();
+      T3Clipboard.IEclipboardDiv.empty();
+      T3Clipboard.FocusOnClipboardInput();
     }, 0);
   }
 
@@ -536,7 +536,7 @@ class Clipboard {
    */
   static PasteIE(clipboardEvent) {
     // Extract plain text from clipboard
-    T3Gv.opt.textClipboard = Clipboard.PlainTextToSDObj(clipboardEvent.getData("Text"));
+    T3Gv.opt.textClipboard = T3Clipboard.PlainTextToSDObj(clipboardEvent.getData("Text"));
 
     // Process any image files in the clipboard
     const files = clipboardEvent.files;
@@ -577,7 +577,7 @@ class Clipboard {
         else if (type.match(/text\/plain/) || (clipboardEvent.items !== undefined &&
           clipboardEvent.items[index].type.match(/text\/plain/))) {
           clipboardEvent.items[index].getAsString((text) => {
-            T3Gv.opt.textClipboard = Clipboard.PlainTextToSDObj(text);
+            T3Gv.opt.textClipboard = T3Clipboard.PlainTextToSDObj(text);
           });
         }
         // Handle HTML content
@@ -591,7 +591,7 @@ class Clipboard {
 
     // Trigger paste operation after a short delay
     // macOS requires a longer delay (500ms) compared to other platforms (10ms)
-    setTimeout(Clipboard.Paste, T3Gv.opt.isMac ? 500 : 10);
+    setTimeout(T3Clipboard.Paste, T3Gv.opt.isMac ? 500 : 10);
   }
 
   /**
@@ -673,7 +673,7 @@ class Clipboard {
       {
         typeRegex: /text\/plain/,
         handler: (clipboardItem) => clipboardItem.text().then((textContent) => {
-          T3Gv.opt.textClipboard = Clipboard.PlainTextToSDObj(textContent);
+          T3Gv.opt.textClipboard = T3Clipboard.PlainTextToSDObj(textContent);
           return true;
         })
       },
@@ -687,7 +687,7 @@ class Clipboard {
     ];
 
     // Verify clipboard API is available
-    if (Clipboard.ValidateAsyncClipboardApi()) {
+    if (T3Clipboard.ValidateAsyncClipboardApi()) {
       return navigator.clipboard.read()
         .then((clipboardItems) => {
           const processingPromises = [];
@@ -733,12 +733,12 @@ class Clipboard {
     const isAnyInputFocused = $("input:focus").length > 0;
     const isAnySelectFocused = $("select:focus").length > 0;
     const isAnyTextareaFocused = $("textarea:focus").length > 0;
-  
+
     // Focus on clipboard input only if no other input elements are focused
     // or if we're on a mobile platform
     if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) ) {
-      Clipboard.clipboardInputElement.val(" ");
-      Clipboard.clipboardInputElement.focus().select();
+      T3Clipboard.clipboardInputElement.val(" ");
+      T3Clipboard.clipboardInputElement.focus().select();
     }
   }
 
@@ -751,11 +751,11 @@ class Clipboard {
 
     // Focus and select content in the IE clipboard div for mobile devices
     if (isMobileDevice) {
-      Clipboard.IEclipboardDiv.focus();
+      T3Clipboard.IEclipboardDiv.focus();
 
       // Create a text selection range covering all content
       const selectionRange = document.createRange();
-      selectionRange.selectNodeContents(Clipboard.IEclipboardDiv.get(0));
+      selectionRange.selectNodeContents(T3Clipboard.IEclipboardDiv.get(0));
 
       // Apply the selection
       const selection = window.getSelection();
@@ -839,17 +839,17 @@ class Clipboard {
     const isMobileDevice = /mobile|ip(ad|hone|od)|android|silk/i.test(navigator.userAgent);
 
     // Process HTML content if available
-    const htmlObject = Clipboard.GetHTMLAsObject(T3Gv.opt.htmlClipboard);
+    const htmlObject = T3Clipboard.GetHTMLAsObject(T3Gv.opt.htmlClipboard);
     let clipboardHeader = null;
 
     if (htmlObject !== null) {
-      clipboardHeader = Clipboard.GetHeaderFromHTML(htmlObject);
+      clipboardHeader = T3Clipboard.GetHeaderFromHTML(htmlObject);
     }
 
     // Handle case where HTML content exists but couldn't be parsed
     if (htmlObject === null && T3Gv.opt.htmlClipboard) {
       // Reset cut/copy timestamp
-      Clipboard.lastCutCopyTimestamp = -1;
+      T3Clipboard.lastCutCopyTimestamp = -1;
 
       // Determine clipboard content type
       if (T3Gv.opt.imageClipboard && T3Gv.opt.imageClipboard.size > 0) {
@@ -970,4 +970,4 @@ class Clipboard {
   }
 }
 
-export default Clipboard
+export default T3Clipboard

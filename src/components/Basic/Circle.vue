@@ -5,7 +5,7 @@
     :class="{ active: active, 'in-alarm': inAlarm }">
     <g fill="currentColor" transform="translate(-5.4940996,-5.5390997)">
       <g class="circle">
-        <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003"  />
+        <circle stroke="#000000" cy="16" cx="15.955" r="9.9609003" onclick="alert(11111111)" />
       </g>
     </g>
   </svg>

@@ -3,7 +3,7 @@ import T3Gv from '../Data/T3Gv';
 import DocUtil from './DocUtil';
 import OptUtil from '../Opt/Opt/OptUtil';
 import WallOpt from "../Opt/Wall/WallOpt";
-import Clipboard from '../Opt/Clipboard/Clipboard'
+import T3Clipboard from '../Opt/Clipboard/T3Clipboard'
 import DataOpt from '../Opt/Data/DataOpt';
 import EvtOpt from '../Event/EvtOpt';
 import KeyboardOpt from '../Opt/Keyboard/KeyboardOpt';
@@ -67,7 +67,7 @@ class T3Opt {
   /**
    * Event operations handler for managing UI event bindings
    */
-  public evtOpt: EvtOpt; 
+  public evtOpt: EvtOpt;
 
   public userOpt: UserOpt;
 
@@ -120,7 +120,7 @@ class T3Opt {
     initializeInstance(Basic, Shape);
 
     // Initialize clipboard
-    Clipboard.Init();
+    T3Clipboard.Init();
 
     // Load stored data
     DataOpt.InitStoredData();

@@ -67,7 +67,8 @@ class OptConstant {
     PolylineContainer: 13, // Container for polylines
     PolyPolyline: 14,      // Multiple polylines
     ShapeCopy: 15,         // Copy of another shape
-    ShapeContainer: 16     // Container for shapes
+    ShapeContainer: 16,    // Container for shapes
+    ForeignObject: 17,     // Foreign object (HTML / Vue inside SVG)
   }
 
   /**
@@ -83,7 +84,8 @@ class OptConstant {
     BitmapSymbol: 'BitmapSymbol',           // Bitmap/raster symbol
     GroupSymbol: 'GroupSymbol',             // Group of symbols
     SVGFragmentSymbol: 'SVGFragmentSymbol', // SVG fragment as symbol
-    D3Symbol: 'D3Symbol'                    // 3D symbol
+    D3Symbol: 'D3Symbol',                    // 3D symbol
+    ForeignObject: 'ForeignObject',
   }
 
   /**

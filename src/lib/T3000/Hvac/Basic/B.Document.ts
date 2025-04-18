@@ -23,6 +23,7 @@ import Utils1 from "../Util/Utils1"
 import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
+import ForeignObject from './B.ForeignObject';
 
 /**
  * Represents the main drawing canvas for HVAC elements in T3000.
@@ -75,7 +76,7 @@ import DocInfo from "../Model/DocInfo"
  */
 class Document extends Container {
   GetSpellCheck() {
-      throw new Error('Method not implemented.')
+    throw new Error('Method not implemented.')
   }
 
   /**
@@ -174,6 +175,9 @@ class Document extends Container {
         break;
       case OptConstant.CSType.ShapeContainer:
         shape = new ShapeContainer();
+        break;
+      case OptConstant.CSType.ForeignObject:  // Add this case
+        shape = new ForeignObject();
         break;
       default:
         return null;
@@ -1107,9 +1111,55 @@ class Document extends Container {
   }
 
   ConverWindowToDocLength(e) {
-    "use strict";
     return e / this.docInfo.docToScreenScale
   }
+
+  /**
+  * Creates a foreignObject with a Vue component mounted inside it
+  *
+  * This is a convenience method that creates a foreignObject element and mounts
+  * the specified Vue component within it. The foreignObject is properly sized and
+  * can be positioned and further customized after creation.
+  *
+  * @param width - Width of the foreignObject
+  * @param height - Height of the foreignObject
+  * @param vueComponent - Vue component constructor to mount
+  * @param props - Optional props to pass to the Vue component
+  * @returns The created foreignObject element with the Vue component
+  */
+
+  /* Example usage:
+   // Create a foreignObject with a Vue component
+   import MyVueComponent from '@/components/MyVueComponent.vue';
+
+   // Get your document instance
+   const doc = your document instance;
+   const layer = doc.GetDocumentLayer();
+
+   // Create a foreignObject with Vue component
+   const foreignObj = doc.CreateVueComponent(200, 150, MyVueComponent, {
+     message: 'Hello from SVG!',
+     color: 'blue'
+   });
+
+   // Position the foreign object
+   foreignObj.SetPosition(100, 100);
+
+   // Add it to a layer
+   layer.AddElement(foreignObj);
+   */
+
+  CreateVueComponent(width: number, height: number, vueComponent: any, props: any = {}) {
+    const foreignObject = this.CreateShape(OptConstant.CSType.ForeignObject) as ForeignObject;
+
+    if (foreignObject) {
+      foreignObject.SetSize(width, height);
+      foreignObject.MountVueComponent(vueComponent, props);
+    }
+
+    return foreignObject;
+  }
 }
+
 
 export default Document
