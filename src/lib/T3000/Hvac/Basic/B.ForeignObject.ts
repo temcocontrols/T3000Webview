@@ -3,6 +3,7 @@ import T3Svg from '../Util/T3Svg';
 import Container from './B.Container';
 import Group from "./B.Group";
 import Element from './B.Element';
+import { useQuasar } from 'quasar';
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
@@ -11,7 +12,7 @@ import Element from './B.Element';
  * vector graphics and HTML/CSS layout. This is particularly useful for integrating
  * Vue components directly into the SVG drawing.
  */
-class ForeignObject extends Element  {
+class ForeignObject extends Element {
   public vueInstance: any = null;
   public shapeGroup: any;
   public svgObj;
@@ -62,8 +63,8 @@ class ForeignObject extends Element  {
    */
   MountVueComponent(vueComponent: any, props: any = {}) {
     try {
-      // Import Vue dynamically to avoid direct dependency
-      import('vue').then(Vue => {
+      // Import Vue and Quasar dynamically to avoid direct dependency
+      Promise.all([import('vue'), import('quasar')]).then(([Vue, Quasar]) => {
         // Create container for Vue component
         const mountPoint = document.createElement('div');
         mountPoint.style.width = '100%';
@@ -77,9 +78,18 @@ class ForeignObject extends Element  {
         if (Vue.createApp) {
           // Vue 3
           this.vueInstance = Vue.createApp(vueComponent, props);
+          // Install Quasar plugin with configuration
+          const quasarPlugin =Quasar.default || Quasar;
+          this.vueInstance.use(quasarPlugin, {
+            config: { },
+            plugins: quasarPlugin.plugins ? Object.values(quasarPlugin.plugins) : [],
+          });
+          this.vueInstance.config.globalProperties.$q = quasarPlugin;
           this.vueInstance.mount(mountPoint);
         } else if (Vue.default && typeof (Vue.default as any).extend === 'function') {
           // Vue with default export (Vue 2)
+          // Install Quasar plugin
+          (Vue.default as any).use(Quasar.default || Quasar);
           const ComponentClass = (Vue.default as any).extend(vueComponent);
           this.vueInstance = new ComponentClass({
             propsData: props
@@ -87,6 +97,8 @@ class ForeignObject extends Element  {
           this.vueInstance.$mount(mountPoint);
         } else if (typeof (Vue as any).extend === 'function') {
           // Direct Vue export (Vue 2)
+          // Install Quasar plugin
+          (Vue as any).use(Quasar.default || Quasar);
           const ComponentClass = (Vue as any).extend(vueComponent);
           this.vueInstance = new ComponentClass({
             propsData: props
@@ -95,6 +107,8 @@ class ForeignObject extends Element  {
         } else {
           // Vue 3
           this.vueInstance = Vue.createApp(vueComponent, props);
+          // Install Quasar plugin
+          this.vueInstance.use(Quasar.default || Quasar);
           this.vueInstance.mount(mountPoint);
         }
       });
