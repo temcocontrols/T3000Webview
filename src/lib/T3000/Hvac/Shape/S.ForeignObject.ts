@@ -109,29 +109,59 @@ class ForeignObject extends BaseShape {
     if (this.htmlContent) {
       foreignObject.SetHtmlContent(this.htmlContent);
     } else if (this.vueComponent) {
-      // Handle component resolution if vueComponent is a string
+      // First check if we have a string identifier or an actual component
       if (typeof this.vueComponent === 'string') {
+        // This is likely a component name/path that was stored in localStorage
+        // We need to dynamically import the actual component
         const componentName = this.vueComponent;
 
-        // Create a mapping of component names to their implementations
+        // Create a component registry that maps names to their import functions
         const componentRegistry = {
-          'ObjectConfig2.vue': () => import('../../../../components/ObjectConfig2.vue'),
-          // Add other component mappings as needed
+          'ObjectType2.vue': () => import('../../../../components/ObjectType2.vue'),
+          // Add more components to the registry as needed
         };
 
         if (componentRegistry[componentName]) {
-          componentRegistry[componentName]().then(module => {
-            const component = module.default || module;
-            foreignObject.MountVueComponent(component, this.vueProps);
-          }).catch(err => {
-            console.error(`Failed to load component: ${componentName}`, err);
-          });
+          // Dynamically import the component
+          componentRegistry[componentName]()
+            .then(module => {
+              const component = module.default || module;
+              // Mount the freshly imported component with the stored props
+              foreignObject.MountVueComponent(component, this.vueProps);
+            })
+            .catch(err => {
+              console.error(`Failed to load component: ${componentName}`, err);
+            });
         } else {
           console.error(`Component not found in registry: ${componentName}`);
         }
+      } else if (this.vueComponent && typeof this.vueComponent === 'object') {
+        // Direct component reference - check if it has required methods
+        if (typeof this.vueComponent.render === 'function' ||
+            typeof this.vueComponent.setup === 'function') {
+          // It appears to be a valid component
+          foreignObject.MountVueComponent(this.vueComponent, this.vueProps);
+        } else {
+          // It's an object but missing render/setup - try to resolve from name property
+          const componentName = this.vueComponent.name || this.vueComponent.__name;
+          console.warn(`Component missing render/setup functions, attempting to reload: ${componentName}`);
+
+          // Try to reload the component by name
+          if (componentName) {
+            // You may need to implement a mapping from component names to import paths
+            const possiblePath = `../../../../components/${componentName}.vue`;
+            import(/* @vite-ignore */ possiblePath)
+              .then(module => {
+                const component = module.default || module;
+                foreignObject.MountVueComponent(component, this.vueProps);
+              })
+              .catch(err => {
+                console.error(`Failed to load component by name: ${componentName}`, err);
+              });
+          }
+        }
       } else {
-        // Component reference is already available
-        foreignObject.MountVueComponent(this.vueComponent, this.vueProps);
+        console.error("Invalid vue component provided:", this.vueComponent);
       }
     }
 
