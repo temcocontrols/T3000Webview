@@ -1276,51 +1276,7 @@ class ToolUtil {
   StampOrDragDropNewSymbol(symbolData, useDragDrop) {
     T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolData, useDragDrop);
 
-    // Clear any previous replace symbol ID
-    // T3Gv.opt.ReplaceSymbolID = null;
-
     // SVG fragment definitions
-    const pumpSymbolSVG = '<g><g fill="##FillColor=#7F7F7F##" transform="translate(0,0)"><g class="pump"> <circle stroke="##LineColor=#000000##" cy="16" cx="15.955" r="9.9609003" class="pump-background" /> <g transform="translate(16,16)"> <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="##LineColor=#000000##" stroke-width="##LineThick=1##"/></g></g></g></g>';
-    const heatPumpSymbolSVG = '<g class="heat-pump" stroke-linejoin="round" stroke="#000" transform="translate(0,0)" fill="currentColor"> <rect class="inner" height="123.718" width="27.718" y="2.141" x="-36.859" stroke-width="1.0868"></rect> <g transform="matrix(1.0276 0 0 1.0276 -39.441 -.44130)" stroke-linecap="round" stroke-miterlimit="1" stroke-width="1.3509"> <path d="m16.234 16.944 8.6837-6.894-8.6837-6.894v3.447h-13.152v6.894h13.152z" fill="#ce2824"></path> <path d="m15.766 28.844-8.6837-6.894 8.6837-6.894v3.447h13.152v6.894h-13.152z" fill="#3238db"></path></g></g>';
-
-    const test1 = `
-    <g><g width="13.667" height="10.167" transform="scale(1,1) translate(0,20.833)"><g stroke="##LineColor=#000000##"
-    opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none" width="13.667"
-    height="10.167" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
-    fill-opacity="1" stroke-opacity="1"><rect width="13.667" height="10.167"/></g></g>
-    // <g width="13.667" height="10.167" transform="scale(1,1) translate(56.833,21.167)">
-    // <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none" width="13.667"
-    // height="10.167" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##" fill-opacity="1"
-    // stroke-opacity="1"><rect width="13.667" height="10.167"/></g></g><g width="13.667" height="10.167"
-    // transform="rotate(270,34.667,6.75) scale(1,1) translate(27.833,1.667)"><g stroke="##LineColor=#000000##"
-    // opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none" width="13.667" height="10.167"
-    // transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1">
-    // <rect width="13.667" height="10.167"/></g></g><g width="46.167" height="25.5" transform="scale(1,1)
-    // translate(12,12.667)"><g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##"
-    // stroke-dasharray="none" width="46.167" height="25.5" transform="scale(1,1) translate(0,0)"
-    // fill="##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1"><rect width="46.167" height="25.5"/></g></g></g>
-    `;
-
-    const test2 = '<g><g width="13.667" height = "10.167" transform = "scale(1,1) translate(0,20.833)" > <g stroke="##LineColor=#000000##" opacity = "1" stroke-width="##LineThick=1##" stroke-dasharray="none" width = "13.667" height = "10.167" transform = "scale(1,1) translate(0,0)" fill = "##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1" > <rect width="13.667" height = "10.167" /> </g></g > <g width="13.667" height = "10.167" transform = "scale(1,1) translate(56.833,21.167)" > <g stroke="##LineColor=#000000##" opacity = "1" stroke-width="##LineThick=1##" stroke-dasharray="none" width = "13.667" height = "10.167" transform = "scale(1,1) translate(0,0)" fill = "##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1" > <rect width="13.667" height = "10.167" /> </g></g > <g width="13.667" height = "10.167" transform = "rotate(270,34.667,6.75) scale(1,1) translate(27.833,1.667)" > <g stroke="##LineColor=#000000##" opacity = "1" stroke-width="##LineThick=1##" stroke-dasharray="none" width = "13.667" height = "10.167" transform = "scale(1,1) translate(0,0)" fill = "##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1" > <rect width="13.667" height = "10.167" /> </g></g > <g width="46.167" height = "25.5" transform = "scale(1,1) translate(12,12.667)" > <g stroke="##LineColor=#000000##" opacity = "1" stroke-width="##LineThick=1##" stroke-dasharray="none" width = "46.167" height = "25.5" transform = "scale(1,1) translate(0,0)" fill = "##FillColor=#FFFFFF##" fill-opacity="1" stroke-opacity="1" > <rect width="46.167" height = "25.5" /> </g></g > </g>';
-
-    // const boiler = `
-    //   <path
-    //     style="
-    //       fill: ##FillColor=#28c3c6##;
-    //       fill-opacity: 1;
-    //       fill-rule: nonzero;
-    //       stroke:##LineColor=#000000##;
-    //       stroke-width: 1;
-    //       stroke-linecap: butt;
-    //       stroke-linejoin: miter;
-    //       stroke-miterlimit: 4;
-    //       stroke-dasharray: none;
-    //       stroke-opacity: 1;
-    //     "
-    //     d="m 2,15 8,-7 0,-7 12,0 0,7 8,7 0,16 -28,0 z"
-    //   ></path>
-    // `;
-
     const boiler = `
       <path
         style="
@@ -1348,64 +1304,10 @@ class ToolUtil {
       hookflags: 257,
       moreflags: 64,
       targflags: 3,
-      // SymbolData: {
-      //   ScalingData: {
-      //     Dimensions: { X: 159, Y: 161, x: 159, y: 161, },
-      //     DimensionsFlags: 0
-      //   },
-      //   Height: 0.31,
-      //   MetricUnits: 4,
-      //   Metric_Height: 0,
-      //   Metric_Width: 0,
-      //   ObjectGrowFlags: 3,
-      //   OriginalDimensions: {
-      //     X: 159,
-      //     Y: 161,
-      //     x: 159,
-      //     y: 161,
-      //   },
-      //   Scale: 0,
-      //   ScaleType: 1,
-      //   Width: 0.66
-      // },
-      // ShapeData: {
-      //   AttachPoint: { X: 15000, Y: 15000, x: 15000, y: 15000, },
-      //   ColorFilter: 0,
-      //   DataClass: 9,
-      //   ExtraAttributeFlags: 0,
-      //   LayerName: "Default",
-      //   ObjectAttributeFlags: 3,
-      //   ObjectType: 0,
-      //   UseFlags: 0,
-      //   ConnectionPoints: [
-      //     { X: 30000, Y: 7500, x: 30000, y: 7500, },
-      //     { X: 29010, Y: 14347, x: 29010, y: 14347, },
-      //     { X: 30000, Y: 22336, x: 30000, y: 22336, },
-      //     { X: 30000, Y: 30000, x: 30000, y: 30000, },
-      //     { X: 22385, Y: 30000, x: 22385, y: 30000, },
-      //     { X: 14923, Y: 30000, x: 14923, y: 30000, },
-      //     { X: 7538, Y: 30000, x: 7538, y: 30000, },
-      //     { X: 76, Y: 30000, x: 76, y: 30000, },
-      //     { X: 76, Y: 22336, x: 76, y: 22336, },
-      //     { X: 609, Y: 14673, x: 609, y: 14673, },
-      //     { X: 76, Y: 7500, x: 76, y: 7500, }
-      //   ]
-      // },
       InitialGroupBounds: { x: 0, y: 0, width: 30, height: 30 },
-
-      // Frame: {
-      //   x: -1000,// initialX,
-      //   y: -1000,// initialY,
-      //   width: 120, //OptConstant.Common.ShapeWidth,
-      //   height: 120,// OptConstant.Common.ShapeHeight
-      // },
-      // TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-      // ObjGrow: OptConstant.GrowBehavior.ProPortional,
-      // InitialGroupBounds: { x: 0, y: 0, width: 60, height: 60 },
     });
-    symbolObject.StyleRecord = new QuickStyle();
 
-    // Use the heat pump SVG fragment
+    symbolObject.StyleRecord = new QuickStyle();
 
     // Convert multiline SVG to a single line, removing newlines but preserving structure
     const testSvgString = boiler.replace(/\n\s*/g, ' ').trim();
@@ -1449,24 +1351,6 @@ class ToolUtil {
         </g>
     `;
 
-    // symbolObject.Frame = { x: 30.416666666666742, y: 256.5, width: 72.5, height: 39.666666666666664 };
-
-    // symbolObject.InitialGroupBounds = {
-    //   "width": 71.5,
-    //   "height": 39.167,
-    //   "x": 351.16666666666663,
-    //   "y": 528
-    // };
-
-    // symbolObject.Frame = { x: -1000, y: -1000, width: 72.5, height: 39.666666666666664 };
-
-    // symbolObject.InitialGroupBounds = {
-    //   "width": 71.5,
-    //   "height": 39.167,
-    //   "x": -1000,
-    //   "y": -1000
-    // };
-
     symbolObject.Frame = { x: -1000, y: -1000, width: 60, height: 60 };
 
     symbolObject.InitialGroupBounds = {
@@ -1476,155 +1360,99 @@ class ToolUtil {
       y: -1000
     };
 
-    // symbolObject.r = {
-    //   x: 30.416666666666742,
-    //   y: 256.5,
-    //   width: 72.5,
-    //   height: 39.666666666666664
-    // };
-
-    // symbolObject.inside = {
-    //   x: 30.416666666666742,
-    //   y: 256.5,
-    //   width: 72.5,
-    //   height: 39.666666666666664
-    // };
-
-    // symbolObject.trect = {
-    //   "x": 30.416666666666742,
-    //   "y": 256.5,
-    //   "width": 72.5,
-    //   "height": 39.666666666666664
-    // };
-
-    // symbolObject.rtop = 3168;
-    // symbolObject.rleft = 2107;
-    // symbolObject.rbottom = 3406;
-    // symbolObject.rright = 2542;
-    // symbolObject.rwd = 435;
-    // symbolObject.rht = 238;
-
-    // symbolObject.attachpoint = {
-    //   "x": 14447,
-    //   "y": 19411
-    // };
-
-    // symbolObject.sizedim = {
-    //   "width": 72.5,
-    //   "height": 39.666666666666664
-    // };
-
-    // symbolObject.ConnectPoints = [
-    //   {
-    //     "x": 276,
-    //     "y": 19411
-    //   },
-    //   {
-    //     "x": 14447,
-    //     "y": 378
-    //   },
-    //   {
-    //     "x": 29447,
-    //     "y": 19411
-    //   }
-    // ];
-
     const RoomHumidity =
       `
-
-
- <g transform="translate(0,0)">
-        <circle r="30" cy="30" cx="30"
-        style="
-                opacity: 1;
-                fill: ##FillColor=#FFFFFF##;
-                fill-opacity: 1;
-                fill-rule: nonzero;
-                stroke:##FillColor=#000000##;
-                stroke-width: 0.764198;
-                stroke-linecap: butt;
-                stroke-linejoin: round;
-                stroke-miterlimit: 4;
-                stroke-dasharray: none;
-                stroke-opacity: 1;
-              "/>
-        <g transform="matrix(1,0,0,1,46,43)"
-        style="
-                font-style: normal;
-                font-weight: normal;
-                font-size: 51px;
-                line-height: 125%;
-                font-family: Sans;
-                letter-spacing: 0px;
-                word-spacing: 0px;
-                fill:##FillColor=#000000##;
-                fill-opacity: 1;
-                stroke: none;
-                stroke-width: 1px;
-                stroke-linecap: butt;
-                stroke-linejoin: miter;
-                stroke-opacity: 1;
-              ">
-            <path
-                d="m -29.828843,-32.840076 h 5.075651 v 15.377717 h 18.4432096 v -15.377717 h 5.0756516 V 4.6745172 H -6.3099824 V -13.190771 H -24.753192 V 4.6745172 h -5.075651 z" />
+        <g transform="translate(0,0)">
+            <circle r="30" cy="30" cx="30"
+            style="
+                    opacity: 1;
+                    fill: ##FillColor=#FFFFFF##;
+                    fill-opacity: 1;
+                    fill-rule: nonzero;
+                    stroke:##FillColor=#000000##;
+                    stroke-width: 0.764198;
+                    stroke-linecap: butt;
+                    stroke-linejoin: round;
+                    stroke-miterlimit: 4;
+                    stroke-dasharray: none;
+                    stroke-opacity: 1;
+                  "/>
+            <g transform="matrix(1,0,0,1,46,43)"
+            style="
+                    font-style: normal;
+                    font-weight: normal;
+                    font-size: 51px;
+                    line-height: 125%;
+                    font-family: Sans;
+                    letter-spacing: 0px;
+                    word-spacing: 0px;
+                    fill:##FillColor=#000000##;
+                    fill-opacity: 1;
+                    stroke: none;
+                    stroke-width: 1px;
+                    stroke-linecap: butt;
+                    stroke-linejoin: miter;
+                    stroke-opacity: 1;
+                  ">
+                <path
+                    d="m -29.828843,-32.840076 h 5.075651 v 15.377717 h 18.4432096 v -15.377717 h 5.0756516 V 4.6745172 H -6.3099824 V -13.190771 H -24.753192 V 4.6745172 h -5.075651 z" />
+            </g>
         </g>
-    </g>
       `;
 
 
     const RoomTemperature =
       `
-    <g transform="matrix(0.76419842,0,0,0.76419842,-3.2187002,-3.2187002)">
-      <circle
-        r="11.288136"
-        cy="16"
-        cx="16"
-        style="
-          opacity: 1;
-          fill:  ##FillColor=#FFFFFF##;
-          fill-opacity: 1;
-          fill-rule: nonzero;
-          stroke:##FillColor=#000000##;
-          stroke-width: 1;
-          stroke-linecap: butt;
-          stroke-linejoin: round;
-          stroke-miterlimit: 4;
-          stroke-dasharray: none;
-          stroke-opacity: 1;
-        "
-      />
-      <g
-        transform="translate(32.100664,13.086915)"
-        style="
-          font-style: normal;
-          font-weight: normal;
-          font-size: 20.2897px;
-          line-height: 125%;
-          font-family: Sans;
-          letter-spacing: 0px;
-          word-spacing: 0px;
-          fill:##FillColor=#000000##;
-          fill-opacity: 1;
-          stroke: none;
-          stroke-width: 1px;
-          stroke-linecap: butt;
-          stroke-linejoin: miter;
-          stroke-opacity: 1;
-        "
-      >
-        <path
-          d="m -22.356997,-4.4825641 h 12.5126658 v 1.6842067 H -15.095093 V 10.308734 h -2.011141 V -2.7983574 h -5.250763 z"
+      <g transform="matrix(0.76419842,0,0,0.76419842,-3.2187002,-3.2187002)">
+        <circle
+          r="11.288136"
+          cy="16"
+          cx="16"
+          style="
+            opacity: 1;
+            fill:  ##FillColor=#FFFFFF##;
+            fill-opacity: 1;
+            fill-rule: nonzero;
+            stroke:##FillColor=#000000##;
+            stroke-width: 1;
+            stroke-linecap: butt;
+            stroke-linejoin: round;
+            stroke-miterlimit: 4;
+            stroke-dasharray: none;
+            stroke-opacity: 1;
+          "
         />
+        <g
+          transform="translate(32.100664,13.086915)"
+          style="
+            font-style: normal;
+            font-weight: normal;
+            font-size: 20.2897px;
+            line-height: 125%;
+            font-family: Sans;
+            letter-spacing: 0px;
+            word-spacing: 0px;
+            fill:##FillColor=#000000##;
+            fill-opacity: 1;
+            stroke: none;
+            stroke-width: 1px;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            stroke-opacity: 1;
+          "
+        >
+          <path
+            d="m -22.356997,-4.4825641 h 12.5126658 v 1.6842067 H -15.095093 V 10.308734 h -2.011141 V -2.7983574 h -5.250763 z"
+          />
+        </g>
       </g>
-    </g>
-    `;
+     `;
 
     symbolObject.SVGFragment = RoomHumidity;
 
     // Add the symbol to the drawing using drag-drop mode
     if (symbolObject) {
       DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
-      // T3Gv.opt.MouseStampNewShape(symbolObject, true, true, false, null, null);
     }
 
     T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol output: void");
@@ -1646,7 +1474,6 @@ class ToolUtil {
     // Add the symbol to the drawing using drag-drop mode
     if (symbolObject) {
       DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
-      // T3Gv.opt.MouseStampNewShape(symbolObject, true, true, false, null, null);
     }
 
     T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol output: void");
