@@ -28,8 +28,10 @@ class ForeignObjUtil {
     return foreignObj;
   }
 
-  static CreateVueObjectType(docInstance: any) {
+  static CreateVueObjectType(docInstance: any, frame: any) {
     let svgDoc = docInstance == null ? T3Gv.opt.svgDoc : docInstance;
+
+    console.log('ForeignObjUtil=CreateVueObjectType', frame);
 
     const circleItem = {
       "title": null,
@@ -88,9 +90,9 @@ class ForeignObjUtil {
       "id": 2
     };
 
-    const pumpItemWithLink=
+    const pumpItemWithLink =
     {
-      "title": null,
+      "title": "==== Test Pump ====",
       "active": false,
       "type": "Pump",
       "translate": [
@@ -138,7 +140,10 @@ class ForeignObjUtil {
       "id": 2
     };
 
-    const foreignObj = svgDoc.CreateVueComponent(60, 60, ObjectType2, {
+    var width=frame.width;
+    var height=frame.height;
+
+    const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType2, {
       item: pumpItemWithLink,
       showArrows: true,
     });
@@ -148,13 +153,12 @@ class ForeignObjUtil {
     const foreignContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
     foreignContainer.AddElement(foreignObj);
 
-    foreignContainer.SetID(111);
-    foreignContainer.SetSize(100, 100);
+    foreignContainer.SetSize(width, height);
 
     // Set the position of the foreignObject inside the foreignContainer
     foreignContainer.SetPos(0, 0);
 
-    return foreignObj;
+    return foreignContainer;
   }
 }
 
