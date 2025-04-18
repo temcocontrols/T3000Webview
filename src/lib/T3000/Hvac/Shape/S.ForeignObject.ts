@@ -28,6 +28,7 @@ class ForeignObject extends BaseShape {
   // Properties for Vue integration
   public vueInstance: any = null;
   public htmlContent: string | HTMLElement | null = null;
+
   public vueComponent: any = null;
   public vueProps: any = {};
 
@@ -108,7 +109,30 @@ class ForeignObject extends BaseShape {
     if (this.htmlContent) {
       foreignObject.SetHtmlContent(this.htmlContent);
     } else if (this.vueComponent) {
-      foreignObject.MountVueComponent(this.vueComponent, this.vueProps);
+      // Handle component resolution if vueComponent is a string
+      if (typeof this.vueComponent === 'string') {
+        const componentName = this.vueComponent;
+
+        // Create a mapping of component names to their implementations
+        const componentRegistry = {
+          'ObjectConfig2.vue': () => import('../../../../components/ObjectConfig2.vue'),
+          // Add other component mappings as needed
+        };
+
+        if (componentRegistry[componentName]) {
+          componentRegistry[componentName]().then(module => {
+            const component = module.default || module;
+            foreignObject.MountVueComponent(component, this.vueProps);
+          }).catch(err => {
+            console.error(`Failed to load component: ${componentName}`, err);
+          });
+        } else {
+          console.error(`Component not found in registry: ${componentName}`);
+        }
+      } else {
+        // Component reference is already available
+        foreignObject.MountVueComponent(this.vueComponent, this.vueProps);
+      }
     }
 
     // Apply additional styles and effects

@@ -203,6 +203,11 @@ class DataOpt {
           const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, objectData);
           storedObject.Data = svgFragmentSymbolData;
         }
+
+        if (objectData.ShapeType === "ForeignObject") {
+          const svgForeignObjectData = plainToInstance(Instance.Shape.ForeignObject, objectData);
+          storedObject.Data = svgForeignObjectData;
+        }
       }
 
       if (objectData.DrawingObjectBaseClass === 3) {
@@ -254,6 +259,11 @@ class DataOpt {
         if (dataObj.ShapeType === "SVGFragmentSymbol") {
           const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, dataObj);
           shapeData = svgFragmentSymbolData;
+        }
+
+        if (dataObj.ShapeType === "ForeignObject") {
+          const svgForeignObjectData = plainToInstance(Instance.Shape.ForeignObject, dataObj);
+          shapeData = svgForeignObjectData;
         }
       }
 
