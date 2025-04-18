@@ -35,6 +35,7 @@ import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
 
 import VueCircle from "src/components/Basic/Circle.vue";
+import ObjectType2 from "src/components/ObjectType2.vue"
 
 
 class ToolUtil {
@@ -536,9 +537,8 @@ class ToolUtil {
 
   StampVueComponent(isDragDropMode, isSquare) {
 
-    T3Util.Log("O.ToolOpt StampVueComponent input:", isDragDropMode, isSquare);
+    T3Util.Log("U.ToolUtil StampVueComponent:", isDragDropMode, isSquare);
 
-    /*
     let width, height;
 
     // Set dimensions based on whether we want a circle or oval
@@ -579,18 +579,70 @@ class ToolUtil {
       };
     }
 
-    // Create the oval shape
-    const ovalShape = new Oval(shapeAttributes);
+    // Create the foreign object shape
+    const pumpItemWithLink =
+    {
+      "title": "==== Test Pump ====",
+      "active": false,
+      "type": "Pump",
+      "translate": [
+        284,
+        72
+      ],
+      "width": 60,
+      "height": 60,
+      "rotate": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "settings": {
+        "fillColor": "#659dc5",
+        "active": true,
+        "inAlarm": true,
+        "titleColor": "inherit",
+        "bgColor": "inherit",
+        "textColor": "inherit",
+        "fontSize": 16,
+        "t3EntryDisplayField": "description"
+      },
+      "zindex": 1,
+      "t3Entry": {
+        "auto_manual": 1,
+        "calibration_h": 0,
+        "calibration_l": 0,
+        "calibration_sign": 1,
+        "command": "199IN1",
+        "control": 1,
+        "decom": 1,
+        "description": "Volts",
+        "digital_analog": 1,
+        "filter": 5,
+        "id": "IN1",
+        "index": 0,
+        "label": "IN1",
+        "pid": 199,
+        "range": 19,
+        "type": "INPUT",
+        "unit": 19,
+        "value": 30
+      },
+      "showDimensions": true,
+      "cat": "Pipe",
+      "id": 2
+    };
+
+    var props = {
+      item: pumpItemWithLink,
+      showArrows: true,
+    };
+
+    var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props);
 
     // Use mouse stamp method to place the shape
-    DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);
+    DrawUtil.MouseStampNewShape(fiObShape, true, true, true, null, null);
 
-    T3Util.Log("O.ToolOpt StampCircle output: void");
+    T3Util.Log("U.ToolUtil StampVueComponent output: void");
 
-    // Create a foreignObject with a Vue component
-    // import MyVueComponent from '@/components/MyVueComponent.vue';
-    */
-
+    /*
     // Get your document instance
     const doc = T3Gv.opt.svgDoc;
     const layer = doc.GetDocumentLayer();
@@ -612,7 +664,29 @@ class ToolUtil {
     shapeContainer.SetPos(300, 100);
 
     layer.AddElement(shapeContainer);
+    */
   }
+
+  CreateForeignObjectWithVue(doc, vueComponent, props) {
+    // const foreignObject = doc.CreateShape(OptConstant.CSType.ShapeContainer);
+    const shape = new Instance.Shape.ForeignObject({
+      vueComponent: vueComponent,
+      vueProps: props
+    });
+
+    console.log("ToolUtil->CreateForeignObjectWithVue", shape);
+
+    /*
+    // Set size and position
+    shape.SetSize(300, 200);
+    shape.SetPos(100, 100);
+
+    // Add to document
+    doc.GetDocumentLayer().AddElement(shape);
+    */
+
+    return shape;
+  };
 
   /**
    * Creates and stamps a text label shape onto the drawing

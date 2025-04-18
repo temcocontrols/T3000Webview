@@ -1,7 +1,7 @@
 <template>
   <div v-if="item.title" @click="$emit('objectClicked')">
     {{ item.title }}
-    <q-icon name="edit" />
+    <q-icon name="edit" onclick="alert('icon-edit-clicked')"/>
   </div>
 </template>
 
