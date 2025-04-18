@@ -37,6 +37,7 @@ class ForeignObject extends BaseShape {
    */
   constructor(options: any) {
     T3Util.Log("= S.ForeignObject Input:", options);
+    console.log("= S.ForeignObject Input:", options);
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.ForeignObject;
 

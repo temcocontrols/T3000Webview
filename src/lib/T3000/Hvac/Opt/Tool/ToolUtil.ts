@@ -635,7 +635,7 @@ class ToolUtil {
       showArrows: true,
     };
 
-    var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props);
+    var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props, shapeAttributes);
 
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(fiObShape, true, true, true, null, null);
@@ -659,7 +659,7 @@ class ToolUtil {
     const shapeContainer = doc.CreateShape(OptConstant.CSType.ShapeContainer);
     shapeContainer.AddElement(foreignObj);
 
-    shapeContainer.SetID(111);
+    shapeContainer.SetID('0000-000000-0000-0000');
     shapeContainer.SetSize(100, 100);
     shapeContainer.SetPos(300, 100);
 
@@ -667,14 +667,15 @@ class ToolUtil {
     */
   }
 
-  CreateForeignObjectWithVue(doc, vueComponent, props) {
+  CreateForeignObjectWithVue(doc, vueComponent, props, shapeAttributes) {
     // const foreignObject = doc.CreateShape(OptConstant.CSType.ShapeContainer);
     const shape = new Instance.Shape.ForeignObject({
       vueComponent: vueComponent,
-      vueProps: props
+      vueProps: props,
+      ...shapeAttributes
     });
 
-    console.log("ToolUtil->CreateForeignObjectWithVue", shape);
+    console.log("ToolUtil->CreateForeignObjectWithVue After", shape);
 
     /*
     // Set size and position
