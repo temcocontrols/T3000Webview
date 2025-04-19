@@ -393,10 +393,10 @@ class NvConstant {
   }
 
   /**
-   * Guide distance types
-   * Defines measurement types for guides
-   */
-  static Guide_DistanceTypes = {
+  * Guide distance types
+  * Defines measurement types for guides
+  */
+  static GuideDistanceTypes = {
     Room: 1,                // Room distance
     Horizontal_Wall: 2,     // Horizontal wall distance
     Vertical_Wall: 3,       // Vertical wall distance

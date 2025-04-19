@@ -272,12 +272,12 @@ class BaseLine extends BaseDrawObject {
 
     if (input && this.objecttype === NvConstant.FNObjectTypes.FlWall) {
       if (Utils2.IsEqual(this.StartPoint.x, this.EndPoint.x, this.StyleRecord.Line.BThick)) {
-        input.distanceonly = NvConstant.Guide_DistanceTypes.Vertical_Wall;
+        input.distanceonly = NvConstant.GuideDistanceTypes.Vertical_Wall;
         T3Util.Log("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Vertical_Wall");
         return this.BlockID;
       }
       if (Utils2.IsEqual(this.StartPoint.y, this.EndPoint.y, this.StyleRecord.Line.BThick)) {
-        input.distanceonly = NvConstant.Guide_DistanceTypes.Horizontal_Wall;
+        input.distanceonly = NvConstant.GuideDistanceTypes.Horizontal_Wall;
         T3Util.Log("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Horizontal_Wall");
         return this.BlockID;
       }
@@ -298,7 +298,7 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: GuideDistanceOnly called");
 
     const isFloorPlanWall = this.objecttype === NvConstant.FNObjectTypes.FlWall;
-    const result = isFloorPlanWall ? NvConstant.Guide_DistanceTypes.PolyWall : false;
+    const result = isFloorPlanWall ? NvConstant.GuideDistanceTypes.PolyWall : false;
 
     T3Util.Log("= S.BaseLine: GuideDistanceOnly returning", result);
     return result;

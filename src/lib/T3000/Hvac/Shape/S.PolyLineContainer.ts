@@ -858,7 +858,7 @@ class PolyLineContainer extends PolyLine {
     T3Util.Log("= S.PolyLineContainer: Input shape:", shape);
     let result;
     if (shape && !this.polylist.closed) {
-      shape.distanceonly = NvConstant.Guide_DistanceTypes.PolyWall;
+      shape.distanceonly = NvConstant.GuideDistanceTypes.PolyWall;
       result = this.BlockID;
     } else {
       result = this.BlockID;
@@ -876,7 +876,7 @@ class PolyLineContainer extends PolyLine {
 
   GuideDistanceOnly() {
     T3Util.Log("= S.PolyLineContainer: Checking guide distance type");
-    const result = this.polylist.closed ? NvConstant.Guide_DistanceTypes.Room : NvConstant.Guide_DistanceTypes.PolyWall;
+    const result = this.polylist.closed ? NvConstant.GuideDistanceTypes.Room : NvConstant.GuideDistanceTypes.PolyWall;
     T3Util.Log("= S.PolyLineContainer: Output guide distance type:", result);
     return result;
   }

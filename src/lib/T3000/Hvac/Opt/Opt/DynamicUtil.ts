@@ -1,3 +1,4 @@
+import NvConstant from "../../Data/Constant/NvConstant";
 import OptConstant from "../../Data/Constant/OptConstant";
 import TextConstant from "../../Data/Constant/TextConstant";
 import T3Gv from "../../Data/T3Gv";
@@ -8,7 +9,7 @@ import DataUtil from "../Data/DataUtil";
 import RulerUtil from "../UI/RulerUtil";
 import LayerUtil from "./LayerUtil";
 import PolyUtil from "./PolyUtil";
- 
+
 class DynamicUtil {
 
   /**
@@ -342,7 +343,7 @@ class DynamicUtil {
       const textJustification = TextConstant.TextJust;
 
       // Process Room guide type
-      if (guideDistanceType === OptConstant.GuideDistanceTypes.Room) {
+      if (guideDistanceType === NvConstant.GuideDistanceTypes.Room) {
         let objectFrame = Utils1.DeepCopy(objectToProcess.Frame);
         const borderThickness = objectToProcess.StyleRecord.Line.BThick;
 
@@ -445,8 +446,8 @@ class DynamicUtil {
       }
 
       // Process PolyWall or Room guide types
-      if (guideDistanceType === OptConstant.GuideDistanceTypes.PolyWall ||
-        guideDistanceType === OptConstant.GuideDistanceTypes.Room) {
+      if (guideDistanceType === NvConstant.GuideDistanceTypes.PolyWall ||
+        guideDistanceType === NvConstant.GuideDistanceTypes.Room) {
 
         // Check if center Y is within bounds
         if (centerY >= topEdge && centerY <= bottomEdge) {
@@ -555,7 +556,7 @@ class DynamicUtil {
         }
       }
       // Process Vertical_Wall guide type
-      else if (guideDistanceType === OptConstant.GuideDistanceTypes.Vertical_Wall) {
+      else if (guideDistanceType === NvConstant.GuideDistanceTypes.Vertical_Wall) {
         let objectFrame = Utils1.DeepCopy(objectToProcess.Frame);
         const borderThickness = objectToProcess.StyleRecord.Line.BThick;
 
@@ -599,7 +600,7 @@ class DynamicUtil {
         }
       }
       // Process Horizontal_Wall guide type
-      else if (guideDistanceType === OptConstant.GuideDistanceTypes.Horizontal_Wall) {
+      else if (guideDistanceType === NvConstant.GuideDistanceTypes.Horizontal_Wall) {
         let objectFrame = Utils1.DeepCopy(objectToProcess.Frame);
         const borderThickness = objectToProcess.StyleRecord.Line.BThick;
 

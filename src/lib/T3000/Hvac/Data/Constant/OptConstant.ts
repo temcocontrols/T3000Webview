@@ -840,13 +840,6 @@ class OptConstant {
     DrawPolyline: 6,     // Draw polyline
     FormatPainter: 7,    // Format painter
   }
-
-  static GuideDistanceTypes = {
-    Room: 1,
-    Horizontal_Wall: 2,
-    Vertical_Wall: 3,
-    PolyWall: 4
-  }
 }
 
 export default OptConstant
