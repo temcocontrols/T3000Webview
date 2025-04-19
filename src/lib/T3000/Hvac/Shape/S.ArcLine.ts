@@ -159,7 +159,7 @@ class ArcLine extends BaseLine {
       // Center lies inside the arc
       result.centerInside = true;
       // Delta is the distance from the chord midpoint to the circle center along the perpendicular
-      delta = Utils2.sqrt(computedRadius * computedRadius - halfChord * halfChord);
+      delta = Utils2.Sqrt(computedRadius * computedRadius - halfChord * halfChord);
       if (isReversed) {
         centerX = midX + delta * unitPerp;
         centerY = midY + delta * unitPar;
@@ -796,7 +796,7 @@ class ArcLine extends BaseLine {
     // Calculate the euclidean distance (for logging purpose, not assigned)
     const deltaX = this.EndPoint.x - this.StartPoint.x;
     const deltaY = this.EndPoint.y - this.StartPoint.y;
-    Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+    Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
     // Update dimension lines and display coordinates
     this.UpdateDimensionLines(svgDoc);
@@ -847,7 +847,7 @@ class ArcLine extends BaseLine {
 
       const deltaX = this.EndPoint.x - this.StartPoint.x;
       const deltaY = this.EndPoint.y - this.StartPoint.y;
-      Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
       this.UpdateDimensionLines(svgDoc);
       UIUtil.UpdateDisplayCoordinates(

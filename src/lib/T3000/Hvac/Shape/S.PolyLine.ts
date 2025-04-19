@@ -726,7 +726,7 @@ class PolyLine extends BaseLine {
       for (let idx = startIdx; idx < endIdx; idx++) {
         dx = pointsArray[idx - 1].x - pointsArray[idx].x;
         dy = pointsArray[idx - 1].y - pointsArray[idx].y;
-        lengthSum += Utils2.sqrt(dx * dx + dy * dy);
+        lengthSum += Utils2.Sqrt(dx * dx + dy * dy);
       }
       return lengthSum;
     };
@@ -905,7 +905,7 @@ class PolyLine extends BaseLine {
             let previousPt = polyPoints[i - 1];
             let dx = currentPt.x - previousPt.x;
             let dy = currentPt.y - previousPt.y;
-            let segmentLength = Utils2.sqrt(dx * dx + dy * dy);
+            let segmentLength = Utils2.Sqrt(dx * dx + dy * dy);
             segmentLengths.push(segmentLength);
             totalLength += segmentLength;
           }
@@ -2837,7 +2837,7 @@ class PolyLine extends BaseLine {
     LMEvtUtil.UnbindActionClickHammerEvents();
 
     $(window).unbind("mousemove");
-    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick); 
+    T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
 
     this.ResetAutoScrollTimer();
     T3Gv.opt.linkParams = null;
@@ -2860,7 +2860,7 @@ class PolyLine extends BaseLine {
       this.EndPoint = { x: initialX, y: initialY };
 
       const self = this;
-      T3Gv.opt.WorkAreaHammer.off("dragstart"); 
+      T3Gv.opt.WorkAreaHammer.off("dragstart");
 
       T3Gv.opt.WorkAreaHammer.on(
         "doubletap",
@@ -2887,7 +2887,7 @@ class PolyLine extends BaseLine {
           T3Gv.opt.ExceptionCleanup(error);
           throw error;
         }
-      }); 
+      });
 
       T3Util.Log("S.PolyLine: LMDrawClick output", { message: "Click handled successfully" });
     } catch (error) {

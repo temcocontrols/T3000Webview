@@ -535,7 +535,7 @@ class SVGFragmentSymbol extends BaseSymbol {
         for (let i = 1, len = polyPoints.length; i < len; i++) {
           const diffX = polyPoints[i].x - polyPoints[i - 1].x,
             diffY = polyPoints[i].y - polyPoints[i - 1].y;
-          if (Utils2.sqrt(diffX * diffX + diffY * diffY) > minSidePointLength) {
+          if (Utils2.Sqrt(diffX * diffX + diffY * diffY) > minSidePointLength) {
             knobConfig.cursorType = (diffX * diffX > diffY * diffY) ? CursorConstant.CursorType.ResizeTB : CursorConstant.CursorType.ResizeLR;
             knobConfig.x = polyPoints[i - 1].x + diffX / 2;
             knobConfig.y = polyPoints[i - 1].y + diffY / 2;

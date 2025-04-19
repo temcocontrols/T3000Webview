@@ -2407,7 +2407,7 @@ class BaseDrawObject {
       } else {
         this.GetDimensionTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
         textFrameData.textFramePts = Utils1.DeepCopy(textFramePoints);
-        if (isPolygon && (Utils2.sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width)) {
+        if (isPolygon && (Utils2.Sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width)) {
           container.RemoveElement(textShape);
           return;
         }
@@ -2517,7 +2517,7 @@ class BaseDrawObject {
 
       this.GetCoordinateTextInfo(startPoint, endPoint, angle, textShape, segmentIndex, textFramePoints, leftArrowPoints, rightArrowPoints, isStandoff);
       textFrameData.textFramePts = Utils1.DeepCopy(textFramePoints);
-      const check2 = (Utils2.sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width);
+      const check2 = (Utils2.Sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) < textShape.geometryBBox.width);
 
       if (isPolygon && check2) {
         container.RemoveElement(textShape);

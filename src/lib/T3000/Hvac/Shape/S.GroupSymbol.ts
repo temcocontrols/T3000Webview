@@ -607,7 +607,7 @@ class GroupSymbol extends BaseSymbol {
         for (let k = 1, len = polyPoints.length; k < len; k++) {
           const deltaX = polyPoints[k].x - polyPoints[k - 1].x;
           const deltaY = polyPoints[k].y - polyPoints[k - 1].y;
-          if (Utils2.sqrt(deltaX * deltaX + deltaY * deltaY) > minSidePointLength) {
+          if (Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY) > minSidePointLength) {
             knobProps.cursorType = deltaX * deltaX > deltaY * deltaY ? CursorConstant.CursorType.ResizeTB : CursorConstant.CursorType.ResizeLR;
             knobProps.x = polyPoints[k - 1].x + deltaX / 2;
             knobProps.y = polyPoints[k - 1].y + deltaY / 2;

@@ -383,7 +383,7 @@ class PolyLineContainer extends PolyLine {
     function calculateDistance(point1, point2) {
       const dx = point1.x - point2.x;
       const dy = point1.y - point2.y;
-      return Utils2.sqrt(dx * dx + dy * dy);
+      return Utils2.Sqrt(dx * dx + dy * dy);
     }
 
     function findNextValidPoint(points, startIndex, wrap) {
@@ -843,7 +843,7 @@ class PolyLineContainer extends PolyLine {
 
     let deltaX = this.EndPoint.x - this.StartPoint.x;
     let deltaY = this.EndPoint.y - this.StartPoint.y;
-    let length = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+    let length = Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
     let dimensions = {
       x: length,

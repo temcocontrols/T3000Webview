@@ -213,7 +213,7 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: GetDimensions called with StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
     const deltaX = this.EndPoint.x - this.StartPoint.x;
     const deltaY = this.EndPoint.y - this.StartPoint.y;
-    const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const distance = Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
     const dimensions = { x: distance, y: 0 };
     T3Util.Log("= S.BaseLine: GetDimensions output:", dimensions);
     return dimensions;
@@ -2123,7 +2123,7 @@ class BaseLine extends BaseDrawObject {
     const distanceBetweenPoints = (point1: Point, point2: Point): number => {
       const deltaX = point1.x - point2.x;
       const deltaY = point1.y - point2.y;
-      return Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      return Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
     };
 
     const resultPoint: Point = { x: this.StartPoint.x, y: this.StartPoint.y };
@@ -2988,7 +2988,7 @@ class BaseLine extends BaseDrawObject {
 
     // Handle the lineStamp flag: if set, unbind mousemove on non-mobile platforms
     if (T3Gv.opt.lineStamp) {
-      
+
       if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');
       }
@@ -3059,7 +3059,7 @@ class BaseLine extends BaseDrawObject {
         Math.abs(deltaX) < movementThreshold &&
         Math.abs(deltaY) < movementThreshold
       ) {
-        T3Gv.opt.lineStamp = true; 
+        T3Gv.opt.lineStamp = true;
 
         if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.on(
@@ -3102,7 +3102,7 @@ class BaseLine extends BaseDrawObject {
       }
 
       // Unbind temporary mousemove events if set via lineStamp, then reset flag
-      if (T3Gv.opt.lineStamp) { 
+      if (T3Gv.opt.lineStamp) {
 
         if (T3Gv.opt.WorkAreaHammer) {
           T3Gv.opt.WorkAreaHammer.off("mousemove");
@@ -3460,7 +3460,7 @@ class BaseLine extends BaseDrawObject {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    if (T3Gv.opt.lineStamp) { 
+    if (T3Gv.opt.lineStamp) {
 
       if (T3Gv.opt.WorkAreaHammer) {
         T3Gv.opt.WorkAreaHammer.off('mousemove');
@@ -4712,7 +4712,7 @@ class BaseLine extends BaseDrawObject {
         // Calculate distance from endPoint.
         deltaX = intersectPoint.x - endPoint.x;
         deltaY = intersectPoint.y - endPoint.y;
-        const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const distance = Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
         // Create hop object.
         const hopObj = {
           segment: segmentIndex,

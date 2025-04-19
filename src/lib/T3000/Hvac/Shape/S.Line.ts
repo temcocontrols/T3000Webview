@@ -517,7 +517,7 @@ class Line extends BaseLine {
 
     let deltaX = points[0].x - points[1].x;
     let deltaY = points[0].y - points[1].y;
-    Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+    Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
     UIUtil.UpdateDisplayCoordinates(this.Frame, this.StartPoint, CursorConstant.CursorTypes.Grow, this);
 
@@ -637,7 +637,7 @@ class Line extends BaseLine {
 
       const deltaX = points[0].x - points[1].x;
       const deltaY = points[0].y - points[1].y;
-      const distance = Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const distance = Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
       const deepCopiedEndPoint = Utils1.DeepCopy(this.EndPoint);
 
       UIUtil.UpdateDisplayCoordinates(this.Frame, deepCopiedEndPoint, CursorConstant.CursorTypes.Grow, this);

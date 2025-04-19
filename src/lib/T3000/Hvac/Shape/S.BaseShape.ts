@@ -423,7 +423,7 @@ class BaseShape extends BaseDrawObject {
           const deltaY = polyPoints[i].y - polyPoints[i - 1].y;
 
           // Only add knob if segment is long enough
-          if (Utils2.sqrt(deltaX * deltaX + deltaY * deltaY) > minimumSidePointLength) {
+          if (Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY) > minimumSidePointLength) {
             // Choose cursor based on segment orientation
             knobConfig.cursorType = (deltaX * deltaX > deltaY * deltaY)
               ? CursorConstant.CursorType.ResizeTB
