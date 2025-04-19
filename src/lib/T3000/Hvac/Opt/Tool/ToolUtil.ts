@@ -35,7 +35,8 @@ import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
 
 import VueCircle from "src/components/Basic/Circle.vue";
-import ObjectType2 from "src/components/ObjectType2.vue"
+import ObjectType2 from "src/components/ObjectType2.vue";
+import AntdTest from "src/components/Basic/AntdTest.vue";
 
 
 class ToolUtil {
@@ -635,7 +636,8 @@ class ToolUtil {
       showArrows: true,
     };
 
-    var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props, shapeAttributes);
+    // var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props, shapeAttributes);
+    var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, AntdTest, props, shapeAttributes);
 
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(fiObShape, true, true, true, null, null);

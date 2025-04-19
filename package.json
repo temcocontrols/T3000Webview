@@ -33,6 +33,7 @@
     "ag-grid-community": "^31.0.1",
     "ag-grid-enterprise": "^31.0.1",
     "ag-grid-vue3": "^31.0.1",
+    "ant-design-vue": "^4.2.6",
     "anychart": "^8.11.0",
     "class-transformer": "^0.5.1",
     "datastream-js": "^1.0.7",

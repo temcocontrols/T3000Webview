@@ -377,7 +377,7 @@
 
     <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"> 
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged">
     </ObjectConfig2>
 
   </q-page>
