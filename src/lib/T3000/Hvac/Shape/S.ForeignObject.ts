@@ -138,7 +138,7 @@ class ForeignObject extends BaseShape {
       } else if (this.vueComponent && typeof this.vueComponent === 'object') {
         // Direct component reference - check if it has required methods
         if (typeof this.vueComponent.render === 'function' ||
-            typeof this.vueComponent.setup === 'function') {
+          typeof this.vueComponent.setup === 'function') {
           // It appears to be a valid component
           foreignObject.MountVueComponent(this.vueComponent, this.vueProps);
         } else {
@@ -148,8 +148,15 @@ class ForeignObject extends BaseShape {
 
           // Try to reload the component by name
           if (componentName) {
+            console.log(`Attempting to load component by name: ${componentName}`);
+
             // You may need to implement a mapping from component names to import paths
-            const possiblePath = `../../../../components/${componentName}.vue`;
+            let possiblePath = `../../../../components/${componentName}.vue`;
+
+            if (componentName === 'AntdTest') {
+              possiblePath = `../../../../components/Basic/${componentName}.vue`;
+            }
+
             import(/* @vite-ignore */ possiblePath)
               .then(module => {
                 const component = module.default || module;
@@ -294,14 +301,14 @@ class ForeignObject extends BaseShape {
 
     // Handle HTML content updates
     if (properties.htmlContent !== undefined &&
-        properties.htmlContent !== this.htmlContent) {
+      properties.htmlContent !== this.htmlContent) {
       this.SetHtmlContent(properties.htmlContent);
       updated = true;
     }
 
     // Handle Vue component updates
     if (properties.vueComponent !== undefined &&
-        properties.vueComponent !== this.vueComponent) {
+      properties.vueComponent !== this.vueComponent) {
       this.SetVueComponent(properties.vueComponent, properties.vueProps);
       updated = true;
     }
