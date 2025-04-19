@@ -585,12 +585,50 @@ class ToolOpt {
     }
   }
 
-  VueForeignObjectAct(event, shapeType){
+  VueForeignObjectAct(event, shapeType) {
     T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
 
     this.tul.StampOrDragDropNewShape(event, shapeType);
 
     T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
+  }
+
+  SetX(xVal: string) {
+
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.SetTopLeft(xVal, true);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+
+  }
+
+  SetY(yVal: string) {
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.SetTopLeft(yVal, false);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
+
+  SetWidth(widthVal: string) {
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.ChangeWidth(widthVal);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
+
+  SetHeight(heightVal: string) {
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.ChangeHeight(heightVal);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
   }
 }
 

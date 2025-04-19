@@ -55,4 +55,4 @@ class SVGImporter {
   }
 }
 
-export default SVGImporter;
+export default SVGImporter

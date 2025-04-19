@@ -53,6 +53,7 @@ import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import KeyboardConstant from '../Keyboard/KeyboardConstant';
+import Utils5 from '../../Util/Utils5';
 // import ConstantData from '../../Data/ConstantData';
 
 /**
@@ -3080,7 +3081,7 @@ class OptUtil {
     function getDistance(point1, point2) {
       const deltaX = point2.x - point1.x;
       const deltaY = point2.y - point1.y;
-      return Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      return Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
     }
 
     // Helper function to check if angles are close enough (within threshold)
@@ -3433,7 +3434,7 @@ class OptUtil {
       }
 
       // Process segment intersection with previous segment
-      if (Utils1.compareAngle(segments[segmentIndex].angle, segments[lastSegmentIndex].angle) > 0) {
+      if (Utils1.CompareAngle(segments[segmentIndex].angle, segments[lastSegmentIndex].angle) > 0) {
         if (Utils1.CalcSegmentIntersect(
           segments[lastSegmentIndex].clipSeg.start,
           segments[lastSegmentIndex].extSeg.endExt,
@@ -3494,7 +3495,7 @@ class OptUtil {
       // Check for intersections with earlier segments
       else if (lastSegmentIndex > 0) {
         for (searchIndex = lastSegmentIndex - 1; searchIndex >= 0 && !foundIntersection && !(searchIndex < 0);) {
-          if (Utils1.isEmptySeg(segments[searchIndex].clipSeg)) {
+          if (Utils1.IsEmptySeg(segments[searchIndex].clipSeg)) {
             searchIndex--;
           } else {
             // If we're not at the last segment and segments are obtuse, break
@@ -3519,7 +3520,7 @@ class OptUtil {
             }
 
             // Special handling for last segment
-            if (Utils1.isEnd(segmentIndex, segments.length, isClosed) &&
+            if (Utils1.IsEnd(segmentIndex, segments.length, isClosed) &&
               Utils1.DeltaAngle(segments[segmentIndex].angle, segments[searchIndex].angle) > 0 &&
               Utils1.CalcSegmentIntersect(
                 segments[searchIndex].clipSeg.start,
@@ -3550,7 +3551,7 @@ class OptUtil {
         lastSegmentIndex = segmentIndex;
       }
       // Handle end segments
-      else if (Utils1.isEnd(segmentIndex, segments.length, isClosed)) {
+      else if (Utils1.IsEnd(segmentIndex, segments.length, isClosed)) {
         segments[lastSegmentIndex].clipSeg.end = Utils1.DeepCopy(segments[segmentIndex].extSeg.end);
         // Mark remaining segments as empty
         for (searchIndex = lastSegmentIndex + 1; searchIndex < segmentCounter;) {
@@ -3569,7 +3570,7 @@ class OptUtil {
 
       // Find first valid segment
       for (segmentIndex = 0; segmentIndex < segmentCounter; segmentIndex++) {
-        if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+        if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
           firstValidIndex = segmentIndex;
           break;
         }
@@ -3577,7 +3578,7 @@ class OptUtil {
 
       // Find last valid segment
       for (segmentIndex = segmentCounter - 1; segmentIndex >= 0; segmentIndex--) {
-        if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+        if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
           lastValidIndex = segmentIndex;
           break;
         }
@@ -3614,7 +3615,7 @@ class OptUtil {
           // Check for intersections with earlier segments
           else {
             for (searchIndex = lastSegmentIndex - 1; searchIndex > segmentIndex && !foundIntersection;) {
-              if (Utils1.isEmptySeg(segments[searchIndex].clipSeg)) {
+              if (Utils1.IsEmptySeg(segments[searchIndex].clipSeg)) {
                 searchIndex--;
               } else {
                 if (Utils1.AreSegmentsObtuse(segments, segmentCounter, segmentIndex, searchIndex)) {
@@ -3655,7 +3656,7 @@ class OptUtil {
 
     // Build final outline from valid segments
     for (segmentIndex = 0; segmentIndex < segmentCounter; segmentIndex++) {
-      if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+      if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
         // Add start point if it's not already the last point in our result
         if (resultPoints.length === 0 ||
           segments[segmentIndex].clipSeg.start.x != resultPoints[resultPoints.length - 1].x ||
@@ -6902,6 +6903,291 @@ class OptUtil {
     clearTimeout(T3Gv.opt.textEntryTimer);
     T3Gv.opt.textEntryTimer = null;
     TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
+  }
+
+  /**
+   * Sets the top or left position of a selected object
+   * This function updates the position of the target selected object based on the provided coordinate string.
+   * It handles ruler origin offsets, unit conversions, and ensures proper propagation of changes.
+   *
+   * @param positionValue - The new position value as a string (in current ruler units)
+   * @param isLeftPosition - True if setting left position, false if setting top position
+   */
+  SetTopLeft(positionValue, isLeftPosition) {
+    // Get the currently selected object
+    const targetObjectId = SelectUtil.GetTargetSelect();
+
+    if (targetObjectId < 0) {
+      return; // No object selected
+    }
+
+    // Get a writable copy of the target object
+    const targetObject = DataUtil.GetObjectPtr(targetObjectId, true);
+
+    if (targetObject !== null) {
+      let numericValue;
+      let originOffset;
+
+      // Convert string to appropriate numeric value based on ruler settings
+      numericValue = T3Gv.docUtil.rulerConfig.useInches &&
+        T3Gv.docUtil.rulerConfig.units == NvConstant.RulerUnit.Feet
+        ? Utils3.ConvertToFeet(positionValue)
+        : Utils3.NumberIsFloat(positionValue, true)
+          ? parseFloat(positionValue)
+          : 0;
+
+      // Handle ruler origin offsets
+      if (isLeftPosition) {
+        if (T3Gv.docUtil.rulerConfig.originx) {
+          originOffset = 100 * T3Gv.docUtil.rulerConfig.originx;
+
+          if (!T3Gv.docUtil.rulerConfig.useInches) {
+            originOffset /= OptConstant.Common.MetricConv;
+          }
+
+          numericValue += RulerUtil.GetLengthInUnits(originOffset);
+          positionValue = numericValue.toFixed(2);
+        }
+      } else {
+        if (T3Gv.docUtil.rulerConfig.originy) {
+          originOffset = 100 * T3Gv.docUtil.rulerConfig.originy;
+
+          if (!T3Gv.docUtil.rulerConfig.useInches) {
+            originOffset /= OptConstant.Common.MetricConv;
+          }
+
+          numericValue += RulerUtil.GetLengthInUnits(originOffset);
+          positionValue = numericValue.toFixed(2);
+        }
+      }
+
+      let positionX;
+      let positionY;
+      const actualLength = this.GetDimensionLengthFromString(positionValue, false, false);
+
+      // Set either X or Y position based on isLeftPosition flag
+      if (isLeftPosition) {
+        positionX = actualLength;
+        positionY = null;
+      } else {
+        positionY = actualLength;
+        positionX = null;
+      }
+
+      // Update the shape's origin
+      targetObject.SetShapeOrigin(positionX, positionY, null, true);
+
+      // Mark object as needing move link updates
+      OptCMUtil.SetLinkFlag(targetObjectId, DSConstant.LinkFlags.Move);
+
+      // Add to dirty list for rendering
+      DataUtil.AddToDirtyList(targetObjectId, true);
+      DrawUtil.CompleteOperation(null);
+
+      // Update displayed coordinates
+      const dimensions = targetObject.GetDimensionsForDisplay();
+      UIUtil.UpdateDisplayCoordinates(dimensions, null, null, targetObject);
+    }
+  }
+
+  /**
+   * Changes the width of selected objects
+   * This function applies a new width to all selected objects in the document.
+   * It handles dimension calculations, aspect ratio maintenance, and sends
+   * collaboration messages if enabled.
+   *
+   * @param widthString - The new width value as a string (in current ruler units)
+   */
+  ChangeWidth(widthString) {
+    let dimensionValue = -1;
+    let newWidth = -1;
+    let newHeight = null;
+
+    // Clear cached width value
+    this.cachedWidth = null;
+
+    // Get the list of selected objects
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
+    const objectCount = selectedObjects.length;
+
+    if (objectCount === 0) {
+      return; // No objects selected
+    }
+
+    // Process each selected object
+    for (let index = 0; index < objectCount; ++index) {
+      // Get a writable copy of the current object
+      const currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
+
+      // Get dimension value from string and calculate actual length
+      dimensionValue = currentObject.GetDimensionValueFromString(widthString, 1);
+
+      if (dimensionValue >= 0) {
+        newWidth = currentObject.GetDimensionLengthFromValue(dimensionValue);
+        newWidth = currentObject.AdjustDimensionLength(newWidth);
+        newHeight = currentObject.MaintainProportions(newWidth, null);
+      }
+
+      if (newWidth >= 0) {
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Get updated dimensions
+        const dimensions = currentObject.GetDimensionsForDisplay();
+
+        // Set floating point flags if exact width was applied
+        if (currentObject.CanUseRFlags() && dimensions.width === newWidth) {
+          currentObject.rflags = Utils2.SetFlag(
+            currentObject.rflags,
+            NvConstant.FloatingPointDim.Width,
+            true
+          );
+          currentObject.rwd = dimensionValue;
+        }
+
+        // Mark object for link updates
+        OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
+      }
+
+      // Add to dirty list for rendering
+      DataUtil.AddToDirtyList(selectedObjects[index]);
+    }
+
+    DrawUtil.CompleteOperation(null);
+  }
+
+  /**
+   * Changes the height of selected objects
+   * This function applies a new height to all selected objects in the document.
+   * It handles dimension calculations, aspect ratio maintenance, and sends
+   * collaboration messages if enabled.
+   *
+   * @param heightString - The new height value as a string (in current ruler units)
+   */
+  ChangeHeight(heightString) {
+    let dimensionValue = -1;
+    let newHeight = -1;
+    let newWidth = null;
+
+    // Clear cached height value
+    this.cachedHeight = null;
+
+    // Get the list of selected objects
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
+    const objectCount = selectedObjects.length;
+
+    if (objectCount === 0) {
+      return; // No objects selected
+    }
+
+    // Process each selected object
+    for (let index = 0; index < objectCount; ++index) {
+      // Get a writable copy of the current object
+      const currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
+
+      // Get dimension value from string and calculate actual length
+      dimensionValue = currentObject.GetDimensionValueFromString(heightString, 2);
+
+      if (dimensionValue >= 0) {
+        newHeight = currentObject.GetDimensionLengthFromValue(dimensionValue);
+        newHeight = currentObject.AdjustDimensionLength(newHeight);
+        newWidth = currentObject.MaintainProportions(null, newHeight);
+      }
+
+      if (newHeight >= 0) {
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Get updated dimensions
+        const dimensions = currentObject.GetDimensionsForDisplay();
+
+        // Set floating point flags if exact height was applied
+        if (currentObject.CanUseRFlags() && dimensions.height === newHeight) {
+          currentObject.rflags = Utils2.SetFlag(
+            currentObject.rflags,
+            NvConstant.FloatingPointDim.Height,
+            true
+          );
+          currentObject.rht = dimensionValue;
+        }
+
+        // Mark object for link updates
+        OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
+      }
+
+      // Add to dirty list for rendering
+      DataUtil.AddToDirtyList(selectedObjects[index]);
+    }
+    DrawUtil.CompleteOperation(null);
+  }
+
+  /**
+   * Converts a dimension string to its corresponding length value in document coordinates
+   * This function handles unit conversion based on current ruler settings, supporting feet/inches
+   * and pixel units. It validates the string input and returns the calculated length.
+   *
+   * @param dimensionString - The dimension string to convert (e.g. "1.5", "1'6\"")
+   * @param ignoreRulerUnits - If true, ignores feet/inches conversion
+   * @param allowNegative - If true, allows negative dimension values
+   * @returns The calculated length in document coordinates, or false/1 if invalid input
+   */
+  GetDimensionLengthFromString(
+    dimensionString,
+    ignoreRulerUnits,
+    allowNegative
+  ) {
+    let dimensionValue = 0;
+    let coordinateLength = 0;
+
+    if (dimensionString.length === 0) return 0;
+
+    // Handle feet/inches conversion if using imperial units
+    if (
+      T3Gv.docUtil.rulerConfig.useInches &&
+      T3Gv.docUtil.rulerConfig.units == NvConstant.RulerUnit.Feet &&
+      !ignoreRulerUnits
+    ) {
+      dimensionValue = Utils3.ConvertToFeet(dimensionString);
+      if (dimensionValue < 0 && !allowNegative) return false;
+    } else {
+      // Handle decimal number conversion
+      if (!Utils3.NumberIsFloat(dimensionString, allowNegative)) return 1;
+      dimensionValue = parseFloat(dimensionString);
+    }
+
+    // Convert to actual coordinate length
+    coordinateLength = T3Gv.docUtil.rulerConfig.showpixels
+      ? dimensionValue
+      : this.UnitsToCoord(dimensionValue, 0);
+
+    // Cap extremely large values
+    if (coordinateLength > 400000) {
+      coordinateLength = -1;
+    }
+
+    return coordinateLength;
+  }
+
+  /**
+   * Converts a value from ruler units to document coordinates
+   * This function translates measurements from the current ruler units (inches, feet,
+   * millimeters, etc.) into the internal document coordinate system used for rendering.
+   *
+   * @param unitValue - The value in ruler units to convert
+   * @param offset - Optional offset to apply to the value before conversion
+   * @returns The converted value in document coordinates
+   */
+  UnitsToCoord(unitValue, offset) {
+    DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+
+    // Get the current unit conversion factor
+    const conversionFactor = RulerUtil.GetToUnits();
+
+    // Apply offset adjusted by major scale
+    unitValue += offset * T3Gv.docUtil.rulerConfig.majorScale;
+
+    // Divide by conversion factor to get coordinates
+    return unitValue / conversionFactor;
   }
 }
 

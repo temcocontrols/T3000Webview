@@ -262,7 +262,7 @@ class HookUtil {
             // Set connector properties
             childConnector.objecttype = objectType;
             childConnector.subtype = objectSubtype;
-             
+
             // Set connection point based on connector type
             if (hasCoManagerFlag) {
               connectionPoint.x = 0;
@@ -285,7 +285,7 @@ class HookUtil {
             OptCMUtil.SetLinkFlag(sourceObject.BlockID, DSConstant.LinkFlags.Move);
             childConnector.PrFormat(connectorId);
             DataUtil.AddToDirtyList(connectorId);
-          } 
+          }
         }
       }
     }
@@ -1807,7 +1807,7 @@ class HookUtil {
             for (let a = lineObject.hoplist.nhops - 1; a > 0; a--) {
               const deltaX = lineObject.hoplist.hops[a - 1].pt.x - lineObject.hoplist.hops[a].pt.x;
               const deltaY = lineObject.hoplist.hops[a - 1].pt.y - lineObject.hoplist.hops[a].pt.y;
-              if (Utils2.sqrt(deltaX * deltaX + deltaY * deltaY) < 3 * hopDimension) {
+              if (Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY) < 3 * hopDimension) {
                 lineObject.hoplist.hops[a - 1].cons = true;
               }
             }

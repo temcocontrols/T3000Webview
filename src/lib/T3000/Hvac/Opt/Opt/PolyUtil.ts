@@ -114,7 +114,7 @@ class PolyUtil {
     for (let i = 0; i < segments; i++) {
       const yOffset = yStep * i;
       const yDist = center.y - (startY + yOffset);
-      const xDist = Utils2.sqrt(radiusSquared - yDist * yDist);
+      const xDist = Utils2.Sqrt(radiusSquared - yDist * yDist);
 
       const point = new Point(0, 0);
       point.y = center.y - yDist;
@@ -574,7 +574,7 @@ class PolyUtil {
     }
 
     // Calculate y component using Pythagorean theorem
-    const yComponent = Utils2.sqrt(radius * radius - relativeX * relativeX);
+    const yComponent = Utils2.Sqrt(radius * radius - relativeX * relativeX);
 
     // Set y position based on whether point is above or below center
     if (isAboveCenter) {
@@ -674,7 +674,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the two possible X coordinates
-      let xOffset = Utils2.sqrt(discriminant);
+      let xOffset = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let x1 = xOffset + arcCenter.x;
@@ -717,7 +717,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the two possible Y coordinates
-      let yOffset = Utils2.sqrt(discriminant);
+      let yOffset = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let y1 = yOffset + arcCenter.y;
@@ -764,7 +764,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the square root of discriminant
-      let sqrtDiscriminant = Utils2.sqrt(discriminant);
+      let sqrtDiscriminant = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let x1 = (-b + sqrtDiscriminant) / (2 * a);
@@ -1927,7 +1927,7 @@ class PolyUtil {
       }
 
       // Calculate X using ellipse formula and place on correct side
-      const horizontalOffset = Utils2.sqrt(1 - ratio * ratio) * rectWidth;
+      const horizontalOffset = Utils2.Sqrt(1 - ratio * ratio) * rectWidth;
       point.x = isRightSide ? rect.x + rect.width - horizontalOffset : rect.x + horizontalOffset;
 
       // Add point to result array

@@ -87,6 +87,15 @@ class UIUtil {
 
         // Helper function to format number values for display (assuming it's defined elsewhere)
         const formatValue = (value) => value ? value : "";
+
+        console.log('Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
+
+        const xVal = formatStringWithPadding(formatNumberToString(xLength, useFeet));
+        const yVal = formatStringWithPadding(formatNumberToString(yLength, useFeet));
+        const wVal = formatStringWithPadding(formatNumberToString(width, useFeet));
+        const hVal = formatStringWithPadding(formatNumberToString(height, useFeet));
+
+        console.log('Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
       }
 
       // Constrain position to document bounds
@@ -98,6 +107,89 @@ class UIUtil {
         position.x = Math.min(sessionBlock.dim.x, position.x);
         position.y = Math.min(sessionBlock.dim.y, position.y);
       }
+    }
+
+    /**
+     * Formats a number as a string based on ruler settings
+     * @param value - The numeric value to format
+     * @param useSpecialFormat - Whether to use special formatting for feet/inches
+     * @returns Formatted string representation
+     */
+    function formatNumberToString(value, useSpecialFormat) {
+      let result = value;
+      let decimalPlaces = 2;
+
+      decimalPlaces = T3Gv.docUtil.rulerConfig.dp;
+
+      if (useSpecialFormat) return value;
+
+      // If showing pixels, round to integers
+      if (T3Gv.docUtil.rulerConfig.showpixels) {
+        return value.toFixed(0);
+      }
+
+      // Format with specified decimal places if possible
+      if (value.toFixed != null) {
+        result = value.toFixed(decimalPlaces);
+      }
+
+      // Handle special formatting for feet/inches notation
+      if (useSpecialFormat) {
+        const inchIndex = result.indexOf('"');
+        const feetIndex = result.indexOf("'");
+
+        if (inchIndex < 0) {
+          result += "    ";
+        } else {
+          for (let i = feetIndex - inchIndex; i < 4; i++) {
+            result += " ";
+          }
+        }
+
+        for (let i = feetIndex; i < 4; i++) {
+          result += " ";
+        }
+      }
+      // Handle decimal formatting
+      else {
+        let decimalIndex = result.indexOf(".");
+
+        if (decimalIndex < 0) {
+          result += ".";
+          decimalIndex = result.length - 1;
+        }
+
+        if (decimalIndex >= 0) {
+          // Pad with zeros to match decimal places
+          for (let i = decimalPlaces, len = result.length - decimalIndex - 1; i < len; i++) {
+            result += "0";
+          }
+
+          // Pad with spaces for alignment
+          for (let i = decimalIndex; i < 4; i++) {
+            result += " ";
+          }
+        }
+      }
+
+      return result;
+    }
+
+    /**
+     * Formats a string with padding to maintain consistent width
+     * @param text - The text to format
+     * @returns Padded string with consistent width
+     */
+    function formatStringWithPadding(text) {
+      const originalLength = text.length;
+      let trimmedText = text.trim();
+
+      // Add padding spaces to maintain original length
+      for (let i = trimmedText.length; i < originalLength; i++) {
+        trimmedText += " ";
+      }
+
+      return trimmedText;
     }
 
     T3Util.Log("O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
@@ -722,12 +814,32 @@ class UIUtil {
     }
   }
 
-  static ChangeBackgroundTextColor(e, t) {
-    if (e !== t) {
-      var a, r, i, n = LayerUtil.ZList();
-      for (a = n.length,
-        r = 0; r < a; r++)
-        (i = DataUtil.GetObjectPtr(n[r], !1)) && i.ChangeBackgroundColor(e, t)
+  /**
+   * Changes the background color of all objects in the document
+   * This function iterates through all objects in the Z-order list and
+   * updates their background colors from the old color to the new color.
+   * The change is only applied if the old and new colors are different.
+   *
+   * @param oldColor - The original background color to be replaced
+   * @param newColor - The new background color to apply
+   * @returns void
+   */
+  static ChangeBackgroundTextColor(oldColor, newColor) {
+    // Only proceed if colors are actually different
+    if (oldColor !== newColor) {
+      // Get all objects in the document's Z-order list
+      const objectList = LayerUtil.ZList();
+      const objectCount = objectList.length;
+
+      // Iterate through each object and update its background color
+      for (let i = 0; i < objectCount; i++) {
+        const currentObject = DataUtil.GetObjectPtr(objectList[i], false);
+
+        // If object exists, call its ChangeBackgroundColor method
+        if (currentObject) {
+          currentObject.ChangeBackgroundColor(oldColor, newColor);
+        }
+      }
     }
   }
 }
