@@ -1,13 +1,13 @@
 <template>
   <div v-if="item.title" @click="emitObjectClicked">
     {{ item.title }}
-    <edit-outlined @click.stop="handleIconClick" />
+    <EditOutlined onclick="alert('only use onclick can bind the event?')"/>
     <a-button type="primary" @click.stop="handleButtonClick">Antd Button</a-button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { Button as AButton } from 'ant-design-vue';
 import { EditOutlined } from '@ant-design/icons-vue';
 import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
@@ -91,12 +91,12 @@ const processedColors = computed(() => {
   return item.type === "Gauge"
     ? item.settings.colors?.map((i) => [i.offset / 100, i.color])
     : item.settings.colors?.map((i, index) => {
-        return {
-          from: index ? item.settings.colors?.[index - 1].offset : 0,
-          to: i.offset,
-          color: [i.color],
-        };
-      });
+      return {
+        from: index ? item.settings.colors?.[index - 1].offset : 0,
+        to: i.offset,
+        color: [i.color],
+      };
+    });
 });
 
 function changeValue(type: 'increase' | 'decrease'): void {
@@ -137,6 +137,17 @@ function handleButtonClick(event: MouseEvent): void {
 function emitObjectClicked(): void {
   emit("objectClicked");
 }
+
+// Note: Add onMounted to your imports - import { computed, ref, onMounted } from "vue";
+onMounted(() => {
+  console.log('Component mounted with props:', {
+    item: props.item,
+    showArrows: props.showArrows,
+    title: props.item.title,
+    type: props.item.type,
+    settings: props.item.settings
+  });
+});
 </script>
 
 <style scoped></style>
