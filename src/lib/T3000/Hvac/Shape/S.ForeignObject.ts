@@ -282,8 +282,9 @@ class ForeignObject extends BaseShape {
     // If we have a Vue component or HTML content, we may want to customize the text behavior
     if (this.vueComponent || this.htmlContent) {
       // Provide specialized text defaults for foreign objects
-      const defaultText = super.GetTextDefault(eventData);
-      defaultText.TextAlign = NvConstant.TextAlign.Left; // Default to left alignment for HTML content
+      // const defaultText = super.GetTextDefault(eventData);
+      // defaultText.TextAlign = NvConstant.TextAlign.Left; // Default to left alignment for HTML content
+      const defaultText = {};
       return defaultText;
     }
 

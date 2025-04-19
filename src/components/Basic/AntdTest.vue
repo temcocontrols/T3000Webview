@@ -1,7 +1,7 @@
 <template>
   <div v-if="item.title" @click="emitObjectClicked">
     {{ item.title }}
-    <EditOutlined onclick="alert('only use onclick can bind the event?')"/>
+    <EditOutlined @click.stop="handleIconClick" class="edit-icon" />
     <a-button type="primary" @click.stop="handleButtonClick">Antd Button</a-button>
   </div>
 </template>
