@@ -325,6 +325,18 @@
               &nbsp;
               <button id="btn_try_vue_foreignObject">Vue Component</button>
 
+              &nbsp;
+              <button id="btn_try_x">X</button>
+
+              &nbsp;
+              <button id="btn_try_y">Y</button>
+
+              &nbsp;
+              <button id="btn_try_w">W</button>
+
+              &nbsp;
+              <button id="btn_try_h">H</button>
+
               <!-- &nbsp;
               <button id="btn_try_Measure">Measure</button>
 

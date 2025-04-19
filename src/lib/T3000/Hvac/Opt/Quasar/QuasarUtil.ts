@@ -13,7 +13,7 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    objectConfigShow.value = show;
+    // objectConfigShow.value = show;
   }
 }
 
