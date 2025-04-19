@@ -26,18 +26,6 @@ class WallOpt {
 
   addingWalls: boolean;
 
-  // /**
-  //  * Gets the right-click menu ID for a line
-  //  * @param lineObject - The line object
-  //  * @returns Menu ID or null
-  //  */
-  // GetLineRightClickMenuID(lineObject) {
-  //   T3Util.Log('U.WallUtil GetLineRightClickMenuID input:', lineObject);
-  //   const result = null;
-  //   T3Util.Log('U.WallUtil GetLineRightClickMenuID output:', result);
-  //   return result;
-  // }
-
   /**
    * Determines if action buttons are allowed for the specified object
    * @param object - The object to check
@@ -608,7 +596,6 @@ class WallOpt {
     T3Util.Log('U.WallUtil GetAutomationContext output:', result);
     return result;
   }
-
 }
 
 export default WallOpt
