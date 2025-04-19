@@ -18,7 +18,7 @@ import DataObj from "./DataObj"
  *
  * @remarks
  * The class is designed to work alongside an external state management system, which is used to track and handle state changes (for example, via T3Gv.state).
- * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.isObject) to be available in the environment.
+ * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.IsObject) to be available in the environment.
  *
  * @example
  * Here's an example of how to create an instance of DataStore and operate on stored objects:
@@ -101,7 +101,7 @@ class DataStore {
         }
       } else {
         storedObject.ID = this.storedObjects.length > 0 ? Utils1.GenerateObjectID() : 0;
-        if (storedObject.Data && Utils1.isObject(storedObject.Data)) {
+        if (storedObject.Data && Utils1.IsObject(storedObject.Data)) {
           storedObject.Data.BlockID = storedObject.ID;
         }
         this.storedObjects.push(storedObject);

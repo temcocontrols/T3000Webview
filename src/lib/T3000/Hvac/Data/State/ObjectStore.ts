@@ -18,7 +18,7 @@ import StoredObject from "./StoredObject"
  *
  * @remarks
  * The class is designed to work alongside an external state management system, which is used to track and handle state changes (for example, via T3Gv.state).
- * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.isObject) to be available in the environment.
+ * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.IsObject) to be available in the environment.
  *
  * @example
  * Here's an example of how to create an instance of ObjectStore and operate on stored objects:
@@ -95,7 +95,7 @@ class ObjectStore {
         }
       } else {
         storedObject.ID = this.StoredObjects.length > 0 ? Utils1.GenerateObjectID() : 0;
-        if (storedObject.Data && Utils1.isObject(storedObject.Data)) {
+        if (storedObject.Data && Utils1.IsObject(storedObject.Data)) {
           storedObject.Data.BlockID = storedObject.ID;
         }
         this.StoredObjects.push(storedObject);

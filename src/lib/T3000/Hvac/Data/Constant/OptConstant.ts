@@ -212,7 +212,7 @@ class OptConstant {
    */
   static Common = {
 
-    EdgeSlop:5,
+    EdgeSlop: 5,
 
     /**
      * Maximum canvas dimension in drawing units
