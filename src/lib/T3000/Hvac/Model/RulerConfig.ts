@@ -52,9 +52,9 @@ class RulerConfig {
 
   constructor() {
 
-    this.useInches = true;
+    this.useInches = false;
     this.majorScale = 1;
-    this.units = NvConstant.RulerUnit.Inches;
+    this.units = NvConstant.RulerUnit.Cm;
     this.nTics = 12;
     this.nMid = 1;
     this.nGrid = 12;
@@ -65,7 +65,6 @@ class RulerConfig {
     this.dp = 2;
     this.showpixels = false;
     this.fractionaldenominator = 1;
-
   }
 }
 
