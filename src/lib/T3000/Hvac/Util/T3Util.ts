@@ -12,7 +12,7 @@ class T3Util {
    * @param additionalParams - Optional additional parameters to log
    */
   static Log(message, ...additionalParams) {
-    if (HvConstant.Default.Environment.toLowerCase() !== "dev") {
+    if (HvConstant.Default.Environment.toLowerCase() !== "prd") {
       if (additionalParams == null || additionalParams.length === 0) {
         console.log.apply(console, [message]);
       } else {

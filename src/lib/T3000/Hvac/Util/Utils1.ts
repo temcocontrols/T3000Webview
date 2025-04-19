@@ -51,7 +51,7 @@ class Utils1 {
    * @param value - The value to check
    * @returns Boolean indicating if value is an object
    */
-  static isObject(value) {
+  static IsObject(value) {
     const result = value !== null && typeof value === 'object';
     return result;
   }
@@ -295,7 +295,7 @@ class Utils1 {
    * @param value - The coordinate value to round
    * @returns Rounded value with 2 decimal places or original value if NaN
    */
-  static RoundCoord2(value) {
+  static RoundCoordExt(value) {
     const roundedValue = Math.round(100 * Number(value)) / 100;
     return isNaN(roundedValue) ? value : roundedValue;
   }
@@ -325,7 +325,7 @@ class Utils1 {
    * @param hyperlink - The hyperlink to format for display
    * @returns Formatted hyperlink string suitable for display
    */
-  static ResolveHyperlinkForDisplay = (hyperlink) => {
+  static ResolveHyperlinkForDisplay(hyperlink) {
     let resolvedLink = hyperlink || '';
     if (resolvedLink.indexOf('\r') >= 0) {
       const parts = resolvedLink.split('\r');
@@ -351,7 +351,7 @@ class Utils1 {
    * @param title - The string to convert
    * @returns String with the first letter of each word capitalized
    */
-  static toTitleCase(title) {
+  static ToTitleCase(title) {
     return title.replace(
       /([^\W_]+[^\s-]*) */g,
       function (word) {
@@ -378,15 +378,6 @@ class Utils1 {
    */
   static StrReplaceAll(find, replace, str) {
     return str.replace(new RegExp(this.StrEscapeRegExp(find), 'g'), replace);
-  }
-
-  /**
-   * Converts an XML node to a string
-   * @param xml - The XML node to serialize
-   * @returns Serialized string representation of the XML
-   */
-  static XML2Str(xml) {
-    return (new XMLSerializer).serializeToString(xml);
   }
 
   /**
@@ -688,7 +679,7 @@ class Utils1 {
    * @param angle2 - Second angle in degrees
    * @returns 0 if equal, 1 if angle1 > angle2, -1 if angle1 < angle2
    */
-  static compareAngle(angle1, angle2) {
+  static CompareAngle(angle1, angle2) {
     let result;
     if (angle1 === angle2) {
       result = 0;
@@ -859,7 +850,7 @@ class Utils1 {
    * @param segment - Segment to check
    * @returns Boolean indicating if segment is empty
    */
-  static isEmptySeg(segment) {
+  static IsEmptySeg(segment) {
     const result = segment.start.x === segment.end.x && segment.start.y === segment.end.y;
     return result;
   }
@@ -870,7 +861,7 @@ class Utils1 {
    * @param flag - Flag to override start check
    * @returns Boolean indicating if at start position
    */
-  static isStart(index, flag) {
+  static IsStart(index, flag) {
     const result = index === 0 && !flag;
     return result;
   }
@@ -882,7 +873,7 @@ class Utils1 {
    * @param flag - Flag to override end check
    * @returns Boolean indicating if at end position
    */
-  static isEnd(index, length, flag) {
+  static IsEnd(index, length, flag) {
     const result = index === length - 1 && !flag;
     return result;
   }
