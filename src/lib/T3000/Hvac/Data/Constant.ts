@@ -94,20 +94,11 @@ export enum Placeholder {
   Terminator = "##"
 }
 
-enum RulerUnits {
-  SED_UNone = 0,
-  SED_Inches = 1,
-  SED_Feet = 2,
-  SED_Mm = 3,
-  SED_Cm = 4,
-  SED_M = 5
-}
-
 enum CommonDefines {
   DefaultRulerMajor = 100,
   MetricConv = 2.54,
 }
 
 export default {
-  Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, RulerUnits, CommonDefines
+  Default, DocumentAreaModel, CreateShapeType, EventBehavior, LayerMoveType, SVGPathSeg, PlaceholderDefaults, Placeholder, CommonDefines
 }

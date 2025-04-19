@@ -126,6 +126,11 @@ class EvtOpt {
       this.BindLibAddNoteEvent();
       this.BindLibAddCommentEvent();
       this.BindLibHyperlinkEvent();
+
+      this.BindSetXEvent();
+      this.BindSetYEvent();
+      this.BindSetWidthEvent();
+      this.BindSetHeightEvent();
     });
   }
 
@@ -946,9 +951,37 @@ class EvtOpt {
     }
   }
 
-  BindVueForeignObjectEvent(){
+  BindVueForeignObjectEvent() {
     $("#btn_try_vue_foreignObject").on("pointerdown", (event) => {
       EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject);
+    });
+  }
+
+  BindSetXEvent() {
+    $("#btn_try_x").on("pointerdown", (event) => {
+      var xVal = "1.5";
+      EvtOpt.toolOpt.SetX(xVal);
+    });
+  }
+
+  BindSetYEvent() {
+    $("#btn_try_y").on("pointerdown", (event) => {
+      var yVal = "2.3";
+      EvtOpt.toolOpt.SetY(yVal);
+    });
+  }
+
+  BindSetWidthEvent() {
+    $("#btn_try_w").on("pointerdown", (event) => {
+      var widthVal = "3.2";
+      EvtOpt.toolOpt.SetWidth(widthVal);
+    });
+  }
+
+  BindSetHeightEvent() {
+    $("#btn_try_h").on("pointerdown", (event) => {
+      var heightVal = "2.5";
+      EvtOpt.toolOpt.SetHeight(heightVal);
     });
   }
 }
