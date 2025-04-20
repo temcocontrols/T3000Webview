@@ -10,7 +10,7 @@
 import { computed, ref, onMounted } from "vue";
 import { Button as AButton } from 'ant-design-vue';
 import { EditOutlined } from '@ant-design/icons-vue';
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
 interface Item {
   title?: string;
