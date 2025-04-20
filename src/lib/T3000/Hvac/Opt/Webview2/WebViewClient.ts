@@ -7,12 +7,13 @@ import MessageType from "../Socket/MessageType"
 import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
 import Utils5 from "../../Util/Utils5"
-import IdxUtils from "../IdxUtils"
+import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
 import {
   T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
 
 } from "../../Data/T3Data"
+import Utils1 from "../../Util/Utils1"
 
 
 class WebViewClient {
@@ -183,7 +184,7 @@ class WebViewClient {
     }
 
     // Add msg id
-    this.message.msgId = Utils5.generateUUID();
+    this.message.msgId = Utils1.GenerateUUID();
 
     const needAppedSerialNumber = panelId != null && serialNumber != null;
     if (needAppedSerialNumber) {
