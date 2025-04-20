@@ -1,24 +1,377 @@
 <template>
   <a-drawer title="Basic Drawer" :maskClosable="false" :mask="false" :placement="placement" :open="objectConfigShow"
     @close="onClose">
-    <p>Some contents...</p>
-    <p>Some contents...</p>
-    <p>Some contents...</p>
+
+    <div class="item-config flex flex-nowrap column" v-if="item">
+      <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>
+      <div class="item-config-inner">
+
+        <div>
+          <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
+            class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
+          <q-btn dark outline no-caps stretch class="text-white w-full link-t3-entry" @click="linkT3Entry">
+            <div v-if="!item.t3Entry">
+              <p>Link with an entry</p>
+            </div>
+            <div v-if="item.t3Entry" style="text-align: left;width: 100%;">
+              <p style="font-size: 13px;">Linked with <q-icon name="dataset_linked" style="font-size: 18px;" /></p>
+              <p>{{ item.t3Entry.description }}</p>
+            </div>
+          </q-btn>
+          <!-- <q-expansion-item v-if="item.t3Entry" class="mt-2 border border-solid border-gray-700" dark default-opened
+          label="Entry settings" > -->
+          <div class="p-1" v-if="item.t3Entry">
+            <q-select v-if="item.t3Entry.auto_manual !== undefined" class="mb-1" filled dark
+              v-model="item.t3Entry.auto_manual" :options="[
+                { label: 'Auto', value: 0 },
+                { label: 'Manual', value: 1 },
+              ]" label="Auto/Manual" emit-value map-options
+              @update:model-value="T3UpdateEntryField('auto_manual', item)" />
+            <!-- Digital range values -->
+            <q-select class="mb-1" v-if="
+              item.t3Entry.range < 101 &&
+              item.t3Entry.digital_analog === 0 &&
+              item.t3Entry.range
+            " :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.control" :options="[
+              {
+                label: getEntryRange(item.t3Entry)?.off,
+                value: 0,
+              },
+              {
+                label: getEntryRange(item.t3Entry)?.on,
+                value: 1,
+              },
+            ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('control', item)" />
+            <!-- MSV range values -->
+            <q-select class="mb-1" v-if="item.t3Entry.range > 100" :disable="item.t3Entry?.auto_manual === 0" filled
+              dark v-model="item.t3Entry.value" :options="rangeOptions" label="Value" emit-value map-options
+              option-label="name" @update:model-value="T3UpdateEntryField('value', item)" />
+            <!-- Program status -->
+            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'PROGRAM'"
+              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.status" :options="[
+                {
+                  label: 'OFF',
+                  value: 0,
+                },
+                {
+                  label: 'ON',
+                  value: 1,
+                },
+              ]" label="Status" emit-value map-options @update:model-value="T3UpdateEntryField('status', item)" />
+            <!-- Schedule output -->
+            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'SCHEDULE'"
+              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.output" :options="[
+                {
+                  label: 'OFF',
+                  value: 0,
+                },
+                {
+                  label: 'ON',
+                  value: 1,
+                },
+              ]" label="Output" emit-value map-options @update:model-value="T3UpdateEntryField('output', item)" />
+            <!-- Holiday value -->
+            <q-select class="mb-1" v-else-if="item.t3Entry.type === 'HOLIDAY'"
+              :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.value" :options="[
+                {
+                  label: 'OFF',
+                  value: 0,
+                },
+                {
+                  label: 'ON',
+                  value: 1,
+                },
+              ]" label="Value" emit-value map-options @update:model-value="T3UpdateEntryField('value', item)" />
+            <!-- Analog range value -->
+            <q-input class="mb-1" v-if="item.t3Entry.range < 101 && item.t3Entry.digital_analog === 1"
+              :disable="item.t3Entry?.auto_manual === 0" filled dark type="number" v-model.number="item.t3Entry.value"
+              label="Value" @update:model-value="T3UpdateEntryField('value', item)" :suffix="unitText" />
+            <!-- Display field -->
+            <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
+              label="Display field" emit-value map-options
+              @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
+
+          </div>
+          <!-- </q-expansion-item> -->
+        </div>
+
+        <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
+          <div class="p-1">
+            <div class="grid gap-4 grid-cols-2 mb-4">
+              <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="X"
+                v-model.number="item.translate[0]" dark filled type="number" />
+              <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Y"
+                v-model.number="item.translate[1]" dark filled type="number" />
+
+              <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Width"
+                v-model.number="item.width" dark filled type="number" />
+              <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Height"
+                v-model.number="item.height" dark filled type="number" />
+              <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Rotate"
+                v-model.number="item.rotate" dark filled type="number" />
+              <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
+                type="number" />
+            </div>
+            <div class="w-full relative mb-2">
+              <q-input dark filled v-model="item.settings.title" label="Title" />
+              <input type="color" class="absolute top-2 right-2" v-model="item.settings.titleColor" />
+            </div>
+            <div class="flex flex-nowrap items-center mb-2">
+              <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
+              <label class="ml-2" for="bg-color-input">
+                {{
+                  settings.bgColor?.label || "Background color"
+                }}
+              </label>
+            </div>
+            <template v-for="(setting, key) in settings" :key="key">
+              <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
+                <div class="flex flex-nowrap justify-center items-center mb-2" v-if="setting.type === 'justifyContent'">
+                  <div class="mx-1">Align</div>
+                  <q-btn-group push>
+                    <q-btn push icon="format_align_left" :color="item.settings[key] === 'flex-start' ? 'grey-9' : null
+                      " text-color="grey-5" @click="item.settings[key] = 'flex-start'" />
+                    <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                      text-color="grey-5" @click="item.settings[key] = 'center'" />
+                    <q-btn push icon="format_align_right" :color="item.settings[key] === 'flex-end' ? 'grey-9' : null"
+                      text-color="grey-5" @click="item.settings[key] = 'flex-end'" />
+                  </q-btn-group>
+                </div>
+                <div class="flex flex-nowrap justify-center items-center mb-2" v-else-if="setting.type === 'textAlign'">
+                  <div class="mx-1">Align</div>
+                  <q-btn-group push>
+                    <q-btn push icon="format_align_left" :color="item.settings[key] === 'left' ? 'grey-9' : null"
+                      text-color="grey-5" @click="item.settings[key] = 'left'" />
+                    <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
+                      text-color="grey-5" @click="item.settings[key] = 'center'" />
+                    <q-btn push icon="format_align_right" :color="item.settings[key] === 'right' ? 'grey-9' : null"
+                      text-color="grey-5" @click="item.settings[key] = 'right'" />
+                  </q-btn-group>
+                </div>
+                <div class="flex flex-nowrap items-center mb-2" v-else-if="setting.type === 'color'">
+                  <input type="color" id="text-color-input" v-model="item.settings[key]" />
+                  <label class="ml-2" for="text-color-input">
+                    {{
+                      setting.label
+                    }}
+                  </label>
+                </div>
+                <div class="w-full relative mb-2" v-else-if="setting.type === 'text'">
+                  <q-input autogrow autofocus dark filled v-model="item.settings[key]" :label="setting.label" />
+                </div>
+                <div class="w-full relative mb-2" v-else-if="setting.type === 'number'">
+                  <q-input class="mb-1" filled dark type="number" v-model.number="item.settings[key]"
+                    :label="setting.label" @update:model-value="updatePropsValue(key)" />
+                </div>
+                <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
+                  <q-select filled dark v-model="item.settings[key]" :options="icons" :label="setting.label" emit-value
+                    map-options>
+                    <template v-slot:prepend>
+                      <q-icon :name="item.settings[key] || 'block'" />
+                    </template>
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps">
+                        <q-item-section avatar class="pr-1 min-w-0">
+                          <q-icon :name="scope.opt.value || 'block'" />
+                        </q-item-section>
+                        <q-item-section class="grow">
+                          <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+                <div class="w-full mb-2" v-else-if="setting.type === 'iconSwitch'">
+                  <q-select filled dark v-model="item.settings[key]" :options="switchIcons" :label="setting.label"
+                    emit-value map-options>
+                    <template v-slot:prepend>
+                      <q-icon :name="getSwitchIcon(item.settings[key])" />
+                    </template>
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps">
+                        <q-item-section avatar class="pr-1 min-w-0">
+                          <q-icon :name="scope.opt.icon.off || 'block'" />
+                        </q-item-section>
+                        <q-item-section class="grow">
+                          <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+                <q-checkbox v-else-if="setting.type === 'boolean'" dark filled v-model="item.settings[key]"
+                  class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
+                    ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
+                      (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
+                    (item.t3Entry && item.t3Entry.decom !== undefined)
+                    ">
+                  <q-tooltip v-if="key === 'active' && item.t3Entry?.auto_manual === 0" anchor="center left"
+                    self="center end">
+                    Manual changes are not possible as the linked entry is set to
+                    auto mode.
+                  </q-tooltip>
+                </q-checkbox>
+              </template>
+            </template>
+          </div>
+        </q-expansion-item>
+
+      </div>
+    </div>
   </a-drawer>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, onUpdated, ref } from 'vue';
+import { onMounted, onBeforeUnmount, onUpdated, ref, computed } from 'vue';
 import { Drawer as ADrawer, Radio as ARadio, RadioGroup as ARadioGroup, Button as AButton } from 'ant-design-vue';
 import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
 import { objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { isEqual, cloneDeep } from 'lodash';
+import { tools, switchIcons } from "src/lib/common";
+import T3000 from 'src/lib/T3000/T3000';
+import IdxUtils from 'src/lib/T3000/Hvac/Opt/Common/IdxUtils';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
 const placement = ref<PlacementType>('right');
 
-console.log('ObjectConfigNew props', objectConfigShow.value);
+const emit = defineEmits([
+  "refreshMoveable",
+  "T3UpdateEntryField",
+  "linkT3Entry",
+  "gaugeSettings",
+  "mounted",
+  "noChange",
+  "update:object",
+  "DisplayFieldValueChanged"
+]);
 
+// Define interfaces for type safety
+interface ItemSettings {
+  fontSize: number;
+  // title: string;
+  titleColor: string;
+  bgColor: string;
+  fillColor: string;
+  justifyContent: string;
+  // textAlign: string;
+  textColor: string;
+  t3EntryDisplayField: string;
+  label?: string;
+  [key: string]: any; // For additional dynamic settings
+}
+
+interface Item {
+  type: string;
+  translate: [number, number];
+  width: number;
+  height: number;
+  rotate: number;
+  settings: ItemSettings;
+  t3Entry?: any; // Optional t3Entry property
+  [key: string]: any; // For additional dynamic properties
+}
+
+interface ObjectConfigProps {
+  initialItem?: Item;
+  object: any;
+}
+
+const props = defineProps<ObjectConfigProps>();
+
+// Default values test only, should use values from props
+const defaultItem: Item = {
+  active: false,
+  cat: "General",
+  group: {},
+  height: 60,
+  id: 1,
+  rotate: 0,
+  scaleX: 1,
+  scaleY: 1,
+  settings: {
+    bgColor: "inherit",
+    fillColor: "#659dc5",
+    fontSize: 16,
+    textColor: "inherit",
+    titleColor: "inherit",
+    t3EntryDisplayField: "none",
+    justifyContent: ''
+  },
+  showDimensions: true,
+  t3Entry: null,
+  title: null,
+  translate: [217, 49],
+  type: "G_Circle",
+  width: 60,
+  zindex: 1
+};
+
+// Initialize with defaults if needed
+if (!props.initialItem) {
+  // Note: In the actual use, the setup() would handle defaulting
+  // This is just to show the default structure
+}
+
+// Object data
+let initialObject = ref(cloneDeep(props.object));
+
+// Computed properties
+const item = computed({
+  get() {
+    return initialObject.value;
+  },
+  set(newValue) {
+    if (isEqual(newValue, initialObject.value)) return;
+    initialObject.value = newValue;
+    emit("update:object", newValue);
+  }
+});
+
+const settings = computed(() => {
+  return tools.find((i) => i.name === item.value.type)?.settings || {};
+});
+
+const rangeOptions = computed(() => {
+  const items = IdxUtils.getEntryRange(item.value.t3Entry)?.options?.filter(
+    (i) => i.status === 1
+  );
+  const ranges = cloneDeep(items);
+  return ranges?.map((ii) => {
+    ii.value = ii.value;
+    return ii;
+  });
+});
+
+const unitText = computed(() => {
+  return ` ${IdxUtils.getUnitText(item.value.t3Entry)}`;
+});
+
+const t3EntryDisplayFieldOptions = computed(() => {
+  const options = [
+    { label: "None", value: "none" },
+    { label: "ID", value: "id" },
+  ];
+
+  if (item.value.t3Entry?.label !== undefined) {
+    options.push({ label: "Label", value: "label" });
+  }
+
+  if (item.value.t3Entry?.description !== undefined) {
+    options.push({ label: "Description", value: "description" });
+  }
+
+  if (item.value.t3Entry?.value !== undefined) {
+    options.push({
+      label: "Value",
+      value: item.value.t3Entry?.digital_analog === 1 ? "value" : "control",
+    });
+  }
+
+  return options;
+});
+
+// Functions
 const showDrawer = (): void => {
   objectConfigShow.value = true;
 };
@@ -27,11 +380,56 @@ const onClose = (): void => {
   objectConfigShow.value = false;
 };
 
+function refreshMoveable() {
+  if (item.value.type === "Int_Ext_Wall") {
+    item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
+  }
+  emit("refreshMoveable");
+}
+
+function T3UpdateEntryField(key, obj) {
+  emit("T3UpdateEntryField", key, obj);
+}
+
+function linkT3Entry() {
+  emit("linkT3Entry");
+}
+
+function gaugeSettings(obj) {
+  emit("gaugeSettings", obj);
+}
+
+function getSwitchIcon(name) {
+  const iconItem = switchIcons.find((item) => item.value === name);
+  return iconItem?.icon?.off ? iconItem.icon.off : "block";
+}
+
+function updatePropsValue(key) {
+  if (item.value.type === "Int_Ext_Wall") {
+    item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
+    emit("refreshMoveable");
+  }
+}
+
+function DisplayFieldValueChanged(value) {
+  emit("DisplayFieldValueChanged", value);
+}
+
+function getEntryRange(entry) {
+  return IdxUtils.getEntryRange(entry);
+}
+
+// Lifecycle hooks
 onMounted(() => {
+  initialObject.value = cloneDeep(props.object);
   T3Util.Log("= V.OCN", "ObjectConfigNew mounted");
+  emit("mounted");
 });
 
 onBeforeUnmount(() => {
+  if (isEqual(props.object, initialObject.value)) {
+    emit("noChange");
+  }
   T3Util.Log("= V.OCN", "ObjectConfigNew is about to unmount");
 });
 
