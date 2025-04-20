@@ -464,11 +464,11 @@ export default defineComponent({
       const hasNoData = dvList.value.length === 0 || graphicList.value.length === 0;
       if (hasNoData) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
-        Hvac.T3Utils.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
+        Hvac.QuasarUtil.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
         console.log('= Dvi onMounted 3 dvList:', dvList);
       }
       else {
-        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
+        Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");
       }
     });
 
@@ -484,7 +484,7 @@ export default defineComponent({
 
     watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
       if (newDvList.length > 0 && newGraphicList.length > 0) {
-        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
+        Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");
       }
     }, { deep: true });
 

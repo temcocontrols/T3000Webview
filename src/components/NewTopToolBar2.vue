@@ -175,7 +175,7 @@
           <q-tab name="device" no-caps
             :label="`Device (${deviceModel.data.device === undefined ? '-' : deviceModel.data.device})`"
             @click="navigateTo('/')" />
-          <q-tab name="newui" no-caps label="New UI" >
+          <q-tab name="newui" no-caps label="New UI">
           </q-tab>
           <!-- <q-tab name="edit" label="Edit" />
           <q-tab name="object" label="Object" /> -->
@@ -227,67 +227,67 @@
               <button id="btn_try_Text">Text</button>
 
               &nbsp;
-              <button id="btn_try_ArrR">Arr Right</button>
+              <button id="btn_try_ArrR">Arr R</button>
 
               &nbsp;
-              <button id="btn_try_ArrL">Arr Left</button>
+              <button id="btn_try_ArrL">Arr L</button>
 
               &nbsp;
-              <button id="btn_try_ArrT">Arr Top</button>
+              <button id="btn_try_ArrT">Arr T</button>
 
               &nbsp;
-              <button id="btn_try_ArrB">Arr Bottom</button>
+              <button id="btn_try_ArrB">Arr B</button>
 
               &nbsp;
-              <button id="btn_try_Roate45">Roate 45</button>
+              <button id="btn_try_Roate45">R 45</button>
 
               &nbsp;
-              <button id="btn_try_Roate90">Roate 90</button>
+              <button id="btn_try_Roate90">R 90</button>
 
               &nbsp;
-              <button id="btn_try_Align_lefts">Align lefts</button>
+              <button id="btn_try_Align_lefts">Align L</button>
 
               &nbsp;
-              <button id="btn_try_Align_centers">Align centers</button>
+              <button id="btn_try_Align_centers">Align C</button>
 
               &nbsp;
-              <button id="btn_try_Align_rights">Align rights</button>
+              <button id="btn_try_Align_rights">Align R</button>
 
               &nbsp;
-              <button id="btn_try_Align_tops">Align tops</button>
+              <button id="btn_try_Align_tops">Align T</button>
 
               &nbsp;
-              <button id="btn_try_Align_middles">Align middles</button>
+              <button id="btn_try_Align_middles">Align M</button>
 
               &nbsp;
-              <button id="btn_try_Align_bottoms">Align bottoms</button>
+              <button id="btn_try_Align_bottoms">Align B</button>
 
               &nbsp;
               <button id="btn_try_Group">Group</button>
 
               &nbsp;
-              <button id="btn_try_UnGroup">Ungroup</button>
+              <button id="btn_try_UnGroup">Un-group</button>
 
               &nbsp;
-              <button id="btn_try_Flip_Horizontal">Flip Horizontal</button>
+              <button id="btn_try_Flip_Horizontal">Flip H</button>
 
               &nbsp;
-              <button id="btn_try_Flip_Vertical">Flip Vertical</button>
+              <button id="btn_try_Flip_Vertical">Flip V</button>
 
               &nbsp;
-              <button id="btn_try_Same_Height">Same Height</button>
+              <button id="btn_try_Same_Height">Same H</button>
 
               &nbsp;
-              <button id="btn_try_Same_Width">Same Width</button>
+              <button id="btn_try_Same_Width">Same W</button>
 
               &nbsp;
-              <button id="btn_try_Same_Both">Same Both</button>
+              <button id="btn_try_Same_Both">Same B</button>
 
               &nbsp;
-              <button id="btn_try_BringToFront">Bring To Front</button>
+              <button id="btn_try_BringToFront">B To Front</button>
 
               &nbsp;
-              <button id="btn_try_SendToBack">Send To Back</button>
+              <button id="btn_try_SendToBack">S To Back</button>
 
               &nbsp;
               <button id="btn_try_Paste">Paste</button>
@@ -317,13 +317,13 @@
               <button id="btn_try_Clear">Clear</button>
 
               &nbsp;
-              <button id="btn_try_Lib_SetBackgroundColor">Background Color</button>
+              <button id="btn_try_Lib_SetBackgroundColor">Bk Color</button>
 
               &nbsp;
               <button id="btn_try_Lib_SetBackgroundImage">Image</button>
 
               &nbsp;
-              <button id="btn_try_vue_foreignObject">Vue Component</button>
+              <button id="btn_try_vue_foreignObject">Vue Cpt</button>
 
               &nbsp;
               <button id="btn_try_x">X</button>
@@ -337,118 +337,11 @@
               &nbsp;
               <button id="btn_try_h">H</button>
 
-              <!-- &nbsp;
-              <button id="btn_try_Measure">Measure</button>
-
-              &nbsp;
-              <button id="btn_try_AreaMeasure">AreaMeasure</button> -->
-
-              <!-- <br />
-              &nbsp;
-              <button id="btn_try_Lib_Select">Select</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Box">Box</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Text">Text</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Icon">Icon</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_SwitchIcon">Switch Icon</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Led">Led</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_RoomHumidity">Room Humidity</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_RoomTemperature">Room Temperature</button> -->
-
-              <!--
-              &nbsp;
-              <button id="btn_try_Lib_Temperature">Temperature</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Boiler">Boiler</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_HeatPump">Heat Pump</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Pump">Pump</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_ValueThreeWay">Value Three-Way</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_ValueTwoWay">Value Two-Way</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Duct">Duct</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Fan">Fan</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_CoolingCoil">Cooling Coil</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_HeatingCoil">Heating Coil</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Filter">Filter</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Humidifier">Humidifier</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Humidity">Humidity</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Pressure">Pressure</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Damper">Damper</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Temperature2">Temperature 2</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_ThermalWheel">Thermal Wheel</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Enthalpy">Enthalpy</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Flow">Flow</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Guage">Guage</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Dial">Dial</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_Value">Value</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_IconWithTitle">Icon with Title</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_SetBackgroundColor">Background Color</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_SetBackgroundImage">Background Image</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_ImportSVGSymbol">Import SVG Symbol</button>
-
               &nbsp;
               <button id="btn_try_Lib_Lock">Lock</button>
+
+              &nbsp;
+              <button id="btn_try_Lib_UnLock">Un-Lock</button>
 
               &nbsp;
               <button id="btn_try_Lib_AddNote">Add Note</button>
@@ -457,7 +350,7 @@
               <button id="btn_try_Lib_AddComment">Add Comment</button>
 
               &nbsp;
-              <button id="btn_try_Lib_Hyperlink">Hyperlink</button> -->
+              <button id="btn_try_Lib_Hyperlink">Hyperlink</button>
             </div>
           </q-tab-panel>
         </q-tab-panels>

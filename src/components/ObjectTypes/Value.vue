@@ -13,7 +13,7 @@
 <script>
 import { defineComponent, computed } from "vue";
 // import { getEntryRange } from "src/lib/common";
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
 export default defineComponent({
   name: "ValueEl",
