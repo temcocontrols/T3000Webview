@@ -767,14 +767,14 @@ import NewTopToolBar from "src/components/NewTopToolBar.vue";
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
-import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
+import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
 
 // const isBuiltInEdge = ref(false);
 
@@ -1550,7 +1550,7 @@ function onSelectoSelectEnd(e) {
   IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
-    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
   }, 100);
 }
 
@@ -1613,7 +1613,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000.Hvac.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+  T3000.Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();
@@ -2408,8 +2408,8 @@ keycon.keydown(["ctrl", "b"], (e) => {
 
 // Insert function
 keycon.keydown(["insert"], (e) => {
-  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
-  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
+  T3000.Hvac.KiOpt.InsertT3EntryDialog();
   // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
@@ -3832,8 +3832,8 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000.Hvac.App.ClearItemsWithZeroWidth(appState);
-    T3000.Hvac.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    T3000.Hvac.PageMain.ClearItemsWithZeroWidth(appState);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 

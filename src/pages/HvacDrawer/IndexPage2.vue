@@ -206,7 +206,7 @@
   <q-page>
 
     <div id="_crossTabClipboardDiv"
-         style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
+      style="position: absolute; z-index: 10000; left: 0px; top: 0px; width: 0px; height: 0px; overflow: hidden;">
       <div id="_IEclipboardDiv" contenteditable="true"></div>
       <input id="_clipboardInput" type="text" value=" ">
     </div>
@@ -215,17 +215,17 @@
     <div id="main-app">
       <div id="main-panel" class="main-panel">
         <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
-                        :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
-                        :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
-                        :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
-                        :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
+          :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
+          :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
+          :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
+          :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
         </NewTopToolBar2>
         <div class="main-area">
           <div id="left-panel" class="left-panel">
             <ToolsSidebar2 v-if="!locked" :selected-tool="selectedTool" :images="library.images"
-                           :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
-                           @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
-                           @tool-dropped="toolDropped" />
+              :object-lib="library.objLib" @select-tool="selectTool" @delete-lib-item="deleteLibItem"
+              @rename-lib-item="renameLibItem" @delete-lib-image="deleteLibImage" @save-lib-image="saveLibImage"
+              @tool-dropped="toolDropped" />
           </div>
 
           <div id="work-area" class="main-panel">
@@ -377,8 +377,11 @@
 
     <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged"> 
+      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged">
     </ObjectConfig2>
+
+
+    <!-- <ObjectConfigNew></ObjectConfigNew> -->
 
   </q-page>
 
@@ -545,7 +548,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar2 from "../../components/ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import ObjectConfig2 from "../../components/ObjectConfig2.vue";
+import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
@@ -566,14 +569,14 @@ import NewTopToolBar2 from "src/components/NewTopToolBar2.vue";
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
-import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
+import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
 
 // const isBuiltInEdge = ref(false);
 
@@ -608,6 +611,7 @@ const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: f
 //const contextMenuShow = ref(false); // State of the context menu visibility
 
 import { contextMenuShow, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 
 // // Panel options for selection
@@ -1339,7 +1343,7 @@ function onSelectoSelectEnd(e) {
   IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
-    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
   }, 100);
 }
 
@@ -1402,7 +1406,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000.Hvac.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+  T3000.Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();
@@ -2200,8 +2204,8 @@ keycon.keydown(["ctrl", "b"], (e) => {
 
 // Insert function
 keycon.keydown(["insert"], (e) => {
-  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
-  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
+  T3000.Hvac.KiOpt.InsertT3EntryDialog();
   // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
@@ -3551,7 +3555,7 @@ function toolDropped(ev, tool) {
   //   tool
   // );
 
-  console.log("toolDropped->tool", ev,tool);
+  console.log("toolDropped->tool", ev, tool);
 }
 
 const updateWeldModel = (weldModel, itemList) => {
@@ -3626,8 +3630,8 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000.Hvac.App.ClearItemsWithZeroWidth(appState);
-    T3000.Hvac.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    T3000.Hvac.PageMain.ClearItemsWithZeroWidth(appState);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 
