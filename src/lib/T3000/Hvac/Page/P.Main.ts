@@ -1,28 +1,27 @@
-import HvacModels from "../Data/Constant/T3Constant";
-import Utils1 from '../Util/Utils1';
 import { cloneDeep } from "lodash";
-import UI from "../Doc/T3Opt";
+import T3Util from "../Util/T3Util";
+import HvConstant from "../Data/Constant/HvConstant";
 
-class App {
+class PageMain {
 
   ResetLeftPanel = (isLocked) => {
     // Hide or show the left panel based on the isLocked flag
-    const leftPanel = document.getElementById(HvacModels.DocumentAreaModel.LEFT_PANEL_ID);
-    const newWidth = isLocked ? 0 : HvacModels.DocumentAreaModel.LEFT_PANEL_WIDTH;
+    const leftPanel = document.getElementById(HvConstant.DocumentAreaModel.LEFT_PANEL_ID);
+    const newWidth = isLocked ? 0 : HvConstant.DocumentAreaModel.LEFT_PANEL_WIDTH;
 
     leftPanel.setAttribute("style", `width: ${newWidth}px`);
 
     // Expand the document area to fill the space
-    const workArea = document.getElementById(HvacModels.DocumentAreaModel.WORK_AREA_ID);
-    const newPaddingLeft = isLocked ? 0 : HvacModels.DocumentAreaModel.WORK_AREA_PADDING_LEFT;
+    const workArea = document.getElementById(HvConstant.DocumentAreaModel.WORK_AREA_ID);
+    const newPaddingLeft = isLocked ? 0 : HvConstant.DocumentAreaModel.WORK_AREA_PADDING_LEFT;
     workArea.setAttribute("style", `padding-left: ${newPaddingLeft}px`);
 
-    Utils1.Log("ResetLeftPanel=>", `isLocked=${isLocked}`, `newWidth=${newWidth}`, `newPaddingLeft=${newPaddingLeft}`);
-  };
+    T3Util.Log("ResetLeftPanel=>", `isLocked=${isLocked}`, `newWidth=${newWidth}`, `newPaddingLeft=${newPaddingLeft}`);
+  }
 
   ResetZoom = () => {
-    Utils1.Log("ResetZoom=>");
-  };
+    T3Util.Log("ResetZoom=>");
+  }
 
   UpdateExteriorWallStroke = (appState, itemIndex, resizedHeight) => {
     if (!appState) {
@@ -31,9 +30,7 @@ class App {
 
     const newStrokeWidth = this.GetExteriorWallStrokeWidth(resizedHeight);
     appState.value.items[itemIndex].settings.strokeWidth = newStrokeWidth;
-
-    // HvacLog("UpdateExteriorWallStroke=>", `newStrokeWidth=${newStrokeWidth}`);
-  };
+  }
 
   // Reset the height base on stroke width for exterior wall, to make the selecto outer box cover the stroke width
   GetExteriorWallHeight = (newStrokeWidth) => {
@@ -42,7 +39,7 @@ class App {
     const defaultStrokeWidth = 19.5;
     const ratio = defaultHeight / defaultStrokeWidth;
     return newStrokeWidth * ratio;
-  };
+  }
 
   GetExteriorWallStrokeWidth = (newHeight) => {
     // Default height and stroke width are 10, 19.5
@@ -50,7 +47,7 @@ class App {
     const defaultStrokeWidth = 19.5;
     const ratio = defaultStrokeWidth / defaultHeight;
     return newHeight * ratio;
-  };
+  }
 
   // Clear appState items with width === 0
   ClearItemsWithZeroWidth = (appState) => {
@@ -67,7 +64,7 @@ class App {
     if (appState.value.activeItemIndex != null) {
       appState.value.activeItemIndex = appState.value.items.length - 1;
     }
-  };
+  }
 
   // Hide exterior wall guide line
   SetWallDimensionsVisible = (type, isDrawing, appState, isShow) => {
@@ -98,21 +95,7 @@ class App {
         });
       }
     }
-  };
-
-  /*
-  // Document onwheel event handler
-  WorkAreaMouseWheel = (e) => {
-    Utils.Log("WorkAreaMouseWheel=>", e);
-    Utils.UtilsTest(1, 2);
-    new UI().LM_WorkAreaMouseWheel(e);
-  };
-
-  // Bottom toolbar silder event handler
-  BottomSliderbarEvent = (type, value) => {
-    Utils.Log("BottomSliderbarEvent=>", type, value);
-  };
-  */
+  }
 
   GetPreviousItem = (appState) => {
 
@@ -149,7 +132,7 @@ class App {
         previousItem.joinWall = [cloneDeep(currentItem)];
       }
     }
-  };
+  }
 
   // Auto Join the wall
   AutoJoinWall = (appState, mouseX, mouseY, rotate, width) => {
@@ -166,10 +149,8 @@ class App {
         item.rotate = rotate;
         item.width = width;
       });
-    };
+    }
   }
-
-
 }
 
-export default App;
+export default PageMain

@@ -88,14 +88,26 @@ class UIUtil {
         // Helper function to format number values for display (assuming it's defined elsewhere)
         const formatValue = (value) => value ? value : "";
 
-        console.log('Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
+        T3Util.Log('= U.UIUtil Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
+        T3Util.LogDev('= U.UIUtil Formatted Values: Origin x,y,w,h', true, xLength, yLength, width, height);
+        T3Util.LogDev('= U.UIUtil Formatted Values: Dimension x,y,w,h', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
 
         const xVal = formatStringWithPadding(formatNumberToString(xLength, useFeet));
         const yVal = formatStringWithPadding(formatNumberToString(yLength, useFeet));
         const wVal = formatStringWithPadding(formatNumberToString(width, useFeet));
         const hVal = formatStringWithPadding(formatNumberToString(height, useFeet));
 
-        console.log('Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
+        T3Util.Log('= U.UIUtil Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
+        T3Util.LogDev('= U.UIUtil Formatted Values: After x,y,w,h', true, xVal, yVal, wVal, hVal);
+
+        var initialObject = {
+          translate: [dimensions.x, dimensions.y],
+          width: dimensions.width,
+          height: dimensions.height,
+          settings:{}
+        };
+
+        QuasarUtil.SetCurrentObject(initialObject);
       }
 
       // Constrain position to document bounds
