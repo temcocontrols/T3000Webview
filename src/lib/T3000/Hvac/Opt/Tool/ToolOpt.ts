@@ -321,32 +321,6 @@ class ToolOpt {
   }
 
   /**
-   * Adds a measurement line to the canvas
-   * @param event - The DOM event that triggered the action
-   * @returns void
-   */
-  MeasureDistanceAct(event) {
-    T3Util.Log('O.ToolOpt.MeasureDistanceAct - Input:', { event });
-
-    T3Gv.wallOpt.AddMeasureLine();
-
-    T3Util.Log('O.ToolOpt.MeasureDistanceAct - Output: Added measurement line');
-  }
-
-  /**
-   * Adds a measurement area to the canvas
-   * @param event - The DOM event that triggered the action
-   * @returns void
-   */
-  MeasureAreaAct(event) {
-    T3Util.Log('O.ToolOpt.MeasureAreaAct - Input:', { event });
-
-    T3Gv.wallOpt.AddMeasureArea();
-
-    T3Util.Log('O.ToolOpt.MeasureAreaAct - Output: Added measurement area');
-  }
-
-  /**
    * Pre-loads a symbol for use
    * @param event - The DOM event that triggered the action
    * @returns void
@@ -465,6 +439,24 @@ class ToolOpt {
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
       T3Util.Log('O.ToolOpt.LibLockAct - Error:', error);
+    }
+  }
+
+  LibUnlockAct(isRightClick) {
+    T3Util.Log('O.ToolOpt.LibUnlockAct - Input:', { isRightClick });
+    try {
+      // Determine the target to unlock based on whether this is a right-click action
+      const targetId = isRightClick
+        ? T3Gv.opt.rClickParam?.targetId
+        : SelectUtil.GetTargetSelect();
+      // Close any open edits first
+      T3Gv.opt.CloseEdit(true);
+      // Unlock the target object
+      T3Gv.opt.Lock(targetId, false);
+      T3Util.Log('O.ToolOpt.LibUnlockAct - Output: Unlocked object with ID', targetId);
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+      T3Util.Log('O.ToolOpt.LibUnlockAct - Error:', error);
     }
   }
 
@@ -626,6 +618,15 @@ class ToolOpt {
     try {
       T3Gv.opt.CloseEdit();
       T3Gv.opt.ChangeHeight(heightVal);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
+
+  SetShapeBackgroundColor(color: string) {
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.SetShapeBackgroundColor(color);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

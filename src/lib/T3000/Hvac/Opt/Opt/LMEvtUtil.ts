@@ -82,7 +82,7 @@ class LMEvtUtil {
           false
         );
       } else if (T3Gv.opt.linkParams && (T3Gv.opt.linkParams.ConnectIndex >= 0 || T3Gv.opt.linkParams.InitialHook >= 0)) {
-         
+
         if (!flowHookResult) {
           if (T3Gv.opt.linkParams.ConnectHookFlag === NvConstant.HookFlags.LcAutoInsert) {
             this.SD_AutoInsertShape(T3Gv.opt.actionStoredObjectId, T3Gv.opt.linkParams.ConnectIndex);
@@ -621,6 +621,7 @@ class LMEvtUtil {
     );
 
     T3Util.Log("O.Opt LMMoveTrack - Output: Objects moved to", adjustedCoordinates);
+    T3Util.LogDev("O.Opt LMMoveTrack - Output: Objects moved to", true, adjustedCoordinates);
   }
 
   /**

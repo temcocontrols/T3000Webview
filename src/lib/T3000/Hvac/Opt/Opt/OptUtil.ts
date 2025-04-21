@@ -7189,6 +7189,70 @@ class OptUtil {
     // Divide by conversion factor to get coordinates
     return unitValue / conversionFactor;
   }
+
+  /**
+   * Sets the background color for shapes in the document
+   * This function updates the document's background color settings, handling transparency
+   * and making necessary adjustments to ensure proper display. It also manages collaboration
+   * messaging to synchronize changes across multiple users.
+   *
+   * The function:
+   * 1. Closes any active edits
+   * 2. Gets the current background color from session data
+   * 3. Adjusts color values for transparency handling
+   * 4. Updates background paint properties
+   * 5. Sends collaboration messages if enabled
+   *
+   * @param colorValue - The color value to set as background
+   */
+  SetShapeBackgroundColor(colorValue) {
+    try {
+      let sessionData;
+
+      // Close any active edits and prepare for collaboration if enabled
+      T3Gv.opt.CloseEdit(true, true);
+
+      // if (SDJS.Collab.AllowMessage()) {
+      //   SDJS.Collab.BeginSecondaryEdit();
+      // }
+
+      // Get session data and original background color
+      sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      let originalColor = sessionData.background.Paint.Color;
+
+      // If current fill is transparent, use white as the original color
+      if (sessionData.background.Paint.FillType === NvConstant.FillTypes.Transparent) {
+        originalColor = NvConstant.Colors.White;
+      }
+
+      // Handle transparent color special case
+      let adjustedColor = colorValue;
+      if (colorValue === NvConstant.Colors.Trans) {
+        adjustedColor = NvConstant.Colors.White;
+      }
+
+      // Update background text color
+      UIUtil.ChangeBackgroundTextColor(adjustedColor, originalColor);
+
+      // Set appropriate fill type based on color value
+      if (colorValue === NvConstant.Colors.Trans) {
+        sessionData.background.Paint.FillType = NvConstant.FillTypes.Transparent;
+        sessionData.background.Paint.Color = NvConstant.Colors.White;
+      } else {
+        sessionData.background.Paint.FillType = NvConstant.FillTypes.Solid;
+        sessionData.background.Paint.Color = colorValue;
+      }
+
+      // Set opacity and update background color
+      sessionData.background.Paint.Opacity = 1;
+      UIUtil.SetBackgroundColor();
+
+      // Complete the operation
+      DrawUtil.CompleteOperation();
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+    }
+  }
 }
 
 export default OptUtil

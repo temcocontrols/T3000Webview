@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, onUpdated, ref, computed } from 'vue';
+import { onMounted, onBeforeUnmount, onUpdated, ref, computed, watch } from 'vue';
 import { Drawer as ADrawer, Radio as ARadio, RadioGroup as ARadioGroup, Button as AButton } from 'ant-design-vue';
 import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
 import { objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
@@ -234,6 +234,10 @@ import { isEqual, cloneDeep } from 'lodash';
 import { tools, switchIcons } from "src/lib/common";
 import T3000 from 'src/lib/T3000/T3000';
 import IdxUtils from 'src/lib/T3000/Hvac/Opt/Common/IdxUtils';
+import RulerUtil from 'src/lib/T3000/Hvac/Opt/UI/RulerUtil';
+import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
+import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
+import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -279,72 +283,29 @@ interface Item {
 interface ObjectConfigProps {
   initialItem?: Item;
   object: any;
+  current: any;
 }
 
 const props = defineProps<ObjectConfigProps>();
 
-// Default values test only, should use values from props
-const defaultItem: Item = {
-  active: false,
-  cat: "General",
-  group: {},
-  height: 60,
-  id: 1,
-  rotate: 0,
-  scaleX: 1,
-  scaleY: 1,
-  settings: {
-    bgColor: "inherit",
-    fillColor: "#659dc5",
-    fontSize: 16,
-    textColor: "inherit",
-    titleColor: "inherit",
-    t3EntryDisplayField: "none",
-    justifyContent: ''
-  },
-  showDimensions: true,
-  t3Entry: null,
-  title: null,
-  translate: [217, 49],
-  type: "G_Circle",
-  width: 60,
-  zindex: 1
-};
-
-// Initialize with defaults if needed
-if (!props.initialItem) {
-  // Note: In the actual use, the setup() would handle defaulting
-  // This is just to show the default structure
-}
-
 // Object data
-let initialObject = ref<Item>(cloneDeep(props.object || defaultItem));
+let initialObject = ref<Item>(cloneDeep(props.current/*||  defaultItem*/));
 
-// Watch for changes to the object prop
-import { watch } from 'vue';
-import ToolUtil from 'src/lib/T3000/Hvac/Opt/Tool/ToolUtil';
-import ToolOpt from 'src/lib/T3000/Hvac/Opt/Tool/ToolOpt';
-import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
-watch(() => props.object, (newObject) => {
-  if (newObject && !isEqual(newObject, initialObject.value)) {
-    initialObject.value = cloneDeep(newObject);
-  }
-}, { deep: true });
+console.log("fffff", initialObject);
 
 // Computed properties
 const item = computed({
   get() {
-    return initialObject.value;
+    // return initialObject.value;
+    return props.current;
   },
   set(newValue) {
-    if (isEqual(newValue, initialObject.value)) return;
-    initialObject.value = newValue;
+    const oldValue = props.current;
+    if (newValue === oldValue) return;
     emit("update:object", newValue);
-  }
+  },
 });
-
-console.log("= V.OCN", "item", item.value);
-
+console.log("aaaaa", item.value);
 const settings = computed(() => {
   return tools.find((i) => i.name === item.value.type)?.settings || {};
 });
@@ -406,10 +367,24 @@ function RefreshSelectedItem() {
   if (item.value.type === "Int_Ext_Wall") {
     item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
   }
-  emit("RefreshSelectedItem");
+  // emit("RefreshSelectedItem");
 
-  var xVal = "1.5";
-  EvtOpt.toolOpt.SetX(xVal);
+  var posX = item.value.translate[0];
+  var posY = item.value.translate[1];
+  var posWidth = item.value.width;
+  var posHeight = item.value.height;
+
+  const xLength = RulerUtil.GetLengthInRulerUnits(posX, false, T3Gv.docUtil.rulerConfig.originx, 0);
+  const yLength = RulerUtil.GetLengthInRulerUnits(posY, false, T3Gv.docUtil.rulerConfig.originy, 0);
+  const width = RulerUtil.GetLengthInRulerUnits(posWidth, false, null, 0);
+  const height = RulerUtil.GetLengthInRulerUnits(posHeight, false, null, 0);
+
+  T3Util.LogDev("= V.OCN Update item position", true, `xVal=${xLength}`, `yVal=${yLength}`, `wVal=${width}`, `hVal=${height}`);
+
+  EvtOpt.toolOpt.SetX(xLength.toString());
+  EvtOpt.toolOpt.SetY(yLength.toString());
+  EvtOpt.toolOpt.SetWidth(width.toString());
+  EvtOpt.toolOpt.SetHeight(height.toString());
 }
 
 function T3UpdateEntryField(key, obj) {
@@ -446,8 +421,16 @@ function getEntryRange(entry) {
 
 // Lifecycle hooks
 onMounted(() => {
-  // initialObject.value = cloneDeep(props.object);
-  T3Util.Log("= V.OCN", "ObjectConfigNew mounted");
+  T3Util.LogDev("= V.OCN", true, "ObjectConfigNew mounted", props.current);
+
+  // var selectedItem = DrawUtil.GetSelectObjectCoords();
+  // console.log("= V.OCN", "GetSelectObjectCoords=item", selectedItem);
+
+  // initialObject.value.translate[0] = selectedItem.x;
+  // initialObject.value.translate[1] = selectedItem.y;
+  // initialObject.value.width = selectedItem.width;
+  // initialObject.value.height = selectedItem.height;
+
   emit("mounted");
 });
 
@@ -461,6 +444,30 @@ onBeforeUnmount(() => {
 onUpdated(() => {
   T3Util.Log("= V.OCN", "ObjectConfigNew updated");
 });
+
+// Watch for changes in props.currentObject to update position and dimensions
+watch(
+  () => props.current,
+  (newObject, oldObject) => {
+    if (newObject && !isEqual(newObject, oldObject)) {
+      if (newObject.translate && !isEqual(newObject.translate, initialObject.value.translate)) {
+        initialObject.value.translate[0] = newObject.translate[0];
+        initialObject.value.translate[1] = newObject.translate[1];
+      }
+      if (newObject.width !== undefined && newObject.width !== initialObject.value.width) {
+        initialObject.value.width = newObject.width;
+      }
+      if (newObject.height !== undefined && newObject.height !== initialObject.value.height) {
+        initialObject.value.height = newObject.height;
+      }
+      if (newObject.rotate !== undefined && newObject.rotate !== initialObject.value.rotate) {
+        initialObject.value.rotate = newObject.rotate;
+      }
+    }
+  },
+  { deep: true }
+);
+
 </script>
 
 <style scoped>

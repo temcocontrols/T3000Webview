@@ -2074,7 +2074,6 @@ class DrawUtil {
     }
   }
 
-
   static ResetAutoScrollTimer() {
     T3Util.Log('O.Opt ResetAutoScrollTimer - Input:');
 
@@ -2203,7 +2202,6 @@ class DrawUtil {
     }
   }
 
-
   static CompleteOperation(
     selectionObjects?: any,
     preserveUndoState?: boolean,
@@ -2254,6 +2252,22 @@ class DrawUtil {
     const result = T3Gv.docUtil.docConfig.snapToShapes;
     T3Util.Log("O.Opt AllowSnapToShapes - Output:", result);
     return result;
+  }
+
+  static GetSelectObjectCoords() {
+    let targetSelectionId = SelectUtil.GetTargetSelect();
+    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+    let displayDimensions = {
+      x: 0,//+ T3Gv.opt.dragDeltaX,
+      y: 0,// + T3Gv.opt.dragDeltaY,
+      width: 0,
+      height: 0
+    };
+    displayDimensions = targetObject.GetDimensionsForDisplay();
+    // displayDimensions.x += T3Gv.opt.dragDeltaX;
+    // displayDimensions.y += T3Gv.opt.dragDeltaY;
+
+    return {x: displayDimensions.x, y: displayDimensions.y,width: displayDimensions.width, height: displayDimensions.height};
   }
 
 }

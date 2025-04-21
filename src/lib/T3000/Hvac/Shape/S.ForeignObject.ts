@@ -154,7 +154,7 @@ class ForeignObject extends BaseShape {
             let possiblePath = `../../../../components/${componentName}.vue`;
 
             if (componentName === 'AntdTest') {
-              possiblePath = `../../../../components/Basic/${componentName}.vue`;
+              possiblePath = `../../../../components/NewUI/${componentName}.vue`;
             }
 
             import(/* @vite-ignore */ possiblePath)
