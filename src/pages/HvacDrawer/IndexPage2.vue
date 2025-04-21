@@ -375,13 +375,13 @@
       @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" >
     </ObjectConfig> -->
 
-    <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
+    <!-- <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
       @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
       @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged">
-    </ObjectConfig2>
+    </ObjectConfig2> -->
 
 
-    <!-- <ObjectConfigNew></ObjectConfigNew> -->
+    <ObjectConfigNew v-if="objectConfigShow"></ObjectConfigNew>
 
   </q-page>
 
