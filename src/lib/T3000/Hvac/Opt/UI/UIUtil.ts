@@ -107,7 +107,7 @@ class UIUtil {
           settings:{}
         };
 
-        QuasarUtil.SetCurrentObject(initialObject);
+       QuasarUtil.SetCurrentObject(initialObject);
       }
 
       // Constrain position to document bounds

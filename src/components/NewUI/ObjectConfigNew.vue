@@ -374,6 +374,8 @@ function RefreshSelectedItem() {
   var posWidth = item.value.width;
   var posHeight = item.value.height;
 
+  T3Util.LogDev("= V.OCN Update item posXposYposWidthposHeight", true, `xVal=${posX}`, `yVal=${posY}`, `wVal=${posWidth}`, `hVal=${posHeight}`);
+
   const xLength = RulerUtil.GetLengthInRulerUnits(posX, false, T3Gv.docUtil.rulerConfig.originx, 0);
   const yLength = RulerUtil.GetLengthInRulerUnits(posY, false, T3Gv.docUtil.rulerConfig.originy, 0);
   const width = RulerUtil.GetLengthInRulerUnits(posWidth, false, null, 0);
@@ -446,27 +448,27 @@ onUpdated(() => {
 });
 
 // Watch for changes in props.currentObject to update position and dimensions
-watch(
-  () => props.current,
-  (newObject, oldObject) => {
-    if (newObject && !isEqual(newObject, oldObject)) {
-      if (newObject.translate && !isEqual(newObject.translate, initialObject.value.translate)) {
-        initialObject.value.translate[0] = newObject.translate[0];
-        initialObject.value.translate[1] = newObject.translate[1];
-      }
-      if (newObject.width !== undefined && newObject.width !== initialObject.value.width) {
-        initialObject.value.width = newObject.width;
-      }
-      if (newObject.height !== undefined && newObject.height !== initialObject.value.height) {
-        initialObject.value.height = newObject.height;
-      }
-      if (newObject.rotate !== undefined && newObject.rotate !== initialObject.value.rotate) {
-        initialObject.value.rotate = newObject.rotate;
-      }
-    }
-  },
-  { deep: true }
-);
+// watch(
+//   () => props.current,
+//   (newObject, oldObject) => {
+//     if (newObject && !isEqual(newObject, oldObject)) {
+//       if (newObject.translate && !isEqual(newObject.translate, initialObject.value.translate)) {
+//         initialObject.value.translate[0] = newObject.translate[0];
+//         initialObject.value.translate[1] = newObject.translate[1];
+//       }
+//       if (newObject.width !== undefined && newObject.width !== initialObject.value.width) {
+//         initialObject.value.width = newObject.width;
+//       }
+//       if (newObject.height !== undefined && newObject.height !== initialObject.value.height) {
+//         initialObject.value.height = newObject.height;
+//       }
+//       if (newObject.rotate !== undefined && newObject.rotate !== initialObject.value.rotate) {
+//         initialObject.value.rotate = newObject.rotate;
+//       }
+//     }
+//   },
+//   { deep: true }
+// );
 
 </script>
 
