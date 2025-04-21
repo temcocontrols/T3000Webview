@@ -135,7 +135,7 @@ class DeviceOpt {
       return 0;
     }
 
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS) {
       const device = deviceAppStateLS.find(
@@ -160,7 +160,7 @@ class DeviceOpt {
     if (!tempAppState || !currentDevice) return;
 
     const parsedTempAppState = JSON.parse(tempAppState);
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS() || [];
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS() || [];
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
@@ -234,7 +234,7 @@ class DeviceOpt {
     }
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -262,7 +262,7 @@ class DeviceOpt {
     }
 
     // localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
-    Hvac.LSUtils.saveDeviceAppState(deviceAppState.value);
+    Hvac.LsOpt.saveDeviceAppState(deviceAppState.value);
 
     // load the element count
     this.refreshCurrentDeviceCount(deviceModel);
@@ -271,7 +271,7 @@ class DeviceOpt {
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -295,7 +295,7 @@ class DeviceOpt {
   refreshCurrentDeviceCount(deviceModel) {
 
     // current device's element count
-    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
     const currentDevice = this.getCurrentDevice();
 
     if (appStateLs) {
@@ -317,7 +317,7 @@ class DeviceOpt {
   // Refresh the graphic panel element count
   refreshGraphicPanelElementCount(currentDevice) {
 
-    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
     if (!appStateLs) return;
 
     /*
@@ -468,7 +468,7 @@ class DeviceOpt {
     this.saveAppState(appState.value);
 
     // set the ls deviceAppState related value
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (!deviceAppStateLS) return;
 

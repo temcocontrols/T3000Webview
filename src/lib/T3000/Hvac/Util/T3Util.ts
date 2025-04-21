@@ -20,6 +20,17 @@ class T3Util {
       }
     }
   }
+
+  //@param forcePrint - If true, forces the message to be logged regardless of environment
+  static LogDev(message: any, forcePrint: boolean, ...additionalParams: any[]): void {
+    if (forcePrint || HvConstant.Default.Environment.toLowerCase() !== "dev") {
+      if (additionalParams == null || additionalParams.length === 0) {
+        console.log.apply(console, [message]);
+      } else {
+        console.log.apply(console, [message].concat(additionalParams));
+      }
+    }
+  }
 }
 
 export default T3Util

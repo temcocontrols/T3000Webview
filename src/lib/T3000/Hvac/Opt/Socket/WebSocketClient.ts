@@ -5,8 +5,9 @@ import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
 import Utils5 from '../../Util/Utils5'
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
-import IdxUtils from '../IdxUtils'
-import T3Utils from "../../Util/T3Utils"
+import IdxUtils from '../Common/IdxUtils'
+import QuasarUtil from "../../Opt/Quasar/QuasarUtil"
+import Utils1 from "../../Util/Utils1"
 
 class WebSocketClient {
 
@@ -65,7 +66,7 @@ class WebSocketClient {
     console.error('= Ws error:', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
-    Hvac.T3Utils.ShowWebSocketError(errorMsg);
+    Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
 
     this.attemptReconnect();
   }
@@ -97,18 +98,7 @@ class WebSocketClient {
 
   public bindCurrentClient() {
 
-    /*
-    // get clientId from local storage
-    let lsClientId = localStorage.getItem('clientId');
-
-    if (lsClientId == undefined || lsClientId === null || lsClientId === "") {
-      lsClientId = this.GenerateUUID();
-
-      localStorage.setItem('clientId', lsClientId);
-    }
-    */
-
-    const clientId = Utils5.generateUUID();
+    const clientId = Utils1.GenerateUUID();
     this.messageModel = new MessageModel();
     this.messageModel.setHeader();
     this.messageModel.setMessage(13, null, null, null, null, clientId);
@@ -597,7 +587,7 @@ class WebSocketClient {
     }, 100);
 
     this.clearInitialDataInterval();
-    Hvac.T3Utils.clearGlobalMsg("get_initial_data");
+    Hvac.QuasarUtil.clearGlobalMsg("get_initial_data");
   }
 
   public HandleSaveGraphicRes(msgData) {
@@ -762,7 +752,7 @@ class WebSocketClient {
     }
     else {
       if (errorMsg !== "") {
-        Hvac.T3Utils.ShowWebSocketError(errorMsg);
+        Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
       }
     }
   }
@@ -781,11 +771,11 @@ class WebSocketClient {
     console.log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
-      Hvac.T3Utils.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
+      Hvac.QuasarUtil.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
     }
 
     if (rspAction == MessageType.GET_INITIAL_DATA_RES) {
-      Hvac.T3Utils.ShowGET_INITIAL_DATA_RESSuccess();
+      Hvac.QuasarUtil.ShowGET_INITIAL_DATA_RESSuccess();
     }
   }
 
@@ -797,18 +787,18 @@ class WebSocketClient {
 
     if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
       const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
-      Hvac.T3Utils.ShowWebSocketError(errorMsg);
+      Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
 
       this.GetPanelsList();
     }
 
     if (action == MessageType.GET_INITIAL_DATA_RES) {
       const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
-      Hvac.T3Utils.ShowWebSocketError(errorMsg);
+      Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
       this.reloadInitialData();
 
       // add global error message for blocking auto save
-      Hvac.T3Utils.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
+      Hvac.QuasarUtil.setGlobalMsg("error", errorMsg, false, "get_initial_data", null);
     }
   }
 

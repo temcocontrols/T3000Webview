@@ -1310,7 +1310,7 @@ class Utils2 {
       innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
       innerRect.y >= outerRect.y &&
       innerRect.y + innerRect.height <= outerRect.y + outerRect.height;
-    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Output:", isEnclosed);
+    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Output:", false, isEnclosed);
     return isEnclosed;
   }
 }

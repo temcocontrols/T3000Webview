@@ -2,6 +2,7 @@
 import { head } from "lodash";
 import DeviceOpt from "./DeviceOpt"
 import Utils5 from "../../Util/Utils5"
+import Utils1 from "../../Util/Utils1";
 
 /*
 class Header {
@@ -125,11 +126,11 @@ class MessageModel {
     }
 
     if (clientId != null && clientId !== undefined) {
-      this.message.clientId = Utils5.generateUUID();
+      this.message.clientId = Utils1.GenerateUUID();
     }
 
     // Add msg id
-    this.message.msgId = Utils5.generateUUID();
+    this.message.msgId = Utils1.GenerateUUID();
 
     const needAppedSerialNumber = panelId != null && serialNumber != null;
     if (needAppedSerialNumber) {
