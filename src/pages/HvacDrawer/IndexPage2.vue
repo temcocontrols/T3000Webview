@@ -381,7 +381,7 @@
     </ObjectConfig2> -->
 
 
-    <ObjectConfigNew v-if="objectConfigShow"></ObjectConfigNew>
+    <ObjectConfigNew v-if="objectConfigShow" :current="currentObject"></ObjectConfigNew>
 
   </q-page>
 
@@ -571,12 +571,16 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
+import { contextMenuShow, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
+
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
+import { currentObject } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 // const isBuiltInEdge = ref(false);
 
@@ -609,9 +613,6 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
 // const savedNotify = ref(false); // Notification state for saving
 //const contextMenuShow = ref(false); // State of the context menu visibility
-
-import { contextMenuShow, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
-import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 
 // // Panel options for selection
