@@ -84,10 +84,6 @@ class EvtOpt {
       this.BindDuplicateEvent();
       this.BindClearEvent();
 
-      // Measurement tools
-      this.BindMeasureEvent();
-      this.BindAreaMeasureEvent();
-
       this.BindLibSelectEvent();
       this.BindLibBoxEvent();
       this.BindLibTextEvent();
@@ -123,6 +119,7 @@ class EvtOpt {
       this.BindLibSetBackgroundImageEvent();
       this.BindLibImportSVGSymbolEvent();
       this.BindLibLockEvent();
+      this.BindLibUnLockEvent();
       this.BindLibAddNoteEvent();
       this.BindLibAddCommentEvent();
       this.BindLibHyperlinkEvent();
@@ -557,28 +554,6 @@ class EvtOpt {
     });
   }
 
-  // Measurement tools
-
-  /**
-   * Binds the click event handler to the measure distance tool.
-   * When clicked, allows measuring distance between points.
-   */
-  BindMeasureEvent() {
-    $("#btn_try_Measure").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.MeasureDistanceAct(event);
-    });
-  }
-
-  /**
-   * Binds the click event handler to the measure area tool.
-   * When clicked, allows measuring the area of a region.
-   */
-  BindAreaMeasureEvent() {
-    $("#btn_try_AreaMeasure").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.MeasureAreaAct(event);
-    });
-  }
-
   BindLibSelectEvent() {
     $("#btn_try_Lib_Select").on("pointerdown", (event) => {
       EvtOpt.toolOpt.SelectAct(event);
@@ -793,6 +768,12 @@ class EvtOpt {
   BindLibLockEvent() {
     $("#btn_try_Lib_Lock").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibLockAct(event);
+    });
+  }
+
+  BindLibUnLockEvent() {
+    $("#btn_try_Lib_UnLock").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibUnlockAct(event);
     });
   }
 
