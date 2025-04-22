@@ -381,11 +381,12 @@
     </ObjectConfig2> -->
 
 
-    <ObjectConfigNew v-if="objectConfigShow" :current="currentObject"></ObjectConfigNew>
+    <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
+    </ObjectConfigNew>
 
   </q-page>
 
-  <q-dialog v-model="linkT3EntryDialog.active">
+  <q-dialog v-model="linkT3EntryDialogV2.active">
     <q-card style="min-width: 650px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
@@ -403,7 +404,7 @@
             </q-tooltip>
           </q-btn>
           <q-select :option-label="entryLabel" option-value="id" filled use-input hide-selected fill-input
-            input-debounce="0" v-model="linkT3EntryDialog.data" :options="selectPanelOptions"
+            input-debounce="0" v-model="linkT3EntryDialogV2.data" :options="selectPanelOptions"
             @filter="selectPanelFilterFn" label="Select Entry" class="grow">
             <template v-slot:option="scope">
               <q-item v-bind="scope.itemProps">
@@ -437,7 +438,7 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!linkT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
+        <q-btn flat label="Save" :disable="!linkT3EntryDialogV2.data" color="primary" @click="linkT3EntrySaveV2" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -576,11 +577,13 @@ import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
-  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
+  documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
 import { currentObject } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
 // const isBuiltInEdge = ref(false);
 
@@ -1489,34 +1492,34 @@ function onRotateGroup(e) {
   });
 }
 
-// Adds a new object to the app state and updates guidelines
-function addObject(item, group = undefined, addToHistory = true) {
-  if (addToHistory) {
-    addActionToHistory(`Add ${item.type}`);
-  }
-  appState.value.itemsCount++;
-  item.id = appState.value.itemsCount;
-  item.group = group;
-  if (!item.settings.titleColor) {
-    item.settings.titleColor = "inherit";
-  }
-  if (!item.settings.bgColor) {
-    item.settings.bgColor = "inherit";
-  }
-  if (!item.settings.textColor) {
-    item.settings.textColor = "inherit";
-  }
-  if (!item.settings.fontSize) {
-    item.settings.fontSize = 16;
-  }
-  appState.value.items.push(item);
-  const lines = document.querySelectorAll(".moveable-item");
-  appState.value.elementGuidelines = [];
-  Array.from(lines).forEach(function (el) {
-    appState.value.elementGuidelines.push(el);
-  });
-  return item;
-}
+// // Adds a new object to the app state and updates guidelines
+// function addObject(item, group = undefined, addToHistory = true) {
+//   if (addToHistory) {
+//     addActionToHistory(`Add ${item.type}`);
+//   }
+//   appState.value.itemsCount++;
+//   item.id = appState.value.itemsCount;
+//   item.group = group;
+//   if (!item.settings.titleColor) {
+//     item.settings.titleColor = "inherit";
+//   }
+//   if (!item.settings.bgColor) {
+//     item.settings.bgColor = "inherit";
+//   }
+//   if (!item.settings.textColor) {
+//     item.settings.textColor = "inherit";
+//   }
+//   if (!item.settings.fontSize) {
+//     item.settings.fontSize = 16;
+//   }
+//   appState.value.items.push(item);
+//   const lines = document.querySelectorAll(".moveable-item");
+//   appState.value.elementGuidelines = [];
+//   Array.from(lines).forEach(function (el) {
+//     appState.value.elementGuidelines.push(el);
+//   });
+//   return item;
+// }
 
 // const viewportMargins = {
 //   // top: 36,93
@@ -1579,116 +1582,116 @@ function addLibItem(items, size, pos) {
 }
 
 // Ends a selecto drag event and handles object drawing based on tool type
-function onSelectoDragEnd(e) {
-  // T3000Util.HvacLog('2 onSelectoDragEnd', e);
+// function onSelectoDragEnd(e) {
+//   // T3000Util.HvacLog('2 onSelectoDragEnd', e);
 
-  const size = { width: e.rect.width, height: e.rect.height };
-  const pos = {
-    clientX: e.clientX,
-    clientY: e.clientY,
-    top: e.rect.top,
-    left: e.rect.left,
-  };
-  if (
-    (selectedTool.value.name === "Pointer" ||
-      size.width < 20 ||
-      size.height < 20) &&
-    !continuesObjectTypes.includes(selectedTool.value.name)
-  ) {
-    isDrawing.value = false;
-    return;
-  }
-  if (
-    continuesObjectTypes.includes(selectedTool.value.name) &&
-    size.height < 20
-  ) {
-    size.height = selectedTool.value.height;
-  }
+//   const size = { width: e.rect.width, height: e.rect.height };
+//   const pos = {
+//     clientX: e.clientX,
+//     clientY: e.clientY,
+//     top: e.rect.top,
+//     left: e.rect.left,
+//   };
+//   if (
+//     (selectedTool.value.name === "Pointer" ||
+//       size.width < 20 ||
+//       size.height < 20) &&
+//     !continuesObjectTypes.includes(selectedTool.value.name)
+//   ) {
+//     isDrawing.value = false;
+//     return;
+//   }
+//   if (
+//     continuesObjectTypes.includes(selectedTool.value.name) &&
+//     size.height < 20
+//   ) {
+//     size.height = selectedTool.value.height;
+//   }
 
-  const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item.type)) {
-    setTimeout(() => {
-      isDrawing.value = true;
-      appState.value.selectedTargets = [];
-      appState.value.items[appState.value.activeItemIndex].rotate = 0;
-      startTransform.value = cloneDeep(item.translate);
-    }, 100);
-  }
-}
+//   const item = drawObject(size, pos);
+//   if (item && continuesObjectTypes.includes(item.type)) {
+//     setTimeout(() => {
+//       isDrawing.value = true;
+//       appState.value.selectedTargets = [];
+//       appState.value.items[appState.value.activeItemIndex].rotate = 0;
+//       startTransform.value = cloneDeep(item.translate);
+//     }, 100);
+//   }
+// }
 
-// Draws an object based on the provided size, position, and tool settings
-function drawObject(size, pos, tool) {
-  tool = tool || selectedTool.value;
+// // Draws an object based on the provided size, position, and tool settings
+// function drawObject(size, pos, tool) {
+//   tool = tool || selectedTool.value;
 
-  if (tool.type === "libItem") {
-    addLibItem(tool.items, size, pos);
-    return;
-  }
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
+//   if (tool.type === "libItem") {
+//     addLibItem(tool.items, size, pos);
+//     return;
+//   }
+//   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
-  const toolSettings =
-    cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
-  const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
-    acc[key] = toolSettings[key].value;
-    return acc;
-  }, {});
+//   const toolSettings =
+//     cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
+//   const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+//     acc[key] = toolSettings[key].value;
+//     return acc;
+//   }, {});
 
-  if (tool.name === "G_Rectangle") {
-    size.width = 100;
-  }
+//   if (tool.name === "G_Rectangle") {
+//     size.width = 100;
+//   }
 
-  const tempItem = {
-    title: null,
-    active: false,
-    type: tool.name,
-    translate: [
-      (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      scalPercentage,
-      (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      scalPercentage,
-    ],
-    width: size.width * scalPercentage,
-    height: size.height * scalPercentage,
-    rotate: 0,
-    scaleX: 1,
-    scaleY: 1,
-    settings: objectSettings,
-    zindex: 1,
-    t3Entry: null,
-    showDimensions: true
-  };
+//   const tempItem = {
+//     title: null,
+//     active: false,
+//     type: tool.name,
+//     translate: [
+//       (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+//       scalPercentage,
+//       (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+//       scalPercentage,
+//     ],
+//     width: size.width * scalPercentage,
+//     height: size.height * scalPercentage,
+//     rotate: 0,
+//     scaleX: 1,
+//     scaleY: 1,
+//     settings: objectSettings,
+//     zindex: 1,
+//     t3Entry: null,
+//     showDimensions: true
+//   };
 
-  if (tool.type === "Image") {
-    tempItem.image = tool;
-    tempItem.type = tool.id;
-  }
+//   if (tool.type === "Image") {
+//     tempItem.image = tool;
+//     tempItem.type = tool.id;
+//   }
 
-  // copy the first category from tool.cat to item.cat
-  if (tool.cat) {
-    const [first] = tool.cat;
-    tempItem.cat = first;
-  }
+//   // copy the first category from tool.cat to item.cat
+//   if (tool.cat) {
+//     const [first] = tool.cat;
+//     tempItem.cat = first;
+//   }
 
-  const item = addObject(tempItem);
+//   const item = addObject(tempItem);
 
-  if (["Value", "Icon", "Switch"].includes(tool.name)) {
-    linkT3EntryDialog.value.active = true;
-  }
+//   if (["Value", "Icon", "Switch"].includes(tool.name)) {
+//     linkT3EntryDialog.value.active = true;
+//   }
 
-  setTimeout(() => {
-    if (locked.value) return;
-    appState.value.activeItemIndex = appState.value.items.findIndex(
-      (i) => i.id === item.id
-    );
-  }, 10);
-  setTimeout(() => {
-    if (locked.value) return;
-    const target = document.querySelector(`#moveable-item-${item.id}`);
-    appState.value.selectedTargets = [target];
-    selecto.value.setSelectedTargets([target]);
-  }, 100);
-  return item;
-}
+//   setTimeout(() => {
+//     if (locked.value) return;
+//     appState.value.activeItemIndex = appState.value.items.findIndex(
+//       (i) => i.id === item.id
+//     );
+//   }, 10);
+//   setTimeout(() => {
+//     if (locked.value) return;
+//     const target = document.querySelector(`#moveable-item-${item.id}`);
+//     appState.value.selectedTargets = [target];
+//     selecto.value.setSelectedTargets([target]);
+//   }, 100);
+//   return item;
+// }
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
@@ -1848,45 +1851,47 @@ function selectoDragCondition(e) {
 }
 
 // Save the linked T3 entry for an object and update its icon if necessary
-function linkT3EntrySave() {
-  console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
-  // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
-  addActionToHistory("Link object to T3000 entry");
+function linkT3EntrySaveV2() {
 
-  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
-    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
-    } else {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
-    }
-  }
+  QuasarUtil.LinkT3EntrySaveV2();
+  // console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
+  // // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
+  // addActionToHistory("Link object to T3000 entry");
 
-  // set the default to be divided by 1000
-  const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
-  if (checkHasValue) {
-    linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
-  }
+  // if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
+  //   if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
+  //     appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+  //   } else {
+  //     appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+  //   }
+  // }
 
-  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
+  // // set the default to be divided by 1000
+  // const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+  // if (checkHasValue) {
+  //   linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
+  // }
 
-  // Change the icon based on the linked entry type
-  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
-    let icon = "fa-solid fa-camera-retro";
-    if (linkT3EntryDialog.value.data.type === "GRP") {
-      icon = "fa-solid fa-camera-retro";
-    } else if (linkT3EntryDialog.value.data.type === "SCHEDULE") {
-      icon = "schedule";
-    } else if (linkT3EntryDialog.value.data.type === "PROGRAM") {
-      icon = "fa-solid fa-laptop-code";
-    } else if (linkT3EntryDialog.value.data.type === "HOLIDAY") {
-      icon = "calendar_month";
-    }
-    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
-  }
+  // appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
 
-  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
-  linkT3EntryDialog.value.data = null;
-  linkT3EntryDialog.value.active = false;
+  // // Change the icon based on the linked entry type
+  // if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+  //   let icon = "fa-solid fa-camera-retro";
+  //   if (linkT3EntryDialog.value.data.type === "GRP") {
+  //     icon = "fa-solid fa-camera-retro";
+  //   } else if (linkT3EntryDialog.value.data.type === "SCHEDULE") {
+  //     icon = "schedule";
+  //   } else if (linkT3EntryDialog.value.data.type === "PROGRAM") {
+  //     icon = "fa-solid fa-laptop-code";
+  //   } else if (linkT3EntryDialog.value.data.type === "HOLIDAY") {
+  //     icon = "calendar_month";
+  //   }
+  //   appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+  // }
+
+  // IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+  // linkT3EntryDialog.value.data = null;
+  // linkT3EntryDialog.value.active = false;
 }
 
 // Filter function for selecting panels in the UI
@@ -2211,11 +2216,13 @@ keycon.keydown(["insert"], (e) => {
 });
 
 // Open the dialog to link a T3 entry
-function linkT3EntryDialogAction() {
-  console.log('= Idx linkT3EntryDialogAction appState:', appState.value);
-  linkT3EntryDialog.value.active = true;
-  if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
-  linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
+function linkT3EntryDialogActionV2() {
+  // T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "open linkT3EntryDialog");
+  // linkT3EntryDialog.value.active = true;
+  // if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
+  // linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
+
+  QuasarUtil.LinkT3EntryDialogActionV2();
 }
 
 // Delete selected objects from the app state
@@ -2865,7 +2872,7 @@ function handleMenuAction(action, val) {
       pasteFromClipboard();
       break;
     case "link":
-      linkT3EntryDialogAction();
+      linkT3EntryDialogActionV2();
       break;
     case "convertObjectType":
       convertObjectType(item, val);

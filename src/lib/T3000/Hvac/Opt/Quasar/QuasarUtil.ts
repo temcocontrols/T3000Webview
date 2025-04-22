@@ -1,9 +1,13 @@
 
 
+import { cloneDeep } from "lodash";
 import { contextMenuShow, currentObject, objectConfigShow } from "../../Data/Constant/RefConstant";
-import { globalMsg, localSettings } from "../../Data/T3Data";
+import { AllTool, appStateV2, globalMsg, linkT3EntryDialog, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
+import T3Util from "../../Util/T3Util";
+import IdxUtils from "../Common/IdxUtils";
+import { toRaw } from "vue";
 
 class QuasarUtil {
 
@@ -177,6 +181,218 @@ class QuasarUtil {
 
     this.SetCurrentObject(defaultItem);
   }
+
+
+
+
+  static LinkT3EntryDialogActionV2() {
+    T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "open linkT3EntryDialog V2");
+    linkT3EntryDialogV2.value.active = true;
+    if (!appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry) return;
+    linkT3EntryDialogV2.value.data = cloneDeep(appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry);
+  }
+
+  static LinkT3EntrySaveV2() {
+    console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
+    // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
+    // addActionToHistory("Link object to T3000 entry");
+
+    if (!appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField) {
+      if (appStateV2.value.items[appStateV2.value.activeItemIndex].label === undefined) {
+        appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+      } else {
+        appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+      }
+    }
+
+    // set the default to be divided by 1000
+    const checkHasValue = linkT3EntryDialogV2.value.data.value !== undefined && linkT3EntryDialogV2.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+    if (checkHasValue) {
+      linkT3EntryDialogV2.value.data.value = linkT3EntryDialogV2.value.data.value / 1000;
+    }
+
+    appStateV2.value.items[appStateV2.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialogV2.value.data));
+
+    // Change the icon based on the linked entry type
+    if (appStateV2.value.items[appStateV2.value.activeItemIndex].type === "Icon") {
+      let icon = "fa-solid fa-camera-retro";
+      if (linkT3EntryDialogV2.value.data.type === "GRP") {
+        icon = "fa-solid fa-camera-retro";
+      } else if (linkT3EntryDialogV2.value.data.type === "SCHEDULE") {
+        icon = "schedule";
+      } else if (linkT3EntryDialogV2.value.data.type === "PROGRAM") {
+        icon = "fa-solid fa-laptop-code";
+      } else if (linkT3EntryDialogV2.value.data.type === "HOLIDAY") {
+        icon = "calendar_month";
+      }
+      appStateV2.value.items[appStateV2.value.activeItemIndex].settings.icon = icon;
+    }
+
+    IdxUtils.refreshObjectStatus(appStateV2.value.items[appStateV2.value.activeItemIndex]);
+    linkT3EntryDialogV2.value.data = null;
+    linkT3EntryDialogV2.value.active = false;
+  }
+
+
+  //onSelectoDragEnd
+  static AddAppStateItemV2(frame: any) {
+    // const size = { width: e.rect.width, height: e.rect.height };
+    const size = { width: frame.width, height: frame.height };
+
+    // const pos = {
+    //   clientX: e.clientX,
+    //   clientY: e.clientY,
+    //   top: e.rect.top,
+    //   left: e.rect.left,
+    // };
+
+    const pos = {
+      clientX: frame.clientX,
+      clientY: frame.clientY,
+      top: frame.clientX,
+      left: frame.clientY,
+    }
+
+    // if (
+    //   (selectedTool.value.name === "Pointer" ||
+    //     size.width < 20 ||
+    //     size.height < 20) &&
+    //   !continuesObjectTypes.includes(selectedTool.value.name)
+    // ) {
+    //   isDrawing.value = false;
+    //   return;
+    // }
+    // if (
+    //   continuesObjectTypes.includes(selectedTool.value.name) &&
+    //   size.height < 20
+    // ) {
+    //   size.height = selectedTool.value.height;
+    // }
+
+    const tool = AllTool.find((item) => item.name === 'Pump');
+
+    const item = this.drawObject(size, pos, tool);
+    // if (item && continuesObjectTypes.includes(item.type)) {
+    //   setTimeout(() => {
+    //     isDrawing.value = true;
+    //     appState.value.selectedTargets = [];
+    //     appState.value.items[appState.value.activeItemIndex].rotate = 0;
+    //     startTransform.value = cloneDeep(item.translate);
+    //   }, 100);
+    // }
+  }
+
+
+  // new draw logic
+  static drawObject(size, pos, tool) {
+    // tool = tool || selectedTool.value;
+
+    // if (tool.type === "libItem") {
+    //   addLibItem(tool.items, size, pos);
+    //   return;
+    // }
+    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
+
+    const toolSettings =
+      cloneDeep(AllTool.find((t) => t.name === tool.name)?.settings) || {};
+    const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+      acc[key] = toolSettings[key].value;
+      return acc;
+    }, {});
+
+    if (tool.name === "G_Rectangle") {
+      size.width = 100;
+    }
+
+    const tempItem = {
+      title: null,
+      active: false,
+      type: tool.name,
+      // translate: [
+      //   (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+      //   scalPercentage,
+      //   (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+      //   scalPercentage,
+      // ],
+
+      translate: [
+        pos.clientX, pos.clientY
+      ],
+
+
+
+      width: size.width * scalPercentage,
+      height: size.height * scalPercentage,
+      rotate: 0,
+      scaleX: 1,
+      scaleY: 1,
+      settings: objectSettings,
+      zindex: 1,
+      t3Entry: null,
+      showDimensions: true
+    };
+
+    // if (tool.type === "Image") {
+    //   tempItem.image = tool;
+    //   tempItem.type = tool.id;
+    // }
+
+    // copy the first category from tool.cat to item.cat
+    // if (tool.cat) {
+    //   const [first] = tool.cat;
+    //   tempItem.cat = first;
+    // }
+
+    const item = this.addObject(tempItem);
+
+    if (["Value", "Icon", "Switch"].includes(tool.name)) {
+      linkT3EntryDialogV2.value.active = true;
+    }
+
+    // setTimeout(() => {
+    //   if (locked.value) return;
+    //   appState.value.activeItemIndex = appState.value.items.findIndex(
+    //     (i) => i.id === item.id
+    //   );
+    // }, 10);
+    // setTimeout(() => {
+    //   if (locked.value) return;
+    //   const target = document.querySelector(`#moveable-item-${item.id}`);
+    //   appState.value.selectedTargets = [target];
+    //   selecto.value.setSelectedTargets([target]);
+    // }, 100);
+    return item;
+  }
+
+  // Adds a new object to the app state and updates guidelines
+  static addObject(item, group = undefined, addToHistory = true) {
+    // if (addToHistory) {
+    //   addActionToHistory(`Add ${item.type}`);
+    // }
+    appStateV2.value.itemsCount++;
+    item.id = appStateV2.value.itemsCount;
+    item.group = group;
+    if (!item.settings.titleColor) {
+      item.settings.titleColor = "inherit";
+    }
+    if (!item.settings.bgColor) {
+      item.settings.bgColor = "inherit";
+    }
+    if (!item.settings.textColor) {
+      item.settings.textColor = "inherit";
+    }
+    if (!item.settings.fontSize) {
+      item.settings.fontSize = 16;
+    }
+    appStateV2.value.items.push(item);
+    const lines = document.querySelectorAll(".moveable-item");
+    appStateV2.value.elementGuidelines = [];
+    Array.from(lines).forEach(function (el) {
+      appStateV2.value.elementGuidelines.push(el);
+    });
+    return item;
+  }
+
 }
 
 export default QuasarUtil

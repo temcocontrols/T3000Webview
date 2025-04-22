@@ -395,6 +395,7 @@ function T3UpdateEntryField(key, obj) {
 }
 
 function linkT3Entry() {
+  T3Util.LogDev("LINKE-T3-ENTRY",true);
   emit("linkT3Entry");
 }
 

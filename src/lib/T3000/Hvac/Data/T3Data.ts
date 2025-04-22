@@ -566,6 +566,9 @@ export const emptyLib = {
 
 export const appState = ref(cloneDeep(emptyProject));
 
+// app state v2 for new ui
+export const appStateV2 = ref(cloneDeep(emptyProject));
+
 export const deviceAppState = ref([]);
 
 export const deviceModel = ref({ active: false, data: {} });
@@ -630,6 +633,7 @@ export const grpNav = ref([]); // Navigation history for grouped elements
 // Panel options for selection
 export const selectPanelOptions = ref(T3000_Data.value.panelsData);
 export const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+export const linkT3EntryDialogV2 = ref({ active: false, data: null }); // State of the link T3 entry dialog 2
 export const savedNotify = ref(false); // Notification state for saving
 export const undoHistory = ref([]); // History for undo actions
 export const redoHistory = ref([]); // History for redo actions
