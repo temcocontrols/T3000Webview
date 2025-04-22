@@ -190,7 +190,7 @@ class EvtOpt {
    */
   BindRectEvent() {
     $("#btn_try_Rect").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "Rect");
     });
   }
 
@@ -200,7 +200,7 @@ class EvtOpt {
    */
   BindOvalEvent() {
     $("#btn_try_Oval").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4, "Oval");
     });
   }
 
@@ -210,7 +210,7 @@ class EvtOpt {
    */
   BindImageEvent() {
     $("#btn_try_Image").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 1);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 1, "Image");
     });
   }
 
@@ -220,7 +220,7 @@ class EvtOpt {
    */
   BindCircleEvent() {
     $("#btn_try_Circ").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9, "Circle");
     });
   }
 
@@ -230,7 +230,7 @@ class EvtOpt {
    */
   BindTextEvent() {
     $("#btn_try_Text").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel');
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel', "Text");
     });
   }
 
@@ -242,7 +242,7 @@ class EvtOpt {
    */
   BindArrREvent() {
     $("#btn_try_ArrR").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10, "ArrR");
     });
   }
 
@@ -252,7 +252,7 @@ class EvtOpt {
    */
   BindArrLEvent() {
     $("#btn_try_ArrL").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11, "ArrL");
     });
   }
 
@@ -262,7 +262,7 @@ class EvtOpt {
    */
   BindArrTEvent() {
     $("#btn_try_ArrT").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12, "ArrT");
     });
   }
 
@@ -272,7 +272,7 @@ class EvtOpt {
    */
   BindArrBEvent() {
     $("#btn_try_ArrB").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13, "ArrB");
     });
   }
 
@@ -896,19 +896,19 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "G_Circle") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9, "G_Circle");
     }
 
     if (selectedTool.value.name == "G_Rectangle") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "G_Rectangle");
     }
 
     if (selectedTool.value.name == "g_arr_right") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10, "g_arr_right");
     }
 
     if (selectedTool.value.name == "Oval") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4, "Oval");
     }
 
     if (selectedTool.value.name == "Switch") {
@@ -920,11 +920,11 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Text") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel');
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel', "Text");
     }
 
     if (selectedTool.value.name == "Box") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "Box");
     }
 
     if (selectedTool.value.name == "Pointer") {
@@ -934,7 +934,7 @@ class EvtOpt {
 
   BindVueForeignObjectEvent() {
     $("#btn_try_vue_foreignObject").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject);
+      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject, "TextboxTest");
     });
   }
 

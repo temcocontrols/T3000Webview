@@ -343,14 +343,14 @@
               &nbsp;
               <button id="btn_try_Lib_UnLock">Un-Lock</button>
 
-              &nbsp;
+              <!-- &nbsp;
               <button id="btn_try_Lib_AddNote">Add Note</button>
 
               &nbsp;
               <button id="btn_try_Lib_AddComment">Add Comment</button>
 
               &nbsp;
-              <button id="btn_try_Lib_Hyperlink">Hyperlink</button>
+              <button id="btn_try_Lib_Hyperlink">Hyperlink</button>-->
             </div>
           </q-tab-panel>
         </q-tab-panels>

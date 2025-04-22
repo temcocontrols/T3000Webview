@@ -176,7 +176,7 @@ class Document extends Container {
       case OptConstant.CSType.ShapeContainer:
         shape = new ShapeContainer();
         break;
-      case OptConstant.CSType.ForeignObject:  // Add this case
+      case OptConstant.CSType.ForeignObject:
         shape = new ForeignObject();
         break;
       default:

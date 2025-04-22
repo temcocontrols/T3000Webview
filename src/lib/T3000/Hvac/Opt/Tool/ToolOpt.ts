@@ -51,10 +51,10 @@ class ToolOpt {
    * @param shapeType - The type of shape to create
    * @returns void
    */
-  StampShapeFromToolAct(event, shapeType) {
+  StampShapeFromToolAct(event, shapeType, uniShapeType) {
     T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
 
-    this.tul.StampOrDragDropNewShape(event, shapeType);
+    this.tul.StampOrDragDropNewShape(event, shapeType, uniShapeType);
 
     T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
   }
@@ -578,12 +578,12 @@ class ToolOpt {
     }
   }
 
-  VueForeignObjectAct(event, shapeType) {
-    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Input:', { event, shapeType });
+  VueForeignObjectAct(event, shapeType, uniShapeType) {
+    T3Util.Log('O.ToolOpt.VueForeignObjectAct - Input:', { event, shapeType });
 
-    this.tul.StampOrDragDropNewShape(event, shapeType);
+    this.tul.StampOrDragDropNewShape(event, shapeType, uniShapeType);
 
-    T3Util.Log('O.ToolOpt.StampShapeFromToolAct - Output: Created shape of type', shapeType);
+    T3Util.Log('O.ToolOpt.VueForeignObjectAct - Output: Created shape of type', shapeType);
   }
 
   SetX(xVal: string) {

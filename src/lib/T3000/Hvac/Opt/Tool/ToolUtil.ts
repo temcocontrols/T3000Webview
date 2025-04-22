@@ -140,7 +140,7 @@ class ToolUtil {
    * @param event - The UI event that triggered this action
    * @param shapeType - The type of shape to create
    */
-  StampOrDragDropNewShape(event, shapeType) {
+  StampOrDragDropNewShape(event, shapeType, uniShapeType) {
     T3Util.Log('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
 
     let context;
@@ -159,7 +159,7 @@ class ToolUtil {
     callbackFunction = this.StampOrDragDropCallback;
 
     // Set a timeout to execute the callback after a short delay
-    T3Gv.opt.stampTimeout = window.setTimeout(callbackFunction, 200, context, shapeType);
+    T3Gv.opt.stampTimeout = window.setTimeout(callbackFunction, 200, context, shapeType, uniShapeType);
 
     T3Util.Log('U.ToolUtil.StampOrDragDropNewShape - Output: stampTimeout set');
   }
@@ -333,7 +333,7 @@ class ToolUtil {
    * @param shapeType - The type of shape to stamp or drag-drop
    * @returns void
    */
-  StampOrDragDropCallback(context: ToolUtil, shapeType) {
+  StampOrDragDropCallback(context: ToolUtil, shapeType, uniShapeType) {
     T3Util.Log("O.ToolOpt StampOrDragDropCallback input:", context, shapeType);
 
     var result;
@@ -371,10 +371,10 @@ class ToolUtil {
         context.StampCircle(result, false);
         break;
       case shapeTypes.ForeignObject:
-        context.StampVueComponent(result, false);
+        context.StampVueComponent(result, uniShapeType);
         break;
       default:
-        context.StampShape(shapeType, result, false);
+        context.StampShape(shapeType, result);
     }
 
     T3Util.Log("O.ToolOpt StampOrDragDropCallback output: void");
@@ -536,20 +536,14 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampCircle output: void");
   }
 
-  StampVueComponent(isDragDropMode, isSquare) {
+  StampVueComponent(isDragDropMode, uniShapeType) {
 
-    T3Util.Log("U.ToolUtil StampVueComponent:", isDragDropMode, isSquare);
+    T3Util.Log("U.ToolUtil StampVueComponent:", isDragDropMode, uniShapeType);
 
     let width, height;
 
-    // Set dimensions based on whether we want a circle or oval
-    if (isSquare) {
-      width = OptConstant.Common.ShapeSquare;
-      height = OptConstant.Common.ShapeSquare;
-    } else {
-      width = OptConstant.Common.ShapeWidth;
-      height = OptConstant.Common.ShapeHeight;
-    }
+    width = OptConstant.Common.ShapeWidth;
+    height = OptConstant.Common.ShapeHeight;
 
     // Initial position off-screen
     const initialX = -1000;
@@ -557,28 +551,16 @@ class ToolUtil {
     let shapeAttributes = null;
 
     // Configure shape attributes
-    if (isSquare) {
-      shapeAttributes = {
-        Frame: {
-          x: initialX,
-          y: initialY,
-          width: 100,
-          height: 100
-        },
-        TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-        ObjGrow: OptConstant.GrowBehavior.ProPortional
-      };
-    } else {
-      shapeAttributes = {
-        Frame: {
-          x: initialX,
-          y: initialY,
-          width: width,
-          height: height
-        },
-        TextGrow: NvConstant.TextGrowBehavior.ProPortional
-      };
-    }
+    shapeAttributes = {
+      Frame: {
+        x: initialX,
+        y: initialY,
+        width: width,
+        height: height
+      },
+      TextGrow: NvConstant.TextGrowBehavior.ProPortional,
+      uniType: uniShapeType
+    };
 
     // Create the foreign object shape
     const pumpItemWithLink =
