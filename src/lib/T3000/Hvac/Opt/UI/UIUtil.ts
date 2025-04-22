@@ -100,15 +100,14 @@ class UIUtil {
         T3Util.Log('= U.UIUtil Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
         T3Util.LogDev('= U.UIUtil Formatted Values: After x,y,w,h', true, xVal, yVal, wVal, hVal);
 
-        var initialObject = {
+        var objNewFrame = {
           translate: [dimensions.x, dimensions.y],
           width: dimensions.width,
           height: dimensions.height,
-          settings: {}
         };
 
         if (T3Gv.refreshPosition) {
-          QuasarUtil.SetCurrentObject(initialObject);
+          QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
         }
       }
 
