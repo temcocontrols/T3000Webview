@@ -54,6 +54,7 @@ class Oval extends BaseShape {
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Oval;
     options.Frame;
+    options.uniType="Oval";
 
     T3Util.Log('S.Oval: Input options:', options);
 

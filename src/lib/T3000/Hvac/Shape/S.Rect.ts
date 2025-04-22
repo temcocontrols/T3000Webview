@@ -39,6 +39,7 @@ class Rect extends BaseShape {
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Rect;
     options.moreflags |= OptConstant.ObjMoreFlags.FixedRR;
+    options.uniType="Rect";
 
     super(options);
 

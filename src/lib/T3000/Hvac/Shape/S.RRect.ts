@@ -41,6 +41,7 @@ class RRect extends BaseShape {
     T3Util.Log("= S.RRect: constructor input:", inputParams);
     const params = inputParams || {};
     params.ShapeType = OptConstant.ShapeType.RRect;
+    params.uniType="RRect";
     super(params);
     this.dataclass = PolygonConstant.ShapeTypes.ROUNDED_RECTANGLE;
     T3Util.Log("= S.RRect: constructor output:", this);

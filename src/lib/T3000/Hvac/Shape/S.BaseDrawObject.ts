@@ -207,6 +207,9 @@ class BaseDrawObject {
   public dimensionDeflectionH: number;
   public dimensionDeflectionV: number;
 
+  // Unique Shape Type
+  public uniType: string;
+
   constructor(config: any) {
     config = config || {};
     this.Type = StateConstant.StoredObjectType.BaseDrawObject;
@@ -310,6 +313,8 @@ class BaseDrawObject {
     this.actionArrowHideTimerID = -1;
     this.FramezList = null;
     this.ParentFrameID = -1;
+
+    this.uniType = config.uniType || '';
   }
 
   GenericKnob(params: any) {

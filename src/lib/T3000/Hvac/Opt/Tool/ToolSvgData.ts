@@ -21,6 +21,7 @@ class ToolSvgData {
       Frame: { x: initialX, y: initialY, width: defWidth, height: defHeight },
       InitialGroupBounds: { x: initialX, y: initialX, width: initGbWidth, height: initGbHeight },
       StyleRecord: new QuickStyle(),
+      uniType: symbolType,
     });
 
     let svgStr = "";
@@ -121,7 +122,6 @@ class ToolSvgData {
         break;
       default:
         return "";
-        break;
     }
 
     symbolObject.SVGFragment = svgStr;
@@ -1021,7 +1021,7 @@ class ToolSvgData {
 
   static TestSvg() {
     const boiler =
-     `
+      `
 <path style="
           fill: ##FillColor=#28c3c6##;
           fill-opacity: 1;
