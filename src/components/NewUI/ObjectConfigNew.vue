@@ -383,6 +383,7 @@ function RefreshSelectedItem() {
 
   T3Util.LogDev("= V.OCN Update item position", true, `xVal=${xLength}`, `yVal=${yLength}`, `wVal=${width}`, `hVal=${height}`);
 
+  T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetX(xLength.toString());
   EvtOpt.toolOpt.SetY(yLength.toString());
   EvtOpt.toolOpt.SetWidth(width.toString());

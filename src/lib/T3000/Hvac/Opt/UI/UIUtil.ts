@@ -104,10 +104,12 @@ class UIUtil {
           translate: [dimensions.x, dimensions.y],
           width: dimensions.width,
           height: dimensions.height,
-          settings:{}
+          settings: {}
         };
 
-       QuasarUtil.SetCurrentObject(initialObject);
+        if (T3Gv.refreshPosition) {
+          QuasarUtil.SetCurrentObject(initialObject);
+        }
       }
 
       // Constrain position to document bounds

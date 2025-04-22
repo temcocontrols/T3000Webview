@@ -2,6 +2,7 @@
 
 import { contextMenuShow, currentObject, objectConfigShow } from "../../Data/Constant/RefConstant";
 import { globalMsg, localSettings } from "../../Data/T3Data";
+import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
 
 class QuasarUtil {
@@ -128,10 +129,14 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    objectConfigShow.value =true;///show;
+    T3Gv.refreshPosition = true;
+
+    objectConfigShow.value = true;///show;
   }
 
   static SetCurrentObject(currentObj: any) {
+    T3Gv.refreshPosition = true;
+
     currentObject.value = currentObj;
   }
 }
