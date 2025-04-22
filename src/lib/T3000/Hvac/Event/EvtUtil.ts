@@ -518,6 +518,10 @@ class EvtUtil {
 
           UIUtil.ShowObjectConfig(true);
 
+          // Set the selected shape in the UI
+          QuasarUtil.SetAppStateV2SelectIndex(null);
+
+
           T3Util.Log("E.Evt ShapeTap output: normal tap processed");
           return false;
 

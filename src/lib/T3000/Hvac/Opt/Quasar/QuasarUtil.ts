@@ -138,8 +138,6 @@ class QuasarUtil {
     T3Gv.refreshPosition = true;
     this.SetSeletedTool();
     objectConfigShow.value = true;///show;
-
-    this.SetAppStateV2SelectIndex(null);
   }
 
   static SetCurrentObject(currentObj: any) {
@@ -237,6 +235,8 @@ class QuasarUtil {
     IdxUtils.refreshObjectStatus(appStateV2.value.items[appStateV2.value.activeItemIndex]);
     linkT3EntryDialogV2.value.data = null;
     linkT3EntryDialogV2.value.active = false;
+
+    T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "close linkT3EntryDialog V2", appStateV2.value);
   }
 
   static AddCurrentObjectToAppState() {
@@ -445,8 +445,10 @@ class QuasarUtil {
     appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
       (item) => `${item.type}` === selectedUniType
     );
-  }
 
+    T3Util.LogDev("= U.QuasarUtil SetAppStateV2SelectIndex", true, appStateV2.value);
+
+  }
 }
 
 export default QuasarUtil
