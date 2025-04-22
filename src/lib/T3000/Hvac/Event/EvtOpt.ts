@@ -879,8 +879,8 @@ class EvtOpt {
       EvtOpt.toolOpt.LibToolShape("RoomTemperature", true);
     }
 
-    if (selectedTool.value.name == "Guage") {
-      // EvtOpt.toolOpt.LibToolShape("Guage", true);
+    if (selectedTool.value.name == "Gauge") {
+      // EvtOpt.toolOpt.LibToolShape("Gauge", true);
     }
 
     if (selectedTool.value.name == "Dial") {

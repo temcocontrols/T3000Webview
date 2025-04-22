@@ -30,6 +30,7 @@ import ToolActUtil from "./ToolActUtil";
 import TextUtil from './TextUtil';
 import DynamicUtil from './DynamicUtil';
 import T3Clipboard from '../Clipboard/T3Clipboard';
+import QuasarUtil from '../Quasar/QuasarUtil';
 
 class DrawUtil {
 
@@ -546,7 +547,10 @@ class DrawUtil {
       // Complete the operation
       this.CompleteOperation(objectsToSelect);
 
+      QuasarUtil.AddCurrentObjectToAppState();
+
       T3Util.Log("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
+      T3Util.LogDev("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully", true,objectsToSelect);
     } catch (error) {
       T3Util.Log("O.Opt MouseStampObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -1331,7 +1335,10 @@ class DrawUtil {
       // Complete the operation
       this.CompleteOperation(objectsToSelect);
 
+      QuasarUtil.AddCurrentObjectToAppState();
+
       T3Util.Log("DragDropObjectDone - Output: Drag-drop operation completed successfully");
+      T3Util.LogDev("DragDropObjectDone - Output: Drag-drop operation completed successfully",true,objectsToSelect);
     } catch (error) {
       T3Util.Log("DragDropObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -2241,6 +2248,7 @@ class DrawUtil {
     }
 
     T3Util.Log("O.Opt CompleteOperation - Output: Operation completed.");
+    T3Util.LogDev("O.Opt CompleteOperation - Output: Operation completed.", true);
   }
 
   static AllowSnapToShapes() {
@@ -2267,7 +2275,7 @@ class DrawUtil {
     // displayDimensions.x += T3Gv.opt.dragDeltaX;
     // displayDimensions.y += T3Gv.opt.dragDeltaY;
 
-    return {x: displayDimensions.x, y: displayDimensions.y,width: displayDimensions.width, height: displayDimensions.height};
+    return { x: displayDimensions.x, y: displayDimensions.y, width: displayDimensions.width, height: displayDimensions.height };
   }
 
 }

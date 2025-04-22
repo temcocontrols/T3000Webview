@@ -2,12 +2,14 @@
 
 import { cloneDeep } from "lodash";
 import { contextMenuShow, currentObject, objectConfigShow } from "../../Data/Constant/RefConstant";
-import { AllTool, appStateV2, globalMsg, linkT3EntryDialog, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
+import { AllTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
 import T3Util from "../../Util/T3Util";
 import IdxUtils from "../Common/IdxUtils";
 import { toRaw } from "vue";
+import SelectUtil from "../Opt/SelectUtil";
+import DataUtil from "../Data/DataUtil";
 
 class QuasarUtil {
 
@@ -136,6 +138,8 @@ class QuasarUtil {
     T3Gv.refreshPosition = true;
     this.SetSeletedTool();
     objectConfigShow.value = true;///show;
+
+    this.SetAppStateV2SelectIndex(null);
   }
 
   static SetCurrentObject(currentObj: any) {
@@ -206,7 +210,9 @@ class QuasarUtil {
     }
 
     // set the default to be divided by 1000
-    const checkHasValue = linkT3EntryDialogV2.value.data.value !== undefined && linkT3EntryDialogV2.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
+    const checkHasValue = linkT3EntryDialogV2.value.data.value !== undefined &&
+      linkT3EntryDialogV2.value.data.value !== null &&
+      linkT3EntryDialogV2.value.data.value >= 1000;
     if (checkHasValue) {
       linkT3EntryDialogV2.value.data.value = linkT3EntryDialogV2.value.data.value / 1000;
     }
@@ -233,9 +239,34 @@ class QuasarUtil {
     linkT3EntryDialogV2.value.active = false;
   }
 
+  static AddCurrentObjectToAppState() {
+    let targetSelectionId = SelectUtil.GetTargetSelect();
+    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+
+    T3Util.LogDev("= U.QuasarUtil AddCurrentObjectToAppState", true, targetObject);
+    var frame = {
+      x: targetObject.Frame.x,
+      y: targetObject.Frame.y,
+      width: targetObject.Frame.width,
+      height: targetObject.Frame.height,
+    };
+
+    var uniType = targetObject.uniType;
+
+    //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
+    //Filter Humidifier Humidity Pressure Damper ThermalWheel Enthalpy Flow RoomHumidity RoomTemperature Gauge
+    //Dial Value Wall G_Circle G_Rectangle g_arr_right Oval Switch LED Text Box Pointer Gauge IconBasic Icon Switch
+
+    const tool = AllTool.find((item) => item.name === uniType);
+
+    this.AddToAppStateV2(frame, tool);
+
+    this.SetAppStateV2SelectIndex(tool);
+  }
+
 
   //onSelectoDragEnd
-  static AddAppStateItemV2(frame: any) {
+  static AddToAppStateV2(frame: any, tool: any) {
     // const size = { width: e.rect.width, height: e.rect.height };
     const size = { width: frame.width, height: frame.height };
 
@@ -269,7 +300,7 @@ class QuasarUtil {
     //   size.height = selectedTool.value.height;
     // }
 
-    const tool = AllTool.find((item) => item.name === 'Pump');
+
 
     const item = this.drawObject(size, pos, tool);
     // if (item && continuesObjectTypes.includes(item.type)) {
@@ -280,6 +311,9 @@ class QuasarUtil {
     //     startTransform.value = cloneDeep(item.translate);
     //   }, 100);
     // }
+
+    T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 1", true, item);
+    T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 2", true, appStateV2.value);
   }
 
 
@@ -385,12 +419,32 @@ class QuasarUtil {
       item.settings.fontSize = 16;
     }
     appStateV2.value.items.push(item);
-    const lines = document.querySelectorAll(".moveable-item");
+    // const lines = document.querySelectorAll(".moveable-item");
     appStateV2.value.elementGuidelines = [];
-    Array.from(lines).forEach(function (el) {
-      appStateV2.value.elementGuidelines.push(el);
-    });
+    // Array.from(lines).forEach(function (el) {
+    //   appStateV2.value.elementGuidelines.push(el);
+    // });
     return item;
+  }
+
+  static SetAppStateV2SelectIndex(tool: any) {
+    let selectedUniType = "";
+
+    if (tool) {
+      selectedUniType = tool?.name ?? "";
+    } else {
+      // get current selected shape
+      let targetSelectionId = SelectUtil.GetTargetSelect();
+      var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+
+      if (targetObject) {
+        selectedUniType = targetObject?.uniType ?? "";
+      }
+    }
+
+    appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
+      (item) => `${item.type}` === selectedUniType
+    );
   }
 
 }
