@@ -25,7 +25,7 @@
 
       <div>
         <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
-               class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
+          class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
         <q-btn dark outline no-caps stretch class="text-white w-full link-t3-entry" @click="linkT3Entry">
           <div v-if="!item.t3Entry">
             <p>Link with an entry</p>
@@ -39,14 +39,14 @@
           label="Entry settings" > -->
         <div class="p-1" v-if="item.t3Entry">
           <q-select v-if="item.t3Entry.auto_manual !== undefined" class="mb-1" filled dark
-                    v-model="item.t3Entry.auto_manual" :options="[
+            v-model="item.t3Entry.auto_manual" :options="[
               { label: 'Auto', value: 0 },
               { label: 'Manual', value: 1 },
             ]" label="Auto/Manual" emit-value map-options
-                    @update:model-value="T3UpdateEntryField('auto_manual', item)" />
+            @update:model-value="T3UpdateEntryField('auto_manual', item)" />
           <!-- Digital range values -->
           <q-select class="mb-1" v-if="
-                    item.t3Entry.range < 101 &&
+            item.t3Entry.range < 101 &&
             item.t3Entry.digital_analog === 0 &&
             item.t3Entry.range
           " :disable="item.t3Entry?.auto_manual === 0" filled dark v-model="item.t3Entry.control" :options="[
@@ -116,18 +116,18 @@
         <div class="p-1">
           <div class="grid gap-4 grid-cols-2 mb-4">
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="X"
-                     v-model.number="item.translate[0]" dark filled type="number" />
+              v-model.number="item.translate[0]" dark filled type="number" />
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Y"
-                     v-model.number="item.translate[1]" dark filled type="number" />
+              v-model.number="item.translate[1]" dark filled type="number" />
 
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Width"
-                     v-model.number="item.width" dark filled type="number" />
+              v-model.number="item.width" dark filled type="number" />
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Height"
-                     v-model.number="item.height" dark filled type="number" />
+              v-model.number="item.height" dark filled type="number" />
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Rotate"
-                     v-model.number="item.rotate" dark filled type="number" />
+              v-model.number="item.rotate" dark filled type="number" />
             <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
-                     type="number" />
+              type="number" />
           </div>
           <div class="w-full relative mb-2">
             <q-input dark filled v-model="item.settings.title" label="Title" />
@@ -137,7 +137,7 @@
             <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
             <label class="ml-2" for="bg-color-input">
               {{
-              settings.bgColor?.label || "Background color"
+                settings.bgColor?.label || "Background color"
               }}
             </label>
           </div>
@@ -149,27 +149,27 @@
                   <q-btn push icon="format_align_left" :color="item.settings[key] === 'flex-start' ? 'grey-9' : null
                     " text-color="grey-5" @click="item.settings[key] = 'flex-start'" />
                   <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
-                         text-color="grey-5" @click="item.settings[key] = 'center'" />
+                    text-color="grey-5" @click="item.settings[key] = 'center'" />
                   <q-btn push icon="format_align_right" :color="item.settings[key] === 'flex-end' ? 'grey-9' : null"
-                         text-color="grey-5" @click="item.settings[key] = 'flex-end'" />
+                    text-color="grey-5" @click="item.settings[key] = 'flex-end'" />
                 </q-btn-group>
               </div>
               <div class="flex flex-nowrap justify-center items-center mb-2" v-else-if="setting.type === 'textAlign'">
                 <div class="mx-1">Align</div>
                 <q-btn-group push>
                   <q-btn push icon="format_align_left" :color="item.settings[key] === 'left' ? 'grey-9' : null"
-                         text-color="grey-5" @click="item.settings[key] = 'left'" />
+                    text-color="grey-5" @click="item.settings[key] = 'left'" />
                   <q-btn push icon="format_align_center" :color="item.settings[key] === 'center' ? 'grey-9' : null"
-                         text-color="grey-5" @click="item.settings[key] = 'center'" />
+                    text-color="grey-5" @click="item.settings[key] = 'center'" />
                   <q-btn push icon="format_align_right" :color="item.settings[key] === 'right' ? 'grey-9' : null"
-                         text-color="grey-5" @click="item.settings[key] = 'right'" />
+                    text-color="grey-5" @click="item.settings[key] = 'right'" />
                 </q-btn-group>
               </div>
               <div class="flex flex-nowrap items-center mb-2" v-else-if="setting.type === 'color'">
                 <input type="color" id="text-color-input" v-model="item.settings[key]" />
                 <label class="ml-2" for="text-color-input">
                   {{
-                  setting.label
+                    setting.label
                   }}
                 </label>
               </div>
@@ -178,11 +178,11 @@
               </div>
               <div class="w-full relative mb-2" v-else-if="setting.type === 'number'">
                 <q-input class="mb-1" filled dark type="number" v-model.number="item.settings[key]"
-                         :label="setting.label" @update:model-value="updatePropsValue(key)" />
+                  :label="setting.label" @update:model-value="updatePropsValue(key)" />
               </div>
               <div class="w-full mb-2" v-else-if="setting.type === 'icon'">
                 <q-select filled dark v-model="item.settings[key]" :options="icons" :label="setting.label" emit-value
-                          map-options>
+                  map-options>
                   <template v-slot:prepend>
                     <q-icon :name="item.settings[key] || 'block'" />
                   </template>
@@ -200,7 +200,7 @@
               </div>
               <div class="w-full mb-2" v-else-if="setting.type === 'iconSwitch'">
                 <q-select filled dark v-model="item.settings[key]" :options="switchIcons" :label="setting.label"
-                          emit-value map-options>
+                  emit-value map-options>
                   <template v-slot:prepend>
                     <q-icon :name="getSwitchIcon(item.settings[key])" />
                   </template>
@@ -217,13 +217,13 @@
                 </q-select>
               </div>
               <q-checkbox v-else-if="setting.type === 'boolean'" dark filled v-model="item.settings[key]"
-                          class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
+                class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
                   ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
                     (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
                   (item.t3Entry && item.t3Entry.decom !== undefined)
                   ">
                 <q-tooltip v-if="key === 'active' && item.t3Entry?.auto_manual === 0" anchor="center left"
-                           self="center end">
+                  self="center end">
                   Manual changes are not possible as the linked entry is set to
                   auto mode.
                 </q-tooltip>
@@ -238,215 +238,215 @@
 </template>
 
 <script>
-  import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
-  import { cloneDeep, isEqual } from "lodash";
-  import { /*getEntryRange,*/ icons, switchIcons, tools } from "../../lib/common";
-  import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
-  import T3000 from "src/lib/T3000/T3000";
+import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
+import { cloneDeep, isEqual } from "lodash";
+import { /*getEntryRange,*/ icons, switchIcons, tools } from "../../lib/common";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
+import T3000 from "src/lib/T3000/T3000";
 
-  export default defineComponent({
-    name: "ToolConfig",
-    props: {
-      object: {
-        type: Object,
-        required: true,
-      },
+export default defineComponent({
+  name: "ToolConfig",
+  props: {
+    object: {
+      type: Object,
+      required: true,
     },
-    emits: [
-      "refreshMoveable",
-      "T3UpdateEntryField",
-      "linkT3Entry",
-      "gaugeSettings",
-      "mounted",
-      "noChange",
-    ],
-    setup(props, { emit }) {
+  },
+  emits: [
+    "refreshMoveable",
+    "T3UpdateEntryField",
+    "linkT3Entry",
+    "gaugeSettings",
+    "mounted",
+    "noChange",
+  ],
+  setup(props, { emit }) {
 
-      // Test for popup object config for new ui
-      let initialObject =
-      {
-        "active": false,
-        "cat": "General",
-        "group": {},
-        "height": 60,
-        "id": 1,
-        "rotate": 0,
-        "scaleX": 1,
-        "scaleY": 1,
-        "settings": {
-          "bgColor": "inherit",
-          "fillColor": "#659dc5",
-          "fontSize": 16,
-          "textColor": "inherit",
-          "titleColor": "inherit"
-        },
+    // Test for popup object config for new ui
+    let initialObject =
+    {
+      "active": false,
+      "cat": "General",
+      "group": {},
+      "height": 60,
+      "id": 1,
+      "rotate": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "settings": {
         "bgColor": "inherit",
         "fillColor": "#659dc5",
         "fontSize": 16,
         "textColor": "inherit",
-        "titleColor": "inherit",
-        "showDimensions": true,
-        "t3Entry": null,
-        "title": null,
-        "translate": [
-          217,
-          49
-        ],
-        "type": "G_Circle",
-        "width": 60,
-        "zindex": 1
-      };
+        "titleColor": "inherit"
+      },
+      "bgColor": "inherit",
+      "fillColor": "#659dc5",
+      "fontSize": 16,
+      "textColor": "inherit",
+      "titleColor": "inherit",
+      "showDimensions": true,
+      "t3Entry": null,
+      "title": null,
+      "translate": [
+        217,
+        49
+      ],
+      "type": "G_Circle",
+      "width": 60,
+      "zindex": 1
+    };
 
-      onMounted(() => {
-        //initialObject = cloneDeep(props.object);
-        emit("mounted");
+    onMounted(() => {
+      //initialObject = cloneDeep(props.object);
+      emit("mounted");
+    });
+
+    const item = computed({
+      get() {
+        return initialObject;//props.object;
+      },
+      // setter
+      set(newValue, oldValue) {
+        if (newValue === oldValue) return;
+        emit("update:object", newValue);
+      },
+    });
+
+    const settings = computed(() => {
+      /* return tools.find((i) => i.name === props.object.type)?.settings || {};*/
+      return tools.find((i) => i.name === initialObject.type)?.settings || {};
+    });
+
+    const rangeOptions = computed(() => {
+      /* const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(*/
+      const items = IdxUtils.getEntryRange(initialObject.t3Entry)?.options?.filter(
+        (i) => i.status === 1
+      );
+      const ranges = cloneDeep(items);
+      const result = ranges?.map((ii) => {
+        // ii.value = ii.value * 1000;
+        ii.value = ii.value;
+        return ii;
       });
 
-      const item = computed({
-        get() {
-          return initialObject;//props.object;
-        },
-        // setter
-        set(newValue, oldValue) {
-          if (newValue === oldValue) return;
-          emit("update:object", newValue);
-        },
-      });
+      return result;
+    });
 
-      const settings = computed(() => {
-        /* return tools.find((i) => i.name === props.object.type)?.settings || {};*/
-        return tools.find((i) => i.name === initialObject.type)?.settings || {};
-      });
-
-      const rangeOptions = computed(() => {
-        /* const items = IdxUtils.getEntryRange(props.object.t3Entry)?.options?.filter(*/
-        const items = IdxUtils.getEntryRange(initialObject.t3Entry)?.options?.filter(
-          (i) => i.status === 1
-        );
-        const ranges = cloneDeep(items);
-        const result = ranges?.map((ii) => {
-          // ii.value = ii.value * 1000;
-          ii.value = ii.value;
-          return ii;
+    const t3EntryDisplayFieldOptions = computed(() => {
+      const options = [
+        { label: "None", value: "none" },
+        { label: "ID", value: "id" },
+      ];
+      if (item.value.t3Entry?.label !== undefined) {
+        options.push({ label: "Label", value: "label" });
+      }
+      if (item.value.t3Entry?.description !== undefined) {
+        options.push({ label: "Description", value: "description" });
+      }
+      if (item.value.t3Entry?.value !== undefined) {
+        options.push({
+          label: "Value",
+          value: item.value.t3Entry?.digital_analog === 1 ? "value" : "control",
         });
+      }
+      return options;
+    });
 
-        return result;
-      });
+    function refreshMoveable() {
+      if (item.value.type === "Int_Ext_Wall") {
+        item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
+      }
 
-      const t3EntryDisplayFieldOptions = computed(() => {
-        const options = [
-          { label: "None", value: "none" },
-          { label: "ID", value: "id" },
-        ];
-        if (item.value.t3Entry?.label !== undefined) {
-          options.push({ label: "Label", value: "label" });
-        }
-        if (item.value.t3Entry?.description !== undefined) {
-          options.push({ label: "Description", value: "description" });
-        }
-        if (item.value.t3Entry?.value !== undefined) {
-          options.push({
-            label: "Value",
-            value: item.value.t3Entry?.digital_analog === 1 ? "value" : "control",
-          });
-        }
-        return options;
-      });
+      emit("refreshMoveable");
+    }
 
-      function refreshMoveable() {
-        if (item.value.type === "Int_Ext_Wall") {
-          item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
-        }
+    function T3UpdateEntryField(key, obj) {
+      emit("T3UpdateEntryField", key, obj);
+    }
 
+    function linkT3Entry() {
+      emit("linkT3Entry");
+    }
+
+    function gaugeSettings(item) {
+      emit("gaugeSettings", item);
+    }
+
+    onBeforeUnmount(() => {
+      if (isEqual(props.object, initialObject)) {
+        emit("noChange");
+      }
+    });
+
+    function getSwitchIcon(name) {
+      const iconItem = switchIcons.find((item) => item.value === name);
+      return iconItem?.icon?.off ? iconItem.icon.off : "block";
+    }
+
+    function updatePropsValue(key) {
+      if (item.value.type === "Int_Ext_Wall") {
+        item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
         emit("refreshMoveable");
       }
-
-      function T3UpdateEntryField(key, obj) {
-        emit("T3UpdateEntryField", key, obj);
-      }
-
-      function linkT3Entry() {
-        emit("linkT3Entry");
-      }
-
-      function gaugeSettings(item) {
-        emit("gaugeSettings", item);
-      }
-
-      onBeforeUnmount(() => {
-        if (isEqual(props.object, initialObject)) {
-          emit("noChange");
-        }
-      });
-
-      function getSwitchIcon(name) {
-        const iconItem = switchIcons.find((item) => item.value === name);
-        return iconItem?.icon?.off ? iconItem.icon.off : "block";
-      }
-
-      function updatePropsValue(key) {
-        if (item.value.type === "Int_Ext_Wall") {
-          item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
-          emit("refreshMoveable");
-        }
-      }
-
-      function DisplayFieldValueChanged(value) {
-        emit("DisplayFieldValueChanged", value);
-      }
-
-      const getEntryRange = (entry) => {
-        return IdxUtils.getEntryRange(entry);
-      }
-
-      const unitText = computed(() => {
-        return ` ${IdxUtils.getUnitText(item.value.t3Entry)}`;
-      });
-
-      return {
-        item,
-        refreshMoveable,
-        T3UpdateEntryField,
-        linkT3Entry,
-        t3EntryDisplayFieldOptions,
-        gaugeSettings,
-        icons,
-        switchIcons,
-        settings,
-        getEntryRange,
-        getSwitchIcon,
-        rangeOptions,
-        updatePropsValue,
-        DisplayFieldValueChanged,
-        unitText
-      }
     }
-  });
+
+    function DisplayFieldValueChanged(value) {
+      emit("DisplayFieldValueChanged", value);
+    }
+
+    const getEntryRange = (entry) => {
+      return IdxUtils.getEntryRange(entry);
+    }
+
+    const unitText = computed(() => {
+      return ` ${IdxUtils.getUnitText(item.value.t3Entry)}`;
+    });
+
+    return {
+      item,
+      refreshMoveable,
+      T3UpdateEntryField,
+      linkT3Entry,
+      t3EntryDisplayFieldOptions,
+      gaugeSettings,
+      icons,
+      switchIcons,
+      settings,
+      getEntryRange,
+      getSwitchIcon,
+      rangeOptions,
+      updatePropsValue,
+      DisplayFieldValueChanged,
+      unitText
+    }
+  }
+});
 </script>
 
 <style scoped>
-  .item-config {
-    background-color: #2a2a2a;
-    align-self: stretch;
-    overflow-y: hidden;
-    max-height: 100vh;
-    width: 250px;
-    padding: 10px;
-    padding-top: 0;
-    position: absolute;
-    right: 0;
-    top: 37px;
-    height: calc(100% - 37px);
-    color: #ffffff99;
-  }
+.item-config {
+  background-color: #2a2a2a;
+  align-self: stretch;
+  overflow-y: hidden;
+  max-height: 100vh;
+  width: 250px;
+  padding: 10px;
+  padding-top: 0;
+  position: absolute;
+  right: 0;
+  top: 37px;
+  height: calc(100% - 37px);
+  color: #ffffff99;
+}
 
-  .item-config-inner {
-    overflow-y: auto;
-    max-height: calc(100vh - 45px);
-    scrollbar-width: thin;
-  }
+.item-config-inner {
+  overflow-y: auto;
+  max-height: calc(100vh - 45px);
+  scrollbar-width: thin;
+}
 
-    .item-config-inner::-webkit-scrollbar {
-      display: none;
-    }
+.item-config-inner::-webkit-scrollbar {
+  display: none;
+}
 </style>

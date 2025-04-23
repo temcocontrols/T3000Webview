@@ -20,7 +20,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
             <q-icon v-if="!item.t3Entry.auto_manual">
@@ -298,7 +298,4 @@ function autoManualToggle(event: Event): void {
 .moveable-item.Duct {
   background-color: transparent;
 }
-
-/* Rest of the CSS remains the same */
-/* Other CSS styles remain unchanged */
 </style>
