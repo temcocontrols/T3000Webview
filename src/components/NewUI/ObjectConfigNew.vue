@@ -229,7 +229,7 @@
 import { onMounted, onBeforeUnmount, onUpdated, ref, computed, watch } from 'vue';
 import { Drawer as ADrawer, Radio as ARadio, RadioGroup as ARadioGroup, Button as AButton } from 'ant-design-vue';
 import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
-import { objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { isShapeLinkedTest, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import { isEqual, cloneDeep } from 'lodash';
 import { tools, switchIcons } from "src/lib/common";
 import T3000 from 'src/lib/T3000/T3000';
@@ -238,6 +238,7 @@ import RulerUtil from 'src/lib/T3000/Hvac/Opt/UI/RulerUtil';
 import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
 import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
 import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
+import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -395,7 +396,7 @@ function T3UpdateEntryField(key, obj) {
 }
 
 function linkT3Entry() {
-  T3Util.LogDev("LINKE-T3-ENTRY",true);
+  T3Util.LogDev("LINKE-T3-ENTRY", true);
   emit("linkT3Entry");
 }
 
@@ -417,6 +418,10 @@ function updatePropsValue(key) {
 
 function DisplayFieldValueChanged(value) {
   emit("DisplayFieldValueChanged", value);
+
+  isShapeLinkedTest.value = true;
+  SvgUtil.RenderAllSVGObjects();
+  T3Util.LogDev("= P.OCN", true, "display field value changed", value, isShapeLinkedTest.value);
 }
 
 function getEntryRange(entry) {

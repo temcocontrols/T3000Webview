@@ -13,6 +13,7 @@ import T3Util from '../Util/T3Util';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import VueCircle from '../../../../components/Basic/Circle.vue';
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
+import { isShapeLinkedTest } from '../Data/Constant/RefConstant';
 
 /**
  * Represents an oval shape in the HVAC visualization system.
@@ -54,7 +55,7 @@ class Oval extends BaseShape {
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Oval;
     options.Frame;
-    options.uniType="Oval";
+    options.uniType = "Oval";
 
     T3Util.Log('S.Oval: Input options:', options);
 
@@ -136,8 +137,11 @@ class Oval extends BaseShape {
     // Test for add new Vue component inside SVG Shape
     // Update to use ForeignObjUtil
     // const foreignObj = ForeignObjUtil.CreateVueCircle(renderer);
-    const foreignObj = ForeignObjUtil.CreateVueObjectType(renderer,frameCopy);
-    shapeContainer.AddElement(foreignObj);
+
+    if (isShapeLinkedTest.value) {
+      const foreignObj = ForeignObjUtil.CreateVueObjectType(renderer, frameCopy);
+      shapeContainer.AddElement(foreignObj);
+    }
 
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);

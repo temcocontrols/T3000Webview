@@ -153,10 +153,16 @@ class QuasarUtil {
       currentObject.value.height = newPosFrame.height;
 
       // Update the new pos frame to appStateV2
-      const v2Index = appStateV2.value.activeItemIndex;
-      appStateV2.value.items[v2Index].translate = newPosFrame.translate;
-      appStateV2.value.items[v2Index].width = newPosFrame.width;
-      appStateV2.value.items[v2Index].height = newPosFrame.height;
+      const v2Index = appStateV2?.value?.activeItemIndex ?? "-1";
+
+      if (v2Index !== "-1") {
+        let currentItem = appStateV2.value.items[v2Index];
+        if (currentItem !== undefined && currentItem != null) {
+          appStateV2.value.items[v2Index].translate = newPosFrame.translate;
+          appStateV2.value.items[v2Index].width = newPosFrame.width;
+          appStateV2.value.items[v2Index].height = newPosFrame.height;
+        }
+      }
     }
   }
 
@@ -243,6 +249,7 @@ class QuasarUtil {
     linkT3EntryDialogV2.value.data = null;
     linkT3EntryDialogV2.value.active = false;
 
+    DataOpt.SaveAppStateV2();
     T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "close linkT3EntryDialog V2", appStateV2.value);
   }
 
