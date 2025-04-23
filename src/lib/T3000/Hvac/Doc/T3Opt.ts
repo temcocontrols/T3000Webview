@@ -129,6 +129,8 @@ class T3Opt {
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
+
+    DataOpt.LoadAppStateV2();
   }
 }
 

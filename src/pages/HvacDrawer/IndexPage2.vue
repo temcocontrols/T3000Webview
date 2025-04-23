@@ -381,7 +381,10 @@
     </ObjectConfig2> -->
 
 
-    <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
+    <!-- <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
+    </ObjectConfigNew> -->
+
+    <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]" @linkT3Entry="linkT3EntryDialogActionV2">
     </ObjectConfigNew>
 
   </q-page>
@@ -578,7 +581,8 @@ import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
-  savedNotify, undoHistory, redoHistory, moveable
+  savedNotify, undoHistory, redoHistory, moveable,
+  appStateV2
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
 import { currentObject } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";

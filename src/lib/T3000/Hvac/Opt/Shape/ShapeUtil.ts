@@ -1279,7 +1279,7 @@ class ShapeUtil {
 
       // Generate a unique storage key
       // const storageKey = `T3000_Drawing_${new Date().getTime()}`;
-      const storageKey = "t3.draw";
+      const storageKey = "T3.draw";
 
       // Store in localStorage
       localStorage.setItem(storageKey, jsonString);

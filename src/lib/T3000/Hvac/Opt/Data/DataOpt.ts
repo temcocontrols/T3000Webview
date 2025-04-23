@@ -13,6 +13,7 @@ import LayersManager from '../../Model/LayersManager'
 import TEData from '../../Model/TEData'
 import Instance from '../../Data/Instance/Instance'
 import LayerUtil from '../Opt/LayerUtil'
+import { appStateV2 } from '../../Data/T3Data'
 
 /**
  * Class for managing data operations in T3000 HVAC system.
@@ -334,6 +335,20 @@ class DataOpt {
     T3Gv.stdObj = new DataStore();
     T3Gv.currentObjSeqId = 0;
     T3Gv.clipboard = new DataStoreFactory().Create();
+  }
+
+  static SaveAppStateV2(): void {
+    const key = "T3.stateV2";
+    const stateV2 = appStateV2.value;
+    this.SaveData(key, stateV2);
+  }
+
+  static LoadAppStateV2(): void {
+    const key = "T3.stateV2";
+    const stateV2 = this.LoadData(key);
+    if (stateV2) {
+      appStateV2.value = stateV2;
+    }
   }
 }
 

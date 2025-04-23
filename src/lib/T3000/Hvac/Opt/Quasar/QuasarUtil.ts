@@ -10,6 +10,7 @@ import IdxUtils from "../Common/IdxUtils";
 import { toRaw } from "vue";
 import SelectUtil from "../Opt/SelectUtil";
 import DataUtil from "../Data/DataUtil";
+import DataOpt from "../Data/DataOpt";
 
 class QuasarUtil {
 
@@ -262,6 +263,8 @@ class QuasarUtil {
     this.AddToAppStateV2(frame, tool);
 
     this.SetAppStateV2SelectIndex(tool);
+
+    DataOpt.SaveAppStateV2();
   }
 
 
