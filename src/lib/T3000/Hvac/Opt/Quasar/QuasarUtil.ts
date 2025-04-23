@@ -151,6 +151,12 @@ class QuasarUtil {
       currentObject.value.translate = newPosFrame.translate;
       currentObject.value.width = newPosFrame.width;
       currentObject.value.height = newPosFrame.height;
+
+      // Update the new pos frame to appStateV2
+      const v2Index = appStateV2.value.activeItemIndex;
+      appStateV2.value.items[v2Index].translate = newPosFrame.translate;
+      appStateV2.value.items[v2Index].width = newPosFrame.width;
+      appStateV2.value.items[v2Index].height = newPosFrame.height;
     }
   }
 
@@ -281,10 +287,10 @@ class QuasarUtil {
     // };
 
     const pos = {
-      clientX: frame.clientX,
-      clientY: frame.clientY,
-      top: frame.clientX,
-      left: frame.clientY,
+      clientX: frame.x,
+      clientY: frame.y,
+      top: frame.x,
+      left: frame.y,
     }
 
     // if (

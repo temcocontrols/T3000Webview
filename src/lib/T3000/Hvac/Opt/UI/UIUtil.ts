@@ -108,6 +108,8 @@ class UIUtil {
 
         if (T3Gv.refreshPosition) {
           QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
+          T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+
         }
       }
 
