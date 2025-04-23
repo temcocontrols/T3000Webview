@@ -41,7 +41,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
             <!-- <q-icon v-if="!item.t3Entry.auto_manual" name="motion_photos_auto">
@@ -74,67 +74,11 @@
           @click="changeValue('decrease')" />
       </div>
     </div>
-    <!-- <div class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }" @click="$emit('objectClicked')">
-      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
-      <duct v-else-if="item.type === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
-      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
-      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.settings" />
-      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.settings" />
-      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.settings" />
-      <humidity v-else-if="item.type === 'Humidity'" class="humidity" v-bind="item.settings" />
-      <Pressure v-else-if="item.type === 'Pressure'" class="pressure" v-bind="item.settings" />
-      <ThermalWheel v-else-if="item.type === 'ThermalWheel'" class="thermal-wheel" v-bind="item.settings" />
-      <damper v-else-if="item.type === 'Damper'" class="damper" :item="item" v-bind="item.settings" />
-      <boiler v-else-if="item.type === 'Boiler'" class="boiler" v-bind="item.settings" />
-      <heatpump v-else-if="item.type === 'Heatpump'" class="heatpump" v-bind="item.settings" />
-      <pump v-else-if="item.type === 'Pump'" class="heatpump" v-bind="item.settings" />
-      <ValveThreeWay v-else-if="item.type === 'ValveThreeWay'" class="valve-threeway" v-bind="item.settings" />
-      <ValveTwoWay v-else-if="item.type === 'ValveTwoWay'" class="valve-threeway" v-bind="item.settings" />
-      <enthalpy v-else-if="item.type === 'Enthalpy'" class="enthalpy" v-bind="item.settings" />
-      <flow v-else-if="item.type === 'Flow'" class="flow" v-bind="item.settings" />
-      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
-      <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
-      <icon-value v-else-if="item.type === 'Icon'" class="icon-value" :item="item" :show-arrows="showArrows"
-        v-bind="item.settings" @change-value="changeValue" />
-      <icon-basic v-else-if="item.type === 'IconBasic'" class="icon-basic" :item="item" v-bind="item.settings" />
-      <icon-switch v-else-if="item.type === 'Switch'" class="icon-switch" :item="item" :show-arrows="showArrows"
-        v-bind="item.settings" @change-value="changeValue" />
-      <led-el v-else-if="item.type === 'LED'" class="led-el" :item="item" v-bind="item.settings" />
-      <value-el v-else-if="item.type === 'Value'" class="value" :item="item" :show-arrows="showArrows"
-        v-bind="item.settings" @change-value="changeValue" />
-      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
-      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
-        :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value || 0" />
-      <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
-        <dial-chart class="gauge-object dial" :options="{
-          value: item.t3Entry?.value || 0,
-          unit: range.unit,
-          ...item.settings,
-          colors: processedColors,
-        }" />
-        <div class="text-center font-bold pl-8 pb-2">
-          {{ item.t3Entry?.value || 0 }} {{ range.unit }}
-        </div>
-      </div>
-      <RoomHumidity v-else-if="item.type === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
-      <RoomTemperature v-else-if="item.type === 'RoomTemperature'" class="room-temperature" v-bind="item.settings" />
-      <Wall v-else-if="item.type === 'Wall'" class="room-temperature" v-bind="item.settings" />
-      <Weld v-else-if="item.type === 'Weld'" class="weld" v-bind:weldModel="item"
-        @update-weld-model="updateWeldModel" />
-      <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
-
-      <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
-      <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
-      <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
-      <StepEl v-else-if="item.type === 'G_Step'" class="step" v-bind="item.settings" />
-    </div> -->
   </div>
 </template>
 
 <script>
 import { defineComponent, computed, ref } from "vue";
-// import { getEntryRange } from "src/lib/common";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import { event } from "jquery";
 import Utils2 from "src/lib/T3000/Hvac/Util/Utils2";
@@ -142,81 +86,10 @@ import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 import Hvac from "src/lib/T3000/Hvac/Hvac";
 import WebClient from "src/lib/T3000/Hvac/Opt/Socket/WebSocketClient";
 
-//import DuctEl from "./ObjectTypes/Duct.vue";
-//import FanEl from "./ObjectTypes/Fan.vue";
-//import CoolingCoil from "./ObjectTypes/CoolingCoil.vue";
-//import HeatingCoil from "./ObjectTypes/HeatingCoil.vue";
-//import FilterEl from "./ObjectTypes/Filter.vue";
-//import HumidifierEl from "./ObjectTypes/Humidifier.vue";
-//import Damper from "./ObjectTypes/Damper.vue";
-//import TextEl from "./ObjectTypes/Text.vue";
-//import BoxEl from "./ObjectTypes/Box.vue";
-//import IconBasic from "./ObjectTypes/IconBasic.vue";
-//import IconValue from "./ObjectTypes/IconValue.vue";
-//import IconSwitch from "./ObjectTypes/IconSwitch.vue";
-//import ValueEl from "./ObjectTypes/Value.vue";
-//import Temperature from "./ObjectTypes/Temperature.vue";
-//import GaugeChart from "./ObjectTypes/EchartsGauge.vue";
-//import AnyChartDial from "./ObjectTypes/AnyChartDial.vue";
-//import LedEl from "./ObjectTypes/Led.vue";
-//import Boiler from "./ObjectTypes/Boiler.vue";
-//import Enthalpy from "./ObjectTypes/Enthalpy.vue";
-//import Flow from "./ObjectTypes/Flow.vue";
-//import Heatpump from "./ObjectTypes/Heatpump.vue";
-//import Pump from "./ObjectTypes/Pump.vue";
-//import ValveThreeWay from "./ObjectTypes/ValveThreeWay.vue";
-//import ValveTwoWay from "./ObjectTypes/ValveTwoWay.vue";
-//import Humidity from "./ObjectTypes/Humidity.vue";
-//import Pressure from "./ObjectTypes/Pressure.vue";
-//import ThermalWheel from "./ObjectTypes/ThermalWheel.vue";
-//import RoomHumidity from "./ObjectTypes/RoomHumidity.vue";
-//import RoomTemperature from "./ObjectTypes/RoomTemperature.vue";
-//import Wall from "./ObjectTypes/Wall.vue";
-//import Weld from "./ObjectTypes/Weld.vue";
-
-//import CircleEl from "./Basic/Circle.vue";
-//import RectangleEl from "./Basic/Rectangle.vue";
-//import HexagonEl from "./Basic/Hexagon.vue";
-//import StepEl from "./Basic/Step.vue";
-
 export default defineComponent({
   name: "ObjectType3",
   components: {
-    //Duct: DuctEl,
-    //Fan: FanEl,
-    //CoolingCoil,
-    //HeatingCoil,
-    //FilterEl,
-    //Humidifier: HumidifierEl,
-    //Damper,
-    //TextEl,
-    //BoxEl,
-    //IconBasic,
-    //IconValue,
-    //IconSwitch,
-    //ValueEl,
-    //Temperature,
-    //GaugeChart,
-    //DialChart: AnyChartDial,
-    //LedEl,
-    //Boiler,
-    //Enthalpy,
-    //Flow,
-    //Heatpump,
-    //Pump,
-    //ValveThreeWay,
-    //ValveTwoWay,
-    //Humidity,
-    //Pressure,
-    //ThermalWheel,
-    //RoomHumidity,
-    //RoomTemperature,
-    //Wall,
-    //Weld,
-    //CircleEl,
-    //RectangleEl,
-    //HexagonEl,
-    //StepEl
+
   },
   props: {
     item: {
@@ -243,9 +116,6 @@ export default defineComponent({
     });
 
     const dispalyText = computed(() => {
-
-      // console.log('==== DisplayText', props.item.settings.t3EntryDisplayField,
-      //   props.item.t3Entry.description, props.item.t3Entry.label, props.item.t3Entry.value, props.item.t3Entry);
 
       if (!props.item.t3Entry) {
         return "";
@@ -406,15 +276,6 @@ export default defineComponent({
 
     const autoManualToggle = (event) => {
       Utils2.StopPropagationAndDefaults(event);
-      console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', props.item, props.item.t3Entry.auto_manual);
-      // emit("autoManualToggle1");
-
-      // props.item.t3Entry.auto_manual = props.item.t3Entry.auto_manual ? 0 : 1;
-      // T3UpdateEntryField("auto_manual", item);
-      var wcli = new WebClient() ; // Initialize the WebSocket message handler
-
-      new IdxPage().T3UpdateEntryField("auto_manual", props.item);
-
     }
 
     return {
