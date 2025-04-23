@@ -4,12 +4,10 @@
 -->
 <template>
   <div>
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }" v-if="item.settings.title"
-      @click.stop="$emit('objectClicked')">
+    <div class="object-title" v-if="item.settings.title" @click.stop="$emit('objectClicked')">
       {{ item.settings.title }}
     </div>
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
-      v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
+    <div class="object-title" v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
       <div class="relative">
         <q-btn v-if="
           showArrows &&
@@ -20,7 +18,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-            }}</span>
+          }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
             <q-icon v-if="!item.t3Entry.auto_manual">
@@ -276,7 +274,7 @@ function autoManualToggle(event: Event): void {
 
 <style scoped>
 .object-title {
-  text-align: left;
+  text-align: center;
   min-width: 100%;
   white-space: nowrap;
   line-height: 2.5em;
