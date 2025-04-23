@@ -1,7 +1,8 @@
 import OptConstant from "../../Data/Constant/OptConstant";
 import T3Gv from "../../Data/T3Gv";
 import VueCircle from "../../../../../components/Basic/Circle.vue";
-import ObjectType2 from "src/components/ObjectType2.vue";
+import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
+import ObjectType3 from "src/components/NewUI/ObjectType3.vue";
 
 class ForeignObjUtil {
 
@@ -141,9 +142,9 @@ class ForeignObjUtil {
     };
 
     var width=frame.width;
-    var height=frame.height;
+    var height=40;//frame.height;
 
-    const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType2, {
+    const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType3, {
       item: pumpItemWithLink,
       showArrows: true,
     });

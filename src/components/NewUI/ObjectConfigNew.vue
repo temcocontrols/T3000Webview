@@ -239,6 +239,7 @@ import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
 import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
 import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
 import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
+import { appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -418,6 +419,8 @@ function updatePropsValue(key) {
 
 function DisplayFieldValueChanged(value) {
   emit("DisplayFieldValueChanged", value);
+
+  T3Util.LogDev("= P.OCN", true, "display field value changed", value, appStateV2.value);
 
   isShapeLinkedTest.value = true;
   SvgUtil.RenderAllSVGObjects();

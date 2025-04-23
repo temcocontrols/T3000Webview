@@ -704,7 +704,11 @@ const objectsRef = ref(null); // Reference to objects
 // Lifecycle hook for component mount
 onMounted(() => {
 
-  T3000.Hvac.UI.Initialize($q); // Initialize the HVAC UI
+  Hvac.UI.Initialize($q); // Initialize the HVAC UI
+
+  // Hvac.IdxPage.initQuasar($q);
+
+// Hvac.IdxPage.initPage();
 
   // // Set global navigation properties
   // globalNav.value.title = "HVAC Drawer";
@@ -2981,6 +2985,8 @@ function lockToggle() {
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
 
+  T3Util.LogDev("= P.IDX2 objectClicked", true, "objectClicked");
+
   setTheSettingContextMenuVisible();
 
   // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
@@ -3052,9 +3058,10 @@ function changeEntryValue(refItem, newVal, control) {
 }
 
 // Toggles the auto/manual mode of an item
-function autoManualToggle(item) {
-  // console.log('33333333 IndexPage.vue->autoManualToggle->item, locked value', item, locked.value);
-  if (!locked.value) return;
+function autoManualToggle1(item) {
+  console.log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
+
+  // if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
   T3UpdateEntryField("auto_manual", item);
 }

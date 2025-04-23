@@ -35,7 +35,7 @@ import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
 
 import VueCircle from "src/components/Basic/Circle.vue";
-import ObjectType2 from "src/components/ObjectType2.vue";
+import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
 
 
