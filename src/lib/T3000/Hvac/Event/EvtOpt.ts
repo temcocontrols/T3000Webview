@@ -97,8 +97,8 @@ class EvtOpt {
       this.BindLibBoilerEvent();
       this.BindLibHeatPumpEvent();
       this.BindLibPumpEvent();
-      this.BindLibValueThreeWayEvent();
-      this.BindLibValueTwoWayEvent();
+      this.BindLibValveThreeWayEvent();
+      this.BindLibValveTwoWayEvent();
       this.BindLibDuctEvent();
       this.BindLibFanEvent();
       this.BindLibCoolingCoilEvent();
@@ -627,15 +627,15 @@ class EvtOpt {
     });
   }
 
-  BindLibValueThreeWayEvent() {
-    $("#btn_try_Lib_ValueThreeWay").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+  BindLibValveThreeWayEvent() {
+    $("#btn_try_Lib_ValveThreeWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", true);
     });
   }
 
-  BindLibValueTwoWayEvent() {
-    $("#btn_try_Lib_ValueTwoWay").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+  BindLibValveTwoWayEvent() {
+    $("#btn_try_Lib_ValveTwoWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", true);
     });
   }
 
@@ -817,11 +817,11 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "ValveThreeWay") {
-      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", true);
     }
 
     if (selectedTool.value.name == "ValveTwoWay") {
-      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", true);
     }
 
     if (selectedTool.value.name == "Duct") {

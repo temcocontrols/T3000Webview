@@ -11,6 +11,8 @@ import { toRaw } from "vue";
 import SelectUtil from "../Opt/SelectUtil";
 import DataUtil from "../Data/DataUtil";
 import DataOpt from "../Data/DataOpt";
+import DrawUtil from "../Opt/DrawUtil";
+import SvgUtil from "../Opt/SvgUtil";
 
 class QuasarUtil {
 
@@ -250,6 +252,7 @@ class QuasarUtil {
     linkT3EntryDialogV2.value.active = false;
 
     DataOpt.SaveAppStateV2();
+    SvgUtil.RenderAllSVGObjects();
     T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "close linkT3EntryDialog V2", appStateV2.value);
   }
 

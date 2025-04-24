@@ -60,11 +60,11 @@ class ToolSvgData {
       case "Pump":
         svgStr = this.PumpSvgData();
         break;
-      case "ValueThreeWay":
-        svgStr = this.ValueThreeWaySvgData();
+      case "ValveThreeWay":
+        svgStr = this.ValveThreeWaySvgData();
         break;
-      case "ValueTwoWay":
-        svgStr = this.ValueTwoWaySvgData();
+      case "ValveTwoWay":
+        svgStr = this.ValveTwoWaySvgData();
         break;
       case "Duct":
         svgStr = this.DuctSvgData();
@@ -474,9 +474,9 @@ class ToolSvgData {
     return pump;
   }
 
-  static ValueThreeWaySvgData() {
+  static ValveThreeWaySvgData() {
 
-    const valueThreeWay =
+    const valveThreeWay =
       `
 <g transform="scale(2,2.3) translate(4,4)">
     <g transform="matrix(1,0,0,-1,-4.3773334,22.894063)">
@@ -498,12 +498,12 @@ class ToolSvgData {
 </g>
     `;
 
-    return valueThreeWay;
+    return valveThreeWay;
   }
 
-  static ValueTwoWaySvgData() {
+  static ValveTwoWaySvgData() {
 
-    const valueTwoWay =
+    const valveTwoWay =
       `
 <g transform="scale(2.2,2.9) translate(2,4)">
     <g stroke-linejoin="round" fill-rule="nonzero" transform="translate(-3.8922957,-7.3951286)"
@@ -515,7 +515,7 @@ class ToolSvgData {
 </g>
     `;
 
-    return valueTwoWay;
+    return valveTwoWay;
   }
 
   static DuctSvgData() {
