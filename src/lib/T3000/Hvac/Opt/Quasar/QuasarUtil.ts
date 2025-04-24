@@ -270,28 +270,15 @@ class QuasarUtil {
     //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
     //Filter Humidifier Humidity Pressure Damper ThermalWheel Enthalpy Flow RoomHumidity RoomTemperature Gauge
     //Dial Value Wall G_Circle G_Rectangle g_arr_right Oval Switch LED Text Box Pointer Gauge IconBasic Icon Switch
-
     const tool = AllTool.find((item) => item.name === uniType);
 
     this.AddToAppStateV2(frame, tool);
-
     this.SetAppStateV2SelectIndex(tool);
-
     DataOpt.SaveAppStateV2();
   }
 
-
-  //onSelectoDragEnd
   static AddToAppStateV2(frame: any, tool: any) {
-    // const size = { width: e.rect.width, height: e.rect.height };
     const size = { width: frame.width, height: frame.height };
-
-    // const pos = {
-    //   clientX: e.clientX,
-    //   clientY: e.clientY,
-    //   top: e.rect.top,
-    //   left: e.rect.left,
-    // };
 
     const pos = {
       clientX: frame.x,
@@ -300,48 +287,12 @@ class QuasarUtil {
       left: frame.y,
     }
 
-    // if (
-    //   (selectedTool.value.name === "Pointer" ||
-    //     size.width < 20 ||
-    //     size.height < 20) &&
-    //   !continuesObjectTypes.includes(selectedTool.value.name)
-    // ) {
-    //   isDrawing.value = false;
-    //   return;
-    // }
-    // if (
-    //   continuesObjectTypes.includes(selectedTool.value.name) &&
-    //   size.height < 20
-    // ) {
-    //   size.height = selectedTool.value.height;
-    // }
-
-
-
     const item = this.drawObject(size, pos, tool);
-    // if (item && continuesObjectTypes.includes(item.type)) {
-    //   setTimeout(() => {
-    //     isDrawing.value = true;
-    //     appState.value.selectedTargets = [];
-    //     appState.value.items[appState.value.activeItemIndex].rotate = 0;
-    //     startTransform.value = cloneDeep(item.translate);
-    //   }, 100);
-    // }
-
     T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 1", true, item);
     T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 2", true, appStateV2.value);
   }
 
-
-  // new draw logic
   static drawObject(size, pos, tool) {
-    // tool = tool || selectedTool.value;
-
-    // if (tool.type === "libItem") {
-    //   addLibItem(tool.items, size, pos);
-    //   return;
-    // }
-    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
     const toolSettings =
       cloneDeep(AllTool.find((t) => t.name === tool.name)?.settings) || {};
@@ -358,21 +309,9 @@ class QuasarUtil {
       title: null,
       active: false,
       type: tool.name,
-      // translate: [
-      //   (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-      //   scalPercentage,
-      //   (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-      //   scalPercentage,
-      // ],
-
-      translate: [
-        pos.clientX, pos.clientY
-      ],
-
-
-
-      width: size.width * scalPercentage,
-      height: size.height * scalPercentage,
+      translate: [pos.clientX, pos.clientY],
+      width: size.width,
+      height: size.height,
       rotate: 0,
       scaleX: 1,
       scaleY: 1,
@@ -382,43 +321,15 @@ class QuasarUtil {
       showDimensions: true
     };
 
-    // if (tool.type === "Image") {
-    //   tempItem.image = tool;
-    //   tempItem.type = tool.id;
-    // }
-
-    // copy the first category from tool.cat to item.cat
-    // if (tool.cat) {
-    //   const [first] = tool.cat;
-    //   tempItem.cat = first;
-    // }
-
     const item = this.addObject(tempItem);
 
     if (["Value", "Icon", "Switch"].includes(tool.name)) {
       linkT3EntryDialogV2.value.active = true;
     }
-
-    // setTimeout(() => {
-    //   if (locked.value) return;
-    //   appState.value.activeItemIndex = appState.value.items.findIndex(
-    //     (i) => i.id === item.id
-    //   );
-    // }, 10);
-    // setTimeout(() => {
-    //   if (locked.value) return;
-    //   const target = document.querySelector(`#moveable-item-${item.id}`);
-    //   appState.value.selectedTargets = [target];
-    //   selecto.value.setSelectedTargets([target]);
-    // }, 100);
     return item;
   }
 
-  // Adds a new object to the app state and updates guidelines
   static addObject(item, group = undefined, addToHistory = true) {
-    // if (addToHistory) {
-    //   addActionToHistory(`Add ${item.type}`);
-    // }
     appStateV2.value.itemsCount++;
     item.id = appStateV2.value.itemsCount;
     item.group = group;
@@ -435,11 +346,7 @@ class QuasarUtil {
       item.settings.fontSize = 16;
     }
     appStateV2.value.items.push(item);
-    // const lines = document.querySelectorAll(".moveable-item");
     appStateV2.value.elementGuidelines = [];
-    // Array.from(lines).forEach(function (el) {
-    //   appStateV2.value.elementGuidelines.push(el);
-    // });
     return item;
   }
 
@@ -463,10 +370,9 @@ class QuasarUtil {
     );
 
     T3Util.LogDev("= U.QuasarUtil SetAppStateV2SelectIndex", true, appStateV2.value);
-
   }
 
-  static GetItemFromAPSV2(shapeId:string){
+  static GetItemFromAPSV2(shapeId: string) {
     let item = appStateV2.value.items.find((item) => item.type === shapeId);
     if (item) {
       return item;

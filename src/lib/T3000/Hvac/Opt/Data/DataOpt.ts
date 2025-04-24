@@ -42,25 +42,19 @@ import { appStateV2 } from '../../Data/T3Data'
  */
 class DataOpt {
 
-  /**
-   * Constant key for storing clipboard data in localStorage
-   */
+  //Constant key for storing clipboard data in localStorage
   static readonly CLIPBOARD_KEY: string = "T3.clipboard";
 
-  /**
-   * Constant key for storing state data in localStorage
-   */
+  //Constant key for storing state data in localStorage
   static readonly STATE_KEY: string = "T3.state";
 
-  /**
-   * Constant key for storing object store data in localStorage
-   */
+  //Constant key for storing object store data in localStorage
   static readonly OBJECT_STORE_KEY: string = "T3.dataStore";
 
-  /**
-   * Constant key for storing current object sequence ID in localStorage
-   */
+  //Constant key for storing current object sequence ID in localStorage
   static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "T3.currentObjSeqId";
+
+  static readonly APP_STATE_V2: string = "T3.stateV2";
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -338,17 +332,23 @@ class DataOpt {
   }
 
   static SaveAppStateV2(): void {
-    const key = "T3.stateV2";
     const stateV2 = appStateV2.value;
-    this.SaveData(key, stateV2);
+    this.SaveData(this.APP_STATE_V2, stateV2);
   }
 
   static LoadAppStateV2(): void {
-    const key = "T3.stateV2";
-    const stateV2 = this.LoadData(key);
+    const stateV2 = this.LoadData(this.APP_STATE_V2);
     if (stateV2) {
       appStateV2.value = stateV2;
     }
+  }
+
+  static ClearT3LocalStorage(): void {
+    localStorage.removeItem(this.CLIPBOARD_KEY);
+    localStorage.removeItem(this.STATE_KEY);
+    localStorage.removeItem(this.OBJECT_STORE_KEY);
+    localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
+    localStorage.removeItem(this.APP_STATE_V2);
   }
 }
 

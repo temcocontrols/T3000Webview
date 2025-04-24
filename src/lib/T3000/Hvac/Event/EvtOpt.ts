@@ -1,6 +1,7 @@
 
 
 import T3Gv from "../Data/T3Gv";
+import DataOpt from "../Opt/Data/DataOpt";
 import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
@@ -550,7 +551,7 @@ class EvtOpt {
    */
   BindClearEvent() {
     $("#btn_try_Clear").on("pointerdown", (event) => {
-      localStorage.clear();
+      DataOpt.ClearT3LocalStorage();
     });
   }
 
