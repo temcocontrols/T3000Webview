@@ -15,6 +15,28 @@
           ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
           icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
           @click="changeValue('increase')" />
+
+
+        <!-- <div>
+          <span @click="$emit('objectClicked')">{{
+            dispalyText || item.t3Entry.id
+          }}</span>
+
+          <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
+            <q-icon v-if="!item.t3Entry.auto_manual">
+              <q-tooltip anchor="top middle" self="center middle">
+                In auto mode
+              </q-tooltip>
+            </q-icon>
+            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
+              <q-tooltip anchor="top middle" self="center middle">
+                In manual mode
+              </q-tooltip>
+            </q-icon>
+          </span>
+        </div> -->
+
+
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
@@ -33,6 +55,7 @@
             </q-icon>
           </span>
         </div>
+
         <q-btn v-if="
           showArrows &&
           item.type !== 'Switch' &&
@@ -48,6 +71,7 @@
 import { computed, ref } from "vue";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import Utils2 from "src/lib/T3000/Hvac/Util/Utils2";
+import { LockOutlined } from '@ant-design/icons-vue';
 
 interface T3Entry {
   id?: string;

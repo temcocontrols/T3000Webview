@@ -3,13 +3,14 @@
     {{ item.title }}
     <EditOutlined @click.stop="handleIconClick" class="edit-icon" />
     <a-button type="primary" @click.stop="handleButtonClick">Antd Button</a-button>
+    <LockOutlined />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { Button as AButton } from 'ant-design-vue';
-import { EditOutlined } from '@ant-design/icons-vue';
+import { EditOutlined,LockOutlined } from '@ant-design/icons-vue';
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
 interface Item {
