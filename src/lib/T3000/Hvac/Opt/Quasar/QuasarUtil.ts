@@ -465,6 +465,16 @@ class QuasarUtil {
     T3Util.LogDev("= U.QuasarUtil SetAppStateV2SelectIndex", true, appStateV2.value);
 
   }
+
+  static GetItemFromAPSV2(shapeId:string){
+    let item = appStateV2.value.items.find((item) => item.type === shapeId);
+    if (item) {
+      return item;
+    } else {
+      console.error(`Item with id ${shapeId} not found in appStateV2`);
+      return null;
+    }
+  }
 }
 
 export default QuasarUtil

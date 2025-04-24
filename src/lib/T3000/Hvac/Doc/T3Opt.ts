@@ -124,13 +124,12 @@ class T3Opt {
 
     // Load stored data
     DataOpt.InitStoredData();
+    DataOpt.LoadAppStateV2();
 
     // Render all SVG objects
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
-
-    DataOpt.LoadAppStateV2();
   }
 }
 

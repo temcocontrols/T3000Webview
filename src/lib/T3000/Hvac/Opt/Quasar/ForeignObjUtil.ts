@@ -3,6 +3,7 @@ import T3Gv from "../../Data/T3Gv";
 import VueCircle from "../../../../../components/Basic/Circle.vue";
 import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import ObjectType3 from "src/components/NewUI/ObjectType3.vue";
+import QuasarUtil from "./QuasarUtil";
 
 class ForeignObjUtil {
 
@@ -141,13 +142,40 @@ class ForeignObjUtil {
       "id": 2
     };
 
-    var width=frame.width;
-    var height=40;//frame.height;
+    var width = frame.width;
+    var height = 40;//frame.height;
 
     const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType3, {
       item: pumpItemWithLink,
       showArrows: true,
     });
+
+    foreignObj.SetPos(0, -50);
+
+    const foreignContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
+    foreignContainer.AddElement(foreignObj);
+
+    foreignContainer.SetSize(width, height);
+
+    // Set the position of the foreignObject inside the foreignContainer
+    foreignContainer.SetPos(0, 0);
+
+    return foreignContainer;
+  }
+
+  // shapeId used for get the current item from app state v2
+  static CreateVueObject(docInstance: any, frame: any, apsItem:any) {
+    let svgDoc = docInstance == null ? T3Gv.opt.svgDoc : docInstance;
+
+    var width = frame.width;
+    var height = 40;//frame.height;
+
+    var vueProps = {
+      item: apsItem,
+      showArrows: false
+    }
+
+    const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType3, vueProps);
 
     foreignObj.SetPos(0, -50);
 

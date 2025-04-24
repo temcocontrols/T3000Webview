@@ -13,8 +13,8 @@ import StyleConstant from '../Data/Constant/StyleConstant';
 import T3Util from '../Util/T3Util';
 import Instance from '../Data/Instance/Instance';
 import DataUtil from '../Opt/Data/DataUtil';
-import { isShapeLinkedTest } from '../Data/Constant/RefConstant';
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
+import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
 /**
  * Represents an SVG Fragment Symbol that can be inserted into documents as a reusable graphical element.
@@ -142,8 +142,11 @@ class SVGFragmentSymbol extends BaseSymbol {
     container.AddElement(slopShape);
     container.isShape = true;
 
-    if (isShapeLinkedTest.value) {
-      const foreignObj = ForeignObjUtil.CreateVueObjectType(svgDocument, frame);
+    var apsItem = QuasarUtil.GetItemFromAPSV2(this.uniType);
+
+    var needRefreshVue = apsItem && apsItem.t3Entry;
+    if (needRefreshVue) {
+      const foreignObj = ForeignObjUtil.CreateVueObject(svgDocument, frame, apsItem);
       container.AddElement(foreignObj);
     }
 

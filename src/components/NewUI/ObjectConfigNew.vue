@@ -229,7 +229,7 @@
 import { onMounted, onBeforeUnmount, onUpdated, ref, computed, watch } from 'vue';
 import { Drawer as ADrawer, Radio as ARadio, RadioGroup as ARadioGroup, Button as AButton } from 'ant-design-vue';
 import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
-import { isShapeLinkedTest, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import { isEqual, cloneDeep } from 'lodash';
 import { tools, switchIcons } from "src/lib/common";
 import T3000 from 'src/lib/T3000/T3000';
@@ -422,9 +422,8 @@ function DisplayFieldValueChanged(value) {
 
   T3Util.LogDev("= P.OCN", true, "display field value changed", value, appStateV2.value);
 
-  isShapeLinkedTest.value = true;
   SvgUtil.RenderAllSVGObjects();
-  T3Util.LogDev("= P.OCN", true, "display field value changed", value, isShapeLinkedTest.value);
+  T3Util.LogDev("= P.OCN", true, "display field value changed", value );
 }
 
 function getEntryRange(entry) {
