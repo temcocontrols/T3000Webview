@@ -1,11 +1,9 @@
 <template>
   <!-- <a-drawer title="" :width="250" :maskClosable="false" :mask="false" :placement="placement" :open="objectConfigShow"
     @close="onClose"> -->
-
   <div class="item-config flex flex-nowrap column" v-if="item">
     <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>
     <div class="item-config-inner">
-
       <div>
         <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
           class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
@@ -103,7 +101,6 @@
               console.log('X value changed:', val);
               RefreshSelectedItem();
             }" label="X" v-model.number="item.translate[0]" dark filled type="number" />
-
 
             <q-input input-style="width: 100%" @update:model-value="RefreshSelectedItem" label="Y"
               v-model.number="item.translate[1]" dark filled type="number" />
@@ -366,11 +363,6 @@ function RefreshSelectedItem() {
   T3Util.Log("= V.OCN", "RefreshSelectedItem", item.value);
   T3Util.LogDev("= V.OCN", true, "RefreshSelectedItem", item.value);
 
-  if (item.value.type === "Int_Ext_Wall") {
-    item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
-  }
-  // emit("RefreshSelectedItem");
-
   var posX = item.value.translate[0];
   var posY = item.value.translate[1];
   var posWidth = item.value.width;
@@ -421,26 +413,27 @@ function DisplayFieldValueChanged(value) {
   emit("DisplayFieldValueChanged", value);
 
   T3Util.LogDev("= P.OCN", true, "display field value changed", value, appStateV2.value);
-
   SvgUtil.RenderAllSVGObjects();
-  T3Util.LogDev("= P.OCN", true, "display field value changed", value );
+  T3Util.LogDev("= P.OCN", true, "display field value changed", value);
 }
 
 function getEntryRange(entry) {
   return IdxUtils.getEntryRange(entry);
 }
 
-// Lifecycle hooks
 onMounted(() => {
   T3Util.LogDev("= V.OCN", true, "ObjectConfigNew mounted", props.current);
 
-  // var selectedItem = DrawUtil.GetSelectObjectCoords();
-  // initialObject.value.translate[0] = selectedItem.x;
-  // initialObject.value.translate[1] = selectedItem.y;
-  // initialObject.value.width = selectedItem.width;
-  // initialObject.value.height = selectedItem.height;
+  /*
+  var selectedItem = DrawUtil.GetSelectObjectCoords();
+  initialObject.value.translate[0] = selectedItem.x;
+  initialObject.value.translate[1] = selectedItem.y;
+  initialObject.value.width = selectedItem.width;
+  initialObject.value.height = selectedItem.height;
+  */
 
-  emit("mounted");
+  // Add action to history for undo/redo
+  // emit("mounted");
 });
 
 onBeforeUnmount(() => {

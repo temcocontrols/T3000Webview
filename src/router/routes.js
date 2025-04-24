@@ -18,8 +18,8 @@ const routes = [
       {
         path: "t2",
         name: "hvac2",
-        component: () => import("pages/HvacDrawer/IndexPage2.vue"),
-      }, 
+        component: () => import("src/components/NewUI/IndexPage2.vue"),
+      },
     ],
   },
   {
