@@ -1814,42 +1814,11 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-
-  /*
-  // console.log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
-  // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-  // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
-  if (!obj.t3Entry) return;
-  let fieldVal = obj.t3Entry[key];
-
-  const tempFieldBefore = fieldVal;
-
-  if (Math.abs(fieldVal) >= 1000) {
-    fieldVal = fieldVal / 1000;
-  }
-
-  if (key === "value" || key === "control") {
-    IdxUtils.refreshObjectStatus(obj);
-  }
-  window.chrome?.webview?.postMessage({
-    action: 3, // UPDATE_ENTRY
-    field: key,
-    value: fieldVal,
-    panelId: obj.t3Entry.pid,
-    entryIndex: obj.t3Entry.index,
-    entryType: T3_Types[obj.t3Entry.type],
-  });
-
-  console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
-  */
-
   Hvac.IdxPage.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value) {
-  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', value);
-  // console.log('IndexPage.vue->DisplayFieldValueChanged with value=', appState.value);
   save(false, true);
 }
 
@@ -1860,46 +1829,7 @@ function selectoDragCondition(e) {
 
 // Save the linked T3 entry for an object and update its icon if necessary
 function linkT3EntrySaveV2() {
-
   QuasarUtil.LinkT3EntrySaveV2();
-  // console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialog.value.data);
-  // // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
-  // addActionToHistory("Link object to T3000 entry");
-
-  // if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
-  //   if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
-  //     appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
-  //   } else {
-  //     appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
-  //   }
-  // }
-
-  // // set the default to be divided by 1000
-  // const checkHasValue = linkT3EntryDialog.value.data.value !== undefined && linkT3EntryDialog.value.data.value !== null && linkT3EntryDialog.value.data.value >= 1000;
-  // if (checkHasValue) {
-  //   linkT3EntryDialog.value.data.value = linkT3EntryDialog.value.data.value / 1000;
-  // }
-
-  // appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(toRaw(linkT3EntryDialog.value.data));
-
-  // // Change the icon based on the linked entry type
-  // if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
-  //   let icon = "fa-solid fa-camera-retro";
-  //   if (linkT3EntryDialog.value.data.type === "GRP") {
-  //     icon = "fa-solid fa-camera-retro";
-  //   } else if (linkT3EntryDialog.value.data.type === "SCHEDULE") {
-  //     icon = "schedule";
-  //   } else if (linkT3EntryDialog.value.data.type === "PROGRAM") {
-  //     icon = "fa-solid fa-laptop-code";
-  //   } else if (linkT3EntryDialog.value.data.type === "HOLIDAY") {
-  //     icon = "calendar_month";
-  //   }
-  //   appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
-  // }
-
-  // IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
-  // linkT3EntryDialog.value.data = null;
-  // linkT3EntryDialog.value.active = false;
 }
 
 // Filter function for selecting panels in the UI
@@ -1992,21 +1922,6 @@ function insertT3DefaultLoadData() {
   // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
-// // Refresh the status of an object based on its T3 entry
-// function refreshObjectStatus(item) {
-//   if (item.t3Entry && item.settings?.active !== undefined) {
-//     item.settings.active = getObjectActiveValue(item);
-//   }
-
-//   if (
-//     item.t3Entry &&
-//     item.t3Entry.decom !== undefined &&
-//     item.settings?.inAlarm !== undefined
-//   ) {
-//     item.settings.inAlarm = !!item.t3Entry.decom;
-//   }
-// }
-
 // Save the current app state, optionally displaying a notification
 function save(notify = false, saveToT3 = false) {
   Hvac.IdxPage.save(notify, saveToT3);
@@ -2015,49 +1930,6 @@ function save(notify = false, saveToT3 = false) {
 function refreshMoveable() {
   Hvac.IdxPage.refreshMoveable();
 }
-
-// function save(notify = false) {
-//   console.log('= Idx save notify', rulersGridVisible.value);
-//   savedNotify.value = notify;
-//   const data = cloneDeep(toRaw(appState.value));
-
-//   // recalculate the items count
-//   const nonZeroWidthItemsCount = data.items.filter(item => item.width !== 0).length;
-//   data.itemsCount = nonZeroWidthItemsCount;
-//   // console.log('==== Save nonZeroWidthItemsCount:', nonZeroWidthItemsCount);
-//   // console.log('==== Save appState:', appState.value);
-//   console.log('= Idx save data', data);
-
-//   data.selectedTargets = [];
-//   data.elementGuidelines = [];
-
-//   if (isBuiltInEdge.value) {
-//     // window.chrome?.webview?.postMessage({
-//     //   action: 2, // SAVE_GRAPHIC
-//     //   data,
-//     // });
-//     Hvac.WebClient.SaveGraphicData(null, null, data);
-//   }
-//   else {
-//     localStorage.setItem("appState", JSON.stringify(data));
-
-//     // save device data and related appState
-//     if (!isBuiltInEdge.value) {
-//       saveDeviceAppState();
-//     }
-//   }
-
-//   /*
-//   window.chrome?.webview?.postMessage({
-//     action: 2, // SAVE_GRAPHIC
-//     data,
-//   });
-
-//   if (!window.chrome?.webview?.postMessage) {
-//     localStorage.setItem("appState", JSON.stringify(data));
-//   }
-//   */
-// }
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
@@ -2070,33 +1942,11 @@ function newProject() {
       persistent: true,
     })
       .onOk(() => {
-        /*
-        appState.value = cloneDeep(emptyProject);
-        undoHistory.value = [];
-        redoHistory.value = [];
-        refreshMoveable();
-
-        if (!window.chrome?.webview?.postMessage) {
-          localStorage.removeItem("appState");
-        }
-        */
-
         Hvac.IdxPage.newProject();
       })
       .onCancel(() => { });
     return;
   }
-
-  /*
-  appState.value = cloneDeep(emptyProject);
-  undoHistory.value = [];
-  redoHistory.value = [];
-  refreshMoveable();
-
-  if (!window.chrome?.webview?.postMessage) {
-    localStorage.removeItem("appState");
-  }
-  */
 
   Hvac.IdxPage.newProject();
 }
