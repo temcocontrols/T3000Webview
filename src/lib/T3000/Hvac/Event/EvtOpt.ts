@@ -95,7 +95,7 @@ class EvtOpt {
       this.BindLibRoomTemperatureEvent();
       this.BindLibTemperatureEvent();
       this.BindLibBoilerEvent();
-      this.BindLibHeatPumpEvent();
+      this.BindLibHeatpumpEvent();
       this.BindLibPumpEvent();
       this.BindLibValveThreeWayEvent();
       this.BindLibValveTwoWayEvent();
@@ -615,9 +615,9 @@ class EvtOpt {
     });
   }
 
-  BindLibHeatPumpEvent() {
-    $("#btn_try_Lib_HeatPump").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+  BindLibHeatpumpEvent() {
+    $("#btn_try_Lib_Heatpump").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Heatpump", true);
     });
   }
 
@@ -809,7 +809,7 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Heatpump") {
-      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+      EvtOpt.toolOpt.LibToolShape("Heatpump", true);
     }
 
     if (selectedTool.value.name == "Pump") {

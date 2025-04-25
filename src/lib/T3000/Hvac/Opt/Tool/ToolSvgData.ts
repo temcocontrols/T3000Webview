@@ -54,8 +54,8 @@ class ToolSvgData {
       case "Boiler":
         svgStr = this.BoilerSvgData();
         break;
-      case "HeatPump":
-        svgStr = this.HeatPumpSvgData();
+      case "Heatpump":
+        svgStr = this.HeatpumpSvgData();
         break;
       case "Pump":
         svgStr = this.PumpSvgData();
@@ -435,9 +435,9 @@ class ToolSvgData {
     return boiler;
   }
 
-  static HeatPumpSvgData() {
+  static HeatpumpSvgData() {
 
-    const heatPump =
+    const heatpump =
       `
 <g transform="scale(1.6,1.6) translate(3,3)">
     <g class="heat-pump" stroke-linejoin="round" stroke="##FillColor=#000000##" transform="translate(39 -2.3842e-7)"
@@ -453,7 +453,7 @@ class ToolSvgData {
     </g>
 </g>
     `;
-    return heatPump;
+    return heatpump;
   }
 
   static PumpSvgData() {

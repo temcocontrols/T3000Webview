@@ -43,18 +43,19 @@ import { appStateV2 } from '../../Data/T3Data'
 class DataOpt {
 
   //Constant key for storing clipboard data in localStorage
-  static readonly CLIPBOARD_KEY: string = "T3.clipboard";
+  static readonly CLIPBOARD_KEY: string = "t3.clipboard";
 
   //Constant key for storing state data in localStorage
-  static readonly STATE_KEY: string = "T3.state";
+  static readonly STATE_KEY: string = "t3.state";
 
   //Constant key for storing object store data in localStorage
-  static readonly OBJECT_STORE_KEY: string = "T3.dataStore";
+  static readonly OBJECT_STORE_KEY: string = "t3.dataStore";
 
   //Constant key for storing current object sequence ID in localStorage
-  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "T3.currentObjSeqId";
+  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "t3.currentObjSeqId";
 
-  static readonly APP_STATE_V2: string = "T3.stateV2";
+  static readonly APP_STATE_V2: string = "t3.stateV2";
+  static readonly DRAW_KEY: string = "t3.draw";
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -349,6 +350,7 @@ class DataOpt {
     localStorage.removeItem(this.OBJECT_STORE_KEY);
     localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
     localStorage.removeItem(this.APP_STATE_V2);
+    localStorage.removeItem(this.DRAW_KEY);
   }
 }
 
