@@ -97,19 +97,21 @@
         <div class="p-1">
           <div class="grid gap-4 grid-cols-2 mb-4">
 
-            <q-input input-style="width: 100%" @update:model-value="(val) => {
-              console.log('X value changed:', val);
-              RefreshSelectedItem();
-            }" label="X" v-model.number="item.translate[0]" dark filled type="number" />
+            <q-input input-style="width: 100%" @update:model-value="refreshX" label="X"
+              v-model.number="item.translate[0]" dark filled type="number" />
 
-            <q-input input-style="width: 100%" @update:model-value="RefreshSelectedItem" label="Y"
+            <q-input input-style="width: 100%" @update:model-value="refreshY" label="Y"
               v-model.number="item.translate[1]" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="RefreshSelectedItem" label="Width"
+
+            <q-input input-style="width: 100%" @update:model-value="refreshWidth" label="Width"
               v-model.number="item.width" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="RefreshSelectedItem" label="Height"
+
+            <q-input input-style="width: 100%" @update:model-value="refreshHeight" label="Height"
               v-model.number="item.height" dark filled type="number" />
-            <q-input input-style="width: 100%" @update:model-value="RefreshSelectedItem" label="Rotate"
+
+            <q-input input-style="width: 100%" @update:model-value="refreshRotate" label="Rotate"
               v-model.number="item.rotate" dark filled type="number" />
+
             <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
               type="number" />
           </div>
@@ -367,6 +369,7 @@ function RefreshSelectedItem() {
   var posY = item.value.translate[1];
   var posWidth = item.value.width;
   var posHeight = item.value.height;
+  var rotate = item.value.rotate;
 
   T3Util.LogDev("= V.OCN Update item posXposYposWidthposHeight", true, `xVal=${posX}`, `yVal=${posY}`, `wVal=${posWidth}`, `hVal=${posHeight}`);
 
@@ -382,6 +385,42 @@ function RefreshSelectedItem() {
   EvtOpt.toolOpt.SetY(yLength.toString());
   EvtOpt.toolOpt.SetWidth(width.toString());
   EvtOpt.toolOpt.SetHeight(height.toString());
+
+  EvtOpt.toolOpt.RotateAct(null, rotate);
+}
+
+function refreshX(){
+  var posX = item.value.translate[0];
+  const xLength = RulerUtil.GetLengthInRulerUnits(posX, false, T3Gv.docUtil.rulerConfig.originx, 0);
+  T3Gv.refreshPosition = false;
+  EvtOpt.toolOpt.SetX(xLength.toString());
+}
+
+function refreshY(){
+  var posY = item.value.translate[1];
+  const yLength = RulerUtil.GetLengthInRulerUnits(posY, false, T3Gv.docUtil.rulerConfig.originy, 0);
+  T3Gv.refreshPosition = false;
+  EvtOpt.toolOpt.SetY(yLength.toString());
+}
+
+function refreshWidth(){
+  var posWidth = item.value.width;
+  const width = RulerUtil.GetLengthInRulerUnits(posWidth, false, null, 0);
+  T3Gv.refreshPosition = false;
+  EvtOpt.toolOpt.SetWidth(width.toString());
+}
+
+function refreshHeight(){
+  var posHeight = item.value.height;
+  const height = RulerUtil.GetLengthInRulerUnits(posHeight, false, null, 0);
+  T3Gv.refreshPosition = false;
+  EvtOpt.toolOpt.SetHeight(height.toString());
+}
+
+function refreshRotate(){
+  var rotate = item.value.rotate;
+  T3Gv.refreshPosition = false;
+  EvtOpt.toolOpt.RotateAct(null, rotate);
 }
 
 function T3UpdateEntryField(key, obj) {
