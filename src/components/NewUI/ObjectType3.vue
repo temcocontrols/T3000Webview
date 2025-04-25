@@ -43,16 +43,20 @@
           }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
-            <q-icon v-if="!item.t3Entry.auto_manual">
-              <q-tooltip anchor="top middle" self="center middle">
-                In auto mode
-              </q-tooltip>
-            </q-icon>
-            <q-icon v-else name="lock" style="font-size: xx-large;color:#659dc5">
-              <q-tooltip anchor="top middle" self="center middle">
-                In manual mode
-              </q-tooltip>
-            </q-icon>
+            <a-tooltip title="In auto mode" v-if="!item.t3Entry.auto_manual">
+              <LockOutlined />
+            </a-tooltip>
+            <a-tooltip title="In manual mode" v-else>
+              <UnlockOutlined />
+            </a-tooltip>
+
+
+            <!-- <a-tooltip title="In auto mode" placement="top" v-if="!item.t3Entry.auto_manual">
+              <UnlockOutlined />
+            </a-tooltip>
+            <a-tooltip title="In manual mode" placement="top" v-else>
+              <LockOutlined style="font-size: xx-large; color: #659dc5;" />
+            </a-tooltip> -->
           </span>
         </div>
 
@@ -71,7 +75,9 @@
 import { computed, ref } from "vue";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import Utils2 from "src/lib/T3000/Hvac/Util/Utils2";
-import { LockOutlined } from '@ant-design/icons-vue';
+import { LockOutlined, UnlockOutlined } from '@ant-design/icons-vue';
+import { Tooltip as ATooltip } from 'ant-design-vue';
+import { Button as AButton } from 'ant-design-vue';
 
 interface T3Entry {
   id?: string;
