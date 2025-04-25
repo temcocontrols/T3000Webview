@@ -133,7 +133,6 @@ class QuasarUtil {
   }
 
   static ShowContextMenu(show: boolean) {
-    // Clear the context menu
     contextMenuShow.value = show;
   }
 
@@ -344,7 +343,7 @@ class QuasarUtil {
       item.settings.textColor = "inherit";
     }
     if (!item.settings.fontSize) {
-      item.settings.fontSize = 16;
+      item.settings.fontSize = 13;
     }
     appStateV2.value.items.push(item);
     appStateV2.value.elementGuidelines = [];
