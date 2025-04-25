@@ -40,7 +40,7 @@
         <div>
           <span @click="$emit('objectClicked')">{{
             dispalyText || item.t3Entry.id
-          }}</span>
+            }}</span>
 
           <span v-if="item.t3Entry.auto_manual !== undefined" class="mode-icon ml-2 text-lg" @click="autoManualToggle">
             <a-tooltip title="In auto mode" v-if="!item.t3Entry.auto_manual">
@@ -78,6 +78,7 @@ import Utils2 from "src/lib/T3000/Hvac/Util/Utils2";
 import { LockOutlined, UnlockOutlined } from '@ant-design/icons-vue';
 import { Tooltip as ATooltip } from 'ant-design-vue';
 import { Button as AButton } from 'ant-design-vue';
+import IdxPage2 from "src/lib/T3000/Hvac/Opt/Common/IdxPage2";
 
 interface T3Entry {
   id?: string;
@@ -299,7 +300,9 @@ function updateWeldModel(weldModel: unknown, itemList: unknown[]): void {
 
 function autoManualToggle(event: Event): void {
   Utils2.StopPropagationAndDefaults(event);
+  IdxPage2.autoManualToggle(props.item);
 }
+
 </script>
 
 <style scoped>

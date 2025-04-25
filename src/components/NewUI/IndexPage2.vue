@@ -3058,7 +3058,7 @@ function changeEntryValue(refItem, newVal, control) {
 }
 
 // Toggles the auto/manual mode of an item
-function autoManualToggle1(item) {
+function autoManualToggle(item) {
   console.log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
 
   // if (!locked.value) return;
