@@ -36,7 +36,7 @@ class T3Gv {
   static gFmtTextObj: any;                 // Global formatted text object
   static quasar: any;                      // Quasar framework instance
 
-  static refreshPosition: boolean = true;
+  // static refreshPosition: boolean = true;
 }
 
 export default T3Gv

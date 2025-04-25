@@ -54,6 +54,8 @@ class UIUtil {
 
   static UpdateDisplayCoordinates(dimensions, position, cursorType, drawingObject) {
 
+    // T3Util.LogDev("= U.UIUtil UpdateDisplayCoordinates", true, dimensions, position, cursorType, drawingObject);
+
     // Set default cursor type if not provided
     if (cursorType == null) {
       cursorType = "DEFAULT";
@@ -106,11 +108,10 @@ class UIUtil {
           height: dimensions.height,
         };
 
-        if (T3Gv.refreshPosition) {
-          QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
-          T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
-
-        }
+        // if (T3Gv.refreshPosition) {
+        //   QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
+        //   T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+        // }
       }
 
       // Constrain position to document bounds

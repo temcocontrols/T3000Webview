@@ -380,7 +380,7 @@ function RefreshSelectedItem() {
 
   T3Util.LogDev("= V.OCN Update item position", true, `xVal=${xLength}`, `yVal=${yLength}`, `wVal=${width}`, `hVal=${height}`);
 
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetX(xLength.toString());
   EvtOpt.toolOpt.SetY(yLength.toString());
   EvtOpt.toolOpt.SetWidth(width.toString());
@@ -392,34 +392,34 @@ function RefreshSelectedItem() {
 function refreshX(){
   var posX = item.value.translate[0];
   const xLength = RulerUtil.GetLengthInRulerUnits(posX, false, T3Gv.docUtil.rulerConfig.originx, 0);
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetX(xLength.toString());
 }
 
 function refreshY(){
   var posY = item.value.translate[1];
   const yLength = RulerUtil.GetLengthInRulerUnits(posY, false, T3Gv.docUtil.rulerConfig.originy, 0);
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetY(yLength.toString());
 }
 
 function refreshWidth(){
   var posWidth = item.value.width;
   const width = RulerUtil.GetLengthInRulerUnits(posWidth, false, null, 0);
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetWidth(width.toString());
 }
 
 function refreshHeight(){
   var posHeight = item.value.height;
   const height = RulerUtil.GetLengthInRulerUnits(posHeight, false, null, 0);
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.SetHeight(height.toString());
 }
 
 function refreshRotate(){
   var rotate = item.value.rotate;
-  T3Gv.refreshPosition = false;
+  // T3Gv.refreshPosition = false;
   EvtOpt.toolOpt.RotateAct(null, rotate);
 }
 

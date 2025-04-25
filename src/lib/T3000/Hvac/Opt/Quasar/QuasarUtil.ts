@@ -1,7 +1,7 @@
 
 
 import { cloneDeep } from "lodash";
-import { contextMenuShow, currentObject, objectConfigShow } from "../../Data/Constant/RefConstant";
+import { contextMenuShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
 import { AllTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
@@ -138,21 +138,22 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    T3Gv.refreshPosition = true;
-    this.SetSeletedTool();
-    objectConfigShow.value = true;///show;
+    T3Util.LogDev("= U.QuasarUtil ShowObjectConfig", true, "show=>", show);
+    // T3Gv.refreshPosition = true;
+    // this.SetSeletedTool();
+    objectConfigShow.value = show;
   }
 
-  static SetCurrentObject(currentObj: any) {
-    T3Gv.refreshPosition = true;
-    currentObject.value = currentObj;
-  }
+  // static SetCurrentObject(currentObj: any) {
+  //   T3Gv.refreshPosition = true;
+  //   // currentObject.value = currentObj;
+  // }
 
   static UpdateCurrentObjectPos(newPosFrame: any) {
     if (newPosFrame) {
-      currentObject.value.translate = newPosFrame.translate;
-      currentObject.value.width = newPosFrame.width;
-      currentObject.value.height = newPosFrame.height;
+      // currentObject.value.translate = newPosFrame.translate;
+      // currentObject.value.width = newPosFrame.width;
+      // currentObject.value.height = newPosFrame.height;
 
       // Update the new pos frame to appStateV2
       const v2Index = appStateV2?.value?.activeItemIndex ?? "-1";
@@ -160,44 +161,46 @@ class QuasarUtil {
       if (v2Index !== "-1") {
         let currentItem = appStateV2.value.items[v2Index];
         if (currentItem !== undefined && currentItem != null) {
-          appStateV2.value.items[v2Index].translate = newPosFrame.translate;
+          appStateV2.value.items[v2Index].translate = [newPosFrame.x, newPosFrame.y];
           appStateV2.value.items[v2Index].width = newPosFrame.width;
           appStateV2.value.items[v2Index].height = newPosFrame.height;
+
+          DataOpt.SaveAppStateV2();
         }
       }
     }
   }
 
-  static SetSeletedTool() {
-    const defaultItem: any = {
-      active: false,
-      cat: "General",
-      group: {},
-      height: 60,
-      id: 1,
-      rotate: 0,
-      scaleX: 1,
-      scaleY: 1,
-      settings: {
-        bgColor: "inherit",
-        fillColor: "#659dc5",
-        fontSize: 16,
-        textColor: "inherit",
-        titleColor: "inherit",
-        t3EntryDisplayField: "none",
-        justifyContent: ''
-      },
-      showDimensions: true,
-      t3Entry: null,
-      title: null,
-      translate: [217, 49],
-      type: "G_Circle",
-      width: 60,
-      zindex: 1
-    };
+  // static SetSeletedTool() {
+  //   const defaultItem: any = {
+  //     active: false,
+  //     cat: "General",
+  //     group: {},
+  //     height: 60,
+  //     id: 1,
+  //     rotate: 0,
+  //     scaleX: 1,
+  //     scaleY: 1,
+  //     settings: {
+  //       bgColor: "inherit",
+  //       fillColor: "#659dc5",
+  //       fontSize: 16,
+  //       textColor: "inherit",
+  //       titleColor: "inherit",
+  //       t3EntryDisplayField: "none",
+  //       justifyContent: ''
+  //     },
+  //     showDimensions: true,
+  //     t3Entry: null,
+  //     title: null,
+  //     translate: [217, 49],
+  //     type: "G_Circle",
+  //     width: 60,
+  //     zindex: 1
+  //   };
 
-    this.SetCurrentObject(defaultItem);
-  }
+  //   this.SetCurrentObject(defaultItem);
+  // }
 
 
 

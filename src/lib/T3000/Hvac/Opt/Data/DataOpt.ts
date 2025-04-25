@@ -290,6 +290,8 @@ class DataOpt {
 
     // Save current object sequence ID
     this.SaveData(this.CURRENT_OBJECT_SEQ_ID_KEY, T3Gv.currentObjSeqId);
+
+    this.SaveAppStateV2();
   }
 
   /**

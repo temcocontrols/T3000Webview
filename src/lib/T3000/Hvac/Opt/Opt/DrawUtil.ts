@@ -550,7 +550,7 @@ class DrawUtil {
       QuasarUtil.AddCurrentObjectToAppState();
 
       T3Util.Log("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
-      T3Util.LogDev("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully", true,objectsToSelect);
+      T3Util.LogDev("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully", true, objectsToSelect);
     } catch (error) {
       T3Util.Log("O.Opt MouseStampObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -1338,7 +1338,7 @@ class DrawUtil {
       QuasarUtil.AddCurrentObjectToAppState();
 
       T3Util.Log("DragDropObjectDone - Output: Drag-drop operation completed successfully");
-      T3Util.LogDev("DragDropObjectDone - Output: Drag-drop operation completed successfully",true,objectsToSelect);
+      T3Util.LogDev("DragDropObjectDone - Output: Drag-drop operation completed successfully", true, objectsToSelect);
     } catch (error) {
       T3Util.Log("DragDropObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -2247,6 +2247,8 @@ class DrawUtil {
       T3Clipboard.FocusOnClipboardInput();
     }
 
+    this.UpdateAppStateV2Frame();
+
     T3Util.Log("O.Opt CompleteOperation - Output: Operation completed.");
     T3Util.LogDev("O.Opt CompleteOperation - Output: Operation completed.", true);
   }
@@ -2278,6 +2280,34 @@ class DrawUtil {
     return { x: displayDimensions.x, y: displayDimensions.y, width: displayDimensions.width, height: displayDimensions.height };
   }
 
+  /**
+   * Updates the application state frame with coordinates of the currently selected object.
+   *
+   * This method retrieves the selected object's coordinates (x, y, width, height),
+   * creates a frame object, and conditionally updates the current object position
+   * in the application state if T3Gv.refreshPosition is true.
+   *
+   * @static
+   * @remarks When refreshPosition is enabled, the method also logs the updated
+   * position data using T3Util.LogDev for development tracking purposes.
+   * @returns {void}
+   */
+  static UpdateAppStateV2Frame(){
+    // Get selected object and save the coordinates
+    var selectedItem = this.GetSelectObjectCoords();
+
+    const updatedFrame = {
+      x: selectedItem.x,
+      y: selectedItem.y,
+      width: selectedItem.width,
+      height: selectedItem.height
+    };
+
+    // if (T3Gv.refreshPosition) {
+      QuasarUtil.UpdateCurrentObjectPos(updatedFrame);
+      T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, updatedFrame.x, updatedFrame.y, updatedFrame.width, updatedFrame.height);
+    // }
+  }
 }
 
 export default DrawUtil

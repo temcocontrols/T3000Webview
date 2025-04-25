@@ -631,6 +631,7 @@ class LMEvtUtil {
   */
   static LMMoveRelease(event, moveData?) {
     T3Util.Log("O.Opt LMMoveRelease - Input:", { event, moveData });
+    T3Util.LogDev("O.Opt LMMoveRelease - Input:",true, { event, moveData });
 
     let waslastOpDuplicate = false;
 
