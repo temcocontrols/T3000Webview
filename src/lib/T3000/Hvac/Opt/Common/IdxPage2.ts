@@ -4,6 +4,33 @@ import IdxUtils from "./IdxUtils";
 
 
 class IdxPage2 {
+
+  private webview = (window as any).chrome?.webview;
+
+  // Access Quasar framework instance
+  public $q: any;
+
+  initPage() {
+    Hvac.WebClient.initMessageHandler();
+    //  this.initGlobalNav();
+    //  this.isLoggedIn();
+    //  this.restoreAppState();
+    //  this.setDocMarginOffset();
+    //  this.initPanzoom();
+    //  this.initMessageClient();
+    //  this.initScorller();
+    //  this.initAutoSaveInterval();
+    //  this.initWindowListener();
+    //  this.refreshMoveableGuides();
+    //  this.resetPanzoom();
+  }
+
+  initQuasar(quasar) {
+    this.$q = quasar;
+    Hvac.WebClient.initQuasar(this.$q);
+    Hvac.QuasarUtil.initQuasar(this.$q);
+  }
+
   // Toggles the auto/manual mode of an item
   static autoManualToggle(item) {
     console.log('5555555 IndexPage2.vue->autoManualToggle->item, locked value', item);

@@ -706,6 +706,10 @@ onMounted(() => {
 
   Hvac.UI.Initialize($q); // Initialize the HVAC UI
 
+  Hvac.IdxPage2.initQuasar($q);
+
+  Hvac.IdxPage2.initPage();
+
   // Hvac.IdxPage.initQuasar($q);
 
 // Hvac.IdxPage.initPage();

@@ -9,6 +9,7 @@ import WebViewClient from "./Opt/Webview2/WebViewClient";
 import QuasarUtil from "./Opt/Quasar/QuasarUtil";
 import LsOpt from "./Opt/Common/LsOpt";
 import DocUtil from "./Doc/DocUtil";
+import IdxPage2 from "./Opt/Common/IdxPage2";
 
 const Hvac = {
   PageMain: new PageMain(),
@@ -20,7 +21,8 @@ const Hvac = {
   DeviceOpt: new DeviceOpt(),
   WsClient: new WebSocketClient(),
   IdxPage: new IdxPage(),
-  WebClient: new WebViewClient()
+  WebClient: new WebViewClient(),
+  IdxPage2: new IdxPage2(),
 }
 
 export default Hvac
