@@ -31,6 +31,7 @@ import TextUtil from './TextUtil';
 import DynamicUtil from './DynamicUtil';
 import T3Clipboard from '../Clipboard/T3Clipboard';
 import QuasarUtil from '../Quasar/QuasarUtil';
+import EvtOpt from '../../Event/EvtOpt';
 
 class DrawUtil {
 
@@ -2267,17 +2268,15 @@ class DrawUtil {
   static GetSelectObjectCoords() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
     var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
-    let displayDimensions = {
-      x: 0,//+ T3Gv.opt.dragDeltaX,
-      y: 0,// + T3Gv.opt.dragDeltaY,
-      width: 0,
-      height: 0
-    };
-    displayDimensions = targetObject.GetDimensionsForDisplay();
-    // displayDimensions.x += T3Gv.opt.dragDeltaX;
-    // displayDimensions.y += T3Gv.opt.dragDeltaY;
+    var displayDims = targetObject.GetDimensionsForDisplay();
 
-    return { x: displayDimensions.x, y: displayDimensions.y, width: displayDimensions.width, height: displayDimensions.height };
+    /*
+    displayDims.x += T3Gv.opt.dragDeltaX;
+    displayDims.y += T3Gv.opt.dragDeltaY;
+    */
+
+    displayDims.rotate = targetObject.RotationAngle;
+    return displayDims;
   }
 
   /**
@@ -2292,21 +2291,14 @@ class DrawUtil {
    * position data using T3Util.LogDev for development tracking purposes.
    * @returns {void}
    */
-  static UpdateAppStateV2Frame(){
+  static UpdateAppStateV2Frame() {
     // Get selected object and save the coordinates
-    var selectedItem = this.GetSelectObjectCoords();
+    var objCoords = this.GetSelectObjectCoords();
 
-    const updatedFrame = {
-      x: selectedItem.x,
-      y: selectedItem.y,
-      width: selectedItem.width,
-      height: selectedItem.height
-    };
+    QuasarUtil.UpdateCurrentObjectPos(objCoords);
+    EvtOpt.toolOpt.SaveAct();
 
-    // if (T3Gv.refreshPosition) {
-      QuasarUtil.UpdateCurrentObjectPos(updatedFrame);
-      T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, updatedFrame.x, updatedFrame.y, updatedFrame.width, updatedFrame.height);
-    // }
+    T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
   }
 }
 

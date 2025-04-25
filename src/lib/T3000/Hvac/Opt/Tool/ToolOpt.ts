@@ -80,16 +80,8 @@ class ToolOpt {
    * @returns null if angle is null, void otherwise
    */
   RotateAct(event, angle) {
-    T3Util.Log('O.ToolOpt.RotateAct - Input:', { event, angle });
-
-    if (angle === null) {
-      T3Util.Log('O.ToolOpt.RotateAct - Output: No action, angle was null');
-      return null;
-    }
-
-    this.tul.RotateShapes(360 - angle);
-
-    T3Util.Log('O.ToolOpt.RotateAct - Output: Rotated shapes by angle', 360 - angle);
+    angle === null ? 0 : angle;
+    this.tul.RotateShapes(angle/*360-angle*/);
   }
 
   /**
@@ -300,12 +292,8 @@ class ToolOpt {
    * @param event - The DOM event that triggered the action
    * @returns void
    */
-  CommitFilePickerSelectionAct(event) {
-    T3Util.Log('O.ToolOpt.CommitFilePickerSelectionAct - Input:', { event });
-
-    this.tul.SaveAs();
-
-    T3Util.Log('O.ToolOpt.CommitFilePickerSelectionAct - Output: Saved file');
+  SaveAct() {
+    this.tul.Save();
   }
 
   /**
@@ -587,14 +575,12 @@ class ToolOpt {
   }
 
   SetX(xVal: string) {
-
     try {
       T3Gv.opt.CloseEdit();
       T3Gv.opt.SetTopLeft(xVal, true);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }
-
   }
 
   SetY(yVal: string) {

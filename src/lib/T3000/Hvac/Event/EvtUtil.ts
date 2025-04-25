@@ -272,7 +272,7 @@ class EvtUtil {
         event.stopPropagation();
 
         UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
-        UIUtil.ShowObjectConfig(false);
+        // UIUtil.ShowObjectConfig(false);
 
         T3Util.Log("E.Evt WorkAreaHammerDragStart output: right-click handled");
         return false;

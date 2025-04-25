@@ -531,7 +531,7 @@ class EvtOpt {
    */
   BindSaveEvent() {
     $("#btn_try_Save").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.CommitFilePickerSelectionAct(event);
+      EvtOpt.toolOpt.SaveAct();
     });
   }
 

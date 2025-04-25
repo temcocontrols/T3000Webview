@@ -1286,7 +1286,7 @@ class LMEvtUtil {
       const isRightClick = MouseUtil.IsRightClick(event);
       if (!isRightClick) {
         UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
-        UIUtil.ShowObjectConfig(false);
+        // UIUtil.ShowObjectConfig(false);
       }
 
       T3Util.Log("O.Opt LMMoveClick - Output: Move operation set up successfully");

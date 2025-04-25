@@ -149,23 +149,18 @@ class QuasarUtil {
   //   // currentObject.value = currentObj;
   // }
 
-  static UpdateCurrentObjectPos(newPosFrame: any) {
-    if (newPosFrame) {
-      // currentObject.value.translate = newPosFrame.translate;
-      // currentObject.value.width = newPosFrame.width;
-      // currentObject.value.height = newPosFrame.height;
-
+  static UpdateCurrentObjectPos(posFrame: any) {
+    if (posFrame) {
       // Update the new pos frame to appStateV2
       const v2Index = appStateV2?.value?.activeItemIndex ?? "-1";
 
       if (v2Index !== "-1") {
         let currentItem = appStateV2.value.items[v2Index];
         if (currentItem !== undefined && currentItem != null) {
-          appStateV2.value.items[v2Index].translate = [newPosFrame.x, newPosFrame.y];
-          appStateV2.value.items[v2Index].width = newPosFrame.width;
-          appStateV2.value.items[v2Index].height = newPosFrame.height;
-
-          DataOpt.SaveAppStateV2();
+          appStateV2.value.items[v2Index].translate = [posFrame.x, posFrame.y];
+          appStateV2.value.items[v2Index].width = posFrame.width;
+          appStateV2.value.items[v2Index].height = posFrame.height;
+          appStateV2.value.items[v2Index].rotate = posFrame.rotate;
         }
       }
     }

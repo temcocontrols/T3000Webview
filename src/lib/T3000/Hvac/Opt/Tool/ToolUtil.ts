@@ -1982,22 +1982,14 @@ class ToolUtil {
   }
 
   /**
-   * Saves the current drawing to local storage
-   * @returns void
-   */
-  SaveAs() {
-    T3Util.Log("U.ToolUtil SaveAs input: no parameters");
-
+  * Save the current drawing to local storage
+  * @returns void
+  */
+  Save() {
     T3Gv.opt.CloseEdit();
 
     // save data to local storage
     DataOpt.SaveToLocalStorage();
-
-    T3Util.Log("U.ToolUtil SaveAs output: void");
-  }
-
-  Save() {
-    this.SaveAs();
   }
 
   VueForeignObject() {
