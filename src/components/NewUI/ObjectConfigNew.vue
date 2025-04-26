@@ -241,6 +241,7 @@ import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
 import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
 import { appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
 import DataOpt from 'src/lib/T3000/Hvac/Opt/Data/DataOpt';
+import Hvac from 'src/lib/T3000/Hvac/Hvac';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -361,31 +362,31 @@ const onClose = (): void => {
   objectConfigShow.value = false;
 };
 
-function refreshX(){
+function refreshX() {
   var posX = item.value.translate[0];
   const xLength = RulerUtil.GetLengthInRulerUnits(posX, false, T3Gv.docUtil.rulerConfig.originx, 0);
   EvtOpt.toolOpt.SetX(xLength.toString());
 }
 
-function refreshY(){
+function refreshY() {
   var posY = item.value.translate[1];
   const yLength = RulerUtil.GetLengthInRulerUnits(posY, false, T3Gv.docUtil.rulerConfig.originy, 0);
   EvtOpt.toolOpt.SetY(yLength.toString());
 }
 
-function refreshWidth(){
+function refreshWidth() {
   var posWidth = item.value.width;
   const width = RulerUtil.GetLengthInRulerUnits(posWidth, false, null, 0);
   EvtOpt.toolOpt.SetWidth(width.toString());
 }
 
-function refreshHeight(){
+function refreshHeight() {
   var posHeight = item.value.height;
   const height = RulerUtil.GetLengthInRulerUnits(posHeight, false, null, 0);
   EvtOpt.toolOpt.SetHeight(height.toString());
 }
 
-function refreshRotate(){
+function refreshRotate() {
   var rotate = item.value.rotate;
   EvtOpt.toolOpt.RotateAct(null, rotate);
 }
@@ -418,14 +419,8 @@ function updatePropsValue(key) {
 
 // None / ID / Label / Description / Value base on device settings
 function DisplayFieldValueChanged(value) {
-  T3Util.LogDev("= P.OCN", true, "display field value changed", value, appStateV2.value);
-
-  emit("DisplayFieldValueChanged", value);
-
-  DataOpt.SaveToLocalStorage();
-  SvgUtil.RenderAllSVGObjects();
-
-  T3Util.LogDev("= P.OCN", true, "display field value changed", value);
+  // emit("DisplayFieldValueChanged", value);
+  Hvac.IdxPage2.save(false, true);
 }
 
 function getEntryRange(entry) {

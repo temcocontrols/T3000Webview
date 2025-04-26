@@ -384,7 +384,8 @@
     <!-- <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
     </ObjectConfigNew> -->
 
-    <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]" @linkT3Entry="linkT3EntryDialogActionV2">
+    <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
+      @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
     </ObjectConfigNew>
 
   </q-page>
@@ -712,7 +713,7 @@ onMounted(() => {
 
   // Hvac.IdxPage.initQuasar($q);
 
-// Hvac.IdxPage.initPage();
+  // Hvac.IdxPage.initPage();
 
   // // Set global navigation properties
   // globalNav.value.title = "HVAC Drawer";
@@ -1823,6 +1824,7 @@ function T3UpdateEntryField(key, obj) {
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value) {
+  console.log("= IdxPage DX DisplayFieldValueChanged", value);
   save(false, true);
 }
 
@@ -1928,7 +1930,8 @@ function insertT3DefaultLoadData() {
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false, saveToT3 = false) {
-  Hvac.IdxPage.save(notify, saveToT3);
+  console.log("= IdxPage save", notify, saveToT3);
+  Hvac.IdxPage2.save(notify, saveToT3);
 }
 
 function refreshMoveable() {

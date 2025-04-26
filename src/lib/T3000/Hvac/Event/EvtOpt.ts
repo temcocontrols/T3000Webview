@@ -935,7 +935,7 @@ class EvtOpt {
 
   BindVueForeignObjectEvent() {
     $("#btn_try_vue_foreignObject").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject, "TextboxTest");
+      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject, "Boiler");
     });
   }
 

@@ -101,7 +101,7 @@ class SvgUtil {
 
           hammerInstance.on('tap', EvtUtil.Evt_ActionTriggerTap);
           hammerInstance.on('dragstart', createActionClickHandler(drawingObject));
-            
+
           actionTriggerElement.SetEventProxy(hammerInstance);
         }
       }
@@ -283,7 +283,7 @@ class SvgUtil {
           if (!T3Gv.docUtil.IsReadOnly()) {
             T3Gv.Evt_ShapeDragStart = EvtUtil.Evt_ShapeDragStartFactory(drawingData);
             hammerInstance.on('dragstart', T3Gv.Evt_ShapeDragStart);
-             
+
             if (drawingData.AllowTextEdit() || drawingData.AllowDoubleClick()) {
               T3Gv.Evt_LMShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
               hammerInstance.on('doubletap', T3Gv.Evt_LMShapeDoubleTap);
@@ -495,6 +495,7 @@ class SvgUtil {
   static RenderDirtySVGObjectsNoSetMouse() {
     this.RenderDirtySVGObjectsCommon(false);
   }
+
 
 }
 

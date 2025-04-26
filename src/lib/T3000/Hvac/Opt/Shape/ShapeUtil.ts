@@ -562,7 +562,7 @@ class ShapeUtil {
     try {
       if (typeof storageKeyOrData === 'string') {
         // Check if it's a storage key
-        if (storageKeyOrData.startsWith('T3.draw')) {
+        if (storageKeyOrData.startsWith('t3.draw')) {
           // Retrieve data from localStorage
           const storedData = localStorage.getItem(storageKeyOrData);
           if (storedData) {
@@ -1279,7 +1279,7 @@ class ShapeUtil {
 
       // Generate a unique storage key
       // const storageKey = `T3000_Drawing_${new Date().getTime()}`;
-      const storageKey = "T3.draw";
+      const storageKey = "t3.draw";
 
       // Store in localStorage
       localStorage.setItem(storageKey, jsonString);

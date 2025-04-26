@@ -5,6 +5,8 @@ import {
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
   globalMsg, loadSettings
 } from "../../Data/T3Data"
+import { cloneDeep } from "lodash";
+import { toRaw } from "vue";
 
 class IdxPage2 {
 
@@ -184,6 +186,72 @@ class IdxPage2 {
       });
       */
     }, 10000);
+  }
+
+  // Wrap a new function for saving data to localstorage and T3000
+  save(notify: boolean = false, saveToT3: boolean = false) {
+    savedNotify.value = notify;
+    this.saveToLocal();
+
+    if (saveToT3) {
+      this.saveToT3000();
+    }
+  }
+
+  // Save the current app state to localstorage, optionally displaying a notification
+  saveToLocal() {
+    // Prepare data
+    const data = this.prepareSaveData();
+
+    Hvac.LsOpt.saveAppState(data);
+
+    if (!isBuiltInEdge.value) {
+      // Save current appState to ls deviceAppState
+      Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, data);
+    }
+  }
+
+
+  // Save data to T3000
+  saveToT3000() {
+    // Prepare data
+    const data = this.prepareSaveData();
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveGraphicData(null, null, data);
+    }
+    else {
+      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+      if (msgType) {
+        console.log('= Idx save to T3000 with initial data status error, cancel auto save');
+        return;
+      }
+
+      // Post a save action to T3
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.deviceId;
+      const graphicId = currentDevice?.graphic;
+
+      if (panelId && graphicId) {
+        Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
+      }
+      else {
+        console.log('= Idx save to T3000 current device is null');
+      }
+    }
+  }
+
+  prepareSaveData() {
+    const data = cloneDeep(toRaw(appState.value));
+
+    // Recalculate the items count
+    data.itemsCount = data.items.filter(item => item.width !== 0).length;
+
+    data.selectedTargets = [];
+    data.elementGuidelines = [];
+    data.rulersGridVisible = rulersGridVisible.value;
+
+    return data;
   }
 }
 
