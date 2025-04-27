@@ -1820,7 +1820,7 @@ function selectByRightClick(e) {
 
 // Update a T3 entry field for an object
 function T3UpdateEntryField(key, obj) {
-  Hvac.IdxPage.T3UpdateEntryField(key, obj);
+  Hvac.IdxPage2.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value

@@ -309,7 +309,7 @@ function autoManualToggle(event: Event): void {
 
 <style scoped>
 .object-title {
-  text-align: center;
+  /* text-align: center; */
   min-width: 100%;
   white-space: nowrap;
   line-height: 2.5em;

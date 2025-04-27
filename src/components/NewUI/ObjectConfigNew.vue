@@ -113,15 +113,15 @@
               v-model.number="item.rotate" dark filled type="number" />
 
             <q-input input-style="width: 100%" label="Font size" v-model.number="item.settings.fontSize" dark filled
-              type="number" />
+              type="number" @change="TraceSettingChange('fontSize',item.settings.fontSize)"/>
 
           </div>
           <div class="w-full relative mb-2">
-            <q-input dark filled v-model="item.settings.title" label="Title" />
-            <input type="color" class="absolute top-2 right-2" v-model="item.settings.titleColor" />
+            <q-input dark filled v-model="item.settings.title" label="Title" @change="TraceSettingChange('title',item.settings.title)"/>
+            <input type="color" class="absolute top-2 right-2" v-model="item.settings.titleColor" @change="TraceSettingChange('titleColor',item.settings.titleColor)"/>
           </div>
           <div class="flex flex-nowrap items-center mb-2">
-            <input type="color" id="bg-color-input" v-model="item.settings.bgColor" />
+            <input type="color" id="bg-color-input" v-model="item.settings.bgColor" @change="TraceSettingChange('bgColor',item.settings.bgColor)"/>
             <label class="ml-2" for="bg-color-input">
               {{
                 settings.bgColor?.label || "Background color"
@@ -153,7 +153,7 @@
                 </q-btn-group>
               </div>
               <div class="flex flex-nowrap items-center mb-2" v-else-if="setting.type === 'color'">
-                <input type="color" id="text-color-input" v-model="item.settings[key]" />
+                <input type="color" id="text-color-input" v-model="item.settings[key]" @change="TraceSettingChange(key,item.settings[key])" />
                 <label class="ml-2" for="text-color-input">
                   {{
                     setting.label
@@ -203,12 +203,14 @@
                   </template>
                 </q-select>
               </div>
-              <q-checkbox v-else-if="setting.type === 'boolean'" dark filled v-model="item.settings[key]"
+              <q-checkbox v-else-if="setting.type === 'boolean'"
+              dark filled v-model="item.settings[key]"
                 class="text-white w-full" :label="setting.label" :disable="(key === 'active' &&
                   ((item.t3Entry && item.t3Entry.auto_manual === 0) ||
-                    (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
+                  (item.t3Entry && item.t3Entry.digital_analog === 1))) ||
                   (item.t3Entry && item.t3Entry.decom !== undefined)
-                  ">
+                  "
+                  @update:model-value="(val) => TraceSettingChange(key, val)">
                 <q-tooltip v-if="key === 'active' && item.t3Entry?.auto_manual === 0" anchor="center left"
                   self="center end">
                   Manual changes are not possible as the linked entry is set to
@@ -242,6 +244,9 @@ import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
 import { appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
 import DataOpt from 'src/lib/T3000/Hvac/Opt/Data/DataOpt';
 import Hvac from 'src/lib/T3000/Hvac/Hvac';
+import SelectUtil from 'src/lib/T3000/Hvac/Opt/Opt/SelectUtil';
+import OptConstant from 'src/lib/T3000/Hvac/Data/Constant/OptConstant';
+import QuasarUtil from 'src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil';
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -304,6 +309,7 @@ const item = computed({
     return props.current;
   },
   set(newValue) {
+    console.log("item set", newValue);
     const oldValue = props.current;
     if (newValue === oldValue) return;
     emit("update:object", newValue);
@@ -391,9 +397,17 @@ function refreshRotate() {
   EvtOpt.toolOpt.RotateAct(null, rotate);
 }
 
+function TraceSettingChange(key,value) {
+  T3Util.LogDev("= V.ObjectConfigNew", true, "TraceSettingChange", key,value);
+  QuasarUtil.UpdateSvgElementSettings();
+  EvtOpt.toolOpt.SaveAct();
+}
+
 function T3UpdateEntryField(key, obj) {
-  console.log("T3UpdateEntryField", key, obj);
-  emit("T3UpdateEntryField", key, obj);
+  // emit("T3UpdateEntryField", key, obj);
+  T3Util.LogDev("= V.ObjectConfigNew", true, "T3UpdateEntryField", key, obj);
+  Hvac.IdxPage2.T3UpdateEntryField(key, obj);
+  EvtOpt.toolOpt.SaveAct();
 }
 
 function linkT3Entry() {
@@ -411,6 +425,7 @@ function getSwitchIcon(name) {
 }
 
 function updatePropsValue(key) {
+  console.log("AAAAAAAAAAAAAAAAAAAAAAAAupdatePropsValue", key, item.value.settings[key]);
   if (item.value.type === "Int_Ext_Wall") {
     item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
     emit("RefreshSelectedItem");
@@ -421,6 +436,7 @@ function updatePropsValue(key) {
 function DisplayFieldValueChanged(value) {
   // emit("DisplayFieldValueChanged", value);
   Hvac.IdxPage2.save(false, true);
+  EvtOpt.toolOpt.SaveAct();
 }
 
 function getEntryRange(entry) {
