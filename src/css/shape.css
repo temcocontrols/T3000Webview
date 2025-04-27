@@ -52,3 +52,36 @@
     transform: rotate(360deg);
   }
 }
+
+/* thermal-wheel */
+.in-alarm .thermal-wheel-background {
+  animation: thermal_wheel_alarm 1s infinite;
+}
+@keyframes thermal_wheel_alarm {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+
+.active .thermal-wheel {
+  animation: thermal-wheel-spin 1.6s linear infinite;
+}
+
+.active .thermal-wheel-background {
+  fill: #66c492;
+}
+
+@keyframes thermal-wheel-spin {
+  from {
+    transform: translate(0px, 4px);
+  }
+  to {
+    transform: translate(0px, -4px);
+  }
+}
