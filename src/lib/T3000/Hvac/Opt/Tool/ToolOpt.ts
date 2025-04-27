@@ -610,10 +610,10 @@ class ToolOpt {
     }
   }
 
-  SetShapeBackgroundColor(color: string) {
+  SetBackgroundColor(color: string) {
     try {
       T3Gv.opt.CloseEdit();
-      T3Gv.opt.SetShapeBackgroundColor(color);
+      T3Gv.opt.SetBackgroundColor(color);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

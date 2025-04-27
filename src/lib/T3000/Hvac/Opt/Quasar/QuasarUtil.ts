@@ -1,6 +1,6 @@
 
 
-import { cloneDeep } from "lodash";
+import { cloneDeep, fill } from "lodash";
 import { contextMenuShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
 import { AllTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
@@ -13,6 +13,7 @@ import DataUtil from "../Data/DataUtil";
 import DataOpt from "../Data/DataOpt";
 import DrawUtil from "../Opt/DrawUtil";
 import SvgUtil from "../Opt/SvgUtil";
+import OptConstant from "../../Data/Constant/OptConstant";
 
 class QuasarUtil {
 
@@ -380,6 +381,81 @@ class QuasarUtil {
       console.error(`Item with id ${shapeId} not found in appStateV2`);
       return null;
     }
+  }
+
+  static UpdateSvgElementSettings(key: string, value: any) {
+
+    console.log("= QuasarUtil UpdateSvgElementSettings 1", key, value, T3Gv.stdObj);
+
+    /*
+    // T3Gv.opt.SetBackgroundColor("#2a2a2a");
+    var selection = SelectUtil.GetSelectedObject();
+    // shape.SetFillColor("#2a2a2a");
+    const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(selection.selectedId);
+    //OptConstant.SVGElementClass.for
+    var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape)
+    console.log("element", element);
+    element.SetFillColor("red");
+    // element.SetStrokeColor("black");
+
+    element.SetAttributes("blue")
+
+    console.log("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
+    */
+
+    var selection = SelectUtil.GetSelectedObject();
+    // selection.selectedObject.SetFillColor("#2a2a2a");
+
+    var drawSetting = selection.selectedObject.GetDrawSetting();
+
+    // If drawSetting is null or undefined, initialize as empty object
+    drawSetting = drawSetting || {};
+
+    // Set the key-value pair on the drawSetting object
+    drawSetting[key] = value;
+
+    console.log(`Updated drawSetting: ${key}=${value}`, drawSetting);
+    selection.selectedObject.SetDrawSetting(drawSetting);
+
+    var dynamicCss=
+    `
+    .in-alarm .fan {
+  animation: fan-alarm 1s infinite;
+}
+
+@keyframes fan-alarm {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill:#9230ae;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.active .fan .rotating-middle {
+  animation: fan-spin 3s linear infinite;
+}
+
+.active:not(.in-alarm) .fan .fan-background {
+  fill: #66c492;
+}
+
+@keyframes fan-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.object-svg {
+  color:#d79927;
+}
+    `;
+
+    // selection.selectedObject.AddDynamicCSS(dynamicCss);
   }
 }
 

@@ -1348,6 +1348,7 @@ class Element {
     this.svgObj.attr('stroke', color);
     this.ClearColorData(false);
   }
+
   /**
    * Sets a texture stroke for the element
    * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions

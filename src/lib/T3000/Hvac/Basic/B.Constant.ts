@@ -56,6 +56,7 @@ class BConstant {
     LineTrans: '##LineTrans',
     LineThick: '##LineThick',
     SolidFill: '##SolidFill',
+    StrokeColor: '##StrokeColor',
     Terminator: '##'
   }
 
@@ -73,10 +74,11 @@ class BConstant {
     '##FillColor': '#FFFFFF',
     '##EndColor': '#FFFFFF',
     '##FillTrans': 1,
-    '##LineColor': '#000',
+    '##LineColor': '#000000',
     '##LineTrans': 1,
     '##LineThick': 1,
-    '##SolidFill': '#000'
+    '##SolidFill': '#000000',
+    '##StrokeColor': '#000000'
   }
 
   /**

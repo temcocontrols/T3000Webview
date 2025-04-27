@@ -1614,7 +1614,7 @@ class SelectUtil {
           // If containerObject is provided and is a ShapeContainer type, skip connectors.
           if (
             containerObject &&
-            (containerObject instanceof Instance.Shape.ShapeContainer ) &&
+            (containerObject instanceof Instance.Shape.ShapeContainer) &&
             currentObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
           ) {
             continue;
@@ -1824,6 +1824,12 @@ class SelectUtil {
     });
 
     return T3Gv.opt.moveList;
+  }
+
+  static GetSelectedObject() {
+    let targetSelectionId = SelectUtil.GetTargetSelect();
+    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+    return {selectedId: targetSelectionId, selectedObject: targetObject};
   }
 }
 

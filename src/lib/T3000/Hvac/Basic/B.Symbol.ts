@@ -5,6 +5,9 @@ import Element from './B.Element'
 import BConstant from './B.Constant'
 import Instance from '../Data/Instance/Instance'
 import $ from 'jquery'
+import T3Util from "../Util/T3Util"
+import ToolSvgData from "../Opt/Tool/ToolSvgData"
+import { TouchSwipe } from "quasar"
 
 /**
  * Represents an SVG symbol element that supports dynamic modification and placeholder replacement.
@@ -54,7 +57,12 @@ class Symbol extends Element {
   public solidFills: any;
   public fillTrans: any;
   public lineTrans: any;
+  public strokeColors: any;
   public srcSymbolSVG: any;
+  public svgContent: any;
+
+  public symbolName: string;
+  public drawSetting: any;
 
   constructor() {
     super()
@@ -78,8 +86,54 @@ class Symbol extends Element {
     this.fillTrans = [];
     this.lineTrans = [];
     this.srcSymbolSVG = '';
+    this.strokeColors = [];
 
     return this.svgObj;
+  }
+
+  InitSymbolSource() {
+    var source = this.GetSymbolSource();
+
+    var className = "object-svg";
+
+    if (this.drawSetting) {
+      if (this.drawSetting.active && this.drawSetting.inAlarm) {
+        className = `${className} active in-alarm`;
+      }
+      else if (this.drawSetting.active) {
+        className = `${className} active`;
+      }
+      else if (this.drawSetting.inAlarm) {
+        className = `${className} in-alarm`;
+      }
+    }
+
+    if (className !== "") {
+      const newGSvg =
+        `
+<g class="${className}">
+    ${source}
+</g>
+      `;
+      source = newGSvg;
+    }
+
+    if (this.drawSetting && this.drawSetting.fillColor) {
+      this.SetSymbolSource(source);
+      this.SetFillColor(this.drawSetting.fillColor, true);
+    }
+    else{
+      this.SetSymbolSource(source);
+      this.RebuildSymbol();
+    }
+  }
+
+  GetSymbolSource(source?: string) {
+    if (source === undefined || source === null || source === '') {
+      return ToolSvgData.GetSvgDataString(this.symbolName);
+    }
+
+    return source;
   }
 
   /**
@@ -94,6 +148,7 @@ class Symbol extends Element {
     this.solidFills = Symbol.GetPlaceholders(BConstant.Placeholder.SolidFill, source);
     this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
     this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
+    this.strokeColors = Symbol.GetPlaceholders(BConstant.Placeholder.StrokeColor, source);
 
     if (source) {
       source = source.replace(/fill-opacity="[\d.]*"/g, '').replace(/stroke-opacity="[\d.]*"/g, '');
@@ -124,7 +179,7 @@ class Symbol extends Element {
       this.srcSymbolSVG = source;
     }
 
-    this.RebuildSymbol();
+    // this.RebuildSymbol();
   }
 
   /**
@@ -145,6 +200,7 @@ class Symbol extends Element {
     svgContent = Symbol.ReplacePlaceholder(this.solidFills, svgContent);
     svgContent = Symbol.ReplacePlaceholder(this.fillTrans, svgContent);
     svgContent = Symbol.ReplacePlaceholder(this.lineTrans, svgContent);
+    svgContent = Symbol.ReplacePlaceholder(this.strokeColors, svgContent);
 
     parser.async = false;
     let element = parser.parseFromString(svgContent, 'text/xml').documentElement.firstChild;
@@ -153,6 +209,8 @@ class Symbol extends Element {
       this.shapeElem.node.appendChild(this.svgObj.node.ownerDocument.importNode(element, true));
       element = element.nextSibling;
     }
+
+    this.svgContent = svgContent;
   }
 
   /**
@@ -169,6 +227,7 @@ class Symbol extends Element {
    * @param skipClear - Whether to skip clearing existing color data
    */
   SetFillColor(color: string, skipClear: boolean) {
+    console.log('B.Symbol SetFillColor', color);
     let updated = false;
 
     if (!skipClear) {
@@ -234,11 +293,11 @@ class Symbol extends Element {
       this.ClearColorData(false);
     }
 
-    for (let i = 0; i < this.lineColors.length; i++) {
-      this.lineColors[i].val = color;
+    for (let i = 0; i < this.strokeColors.length; i++) {
+      this.strokeColors[i].val = color;
     }
 
-    if (this.lineColors.length) {
+    if (this.strokeColors.length) {
       this.RebuildSymbol();
     }
   }
@@ -326,6 +385,35 @@ class Symbol extends Element {
    * @param event - The event data for the stroke pattern
    */
   SetStrokePattern(event) {
+  }
+
+  SetAttributes(strokeColor: string) {
+    this.svgObj.attr('background-color', strokeColor);
+    this.shapeElem.attr('background-color', strokeColor);
+    // this.ClearColorData(false);
+  }
+
+  GetSvgSymbol() {
+    return this.svgContent;
+  }
+
+  SetInActive(inActive: boolean) {
+
+  }
+
+  SetDrawSetting(drawSetting: any) {
+    this.drawSetting = drawSetting;
+    T3Util.LogDev('= B.Symbol SetDrawSetting', true, drawSetting);
+  }
+
+  RefreshDrawSetting() {
+    // this.srcSymbolSVG=ToolSvgData.BoilerSvgData();
+    T3Util.LogDev('= B.Symbol RefreshDrawSetting', true, this.srcSymbolSVG);
+    this.InitSymbolSource();
+  }
+
+  SetSymbolName(symbolName: string) {
+    this.symbolName = symbolName;
   }
 
   /**

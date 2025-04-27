@@ -1161,5 +1161,4 @@ class Document extends Container {
   }
 }
 
-
 export default Document

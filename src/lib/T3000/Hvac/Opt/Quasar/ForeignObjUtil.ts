@@ -167,7 +167,7 @@ class ForeignObjUtil {
   static CreateVueObject(docInstance: any, frame: any, apsItem: any) {
     let svgDoc = docInstance == null ? T3Gv.opt.svgDoc : docInstance;
 
-    var width = 100;//frame.width;
+    var width = 300;//frame.width;
     var height = 30;//frame.height;
 
     var vueProps = {

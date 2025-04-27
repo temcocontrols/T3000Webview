@@ -1328,7 +1328,6 @@ class OptUtil {
     return altKeyIsPressed === true;
   }
 
-
   ExceptionCleanup(error) {
     T3Util.Log('O.Opt ExceptionCleanup - Input:', error);
 
@@ -1371,7 +1370,6 @@ class OptUtil {
     T3Util.Log('O.Opt RemoveNotVisible - Output:', visibleObjects);
     return visibleObjects;
   }
-
 
   AllowAddToRecent(item) {
     T3Util.Log('O.Opt allowAddToRecent - Input:', item);
@@ -2201,7 +2199,6 @@ class OptUtil {
     T3Util.Log("O.Opt FindChildArray - Output: No connector found (-1)");
     return -1;
   }
-
 
   /**
      * Checks if enhanced snapping should be enabled (shift key pressed)
@@ -5477,7 +5474,6 @@ class OptUtil {
     return point;
   }
 
-
   /**
    * Handles auto-scrolling during drag operations
    */
@@ -7205,16 +7201,12 @@ class OptUtil {
    *
    * @param colorValue - The color value to set as background
    */
-  SetShapeBackgroundColor(colorValue) {
+  SetBackgroundColor(colorValue) {
     try {
       let sessionData;
 
       // Close any active edits and prepare for collaboration if enabled
       T3Gv.opt.CloseEdit(true, true);
-
-      // if (SDJS.Collab.AllowMessage()) {
-      //   SDJS.Collab.BeginSecondaryEdit();
-      // }
 
       // Get session data and original background color
       sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
@@ -7252,6 +7244,10 @@ class OptUtil {
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
     }
+  }
+
+  SetShapeBackgroundColor(colorValue) {
+
   }
 }
 
