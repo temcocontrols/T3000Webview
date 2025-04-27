@@ -422,44 +422,6 @@ class ToolSvgData {
   static RoomHumiditySvgData() {
     const roomHumidity =
       `
-<g transform="translate(0,0)">
-    <circle r="30" cy="30" cx="30" style="
-              opacity: 1;
-              fill: ##FillColor=#FFFFFF##;
-              fill-opacity: 1;
-              fill-rule: nonzero;
-              stroke:##FillColor=#000000##;
-              stroke-width: 0.764198;
-              stroke-linecap: butt;
-              stroke-linejoin: round;
-              stroke-miterlimit: 4;
-              stroke-dasharray: none;
-              stroke-opacity: 1;
-            " />
-    <g transform="matrix(1,0,0,1,46,43)" style="
-              font-style: normal;
-              font-weight: normal;
-              font-size: 51px;
-              line-height: 125%;
-              font-family: Sans;
-              letter-spacing: 0px;
-              word-spacing: 0px;
-              fill:##FillColor=#000000##;
-              fill-opacity: 1;
-              stroke: none;
-              stroke-width: 1px;
-              stroke-linecap: butt;
-              stroke-linejoin: miter;
-              stroke-opacity: 1;
-            ">
-        <path
-            d="m -29.828843,-32.840076 h 5.075651 v 15.377717 h 18.4432096 v -15.377717 h 5.0756516 V 4.6745172 H -6.3099824 V -13.190771 H -24.753192 V 4.6745172 h -5.075651 z" />
-    </g>
-</g>
-    `;
-
-    const roomHumidity2 =
-      `
 <g transform="scale(2.8,2.8) translate(2,2)">
     <g transform="translate(-6.9915256,-6.9915256)">
         <circle r="8.6263752" cy="16" cx="16" style="
@@ -467,7 +429,7 @@ class ToolSvgData {
           fill: ##FillColor=#659dc5##;
           fill-opacity: 1;
           fill-rule: nonzero;
-          stroke: ##FillColor=#000000##;
+          stroke: ##StrokeColor=#000000##;
           stroke-width: 0.764198;
           stroke-linecap: butt;
           stroke-linejoin: round;
@@ -483,7 +445,7 @@ class ToolSvgData {
           font-family: Sans;
           letter-spacing: 0px;
           word-spacing: 0px;
-          fill: ##FillColor=#000000##;
+          fill: ##StrokeColor=#000000##;
           fill-opacity: 1;
           stroke: none;
           stroke-width: 1px;
@@ -498,49 +460,12 @@ class ToolSvgData {
 </g>
     `;
 
-    return roomHumidity2;
+    return roomHumidity;
 
   }
 
   static RoomTemperatureSvgData() {
     const roomTemperature =
-      `
-<g transform="translate(0,0)">
-    <circle r="30" cy="30" cx="30" style="
-        opacity: 1;
-        fill: #FFFFFF;
-        fill-opacity: 1;
-        fill-rule: nonzero;
-        stroke:#000000;
-        stroke-width: 1.5;
-        stroke-linecap: butt;
-        stroke-linejoin: round;
-        stroke-miterlimit: 4;
-        stroke-dasharray: none;
-        stroke-opacity: 1;
-      " />
-    <g transform="translate(0,0)" style="
-        font-style: normal;
-        font-weight: normal;
-        font-size: 51px;
-        line-height: 125%;
-        font-family: Sans;
-        letter-spacing: 0px;
-        word-spacing: 0px;
-        fill:#000000;
-        fill-opacity: 1;
-        stroke: none;
-        stroke-width: 1px;
-        stroke-linecap: butt;
-        stroke-linejoin: miter;
-        stroke-opacity: 1;
-      ">
-        <path d="m 15,15 h 30 v 5 h -12.5 v 30 h -5 v -30 h -12.5 z" />
-    </g>
-</g>
-    `;
-
-    const roomTemperature2 =
       `
 <g transform="scale(2.8,2.8) translate(2,2)">
     <g transform="matrix(0.76419842,0,0,0.76419842,-3.2187002,-3.2187002)">
@@ -549,7 +474,7 @@ class ToolSvgData {
           fill: ##FillColor=#659dc5##;
           fill-opacity: 1;
           fill-rule: nonzero;
-          stroke: ##FillColor=#000000##;
+          stroke: ##StrokeColor=#000000##;
           stroke-width: 1;
           stroke-linecap: butt;
           stroke-linejoin: round;
@@ -565,7 +490,7 @@ class ToolSvgData {
           font-family: Sans;
           letter-spacing: 0px;
           word-spacing: 0px;
-          fill: ##FillColor=#000000##;
+          fill: ##StrokeColor=#000000##;
           fill-opacity: 1;
           stroke: none;
           stroke-width: 1px;
@@ -580,7 +505,7 @@ class ToolSvgData {
 </g>
     `;
 
-    return roomTemperature2;
+    return roomTemperature;
   }
 
   static TemperatureSvgData() {
