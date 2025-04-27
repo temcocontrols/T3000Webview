@@ -1,6 +1,6 @@
-.object-svg {
+/* .object-svg {
   color: #659dc5;
-}
+} */
 .in-alarm .pump {
   animation: color_change 1s infinite;
 }
@@ -84,4 +84,40 @@
   to {
     transform: translate(0px, -4px);
   }
+}
+
+/* fan */
+.in-alarm .fan {
+  animation: fan-alarm 1s infinite;
+}
+
+@keyframes fan-alarm {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill: #659dc5;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.active .fan .rotating-middle {
+  animation: fan-spin 3s linear infinite;
+}
+
+.active:not(.in-alarm) .fan .fan-background {
+  fill: #66c492;
+}
+
+@keyframes fan-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.object-svg {
+  color: #659dc5;
 }
