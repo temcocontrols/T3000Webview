@@ -1,0 +1,54 @@
+.object-svg {
+  color: #659dc5;
+}
+.in-alarm .pump {
+  animation: color_change 1s infinite;
+}
+@keyframes pump-alarm {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+@keyframes color_change {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+.active .pump .rotating-middle {
+  fill: black;
+  animation: pump-spin 3s linear infinite;
+}
+.in-alarm .pump .pump-background {
+  animation: heating-coil-alarm 1s infinite;
+}
+@keyframes pump-alarm {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+.active:not(.in-alarm) .pump .pump-background {
+  fill: #27ae60;
+}
+@keyframes pump-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
