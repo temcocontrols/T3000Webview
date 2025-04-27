@@ -457,9 +457,25 @@ class ToolSvgData {
   }
 
   static PumpSvgData() {
-    const pump =
+//     const pump =
+//       `
+// <g transform="scale(2.5,2.5) translate(1,1)">
+//     <g fill="##FillColor=#659dc5##" transform="translate(-5.4940996,-5.5390997)">
+//         <g class="object-svg active in-alarm pump">
+//             <circle stroke="##FillColor=#000000##" cy="16" cx="15.955" r="9.9609003" class="pump-background" />
+//             <g transform="translate(16,16)">
+//                 <path d="M -5,8.1369 V -8.1191 L 9.078,0.0091 Z" class="rotating-middle" stroke="##FillColor=#000000##"
+//                     stroke-width="0.96719" />
+//             </g>
+//         </g>
+//     </g>
+// </g>
+//     `;
+
+const pump =
       `
 <g transform="scale(2.5,2.5) translate(1,1)">
+  <g class="object-svg active">
     <g fill="##FillColor=#659dc5##" transform="translate(-5.4940996,-5.5390997)">
         <g class="pump">
             <circle stroke="##FillColor=#000000##" cy="16" cx="15.955" r="9.9609003" class="pump-background" />
@@ -469,6 +485,7 @@ class ToolSvgData {
             </g>
         </g>
     </g>
+  </g>
 </g>
     `;
     return pump;

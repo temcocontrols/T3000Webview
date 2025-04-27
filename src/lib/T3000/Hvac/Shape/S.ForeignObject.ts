@@ -149,6 +149,7 @@ class ForeignObject extends BaseShape {
           // Try to reload the component by name
           if (componentName) {
             console.log(`Attempting to load component by name: ${componentName}`);
+            console.log(`this.vueProps:  `,this.vueProps);
 
             // You may need to implement a mapping from component names to import paths
             let possiblePath = `../../../../components/${componentName}.vue`;

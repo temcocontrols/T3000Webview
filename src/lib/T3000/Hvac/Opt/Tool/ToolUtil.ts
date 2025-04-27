@@ -38,6 +38,7 @@ import VueCircle from "src/components/Basic/Circle.vue";
 import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
 import ObjectType from "src/components/ObjectType.vue"
+import QuasarUtil from "../Quasar/QuasarUtil"
 
 
 class ToolUtil {
@@ -618,6 +619,13 @@ class ToolUtil {
       item: pumpItemWithLink,
       showArrows: true,
     };
+
+    var apsItem = QuasarUtil.GetItemFromAPSV2(uniShapeType);
+    console.log("apsItem", apsItem);
+    // props = {
+    //   item: apsItem,
+    //   showArrows: true,
+    // };
 
     // var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType2, props, shapeAttributes);
     var fiObShape = this.CreateForeignObjectWithVue(T3Gv.opt.svgDoc, ObjectType, props, shapeAttributes);

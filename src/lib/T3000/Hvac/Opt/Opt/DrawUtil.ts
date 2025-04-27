@@ -2268,6 +2268,10 @@ class DrawUtil {
   static GetSelectObjectCoords() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
     var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+
+    if (targetObject == null) {
+      return null;
+    }
     var displayDims = targetObject.GetDimensionsForDisplay();
 
     /*
@@ -2294,6 +2298,10 @@ class DrawUtil {
   static UpdateAppStateV2Frame() {
     // Get selected object and save the coordinates
     var objCoords = this.GetSelectObjectCoords();
+
+    if (objCoords == null) {
+      return;
+    }
 
     QuasarUtil.UpdateCurrentObjectPos(objCoords);
     EvtOpt.toolOpt.SaveAct();
