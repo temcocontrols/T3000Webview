@@ -164,11 +164,11 @@ class ForeignObjUtil {
   }
 
   // shapeId used for get the current item from app state v2
-  static CreateVueObject(docInstance: any, frame: any, apsItem:any) {
+  static CreateVueObject(docInstance: any, frame: any, apsItem: any) {
     let svgDoc = docInstance == null ? T3Gv.opt.svgDoc : docInstance;
 
-    var width = frame.width;
-    var height = 40;//frame.height;
+    var width = 100;//frame.width;
+    var height = 30;//frame.height;
 
     var vueProps = {
       item: apsItem,
@@ -177,7 +177,7 @@ class ForeignObjUtil {
 
     const foreignObj = svgDoc.CreateVueComponent(width, height, ObjectType3, vueProps);
 
-    foreignObj.SetPos(0, -50);
+    foreignObj.SetPos(0, -40);
 
     const foreignContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
     foreignContainer.AddElement(foreignObj);
