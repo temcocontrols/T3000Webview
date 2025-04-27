@@ -47,6 +47,7 @@ class SVGFragmentSymbol extends BaseSymbol {
     T3Util.Log("= S.SVGFragmentSymbol | Constructor Input:", options);
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.SVGFragmentSymbol;
+    options.drawSetting = options.drawSetting || {};
     super(options);
     T3Util.Log("= S.SVGFragmentSymbol | Constructor Output:", this);
   }
@@ -69,7 +70,12 @@ class SVGFragmentSymbol extends BaseSymbol {
     const symbol = svgDocument.CreateShape(OptConstant.CSType.Symbol);
 
     // Set up symbol properties
-    symbol.SetSymbolSource(this.SVGFragment);
+    // symbol.SetSymbolSource(this.SVGFragment);
+
+    // Set symbol element's draw settings
+    symbol.SetDrawSetting(this.drawSetting);
+    symbol.SetSymbolName(this.uniType);
+    symbol.InitSymbolSource();
     symbol.SetID(OptConstant.SVGElementClass.Shape);
 
     const frame = this.Frame;
@@ -608,6 +614,168 @@ class SVGFragmentSymbol extends BaseSymbol {
     T3Util.Log("= S.SVGFragmentSymbol | BaseShapeCreateActionTriggers Output:", groupShape);
     return groupShape;
   }
+
+  SetFillColor(color: any): void {
+
+    // new field data fillColor, backgroundColor, inActive, inAlarm
+    var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
+    if (svgElement) {
+      // T3Gv.opt.svgObjectLayer.RemoveElement(shapeElement);
+      // var frame = this.GetSVGFrame();
+      var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
+      element.SetFillColor(color);
+
+      var svgSymbol = element.GetSvgSymbol();
+      console.log("= S.SVGFragmentSymbol | SetFillColor Output 1:", this.SVGFragment);
+      console.log("= S.SVGFragmentSymbol | SetFillColor Output 2:", svgSymbol);
+    }
+  }
+
+  GetDrawSetting() {
+    return this.drawSetting;
+  }
+
+  SetDrawSetting(setting: any) {
+    this.drawSetting = setting;
+
+    var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
+    if (svgElement) {
+      // T3Gv.opt.svgObjectLayer.RemoveElement(shapeElement);
+      // var frame = this.GetSVGFrame();
+      var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
+
+      console.log("= S.SVGFragmentSymbol | SetDrawSetting Input:", setting);
+      element.SetDrawSetting(setting);
+
+      element.RefreshDrawSetting();
+    }
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /**
+   * Dynamically adds CSS styles to the SVG fragment element
+   * @param cssStyles - CSS styles as a string or object to apply to the SVG fragment
+   * @param targetSelector - Optional CSS selector to target specific elements within the SVG fragment
+   * @returns Boolean indicating whether the CSS was successfully applied
+   */
+  AddDynamicCSS(cssStyles: string | Record<string, any>, targetSelector?: string): boolean {
+    T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS Input:", { cssStyles, targetSelector });
+
+    // Get the SVG element for this symbol
+    const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
+    if (!svgElement) {
+      T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS: SVG element not found");
+      return false;
+    }
+
+    // Get the shape element within the SVG container
+    const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
+    if (!shapeElement) {
+      T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS: Shape element not found");
+      return false;
+    }
+
+    // Get the actual SVG symbol DOM element
+    const svgDomElement = shapeElement.GetSvgSymbol();
+    if (!svgDomElement) {
+      T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS: SVG DOM element not found");
+      return false;
+    }
+
+    try {
+      // For string CSS styles, create and append a style element
+      if (typeof cssStyles === 'string') {
+        // Check if style element already exists
+        let styleElement = svgDomElement.querySelector('style[data-dynamic-css]');
+
+        if (!styleElement) {
+          // Create new style element if it doesn't exist
+          styleElement = document.createElement('style');
+          styleElement.setAttribute('data-dynamic-css', 'true');
+          svgDomElement.appendChild(styleElement);
+        }
+
+        // Set or update the CSS content
+        styleElement.textContent = cssStyles;
+      }
+      // For object CSS styles, apply them directly to selected elements
+      else if (typeof cssStyles === 'object') {
+        const targetElements = targetSelector ?
+          Array.from(svgDomElement.querySelectorAll(targetSelector)) :
+          [svgDomElement];
+
+        targetElements.forEach(element => {
+          for (const [property, value] of Object.entries(cssStyles)) {
+            // Convert camelCase to kebab-case for CSS properties
+            const cssProperty = property.replace(/([A-Z])/g, '-$1').toLowerCase();
+            element.style[property] = value;
+          }
+        });
+      }
+
+      T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS: CSS applied successfully");
+      return true;
+    } catch (error) {
+      T3Util.Log("= S.SVGFragmentSymbol | AddDynamicCSS Error:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Example usage of AddDynamicCSS method
+   *
+   * Example 1: Apply CSS string with animation to the SVG fragment
+   * ```
+   * const svgSymbol = new SVGFragmentSymbol({...});
+   * svgSymbol.AddDynamicCSS(`
+   *   @keyframes pulse {
+   *     0% { opacity: 1; }
+   *     50% { opacity: 0.5; }
+   *     100% { opacity: 1; }
+   *   }
+   *   .fan-blade {
+   *     animation: pulse 2s infinite;
+   *     fill: #3498db;
+   *   }
+   * `);
+   * ```
+   *
+   * Example 2: Apply direct styles to specific elements
+   * ```
+   * const svgSymbol = new SVGFragmentSymbol({...});
+   * // Apply styles to all elements with class 'temperature-indicator'
+   * svgSymbol.AddDynamicCSS(
+   *   { fill: '#ff0000', stroke: '#000000', strokeWidth: '2px' },
+   *   '.temperature-indicator'
+   * );
+   * ```
+   *
+   * Example 3: Dynamically update styles based on data values
+   * ```
+   * function updateTemperatureColor(value) {
+   *   const color = value > 75 ? '#ff0000' : value > 50 ? '#ffaa00' : '#00aa00';
+   *   svgSymbol.AddDynamicCSS({ fill: color }, '.temperature-gauge');
+   * }
+   * ```
+   */
+
+
+
 }
 
 export default SVGFragmentSymbol

@@ -209,6 +209,7 @@ class BaseDrawObject {
 
   // Unique Shape Type
   public uniType: string;
+  public drawSetting: any;
 
   constructor(config: any) {
     config = config || {};
@@ -315,6 +316,7 @@ class BaseDrawObject {
     this.ParentFrameID = -1;
 
     this.uniType = config.uniType || '';
+    this.drawSetting = config.drawSetting || {};
   }
 
   GenericKnob(params: any) {
@@ -924,18 +926,6 @@ class BaseDrawObject {
     return targetRect;
   }
 
-  // IsOKFlowChartShape(e) {
-  //   return 0
-  // }
-
-  // IsFlowChartConnector() {
-  //   return !1
-  // }
-
-  // IsOrgChartConnector() {
-  //   return !1
-  // }
-
   GetHookFlags(): number {
     T3Util.Log("= S.BaseDrawObject: GetHookFlags input");
     const result = 0;
@@ -949,13 +939,6 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: AllowLink output:", result);
     return result;
   }
-
-  // IsSwimlane(): boolean {
-  //   T3Util.Log("= S.BaseDrawObject: IsSwimlane input:");
-  //   const result = false;
-  //   T3Util.Log("= S.BaseDrawObject: IsSwimlane output:", result);
-  //   return result;
-  // }
 
   AllowSpell(): boolean {
     T3Util.Log("= S.BaseDrawObject: AllowSpell input, bInGroup:", this.bInGroup, "TextFlags:", this.TextFlags);
@@ -1984,16 +1967,6 @@ class BaseDrawObject {
     return textFormat;
   }
 
-  // GetTextParams(e) {
-  //   var t = {};
-  //   return t.trect = this.trect,
-  //     t.sizedim = this.sizedim,
-  //     t.tsizedim = {},
-  //     t.tsizedim.height = this.sizedim.height - (this.Frame.height - this.trect.height),
-  //     t.tsizedim.width = this.sizedim.width - (this.Frame.width - this.trect.width),
-  //     t
-  // }
-
   GetListOfEnclosedObjects(enclosedItems: any): any[] {
     T3Util.Log("= S.BaseDrawObject: GetListOfEnclosedObjects input:", enclosedItems);
     const result: any[] = [];
@@ -2994,7 +2967,7 @@ class BaseDrawObject {
     let result = '';
 
     if (points) {
-      area = this.calculatePolygonArea(points);
+      area = this.CalculatePolygonArea(points);
     } else {
       area = this.Frame.width * this.Frame.height;
     }
@@ -3006,7 +2979,7 @@ class BaseDrawObject {
     return result;
   }
 
-  private calculatePolygonArea(points: Point[]): number {
+  CalculatePolygonArea(points: Point[]): number {
     let area = 0;
     let j = points.length - 1;
 

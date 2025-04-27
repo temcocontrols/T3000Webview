@@ -805,7 +805,6 @@ class BaseShape extends BaseDrawObject {
     return defaultText;
   }
 
-
   SetTextGrow(textGrowBehavior: any): void {
     T3Util.Log("= S.BaseShape - SetTextGrow input:", textGrowBehavior);
 
@@ -1080,7 +1079,7 @@ class BaseShape extends BaseDrawObject {
     let backupLine: any = null;
 
     // Only adjust style if not a swimlane or shape container
-    if (/*!this.IsSwimlane() && */this.objecttype !== NvConstant.FNObjectTypes.ShapeContainer) {
+    if (this.objecttype !== NvConstant.FNObjectTypes.ShapeContainer) {
       if (style && style.Line && style.Border) {
         backupLine = Utils1.DeepCopy(style.Line);
         style.Line = Utils1.DeepCopy(style.Border);
@@ -2159,7 +2158,6 @@ class BaseShape extends BaseDrawObject {
         break;
     }
   }
-
 
   /**
    * Handles the resize action for shapes when triggered by user interactions
@@ -4166,52 +4164,6 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("= S.BaseShape - AllowLink output:", result);
     return result;
   }
-
-  // IsSwimlane() {
-  //   T3Util.Log("= S.BaseShape - IsSwimlane input");
-
-  //   const objectTypes = NvConstant.FNObjectTypes;
-  //   let result;
-
-  //   switch (this.objecttype) {
-  //     // case objectTypes.SD_OBJT_SWIMLANE_COLS:
-  //     // case objectTypes.SwimLaneRows:
-  //     // case objectTypes.SD_OBJT_SWIMLANE_GRID:
-  //     case objectTypes.FrameContainer:
-  //       result = true;
-  //       break;
-  //     default:
-  //       result = false;
-  //   }
-
-  //   T3Util.Log("= S.BaseShape - IsSwimlane output:", result);
-  //   return result;
-  // }
-
-  // IsOKFlowChartShape(objectID: number): number {
-  //   T3Util.Log("= S.BaseShape - IsOKFlowChartShape input:", { objectID });
-
-  //   const object = DataUtil.GetObjectPtr(objectID, false);
-  //   let result: number;
-
-  //   if (object && (object.flags & NvConstant.ObjFlags.TextOnly || object.IsSwimlane())) {
-  //     result = 0;
-  //   } else {
-  //     result = objectID;
-  //   }
-
-  //   T3Util.Log("= S.BaseShape - IsOKFlowChartShape output:", { result });
-  //   return result;
-  // }
-
-  // PreventLink() {
-  //   T3Util.Log("= S.BaseShape - PreventLink input");
-
-  //   const result = !!this.IsSwimlane();
-
-  //   T3Util.Log("= S.BaseShape - PreventLink output:", result);
-  //   return result;
-  // }
 
   GetHookPoints() {
     T3Util.Log("= S.BaseShape - GetHookPoints input");
