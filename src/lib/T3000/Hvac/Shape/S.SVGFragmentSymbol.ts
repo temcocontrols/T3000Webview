@@ -12,7 +12,7 @@ import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
 import T3Util from '../Util/T3Util';
 import Instance from '../Data/Instance/Instance';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 
@@ -278,7 +278,7 @@ class SVGFragmentSymbol extends BaseSymbol {
     if (shapeElement) {
       const shapeID = shapeElement.GetID();
       if (shapeID >= 0) {
-        const shapeObject = DataUtil.GetObjectPtr(shapeID, false);
+        const shapeObject = ObjectUtil.GetObjectPtr(shapeID, false);
         this.prevBBox = $.extend(true, {}, this.Frame);
         const offset = this.Resize(shapeElement, newBoundingBox, shapeObject);
         T3Util.Log("= S.SVGFragmentSymbol | ResizeInTextEdit Output:", { offset });
@@ -497,7 +497,7 @@ class SVGFragmentSymbol extends BaseSymbol {
     connectorData = (function (obj: any) {
       let hook, result = null;
       if (obj.hooks.length) {
-        hook = DataUtil.GetObjectPtr(obj.hooks[0].objid, false);
+        hook = ObjectUtil.GetObjectPtr(obj.hooks[0].objid, false);
         if (hook && hook.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
           result = hook.PrGetShapeConnectorInfo(obj.hooks[0]);
         } else if (hook && hook instanceof Instance.Shape.ShapeContainer) {
@@ -568,8 +568,8 @@ class SVGFragmentSymbol extends BaseSymbol {
     // Check conditions for adding rotation knob
     const tooSmallForRotation = this.Frame.width < 44,
       hasConnectorHooks = this.hooks.length > 0 &&
-        (DataUtil.GetObjectPtr(this.hooks[0].objid, false) ?
-          DataUtil.GetObjectPtr(this.hooks[0].objid, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
+        (ObjectUtil.GetObjectPtr(this.hooks[0].objid, false) ?
+          ObjectUtil.GetObjectPtr(this.hooks[0].objid, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
           : false);
 
     if (

@@ -25,7 +25,7 @@ import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -142,7 +142,7 @@ class PolyLine extends BaseLine {
     const frame = this.Frame;
     let styleRecord = this.StyleRecord;
 
-    styleRecord = this.SVGTokenizerHook(styleRecord) || DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false)?.def.style;
+    styleRecord = this.SVGTokenizerHook(styleRecord) || ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false)?.def.style;
 
     const strokeColor = styleRecord.Line.Paint.Color;
     let strokeWidth = styleRecord.Line.Thickness;
@@ -949,7 +949,7 @@ class PolyLine extends BaseLine {
 
     // Get the segment where the corner was hit.
     const cornerSegmentIndex = this.PolyHitSeg(cornerPoint);
-    const linksObject = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    const linksObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
     let hookList: any[] = [];
 
     // If no svgElement provided, get by BlockID.
@@ -1176,7 +1176,7 @@ class PolyLine extends BaseLine {
     paddedFrame.height += adjustedKnobSize;
 
     // Get the target object pointer (if exists) for hooks checking later.
-    let targetObj = DataUtil.GetObjectPtr(targetObject, false);
+    let targetObj = ObjectUtil.GetObjectPtr(targetObject, false);
 
     // The width and height of the group shape are based on the frame dimensions plus padding.
     let groupWidth = frame.width + adjustedKnobSize;
@@ -1963,7 +1963,7 @@ class PolyLine extends BaseLine {
 
     if (boundingRect.x >= 0 && boundingRect.y >= 0) {
       if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-        const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+        const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         if (boundingRect.x + boundingRect.width > sessionBlock.dim.x || boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
           return;
         }
@@ -2017,7 +2017,7 @@ class PolyLine extends BaseLine {
 
     if (actionType !== OptConstant.ActionTriggerType.MovePolySeg) {
       this.CalcFrame();
-      DataUtil.AddToDirtyList(event);
+      ObjectUtil.AddToDirtyList(event);
       SvgUtil.RenderDirtySVGObjects();
       this.UpdateFrame();
 
@@ -2038,7 +2038,7 @@ class PolyLine extends BaseLine {
 
       OptCMUtil.SetLinkFlag(event, DSConstant.LinkFlags.Move);
       T3Gv.opt.UpdateLinks();
-      DataUtil.AddToDirtyList(event);
+      ObjectUtil.AddToDirtyList(event);
     }
 
     T3Util.Log('S.PolyLine: AfterRotateShape output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
@@ -2317,7 +2317,7 @@ class PolyLine extends BaseLine {
     }
 
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
-    DataUtil.AddToDirtyList(blockID);
+    ObjectUtil.AddToDirtyList(blockID);
 
     T3Util.Log('S.PolyLine: LinkGrow output', { blockID, hookPoint, newPoint });
   }
@@ -2376,7 +2376,7 @@ class PolyLine extends BaseLine {
     T3Util.Log("S.PolyLine: GetTargetPoints input", { hookPoint, hookFlags, targetObjectID });
 
     const HookPts = OptConstant.HookPts;
-    if (targetObjectID != null && targetObjectID >= 0 && DataUtil.GetObjectPtr(targetObjectID, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
+    if (targetObjectID != null && targetObjectID >= 0 && ObjectUtil.GetObjectPtr(targetObjectID, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
       switch (hookPoint.id) {
         case HookPts.KTC:
         case HookPts.KBC:
@@ -2490,7 +2490,7 @@ class PolyLine extends BaseLine {
       return perimeterPoints;
     }
 
-    let targetObject = DataUtil.GetObjectPtr(targetObjectID, false);
+    let targetObject = ObjectUtil.GetObjectPtr(targetObjectID, false);
 
     if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.Multiplicity && hookPoints) {
       let baseLine, polyPoints = this.GetPolyPoints(1, false, true, false, null), segmentInfo = {}, polyPointsLength = polyPoints.length;
@@ -2770,7 +2770,7 @@ class PolyLine extends BaseLine {
     let hookedPoint: any = null;
     let loopIndex = 0;
 
-    targetObject = DataUtil.GetObjectPtr(objectTargetID, false);
+    targetObject = ObjectUtil.GetObjectPtr(objectTargetID, false);
     if (
       this.TextFlags & NvConstant.TextFlags.HorizText &&
       targetObject instanceof BaseShape
@@ -2799,12 +2799,12 @@ class PolyLine extends BaseLine {
             DSConstant.LinkFlags.Move |
             DSConstant.LinkFlags.Change
           );
-          DataUtil.AddToDirtyList(objectTargetID);
+          ObjectUtil.AddToDirtyList(objectTargetID);
         }
       }
     }
 
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
 
     T3Util.Log("S.PolyLine: ChangeTarget output", {
       angle,
@@ -3003,7 +3003,7 @@ class PolyLine extends BaseLine {
     const elementId = targetElement.GetID();
 
     // Check for text objects and handle text-related interactions
-    if ((object = DataUtil.GetObjectPtr(elementId, false)) && object.GetTextObject() >= 0) {
+    if ((object = ObjectUtil.GetObjectPtr(elementId, false)) && object.GetTextObject() >= 0) {
       const textElement = targetElement.textElem;
 
       if (textElement) {
@@ -4393,7 +4393,7 @@ class PolyLine extends BaseLine {
       return;
     }
 
-    DataUtil.GetObjectPtr(this.BlockID, true);
+    ObjectUtil.GetObjectPtr(this.BlockID, true);
     const originalState = Utils1.DeepCopy(this);
 
     segmentPoints.push(new Point(this.polylist.segs[segmentIndex - 1].pt.x, this.polylist.segs[segmentIndex - 1].pt.y));
@@ -4527,7 +4527,7 @@ class PolyLine extends BaseLine {
     }
 
     if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     DrawUtil.CompleteOperation(null);
@@ -4692,7 +4692,7 @@ class PolyLine extends BaseLine {
     }
 
     if (dimensionLength < 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       return;
     }
@@ -4788,7 +4788,7 @@ class PolyLine extends BaseLine {
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
 
     this.ResetAutoScrollTimer();
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
     SvgUtil.RenderDirtySVGObjects();
     SelectUtil.SelectObjects([this.BlockID], false, true);
 
@@ -5134,9 +5134,9 @@ class PolyLine extends BaseLine {
         this.OffsetShape(offset.x, offset.y);
         const enclosedObjects = this.GetListOfEnclosedObjects(false);
         for (let idx = 0; idx < enclosedObjects.length; idx++) {
-          DataUtil.GetObjectPtr(enclosedObjects[idx], true).OffsetShape(offset.x, offset.y);
+          ObjectUtil.GetObjectPtr(enclosedObjects[idx], true).OffsetShape(offset.x, offset.y);
           OptCMUtil.SetLinkFlag(enclosedObjects[idx], DSConstant.LinkFlags.Move);
-          DataUtil.AddToDirtyList(enclosedObjects[idx]);
+          ObjectUtil.AddToDirtyList(enclosedObjects[idx]);
         }
         this.UpdateDrawing(event);
       } else {

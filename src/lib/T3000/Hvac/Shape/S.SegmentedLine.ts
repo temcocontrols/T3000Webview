@@ -17,7 +17,7 @@ import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
 import TextConstant from '../Data/Constant/TextConstant';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
@@ -702,7 +702,7 @@ class SegmentedLine extends BaseLine {
         // Look for KTL hook point
         for (let j = 0; j < this.hooks.length; j++) {
           if (this.hooks[j].hookpt === OptConstant.HookPts.KTL) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[j].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[j].objid, false);
             if (hookObj) {
               hookObjectRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -726,7 +726,7 @@ class SegmentedLine extends BaseLine {
         // Look for KTR hook point
         for (let j = 0; j < this.hooks.length; j++) {
           if (this.hooks[j].hookpt === OptConstant.HookPts.KTR) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[j].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[j].objid, false);
             if (hookObj) {
               hookObjectRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -1183,7 +1183,7 @@ class SegmentedLine extends BaseLine {
       if (this.hooks && this.hooks.length > 0) {
         for (let hookIndex = 0; hookIndex < this.hooks.length; hookIndex++) {
           if (this.hooks[hookIndex].hookpt === OptConstant.HookPts.KTL) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[hookIndex].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[hookIndex].objid, false);
             if (hookObj) {
               const hookRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -1385,7 +1385,7 @@ class SegmentedLine extends BaseLine {
     const segmentDimension = OptConstant.Common.DimMax;
 
     // Check if auto-insert is allowed
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (DrawUtil.AllowAutoInsert()) {
       isAutoInsertAllowed = true;
     }
@@ -1479,7 +1479,7 @@ class SegmentedLine extends BaseLine {
             // Look for hook at KTR point
             for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
               if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-                hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+                hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
                 if (hookObj) {
                   const hookRect = hookObj.GetTargetRect();
                   const heightDiff = startSecondary - (hookRect.y + hookRect.height);
@@ -1500,7 +1500,7 @@ class SegmentedLine extends BaseLine {
             // Handle other factor cases
             for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
               if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-                hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+                hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
                 if (hookObj) {
                   const hookRect = hookObj.GetTargetRect();
                   hookStartAdjustment = isVertical ?
@@ -1515,7 +1515,7 @@ class SegmentedLine extends BaseLine {
           // Handle the case where primary is greater than or equal to secondary
           for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
             if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-              hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+              hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
               if (hookObj) {
                 const hookRect = hookObj.GetTargetRect();
                 hookEndAdjustment = isVertical ?
@@ -1874,7 +1874,7 @@ class SegmentedLine extends BaseLine {
       T3Gv.opt.linkParams &&
       T3Gv.opt.linkParams.SConnectIndex >= 0
     ) {
-      connectedObject = DataUtil.GetObjectPtr(
+      connectedObject = ObjectUtil.GetObjectPtr(
         T3Gv.opt.linkParams.SConnectIndex,
         false
       );
@@ -1987,7 +1987,7 @@ class SegmentedLine extends BaseLine {
 
     // Update directional properties based on connected object if applicable
     if (T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0) {
-      const connectedObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
+      const connectedObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
       if (connectedObject) {
         this.segl.lastdir = connectedObject.GetSegLFace(
           T3Gv.opt.linkParams.ConnectPt,
@@ -2062,7 +2062,7 @@ class SegmentedLine extends BaseLine {
 
     // Update segl.firstdir based on a connected object if available
     if (T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0) {
-      const connectedObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
+      const connectedObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
       if (connectedObject) {
         this.segl.firstdir = connectedObject.GetSegLFace(
           T3Gv.opt.linkParams.ConnectPt,
@@ -2886,7 +2886,7 @@ class SegmentedLine extends BaseLine {
     let adjustedHeight = this.Frame.height + knobSize;
 
     // Get the connected object if available
-    const connectedObject = DataUtil.GetObjectPtr(objectId, false);
+    const connectedObject = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Create an adjusted frame that accounts for knob dimensions
     const adjustedFrame = $.extend(true, {}, this.Frame);
@@ -3286,7 +3286,7 @@ class SegmentedLine extends BaseLine {
     // Recalculate the frame and mark element as modified
     this.CalcFrame(true);
     OptCMUtil.SetLinkFlag(elementId, DSConstant.LinkFlags.Move);
-    DataUtil.AddToDirtyList(elementId);
+    ObjectUtil.AddToDirtyList(elementId);
 
     T3Util.Log("= S.SegmentedLine: LinkGrow output", {
       StartPoint: this.StartPoint,
@@ -3382,7 +3382,7 @@ class SegmentedLine extends BaseLine {
     if (
       connectedObjectId != null &&
       connectedObjectId >= 0 &&
-      DataUtil.GetObjectPtr(connectedObjectId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
+      ObjectUtil.GetObjectPtr(connectedObjectId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
     ) {
       // Determine a normalized hook id value
       let normalizedHookId = hookData.id;
@@ -3665,7 +3665,7 @@ class SegmentedLine extends BaseLine {
 
       // Handle connected object cases if provided
       if (connectedObjectId >= 0) {
-        const connectedObject = DataUtil.GetObjectPtr(connectedObjectId, false);
+        const connectedObject = ObjectUtil.GetObjectPtr(connectedObjectId, false);
         if (connectedObject) {
           // Case for multiplicity object
           if (connectedObject.objecttype === NvConstant.FNObjectTypes.Multiplicity && hookCount === 1) {
@@ -3875,8 +3875,8 @@ class SegmentedLine extends BaseLine {
 
     let firstConnectedObject, secondConnectedObject;
     if (this.hooks.length === 2) {
-      firstConnectedObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
-      secondConnectedObject = DataUtil.GetObjectPtr(this.hooks[1].objid, false);
+      firstConnectedObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
+      secondConnectedObject = ObjectUtil.GetObjectPtr(this.hooks[1].objid, false);
     }
 
     switch (this.segl.firstdir) {
@@ -4101,7 +4101,7 @@ class SegmentedLine extends BaseLine {
     }
 
     // Retrieve the object pointer for the given objectId
-    const connectedShape = DataUtil.GetObjectPtr(objectId, false);
+    const connectedShape = ObjectUtil.GetObjectPtr(objectId, false);
     let bestHookType = initialHookType;
     if (connectedShape && connectedShape.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
       switch (initialHookType) {

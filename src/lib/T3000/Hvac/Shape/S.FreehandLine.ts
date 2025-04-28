@@ -11,7 +11,7 @@ import Point from '../Model/Point';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
@@ -240,7 +240,7 @@ class FreehandLine extends BaseLine {
     styleRecord = this.SVGTokenizerHook(styleRecord);
 
     if (styleRecord == null) {
-      let sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      let sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (sessionObject) {
         styleRecord = sessionObject.def.style;
       }
@@ -325,7 +325,7 @@ class FreehandLine extends BaseLine {
     let height = frame.height;
 
     // Get object pointer based on blockId
-    DataUtil.GetObjectPtr(blockId, false);
+    ObjectUtil.GetObjectPtr(blockId, false);
 
     // Adjust frame dimensions to account for knob size
     width += scaledKnobSize;
@@ -531,7 +531,7 @@ class FreehandLine extends BaseLine {
       T3Gv.opt.actionBBox = savedActionBBox;
       T3Gv.opt.actionNewBBox = savedActionNewBBox;
 
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
 
       // Update flags if necessary
       if (this.rflags) {
@@ -732,10 +732,10 @@ class FreehandLine extends BaseLine {
     }
 
     LMEvtUtil.UnbindActionClickHammerEvents();
-     
+
     $(window).unbind('mousemove');
     T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
-     
+
     this.ResetAutoScrollTimer();
 
     // Prepare shape attributes

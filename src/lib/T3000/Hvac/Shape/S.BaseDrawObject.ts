@@ -26,7 +26,7 @@ import Rectangle from '../Model/Rectangle'
 import RightClickMd from '../Model/RightClickMd'
 import TextFmtData from "../Model/TextFmtData"
 import TextObject from '../Model/TextObject'
-import DataUtil from '../Opt/Data/DataUtil'
+import ObjectUtil from '../Opt/Data/ObjectUtil'
 import DSConstant from '../Opt/DS/DSConstant'
 import OptCMUtil from '../Opt/Opt/OptCMUtil'
 import SvgUtil from '../Opt/Opt/SvgUtil'
@@ -1131,7 +1131,7 @@ class BaseDrawObject {
 
     // Delete table object if exists
     // if (this.TableID !== -1) {
-    //   const tablePtr = DataUtil.GetObjectPtr(this.TableID, true);
+    //   const tablePtr = ObjectUtil.GetObjectPtr(this.TableID, true);
     //   if (tablePtr) {
     //     T3Gv.opt.Table_DeleteObject(tablePtr);
     //   }
@@ -1197,7 +1197,7 @@ class BaseDrawObject {
 
     // Process hooks and update dimension lines for hooked objects if necessary
     if (this.hooks.length > 0) {
-      const hookedObj = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const hookedObj = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       if (
         hookedObj &&
         hookedObj.objecttype === NvConstant.FNObjectTypes.FlWall &&
@@ -1490,7 +1490,7 @@ class BaseDrawObject {
     const textFace = TextConstant.TextFace;
     let txtFmtData = new TextFmtData();
     let defaultStyle = new DefaultStyle();
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Deep copy the StyleRecord's Text settings and update font information from session block
     txtFmtData = Utils1.DeepCopy(this.StyleRecord.Text);
@@ -1955,7 +1955,7 @@ class BaseDrawObject {
     }
 
     // Get the session block to retrieve font information
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Create a deep copy of this object's text style record
     const textFormat = $.extend(true, {}, this.StyleRecord.Text);
@@ -2075,7 +2075,7 @@ class BaseDrawObject {
   GetLengthInRulerUnits(length: number, offset?: number): string {
     T3Util.Log("= S.BaseDrawObject: GetLengthInRulerUnits input:", { length, offset });
 
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let result = '';
     let feet = 0;
     let inches = 0;
@@ -2233,12 +2233,12 @@ class BaseDrawObject {
 
     const dimensionLength = this.GetDimensionLengthFromString(text, segmentIndex);
     if (dimensionLength <= 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       return;
     }
 
-    const hookedObject = DataUtil.GetObjectPtr(hookedObjectInfo.hookedObjectID, true);
+    const hookedObject = ObjectUtil.GetObjectPtr(hookedObjectInfo.hookedObjectID, true);
     if (!hookedObject) {
       T3Util.Log("= S.BaseDrawObject: UpdateDimensionsFromTextForHookedObject output: hooked object not found");
       return;
@@ -3033,7 +3033,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: GetHookedObjectDescList input:", { dimensionPoints, context });
 
     let result: any[] = [];
-    let linkManager = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    let linkManager = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
     let boundingRect = new Rectangle(0, 0, 0, 0);
     let hookPoints: Point[] = [];
     let hookObject: any = null;
@@ -3045,7 +3045,7 @@ class BaseDrawObject {
       let linkCount = linkManager.length;
 
       while (linkIndex >= 0 && linkIndex < linkCount && linkManager[linkIndex].targetid === this.BlockID) {
-        hookObject = DataUtil.GetObjectPtr(linkManager[linkIndex].hookid, false);
+        hookObject = ObjectUtil.GetObjectPtr(linkManager[linkIndex].hookid, false);
         if (hookObject) {
           for (let i = 0; i < hookObject.hooks.length; i++) {
             if (hookObject.hooks[i].objid === this.BlockID) {
@@ -3073,7 +3073,7 @@ class BaseDrawObject {
     }
 
     for (let i = 0; i < hookPoints.length; i++) {
-      hookObject = DataUtil.GetObjectPtr(hookPoints[i], false);
+      hookObject = ObjectUtil.GetObjectPtr(hookPoints[i], false);
       if (hookObject instanceof Instance.Shape.BaseShape &&
         !(context && context.linkParams && context.movingShapeID === hookObject.BlockID &&
           context.linkParams.ConnectIndex < 0 && context.linkParams.PrevConnect === this.BlockID)) {
@@ -3662,7 +3662,7 @@ class BaseDrawObject {
     this.HideOrShowSelectOnlyDimensions(show, context);
 
     if (this.hooks.length > 0 && context && context.movingShapeID === this.BlockID) {
-      hookedObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      hookedObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
 
       if (
         !hookedObject ||
@@ -4026,7 +4026,7 @@ class BaseDrawObject {
       this.ShortRef != OptConstant.LineTypes.LsMeasuringTape &&
       this.objecttype === NvConstant.FNObjectTypes.FlWall
     ) {
-      const linkObj = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+      const linkObj = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
       if (linkObj && OptCMUtil.FindLink(linkObj, this.BlockID, true) >= 0) {
         useStandOff = true;
       }
@@ -4232,7 +4232,7 @@ class BaseDrawObject {
 
 
     if (check3) {
-      var linkObject = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+      var linkObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
       if (linkObject) {
 
         const fdLink = OptCMUtil.FindLink(linkObject, this.BlockID, !0);
@@ -4431,7 +4431,7 @@ class BaseDrawObject {
     if (
       check3
     ) {
-      var linkObject = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+      var linkObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
       if (linkObject) {
 
         const fdLink = OptCMUtil.FindLink(linkObject, this.BlockID, !0);
@@ -4937,7 +4937,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: UnitsToCoord - Input:", { value, offset });
 
     // Ensure the SED session block is retrieved (result unused here)
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     const toUnits = this.GetToUnits();
     value += offset * T3Gv.docUtil.rulerConfig.majorScale;
@@ -4951,7 +4951,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: ConvToUnits input:", { value, offset });
 
     // Ensure the SED session block is retrieved (though result is unused here)
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     const toUnits = this.GetToUnits();
     const majorScale = T3Gv.docUtil.rulerConfig.majorScale;
@@ -4992,7 +4992,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: GetBlobBytes input: none");
     let blob: any = null;
     if (this.BlobBytesID >= 0) {
-      blob = DataUtil.GetObjectPtr(this.BlobBytesID, false);
+      blob = ObjectUtil.GetObjectPtr(this.BlobBytesID, false);
     }
     T3Util.Log("= S.BaseDrawObject: GetBlobBytes output:", blob);
     return blob;
@@ -5002,7 +5002,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: GetEMFBlobBytes input: EMFBlobBytesID =", this.EMFBlobBytesID);
     let emfBlob: any = null;
     if (this.EMFBlobBytesID >= 0) {
-      emfBlob = DataUtil.GetObjectPtr(this.EMFBlobBytesID, false);
+      emfBlob = ObjectUtil.GetObjectPtr(this.EMFBlobBytesID, false);
     }
     T3Util.Log("= S.BaseDrawObject: GetEMFBlobBytes output:", emfBlob);
     return emfBlob;
@@ -5012,7 +5012,7 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: GetOleBlobBytes input:", { OleBlobBytesID: this.OleBlobBytesID });
     let oleBlob: any = null;
     if (this.OleBlobBytesID >= 0) {
-      oleBlob = DataUtil.GetObjectPtr(this.OleBlobBytesID, false);
+      oleBlob = ObjectUtil.GetObjectPtr(this.OleBlobBytesID, false);
     }
     T3Util.Log("= S.BaseDrawObject: GetOleBlobBytes output:", oleBlob);
     return oleBlob;
@@ -5023,7 +5023,7 @@ class BaseDrawObject {
     let graph = null;
 
     if (this.GraphID >= 0) {
-      graph = DataUtil.GetObjectPtr(this.GraphID, preserve);
+      graph = ObjectUtil.GetObjectPtr(this.GraphID, preserve);
     }
 
     T3Util.Log("= S.BaseDrawObject: GetGraph output:", graph);
@@ -6212,7 +6212,7 @@ class BaseDrawObject {
       T3Gv.opt.curHiliteShape !== -1 &&
       T3Gv.opt.curHiliteShape !== this.BlockID
     ) {
-      const previousShape = DataUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
+      const previousShape = ObjectUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
       if (previousShape) {
         T3Util.Log("= S.BaseDrawObject SetRolloverActions - Clearing previous shape:", T3Gv.opt.curHiliteShape);
         previousShape.SetRuntimeEffects(false);
@@ -6322,7 +6322,7 @@ class BaseDrawObject {
     let currentIndex: number = $.inArray(currentBlockID, frontLayerZList);
 
     // Retrieve the links object.
-    let linksObj = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+    let linksObj = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
     if (linksObj) {
       // Start finding links starting for the current block.
       let linkIndex: number = OptCMUtil.FindLink(linksObj, currentBlockID, true);
@@ -6439,7 +6439,7 @@ class BaseDrawObject {
 
     if (this.HasFieldDataRecord(fieldDataTableID, fieldDataElementID, true)) {
       this.GetFieldDataStyleOverride();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       T3Util.Log("= S.BaseDrawObject RefreshFromRuleChange - Output: Rule change refreshed", {
         BlockID: this.BlockID
       });

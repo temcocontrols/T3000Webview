@@ -15,7 +15,7 @@ import OptConstant from '../Data/Constant/OptConstant'
 import CursorConstant from '../Data/Constant/CursorConstant'
 import T3Util from '../Util/T3Util'
 import TextConstant from '../Data/Constant/TextConstant'
-import DataUtil from '../Opt/Data/DataUtil'
+import ObjectUtil from '../Opt/Data/ObjectUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import OptCMUtil from '../Opt/Opt/OptCMUtil'
 import HookUtil from '../Opt/Opt/HookUtil'
@@ -411,7 +411,7 @@ class ArcLine extends BaseLine {
     let height = rect.height + adjustedKnobSize;
 
     // Get target object to check for hook overrides.
-    let targetObject = DataUtil.GetObjectPtr(targetId, false);
+    let targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
     // Adjust the rectangle boundaries.
     let adjustedRect = $.extend(true, {}, rect);
@@ -988,7 +988,7 @@ class ArcLine extends BaseLine {
     // If selection dimensions demand, mark the object as dirty.
     if ((this.Dimensions & NvConstant.DimensionFlags.Select) ||
       (this.Dimensions & NvConstant.DimensionFlags.Always)) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     // Regenerate the arc shape and resize the SVG text object if applicable.
@@ -1370,7 +1370,7 @@ class ArcLine extends BaseLine {
     if (
       targetId != null &&
       targetId >= 0 &&
-      DataUtil.GetObjectPtr(targetId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
+      ObjectUtil.GetObjectPtr(targetId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
     ) {
       switch (hookElement.id) {
         case hookPts.KTC:
@@ -1482,7 +1482,7 @@ class ArcLine extends BaseLine {
     }
 
     // Retrieve the target object, then delegate if it is of a specific type.
-    const refObject = DataUtil.GetObjectPtr(targetId, false);
+    const refObject = ObjectUtil.GetObjectPtr(targetId, false);
     if (refObject && refObject.objecttype === NvConstant.FNObjectTypes.Multiplicity) {
       resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
       T3Util.Log("= S.ArcLine GetPerimPts output (Multiplicity):", resultPoints);

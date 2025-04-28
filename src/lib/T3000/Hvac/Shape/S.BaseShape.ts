@@ -27,7 +27,7 @@ import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -353,7 +353,7 @@ class BaseShape extends BaseDrawObject {
     const connectorInfo = (function (targetShape) {
       let info = null;
       if (targetShape.hooks.length) {
-        const hookedObject = DataUtil.GetObjectPtr(targetShape.hooks[0].objid, false);
+        const hookedObject = ObjectUtil.GetObjectPtr(targetShape.hooks[0].objid, false);
         if (hookedObject && (hookedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector ||
           (hookedObject && hookedObject instanceof Instance.Shape.ShapeContainer))) {
           info = hookedObject.PrGetShapeConnectorInfo(targetShape.hooks[0]);
@@ -446,7 +446,7 @@ class BaseShape extends BaseDrawObject {
     let hasConnectorHooks = this.hooks.length > 0;
 
     if (hasConnectorHooks) {
-      const hookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const hookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       // Only count hooks that are connectors
       if (hookObject && hookObject.DrawingObjectBaseClass !== OptConstant.DrawObjectBaseClass.Connector) {
         hasConnectorHooks = false;
@@ -683,7 +683,7 @@ class BaseShape extends BaseDrawObject {
       if (svgElement) {
         svgElement.textElem = svgElement.GetElementById(OptConstant.SVGElementClass.Text, this.DataID);
       }
-    } else if (this.DataID >= 0 && DataUtil.GetObjectPtr(this.DataID, false) == null) {
+    } else if (this.DataID >= 0 && ObjectUtil.GetObjectPtr(this.DataID, false) == null) {
       // Reset DataID if it's invalid (doesn't exist in memory)
       this.DataID = -1;
     }
@@ -855,7 +855,7 @@ class BaseShape extends BaseDrawObject {
     let tableResult;
     let rectCopy;
     let resizedTable;
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     if (this.SymbolURL && this.SymbolURL.length > 0) {
       T3Util.Log("= S.BaseShape - ChangeShape output: SymbolURL exists, returning false");
@@ -978,7 +978,7 @@ class BaseShape extends BaseDrawObject {
       if (this.TextFlags & (textFlagConstants.AttachA + textFlagConstants.AttachB)) {
         style = Utils3.FindStyle(OptConstant.Common.TextBlockStyle);
       } else {
-        style = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false).def.style;
+        style = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false).def.style;
       }
       const newStyle = {
         StyleRecord: {
@@ -1012,7 +1012,7 @@ class BaseShape extends BaseDrawObject {
         if (widthAdjust || heightAdjust) {
           Utils2.InflateRect(this.trect, widthAdjust / 2, heightAdjust / 2);
           this.TRectToFrame(this.trect, true);
-          DataUtil.AddToDirtyList(this.BlockID);
+          ObjectUtil.AddToDirtyList(this.BlockID);
         }
         if (this.DataID >= 0) {
           flagUpdated = true;
@@ -1032,7 +1032,7 @@ class BaseShape extends BaseDrawObject {
         OptConstant.ExtraFlags.SideKnobs,
         properties.SideConn
       );
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       changed = true;
     }
 
@@ -1052,7 +1052,7 @@ class BaseShape extends BaseDrawObject {
     // Update grow behavior
     if (properties.ObjGrow != null && properties.ObjGrow !== this.ObjGrow) {
       this.ObjGrow = properties.ObjGrow;
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       changed = true;
       this.ResizeAspectConstrain = this.ObjGrow === OptConstant.GrowBehavior.ProPortional;
     }
@@ -1528,7 +1528,7 @@ class BaseShape extends BaseDrawObject {
       for (let i = startIndex; i < visibleCount; i++) {
         const candidateId = visibleZList[i];
         if (candidateId !== this.BlockID) {
-          let candidateObj = DataUtil.GetObjectPtr(candidateId, false);
+          let candidateObj = ObjectUtil.GetObjectPtr(candidateId, false);
           let candidatePoly: any;
           let candidateRect: any;
           // If candidate is rotated, compute its polygon points.
@@ -1575,7 +1575,7 @@ class BaseShape extends BaseDrawObject {
 
       // Remove container candidates that do not meet full connection criteria.
       for (let i = 0; i < containerCandidates.length; i++) {
-        const candidateObj = DataUtil.GetObjectPtr(containerCandidates[i], false);
+        const candidateObj = ObjectUtil.GetObjectPtr(containerCandidates[i], false);
         const hookId1 = candidateObj.hooks[0].objid;
         const hookId2 = candidateObj.hooks[1].objid;
         if ((enclosedObjects.indexOf(hookId1) < 0 || enclosedObjects.indexOf(hookId2) < 0) &&
@@ -1687,7 +1687,7 @@ class BaseShape extends BaseDrawObject {
 
       // Check if box exceeds document dimensions
       if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-        const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+        const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         if (effectiveBox.x + effectiveBox.width > sessionBlock.dim.x) return true;
         if (effectiveBox.y + effectiveBox.height > sessionBlock.dim.y) return true;
       }
@@ -1903,7 +1903,7 @@ class BaseShape extends BaseDrawObject {
         // Handle polygon segment movement
         cursorPosition.x = mouseX;
         cursorPosition.y = mouseY;
-        let shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
+        let shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
         const originalFrame = $.extend(true, {}, shapeObject.Frame);
 
         // Apply grid snapping if enabled and not overridden
@@ -1913,7 +1913,7 @@ class BaseShape extends BaseDrawObject {
 
         // Convert shape to polyline for manipulation
         OptCMUtil.ShapeToPolyLine(this.BlockID, true, true);
-        shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
+        shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
 
         // Move the polygon segment to the new position
         shapeObject.MovePolySeg(
@@ -1926,7 +1926,7 @@ class BaseShape extends BaseDrawObject {
 
         // Convert back from polyline to shape
         T3Gv.opt.PolyLineToShape(shapeObject.BlockID, true);
-        shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
+        shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
 
         // Verify text fit after movement
         const textRect = shapeObject.trect;
@@ -1942,7 +1942,7 @@ class BaseShape extends BaseDrawObject {
           // If text doesn't fit, revert the movement
           if (minDimensions.height > textRect.height || textFitWidth > textRect.width) {
             OptCMUtil.ShapeToPolyLine(this.BlockID, true, true);
-            const revertObject = DataUtil.GetObjectPtr(this.BlockID, false);
+            const revertObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
             cursorPosition.x = T3Gv.opt.actionTableLastX;
             cursorPosition.y = T3Gv.opt.actionTableLastY;
             revertObject.MovePolySeg(
@@ -1953,7 +1953,7 @@ class BaseShape extends BaseDrawObject {
               T3Gv.opt.actionTriggerData
             );
             T3Gv.opt.PolyLineToShape(this.BlockID, true);
-            shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
+            shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
           }
         }
 
@@ -2136,7 +2136,7 @@ class BaseShape extends BaseDrawObject {
         if (rotatedBounds.y < 0) break;
 
         if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-          const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+          const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
           if (rotatedBounds.x + rotatedBounds.width > sessionBlock.dim.x) break;
           if (rotatedBounds.y + rotatedBounds.height > sessionBlock.dim.y) break;
         }
@@ -2417,7 +2417,7 @@ class BaseShape extends BaseDrawObject {
       // Calculate object center point
       const clickPoint = { x: xPosition, y: yPosition };
       const centerPoint = {};
-      const objectFrame = DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false).Frame;
+      const objectFrame = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false).Frame;
 
       centerPoint.x = objectFrame.x + objectFrame.width / 2;
       centerPoint.y = objectFrame.y + objectFrame.height / 2;
@@ -2684,7 +2684,7 @@ class BaseShape extends BaseDrawObject {
     // Get the object being manipulated
     let targetObject = null;
     const actionTriggerType = OptConstant.ActionTriggerType;
-    targetObject = DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
+    targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
 
     // Hide dimension lines during drag if not rotating
     if (T3Gv.opt.actionTriggerId != OptConstant.ActionTriggerType.Rotate) {
@@ -2791,7 +2791,7 @@ class BaseShape extends BaseDrawObject {
       let isTableOperation = false;
 
       // Get the object being manipulated
-      const actionObject = DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
+      const actionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
       if (actionObject == null) return;
 
       // Handle standard release (no additional data provided)
@@ -2829,7 +2829,7 @@ class BaseShape extends BaseDrawObject {
           case OptConstant.ActionTriggerType.MovePolySeg:
             isTableOperation = true;
             if (true) {
-              const shapeObject = DataUtil.GetObjectPtr(this.BlockID, false);
+              const shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
               collaborationData.left_sindent = shapeObject.left_sindent;
               collaborationData.right_sindent = shapeObject.right_sindent;
               collaborationData.top_sindent = shapeObject.top_sindent;
@@ -2920,7 +2920,7 @@ class BaseShape extends BaseDrawObject {
 
       // Update dirty list if shape has hyperlink, note or field data
       if (this.HyperlinkText !== '' || this.NoteID !== -1 || this.HasFieldData()) {
-        DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+        ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
       }
 
       // Clean up
@@ -3053,7 +3053,7 @@ class BaseShape extends BaseDrawObject {
       let rotationAngle = 0;
       let isRotated = false;
 
-      const targetObject = DataUtil.GetObjectPtr(objectId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (targetObject) {
         rotationAngle = targetObject.RotationAngle;
 
@@ -3118,7 +3118,7 @@ class BaseShape extends BaseDrawObject {
     T3Gv.opt.actionStoredObjectId = objectId;
 
     // Get a reference to the target object
-    const targetObject = DataUtil.GetObjectPtr(objectId, true);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, true);
 
     // Store trigger ID and data
     T3Gv.opt.actionTriggerId = actionType;
@@ -3257,7 +3257,7 @@ class BaseShape extends BaseDrawObject {
   getConnectedObject() {
     if (this.hooks.length) {
       const connectedObjectId = this.hooks[0].objid;
-      return DataUtil.GetObjectPtr(connectedObjectId, false);
+      return ObjectUtil.GetObjectPtr(connectedObjectId, false);
     }
     return null;
   }
@@ -3273,7 +3273,7 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("= S.BaseShape - BaseLineLMActionClick input:", { event, triggerElement });
     try {
       const blockID = this.BlockID;
-      const baseObject = DataUtil.GetObjectPtr(blockID, false);
+      const baseObject = ObjectUtil.GetObjectPtr(blockID, false);
 
       // Validate that the base object is a valid drawing object
       if (!(baseObject && baseObject instanceof BaseDrawObject)) {
@@ -3291,7 +3291,7 @@ class BaseShape extends BaseDrawObject {
       }
 
       // Collab.BeginSecondaryEdit();
-      const currentObject = DataUtil.GetObjectPtr(this.BlockID, false);
+      const currentObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
 
       T3Gv.opt.WorkAreaHammer.on(
         "drag",
@@ -3332,7 +3332,7 @@ class BaseShape extends BaseDrawObject {
     Utils2.StopPropagationAndDefaults(event);
     try {
       const blockId = this.BlockID;
-      const drawingObject = DataUtil.GetObjectPtr(blockId, false);
+      const drawingObject = ObjectUtil.GetObjectPtr(blockId, false);
       if (!(drawingObject && drawingObject instanceof BaseDrawObject)) {
         T3Util.Log("= S.BaseShape - LMActionClick output: Invalid drawing object");
         return false;
@@ -3343,7 +3343,7 @@ class BaseShape extends BaseDrawObject {
         return;
       }
       // Collab.BeginSecondaryEdit();
-      const currentObject = DataUtil.GetObjectPtr(this.BlockID, false);
+      const currentObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_ActionTrackHandlerFactory(currentObject));
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_ActionReleaseHandlerFactory(currentObject));
       T3Util.Log("= S.BaseShape - LMActionClick output: completed successfully");
@@ -3558,12 +3558,12 @@ class BaseShape extends BaseDrawObject {
     if (this.moreflags & OptConstant.ObjMoreFlags.Container && childShapes) {
       for (let i = 0; i < childShapes.length; i++) {
         const childShapeId = childShapes[i];
-        const childShape = DataUtil.GetObjectPtr(childShapeId, true);
+        const childShape = ObjectUtil.GetObjectPtr(childShapeId, true);
         if (childShape) {
           const childLinkFlag = linkFlags ? linkFlags[childShape.BlockID] : null;
           childShape.OffsetShape(offsetX, offsetY, childLinkFlag);
           OptCMUtil.SetLinkFlag(childShapeId, DSConstant.LinkFlags.Move);
-          DataUtil.AddToDirtyList(childShapeId);
+          ObjectUtil.AddToDirtyList(childShapeId);
         }
       }
     }
@@ -4098,7 +4098,7 @@ class BaseShape extends BaseDrawObject {
         }
       }
 
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       // T3Gv.opt.theActionTable = null;
 
       if (this.rflags) {
@@ -4151,7 +4151,7 @@ class BaseShape extends BaseDrawObject {
   AllowLink() {
     T3Util.Log("= S.BaseShape - AllowLink input");
 
-    let sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    let sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let dropOnTableFlag = this.flags & NvConstant.ObjFlags.DropOnTable;
     let result;
 
@@ -4206,7 +4206,7 @@ class BaseShape extends BaseDrawObject {
       case OptConstant.HookPts.AKCL:
         childArrayIndex = T3Gv.opt.FindChildArray(this.BlockID, -1);
         if (childArrayIndex >= 0) {
-          childObject = DataUtil.GetObjectPtr(childArrayIndex, false);
+          childObject = ObjectUtil.GetObjectPtr(childArrayIndex, false);
           if (childObject) {
             isFlowConnection = childObject.arraylist.styleflags & OptConstant.AStyles.FlowConn &&
               !(childObject.arraylist.styleflags & OptConstant.AStyles.Linear);
@@ -4220,7 +4220,7 @@ class BaseShape extends BaseDrawObject {
       case OptConstant.HookPts.AKCR:
         childArrayIndex = T3Gv.opt.FindChildArray(this.BlockID, -1);
         if (childArrayIndex >= 0) {
-          childObject = DataUtil.GetObjectPtr(childArrayIndex, false);
+          childObject = ObjectUtil.GetObjectPtr(childArrayIndex, false);
           if (childObject) {
             isFlowConnection = childObject.arraylist.styleflags & OptConstant.AStyles.FlowConn &&
               !(childObject.arraylist.styleflags & OptConstant.AStyles.Linear);
@@ -4372,7 +4372,7 @@ class BaseShape extends BaseDrawObject {
 
     let isCoManager = false;
     if (this.hooks && this.hooks.length) {
-      const hookedObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const hookedObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       if (hookedObject && hookedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
         isCoManager = hookedObject.IsCoManager(e);
       }
@@ -4605,7 +4605,7 @@ class BaseShape extends BaseDrawObject {
     const dimension = OptConstant.Common.DimMax;
 
     if (objectID >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(objectID, false);
+      const targetObject = ObjectUtil.GetObjectPtr(objectID, false);
     }
 
     if (hasCustomTargetPoint) {
@@ -4801,7 +4801,7 @@ class BaseShape extends BaseDrawObject {
 
       if (graph) {
         T3Gv.opt.GraphFormat(this, graph, this.Frame, true);
-        DataUtil.AddToDirtyList(this.BlockID);
+        ObjectUtil.AddToDirtyList(this.BlockID);
         SvgUtil.RenderDirtySVGObjects();
       } else {
         this.LMResizeSVGTextObject(element, drawingObject, newSize);
@@ -4923,7 +4923,7 @@ class BaseShape extends BaseDrawObject {
         }
 
         if (this.BlobBytesID !== -1) {
-          const blob = DataUtil.GetObjectPtr(this.BlobBytesID, false);
+          const blob = ObjectUtil.GetObjectPtr(this.BlobBytesID, false);
           if (blob && blob.ImageDir === StyleConstant.ImageDir.Svg) {
             if (this.SVGDim.width == null) {
               this.SVGDim = Utils2.ParseSVGDimensions(blob.Bytes);
@@ -5584,7 +5584,7 @@ class BaseShape extends BaseDrawObject {
 
     // If the calculated dimension length is invalid, mark the object as dirty and render updates
     if (dimensionLength < 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       T3Util.Log("= S.BaseShape - UpdateDimensionFromTextObj output: Invalid dimension length");
       return;
@@ -5613,7 +5613,7 @@ class BaseShape extends BaseDrawObject {
       OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
     }
 
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
     if (this.Frame.x < 0 || this.Frame.y < 0) {
       T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
     }
@@ -5722,8 +5722,8 @@ class BaseShape extends BaseDrawObject {
           text: textObject.GetText(),
           userData: userDataCopy
         };
-        DataUtil.GetObjectPtr(editableShape.BlockID, true);
-        editableShape = DataUtil.GetObjectPtr(editableShape.BlockID, false);
+        ObjectUtil.GetObjectPtr(editableShape.BlockID, true);
+        editableShape = ObjectUtil.GetObjectPtr(editableShape.BlockID, false);
 
         editableShape.UpdateDimensionFromTextObj(textObject);
         break;
@@ -5801,7 +5801,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // If the first hook's object is a shape container, do not rotate.
-    if (this.hooks.length && (childObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false)) &&
+    if (this.hooks.length && (childObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false)) &&
       childObject.objecttype === NvConstant.FNObjectTypes.ShapeContainer) {
       T3Util.Log("= S.BaseShape: NoRotate output: true (hook object is a SHAPECONTAINER)");
       return true;
@@ -5817,7 +5817,7 @@ class BaseShape extends BaseDrawObject {
     // has hooks beyond the skipped count, do not allow rotation.
     const connectorCount = childConnectors.length;
     for (let i = 0; i < connectorCount; i++) {
-      childObject = DataUtil.GetObjectPtr(childConnectors[i], false);
+      childObject = ObjectUtil.GetObjectPtr(childConnectors[i], false);
       if (!childObject.IsFlowChartConnector() && (childObject.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip) > 0) {
         T3Util.Log("= S.BaseShape: NoRotate output: true (child connector condition met at index " + i + ")");
         return true;
@@ -5842,7 +5842,7 @@ class BaseShape extends BaseDrawObject {
       // Use the container's frame if it is different from this shape, otherwise use this shape's frame.
       let targetFrame = this.Frame;
       if (containerId !== this.BlockID) {
-        const containerObject = DataUtil.GetObjectPtr(containerId, false);
+        const containerObject = ObjectUtil.GetObjectPtr(containerId, false);
         if (containerObject) {
           targetFrame = containerObject.Frame;
         }
@@ -5866,7 +5866,7 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("= S.BaseShape - GetActionButtons input:", {});
 
     // Check if the session disallows action buttons
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (sessionBlock.moreflags & NvConstant.SessionMoreFlags.NoActionButton) {
       T3Util.Log("= S.BaseShape - GetActionButtons output:", null);
       return null;
@@ -5879,7 +5879,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Check active text/table/outline object conditions
-    const teData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const teData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     if (
       this.BlockID === teData.theActiveTextEditObjectID ||
       this.BlockID === teData.theActiveTableObjectID ||
@@ -5890,7 +5890,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Check layer settings: if the active layer is using edges, no buttons should be available.
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     if (layersManager && (layersManager.layers[layersManager.activelayer].flags & NvConstant.LayerFlags.UseEdges)) {
       T3Util.Log("= S.BaseShape - GetActionButtons output:", null);
       return null;
@@ -5947,7 +5947,7 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("S.BaseShape - SetRolloverActions input:", { svgEvent, rolloverElement, domEvent });
 
     // Get the base object for this shape
-    const baseShapeObj = DataUtil.GetObjectPtr(this.BlockID, false);
+    const baseShapeObj = ObjectUtil.GetObjectPtr(this.BlockID, false);
 
     if (baseShapeObj && baseShapeObj instanceof BaseDrawObject) {
       const objectTypes = NvConstant.FNObjectTypes;
@@ -5984,7 +5984,7 @@ class BaseShape extends BaseDrawObject {
 
       // Clear previously highlighted shape if different than current
       if (T3Gv.opt.curHiliteShape !== -1 && T3Gv.opt.curHiliteShape !== this.BlockID) {
-        const prevHiliteObj = DataUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
+        const prevHiliteObj = ObjectUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
         if (prevHiliteObj) {
           prevHiliteObj.SetRuntimeEffects(false);
           prevHiliteObj.ClearCursors();
@@ -6022,7 +6022,7 @@ class BaseShape extends BaseDrawObject {
           const baseArrowSlop = OptConstant.Common.BaseArrowSlop / screenScale;
           const connectorArrowSlop = OptConstant.Common.ConnectorArrowSlop / screenScale;
           let knobSizeOffset = 0;
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+          const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
           if (selectedList && selectedList.indexOf(currentBlockId) !== -1) {
             knobSizeOffset = OptConstant.Common.KnobSize / 2;
           }
@@ -6050,7 +6050,7 @@ class BaseShape extends BaseDrawObject {
             const childHookData = { lindex: -1, id: -1, hookpt: 0 };
             // Iterate as long as there are child hooks
             while (T3Gv.opt.FindChildArrayByIndex(this.BlockID, childHookData) > 0) {
-              childObj = DataUtil.GetObjectPtr(childHookData.id, false);
+              childObj = ObjectUtil.GetObjectPtr(childHookData.id, false);
               const isCoManager = ((childObj.arraylist.styleflags & OptConstant.AStyles.CoManager) > 0);
               const isAssistantChild = childObj.IsChildOfAssistant();
               const isFlowConnector = childObj.IsFlowChartConnector();
@@ -6220,7 +6220,7 @@ class BaseShape extends BaseDrawObject {
                 if (targetForEvt) {
                   const targetId = targetForEvt.GetID();
                   const userData = overlayElement.GetUserData();
-                  const targetObj = DataUtil.GetObjectPtr(userData, false);
+                  const targetObj = ObjectUtil.GetObjectPtr(userData, false);
                   if (targetObj && targetObj instanceof BaseDrawObject && targetId != null && userData != null) {
                     gBusinessController.ActionClick(evt, userData, targetId, null);
                   }
@@ -6244,7 +6244,7 @@ class BaseShape extends BaseDrawObject {
                 if (targetForEvt) {
                   const targetId = targetForEvt.GetID();
                   const userData = overlayElement.GetUserData();
-                  const targetObj = DataUtil.GetObjectPtr(userData, false);
+                  const targetObj = ObjectUtil.GetObjectPtr(userData, false);
                   if (!(targetObj && targetObj instanceof BaseDrawObject)) return false;
                   switch (targetId) {
                     case OptConstant.ActionArrow.Up:
@@ -6355,7 +6355,7 @@ class BaseShape extends BaseDrawObject {
 
     if (adjustmentApplied) {
       // Force re-read of the object for potential side effects
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       if (offsetX || offsetY) {
         this.OffsetShape(offsetX, offsetY);
       }
@@ -6377,7 +6377,7 @@ class BaseShape extends BaseDrawObject {
           }
         }
       }
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       T3Util.Log("S.ArcSegmentedLine - UseEdges output:", true);
       return true;
     }
@@ -6390,7 +6390,7 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("S.BaseShape - prUpdateExtra input:", { extraAmount, currentBlockId: this.BlockID });
 
     const currentBlockId = this.BlockID;
-    const containerShape = DataUtil.GetObjectPtr(this.hooks[0].objid, true);
+    const containerShape = ObjectUtil.GetObjectPtr(this.hooks[0].objid, true);
 
     if (containerShape && containerShape instanceof Instance.Shape.ShapeContainer) {
       const containerList = containerShape.ContainerList;
@@ -6432,7 +6432,7 @@ class BaseShape extends BaseDrawObject {
     let foundInList = false;
 
     const addShape = function (shapeId: number): void {
-      const shapeObject = DataUtil.GetObjectPtr(shapeId, false);
+      const shapeObject = ObjectUtil.GetObjectPtr(shapeId, false);
       if (shapeObject) {
         const svgFrame = shapeObject.GetSVGFrame();
         frameList.push(svgFrame);
@@ -6444,7 +6444,7 @@ class BaseShape extends BaseDrawObject {
     if (this.hooks.length > 0) {
       const currentBlockId = this.BlockID;
       let containerExtra = 0;
-      const containerShape = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const containerShape = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
 
       // Check if containerShape is an instance of Instance.Shape.ShapeContainer
       if (containerShape && containerShape instanceof Instance.Shape.ShapeContainer) {
@@ -6534,7 +6534,7 @@ class BaseShape extends BaseDrawObject {
     let elementId = svgElement.GetID();
 
     // Get the object that was clicked
-    let clickedObject = DataUtil.GetObjectPtr(elementId, false);
+    let clickedObject = ObjectUtil.GetObjectPtr(elementId, false);
 
     if (clickedObject && clickedObject instanceof BaseDrawObject) {
 
@@ -6560,7 +6560,7 @@ class BaseShape extends BaseDrawObject {
       const targetElementId = svgElement.GetTargetForEvent(event).GetID();
       let isTableLocked = false;
 
-      clickedObject = DataUtil.GetObjectPtr(currentElementId, false);
+      clickedObject = ObjectUtil.GetObjectPtr(currentElementId, false);
 
       if (clickedObject) {
         // Check if one-click text edit is enabled
@@ -6616,7 +6616,7 @@ class BaseShape extends BaseDrawObject {
         T3Gv.opt.rClickParam.targetId = elementId;
 
         // Get the object associated with the element
-        clickedObject = DataUtil.GetObjectPtr(elementId, false);
+        clickedObject = ObjectUtil.GetObjectPtr(elementId, false);
 
         // Show appropriate context menu based on object type
         switch (clickedObject.objecttype) {

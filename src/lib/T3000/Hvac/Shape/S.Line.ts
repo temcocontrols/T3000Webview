@@ -13,7 +13,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
@@ -240,7 +240,7 @@ class Line extends BaseLine {
     let styleRecord = this.StyleRecord;
 
     if (styleRecord == null) {
-      let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      let sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (sessionBlock) {
         styleRecord = sessionBlock.def.style;
       }
@@ -766,7 +766,7 @@ class Line extends BaseLine {
         ? PolyUtil.PolyLJoin(newBlockID, OptConstant.HookPts.KTL, this.BlockID, OptConstant.HookPts.KTL, false)
         : PolyUtil.PolyLJoin(newBlockID, OptConstant.HookPts.KTL, this.BlockID, OptConstant.HookPts.KTR, false);
 
-      const joinedObject = DataUtil.GetObjectPtr(joinID, false);
+      const joinedObject = ObjectUtil.GetObjectPtr(joinID, false);
       const joinedElement = T3Gv.opt.svgObjectLayer.GetElementById(joinID);
 
       let dimensionText = Number(T3Gv.docUtil.rulerConfig.majorScale).toString();
@@ -784,7 +784,7 @@ class Line extends BaseLine {
       }
 
       joinedObject.UpdateDimensionFromText(joinedElement, dimensionText, { segment: 2 });
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       DrawUtil.CompleteOperation(null);
     }
 
@@ -834,7 +834,7 @@ class Line extends BaseLine {
     }
 
     if (shouldAdjust) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       if (deltaX || deltaY) {
         this.OffsetShape(deltaX, deltaY);
       }
@@ -843,7 +843,7 @@ class Line extends BaseLine {
         if (offsetY) newHeight = this.Frame.height + offsetY;
         this.SetSize(newWidth, newHeight, 0);
       }
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     T3Util.Log('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });

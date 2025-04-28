@@ -22,7 +22,7 @@ import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from "../Opt/Data/DataUtil";
+import ObjectUtil from "../Opt/Data/ObjectUtil";
 import RightClickMd from "../Model/RightClickMd";
 import UIUtil from "../Opt/UI/UIUtil";
 import LayerUtil from "../Opt/Opt/LayerUtil";
@@ -903,7 +903,7 @@ class BaseLine extends BaseDrawObject {
 
     this.CalcFrame(true);
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
-    DataUtil.AddToDirtyList(blockID);
+    ObjectUtil.AddToDirtyList(blockID);
 
     T3Util.Log("= S.BaseLine: LinkGrow updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
@@ -1414,7 +1414,7 @@ class BaseLine extends BaseDrawObject {
     this.LMActionPostRelease(T3Gv.opt.actionStoredObjectId);
 
     if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
-      DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+      ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
     }
 
     if (!isSecondary) {
@@ -1434,7 +1434,7 @@ class BaseLine extends BaseDrawObject {
     let objectPtr, sessionPtr, linkParams, hookIndex = -1;
 
     // Retrieve the object pointer for the given actionStoredObjectID
-    objectPtr = DataUtil.GetObjectPtr(actionStoredObjectID, false);
+    objectPtr = ObjectUtil.GetObjectPtr(actionStoredObjectID, false);
     if (!objectPtr) {
       T3Util.Log("= S.BaseLine: LMActionPreTrack - objectPtr not found");
       return;
@@ -1485,7 +1485,7 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.linkParams = linkParams;
 
     // Retrieve the session pointer
-    sessionPtr = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    sessionPtr = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Set ArraysOnly flag if linking is not allowed
     if (!this.AllowLink()) {
@@ -1509,7 +1509,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     // Retrieve the links block object pointer
-    const linksBlockPtr = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    const linksBlockPtr = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
 
     // Get the hook list for circular targets
     linkParams.lpCircList = HookUtil.GetHookList(
@@ -1835,7 +1835,7 @@ class BaseLine extends BaseDrawObject {
 
     try {
       const blockID = this.BlockID;
-      const objectPtr = DataUtil.GetObjectPtr(blockID, false);
+      const objectPtr = ObjectUtil.GetObjectPtr(blockID, false);
 
       if (!(objectPtr && objectPtr instanceof BaseDrawObject)) {
         T3Util.Log("= S.BaseLine: LMActionClick - objectPtr is not an instance of BaseDrawObject");
@@ -1848,7 +1848,7 @@ class BaseLine extends BaseDrawObject {
         T3Util.Log("= S.BaseLine: LMActionClick - LMSetupActionClick returned false");
         return;
       }
-      const actionObjectPtr = DataUtil.GetObjectPtr(blockID, false);
+      const actionObjectPtr = ObjectUtil.GetObjectPtr(blockID, false);
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_ActionTrackHandlerFactory(actionObjectPtr));
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_ActionReleaseHandlerFactory(actionObjectPtr));
 
@@ -1881,7 +1881,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-      const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (rotatedStartPoint.x > sessionObject.dim.x || rotatedStartPoint.y > sessionObject.dim.y || rotatedEndPoint.x > sessionObject.dim.x || rotatedEndPoint.y > sessionObject.dim.y) {
         T3Util.Log("= S.BaseLine: Rotation resulted in coordinates outside session dimensions, returning false");
         return false;
@@ -1920,8 +1920,8 @@ class BaseLine extends BaseDrawObject {
 
   AllowLink() {
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
-    const session = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const session = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     const useEdges = layersManager && layersManager.activelayer >= 0 && (layersManager.layers[layersManager.activelayer].flags & NvConstant.LayerFlags.UseEdges);
     const fromOverlayLayer = T3Gv.opt.fromOverlayLayer;
@@ -2027,7 +2027,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     if (hookIndex >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(hookIndex, false);
+      const targetObject = ObjectUtil.GetObjectPtr(hookIndex, false);
       if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.Multiplicity) {
         let offsetX = 5;
         let offsetY = 5;
@@ -2168,7 +2168,7 @@ class BaseLine extends BaseDrawObject {
     const hookPts = OptConstant.HookPts;
 
     if (targetID != null && targetID >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(targetID, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetID, false);
 
       if (targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
         switch (hookPoint.id) {
@@ -2290,7 +2290,7 @@ class BaseLine extends BaseDrawObject {
     const HookPts = OptConstant.HookPts;
 
     if (targetID != null && targetID >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(targetID, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetID, false);
 
       if (targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
         switch (hookPoint.id) {
@@ -2329,7 +2329,7 @@ class BaseLine extends BaseDrawObject {
         T3Util.Log("= S.BaseLine: Handling NgEvent");
 
         if (this.hooks.length) {
-          const hookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+          const hookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
 
           // if (hookObject && hookObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_NG_TIMELINE) {
           //   T3Util.Log("= S.BaseLine: Returning NG timeline object:", hookObject);
@@ -2367,8 +2367,8 @@ class BaseLine extends BaseDrawObject {
     const spacing = { width: null, height: null };
 
     if (this.hooks.length === 2) {
-      const hook1 = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
-      const hook2 = DataUtil.GetObjectPtr(this.hooks[1].objid, false);
+      const hook1 = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const hook2 = ObjectUtil.GetObjectPtr(this.hooks[1].objid, false);
 
       if (rect.width < rect.height) {
         spacing.height = Math.abs(this.StartPoint.y - this.EndPoint.y);
@@ -2446,7 +2446,7 @@ class BaseLine extends BaseDrawObject {
     let isEndPointAtOrigin = false;
 
     // Get the target object from the object pointer
-    const targetObject = DataUtil.GetObjectPtr(targetObjectId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
     // Handle target objects that are shapes
     if (targetObject && targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
@@ -2704,7 +2704,7 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: ChangeTarget called with e:", e, "targetId:", targetId, "a:", a, "r:", r, "i:", i, "n:", n);
 
     let apparentAngle = 0;
-    let targetObj: any = DataUtil.GetObjectPtr(targetId, false);
+    let targetObj: any = ObjectUtil.GetObjectPtr(targetId, false);
 
     if (this.TextFlags & NvConstant.TextFlags.HorizText &&
       targetObj instanceof Instance.Shape.BaseShape) {
@@ -2722,14 +2722,14 @@ class BaseLine extends BaseDrawObject {
           this.BlockID,
           DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
         );
-        DataUtil.AddToDirtyList(targetId);
+        ObjectUtil.AddToDirtyList(targetId);
         T3Util.Log("= S.BaseLine: ChangeTarget updated targetObj.RotationAngle to:", apparentAngle);
       } else {
         T3Util.Log("= S.BaseLine: ChangeTarget rotation difference within tolerance, no update performed");
       }
     }
 
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
     T3Util.Log("= S.BaseLine: ChangeTarget completed for BlockID:", this.BlockID);
   }
 
@@ -2799,7 +2799,7 @@ class BaseLine extends BaseDrawObject {
       }
 
       if (inflatedStartPoint && Utils2.pointInRect(inflatedStartPoint, point)) {
-        const targetObject = DataUtil.GetObjectPtr(hitResult.objectid, false);
+        const targetObject = ObjectUtil.GetObjectPtr(hitResult.objectid, false);
         if (!(targetObject && targetObject.polylist && targetObject.polylist.closed)) {
           if (hitResult) {
             hitResult.hitcode = NvConstant.HitCodes.PLApp;
@@ -2813,7 +2813,7 @@ class BaseLine extends BaseDrawObject {
       }
 
       if (inflatedEndPoint && Utils2.pointInRect(inflatedEndPoint, point)) {
-        const targetObject = DataUtil.GetObjectPtr(hitResult.objectid, false);
+        const targetObject = ObjectUtil.GetObjectPtr(hitResult.objectid, false);
         if (!(targetObject && targetObject.polylist && targetObject.polylist.closed)) {
           if (hitResult) {
             hitResult.hitcode = NvConstant.HitCodes.PLApp;
@@ -3131,7 +3131,7 @@ class BaseLine extends BaseDrawObject {
 
     // Initialize variables with readable names
     let hookFlags = this.GetHookFlags();
-    let sessionObj = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    let sessionObj = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let linksBlockObj: any;
     let hookList: Array<{ x: number; y: number; id?: number }> = [{ x: 0, y: 0 }];
     let extraData: any = {}; // for GetHookList
@@ -3156,7 +3156,7 @@ class BaseLine extends BaseDrawObject {
         T3Gv.opt.dragDeltaX = 0;
         T3Gv.opt.dragDeltaY = 0;
 
-        linksBlockObj = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+        linksBlockObj = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
 
         // Try to find a connection using the hook list
         if (
@@ -3280,7 +3280,7 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.linkParams.JoinIndex < 0
     ) {
       // Get the candidate join object
-      let joinObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.SJoinIndex);
+      let joinObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.SJoinIndex);
       // Check if the join candidate is a PolyLine
       if (this.checkIfPolyLine(joinObject)) {
         hitResult = new HitResult(-1, 0, null);
@@ -3407,7 +3407,7 @@ class BaseLine extends BaseDrawObject {
             lp.ConnectIndex = -1;
           }
           // Determine JoinSourceData based on the equality of EndPoint and the join object's StartPoint
-          const joinObj = DataUtil.GetObjectPtr(joinResult, false);
+          const joinObj = ObjectUtil.GetObjectPtr(joinResult, false);
           if (Utils2.EqualPt(this.EndPoint, joinObj.StartPoint)) {
             lp.JoinSourceData = 1;
           } else {
@@ -3513,7 +3513,7 @@ class BaseLine extends BaseDrawObject {
       this.StyleRecord.Fill.Paint.Color === currentColor
     ) {
       T3Util.Log("= S.BaseLine: Condition met. Updating background color.");
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       this.StyleRecord.Fill.Paint.Color = newColor;
       T3Util.Log("= S.BaseLine: Background color updated to:", this.StyleRecord.Fill.Paint.Color);
     } else {
@@ -3613,7 +3613,7 @@ class BaseLine extends BaseDrawObject {
 
     // Get text alignment settings and session object
     const textAlignWin = ShapeUtil.TextAlignToWin(this.TextAlign);
-    const sessionObj = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObj = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Update the fill color based on the session background
     this.StyleRecord.Fill.Paint.Color = sessionObj.background.Paint.Color;
@@ -4236,7 +4236,7 @@ class BaseLine extends BaseDrawObject {
 
       // Check for a hook in the linked object (for example, if a hook with SED_KTL exists)
       let hookIndex: number;
-      const linkedObject = DataUtil.GetObjectPtr(triggerTarget, false);
+      const linkedObject = ObjectUtil.GetObjectPtr(triggerTarget, false);
       if (linkedObject && linkedObject.hooks) {
         for (hookIndex = 0; hookIndex < linkedObject.hooks.length; hookIndex++) {
           if (linkedObject.hooks[hookIndex].hookpt === OptConstant.HookPts.KTL) {
@@ -4577,7 +4577,7 @@ class BaseLine extends BaseDrawObject {
     let aggregate: boolean = false;
 
     // Get the session object using the SDDataBlockID
-    const session = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const session = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Process only if the session allows hops
     if ((session.flags & OptConstant.SessionFlags.AllowHops) !== 0) {
@@ -4789,7 +4789,7 @@ class BaseLine extends BaseDrawObject {
 
     // Retrieve the object via its ID
     const objectId = targetElement.GetID();
-    let objectPointer = DataUtil.GetObjectPtr(objectId, false);
+    let objectPointer = ObjectUtil.GetObjectPtr(objectId, false);
     T3Util.Log("= S.BaseLine: Retrieved object:", objectPointer);
 
     // If the object has a text component, check for spell location and activate text edit if needed
@@ -4985,7 +4985,7 @@ class BaseLine extends BaseDrawObject {
 
     // If hyperlink, note, comment, or field data exists, add this block to the dirty list
     if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       T3Util.Log("= S.BaseLine: Added BlockID to dirty list", this.BlockID);
     }
 
@@ -5028,7 +5028,7 @@ class BaseLine extends BaseDrawObject {
 
     // If the computed dimension length is invalid, mark dirty and re-render, then exit.
     if (dimensionLength < 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       T3Util.Log("= S.BaseLine: UpdateDimensionFromText output: invalid dimensionLength (< 0), early return");
       return;

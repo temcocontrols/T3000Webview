@@ -24,7 +24,7 @@ import T3Constant from '../Data/Constant/T3Constant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
@@ -154,7 +154,7 @@ class Connector extends BaseDrawObject {
     T3Util.Log('S.Connector: Checking if child of assistant. Hooks:', this.hooks);
 
     if (this.hooks.length) {
-      const firstHookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       T3Util.Log('S.Connector: First hook object:', firstHookObject);
 
       if (firstHookObject && firstHookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
@@ -180,7 +180,7 @@ class Connector extends BaseDrawObject {
         return true;
       }
 
-      const firstHookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       if (firstHookObject && (firstHookObject.flags & NvConstant.ObjFlags.NotVisible)) {
         T3Util.Log('S.Connector: Link is not visible due to first hook object visibility.');
         return true;
@@ -223,9 +223,9 @@ class Connector extends BaseDrawObject {
       this.StyleRecord.Fill.Paint.FillType !== NvConstant.FillTypes.Transparent &&
       this.StyleRecord.Fill.Paint.Color.toLowerCase() === currentColor.toLowerCase()
     ) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       this.StyleRecord.Fill.Paint.Color = newColor;
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     T3Util.Log('S.Connector: Updated StyleRecord.Fill.Paint.Color:', this.StyleRecord.Fill.Paint.Color);
@@ -319,11 +319,11 @@ class Connector extends BaseDrawObject {
     let isCauseEffectMain = this.objecttype === NvConstant.FNObjectTypes.CauseEffectMain;
     let skipCount = OptConstant.ConnectorDefines.NSkip;
 
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
       if (this.hooks.length && !isCoManager && !isChildOfAssistant && !isFlowChartConnector && !isCauseEffectMain && !isGenoConnector) {
-        let firstHookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+        let firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
         if (firstHookObject && !(firstHookObject.flags & NvConstant.ObjFlags.NotVisible)) {
           let shapeContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
           this.CreateCollapseButton(svgDoc, shapeContainer, true);
@@ -667,7 +667,7 @@ class Connector extends BaseDrawObject {
     const totalHooks = this.arraylist.hook.length;
     const isLinear = Boolean(this.arraylist.styleflags & OptConstant.AStyles.Linear);
     const textAlignment = ShapeUtil.TextAlignToWin(this.TextAlign);
-    const backgroundObj = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const backgroundObj = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Update background color and fill based on text alignment
     this.StyleRecord.Fill.Paint.Color = backgroundObj.background.Paint.Color;
@@ -1007,7 +1007,7 @@ class Connector extends BaseDrawObject {
     adjustedFrame.height += scaledKnobSize;
 
     // Get a target object pointer for further adjustments.
-    const targetObject = DataUtil.GetObjectPtr(targetId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
     // Set the appropriate resize cursors based on orientation.
     let primaryCursor, secondaryCursor;
@@ -1591,7 +1591,7 @@ class Connector extends BaseDrawObject {
 
     // Get the object ID and retrieve the object pointer
     const targetId = svgElement.GetID();
-    const targetObject = DataUtil.GetObjectPtr(targetId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
     if (targetObject) {
       // Check if there's a text object associated with this connector
@@ -2643,7 +2643,7 @@ class Connector extends BaseDrawObject {
     }
 
     // Retrieve necessary objects and constants
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const svgContainer = T3Gv.opt.actionSvgObject;
     const shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Slop);
@@ -3381,7 +3381,7 @@ class Connector extends BaseDrawObject {
       localParameters = {},
       childHookList = [],
       connectorMultiplier = 1,
-      linksObject = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false),
+      linksObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false),
       isBothSidesNoStagger = (this.arraylist.styleflags & OptConstant.AStyles.BothSides) &&
         ((this.arraylist.styleflags & OptConstant.AStyles.Stagger) === 0),
       isLinear = (this.arraylist.styleflags & OptConstant.AStyles.Linear) > 0,
@@ -3398,16 +3398,16 @@ class Connector extends BaseDrawObject {
           hookId = self.arraylist.hook[self.arraylist.hook.length - 1].id;
         }
       }
-      if (DataUtil.GetObjectPtr(hookId, false)) {
+      if (ObjectUtil.GetObjectPtr(hookId, false)) {
         childHookList = []; // reset list
-        childHookList = HookUtil.GetHookList(linksObject, childHookList, hookId, DataUtil.GetObjectPtr(hookId, false), NvConstant.ListCodes.MoveHook, localParameters);
+        childHookList = HookUtil.GetHookList(linksObject, childHookList, hookId, ObjectUtil.GetObjectPtr(hookId, false), NvConstant.ListCodes.MoveHook, localParameters);
         hookListLength = childHookList.length;
         let localConnectorElements = [];
         for (index = 0; index < hookListLength; index++) {
           svgElement = T3Gv.opt.svgObjectLayer.GetElementById(childHookList[index]);
           if (svgElement) {
             localConnectorElements.push(svgElement);
-            DataUtil.AddToDirtyList(childHookList[index]);
+            ObjectUtil.AddToDirtyList(childHookList[index]);
           }
         }
         let hookRecord = {
@@ -3535,7 +3535,7 @@ class Connector extends BaseDrawObject {
         break;
       case OptConstant.ActionTriggerType.ConnectorRerp:
       case OptConstant.ActionTriggerType.ConnectorHook:
-        retrievedObject = DataUtil.GetObjectPtr(actionEvent, false);
+        retrievedObject = ObjectUtil.GetObjectPtr(actionEvent, false);
         if (retrievedObject && linksObject) {
           childHookList = HookUtil.GetHookList(linksObject, childHookList, actionEvent, retrievedObject, NvConstant.ListCodes.ChildrenOnly, localParameters);
           totalHooks = childHookList.length;
@@ -3555,7 +3555,7 @@ class Connector extends BaseDrawObject {
             svgElement = T3Gv.opt.svgObjectLayer.GetElementById(childHookList[index]);
             if (svgElement) {
               T3Gv.opt.ConnectorList.push(svgElement);
-              DataUtil.AddToDirtyList(childHookList[index]);
+              ObjectUtil.AddToDirtyList(childHookList[index]);
             }
           }
           if (retrievedObject.hooks.length) {
@@ -3634,7 +3634,7 @@ class Connector extends BaseDrawObject {
             : OptConstant.HookPts.AKCT;
           break;
         default:
-          objectPtr = DataUtil.GetObjectPtr(targetObjectId, false);
+          objectPtr = ObjectUtil.GetObjectPtr(targetObjectId, false);
           if (objectPtr && objectPtr.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
             resultHook = objectPtr.vertical ? OptConstant.HookPts.LL : OptConstant.HookPts.LT;
           } else {
@@ -3646,7 +3646,7 @@ class Connector extends BaseDrawObject {
     } else {
       // Non-vertical connectors.
       if (!linearFlag) {
-        objectPtr = DataUtil.GetObjectPtr(targetObjectId, false);
+        objectPtr = ObjectUtil.GetObjectPtr(targetObjectId, false);
         if (startLeftIndicator) {
           if (objectPtr && objectPtr.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
             resultHook = objectPtr.vertical ? OptConstant.HookPts.LB : OptConstant.HookPts.LR;
@@ -3677,7 +3677,7 @@ class Connector extends BaseDrawObject {
             : OptConstant.HookPts.AKCL;
           break;
         default:
-          objectPtr = DataUtil.GetObjectPtr(targetObjectId, false);
+          objectPtr = ObjectUtil.GetObjectPtr(targetObjectId, false);
           if (objectPtr && objectPtr.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
             resultHook = objectPtr.vertical ? OptConstant.HookPts.LT : OptConstant.HookPts.LL;
           } else {
@@ -3933,14 +3933,14 @@ class Connector extends BaseDrawObject {
 
     const styleConstants = OptConstant.AStyles;
     const autoFormatFlags = Business.FlowChart.AutoFormatFlags;
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const isLinear = (this.arraylist.styleflags & styleConstants.SEDA_Linear) > 0;
     const isFlowConnector = this.arraylist.styleflags & styleConstants.SEDA_FlowConn;
     let blockIdToUse = -1;
 
     if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector) {
       const hookObjectId = this.hooks[0].objid;
-      const shapeObject = DataUtil.GetObjectPtr(hookObjectId, false);
+      const shapeObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
       if (shapeObject && shapeObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
         if (isLinear) {
           if (!isUserInitiated) {
@@ -3980,7 +3980,7 @@ class Connector extends BaseDrawObject {
     const bothSides = this.arraylist.styleflags & OptConstant.AStyles.BothSides;
     const isLinear = this.arraylist.styleflags & OptConstant.AStyles.Linear;
     const isFlowConnector = this.arraylist.styleflags & OptConstant.AStyles.FlowConn;
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const noTreeOverlap = sessionObject.flags & OptConstant.SessionFlags.NoTreeOverlap;
     const skipCount = OptConstant.ConnectorDefines.NSkip;
 
@@ -4030,7 +4030,7 @@ class Connector extends BaseDrawObject {
         this.PrRemoveHookedObject(targetHookId, hookIndexFound);
 
         // Reset the subtype if the target object is a task.
-        const targetObject = DataUtil.GetObjectPtr(targetHookId, true);
+        const targetObject = ObjectUtil.GetObjectPtr(targetHookId, true);
         // if (targetObject && targetObject.subtype === NvConstant.ObjectSubTypes.SD_SUBT_TASK) {
         //   targetObject.subtype = 0;
         // }
@@ -4081,13 +4081,13 @@ class Connector extends BaseDrawObject {
           }
         );
       } else {
-        const objectPtr = DataUtil.GetObjectPtr(connectorBlockId, true);
+        const objectPtr = ObjectUtil.GetObjectPtr(connectorBlockId, true);
         if (objectPtr && objectPtr.hooks.length) {
           OptCMUtil.SetLinkFlag(objectPtr.hooks[0].objid, DSConstant.LinkFlags.Move);
         }
       }
       this.PrFormat(connectorBlockId);
-      DataUtil.AddToDirtyList(connectorBlockId);
+      ObjectUtil.AddToDirtyList(connectorBlockId);
     } else {
       this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, true);
     }
@@ -4098,7 +4098,7 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: DeleteObject called with no input parameters");
 
     const styleConstants = OptConstant.AStyles;
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const isFlowConnector = Boolean(this.arraylist.styleflags & styleConstants.SEDA_FlowConn);
     const autoFormatFlags = Business.FlowChart.AutoFormatFlags;
 
@@ -4120,7 +4120,7 @@ class Connector extends BaseDrawObject {
     // and there is at least one hook, then auto-format the associated shape.
     if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector && this.hooks.length) {
       const firstHookObjectId = this.hooks[0].objid;
-      const firstHookObject = DataUtil.GetObjectPtr(firstHookObjectId, false);
+      const firstHookObject = ObjectUtil.GetObjectPtr(firstHookObjectId, false);
       if (firstHookObject && firstHookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
         const shapeFormatType = GlobalDatagFlowChartManager.SED_ArrayShapeIsThreeWay(firstHookObject, -1, this.BlockID);
         T3Util.Log("S.Connector: Auto-format shape check returned format type", shapeFormatType, "for shape id", firstHookObjectId);
@@ -4181,7 +4181,7 @@ class Connector extends BaseDrawObject {
       }
 
       if (assistantId >= 0) {
-        const assistantObject = DataUtil.GetObjectPtr(assistantId, false);
+        const assistantObject = ObjectUtil.GetObjectPtr(assistantId, false);
         if (assistantObject && assistantObject.arraylist && assistantObject.arraylist.hook.length <= OptConstant.ConnectorDefines.NSkip) {
           if (curveParams) {
             curveParams.index = hookIndex;
@@ -4253,7 +4253,7 @@ class Connector extends BaseDrawObject {
     if (hookIndex > 0 && hookIndex < totalHooks) {
       const childId = this.arraylist.hook[hookIndex].id;
       if (childId >= 0) {
-        const childObject = DataUtil.GetObjectPtr(childId, false);
+        const childObject = ObjectUtil.GetObjectPtr(childId, false);
         if (childObject) {
           childFrame = Utils1.DeepCopy(childObject.Frame);
         }
@@ -4646,7 +4646,7 @@ class Connector extends BaseDrawObject {
         this.arraylist.hook[connectorDefines.A_Cr].gap = this.arraylist.hook[connectorDefines.A_Cl].gap;
         this.arraylist.hook[connectorDefines.A_Cl].gap = tempGap;
 
-        hookObject = DataUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cr].id, true);
+        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cr].id, true);
         if (hookObject && hookObject.hooks.length) {
           hookObject.hooks[0].hookpt = OptConstant.HookPts.AKCT;
           hookObject.hooks[0].connect.x = -connectorDefines.A_Cr;
@@ -4659,7 +4659,7 @@ class Connector extends BaseDrawObject {
         this.arraylist.hook[connectorDefines.A_Cl].gap = this.arraylist.hook[connectorDefines.A_Cr].gap;
         this.arraylist.hook[connectorDefines.A_Cr].gap = tempGap;
 
-        hookObject = DataUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cl].id, true);
+        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cl].id, true);
         if (hookObject && hookObject.hooks.length) {
           hookObject.hooks[0].hookpt = OptConstant.HookPts.AKCB;
           hookObject.hooks[0].connect.x = -connectorDefines.A_Cl;
@@ -4835,14 +4835,14 @@ class Connector extends BaseDrawObject {
 
     let remainingHooks = this.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
     let objectsToDelete = [];
-    let parentObject = DataUtil.GetObjectPtr(connectorId, true);
+    let parentObject = ObjectUtil.GetObjectPtr(connectorId, true);
 
     if (parentObject && remainingHooks >= 1) {
       let firstHookId = this.arraylist.hook[OptConstant.ConnectorDefines.NSkip].id;
       let childArrayId = T3Gv.opt.FindChildArray(connectorId, -1);
 
       if (childArrayId >= 0) {
-        let childObject = DataUtil.GetObjectPtr(childArrayId, true);
+        let childObject = ObjectUtil.GetObjectPtr(childArrayId, true);
         if (childObject) {
           HookUtil.UpdateHook(childArrayId, 0, firstHookId, childObject.hooks[0].hookpt, childObject.hooks[0].connect, null);
         }
@@ -4865,11 +4865,11 @@ class Connector extends BaseDrawObject {
 
       if (parentObjectId >= 0) {
         HookUtil.UpdateHook(this.BlockID, 0, -1, this.hooks[0].hookpt, this.hooks[0].connect, null);
-        let parentObject = DataUtil.GetObjectPtr(parentObjectId, false);
+        let parentObject = ObjectUtil.GetObjectPtr(parentObjectId, false);
 
         if (remainingHooks === 1) {
           let firstHookId = this.arraylist.hook[OptConstant.ConnectorDefines.NSkip].id;
-          let firstHookObject = DataUtil.GetObjectPtr(firstHookId, true);
+          let firstHookObject = ObjectUtil.GetObjectPtr(firstHookId, true);
 
           if (firstHookObject && parentObject) {
             firstHookObject.hooks[0].hookpt = parentObject.GetBestHook(firstHookId, firstHookObject.hooks[0].hookpt, firstHookObject.hooks[0].connect);
@@ -4878,7 +4878,7 @@ class Connector extends BaseDrawObject {
 
           let childArrayId = T3Gv.opt.FindChildArray(firstHookId, -1);
           if (childArrayId >= 0) {
-            let childObject = DataUtil.GetObjectPtr(childArrayId, true);
+            let childObject = ObjectUtil.GetObjectPtr(childArrayId, true);
             if (childObject) {
               childObject.FixHook(false, true);
             }
@@ -4886,7 +4886,7 @@ class Connector extends BaseDrawObject {
         }
 
         objectsToDelete.push(this.BlockID);
-        DataUtil.DeleteObjects(objectsToDelete, false);
+        ObjectUtil.DeleteObjects(objectsToDelete, false);
       }
     }
 
@@ -4901,7 +4901,7 @@ class Connector extends BaseDrawObject {
 
     if (remainingHooks === 1) {
       let assistantHook = this.arraylist.hook[OptConstant.ConnectorDefines.NSkip];
-      let assistantObject = DataUtil.GetObjectPtr(assistantHook.id, true);
+      let assistantObject = ObjectUtil.GetObjectPtr(assistantHook.id, true);
 
       if (assistantObject && assistantObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
         let parentObjectId = this.hooks.length ? this.hooks[0].objid : -1;
@@ -4909,7 +4909,7 @@ class Connector extends BaseDrawObject {
         if (parentObjectId >= 0) {
           assistantObject.FixHook(false, false);
 
-          let parentObject = DataUtil.GetObjectPtr(parentObjectId, true);
+          let parentObject = ObjectUtil.GetObjectPtr(parentObjectId, true);
           if (parentObject && parentObject.IsCoManager()) {
             assistantObject.hooks[0].connect.y = -OptConstant.AStyles.CoManager;
           }
@@ -4939,7 +4939,7 @@ class Connector extends BaseDrawObject {
 
       if (remainingHooks < 1) {
         objectsToDelete.push(this.BlockID);
-        DataUtil.DeleteObjects(objectsToDelete, false);
+        ObjectUtil.DeleteObjects(objectsToDelete, false);
       }
     }
 
@@ -5003,7 +5003,7 @@ class Connector extends BaseDrawObject {
       ee = {},
       te = {},
       ae = {},
-      re = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1),
+      re = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1),
       ie = [],
       ne = !1,
       oe = {},
@@ -5059,7 +5059,7 @@ class Connector extends BaseDrawObject {
         q = this.arraylist.ht,
         K = this.arraylist.wd,
         this.hooks.length &&
-        (z = DataUtil.GetObjectPtr(this.hooks[0].objid, !1)) &&
+        (z = ObjectUtil.GetObjectPtr(this.hooks[0].objid, !1)) &&
         (
           ne = z.IsCoManager(oe),
           z.IsAsstConnector() &&
@@ -5166,7 +5166,7 @@ class Connector extends BaseDrawObject {
         n.steps.splice(0),
         n.comanagerht = 0,
         n.isasst = !1,
-        (O = DataUtil.GetObjectPtr(n.id, !1)) ? (
+        (O = ObjectUtil.GetObjectPtr(n.id, !1)) ? (
           C = (o = O.GetArrayRect(this.vertical)).h + o.hdist / 2,
           n.pr.h = C,
           n.pr.hdist = 0,
@@ -5301,7 +5301,7 @@ class Connector extends BaseDrawObject {
         l = this.arraylist.hook[OptConstant.ConnectorDefines.ACl],
         s = this.arraylist.hook[OptConstant.ConnectorDefines.ACr],
         l.id >= 0 &&
-        (O = DataUtil.GetObjectPtr(l.id, !1)) &&
+        (O = ObjectUtil.GetObjectPtr(l.id, !1)) &&
         (
           C = (o = O.GetArrayRect(this.vertical)).h + o.hdist / 2,
           l.pr.h = C,
@@ -5311,7 +5311,7 @@ class Connector extends BaseDrawObject {
           this.UpdateCurrentProfile(H, l, ce)
         ),
         s.id >= 0 &&
-        (O = DataUtil.GetObjectPtr(s.id, !1)) &&
+        (O = ObjectUtil.GetObjectPtr(s.id, !1)) &&
         (
           C = (o = O.GetArrayRect(this.vertical)).h + o.hdist / 2,
           s.pr.h = C,
@@ -5543,7 +5543,7 @@ class Connector extends BaseDrawObject {
         }
         this.arraylist.steps = ie
       }
-      DataUtil.AddToDirtyList(e),
+      ObjectUtil.AddToDirtyList(e),
         Utils2.IsEqual(this.arraylist.profile.h, ae.h) &&
         Utils2.IsEqual(this.arraylist.profile.v, ae.v) &&
         Utils2.IsEqual(this.arraylist.profile.hdist, ae.hdist) &&
@@ -5707,7 +5707,7 @@ class Connector extends BaseDrawObject {
         return isSwimlaneAdjust;
       })()
     ) {
-      const firstHookObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+      const firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       if (firstHookObject) {
         const rectDifference = swimlaneHeight - firstHookObject.GetArrayRect(this.vertical).hdist;
         if (adjustLeft) {
@@ -5875,7 +5875,7 @@ class Connector extends BaseDrawObject {
     // Find the first assistant connector hook (child connector)
     for (let index = skipHooks; index < totalHooks; index++) {
       const hook = this.arraylist.hook[index];
-      const hookedObject = DataUtil.GetObjectPtr(hook.id, false);
+      const hookedObject = ObjectUtil.GetObjectPtr(hook.id, false);
       if (hookedObject &&
         hookedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
         assistantHookIndex = index;
@@ -6305,7 +6305,7 @@ class Connector extends BaseDrawObject {
     });
 
     // Local variables with descriptive names
-    let mainObject: any = DataUtil.GetObjectPtr(targetObjectId, false);
+    let mainObject: any = ObjectUtil.GetObjectPtr(targetObjectId, false);
     const skipHookCount = OptConstant.ConnectorDefines.NSkip;
     // Structure to hold child info (index, id and hook point)
     let childInfo = { lindex: -1, id: -1, hookpt: 0 };
@@ -6332,7 +6332,7 @@ class Connector extends BaseDrawObject {
 
       // Loop while a child object is found
       while (T3Gv.opt.FindChildArrayByIndex(targetObjectId, childInfo) > 0) {
-        let childObject: any = DataUtil.GetObjectPtr(childInfo.id, false);
+        let childObject: any = ObjectUtil.GetObjectPtr(childInfo.id, false);
         if (!childObject) {
           break;
         }
@@ -6357,7 +6357,7 @@ class Connector extends BaseDrawObject {
         // Process each hook beyond the skip count
         for (let hookIndex = skipHookCount; hookIndex < childHookCount; hookIndex++) {
           let currentHook = childObject.arraylist.hook[hookIndex];
-          let hookedObj = DataUtil.GetObjectPtr(currentHook.id, false);
+          let hookedObj = ObjectUtil.GetObjectPtr(currentHook.id, false);
           if (hookedObj) {
             let hookedPoint = hookedObj.HookToPoint(hookedObj.hooks[0].hookpt, null);
             hookPoints = [];
@@ -6381,7 +6381,7 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: GetRightAdjustment called with hookedObjectId:", hookedObjectId);
 
     const hookPoints = OptConstant.HookPts;
-    const hookedObject = DataUtil.GetObjectPtr(hookedObjectId, false);
+    const hookedObject = ObjectUtil.GetObjectPtr(hookedObjectId, false);
 
     if (hookedObject == null) {
       T3Util.Log("S.Connector: GetRightAdjustment returning output: 0 (hookedObject is null)");
@@ -6444,7 +6444,7 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: GetLeftAdjustment called with hookObjectId:", hookObjectId);
 
     const hookPointsConstants = OptConstant.HookPts;
-    const hookedObject = DataUtil.GetObjectPtr(hookObjectId, false);
+    const hookedObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
 
     if (hookedObject == null) {
       T3Util.Log("S.Connector: GetLeftAdjustment returning 0 because hookedObject is null");
@@ -6524,7 +6524,7 @@ class Connector extends BaseDrawObject {
 
     const styles = OptConstant.AStyles;
     const hookSkipCount = OptConstant.ConnectorDefines.NSkip;
-    const targetObj = DataUtil.GetObjectPtr(targetObjectId, false);
+    const targetObj = ObjectUtil.GetObjectPtr(targetObjectId, false);
     if (targetObj == null) return null;
 
     // Determine some flags from this connector's properties
@@ -6667,7 +6667,7 @@ class Connector extends BaseDrawObject {
     // Process children profile if available and if current connector is not linear, co-manager, or assistant
     childObjectId = T3Gv.opt.FindChildArray(targetObjectId, -1);
     if (!isLinear && !isCoManager && !isAssistant && childObjectId >= 0) {
-      const childObj = DataUtil.GetObjectPtr(childObjectId, false);
+      const childObj = ObjectUtil.GetObjectPtr(childObjectId, false);
       if (childObj && childObj.hooks.length && childObj.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip > 0 &&
         (childObj.flags & NvConstant.ObjFlags.NotVisible) === 0) {
         pointArray = [];
@@ -6786,7 +6786,7 @@ class Connector extends BaseDrawObject {
     for (let index = startIndex; index < totalHooks; index++) {
       const currentHook = this.arraylist.hook[index];
       if (currentHook.id >= 0) {
-        const hookedObject = DataUtil.GetObjectPtr(currentHook.id, true);
+        const hookedObject = ObjectUtil.GetObjectPtr(currentHook.id, true);
         if (hookedObject && hookedObject.hooks.length) {
           hookedObject.hooks[0].connect.x = index - skipHooksCount;
           const previousHookPoint = hookedObject.hooks[0].hookpt;
@@ -6811,7 +6811,7 @@ class Connector extends BaseDrawObject {
     if (this.arraylist != null) {
       // Reset match size length
       this.arraylist.matchsizelen = 0;
-      let targetObject = DataUtil.GetObjectPtr(objectId, false);
+      let targetObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (hookPoint === OptConstant.ConnectorDefines.StubHookPt) {
         hookPoint = 0;
@@ -6883,7 +6883,7 @@ class Connector extends BaseDrawObject {
         if (useStub) {
           this.PrAdjustHooks(insertIndex, 0);
         } else {
-          targetObject = DataUtil.GetObjectPtr(objectId, true);
+          targetObject = ObjectUtil.GetObjectPtr(objectId, true);
           if (targetObject) {
             targetObject.SetHookAlign(targetObject.hooks[0].hookpt, targetObject.hooks[0].hookpt);
           }
@@ -7869,7 +7869,7 @@ class Connector extends BaseDrawObject {
     if (this.hooks.length) {
       // If not preserving original position, check if the hooked object is a co-manager.
       if (!preserveOriginalPosition) {
-        const hookedObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+        const hookedObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
         if (hookedObject && hookedObject.IsCoManager(null)) {
           if (!forceCoManagerUpdate) {
             applyCoManagerAdjustment = true;
@@ -8000,7 +8000,7 @@ class Connector extends BaseDrawObject {
       } else {
         // If CoManager flag is set and propagate is true, get the first hook object.
         if (isCoManager && propagate) {
-          const firstHookObj = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
+          const firstHookObj = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
           if (firstHookObj && ((firstHookObj.arraylist.styleflags & styles.SEDA_BothSides) ||
             ((firstHookObj.arraylist.styleflags & styles.SEDA_PerpConn) === 0))) {
             // Nothing extra to be done here.
@@ -8031,7 +8031,7 @@ class Connector extends BaseDrawObject {
     // Iterate over all hooks starting from the skipCount.
     for (let index = skipCount; index < hookCount; index++) {
       const currentHook = this.arraylist.hook[index];
-      const hookedObject = DataUtil.GetObjectPtr(currentHook.id, true);
+      const hookedObject = ObjectUtil.GetObjectPtr(currentHook.id, true);
       if (hookedObject && hookedObject.hooks.length) {
         // Update hook point for the hooked object.
         hookedObject.hooks[0].hookpt = this.GetBestHook(currentHook.id, hookedObject.hooks[0].hookpt, hookedObject.hooks[0].connect);
@@ -8042,7 +8042,7 @@ class Connector extends BaseDrawObject {
         } else {
           const childId = T3Gv.opt.FindChildArray(currentHook.id, -1);
           if (childId >= 0) {
-            const childObj = DataUtil.GetObjectPtr(childId, true);
+            const childObj = ObjectUtil.GetObjectPtr(childId, true);
             if (childObj) {
               childObj.SetDirection(invertStyle, toggleOrientation, false);
             }
@@ -8224,7 +8224,7 @@ class Connector extends BaseDrawObject {
       } else if (0 === currentExtra) {
         this.flags = Utils2.SetFlag(this.flags, notVisibleFlag, false);
       }
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       T3Gv.opt.dirtyListReOrder = true;
       if (this.flags & notVisibleFlag) {
         deselectedList.push(this.BlockID);
@@ -8233,7 +8233,7 @@ class Connector extends BaseDrawObject {
       var totalHooks = this.arraylist.hook.length;
       for (var i = OptConstant.ConnectorDefines.NSkip; i < totalHooks; i++) {
         if (this.arraylist.hook[i].id >= 0 &&
-          (obj = DataUtil.GetObjectPtr(this.arraylist.hook[i].id, true))) {
+          (obj = ObjectUtil.GetObjectPtr(this.arraylist.hook[i].id, true))) {
           switch (obj.DrawingObjectBaseClass) {
             case OptConstant.DrawObjectBaseClass.Connector:
               obj.CollapseConnector(collapseState, updateLinkFlags, propagateCollapse);
@@ -8244,7 +8244,7 @@ class Connector extends BaseDrawObject {
               } else if (0 === currentExtra) {
                 obj.flags = Utils2.SetFlag(obj.flags, notVisibleFlag, false);
               }
-              DataUtil.AddToDirtyList(this.arraylist.hook[i].id);
+              ObjectUtil.AddToDirtyList(this.arraylist.hook[i].id);
               T3Gv.opt.dirtyListReOrder = true;
               if (obj.flags & notVisibleFlag) {
                 deselectedList.push(this.arraylist.hook[i].id);
@@ -8254,10 +8254,10 @@ class Connector extends BaseDrawObject {
               }
               childId = T3Gv.opt.FindChildArray(this.arraylist.hook[i].id, -1);
               if (childId >= 0) {
-                DataUtil.GetObjectPtr(childId, true).CollapseConnector(collapseState, updateLinkFlags, false);
+                ObjectUtil.GetObjectPtr(childId, true).CollapseConnector(collapseState, updateLinkFlags, false);
                 nextChildId = T3Gv.opt.FindChildArray(this.arraylist.hook[i].id, childId);
                 if (nextChildId >= 0) {
-                  DataUtil.GetObjectPtr(nextChildId, true).CollapseConnector(collapseState, updateLinkFlags, false);
+                  ObjectUtil.GetObjectPtr(nextChildId, true).CollapseConnector(collapseState, updateLinkFlags, false);
                 }
               }
           }
@@ -8295,7 +8295,7 @@ class Connector extends BaseDrawObject {
 
     // Iterate through the hooks starting from skipCount
     for (hookIndex = skipCount; hookIndex < totalHooks; hookIndex++) {
-      currentConnector = DataUtil.GetObjectPtr(this.arraylist.hook[hookIndex].id, false);
+      currentConnector = ObjectUtil.GetObjectPtr(this.arraylist.hook[hookIndex].id, false);
       if (currentConnector && currentConnector.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
         // Use the width from the first connector; if different, set mismatch flag and update refWidth if larger
         if (refWidth === undefined) {
@@ -8347,7 +8347,7 @@ class Connector extends BaseDrawObject {
       maxCombined = undefined;
       combinedMismatch = true;
       for (hookIndex = 0; hookIndex < totalMatches; hookIndex++) {
-        currentConnector = DataUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
+        currentConnector = ObjectUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
         currentConnector.arraylist.matchsizelen = 0;
         OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.Move);
         // Determine the new stub index for formatting
@@ -8380,7 +8380,7 @@ class Connector extends BaseDrawObject {
       if (!widthMismatch) {
         maxCombined = undefined;
         for (hookIndex = 0; hookIndex < totalMatches; hookIndex++) {
-          currentConnector = DataUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
+          currentConnector = ObjectUtil.GetObjectPtr(matchList[hookIndex].cobj.BlockID, true);
           currentConnector.arraylist.matchsizelen = 0;
           OptCMUtil.SetLinkFlag(currentConnector.BlockID, DSConstant.LinkFlags.Move);
           currentConnector.PrFormat(currentConnector.BlockID);

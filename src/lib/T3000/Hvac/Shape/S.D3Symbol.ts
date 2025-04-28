@@ -8,7 +8,7 @@ import ShapeUtil from '../Opt/Shape/ShapeUtil';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
 
 /**
@@ -292,11 +292,11 @@ class D3Symbol extends BaseSymbol {
 
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
     if (renderSettings && renderSettings[paramName]) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       renderSettings[paramName].value = paramValue;
       renderSettings[paramName].dataMap = null;
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     T3Util.Log("S.D3Symbol: SetParamValue - Updated renderSettings:", renderSettings);
@@ -391,10 +391,10 @@ class D3Symbol extends BaseSymbol {
 
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
     if (renderSettings && renderSettings[paramName]) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       renderSettings[paramName].dataMap = dataMap;
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     T3Util.Log("S.D3Symbol: SetDataMap - Updated renderSettings:", renderSettings);
@@ -469,7 +469,7 @@ class D3Symbol extends BaseSymbol {
     }
 
     Instance.Shape.BaseDrawObject.prototype.ChangeTextAttributes.call(this, newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration);
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
 
     T3Util.Log("S.D3Symbol: ChangeTextAttributes - Completed");
   }
@@ -494,7 +494,7 @@ class D3Symbol extends BaseSymbol {
     if (!fieldDataTableID || this.fieldDataTableID === fieldDataTableID) {
       Instance.Shape.BaseDrawObject.prototype.RefreshFromFieldData.call(this, fieldDataTableID);
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
 
       T3Util.Log("S.D3Symbol: RefreshFromFieldData - Output: true");
       return true;

@@ -13,7 +13,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
@@ -117,7 +117,7 @@ class ShapeContainer extends Rect {
     // Reject shapes that already have a parent frame
     if (
       shapeToCheck.ParentFrameID >= 0 &&
-      DataUtil.GetObjectPtr(shapeToCheck.ParentFrameID, false)
+      ObjectUtil.GetObjectPtr(shapeToCheck.ParentFrameID, false)
     ) {
       T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
       return false;
@@ -391,7 +391,7 @@ class ShapeContainer extends Rect {
         const index = row * containerList.nacross + col;
         let widthValue: number;
         if (list[index].id >= 0) {
-          const obj = DataUtil.GetObjectPtr(list[index].id, false);
+          const obj = ObjectUtil.GetObjectPtr(list[index].id, false);
           if (!obj) continue;
           widthValue = obj.Frame.width;
         } else {
@@ -530,7 +530,7 @@ class ShapeContainer extends Rect {
         if (closest < 0) {
           someVariable = target ? target.Data.SymbolID : "currentSymbolId";
           const newId = T3Gv.baseOpt.AddSymbol(someVariable);
-          const newObj = DataUtil.GetObjectPtr(newId, true);
+          const newObj = ObjectUtil.GetObjectPtr(newId, true);
           const childWidth = containerList.childwidth;
           const childHeight = containerList.childheight;
           const newFrame = {
@@ -542,10 +542,10 @@ class ShapeContainer extends Rect {
           newObj.UpdateFrame(newFrame);
           newObj.sizedim.width = childWidth;
           newObj.sizedim.height = childHeight;
-          DataUtil.AddToDirtyList(newId);
+          ObjectUtil.AddToDirtyList(newId);
         } else {
           const duplicatedId = T3Gv.baseOpt.DuplicateShape(closest, true, false);
-          DataUtil.AddToDirtyList(duplicatedId);
+          ObjectUtil.AddToDirtyList(duplicatedId);
         }
 
         const hookLocation = { x: colIndex, y: rowIndex };
@@ -764,7 +764,7 @@ class ShapeContainer extends Rect {
       } else {
         // Point is beyond existing items, calculate extension position
         itemIndex = containerItemCount - 1;
-        const childObject = DataUtil.GetObjectPtr(containerItems[itemIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(containerItems[itemIndex].id, false);
 
         if (containerList.Arrangement === containerArrangement.Row) {
           // Row arrangement - extend horizontally
@@ -863,7 +863,7 @@ class ShapeContainer extends Rect {
       for (; currentIndex < totalItems; currentIndex++) {
         runningY += listItems[currentIndex].extra;
         listItems[currentIndex].pt = { x: startX, y: runningY };
-        const childObject = DataUtil.GetObjectPtr(listItems[currentIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(listItems[currentIndex].id, false);
 
         if (childObject) {
           // Update position if needed
@@ -903,7 +903,7 @@ class ShapeContainer extends Rect {
       let needsUpdate = false;
       for (let j = startIndex; j < currentIndex; j++) {
         listItems[j].pt.x += finalColumnWidth / 2;
-        const currentObject = DataUtil.GetObjectPtr(listItems[j].id, false);
+        const currentObject = ObjectUtil.GetObjectPtr(listItems[j].id, false);
         if (
           currentObject &&
           (currentObject.Frame.x + currentObject.Frame.width / 2) !== (containerInstance.Frame.x + listItems[j].pt.x)
@@ -940,7 +940,7 @@ class ShapeContainer extends Rect {
       for (; currentIndex < totalItems; currentIndex++) {
         runningX += listItems[currentIndex].extra;
         listItems[currentIndex].pt = { x: runningX, y: currentBaseY };
-        const childObject = DataUtil.GetObjectPtr(listItems[currentIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(listItems[currentIndex].id, false);
         let objectWidth: number, objectHeight: number;
 
         if (childObject) {
@@ -987,7 +987,7 @@ class ShapeContainer extends Rect {
       let needsUpdate = false;
       for (let j = startIndex; j < currentIndex; j++) {
         listItems[j].pt.y += finalRowHeight / 2;
-        const currentObject = DataUtil.GetObjectPtr(listItems[j].id, false);
+        const currentObject = ObjectUtil.GetObjectPtr(listItems[j].id, false);
         if (
           currentObject &&
           (currentObject.Frame.y + currentObject.Frame.height / 2) !== (basePoint.y + listItems[j].pt.y)
@@ -1034,7 +1034,7 @@ class ShapeContainer extends Rect {
             if (item.id == null) {
               item.id = -1;
             }
-            const childObject = DataUtil.GetObjectPtr(item.id, false);
+            const childObject = ObjectUtil.GetObjectPtr(item.id, false);
             const widthValue = childObject ? childObject.Frame.width : containerList.childwidth;
             const heightValue = childObject ? childObject.Frame.height : containerList.childheight;
 
@@ -1145,10 +1145,10 @@ class ShapeContainer extends Rect {
         }
 
         this.TRectToFrame(containerFrame, true);
-        DataUtil.AddToDirtyList(this.BlockID);
+        ObjectUtil.AddToDirtyList(this.BlockID);
 
         // Update connected container if present
-        const connectedObject = this.hooks.length ? DataUtil.GetObjectPtr(this.hooks[0].objid, false) : null;
+        const connectedObject = this.hooks.length ? ObjectUtil.GetObjectPtr(this.hooks[0].objid, false) : null;
         if (connectedObject && connectedObject instanceof ShapeContainer) {
           connectedObject.flags = Utils2.SetFlag(connectedObject.flags, NvConstant.ObjFlags.Obj1, true);
           OptCMUtil.SetLinkFlag(connectedObject.BlockID, DSConstant.LinkFlags.Move);
@@ -1473,7 +1473,7 @@ class ShapeContainer extends Rect {
     }
 
     if (targetShapeId != null) {
-      const targetObject = DataUtil.GetObjectPtr(targetShapeId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetShapeId, false);
       targetObject.OnDisconnect(targetShapeId, this);
 
       let targetPosition, rowIndex, dummyData;
@@ -1723,12 +1723,12 @@ class ShapeContainer extends Rect {
             for (let row = 0; row < container.ndown; row++) {
               for (let col = 0; col < container.nacross; col++) {
                 const idx = row * container.nacross + col;
-                const obj = DataUtil.GetObjectPtr(listRef[idx].id, false);
+                const obj = ObjectUtil.GetObjectPtr(listRef[idx].id, false);
 
                 if (obj && obj.hooks.length) {
                   const hook = obj.hooks[0].connect;
                   if (hook.x !== col || hook.y !== row) {
-                    const objFront = DataUtil.GetObjectPtr(listRef[idx].id, true);
+                    const objFront = ObjectUtil.GetObjectPtr(listRef[idx].id, true);
                     objFront.hooks[0].connect.x = col;
                     objFront.hooks[0].connect.y = row;
                   }
@@ -1747,7 +1747,7 @@ class ShapeContainer extends Rect {
             const listRef = currentContainerList.List;
 
             for (let j = 0, len = listRef.length; j < len; j++) {
-              const obj = DataUtil.GetObjectPtr(listRef[j].id, true);
+              const obj = ObjectUtil.GetObjectPtr(listRef[j].id, true);
               if (obj && obj.hooks.length) {
                 obj.hooks[0].connect.y = j;
               }

@@ -15,7 +15,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Timer from '../Util/T3Timer';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
@@ -543,7 +543,7 @@ class Polygon extends BaseShape {
     const dimension = OptConstant.Common.DimMax;
 
     if (objectID >= 0) {
-      const object = DataUtil.GetObjectPtr(objectID, false);
+      const object = ObjectUtil.GetObjectPtr(objectID, false);
     }
 
     if (foundTableTarget) {
@@ -1071,7 +1071,7 @@ class Polygon extends BaseShape {
     T3Util.Log('S.Polygon: SetSegmentAngle input:', { segmentIndex, angle, additionalParams });
 
     T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-    const polygonObject = DataUtil.GetObjectPtr(this.BlockID, false);
+    const polygonObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
     polygonObject.SetSegmentAngle(segmentIndex, angle, additionalParams);
     T3Gv.opt.PolyLineToShape(this.BlockID);
 
@@ -1088,7 +1088,7 @@ class Polygon extends BaseShape {
     }
 
     T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-    const polygonObject = DataUtil.GetObjectPtr(this.BlockID, false);
+    const polygonObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
     polygonObject.DimensionLineDeflectionAdjust(event, target, angle, radius, index);
     T3Gv.opt.PolyLineToShape(this.BlockID);
 
@@ -1131,7 +1131,7 @@ class Polygon extends BaseShape {
 
     if (userData.angleChange) {
       this.UpdateLineAngleDimensionFromText(svgElement, text, userData);
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       if (this.Frame.x < 0 || this.Frame.y < 0) {
         T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
       }
@@ -1142,7 +1142,7 @@ class Polygon extends BaseShape {
 
     if (this.polylist && (this.extraflags & OptConstant.ExtraFlags.SideKnobs) > 0) {
       T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-      DataUtil.GetObjectPtr(this.BlockID, false).UpdateDimensionFromText(svgElement, text, userData);
+      ObjectUtil.GetObjectPtr(this.BlockID, false).UpdateDimensionFromText(svgElement, text, userData);
       T3Gv.opt.PolyLineToShape(this.BlockID);
     } else {
       Instance.Shape.BaseShape.prototype.UpdateDimensionFromTextObj.call(this, textObj, textData);

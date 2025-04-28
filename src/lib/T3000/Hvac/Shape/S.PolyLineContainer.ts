@@ -15,7 +15,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
 import SvgUtil from '../Opt/Opt/SvgUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -305,7 +305,7 @@ class PolyLineContainer extends PolyLine {
         selectedObjects.push(this.BlockID);
 
         for (let i = 0; i < zList.length; i++) {
-          const obj = DataUtil.GetObjectPtr(zList[i], false);
+          const obj = ObjectUtil.GetObjectPtr(zList[i], false);
           if (this.BlockID === obj.BlockID || obj.hooks.length) continue;
           if (this.MostlyContains(obj)) selectedObjects.push(obj.BlockID);
         }
@@ -629,7 +629,7 @@ class PolyLineContainer extends PolyLine {
         }
 
         if (segmentsModified) {
-          DataUtil.AddToDirtyList(this.BlockID);
+          ObjectUtil.AddToDirtyList(this.BlockID);
         }
       };
 
@@ -690,7 +690,7 @@ class PolyLineContainer extends PolyLine {
 
     segmentIndex = dimensionData.segment;
     T3Gv.opt.ob = originalState;
-    DataUtil.GetObjectPtr(this.BlockID, true);
+    ObjectUtil.GetObjectPtr(this.BlockID, true);
     SvgUtil.ShowSVGSelectionState(this.BlockID, false);
 
     dimensionValue = this.GetDimensionValueFromString(text, segmentIndex);
@@ -699,7 +699,7 @@ class PolyLineContainer extends PolyLine {
     }
 
     if (dimensionLength <= 0 || dimensionValue < 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       return;
     }
@@ -1027,7 +1027,7 @@ class PolyLineContainer extends PolyLine {
     this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, true, null);
 
     for (let i = 0; i < visibleZList.length; i++) {
-      const obj = DataUtil.GetObjectPtr(visibleZList[i], false);
+      const obj = ObjectUtil.GetObjectPtr(visibleZList[i], false);
       if (this.BlockID !== obj.BlockID) {
         const isHooked = includeSelf && obj.hooks.length === 1 && obj.hooks[0].objid === this.BlockID;
         if ((!includeHooks && obj.hooks.length) || this.MostlyContains(obj) || isHooked) {
@@ -1051,7 +1051,7 @@ class PolyLineContainer extends PolyLine {
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
-    DataUtil.AddToDirtyList(event);
+    ObjectUtil.AddToDirtyList(event);
     SvgUtil.RenderDirtySVGObjects();
 
     T3Util.Log("= S.PolyLineContainer: Output result:", true);
@@ -1098,14 +1098,14 @@ class PolyLineContainer extends PolyLine {
     let groupID = ToolActUtil.GroupSelected(true, null, false, false, false);
     selectedData = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
 
-    let groupObject = DataUtil.GetObjectPtr(groupID, true);
+    let groupObject = ObjectUtil.GetObjectPtr(groupID, true);
     T3Gv.opt.svgObjectLayer.GetElementById(groupObject.BlockID).SetRotation(rotationAngle);
     groupObject.RotationAngle = rotationAngle;
     ToolActUtil.UngroupShape(groupID, true);
 
     let lastObjectID = enclosedObjects.pop();
     SelectUtil.SelectObjects(originalData, false, false);
-    let lastObject = DataUtil.GetObjectPtr(lastObjectID, false);
+    let lastObject = ObjectUtil.GetObjectPtr(lastObjectID, false);
     lastObject.UpdateFrame();
 
     if (lastObject && (lastObject.r.x < 0 || lastObject.r.y < 0)) {
@@ -1202,7 +1202,7 @@ class PolyLineContainer extends PolyLine {
           continue;
         }
 
-        const obj = DataUtil.GetObjectPtr(zList[i], false);
+        const obj = ObjectUtil.GetObjectPtr(zList[i], false);
         if (obj instanceof PolyLineContainer) {
           const startSegment = hitSegment >= 0 ? hitSegment : 1;
           const endSegment = hitSegment >= 0 ? hitSegment + 1 : polyPoints.length;
