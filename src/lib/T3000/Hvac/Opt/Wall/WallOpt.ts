@@ -15,7 +15,7 @@ import PolygonConstant from '../Polygon/PolygonConstant'
 import DSConstant from '../DS/DSConstant'
 import OptConstant from '../../Data/Constant/OptConstant'
 import T3Util from '../../Util/T3Util'
-import DataUtil from '../Data/DataUtil'
+import ObjectUtil from '../Data/ObjectUtil'
 import LayerUtil from '../Opt/LayerUtil'
 import SelectUtil from '../Opt/SelectUtil'
 import OptCMUtil from '../Opt/OptCMUtil'
@@ -112,7 +112,7 @@ class WallOpt {
     };
 
     // Get current selection and create a copy to restore after adding the wall
-    const selectionList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectionList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const currentSelection = Utils1.DeepCopy(selectionList);
 
     // Create a new wall line
@@ -140,7 +140,7 @@ class WallOpt {
       this.ToggleAddingWalls();
 
       // Get currently selected objects
-      let selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      let selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         // Reset object draw state and selection properties
@@ -157,7 +157,7 @@ class WallOpt {
 
       // Re-select any previously selected objects
       let objectsToSelect = [];
-      selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         objectsToSelect = Utils1.DeepCopy(selectedObjects);
@@ -277,7 +277,7 @@ class WallOpt {
       }
 
       // Get the target object and add corner if it's valid
-      const targetObject = DataUtil.GetObjectPtr(targetId, true);
+      const targetObject = ObjectUtil.GetObjectPtr(targetId, true);
 
       if (targetObject && typeof targetObject.AddCorner === 'function') {
         targetObject.AddCorner(targetElement, hitPoint);
@@ -314,7 +314,7 @@ class WallOpt {
 
     for (let i = 0; i < visibleObjectIds.length; i++) {
       const objectId = visibleObjectIds[i];
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (!(object.flags & NvConstant.ObjFlags.Lock)) {
         if (object.objecttype === NvConstant.FNObjectTypes.FlWall) {
@@ -392,7 +392,7 @@ class WallOpt {
 
     const visibleObjectIds = LayerUtil.ActiveVisibleZList();
     let compareObject = null;
-    const targetObject = DataUtil.GetObjectPtr(objectId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Helper function to check if one object is contained within another
     function isObjectContained(containerObject, contentObject) {
@@ -436,7 +436,7 @@ class WallOpt {
         const currentObjectId = visibleObjectIds[i];
 
         if (objectId !== currentObjectId) {
-          compareObject = DataUtil.GetObjectPtr(currentObjectId, false);
+          compareObject = ObjectUtil.GetObjectPtr(currentObjectId, false);
 
           if (compareObject instanceof PolyLineContainer && isObjectContained(compareObject, targetObject)) {
             const targetIndex = visibleObjectIds.indexOf(targetObject.BlockID);

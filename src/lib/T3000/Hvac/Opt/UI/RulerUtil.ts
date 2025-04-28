@@ -5,7 +5,7 @@ import '../../Util/T3Hammer';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 
 class RulerUtil {
 
@@ -25,7 +25,7 @@ class RulerUtil {
   ): string {
     T3Util.Log("O.Opt GetLengthInRulerUnits - Input:", { lengthInUnits, skipFeetConversion, offset, displayFlags });
 
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let resultString = "";
     let feetPart = 0;
     let inchPart = 0;
@@ -227,7 +227,7 @@ class RulerUtil {
     }
 
     return denominator;
-  } 
+  }
 }
 
 export default RulerUtil

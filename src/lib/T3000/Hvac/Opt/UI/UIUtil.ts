@@ -12,7 +12,7 @@ import TextFmtData from "../../Model/TextFmtData";
 import OptConstant from "../../Data/Constant/OptConstant";
 import StyleConstant from "../../Data/Constant/StyleConstant";
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import RulerUtil from "../UI/RulerUtil";
 import OptCMUtil from "../Opt/OptCMUtil";
 import TextUtil from "../Opt/TextUtil";
@@ -119,7 +119,7 @@ class UIUtil {
         position.x = Math.max(0, position.x);
         position.y = Math.max(0, position.y);
 
-        const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+        const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         position.x = Math.min(sessionBlock.dim.x, position.x);
         position.y = Math.min(sessionBlock.dim.y, position.y);
       }
@@ -301,7 +301,7 @@ class UIUtil {
       }
       // CASE 3: If a shape/object is selected, set up object format painter
       else if ((targetObject = SelectUtil.GetTargetSelect()) >= 0 &&
-        (tableObject = DataUtil.GetObjectPtr(targetObject, false))) {
+        (tableObject = ObjectUtil.GetObjectPtr(targetObject, false))) {
 
         T3Gv.opt.crtOpt = OptConstant.OptTypes.FormatPainter;
         T3Gv.opt.formatPainterSticky = makeSticky;
@@ -446,7 +446,7 @@ class UIUtil {
     T3Util.Log("O.Opt SetBackgroundColor - Input:", {});
 
     // Retrieve the session object background and the document background element.
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const backgroundElement = T3Gv.docUtil.GetBackground();
 
     if (sessionObject && backgroundElement) {
@@ -489,9 +489,9 @@ class UIUtil {
     const visibleObjectList = LayerUtil.VisibleZList();
     for (let i = 0, len = visibleObjectList.length; i < len; i++) {
       const objectId = visibleObjectList[i];
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (currentObject && currentObject.DataID >= 0) {
-        DataUtil.AddToDirtyList(objectId);
+        ObjectUtil.AddToDirtyList(objectId);
       }
     }
 
@@ -505,7 +505,7 @@ class UIUtil {
   static GetBackgroundTransparent(): boolean {
     T3Util.Log("O.Opt GetBackgroundTransparent - Input: no parameters");
 
-    const session = DataUtil.GetObjectPtr(
+    const session = ObjectUtil.GetObjectPtr(
       T3Gv.opt.sdDataBlockId,
       false
     );
@@ -627,7 +627,7 @@ class UIUtil {
     let needMinWidthEnforcement = false;
 
     // Get the layers manager to check layer settings
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
 
     // Check for edge layers and their visibility
     if (layersManager.layers[layersManager.activelayer].flags & NvConstant.LayerFlags.UseEdges) {
@@ -651,7 +651,7 @@ class UIUtil {
 
     let newWidth;
     let newHeight;
-    let sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    let sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let paperSize = T3Gv.opt.header.Page.papersize;
     let margins = T3Gv.opt.header.Page.margins;
     let pageWidth = paperSize.x - (margins.left + margins.right);
@@ -810,7 +810,7 @@ class UIUtil {
         shouldPreserve = false;
       }
 
-      sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, shouldPreserve);
+      sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, shouldPreserve);
       T3Gv.opt.UpdateEdgeLayers([], sessionData.dim, newDocumentSize);
       sessionData.dim.x = newDocumentSize.x;
       sessionData.dim.y = newDocumentSize.y;
@@ -849,7 +849,7 @@ class UIUtil {
 
       // Iterate through each object and update its background color
       for (let i = 0; i < objectCount; i++) {
-        const currentObject = DataUtil.GetObjectPtr(objectList[i], false);
+        const currentObject = ObjectUtil.GetObjectPtr(objectList[i], false);
 
         // If object exists, call its ChangeBackgroundColor method
         if (currentObject) {

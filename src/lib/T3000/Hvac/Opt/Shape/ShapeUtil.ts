@@ -33,7 +33,7 @@ import WResult from '../../Model/WResult'
 import Utils1 from '../../Util/Utils1'
 import Utils2 from '../../Util/Utils2'
 import Utils3 from '../../Util/Utils3'
-import DataUtil from '../Data/DataUtil'
+import ObjectUtil from '../Data/ObjectUtil'
 import DSConstant from '../DS/DSConstant'
 import DSStruct from '../DS/DSStruct'
 import DSUtil from '../DS/DSUtil'
@@ -329,7 +329,7 @@ class ShapeUtil {
     let result = new ShapeUtil.Result();
 
     let formattedTextObject = null;
-    let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+    let sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
     let objectsToRemove = [];
 
     result.isTemplate = false;
@@ -379,11 +379,11 @@ class ShapeUtil {
 
     if (errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
       const isPlanningDocument = UIUtil.IsPlanningDocument();
-      const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+      const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
 
       objectCount = result.zList.length;
       for (index = 0; index < objectCount; index++) {
-        object = DataUtil.GetObjectPtr(result.zList[index], false);
+        object = ObjectUtil.GetObjectPtr(result.zList[index], false);
 
         let targetLayer;
 
@@ -392,7 +392,7 @@ class ShapeUtil {
 
         targetLayer.push(result.zList[index]);
 
-        DataUtil.AddToDirtyList(result.zList[index]);
+        ObjectUtil.AddToDirtyList(result.zList[index]);
 
         if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
           selectedObjects.selectedList.push(result.zList[index]);
@@ -408,7 +408,7 @@ class ShapeUtil {
       }
 
       if (objectsToRemove.length) {
-        DataUtil.DeleteObjects(objectsToRemove);
+        ObjectUtil.DeleteObjects(objectsToRemove);
       }
 
       // FROM SDData_Transfer
@@ -418,7 +418,7 @@ class ShapeUtil {
 
       linksCount = result.links.length;
       if (!skipLinks && linksCount > 0) {
-        let linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+        let linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
         for (index = 0; index < linksCount; index++) {
           linksBlock.push(result.links[index]);
         }
@@ -431,7 +431,7 @@ class ShapeUtil {
       // Calculate bounding rectangle for all objects
       let objectWithBoundsCount = 0;
       for (index = 0; index < objectCount; index++) {
-        object = DataUtil.GetObjectPtr(result.zList[index], false);
+        object = ObjectUtil.GetObjectPtr(result.zList[index], false);
         if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
           if (objectWithBoundsCount === 0) {
             boundingRect = new Rectangle(object.r.x, object.r.y, object.r.width, object.r.height);
@@ -454,7 +454,7 @@ class ShapeUtil {
         // Apply offset if needed
         if (offsetX || offsetY) {
           for (index = 0; index < objectCount; index++) {
-            object = DataUtil.GetObjectPtr(result.zList[index], false);
+            object = ObjectUtil.GetObjectPtr(result.zList[index], false);
             if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
               object.OffsetShape(offsetX, offsetY);
             }
@@ -495,7 +495,7 @@ class ShapeUtil {
           }
 
           if (newWidth || newHeight) {
-            const layersManagerBlock = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+            const layersManagerBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
             const layerCount = layersManagerBlock.nlayers;
             let activeLayerUsesEdges = false;
             let anyVisibleLayerUsesEdges = false;
@@ -521,7 +521,7 @@ class ShapeUtil {
           } else if (offsetX || offsetY) {
             // If we need to shift objects to stay within bounds
             for (index = 0; index < objectCount; index++) {
-              object = DataUtil.GetObjectPtr(result.zList[index], false);
+              object = ObjectUtil.GetObjectPtr(result.zList[index], false);
               if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
                 object.OffsetShape(-offsetX, -offsetY);
               }
@@ -695,7 +695,7 @@ class ShapeUtil {
       objectCount = result.zList.length;
       for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
         objectId = result.zList[objectIndex];
-        object = DataUtil.GetObjectPtr(objectId, false);
+        object = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (!object) continue;
 
@@ -944,7 +944,7 @@ class ShapeUtil {
     for (let idIndex = 0; idIndex < idMapLength; idIndex++) {
       if (idMap[idIndex]) {
         objectId = idMap[idIndex];
-        currentObject = DataUtil.GetObjectPtr(objectId, false);
+        currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         // Process hooks for each object
         if (currentObject && currentObject.hooks) {
@@ -961,7 +961,7 @@ class ShapeUtil {
               // Insert link if needed
               if (links.length === 0 && !ignoreErrors) {
                 if (linksBlock == null) {
-                  linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+                  linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
                 }
                 T3Gv.opt.InsertLink(linksBlock, objectId, currentHook, DSConstant.LinkFlags.Move);
               }
@@ -1140,8 +1140,8 @@ class ShapeUtil {
     const result = new WResult();
 
     // Get current session, layer manager and content header
-    result.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-    result.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    result.sdp = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    result.tLMB = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     result.ctp = T3Gv.opt.header;
 
     // Mark as selection-only operation
@@ -1224,7 +1224,7 @@ class ShapeUtil {
 
       // Add structured data if available and not ignored
       if (T3Gv.opt.header.STDataID >= 0 && !ignoreDataCheck) {
-        const stData = DataUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
+        const stData = ObjectUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
         jsonData.data.structuredData = stData ? JSON.parse(JSON.stringify(stData)) : null;
       }
 
@@ -1254,14 +1254,14 @@ class ShapeUtil {
       const objectCount = resultObject.zList.length;
       for (let i = 0; i < objectCount; i++) {
         const objectId = resultObject.zList[i];
-        const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+        const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (drawingObject) {
           const serializedObject = JSON.parse(JSON.stringify(drawingObject));
 
           // Handle special properties that need custom serialization
           if (drawingObject.DataID > 0) {
-            const textObject = DataUtil.GetObjectPtr(drawingObject.DataID, false);
+            const textObject = ObjectUtil.GetObjectPtr(drawingObject.DataID, false);
             if (textObject) {
               serializedObject.textContent = textObject.runtimeText || "";
             }
@@ -1365,7 +1365,7 @@ class ShapeUtil {
     objectsProcessed = 0;
     for (index = 0; index < objectCount; index++) {
       // Get object and add its style to the style list
-      currentObject = DataUtil.GetObjectPtr(resultObject.zList[index], false);
+      currentObject = ObjectUtil.GetObjectPtr(resultObject.zList[index], false);
       currentObject.tstyleindex = addUniqueStyle(currentObject.StyleRecord);
 
       // Add object to the unique map and increment counter

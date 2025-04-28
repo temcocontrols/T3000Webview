@@ -8,6 +8,7 @@ import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, app
 import IdxUtils from '../Common/IdxUtils'
 import QuasarUtil from "../../Opt/Quasar/QuasarUtil"
 import Utils1 from "../../Util/Utils1"
+import T3Util from "../../Util/T3Util"
 
 class WebSocketClient {
 
@@ -406,15 +407,16 @@ class WebSocketClient {
       if (parsedData.action == "GET_INITIAL_DATA_RES") {
         const data = JSON.parse(parsedData.data);
         const entry = parsedData.entry;
-        const library = JSON.parse(parsedData.library);
-        console.log('= Ws received parsed data:', { action: "GET_INITIAL_DATA_RES", data, entry, library });
+        const library = parsedData.library != undefined && parsedData.library !== "" ? JSON.parse(parsedData.library) : {};
+        T3Util.Log('= Ws Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
+        T3Util.LogDev('= Ws Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
       }
       else {
-        console.log('= Ws received parsed data:', parsedData);
+        T3Util.Log('= Ws Received data:', parsedData);
       }
     }
     catch (error) {
-      console.log('= Ws print log error', error);
+      T3Util.Log('= Ws Received data error', error);
     }
   }
 

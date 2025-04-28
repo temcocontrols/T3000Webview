@@ -9,7 +9,7 @@ import T3Util from "../../Util/T3Util";
 import IdxUtils from "../Common/IdxUtils";
 import { toRaw } from "vue";
 import SelectUtil from "../Opt/SelectUtil";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DataOpt from "../Data/DataOpt";
 import DrawUtil from "../Opt/DrawUtil";
 import SvgUtil from "../Opt/SvgUtil";
@@ -256,7 +256,7 @@ class QuasarUtil {
 
   static AddCurrentObjectToAppState() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
-    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+    var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
     T3Util.LogDev("= U.QuasarUtil AddCurrentObjectToAppState", true, targetObject);
     var frame = {
@@ -359,7 +359,7 @@ class QuasarUtil {
     } else {
       // get current selected shape
       let targetSelectionId = SelectUtil.GetTargetSelect();
-      var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+      var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
       if (targetObject) {
         selectedUniType = targetObject?.uniType ?? "";

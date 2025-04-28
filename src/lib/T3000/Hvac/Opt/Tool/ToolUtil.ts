@@ -24,7 +24,7 @@ import PolygonConstant from "../Polygon/PolygonConstant"
 import OptConstant from "../../Data/Constant/OptConstant"
 import T3Util from "../../Util/T3Util"
 import TextConstant from "../../Data/Constant/TextConstant"
-import DataUtil from "../Data/DataUtil"
+import ObjectUtil from "../Data/ObjectUtil"
 import SelectUtil from "../Opt/SelectUtil"
 import SvgUtil from "../Opt/SvgUtil"
 import TextUtil from "../Opt/TextUtil"
@@ -94,17 +94,17 @@ class ToolUtil {
     var wallThickness = thickness * T3Gv.docUtil.rulerConfig.major /
       (T3Gv.docUtil.rulerConfig.majorScale * conversionFactor);
 
-    var sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    var sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     if (!Utils2.IsEqual(sessionBlock.def.wallThickness, wallThickness, 0.01) || wallObj) {
       T3Gv.opt.CloseEdit(true, true);
-      sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
       if (!wallObj) {
         sessionBlock.def.wallThickness = wallThickness;
       }
 
-      var sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      var sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       DrawUtil.CompleteOperation(null);
     }
 
@@ -392,7 +392,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampRectangle input:", isDragDropMode, isSquare);
 
     let width, height;
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Set dimensions based on whether we want a square or rectangle
     if (isSquare) {
@@ -441,7 +441,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampRoundRect input:", isDragDropMode, isSquare);
 
     let width, height;
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Set dimensions based on whether we want a square or rectangle
     if (isSquare) {
@@ -692,7 +692,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampTextLabel input:", isDragDropMode, skipTargetCheck);
 
     // Get the text edit session block
-    var textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    var textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // Check if we need to handle existing active text editing
     if (skipTargetCheck || textEditSession.theActiveTextEditObjectID == -1) {
@@ -700,7 +700,7 @@ class ToolUtil {
       if (!skipTargetCheck) {
         var targetID = SelectUtil.GetTargetSelect();
         if (targetID >= 0) {
-          var targetObject = DataUtil.GetObjectPtr(targetID, false);
+          var targetObject = ObjectUtil.GetObjectPtr(targetID, false);
           if (targetObject && targetObject.AllowTextEdit()) {
             var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetID);
             TextUtil.ActivateTextEdit(svgElement);
@@ -1179,7 +1179,7 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt IsActiveTextEdit input: no parameters");
 
     try {
-      const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       const isActive = textEditSession.theActiveTextEditObjectID !== -1;
 
       T3Util.Log("O.ToolOpt IsActiveTextEdit output:", isActive);
@@ -1763,7 +1763,7 @@ class ToolUtil {
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const isVerticalText = 0 == (sessionData.def.textflags & NvConstant.TextFlags.HorizText);
 
     // Create attributes from reference or defaults

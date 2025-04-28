@@ -6,7 +6,7 @@ import ToolUtil from './ToolUtil'
 import T3Util from "../../Util/T3Util";
 import OptConstant from "../../Data/Constant/OptConstant";
 import SelectUtil from "../Opt/SelectUtil";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import StyleConstant from "../../Data/Constant/StyleConstant";
 import DrawUtil from "../Opt/DrawUtil";
 import UIUtil from "../UI/UIUtil";
@@ -462,7 +462,7 @@ class ToolOpt {
       T3Gv.opt.CloseEdit(true, true);
 
       // Get the current data object
-      const dataObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      const dataObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
       // Get the current background color
       let currentColor = dataObject.background.Paint.Color;
