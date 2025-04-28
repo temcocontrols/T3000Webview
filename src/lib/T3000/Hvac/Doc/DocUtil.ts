@@ -13,7 +13,7 @@ import DocConfig from '../Model/DocConfig'
 import OptConstant from '../Data/Constant/OptConstant'
 import CursorConstant from '../Data/Constant/CursorConstant'
 import T3Util from '../Util/T3Util'
-import DataUtil from '../Opt/Data/DataUtil'
+import ObjectUtil from '../Opt/Data/ObjectUtil'
 import MouseUtil from '../Event/MouseUtil'
 import SelectUtil from '../Opt/Opt/SelectUtil'
 import RulerUtil from '../Opt/UI/RulerUtil'
@@ -746,7 +746,7 @@ class DocUtil {
     const workArea = this.svgDoc.GetWorkArea();
 
     // Get selected objects
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     // Calculate bounding rectangle for view centering
     let boundingRect = selectedObjects.length
@@ -813,7 +813,7 @@ class DocUtil {
     // Center view on content unless skipCentering is true
     if (!skipCentering) {
       const workArea = this.svgDoc.GetWorkArea();
-      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       // Get bounding rectangle of selection or entire document
       let boundingRect = selectedObjects.length
@@ -1131,7 +1131,7 @@ class DocUtil {
 
       // Store settings in session data if not propagating
       if (!shouldPropagate) {
-        sessionDataPointer = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+        sessionDataPointer = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
         sessionDataPointer.rulerConfig = Utils1.DeepCopy(this.rulerConfig);
       }
 
@@ -2014,7 +2014,7 @@ class DocUtil {
         this.ShowCoordinates(true);
 
         // Update selection attributes for the currently selected object(s)
-        const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+        const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
         SelectUtil.UpdateSelectionAttributes(selectedObjects);
 
         T3Util.Log("= U.DocUtil: RulerHandleDoubleClick - Output:", { updatedOrigins: originUpdates, selectedObjects });

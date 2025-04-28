@@ -11,7 +11,7 @@ import DocUtil from '../Doc/DocUtil';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import MouseUtil from './MouseUtil';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
@@ -669,7 +669,7 @@ class EvtUtil {
 
       // Get the object using its ID
       const shapeBlockId = shape.BlockID;
-      const objectPtr = DataUtil.GetObjectPtr(shapeBlockId, false);
+      const objectPtr = ObjectUtil.GetObjectPtr(shapeBlockId, false);
 
       // Validate that we have a valid drawing object
       if (!(objectPtr && objectPtr instanceof Instance.Shape.BaseDrawObject)) {

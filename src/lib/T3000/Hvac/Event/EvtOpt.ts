@@ -2,6 +2,8 @@
 
 import T3Gv from "../Data/T3Gv";
 import DataOpt from "../Opt/Data/DataOpt";
+import DrawUtil from "../Opt/Opt/DrawUtil";
+import SvgUtil from "../Opt/Opt/SvgUtil";
 import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
@@ -552,6 +554,7 @@ class EvtOpt {
   BindClearEvent() {
     $("#btn_try_Clear").on("pointerdown", (event) => {
       DataOpt.ClearT3LocalStorage();
+      SvgUtil.RenderAllSVGObjects();
     });
   }
 

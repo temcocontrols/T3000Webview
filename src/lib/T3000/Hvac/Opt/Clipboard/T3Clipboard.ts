@@ -5,7 +5,7 @@ import T3Gv from '../../Data/T3Gv'
 import base64js from 'base64-js'
 import T3Constant from '../../Data/Constant/T3Constant'
 import T3Util from '../../Util/T3Util'
-import DataUtil from '../Data/DataUtil'
+import ObjectUtil from '../Data/ObjectUtil'
 import ToolActUtil from '../Opt/ToolActUtil'
 
 /**
@@ -334,7 +334,7 @@ class T3Clipboard {
    */
   static GenerateImageInfo1() {
     const imageInfo = {};
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     if (!selectedObjects || selectedObjects.length === 0) {
       return Promise.resolve(null);
@@ -375,7 +375,7 @@ class T3Clipboard {
 
   static GenerateImageInfo() {
     const e = {},
-      t = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, !1);
+      t = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, !1);
     return t &&
       0 !== t.length ? function (e) {
         return new Promise(
