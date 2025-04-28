@@ -4,7 +4,7 @@ import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import Instance from "../../Data/Instance/Instance";
 import T3Gv from "../../Data/T3Gv";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import OptCMUtil from "./OptCMUtil";
 import SelectUtil from "./SelectUtil";
 
@@ -105,7 +105,7 @@ class OptAhUtil {
       if (drawingObject.hooks[0].objid === drawingObject.BlockID) {
         drawingObject.hooks.splice(0, 1);
       } else {
-        const childObject = DataUtil.GetObjectPtr(drawingObject.hooks[0].objid, false);
+        const childObject = ObjectUtil.GetObjectPtr(drawingObject.hooks[0].objid, false);
         if (childObject) {
           this.FindTreeTop(childObject, setLinkFlag, result);
         }
@@ -140,7 +140,7 @@ class OptAhUtil {
    * @returns The ID of the parent container if available, otherwise returns the original object ID
    */
   static SelectContainerParent(objectId) {
-    const object = DataUtil.GetObjectPtr(objectId, false);
+    const object = ObjectUtil.GetObjectPtr(objectId, false);
 
     return object &&
       object instanceof Instance.Shape.ShapeContainer &&
@@ -164,15 +164,15 @@ class OptAhUtil {
    */
   static GetNextSelect() {
     const currentSelectedId = SelectUtil.GetTargetSelect();
-    const currentListSelection = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const currentListSelection = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     let nextSelection = -1;
 
     if (currentSelectedId >= 0) {
-      const currentObject = DataUtil.GetObjectPtr(currentSelectedId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentSelectedId, false);
 
       if (currentObject && currentObject.hooks.length) {
         const childId = currentObject.hooks[0].objid;
-        const childObject = DataUtil.GetObjectPtr(childId, false);
+        const childObject = ObjectUtil.GetObjectPtr(childId, false);
 
         if (childObject && childObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
           // Handle flow chart connectors
@@ -236,7 +236,7 @@ class OptAhUtil {
       // Handle child arrays
       const childArrayId = T3Gv.opt.FindChildArray(currentSelectedId, -1);
       if (childArrayId >= 0) {
-        const childArray = DataUtil.GetObjectPtr(childArrayId, false);
+        const childArray = ObjectUtil.GetObjectPtr(childArrayId, false);
       }
     }
     return nextSelection;
@@ -250,13 +250,13 @@ class OptAhUtil {
    */
   static GetParentConnector(objectId, positionOut) {
     let connectorId = -1;
-    const object = DataUtil.GetObjectPtr(objectId, false);
+    const object = ObjectUtil.GetObjectPtr(objectId, false);
 
     if (object && object.hooks.length) {
       const parentId = object.hooks[0].objid;
 
       if (parentId >= 0) {
-        const parentObject = DataUtil.GetObjectPtr(parentId, false);
+        const parentObject = ObjectUtil.GetObjectPtr(parentId, false);
 
         if (parentObject &&
           parentObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
@@ -281,7 +281,7 @@ class OptAhUtil {
   static HasContainerParent(object) {
     if (object && object.hooks.length) {
       const parentId = object.hooks[0].objid;
-      const parentObject = DataUtil.GetObjectPtr(parentId, false);
+      const parentObject = ObjectUtil.GetObjectPtr(parentId, false);
 
       if (parentObject && parentObject instanceof Instance.Shape.ShapeContainer) {
         return parentId;

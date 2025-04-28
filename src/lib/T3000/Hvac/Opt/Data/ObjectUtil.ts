@@ -9,7 +9,6 @@ import SelectUtil from "../Opt/SelectUtil";
 import ShapeUtil from "../Shape/ShapeUtil";
 import UIUtil from "../UI/UIUtil";
 
-
 class ObjectUtil {
 
   /**
@@ -140,7 +139,6 @@ class ObjectUtil {
     T3Util.Log("O.Opt DeleteObjects - Output: Objects deleted:", objectCount);
   }
 
-
   /**
    * Preserves the current state for undo functionality
    * This function handles saving the current document state to allow for undo operations.
@@ -183,7 +181,6 @@ class ObjectUtil {
     T3Util.Log('O.Opt PreserveUndoState - Output: State preserved');
   }
 
-
   static ClearDirtyList() {
     T3Util.Log('O.Opt ClearDirtyList - Input: No parameters');
 
@@ -197,7 +194,6 @@ class ObjectUtil {
   static ClearFutureUndoStates() {
     T3Gv.state.ClearFutureUndoStates();
   }
-
 }
 
 export default ObjectUtil

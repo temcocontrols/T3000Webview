@@ -5,7 +5,7 @@ import T3Gv from "../../Data/T3Gv";
 import DynamicHit from "../../Model/DynamicHit";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import RulerUtil from "../UI/RulerUtil";
 import LayerUtil from "./LayerUtil";
 import PolyUtil from "./PolyUtil";
@@ -126,14 +126,14 @@ class DynamicUtil {
       // Process each hit to adjust positions and distances
       for (objectIndex = objectCount - 1; objectIndex >= 0; objectIndex--) {
         otherHit = hit.otherhits[objectIndex];
-        DataUtil.GetObjectPtr(otherHit.ID, false).GetSnapRect();
+        ObjectUtil.GetObjectPtr(otherHit.ID, false).GetSnapRect();
 
         if (objectIndex > 0) {
           previousHit = hit.otherhits[objectIndex - 1];
-          previousRect = DataUtil.GetObjectPtr(previousHit.ID, false).GetSnapRect();
+          previousRect = ObjectUtil.GetObjectPtr(previousHit.ID, false).GetSnapRect();
         } else {
           previousHit = hit;
-          previousRect = DataUtil.GetObjectPtr(hit.ID, false).GetSnapRect();
+          previousRect = ObjectUtil.GetObjectPtr(hit.ID, false).GetSnapRect();
         }
 
         if (hit.leftright) {
@@ -651,7 +651,7 @@ class DynamicUtil {
      * @param restrictToVisible - Flag to restrict snapping to visible objects only
      * @returns Object containing snap coordinates for x and y axes
      */
-    if (null != DataUtil.GetObjectPtr(selectedObject, false)) {
+    if (null != ObjectUtil.GetObjectPtr(selectedObject, false)) {
       let guideDistanceType;
       const rightEdge = bounds.x + bounds.width;
       const bottomEdge = bounds.y + bounds.height;
@@ -668,7 +668,7 @@ class DynamicUtil {
         const currentObjectId = activeObjectsList[objectIndex];
 
         if (currentObjectId !== selectedObject && (!restrictToVisible /*|| restrictToVisible.indexOf(currentObjectId) >= 0*/)) {
-          const objectToCheck = DataUtil.GetObjectPtr(currentObjectId, false);
+          const objectToCheck = ObjectUtil.GetObjectPtr(currentObjectId, false);
 
           if (objectToCheck) {
             const targetRect = objectToCheck.GetSnapRect();
@@ -1020,7 +1020,7 @@ class DynamicUtil {
    * alignment distances and positions.
    */
   static DynamicSnapsUpdateGuides(guides, objectId, bounds) {
-    if (null != DataUtil.GetObjectPtr(objectId, !1)) {
+    if (null != ObjectUtil.GetObjectPtr(objectId, !1)) {
       let guideKey, targetRect, bottomEdge, rightEdge, centerX, centerY;
       const existingGuides = T3Gv.opt.dynamicGuides;
       const textJustification = TextConstant.TextJust;
@@ -1035,7 +1035,7 @@ class DynamicUtil {
         y: 0
       };
 
-      const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1);
+      const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1);
       const guideColor = "#2C75F9";
       const fontStyle = Utils1.DeepCopy(T3Gv.opt.header.DimensionFontStyle);
       fontStyle.color = guideColor;
@@ -1066,7 +1066,7 @@ class DynamicUtil {
        * @param elementId - The ID to use for the guide element
        */
       const updateGuideElement = function (hit, elementId) {
-        const targetObject = DataUtil.GetObjectPtr(hit.ID, !1);
+        const targetObject = ObjectUtil.GetObjectPtr(hit.ID, !1);
 
         if (null != targetObject) {
           let startPoint, endPoint, horizontalPosition;

@@ -1,7 +1,7 @@
 import T3Gv from '../../Data/T3Gv';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import LayerUtil from "./LayerUtil";
 import SvgUtil from "./SvgUtil";
 
@@ -20,7 +20,7 @@ class ActionUtil {
     const visibleObjects = LayerUtil.VisibleZList();
 
     for (let objectIndex = 0; objectIndex < visibleObjects.length; objectIndex++) {
-      const visibleObject = DataUtil.GetObjectPtr(visibleObjects[objectIndex], false);
+      const visibleObject = ObjectUtil.GetObjectPtr(visibleObjects[objectIndex], false);
 
       if (visibleObject && visibleObject.actionArrowHideTimerID !== -1) {
         // Clear the existing timeout and reset the timer ID
@@ -52,7 +52,7 @@ class ActionUtil {
   static ClearActionArrowTimer(objectId: number) {
     T3Util.Log("O.Opt ClearActionArrowTimer - Input:", objectId);
     if (objectId >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(objectId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (targetObject) {
         if (targetObject.actionArrowHideTimerID >= 0) {
           T3Gv.opt.actionArrowHideTimer.clearTimeout(targetObject.actionArrowHideTimerID);
@@ -77,7 +77,7 @@ class ActionUtil {
     if (clearTimer) {
       this.ClearActionArrowTimer(objectId);
     } else {
-      const targetObject = DataUtil.GetObjectPtr(objectId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (targetObject) {
         targetObject.actionArrowHideTimerID = -1;
       }
@@ -105,7 +105,7 @@ class ActionUtil {
     T3Util.Log("O.Opt SetActionArrowTimer - Input:", objectId);
 
     if (objectId >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(objectId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (targetObject) {
         // Clear any existing timer before setting a new one

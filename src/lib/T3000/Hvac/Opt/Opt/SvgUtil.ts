@@ -6,7 +6,7 @@ import T3Gv from '../../Data/T3Gv';
 import EvtUtil from "../../Event/EvtUtil";
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import UIUtil from "../UI/UIUtil";
 import ActionUtil from "./ActionUtil";
 import LayerUtil from "./LayerUtil";
@@ -60,7 +60,7 @@ class SvgUtil {
         continue;
       }
 
-      const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+      const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (drawingObject === null || (drawingObject.flags & NvConstant.ObjFlags.NotVisible)) {
         continue;
       }
@@ -132,7 +132,7 @@ class SvgUtil {
   static HideAllSVGSelectionStates() {
     T3Util.Log('O.Opt HideAllSVGSelectionStates: input');
 
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     T3Gv.opt.SetDimensionVisibility(selectedList, false);
 
     if (!T3Gv.opt.fromOverlayLayer) {
@@ -163,7 +163,7 @@ class SvgUtil {
         const result: number[] = [];
         const notVisibleFlag = NvConstant.ObjFlags.NotVisible;
         for (let index = 0; index < objectIds.length; index++) {
-          const objectRef = DataUtil.GetObjectPtr(objectIds[index], false);
+          const objectRef = ObjectUtil.GetObjectPtr(objectIds[index], false);
           if (objectRef && (objectRef.flags & notVisibleFlag) === 0) {
             result.push(objectIds[index]);
           }
@@ -196,7 +196,7 @@ class SvgUtil {
           }
           // If "move-only", call MoveSVG; otherwise add the SVG object.
           if (isMoveOnly) {
-            const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+            const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
             if (drawingObject) {
               drawingObject.MoveSVG();
             }
@@ -219,7 +219,7 @@ class SvgUtil {
         }
       }
       // Finally, clear the dirty list.
-      DataUtil.ClearDirtyList();
+      ObjectUtil.ClearDirtyList();
     }
     T3Util.Log("O.Opt RenderDirtySVGObjectsCommon - Output: Completed rendering dirty SVG objects");
   }
@@ -295,7 +295,7 @@ class SvgUtil {
           if ( !T3Gv.docUtil.IsReadOnly()) {
             shapeContainer.svgObj.mouseover(function (event) {
               let elementId = this.SDGObj.GetID();
-              let drawingObj = DataUtil.GetObjectPtr(elementId, false);
+              let drawingObj = ObjectUtil.GetObjectPtr(elementId, false);
               if (drawingObj) {
                 drawingObj.SetRolloverActions(svgDocument, shapeContainer, event);
               }
@@ -348,7 +348,7 @@ class SvgUtil {
 
     // Render selection states and clear the dirty list
     SvgUtil.RenderAllSVGSelectionStates();
-    DataUtil.ClearDirtyList();
+    ObjectUtil.ClearDirtyList();
 
     T3Util.Log("O.Opt RenderAllSVGObjects - Output: rendering complete");
   }
@@ -391,7 +391,7 @@ class SvgUtil {
     // Retrieve the main SVG object element.
     const objectElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId.toString());
     // Get the object data pointer.
-    const objectData = DataUtil.GetObjectPtr(objectId, false);
+    const objectData = ObjectUtil.GetObjectPtr(objectId, false);
 
     if (objectData !== null) {
       let eventProxy: any;
@@ -460,7 +460,7 @@ class SvgUtil {
 
     // If resetHighlight flag is true and there is a currently highlighted shape, reset its effects and cursors
     if (resetHighlight && T3Gv.opt.curHiliteShape !== -1) {
-      const highlightedObject = DataUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
+      const highlightedObject = ObjectUtil.GetObjectPtr(T3Gv.opt.curHiliteShape, false);
       if (highlightedObject) {
         highlightedObject.SetRuntimeEffects(false);
         highlightedObject.ClearCursors();

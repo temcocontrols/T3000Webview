@@ -15,7 +15,7 @@ import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import RulerUtil from "../UI/RulerUtil";
 import UIUtil from "../UI/UIUtil";
 import WallOpt from '../Wall/WallOpt';
@@ -50,7 +50,7 @@ class DrawUtil {
     // Clean up stored object if one was created
     if (T3Gv.opt.actionStoredObjectId >= 0) {
       ToolActUtil.Undo(true);
-      DataUtil.ClearFutureUndoStates();
+      ObjectUtil.ClearFutureUndoStates();
       T3Gv.opt.actionStoredObjectId = -1;
       T3Gv.opt.dragBBoxList = [];
       T3Gv.opt.dragElementList = [];
@@ -128,7 +128,7 @@ class DrawUtil {
       }
 
       ToolActUtil.Undo(true);
-      DataUtil.ClearFutureUndoStates();
+      ObjectUtil.ClearFutureUndoStates();
       T3Gv.opt.actionStoredObjectId = -1;
       T3Gv.opt.dragBBoxList = [];
       T3Gv.opt.dragElementList = [];
@@ -158,7 +158,7 @@ class DrawUtil {
   static CancelObjectDraw(): void {
     T3Util.Log("O.Opt CancelObjectDraw - Input: No parameters");
 
-    const actionObject = DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
+    const actionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
     const isPolyLineOrContainer = actionObject instanceof Instance.Shape.PolyLine || actionObject instanceof Instance.Shape.PolyLineContainer;
 
     // Clear modal operation and release stamp if needed.
@@ -167,14 +167,14 @@ class DrawUtil {
 
     if (T3Gv.opt.actionStoredObjectId >= 0 && !isPolyLineOrContainer) {
       ToolActUtil.Undo(true);
-      DataUtil.ClearFutureUndoStates();
+      ObjectUtil.ClearFutureUndoStates();
       T3Gv.opt.actionStoredObjectId = -1;
       T3Gv.opt.dragBBoxList = [];
       T3Gv.opt.dragElementList = [];
       T3Gv.opt.actionSvgObject = null;
     } else {
       // Force update when there is an object, but it is a polyline type.
-      DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
+      ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
     }
 
     // Reset to default edit mode
@@ -222,7 +222,7 @@ class DrawUtil {
     try {
       // Set modal operation mode
       UIUtil.SetModalOperation(OptConstant.OptTypes.DragDrop);
-      DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       T3Gv.opt.CloseEdit();
 
       // Store parameters for later use
@@ -315,7 +315,7 @@ class DrawUtil {
 
     // Set modal operation to STAMP mode
     UIUtil.SetModalOperation(OptConstant.OptTypes.Stamp);
-    DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // Close any active text editing
     TextUtil.DeactivateTextEdit(false);
@@ -437,7 +437,7 @@ class DrawUtil {
       if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
           const objectId = T3Gv.opt.moveList[i];
-          const drawingObject = DataUtil.GetObjectPtr(objectId, true);
+          const drawingObject = ObjectUtil.GetObjectPtr(objectId, true);
 
           if (drawingObject) {
             drawingObject.UpdateFrame(drawingObject.Frame);
@@ -472,7 +472,7 @@ class DrawUtil {
         }
 
         // Get the updated object
-        DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
+        ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
       }
 
       // Include link parameters for collaboration
@@ -504,13 +504,13 @@ class DrawUtil {
         objectsToSelect.push(...T3Gv.opt.moveList);
         T3Gv.opt.actionStoredObjectId = -1;
       } else {
-        DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+        ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
       }
 
       // Delete replaced objects if needed
       if (replacedObjectId) {
         const objectsToDelete = [replacedObjectId];
-        DataUtil.DeleteObjects(objectsToDelete, false);
+        ObjectUtil.DeleteObjects(objectsToDelete, false);
       }
 
       // Update rendering
@@ -583,7 +583,7 @@ class DrawUtil {
       if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
           let moveObjectID = T3Gv.opt.moveList[i];
-          let moveObject = DataUtil.GetObjectPtr(moveObjectID, false);
+          let moveObject = ObjectUtil.GetObjectPtr(moveObjectID, false);
 
           if (moveObject) {
             let svgFrame = moveObject.GetSVGFrame();
@@ -630,8 +630,8 @@ class DrawUtil {
       }
       // Handle objects with native data
       else if (hasNativeData) {
-        let newObject = DataUtil.GetObjectPtr(newObjectID, false);
-        let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+        let newObject = ObjectUtil.GetObjectPtr(newObjectID, false);
+        let sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         let hasImageURL = newObject.ImageURL && newObject.ImageURL.length > 0;
 
         // Apply curvature if applicable
@@ -770,7 +770,7 @@ class DrawUtil {
     }
 
     // Get the drawing object
-    drawingObject = DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
+    drawingObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
     if (!drawingObject) {
       T3Util.Log("O.Opt StampObjectMoveCommon - Output: No valid drawing object");
       return;
@@ -795,7 +795,7 @@ class DrawUtil {
 
       if (snapTargetId >= 0) {
         const dynamicGuides = new DynamicGuides();
-        const targetRect = DataUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
+        const targetRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
 
         // Create a copy of the target rectangle centered at the current position
         positionedRect = $.extend(true, {}, targetRect);
@@ -964,7 +964,7 @@ class DrawUtil {
       // Update all objects in the move list
       for (let i = 0; i < objectCount; ++i) {
         objectId = T3Gv.opt.moveList[i];
-        const object = DataUtil.GetObjectPtr(objectId);
+        const object = ObjectUtil.GetObjectPtr(objectId);
 
         if (object) {
           if (objectId !== T3Gv.opt.actionStoredObjectId) {
@@ -1218,7 +1218,7 @@ class DrawUtil {
         objectCount = T3Gv.opt.moveList.length;
 
         for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
-          currentObject = DataUtil.GetObjectPtr(T3Gv.opt.moveList[objectIndex], true);
+          currentObject = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList[objectIndex], true);
           if (currentObject) {
             currentObject.UpdateFrame(currentObject.Frame);
             frameData = Utils1.DeepCopy(currentObject.Frame);
@@ -1226,7 +1226,7 @@ class DrawUtil {
           }
 
           // Get a fresh copy of the object
-          currentObject = DataUtil.GetObjectPtr(T3Gv.opt.moveList[objectIndex], true);
+          currentObject = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList[objectIndex], true);
         }
       } else {
         // Handle a single object
@@ -1255,7 +1255,7 @@ class DrawUtil {
         }
 
         // Get latest version of the action object
-        DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
+        ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
       }
 
       // Reset edit mode and prepare selection
@@ -1283,13 +1283,13 @@ class DrawUtil {
         objectsToSelect.push(...T3Gv.opt.moveList);
         T3Gv.opt.actionStoredObjectId = -1;
       } else {
-        DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+        ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
       }
 
       // Delete replaced object if needed
       if (replacedObjectId) {
         const objectsToDelete = [replacedObjectId];
-        DataUtil.DeleteObjects(objectsToDelete, false);
+        ObjectUtil.DeleteObjects(objectsToDelete, false);
       }
 
       // Update rendering
@@ -1431,7 +1431,7 @@ class DrawUtil {
     T3Util.Log("O.Opt DrawNewObject - Input:", { newShape, clearExistingSection });
 
     UIUtil.SetModalOperation(OptConstant.OptTypes.Draw);
-    DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     T3Gv.opt.CloseEdit();
 
     T3Gv.opt.lineDrawId = -1;
@@ -1596,15 +1596,15 @@ class DrawUtil {
 
     let collaborationData = {};
 
-    DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-      DataUtil.DeleteObjects(objectIds, false);
+      ObjectUtil.DeleteObjects(objectIds, false);
       objectIds = T3Gv.opt.moveList.slice(0);
       T3Gv.opt.actionStoredObjectId = -1;
     } else {
-      DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+      ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
     }
 
     SvgUtil.RenderDirtySVGObjects();
@@ -1778,7 +1778,7 @@ class DrawUtil {
     T3Util.Log("O.Opt AllowGroup - Input:", objectIds);
 
     for (const objectId of objectIds) {
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (currentObject) {
         // If object has a lock flag, grouping is not allowed.
         if (currentObject.flags & NvConstant.ObjFlags.Lock) {
@@ -1807,7 +1807,7 @@ class DrawUtil {
     T3Gv.opt.actionSvgObject = null;
 
     // Force update of object data
-    DataUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, true);
 
     // Reset edit mode to default
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
@@ -1831,7 +1831,7 @@ class DrawUtil {
     if (actionObject != null) {
       if (actionObject.Data.Frame == null || (actionObject.Data.Frame.width < 10 && actionObject.Data.Frame.height < 10)) {
         ToolActUtil.Undo(true);
-        DataUtil.ClearFutureUndoStates();
+        ObjectUtil.ClearFutureUndoStates();
       } else {
         actionObject.Data.sizedim.width = actionObject.Data.Frame.width;
         actionObject.Data.sizedim.height = actionObject.Data.Frame.height;
@@ -1845,7 +1845,7 @@ class DrawUtil {
           LayerUtil.MarkAllAllVisibleHigherLayerObjectsDirty();
         }
 
-        DataUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
+        ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
       }
 
       this.PostObjectDrawCommon(affectedObjects, event);
@@ -1943,7 +1943,7 @@ class DrawUtil {
     LayerUtil.ZListPreserve(layerFlag).push(newBlock.ID);
 
     const isBaseline = drawingObject instanceof Instance.Shape.BaseLine;
-    const layersData = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersData = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
 
     const isSpecialLayer = false;
 
@@ -1985,7 +1985,7 @@ class DrawUtil {
 
     // If ctrl key is pressed, check if the object type allows duplication
     if (isCtrlKeyPressed) {
-      const targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
       const objectTypes = NvConstant.FNObjectTypes;
       const objectSubTypes = NvConstant.ObjectSubTypes;
 
@@ -2235,10 +2235,10 @@ class DrawUtil {
     }
 
     if (!preserveUndoState) {
-      DataUtil.PreserveUndoState(false);
+      ObjectUtil.PreserveUndoState(false);
     }
 
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     T3Gv.docUtil.ShowCoordinates(true);
 
     T3Gv.opt.lastOpDuplicate = false;
@@ -2258,7 +2258,7 @@ class DrawUtil {
     T3Util.Log("O.Opt AllowSnapToShapes - Input: No parameters");
 
     // Get session data (unused in function but was in original code)
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     const result = T3Gv.docUtil.docConfig.snapToShapes;
     T3Util.Log("O.Opt AllowSnapToShapes - Output:", result);
@@ -2267,7 +2267,7 @@ class DrawUtil {
 
   static GetSelectObjectCoords() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
-    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+    var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
     if (targetObject == null) {
       return null;

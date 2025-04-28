@@ -12,7 +12,7 @@ import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import PolygonConstant from "../Polygon/PolygonConstant";
 import DrawUtil from './DrawUtil';
@@ -1085,11 +1085,11 @@ class PolyUtil {
     let visibleLayers = LayerUtil.ActiveVisibleZList();
 
     // Get source object
-    sourceObject = DataUtil.GetObjectPtr(sourceBlockId, true);
+    sourceObject = ObjectUtil.GetObjectPtr(sourceBlockId, true);
     if (sourceObject == null) return -1;
 
     // Get target object
-    targetObject = DataUtil.GetObjectPtr(targetBlockId, true);
+    targetObject = ObjectUtil.GetObjectPtr(targetBlockId, true);
     if (targetObject == null) return -1;
 
     // Preserve metadata from objects (use the valid ones)
@@ -1136,7 +1136,7 @@ class PolyUtil {
 
       // Update frame and mark as dirty
       sourceObject.CalcFrame();
-      DataUtil.AddToDirtyList(sourceObject.BlockID);
+      ObjectUtil.AddToDirtyList(sourceObject.BlockID);
       OptCMUtil.SetLinkFlag(sourceBlockId, DSConstant.LinkFlags.Move);
       HookUtil.MaintainLink(sourceBlockId, sourceObject, null, hookTriggerType, false);
       return result;
@@ -1477,7 +1477,7 @@ class PolyUtil {
         }
 
         // Mark as dirty
-        DataUtil.AddToDirtyList(mainPolyline.BlockID);
+        ObjectUtil.AddToDirtyList(mainPolyline.BlockID);
       }
     } else {
       // Handle connection at the end of the main polyline
@@ -1630,7 +1630,7 @@ class PolyUtil {
         }
 
         // Mark as dirty
-        DataUtil.AddToDirtyList(mainPolyline.BlockID);
+        ObjectUtil.AddToDirtyList(mainPolyline.BlockID);
       }
     }
 
@@ -1641,7 +1641,7 @@ class PolyUtil {
     if (needsRender) {
       resultBlockId = DrawUtil.AddNewObject(mainPolyline, false, true);
       needsRender = true;
-      DataUtil.AddToDirtyList(resultBlockId);
+      ObjectUtil.AddToDirtyList(resultBlockId);
     } else {
       // Get current layer position
       let currentLayerIndex = LayerUtil.VisibleZList().indexOf(resultBlockId);
@@ -1651,7 +1651,7 @@ class PolyUtil {
     }
 
     // Transfer metadata to the resulting polyline
-    mainPolyline = DataUtil.GetObjectPtr(resultBlockId, false);
+    mainPolyline = ObjectUtil.GetObjectPtr(resultBlockId, false);
     if (mainPolyline) {
       // Transfer DataID
       if (mainPolyline.DataID < 0) {
@@ -1718,7 +1718,7 @@ class PolyUtil {
     }
 
     // Delete the original objects
-    DataUtil.DeleteObjects(blocksToDelete, false);
+    ObjectUtil.DeleteObjects(blocksToDelete, false);
 
     // Update links
     OptCMUtil.SetLinkFlag(resultBlockId, DSConstant.LinkFlags.Move);
@@ -1735,7 +1735,7 @@ class PolyUtil {
       visibleLayers.splice(currentLayerIndex, 1);
       visibleLayers.splice(layerPosition, 0, resultBlockId);
       needsRender = true;
-      DataUtil.AddToDirtyList(resultBlockId);
+      ObjectUtil.AddToDirtyList(resultBlockId);
     }
 
     // Handle special cases for PolyLineContainer

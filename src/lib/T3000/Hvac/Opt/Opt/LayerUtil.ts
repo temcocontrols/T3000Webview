@@ -5,7 +5,7 @@ import NvConstant from '../../Data/Constant/NvConstant';
 import T3Gv from '../../Data/T3Gv';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import SvgUtil from "./SvgUtil";
 import Utils2 from '../../Util/Utils2';
 import SelectUtil from './SelectUtil';
@@ -23,7 +23,7 @@ class LayerUtil {
     T3Util.Log('U.LayerUtil ActiveVisibleZList: input');
 
     const layersManagerBlockId = T3Gv.opt.layersManagerBlockId;
-    const layersManager = DataUtil.GetObjectPtr(layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numberOfLayers = layersManager.nlayers;
     const activeLayerIndex = layersManager.activelayer;
@@ -56,7 +56,7 @@ class LayerUtil {
   static VisibleZList() {
     T3Util.Log('O.Opt VisibleZList: input');
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numberOfLayers = layersManager.nlayers;
     const activeLayerIndex = layersManager.activelayer;
@@ -81,7 +81,7 @@ class LayerUtil {
     T3Util.Log("O.Opt RemoveFromAllZLists - Input:", objectId);
 
     // Get the layers manager with preserved state
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
     const numberOfLayers = layersManager.nlayers;
 
     // Search through all layers for the object
@@ -150,14 +150,14 @@ class LayerUtil {
   static UpdateObjectLayerIndices(updateOptions: { TextureList: any }): void {
     T3Util.Log("O.Opt UpdateObjectLayerIndices - Input:", updateOptions);
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numLayers = layersManager.nlayers;
 
     for (let layerIndex = 0; layerIndex < numLayers; layerIndex++) {
       const zList = layers[layerIndex].zList;
       for (let objectIndex = 0, zListLength = zList.length; objectIndex < zListLength; objectIndex++) {
-        const currentObject = DataUtil.GetObjectPtr(zList[objectIndex], false);
+        const currentObject = ObjectUtil.GetObjectPtr(zList[objectIndex], false);
         if (currentObject) {
           currentObject.Layer = layerIndex;
           currentObject.GetTextures(updateOptions.TextureList);
@@ -181,7 +181,7 @@ class LayerUtil {
     const layerIndex = this.FindLayerForShapeID(objectId);
     if (layerIndex >= 0) {
       // Retrieve the layers and get the current z-order list for the identified layer.
-      const layers = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true).layers;
+      const layers = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true).layers;
       let currentZList = layers[layerIndex].zList;
 
       // Locate the index of the object in the z-order list.
@@ -205,7 +205,7 @@ class LayerUtil {
    */
   static ZListPreserveForLayer(layerIndex: number) {
     T3Util.Log("O.Opt ZListPreserveForLayer - Input:", { layerIndex });
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
     const result = layersManager.layers[layerIndex].zList;
     T3Util.Log("O.Opt ZListPreserveForLayer - Output:", result);
     return result;
@@ -219,7 +219,7 @@ class LayerUtil {
   static FindLayerForShapeID(shapeId: number): number {
     T3Util.Log("O.Opt FindLayerForShapeID - Input:", { shapeId });
 
-    const layerManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layerManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layerManager.layers;
     const layerCount = layerManager.nlayers;
 
@@ -247,13 +247,13 @@ class LayerUtil {
   static GetFrontBackLayersForSelected() {
     T3Util.Log("O.Opt GetFrontBackLayersForSelected - Input:", {});
 
-    const layerManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layerManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layerManager.layers;
     const layerCount = layerManager.nlayers;
     let frontmostIndex = -1;
     let backmostIndex = 0;
 
-    const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const selectedCount = selectedObjects.length;
 
     if (selectedCount === 0) {
@@ -297,7 +297,7 @@ class LayerUtil {
   static FrontMostLayerZListPreserve() {
     T3Util.Log("O.Opt FrontMostLayerZListPreserve - Input: No parameters");
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
     const frontMostLayerZList = layersManager.layers[0].zList;
 
     T3Util.Log("O.Opt FrontMostLayerZListPreserve - Output: Retrieved front-most layer Z-list with",
@@ -316,7 +316,7 @@ class LayerUtil {
 
   static IsTopMostVisibleLayer() {
     T3Util.Log('O.Opt isTopMostVisibleLayer - Input');
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const result = layersManager.activelayer === this.GetTopMostVisibleLayer();
     T3Util.Log('O.Opt isTopMostVisibleLayer - Output:', result);
     return result;
@@ -324,7 +324,7 @@ class LayerUtil {
 
   static GetTopMostVisibleLayer() {
     T3Util.Log('O.Opt getTopMostVisibleLayer - Input');
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const totalLayers = layersManager.nlayers;
     for (let i = 0; i < totalLayers; ++i) {
@@ -340,7 +340,7 @@ class LayerUtil {
   static ActiveLayerZList() {
     T3Util.Log('O.Opt ActiveLayerZList - Input');
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const activeLayerZList = layersManager.layers[layersManager.activelayer].zList;
 
     T3Util.Log('O.Opt ActiveLayerZList - Output:', activeLayerZList);
@@ -349,7 +349,7 @@ class LayerUtil {
 
   static ZListPreserve(additionalLayerFlag?) {
     T3Util.Log('O.Opt zListPreserve - Input:', additionalLayerFlag);
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
     const layers = layersManager.layers;
     const activeLayerIndex = layersManager.activelayer;
     let currentLayer = layers[activeLayerIndex];
@@ -383,7 +383,7 @@ class LayerUtil {
     const objectCount = objectList?.length ?? 0;
 
     for (let objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-      DataUtil.AddToDirtyList(objectList[objectIndex]);
+      ObjectUtil.AddToDirtyList(objectList[objectIndex]);
     }
   }
 
@@ -396,7 +396,7 @@ class LayerUtil {
    */
   static MarkAllAllVisibleHigherLayerObjectsDirty() {
     let layerIndex, objectIndex;
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
 
     // Iterate from the layer just above the active one (lower index) up to the top-most layer
     for (layerIndex = layersManager.activelayer - 1; layerIndex >= 0; layerIndex--) {
@@ -404,7 +404,7 @@ class LayerUtil {
       if (layersManager.layers[layerIndex].flags & NvConstant.LayerFlags.Visible) {
         // Mark all objects in this visible layer as dirty
         for (objectIndex = 0; objectIndex < layersManager.layers[layerIndex].zList.length; objectIndex++) {
-          DataUtil.AddToDirtyList(layersManager.layers[layerIndex].zList[objectIndex]);
+          ObjectUtil.AddToDirtyList(layersManager.layers[layerIndex].zList[objectIndex]);
         }
       }
     }
@@ -417,7 +417,7 @@ class LayerUtil {
   static ZList() {
     T3Util.Log("O.Opt ZList - Input: No parameters");
 
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     let allObjectIds = [];
 
     // Iterate through all layers from bottom to top (reverse order)
@@ -442,13 +442,13 @@ class LayerUtil {
     T3Util.Log("O.Opt MakeLayerActiveByIndex - Input:", { layerIndex });
 
     // Close any active editing operations
-    const listManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const listManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     T3Gv.opt.CloseEdit();
 
     // Handle layer tab visibility in the session
-    const session = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const session = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (session.moreflags & NvConstant.SessionMoreFlags.HideLayerTabs) {
-      const sessionPreserved = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      const sessionPreserved = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
       sessionPreserved.moreflags = Utils2.SetFlag(
         sessionPreserved.moreflags,
         NvConstant.SessionMoreFlags.HideLayerTabs,
@@ -457,20 +457,20 @@ class LayerUtil {
     }
 
     // Get the layers manager data
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const totalLayers = layersManager.nlayers;
     const layers = layersManager.layers;
     const currentActiveLayerType = layers[layersManager.activelayer].layertype;
 
     // Proceed if the layer index is valid
-    if (layerIndex >= 0 && layerIndex < totalLayers) { 
+    if (layerIndex >= 0 && layerIndex < totalLayers) {
       // Update the active layer index
-      const layersManagerPreserved = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+      const layersManagerPreserved = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
       layersManagerPreserved.activelayer = layerIndex;
 
       // Handle specific layer type activations
       const newLayerType = layers[layerIndex].layerType;
-      switch (newLayerType) { 
+      switch (newLayerType) {
       }
 
       // Update selection for the new active layer
@@ -490,7 +490,7 @@ class LayerUtil {
     T3Util.Log("O.Opt AdjustSelectedListAfterLayerChange - Input");
 
     // Get the current selected objects list with preservation
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
     const currentTargetSelection = SelectUtil.GetTargetSelect();
     const selectedCount = selectedList.length;
     const filteredSelection = [];
@@ -535,7 +535,7 @@ class LayerUtil {
    * @returns Boolean indicating whether the layer was successfully added
    */
   static AddNewLayerAtFront(layerName: string, isVisible: boolean, isActive: boolean): boolean {
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
 
     // Check if maximum layer limit has been reached
     if (layersManager.nlayers >= OptConstant.Common.MaxTotalLayers) {
@@ -578,7 +578,7 @@ class LayerUtil {
     T3Gv.opt.CloseEdit();
 
     // Get layers and rotate by moving the first layer to the end
-    const layers = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true).layers;
+    const layers = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true).layers;
     const topLayer = layers.shift();
     layers.push(topLayer);
 

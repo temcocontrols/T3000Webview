@@ -13,7 +13,7 @@ import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import ShapeUtil from '../Shape/ShapeUtil';
 import UIUtil from "../UI/UIUtil";
@@ -58,11 +58,11 @@ class ToolActUtil {
     }
 
     // Get session and layer data
-    const sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const spellCheckEnabled = sessionObject.EnableSpellCheck;
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const activeLayerType = layersManager.layers[layersManager.activelayer].layertype;
-    const teData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const teData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // Check if text editing is active; flush text and preserve undo state if necessary
     const isTextEditingActive = teData.theActiveTextEditObjectID !== -1 &&
@@ -71,7 +71,7 @@ class ToolActUtil {
       teData.theTELastOp !== NvConstant.TextElemLastOpt.Select;
     if (isTextEditingActive) {
       this.FlushTextToLMBlock();
-      DataUtil.PreserveUndoState(false);
+      ObjectUtil.PreserveUndoState(false);
     }
 
     // Determine if the state was open before undo
@@ -94,7 +94,7 @@ class ToolActUtil {
     HookUtil.UpdateLineHops(true);
 
     // Update spell check settings if changed
-    const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (spellCheckEnabled !== sessionBlock.EnableSpellCheck) {
     }
 
@@ -110,8 +110,8 @@ class ToolActUtil {
     }
 
     // Ensure an active outline is selected if no selection exists
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
-    const tDataAfter = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const tDataAfter = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     if (tDataAfter.theActiveOutlineObjectID !== -1 && selectedList.length === 0) {
       const activeOutlineObjects: number[] = [];
       activeOutlineObjects.push(tDataAfter.theActiveOutlineObjectID);
@@ -131,7 +131,7 @@ class ToolActUtil {
     // Update display coordinates based on target selection if available
     const targetSelect = SelectUtil.GetTargetSelect();
     if (targetSelect >= 0) {
-      const selectedObject = DataUtil.GetObjectPtr(targetSelect, false);
+      const selectedObject = ObjectUtil.GetObjectPtr(targetSelect, false);
       let dimensions = null;
       if (selectedObject) {
         dimensions = selectedObject.GetDimensionsForDisplay();
@@ -178,12 +178,12 @@ class ToolActUtil {
     }
 
     // Get the session data
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const wasSpellCheckEnabled = sessionData.EnableSpellCheck;
     const hadNoRecentSymbols = false;// sessionData.RecentSymbols.length === 0;
 
     // Get text editing session
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // If active text editing is in progress, save it first
     if (textEditSession.theActiveTextEditObjectID !== -1 &&
@@ -191,11 +191,11 @@ class ToolActUtil {
       textEditSession.theTELastOp !== NvConstant.TextElemLastOpt.Timeout &&
       textEditSession.theTELastOp !== NvConstant.TextElemLastOpt.Select) {
       this.FlushTextToLMBlock();
-      DataUtil.PreserveUndoState(false);
+      ObjectUtil.PreserveUndoState(false);
     }
 
     // Get layers manager and remember current layer type
-    const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const previousLayerType = layersManager.layers[layersManager.activelayer].layertype;
 
     // Clean up URLs before state change
@@ -218,7 +218,7 @@ class ToolActUtil {
     HookUtil.UpdateLineHops(true);
 
     // Get updated session data after state restoration
-    const updatDataData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const updatDataData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Update rulers if changed
     const currentRulerSettings = T3Gv.docUtil.rulerConfig;
@@ -232,10 +232,10 @@ class ToolActUtil {
     }
 
     // Get the current selection list
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
     // Handle outline objects if needed
-    const updatedTextEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const updatedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     if (updatedTextEditSession.theActiveOutlineObjectID !== -1 && selectedList.length === 0) {
       const objectsToSelect = [];
       objectsToSelect.push(updatedTextEditSession.theActiveOutlineObjectID);
@@ -249,7 +249,7 @@ class ToolActUtil {
     T3Gv.opt.InUndo = false;
 
     // Get the updated session data
-    const newSessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const newSessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Reset active text edit after undo if needed
     if (updatedTextEditSession.theActiveTextEditObjectID !== -1) {
@@ -259,7 +259,7 @@ class ToolActUtil {
     // Update target selection display
     const targetSelectionId = SelectUtil.GetTargetSelect();
     if (targetSelectionId >= 0) {
-      const targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
       let dimensionsForDisplay = null;
 
       if (targetObject) {
@@ -273,7 +273,7 @@ class ToolActUtil {
     }
 
     // Handle layer type changes
-    const updatedLayersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    const updatedLayersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const newLayerType = updatedLayersManager.layers[updatedLayersManager.activelayer].layertype;
 
     // Update selection attributes
@@ -359,7 +359,7 @@ class ToolActUtil {
       return;
     }
     // Get target object's frame (deep-copy using jQuery.extend)
-    const targetObject = DataUtil.GetObjectPtr(targetObjectId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
     const targetFrame = $.extend(true, {}, targetObject.Frame);
     const targetHeight = targetFrame.height;
     const targetWidth = targetFrame.width;
@@ -368,7 +368,7 @@ class ToolActUtil {
     for (let index = 0; index < selectedCount; ++index) {
       const objectId = selectedList[index];
       if (objectId === targetObjectId) continue;
-      const currentObject = DataUtil.GetObjectPtr(objectId, true);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, true);
       const originalFrame = Utils1.DeepCopy(currentObject.Frame);
       switch (sizeOption) {
         case 1:
@@ -399,7 +399,7 @@ class ToolActUtil {
         currentObject.rflags = Utils2.SetFlag(currentObject.rflags, NvConstant.FloatingPointDim.Height, false);
       }
       OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.Move);
-      DataUtil.AddToDirtyList(objectId);
+      ObjectUtil.AddToDirtyList(objectId);
     }
 
     DrawUtil.CompleteOperation(null);
@@ -433,7 +433,7 @@ class ToolActUtil {
         : OptConstant.ExtraFlags.FlipVert;
 
       for (index = 0; index < count; index++) {
-        currentObject = DataUtil.GetObjectPtr(selectedObjects[index], false);
+        currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], false);
         if (currentObject.NoFlip()) {
           cannotFlipFound = true;
           break;
@@ -443,12 +443,12 @@ class ToolActUtil {
       if (cannotFlipFound) {
       } else {
         for (index = 0; index < count; index++) {
-          currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
+          currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], true);
           OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
           if (currentObject.hooks.length) {
             OptCMUtil.SetLinkFlag(currentObject.hooks[0].objid, DSConstant.LinkFlags.Move);
           }
-          DataUtil.AddToDirtyList(selectedObjects[index]);
+          ObjectUtil.AddToDirtyList(selectedObjects[index]);
           if (isRotationQualified(currentObject)) {
             currentObject.Flip(alternativeFlipType);
           } else {
@@ -579,7 +579,7 @@ class ToolActUtil {
     try {
       let activeEditor;
       let tableObject;
-      const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
       if ((textEditSession.theActiveTextEditObjectID !== -1 || T3Gv.opt.bInNoteEdit)) {
 
@@ -684,7 +684,7 @@ class ToolActUtil {
       }
 
       const objectsCount = objectsToDelete.length;
-      DataUtil.DeleteObjects(objectsToDelete, false);
+      ObjectUtil.DeleteObjects(objectsToDelete, false);
 
       if (!preserveSelection) {
         selectedObjects.splice(0);
@@ -717,7 +717,7 @@ class ToolActUtil {
       let lineThickness = 0;
 
       if (targetSelected !== -1) {
-        const targetObject = DataUtil.GetObjectPtr(targetSelected, false);
+        const targetObject = ObjectUtil.GetObjectPtr(targetSelected, false);
         targetAlignRect = targetObject.GetAlignRect();
         lineThickness = targetObject.StyleRecord.Line.Thickness;
         let currentAlignRect, currentDirtyFrame;
@@ -728,7 +728,7 @@ class ToolActUtil {
             continue;
           }
           currentDirtyFrame = null;
-          currentObject = DataUtil.GetObjectPtr(selectedObjects[i], false);
+          currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], false);
 
           // Skip if object has hooks
           if (currentObject.hooks.length) {
@@ -736,14 +736,14 @@ class ToolActUtil {
           }
 
           alignmentPerformed = true;
-          currentObject = DataUtil.GetObjectPtr(selectedObjects[i], true);
+          currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], true);
 
           if (currentObject.FramezList && currentObject.FramezList.length) {
             currentDirtyFrame = currentObject.FramezList;
           }
 
           OptCMUtil.SetLinkFlag(selectedObjects[i], DSConstant.LinkFlags.Move);
-          DataUtil.AddToDirtyList(selectedObjects[i], true);
+          ObjectUtil.AddToDirtyList(selectedObjects[i], true);
           currentAlignRect = currentObject.GetAlignRect();
 
           switch (alignmentType) {
@@ -807,8 +807,8 @@ class ToolActUtil {
 
   static RotateShapes(angleDegrees: number, selectionOverride?: any[]) {
     T3Util.Log("O.Opt RotateShapes - Input:", { angleDegrees, selectionOverride });
-    let selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
-    let sdData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    let selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    let sdData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (selectionOverride) {
       selectedList = selectionOverride;
     }
@@ -819,7 +819,7 @@ class ToolActUtil {
       let tempCounter = 0, removeIndex = 0, debugVal = null, deltaX = 0, deltaY = 0;
       // Check if any shape disallows rotation and log if found
       for (tempCounter = 0; tempCounter < totalSelected; tempCounter++) {
-        shape = DataUtil.GetObjectPtr(selectedList[tempCounter], false);
+        shape = ObjectUtil.GetObjectPtr(selectedList[tempCounter], false);
         if (shape.NoRotate()) {
           break;
         }
@@ -829,7 +829,7 @@ class ToolActUtil {
       } else {
         // Process PolyLineContainer groups
         for (tempCounter = 0; tempCounter < selectedList.length; tempCounter++) {
-          shape = DataUtil.GetObjectPtr(selectedList[tempCounter], false);
+          shape = ObjectUtil.GetObjectPtr(selectedList[tempCounter], false);
           if (shape instanceof Instance.Shape.PolyLineContainer) {
             let enclosedObjects = shape.GetListOfEnclosedObjects(false);
             if (enclosedObjects.length > 0) {
@@ -845,14 +845,14 @@ class ToolActUtil {
         // Rotate objects inside containers and other objects
         for (tempCounter = 0; tempCounter < selectedList.length; tempCounter++) {
           // Process for PolyLine and PolyLineContainer objects
-          shape = DataUtil.GetObjectPtr(selectedList[tempCounter], true);
+          shape = ObjectUtil.GetObjectPtr(selectedList[tempCounter], true);
           if (shape instanceof Instance.Shape.PolyLine && shape.rflags) {
             this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Width, false);
             this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
           }
           if (shape instanceof Instance.Shape.PolyLineContainer) {
             OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.Move);
-            DataUtil.AddToDirtyList(selectedList[tempCounter]);
+            ObjectUtil.AddToDirtyList(selectedList[tempCounter]);
             rotatedSubList = shape.RotateAllInContainer(shape.BlockID, angleDegrees);
             if (rotatedSubList && rotatedSubList.length) {
               for (removeIndex = selectedList.length - 1; removeIndex >= 0; removeIndex--) {
@@ -865,7 +865,7 @@ class ToolActUtil {
             if (shape instanceof Instance.Shape.PolyLineContainer || shape.objecttype === NvConstant.FNObjectTypes.FlWall) {
               // Remove hooked objects related to container rotation
               for (removeIndex = selectedList.length - 1; removeIndex >= 0; removeIndex--) {
-                obj = DataUtil.GetObjectPtr(selectedList[removeIndex], false);
+                obj = ObjectUtil.GetObjectPtr(selectedList[removeIndex], false);
                 if (obj && obj.hooks.length && obj.hooks[0].objid === shape.BlockID) {
                   selectedList.splice(removeIndex, 1);
                 }
@@ -876,10 +876,10 @@ class ToolActUtil {
         // Rotate remaining objects individually
         totalSelected = selectedList.length;
         for (tempCounter = 0; tempCounter < totalSelected; tempCounter++) {
-          shape = DataUtil.GetObjectPtr(selectedList[tempCounter], true);
+          shape = ObjectUtil.GetObjectPtr(selectedList[tempCounter], true);
           if (!(shape instanceof Instance.Shape.PolyLineContainer)) {
             OptCMUtil.SetLinkFlag(selectedList[tempCounter], DSConstant.LinkFlags.Move);
-            DataUtil.AddToDirtyList(selectedList[tempCounter]);
+            ObjectUtil.AddToDirtyList(selectedList[tempCounter]);
             if (shape instanceof Instance.Shape.BaseLine) {
               if (shape instanceof Instance.Shape.PolyLine) {
                 // Rotate PolyLine via its poly points
@@ -971,7 +971,7 @@ class ToolActUtil {
     // Only proceed if there are selected objects
     if (SelectUtil.AreSelectedObjects()) {
       // Get session object with preservation based on whether this is a repeat operation
-      const sessionObject = DataUtil.GetObjectPtr(
+      const sessionObject = ObjectUtil.GetObjectPtr(
         T3Gv.opt.sdDataBlockId,
         !T3Gv.opt.lastOpDuplicate && !editOverride
       );
@@ -992,7 +992,7 @@ class ToolActUtil {
       }
 
       // Get the current selection list
-      const selectedList = DataUtil.GetObjectPtr(
+      const selectedList = ObjectUtil.GetObjectPtr(
         T3Gv.opt.selectObjsBlockId,
         false
       );
@@ -1012,7 +1012,7 @@ class ToolActUtil {
 
       if (copyResult && copyResult.buffer) {
         // Get the frame of the first copied object
-        const firstObjectFrame = DataUtil.GetObjectPtr(copyResult.zList[0], false).Frame;
+        const firstObjectFrame = ObjectUtil.GetObjectPtr(copyResult.zList[0], false).Frame;
 
         // Read and create duplicated objects from the buffer with displacement
         ShapeUtil.ReadSymbolFromBuffer(
@@ -1053,7 +1053,7 @@ class ToolActUtil {
   static CopyObjects(): any {
     T3Util.Log("O.Opt CopyObjects - Input:");
 
-    const activeTextEditorSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const activeTextEditorSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     let clipboardContent: any;
 
     if (
@@ -1084,7 +1084,7 @@ class ToolActUtil {
     this.CopyObjectsCommon(false);
     T3Gv.opt.textClipboard = null;
 
-    const selectedObjectBlock = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectedObjectBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     SelectUtil.UpdateSelectionAttributes(selectedObjectBlock);
 
     clipboardContent = T3Gv.opt.header.ClipboardBuffer;
@@ -1209,7 +1209,7 @@ class ToolActUtil {
       T3Gv.opt.cutFromButton = !isFromCutButton;
 
       // Check if we are in a text editing mode or note/dimension edit mode.
-      const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       if (
         textEditSession.theActiveTextEditObjectID !== -1 ||
         T3Gv.opt.bInNoteEdit ||
@@ -1302,9 +1302,9 @@ class ToolActUtil {
       T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
 
       // Refresh the selected objects list by removing any objects that are not visible.
-      const updatedSelectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const updatedSelectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       for (let i = updatedSelectedObjects.length - 1; i >= 0; i--) {
-        const currentObject = DataUtil.GetObjectPtr(updatedSelectedObjects[i], false);
+        const currentObject = ObjectUtil.GetObjectPtr(updatedSelectedObjects[i], false);
         if (currentObject && (currentObject.flags & NvConstant.ObjFlags.NotVisible)) {
           updatedSelectedObjects.splice(i, 1);
         }
@@ -1333,14 +1333,14 @@ class ToolActUtil {
     // References to objects and structures we'll need
     let newObject = null;
     let existingObject = null;
-    let linksList = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+    let linksList = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
 
     // Constants for flip operations
     const FLIP_VERTICAL = OptConstant.ExtraFlags.FlipVert;
     const FLIP_HORIZONTAL = OptConstant.ExtraFlags.FlipHoriz;
 
     // Get the group object
-    const groupObject = DataUtil.GetObjectPtr(groupId, true);
+    const groupObject = ObjectUtil.GetObjectPtr(groupId, true);
 
     // Get the frame of the group and its center point
     const groupFrame = groupObject.Frame;
@@ -1379,7 +1379,7 @@ class ToolActUtil {
     // Process each shape in the group
     for (index = 0; index < shapeCount; ++index) {
       // Get the current shape from the group
-      const currentShape = DataUtil.GetObjectPtr(shapesInGroup[index], true);
+      const currentShape = ObjectUtil.GetObjectPtr(shapesInGroup[index], true);
 
       // Track comment IDs
       if (currentShape.CommentID >= 0) {
@@ -1450,7 +1450,7 @@ class ToolActUtil {
 
       // Scale text if needed
       if (currentShape.DataID !== -1 && scaleY !== 1) {
-        const textStyles = DataUtil.GetObjectPtr(currentShape.DataID, true).runtimeText.styles;
+        const textStyles = ObjectUtil.GetObjectPtr(currentShape.DataID, true).runtimeText.styles;
         const styleCount = textStyles.length;
 
         for (styleIndex = 0; styleIndex < styleCount; ++styleIndex) {
@@ -1462,7 +1462,7 @@ class ToolActUtil {
       currentShape.bInGroup = false;
 
       // Add to dirty list and rebuild links
-      DataUtil.AddToDirtyList(shapesInGroup[index]);
+      ObjectUtil.AddToDirtyList(shapesInGroup[index]);
       T3Gv.opt.RebuildLinks(linksList, shapesInGroup[index]);
     }
 
@@ -1472,7 +1472,7 @@ class ToolActUtil {
     // Maintain links for each shape
     for (index = 0; index < objectsForLinkMaintenance.length; index++) {
       T3Gv.opt.ob = objectsForLinkMaintenance[index];
-      existingObject = DataUtil.GetObjectPtr(objectsForLinkMaintenance[index].BlockID, false);
+      existingObject = ObjectUtil.GetObjectPtr(objectsForLinkMaintenance[index].BlockID, false);
 
       const linkMode = maintainLinksFlag ? 2 : false;
 
@@ -1501,7 +1501,7 @@ class ToolActUtil {
     groupObject.ShapesInGroup = [];
 
     // Delete the group object
-    DataUtil.DeleteObjects([groupId], false);
+    ObjectUtil.DeleteObjects([groupId], false);
 
     // Handle comment ungrouping if needed
     if (commentIds.length) {
@@ -1663,7 +1663,7 @@ class ToolActUtil {
     // If there was any actual offset, update links and mark as dirty
     if (offsetX || offsetY) {
       OptCMUtil.SetLinkFlag(shapeId, DSConstant.LinkFlags.Move);
-      DataUtil.AddToDirtyList(shapeId, true);
+      ObjectUtil.AddToDirtyList(shapeId, true);
     }
 
     T3Util.Log("O.Opt OffsetShape - Output: Shape offset applied", shapeBounds);

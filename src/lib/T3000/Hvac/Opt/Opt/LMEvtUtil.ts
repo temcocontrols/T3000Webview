@@ -15,7 +15,7 @@ import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import KeyboardConstant from "../Keyboard/KeyboardConstant";
 import WallOpt from '../Wall/WallOpt';
@@ -118,7 +118,7 @@ class LMEvtUtil {
     T3Util.Log("O.Opt LMStampPreTrack - Input: No parameters");
 
     // Get the session data (not directly used in this function)
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Initialize link parameters
     T3Gv.opt.linkParams = new LinkParameters();
@@ -240,7 +240,7 @@ class LMEvtUtil {
     T3Util.Log("O.Opt LMShapeIconClick - Input:", { event, objectId, iconType, userData });
 
     // Get the object corresponding to the icon
-    let drawingObject = DataUtil.GetObjectPtr(objectId, false);
+    let drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (drawingObject == null) {
       T3Util.Log("O.Opt LMShapeIconClick - Output: false (Object not found)");
       return false;
@@ -370,7 +370,7 @@ class LMEvtUtil {
     }
 
     // Get the object being dragged
-    targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     if (targetObject == null) {
       T3Util.Log("O.Opt LMMoveDuringTrack - Output: Target object not found");
       return position;
@@ -393,7 +393,7 @@ class LMEvtUtil {
         // Delete objects that were healed
         if (healedLineId >= 0) {
           objectsToDelete.push(healedLineId);
-          DataUtil.DeleteObjects(objectsToDelete, false);
+          ObjectUtil.DeleteObjects(objectsToDelete, false);
         }
 
         // Update dirty list to redraw correctly
@@ -401,7 +401,7 @@ class LMEvtUtil {
         if (indexInDirtyList >= 0) {
           T3Gv.opt.dirtyList.splice(indexInDirtyList, 1);
           SvgUtil.RenderDirtySVGObjects();
-          DataUtil.AddToDirtyList(T3Gv.opt.dragTargetId);
+          ObjectUtil.AddToDirtyList(T3Gv.opt.dragTargetId);
         }
 
         // Regenerate the move list
@@ -513,8 +513,8 @@ class LMEvtUtil {
         // Check if we need to duplicate objects (Ctrl+drag)
         if (DrawUtil.DragDuplicate(event)) {
           // Get selection list and session data
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
-          const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+          const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
+          const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
           // Store current selection for duplication
           selectedList.length = 0;
@@ -523,7 +523,7 @@ class LMEvtUtil {
           }
 
           // Get target object information
-          const targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+          const targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
           let targetObjectBaseClass = -1;
           let targetObjectFrame = null;
 
@@ -551,7 +551,7 @@ class LMEvtUtil {
 
           // Rebuild lists with duplicated objects
           for (let i = duplicatedObjects.length - 1; i >= 0; i--) {
-            const duplicatedObject = DataUtil.GetObjectPtr(duplicatedObjects[i], false);
+            const duplicatedObject = ObjectUtil.GetObjectPtr(duplicatedObjects[i], false);
             if (duplicatedObject) {
               T3Gv.opt.moveList.push(duplicatedObjects[i]);
               T3Gv.opt.linkParams.lpCircList.push(duplicatedObjects[i]);
@@ -579,7 +579,7 @@ class LMEvtUtil {
         const objectCount = objectsToMove.length;
         for (let i = 0; i < objectCount; i++) {
           const objectId = objectsToMove[i];
-          const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+          const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
 
           if (drawingObject) {
             const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
@@ -647,7 +647,7 @@ class LMEvtUtil {
     )) {
       // Handle dropping over custom library
       if (DrawUtil.CheckDragIsOverCustomLibrary(event)) {
-        const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+        const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
         // Add moved objects to selection if not already there
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
@@ -659,7 +659,7 @@ class LMEvtUtil {
 
         // Add all moved objects to dirty list for rendering
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
-          DataUtil.AddToDirtyList(T3Gv.opt.moveList[i]);
+          ObjectUtil.AddToDirtyList(T3Gv.opt.moveList[i]);
         }
 
         SvgUtil.RenderDirtySVGObjects();
@@ -746,7 +746,7 @@ class LMEvtUtil {
         drawingObject.Dimensions & NvConstant.DimensionFlags.Select ||
         moveData ||
         drawingObject.Dimensions & NvConstant.DimensionFlags.Area) {
-        DataUtil.AddToDirtyList(objectId);
+        ObjectUtil.AddToDirtyList(objectId);
       }
     }
 
@@ -756,7 +756,7 @@ class LMEvtUtil {
     // Handle duplicate operation tracking
     if (!moveData && T3Gv.opt.lastOpDuplicate) {
       waslastOpDuplicate = true;
-      const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
       sessionData.dupdisp.x += T3Gv.opt.dragDeltaX;
       sessionData.dupdisp.y += T3Gv.opt.dragDeltaY;
     }
@@ -821,7 +821,7 @@ class LMEvtUtil {
     // Process the completed move if requested
     if (completeOperation) {
       // Get the target object that was dragged
-      let targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId);
+      let targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId);
 
       // Special handling for timeline events
       if (targetObject.objecttype === NvConstant.FNObjectTypes.NgEvent ||
@@ -951,7 +951,7 @@ class LMEvtUtil {
 
     // Get object ID and verify it's a valid drawing object
     const objectId = svgElement.GetID();
-    const drawingObjectRef = DataUtil.GetObjectPtr(objectId, false);
+    const drawingObjectRef = ObjectUtil.GetObjectPtr(objectId, false);
     if (!(drawingObjectRef && drawingObjectRef instanceof Instance.Shape.BaseDrawObject)) {
       T3Util.Log("O.Opt LMSetupMove - Output: false (Not a valid drawing object)");
       return false;
@@ -1140,7 +1140,7 @@ class LMEvtUtil {
     let filteredObjects = [];
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
 
       if (currentObject &&
         !(currentObject instanceof Instance.Shape.Connector) &&
@@ -1152,7 +1152,7 @@ class LMEvtUtil {
     // Filter objects: second pass - handle connector objects
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
 
       if (currentObject instanceof Instance.Shape.Connector) {
         // Use complex connector logic to determine if it should be included
@@ -1160,7 +1160,7 @@ class LMEvtUtil {
           filteredObjects.push(currentId);
         } else if (currentObject.hooks.length) {
           const hookId = currentObject.hooks[0].objid;
-          const hookObject = DataUtil.GetObjectPtr(hookId);
+          const hookObject = ObjectUtil.GetObjectPtr(hookId);
 
           if (hookObject instanceof Instance.Shape.Connector) {
             if (!(currentObject.flags & NvConstant.ObjFlags.NotVisible)) {
@@ -1188,7 +1188,7 @@ class LMEvtUtil {
     // Create bounding box list for all objects being moved
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
       const objectFrame = currentObject.GetSVGFrame();
 
       T3Gv.opt.dragBBoxList.push(objectFrame);
@@ -1360,7 +1360,7 @@ class LMEvtUtil {
     if (activeEdit && activeEdit.IsActive()) {
       // Handle active text editor cases
       if (!T3Gv.opt.bInNoteEdit) {
-        const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+        const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
         if (textEditSession.theActiveTextEditObjectID !== -1) {
           switch (keyCode) {
@@ -1390,7 +1390,7 @@ class LMEvtUtil {
       const targetId = SelectUtil.GetTargetSelect();
 
       if (targetId !== -1) {
-        const targetObject = DataUtil.GetObjectPtr(targetId, false);
+        const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
         if (targetObject && targetObject.AllowTextEdit()) {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1433,7 +1433,7 @@ class LMEvtUtil {
     if (activeEdit && activeEdit.IsActive()) {
       // Handle active text editor cases
       if (!T3Gv.opt.bInNoteEdit) {
-        const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+        const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
         if (textEditSession.theActiveTextEditObjectID !== -1) {
           TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Char);
@@ -1450,7 +1450,7 @@ class LMEvtUtil {
       const targetId = SelectUtil.GetTargetSelect();
 
       if (targetId !== -1) {
-        const targetObject = DataUtil.GetObjectPtr(targetId, false);
+        const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
         if (targetObject && targetObject.AllowTextEdit()) {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1491,7 +1491,7 @@ class LMEvtUtil {
       const elementId = targetElement.GetID();
       const elementUserData = targetElement.GetUserData();
       const objectId = svgElement.GetID();
-      const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+      const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Validate that we have a drawing object
       if (!(drawingObject && drawingObject instanceof Instance.Shape.BaseDrawObject)) {
@@ -1520,7 +1520,7 @@ class LMEvtUtil {
     T3Util.Log("O.Opt LMMovePreTrack - Input:", { objectsToMove, event });
 
     // Get the session data
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Check for alt key press
     const isAltKeyPressed = event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.altKey;
@@ -1531,7 +1531,7 @@ class LMEvtUtil {
 
     // Disable auto-insert if multiple objects are selected or alt key is pressed
     if (T3Gv.opt.linkParams.AutoInsert) {
-      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       if (selectedObjects.length > 1) {
         T3Gv.opt.linkParams.AutoInsert = false;
       }
@@ -1542,7 +1542,7 @@ class LMEvtUtil {
     }
 
     // Get the target object being dragged
-    const drawingObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    const drawingObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     if (drawingObject) {
       // Store original object state for reference
       T3Gv.opt.ob = Utils1.DeepCopy(drawingObject);
@@ -1564,7 +1564,7 @@ class LMEvtUtil {
       }
 
       // Get links and build the circular list
-      const links = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+      const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
       T3Gv.opt.linkParams.lpCircList = HookUtil.GetHookList(
         links,
         T3Gv.opt.linkParams.lpCircList,
@@ -1605,7 +1605,7 @@ class LMEvtUtil {
 
         if (snapTargetId >= 0) {
           // Get snap target rectangle
-          const targetRect = DataUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
+          const targetRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
           const targetRectCopy = $.extend(true, {}, targetRect);
 
           // Initialize dynamic guides for snapping
@@ -1641,10 +1641,10 @@ class LMEvtUtil {
   static GetEventShapeParent(objectId) {
     T3Util.Log('O.Opt GetEventShapeParent - Input:', objectId);
 
-    const object = DataUtil.GetObjectPtr(objectId);
+    const object = ObjectUtil.GetObjectPtr(objectId);
 
     if (object && object.objecttype === NvConstant.FNObjectTypes.NgEventLabel) {
-      const associatedObject = DataUtil.GetObjectPtr(object.associd);
+      const associatedObject = ObjectUtil.GetObjectPtr(object.associd);
 
       if (associatedObject && associatedObject.objecttype === NvConstant.FNObjectTypes.NgEvent) {
         T3Util.Log('O.Opt GetEventShapeParent - Output:', object.associd);

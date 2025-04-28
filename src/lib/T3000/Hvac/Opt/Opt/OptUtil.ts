@@ -29,7 +29,7 @@ import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import PolygonConstant from "../Polygon/PolygonConstant";
 import PolygonUtil from "../Polygon/PolygonUtil";
@@ -802,7 +802,7 @@ class OptUtil {
     // #endregion
 
     // Initialize the system
-    DataUtil.PreserveUndoState(true);
+    ObjectUtil.PreserveUndoState(true);
     UIUtil.InitSVGDocument();
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);
@@ -1082,7 +1082,7 @@ class OptUtil {
 
     let objectCount = objects.length;
     for (let i = 0; i < objectCount; i++) {
-      let object = DataUtil.GetObjectPtr(objects[i], false);
+      let object = ObjectUtil.GetObjectPtr(objects[i], false);
       if (object && object.ShowOrHideDimensions) {
         object.ShowOrHideDimensions(isVisible);
       }
@@ -1118,7 +1118,7 @@ class OptUtil {
   DeactivateAllTextEdit(skipShapeClose: boolean, closeOption?: any) {
     T3Util.Log('O.Opt DeactivateAllTextEdit - Input:', { skipShapeClose, closeOption });
 
-    const teData = DataUtil.GetObjectPtr(this.teDataBlockId, false);
+    const teData = ObjectUtil.GetObjectPtr(this.teDataBlockId, false);
     if (teData.theActiveTextEditObjectID !== -1) {
       TextUtil.DeactivateTextEdit(skipShapeClose, closeOption);
     } else {
@@ -1134,7 +1134,7 @@ class OptUtil {
   CloseShapeEdit(providedOutlineId, useAlternate?, alternateOutlineId?) {
     T3Util.Log("O.Opt CloseShapeEdit - Input:", { providedOutlineId, useAlternate, alternateOutlineId });
 
-    let sessionData = DataUtil.GetObjectPtr(this.teDataBlockId, false);
+    let sessionData = ObjectUtil.GetObjectPtr(this.teDataBlockId, false);
     let activeOutlineId = sessionData.theActiveOutlineObjectID;
 
     // If using the alternate outline id then override activeOutlineId.
@@ -1152,14 +1152,14 @@ class OptUtil {
         T3Util.Log("O.Opt CloseShapeEdit - Output: Provided outline id equals active outline id, no action taken");
         return;
       }
-      let shapeObject = DataUtil.GetObjectPtr(activeOutlineId, false);
+      let shapeObject = ObjectUtil.GetObjectPtr(activeOutlineId, false);
       if (shapeObject) {
         if (shapeObject.objecttype === NvConstant.FNObjectTypes.FlWall) {
           T3Util.Log("O.Opt CloseShapeEdit - Output: Active outline is a wall opt wall, skipping close");
           return;
         }
 
-        shapeObject = DataUtil.GetObjectPtr(activeOutlineId, false);
+        shapeObject = ObjectUtil.GetObjectPtr(activeOutlineId, false);
         if (
           shapeObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Line &&
           shapeObject.LineType === OptConstant.LineType.POLYLINE &&
@@ -1171,7 +1171,7 @@ class OptUtil {
       }
       if (!useAlternate) {
         // Reset the active outline id.
-        sessionData = DataUtil.GetObjectPtr(this.teDataBlockId, true);
+        sessionData = ObjectUtil.GetObjectPtr(this.teDataBlockId, true);
         sessionData.theActiveOutlineObjectID = -1;
       }
       DrawUtil.CompleteOperation();
@@ -1277,7 +1277,7 @@ class OptUtil {
 
       // Render the changes if not skipped
       if (!skipRendering) {
-        DataUtil.AddToDirtyList(polyLineId);
+        ObjectUtil.AddToDirtyList(polyLineId);
         SvgUtil.RenderDirtySVGObjects();
       }
 
@@ -1339,8 +1339,8 @@ class OptUtil {
       UIUtil.ResizeSVGDocument();
       SvgUtil.RenderAllSVGObjects();
 
-      const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
-      const selectedList = DataUtil.GetObjectPtr(this.selectObjsBlockId, false);
+      const sessionData = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
+      const selectedList = ObjectUtil.GetObjectPtr(this.selectObjsBlockId, false);
       SelectUtil.UpdateSelectionAttributes(selectedList);
 
       T3Util.Log('O.Opt ExceptionCleanup - Output: done');
@@ -1360,7 +1360,7 @@ class OptUtil {
 
     for (let i = 0; i < objects.length; i++) {
       const objectId = objects[i];
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (object && !(object.flags & notVisibleFlag)) {
         visibleObjects.push(objectId);
@@ -1405,7 +1405,7 @@ class OptUtil {
    */
   GetTargetNode(objectId) {
     // Get the object from the object store
-    const object = DataUtil.GetObjectPtr(objectId, false);
+    const object = ObjectUtil.GetObjectPtr(objectId, false);
 
     // If the object exists and has hooks, recursively follow the first hook
     if (object && object.hooks.length) {
@@ -1456,7 +1456,7 @@ class OptUtil {
     ];
     let moveBounds = { x: 0, y: 0, width: 0, height: 0 };
     const constantData = OptConstant;
-    let links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    let links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
     let isLinksModified = false;
 
     // Early return if no links exist
@@ -1470,7 +1470,7 @@ class OptUtil {
     HookUtil.FixAnyCircularHooks();
 
     // Get session data and save original snap setting
-    const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
     const originalSnapEnabled = T3Gv.docUtil.docConfig.enableSnap;
 
     // Disable snapping during link updates
@@ -1482,7 +1482,7 @@ class OptUtil {
       if (links[linkIndex].flags & DSConstant.LinkFlags.DeleteTarget) {
         // Ensure we're working with a modifiable copy of links
         if (!isLinksModified) {
-          links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+          links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
           isLinksModified = true;
         }
 
@@ -1493,10 +1493,10 @@ class OptUtil {
       else if (
         links[linkIndex].flags & DSConstant.LinkFlags.DeleteLink ||
         links[linkIndex].flagss & DSConstant.LinkFlags.Break ||
-        (hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
+        (hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
       ) {
         if (!isLinksModified) {
-          links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+          links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
           isLinksModified = true;
         }
 
@@ -1531,7 +1531,7 @@ class OptUtil {
         linkHasMoveFlag = links[linkIndex].flags & DSConstant.LinkFlags.Move;
 
         if (linkHasMoveFlag) {
-          targetObject = DataUtil.GetObjectPtr(links[linkIndex].targetid, false);
+          targetObject = ObjectUtil.GetObjectPtr(links[linkIndex].targetid, false);
 
           // If tree top is found, mark it for movement
           if (/*OptAhUtil.FindTreeTop(targetObject, linkHasMoveFlag, treeTopInfo)*/ 1 &&
@@ -1557,11 +1557,11 @@ class OptUtil {
         if (links[linkIndex].flags & DSConstant.LinkFlags.Move) {
           // Ensure we're working with a modifiable copy of links
           if (!isLinksModified) {
-            links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+            links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
             isLinksModified = true;
           }
 
-          hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, true);
+          hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, true);
 
           // If hook object is missing, mark link for deletion
           if (hookObject == null) {
@@ -1585,7 +1585,7 @@ class OptUtil {
             // Set hook object to not be visible when linked
             hookObject.LinkNotVisible();
 
-            hookTargetObject = DataUtil.GetObjectPtr(links[linkIndex].targetid, false);
+            hookTargetObject = ObjectUtil.GetObjectPtr(links[linkIndex].targetid, false);
 
             // Special handling for multiplicity objects
             if (hookObject.objecttype === NvConstant.FNObjectTypes.Multiplicity) {
@@ -1704,7 +1704,7 @@ class OptUtil {
                     needsBoundsCheck = true;
                     targetNodeId = this.GetTargetNode(links[linkIndex].hookid);
 
-                    targetObject = DataUtil.GetObjectPtr(targetNodeId, false);
+                    targetObject = ObjectUtil.GetObjectPtr(targetNodeId, false);
                     if (targetObject) {
                       targetObject.flags = Utils2.SetFlag(
                         targetObject.flags,
@@ -1749,7 +1749,7 @@ class OptUtil {
         else if (
           links[linkIndex].flags & DSConstant.LinkFlags.DeleteLink ||
           links[linkIndex].flagss & DSConstant.LinkFlags.Break ||
-          (hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
+          (hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
         ) {
           HookUtil.DeleteLink(
             links,
@@ -1772,7 +1772,7 @@ class OptUtil {
       linkCount = zList.length;
 
       for (linkIndex = 0; linkIndex < linkCount; linkIndex++) {
-        currentObject = DataUtil.GetObjectPtr(zList[linkIndex], false);
+        currentObject = ObjectUtil.GetObjectPtr(zList[linkIndex], false);
 
         if (currentObject &&
           currentObject.flags & NvConstant.ObjFlags.Bounds) {
@@ -1848,7 +1848,7 @@ class OptUtil {
     let heightPadding = 0;
 
     // Get layers manager to check layer settings
-    const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
 
     // Initialize empty enclosing rectangle
     let enclosingRect = {
@@ -1884,11 +1884,11 @@ class OptUtil {
           heightPadding = 25;
 
           const objectsInEdgeLayer = objectsFromEdgeLayers.length;
-          const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+          const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
           // Check for annotations near the bottom of the document
           for (let i = 0; i < objectsInEdgeLayer; i++) {
-            objectData = DataUtil.GetObjectPtr(objectsFromEdgeLayers[i], false);
+            objectData = ObjectUtil.GetObjectPtr(objectsFromEdgeLayers[i], false);
             if (objectData &&
               objectData.objecttype === NvConstant.FNObjectTypes.Annotation &&
               objectData.Frame.y + objectData.Frame.height >= sessionData.dim.y - OptConstant.Common.AnnoHotDist) {
@@ -1969,7 +1969,7 @@ class OptUtil {
     if (customRect) {
       objectRect = customRect;
     } else {
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
       if (object == null) {
         T3Util.Log("O.Opt ScrollObjectIntoView - Output: Object not found");
         return;
@@ -2099,13 +2099,13 @@ class OptUtil {
       (
         // Get connector object if not provided
         (connectorObject === null &&
-          (connectorObject = DataUtil.GetObjectPtr(objectData.hooks[0].objid, false))),
+          (connectorObject = ObjectUtil.GetObjectPtr(objectData.hooks[0].objid, false))),
 
         // Check if resultContainer exists and if connector object has valid hooks and parent
         resultContainer &&
         connectorObject &&
         connectorObject.hooks.length &&
-        (parentConnector = DataUtil.GetObjectPtr(connectorObject.hooks[0].objid, false)) &&
+        (parentConnector = ObjectUtil.GetObjectPtr(connectorObject.hooks[0].objid, false)) &&
         parentConnector.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
       )
     );
@@ -2137,7 +2137,7 @@ class OptUtil {
 
     // Case 1: Check if object has hooks connecting to a genogram connector
     if (objectData && objectData.hooks.length) {
-      connectedObject = DataUtil.GetObjectPtr(objectData.hooks[0].objid, false);
+      connectedObject = ObjectUtil.GetObjectPtr(objectData.hooks[0].objid, false);
 
       if (connectedObject &&
         connectedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
@@ -2152,7 +2152,7 @@ class OptUtil {
     }
     // Case 2: Check if object has a child array with a genogram connector
     else if ((childArrayID = this.FindChildArray(objectData.BlockID, -1)) >= 0 &&
-      (connectedObject = DataUtil.GetObjectPtr(childArrayID, false)).IsGenoConnector()) {
+      (connectedObject = ObjectUtil.GetObjectPtr(childArrayID, false)).IsGenoConnector()) {
       resultContainer.id = childArrayID;
       T3Util.Log("O.Opt IsGenogramPartner - Output: true (child genogram connector found)");
       return true;
@@ -2166,7 +2166,7 @@ class OptUtil {
     T3Util.Log("O.Opt FindChildArray - Input:", { objectId, excludeConnectorId });
 
     // Get the links block
-    const links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
 
     // Find the starting link index for this object
     const linkIndex = OptCMUtil.FindLink(links, objectId, true);
@@ -2183,7 +2183,7 @@ class OptUtil {
 
         // Check if this is not the excluded connector and is a connector
         if (hookId !== excludeConnectorId) {
-          const hookObject = DataUtil.GetObjectPtr(hookId, false);
+          const hookObject = ObjectUtil.GetObjectPtr(hookId, false);
 
           if (hookObject &&
             hookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
@@ -2305,7 +2305,7 @@ class OptUtil {
     const usableHeight = originalDimensions.y - 2 * edgeAnnotationDistance;
 
     // Get layers manager from the object store
-    const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numberOfLayers = layersManager.nlayers;
 
@@ -2332,7 +2332,7 @@ class OptUtil {
           }
 
           // Get the object and check if it needs edge updates
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
           if (currentObject) {
             // Determine which edges the object needs
             needsLeftEdge = currentObject.Frame.x < leftEdgeOffset;
@@ -2373,7 +2373,7 @@ class OptUtil {
 
     // Handle the specific object if provided
     if (objectId) {
-      object = DataUtil.GetObjectPtr(objectId, false);
+      object = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Set flags if it's a closed polyline
       if (object &&
@@ -2391,13 +2391,13 @@ class OptUtil {
     // Process objects in the move list
     if (this.moveList && this.moveList.length) {
       for (let index = 0; index < this.moveList.length; index++) {
-        moveObject = DataUtil.GetObjectPtr(this.moveList[index], true);
+        moveObject = ObjectUtil.GetObjectPtr(this.moveList[index], true);
 
         // Check if the object has hooks
         if (moveObject && moveObject.hooks.length > 0) {
           // Process each hook
           for (let hookIndex = 0; hookIndex < moveObject.hooks.length; hookIndex++) {
-            const hookedObject = DataUtil.GetObjectPtr(moveObject.hooks[hookIndex].objid, false);
+            const hookedObject = ObjectUtil.GetObjectPtr(moveObject.hooks[hookIndex].objid, false);
 
             // Set flags if the hooked object is a filled closed polyline
             if (hookedObject &&
@@ -2569,7 +2569,7 @@ class OptUtil {
     let linkIndex, hookId, hookObject;
 
     // Use provided links list or get the default one
-    const links = linksList || DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = linksList || ObjectUtil.GetObjectPtr(this.linksBlockId, false);
 
     // Use provided base class or default to connector
     baseClass = baseClass || OptConstant.DrawObjectBaseClass.Connector;
@@ -2583,7 +2583,7 @@ class OptUtil {
         // Check if this link is after the last found index and has the correct base class
         if (linkIndex > resultInfo.lindex &&
           (hookId = links[linkIndex].hookid,
-            (hookObject = DataUtil.GetObjectPtr(hookId, false)) &&
+            (hookObject = ObjectUtil.GetObjectPtr(hookId, false)) &&
             hookObject.DrawingObjectBaseClass === baseClass)) {
 
           // Update result information
@@ -2611,7 +2611,7 @@ class OptUtil {
     T3Util.Log("O.Opt SetObjectFrame - Input:", { objectId, newFrame });
 
     // Get a preserved copy of the object for modification
-    const targetObject = DataUtil.GetObjectPtr(objectId, true);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, true);
 
     if (targetObject == null) {
       T3Util.Log("O.Opt SetObjectFrame - Output: Failed to get object (1)");
@@ -3735,7 +3735,7 @@ class OptUtil {
     }
 
     // Get the source object
-    sourceObject = DataUtil.GetObjectPtr(objectId, false);
+    sourceObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (sourceObject == null) {
       T3Util.Log("O.Opt GetTargetList - Output: Source object not found, returning original list");
       return targetList;
@@ -3755,7 +3755,7 @@ class OptUtil {
 
         // Update bounding rectangle if provided
         if (boundingRect) {
-          targetObject = DataUtil.GetObjectPtr(hookObjectId, false);
+          targetObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
 
           // Only include visible objects in bounding rectangle calculation
           if (!(targetObject.flags & NvConstant.ObjFlags.NotVisible)) {
@@ -4009,7 +4009,7 @@ class OptUtil {
     let helperValue: number = -1;
 
     for (currentIndex = 0; currentIndex < objectCount; currentIndex++) {
-      currentObj = DataUtil.GetObjectPtr(objectIds[currentIndex], false);
+      currentObj = ObjectUtil.GetObjectPtr(objectIds[currentIndex], false);
       if (currentObj != null) {
         // Save the current object's id
         tempId = objectIds[currentIndex];
@@ -4032,7 +4032,7 @@ class OptUtil {
             OptAhUtil.GetConnectorTree(objectIds[currentIndex], objectIds);
             objectCount = objectIds.length;
             if (isForced && currentObj.hooks.length) {
-              tempObj = DataUtil.GetObjectPtr(currentObj.hooks[0].objid, false);
+              tempObj = ObjectUtil.GetObjectPtr(currentObj.hooks[0].objid, false);
               if (tempObj && tempObj.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape && objectIds.indexOf(currentObj.hooks[0].objid) < 0) {
                 objectIds.push(currentObj.hooks[0].objid);
               }
@@ -4044,7 +4044,7 @@ class OptUtil {
           parentConnector = OptAhUtil.GetParentConnector(objectIds[currentIndex], null);
           if (parentConnector >= 0) {
             hasContainerConnector = true;
-            tempObj = DataUtil.GetObjectPtr(parentConnector, false);
+            tempObj = ObjectUtil.GetObjectPtr(parentConnector, false);
             if (tempObj) {
               let connectorEndInfo: any = {};
               if (this.IsConnectorEndShape(currentObj, tempObj, connectorEndInfo)) {
@@ -4075,7 +4075,7 @@ class OptUtil {
                 if (tempObj.IsFlowChartConnector && tempObj.IsFlowChartConnector()) {
                   childIds = [];
                   let childArray = T3Gv.opt.FindChildArray(objectIds[currentIndex], -1);
-                  let childObj = DataUtil.GetObjectPtr(childArray, false);
+                  let childObj = ObjectUtil.GetObjectPtr(childArray, false);
                   if (childObj == null) {
                     childObj = tempObj;
                   }
@@ -4122,7 +4122,7 @@ class OptUtil {
             for (let j = 0; j < repeatCount; j++) {
               let childId = T3Gv.opt.FindChildArray(objectIds[currentIndex], childSearchIndex);
               if (childId >= 0) {
-                let childObj = DataUtil.GetObjectPtr(childId, true);
+                let childObj = ObjectUtil.GetObjectPtr(childId, true);
                 if (childObj && childObj.arraylist && (childObj.arraylist.hook.length <= connectorDefines.SEDA_NSkip || (childObj.flags & NvConstant.ObjFlags.NotVisible))) {
                   flagSkip = false;
                 }
@@ -4133,11 +4133,11 @@ class OptUtil {
                   for (let hookIndex = connectorDefines.SEDA_NSkip; hookIndex < hookCount; hookIndex++) {
                     let hookId = childObj.arraylist.hook[hookIndex].id;
                     if (objectIds.indexOf(hookId) < 0) {
-                      if (DataUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
+                      if (ObjectUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
                         flagSkip = true;
                         break;
                       }
-                      if (DataUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
+                      if (ObjectUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
                         alternateId = hookId;
                       }
                     }
@@ -4163,7 +4163,7 @@ class OptUtil {
             let allChildConnectors = HookUtil.FindAllChildConnectors(tempId);
             for (let idx = 0; idx < childConnectorCount; idx++) {
               hasContainerConnector = true;
-              let childConnectorObj = DataUtil.GetObjectPtr(allChildConnectors[idx], false);
+              let childConnectorObj = ObjectUtil.GetObjectPtr(allChildConnectors[idx], false);
               if (!(childConnectorObj && childConnectorObj.IsFlowChartConnector && childConnectorObj.IsFlowChartConnector())) {
                 OptAhUtil.GetConnectorTree(allChildConnectors[idx], objectIds);
               }
@@ -4185,7 +4185,7 @@ class OptUtil {
             }
             if (currentObj.associd >= 0) {
               let assocFlag: boolean = false;
-              let assocObj = DataUtil.GetObjectPtr(currentObj.associd, false);
+              let assocObj = ObjectUtil.GetObjectPtr(currentObj.associd, false);
               if (assocObj) {
                 if (assocObj.hooks.length && assocObj.hooks[0].hookpt === OptConstant.HookPts.KATD) {
                   assocFlag = true;
@@ -4274,7 +4274,7 @@ class OptUtil {
     let directionTypes = [];
 
     // Get links data
-    const links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
     let firstConnectedObjectId = -1;
     let secondConnectedObjectId = -1;
     let foundMatchingDirection = false;
@@ -4405,7 +4405,7 @@ class OptUtil {
 
     // Process each connected object
     for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
-      currentObject = DataUtil.GetObjectPtr(connectedObjects[objectIndex], false);
+      currentObject = ObjectUtil.GetObjectPtr(connectedObjects[objectIndex], false);
 
       // Check if object allows healing
       if (currentObject.AllowHeal()) {
@@ -4489,16 +4489,16 @@ class OptUtil {
     // If we found matching directions, process the healing
     if (foundMatchingDirection) {
       // Get writable copies of both objects
-      currentObject = DataUtil.GetObjectPtr(lineObjectIds[0], true);
-      secondObject = DataUtil.GetObjectPtr(lineObjectIds[1], true);
+      currentObject = ObjectUtil.GetObjectPtr(lineObjectIds[0], true);
+      secondObject = ObjectUtil.GetObjectPtr(lineObjectIds[1], true);
 
       // If first object has one hook and second has two, swap them
       if (currentObject.hooks.length === 1 && secondObject.hooks.length === 2) {
         let tempId = lineObjectIds[0];
         lineObjectIds[0] = lineObjectIds[1];
         lineObjectIds[1] = tempId;
-        currentObject = DataUtil.GetObjectPtr(lineObjectIds[0], true);
-        secondObject = DataUtil.GetObjectPtr(lineObjectIds[1], true);
+        currentObject = ObjectUtil.GetObjectPtr(lineObjectIds[0], true);
+        secondObject = ObjectUtil.GetObjectPtr(lineObjectIds[1], true);
       }
 
       // Get bounding rectangles for both objects
@@ -4652,7 +4652,7 @@ class OptUtil {
         // Clear hops and update
         currentObject.hoplist.hops = [];
         currentObject.hoplist.nhops = 0;
-        DataUtil.AddToDirtyList(lineObjectIds[0]);
+        ObjectUtil.AddToDirtyList(lineObjectIds[0]);
 
         // Update hook connections
         HookUtil.UpdateHook(
@@ -4788,7 +4788,7 @@ class OptUtil {
           currentObject.hooks[firstHookIndex].cellid
         );
 
-        DataUtil.AddToDirtyList(lineObjectIds[0]);
+        ObjectUtil.AddToDirtyList(lineObjectIds[0]);
         return lineObjectIds[1];
       }
 
@@ -4929,7 +4929,7 @@ class OptUtil {
         secondObject.hooks[secondHookIndex].cellid
       );
 
-      DataUtil.AddToDirtyList(lineObjectIds[1]);
+      ObjectUtil.AddToDirtyList(lineObjectIds[1]);
       return lineObjectIds[0];
     }
 
@@ -5051,7 +5051,7 @@ class OptUtil {
 
     for (let index = 0; index < totalIds; index++) {
       const objectId = listOfObjectIds[index];
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Process only if skipContainerParents is not enabled
       // or if the current object does not have a container parent.
@@ -5065,7 +5065,7 @@ class OptUtil {
         }
 
         // If the object has an association (associd) and exists, add its associd.
-        if (currentObject && currentObject.associd >= 0 && DataUtil.GetObjectPtr(currentObject.associd, false)) {
+        if (currentObject && currentObject.associd >= 0 && ObjectUtil.GetObjectPtr(currentObject.associd, false)) {
           if (associatedIds.indexOf(currentObject.associd) < 0) {
             associatedIds.push(currentObject.associd);
           }
@@ -5097,9 +5097,9 @@ class OptUtil {
 
     const allLinkedObjects = LayerUtil.ZList();
     for (let outerIndex = 0; outerIndex < linkedObjectIds.length; outerIndex++) {
-      const currentObject = DataUtil.GetObjectPtr(linkedObjectIds[outerIndex], false);
+      const currentObject = ObjectUtil.GetObjectPtr(linkedObjectIds[outerIndex], false);
       for (let innerIndex = 0; innerIndex < allLinkedObjects.length; innerIndex++) {
-        const comparedObject = DataUtil.GetObjectPtr(allLinkedObjects[innerIndex], false);
+        const comparedObject = ObjectUtil.GetObjectPtr(allLinkedObjects[innerIndex], false);
         if (comparedObject.associd === currentObject.BlockID && linkedObjectIds.indexOf(comparedObject.BlockID) === -1) {
           T3Util.Log("O.Opt IsLinkedOutside - Output:", true);
           return true;
@@ -5121,14 +5121,14 @@ class OptUtil {
   IsGroupNonDelete(): boolean {
     T3Util.Log("O.Opt IsGroupNonDelete - Input: no parameters");
 
-    const selectedObjects = DataUtil.GetObjectPtr(
+    const selectedObjects = ObjectUtil.GetObjectPtr(
       T3Gv.opt.selectObjsBlockId,
       false
     );
     let currentObject = null;
 
     for (let index = 0; index < selectedObjects.length; index++) {
-      currentObject = DataUtil.GetObjectPtr(selectedObjects[index], false);
+      currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], false);
 
       if (currentObject.extraflags & OptConstant.ExtraFlags.NoDelete) {
         T3Util.Log("O.Opt IsGroupNonDelete - Output: true");
@@ -5155,7 +5155,7 @@ class OptUtil {
 
     for (let i = 0; i < objectIdList.length; i++) {
       const objectId = objectIdList[i];
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (currentObject != null) {
         const currentRect = useFrame
           ? currentObject.Frame
@@ -5193,7 +5193,7 @@ class OptUtil {
         T3Util.Log("O.Opt FindParentGroup - Output:", currentGroup);
         return currentGroup;
       }
-      child = DataUtil.GetObjectPtr(groupArray[index], false);
+      child = ObjectUtil.GetObjectPtr(groupArray[index], false);
       if (child instanceof Instance.Shape.GroupSymbol && child.ShapesInGroup) {
         const parentGroup = T3Gv.opt.FindParentGroup(targetId, child);
         if (parentGroup) {
@@ -5214,7 +5214,7 @@ class OptUtil {
      */
   RebuildLinks(linkList, objectId) {
     T3Util.Log("O.Opt RebuildLinks - Input:", { linkList, objectId });
-    const targetObject = DataUtil.GetObjectPtr(objectId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (targetObject && targetObject.hooks) {
       const hookCount = targetObject.hooks.length;
       for (let hookIndex = 0; hookIndex < hookCount; hookIndex++) {
@@ -5248,7 +5248,7 @@ class OptUtil {
     let objectCount = objectIds.length;
 
     for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-      currentObject = DataUtil.GetObjectPtr(objectIds[objectIndex], false);
+      currentObject = ObjectUtil.GetObjectPtr(objectIds[objectIndex], false);
 
       if (currentObject.ShapeType == OptConstant.ShapeType.GroupSymbol) {
         // For group symbols, recursively process their contained shapes
@@ -5310,7 +5310,7 @@ class OptUtil {
 
     // Process each object
     for (let i = 0; i < objectCount; i++) {
-      currentObject = DataUtil.GetObjectPtr(visibleObjects[i], false);
+      currentObject = ObjectUtil.GetObjectPtr(visibleObjects[i], false);
 
       if (currentObject != null) {
         isTitleBlock = false;
@@ -5359,7 +5359,7 @@ class OptUtil {
   GetAutomationContext(optMng) {
     T3Util.Log("O.Opt GetAutomationContext - Input:", optMng);
 
-    const sessionObject = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
     let automationContext = DSConstant.Contexts.Automation;
 
     if (optMng) {
@@ -5567,7 +5567,7 @@ class OptUtil {
     }
 
     // Get the target object being dragged
-    let targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    let targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     let snapOffset = { x: null, y: null };
     const currentPosition = { x: mouseX, y: mouseY };
 
@@ -5598,7 +5598,7 @@ class OptUtil {
 
       if (snapTargetId >= 0) {
         // Get snap target rectangle
-        objectRect = DataUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
+        objectRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
         adjustedTargetRect = $.extend(true, {}, objectRect);
         adjustedTargetRect.x += T3Gv.opt.dragDeltaX;
         adjustedTargetRect.y += T3Gv.opt.dragDeltaY;
@@ -5700,7 +5700,7 @@ class OptUtil {
     }
 
     // Get session data and check if auto-grow is disabled
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
       // Constrain to document dimensions
@@ -5739,7 +5739,7 @@ class OptUtil {
 
       // Special handling for the target selection
       if (objectsToMove[index] === targetSelectionId) {
-        targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+        targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
         let displayDimensions = {
           x: objectRect.x + T3Gv.opt.dragDeltaX,
@@ -5904,7 +5904,7 @@ class OptUtil {
     };
 
     // Get the layers manager
-    let layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    let layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
 
     if (layersManager) {
       // Find if a background layer already exists
@@ -6033,7 +6033,7 @@ class OptUtil {
         newObjectId = DrawUtil.AddNewObject(rectangleObject, false, true);
 
         // Update object properties
-        const newObject = DataUtil.GetObjectPtr(newObjectId, false);
+        const newObject = ObjectUtil.GetObjectPtr(newObjectId, false);
         if (newObject) {
           newObject.TextFlags = NvConstant.TextFlags.AttachB;
           newObject.ImageHeader = new ImageRecord();
@@ -6041,12 +6041,12 @@ class OptUtil {
         }
 
         // Handle background layer flags
-        const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+        const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
         if (layersManager &&
           layersManager.layers[layersManager.activelayer].layertype === NvConstant.LayerTypes.Background) {
 
           // Get writable copy of layers manager
-          const writableLayersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, true);
+          const writableLayersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, true);
           // Set NoAdd flag on background layer
           writableLayersManager.layers[writableLayersManager.activelayer].flags =
             Utils2.SetFlag(
@@ -6107,7 +6107,7 @@ class OptUtil {
 
           // Check if selected object can have its image replaced
           if (targetObjectId >= 0) {
-            selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+            selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
             // Check if object is of compatible type
             if (excludedObjectTypes?.indexOf(selectedObject.objecttype) < 0 &&
@@ -6130,7 +6130,7 @@ class OptUtil {
 
         // Process based on target object and replace flag
         if (canReplaceImage || messageData) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           // Handle table objects differently
           if (selectedObject.GetTable(false)) {
@@ -6138,7 +6138,7 @@ class OptUtil {
           } else {
 
             // Get writable copy of the object
-            selectedObject = DataUtil.GetObjectPtr(targetObjectId, true);
+            selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, true);
 
             // Set SVG dimensions if needed
             if (isSvgImage) {
@@ -6171,7 +6171,7 @@ class OptUtil {
             );
 
             // Mark object as dirty for rendering
-            DataUtil.AddToDirtyList(targetObjectId);
+            ObjectUtil.AddToDirtyList(targetObjectId);
 
             // Complete the operation
             DrawUtil.CompleteOperation(null);
@@ -6207,7 +6207,7 @@ class OptUtil {
         targetReplaceExisting = true;
 
         if (targetObjectId >= 0) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           // Check if object can receive an image
           if (excludedObjectTypes?.indexOf(selectedObject.objecttype) < 0 &&
@@ -6230,7 +6230,7 @@ class OptUtil {
 
       // Calculate target dimensions based on selected object
       if (targetObjectId >= 0) {
-        selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+        selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
         if (selectedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape &&
           !(selectedObject instanceof Instance.Shape.BaseSymbol) &&
@@ -6241,7 +6241,7 @@ class OptUtil {
 
         // Get dimensions from object or table
         if (shouldReplaceExistingImage) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           targetWidth = selectedObject.Frame.width;
           targetHeight = selectedObject.Frame.height;
@@ -6330,15 +6330,15 @@ class OptUtil {
       const lockFlag = NvConstant.ObjFlags.Lock;
 
       // Determine whether to lock or unlock by checking the specified object
-      if ((currentObject = DataUtil.GetObjectPtr(objectId, false))) {
+      if ((currentObject = ObjectUtil.GetObjectPtr(objectId, false))) {
         shouldLock = (currentObject.flags & lockFlag) === 0;
       }
 
       // Apply lock/unlock to all selected objects
       for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-        currentObject = DataUtil.GetObjectPtr(selectedObjects[objectIndex], true);
+        currentObject = ObjectUtil.GetObjectPtr(selectedObjects[objectIndex], true);
         currentObject.flags = Utils2.SetFlag(currentObject.flags, lockFlag, shouldLock);
-        DataUtil.AddToDirtyList(selectedObjects[objectIndex]);
+        ObjectUtil.AddToDirtyList(selectedObjects[objectIndex]);
       }
 
       // Complete the operation
@@ -6425,7 +6425,7 @@ class OptUtil {
         newObjectId = DrawUtil.AddNewObject(rectangleObject, false, true);
 
         // Set the SVG blob data in the object
-        const newObject = DataUtil.GetObjectPtr(newObjectId, false);
+        const newObject = ObjectUtil.GetObjectPtr(newObjectId, false);
         if (newObject) {
           const imageDir = DSUtil.GetImageDir(imageBlob);
           newObject.SetBlobBytes(imageBytes, imageDir);
@@ -6573,7 +6573,7 @@ class OptUtil {
       hasPolyList = true;
       originalFrame = $.extend(true, {}, shapeObject.Frame);
     } else {
-      shapeObject = DataUtil.GetObjectPtr(objectId, false);
+      shapeObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Initialize polylist if needed
       if (shapeObject.polylist == null) {
@@ -6735,11 +6735,11 @@ class OptUtil {
 
     try {
       // Get the text editing session data
-      const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
       // Handle spellcheck event
       if (eventType === "spellcheck") {
-        currentObject = DataUtil.GetObjectPtr(objectId, false);
+        currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (currentObject) {
           tableObject = currentObject.GetTable(false);
@@ -6760,7 +6760,7 @@ class OptUtil {
       // Exit early if not the active text edit object or invalid spellcheck
       if (sessionData.theActiveTextEditObjectID != objectId || isInvalidSpellCheck) {
         if (eventType === "spellcheck") {
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
           if (currentObject) {
             tableObject = currentObject.GetTable(false);
@@ -6769,7 +6769,7 @@ class OptUtil {
             // Save spellcheck changes if needed
             if (dataId > 0 && editorComponent) {
               runtimeText = editorComponent.GetRuntimeText();
-              objectData = DataUtil.GetObjectPtr(dataId, Utils1.IsStateOpen());
+              objectData = ObjectUtil.GetObjectPtr(dataId, Utils1.IsStateOpen());
 
               if (objectData) {
                 objectData.runtimeText = runtimeText;
@@ -6790,7 +6790,7 @@ class OptUtil {
       switch (eventType) {
         case "dragoutside":
           // Handle drag events outside the text area
-          if ((currentObject = DataUtil.GetObjectPtr(objectId, false)) &&
+          if ((currentObject = ObjectUtil.GetObjectPtr(objectId, false)) &&
             (tableObject = currentObject.GetTable(false)) &&
             tableObject.select >= 0) {
 
@@ -6854,7 +6854,7 @@ class OptUtil {
 
         case "charfilter":
           // Handle character filtering
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
           if (!currentObject) {
             return true;
           }
@@ -6918,7 +6918,7 @@ class OptUtil {
     }
 
     // Get a writable copy of the target object
-    const targetObject = DataUtil.GetObjectPtr(targetObjectId, true);
+    const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, true);
 
     if (targetObject !== null) {
       let numericValue;
@@ -6977,7 +6977,7 @@ class OptUtil {
       OptCMUtil.SetLinkFlag(targetObjectId, DSConstant.LinkFlags.Move);
 
       // Add to dirty list for rendering
-      DataUtil.AddToDirtyList(targetObjectId, true);
+      ObjectUtil.AddToDirtyList(targetObjectId, true);
       DrawUtil.CompleteOperation(null);
 
       // Update displayed coordinates
@@ -7013,7 +7013,7 @@ class OptUtil {
     // Process each selected object
     for (let index = 0; index < objectCount; ++index) {
       // Get a writable copy of the current object
-      const currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
+      const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], true);
 
       // Get dimension value from string and calculate actual length
       dimensionValue = currentObject.GetDimensionValueFromString(widthString, 1);
@@ -7046,7 +7046,7 @@ class OptUtil {
       }
 
       // Add to dirty list for rendering
-      DataUtil.AddToDirtyList(selectedObjects[index]);
+      ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
 
     DrawUtil.CompleteOperation(null);
@@ -7079,7 +7079,7 @@ class OptUtil {
     // Process each selected object
     for (let index = 0; index < objectCount; ++index) {
       // Get a writable copy of the current object
-      const currentObject = DataUtil.GetObjectPtr(selectedObjects[index], true);
+      const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], true);
 
       // Get dimension value from string and calculate actual length
       dimensionValue = currentObject.GetDimensionValueFromString(heightString, 2);
@@ -7112,7 +7112,7 @@ class OptUtil {
       }
 
       // Add to dirty list for rendering
-      DataUtil.AddToDirtyList(selectedObjects[index]);
+      ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
     DrawUtil.CompleteOperation(null);
   }
@@ -7174,7 +7174,7 @@ class OptUtil {
    * @returns The converted value in document coordinates
    */
   UnitsToCoord(unitValue, offset) {
-    DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // Get the current unit conversion factor
     const conversionFactor = RulerUtil.GetToUnits();
@@ -7209,7 +7209,7 @@ class OptUtil {
       T3Gv.opt.CloseEdit(true, true);
 
       // Get session data and original background color
-      sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
       let originalColor = sessionData.background.Paint.Color;
 
       // If current fill is transparent, use white as the original color

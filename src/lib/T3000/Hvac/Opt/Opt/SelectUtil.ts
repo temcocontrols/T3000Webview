@@ -17,7 +17,7 @@ import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import UIUtil from "../UI/UIUtil";
 import DrawUtil from "./DrawUtil";
@@ -57,7 +57,7 @@ class SelectUtil {
 
     // Get the object ID and corresponding data object
     const objectId = svgElement.GetID();
-    const object = DataUtil.GetObjectPtr(objectId, false);
+    const object = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Verify the object is a valid drawing object
     if (!(object && object instanceof Instance.Shape.BaseDrawObject)) {
@@ -123,7 +123,7 @@ class SelectUtil {
 
     if (objectsToSelect && objectsToSelect.length > 0) {
       // Get the text edit data object
-      const textEditData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const textEditData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
       // Close text editing if active
       if (textEditData.theActiveTextEditObjectID !== -1) {
@@ -131,7 +131,7 @@ class SelectUtil {
       }
 
       // Get the current selection list
-      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveSelectionState);
+      const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveSelectionState);
 
       // Get the currently targeted object
       selectedIndex = SelectUtil.GetTargetSelect();
@@ -159,7 +159,7 @@ class SelectUtil {
       // Process each object to select
       for (let i = 0; i < objectsToSelect.length; i++) {
         let objectId = objectsToSelect[i];
-        const object = DataUtil.GetObjectPtr(objectId, false);
+        const object = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (object) {
           const indexInSelectedList = $.inArray(objectId, selectedList);
@@ -173,7 +173,7 @@ class SelectUtil {
           }
           // If in multiple selection mode and object already selected, remove it (toggle behavior)
           else if (isMultipleSelection) {
-            const objectInList = DataUtil.GetObjectPtr(objectId, false);
+            const objectInList = ObjectUtil.GetObjectPtr(objectId, false);
             if (objectInList) {
               objectInList.ShowOrHideDimensions(false);
             }
@@ -215,14 +215,14 @@ class SelectUtil {
     T3Util.Log('O.Opt GetTargetSelect - Input: No parameters');
 
     // Get session data
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Default to no selection
     let targetSelectId = -1;
 
     // Verify the selected object is valid
     if (sessionData.tselect >= 0) {
-      const selectedObject = DataUtil.GetObjectPtr(sessionData.tselect, false);
+      const selectedObject = ObjectUtil.GetObjectPtr(sessionData.tselect, false);
       if (selectedObject && selectedObject instanceof Instance.Shape.BaseDrawObject) {
         targetSelectId = sessionData.tselect;
       }
@@ -241,14 +241,14 @@ class SelectUtil {
     T3Util.Log("O.Opt SetTargetSelect - Input:", { targetId, preserveSession });
 
     // Get session data
-    let sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, preserveSession);
+    let sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, preserveSession);
     sessionData.tselect = targetId;
 
     let dimensions = null;
 
     // If we have a valid target ID, get its dimensions
     if (targetId > 0) {
-      const drawingObject = DataUtil.GetObjectPtr(targetId, false);
+      const drawingObject = ObjectUtil.GetObjectPtr(targetId, false);
       if (drawingObject && drawingObject instanceof Instance.Shape.BaseDrawObject) {
         dimensions = drawingObject.GetDimensionsForDisplay();
       } else {
@@ -305,7 +305,7 @@ class SelectUtil {
     };
 
     // Get session data
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Get selection count if we have selected objects
     if (selectedObjects && (objectCount = selectedObjects.length)) {
@@ -343,7 +343,7 @@ class SelectUtil {
 
     // Validate target object
     if (targetObjectId >= 0) {
-      targetObject = DataUtil.GetObjectPtr(targetObjectId, false);
+      targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
       if (!(targetObject && targetObject instanceof Instance.Shape.BaseDrawObject)) {
         targetObjectId = -1;
         sessionData.tselect = -1;
@@ -369,7 +369,7 @@ class SelectUtil {
       }
 
       // Get and process the current object
-      currentObject = DataUtil.GetObjectPtr(objectId, false);
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (!(currentObject instanceof Instance.Shape.BaseDrawObject)) continue;
 
       const objectToProcess = currentObject;
@@ -477,7 +477,7 @@ class SelectUtil {
     T3Util.Log("O.Opt RemoveFromSelectedList - Input:", objectId);
 
     // Get the current selected list (without preserving state)
-    const selectedList = DataUtil.GetObjectPtr(
+    const selectedList = ObjectUtil.GetObjectPtr(
       T3Gv.opt.selectObjsBlockId,
       false
     );
@@ -488,7 +488,7 @@ class SelectUtil {
     // Only proceed if the object is actually in the list
     if (objectIndex !== -1) {
       // Get a preserved copy of the selected list for modification
-      const preservedList = DataUtil.GetObjectPtr(
+      const preservedList = ObjectUtil.GetObjectPtr(
         T3Gv.opt.selectObjsBlockId,
         true
       );
@@ -497,14 +497,14 @@ class SelectUtil {
       preservedList.splice(objectIndex, 1);
 
       // If this object was the target selection, clear the target selection
-      const sessionData = DataUtil.GetObjectPtr(
+      const sessionData = ObjectUtil.GetObjectPtr(
         T3Gv.opt.sdDataBlockId,
         false
       );
 
       if (objectId === sessionData.tselect) {
         // Get preserved session data and clear the target selection
-        const preservedSessionData = DataUtil.GetObjectPtr(
+        const preservedSessionData = ObjectUtil.GetObjectPtr(
           T3Gv.opt.sdDataBlockId,
           true
         );
@@ -532,7 +532,7 @@ class SelectUtil {
       }
 
       // Ensure any active edit is closed
-      DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       T3Gv.opt.CloseEdit();
 
       // Create the opt select shape as a rectangle
@@ -739,7 +739,7 @@ class SelectUtil {
 
   static ClearAnySelection(preserveBlock: boolean) {
     T3Util.Log("O.Opt ClearAnySelection - Input:", { preserveBlock });
-    const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveBlock);
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveBlock);
     if (selectedList.length !== 0) {
       SelectUtil.SetTargetSelect(-1, preserveBlock);
       SvgUtil.HideAllSVGSelectionStates();
@@ -801,7 +801,7 @@ class SelectUtil {
 
     let svgElement;
     let currentObject;
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     let textLength = 0;
     let shapeContainerType = ShapeConstant.ObjectTypes.ShapeContainer;
 
@@ -837,7 +837,7 @@ class SelectUtil {
     }
 
     for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-      currentObject = DataUtil.GetObjectPtr(visibleObjects[objectIndex], false);
+      currentObject = ObjectUtil.GetObjectPtr(visibleObjects[objectIndex], false);
 
       // Skip objects that don't match filter criteria
       if (filterCount > 0) {
@@ -874,7 +874,7 @@ class SelectUtil {
     let selectionContexts: any[] = [];
 
     // Check if there is an active text edit object in the TED session.
-    const teData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const teData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     if (teData.theActiveTextEditObjectID !== -1) {
       optMng = OptAhUtil.GetGvSviOpt();
       if (optMng) {
@@ -934,7 +934,7 @@ class SelectUtil {
       filterObjectType
     });
 
-    const links = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
     const startIndex = OptCMUtil.FindLink(links, targetObjectId, true);
     const childObjectIds: number[] = [];
     const totalLinks = links.length;
@@ -942,7 +942,7 @@ class SelectUtil {
     if (startIndex >= 0) {
       for (let index = startIndex; index < totalLinks && links[index].targetid === targetObjectId; index++) {
         const hookObjectId = links[index].hookid;
-        const hookObject = DataUtil.GetObjectPtr(hookObjectId, false);
+        const hookObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
         if (hookObject) {
           if ((filterDrawingBaseClass != null && hookObject.DrawingObjectBaseClass !== filterDrawingBaseClass) ||
             (filterObjectType != null && hookObject.objecttype !== filterObjectType)) {
@@ -1042,7 +1042,7 @@ class SelectUtil {
     hookFlags = Utils2.SetFlag(hookFlags, NvConstant.HookFlags.LcAttachToLine, false);
 
     // Get session data and flags
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (sessionData) {
       sessionFlags = sessionData.flags;
     }
@@ -1127,7 +1127,7 @@ class SelectUtil {
 
       // Check for previous connection if available
       if (T3Gv.opt.linkParams.PrevConnect >= 0) {
-        const prevConnectObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.PrevConnect, false);
+        const prevConnectObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.PrevConnect, false);
         if (prevConnectObject) {
           // Check if object is a container
           const containerPoint = Utils1.DeepCopy(T3Gv.opt.linkParams.ContainerPt[0]);
@@ -1168,7 +1168,7 @@ class SelectUtil {
 
       // Process the hit if found
       if (hitResult && hitResult.hitcode) {
-        targetObject = DataUtil.GetObjectPtr(hitResult.objectid, false);
+        targetObject = ObjectUtil.GetObjectPtr(hitResult.objectid, false);
         if (targetObject == null) {
           T3Util.Log("O.Opt FindConnect - Output: false (Target object not found)");
           return false;
@@ -1518,7 +1518,7 @@ class SelectUtil {
         }
       } else if (T3Gv.opt.linkParams.ConnectIndex < 0 && T3Gv.opt.linkParams.HiliteConnect >= 0) {
         // Handle disconnection if needed
-        const prevConnect = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.HiliteConnect, false);
+        const prevConnect = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.HiliteConnect, false);
         drawingObject.OnDisconnect(
           targetObjectId,
           prevConnect,
@@ -1609,7 +1609,7 @@ class SelectUtil {
     for (let idx = visibleObjects.length - 1; idx >= 0; idx--) {
       // Check if an object filter is provided and if the current object's ID is in the filter.
       if (!(isFiltered = objectIdFilter && objectIdFilter.indexOf(visibleObjects[idx]) !== -1)) {
-        currentObject = DataUtil.GetObjectPtr(visibleObjects[idx], false);
+        currentObject = ObjectUtil.GetObjectPtr(visibleObjects[idx], false);
         if (currentObject != null) {
           // If containerObject is provided and is a ShapeContainer type, skip connectors.
           if (
@@ -1717,7 +1717,7 @@ class SelectUtil {
     T3Gv.opt.moveList = [];
 
     let objectsList, hookFlags, listCode, objectCount, enclosedObjects, enclosedCount, enclosedIndex;
-    const links = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
 
     if (links == null) {
       T3Util.Log("O.Opt GetMoveList - Output: No links found, returning empty list");
@@ -1731,7 +1731,7 @@ class SelectUtil {
 
     // Check for special move target handling
     if (objectId >= 0) {
-      currentObject = DataUtil.GetObjectPtr(objectId, false);
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (currentObject) {
         hookFlags = currentObject.GetHookFlags();
@@ -1750,11 +1750,11 @@ class SelectUtil {
       // Get either visible objects or selected objects based on flag
       objectsList = useVisibleList
         ? LayerUtil.ActiveVisibleZList().slice(0)
-        : DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false).slice(0);
+        : ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false).slice(0);
 
       // Process each object in the list
       for (index = 0; index < objectsList.length; index++) {
-        currentObject = DataUtil.GetObjectPtr(objectsList[index], false);
+        currentObject = ObjectUtil.GetObjectPtr(objectsList[index], false);
 
         if (currentObject) {
           // Handle special case for event labels
@@ -1782,7 +1782,7 @@ class SelectUtil {
 
     // Process the target object if provided
     if (objectId >= 0) {
-      currentObject = DataUtil.GetObjectPtr(objectId, false);
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (currentObject && (currentObject.hooks.length === 0 || includeEnclosedObjects)) {
         T3Gv.opt.moveList = HookUtil.GetHookList(
@@ -1801,7 +1801,7 @@ class SelectUtil {
       objectCount = T3Gv.opt.moveList.length;
 
       for (index = 0; index < objectCount; index++) {
-        currentObject = DataUtil.GetObjectPtr(T3Gv.opt.moveList[index], false);
+        currentObject = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList[index], false);
 
         // Get objects enclosed by this object
         enclosedObjects = currentObject.GetListOfEnclosedObjects(true);
@@ -1828,7 +1828,7 @@ class SelectUtil {
 
   static GetSelectedObject() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
-    var targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+    var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
     return {selectedId: targetSelectionId, selectedObject: targetObject};
   }
 }
