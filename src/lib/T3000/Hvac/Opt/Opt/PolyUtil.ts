@@ -2276,6 +2276,114 @@ class PolyUtil {
       lpseg: intersectedSegment
     };
   }
+
+/**
+ * Generates points along an ellipse arc and adds them to an array
+ * This function calculates a series of points along an elliptical arc between two points
+ * and adds them to the provided points array
+ *
+ * @param pointsArray - The array where generated points will be added
+ * @param segmentCount - Number of points to generate along the ellipse (defaults to 100 if less than 2)
+ * @param startX - Starting X coordinate of the ellipse arc
+ * @param endX - Ending X coordinate of the ellipse arc
+ * @param startY - Starting Y coordinate of the ellipse arc
+ * @param endY - Ending Y coordinate of the ellipse arc
+ * @param isClockwise - Direction flag for arc generation (true for clockwise)
+ * @returns The points array with added ellipse points
+ */
+static EllipseToPoints(
+  pointsArray,
+  segmentCount,
+  startX,
+  endX,
+  startY,
+  endY,
+  isClockwise
+) {
+  // Calculate the horizontal radius
+  const horizontalRadius = Math.abs(endX - startX);
+
+  // Calculate vertical parameters
+  const verticalDelta = Math.abs(endY - startY);
+  const verticalRadiusSquared = verticalDelta * verticalDelta;
+
+  // Ensure minimum segment count
+  if (segmentCount < 2) {
+    segmentCount = 100;
+  }
+
+  // Determine starting point and direction based on coordinates and direction flag
+  let referenceX, referenceY;
+  let directionMultiplier = 1;
+
+  if (endY > startY) {
+    if (endX > startX) {
+      if (isClockwise) {
+        referenceX = startX;
+        referenceY = endY;
+      } else {
+        referenceX = endX;
+        referenceY = startY;
+        directionMultiplier = -1;
+      }
+    } else {
+      if (isClockwise) {
+        referenceX = endX;
+        referenceY = startY;
+      } else {
+        referenceX = startX;
+        referenceY = endY;
+        directionMultiplier = -1;
+      }
+    }
+  } else {
+    if (endX > startX) {
+      if (isClockwise) {
+        referenceX = endX;
+        referenceY = startY;
+        directionMultiplier = -1;
+      } else {
+        referenceX = startX;
+        referenceY = endY;
+      }
+    } else {
+      if (isClockwise) {
+        referenceX = startX;
+        referenceY = endY;
+        directionMultiplier = -1;
+      } else {
+        referenceX = endX;
+        referenceY = startY;
+      }
+    }
+  }
+
+  // Calculate vertical step between points
+  const yStep = (endY - startY) / (segmentCount - 1);
+
+  // Generate the points along the ellipse
+  for (let i = 0; i < segmentCount; i++) {
+    // Calculate current y value
+    const currentY = startY + yStep * i;
+
+    // Calculate vertical distance from reference point
+    const verticalDistance = currentY - referenceY;
+
+    // Calculate horizontal offset using ellipse formula
+    const horizontalOffset = Utils2.Sqrt(1 - (verticalDistance * verticalDistance) / verticalRadiusSquared) * horizontalRadius;
+
+    // Create new point with calculated coordinates
+    const point = new Point(
+      referenceX + horizontalOffset * directionMultiplier,
+      currentY
+    );
+
+    // Add the point to the output array
+    pointsArray.push(point);
+  }
+
+  return pointsArray;
+}
 }
 
 export default PolyUtil

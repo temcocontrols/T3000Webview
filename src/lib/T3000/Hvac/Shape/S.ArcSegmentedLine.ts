@@ -10,6 +10,7 @@ import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import TextConstant from '../Data/Constant/TextConstant';
 import Point from '../Model/Point';
+import PolyUtil from '../Opt/Opt/PolyUtil';
 
 /**
  * Class representing an arc segmented line in an HVAC visualization system.
@@ -297,7 +298,7 @@ class ArcSegmentedLine extends SegmentedLine {
           resultPoints.push(new Point(currentX, currentY));
           resultPoints[resultPoints.length - 1].notclockwise = !isClockwise;
         } else {
-          T3Gv.opt.EllipseToPoints(resultPoints, numPoints / 2, prevX, currentX, prevY, currentY, isClockwise);
+          PolyUtil.EllipseToPoints(resultPoints, numPoints / 2, prevX, currentX, prevY, currentY, isClockwise);
         }
       }
       if (!useRelativeCoordinates) {
