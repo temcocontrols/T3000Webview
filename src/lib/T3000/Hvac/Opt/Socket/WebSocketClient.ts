@@ -409,7 +409,6 @@ class WebSocketClient {
         const entry = parsedData.entry;
         const library = parsedData.library != undefined && parsedData.library !== "" ? JSON.parse(parsedData.library) : {};
         T3Util.Log('= Ws Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
-        T3Util.LogDev('= Ws Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
       }
       else {
         T3Util.Log('= Ws Received data:', parsedData);

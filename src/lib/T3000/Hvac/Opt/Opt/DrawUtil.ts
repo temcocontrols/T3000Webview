@@ -551,7 +551,6 @@ class DrawUtil {
       QuasarUtil.AddCurrentObjectToAppState();
 
       T3Util.Log("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
-      T3Util.LogDev("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully", true, objectsToSelect);
     } catch (error) {
       T3Util.Log("O.Opt MouseStampObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -1339,7 +1338,6 @@ class DrawUtil {
       QuasarUtil.AddCurrentObjectToAppState();
 
       T3Util.Log("DragDropObjectDone - Output: Drag-drop operation completed successfully");
-      T3Util.LogDev("DragDropObjectDone - Output: Drag-drop operation completed successfully", true, objectsToSelect);
     } catch (error) {
       T3Util.Log("DragDropObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
@@ -2251,7 +2249,6 @@ class DrawUtil {
     this.UpdateAppStateV2Frame();
 
     T3Util.Log("O.Opt CompleteOperation - Output: Operation completed.");
-    T3Util.LogDev("O.Opt CompleteOperation - Output: Operation completed.", true);
   }
 
   static AllowSnapToShapes() {
@@ -2292,7 +2289,7 @@ class DrawUtil {
    *
    * @static
    * @remarks When refreshPosition is enabled, the method also logs the updated
-   * position data using T3Util.LogDev for development tracking purposes.
+   * position data using T3Util.Log for development tracking purposes.
    * @returns {void}
    */
   static UpdateAppStateV2Frame() {
@@ -2306,7 +2303,7 @@ class DrawUtil {
     QuasarUtil.UpdateCurrentObjectPos(objCoords);
     EvtOpt.toolOpt.SaveAct();
 
-    T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
+    T3Util.Log('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
   }
 }
 

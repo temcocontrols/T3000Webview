@@ -403,12 +403,12 @@ class Symbol extends Element {
 
   SetDrawSetting(drawSetting: any) {
     this.drawSetting = drawSetting;
-    T3Util.LogDev('= B.Symbol SetDrawSetting', true, drawSetting);
+    T3Util.Log('= B.Symbol SetDrawSetting', drawSetting);
   }
 
   RefreshDrawSetting() {
     // this.srcSymbolSVG=ToolSvgData.BoilerSvgData();
-    T3Util.LogDev('= B.Symbol RefreshDrawSetting', true, this.srcSymbolSVG);
+    T3Util.Log('= B.Symbol RefreshDrawSetting', this.srcSymbolSVG);
     this.InitSymbolSource();
   }
 

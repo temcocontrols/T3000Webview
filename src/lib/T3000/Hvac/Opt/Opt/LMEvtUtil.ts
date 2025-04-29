@@ -621,7 +621,6 @@ class LMEvtUtil {
     );
 
     T3Util.Log("O.Opt LMMoveTrack - Output: Objects moved to", adjustedCoordinates);
-    T3Util.LogDev("O.Opt LMMoveTrack - Output: Objects moved to", true, adjustedCoordinates);
   }
 
   /**
@@ -631,7 +630,6 @@ class LMEvtUtil {
   */
   static LMMoveRelease(event, moveData?) {
     T3Util.Log("O.Opt LMMoveRelease - Input:", { event, moveData });
-    T3Util.LogDev("O.Opt LMMoveRelease - Input:", true, { event, moveData });
 
     let waslastOpDuplicate = false;
 

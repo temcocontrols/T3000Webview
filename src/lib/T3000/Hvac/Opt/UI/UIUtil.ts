@@ -54,8 +54,6 @@ class UIUtil {
 
   static UpdateDisplayCoordinates(dimensions, position, cursorType, drawingObject) {
 
-    // T3Util.LogDev("= U.UIUtil UpdateDisplayCoordinates", true, dimensions, position, cursorType, drawingObject);
-
     // Set default cursor type if not provided
     if (cursorType == null) {
       cursorType = "DEFAULT";
@@ -91,8 +89,7 @@ class UIUtil {
         const formatValue = (value) => value ? value : "";
 
         T3Util.Log('= U.UIUtil Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
-        T3Util.LogDev('= U.UIUtil Formatted Values: Origin x,y,w,h', true, xLength, yLength, width, height);
-        T3Util.LogDev('= U.UIUtil Formatted Values: Dimension x,y,w,h', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+        T3Util.Log('= U.UIUtil Formatted Values: Dimension x,y,w,h', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
 
         const xVal = formatStringWithPadding(formatNumberToString(xLength, useFeet));
         const yVal = formatStringWithPadding(formatNumberToString(yLength, useFeet));
@@ -100,7 +97,6 @@ class UIUtil {
         const hVal = formatStringWithPadding(formatNumberToString(height, useFeet));
 
         T3Util.Log('= U.UIUtil Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
-        T3Util.LogDev('= U.UIUtil Formatted Values: After x,y,w,h', true, xVal, yVal, wVal, hVal);
 
         var objNewFrame = {
           translate: [dimensions.x, dimensions.y],
@@ -110,7 +106,7 @@ class UIUtil {
 
         // if (T3Gv.refreshPosition) {
         //   QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
-        //   T3Util.LogDev('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+        //   T3Util.Log('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
         // }
       }
 
@@ -212,9 +208,9 @@ class UIUtil {
   }
 
   static ShowXY(showCoordinates) {
-    T3Util.Log("O.Opt ShowXY - Input:", { showCoordinates });
+    // T3Util.Log("O.Opt ShowXY - Input:", { showCoordinates });
     //Show the x and y coordinates of the mouse pointer
-    T3Util.Log("O.Opt ShowXY - Output: Coordinates display updated");
+    // T3Util.Log("O.Opt ShowXY - Output: Coordinates display updated");
   }
 
   /**

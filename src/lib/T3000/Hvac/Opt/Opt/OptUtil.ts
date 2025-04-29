@@ -196,17 +196,6 @@ class OptUtil {
   public inAutoScroll: boolean;          // Whether auto-scroll is active
 
   /**
-   * Touch and gesture variables
-   * Support for touch interaction
-   */
-  // public isGestureCapable: boolean;      // Whether device supports touch/gestures
-  // public touchInitiated: boolean;        // Whether touch interaction started
-  // public touchPanStarted: boolean;       // Whether panning via touch started
-  // public touchPanX: number;              // X position for touch panning
-  // public touchPanY: number;              // Y position for touch panning
-  // public bIsFullScreen: boolean;         // Whether in fullscreen mode
-
-  /**
    * UI elements and event handlers
    * References to DOM elements and their event handlers
    */

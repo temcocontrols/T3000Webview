@@ -181,7 +181,7 @@ class ToolUtil {
     let newShape = null;
 
     // Force line type to 'line'
-    lineType = "arcSegLine";
+    lineType = "segLine";
 
     switch (lineType) {
       case 'line':

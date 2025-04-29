@@ -138,7 +138,7 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    T3Util.LogDev("= U.QuasarUtil ShowObjectConfig", true, "show=>", show);
+    T3Util.Log("= U.QuasarUtil ShowObjectConfig","show=>", show);
     // T3Gv.refreshPosition = true;
     // this.SetSeletedTool();
     objectConfigShow.value = show;
@@ -201,7 +201,7 @@ class QuasarUtil {
 
 
   static LinkT3EntryDialogActionV2() {
-    T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "open linkT3EntryDialog V2");
+    T3Util.Log("= P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
     linkT3EntryDialogV2.value.active = true;
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry) return;
     linkT3EntryDialogV2.value.data = cloneDeep(appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry);
@@ -251,14 +251,14 @@ class QuasarUtil {
 
     DataOpt.SaveAppStateV2();
     SvgUtil.RenderAllSVGObjects();
-    T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "close linkT3EntryDialog V2", appStateV2.value);
+    T3Util.Log("= P.IDX2 linkT3EntryDialogAction", "close linkT3EntryDialog V2", appStateV2.value);
   }
 
   static AddCurrentObjectToAppState() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
     var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
-    T3Util.LogDev("= U.QuasarUtil AddCurrentObjectToAppState", true, targetObject);
+    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState", targetObject);
     var frame = {
       x: targetObject.Frame.x,
       y: targetObject.Frame.y,
@@ -289,8 +289,8 @@ class QuasarUtil {
     }
 
     const item = this.drawObject(size, pos, tool);
-    T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 1", true, item);
-    T3Util.LogDev("= U.QuasarUtil AddToAppStateV2 2", true, appStateV2.value);
+    T3Util.Log("= U.QuasarUtil AddToAppStateV2 1",  item);
+    T3Util.Log("= U.QuasarUtil AddToAppStateV2 2",  appStateV2.value);
   }
 
   static drawObject(size, pos, tool) {
@@ -370,7 +370,7 @@ class QuasarUtil {
       (item) => `${item.type}` === selectedUniType
     );
 
-    T3Util.LogDev("= U.QuasarUtil SetAppStateV2SelectIndex", true, appStateV2.value);
+    T3Util.Log("= U.QuasarUtil SetAppStateV2SelectIndex",  appStateV2.value);
   }
 
   static GetItemFromAPSV2(shapeId: string) {
