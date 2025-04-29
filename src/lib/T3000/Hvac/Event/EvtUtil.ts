@@ -4,7 +4,6 @@ import T3Gv from '../Data/T3Gv';
 import Utils2 from '../Util/Utils2';
 import $ from 'jquery';
 import Instance from '../Data/Instance/Instance'
-import NvConstant from '../Data/Constant/NvConstant'
 import RightClickMd from '../Model/RightClickMd'
 import T3Constant from '../Data/Constant/T3Constant';
 import DocUtil from '../Doc/DocUtil';

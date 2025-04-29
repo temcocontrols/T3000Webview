@@ -559,7 +559,7 @@ class EvtOpt {
   BindClearEvent() {
     $("#btn_try_Clear").on("pointerdown", (event) => {
       DataOpt.ClearT3LocalStorage();
-      Hvac.UI.Reload();
+      // Hvac.UI.Reload();
     });
   }
 

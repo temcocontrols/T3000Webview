@@ -363,7 +363,7 @@ class UIUtil {
 
     // Initialize the document work area
     T3Gv.docUtil.InitializeWorkArea({
-      svgAreaID: T3Gv.opt.svgDocId,
+      svgAreaId: T3Gv.opt.svgDocId,
       documentWidth: screenWidth,
       documentHeight: screenHeight,
       documentDPI: 100

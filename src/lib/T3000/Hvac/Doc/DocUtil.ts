@@ -46,11 +46,11 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
  *
  * // Set up the SVG work area with specific DOM element IDs.
  * docUtil.InitializeWorkArea({
- *   workAreaID: '#document-area',
- *   svgAreaID: '#svg-area',
- *   hRulerAreaID: '#h-ruler',
- *   vRulerAreaID: '#v-ruler',
- *   cRulerAreaID: '#c-ruler'
+ *   workAreaId: '#document-area',
+ *   svgAreaId: '#svg-area',
+ *   hRulerAreaId: '#h-ruler',
+ *   vRulerAreaId: '#v-ruler',
+ *   cRulerAreaId: '#c-ruler'
  * });
  *
  * // Resize the document dimensions and update associated UI components.
@@ -75,11 +75,11 @@ class DocUtil {
   public rulerConfig: RulerConfig;
 
   // DOM element IDs
-  public workAreaID: string;
-  public svgAreaID: string;
-  public hRulerAreaID: string;
-  public vRulerAreaID: string;
-  public cRulerAreaID: string;
+  public workAreaId: string;
+  public svgAreaId: string;
+  public hRulerAreaId: string;
+  public vRulerAreaId: string;
+  public cRulerAreaId: string;
 
   // Document objects
   public svgDoc: Document;
@@ -164,11 +164,11 @@ class DocUtil {
     workAreaConfig = workAreaConfig || {};
 
     // Set up DOM element IDs with provided values or defaults
-    this.workAreaID = workAreaConfig.workAreaID || '#document-area';
-    this.svgAreaID = workAreaConfig.svgAreaID || '#svg-area';
-    this.hRulerAreaID = workAreaConfig.hRulerAreaID || '#h-ruler';
-    this.vRulerAreaID = workAreaConfig.vRulerAreaID || '#v-ruler';
-    this.cRulerAreaID = workAreaConfig.cRulerAreaID || '#c-ruler';
+    this.workAreaId = workAreaConfig.workAreaId || '#document-area';
+    this.svgAreaId = workAreaConfig.svgAreaId || '#svg-area';
+    this.hRulerAreaId = workAreaConfig.hRulerAreaId || '#h-ruler';
+    this.vRulerAreaId = workAreaConfig.vRulerAreaId || '#v-ruler';
+    this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
 
     // Initialize document-related properties
     this.svgDoc = null;
@@ -191,7 +191,7 @@ class DocUtil {
     });
 
     // Bind scroll event handler to SVG area
-    $(this.svgAreaID).bind('scroll', this, function (event) {
+    $(this.svgAreaId).bind('scroll', this, function (event) {
       event.data.HandleScrollEvent();
     });
 
@@ -215,11 +215,11 @@ class DocUtil {
     this.UpdateWorkArea();
 
     T3Util.Log("= U.DocUtil: InitializeWorkArea - Output:", {
-      workAreaID: this.workAreaID,
-      svgAreaID: this.svgAreaID,
-      hRulerAreaID: this.hRulerAreaID,
-      vRulerAreaID: this.vRulerAreaID,
-      cRulerAreaID: this.cRulerAreaID,
+      workAreaId: this.workAreaId,
+      svgAreaId: this.svgAreaId,
+      hRulerAreaId: this.hRulerAreaId,
+      vRulerAreaId: this.vRulerAreaId,
+      cRulerAreaId: this.cRulerAreaId,
       gridLayer: this.gridLayer,
       pageDividerLayer: this.pageDividerLayer,
       backgroundLayer: this.backgroundLayer,
@@ -242,7 +242,7 @@ class DocUtil {
 
     // Initialize SVG document if not already created
     if (!this.svgDoc) {
-      this.svgDoc = new Document(this.svgAreaID, [] /* Globals.WebFonts */);
+      this.svgDoc = new Document(this.svgAreaId, [] /* Globals.WebFonts */);
     }
 
     // Set up background layer and shape
@@ -311,8 +311,8 @@ class DocUtil {
     }
 
     const workAreaSize = this.GetWorkAreaSize();
-    const verticalRulerWidth = $(this.vRulerAreaID).width();
-    const horizontalRulerHeight = $(this.hRulerAreaID).height();
+    const verticalRulerWidth = $(this.vRulerAreaId).width();
+    const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
     let availableRect = {
       x: 0,
@@ -349,8 +349,8 @@ class DocUtil {
     // Get input values
     const showRulers = this.docConfig.showRulers;
     const workAreaSize = this.GetWorkAreaSize();
-    const verticalRulerWidth = $(this.vRulerAreaID).width();
-    const horizontalRulerHeight = $(this.hRulerAreaID).height();
+    const verticalRulerWidth = $(this.vRulerAreaId).width();
+    const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
     T3Util.Log("= U.DocUtil: UpdateWorkArea - Input:",
       { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
@@ -474,7 +474,7 @@ class DocUtil {
     };
 
     // Apply CSS to svg area
-    $(this.svgAreaID).css({
+    $(this.svgAreaId).css({
       left: finalPosition.x,
       top: finalPosition.y,
       width: finalSize.width,
@@ -485,19 +485,19 @@ class DocUtil {
 
     // Adjust ruler positions if rulers are visible
     if (showRulers) {
-      $(this.hRulerAreaID).css({
+      $(this.hRulerAreaId).css({
         left: finalPosition.x,
         top: finalPosition.y - horizontalRulerHeight,
         width: finalSize.width,
         height: horizontalRulerHeight
       });
-      $(this.vRulerAreaID).css({
+      $(this.vRulerAreaId).css({
         left: finalPosition.x - verticalRulerWidth,
         top: finalPosition.y,
         width: verticalRulerWidth,
         height: finalSize.height
       });
-      $(this.cRulerAreaID).css({
+      $(this.cRulerAreaId).css({
         left: finalPosition.x - verticalRulerWidth,
         top: finalPosition.y - horizontalRulerHeight
       });
@@ -522,14 +522,14 @@ class DocUtil {
 
   /**
    * Gets the current size of the document work area
-   * Returns the width and height of the DOM element specified by workAreaID
+   * Returns the width and height of the DOM element specified by workAreaId
    * @returns Object containing width and height in pixels
    */
   GetWorkAreaSize(): { width: number; height: number } {
-    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Input:", { workAreaID: this.workAreaID });
+    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Input:", { workAreaId: this.workAreaId });
 
-    const width = $(this.workAreaID).width();
-    const height = $(this.workAreaID).height();
+    const width = $(this.workAreaId).width();
+    const height = $(this.workAreaId).height();
 
     const result = { width, height };
     T3Util.Log("= U.DocUtil: GetWorkAreaSize - Output:", result);
@@ -592,8 +592,8 @@ class DocUtil {
     );
 
     // Apply scroll positions to the SVG area
-    $(this.svgAreaID).scrollLeft(targetHorizontalScroll);
-    $(this.svgAreaID).scrollTop(targetVerticalScroll);
+    $(this.svgAreaId).scrollLeft(targetHorizontalScroll);
+    $(this.svgAreaId).scrollTop(targetVerticalScroll);
 
     // Recalculate work area after scrolling to update internal state
     this.svgDoc.CalcWorkArea();
@@ -1164,14 +1164,14 @@ class DocUtil {
 
     if (this.docConfig.showRulers !== this.rulerVis) {
       if (this.docConfig.showRulers) {
-        $(this.hRulerAreaID).css("visibility", "visible");
-        $(this.vRulerAreaID).css("visibility", "visible");
-        $(this.cRulerAreaID).css("visibility", "visible");
+        $(this.hRulerAreaId).css("visibility", "visible");
+        $(this.vRulerAreaId).css("visibility", "visible");
+        $(this.cRulerAreaId).css("visibility", "visible");
         this.ShowCoordinates(true);
       } else {
-        $(this.hRulerAreaID).css("visibility", "hidden");
-        $(this.vRulerAreaID).css("visibility", "hidden");
-        $(this.cRulerAreaID).css("visibility", "hidden");
+        $(this.hRulerAreaId).css("visibility", "hidden");
+        $(this.vRulerAreaId).css("visibility", "hidden");
+        $(this.cRulerAreaId).css("visibility", "hidden");
         this.ShowCoordinates(false);
       }
       this.UpdateWorkArea();
@@ -1193,20 +1193,20 @@ class DocUtil {
    */
   SetupRulers(): void {
     T3Util.Log("= U.DocUtil: SetupRulers - Input:", {
-      horizontalRulerAreaID: this.hRulerAreaID,
-      verticalRulerAreaID: this.vRulerAreaID,
-      centerRulerAreaID: this.cRulerAreaID,
+      horizontalRulerAreaId: this.hRulerAreaId,
+      verticalRulerAreaId: this.vRulerAreaId,
+      centerRulerAreaId: this.cRulerAreaId,
       isReadOnly: this.IsReadOnly()
     });
 
     // Initialize horizontal ruler document if not already set
     if (!this.hRulerDoc) {
-      this.hRulerDoc = new Document(this.hRulerAreaID, [] /* Globals.WebFonts */);
+      this.hRulerDoc = new Document(this.hRulerAreaId, [] /* Globals.WebFonts */);
     }
 
     // Initialize vertical ruler document if not already set
     if (!this.vRulerDoc) {
-      this.vRulerDoc = new Document(this.vRulerAreaID, [] /* Globals.WebFonts */);
+      this.vRulerDoc = new Document(this.vRulerAreaId, [] /* Globals.WebFonts */);
     }
 
     // Initialize ruler guides and state properties
@@ -1218,21 +1218,21 @@ class DocUtil {
 
     // Attach Hammer.js event handlers if not read-only
     if (!this.IsReadOnly()) {
-      new Hammer($(this.hRulerAreaID)[0]).on('doubletap', this.RulerTopDoubleClick);
-      new Hammer($(this.vRulerAreaID)[0]).on('doubletap', this.RulerLeftDoubleClick);
-      new Hammer($(this.cRulerAreaID)[0]).on('doubletap', this.RulerCenterDoubleClick);
+      new Hammer($(this.hRulerAreaId)[0]).on('doubletap', this.RulerTopDoubleClick);
+      new Hammer($(this.vRulerAreaId)[0]).on('doubletap', this.RulerLeftDoubleClick);
+      new Hammer($(this.cRulerAreaId)[0]).on('doubletap', this.RulerCenterDoubleClick);
 
-      new Hammer($(this.hRulerAreaID)[0]).on('dragstart', this.RulerDragStart);
-      new Hammer($(this.vRulerAreaID)[0]).on('dragstart', this.RulerDragStart);
-      new Hammer($(this.cRulerAreaID)[0]).on('dragstart', this.RulerDragStart);
+      new Hammer($(this.hRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
+      new Hammer($(this.vRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
+      new Hammer($(this.cRulerAreaId)[0]).on('dragstart', this.RulerDragStart);
 
-      new Hammer($(this.hRulerAreaID)[0]).on('drag', this.RulerTopDrag);
-      new Hammer($(this.vRulerAreaID)[0]).on('drag', this.RulerLeftDrag);
-      new Hammer($(this.cRulerAreaID)[0]).on('drag', this.RulerCenterDrag);
+      new Hammer($(this.hRulerAreaId)[0]).on('drag', this.RulerTopDrag);
+      new Hammer($(this.vRulerAreaId)[0]).on('drag', this.RulerLeftDrag);
+      new Hammer($(this.cRulerAreaId)[0]).on('drag', this.RulerCenterDrag);
 
-      new Hammer($(this.hRulerAreaID)[0]).on('dragend', this.RulerDragEnd);
-      new Hammer($(this.vRulerAreaID)[0]).on('dragend', this.RulerDragEnd);
-      new Hammer($(this.cRulerAreaID)[0]).on('dragend', this.RulerDragEnd);
+      new Hammer($(this.hRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
+      new Hammer($(this.vRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
+      new Hammer($(this.cRulerAreaId)[0]).on('dragend', this.RulerDragEnd);
     }
 
     // Reset rulers to update display
@@ -1259,8 +1259,8 @@ class DocUtil {
 
     // Get current work area dimensions and ruler sizes
     const workArea = this.svgDoc.GetWorkArea();
-    const verticalRulerWidth = $(this.vRulerAreaID).width();
-    const horizontalRulerHeight = $(this.hRulerAreaID).height();
+    const verticalRulerWidth = $(this.vRulerAreaId).width();
+    const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
     // Set sizes for horizontal and vertical ruler documents
     this.hRulerDoc.SetDocumentSize(workArea.docScreenWidth + 100, horizontalRulerHeight);
@@ -1324,8 +1324,8 @@ class DocUtil {
 
     // Get work area and ruler dimensions
     const workArea = this.svgDoc.GetWorkArea();
-    const verticalRulerWidth = $(this.vRulerAreaID).width();
-    const horizontalRulerHeight = $(this.hRulerAreaID).height();
+    const verticalRulerWidth = $(this.vRulerAreaId).width();
+    const horizontalRulerHeight = $(this.hRulerAreaId).height();
     const rulerThickness = isHorizontalRuler ? horizontalRulerHeight : verticalRulerWidth;
 
     // Get scale factor adjusted for document zoom
@@ -1475,15 +1475,15 @@ class DocUtil {
    */
   SyncRulers(): void {
     // Get current scroll positions of the SVG area
-    const horizontalScroll: number = $(this.svgAreaID).scrollLeft();
-    const verticalScroll: number = $(this.svgAreaID).scrollTop();
+    const horizontalScroll: number = $(this.svgAreaId).scrollLeft();
+    const verticalScroll: number = $(this.svgAreaId).scrollTop();
 
     // Log input values
     T3Util.Log("= U.DocUtil: SyncRulers - Input:", { horizontalScroll, verticalScroll });
 
     // Sync horizontal and vertical rulers with the SVG area's scroll positions
-    $(this.hRulerAreaID).scrollLeft(horizontalScroll);
-    $(this.vRulerAreaID).scrollTop(verticalScroll);
+    $(this.hRulerAreaId).scrollLeft(horizontalScroll);
+    $(this.vRulerAreaId).scrollTop(verticalScroll);
 
     // Log output after synchronizing rulers
     T3Util.Log("= U.DocUtil: SyncRulers - Output: Rulers synchronized", { horizontalScroll, verticalScroll });
