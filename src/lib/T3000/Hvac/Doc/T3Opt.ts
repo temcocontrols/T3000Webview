@@ -14,6 +14,11 @@ import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import Basic from '../Data/Instance/Basic';
 import Shape from '../Data/Instance/Shape';
 import Instance, { initializeInstance } from "../Data/Instance/Instance";
+import LayerUtil from '../Opt/Opt/LayerUtil';
+import UIUtil from '../Opt/UI/UIUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
+import StateOpt from '../Data/State/StateOpt';
+import DataStore from '../Data/State/DataStore';
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references
@@ -130,6 +135,22 @@ class T3Opt {
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
+  }
+
+  Reload() {
+
+    LayerUtil.ClearSVGHighlightLayer();
+    LayerUtil.ClearSVGOverlayLayer();
+    LayerUtil.ClearSVGObjectLayer();
+    UIUtil.SetBackgroundColor();
+    ObjectUtil.ClearDirtyList();
+    ObjectUtil.ClearFutureUndoStates();
+    ObjectUtil.ClearUndoRedo();
+
+    T3Gv.state = new StateOpt();
+    T3Gv.stdObj = new DataStore();
+    T3Gv.currentObjSeqId = -1;
+    T3Gv.opt.Initialize();
   }
 }
 

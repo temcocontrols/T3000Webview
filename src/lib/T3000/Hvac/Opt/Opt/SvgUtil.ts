@@ -3,6 +3,7 @@
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import T3Gv from '../../Data/T3Gv';
+import T3Opt from '../../Doc/T3Opt';
 import EvtUtil from "../../Event/EvtUtil";
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";

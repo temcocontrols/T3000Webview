@@ -8,6 +8,7 @@ import OptCMUtil from "../Opt/OptCMUtil";
 import SelectUtil from "../Opt/SelectUtil";
 import ShapeUtil from "../Shape/ShapeUtil";
 import UIUtil from "../UI/UIUtil";
+import DataOpt from "./DataOpt";
 
 class ObjectUtil {
 
@@ -193,6 +194,14 @@ class ObjectUtil {
 
   static ClearFutureUndoStates() {
     T3Gv.state.ClearFutureUndoStates();
+  }
+
+  static ClearT3GvState() {
+    DataOpt.InitStateAndStore();
+  }
+
+  static ClearUndoRedo(){
+    T3Gv.state.ResetUndoStates();
   }
 }
 

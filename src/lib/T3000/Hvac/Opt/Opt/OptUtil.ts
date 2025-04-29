@@ -528,18 +528,6 @@ class OptUtil {
     this.autoScrollYPos = 0;                    // Y position for auto-scrolling
     this.inAutoScroll = false;                  // Whether auto-scroll is active
 
-    // Touch gesture properties
-    // this.isGestureCapable = 'ontouchstart' in window ||
-    //   ('onpointerdown' in window &&
-    //     navigator.maxTouchPoints &&
-    //     navigator.maxTouchPoints > 1);  // Device supports touch
-    // this.touchInitiated = false;                // Whether touch interaction started
-    // this.touchPanStarted = false;               // Whether panning via touch started
-    // this.touchPanX = 0;                         // X position for touch panning
-    // this.touchPanY = 0;                         // Y position for touch panning
-    // this.bIsFullScreen = false;                 // Whether in fullscreen mode
-    // #endregion
-
     // #region UI Elements & Event Handlers
     /**
      * Initialize properties for UI elements and event handlers
@@ -630,7 +618,6 @@ class OptUtil {
     this.FileVersion = 41;                       // File format version
     this.bDrawEffects = true;                    // Whether to draw effects
     this.hasBlockDirectory = false;              // Whether block directory exists
-    // this.initialStateID = T3Gv.state.currentStateId;  // Initial state ID
     this.nDataStoreStart = T3Gv.stdObj.storedObjects.length;  // Initial object count
     // #endregion
 
@@ -663,9 +650,6 @@ class OptUtil {
      * Initialize properties for note editing functionality
      * These track state during note editing
      */
-    // this.curNoteShape = -1;                      // Shape with note being edited
-    // this.curNoteTableCell = null;                // Table cell with note being edited
-    // this.curNoteGraphPint = null;                // Graph point with note
     this.bInNoteEdit = false;                    // Whether in note edit mode
     this.bNoteChanged = false;                   // Whether note content changed
     // #endregion

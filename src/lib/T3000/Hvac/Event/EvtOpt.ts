@@ -2,11 +2,16 @@
 
 import T3Gv from "../Data/T3Gv";
 import DataOpt from "../Opt/Data/DataOpt";
+import ObjectUtil from "../Opt/Data/ObjectUtil";
 import DrawUtil from "../Opt/Opt/DrawUtil";
+import LayerUtil from "../Opt/Opt/LayerUtil";
 import SvgUtil from "../Opt/Opt/SvgUtil";
 import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
+import UIUtil from "../Opt/UI/UIUtil";
+import Hvac from "../Hvac";
+import T3Opt from "../Doc/T3Opt";
 
 class EvtOpt {
 
@@ -554,7 +559,7 @@ class EvtOpt {
   BindClearEvent() {
     $("#btn_try_Clear").on("pointerdown", (event) => {
       DataOpt.ClearT3LocalStorage();
-      SvgUtil.RenderAllSVGObjects();
+      Hvac.UI.Reload();
     });
   }
 

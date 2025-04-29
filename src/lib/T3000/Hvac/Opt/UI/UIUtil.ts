@@ -120,8 +120,8 @@ class UIUtil {
         position.y = Math.max(0, position.y);
 
         const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-        position.x = Math.min(sessionBlock.dim.x, position.x);
-        position.y = Math.min(sessionBlock.dim.y, position.y);
+        position.x = Math.min(sessionBlock?.dim?.x, position?.x);
+        position.y = Math.min(sessionBlock?.dim?.y, position?.y);
       }
     }
 
