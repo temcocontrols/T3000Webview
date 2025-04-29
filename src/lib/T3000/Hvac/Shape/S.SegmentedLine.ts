@@ -4189,7 +4189,7 @@ class SegmentedLine extends BaseLine {
         }
         break;
       case OptConstant.DrawObjectBaseClass.Shape:
-        T3Gv.opt.Lines_MaintainDist(this, additionalParams, extraParams, point);
+        PolyUtil.LinesMaintainDist(this, additionalParams, extraParams, point);
         T3Util.Log("= S.SegmentedLine: MaintainPoint processed for SHAPE, returning true");
         T3Util.Log("= S.SegmentedLine: MaintainPoint output", true);
         return true;
@@ -4225,7 +4225,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Gv.opt.Lines_MaintainDist(this, additionalParams, extraParams, point);
+    PolyUtil.LinesMaintainDist(this, additionalParams, extraParams, point);
     T3Util.Log("= S.SegmentedLine: MaintainPoint output", result);
     return result;
   }

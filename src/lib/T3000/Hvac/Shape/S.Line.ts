@@ -508,7 +508,7 @@ class Line extends BaseLine {
     }
 
     this.UpdateDimensionLines(svgContainer);
-    this.UpdateCoordinateLines(svgContainer);
+    // this.UpdateCoordinateLines(svgContainer);
 
     new SelectionAttr();
     let rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
@@ -628,7 +628,7 @@ class Line extends BaseLine {
       }
 
       this.UpdateDimensionLines(svgContainer);
-      this.UpdateCoordinateLines(svgContainer);
+      // this.UpdateCoordinateLines(svgContainer);
 
       new SelectionAttr();
       const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);

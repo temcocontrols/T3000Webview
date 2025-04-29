@@ -3457,7 +3457,7 @@ class BaseDrawObject {
         this.Dimensions & NvConstant.DimensionFlags.Select || triggerType;
 
       if (hasAlwaysOrSelectDimensions) {
-        this.UpdateEdgeCoordinateLines(container, triggerType);
+        // this.UpdateEdgeCoordinateLines(container, triggerType);
       }
 
       T3Util.Log("= S.BaseDrawObject: UpdateCoordinateLines output:", container);
@@ -3571,7 +3571,7 @@ class BaseDrawObject {
     pathShape.SetStrokePattern("5,5");
     pathCreator.BeginPath();
 
-    const showCoordinateLine = true;
+    const showCoordinateLine = false;
     coordinateLinePoints = this.GetCoordinateLinePoints();
 
     T3Util.Log('= S.BaseDrawObject: coordinateLinePoints:', coordinateLinePoints);
@@ -3593,7 +3593,7 @@ class BaseDrawObject {
           T3Util.Log('= S.BaseDrawObject: startPoint:', startPoint);
           T3Util.Log('= S.BaseDrawObject: endPoint:', endPoint);
 
-          this.CreateCoordinateLine(shapeContainer, pathCreator, false, angle, dimensionText, startPoint, endPoint, segmentIndex, false, isPolygon);
+          // this.CreateCoordinateLine(shapeContainer, pathCreator, false, angle, dimensionText, startPoint, endPoint, segmentIndex, false, isPolygon);
         }
       }
     }

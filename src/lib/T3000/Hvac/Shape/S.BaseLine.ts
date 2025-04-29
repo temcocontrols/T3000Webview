@@ -2516,7 +2516,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     const perimeterPoints = [];
-    const position = {};
+    const position = { x: 0, y: 0, width: 0, height: 0 };
 
     if (hookPoint != null) {
       perimeterPoints.push(hookPoint);
@@ -2538,47 +2538,25 @@ class BaseLine extends BaseDrawObject {
       position.height = knobSize;
 
       let knobParams = null;
-      // if (T3Gv.opt.touchInitiated) {
-      //   knobParams = {
-      //     svgDoc,
-      //     shapeType: OptConstant.CSType.Oval,
-      //     x: knobSize / 2,
-      //     y: knobSize / 2,
-      //     knobSize,
-      //     fillColor: 'black',
-      //     fillOpacity: 0.25,
-      //     strokeSize: 1,
-      //     strokeColor: '#777777',
-      //     KnobID: 0,
-      //     cursorType: CursorConstant.CursorType.Anchor
-      //   };
-      //   if (isJoin) {
-      //     knobParams.fillColor = 'none';
-      //     knobParams.strokeSize = 2;
-      //     knobParams.strokeColor = 'black';
-      //     knobParams.cursorType = CursorConstant.CursorType.CUR_JOIN;
-      //   }
-      // } else
-      {
-        knobParams = {
-          svgDoc,
-          shapeType: OptConstant.CSType.Oval,
-          x: knobSize / 2,
-          y: knobSize / 2,
-          knobSize,
-          fillColor: 'black',
-          fillOpacity: 1,
-          strokeSize: 1,
-          strokeColor: '#777777',
-          KnobID: 0,
-          cursorType: CursorConstant.CursorType.Anchor
-        };
-        if (isJoin) {
-          knobParams.fillColor = 'none';
-          knobParams.strokeSize = 1;
-          knobParams.strokeColor = 'black';
-          knobParams.cursorType = CursorConstant.CursorType.CUR_JOIN;
-        }
+
+      knobParams = {
+        svgDoc,
+        shapeType: OptConstant.CSType.Oval,
+        x: knobSize / 2,
+        y: knobSize / 2,
+        knobSize,
+        fillColor: 'black',
+        fillOpacity: 1,
+        strokeSize: 1,
+        strokeColor: '#777777',
+        KnobID: 0,
+        cursorType: CursorConstant.CursorType.Anchor
+      };
+      if (isJoin) {
+        knobParams.fillColor = 'none';
+        knobParams.strokeSize = 1;
+        knobParams.strokeColor = 'black';
+        knobParams.cursorType = CursorConstant.CursorType.Default;
       }
 
       const knobElement = this.GenericKnob(knobParams);
@@ -2597,7 +2575,7 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: HookToPoint input, hookId:", hookId, "outRect:", outRect);
 
     // Initialize the result point
-    const resultPoint: Point = { x: 0, y: 0 };
+    let resultPoint: Point = { x: 0, y: 0, id: 0 };
 
     // Get the constant alias for ease of reading
     const CD = OptConstant;
@@ -2691,9 +2669,9 @@ class BaseLine extends BaseDrawObject {
         T3Util.Log("= S.BaseLine: MaintainPoint output: returning true early (LinesIntersect true)");
         return true;
       }
-      T3Gv.opt.Lines_MaintainDist(this, distance, offset, point);
+      PolyUtil.LinesMaintainDist(this, distance, offset, point);
     } else {
-      T3Gv.opt.Lines_MaintainDist(this, distance, offset, point);
+      PolyUtil.LinesMaintainDist(this, distance, offset, point);
     }
 
     T3Util.Log("= S.BaseLine: MaintainPoint output: returning true");
@@ -3091,7 +3069,6 @@ class BaseLine extends BaseDrawObject {
       const postReleaseResult = this.LMDrawPostRelease(T3Gv.opt.actionStoredObjectId);
       let addedLabel: any = null;
       if (T3Gv.opt.fromOverlayLayer) {
-        addedLabel = gBusinessController.AddLineLabel(this.BlockID);
       }
 
       // Execute post drawing routines
@@ -3114,7 +3091,6 @@ class BaseLine extends BaseDrawObject {
       // If drawing was initiated from overlay, complete operation action and reset overlay flag
       if (T3Gv.opt.fromOverlayLayer) {
         T3Gv.opt.fromOverlayLayer = false;
-        gBusinessController.CompleteAction(this.BlockID, pointerPos);
       }
       T3Util.Log("= S.BaseLine: LMDrawRelease output: completed successfully");
     } catch (error) {
@@ -3676,7 +3652,7 @@ class BaseLine extends BaseDrawObject {
     let endY = textParams.EndPoint.y;
 
     // Calculate the rotation angle between start and end points (in radians and degrees)
-    let angleRadians = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(textParams.StartPoint, textParams.EndPoint);
+    let angleRadians = PolyUtil.GetClockwiseAngleBetween2PointsInRadians(textParams.StartPoint, textParams.EndPoint);
     let angleDegrees = angleRadians * (180 / NvConstant.Geometry.PI);
 
     // Flags and adjustments
@@ -4150,7 +4126,7 @@ class BaseLine extends BaseDrawObject {
     T3Util.Log("= S.BaseLine: Dimension lines updated");
 
     // Update coordinate lines (horizontal/vertical) fixed at the start point.
-    this.UpdateCoordinateLines(shapeContainer, null);
+    // this.UpdateCoordinateLines(shapeContainer, null);
     T3Util.Log("= S.BaseLine: Coordinate lines updated");
 
     T3Util.Log("= S.BaseLine: PostCreateShapeCallback completed");

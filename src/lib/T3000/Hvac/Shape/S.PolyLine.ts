@@ -37,6 +37,7 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
+import PolyUtil from '../Opt/Opt/PolyUtil';
 
 /**
  * Represents a polyline shape with multiple connected segments.
@@ -796,7 +797,7 @@ class PolyLine extends BaseLine {
           rotatedPoints.push({ ...secondPoint });
 
           // Get the clockwise angle (in radians) between first and second points.
-          let angleRadians = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(firstPoint, secondPoint);
+          let angleRadians = PolyUtil.GetClockwiseAngleBetween2PointsInRadians(firstPoint, secondPoint);
           let angleDegrees = (angleRadians * (180 / NvConstant.Geometry.PI)) % 180;
           // If the angle is nonzero and no rotation is applied, mark text as horizontal.
           if (!Utils2.IsEqual(angleDegrees, 0) && svgShape.RotationAngle === 0) {
@@ -1407,7 +1408,7 @@ class PolyLine extends BaseLine {
 
     // If the document is not touch initiated and the object is not locked and can grow,
     // create a rotate knob.
-    if (/*!T3Gv.opt.touchInitiated &&*/ !knobProps.locked && !this.NoGrow()) {
+    if (!knobProps.locked && !this.NoGrow()) {
       knobProps.shapeType = OptConstant.CSType.Oval;
       // Position the rotate knob roughly at the top-right corner of the frame.
       if (frame.width < frame.height) {
@@ -2717,7 +2718,7 @@ class PolyLine extends BaseLine {
       tempHitResult.EndPoint.y = tempPolyPoints[hitSegmentIndex].y;
 
       if (drawingObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
-        return T3Gv.opt.LineCheckPoint(tempObject, point) || T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+        return T3Gv.opt.LineCheckPoint(tempObject, point) || PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
       }
 
       switch (actionType) {
@@ -2728,7 +2729,7 @@ class PolyLine extends BaseLine {
             OptConstant.ActionTriggerType.LineStart : OptConstant.ActionTriggerType.LineEnd;
           break;
         case OptConstant.ActionTriggerType.Rotate:
-          return T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+          return PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
         default:
           actionType = OptConstant.ActionTriggerType.LineEnd;
       }
@@ -2739,7 +2740,7 @@ class PolyLine extends BaseLine {
         T3Gv.opt.LinesMaintainDistWithinSegment(this, targetObject, segmentIndex, point);
         return true;
       } else {
-        return T3Gv.opt.LinesIntersect(tempObject, drawingObject, point) || T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+        return T3Gv.opt.LinesIntersect(tempObject, drawingObject, point) || PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
       }
     }
 

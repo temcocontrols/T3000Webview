@@ -19,6 +19,7 @@ import ObjectUtil from '../Opt/Data/ObjectUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import OptCMUtil from '../Opt/Opt/OptCMUtil'
 import HookUtil from '../Opt/Opt/HookUtil'
+import PolyUtil from '../Opt/Opt/PolyUtil'
 
 /**
  * ArcLine class represents a curved line segment in the T3000 HVAC drawing system.
@@ -518,10 +519,6 @@ class ArcLine extends BaseLine {
     knob = this.GenericKnob(knobConfig);
     group.AddElement(knob);
 
-    // Add ROTATE knob if allowed.
-    // if (T3Gv.opt.touchInitiated) {
-    //   allowKnob = false;
-    // }
     if (allowKnob && !knobConfig.locked && !this.NoGrow()) {
       knobConfig.shapeType = OptConstant.CSType.Oval;
       let angle = Math.atan((this.EndPoint.y - this.StartPoint.y) / (this.EndPoint.x - this.StartPoint.x));
@@ -583,7 +580,7 @@ class ArcLine extends BaseLine {
       case TextConstant.TextAlign.TopCenter:
       case TextConstant.TextAlign.Center:
       case TextConstant.TextAlign.BottomCenter: {
-        const angle = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(
+        const angle = PolyUtil.GetClockwiseAngleBetween2PointsInRadians(
           result.StartPoint,
           result.EndPoint
         );

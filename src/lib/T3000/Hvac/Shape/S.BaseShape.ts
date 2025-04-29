@@ -454,7 +454,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Add rotation knob if allowed and appropriate
-    const canRotate = !(this.NoRotate() || this.NoGrow() /*|| T3Gv.opt.touchInitiated */||
+    const canRotate = !(this.NoRotate() || this.NoGrow() ||
       knobConfig.locked || isNarrowShape || hasConnectorHooks);
 
     if (canRotate) {

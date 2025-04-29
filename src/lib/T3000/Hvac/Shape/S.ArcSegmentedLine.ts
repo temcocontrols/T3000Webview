@@ -337,7 +337,7 @@ class ArcSegmentedLine extends SegmentedLine {
         };
 
         textParams.Frame = Utils2.Pt2Rect(polyPoints[0], polyPoints[9]);
-        const angle = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(polyPoints[0], polyPoints[9]);
+        const angle = PolyUtil.GetClockwiseAngleBetween2PointsInRadians(polyPoints[0], polyPoints[9]);
 
         rotatedPoints.push(new Point(polyPoints[0].x, polyPoints[0].y));
         rotatedPoints.push(new Point(polyPoints[9].x, polyPoints[9].y));
