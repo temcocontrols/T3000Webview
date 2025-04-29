@@ -2083,11 +2083,6 @@ keycon.keydown(["insert"], (e) => {
 
 // Open the dialog to link a T3 entry
 function linkT3EntryDialogActionV2() {
-  // T3Util.LogDev("= P.IDX2 linkT3EntryDialogAction", true, "open linkT3EntryDialog");
-  // linkT3EntryDialog.value.active = true;
-  // if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
-  // linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
-
   QuasarUtil.LinkT3EntryDialogActionV2();
 }
 
@@ -2843,11 +2838,9 @@ function lockToggle() {
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
 
-  T3Util.LogDev("= P.IDX2 objectClicked", true, "objectClicked");
-
+  T3Util.Log("= P.IDX2 objectClicked");
   setTheSettingContextMenuVisible();
 
-  // console.log('111111111111111 IndexPage.vue->objectClicked->item, locked value', item, locked.value);
   if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
 

@@ -400,20 +400,20 @@ function refreshRotate() {
 }
 
 function TraceSettingChange(key, value) {
-  T3Util.LogDev("= V.ObjectConfigNew", true, "TraceSettingChange", key, value);
+  T3Util.Log("= V.ObjectConfigNew", "TraceSettingChange", key, value);
   QuasarUtil.UpdateSvgElementSettings(key, value);
   EvtOpt.toolOpt.SaveAct();
 }
 
 function T3UpdateEntryField(key, obj) {
   // emit("T3UpdateEntryField", key, obj);
-  T3Util.LogDev("= V.ObjectConfigNew", true, "T3UpdateEntryField", key, obj);
+  T3Util.Log("= V.ObjectConfigNew",  "T3UpdateEntryField", key, obj);
   Hvac.IdxPage2.T3UpdateEntryField(key, obj);
   EvtOpt.toolOpt.SaveAct();
 }
 
 function linkT3Entry() {
-  T3Util.LogDev("LINKE-T3-ENTRY", true);
+  T3Util.Log("LINKE-T3-ENTRY", true);
   emit("linkT3Entry");
 }
 
@@ -446,7 +446,7 @@ function getEntryRange(entry) {
 }
 
 onMounted(() => {
-  T3Util.LogDev("= V.OCN", true, "ObjectConfigNew mounted", props.current);
+  T3Util.Log("= V.OCN","ObjectConfigNew mounted", props.current);
 
   /*
   var selectedItem = DrawUtil.GetSelectObjectCoords();
