@@ -1173,9 +1173,9 @@ class EvtUtil {
               SelectUtil.UpdateSelectionAttributes(null);
 
               if (event.gesture) {
-                TextUtil.TERegisterEvents(textElement.svgObj.SDGObj, event.gesture.srcEvent);
+                TextUtil.TextRegisterEvents(textElement.svgObj.SDGObj, event.gesture.srcEvent);
               } else {
-                TextUtil.TERegisterEvents(textElement.svgObj.SDGObj, event);
+                TextUtil.TextRegisterEvents(textElement.svgObj.SDGObj, event);
               }
 
               event.stopPropagation();
@@ -1243,9 +1243,9 @@ class EvtUtil {
 
               // Register text editing event handlers
               if (event.gesture) {
-                TextUtil.TERegisterEvents(textElement, event.gesture.srcEvent);
+                TextUtil.TextRegisterEvents(textElement, event.gesture.srcEvent);
               } else {
-                TextUtil.TERegisterEvents(textElement, event);
+                TextUtil.TextRegisterEvents(textElement, event);
               }
 
               event.stopPropagation();

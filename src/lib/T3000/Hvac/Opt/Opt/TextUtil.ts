@@ -44,7 +44,6 @@ class TextUtil {
     let textDataId, objectIndex, cellCount;
     let session = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     let operationRequired = false;
-    // let tableSelectedIndex = null;
     let messageData = { theTEWasResized: false };
 
     // Clear text entry timer if active
@@ -112,7 +111,7 @@ class TextUtil {
         // Apply style to the drawing object or table
         if (isNotInTable) {
           // Apply style directly to the object
-          this.TextStyleToSDText(drawingObject.StyleRecord.Text, formatStyle.style);
+          this.TextStyleToText(drawingObject.StyleRecord.Text, formatStyle.style);
         }
 
         isTextOnlyObject = !!(drawingObject.flags & NvConstant.ObjFlags.TextOnly);
@@ -324,8 +323,8 @@ class TextUtil {
    * @param sdText - The SD text object whose style will be updated.
    * @param textStyle - The text style parameters containing font, size, weight, style, baseOffset, decoration, color, and color transparency.
    */
-  static TextStyleToSDText(sdText, textStyle) {
-    T3Util.Log("O.Opt TextStyleToSDText - Input:", { sdText, textStyle });
+  static TextStyleToText(sdText, textStyle) {
+    T3Util.Log("O.Opt TextStyleToText - Input:", { sdText, textStyle });
 
     // Convert the font size from percentage to points (72 points per inch conversion)
     sdText.FontSize = Math.round(72 * textStyle.size / 100);
@@ -363,7 +362,7 @@ class TextUtil {
     sdText.Paint.Color = textStyle.color;
     sdText.Paint.Opacity = textStyle.colorTrans;
 
-    T3Util.Log("O.Opt TextStyleToSDText - Output:", sdText);
+    T3Util.Log("O.Opt TextStyleToText - Output:", sdText);
   }
 
   static TEUnregisterEvents(event?) {
@@ -738,7 +737,7 @@ class TextUtil {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(textEditSession.theActiveTextEditObjectID);
 
           if (svgElement && svgElement.textElem) {
-            this.TERegisterEvents(svgElement.textElem);
+            this.TextRegisterEvents(svgElement.textElem);
 
             const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
             if (activeEdit) {
@@ -1065,8 +1064,8 @@ class TextUtil {
     return points;
   }
 
-  static TERegisterEvents(textEditorWrapper, activationEvent, additionalOptions?) {
-    T3Util.Log("O.Opt TERegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
+  static TextRegisterEvents(textEditorWrapper, activationEvent?, additionalOptions?) {
+    T3Util.Log("O.Opt TextRegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
     if (textEditorWrapper != null) {
       // Set up virtual keyboard for the text editor
       T3Gv.opt.SetVirtualKeyboardLifter(textEditorWrapper);
@@ -1086,7 +1085,7 @@ class TextUtil {
       T3Gv.opt.TEWorkAreaHammer.on("drag", this.TEDragFactory(textEditorWrapper.editor));
       T3Gv.opt.TEWorkAreaHammer.on("dragend", this.TEDragEndFactory(textEditorWrapper.editor));
     }
-    T3Util.Log("O.Opt TERegisterEvents - Output: Registered events");
+    T3Util.Log("O.Opt TextRegisterEvents - Output: Registered events");
   }
 
   static TargetPasteText(): boolean {
@@ -1172,7 +1171,7 @@ class TextUtil {
     const objectId = drawingElement.ID;
     const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     const objectsToSelect = [];
-    let eventData = {};
+    let eventData = { selectedRange: {} };
 
     // Check if the object exists and is not locked
     drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
@@ -1219,23 +1218,11 @@ class TextUtil {
       // Prepare the text edit session
       if (!textData) {
         preservedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-      } else if (textData.EditorID === Collab.EditorID) {
-        const tempSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-        tempSession.theActiveTextEditObjectID = -1;
-
-        const activeTableId = tempSession.theActiveTableObjectID;
-        tempSession.theTEWasResized = false;
-        tempSession.theTEWasEdited = false;
-
-        preservedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-        preservedTextEditSession.theActiveTextEditObjectID = objectId;
-        preservedTextEditSession.theActiveTableObjectID = activeTableId;
       } else {
         const tempSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
         tempSession.EditorID = textData.EditorID;
 
         preservedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-        preservedTextEditSession.EditorID = Collab.EditorID;
       }
 
       // Get the SVG element for the object
@@ -1281,24 +1268,22 @@ class TextUtil {
       // Register events and handle text selection
       if (!textData) {
         if (event && event.gesture) {
-          this.TERegisterEvents(svgElement.textElem, event.gesture.srcEvent, preventSelectionChange);
+          this.TextRegisterEvents(svgElement.textElem, event.gesture.srcEvent, preventSelectionChange);
         } else {
-          this.TERegisterEvents(svgElement.textElem, event);
+          this.TextRegisterEvents(svgElement.textElem, event);
         }
 
         const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
         selectedRange = activeEdit.GetSelectedRange();
-        eventData.theSelectedRange = Utils1.DeepCopy(selectedRange);
+        eventData.selectedRange = Utils1.DeepCopy(selectedRange);
 
         // If no event, select all text
         if (event == null) {
           const textLength = activeEdit.GetText().length;
-          eventData.theSelectedRange.start = 0;
-          eventData.theSelectedRange.anchor = 0;
-          eventData.theSelectedRange.end = textLength;
+          eventData.selectedRange.start = 0;
+          eventData.selectedRange.anchor = 0;
+          eventData.selectedRange.end = textLength;
         }
-      } else if (textData && textData.EditorID === Collab.EditorID) {
-        selectedRange = textData.Data.theSelectedRange;
       }
 
       // Handle empty text
@@ -1318,7 +1303,7 @@ class TextUtil {
 
           // Apply styles to the text element
           const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
-          eventData.theSelectedRange = selectedRange;
+          eventData.selectedRange = selectedRange;
 
           // Initialize the text element with a space, apply styles, then clear it
           svgElement.textElem.SetText(' ');

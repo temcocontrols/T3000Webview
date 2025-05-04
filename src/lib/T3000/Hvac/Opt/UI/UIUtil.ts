@@ -291,7 +291,7 @@ class UIUtil {
           T3Gv.opt.formatPainterText = activeEdit.GetSelectedFormat();
           T3Gv.opt.formatPainterStyle = { StyleRecord: {} };
           T3Gv.opt.formatPainterStyle.Text = new TextFmtData();
-          TextUtil.TextStyleToSDText(T3Gv.opt.formatPainterStyle.Text, T3Gv.opt.formatPainterText);
+          TextUtil.TextStyleToText(T3Gv.opt.formatPainterStyle.Text, T3Gv.opt.formatPainterText);
           OptCMUtil.SetEditMode(NvConstant.EditState.FormatPaint);
         }
       }
