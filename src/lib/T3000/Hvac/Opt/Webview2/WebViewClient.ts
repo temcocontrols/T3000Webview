@@ -452,6 +452,7 @@ class WebViewClient {
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
       IdxUtils.refreshLinkedEntries(msgData.data);
+      IdxUtils.refreshLinkedEntries2(msgData.data);
     }
   }
 
@@ -605,7 +606,9 @@ class WebViewClient {
     if (!linkT3EntryDialog.value.active) {
       selectPanelOptions.value = T3000_Data.value.panelsData;
     }
+
     IdxUtils.refreshLinkedEntries(msgData.data);
+    IdxUtils.refreshLinkedEntries2(msgData.data);
   }
 
   public HandleLoadGraphicEntryRes(msgData) {

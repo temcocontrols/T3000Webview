@@ -547,6 +547,7 @@ class WebSocketClient {
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
       IdxUtils.refreshLinkedEntries(msgData.data);
+      IdxUtils.refreshLinkedEntries2(msgData.data);
     }
   }
 
@@ -661,6 +662,7 @@ class WebSocketClient {
       selectPanelOptions.value = T3000_Data.value.panelsData;
     }
     IdxUtils.refreshLinkedEntries(msgData.data);
+    IdxUtils.refreshLinkedEntries2(msgData.data);
   }
 
   public HandleLoadGraphicEntryRes(msgData) {

@@ -1,5 +1,5 @@
 
-import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge } from '../../Data/T3Data'
+import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge, appStateV2 } from '../../Data/T3Data'
 import { toRaw } from 'vue'
 import Hvac from '../../Hvac'
 
@@ -122,6 +122,27 @@ class IdxUtils {
 
           const tempBefore = linkedEntry.value;
 
+          let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
+          linkedEntry.value = newLkValue;
+          item.t3Entry = linkedEntry;
+          IdxUtils.refreshObjectStatus(item);
+        }
+      });
+  }
+
+  // Refresh linked entries with updated panel data for app state v2
+  static refreshLinkedEntries2(panelData) {
+    appStateV2.value.items
+      .filter((i) => i.t3Entry?.type)
+      .forEach((item) => {
+        const linkedEntry = panelData.find(
+          (ii) =>
+            ii.index === item.t3Entry.index &&
+            ii.type === item.t3Entry.type &&
+            ii.pid === item.t3Entry.pid
+        );
+        if (linkedEntry && linkedEntry.id) {
+          // const tempBefore = linkedEntry.value;
           let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
           linkedEntry.value = newLkValue;
           item.t3Entry = linkedEntry;
