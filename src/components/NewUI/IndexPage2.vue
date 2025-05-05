@@ -551,7 +551,7 @@ import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
-import ToolsSidebar2 from "../../components/ToolsSidebar2.vue";
+import ToolsSidebar2 from "./ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
@@ -568,7 +568,7 @@ import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
 import DeviceInfo from "src/components/DeviceInfo.vue";
-import NewTopToolBar2 from "src/components/NewTopToolBar2.vue";
+import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
 
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";

@@ -343,6 +343,9 @@
               &nbsp;
               <button id="btn_try_Lib_UnLock">Un-Lock</button>
 
+              &nbsp;
+              <button id="btn_try_Add_To_Library">Add Library</button>
+
               <!-- &nbsp;
               <button id="btn_try_Lib_AddNote">Add Note</button>
 
@@ -364,8 +367,8 @@
 import { defineComponent, ref, watch, onMounted } from 'vue'
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
-import { tools, user } from "../lib/common"
-import { devVersion } from '../lib/T3000/Hvac/Data/T3Data'
+import { tools, user } from "../../lib/common"
+import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
 
 export default defineComponent({
   name: 'NewTopToolBar2',
