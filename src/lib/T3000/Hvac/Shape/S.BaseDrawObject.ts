@@ -210,6 +210,7 @@ class BaseDrawObject {
   // Unique Shape Type
   public uniType: string;
   public drawSetting: any;
+  public uniqueId: string;
 
   constructor(config: any) {
     config = config || {};
@@ -317,6 +318,7 @@ class BaseDrawObject {
 
     this.uniType = config.uniType || '';
     this.drawSetting = config.drawSetting || {};
+    this.uniqueId = Utils1.GenerateUUID();
   }
 
   GenericKnob(params: any) {

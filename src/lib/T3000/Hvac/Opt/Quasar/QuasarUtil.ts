@@ -138,7 +138,7 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    T3Util.Log("= U.QuasarUtil ShowObjectConfig","show=>", show);
+    T3Util.Log("= U.QuasarUtil ShowObjectConfig", "show=>", show);
     // T3Gv.refreshPosition = true;
     // this.SetSeletedTool();
     objectConfigShow.value = show;
@@ -255,8 +255,8 @@ class QuasarUtil {
   }
 
   static AddCurrentObjectToAppState() {
-    let targetSelectionId = SelectUtil.GetTargetSelect();
-    var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
+    let targetSelectId = SelectUtil.GetTargetSelect();
+    var targetObject = ObjectUtil.GetObjectPtr(targetSelectId, false);
 
     T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState", targetObject);
     var frame = {
@@ -266,6 +266,7 @@ class QuasarUtil {
       height: targetObject.Frame.height,
     };
 
+    var uniqueId = targetObject.uniqueId;
     var uniType = targetObject.uniType;
 
     //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
@@ -273,12 +274,12 @@ class QuasarUtil {
     //Dial Value Wall G_Circle G_Rectangle g_arr_right Oval Switch LED Text Box Pointer Gauge IconBasic Icon Switch
     const tool = AllTool.find((item) => item.name === uniType);
 
-    this.AddToAppStateV2(frame, tool);
+    this.AddToAppStateV2(frame, tool, uniqueId);
     this.SetAppStateV2SelectIndex(tool);
     DataOpt.SaveAppStateV2();
   }
 
-  static AddToAppStateV2(frame: any, tool: any) {
+  static AddToAppStateV2(frame: any, tool: any, uniqueId) {
     const size = { width: frame.width, height: frame.height };
 
     const pos = {
@@ -288,23 +289,17 @@ class QuasarUtil {
       left: frame.y,
     }
 
-    const item = this.drawObject(size, pos, tool);
-    T3Util.Log("= U.QuasarUtil AddToAppStateV2 1",  item);
-    T3Util.Log("= U.QuasarUtil AddToAppStateV2 2",  appStateV2.value);
+    const item = this.drawObject(size, pos, tool, uniqueId);
+    T3Util.Log("= U.QuasarUtil AddToAppStateV2", item, appStateV2.value);
   }
 
-  static drawObject(size, pos, tool) {
+  static drawObject(size, pos, tool, uniqueId) {
 
-    const toolSettings =
-      cloneDeep(AllTool.find((t) => t.name === tool.name)?.settings) || {};
+    const toolSettings = cloneDeep(AllTool.find((t) => t.name === tool.name)?.settings) || {};
     const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
       acc[key] = toolSettings[key].value;
       return acc;
     }, {});
-
-    if (tool.name === "G_Rectangle") {
-      size.width = 100;
-    }
 
     const tempItem = {
       title: null,
@@ -322,63 +317,58 @@ class QuasarUtil {
       showDimensions: true
     };
 
-    const item = this.addObject(tempItem);
+    const item = this.addObject(tempItem, uniqueId);
 
-    if (["Value", "Icon", "Switch"].includes(tool.name)) {
-      linkT3EntryDialogV2.value.active = true;
-    }
+    // if (["Value", "Icon", "Switch"].includes(tool.name)) {
+    //   linkT3EntryDialogV2.value.active = true;
+    // }
     return item;
   }
 
-  static addObject(item, group = undefined, addToHistory = true) {
+  static addObject(item, uniqueId, group = undefined, addToHistory = true) {
     appStateV2.value.itemsCount++;
     item.id = appStateV2.value.itemsCount;
+    item.uniqueId = uniqueId;
     item.group = group;
-    if (!item.settings.titleColor) {
-      item.settings.titleColor = "inherit";
-    }
-    if (!item.settings.bgColor) {
-      item.settings.bgColor = "inherit";
-    }
-    if (!item.settings.textColor) {
-      item.settings.textColor = "inherit";
-    }
-    if (!item.settings.fontSize) {
-      item.settings.fontSize = 13;
-    }
+    item.settings.titleColor = item.settings.titleColor || "inherit";
+    item.settings.bgColor = item.settings.bgColor || "inherit";
+    item.settings.textColor = item.settings.textColor || "inherit";
+    item.settings.fontSize = item.settings.fontSize || 13;
+
     appStateV2.value.items.push(item);
     appStateV2.value.elementGuidelines = [];
     return item;
   }
 
+  //
   static SetAppStateV2SelectIndex(tool: any) {
-    let selectedUniType = "";
+    let selectedUniqueId = "";
 
     if (tool) {
-      selectedUniType = tool?.name ?? "";
+      selectedUniqueId = tool?.name ?? "";
     } else {
       // get current selected shape
       let targetSelectionId = SelectUtil.GetTargetSelect();
       var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
       if (targetObject) {
-        selectedUniType = targetObject?.uniType ?? "";
+        selectedUniqueId = targetObject?.uniqueId ?? "";
       }
     }
 
     appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
-      (item) => `${item.type}` === selectedUniType
+      (item) => `${item.uniqueId}` === selectedUniqueId
     );
 
-    T3Util.Log("= U.QuasarUtil SetAppStateV2SelectIndex",  appStateV2.value);
+    T3Util.Log("= U.QuasarUtil SetAppStateV2SelectIndex", appStateV2.value);
   }
 
-  static GetItemFromAPSV2(shapeId: string) {
-    let item = appStateV2.value.items.find((item) => item.type === shapeId);
+  static GetItemFromAPSV2(shapeUniqueId: string) {
+    let item = appStateV2.value.items.find((item) => item.uniqueId === shapeUniqueId);
     if (item) {
       return item;
     } else {
-      console.error(`Item with id ${shapeId} not found in appStateV2`);
+      T3Util.Log(`Item with id ${shapeUniqueId} not found in appStateV2`);
       return null;
     }
   }
@@ -417,8 +407,8 @@ class QuasarUtil {
     console.log(`Updated drawSetting: ${key}=${value}`, drawSetting);
     selection.selectedObject.SetDrawSetting(drawSetting);
 
-    var dynamicCss=
-    `
+    var dynamicCss =
+      `
     .in-alarm .fan {
   animation: fan-alarm 1s infinite;
 }

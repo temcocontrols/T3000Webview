@@ -148,8 +148,8 @@ class SVGFragmentSymbol extends BaseSymbol {
     container.AddElement(slopShape);
     container.isShape = true;
 
-    var apsItem = QuasarUtil.GetItemFromAPSV2(this.uniType);
-    // console.log("= S.SVGFragmentSymbol | CreateShape apsItem:", apsItem);
+    var apsItem = QuasarUtil.GetItemFromAPSV2(this.uniqueId);
+    T3Util.Log("= S.SVGFragmentSymbol | CreateShape apsItem:", apsItem);
 
     var needRefreshVue = apsItem && apsItem.t3Entry;
     if (needRefreshVue) {
