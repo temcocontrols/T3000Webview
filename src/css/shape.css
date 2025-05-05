@@ -1,6 +1,8 @@
-/* .object-svg {
+.object-svg {
   color: #659dc5;
-} */
+}
+
+/* pump */
 .in-alarm .pump {
   animation: color_change 1s infinite;
 }
@@ -118,6 +120,388 @@
     transform: rotate(360deg);
   }
 }
-.object-svg {
-  color: #659dc5;
+
+/* humidifier */
+.in-alarm .duct-humidifier .humidifier-body {
+  animation: duct_humidifier_color_change 1s infinite;
+}
+
+@keyframes duct_humidifier_color_change {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill: currentColor;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.active .duct-humidifier .water-drops {
+  transform: translate(-10px);
+  animation: duct-humidifier-drop-move 1s linear infinite;
+}
+
+.inactive .duct-humidifier .water-drops {
+  opacity: 0;
+}
+
+.active .duct-humidifier .water-drops-2 {
+  animation-delay: 0.3s;
+}
+
+@keyframes duct-humidifier-drop-move {
+  100% {
+    transform: translate(10px);
+    opacity: 0.1;
+  }
+}
+
+/* cooling-coil */
+.in-alarm .cooling-coil {
+  animation: cooling-coil-alarm 1s infinite;
+}
+
+@keyframes cooling-coil-alarm {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill: currentColor;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.active:not(.in-alarm) .cooling-coil {
+  animation: cooling-coil-active 1.5s infinite;
+}
+
+@keyframes cooling-coil-active {
+  0% {
+    fill: #98eeff;
+  }
+
+  50% {
+    fill: #4bb7d8;
+  }
+
+  100% {
+    fill: #98eeff;
+  }
+}
+
+.value-100 .cooling-coil {
+  transform: scale(1, 1);
+}
+
+.value-90 .cooling-coil {
+  transform: scale(1, 0.9);
+}
+
+.value-80 .cooling-coil {
+  transform: scale(1, 0.8);
+}
+
+.value-70 .cooling-coil {
+  transform: scale(1, 0.7);
+}
+
+.value-60 .cooling-coil {
+  transform: scale(1, 0.6);
+}
+
+.value-50 .cooling-coil {
+  transform: scale(1, 0.5);
+}
+
+.value-40 .cooling-coil {
+  transform: scale(1, 0.4);
+}
+
+.value-30 .cooling-coil {
+  transform: scale(1, 0.3);
+}
+
+.value-20 .cooling-coil {
+  transform: scale(1, 0.2);
+}
+
+.value-10 .cooling-coil {
+  transform: scale(1, 0.1);
+}
+
+.value-0 .cooling-coil {
+  transform: scale(1, 0);
+}
+
+/* damper */
+.in-alarm .damper {
+  animation: damper-alarm 1s infinite;
+}
+.active .damper {
+  fill: #66c492;
+}
+.active .damper-line {
+  animation: damper-active 1.5s infinite;
+}
+
+.range-digital .damper-line {
+  transform: rotate(0deg);
+  animation: none;
+}
+
+.active.range-digital .damper-line {
+  transform: rotate(80deg);
+}
+
+@keyframes damper-active {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(80deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes damper-alarm {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill: currentColor;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.damper-line {
+  transform: rotate(35deg);
+}
+
+.value-100 .damper-line {
+  transform: rotate(0deg);
+}
+
+.value-90 .damper-line {
+  transform: rotate(8deg);
+}
+
+.value-80 .damper-line {
+  transform: rotate(16deg);
+}
+
+.value-70 .damper-line {
+  transform: rotate(24deg);
+}
+
+.value-60 .damper-line {
+  transform: rotate(32deg);
+}
+
+.value-50 .damper-line {
+  transform: rotate(40deg);
+}
+
+.value-40 .damper-line {
+  transform: rotate(48deg);
+}
+
+.value-30 .damper-line {
+  transform: rotate(56deg);
+}
+
+.value-20 .damper-line {
+  transform: rotate(64deg);
+}
+
+.value-10 .damper-line {
+  transform: rotate(72deg);
+}
+
+.value-0 .damper-line {
+  transform: rotate(80deg);
+}
+
+/* heating-coil*/
+.in-alarm .heating-coil {
+  animation: heating-coil-alarm 1s infinite;
+}
+
+@keyframes heating-coil-alarm {
+  0% {
+    fill: red;
+  }
+
+  50% {
+    fill: currentColor;
+  }
+
+  100% {
+    fill: red;
+  }
+}
+
+.active:not(.in-alarm) .heating-coil {
+  animation: heating-coil-active 1.5s infinite;
+}
+
+@keyframes heating-coil-active {
+  0% {
+    fill: #fff600;
+  }
+
+  50% {
+    fill: #ffae00;
+  }
+
+  100% {
+    fill: #fff600;
+  }
+}
+
+.value-100 .heating-coil {
+  transform: scale(1, 1);
+}
+
+.value-90 .heating-coil {
+  transform: scale(1, 0.9);
+}
+
+.value-80 .heating-coil {
+  transform: scale(1, 0.8);
+}
+
+.value-70 .heating-coil {
+  transform: scale(1, 0.7);
+}
+
+.value-60 .heating-coil {
+  transform: scale(1, 0.6);
+}
+
+.value-50 .heating-coil {
+  transform: scale(1, 0.5);
+}
+
+.value-40 .heating-coil {
+  transform: scale(1, 0.4);
+}
+
+.value-30 .heating-coil {
+  transform: scale(1, 0.3);
+}
+
+.value-20 .heating-coil {
+  transform: scale(1, 0.2);
+}
+
+.value-10 .heating-coil {
+  transform: scale(1, 0.1);
+}
+
+.value-0 .heating-coil {
+  transform: scale(1, 0);
+}
+
+/* heat-pump*/
+.in-alarm .heat-pump .inner {
+  animation: heat-pump-alarm 1s infinite;
+}
+@keyframes heat-pump-alarm {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+
+@keyframes heat-pump-active {
+  0% {
+    fill: #27ae60;
+    opacity: 1;
+  }
+  50% {
+    fill: currentColor;
+    opacity: 0.2;
+  }
+  100% {
+    fill: #27ae60;
+    opacity: 1;
+  }
+}
+
+.active:not(.in-alarm) .heat-pump .inner {
+  animation: heat-pump-active 1s infinite;
+}
+
+/* valve-three-way */
+
+.in-alarm .twv {
+  animation: twv-alarm 1s infinite;
+}
+@keyframes twv-alarm {
+  0% {
+    fill: red;
+  }
+  50% {
+    fill: currentColor;
+  }
+  100% {
+    fill: red;
+  }
+}
+.twv .blocker-wrapper {
+  transform: translate(0, 0);
+}
+.value-100 .twv .blocker {
+  transform: rotate(90deg);
+}
+.value-90 .twv .blocker {
+  transform: rotate(81deg);
+}
+.value-80 .twv .blocker {
+  transform: rotate(72deg);
+}
+.value-70 .twv .blocker {
+  transform: rotate(63deg);
+}
+.value-60 .twv .blocker {
+  transform: rotate(54deg);
+}
+.value-50 .twv .blocker {
+  transform: rotate(45deg);
+}
+.value-40 .twv .blocker {
+  transform: rotate(36deg);
+}
+.value-30 .twv .blocker {
+  transform: rotate(27deg);
+}
+.value-20 .twv .blocker {
+  transform: rotate(18deg);
+}
+.value-10 .twv .blocker {
+  transform: rotate(9deg);
+}
+.value-0 .twv .blocker {
+  transform: rotate(0deg);
 }
