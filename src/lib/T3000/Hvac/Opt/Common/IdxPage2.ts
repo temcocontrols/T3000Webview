@@ -7,6 +7,7 @@ import {
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
+import { liveApi } from "src/lib/api";
 
 class IdxPage2 {
 
@@ -19,14 +20,14 @@ class IdxPage2 {
 
   initPage() {
     Hvac.WebClient.initMessageHandler();
-    //  this.initGlobalNav();
-    //  this.isLoggedIn();
-    //  this.restoreAppState();
+    this.initGlobalNav();
+    this.isLoggedIn();
+    this.restoreAppState();
     //  this.setDocMarginOffset();
     //  this.initPanzoom();
     this.initMessageClient();
     //  this.initScorller();
-    //  this.initAutoSaveInterval();
+    this.initAutoSaveInterval();
     //  this.initWindowListener();
     //  this.refreshMoveableGuides();
     //  this.resetPanzoom();
@@ -36,6 +37,75 @@ class IdxPage2 {
     this.$q = quasar;
     Hvac.WebClient.initQuasar(this.$q);
     Hvac.QuasarUtil.initQuasar(this.$q);
+  }
+
+  // Set global navigation properties
+  initGlobalNav() {
+    globalNav.value.title = "HVAC Drawer";
+    globalNav.value.back = null;
+    globalNav.value.home = "/";
+  }
+
+  // Restore app state from local storage if not in a webview
+  restoreAppState() {
+    if (this.webview?.postMessage) {
+      return;
+    }
+
+    const localState = Hvac.LsOpt.loadParsedAppStateLS();
+    if (localState) {
+      appState.value = localState;
+      // rulersGridVisible.value = appState.value.rulersGridVisible;
+    }
+  }
+
+  // Checks if the user is logged in
+  isLoggedIn() {
+    // const $q = useQuasar();
+    // console.log("= Idx $q:", $q);
+
+    const hasToken = this.$q.cookies.has("token");
+    if (!hasToken) {
+      user.value = null;
+      return;
+    }
+
+    // Get the user's data from the API
+    liveApi.get("hvacTools").then(async (res: any) => {
+      const data = await res.json();
+      if (data.length > 0) {
+        data?.forEach((oItem) => {
+          this.addOnlineLibImage(oItem);
+        });
+      }
+    })
+      .catch((err) => {
+        console.log(err);
+      });
+
+    liveApi.get("hvacObjectLibs").then(async (res: any) => {
+      const data = await res.json();
+      if (data.length > 0) {
+        data.forEach((oItem) => {
+          library.value.objLib.push({
+            id: oItem.id,
+            label: oItem.label,
+            items: oItem.items,
+            online: true,
+          });
+        });
+      }
+    })
+      .catch((err) => {
+        console.log(err);
+      });
+
+    liveApi.get("me").then(async (res) => {
+      user.value = await res.json();
+    })
+      .catch((err) => {
+        // Not logged in
+      });
   }
 
   // Toggles the auto/manual mode of an item
@@ -241,6 +311,17 @@ class IdxPage2 {
     }
   }
 
+  initAutoSaveInterval() {
+    // do not trigger the auto save for the first time, cause there may have some other operations to load the initial data
+    // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
+    setTimeout(() => {
+      this.autoSaveInterval = setInterval(() => {
+        console.log('= Idx auto save every 30s', new Date().toLocaleString());
+        this.save(true, true);
+      }, 30000);
+    }, 10000);
+  }
+
   prepareSaveData() {
     const data = cloneDeep(toRaw(appState.value));
 
@@ -257,7 +338,7 @@ class IdxPage2 {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-     console.log('idx page 2  T3UpdateEntryField appState before', appState.value);
+    console.log('idx page 2  T3UpdateEntryField appState before', appState.value);
     // console.log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
     // console.log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
@@ -290,6 +371,23 @@ class IdxPage2 {
     }
 
     console.log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+  }
+
+  // Adds the online images to the library
+  addOnlineLibImage(oItem) {
+    const iIndex = library.value.images.findIndex(
+      (obj) => obj.id === "IMG-" + oItem.id
+    );
+    if (iIndex !== -1) {
+      library.value.images.splice(iIndex, 1);
+    }
+    library.value.images.push({
+      id: "IMG-" + oItem.id,
+      dbId: oItem.id,
+      name: oItem.name,
+      path: process.env.API_URL + "/file/" + oItem.file.path,
+      online: true,
+    });
   }
 }
 
