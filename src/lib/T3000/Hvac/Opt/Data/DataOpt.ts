@@ -13,7 +13,12 @@ import LayersManager from '../../Model/LayersManager'
 import TEData from '../../Model/TEData'
 import Instance from '../../Data/Instance/Instance'
 import LayerUtil from '../Opt/LayerUtil'
-import { appStateV2 } from '../../Data/T3Data'
+import { appStateV2, globalMsg, isBuiltInEdge, rulersGridVisible } from '../../Data/T3Data'
+import { cloneDeep } from 'lodash'
+import { toRaw } from 'vue'
+import Hvac from '../../Hvac'
+import Utils1 from '../../Util/Utils1'
+import T3Util from '../../Util/T3Util'
 
 /**
  * Class for managing data operations in T3000 HVAC system.
@@ -149,7 +154,9 @@ class DataOpt {
     if (objectData.Type === 'SDData') {
       const sdDataData = plainToInstance(SDData, objectData);
       storedObject.Data = sdDataData;
-      storedObject.Data.dimensions = 146;
+
+      // ToDo do not show the dimensions
+      // storedObject.Data.dimensions = 146;
     }
 
     if (objectData.Type === 'LayersManager') {
@@ -294,12 +301,50 @@ class DataOpt {
     this.SaveAppStateV2();
   }
 
+  static PrepareSaveData() {
+    const data = cloneDeep(toRaw(appStateV2.value));
+
+    // Recalculate the items count
+    data.itemsCount = data.items.filter(item => item.width !== 0).length;
+
+    data.selectedTargets = [];
+    data.elementGuidelines = [];
+    data.rulersGridVisible = rulersGridVisible.value;
+
+    return data;
+  }
+
   /**
    * Saves data to T3000 system
    * Currently empty implementation placeholder
    */
   static SaveToT3000(): void {
-    // Implementation not yet provided
+    // Prepare data
+    T3Util.Log('= O.DataOpt save to T3000');
+    const data = this.PrepareSaveData();
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveGraphicData(null, null, data);
+    }
+    else {
+      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+      if (msgType) {
+        T3Util.Log('= O.DataOpt save to T3000 with initial data status error, cancel auto save');
+        return;
+      }
+
+      // Post a save action to T3
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.deviceId;
+      const graphicId = currentDevice?.graphic;
+
+      if (panelId && graphicId) {
+        Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
+      }
+      else {
+        T3Util.Log('= O.DataOpt save to T3000 current device is null');
+      }
+    }
   }
 
   /**

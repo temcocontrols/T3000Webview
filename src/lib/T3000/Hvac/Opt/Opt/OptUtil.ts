@@ -7222,6 +7222,68 @@ class OptUtil {
   SetShapeBackgroundColor(colorValue) {
 
   }
+
+  AddToLibrary() {
+    // Get currently selected objects from selection manager
+    const selectObjs = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
+    T3Util.Log("= U.OptUtil AddToLibrary - selectObjs:", selectObjs);
+    const selectedObjects = selectObjs.Data;
+    T3Util.Log("= U.OptUtil AddToLibrary - selectedObjects:", selectedObjects);
+    const objectCount = selectedObjects.length;
+
+    T3Util.Log("= U.OptUtil AddToLibrary - T3Gv.stdObj:", T3Gv.stdObj);
+
+    // Check if any objects are selected
+    if (objectCount === 0) {
+      T3Util.Log("O.Opt AddToLibrary - Error: No objects selected");
+      return false;
+    }
+
+    // Process each selected object
+    const libraryItems = [];
+    for (let i = 0; i < objectCount; i++) {
+      // const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], false);
+      const currentObject = T3Gv.stdObj.GetObject(selectedObjects[i]);
+      T3Util.Log("= U.OptUtil AddToLibrary - currentObject:", currentObject);
+      if (currentObject) {
+        // Create a deep copy of the object for the library
+        const libraryItem = Utils1.DeepCopy(currentObject);
+        libraryItems.push(libraryItem);
+      }
+    }
+
+    T3Util.Log("O.Opt AddToLibrary - Added objects to library:", libraryItems.length);
+
+    // Convert library items to JSON string to store in local storage
+    try {
+      // Serialize the library items - handle circular references by custom serialization
+      const serializedItems = JSON.stringify(libraryItems, (key, value) => {
+        // Skip functions and handle special object types
+        if (typeof value === 'function') {
+          return undefined;
+        }
+        return value;
+      });
+
+      // Save to local storage with the key "t3.library"
+      localStorage.setItem('t3.library', serializedItems);
+
+      T3Util.Log("O.Opt AddToLibrary - Successfully saved to local storage", {
+        itemCount: libraryItems.length,
+        storageKey: 't3.library',
+        sizeInBytes: serializedItems.length
+      });
+    } catch (error) {
+      // Handle storage errors (quota exceeded, etc.)
+      T3Util.Log("O.Opt AddToLibrary - Error saving to local storage:", error);
+      return false;
+    }
+    return libraryItems;
+  }
+
+  LoadLibrary() {
+
+  }
 }
 
 export default OptUtil

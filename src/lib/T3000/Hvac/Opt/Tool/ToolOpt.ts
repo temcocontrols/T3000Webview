@@ -618,6 +618,15 @@ class ToolOpt {
       T3Gv.opt.ExceptionCleanup(ex);
     }
   }
+
+  AddToLibraryAct(){
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.opt.AddToLibrary();
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
 }
 
 export default ToolOpt

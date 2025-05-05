@@ -8,6 +8,8 @@ import {
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
 import { liveApi } from "src/lib/api";
+import DataOpt from "../Data/DataOpt";
+import T3Util from "../../Util/T3Util";
 
 class IdxPage2 {
 
@@ -260,11 +262,16 @@ class IdxPage2 {
 
   // Wrap a new function for saving data to localstorage and T3000
   save(notify: boolean = false, saveToT3: boolean = false) {
+    T3Util.Log('= Idx2 save to local storage', new Date().toLocaleString());
     savedNotify.value = notify;
     this.saveToLocal();
 
+    // save the data for new ui to local storage
+    DataOpt.SaveToLocalStorage();
+
     if (saveToT3) {
-      this.saveToT3000();
+      // this.saveToT3000();
+      DataOpt.SaveToT3000();
     }
   }
 
@@ -334,7 +341,6 @@ class IdxPage2 {
 
     return data;
   }
-
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {

@@ -136,6 +136,8 @@ class EvtOpt {
       this.BindSetYEvent();
       this.BindSetWidthEvent();
       this.BindSetHeightEvent();
+
+      this.BindAddToLibraryEvent();
     });
   }
 
@@ -972,6 +974,12 @@ class EvtOpt {
     $("#btn_try_h").on("pointerdown", (event) => {
       var heightVal = "2.5";
       EvtOpt.toolOpt.SetHeight(heightVal);
+    });
+  }
+
+  BindAddToLibraryEvent() {
+    $("#btn_try_Add_To_Library").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.AddToLibraryAct();
     });
   }
 }
