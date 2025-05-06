@@ -344,7 +344,16 @@
               <button id="btn_try_Lib_UnLock">Un-Lock</button>
 
               &nbsp;
-              <button id="btn_try_Add_To_Library">Add Library</button>
+              <button id="btn_try_Add_To_Library">Add Lib</button>
+
+              &nbsp;
+              <button id="btn_try_Load_Library">Load Lib</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_1">Duct 1</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_2">Duct 2</button>
 
               <!-- &nbsp;
               <button id="btn_try_Lib_AddNote">Add Note</button>

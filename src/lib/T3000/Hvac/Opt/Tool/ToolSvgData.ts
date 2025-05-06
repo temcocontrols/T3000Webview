@@ -10,10 +10,10 @@ class ToolSvgData {
     let initialX = -1000;
     let initialY = -1000;
 
-    let defWidth = 60;
+    let defWidth = 300;
     let defHeight = 60;
 
-    let initGbWidth = 60;
+    let initGbWidth = 300;
     let initGbHeight = 60;
 
     // Create a new SVG Fragment Symbol
@@ -121,6 +121,12 @@ class ToolSvgData {
       case "Test1":
         svgStr = this.Test1SvgData();
         break;
+      case "Duct1":
+        svgStr = this.Duct1SvgData();
+        break;
+      case "Duct2":
+        svgStr = this.Duct2SvgData();
+        break;
       default:
         return "";
     }
@@ -226,6 +232,12 @@ class ToolSvgData {
         break;
       case "Test1":
         svgStr = this.Test1SvgData();
+        break;
+      case "Duct1":
+        svgStr = this.Duct1SvgData();
+        break;
+      case "Duct2":
+        svgStr = this.Duct2SvgData();
         break;
       default:
         return "";
@@ -1208,6 +1220,99 @@ class ToolSvgData {
     `;
 
     return test1;
+  }
+
+  static Duct1SvgData() {
+    const svgData =
+      `
+  <g>
+      <g width="13.667" height="10.167" transform="scale(1,1) translate(0,20.833)">
+          <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none"
+              width="13.667" height="10.167" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
+              fill-opacity="1" stroke-opacity="1">
+              <rect width="13.667" height="10.167" />
+          </g>
+      </g>
+      <g width="13.667" height="10.167" transform="scale(1,1) translate(56.833,21.167)">
+          <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none"
+              width="13.667" height="10.167" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
+              fill-opacity="1" stroke-opacity="1">
+              <rect width="13.667" height="10.167" />
+          </g>
+      </g>
+      <g width="13.667" height="10.167" transform="rotate(270,34.667,6.75) scale(1,1) translate(27.833,1.667)">
+          <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none"
+              width="13.667" height="10.167" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
+              fill-opacity="1" stroke-opacity="1">
+              <rect width="13.667" height="10.167" />
+          </g>
+      </g>
+      <g width="46.167" height="25.5" transform="scale(1,1) translate(12,12.667)">
+          <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none"
+              width="46.167" height="25.5" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
+              fill-opacity="1" stroke-opacity="1">
+              <rect width="46.167" height="25.5" />
+          </g>
+      </g>
+  </g>
+      `;
+
+    return svgData;
+  }
+
+  static Duct2SvgData() {
+    const svgData =
+      `
+<g transform="scale(0.25,0.26) translate(0,0)">
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="0,0 0,239.173 181.772,239.173 181.772,0 0,0 0,0 0,0     "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="0,0 0,239.173 181.772,239.173    181.772,0 0,0  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="6.732,14.948 6.732,224.225 176.722,224.225    176.722,14.948 6.732,14.948 6.732,14.948 6.732,14.948  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="6.732,36.54 6.732,202.633 176.722,202.633    176.722,36.54 6.732,36.54 6.732,36.54 6.732,36.54  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="6.732,64.776 6.732,176.889 176.722,176.889    176.722,64.776 6.732,64.776 6.732,64.776 6.732,64.776  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="6.732,105.469 6.732,133.704 176.722,133.704    176.722,105.469 6.732,105.469 6.732,105.469 6.732,105.469  "/>
+	<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="181.772" y1="133.704" x2="0" y2="133.704"/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="365.226,239.173 365.226,0 181.772,0 181.772,239.173    365.226,239.173 365.226,239.173 365.226,239.173  "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="365.226,239.173 365.226,0 181.772,0    181.772,239.173 365.226,239.173  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="358.494,224.225 358.494,14.948 187.662,14.948    187.662,224.225 358.494,224.225 358.494,224.225 358.494,224.225  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="358.494,202.633 358.494,36.54 187.662,36.54    187.662,202.633 358.494,202.633 358.494,202.633 358.494,202.633  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="358.494,176.889 358.494,64.776 187.662,64.776    187.662,176.889 358.494,176.889 358.494,176.889 358.494,176.889  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="358.494,133.704 358.494,105.469 187.662,105.469    187.662,133.704 358.494,133.704 358.494,133.704 358.494,133.704  "/>
+	<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="181.772" y1="60.624" x2="365.226" y2="60.624"/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="365.226,0 365.226,239.173 546.156,239.173 546.156,0    365.226,0 365.226,0 365.226,0  "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="365.226,0 365.226,239.173    546.156,239.173 546.156,0 365.226,0  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="369.434,14.948 369.434,224.225 539.424,224.225    539.424,14.948 369.434,14.948 369.434,14.948 369.434,14.948  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="369.434,36.54 369.434,202.633 539.424,202.633    539.424,36.54 369.434,36.54 369.434,36.54 369.434,36.54  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="369.434,64.776 369.434,176.889 539.424,176.889    539.424,64.776 369.434,64.776 369.434,64.776 369.434,64.776  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="369.434,105.469 369.434,133.704 539.424,133.704    539.424,105.469 369.434,105.469 369.434,105.469 369.434,105.469  "/>
+
+		<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="546.156" y1="163.601" x2="365.226" y2="163.601"/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="546.156,0 546.156,239.173 727.087,239.173 727.087,0    546.156,0 546.156,0 546.156,0  "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="546.156,0 546.156,239.173    727.087,239.173 727.087,0 546.156,0  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="552.889,14.948 552.889,224.225 722.879,224.225    722.879,14.948 552.889,14.948 552.889,14.948 552.889,14.948  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="552.889,36.54 552.889,202.633 722.879,202.633    722.879,36.54 552.889,36.54 552.889,36.54 552.889,36.54  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="552.889,64.776 552.889,176.889 722.879,176.889    722.879,64.776 552.889,64.776 552.889,64.776 552.889,64.776  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="552.889,105.469 552.889,133.704 722.879,133.704    722.879,105.469 552.889,105.469 552.889,105.469 552.889,105.469  "/>
+
+		<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="727.087" y1="133.704" x2="546.156" y2="133.704"/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="910.541,239.173 910.541,0 727.087,0 727.087,239.173    910.541,239.173 910.541,239.173 910.541,239.173  "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="910.541,239.173 910.541,0 727.087,0    727.087,239.173 910.541,239.173  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="904.651,224.225 904.651,14.948 733.819,14.948    733.819,224.225 904.651,224.225 904.651,224.225 904.651,224.225  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="904.651,202.633 904.651,36.54 733.819,36.54    733.819,202.633 904.651,202.633 904.651,202.633 904.651,202.633  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="904.651,176.889 904.651,64.776 733.819,64.776    733.819,176.889 904.651,176.889 904.651,176.889 904.651,176.889  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="904.651,133.704 904.651,105.469 733.819,105.469    733.819,133.704 904.651,133.704 904.651,133.704 904.651,133.704  "/>
+	<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="727.087" y1="60.624" x2="910.541" y2="60.624"/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="910.541,0 910.541,239.173 1092.313,239.173    1092.313,0 910.541,0 910.541,0 910.541,0  "/>
+	<polyline style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" points="910.541,0 910.541,239.173    1092.313,239.173 1092.313,0 910.541,0  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="915.591,14.948 915.591,224.225 1085.581,224.225    1085.581,14.948 915.591,14.948 915.591,14.948 915.591,14.948  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#669999;" points="915.591,36.54 915.591,202.633 1085.581,202.633    1085.581,36.54 915.591,36.54 915.591,36.54 915.591,36.54  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7FB2B2;" points="915.591,64.776 915.591,176.889 1085.581,176.889    1085.581,64.776 915.591,64.776 915.591,64.776 915.591,64.776  "/>
+	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2E5E5;" points="915.591,105.469 915.591,133.704 1085.581,133.704    1085.581,105.469 915.591,105.469 915.591,105.469 915.591,105.469  "/>
+
+		<line style="fill:none;stroke:##LineColor=#000000##;stroke-width:0;stroke-miterlimit:10;" x1="1092.313" y1="163.601" x2="910.541" y2="163.601"/>
+</g>
+      `;
+
+    return svgData;
   }
 }
 

@@ -138,6 +138,10 @@ class EvtOpt {
       this.BindSetHeightEvent();
 
       this.BindAddToLibraryEvent();
+
+      this.BindLoadLibraryEvent();
+      this.BindDuct1Event();
+      this.BindDuct2Event();
     });
   }
 
@@ -980,6 +984,24 @@ class EvtOpt {
   BindAddToLibraryEvent() {
     $("#btn_try_Add_To_Library").on("pointerdown", (event) => {
       EvtOpt.toolOpt.AddToLibraryAct();
+    });
+  }
+
+  BindLoadLibraryEvent() {
+    $("#btn_try_Load_Library").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LoadLibraryAct();
+    });
+  }
+
+  BindDuct1Event() {
+    $("#btn_try_Duct_1").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct1", true);
+    });
+  }
+
+  BindDuct2Event() {
+    $("#btn_try_Duct_2").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct2", true);
     });
   }
 }
