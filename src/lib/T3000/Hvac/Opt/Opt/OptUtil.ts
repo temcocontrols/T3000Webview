@@ -7282,7 +7282,116 @@ class OptUtil {
   }
 
   LoadLibrary() {
+    T3Util.Log("O.Opt LoadLibrary - Input: No parameters");
 
+    try {
+      // Retrieve stored library items from local storage
+      const serializedItems = localStorage.getItem('t3.library');
+
+      if (!serializedItems) {
+        T3Util.Log("O.Opt LoadLibrary - No library items found in storage");
+        return false;
+      }
+
+      // Parse the JSON string back to objects
+      const libraryItems = JSON.parse(serializedItems);
+
+      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
+        T3Util.Log("O.Opt LoadLibrary - Invalid or empty library data");
+        return false;
+      }
+
+      T3Util.Log("O.Opt LoadLibrary - Loaded items:", libraryItems.length);
+
+      // Clear any current selection
+      this.CloseEdit(true);
+
+      // Calculate position for placing the shapes
+      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
+      let offsetX = 0;
+      let offsetY = 0;
+      const padding = 20; // Space between objects
+
+      // Track newly created objects for selection
+      const newObjectIds = [];
+
+      // Process each library item
+      for (let i = 0; i < libraryItems.length; i++) {
+        const libraryItem = libraryItems[i];
+
+        if (!libraryItem.Data) {
+          continue;
+        }
+
+        // Create a new object based on stored data
+        try {
+          const originalObject = libraryItem.Data;
+
+          // Clone the object data but create a proper instance based on type
+          let newObject;
+
+          // Determine the object type and create appropriate instance
+          switch (originalObject.objecttype) {
+            case PolygonConstant.ShapeTypes.RECTANGLE:
+              newObject = new Instance.Shape.Rect(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.OVAL:
+              newObject = new Instance.Shape.Oval(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.LINE:
+              newObject = new Instance.Shape.BaseLine(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.POLYGON:
+              newObject = new Instance.Shape.PolyLine(originalObject);
+              break;
+            // Add additional types as needed
+            default:
+              // Default to base shape for unknown types
+              newObject = new Instance.Shape.BaseDrawObject(originalObject);
+          }
+
+          if (newObject) {
+            // Position the object relative to center position with offset
+            newObject.SetShapeOrigin(
+              centerPosition.x + offsetX,
+              centerPosition.y + offsetY,
+              null,
+              false
+            );
+
+            // Add the new object to document
+            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
+            if (newObjectId >= 0) {
+              newObjectIds.push(newObjectId);
+
+              // Update offset for next object
+              offsetX += newObject.Frame.width + padding;
+
+              // Wrap to next row if needed
+              if (offsetX > 800) {
+                offsetX = 0;
+                offsetY += 200 + padding;
+              }
+            }
+          }
+        } catch (objError) {
+          T3Util.Log("O.Opt LoadLibrary - Error creating object:", objError);
+        }
+      }
+
+      // Select all newly created objects
+      if (newObjectIds.length > 0) {
+        this.SelectObjects(newObjectIds, false, true);
+        SvgUtil.RenderAllSVGObjects();
+        DrawUtil.CompleteOperation(newObjectIds);
+      }
+
+      T3Util.Log("O.Opt LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+      return true;
+    } catch (error) {
+      T3Util.Log("O.Opt LoadLibrary - Error:", error);
+      return false;
+    }
   }
 }
 
