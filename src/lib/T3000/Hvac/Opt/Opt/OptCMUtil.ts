@@ -775,7 +775,7 @@ class OptCMUtil {
   }
 
   static GetEditMode() {
-    T3Util.Log('O.Opt GetEditMode - Input');
+    T3Util.Log('= O.Opt GetEditMode - Input');
 
     const editModeList = T3Gv.opt.editModeList || [];
     let currentEditMode = NvConstant.EditState.Default;
@@ -784,7 +784,7 @@ class OptCMUtil {
       currentEditMode = editModeList[editModeList.length - 1].mode;
     }
 
-    T3Util.Log('O.Opt GetEditMode - Output:', currentEditMode);
+    T3Util.Log('= O.Opt GetEditMode - Output:', currentEditMode);
     return currentEditMode;
   }
 

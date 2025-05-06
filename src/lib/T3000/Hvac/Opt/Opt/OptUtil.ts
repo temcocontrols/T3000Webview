@@ -1051,6 +1051,7 @@ class OptUtil {
   }
 
   SetDimensionVisibility(objects, isVisible) {
+    return;
     T3Util.Log('O.Opt SetDimensionVisibility: input', { objects, isVisible });
 
     let objectCount = objects.length;

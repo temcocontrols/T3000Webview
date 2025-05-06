@@ -204,7 +204,7 @@ class UIUtil {
       return trimmedText;
     }
 
-    T3Util.Log("O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
+    T3Util.Log("= O.Opt UpdateDisplayCoordinates - Output: Coordinates updated in UI");
   }
 
   static ShowXY(showCoordinates) {
