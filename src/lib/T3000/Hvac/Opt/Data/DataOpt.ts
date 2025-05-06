@@ -19,6 +19,7 @@ import { toRaw } from 'vue'
 import Hvac from '../../Hvac'
 import Utils1 from '../../Util/Utils1'
 import T3Util from '../../Util/T3Util'
+import OptConstant from '../../Data/Constant/OptConstant'
 
 /**
  * Class for managing data operations in T3000 HVAC system.
@@ -151,11 +152,13 @@ class DataOpt {
     const storedObject = plainToInstance(DataObj, storedObjectJson);
     const objectData = storedObject.Data;
 
+    //SelectedList / Links
+
     if (objectData.Type === 'SDData') {
       const sdDataData = plainToInstance(SDData, objectData);
       storedObject.Data = sdDataData;
 
-      // ToDo do not show the dimensions
+      // Do not show the dimensions
       // storedObject.Data.dimensions = 146;
     }
 
@@ -176,8 +179,37 @@ class DataOpt {
           const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, objectData);
           storedObject.Data = polyLineContainerData;
         } else {
-          const lineData = plainToInstance(Instance.Shape.Line, objectData);
-          storedObject.Data = lineData;
+          const lineType = objectData.LineType;
+
+          if (lineType == OptConstant.LineType.LINE) {
+            //1
+            const lineData = plainToInstance(Instance.Shape.Line, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCLINE) {
+            //2
+            const lineData = plainToInstance(Instance.Shape.ArcLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.SEGLINE) {
+            //3
+            const lineData = plainToInstance(Instance.Shape.SegmentedLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCSEGLINE) {
+            //4
+            const lineData = plainToInstance(Instance.Shape.ArcSegmentedLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.POLYLINE) {
+            //5
+            const lineData = plainToInstance(Instance.Shape.PolyLine, objectData);
+            storedObject.Data = lineData;
+          }
         }
       }
 
@@ -233,8 +265,38 @@ class DataOpt {
           const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, dataObj);
           shapeData = polyLineContainerData;
         } else {
-          const lineData = plainToInstance(Instance.Shape.Line, dataObj);
-          shapeData = lineData;
+
+          const lineType = dataObj.LineType;
+
+          if (lineType == OptConstant.LineType.LINE) {
+            //1
+            const lineData = plainToInstance(Instance.Shape.Line, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCLINE) {
+            //2
+            const lineData = plainToInstance(Instance.Shape.ArcLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.SEGLINE) {
+            //3
+            const lineData = plainToInstance(Instance.Shape.SegmentedLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCSEGLINE) {
+            //4
+            const lineData = plainToInstance(Instance.Shape.ArcSegmentedLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.POLYLINE) {
+            //5
+            const lineData = plainToInstance(Instance.Shape.PolyLine, dataObj);
+            shapeData = lineData;
+          }
         }
       }
 

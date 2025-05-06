@@ -295,7 +295,7 @@ class QuasarUtil {
 
   static drawObject(size, pos, tool, uniqueId) {
 
-    const toolSettings = cloneDeep(AllTool.find((t) => t.name === tool.name)?.settings) || {};
+    const toolSettings = cloneDeep(AllTool.find((t) => t.name === tool?.name)?.settings) || {};
     const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
       acc[key] = toolSettings[key].value;
       return acc;
@@ -304,7 +304,7 @@ class QuasarUtil {
     const tempItem = {
       title: null,
       active: false,
-      type: tool.name,
+      type: tool?.name,
       translate: [pos.clientX, pos.clientY],
       width: size.width,
       height: size.height,
