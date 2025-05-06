@@ -43,6 +43,7 @@ import HookUtil from '../Opt/Opt/HookUtil'
 import LayerUtil from '../Opt/Opt/LayerUtil'
 import SelectUtil from '../Opt/Opt/SelectUtil'
 import BlobBytes from '../Model/BlobBytes'
+import PolyUtil from '../Opt/Opt/PolyUtil'
 
 /**
  * BaseDrawObject is the fundamental class for all drawable elements within the T3000 HVAC system.
@@ -2733,16 +2734,16 @@ class BaseDrawObject {
 
     let isClockwise = endAngle <= Math.PI;
     let perpendicularAngle = this.GetPerpendicularAngle(startPoint, centerPoint, isClockwise);
-    let rotatedCenterPoint = Utils3.RotatePointAboutPoint(startPoint, -perpendicularAngle, centerPoint);
+    let rotatedCenterPoint = Utils3.RotatePointsAboutPoint(startPoint, -perpendicularAngle, centerPoint);
     let lineThickness = this.StyleRecord.Line.Thickness / 2;
     rotatedCenterPoint.x -= lineThickness;
-    rotatedCenterPoint = Utils3.RotatePointAboutPoint(startPoint, perpendicularAngle, rotatedCenterPoint);
+    rotatedCenterPoint = Utils3.RotatePointsAboutPoint(startPoint, perpendicularAngle, rotatedCenterPoint);
 
     let arcStartPoint = isClockwise ? rotatedCenterPoint : arcCenter;
     let arcEndPoint = isClockwise ? arcCenter : rotatedCenterPoint;
     let arcStartAngle = T3Gv.opt.GetCounterClockwiseAngleBetween2Points(startPoint, arcStartPoint);
 
-    let arcPoints = T3Gv.opt.ArcToPoly(
+    let arcPoints = PolyUtil.ArcToPoly(
       OptConstant.Common.MaxPolyPoints,
       startPoint,
       distance,
@@ -3499,20 +3500,34 @@ class BaseDrawObject {
     T3Util.Log("= S.BaseDrawObject: UpdateHookedObjectDimensionLines output: completed");
   }
 
-  UpdateEdgeDimensionLines(element, triggerType) {
-    T3Util.Log("= S.BaseDrawObject: UpdateEdgeDimensionLines input:", { element, triggerType });
+  /**
+   * Updates the dimension lines along the edges of a shape
+   * This method creates dimension line SVG elements that display measurements for each edge of the shape.
+   * It handles different dimension display options based on the object's dimensions flags.
+   *
+   * @param container - The SVG container element where dimension lines will be added
+   * @param triggerType - Additional context information or trigger type for dimension updates
+   * @returns The updated container element or null if no container was provided
+   */
+  UpdateEdgeDimensionLines(container, triggerType) {
+    T3Util.Log("= S.BaseDrawObject: UpdateEdgeDimensionLines input:", { container, triggerType });
 
-    let pathShape, pathCreator, dimensionPoints, isPolygon;
-    let angle = 0, segmentIndex = 0, dimensionText = '', dimensionLineShape = null, path = null;
+    let pathShape, pathCreator;
+    let dimensionPoints, pointsLength;
+    let isPolygon;
+    let angle = 0, segmentIndex = 0, dimensionText = '';
 
-    if (!element) {
-      T3Util.Log("= S.BaseDrawObject: UpdateEdgeDimensionLines output: element is null");
+    if (!container) {
+      T3Util.Log("= S.BaseDrawObject: UpdateEdgeDimensionLines output: container is null");
       return;
     }
 
+    // Create a path shape for drawing dimension lines
     pathShape = T3Gv.opt.svgDoc.CreateShape(OptConstant.CSType.Path);
-    element.AddElement(pathShape);
+    container.AddElement(pathShape);
     pathCreator = pathShape.PathCreator();
+
+    // Configure the path's appearance for dimension lines
     pathShape.SetID(OptConstant.SVGElementClass.DimLine);
     pathShape.SetFillColor('none');
     pathShape.SetStrokeColor(OptConstant.Common.DimLineColor);
@@ -3520,29 +3535,43 @@ class BaseDrawObject {
     pathShape.SetStrokeWidth(1);
     pathCreator.BeginPath();
 
-    const alwaysOrSelectDimension = this.Dimensions & NvConstant.DimensionFlags.Always || this.Dimensions & NvConstant.DimensionFlags.Select;
+    // Check if dimensions should be shown based on flags
+    const alwaysOrSelectDimension = this.Dimensions & NvConstant.DimensionFlags.Always ||
+                                   this.Dimensions & NvConstant.DimensionFlags.Select;
     dimensionPoints = this.GetDimensionPoints();
-
-    T3Util.Log('= S.BaseDrawObject: dimensionPoints:', dimensionPoints);
-
-    const pointsLength = dimensionPoints.length;
+    pointsLength = dimensionPoints.length;
     isPolygon = this instanceof Instance.Shape.Polygon;
 
+    // Create dimension lines for each segment if needed
     if (alwaysOrSelectDimension) {
       for (segmentIndex = 1; segmentIndex < pointsLength; segmentIndex++) {
         if (!Utils2.EqualPt(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex])) {
+          // Calculate the angle between consecutive points
           angle = Utils1.CalcAngleFromPoints(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex]);
-          dimensionText = this.GetDimensionFloatingPointValue(segmentIndex) || this.GetDimensionTextForPoints(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex]);
 
-          T3Util.Log('= S.BaseDrawObject: angle:', angle);
-          T3Util.Log('= S.BaseDrawObject: dimensionText:', dimensionText);
+          // Get the dimension text (use floating point value if available, otherwise calculate from points)
+          dimensionText = this.GetDimensionFloatingPointValue(segmentIndex) ||
+                          this.GetDimensionTextForPoints(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex]);
 
-          this.CreateDimension(element, pathCreator, false, angle, dimensionText, dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex], segmentIndex, false, isPolygon);
+          // Create the dimension element
+          this.CreateDimension(
+            container,
+            pathCreator,
+            false,
+            angle,
+            dimensionText,
+            dimensionPoints[segmentIndex - 1],
+            dimensionPoints[segmentIndex],
+            segmentIndex,
+            false,
+            isPolygon
+          );
         }
       }
     }
 
-    this.UpdateSecondaryDimensions(element, pathCreator, triggerType);
+    // Process any secondary dimensions and finalize
+    this.UpdateSecondaryDimensions(container, pathCreator, triggerType);
     this.ShowOrHideDimensions(false, triggerType);
     pathCreator.Apply();
 

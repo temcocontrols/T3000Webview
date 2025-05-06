@@ -1213,7 +1213,7 @@ class ArcLine extends BaseLine {
     }
 
     // Generate arc polyline points.
-    polyPoints = T3Gv.opt.ArcToPoly(
+    polyPoints = PolyUtil.ArcToPoly(
       numPoints - 1,
       center,
       arcInfo.radius,
@@ -1516,7 +1516,7 @@ class ArcLine extends BaseLine {
 
     // Convert each base perimeter point (chord point) to an arc point.
     for (let i = 0; i < basePerimPts.length; i++) {
-      resultPoints[i] = T3Gv.opt.ChordToArc(
+      resultPoints[i] = PolyUtil.ChordToArc(
         chordStart,
         chordEnd,
         arcCenter,

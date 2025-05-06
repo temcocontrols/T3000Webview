@@ -1361,6 +1361,10 @@ class PolyLine extends BaseLine {
     knobProps.fillOpacity = 0.001;
     knobProps.strokeSize = 1;
     knobProps.strokeColor = "green";
+
+    let u=1;
+    let p=1;
+
     for (let segmentIndex = 1; segmentIndex < segmentsCount; segmentIndex++) {
       // For curved segments such as ARCLINE, set adjustment knob position.
       if (this.polylist.segs[segmentIndex].LineType === OptConstant.LineType.ARCLINE) {

@@ -15,6 +15,8 @@ import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
+import $ from 'jquery';
+import EvtUtil from '../Event/EvtUtil';
 
 /**
  * Represents a freehand line shape that consists of multiple connected points.
@@ -119,8 +121,8 @@ class FreehandLine extends BaseLine {
    * Calculates the bounding frame of the freehand line
    */
   CalcFrame() {
-    let rect = {},
-      points = [];
+    let rect = { width: 0, height: 0, x: 0, y: 0 };
+    let points = [];
 
     if (this.pointlist && this.pointlist.length) {
       points = this.GetFreehandPoints(false);
@@ -599,9 +601,8 @@ class FreehandLine extends BaseLine {
     }
 
     // Update display coordinates if this is the active object
-    if (T3Gv.opt.actionStoredObjectId === this.BlockID &&
-      cursorPoint &&
-      UIUtil.UpdateDisplayCoordinates(newFrame, cursorPoint, CursorConstant.CursorTypes.Grow, this)) {
+    if (T3Gv.opt.actionStoredObjectId === this.BlockID && cursorPoint) {
+      UIUtil.UpdateDisplayCoordinates(newFrame, cursorPoint, CursorConstant.CursorTypes.Grow, this);
       // Coordinates updated
     }
 
@@ -734,7 +735,7 @@ class FreehandLine extends BaseLine {
     LMEvtUtil.UnbindActionClickHammerEvents();
 
     $(window).unbind('mousemove');
-    T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
+    T3Gv.opt.WorkAreaHammer.on('tap', EvtUtil.Evt_WorkAreaHammerClick);
 
     this.ResetAutoScrollTimer();
 
@@ -761,7 +762,7 @@ class FreehandLine extends BaseLine {
       shapeAttributes.attributes.pointlist = Utils1.DeepCopy(this.pointlist);
     }
 
-    shapeAttributes.LineTool = DSConstant.LineToolTypes.FreehandLine;
+    shapeAttributes.LineTool = "freehandLine";//DSConstant.LineToolTypes.FreehandLine;
 
     if (false) {
       shapeAttributes.CreateList = [T3Gv.opt.drawShape.BlockID];
@@ -799,8 +800,8 @@ class FreehandLine extends BaseLine {
       };
 
       T3Gv.opt.WorkAreaHammer.off('dragstart');
-      T3Gv.opt.WorkAreaHammer.on('drag', Evt_DrawTrackHandlerFactory(this));
-      T3Gv.opt.WorkAreaHammer.on('dragend', Evt_DrawReleaseHandlerFactory(this));
+      T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_DrawTrackHandlerFactory(this));
+      T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_DrawReleaseHandlerFactory(this));
     } catch (error) {
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
