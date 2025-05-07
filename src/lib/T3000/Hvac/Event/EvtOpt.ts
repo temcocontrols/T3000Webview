@@ -142,6 +142,15 @@ class EvtOpt {
       this.BindLoadLibraryEvent();
       this.BindDuct1Event();
       this.BindDuct2Event();
+      this.BindDuct3Event();
+      this.BindDuct4Event();
+      this.BindDuct5Event();
+      this.BindDuct6Event();
+      this.BindDuct7Event();
+      this.BindDuct8Event();
+      this.BindDuct9Event();
+      this.BindDuct10Event();
+      this.BindDuct11Event();
     });
   }
 
@@ -1002,6 +1011,60 @@ class EvtOpt {
   BindDuct2Event() {
     $("#btn_try_Duct_2").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibToolShape("Duct2", true);
+    });
+  }
+
+  BindDuct3Event() {
+    $("#btn_try_Duct_3").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct3", true);
+    });
+  }
+
+  BindDuct4Event() {
+    $("#btn_try_Duct_4").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct4", true);
+    });
+  }
+
+  BindDuct5Event() {
+    $("#btn_try_Duct_5").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct5", true);
+    });
+  }
+
+  BindDuct6Event() {
+    $("#btn_try_Duct_6").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct6", true);
+    });
+  }
+
+  BindDuct7Event() {
+    $("#btn_try_Duct_7").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct7", true);
+    });
+  }
+
+  BindDuct8Event() {
+    $("#btn_try_Duct_8").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct8", true);
+    });
+  }
+
+  BindDuct9Event() {
+    $("#btn_try_Duct_9").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct9", true);
+    });
+  }
+
+  BindDuct10Event() {
+    $("#btn_try_Duct_10").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct10", true);
+    });
+  }
+
+  BindDuct11Event() {
+    $("#btn_try_Duct_11").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct11", true);
     });
   }
 }

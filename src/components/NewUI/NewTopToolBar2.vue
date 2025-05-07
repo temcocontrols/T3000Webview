@@ -350,19 +350,38 @@
               <button id="btn_try_Load_Library">Load Lib</button>
 
               &nbsp;
-              <button id="btn_try_Duct_1">Duct 1</button>
+              <button id="btn_try_Duct_1">D1</button>
 
               &nbsp;
-              <button id="btn_try_Duct_2">Duct 2</button>
-
-              <!-- &nbsp;
-              <button id="btn_try_Lib_AddNote">Add Note</button>
+              <button id="btn_try_Duct_2">D2</button>
 
               &nbsp;
-              <button id="btn_try_Lib_AddComment">Add Comment</button>
+              <button id="btn_try_Duct_3">D3</button>
 
               &nbsp;
-              <button id="btn_try_Lib_Hyperlink">Hyperlink</button>-->
+              <button id="btn_try_Duct_4">D4</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_5">D5</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_6">D6</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_7">D7</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_8">D8</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_9">D9</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_10">D10</button>
+
+              &nbsp;
+              <button id="btn_try_Duct_11">D11</button>
+
             </div>
           </q-tab-panel>
         </q-tab-panels>
