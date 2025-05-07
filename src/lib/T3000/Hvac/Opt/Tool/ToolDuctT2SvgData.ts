@@ -6,7 +6,7 @@ class ToolDuctT2SvgData {
   static Duct1Data() {
     const svgData =
       `
-<g transform="scale(0.1,0.099) translate(0,0)">
+<g transform="scale(0.1,0.1) translate(0,0)">
 		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;"
 			points="579.818,258.274 579.818,499.108 397.205,499.108    397.205,258.274 579.818,258.274 579.818,258.274 579.818,258.274  " />
 		<polyline style="fill:none;stroke:#000000;stroke-width:0;stroke-miterlimit:10;"
@@ -78,7 +78,7 @@ class ToolDuctT2SvgData {
   static Duct2Data() {
     const svgData =
       `
-<g transform="scale(0.115,0.103) translate(0,0)">
+<g transform="scale(0.1,0.1) translate(0,0)">
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="0,0 0,239.173 181.772,239.173 181.772,0 0,0 0,0 0,0     "/>
 	<polyline style="fill:none;stroke:#000000;stroke-width:0;stroke-miterlimit:10;" points="0,0 0,239.173 181.772,239.173    181.772,0 0,0  "/>
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="6.732,14.948 6.732,224.225 176.722,224.225    176.722,14.948 6.732,14.948 6.732,14.948 6.732,14.948  "/>
@@ -133,7 +133,7 @@ class ToolDuctT2SvgData {
   static Duct3Data() {
     const svgData =
       `
-<g transform="scale(0.1,0.115) translate(0,0)">
+<g transform="scale(0.1,0.1) translate(0,0)">
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="244.045,0 0,0 0,182.702 244.045,182.702 244.045,0    244.045,0 244.045,0  "/>
 	<polyline style="fill:none;stroke:#000000;stroke-width:0;stroke-miterlimit:10;" points="244.045,0 0,0 0,182.702    244.045,182.702 244.045,0  "/>
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="228.056,6.644 15.989,6.644 15.989,178.549    228.056,178.549 228.056,6.644 228.056,6.644 228.056,6.644  "/>
@@ -189,7 +189,7 @@ class ToolDuctT2SvgData {
   static Duct4Data() {
     const svgData =
       `
-<g transform="scale(0.095,0.1) translate(0,0)">
+<g transform="scale(0.1,0.1) translate(0,0)">
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#336666;" points="433.391,0 186.821,0 186.821,181.871 433.391,181.871    433.391,0 433.391,0 433.391,0  "/>
 	<polyline style="fill:none;stroke:#000000;stroke-width:0;stroke-miterlimit:10;" points="433.391,0 186.821,0 186.821,181.871    433.391,181.871 433.391,0  "/>
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#4C7F7F;" points="419.085,6.644 201.968,6.644 201.968,176.889    419.085,176.889 419.085,6.644 419.085,6.644 419.085,6.644  "/>
