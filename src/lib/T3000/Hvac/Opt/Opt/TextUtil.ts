@@ -205,45 +205,43 @@ class TextUtil {
   /**
    * Registers the last text editor operation.
    * This function updates the internal state of the text editor session based on the given operation.
-   * It preserves the undo state if necessary, sends out collaboration messages in case of a timeout,
-   * and triggers a typing pause timer in case the operation is a character input.
+   * It preserves the undo state if necessary, manages collaboration messaging, and
+   * controls the typing pause timer for handling text entry events.
    *
-   * @param lastOp - The current text editor operation (e.g. CHAR, INIT, SELECT, TIMEOUT)
+   * @param lastOp - The operation code representing the last text editor operation (CHAR, INIT, SELECT, TIMEOUT)
    */
-  static RegisterLastTEOp(lastOp: number) {
+  static RegisterLastTEOp(lastOp) {
     T3Util.Log("O.Opt RegisterLastTEOp - Input:", { lastOp });
-    const opConstants = NvConstant.TextElemLastOpt;
 
-    // Only proceed if not in note edit mode.
+    // Only proceed if not in note edit mode
     if (!T3Gv.opt.bInNoteEdit) {
-      const session = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-      const previousOp = session.theTELastOp;
+      // Get the current text edit session
+      const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const previousOp = textEditSession.theTELastOp;
 
-      // If there is an active text entry timer and the current operation is not a character,
-      // clear the timer and register a TIMEOUT operation.
-      if (
-        T3Gv.opt.textEntryTimer != null &&
-        lastOp !== opConstants.Char
-      ) {
+      // If there's an active text entry timer and the current operation is not a character input,
+      // clear the timer and register a timeout operation
+      if (T3Gv.opt.textEntryTimer != null &&
+        lastOp !== NvConstant.TextElemLastOpt.Char) {
         clearTimeout(T3Gv.opt.textEntryTimer);
         T3Gv.opt.textEntryTimer = null;
-        this.RegisterLastTEOp(opConstants.Timeout);
+        this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
       }
 
-      // Update the session with the current operation.
-      session.theTELastOp = lastOp;
-      if (lastOp !== opConstants.Init) {
-        session.theTEWasEdited = true;
+      // Update the session with the current operation
+      textEditSession.theTELastOp = lastOp;
+      if (lastOp !== NvConstant.TextElemLastOpt.Init) {
+        textEditSession.theTEWasEdited = true;
       }
 
-      // Decide whether to process the operation based on the previous operation.
-      const shouldProcess = (prevOp: number): boolean => {
-        if (lastOp !== opConstants.Init) {
+      // Determine if we should process this operation based on the operation type and previous operation
+      const shouldProcess = (prevOp) => {
+        if (lastOp !== NvConstant.TextElemLastOpt.Init) {
           switch (lastOp) {
-            case opConstants.Char:
+            case NvConstant.TextElemLastOpt.Char:
               if (prevOp !== lastOp) return true;
               break;
-            case opConstants.Select:
+            case NvConstant.TextElemLastOpt.Select:
               return false;
             default:
               return true;
@@ -252,44 +250,47 @@ class TextUtil {
         return false;
       };
 
+      // Process the operation if needed
       if (shouldProcess(previousOp)) {
         const activeEditor = T3Gv.opt.svgDoc.GetActiveEdit();
-        let runtimeText: string | null = null;
-        let selectedRange: any = null;
-        const activeTextEditObj = ObjectUtil.GetObjectPtr(session.theActiveTextEditObjectID, false);
+        let runtimeText = null;
+        let selectedRange = null;
+        const activeTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, false);
 
-        // Proceed only if there is a valid active text edit object
-        if (activeTextEditObj && activeTextEditObj.DataID >= 0 && activeEditor) {
-          const textDataId = activeTextEditObj.DataID;
+        if (activeTextObject && activeTextObject.DataID >= 0 && activeEditor) {
+          const textDataId = activeTextObject.DataID;
           runtimeText = activeEditor.GetRuntimeText();
           selectedRange = activeEditor.GetSelectedRange();
 
           if (runtimeText) {
+            // Preserve undo state before modifying objects
             ObjectUtil.PreserveUndoState(false);
+
             let textObject = ObjectUtil.GetObjectPtr(textDataId, false);
             if (textObject) {
-              // Update text object with the current content and selection range.
+              // Update runtime text and selection range
               textObject.runtimeText = runtimeText;
               textObject.selrange = selectedRange;
 
-              if (lastOp !== opConstants.Timeout) {
-                // Set text parameters based on the editor's formatter and minimum height.
+              // For non-timeout operations, update text parameters
+              if (lastOp !== NvConstant.TextElemLastOpt.Timeout) {
                 TextParams.minWidth = activeEditor.formatter.limits.minWidth;
                 TextParams.maxWidth = activeEditor.formatter.limits.maxWidth;
                 TextParams.minHeight = activeEditor.minHeight;
 
-                // Retrieve updated objects
-                const activeTextEditObjUpdated = ObjectUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
+                // Get updated objects with changes preserved
+                const updatedTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, true);
                 textObject = ObjectUtil.GetObjectPtr(textDataId, true);
               }
 
-              if (lastOp === opConstants.Timeout) {
-                const messageData: any = {};
-                messageData.BlockID = session.theActiveTextEditObjectID;
-                const messageTarget = ObjectUtil.GetObjectPtr(messageData.BlockID, false);
+              // Handle timeout operations - prepare message data
+              if (lastOp === NvConstant.TextElemLastOpt.Timeout) {
+                const messageData = {};
+                messageData.BlockID = textEditSession.theActiveTextEditObjectID;
 
-                if (messageTarget && messageTarget instanceof Instance.Shape.Connector) {
-                  messageData.DataID = messageTarget.DataID;
+                const targetObject = ObjectUtil.GetObjectPtr(messageData.BlockID, false);
+                if (targetObject && targetObject instanceof Instance.Shape.Connector) {
+                  messageData.DataID = targetObject.DataID;
                 }
 
                 messageData.runtimeText = Utils1.DeepCopy(runtimeText);
@@ -298,23 +299,22 @@ class TextUtil {
                 messageData.maxWidth = TextParams.maxWidth;
                 messageData.minHeight = TextParams.minHeight;
 
+                // Reset parameter values
                 TextParams.minWidth = null;
               }
             }
           }
         }
-      } else {
-        // If processing is not needed, flag for unblocking messages.
-        var shouldUnblock = true;
       }
 
-      // If the current operation is a character input, reset the typing pause timeout.
-      if (lastOp === opConstants.Char) {
+      // Set up a timer for character input operations
+      if (lastOp === NvConstant.TextElemLastOpt.Char) {
         clearTimeout(T3Gv.opt.textEntryTimer);
         T3Gv.opt.textEntryTimer = null;
         T3Gv.opt.textEntryTimer = setTimeout(T3Gv.opt.TextEdit_PauseTyping, 1000);
       }
     }
+
     T3Util.Log("O.Opt RegisterLastTEOp - Output: Completed");
   }
 
@@ -1148,10 +1148,13 @@ class TextUtil {
   }
 
   /**
-   * Activates text editing for the specified drawing object
-   * @param drawingElement - The SVG drawing element
-   * @param event - The event that triggered activation (can be null)
-   * @param preventSelectionChange - Flag to prevent selection change
+   * Activates text editing for the specified drawing object.
+   * This function handles the setup and initialization of text editing mode for a drawing object,
+   * including creating text objects if needed, setting up editor events, and managing collaboration.
+   *
+   * @param drawingElement - The SVG drawing element to edit text for
+   * @param event - The event that triggered text editing (can be null for programmatic activation)
+   * @param preventSelectionChange - If true, prevents changing the current selection state
    * @param textData - Optional data for collaborative text editing
    */
   static ActivateTextEdit(drawingElement, event?, preventSelectionChange?, textData?) {
@@ -1169,25 +1172,23 @@ class TextUtil {
     let selectedRange;
 
     const objectId = drawingElement.ID;
-    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    let textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     const objectsToSelect = [];
-    let eventData = { selectedRange: {} };
+    let messageData = {};
 
     // Check if the object exists and is not locked
-    drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
-    if (!drawingObject || !(drawingObject instanceof Instance.Shape.BaseDrawObject) ||
+    if (!(drawingObject = ObjectUtil.GetObjectPtr(objectId, false)) ||
+      !(drawingObject instanceof Instance.Shape.BaseDrawObject) ||
       (drawingObject.flags & NvConstant.ObjFlags.Lock)) {
       T3Util.Log('O.Opt ActivateTextEdit - Output: Object invalid or locked');
       return;
     }
 
-    eventData.BlockID = objectId;
+    messageData.BlockID = objectId;
 
-    // Handle case when no text data is provided
-    if (!textData) {
-      // If the object is already being edited, just return
+    if (textData == null) {
+      // If already editing this object, return
       if (objectId == textEditSession.theActiveTextEditObjectID) {
-        T3Util.Log('O.Opt ActivateTextEdit - Output: Object already being edited');
         return;
       }
 
@@ -1206,23 +1207,26 @@ class TextUtil {
         targetSelectionId = objectId;
       }
     } else {
-      eventData = textData.Data;
+      messageData = textData.Data;
     }
 
     // Get a preserved copy of the object
-    const preservedObject = ObjectUtil.GetObjectPtr(objectId, true);
-    const textObjectId = preservedObject.GetTextObject(event, false, eventData);
-    let preservedTextEditSession;
+    let preservedObject = ObjectUtil.GetObjectPtr(objectId, true);
+    const textObjectId = preservedObject.GetTextObject(event, false, messageData);
 
+    // Continue only if we got a valid text object
     if (textObjectId != null) {
-      // Prepare the text edit session
-      if (!textData) {
-        preservedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-      } else {
+      // Handle collaboration and session management
+      if (textData == null) {
+        // Local edit - create new preserved session
+        textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
+      }
+      else {
+        // External collaboration message - update editor ID
         const tempSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
         tempSession.EditorID = textData.EditorID;
 
-        preservedTextEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
+        textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
       }
 
       // Get the SVG element for the object
@@ -1230,109 +1234,138 @@ class TextUtil {
 
       // Create a new text object if needed
       if (textObjectId == -1) {
-        const updatedObject = ObjectUtil.GetObjectPtr(objectId, true);
+        // Get updated object
+        preservedObject = ObjectUtil.GetObjectPtr(objectId, true);
 
         // Create a new text object
-        const newTextObject = new TextObject({});
-        const newTextBlock = T3Gv.stdObj.CreateBlock(
-          StateConstant.StoredObjectType.TextObject,
-          newTextObject
-        );
+        textObject = new TextObject({});
+        textBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TextObject, textObject);
 
-        if (newTextBlock === null) {
+        if (textBlock === null) {
           T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to create text block');
-          throw new Error('ActivateTextEdit got a null new text block allocation');
-        }
-
-        if (!updatedObject.SetTextObject(newTextBlock.ID)) {
-          T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to set text object');
           return;
         }
 
-        updatedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
-        textObject = newTextBlock.Data;
+        // Set the text object on the drawing object
+        if (!preservedObject.SetTextObject(textBlock.ID)) {
+          return;
+        }
+
+        // Add SVG text object to the drawing
+        preservedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
+        textObject = textBlock.Data;
       } else {
+        // Use existing text object
         textObject = ObjectUtil.GetObjectPtr(textObjectId, true);
-        if (!svgElement.textElem) {
+
+        // Create SVG text element if needed
+        if (svgElement.textElem == null) {
           preservedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
         }
       }
 
-      // Set up text editing session
-      if (!textData) {
-        preservedTextEditSession.theActiveTextEditObjectID = objectId;
-        preservedTextEditSession.theTEWasResized = false;
-        preservedTextEditSession.theTEWasEdited = false;
+      // Set up active text edit session if not a collab message
+      if (textData == null) {
+        textEditSession.theActiveTextEditObjectID = objectId;
+        textEditSession.theTEWasResized = false;
+        textEditSession.theTEWasEdited = false;
       }
 
-      // Register events and handle text selection
-      if (!textData) {
+      // Handle tables for local editing
+      if (textData == null) {
+        // Move element to front if not attached
+        if (!(drawingObject.TextFlags & NvConstant.TextFlags.AttachA) &&
+          !(drawingObject.TextFlags & NvConstant.TextFlags.AttachB)) {
+          T3Gv.opt.svgObjectLayer.MoveElementToFront(svgElement);
+        }
+        // }
+      }
+
+      // Register events for local editing
+      if (textData == null) {
         if (event && event.gesture) {
           this.TextRegisterEvents(svgElement.textElem, event.gesture.srcEvent, preventSelectionChange);
         } else {
           this.TextRegisterEvents(svgElement.textElem, event);
         }
 
+        // Get selected range from active editor
         const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
         selectedRange = activeEdit.GetSelectedRange();
-        eventData.selectedRange = Utils1.DeepCopy(selectedRange);
+        messageData.theSelectedRange = Utils1.DeepCopy(selectedRange);
 
         // If no event, select all text
         if (event == null) {
           const textLength = activeEdit.GetText().length;
-          eventData.selectedRange.start = 0;
-          eventData.selectedRange.anchor = 0;
-          eventData.selectedRange.end = textLength;
+          messageData.theSelectedRange.start = 0;
+          messageData.theSelectedRange.anchor = 0;
+          messageData.theSelectedRange.end = textLength;
         }
+      } else if (textData && textData.EditorID === SDJS.Collab.EditorID) {
+        // Use selected range from collab message data
+        selectedRange = textData.Data.theSelectedRange;
       }
 
-      // Handle empty text
+      // Get current text content
       const currentText = svgElement.textElem.GetText();
+
+      // Handle empty text
       if (currentText === '') {
+        // For new text objects, set up default styling
         if (textObjectId < 0) {
-          // Set up default text styles
-          const textStyleParams = {};
-          const defaultTextStyle = preservedObject.GetTextDefault(textStyleParams);
-          eventData.TextStyle = Utils1.DeepCopy(defaultTextStyle);
+          // Create style parameters
+          const paragraphStyle = {};
+          const textDefault = preservedObject.GetTextDefault(paragraphStyle);
 
-          const initialTextStyle = TextUtil.CalcDefaultInitialTextStyle(defaultTextStyle);
-          eventData.theDefaultStyle = Utils1.DeepCopy(initialTextStyle);
+          // Store text style in message data
+          messageData.TextStyle = Utils1.DeepCopy(textDefault);
 
-          const verticalAlignment = textStyleParams.vjust;
-          eventData.vjust = verticalAlignment;
+          // Calculate default initial style
+          const initialTextStyle = this.CalcDefaultInitialTextStyle(textDefault);
+          messageData.theDefaultStyle = Utils1.DeepCopy(initialTextStyle);
 
-          // Apply styles to the text element
+          // Store vertical justification
+          const verticalJustification = paragraphStyle.vjust;
+          messageData.vjust = verticalJustification;
+
+          // Get active editor and update selection range
           const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
-          eventData.selectedRange = selectedRange;
+          messageData.theSelectedRange = selectedRange;
 
-          // Initialize the text element with a space, apply styles, then clear it
+          // Set temporary space to apply formatting, then clear
           svgElement.textElem.SetText(' ');
           svgElement.textElem.SetFormat(initialTextStyle);
-          svgElement.textElem.SetParagraphStyle(textStyleParams);
+          svgElement.textElem.SetParagraphStyle(paragraphStyle);
 
+          // Set vertical alignment for shapes
           if (preservedObject instanceof Instance.Shape.BaseShape) {
-            svgElement.textElem.SetVerticalAlignment(verticalAlignment);
+            svgElement.textElem.SetVerticalAlignment(verticalJustification);
           }
 
+          // Clear text and save runtime state
           svgElement.textElem.SetText('');
           textObject.runtimeText = svgElement.textElem.GetRuntimeText();
         }
 
-        // Clear the click-here flag
+        // Remove "click here" flag
         preservedObject.TextFlags = Utils2.SetFlag(
           preservedObject.TextFlags,
           NvConstant.TextFlags.Clickhere,
           false
         );
+      } else {
+        // Replace standard text if needed
+        const isLocalEdit = (textData == null );
+        const isSelfCollabMessage = (textData != null);
       }
 
-      // Update selection range
+      // Update selection range in text object
       if (selectedRange) {
         textObject.selrange = selectedRange;
       }
 
-      // Finalize UI setup
-      if (!textData) {
+      // Finalize local editing UI setup
+      if (textData == null) {
         svgElement.SetCursor(CursorConstant.CursorType.Text);
 
         if (targetSelectionId) {
@@ -1342,13 +1375,11 @@ class TextUtil {
         this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Init);
       }
 
-      // Preserve undo state and send collaboration message
+      // Preserve undo state and send collaboration messages
       ObjectUtil.PreserveUndoState(false);
-
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
-    } else {
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to get text object');
     }
+
+    T3Util.Log('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
   }
 
   /**

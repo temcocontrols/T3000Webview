@@ -692,20 +692,18 @@ class ToolUtil {
     T3Util.Log("O.ToolOpt StampTextLabel input:", isDragDropMode, skipTargetCheck);
 
     // Get the text edit session block
-    var textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     // Check if we need to handle existing active text editing
     if (skipTargetCheck || textEditSession.theActiveTextEditObjectID == -1) {
       // If not skipping target check, try to activate text edit on selected object
       if (!skipTargetCheck) {
-        var targetID = SelectUtil.GetTargetSelect();
+        const targetID = SelectUtil.GetTargetSelect();
         if (targetID >= 0) {
-          var targetObject = ObjectUtil.GetObjectPtr(targetID, false);
+          const targetObject = ObjectUtil.GetObjectPtr(targetID, false);
           if (targetObject && targetObject.AllowTextEdit()) {
-            var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetID);
-            TextUtil.ActivateTextEdit(svgElement);
-            T3Util.Log("O.ToolOpt StampTextLabel output: void - activated edit on existing text");
-            return;
+            const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetID);
+            return TextUtil.ActivateTextEdit(svgElement);
           }
         }
       }
@@ -714,21 +712,21 @@ class ToolUtil {
     }
 
     // Get session data and default text style
-    var sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
-    var defaultTextStyle = Utils3.FindStyle(OptConstant.Common.TextBlockStyle);
+    const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
+    let defaultTextStyle = Utils3.FindStyle(OptConstant.Common.TextBlockStyle);
 
     if (defaultTextStyle == null) {
       defaultTextStyle = sessionData.def.style;
     }
 
     // Create text shape attributes
-    var textAttributes = {
+    const textAttributes = {
       StyleRecord: $.extend(true, {}, defaultTextStyle),
       Frame: {
         x: 0,
         y: 0,
-        width: 100,
-        height: 100
+        width: 0,
+        height: 0
       },
       TMargins: {
         top: 0,
@@ -748,14 +746,15 @@ class ToolUtil {
     textAttributes.StyleRecord.Line.Thickness = 0;
 
     // Create the text rectangle shape
-    var textShape = new Rect(textAttributes);
-    var textStyle = Utils1.DeepCopy(sessionData.def.style);
+    const textShape = new Instance.Shape.Rect(textAttributes);
+    const textStyle = Utils1.DeepCopy(sessionData.def.style);
+
     textStyle.Text.Paint = Utils1.DeepCopy(defaultTextStyle.Text.Paint);
     textShape.StyleRecord.Text = textStyle.Text;
 
     // Calculate text metrics for proper sizing
-    var initialTextStyle = TextUtil.CalcDefaultInitialTextStyle(textShape.StyleRecord.Text);
-    var textMetrics = T3Gv.opt.svgDoc.CalcStyleMetrics(initialTextStyle);
+    const initialTextStyle = TextUtil.CalcDefaultInitialTextStyle(textShape.StyleRecord.Text);
+    const textMetrics = T3Gv.opt.svgDoc.CalcStyleMetrics(initialTextStyle);
 
     // Set shape offset and height
     T3Gv.opt.stampShapeOffsetX = 0;
