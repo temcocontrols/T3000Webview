@@ -20,6 +20,21 @@ class ToolSvgData {
       case "Duct3":
         frame = { width: 26, height: 125 };
         break;
+      case "Duct5":
+        frame = { width: 24, height: 24 };
+        break;
+      case "Duct7":
+        frame = { width: 95, height: 93.8 };
+        break;
+      case "Duct9":
+        frame = { width: 55, height: 24 };
+        break;
+      case "Duct10":
+        frame = { width: 54.6, height: 41.8 };
+        break;
+      case "Duct11":
+        frame = { width: 29.7, height: 29.3 };
+        break;
       default:
         break;
     }
