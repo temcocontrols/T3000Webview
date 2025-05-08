@@ -248,6 +248,7 @@
 .active .damper {
   fill: #66c492;
 }
+
 .active .damper-line {
   animation: damper-active 1.5s infinite;
 }
@@ -504,4 +505,9 @@
 }
 .value-0 .twv .blocker {
   transform: rotate(0deg);
+}
+
+
+.color-test{
+  background-color: #0173fe;
 }
