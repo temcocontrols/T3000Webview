@@ -3,10 +3,13 @@ import QuickStyle from "../../Model/QuickStyle";
 import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol";
 import ToolDuctT2SvgData from "./ToolDuctT2SvgData";
 import ToolDuctT1SvgData from "./ToolDuctT1SvgData";
+import ToolDuctT3SvgData from "./ToolDuctT3SvgData";
 
 class ToolSvgData {
 
-  static DuctSvg: any = ToolDuctT1SvgData;
+  // static DuctSvg: any = ToolDuctT1SvgData;
+  // static DuctSvg: any = ToolDuctT2SvgData;
+  static DuctSvg: any = ToolDuctT3SvgData;
 
   static GetSvgData(symbolType) {
 

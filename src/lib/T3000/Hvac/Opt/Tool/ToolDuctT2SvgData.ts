@@ -2,6 +2,50 @@
 
 class ToolDuctT2SvgData {
 
+  static GetSvgFrame(symbolType) {
+
+    var frame = { width: 60, height: 60 };
+
+    switch (symbolType) {
+      case "Duct1":
+        frame = { width: 57.9, height: 49.9 };
+        break;
+      case "Duct2":
+        frame = { width: 109.2, height: 23.9 };
+        break;
+      case "Duct3":
+        frame = { width: 24.4, height: 110 };
+        break;
+      case "Duct4":
+        frame = { width: 61.9, height: 54.7 };
+        break;
+      case "Duct5":
+        frame = { width: 24.4, height: 18.5 };
+        break;
+      case "Duct6":
+        frame = { width: 56.2, height: 55.1 };
+        break;
+      case "Duct7":
+        frame = { width: 95, height: 93.8 };
+        break;
+      case "Duct8":
+        frame = { width: 50.6, height: 57 };
+        break;
+      case "Duct9":
+        frame = { width: 55.2, height: 24.1 };
+        break;
+      case "Duct10":
+        frame = { width: 54.6, height: 41.8 };
+        break;
+      case "Duct11":
+        frame = { width: 29.7, height: 29.3 };
+        break;
+      default:
+        break;
+    }
+
+    return frame;
+  }
 
   static Duct1Data() {
     const svgData =
