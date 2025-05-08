@@ -2,58 +2,15 @@ import Led from "src/components/ObjectTypes/Led.vue";
 import QuickStyle from "../../Model/QuickStyle";
 import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol";
 import ToolDuctT2SvgData from "./ToolDuctT2SvgData";
-
+import ToolDuctT1SvgData from "./ToolDuctT1SvgData";
 
 class ToolSvgData {
 
-  static GetSvgFrame(symbolType) {
-
-    var frame = { width: 60, height: 60 };
-
-    switch (symbolType) {
-      case "Duct1":
-        frame = { width: 57.9, height: 49.9 };
-        break;
-      case "Duct2":
-        frame = { width: 109.2, height: 23.9 };
-        break;
-      case "Duct3":
-        frame = { width: 24.4, height: 110 };
-        break;
-      case "Duct4":
-        frame = { width: 61.9, height: 54.7 };
-        break;
-      case "Duct5":
-        frame = { width: 24.4, height: 18.5 };
-        break;
-      case "Duct6":
-        frame = { width: 56.2, height: 55.1 };
-        break;
-      case "Duct7":
-        frame = { width: 95, height: 93.8 };
-        break;
-      case "Duct8":
-        frame = { width: 50.6, height: 57 };
-        break;
-      case "Duct9":
-        frame = { width: 55.2, height: 24.1 };
-        break;
-      case "Duct10":
-        frame = { width: 54.6, height: 41.8 };
-        break;
-      case "Duct11":
-        frame = { width: 29.7, height: 29.3 };
-        break;
-      default:
-        break;
-    }
-
-    return frame;
-  }
+  static DuctSvg: any = ToolDuctT1SvgData;
 
   static GetSvgData(symbolType) {
 
-    var frame = this.GetSvgFrame(symbolType);
+    var frame = ToolSvgData.DuctSvg.GetSvgFrame(symbolType);
 
     let initialX = -1000;
     let initialY = -1000;
@@ -116,7 +73,7 @@ class ToolSvgData {
         svgStr = this.ValveTwoWaySvgData();
         break;
       case "Duct":
-        svgStr = this.DuctSvgData();
+        svgStr = ToolSvgData.DuctSvgData();
         break;
       case "Fan":
         svgStr = this.FanSvgData();
@@ -170,37 +127,40 @@ class ToolSvgData {
         svgStr = this.Test1SvgData();
         break;
       case "Duct1":
-        svgStr = ToolDuctT2SvgData.Duct1Data();
+        svgStr = ToolSvgData.DuctSvg.Duct1Data();
         break;
       case "Duct2":
-        svgStr = ToolDuctT2SvgData.Duct2Data();
+        svgStr = ToolSvgData.DuctSvg.Duct2Data();
         break;
       case "Duct3":
-        svgStr = ToolDuctT2SvgData.Duct3Data();
+        svgStr = ToolSvgData.DuctSvg.Duct3Data();
         break;
       case "Duct4":
-        svgStr = ToolDuctT2SvgData.Duct4Data();
+        svgStr = ToolSvgData.DuctSvg.Duct4Data();
         break;
       case "Duct5":
-        svgStr = ToolDuctT2SvgData.Duct5Data();
+        svgStr = ToolSvgData.DuctSvg.Duct5Data();
         break;
       case "Duct6":
-        svgStr = ToolDuctT2SvgData.Duct6Data();
+        svgStr = ToolSvgData.DuctSvg.Duct6Data();
         break;
       case "Duct7":
-        svgStr = ToolDuctT2SvgData.Duct7Data();
+        svgStr = ToolSvgData.DuctSvg.Duct7Data();
         break;
       case "Duct8":
-        svgStr = ToolDuctT2SvgData.Duct8Data();
+        svgStr = ToolSvgData.DuctSvg.Duct8Data();
         break;
       case "Duct9":
-        svgStr = ToolDuctT2SvgData.Duct9Data();
+        svgStr = ToolSvgData.DuctSvg.Duct9Data();
         break;
       case "Duct10":
-        svgStr = ToolDuctT2SvgData.Duct10Data();
+        svgStr = ToolSvgData.DuctSvg.Duct10Data();
         break;
       case "Duct11":
-        svgStr = ToolDuctT2SvgData.Duct11Data();
+        svgStr = ToolSvgData.DuctSvg.Duct11Data();
+        break;
+      case "Duct12":
+        svgStr = ToolSvgData.DuctSvg.Duct12Data();
         break;
       default:
         return "";
@@ -255,7 +215,7 @@ class ToolSvgData {
         svgStr = this.ValveTwoWaySvgData();
         break;
       case "Duct":
-        svgStr = this.DuctSvgData();
+        svgStr = ToolSvgData.DuctSvgData();
         break;
       case "Fan":
         svgStr = this.FanSvgData();
@@ -309,37 +269,40 @@ class ToolSvgData {
         svgStr = this.Test1SvgData();
         break;
       case "Duct1":
-        svgStr = ToolDuctT2SvgData.Duct1Data();
+        svgStr = ToolSvgData.DuctSvg.Duct1Data();
         break;
       case "Duct2":
-        svgStr = ToolDuctT2SvgData.Duct2Data();
+        svgStr = ToolSvgData.DuctSvg.Duct2Data();
         break;
       case "Duct3":
-        svgStr = ToolDuctT2SvgData.Duct3Data();
+        svgStr = ToolSvgData.DuctSvg.Duct3Data();
         break;
       case "Duct4":
-        svgStr = ToolDuctT2SvgData.Duct4Data();
+        svgStr = ToolSvgData.DuctSvg.Duct4Data();
         break;
       case "Duct5":
-        svgStr = ToolDuctT2SvgData.Duct5Data();
+        svgStr = ToolSvgData.DuctSvg.Duct5Data();
         break;
       case "Duct6":
-        svgStr = ToolDuctT2SvgData.Duct6Data();
+        svgStr = ToolSvgData.DuctSvg.Duct6Data();
         break;
       case "Duct7":
-        svgStr = ToolDuctT2SvgData.Duct7Data();
+        svgStr = ToolSvgData.DuctSvg.Duct7Data();
         break;
       case "Duct8":
-        svgStr = ToolDuctT2SvgData.Duct8Data();
+        svgStr = ToolSvgData.DuctSvg.Duct8Data();
         break;
       case "Duct9":
-        svgStr = ToolDuctT2SvgData.Duct9Data();
+        svgStr = ToolSvgData.DuctSvg.Duct9Data();
         break;
       case "Duct10":
-        svgStr = ToolDuctT2SvgData.Duct10Data();
+        svgStr = ToolSvgData.DuctSvg.Duct10Data();
         break;
       case "Duct11":
-        svgStr = ToolDuctT2SvgData.Duct11Data();
+        svgStr = ToolSvgData.DuctSvg.Duct11Data();
+        break;
+      case "Duct12":
+        svgStr = ToolSvgData.DuctSvg.Duct12Data();
         break;
       default:
         return "";
@@ -392,7 +355,7 @@ class ToolSvgData {
         svgStr = this.ValveTwoWaySvgData();
         break;
       case "Duct":
-        svgStr = this.DuctSvgData();
+        svgStr = ToolSvgData.DuctSvgData();
         break;
       case "Fan":
         svgStr = this.FanSvgData();

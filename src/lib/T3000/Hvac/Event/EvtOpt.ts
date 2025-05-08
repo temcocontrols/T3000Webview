@@ -151,6 +151,7 @@ class EvtOpt {
       this.BindDuct9Event();
       this.BindDuct10Event();
       this.BindDuct11Event();
+      this.BindDuct12Event();
     });
   }
 
@@ -1065,6 +1066,12 @@ class EvtOpt {
   BindDuct11Event() {
     $("#btn_try_Duct_11").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibToolShape("Duct11", true);
+    });
+  }
+
+  BindDuct12Event(){
+    $("#btn_try_Duct_12").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct12", true);
     });
   }
 }

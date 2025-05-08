@@ -381,7 +381,8 @@
 
               &nbsp;
               <button id="btn_try_Duct_11">D11</button>
-
+              &nbsp;
+              <button id="btn_try_Duct_12">D12</button>
             </div>
           </q-tab-panel>
         </q-tab-panels>
