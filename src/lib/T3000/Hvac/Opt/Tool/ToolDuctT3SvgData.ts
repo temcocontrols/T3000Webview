@@ -8,7 +8,7 @@ class ToolDuctT3SvgData {
 
     switch (symbolType) {
       case "Duct1":
-        frame = { width: 192.712, height: 190.176 };
+        frame = { width: 192.712/3, height: 190.176/3 };
         break;
       case "Duct2":
         frame = { width: 366.32, height: 323 };
@@ -65,7 +65,7 @@ class ToolDuctT3SvgData {
   static Duct1Data() {
     const svgData =
       `
-<g transform="scale(0.1,0.1) translate(0,0)">
+<g transform="scale(0.3211,0.3169) translate(0,0)">
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#7F7F7F;" points="0,190.176 192.712,154.466 192.712,35.71 0,0    0,190.176 0,190.176 0,190.176  "/>
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#999999;" points="0,175.228 192.712,145.331 192.712,44.845 0,14.948    0,175.228 0,175.228 0,175.228  "/>
 	<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#B2B2B2;" points="0,156.957 192.712,134.535 192.712,55.641 0,33.219    0,156.957 0,156.957 0,156.957  "/>
