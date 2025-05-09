@@ -127,7 +127,7 @@
 
       <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
       <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
-      <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
+      <!-- <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" /> -->
       <StepEl v-else-if="item.type === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
@@ -172,7 +172,7 @@ import Weld from "./ObjectTypes/Weld.vue";
 
 import CircleEl from "./Basic/Circle.vue";
 import RectangleEl from "./Basic/Rectangle.vue";
-import HexagonEl from "./Basic/Hexagon.vue";
+// import HexagonEl from "./Basic/Hexagon.vue";
 import StepEl from "./Basic/Step.vue";
 
 export default defineComponent({
@@ -211,7 +211,7 @@ export default defineComponent({
     Weld,
     CircleEl,
     RectangleEl,
-    HexagonEl,
+    // HexagonEl,
     StepEl
   },
   props: {
