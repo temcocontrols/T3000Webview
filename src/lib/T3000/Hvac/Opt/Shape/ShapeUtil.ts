@@ -1,52 +1,31 @@
 
 
-import $ from 'jquery'
 import NvConstant from '../../Data/Constant/NvConstant'
 import OptConstant from '../../Data/Constant/OptConstant'
-import ShapeConstant from '../../Data/Constant/ShapeConstant'
-import StyleConstant from '../../Data/Constant/StyleConstant'
 import TextConstant from '../../Data/Constant/TextConstant'
 import Instance from '../../Data/Instance/Instance'
 import StateConstant from '../../Data/State/StateConstant'
 import T3Gv from '../../Data/T3Gv'
-import BlockHeader from '../../Model/BlockHeader'
-import FontRecord from '../../Model/FontRecord'
-import Hook from '../../Model/Hook'
-import Layer from '../../Model/Layer'
 import LayersManager from '../../Model/LayersManager'
 import Link from '../../Model/Link'
-import OutsideEffectData from '../../Model/OutsideEffectData'
-import PaintData from '../../Model/PaintData'
 import Point from '../../Model/Point'
-import PolyGeomMd from '../../Model/PolyGeomMd'
 import PolySeg from '../../Model/PolySeg'
 import QuickStyle from '../../Model/QuickStyle'
 import Rectangle from '../../Model/Rectangle'
-import RulerConfig from '../../Model/RulerConfig'
 import SDData from '../../Model/SDData'
-import SDGraphDefault from '../../Model/SDGraphDefault'
-import TextObject from '../../Model/TextObject'
 import TextureList from '../../Model/TextureList'
-import TextureScale from '../../Model/TextureScale'
 import WinSetting from '../../Model/WinSetting'
 import WResult from '../../Model/WResult'
 import Utils1 from '../../Util/Utils1'
 import Utils2 from '../../Util/Utils2'
-import Utils3 from '../../Util/Utils3'
 import ObjectUtil from '../Data/ObjectUtil'
 import DSConstant from '../DS/DSConstant'
-import DSStruct from '../DS/DSStruct'
-import DSUtil from '../DS/DSUtil'
 import SvgUtil from '../Opt/SvgUtil'
-import PolygonConstant from '../Polygon/PolygonConstant'
-import PolygonShapeGenerator from "../Polygon/PolygonUtil"
 import LayerUtil from '../Opt/LayerUtil'
 import UIUtil from '../UI/UIUtil'
-import ToolActUtil from '../Opt/ToolActUtil'
-import ExportUtil from '../Opt/ExportUtil'
-import ImageRecord from '../../Model/ImageRecord'
 import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
+import T3Util from '../../Util/T3Util'
 
 class ShapeUtil {
 
@@ -1164,7 +1143,7 @@ class ShapeUtil {
     // Update layer information for selected objects
     LayerUtil.UpdateObjectLayerIndices(result);
 
-    console.log("=U.ShapeUtil WriteSelect result=", result);
+    T3Util.Log("= U.ShapeUtil WriteSelect result=", result);
 
     // Write objects to localStorage with selection-only flag
     return ShapeUtil.WriteBuffer(result, true, true, ignoreDataCheck);

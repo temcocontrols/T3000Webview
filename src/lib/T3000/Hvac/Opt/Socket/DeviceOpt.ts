@@ -8,6 +8,7 @@ import DeviceItem from "./DeviceItem"
 import T3Data from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 import Hvac from "../../Hvac"
+import T3Util from "../../Util/T3Util"
 
 class DeviceOpt {
 
@@ -106,7 +107,7 @@ class DeviceOpt {
   // init graphic list for ui rendering
   initGraphicList(gphList) {
 
-    console.log('= Dvopt t3 graphic data', gphList);
+    T3Util.Log('= Dvopt t3 graphic data', gphList);
 
     // load graphic list from GET_PANEL_DATA_RES
     // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
@@ -120,12 +121,12 @@ class DeviceOpt {
       elementCount: Number(graphic.count) || 0// this.calculateElementCount(graphic.id) || 0
     }));
 
-    console.log('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
+    T3Util.Log('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
 
     this.graphicList = transformedGraphicItems;
     T3Data.graphicList.value = transformedGraphicItems;
 
-    console.log('= Dvopt t3 graphicList', T3Data.graphicList.value);
+    T3Util.Log('= Dvopt t3 graphicList', T3Data.graphicList.value);
   }
 
   calculateElementCount(graphicId) {
@@ -343,7 +344,7 @@ class DeviceOpt {
       }
     })
 
-    console.log('= Dvopt refresh element count', T3Data.graphicList.value);
+    T3Util.Log('= Dvopt refresh element count', T3Data.graphicList.value);
   }
 
   clearGraphicPanelElementCount() {
@@ -537,7 +538,7 @@ class DeviceOpt {
 
     this.saveAppState(appState.value);
 
-    console.log('= Dvopt mergeAppState', appState.value);
+    T3Util.Log('= Dvopt mergeAppState', appState.value);
   }
 }
 

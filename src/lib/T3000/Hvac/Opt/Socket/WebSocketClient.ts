@@ -38,7 +38,7 @@ class WebSocketClient {
   }
 
   private onOpen(event: Event) {
-    console.log('= Ws connection opened:', event);
+    T3Util.Log('= Ws connection opened:', event);
 
     this.retries = 0;
     // this.startPing();
@@ -52,12 +52,12 @@ class WebSocketClient {
   }
 
   private onMessage(event: MessageEvent) {
-    // console.log('= Ws message received:', event.data);
+    // T3Util.Log('= Ws message received:', event.data);
     this.processMessage(event.data);
   }
 
   private onClose(event: CloseEvent) {
-    console.log('= Ws connection closed:', event);
+    T3Util.Log('= Ws connection closed:', event);
     this.attemptReconnect();
   }
 
@@ -80,13 +80,13 @@ class WebSocketClient {
 
   private attemptReconnect() {
     if (this.retries < this.maxRetries) {
-      console.log(`= Ws attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
+      T3Util.Log(`= Ws attempting to reconnect (${this.retries + 1}/${this.maxRetries})`);
       setTimeout(() => {
         this.retries++;
         this.connect();
       }, 5000); // 5 seconds
     } else {
-      console.log("= Ws max retries reached. Giving up.");
+      T3Util.Log("= Ws max retries reached. Giving up.");
     }
   }
 
@@ -109,7 +109,7 @@ class WebSocketClient {
   }
 
   sendMessage(message: string) {
-    if (this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
       const currentDateTime = new Date().toLocaleString();
       T3Util.Log('= Ws send message to T3 at', currentDateTime, message);
@@ -451,7 +451,7 @@ class WebSocketClient {
 
   private processMessage(data: any) {
 
-    console.log('= Ws received origin data', data);
+    T3Util.Log('= Ws received origin data', data);
 
     try {
       const parsedData = JSON.parse(data);
@@ -467,7 +467,7 @@ class WebSocketClient {
       this.processMessageData(parsedData);
       this.showSuccess(parsedData);
 
-      console.log('= ========================');
+      T3Util.Log('= ========================');
     } catch (error) {
       console.error('= Ws failed to parse | process data:', error);
     }
@@ -591,7 +591,7 @@ class WebSocketClient {
     }
 
     const parsedAppStateData = JSON.parse(appStateData);
-    console.log('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
+    T3Util.Log('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (!this.needRefresh) return;
 
@@ -640,7 +640,7 @@ class WebSocketClient {
 
     // action: 4, // GET_PANELS_LIST_RES
     Hvac.DeviceOpt.initDeviceList(data);
-    console.log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
+    T3Util.Log('= Ws GET_PANELS_LIST_RES', Hvac.DeviceOpt.deviceList);
 
     // load the first panel's panel data by default
     const firstPanelId = data.length > 0 ? data[0].panel_number : null;
@@ -673,7 +673,7 @@ class WebSocketClient {
 
   public HandleGetEntriesRes(msgData) {
     // action: 6, // GET_ENTRIES_RES
-    console.log('= Ws GET_ENTRIES_RES', msgData.data);
+    T3Util.Log('= Ws GET_ENTRIES_RES', msgData.data);
 
     // TODO refer to WebViewClient-> HandleGetEntriesRes
     msgData.data.forEach((item) => {
@@ -801,7 +801,7 @@ class WebSocketClient {
     const rspAction = response?.action ?? -1;
     const rspStatus = response?.data?.status ?? false;
 
-    console.log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
+    T3Util.Log('= Ws showSuccess | action:', rspAction, '| status:', rspStatus);
 
     if (rspAction == MessageType.LOAD_GRAPHIC_ENTRY_RES) {
       Hvac.QuasarUtil.ShowLOAD_GRAPHIC_ENTRY_RESSuccess();
@@ -840,7 +840,7 @@ class WebSocketClient {
     if (!this.needRefresh) return;
     if (this.reloadInitialDataInterval) return;
 
-    console.log('= Ws reload-initial-interval start', this.reloadInitialDataInterval);
+    T3Util.Log('= Ws reload-initial-interval start', this.reloadInitialDataInterval);
 
     // Set a timer to reload the initial data every 5 minutes
     this.reloadInitialDataInterval = setInterval(() => {
@@ -853,7 +853,7 @@ class WebSocketClient {
       }
     }, 2000);
 
-    console.log('= Ws reload-initial-interval end', this.reloadInitialDataInterval);
+    T3Util.Log('= Ws reload-initial-interval end', this.reloadInitialDataInterval);
   }
 
   clearInitialDataInterval() {
@@ -862,7 +862,7 @@ class WebSocketClient {
     }
 
     this.reloadInitialDataInterval = null;
-    console.log('= Ws reload-initial-interval clear', this.reloadInitialDataInterval);
+    T3Util.Log('= Ws reload-initial-interval clear', this.reloadInitialDataInterval);
   }
 }
 
