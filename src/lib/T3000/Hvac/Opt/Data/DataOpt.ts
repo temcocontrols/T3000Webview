@@ -234,9 +234,9 @@ class DataOpt {
           storedObject.Data = groupSymbolData;
         }
 
-        if (objectData.ShapeType === "SVGFragmentSymbol") {
-          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, objectData);
-          storedObject.Data = svgFragmentSymbolData;
+        if (objectData.ShapeType === "SvgSymbol") {
+          const svgSymbolData = plainToInstance(Instance.Shape.SvgSymbol, objectData);
+          storedObject.Data = svgSymbolData;
         }
 
         if (objectData.ShapeType === "ForeignObject") {
@@ -321,9 +321,9 @@ class DataOpt {
           shapeData = groupSymbolData;
         }
 
-        if (dataObj.ShapeType === "SVGFragmentSymbol") {
-          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, dataObj);
-          shapeData = svgFragmentSymbolData;
+        if (dataObj.ShapeType === "SvgSymbol") {
+          const svgSymbolData = plainToInstance(Instance.Shape.SvgSymbol, dataObj);
+          shapeData = svgSymbolData;
         }
 
         if (dataObj.ShapeType === "ForeignObject") {

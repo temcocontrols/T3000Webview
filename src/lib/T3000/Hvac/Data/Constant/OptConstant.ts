@@ -83,8 +83,8 @@ class OptConstant {
     VectorSymbol: 'VectorSymbol',           // Vector-based symbol
     BitmapSymbol: 'BitmapSymbol',           // Bitmap/raster symbol
     GroupSymbol: 'GroupSymbol',             // Group of symbols
-    SVGFragmentSymbol: 'SVGFragmentSymbol', // SVG fragment as symbol
-    D3Symbol: 'D3Symbol',                    // 3D symbol
+    SvgSymbol: 'SvgSymbol',                 // SVG fragment as symbol
+    D3Symbol: 'D3Symbol',                   // 3D symbol
     ForeignObject: 'ForeignObject',
   }
 

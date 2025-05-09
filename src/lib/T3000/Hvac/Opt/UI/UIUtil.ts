@@ -309,7 +309,7 @@ class UIUtil {
         if ((tableObject.ImageURL ||
           tableObject.SymbolURL ||
           tableObject instanceof Instance.Shape.GroupSymbol) &&
-          !(tableObject instanceof Instance.Shape.SVGFragmentSymbol)) {
+          !(tableObject instanceof Instance.Shape.SvgSymbol)) {
 
           delete T3Gv.opt.formatPainterStyle.Fill;
           delete T3Gv.opt.formatPainterStyle.Name;

@@ -457,13 +457,13 @@ class NvConstant {
    * Shape class definitions
    * Categorizes shapes by their implementation type
    */
-  static ShapeClass = {
-    Plain: 1,               // Basic shape
-    GroupSymbol: 2,         // Group of symbols
-    SvgSymbol: 3,           // SVG symbol
-    SvgFragmentSymbol: 4,   // SVG fragment
-    MissingMf: 5            // Missing metadata format
-  }
+  // static ShapeClass = {
+  //   Plain: 1,               // Basic shape
+  //   GroupSymbol: 2,         // Group of symbols
+  //   SvgSymbol: 3,           // SVG symbol
+  //   SvgSymbol: 4,           // SVG fragment
+  //   MissingMf: 5            // Missing metadata format
+  // }
 }
 
 export default NvConstant

@@ -1,6 +1,6 @@
 import Led from "src/components/ObjectTypes/Led.vue";
 import QuickStyle from "../../Model/QuickStyle";
-import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol";
+import SvgSymbol from "../../Shape/S.SvgSymbol";
 import ToolDuctT2SvgData from "./ToolDuctT2SvgData";
 import ToolDuctT1SvgData from "./ToolDuctT1SvgData";
 import ToolDuctT3SvgData from "./ToolDuctT3SvgData";
@@ -8,8 +8,8 @@ import ToolDuctT3SvgData from "./ToolDuctT3SvgData";
 class ToolSvgData {
 
   // static DuctSvg: any = ToolDuctT1SvgData;
-  // static DuctSvg: any = ToolDuctT2SvgData;
-  static DuctSvg: any = ToolDuctT3SvgData;
+  static DuctSvg: any = ToolDuctT2SvgData;
+  // static DuctSvg: any = ToolDuctT3SvgData;
 
   static GetSvgData(symbolType) {
 
@@ -25,7 +25,7 @@ class ToolSvgData {
     let initGbHeight = frame.height;
 
     // Create a new SVG Fragment Symbol
-    let symbolObject = new SVGFragmentSymbol({
+    let symbolObject = new SvgSymbol({
       Frame: { x: initialX, y: initialY, width: defWidth, height: defHeight },
       InitialGroupBounds: { x: initialX, y: initialX, width: initGbWidth, height: initGbHeight },
       StyleRecord: new QuickStyle(),

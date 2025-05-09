@@ -977,7 +977,7 @@ class DrawUtil {
 
           // Handle SVG fragment symbols
           if (!dragElement &&
-            object.ShapeType === OptConstant.ShapeType.SVGFragmentSymbol &&
+            object.ShapeType === OptConstant.ShapeType.SvgSymbol &&
             object.SVGFragment) {
 
             if (!visibleList) {

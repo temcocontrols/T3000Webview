@@ -13,7 +13,7 @@ import Oval from "../../Shape/S.Oval"
 import T3Clipboard from "../Clipboard/T3Clipboard"
 import NvConstant from "../../Data/Constant/NvConstant"
 import PolySeg from "../../Model/PolySeg"
-import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol"
+import SvgSymbol from "../../Shape/S.SvgSymbol"
 import QuickStyle from "../../Model/QuickStyle"
 import Instance from "../../Data/Instance/Instance"
 import PolyList from "../../Model/PolyList"
@@ -1291,7 +1291,7 @@ class ToolUtil {
     let initialY = -1000;
 
     // Create a new SVG Fragment Symbol
-    const symbolObject = new SVGFragmentSymbol({
+    const symbolObject = new SvgSymbol({
       Frame: { x: -1000, y: -1000, width: 60, height: 60 },
       hookflags: 257,
       moreflags: 64,
