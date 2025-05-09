@@ -4,6 +4,7 @@ import Container from './B.Container';
 import Group from "./B.Group";
 import Element from './B.Element';
 import { useQuasar } from 'quasar';
+import T3Util from '../Util/T3Util';
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
@@ -112,7 +113,7 @@ class ForeignObject extends Element {
         }
       });
     } catch (error) {
-      console.error('Failed to mount Vue component:', error);
+      T3Util.LogError('Failed to mount Vue component:', error);
     }
 
     return this;

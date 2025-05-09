@@ -805,19 +805,19 @@ class EvtOpt {
 
   BindLibAddNoteEvent() {
     $("#btn_try_Lib_AddNote").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibAddNoteAct(event);
+      EvtOpt.toolOpt.LibAddNoteAct();
     });
   }
 
   BindLibAddCommentEvent() {
     $("#btn_try_Lib_AddComment").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibAddCommentAct(event);
+      EvtOpt.toolOpt.LibAddCommentAct();
     });
   }
 
   BindLibHyperlinkEvent() {
     $("#btn_try_Lib_Hyperlink").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibHyperlinkAct(event);
+      EvtOpt.toolOpt.LibHyperlinkAct();
     });
   }
 

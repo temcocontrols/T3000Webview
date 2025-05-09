@@ -466,7 +466,7 @@ class Symbol extends Element {
       }
     }
     catch (e) {
-      console.error("Error getting placeholders:", e);
+      T3Util.LogError("Error getting placeholders:", e);
     }
 
     return placeholders;
