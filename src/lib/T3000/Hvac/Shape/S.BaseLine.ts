@@ -1701,7 +1701,7 @@ class BaseLine extends BaseDrawObject {
       actionTriggerID = T3Gv.opt.actionTriggerId;
       T3Gv.opt.pinRect = null;
       preservedBlock = T3Gv.stdObj.PreserveBlock(actionStoredObjectID);
-    } else { 
+    } else {
       T3Gv.opt.eventTimestamp = Date.now();
       event.stopPropagation();
 
@@ -1853,7 +1853,7 @@ class BaseLine extends BaseDrawObject {
 
       T3Util.Log("= S.BaseLine: LMActionClick setup completed for blockID:", blockID);
     } catch (error) {
-      console.error("= S.BaseLine: LMActionClick encountered an error:", error);
+      T3Util.LogError("= S.BaseLine: LMActionClick encountered an error:", error);
       this.LMActionClickExpCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
@@ -3096,7 +3096,7 @@ class BaseLine extends BaseDrawObject {
       OptCMUtil.CancelOperation();
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      console.error("= S.BaseLine: LMDrawRelease encountered error:", error);
+      T3Util.LogError("= S.BaseLine: LMDrawRelease encountered error:", error);
       throw error;
     }
   }

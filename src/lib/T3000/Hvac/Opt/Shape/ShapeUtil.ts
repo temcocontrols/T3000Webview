@@ -556,7 +556,7 @@ class ShapeUtil {
         jsonData = storageKeyOrData;
       }
     } catch (error) {
-      console.error("Error parsing JSON data:", error);
+      T3Util.LogError("Error parsing JSON data:", error);
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
@@ -873,7 +873,7 @@ class ShapeUtil {
 
       return result.error;
     } catch (error) {
-      console.error("Error processing JSON data:", error);
+      T3Util.LogError("Error processing JSON data:", error);
       result.error = ShapeUtil.Errors.BadFormat;
       return result.error;
     }
@@ -1267,7 +1267,7 @@ class ShapeUtil {
       return (isSelectOnly || returnRawData) ? jsonString : storageKey;
 
     } catch (error) {
-      console.error("Error serializing drawing to JSON:", error);
+      T3Util.LogError("Error serializing drawing to JSON:", error);
       return null;
     }
   }

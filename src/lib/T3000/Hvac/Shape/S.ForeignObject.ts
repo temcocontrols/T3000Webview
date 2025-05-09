@@ -130,10 +130,10 @@ class ForeignObject extends BaseShape {
               foreignObject.MountVueComponent(component, this.vueProps);
             })
             .catch(err => {
-              console.error(`Failed to load component: ${componentName}`, err);
+              T3Util.LogError(`Failed to load component: ${componentName}`, err);
             });
         } else {
-          console.error(`Component not found in registry: ${componentName}`);
+          T3Util.LogError(`Component not found in registry: ${componentName}`);
         }
       } else if (this.vueComponent && typeof this.vueComponent === 'object') {
         // Direct component reference - check if it has required methods
@@ -164,12 +164,12 @@ class ForeignObject extends BaseShape {
                 foreignObject.MountVueComponent(component, this.vueProps);
               })
               .catch(err => {
-                console.error(`Failed to load component by name: ${componentName}`, err);
+                T3Util.LogError(`Failed to load component by name: ${componentName}`, err);
               });
           }
         }
       } else {
-        console.error("Invalid vue component provided:", this.vueComponent);
+        T3Util.LogError("Invalid vue component provided:", this.vueComponent);
       }
     }
 

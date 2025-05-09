@@ -1316,7 +1316,7 @@ class OptUtil {
 
       T3Util.Log('O.Opt ExceptionCleanup - Output: done');
     } catch (cleanupError) {
-      console.error('O.Opt ExceptionCleanup - Cleanup Error:', cleanupError);
+      T3Util.LogError('O.Opt ExceptionCleanup - Cleanup Error:', cleanupError);
       throw cleanupError;
     }
 

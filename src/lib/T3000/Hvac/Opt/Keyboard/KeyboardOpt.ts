@@ -153,7 +153,7 @@ class KeyboardOpt {
     try {
       KeyboardOpt.HandleKeyDown(event, keyCode, modifierKeys);
     } catch (error) {
-      console.error('U.KeyboardUtil: Error in key down handler', error);
+      T3Util.LogError('U.KeyboardUtil: Error in key down handler', error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
@@ -326,7 +326,7 @@ class KeyboardOpt {
       T3Util.Log('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
       KeyboardOpt.HandleKeyPress(event, charCode);
     } catch (error) {
-      console.error('U.KeyboardUtil: Error in key press handler', error);
+      T3Util.LogError('U.KeyboardUtil: Error in key press handler', error);
       throw error;
     }
   }

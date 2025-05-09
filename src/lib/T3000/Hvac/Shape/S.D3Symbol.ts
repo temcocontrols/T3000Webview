@@ -440,7 +440,7 @@ class D3Symbol extends BaseSymbol {
     try {
       parsedSettings = JSON.parse(settingsString);
     } catch (error) {
-      console.error("S.D3Symbol: ImportD3Settings - Error parsing settings:", error);
+      T3Util.LogError("S.D3Symbol: ImportD3Settings - Error parsing settings:", error);
       throw error;
     }
 

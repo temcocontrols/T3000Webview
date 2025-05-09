@@ -62,7 +62,7 @@ class WebSocketClient {
   }
 
   private onError(event: Event) {
-    console.error('= Ws error:', event);
+    T3Util.LogError('= Ws error:', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
     Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
@@ -469,7 +469,7 @@ class WebSocketClient {
 
       T3Util.Log('= ========================');
     } catch (error) {
-      console.error('= Ws failed to parse | process data:', error);
+      T3Util.LogError('= Ws failed to parse | process data:', error);
     }
   }
 
@@ -774,7 +774,7 @@ class WebSocketClient {
 
   handleError(messageData) {
     if (!messageData && !messageData.error) return;
-    console.error('= Ws error:', messageData);
+    T3Util.LogError('= Ws error:', messageData);
 
     const errorMsg = messageData?.error ?? "";
     const isSpecial = messageData.action === MessageType.GET_PANEL_DATA_RES || messageData.action === MessageType.GET_INITIAL_DATA_RES || messageData.action === MessageType.GET_PANELS_LIST_RES;
