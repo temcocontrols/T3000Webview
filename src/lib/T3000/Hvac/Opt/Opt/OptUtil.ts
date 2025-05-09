@@ -206,7 +206,6 @@ class OptUtil {
   public documentElement: any;           // Document area DOM element
   public documentElementHammer: any;     // Hammer manager for document element
   public workAreaTextInputProxy: any;    // Proxy for text input in work area
-  public virtualKeyboardLifterElementFrame: any;  // Frame for virtual keyboard
   public TEHammer: any;                  // Hammer manager for text editing
   public TEWorkAreaHammer: any;          // Hammer manager for text edit work area
   public clickAreaHammer: any;           // Hammer manager for click areas
@@ -302,7 +301,6 @@ class OptUtil {
    * Variables for note editing functionality
    */
   public curNoteShape: number;           // Current shape with note being edited
-  // public curNoteTableCell: any;          // Current table cell with note
   public curNoteGraphPint: any;          // Current graph point with note
   public bInNoteEdit: boolean;           // Whether in note edit mode
   public bNoteChanged: boolean;          // Whether note content changed
@@ -527,7 +525,6 @@ class OptUtil {
     this.workAreaElement = null;                // Work area DOM element
     this.WorkAreaHammer = null;                 // Hammer manager for work area
     this.workAreaTextInputProxy = null;         // Proxy for text input in work area
-    this.virtualKeyboardLifterElementFrame = null; // Frame for virtual keyboard
 
     // Text editing and interaction handlers
     this.TEHammer = null;                       // Hammer manager for text editing
@@ -4922,18 +4919,7 @@ class OptUtil {
       // Calculate the element's frame in document coordinates.
       const elementFrame = element.CalcElementFrame();
       let frameChanged = false;
-      let forceUpdate = false;
-
-      // Check if the previously stored frame exists and is different.
-      if (T3Gv.opt.virtualKeyboardLifterElementFrame) {
-        frameChanged =
-          elementFrame.x !== T3Gv.opt.virtualKeyboardLifterElementFrame.x ||
-          elementFrame.y !== T3Gv.opt.virtualKeyboardLifterElementFrame.y ||
-          elementFrame.width !== T3Gv.opt.virtualKeyboardLifterElementFrame.width ||
-          elementFrame.height !== T3Gv.opt.virtualKeyboardLifterElementFrame.height;
-      } else {
-        forceUpdate = true;
-      }
+      let forceUpdate = true;
 
       // If the frame has changed or there's no previous frame.
       if (frameChanged || forceUpdate) {
@@ -4949,9 +4935,6 @@ class OptUtil {
         if (windowHeight === 0) {
           windowHeight = 1;
         }
-
-        // Store the updated frame.
-        T3Gv.opt.virtualKeyboardLifterElementFrame = $.extend(true, {}, elementFrame);
 
         // Make the text input proxy visible.
         T3Gv.opt.workAreaTextInputProxy.css('visibility', 'visible');
@@ -4994,8 +4977,6 @@ class OptUtil {
         T3Gv.opt.workAreaTextInputProxy.focus();
       }
     } else {
-      // When deactivating the virtual keyboard lifter.
-      T3Gv.opt.virtualKeyboardLifterElementFrame = null;
       T3Gv.opt.workAreaTextInputProxy.css('visibility', 'visible');
       T3Gv.opt.workAreaTextInputProxy.blur();
       T3Gv.opt.workAreaTextInputProxy.val('');
@@ -6338,7 +6319,7 @@ class OptUtil {
    * @param svgSource - The source of the SVG (file path, URL, or raw SVG content)
    * @returns void
    */
-  ImportSVGSymbol(svgSource) {
+  ImportSvgSymbol(svgSource) {
     // Initialize variables to store SVG data
     let imageUrl = "";
     let imageBlob = null;
@@ -6414,9 +6395,9 @@ class OptUtil {
     };
 
     // Create an SVG importer and load the SVG
-    const svgImporter = new Instance.Shape.SVGImporter();
+    const svgImporter = new Instance.Shape.SvgImporter();
     if (svgImporter) {
-      svgImporter.ImportSVG(svgSource, (url, blob, bytes) => {
+      svgImporter.ImportSvg(svgSource, (url, blob, bytes) => {
         // Store SVG data
         imageUrl = url;
         imageBlob = blob;

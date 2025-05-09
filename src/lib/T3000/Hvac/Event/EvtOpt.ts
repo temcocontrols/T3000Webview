@@ -12,6 +12,7 @@ import $ from 'jquery'
 import UIUtil from "../Opt/UI/UIUtil";
 import Hvac from "../Hvac";
 import T3Opt from "../Doc/T3Opt";
+import T3Util from "../Util/T3Util";
 
 class EvtOpt {
 
@@ -125,7 +126,7 @@ class EvtOpt {
       this.BindLibIconWithTitleEvent();
       this.BindLibSetBackgroundColorEvent();
       this.BindLibSetBackgroundImageEvent();
-      this.BindLibImportSVGSymbolEvent();
+      this.BindLibImportSvgSymbolEvent();
       this.BindLibLockEvent();
       this.BindLibUnLockEvent();
       this.BindLibAddNoteEvent();
@@ -784,9 +785,9 @@ class EvtOpt {
     });
   }
 
-  BindLibImportSVGSymbolEvent() {
-    $("#btn_try_Lib_ImportSVGSymbol").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibImportSVGSymbolAct(event);
+  BindLibImportSvgSymbolEvent() {
+    $("#btn_try_Lib_ImportSvgSymbol").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibImportSvgSymbolAct(event);
     });
   }
 

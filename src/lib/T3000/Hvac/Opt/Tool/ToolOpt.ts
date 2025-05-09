@@ -506,7 +506,7 @@ class ToolOpt {
     }
   }
 
-  LibImportSVGSymbolAct(e) {
+  LibImportSvgSymbolAct(e) {
     try {
       T3Gv.opt.CloseEdit();
 
@@ -526,7 +526,7 @@ class ToolOpt {
         reader.onload = () => {
           const fileDataUrl = reader.result as string;
 
-          T3Gv.opt.ImportSVGSymbol(file)
+          T3Gv.opt.ImportSvgSymbol(file)
           T3Util.Log('O.ToolOpt.LibSetBackgroundImageAct - Output: Set background image', { e: e });
         };
 

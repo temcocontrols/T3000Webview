@@ -65,12 +65,6 @@ class SelectUtil {
       return false;
     }
 
-    // // Exclude shape container objects in cells
-    // if (object && object.objecttype === shapeContainerType && this.ContainerIsInCell(object)) {
-    //   T3Util.Log('O.Opt SelectObjectFromClick - Output: false (container in cell)');
-    //   return false;
-    // }
-
     // Determine if this is a multiple selection operation
     let isMultipleSelection = event.gesture.srcEvent.shiftKey ||
       event.gesture.srcEvent.ctrlKey ||

@@ -22,7 +22,7 @@ import ShapeContainer from "../../Shape/S.ShapeContainer"
 import SvgSymbol from "../../Shape/S.SvgSymbol"
 import BaseDrawObject from "../../Shape/S.BaseDrawObject"
 import BitmapImporter from "../../Shape/S.BitmapImporter"
-import SVGImporter from "../../Shape/S.SvgImporter"
+import SvgImporter from "../../Shape/S.SvgImporter"
 import ForeignObject from '../../Shape/S.ForeignObject';
 
 /**
@@ -266,7 +266,7 @@ const Shape = {
    * @param importOptions - Options for importing the SVG
    * @returns SVG importer object
    */
-  SVGImporter,
+  SvgImporter,
 
   ForeignObject
 }

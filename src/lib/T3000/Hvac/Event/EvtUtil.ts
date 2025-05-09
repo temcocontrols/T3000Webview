@@ -110,9 +110,6 @@ class EvtUtil {
     // Stop propagation of the event to parent elements
     Utils2.StopPropagationAndDefaults(event);
 
-    // Set UI adaptation based on event
-    // T3Gv.opt.SetUIAdaptation(event);
-
     // Check if this is a right-click
     const isRightClick = MouseUtil.IsRightClick(event);
 
@@ -506,8 +503,6 @@ class EvtUtil {
         case OptConstant.OptTypes.None:
           // Check for hyperlink hits or process normal tap
           if (!TextUtil.CheckTextHyperlinkHit(shape, tapEvent)) {
-            LMEvtUtil.LMTestIconClick(tapEvent);
-
             // Handle rollover actions if not in read-only mode
             if (UIUtil.GetUIAdaptation(tapEvent) && !T3Gv.docUtil.IsReadOnly()) {
               shapeElement = T3Gv.opt.svgObjectLayer.GetElementById(shape.tag);

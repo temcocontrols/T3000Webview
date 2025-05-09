@@ -145,11 +145,6 @@ class ToolUtil {
   StampOrDragDropNewShape(event, shapeType, uniShapeType) {
     T3Util.Log('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
 
-    let context;
-    let callbackFunction;
-
-    // T3Gv.opt.SetUIAdaptation(event);
-
     // Initialize cancel flag
     let cancelOperation = false;
 
@@ -157,8 +152,8 @@ class ToolUtil {
     DrawUtil.PreDragDropOrStamp();
 
     // Set up the context and callback
-    context = this;
-    callbackFunction = this.StampOrDragDropCallback;
+    let context = this;
+    let callbackFunction = this.StampOrDragDropCallback;
 
     // Set a timeout to execute the callback after a short delay
     T3Gv.opt.stampTimeout = window.setTimeout(callbackFunction, 200, context, shapeType, uniShapeType);
