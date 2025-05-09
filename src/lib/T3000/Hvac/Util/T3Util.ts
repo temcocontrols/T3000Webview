@@ -31,6 +31,21 @@ class T3Util {
       }
     }
   }
+
+  /**
+   * Logs an error message to the console
+   * @param message - The error message to log
+   * @param additionalParams - Optional additional parameters to log
+   */
+  static LogError(message: any, ...additionalParams: any[]): void {
+    if (HvConstant.Default.Environment.toLowerCase() !== "prd") {
+      if (additionalParams == null || additionalParams.length === 0) {
+        console.error.apply(console, [message]);
+      } else {
+        console.error.apply(console, [message].concat(additionalParams));
+      }
+    }
+  }
 }
 
 export default T3Util

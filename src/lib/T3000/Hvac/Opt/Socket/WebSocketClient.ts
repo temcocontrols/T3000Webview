@@ -3,12 +3,10 @@
 import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import Hvac from "../../Hvac"
-import Utils5 from '../../Util/Utils5'
-import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
 import IdxUtils from '../Common/IdxUtils'
-import QuasarUtil from "../../Opt/Quasar/QuasarUtil"
 import Utils1 from "../../Util/Utils1"
 import T3Util from "../../Util/T3Util"
+import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
 
 class WebSocketClient {
 
@@ -110,16 +108,48 @@ class WebSocketClient {
     this.sendMessage(this.messageData);
   }
 
-  public sendMessage(message: string) {
+  sendMessage(message: string) {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
       const currentDateTime = new Date().toLocaleString();
-      console.log('= Ws send to T3 at', currentDateTime, message);
+      T3Util.Log('= Ws send message to T3 at', currentDateTime, message);
     } else {
-      console.log('= Ws send message | socket is not open | wait for.  Ready state:', this.socket.readyState);
-      this.socket.onopen = () => {
-        this.socket?.send(message);
-      };
+      T3Util.Log('= Ws send message | socket is not open | ready state:', this.socket.readyState);
+
+      // Store the message to send after reconnection
+      const pendingMessage = message;
+
+      // Remove existing onopen handler to avoid duplicates
+      this.socket.onopen = null;
+
+      // If socket is closed or closing, reconnect
+      if (this.socket.readyState === WebSocket.CLOSED || this.socket.readyState === WebSocket.CLOSING) {
+        T3Util.Log('= Ws reconnecting before sending message...');
+
+        // Create new socket connection
+        this.connect();
+
+        // Set up onopen handler for the new connection
+        this.socket.onopen = (event: Event) => {
+          T3Util.Log('= Ws reconnected successfully, sending pending message');
+          // Call the original onOpen handler
+          this.onOpen(event);
+
+          // Send the pending message
+          if (this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(pendingMessage);
+            T3Util.Log('= Ws pending message sent after reconnection');
+          } else {
+            T3Util.LogError('= Ws failed to send message after reconnection attempt');
+          }
+        };
+      } else {
+        // Socket is connecting, wait for it to open
+        this.socket.onopen = () => {
+          T3Util.Log('= Ws connection established, sending pending message');
+          this.socket.send(pendingMessage);
+        };
+      }
     }
   }
 

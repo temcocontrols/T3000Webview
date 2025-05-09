@@ -43,6 +43,7 @@
           <q-btn flat caption color="white" label="Reload data" @click="reloadPanelsData" />
         </template>
       </q-banner>
+      <a-alert message="Warning" type="warning" show-icon />
     </div>
 
     <div class="q-pa-sm row ">
