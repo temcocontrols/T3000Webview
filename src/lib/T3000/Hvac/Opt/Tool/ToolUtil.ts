@@ -56,19 +56,15 @@ class ToolUtil {
   }
 
   /**
-     * Cancels the current modal operation
-     * @param skipMessageHandling - If true, skips handling of collaboration messages
-     * @returns false to indicate operation was cancelled
-     */
+   * Cancels the current modal operation
+   * @param skipMessageHandling - If true, skips handling of collaboration messages
+   * @returns false to indicate operation was cancelled
+   */
   CancelOperation(skipMessageHandling?) {
     T3Util.Log("O.ToolOpt CancelOperation input:", skipMessageHandling);
 
     this.SetSelectionTool(ToolConstant.Tools.Select, false);
     OptCMUtil.CancelOperation();
-
-    if (!skipMessageHandling) {
-    }
-
     T3Util.Log("O.ToolOpt CancelOperation output: false");
     return false;
   }
