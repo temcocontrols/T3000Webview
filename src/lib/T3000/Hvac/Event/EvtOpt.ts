@@ -821,7 +821,7 @@ class EvtOpt {
   }
 
   HandleSidebarToolEvent(selectedTool: any) {
-    console.log("Selected tool: ", selectedTool);
+    T3Util.Log("Selected tool: ", selectedTool);
 
 
     if (selectedTool.value.name == "Temperature") {

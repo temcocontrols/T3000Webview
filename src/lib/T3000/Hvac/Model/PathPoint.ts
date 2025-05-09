@@ -20,7 +20,7 @@
  * Creating a PathPoint instance:
  *
  * const point = new PathPoint(100, 200, true, false, 50, 50);
- * console.log(`Point at (${point.x}, ${point.y}) with curve control at (${point.curvex}, ${point.curvey})`);
+ * T3Util.Log(`Point at (${point.x}, ${point.y}) with curve control at (${point.curvex}, ${point.curvey})`);
  */
 class PathPoint {
 

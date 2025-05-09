@@ -43,7 +43,7 @@ import State from "./State"
  *
  * // Retrieve the current state (if any)
  * const currentState = baseState.GetCurrentState();
- * console.log('Current State:', currentState);
+ * T3Util.Log('Current State:', currentState);
  *
  * // Reset all undo states to initial values
  * baseState.ResetUndoStates();

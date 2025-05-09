@@ -33,11 +33,11 @@ import DataObj from "./DataObj"
  *
  * // Retrieve the block by its ID
  * const retrievedBlock = store.GetObject(newBlockId);
- * console.log(retrievedBlock);
+ * T3Util.Log(retrievedBlock);
  *
  * // Get all stored objects of type 'Sensor'
  * const sensorBlocks = store.GetObjects('Sensor');
- * console.log(sensorBlocks);
+ * T3Util.Log(sensorBlocks);
  *
  * // Delete the block and update current state
  * store.DeleteObject(newBlockId);

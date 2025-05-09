@@ -49,18 +49,18 @@ import MouseUtil from "../Event/MouseUtil"
  *     },
  *     geometryBBox: { width: 500, height: 300 },
  *     GetTextLength: () => { return 100; },
- *     SetSelectionVisible: (visible) => { console.log("Selection_visible:", visible); },
- *     ClearDataFieldHilites: () => { console.log("Data field hilites cleared."); },
- *     CallEditCallback: (eventName, ...args) => { console.log("Callback:", eventName, args); },
- *     SetCursorState: (state) => { console.log("Cursor state set to", state); },
- *     HideSelection: () => { console.log("Selection hidden"); },
- *     ShowSelection: (pathString) => { console.log("Selection shown with path", pathString); },
- *     HideInputCursor: () => { console.log("Input cursor hidden"); },
- *     ShowInputCursor: (left, top, bottom) => { console.log("Input cursor shown at", left, top, bottom); },
- *     UpdateTextObject: () => { console.log("Text object updated"); },
- *     Paste: (text, flag1, flag2?) => { console.log("Pasted text", text); },
- *     Delete: (flag?) => { console.log("Text deleted"); },
- *     DoSpellCheck: () => { console.log("Spell check performed"); },
+ *     SetSelectionVisible: (visible) => { T3Util.Log("Selection_visible:", visible); },
+ *     ClearDataFieldHilites: () => { T3Util.Log("Data field hilites cleared."); },
+ *     CallEditCallback: (eventName, ...args) => { T3Util.Log("Callback:", eventName, args); },
+ *     SetCursorState: (state) => { T3Util.Log("Cursor state set to", state); },
+ *     HideSelection: () => { T3Util.Log("Selection hidden"); },
+ *     ShowSelection: (pathString) => { T3Util.Log("Selection shown with path", pathString); },
+ *     HideInputCursor: () => { T3Util.Log("Input cursor hidden"); },
+ *     ShowInputCursor: (left, top, bottom) => { T3Util.Log("Input cursor shown at", left, top, bottom); },
+ *     UpdateTextObject: () => { T3Util.Log("Text object updated"); },
+ *     Paste: (text, flag1, flag2?) => { T3Util.Log("Pasted text", text); },
+ *     Delete: (flag?) => { T3Util.Log("Text deleted"); },
+ *     DoSpellCheck: () => { T3Util.Log("Spell check performed"); },
  *     activeEditStyle: 0,
  *     GetPos: () => { return { x: 10, y: 10 }; }
  *   };
@@ -77,7 +77,7 @@ import MouseUtil from "../Event/MouseUtil"
  *
  *   // Attach a virtual keyboard hook and initialize the text entry field:
  *   textEdit.SetVirtualKeyboardHook((parent, activated) => {
- *     console.log(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
+ *     T3Util.Log(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
  *   }, document.getElementById('textEntry'));
  *
  *   // Manipulate text selection:

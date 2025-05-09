@@ -240,10 +240,10 @@ function renameLibItem(item) {
       emit("renameLibItem", item, data);
     })
     .onCancel(() => {
-      // console.log('>>>> Cancel')
+      // T3Util.Log('>>>> Cancel')
     })
     .onDismiss(() => {
-      // console.log('I am triggered on both OK and Cancel')
+      // T3Util.Log('I am triggered on both OK and Cancel')
     });
 }
 
@@ -256,7 +256,7 @@ const imgTabUploader = ref({
 });
 
 function imageFileAdded(file) {
-  console.log("file", file);
+  T3Util.Log("file", file);
   imgTabUploader.value.uploadBtnDisabled = false;
   imgTabUploader.value.file = file;
 }
@@ -280,7 +280,7 @@ function saveLibImageEmit(data) {
 }
 
 function toolDropped(event, tool) {
-  console.log("toolDropped", event, tool);
+  T3Util.Log("toolDropped", event, tool);
   emit("toolDropped", event, tool);
 }
 

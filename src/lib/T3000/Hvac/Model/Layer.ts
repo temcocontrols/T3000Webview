@@ -23,7 +23,7 @@ import NvConstant from "../Data/Constant/NvConstant"
  * layer.layertype = NvConstant.LayerTypes.None;
  * layer.zList.push({ id: 101, description: 'Zone A' });
  *
- * console.log(layer);
+ * T3Util.Log(layer);
  *
  * @remarks
  * Typically, instances of Layer are used as part of a larger system where each layer helps manage

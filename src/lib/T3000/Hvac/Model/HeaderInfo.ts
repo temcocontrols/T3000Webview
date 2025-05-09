@@ -35,14 +35,14 @@ import OptConstant from '../Data/Constant/OptConstant';
  * const header = new HeaderInfo();
  *
  * // Access the page record
- * console.log(header.Page);
+ * T3Util.Log(header.Page);
  *
  * // Modify the presentation name
  * header.presentationName = "Main Presentation";
  *
  * // Check if the document is marked as dirty (modified)
  * if (header.DocIsDirty) {
- *   console.log("The document has unsaved changes.");
+ *   T3Util.Log("The document has unsaved changes.");
  * }
  * ```
  *

@@ -24,9 +24,9 @@
  * // Use the identifier to check the type of an object in a drawing system
  * function handleShapeType(type: number): void {
  *   if (type === ShapeConstant.ObjectTypes.Freehand) {
- *     console.log('Processing a freehand drawing');
+ *     T3Util.Log('Processing a freehand drawing');
  *   } else {
- *     console.log('Processing a different type of shape');
+ *     T3Util.Log('Processing a different type of shape');
  *   }
  * }
  *

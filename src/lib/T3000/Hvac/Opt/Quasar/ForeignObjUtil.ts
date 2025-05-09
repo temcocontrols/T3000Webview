@@ -4,6 +4,7 @@ import VueCircle from "../../../../../components/Basic/Circle.vue";
 import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import ObjectType3 from "src/components/NewUI/ObjectType3.vue";
 import QuasarUtil from "./QuasarUtil";
+import T3Util from "../../Util/T3Util";
 
 class ForeignObjUtil {
 
@@ -33,7 +34,7 @@ class ForeignObjUtil {
   static CreateVueObjectType(docInstance: any, frame: any) {
     let svgDoc = docInstance == null ? T3Gv.opt.svgDoc : docInstance;
 
-    console.log('ForeignObjUtil=CreateVueObjectType', frame);
+    T3Util.Log('ForeignObjUtil=CreateVueObjectType', frame);
 
     const circleItem = {
       "title": null,

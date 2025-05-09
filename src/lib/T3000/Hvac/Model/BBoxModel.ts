@@ -16,8 +16,8 @@
  * const bbox = new BBoxModel();
  *
  * // Accessing properties of the bounding box
- * console.log(`Position: (${bbox.x}, ${bbox.y})`);
- * console.log(`Dimensions: width=${bbox.width}, height=${bbox.height}`);
+ * T3Util.Log(`Position: (${bbox.x}, ${bbox.y})`);
+ * T3Util.Log(`Dimensions: width=${bbox.width}, height=${bbox.height}`);
  */
 class BBoxModel {
 

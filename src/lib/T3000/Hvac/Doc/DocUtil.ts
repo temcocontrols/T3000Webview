@@ -65,7 +65,7 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
  *
  * // Snap a point to the nearest grid intersection.
  * const snappedPoint = docUtil.SnapToGrid({ x: 150, y: 200 });
- * console.log('Snapped Point:', snappedPoint);
+ * T3Util.Log('Snapped Point:', snappedPoint);
  * ```
  */
 class DocUtil {

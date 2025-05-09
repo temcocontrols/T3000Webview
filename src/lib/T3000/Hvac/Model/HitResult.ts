@@ -30,7 +30,7 @@
  * hitResult.segment = 5;
  * hitResult.pt = { x: 50, y: 100 };
  *
- * console.log(hitResult);
+ * T3Util.Log(hitResult);
  * ```
  *
  * @param objectId - The identifier for the hit object. Defaults to 0 if no value is provided.

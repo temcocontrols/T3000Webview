@@ -49,7 +49,7 @@
  * config.spellFlags = true;
  * config.snapToShapes = false;
  *
- * console.log('Document configuration:', config);
+ * T3Util.Log('Document configuration:', config);
  * ```
  */
 class DocConfig {

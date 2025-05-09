@@ -12,7 +12,7 @@
  * Creating a new Rectangle instance:
  * ```typescript
  * const rect = new Rectangle(10, 20, 100, 50);
- * console.log(`x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`);
+ * T3Util.Log(`x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`);
  * // Output: x: 10, y: 20, width: 100, height: 50
  * ```
  *

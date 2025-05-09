@@ -25,8 +25,8 @@ import SelectUtil from "./SelectUtil";
  * const result = { foundtree: false, topconnector: -1, topshape: -1 };
  * const treeFound = OptAhUtil.FindTreeTop(drawingObject, true, result);
  * if (treeFound) {
- *   console.log(`Tree top shape ID: ${result.topshape}`);
- *   console.log(`Tree top connector ID: ${result.topconnector}`);
+ *   T3Util.Log(`Tree top shape ID: ${result.topshape}`);
+ *   T3Util.Log(`Tree top connector ID: ${result.topconnector}`);
  * }
  *
  * @example
@@ -47,7 +47,7 @@ import SelectUtil from "./SelectUtil";
  * const position = { x: 0, y: 0 };
  * const connectorId = OptAhUtil.GetParentConnector(objectId, position);
  * if (connectorId >= 0) {
- *   console.log(`Parent connector found at position (${position.x}, ${position.y})`);
+ *   T3Util.Log(`Parent connector found at position (${position.x}, ${position.y})`);
  * }
  */
 class OptAhUtil {

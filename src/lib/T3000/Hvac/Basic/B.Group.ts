@@ -32,7 +32,7 @@ import Utils1 from "../Util/Utils1"
  *
  * // Retrieve the bounding box geometry of the group
  * const bbox = group.GetGeometryBBox();
- * console.log('Bounding Box:', bbox);
+ * T3Util.Log('Bounding Box:', bbox);
  *
  * // Trigger an update of paint properties (fill, stroke) for the group and its children
  * group.RefreshPaint(event);

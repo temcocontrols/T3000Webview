@@ -21,7 +21,7 @@ import T3Gv from "../T3Gv"
  * // Alternatively, create a state using default values:
  * const defaultState = new StateBase();
  *
- * console.log(`State ID: ${state.ID}, Open: ${state.IsOpen}`);
+ * T3Util.Log(`State ID: ${state.ID}, Open: ${state.IsOpen}`);
  * ```
  */
 class StateBase {

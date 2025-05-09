@@ -114,7 +114,7 @@ class PageMain {
 
   // Start auto join wall
   StartAutoJoinWall = (appState, pos) => {
-    console.log("AutoJoinWall StartAutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, pos);
+    T3Util.Log("AutoJoinWall StartAutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, pos);
 
     const currentItem = appState.value.items[appState.value.activeItemIndex];
 
@@ -122,8 +122,8 @@ class PageMain {
     const previousItem = appState.value.items[previousItemIndex];
 
 
-    console.log("AutoJoinWall StartAutoJoinWall Current item:", currentItem);
-    console.log("AutoJoinWall StartAutoJoinWall Previous item:", previousItem);
+    T3Util.Log("AutoJoinWall StartAutoJoinWall Current item:", currentItem);
+    T3Util.Log("AutoJoinWall StartAutoJoinWall Previous item:", previousItem);
 
     if (previousItem !== null && previousItem !== undefined) {
       if (previousItem.joinWall) {
@@ -136,7 +136,7 @@ class PageMain {
 
   // Auto Join the wall
   AutoJoinWall = (appState, mouseX, mouseY, rotate, width) => {
-    console.log("AutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, mouseX, mouseY, rotate, width);
+    T3Util.Log("AutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, mouseX, mouseY, rotate, width);
 
     const previousItemIndex = this.GetPreviousItem(appState);
     const previousItem = appState.value.items[previousItemIndex];

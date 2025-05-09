@@ -53,12 +53,12 @@ class QuasarUtil {
       globalMsg.value.push(gmm);
     }
 
-    console.log("= T3Util setGlobalMsg", { ...globalMsg.value });
+    T3Util.Log("= U.QuasarUtil setGlobalMsg", { ...globalMsg.value });
   }
 
   clearGlobalMsg(msgType: string) {
     globalMsg.value = globalMsg.value.filter((msg: GlobalMsgModel) => msg.msgType !== msgType);
-    console.log("= T3Util clearGlobalMsg", { ...globalMsg.value });
+    T3Util.Log("= U.QuasarUtil clearGlobalMsg", { ...globalMsg.value });
   }
 
   clearAllGlobalMsg() {
@@ -81,7 +81,7 @@ class QuasarUtil {
     //   ],
     // });
 
-    console.log('= T3Utils Graphic loaded successfully');
+    T3Util.Log('= U.QuasarUtil Graphic loaded successfully');
   }
 
   ShowGET_INITIAL_DATA_RESSuccess() {
@@ -100,7 +100,7 @@ class QuasarUtil {
     //   ],
     // });
 
-    console.log('= T3Utils Initial data loaded successfully');
+    T3Util.Log('= U.QuasarUtil Initial data loaded successfully');
   }
 
   ShowWebSocketError(errorMsg: string) {
@@ -201,15 +201,15 @@ class QuasarUtil {
 
 
   static LinkT3EntryDialogActionV2() {
-    T3Util.Log("= P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
+    T3Util.Log("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
     linkT3EntryDialogV2.value.active = true;
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry) return;
     linkT3EntryDialogV2.value.data = cloneDeep(appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry);
   }
 
   static LinkT3EntrySaveV2() {
-    console.log('= Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
-    // console.log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
+    T3Util.Log('= U.QuasarUtil Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
+    // T3Util.Log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
     // addActionToHistory("Link object to T3000 entry");
 
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField) {
@@ -251,7 +251,7 @@ class QuasarUtil {
 
     DataOpt.SaveAppStateV2();
     SvgUtil.RenderAllSVGObjects();
-    T3Util.Log("= P.IDX2 linkT3EntryDialogAction", "close linkT3EntryDialog V2", appStateV2.value);
+    T3Util.Log("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "close linkT3EntryDialog V2", appStateV2.value);
   }
 
   static AddCurrentObjectToAppState() {
@@ -368,14 +368,14 @@ class QuasarUtil {
     if (item) {
       return item;
     } else {
-      T3Util.Log(`Item with id ${shapeUniqueId} not found in appStateV2`);
+      T3Util.Log(`= U.QuasarUtil Item with id ${shapeUniqueId} not found in appStateV2`);
       return null;
     }
   }
 
   static UpdateSvgElementSettings(key: string, value: any) {
 
-    console.log("= QuasarUtil UpdateSvgElementSettings 1", key, value, T3Gv.stdObj);
+    T3Util.Log("= U.QuasarUtil UpdateSvgElementSettings 1", key, value, T3Gv.stdObj);
 
     /*
     // T3Gv.opt.SetBackgroundColor("#2a2a2a");
@@ -384,13 +384,13 @@ class QuasarUtil {
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(selection.selectedId);
     //OptConstant.SVGElementClass.for
     var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape)
-    console.log("element", element);
+    T3Util.Log("element", element);
     element.SetFillColor("red");
     // element.SetStrokeColor("black");
 
     element.SetAttributes("blue")
 
-    console.log("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
+    T3Util.Log("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
     */
 
     var selection = SelectUtil.GetSelectedObject();
@@ -404,7 +404,7 @@ class QuasarUtil {
     // Set the key-value pair on the drawSetting object
     drawSetting[key] = value;
 
-    console.log(`Updated drawSetting: ${key}=${value}`, drawSetting);
+    T3Util.Log(`= U.QuasarUtil Updated drawSetting: ${key}=${value}`, drawSetting);
     selection.selectedObject.SetDrawSetting(drawSetting);
 
     var dynamicCss =

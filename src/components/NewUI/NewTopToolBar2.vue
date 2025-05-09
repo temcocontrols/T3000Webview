@@ -398,6 +398,7 @@ import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
 import { tools, user } from "../../lib/common"
 import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
+import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
 
 export default defineComponent({
   name: 'NewTopToolBar2',
@@ -452,7 +453,7 @@ export default defineComponent({
 
     const navigateTo = (routeName) => {
 
-      console.log(router);
+      T3Util.Log(router);
       router.push({ path: routeName });
     }
 

@@ -38,7 +38,7 @@ class ForeignObject extends BaseShape {
    */
   constructor(options: any) {
     T3Util.Log("= S.ForeignObject Input:", options);
-    console.log("= S.ForeignObject Input:", options);
+    T3Util.Log("= S.ForeignObject Input:", options);
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.ForeignObject;
 
@@ -148,8 +148,8 @@ class ForeignObject extends BaseShape {
 
           // Try to reload the component by name
           if (componentName) {
-            console.log(`Attempting to load component by name: ${componentName}`);
-            console.log(`this.vueProps:  `,this.vueProps);
+            T3Util.Log(`Attempting to load component by name: ${componentName}`);
+            T3Util.Log(`this.vueProps:  `,this.vueProps);
 
             // You may need to implement a mapping from component names to import paths
             let possiblePath = `../../../../components/${componentName}.vue`;

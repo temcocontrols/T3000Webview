@@ -35,7 +35,7 @@ import OptConstant from '../Data/Constant/OptConstant'
  * session.EnableSpellCheck = false;
  *
  * // Log the session type to the console.
- * console.log("Session type:", session.Type);
+ * T3Util.Log("Session type:", session.Type);
  *
  * @property {any} Type - The type identifier of the session, generally defined by state constants.
  * @property {{ x: number, y: number }} dim - The dimensions of the session's display area.

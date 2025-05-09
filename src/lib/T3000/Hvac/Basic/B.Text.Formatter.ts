@@ -46,7 +46,7 @@ import BConstant from "./B.Constant";
  *
  * // Retrieve and log the dimensions of the formatted text.
  * const { width, height } = formatter.GetTextFormatSize();
- * console.log(`Formatted text dimensions: ${width} x ${height}`);
+ * T3Util.Log(`Formatted text dimensions: ${width} x ${height}`);
  *
  * // Render the formatted text into provided SVG containers.
  * formatter.RenderFormattedText(svgTextContainer, svgFormattingLayer);

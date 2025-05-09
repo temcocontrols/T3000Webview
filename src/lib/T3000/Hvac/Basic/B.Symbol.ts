@@ -227,7 +227,7 @@ class Symbol extends Element {
    * @param skipClear - Whether to skip clearing existing color data
    */
   SetFillColor(color: string, skipClear: boolean) {
-    console.log('B.Symbol SetFillColor', color);
+    T3Util.Log('B.Symbol SetFillColor', color);
     let updated = false;
 
     if (!skipClear) {

@@ -40,7 +40,7 @@
  *
  * // Using the selection status to perform further operations
  * if (selection.undo) {
- *   console.log('An undoable action is available.');
+ *   T3Util.Log('An undoable action is available.');
  * }
  */
 class SelectionAttr {

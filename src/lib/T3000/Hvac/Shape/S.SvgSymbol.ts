@@ -153,7 +153,7 @@ class SvgSymbol extends BaseSymbol {
 
     var needRefreshVue = apsItem && apsItem.t3Entry;
     if (needRefreshVue) {
-      console.log("= S.SvgSymbol | CreateShape apsItem:", apsItem);
+      T3Util.Log("= S.SvgSymbol | CreateShape apsItem:", apsItem);
       const foreignObj = ForeignObjUtil.CreateVueObject(svgDocument, frame, apsItem);
       container.AddElement(foreignObj);
     }
@@ -625,8 +625,8 @@ class SvgSymbol extends BaseSymbol {
       element.SetFillColor(color);
 
       var svgSymbol = element.GetSvgSymbol();
-      console.log("= S.SvgSymbol | SetFillColor Output 1:", this.SVGFragment);
-      console.log("= S.SvgSymbol | SetFillColor Output 2:", svgSymbol);
+      T3Util.Log("= S.SvgSymbol | SetFillColor Output 1:", this.SVGFragment);
+      T3Util.Log("= S.SvgSymbol | SetFillColor Output 2:", svgSymbol);
     }
   }
 
@@ -643,7 +643,7 @@ class SvgSymbol extends BaseSymbol {
       // var frame = this.GetSVGFrame();
       var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
 
-      console.log("= S.SvgSymbol | SetDrawSetting Input:", setting);
+      T3Util.Log("= S.SvgSymbol | SetDrawSetting Input:", setting);
       element.SetDrawSetting(setting);
 
       element.RefreshDrawSetting();

@@ -14,6 +14,7 @@ import {
 
 } from "../../Data/T3Data"
 import Utils1 from "../../Util/Utils1"
+import T3Util from "../../Util/T3Util"
 
 
 class WebViewClient {
@@ -50,22 +51,22 @@ class WebViewClient {
   // Send a message to the native code T3 application
   sendMessage(message: any) {
     if (!this.webview) {
-      console.log('= Wv2 window.chrome.webview is not available');
+      T3Util.Log('= Wv2 window.chrome.webview is not available');
       return;
     }
 
     this.webview.postMessage(message);
-    console.log('= Wv2 Sent message to T3:', message);
+    T3Util.Log('= Wv2 Sent message to T3:', message);
   }
 
   // Handle messages received from the native code T3 application
   handleMessage(event: any) {
     const data = event?.data ?? {};
-    console.log('= Wv2 Received message from T3:', data);
+    T3Util.Log('= Wv2 Received message from T3:', data);
 
     try {
       this.processMessageData(data);
-      console.log('= Wv2 ========================');
+      T3Util.Log('= Wv2 ========================');
     } catch (error) {
       console.error('= Wv2 failed to parse | process data:', error);
     }

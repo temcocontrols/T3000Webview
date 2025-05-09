@@ -11,7 +11,7 @@ import T3Util from "../Util/T3Util";
  * const importer = new SVGImporter();
  * importer.ImportSVG(svgFile, (url, blob, uint8Array) => {
  *   // Process the imported SVG
- *   console.log('SVG URL:', url);
+ *   T3Util.Log('SVG URL:', url);
  * });
  */
 class SVGImporter {

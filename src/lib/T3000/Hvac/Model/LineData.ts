@@ -31,7 +31,7 @@ import NvConstant from '../Data/Constant/NvConstant'
  * line.Thickness = 3;
  * line.EdgeColor = '#000000';
  *
- * console.log(line);
+ * T3Util.Log(line);
  * ```
  *
  * @see PaintData

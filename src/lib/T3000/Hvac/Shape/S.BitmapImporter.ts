@@ -67,7 +67,7 @@ class BitmapImporter {
         T3Gv.opt.bitmapImportEXIFdata = null;
         T3Gv.opt.bitmapImportFile = imageFile;
         T3Gv.opt.bitmapImportResult = event.target.result;
-        console.log("S.BitmapImporter - Output (JPEG/PNG):", { result: event.target.result });
+        T3Util.Log("S.BitmapImporter - Output (JPEG/PNG):", { result: event.target.result });
         // EXIF.getData(imageFile, GotEXIF);
       };
       fileReader.readAsDataURL(imageFile);

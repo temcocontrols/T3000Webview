@@ -854,14 +854,14 @@ onMounted(() => {
 //       deviceModel.value.active = false;
 //       deviceModel.value.data = currentDevice;
 
-//       console.log('=== indexPage.currentDevice load from local storage', currentDevice);
+//       T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
 
 //       // load device appstate
 //       //Hvac.DeviceOpt.refreshDeviceAppState();
 //       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
 
-//       // console.log('=== indexPage.currentDevice load from local storage', currentDevice);
-//       // console.log('=== indexPage.deviceModel changed', deviceModel.value);
+//       // T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
+//       // T3Util.Log('=== indexPage.deviceModel changed', deviceModel.value);
 //     }
 //   }, 1000);
 
@@ -894,7 +894,7 @@ onMounted(() => {
 // }
 
 function updateDeviceModel(isActive, data) {
-  console.log('= Idx updateDeviceModel ===', isActive, data)
+  T3Util.Log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -921,7 +921,7 @@ function showMoreDevices() {
 /*
 function refreshDeviceAppState() {
   const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
-  // console.log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
+  // T3Util.Log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
 
   if (existAppState) {
     // appState.value = cloneDeep(existAppState);
@@ -935,7 +935,7 @@ function refreshDeviceAppState() {
 */
 
 // function saveDeviceAppState(clearSelected) {
-//   // console.log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
+//   // T3Util.Log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
 
 //   if (clearSelected) {
 //     appState.value.selectedTargets = [];
@@ -969,7 +969,7 @@ onUnmounted(() => {
 
 // Handle messages from the webview
 // window.chrome?.webview?.addEventListener("message", (arg) => {
-//   console.log("= Idx Received a message from webview", arg.data.action, arg.data);
+//   T3Util.Log("= Idx Received a message from webview", arg.data.action, arg.data);
 
 //   // Handle various actions based on message data
 //   if (!"action" in arg.data) return;
@@ -1156,7 +1156,7 @@ function viewportMouseMoved(e) {
   cursorIconPos.value.x = e.clientX - viewportMargins.left;
   cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
-  // console.log('Viewport mouse moved cursorIconPos:', "mouse",
+  // T3Util.Log('Viewport mouse moved cursorIconPos:', "mouse",
 
   const scalPercentage = 1 / appState.value.viewportTransform.scale;
 
@@ -1183,7 +1183,7 @@ function viewportMouseMoved(e) {
     // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // console.log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
+    // T3Util.Log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
 
     // Set the scale and rotation of the drawing line
     appState.value.items[appState.value.activeItemIndex].rotate = angle;
@@ -1214,11 +1214,11 @@ function refreshObjects() {
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    // console.log(title); // Log the action title in development mode
+    // T3Util.Log(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
-      console.log("= IdxPage addActionToHistory", title);
+      T3Util.Log("= IdxPage addActionToHistory", title);
       save(false, false); // Save the current state
       refreshObjects(); // Refresh objects
     }, 200);
@@ -1265,7 +1265,7 @@ function onDragEnd(e) {
     );
     item.translate = e.lastEvent.beforeTranslate;
 
-    console.log('= IdxPage onDragEnd:', e, item.translate);
+    T3Util.Log('= IdxPage onDragEnd:', e, item.translate);
     save(false, false); // Save the state after drag end
     refreshObjects(); // Refresh objects
   }
@@ -1709,7 +1709,7 @@ function addLibItem(items, size, pos) {
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
-  console.log("= IdxPage selectTool", tool, type);
+  T3Util.Log("= IdxPage selectTool", tool, type);
   selectedTool.value = tool;
   if (typeof tool === "string") {
     selectedTool.value = tools.find((item) => item.name === tool);
@@ -1825,7 +1825,7 @@ function T3UpdateEntryField(key, obj) {
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value) {
-  console.log("= IdxPage DX DisplayFieldValueChanged", value);
+  T3Util.Log("= IdxPage DX DisplayFieldValueChanged", value);
   save(false, true);
 }
 
@@ -1885,7 +1885,7 @@ function insertT3EntrySelect(value) {
 
   insertCount.value++;
 
-  // console.log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+  // T3Util.Log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
 }
 
 function insertT3EntryOnSave() {
@@ -1926,12 +1926,12 @@ function insertT3DefaultLoadData() {
   // selectPanelFilterFn('', (fn) => {
   //   selectPanelOptions.value = T3000_Data.value.panelsData;
   // });
-  // console.log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
+  // T3Util.Log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
 // Save the current app state, optionally displaying a notification
 function save(notify = false, saveToT3 = false) {
-  console.log("= IdxPage save", notify, saveToT3);
+  T3Util.Log("= IdxPage save", notify, saveToT3);
   Hvac.IdxPage2.save(notify, saveToT3);
 }
 
@@ -2078,7 +2078,7 @@ keycon.keydown(["ctrl", "b"], (e) => {
 keycon.keydown(["insert"], (e) => {
   // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
   T3000.Hvac.KiOpt.InsertT3EntryDialog();
-  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
+  // T3Util.Log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
@@ -2348,7 +2348,7 @@ function weldSelected() {
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
   const isAllDuct = selectedItems.every((item) => item.type === "Duct");
-  // console.log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
+  // T3Util.Log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
   if (isAllGeneral || isAllDuct) {
     drawWeldObjectCanvas(selectedItems);
@@ -2409,8 +2409,8 @@ function readFile(file) {
 async function saveLibImage(file) {
   if (user.value) {
 
-    console.log('= Idx saveLibImage file', file);
-    console.log('= Idx saveLibImage user', user.value);
+    T3Util.Log('= Idx saveLibImage file', file);
+    T3Util.Log('= Idx saveLibImage user', user.value);
 
     liveApi
       .post("hvacTools", {
@@ -2783,7 +2783,7 @@ function reloadPanelsData() {
 //         linkedEntry.value = newLkValue;
 //         item.t3Entry = linkedEntry;
 
-//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
+//         T3Util.Log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
 
 //         refreshObjectStatus(item);
 //       }
@@ -2792,7 +2792,7 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  // console.log('entryLabel - ', option);
+  // T3Util.Log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -2901,7 +2901,7 @@ function objectClicked(item) {
 
 // Updates an entry value
 function changeEntryValue(refItem, newVal, control) {
-  // console.log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
+  // T3Util.Log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
   const key = control ? "control" : "value";
   const item = appState.value.items.find((i) => i.id === refItem.id);
   item.t3Entry[key] = newVal;
@@ -2910,7 +2910,7 @@ function changeEntryValue(refItem, newVal, control) {
 
 // Toggles the auto/manual mode of an item
 function autoManualToggle(item) {
-  console.log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
+  T3Util.Log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
 
   // if (!locked.value) return;
   item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
@@ -2933,14 +2933,14 @@ const toggleNumberValue = ref(0);
 function ObjectRightClicked(item, ev) {
   // ev.preventDefault();
 
-  // console.log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-  // console.log('ObjectRightClicked->ev,item', item);
+  // T3Util.Log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+  // T3Util.Log('ObjectRightClicked->ev,item', item);
 
   if (item.t3Entry !== null) {
 
     showSettingMenu.value = true;
 
-    // console.log('ObjectRightClicked->item.t3Entry', item.t3Entry);
+    // T3Util.Log('ObjectRightClicked->item.t3Entry', item.t3Entry);
 
     // Load the default auto_manual value
     if (item.t3Entry.auto_manual === 1) {
@@ -2987,10 +2987,10 @@ function ObjectRightClicked(item, ev) {
 
 function toggleClicked(item, type, ev) {
   // ev.preventDefault();
-  // console.log('toggleClicked->item,type', item, type, ev);
-  // console.log('toggleClicked->toggleModeValue,toggleValueValue',
+  // T3Util.Log('toggleClicked->item,type', item, type, ev);
+  // T3Util.Log('toggleClicked->toggleModeValue,toggleValueValue',
   //   toggleModeValue.value, toggleValueValue.value);
-  // console.log('toggleClicked->before item', item.t3Entry)
+  // T3Util.Log('toggleClicked->before item', item.t3Entry)
 
   if (type === "mode") {
 
@@ -3020,7 +3020,7 @@ function toggleClicked(item, type, ev) {
 
   save(false, true);
 
-  // console.log('toggleClicked->after item', item.t3Entry)
+  // T3Util.Log('toggleClicked->after item', item.t3Entry)
 }
 
 function setTheSettingContextMenuVisible() {
@@ -3425,7 +3425,7 @@ function toolDropped(ev, tool) {
   //   tool
   // );
 
-  console.log("toolDropped->tool", ev, tool);
+  T3Util.Log("toolDropped->tool", ev, tool);
 }
 
 const updateWeldModel = (weldModel, itemList) => {
@@ -3450,8 +3450,8 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
         const pathItem = pathItemList?.find(
           (itx) => itx?.item?.id === weldItem?.id
         );
-        // console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
-        // console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+        // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
           weldItem.width = pathItem.newPos.width;
           weldItem.height = pathItem.newPos.height;
@@ -3464,14 +3464,14 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 };
 
 function viewportLeftClick(ev) {
-  // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
+  // T3Util.Log('IndexPage.vue->viewportLeftClick->ev', ev);
   ev.preventDefault();
 
   const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
     && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
 
   if (check) {
-    // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
+    // T3Util.Log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
 
     // Manually create a shape at the mouse current position
 
@@ -3525,7 +3525,7 @@ function viewportRightClick(ev) {
 //       }
 //     })
 //     .catch((err) => {
-//       console.log(err);
+//       T3Util.Log(err);
 //     });
 
 //   liveApi
@@ -3544,7 +3544,7 @@ function viewportRightClick(ev) {
 //       }
 //     })
 //     .catch((err) => {
-//       console.log(err);
+//       T3Util.Log(err);
 //     });
 //   liveApi
 //     .get("me")

@@ -25,7 +25,7 @@
  * @example
  * // Example: Retrieving a stored object type identifier for a text object.
  * const objectType = StateConstant.StoredObjectType.TextObject;
- * console.log(objectType); // Outputs: "TextObject"
+ * T3Util.Log(objectType); // Outputs: "TextObject"
  *
  * @remarks
  * The constants in this class are defined using the "as const" assertion, making them immutable. This ensures

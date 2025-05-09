@@ -621,7 +621,7 @@ class ToolUtil {
     };
 
     var apsItem = QuasarUtil.GetItemFromAPSV2(uniShapeType);
-    console.log("apsItem", apsItem);
+    T3Util.Log("apsItem", apsItem);
     // props = {
     //   item: apsItem,
     //   showArrows: true,
@@ -668,7 +668,7 @@ class ToolUtil {
       ...shapeAttributes
     });
 
-    console.log("ToolUtil->CreateForeignObjectWithVue After", shape);
+    T3Util.Log("ToolUtil->CreateForeignObjectWithVue After", shape);
 
     /*
     // Set size and position
@@ -1303,7 +1303,7 @@ class ToolUtil {
 
     // Convert multiline SVG to a single line, removing newlines but preserving structure
     const testSvgString = boiler.replace(/\n\s*/g, ' ').trim();
-    console.log("D.D testSvgString", testSvgString);
+    T3Util.Log("D.D testSvgString", testSvgString);
 
     const newTest1_inline = `
     <g><g width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,20.833)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(56.833,21.167)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"13.667\" height=\"10.167\" transform=\"rotate(270,34.667,6.75) scale(1,1) translate(27.833,1.667)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"46.167\" height=\"25.5\" transform=\"scale(1,1) translate(12,12.667)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"46.167\" height=\"25.5\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"46.167\" height=\"25.5\"/></g></g></g>

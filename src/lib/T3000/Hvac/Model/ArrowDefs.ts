@@ -21,7 +21,7 @@
  * const arrowDefs = new ArrowDefs();
  *
  * // Retrieve and log the arrow definitions
- * console.log(arrowDefs.uiArrowDefs);
+ * T3Util.Log(arrowDefs.uiArrowDefs);
  *
  * // Example of using an arrow definition in a custom rendering method:
  * // renderArrow(arrowDefs.uiArrowDefs.find(def => def.id === 1));

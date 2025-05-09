@@ -24,8 +24,8 @@
  * @example
  * // Create a new instance of DefaultStyle with default values.
  * const defaultStyle = new DefaultStyle();
- * console.log(defaultStyle.font); // Output: "Arial"
- * console.log(defaultStyle.size); // Output: 10
+ * T3Util.Log(defaultStyle.font); // Output: "Arial"
+ * T3Util.Log(defaultStyle.size); // Output: 10
  *
  * // Customize some of the style properties.
  * defaultStyle.font = "Helvetica";
