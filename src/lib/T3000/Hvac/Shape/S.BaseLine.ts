@@ -1701,8 +1701,7 @@ class BaseLine extends BaseDrawObject {
       actionTriggerID = T3Gv.opt.actionTriggerId;
       T3Gv.opt.pinRect = null;
       preservedBlock = T3Gv.stdObj.PreserveBlock(actionStoredObjectID);
-    } else {
-      // T3Gv.opt.SetUIAdaptation(event);
+    } else { 
       T3Gv.opt.eventTimestamp = Date.now();
       event.stopPropagation();
 

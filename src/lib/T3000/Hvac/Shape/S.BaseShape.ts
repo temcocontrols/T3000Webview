@@ -3028,7 +3028,6 @@ class BaseShape extends BaseDrawObject {
   LMSetupActionClick(event, triggerElement, objectId, actionType, additionalData) {
     // Record timestamp and adapt UI for this event
     T3Gv.opt.eventTimestamp = Date.now();
-    // T3Gv.opt.SetUIAdaptation(event);
 
     let userData;
 
@@ -5972,14 +5971,7 @@ class BaseShape extends BaseDrawObject {
           return;
 
         case objectTypes.ShapeContainer:
-          // If the shape container is in a table cell, delegate rollover to the cell object
-          const containerCell = T3Gv.opt.ContainerIsInCell(this);
-          if (containerCell) {
-            const cellElement = T3Gv.opt.svgObjectLayer.GetElementById(containerCell.obj.BlockID);
-            containerCell.obj.SetRolloverActions(svgEvent, cellElement);
-            T3Util.Log("S.BaseShape - SetRolloverActions output:", "Delegated rollover to contained cell object");
-            return;
-          }
+          return;
       }
 
       // Clear previously highlighted shape if different than current
@@ -6623,7 +6615,7 @@ class BaseShape extends BaseDrawObject {
 
 
           case NvConstant.FNObjectTypes.FrameContainer:
-           QuasarUtil.ShowContextMenu(true);
+            QuasarUtil.ShowContextMenu(true);
             break;
           case NvConstant.FNObjectTypes.Multiplicity:
             QuasarUtil.ShowContextMenu(true);
@@ -6636,7 +6628,7 @@ class BaseShape extends BaseDrawObject {
               case shapeTypes.RRect:
                 if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
                   clickedObject.EMFHash && clickedObject.EMFHash.length) {
-                    QuasarUtil.ShowContextMenu(true);
+                  QuasarUtil.ShowContextMenu(true);
                 } else {
                   QuasarUtil.ShowContextMenu(true);
                 }

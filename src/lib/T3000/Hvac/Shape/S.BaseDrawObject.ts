@@ -5426,26 +5426,6 @@ class BaseDrawObject {
     return result;
   }
 
-  IsNoteCell(cellIdentifier: any): any {
-    T3Util.Log("= S.BaseDrawObject: IsNoteCell - Input:", cellIdentifier);
-
-    let cellIndex: number | undefined;
-
-    if (cellIdentifier) {
-      if (typeof cellIdentifier.split === "function") {
-        const parts = cellIdentifier.split(".");
-        if (parts[1]) {
-          cellIndex = parseInt(parts[1], 10);
-        }
-      }
-    }
-
-    let noteCell = null;
-
-    T3Util.Log("= S.BaseDrawObject: IsNoteCell - Output:", noteCell);
-    return noteCell;
-  }
-
   SetCursors() {
     T3Util.Log("= S.BaseDrawObject: SetCursors - Input: BlockID =", this.BlockID);
 

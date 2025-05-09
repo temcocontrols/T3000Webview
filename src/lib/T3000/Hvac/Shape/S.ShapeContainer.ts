@@ -263,7 +263,6 @@ class ShapeContainer extends Rect {
     let defaultPoint = { x: standardDimension / 2, y: 0 };
     const isSparse = containerList.flags & NvConstant.ContainerListFlags.Sparse;
     const containerFrame = this.PrGetContainerFrame().frame;
-    // const isContainerInCell = T3Gv.opt.ContainerIsInCell(this);
     const frameWidth = containerFrame.width;
     let numDown = containerList.ndown;
     let numAcross = containerList.nacross;
@@ -584,7 +583,7 @@ class ShapeContainer extends Rect {
    */
   FieldDataAllowed(): boolean {
     T3Util.Log("= S.ShapeContainer FieldDataAllowed - Input:", { thisContext: this });
-    const isFieldDataAllowed = true;// !T3Gv.opt.ContainerIsInCell(this);
+    const isFieldDataAllowed = true;
     T3Util.Log("= S.ShapeContainer FieldDataAllowed - Output:", isFieldDataAllowed);
     return isFieldDataAllowed;
   }
@@ -636,7 +635,6 @@ class ShapeContainer extends Rect {
     const containerFrameData = this.PrGetContainerFrame();
     const containerFrame = containerFrameData.frame;
     let verticalOffset = containerList.VerticalSpacing + containerFrameData.StartY;
-    // const isInCell = T3Gv.opt.ContainerIsInCell(this);
 
     // Case 1: Single point and negative index - handle simplified perimeter point
     if (targetPoints.length === 1 && pointIndex < 0) {
@@ -673,7 +671,7 @@ class ShapeContainer extends Rect {
             // Point is to the left of the grid
             listIndex = targetPoints[i].y * containerList.nacross;
             yCoordinate = containerItems[listIndex].pt.y;
-            xCoordinate = false/*isInCell*/
+            xCoordinate = false
               ? containerList.HorizontalSpacing / 2
               : -containerList.childwidth / 2;
           } else if (targetPoints[i].x < containerList.nacross) {
@@ -689,7 +687,7 @@ class ShapeContainer extends Rect {
               (targetPoints[i].x - containerList.nacross) * containerList.childwidth +
               containerList.childwidth / 2;
 
-            if (/*isInCell && */xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
+            if (xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
               xCoordinate = containerFrame.width - containerList.HorizontalSpacing / 2;
             }
           }
@@ -699,14 +697,14 @@ class ShapeContainer extends Rect {
             (targetPoints[i].y - containerList.ndown) * containerList.childheight +
             containerList.VerticalSpacing;
 
-          if (/*isInCell &&*/ yCoordinate > containerFrame.height - containerList.VerticalSpacing / 2) {
+          if ( yCoordinate > containerFrame.height - containerList.VerticalSpacing / 2) {
             yCoordinate = containerFrame.height - containerList.VerticalSpacing / 2;
           }
 
           if (targetPoints[i].x < 0) {
             // Point is to the left of the extended grid
             listIndex = targetPoints[i].y * containerList.nacross;
-            xCoordinate = false/* isInCell*/
+            xCoordinate = false
               ? containerList.HorizontalSpacing / 2
               : -containerList.childwidth / 2;
           } else if (targetPoints[i].x < containerList.nacross) {
@@ -721,7 +719,7 @@ class ShapeContainer extends Rect {
               (targetPoints[i].x - containerList.nacross) * containerList.childwidth +
               containerList.childwidth / 2;
 
-            if (/*isInCell && */xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
+            if (xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
               xCoordinate = containerFrame.width - containerList.HorizontalSpacing / 2;
             }
           }
@@ -1295,7 +1293,6 @@ class ShapeContainer extends Rect {
     });
 
     const containerFlags = NvConstant.ContainerListFlags;
-    // const isContainerInCell = T3Gv.opt.ContainerIsInCell(this);
 
     /**
      * Inserts a new shape into the container list at a specified index
@@ -1418,7 +1415,7 @@ class ShapeContainer extends Rect {
       }
 
       // Remove empty rows before the first filled row (if not in a cell)
-      if (/*isContainerInCell == null*/true) {
+
         for (let row = firstFullRow - 1; row >= 0; row--) {
           if (container.ndown > 1) {
             list.splice(row * container.nacross, container.nacross);
@@ -1426,7 +1423,7 @@ class ShapeContainer extends Rect {
             deltaY--;
           }
         }
-      }
+
 
       // Remove empty columns after the last filled column
       for (let col = container.nacross - 1; col > lastFullCol; col--) {
