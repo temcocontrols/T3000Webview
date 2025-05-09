@@ -506,7 +506,9 @@ class ToolUtil {
           height: 100
         },
         TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-        ObjGrow: OptConstant.GrowBehavior.ProPortional
+        // ObjGrow: OptConstant.GrowBehavior.ProPortional
+        ObjGrow: OptConstant.GrowBehavior.All
+
       };
     } else {
       shapeAttributes = {

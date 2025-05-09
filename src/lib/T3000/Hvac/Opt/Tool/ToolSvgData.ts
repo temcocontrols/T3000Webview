@@ -4,6 +4,7 @@ import SvgSymbol from "../../Shape/S.SvgSymbol";
 import ToolDuctT2SvgData from "./ToolDuctT2SvgData";
 import ToolDuctT1SvgData from "./ToolDuctT1SvgData";
 import ToolDuctT3SvgData from "./ToolDuctT3SvgData";
+import OptConstant from "../../Data/Constant/OptConstant";
 
 class ToolSvgData {
 
@@ -30,7 +31,7 @@ class ToolSvgData {
       InitialGroupBounds: { x: initialX, y: initialX, width: initGbWidth, height: initGbHeight },
       StyleRecord: new QuickStyle(),
       uniType: symbolType,
-      drawSetting: {}
+      drawSetting: {},
     });
 
     let svgStr = "";
