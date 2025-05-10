@@ -7,6 +7,7 @@ import IdxUtils from '../Common/IdxUtils'
 import Utils1 from "../../Util/Utils1"
 import T3Util from "../../Util/T3Util"
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg } from '../../Data/T3Data'
+import T3UIUtil from "../UI/T3UIUtil"
 
 class WebSocketClient {
 
@@ -65,7 +66,8 @@ class WebSocketClient {
     T3Util.LogError('= Ws error:', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
-    Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+    // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+    T3UIUtil.ShowWebSocketError(errorMsg);
 
     this.attemptReconnect();
   }
@@ -785,7 +787,8 @@ class WebSocketClient {
     }
     else {
       if (errorMsg !== "") {
-        Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+        // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+        T3UIUtil.ShowWebSocketError(errorMsg);
       }
     }
   }
@@ -820,14 +823,16 @@ class WebSocketClient {
 
     if (action == MessageType.GET_PANEL_DATA_RES || action == MessageType.GET_PANELS_LIST_RES) {
       const errorMsg = `Load device data failed with error: "${messageData.error}". Please check whether the T3000 application is running or not.`;
-      Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+      T3UIUtil.ShowWebSocketError(errorMsg);
 
       this.GetPanelsList();
     }
 
     if (action == MessageType.GET_INITIAL_DATA_RES) {
       const errorMsg = `Load initial data failed with error: "${messageData.error}". Please try not update the graphic area, this may cause data loss. Please check whether the T3000 application is running or not.`;
-      Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+      // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
+      T3UIUtil.ShowWebSocketError(errorMsg);
       this.reloadInitialData();
 
       // add global error message for blocking auto save
