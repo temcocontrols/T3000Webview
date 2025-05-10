@@ -1,7 +1,7 @@
 
 
 import { cloneDeep, fill } from "lodash";
-import { contextMenuShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
+import { contextMenuShow, globalMsgShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
 import { AllTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
@@ -135,6 +135,7 @@ class QuasarUtil {
 
   static ShowContextMenu(show: boolean) {
     contextMenuShow.value = show;
+    globalMsgShow.value=true;
   }
 
   static ShowObjectConfig(show: boolean) {

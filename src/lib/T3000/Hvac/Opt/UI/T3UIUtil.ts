@@ -5,7 +5,8 @@ import AntdUtil from "./AntdUtil";
 class T3UIUtil {
 
   static ShowWebSocketError(errorMsg: string) {
-    AntdUtil.ShowNotification("error", "WebSocket Error", errorMsg);
+    // AntdUtil.ShowNotification("error", "WebSocket Error", errorMsg);
+    AntdUtil.ShowTopAlert("error", "WebSocket Error", errorMsg);
   }
 }
 

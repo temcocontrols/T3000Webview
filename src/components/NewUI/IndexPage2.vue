@@ -229,6 +229,10 @@
           </div>
 
           <div id="work-area" class="main-panel">
+            <!-- <div v-if="globalMsgShow">
+              <a-alert message="Success Text" type="success" />
+            </div> -->
+            <GlobalMessage></GlobalMessage>
             <div id="document-area">
               <div id="c-ruler" class="document-ruler-corner">
               </div>
@@ -576,7 +580,7 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
-import { contextMenuShow, objectConfigShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
 import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {
@@ -590,6 +594,9 @@ import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
 import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
+import { Alert as AAlert } from 'ant-design-vue';
+import GlobalMessage from "src/components/NewUI/GlobalMessage.vue";
+import AntdTest from "src/components/NewUI/AntdTest.vue";
 
 // const isBuiltInEdge = ref(false);
 
