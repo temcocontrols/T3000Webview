@@ -2,7 +2,8 @@
 
 import { notification } from 'ant-design-vue';
 import UIUtil from './UIUtil';
-import { globalMsgShow } from '../../Data/Constant/RefConstant';
+import { commonMsg, globalMsgShow } from '../../Data/Constant/RefConstant';
+import Hvac from '../../Hvac';
 
 class AntdUtil {
 
@@ -19,9 +20,11 @@ class AntdUtil {
     });
   }
 
-  static ShowTopAlert(type: string, title: string, description: string) {
+  static ShowTopAlert(type: string, title: string, messgage: string) {
     globalMsgShow.value = true;
     const fitOption = {};
+    commonMsg.value = messgage;
+    // Hvac.QuasarUtil.setGlobalMsg('error', messgage, true, "common", null);
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
   }
 }

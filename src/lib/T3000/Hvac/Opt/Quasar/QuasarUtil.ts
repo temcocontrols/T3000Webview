@@ -135,7 +135,7 @@ class QuasarUtil {
 
   static ShowContextMenu(show: boolean) {
     contextMenuShow.value = show;
-    globalMsgShow.value=true;
+    // globalMsgShow.value=true;
   }
 
   static ShowObjectConfig(show: boolean) {

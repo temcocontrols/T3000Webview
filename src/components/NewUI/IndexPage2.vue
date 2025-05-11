@@ -229,10 +229,9 @@
           </div>
 
           <div id="work-area" class="main-panel">
-            <!-- <div v-if="globalMsgShow">
-              <a-alert message="Success Text" type="success" />
-            </div> -->
-            <GlobalMessage></GlobalMessage>
+            <div style="padding-bottom: 5px;margin-left: 5px;margin-right: 5px;">
+              <T3Message></T3Message>
+            </div>
             <div id="document-area">
               <div id="c-ruler" class="document-ruler-corner">
               </div>
@@ -595,9 +594,8 @@ import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
 import { Alert as AAlert } from 'ant-design-vue';
-import GlobalMessage from "src/components/NewUI/GlobalMessage.vue";
+import T3Message from "src/components/NewUI/T3Message.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
-
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
