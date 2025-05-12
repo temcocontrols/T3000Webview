@@ -3107,8 +3107,6 @@ function objectSettingsUnchanged() {
 // Add selected items to the library
 async function addToLibrary() {
 
-  // TODO
-
   if (appState.value.selectedTargets.length < 1 || locked.value) return;
   const selectedItems = appState.value.items.filter((i) =>
     appState.value.selectedTargets.some(

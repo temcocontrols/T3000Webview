@@ -190,6 +190,29 @@ class IdxUtils {
     }
   }
 
+  // new function to save t3 library data
+  static saveNewLib(){
+    // Filter out online images and objects from the library
+    const libImages = toRaw(library.value.images.filter((item) => !item.online));
+    const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
+
+    // Post a message to the webview with the saved data
+    // window.chrome?.webview?.postMessage({
+    //   action: 14, // SAVE_NEW_LIBRARY_DATA
+    //   data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
+    // });
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveNewLibraryData(null, null, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+    }
+    else {
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.panelId;
+      const graphicId = currentDevice?.graphicId;
+      Hvac.WsClient.SaveNewLibraryData(panelId, graphicId, { ...toRaw(library.value), images: libImages, objLib: libObjects });
+    }
+  }
+
   static saveGraphicData(msgData, $q) {
     if (msgData.data?.status === true) {
       if (!savedNotify.value) return;

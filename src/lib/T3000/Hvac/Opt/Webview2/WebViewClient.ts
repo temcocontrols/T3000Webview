@@ -237,6 +237,11 @@ class WebViewClient {
     this.sendMessage(this.messageData);
   }
 
+  SaveNewLibraryData(panelId?: number, viewitem?: number, data?: any) {
+    this.FormatMessageData(MessageType.SAVE_NEW_LIBRARY_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
   SaveGraphicData(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.SAVE_GRAPHIC_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
@@ -346,6 +351,10 @@ class WebViewClient {
 
     if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
       this.HandleSaveLibraryDataRes(msgData);
+    }
+
+    if(msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
+      this.HandleSaveNewLibraryDataRes(msgData);
     }
 
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
@@ -693,6 +702,11 @@ class WebViewClient {
 
   public HandleSaveLibraryDataRes(msgData) {
     // action: 10, // SAVE_LIBRARY_DATA_RES
+  }
+
+  public HandleSaveNewLibraryDataRes(msgData) {
+    // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
+    T3Util.Log('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
   }
 
   public HandleDeleteImageRes(msgData) {

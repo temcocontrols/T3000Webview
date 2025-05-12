@@ -406,11 +406,16 @@ class WebSocketClient {
 
   public SaveLibraryData(panelId?: number, viewitem?: number, data?: any) {
     // action: 10, // SAVE_LIBRARY_DATA
-
     this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
-
     // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_LIBRARY_DATA }));
+  }
+
+  public SaveNewLibraryData(panelId?: number, viewitem?: number, data?: any) {
+    // action: 14, // SAVE_NEW_LIBRARY_DATA
+    this.FormatMessageData(MessageType.SAVE_NEW_LIBRARY_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+    // this.sendMessage(JSON.stringify({ action: MessageType.SAVE_NEW_LIBRARY_DATA }));
   }
 
   public DeleteImage(imagePath: string) {
@@ -515,6 +520,10 @@ class WebSocketClient {
 
     if (msgData.action === MessageType.SAVE_LIBRARY_DATA_RES) {
       this.HandleSaveLibraryDataRes(msgData);
+    }
+
+    if(msgData.action===MessageType.SAVE_NEW_LIBRARY_DATA_RES){
+      this.HandleSaveNewLibraryDataRes(msgData);
     }
 
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
@@ -741,6 +750,11 @@ class WebSocketClient {
 
   public HandleSaveLibraryDataRes(msgData) {
     // action: 10, // SAVE_LIBRARY_DATA_RES
+  }
+
+  public HandleSaveNewLibraryDataRes(msgData) {
+    // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
+    T3Util.Log('= Ws Handle SAVE_NEW_LIBRARY_DATA_RES', msgData.data);
   }
 
   public HandleDeleteImageRes(msgData) {

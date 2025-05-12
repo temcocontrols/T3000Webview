@@ -17,6 +17,7 @@ class MessageType {
   action: 11, // DELETE_IMAGE / DELETE_IMAGE_RES
   action: 12, // GET_SELECTED_DEVICE_INFO / GET_SELECTED_DEVICE_INFO_RES ✔
   action: 13, // BIND_DEVICE / BIND_DEVICE_RES ❓！
+  action: 14, // SAVE_NEW_LIBRARY_DATA / SAVE_NEW_LIBRARY_DATA_RES ❓！
   */
 
   // Only used for the websocket server to notify the browser side that the data server (T3 application) is back online
@@ -36,6 +37,7 @@ class MessageType {
   static DELETE_IMAGE = 11
   static GET_SELECTED_DEVICE_INFO = 12
   static BIND_DEVICE = 13
+  static SAVE_NEW_LIBRARY_DATA = 14
 
   static GET_PANEL_DATA_RES = 'GET_PANEL_DATA_RES'
   static GET_INITIAL_DATA_RES = 'GET_INITIAL_DATA_RES'
@@ -55,6 +57,8 @@ class MessageType {
   static DELETE_IMAGE_RES = 'DELETE_IMAGE_RES'
   static GET_SELECTED_DEVICE_INFO_RES = 'GET_SELECTED_DEVICE_INFO_RES'
   static BIND_DEVICE_RES = 'BIND_DEVICE_RES'
+
+  static SAVE_NEW_LIBRARY_DATA_RES = 'SAVE_NEW_LIBRARY_DATA_RES'
 }
 
 export default MessageType
