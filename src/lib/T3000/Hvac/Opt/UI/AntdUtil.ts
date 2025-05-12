@@ -4,6 +4,8 @@ import { notification } from 'ant-design-vue';
 import UIUtil from './UIUtil';
 import { commonMsg, globalMsgShow } from '../../Data/Constant/RefConstant';
 import Hvac from '../../Hvac';
+import DocUtil from '../../Doc/DocUtil';
+import T3Gv from '../../Data/T3Gv';
 
 class AntdUtil {
 
@@ -26,6 +28,7 @@ class AntdUtil {
     commonMsg.value = messgage;
     // Hvac.QuasarUtil.setGlobalMsg('error', messgage, true, "common", null);
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
+    T3Gv.docUtil.UpdateWorkArea();
   }
 }
 
