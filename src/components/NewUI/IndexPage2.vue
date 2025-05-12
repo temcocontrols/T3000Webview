@@ -3160,6 +3160,62 @@ async function addToLibrary() {
   IdxUtils.saveLib();
 }
 
+// add new library to t3
+async function addToNewLibrary() {
+
+  if (appState.value.selectedTargets.length < 1 || locked.value) return;
+  const selectedItems = appState.value.items.filter((i) =>
+    appState.value.selectedTargets.some(
+      (ii) => ii.id === `moveable-item-${i.id}`
+    )
+  );
+  let isOnline = false;
+  const libItems = cloneDeep(selectedItems);
+  library.value.objLibItemsCount++;
+  let createdItem = null;
+  if (user.value) {
+    isOnline = true;
+    liveApi
+      .post("hvacObjectLibs", {
+        json: {
+          label: "Item " + library.value.objLibItemsCount,
+          items: libItems.map((i) => {
+            delete i.id;
+            return i;
+          }),
+        },
+      })
+      .then(async (res) => {
+        createdItem = await res.json();
+        $q.notify({
+          type: "positive",
+          message: "Successfully saved to library",
+        });
+
+        library.value.objLib.push({
+          id: createdItem?.id || library.value.objLibItemsCount,
+          label: "Item " + library.value.objLibItemsCount,
+          items: createdItem.items,
+          online: isOnline,
+        });
+        IdxUtils.saveNewLib();
+      })
+      .catch((err) => {
+        $q.notify({
+          type: "negative",
+          message: err.message,
+        });
+      });
+  }
+  library.value.objLib.push({
+    id: createdItem?.id || library.value.objLibItemsCount,
+    label: "Item " + library.value.objLibItemsCount,
+    items: libItems,
+    online: isOnline,
+  });
+  IdxUtils.saveNewLib();
+}
+
 // Bring selected objects to the front by increasing their z-index
 function bringSelectedToFront() {
   addActionToHistory("Bring selected objects to front");

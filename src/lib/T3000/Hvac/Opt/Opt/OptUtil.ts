@@ -54,6 +54,8 @@ import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import KeyboardConstant from '../Keyboard/KeyboardConstant';
 import Utils5 from '../../Util/Utils5';
+import IdxPage2 from '../Common/IdxPage2';
+import Hvac from '../../Hvac';
 // import ConstantData from '../../Data/ConstantData';
 
 /**
@@ -7257,6 +7259,10 @@ class OptUtil {
       T3Util.Log("= O.OptUtil  AddToLibrary - Error saving to local storage:", error);
       return false;
     }
+
+    // save new library to t3
+    Hvac.IdxPage2.addToNewLibrary();
+
     return libraryItems;
   }
 

@@ -1,6 +1,6 @@
 
 
-import { notification } from 'ant-design-vue';
+import { notification, message } from 'ant-design-vue';
 import UIUtil from './UIUtil';
 import { commonMsg, globalMsgShow } from '../../Data/Constant/RefConstant';
 import Hvac from '../../Hvac';
@@ -29,6 +29,20 @@ class AntdUtil {
     // Hvac.QuasarUtil.setGlobalMsg('error', messgage, true, "common", null);
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
     T3Gv.docUtil.UpdateWorkArea();
+  }
+
+  static ShowMessage(type: string, msg: string) {
+    switch (type) {
+      case 'error':
+        message.error(msg);
+        break;
+      case 'warning':
+        message.warning(msg);
+        break;
+      case 'success':
+        message.success(msg);
+        break;
+    }
   }
 }
 
