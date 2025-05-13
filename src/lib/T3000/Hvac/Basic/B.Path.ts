@@ -932,7 +932,6 @@ class Path extends Container {
     }
     return this.pathCreator;
   }
-
 }
 
 export default Path

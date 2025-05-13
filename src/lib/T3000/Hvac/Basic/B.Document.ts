@@ -1148,7 +1148,6 @@ class Document extends Container {
    // Add it to a layer
    layer.AddElement(foreignObj);
    */
-
   CreateVueComponent(width: number, height: number, vueComponent: any, props: any = {}) {
     const foreignObject = this.CreateShape(OptConstant.CSType.ForeignObject) as ForeignObject;
 

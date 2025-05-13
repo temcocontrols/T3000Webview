@@ -57,9 +57,7 @@ class Group extends Container {
   CreateElement(inputData: any, config: any) {
     this.svgObj = new T3Svg.Container(T3Svg.create("g"));
     this.clipElem = null;
-
     this.InitElement(inputData, config);
-
     return this.svgObj;
   }
 
