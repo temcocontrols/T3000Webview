@@ -48,9 +48,7 @@ class Rect extends Element {
     this.svgObj = new T3Svg.Container(T3Svg.create('g'));
     this.shapeElem = new T3Svg.Rect();
     this.svgObj.add(this.shapeElem);
-
     this.InitElement(elementData, transformData);
-
     return this.svgObj;
   }
 

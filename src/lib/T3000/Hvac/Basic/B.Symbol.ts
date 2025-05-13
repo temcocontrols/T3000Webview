@@ -58,9 +58,8 @@ class Symbol extends Element {
   public fillTrans: any;
   public lineTrans: any;
   public strokeColors: any;
-  public srcSymbolSVG: any;
+  public srcSymbolSvg: any;
   public svgContent: any;
-
   public symbolName: string;
   public drawSetting: any;
 
@@ -85,9 +84,8 @@ class Symbol extends Element {
     this.solidFills = [];
     this.fillTrans = [];
     this.lineTrans = [];
-    this.srcSymbolSVG = '';
+    this.srcSymbolSvg = '';
     this.strokeColors = [];
-
     return this.svgObj;
   }
 
@@ -141,7 +139,7 @@ class Symbol extends Element {
    * @param source - The SVG source string
    */
   SetSymbolSource(source: string) {
-    this.srcSymbolSVG = source;
+    this.srcSymbolSvg = source;
     this.fillColors = Symbol.GetPlaceholders(BConstant.Placeholder.FillColor, source);
     this.lineColors = Symbol.GetPlaceholders(BConstant.Placeholder.LineColor, source);
     this.lineWidths = Symbol.GetPlaceholders(BConstant.Placeholder.LineThick, source);
@@ -176,7 +174,7 @@ class Symbol extends Element {
       );
       this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
-      this.srcSymbolSVG = source;
+      this.srcSymbolSvg = source;
     }
 
     // this.RebuildSymbol();
@@ -187,7 +185,7 @@ class Symbol extends Element {
    * in the SVG source and adding the elements to the DOM
    */
   RebuildSymbol() {
-    let svgContent = `<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>${this.srcSymbolSVG}</svg>`;
+    let svgContent = `<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>${this.srcSymbolSvg}</svg>`;
     const parser = new DOMParser();
 
     this.shapeElem.clear();
@@ -407,8 +405,8 @@ class Symbol extends Element {
   }
 
   RefreshDrawSetting() {
-    // this.srcSymbolSVG=ToolSvgData.BoilerSvgData();
-    T3Util.Log('= B.Symbol RefreshDrawSetting', this.srcSymbolSVG);
+    // this.srcSymbolSvg=ToolSvgData.BoilerSvgData();
+    T3Util.Log('= B.Symbol RefreshDrawSetting', this.srcSymbolSvg);
     this.InitSymbolSource();
   }
 
