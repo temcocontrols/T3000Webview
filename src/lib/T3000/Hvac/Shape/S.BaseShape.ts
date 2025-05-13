@@ -5247,171 +5247,293 @@ class BaseShape extends BaseDrawObject {
     return null;
   }
 
-  LMAddSVGTextObject(e, t) {
-    var a,
-      r = $.extend(!0, {
-      }, this.Frame),
-      i = Utils1.DeepCopy(this.trect),
-      n = - 1,
-      o = null;
-    if (o) {
-      if (!(o.select >= 0)) return;
-      var s = o.cells[o.select];
-      if (s.DataID !== this.DataID) {
-        var l = T3Gv.opt.Table_CellFromDataID(o, this.DataID);
-        l >= 0 &&
-          (s = o.cells[l])
+  /**
+   * Adds an SVG text object to a shape
+   * This method creates and configures a text element within a shape, handling various
+   * text alignment and positioning options based on text flags and style settings.
+   *
+   * @param svgDocument - The SVG document where the text element will be created
+   * @param targetElement - The target element to which the text object will be added
+   */
+  LMAddSVGTextObject(svgDocument, targetElement) {
+    T3Util.Log("= S.BaseShape - LMAddSVGTextObject input:", { svgDocument, targetElement });
+
+    let cellRect;
+    const frameWithThickness = $.extend(true, {}, this.Frame);
+    const textRect = Utils1.DeepCopy(this.trect);
+    let cellDataId = -1;
+    let tableObject = null;
+
+    // Handle table-specific processing if table exists
+    if (tableObject) {
+      if (!(tableObject.select >= 0)) return;
+
+      let selectedCell = tableObject.cells[tableObject.select];
+      if (selectedCell.DataID !== this.DataID) {
+        const cellIndex = T3Gv.opt.Table_CellFromDataID(tableObject, this.DataID);
+        if (cellIndex >= 0) {
+          selectedCell = tableObject.cells[cellIndex];
+        }
       }
-      a = s.trect,
-        s.nextra &&
-        (a = T3Gv.opt.Table_GetJoinedCellFrame(o, o.select, !0, !1)),
-        i.x = this.trect.x + a.x,
-        i.y = this.trect.y + a.y,
-        i.width = a.width,
-        i.height = a.height,
-        n = s.DataID
+
+      cellRect = selectedCell.trect;
+      if (selectedCell.nextra) {
+        cellRect = T3Gv.opt.Table_GetJoinedCellFrame(tableObject, tableObject.select, true, false);
+      }
+
+      textRect.x = this.trect.x + cellRect.x;
+      textRect.y = this.trect.y + cellRect.y;
+      textRect.width = cellRect.width;
+      textRect.height = cellRect.height;
+      cellDataId = selectedCell.DataID;
     }
-    var S = T3Gv.stdObj.GetObject(this.DataID);
-    if (null != S) {
-      var c = e.CreateShape(OptConstant.CSType.Text);
-      c.SetRenderingEnabled(!1),
-        c.SetID(OptConstant.SVGElementClass.Text),
-        c.SetUserData(n);
-      var u = this.StyleRecord;
-      u.Line.BThick &&
-        null == this.polylist &&
-        Utils2.InflateRect(r, u.Line.BThick, u.Line.BThick),
-        c.SetSpellCheck(this.AllowSpell()),
-        c.InitDataSettings(
-          this.fieldDataTableID,
-          this.fieldDataElemID,
-          this.dataStyleOverride
-        ),
-        this.TextFlags & NvConstant.TextFlags.AttachA ||
-        this.TextFlags & NvConstant.TextFlags.AttachB ||
-        (c.SetPos(i.x - r.x, i.y - r.y), c.SetSize(i.width, i.height)),
-        t &&
-        (t.AddElement(c), t.isText = !0, t.textElem = c),
-        S.Data.runtimeText ? c.SetRuntimeText(S.Data.runtimeText) : (
-          c.SetText(''),
-          c.SetParagraphAlignment(this.TextAlign),
-          c.SetVerticalAlignment('middle')
-        ),
-        S.Data.runtimeText ||
-        (S.Data.runtimeText = c.GetRuntimeText());
-      var p = null;
-      if (
-        this.bInGroup &&
-        c.DisableHyperlinks(!0),
-        this.TextFlags & NvConstant.TextFlags.AttachA
-      ) switch (
-        c.SetRenderingEnabled(!0),
-        c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0),
-        (p = c.GetTextMinDimensions()).width,
-        p.height,
-        this.TextAlign
-        ) {
+
+    // Get the text data object
+    const textObject = T3Gv.stdObj.GetObject(this.DataID);
+    if (textObject != null) {
+      // Create text SVG element
+      const textElement = svgDocument.CreateShape(OptConstant.CSType.Text);
+      textElement.SetRenderingEnabled(false);
+      textElement.SetID(OptConstant.SVGElementClass.Text);
+      textElement.SetUserData(cellDataId);
+
+      // Apply style settings
+      const styleRecord = this.StyleRecord;
+      if (styleRecord.Line.BThick && this.polylist == null) {
+        Utils2.InflateRect(frameWithThickness, styleRecord.Line.BThick, styleRecord.Line.BThick);
+      }
+
+      // Configure text element properties
+      textElement.SetSpellCheck(this.AllowSpell());
+      textElement.InitDataSettings(
+        this.fieldDataTableID,
+        this.fieldDataElemID,
+        this.dataStyleOverride
+      );
+
+      // Position text element based on text flags
+      if (!(this.TextFlags & NvConstant.TextFlags.AttachA ||
+            this.TextFlags & NvConstant.TextFlags.AttachB)) {
+        textElement.SetPos(textRect.x - frameWithThickness.x, textRect.y - frameWithThickness.y);
+        textElement.SetSize(textRect.width, textRect.height);
+      }
+
+      // Add the text element to the target if provided
+      if (targetElement) {
+        targetElement.AddElement(textElement);
+        targetElement.isText = true;
+        targetElement.textElem = textElement;
+      }
+
+      // Set text content - use runtime text if available
+      if (textObject.Data.runtimeText) {
+        textElement.SetRuntimeText(textObject.Data.runtimeText);
+      } else {
+        textElement.SetText('');
+        textElement.SetParagraphAlignment(this.TextAlign);
+        textElement.SetVerticalAlignment('middle');
+      }
+
+      // Store runtime text if not already set
+      if (!textObject.Data.runtimeText) {
+        textObject.Data.runtimeText = textElement.GetRuntimeText();
+      }
+
+      let textDimensions = null;
+
+      // Disable hyperlinks if shape is in a group
+      if (this.bInGroup) {
+        textElement.DisableHyperlinks(true);
+      }
+
+      // Handle text attached above the shape
+      if (this.TextFlags & NvConstant.TextFlags.AttachA) {
+        textElement.SetRenderingEnabled(true);
+        textElement.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
+        textDimensions = textElement.GetTextMinDimensions();
+
+        switch (this.TextAlign) {
           case TextConstant.TextAlign.TopLeft:
           case TextConstant.TextAlign.Left:
           case TextConstant.TextAlign.BottomLeft:
-            c.SetPos(0, - p.height - this.TMargins.top),
-              c.SetParagraphAlignment(TextConstant.TextAlign.Left);
+            textElement.SetPos(0, -textDimensions.height - this.TMargins.top);
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Left);
             break;
+
           case TextConstant.TextAlign.TopRight:
           case TextConstant.TextAlign.Right:
           case TextConstant.TextAlign.BottomRight:
-            c.SetPos(this.Frame.width - p.width, - p.height - this.TMargins.top),
-              c.SetParagraphAlignment(TextConstant.TextAlign.Right);
+            textElement.SetPos(this.Frame.width - textDimensions.width, -textDimensions.height - this.TMargins.top);
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Right);
             break;
+
           default:
-            c.SetPos(this.Frame.width / 2 - p.width / 2, - p.height - this.TMargins.top),
-              c.SetParagraphAlignment(TextConstant.TextAlign.Center)
-        } else if (this.TextFlags & NvConstant.TextFlags.AttachB) switch (
-          c.SetRenderingEnabled(!0),
-          c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0),
-          (p = c.GetTextMinDimensions()).width,
-          this.TextAlign
-        ) {
-            case TextConstant.TextAlign.TopLeft:
-            case TextConstant.TextAlign.Left:
-            case TextConstant.TextAlign.BottomLeft:
-              c.SetPos(0, this.Frame.height + this.TMargins.bottom),
-                c.SetParagraphAlignment(TextConstant.TextAlign.Left);
-              break;
-            case TextConstant.TextAlign.TopRight:
-            case TextConstant.TextAlign.Right:
-            case TextConstant.TextAlign.BottomRight:
-              c.SetPos(
-                this.Frame.width - p.width,
-                this.Frame.height + this.TMargins.bottom
-              ),
-                c.SetParagraphAlignment(TextConstant.TextAlign.Right);
-              break;
-            default:
-              c.SetPos(
-                this.Frame.width / 2 - p.width / 2,
-                this.Frame.height + this.TMargins.bottom
-              ),
-                c.SetParagraphAlignment(TextConstant.TextAlign.Center)
-          } else this.TextGrow == NvConstant.TextGrowBehavior.Horizontal ? c.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, i.width, i.height) : c.SetConstraints(i.width, i.width, i.height);
-      c.SetRenderingEnabled(!0),
-        c.SetEditCallback(T3Gv.opt.TextCallback, t)
+            textElement.SetPos(this.Frame.width / 2 - textDimensions.width / 2, -textDimensions.height - this.TMargins.top);
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Center);
+        }
+      }
+      // Handle text attached below the shape
+      else if (this.TextFlags & NvConstant.TextFlags.AttachB) {
+        textElement.SetRenderingEnabled(true);
+        textElement.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
+        textDimensions = textElement.GetTextMinDimensions();
+
+        switch (this.TextAlign) {
+          case TextConstant.TextAlign.TopLeft:
+          case TextConstant.TextAlign.Left:
+          case TextConstant.TextAlign.BottomLeft:
+            textElement.SetPos(0, this.Frame.height + this.TMargins.bottom);
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Left);
+            break;
+
+          case TextConstant.TextAlign.TopRight:
+          case TextConstant.TextAlign.Right:
+          case TextConstant.TextAlign.BottomRight:
+            textElement.SetPos(
+              this.Frame.width - textDimensions.width,
+              this.Frame.height + this.TMargins.bottom
+            );
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Right);
+            break;
+
+          default:
+            textElement.SetPos(
+              this.Frame.width / 2 - textDimensions.width / 2,
+              this.Frame.height + this.TMargins.bottom
+            );
+            textElement.SetParagraphAlignment(TextConstant.TextAlign.Center);
+        }
+      }
+      // Handle text contained within the shape
+      else {
+        if (this.TextGrow == NvConstant.TextGrowBehavior.Horizontal) {
+          textElement.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, textRect.width, textRect.height);
+        } else {
+          textElement.SetConstraints(textRect.width, textRect.width, textRect.height);
+        }
+      }
+
+      // Enable rendering and set the edit callback
+      textElement.SetRenderingEnabled(true);
+      textElement.SetEditCallback(T3Gv.opt.TextCallback, targetElement);
+
+      T3Util.Log("= S.BaseShape - LMAddSVGTextObject output:", { textElement });
     }
   }
 
-  LMResizeSVGTextObject(e, t, a) {
-    if (- 1 != t.DataID) {
-      var r = e.GetElementById(OptConstant.SVGElementClass.Text);
-      if (r) {
-        var i = t.trect,
-          n = null;
+  /**
+   * Resizes the SVG text object within a shape after shape resizing
+   * This method adjusts text positioning and alignment based on text flags (AttachA, AttachB)
+   * and updates constraints to ensure proper text rendering within the shape
+   *
+   * @param svgElement - The SVG element containing the text
+   * @param drawingObject - The shape object that contains text attributes
+   * @param newDimensions - The new dimensions of the shape after resizing
+   */
+  LMResizeSVGTextObject(svgElement, drawingObject, newDimensions) {
+    T3Util.Log("= S.BaseShape - LMResizeSVGTextObject input:", {
+      svgElement,
+      drawingObject,
+      newDimensions
+    });
+
+    // Only process if there's a valid DataID
+    if (drawingObject.DataID !== -1) {
+      // Get the text element
+      const textElement = svgElement.GetElementById(OptConstant.SVGElementClass.Text);
+
+      if (textElement) {
+        const textRect = drawingObject.trect;
+        let textDimensions = null;
+
+        // Handle text attached above the shape
         if (this.TextFlags & NvConstant.TextFlags.AttachA) {
-          switch ((n = r.GetTextMinDimensions()).width, n.height, this.TextAlign) {
+          textDimensions = textElement.GetTextMinDimensions();
+
+          switch (this.TextAlign) {
             case TextConstant.TextAlign.TopLeft:
             case TextConstant.TextAlign.Left:
             case TextConstant.TextAlign.BottomLeft:
-              r.SetPos(0, - n.height - this.TMargins.top),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Left);
+              textElement.SetPos(0, -textDimensions.height - this.TMargins.top);
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Left);
               break;
+
             case TextConstant.TextAlign.TopRight:
             case TextConstant.TextAlign.Right:
             case TextConstant.TextAlign.BottomRight:
-              r.SetPos(a.width - n.width, - n.height - this.TMargins.top),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Right);
+              textElement.SetPos(
+                newDimensions.width - textDimensions.width,
+                -textDimensions.height - this.TMargins.top
+              );
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Right);
               break;
+
             default:
-              r.SetPos(a.width / 2 - n.width / 2, - n.height - this.TMargins.top),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Center)
+              textElement.SetPos(
+                newDimensions.width / 2 - textDimensions.width / 2,
+                -textDimensions.height - this.TMargins.top
+              );
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Center);
           }
-          r.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0)
-        } else if (this.TextFlags & NvConstant.TextFlags.AttachB) {
-          switch ((n = r.GetTextMinDimensions()).width, this.TextAlign) {
+
+          textElement.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
+        }
+        // Handle text attached below the shape
+        else if (this.TextFlags & NvConstant.TextFlags.AttachB) {
+          textDimensions = textElement.GetTextMinDimensions();
+
+          switch (this.TextAlign) {
             case TextConstant.TextAlign.TopLeft:
             case TextConstant.TextAlign.Left:
             case TextConstant.TextAlign.BottomLeft:
-              r.SetPos(0, a.height + this.TMargins.bottom),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Left);
+              textElement.SetPos(0, newDimensions.height + this.TMargins.bottom);
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Left);
               break;
+
             case TextConstant.TextAlign.TopRight:
             case TextConstant.TextAlign.Right:
             case TextConstant.TextAlign.BottomRight:
-              r.SetPos(a.width - n.width, a.height + this.TMargins.bottom),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Right);
+              textElement.SetPos(
+                newDimensions.width - textDimensions.width,
+                newDimensions.height + this.TMargins.bottom
+              );
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Right);
               break;
+
             default:
-              r.SetPos(a.width / 2 - n.width / 2, a.height + this.TMargins.bottom),
-                r.SetParagraphAlignment(TextConstant.TextAlign.Center)
+              textElement.SetPos(
+                newDimensions.width / 2 - textDimensions.width / 2,
+                newDimensions.height + this.TMargins.bottom
+              );
+              textElement.SetParagraphAlignment(TextConstant.TextAlign.Center);
           }
-          r.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0)
-        } else {
-          r.SetPos(i.x - a.x, i.y - a.y);
-          var o = i.width;
-          this.TextGrow == NvConstant.TextGrowBehavior.Horizontal &&
-            (o = T3Gv.opt.header.MaxWorkDim.x),
-            r.SetConstraints(o, i.width, i.height)
+
+          textElement.SetConstraints(T3Gv.opt.header.MaxWorkDim.x, 0, 0);
+        }
+        // Handle text inside the shape (default case)
+        else {
+          textElement.SetPos(
+            textRect.x - newDimensions.x,
+            textRect.y - newDimensions.y
+          );
+
+          let constraintWidth = textRect.width;
+
+          // For horizontal text growth, use maximum document width
+          if (this.TextGrow == NvConstant.TextGrowBehavior.Horizontal) {
+            constraintWidth = T3Gv.opt.header.MaxWorkDim.x;
+          }
+
+          textElement.SetConstraints(
+            constraintWidth,
+            textRect.width,
+            textRect.height
+          );
         }
       }
     }
+
+    T3Util.Log("= S.BaseShape - LMResizeSVGTextObject output:", { textResized: true });
   }
 
 
@@ -5434,23 +5556,47 @@ class BaseShape extends BaseDrawObject {
     this.AddIcons(svgDocument, svgElement);
   }
 
+  /**
+   * Gets the dimension points for the shape
+   * These points represent the corners of the shape used for drawing dimension lines,
+   * with positions adjusted to be relative to the shape's origin
+   *
+   * @returns Array of Points representing the dimension points of the shape
+   */
   GetDimensionPoints() {
-    var e = [],
-      t = 0;
-    e.push(new Point(this.Frame.x, this.Frame.y)),
-      this.Frame.width > 0 &&
-      e.push(
+    T3Util.Log("= S.BaseShape - GetDimensionPoints input:", {});
+
+    // Initialize array to hold dimension points
+    let dimensionPoints = [];
+
+    // Add top-left corner point
+    dimensionPoints.push(new Point(this.Frame.x, this.Frame.y));
+
+    // Add top-right corner point if width is positive
+    if (this.Frame.width > 0) {
+      dimensionPoints.push(
         new Point(this.Frame.x + this.Frame.width, this.Frame.y)
-      ),
-      this.Frame.height > 0 &&
-      e.push(
+      );
+    }
+
+    // Add bottom-right corner point if height is positive
+    if (this.Frame.height > 0) {
+      dimensionPoints.push(
         new Point(this.Frame.x + this.Frame.width, this.Frame.y + this.Frame.height)
       );
-    var a = 360 - this.RotationAngle;
-    Math.PI;
-    for (t = 0; t < e.length; t++) e[t].x -= this.Frame.x,
-      e[t].y -= this.Frame.y;
-    return e
+    }
+
+    // Calculate rotation angle (complementary angle)
+    const complementaryAngle = 360 - this.RotationAngle;
+
+    // Translate all points relative to the shape's origin
+    for (let pointIndex = 0; pointIndex < dimensionPoints.length; pointIndex++) {
+      dimensionPoints[pointIndex].x -= this.Frame.x;
+      dimensionPoints[pointIndex].y -= this.Frame.y;
+    }
+
+    T3Util.Log("= S.BaseShape - GetDimensionPoints output:", dimensionPoints);
+    return dimensionPoints;
   }
 
   GetDimensionLineDeflection(unusedSvgElement, pointX, pointY, deflectionConfig) {

@@ -35,11 +35,12 @@ class Rect extends BaseShape {
    * @param options - Configuration options for the rectangle
    */
   constructor(options: any) {
-    T3Util.Log("= S.Rect Input:", options);
+    T3Util.Log("= S.Rect constructor Input:", options);
+
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Rect;
     options.moreflags |= OptConstant.ObjMoreFlags.FixedRR;
-    options.uniType="Rect";
+    options.uniType = "Rect";
 
     super(options);
 
@@ -47,7 +48,7 @@ class Rect extends BaseShape {
     this.nativeDataArrayBuffer = options.nativeDataArrayBuffer || null;
     this.SymbolData = options.SymbolData || null;
 
-    T3Util.Log("= S.Rect Created instance:", this);
+    T3Util.Log("= S.Rect constructor Output:", this);
   }
 
   /**
@@ -64,7 +65,8 @@ class Rect extends BaseShape {
     const shapeContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
 
     // Clone the frame and apply necessary adjustments
-    const adjustedFrame = $.extend(true, {}, this.Frame);
+    // const adjustedFrame = $.extend(true, {}, this.Frame);
+    const adjustedFrame = { ...this.Frame };
     const styleRecord = this.StyleRecord;
 
     // Inflate the rectangle if border thickness is set
