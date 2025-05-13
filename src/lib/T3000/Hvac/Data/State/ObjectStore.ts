@@ -46,18 +46,10 @@ import StoredObject from "./StoredObject"
  */
 class ObjectStore {
 
-  /** Object ID */
-  public ID: number;
-
-  /** Type of stored object */
-  public Type: string;
-
-  /** State operation type identifier */
-  public StateOperationTypeID: number;
-
-  /** Collection of stored objects */
-  public StoredObjects: ObjectStore[];
-
+  public ID: number;//Object ID
+  public Type: string;//Type of stored object
+  public stateOptTypeId: number;//State operation type identifier
+  public StoredObjects: ObjectStore[];//Collection of stored objects
   public Data: any;
 
   /**
@@ -87,7 +79,7 @@ class ObjectStore {
           existingObject.Type = storedObject.Type;
           existingObject.Data = storedObject.Data;
           existingObject.Dirty = true;
-          existingObject.StateOperationTypeID = storedObject.StateOperationTypeID;
+          existingObject.stateOptTypeId = storedObject.stateOptTypeId;
           storedObject = existingObject;
         } else {
           storedObject.Dirty = true;
@@ -163,7 +155,7 @@ class ObjectStore {
 
       if (deleteIndex >= 0) {
         const deleteObject = this.GetObject(objectId);
-        deleteObject.StateOperationTypeID = StateConstant.StateOperationType.DELETE;
+        deleteObject.stateOptTypeId = StateConstant.StateOperationType.DELETE;
         if (needAddToCurrent) {
           T3Gv.state.AddToCurrentState(deleteObject);
         }

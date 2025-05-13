@@ -452,18 +452,6 @@ class NvConstant {
     CropToFit: 1,     // Crop image to fit container
     PropFit: 2        // Maintain proportions when fitting
   }
-
-  /**
-   * Shape class definitions
-   * Categorizes shapes by their implementation type
-   */
-  // static ShapeClass = {
-  //   Plain: 1,               // Basic shape
-  //   GroupSymbol: 2,         // Group of symbols
-  //   SvgSymbol: 3,           // SVG symbol
-  //   SvgSymbol: 4,           // SVG fragment
-  //   MissingMf: 5            // Missing metadata format
-  // }
 }
 
 export default NvConstant

@@ -38,35 +38,12 @@ import Utils1 from "../../Util/Utils1"
  */
 class StoredObject {
 
-  /**
-   * Unique identifier for the stored object
-   */
-  public ID: number;
-
-  /**
-   * Flag indicating if the object has unsaved changes
-   */
-  public Dirty: boolean;
-
-  /**
-   * Type identifier for the stored object
-   */
-  public Type: number;
-
-  /**
-   * The actual data contained in the stored object
-   */
-  public Data: any;
-
-  /**
-   * Flag indicating if the object is persisted in storage
-   */
-  public IsPersisted: boolean;
-
-  /**
-   * Identifier for the current state operation type
-   */
-  public StateOperationTypeID: number;
+  public ID: number;//Unique identifier for the stored object
+  public Dirty: boolean;//Flag indicating if the object has unsaved changes
+  public Type: number;//Type identifier for the stored object
+  public Data: any;//The actual data contained in the stored object
+  public IsPersisted: boolean;//Flag indicating if the object is persisted in storage
+  public stateOptTypeId: number;//Identifier for the current state operation type
 
   /**
    * Creates a new stored object instance or updates an existing one
@@ -84,7 +61,7 @@ class StoredObject {
     this.Type = objectType || null;
     this.Data = objectData || null;
     this.IsPersisted = false !== isPersisted;
-    this.StateOperationTypeID = null;
+    this.stateOptTypeId = null;
 
     if (this.Data && Utils1.IsObject(this.Data)) {
       this.Data.BlockID = objectId;
@@ -105,14 +82,14 @@ class StoredObject {
             existingObject.Type = objectType ? this.Type : existingObject.Type;
             existingObject.Data = objectData ? this.Data : existingObject.Data;
             existingObject.Dirty = isDirty ? this.Dirty : existingObject.Dirty;
-            existingObject.StateOperationTypeID = StateConstant.StateOperationType.UPDATE;
+            existingObject.stateOptTypeId = StateConstant.StateOperationType.UPDATE;
             T3Gv.stdObj.SaveObject(existingObject);
 
             return existingObject;
           }
         }
       } else {
-        this.StateOperationTypeID = StateConstant.StateOperationType.CREATE;
+        this.stateOptTypeId = StateConstant.StateOperationType.CREATE;
         T3Gv.stdObj.SaveObject(this);
       }
     }

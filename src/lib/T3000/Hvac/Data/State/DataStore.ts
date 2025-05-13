@@ -46,24 +46,13 @@ import DataObj from "./DataObj"
  */
 class DataStore {
 
-  /** Object ID */
-  public ID: number;
-
-  /** Type of stored object */
-  public Type: number;
-
-  /** State operation type identifier */
-  public stateOptTypeId: number;
-
-  /** Collection of stored objects */
-  public storedObjects: DataStore[];
-
+  public ID: number;//Object ID
+  public Type: number;//Type of stored object
+  public stateOptTypeId: number;//State operation type identifier
+  public storedObjects: DataStore[];//Collection of stored objects
   public Data: any;
-
   public Dirty: boolean;
-
   public IsPersisted: boolean;
-
   public Delete: any;
 
   /**
