@@ -20,10 +20,10 @@ class ToolDuctT1SvgData {
         frame = { width: 68.5, height: 30.67 };
         break;
       case "Duct5":
-        frame = { width: 0, height: 0 };
+        frame = { width: 68.5, height: 29.67 };
         break;
       case "Duct6":
-        frame = { width: 0, height: 0 };
+        frame = { width: 66.33, height: 38.5 };
         break;
       case "Duct7":
         frame = { width: 0, height: 0 };
@@ -309,8 +309,64 @@ L28.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
 
   static Duct6Data() {
     const svgData =
-      `
-
+    `
+<g>
+    <g width="17.833" height="0" transform="scale(1,1) translate(42.5,21.167)">
+        <g transform="scale(1,1) translate(0,0)" fill="##LineColor=#000000##" stroke="##LineColor=#000000##"
+            stroke-opacity="1">
+            <path d="M0,0 L17.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+            <g>
+                <g stroke-dasharray="none">
+                    <path d="M17.833,0L17.833,-7" stroke-width="0.5" fill="none" />
+                </g>
+            </g>
+        </g>
+    </g>
+    <g width="30.833" height="31.5" transform="scale(1,1) translate(11.167,5.5)">
+        <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=1##" stroke-dasharray="none"
+            width="30.833" height="31.5" transform="scale(1,1) translate(0,0)" fill="##FillColor=#FFFFFF##"
+            fill-opacity="1" stroke-opacity="1">
+            <rect width="30.833" height="31.5" />
+        </g>
+    </g>
+    <g width="30.833" height="31.5" transform="scale(1,1) translate(11.167,5.5)">
+        <g transform="scale(1,1)
+translate(0,0)" fill="##LineColor=#000000##" stroke="##LineColor=#000000##" stroke-opacity="1">
+            <path d="M0,31.5 L30.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+            <g>
+                <g stroke-dasharray="none">
+                    <path d="M-1,30.5L1,30.5L1,32.5L-1,32.5z" stroke-width="0" fill="none" />
+                </g>
+            </g>
+        </g>
+    </g>
+    <g width="30.833" height="31.5" transform="scale(1,1)
+translate(11.167,5.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="##LineColor=#000000##" stroke="##LineColor=#000000##"
+            stroke-opacity="1">
+            <path d="M0,0 L30.833,31.5" fill="none" stroke-width="1" stroke-dasharray="none" />
+            <g>
+                <g stroke-dasharray="none">
+                    <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+                </g>
+            </g>
+        </g>
+    </g>
+    <g width="16.833" height="15.625" transform="scale(1,1) translate(0,0)">
+        <g stroke="##LineColor=#000000##" opacity="1" stroke-width="##LineThick=0##" stroke-dasharray="none"
+            width="16.833" height="15.625" transform="scale(1,1) translate(0,0)" fill="none" stroke-opacity="1">
+            <rect width="16.833" height="15.625" />
+        </g>
+        <g width="16.833333333333332" height="15.624999046325684" transform="scale(1,1)
+translate(0,0)"><text width="16.833333333333332" height="15.624999046325684" transform="scale(1,1)
+translate(0,0)" xml:space="preserve">
+                <tspan xml:space="preserve" text-rendering="optimizeSpeed" font-size="13.88888888888889"
+                    font-weight="normal" font-style="normal" fill="#000000" opacity="1" x="0" text-anchor="start"
+                    y="12.5" textLength="6.794277667999268" style="font-family: Arial, Helvetica Neue, Helvetica,
+sans-serif;">F</tspan>
+            </text></g>
+    </g>
+</g>
     `;
 
     return svgData;

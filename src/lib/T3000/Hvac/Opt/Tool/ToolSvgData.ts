@@ -8,9 +8,9 @@ import OptConstant from "../../Data/Constant/OptConstant";
 
 class ToolSvgData {
 
-  // static DuctSvg: any = ToolDuctT1SvgData;
-  static DuctSvg: any = ToolDuctT2SvgData;
-  // static DuctSvg: any = ToolDuctT3SvgData;
+ static DuctSvg: any = ToolDuctT1SvgData;
+  //static DuctSvg: any = ToolDuctT2SvgData;
+   //  static DuctSvg: any = ToolDuctT3SvgData;
 
   static GetSvgData(symbolType) {
 
