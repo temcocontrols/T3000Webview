@@ -34,6 +34,7 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
+import SelectUtil from '../Opt/Opt/SelectUtil';
 
 /**
  * Represents a connector drawing object that connects elements in a diagram.
@@ -515,7 +516,6 @@ class Connector extends BaseDrawObject {
       textureConfig.dim = T3Gv.opt.TextureList.Textures[textureKey].dim;
       textureConfig.url = T3Gv.opt.TextureList.Textures[textureKey].ImageURL;
       if (!textureConfig.url) {
-        textureConfig.url = Constants.FilePath_CMSRoot + Constants.FilePath_Textures + T3Gv.opt.TextureList.Textures[textureKey].filename;
       }
       shape.SetTextureStroke(textureConfig);
     } else if (fillType === NvConstant.FillTypes.Solid) {
@@ -596,8 +596,8 @@ class Connector extends BaseDrawObject {
     let hitResult = {};
     let textLabelIndex = -1;
     const styleConstants = OptConstant.AStyles;
-    const isLinear = Boolean(this.arraylist.styleflags & styleConstants.SEDA_Linear);
-    const isFlowConnection = Boolean(this.arraylist.styleflags & styleConstants.SEDA_FlowConn);
+    const isLinear = Boolean(this.arraylist.styleflags & styleConstants.Linear);
+    const isFlowConnection = Boolean(this.arraylist.styleflags & styleConstants.FlowConn);
 
     if (event) {
       // Convert window coordinates to document coords
@@ -774,7 +774,7 @@ class Connector extends BaseDrawObject {
     // Clear the current shape
     shapeElement.Clear();
     const styles = OptConstant.AStyles;
-    const isLinear = !!(this.arraylist.styleflags & styles.SEDA_Linear);
+    const isLinear = !!(this.arraylist.styleflags & styles.Linear);
     let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
     let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
     const arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
@@ -872,10 +872,10 @@ class Connector extends BaseDrawObject {
     let hooksCount;
     const knobSize = OptConstant.Common.CKnobSize;
     const style = OptConstant.AStyles;
-    const reverseColumn = (this.arraylist.styleflags & style.SEDA_ReverseCol) !== 0;
+    const reverseColumn = (this.arraylist.styleflags & style.ReverseCol) !== 0;
     // bothSides is true if either the BothSides flag is set or the PerpConn flag is not set
-    const bothSides = (this.arraylist.styleflags & style.SEDA_BothSides) !== 0 || (this.arraylist.styleflags & style.SEDA_PerpConn) === 0;
-    const isRadial = (this.arraylist.styleflags & style.SEDA_Radial) !== 0 && !bothSides;
+    const bothSides = (this.arraylist.styleflags & style.BothSides) !== 0 || (this.arraylist.styleflags & style.PerpConn) === 0;
+    const isRadial = (this.arraylist.styleflags & style.Radial) !== 0 && !bothSides;
     const iconSize = knobSize;
     let offsetX = 0;
     let offsetY = 0;
@@ -971,7 +971,7 @@ class Connector extends BaseDrawObject {
     // Knob sizing and style constants
     const knobSize = OptConstant.Common.KnobSize;
     const styleConstants = OptConstant.AStyles;
-    const reverseColumnFlag = this.arraylist.styleflags & styleConstants.SEDA_ReverseCol;
+    const reverseColumnFlag = this.arraylist.styleflags & styleConstants.ReverseCol;
     const hookPoints = OptConstant.HookPts;
     const connectorDefines = OptConstant.ConnectorDefines;
 
@@ -986,15 +986,15 @@ class Connector extends BaseDrawObject {
     const hookCount = this.arraylist && this.arraylist.hook ? this.arraylist.hook.length : 0;
 
     // Only continue if there are sufficient hooks or if object is of the proper type.
-    if (hookCount <= connectorDefines.SEDA_NSkip /*&& this.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/) {
+    if (hookCount <= connectorDefines.NSkip /*&& this.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/) {
       T3Util.Log("S.Connector: CreateActionTriggers output:", actionGroup);
       return actionGroup;
     }
 
     // Determine style flags: both sides and linear layout
-    const bothSides = (this.arraylist.styleflags & styleConstants.SEDA_BothSides) > 0 ||
-      (this.arraylist.styleflags & styleConstants.SEDA_PerpConn) === 0;
-    const isLinear = Boolean(this.arraylist.styleflags & styleConstants.SEDA_Linear);
+    const bothSides = (this.arraylist.styleflags & styleConstants.BothSides) > 0 ||
+      (this.arraylist.styleflags & styleConstants.PerpConn) === 0;
+    const isLinear = Boolean(this.arraylist.styleflags & styleConstants.Linear);
 
     // Get and adjust the frame dimensions from the Connector's frame
     const frame = this.Frame;
@@ -1052,29 +1052,14 @@ class Connector extends BaseDrawObject {
       primaryCursor = CursorConstant.CursorType.Default;
     }
 
-    // Create the LINESTART knob if allowed.
     if ((
-      // Anonymous function to decide if a LINESTART knob is allowed.
       (function (connector) {
-        // if (connector.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH && connector.hooks.length) {
-        //   switch (connector.hooks[0].hookpt) {
-        //     case hookPoints.SED_LL:
-        //     case hookPoints.SED_LT:
-        //       return false;
-        //     default:
-        //       return true;
-        //   }
-        // }
         return true;
       })(this)
     )) {
       knobSettings.x = this.StartPoint.x - frame.x;
       knobSettings.y = this.StartPoint.y - frame.y;
-      // if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH) {
-      //   const branchHook = this.arraylist.hook[connectorDefines.A_Cl];
-      //   knobSettings.x += branchHook.endpoint.v - branchHook.startpoint.v;
-      //   knobSettings.y += branchHook.endpoint.h - branchHook.startpoint.h;
-      // }
+
       knobSettings.knobID = OptConstant.ActionTriggerType.LineStart;
       const startKnob = this.GenericKnob(knobSettings);
       actionGroup.AddElement(startKnob);
@@ -1082,28 +1067,14 @@ class Connector extends BaseDrawObject {
       var savedStartKnob = startKnob;
     }
 
-    // Create the LINEEND knob if allowed.
     if ((
       (function (connector) {
-        // if (connector.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH && connector.hooks.length) {
-        //   switch (connector.hooks[0].hookpt) {
-        //     case hookPoints.SED_LR:
-        //     case hookPoints.SED_LB:
-        //       return false;
-        //     default:
-        //       return true;
-        //   }
-        // }
         return true;
       })(this)
     )) {
       knobSettings.x = this.EndPoint.x - frame.x;
       knobSettings.y = this.EndPoint.y - frame.y;
-      // if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH) {
-      //   const branchHook = this.arraylist.hook[connectorDefines.A_Cr];
-      //   knobSettings.x += branchHook.endpoint.v - branchHook.startpoint.v;
-      //   knobSettings.y += branchHook.endpoint.h - branchHook.startpoint.h;
-      // }
+
       knobSettings.knobID = OptConstant.ActionTriggerType.LineEnd;
       const endKnob = this.GenericKnob(knobSettings);
       actionGroup.AddElement(endKnob);
@@ -1172,7 +1143,7 @@ class Connector extends BaseDrawObject {
     })(this)) {
       knobSettings.shapeType = OptConstant.CSType.Rect;
       knobSettings.cursorType = secondaryCursor;
-      for (let hookIndex = connectorDefines.SEDA_NSkip; hookIndex < hookCount; hookIndex++) {
+      for (let hookIndex = connectorDefines.NSkip; hookIndex < hookCount; hookIndex++) {
         const hookData = this.arraylist.hook[hookIndex];
         if (this.vertical) {
           knobSettings.x = hookData.endpoint.v + this.StartPoint.x - frame.x;
@@ -1183,7 +1154,7 @@ class Connector extends BaseDrawObject {
         }
         knobSettings.knobID = OptConstant.ActionTriggerType.ConnectorRerp;
         const perpKnob = this.GenericKnob(knobSettings);
-        perpKnob.SetUserData(hookIndex - connectorDefines.SEDA_NSkip);
+        perpKnob.SetUserData(hookIndex - connectorDefines.NSkip);
         actionGroup.AddElement(perpKnob);
       }
     }
@@ -1193,8 +1164,8 @@ class Connector extends BaseDrawObject {
     if ((function (connector) {
       return true;//connector.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH;
     })(this)) {
-      for (let hookIndex = connectorDefines.SEDA_NSkip + 1;
-        hookIndex < hookCount && (isLinear || bothSides || !(hookCount - connectorDefines.SEDA_NSkip <= 2)) && !(bothSides && ++hookIndex >= hookCount);
+      for (let hookIndex = connectorDefines.NSkip + 1;
+        hookIndex < hookCount && (isLinear || bothSides || !(hookCount - connectorDefines.NSkip <= 2)) && !(bothSides && ++hookIndex >= hookCount);
         hookIndex++) {
         const previousHook = this.arraylist.hook[hookIndex - 1];
         const currentHook = this.arraylist.hook[hookIndex];
@@ -1206,7 +1177,7 @@ class Connector extends BaseDrawObject {
         knobSettings.strokeColor = 'green';
         if (this.vertical) {
           if (isLinear) {
-            if (stubIndex === connectorDefines.A_Cr) {
+            if (stubIndex === connectorDefines.ACr) {
               knobSettings.y = ((currentHook.startpoint.h + currentHook.endpoint.h) / 2) + this.StartPoint.y - frame.y - currentHook.extra / 2;
             } else {
               knobSettings.y = ((currentHook.startpoint.h + currentHook.endpoint.h) / 2) + this.StartPoint.y - frame.y + currentHook.extra / 2;
@@ -1218,7 +1189,7 @@ class Connector extends BaseDrawObject {
           }
         } else {
           if (isLinear) {
-            if (stubIndex === connectorDefines.A_Cr) {
+            if (stubIndex === connectorDefines.ACr) {
               knobSettings.x = ((currentHook.startpoint.h + currentHook.endpoint.h) / 2) + this.StartPoint.x - frame.x - currentHook.extra / 2;
             } else {
               knobSettings.x = ((currentHook.startpoint.h + currentHook.endpoint.h) / 2) + this.StartPoint.x - frame.x + currentHook.extra / 2;
@@ -1302,10 +1273,10 @@ class Connector extends BaseDrawObject {
       };
 
       const isLinear = Boolean(this.arraylist.styleflags & OptConstant.AStyles.Linear);
-      const isBothSides = Boolean(this.arraylist.styleflags & styleConstants.SEDA_BothSides) ||
-        (this.arraylist.styleflags & styleConstants.SEDA_PerpConn) === 0;
-      const isRadial = Boolean(this.arraylist.styleflags & styleConstants.SEDA_Radial) && !isBothSides;
-      const hasBothSides = Boolean(this.arraylist.styleflags & styleConstants.SEDA_BothSides);
+      const isBothSides = Boolean(this.arraylist.styleflags & styleConstants.BothSides) ||
+        (this.arraylist.styleflags & styleConstants.PerpConn) === 0;
+      const isRadial = Boolean(this.arraylist.styleflags & styleConstants.Radial) && !isBothSides;
+      const hasBothSides = Boolean(this.arraylist.styleflags & styleConstants.BothSides);
       const angleValue = this.arraylist.angle;
       let radialStartPoint;
       if (isRadial && hookCount > 0) {
@@ -1613,8 +1584,8 @@ class Connector extends BaseDrawObject {
 
       // Get connector style flags and properties
       const styles = OptConstant.AStyles;
-      const isCoManager = targetObject.arraylist.styleflags & styles.SEDA_CoManager;
-      const isPerpendicular = (targetObject.arraylist.styleflags & styles.SEDA_PerpConn) > 0;
+      const isCoManager = targetObject.arraylist.styleflags & styles.CoManager;
+      const isPerpendicular = (targetObject.arraylist.styleflags & styles.PerpConn) > 0;
       const skipHookCount = OptConstant.ConnectorDefines.NSkip;
       const totalHookCount = targetObject.arraylist.hook.length;
 
@@ -1643,19 +1614,9 @@ class Connector extends BaseDrawObject {
         );
       }
 
-      // Show appropriate menu based on spell check position
-      if (spellPosition >= 0) {
-        // Show spell check menu at the click location
-        T3Gv.opt.svgDoc.GetSpellCheck().ShowSpellMenu(
-          activeEdit,
-          spellPosition,
-          event.gesture.center.clientX,
-          event.gesture.center.clientY
-        );
-      } else {
-        // Show text menu
-        QuasarUtil.ShowContextMenu(true);
-      }
+       // Show text menu
+       QuasarUtil.ShowContextMenu(true);
+
     } else {
       // Show connector menu
       QuasarUtil.ShowContextMenu(true);
@@ -1726,12 +1687,12 @@ class Connector extends BaseDrawObject {
       styleFlags = OptConstant.AStyles;
 
     // Style flag checks
-    const isCoManager = this.arraylist.styleflags & styleFlags.SEDA_CoManager;
-    const hasPerpConnector = (this.arraylist.styleflags & styleFlags.SEDA_PerpConn) > 0;
-    const isStartLeft = this.arraylist.styleflags & styleFlags.SEDA_StartLeft;
+    const isCoManager = this.arraylist.styleflags & styleFlags.CoManager;
+    const hasPerpConnector = (this.arraylist.styleflags & styleFlags.PerpConn) > 0;
+    const isStartLeft = this.arraylist.styleflags & styleFlags.StartLeft;
     const isAssistantConnector = this.IsAsstConnector();
     const skipHooksCount = OptConstant.ConnectorDefines.NSkip;
-    const hasReverseColumn = this.arraylist.styleflags & styleFlags.SEDA_ReverseCol;
+    const hasReverseColumn = this.arraylist.styleflags & styleFlags.ReverseCol;
     const isLinear = this.arraylist.styleflags & OptConstant.AStyles.Linear;
     const isFlowAndLinear = this.arraylist.styleflags & OptConstant.AStyles.FlowConn && isLinear;
     const hasAngle = 0 !== this.arraylist.angle;
@@ -1755,7 +1716,7 @@ class Connector extends BaseDrawObject {
 
     // Special case for connectors with a single segment and no perpendicular connection
     const isSingleSegmentNoPerpConnection = (hookCount == skipHooksCount + 1) &&
-      (0 == (this.arraylist.styleflags & styleFlags.SEDA_PerpConn));
+      (0 == (this.arraylist.styleflags & styleFlags.PerpConn));
 
     // Check if curves are allowed for this connector
     const curveInfo = {
@@ -2311,7 +2272,7 @@ class Connector extends BaseDrawObject {
       (this.arraylist.styleflags & OptConstant.AStyles.PerpConn) === 0;
     const connectorDefines = OptConstant.ConnectorDefines;
     const hookCount = this.arraylist.hook.length;
-    const skipCount = connectorDefines.SEDA_NSkip;
+    const skipCount = connectorDefines.NSkip;
 
     if (this.vertical) {
       // For vertical connectors, scale height with primaryScale and width with secondaryScale
@@ -2320,22 +2281,22 @@ class Connector extends BaseDrawObject {
 
       if (hookCount >= skipCount) {
         if (bothSides) {
-          if (this.arraylist.hook[connectorDefines.A_Cl].gap) {
-            this.arraylist.hook[connectorDefines.A_Cl].gap =
-              this.arraylist.hook[connectorDefines.A_Cl].gap * secondaryScale;
+          if (this.arraylist.hook[connectorDefines.ACl].gap) {
+            this.arraylist.hook[connectorDefines.ACl].gap =
+              this.arraylist.hook[connectorDefines.ACl].gap * secondaryScale;
           }
-          if (this.arraylist.hook[connectorDefines.A_Cr].gap) {
-            this.arraylist.hook[connectorDefines.A_Cr].gap =
-              this.arraylist.hook[connectorDefines.A_Cr].gap * secondaryScale;
+          if (this.arraylist.hook[connectorDefines.ACr].gap) {
+            this.arraylist.hook[connectorDefines.ACr].gap =
+              this.arraylist.hook[connectorDefines.ACr].gap * secondaryScale;
           }
         } else {
-          if (this.arraylist.hook[connectorDefines.A_Cl].gap) {
-            this.arraylist.hook[connectorDefines.A_Cl].gap =
-              this.arraylist.hook[connectorDefines.A_Cl].gap * primaryScale;
+          if (this.arraylist.hook[connectorDefines.ACl].gap) {
+            this.arraylist.hook[connectorDefines.ACl].gap =
+              this.arraylist.hook[connectorDefines.ACl].gap * primaryScale;
           }
-          if (this.arraylist.hook[connectorDefines.A_Cr].gap) {
-            this.arraylist.hook[connectorDefines.A_Cr].gap =
-              this.arraylist.hook[connectorDefines.A_Cr].gap * primaryScale;
+          if (this.arraylist.hook[connectorDefines.ACr].gap) {
+            this.arraylist.hook[connectorDefines.ACr].gap =
+              this.arraylist.hook[connectorDefines.ACr].gap * primaryScale;
           }
         }
       }
@@ -2346,22 +2307,22 @@ class Connector extends BaseDrawObject {
 
       if (hookCount >= skipCount) {
         if (bothSides) {
-          if (this.arraylist.hook[connectorDefines.A_Cl].gap) {
-            this.arraylist.hook[connectorDefines.A_Cl].gap =
-              this.arraylist.hook[connectorDefines.A_Cl].gap * primaryScale;
+          if (this.arraylist.hook[connectorDefines.ACl].gap) {
+            this.arraylist.hook[connectorDefines.ACl].gap =
+              this.arraylist.hook[connectorDefines.ACl].gap * primaryScale;
           }
-          if (this.arraylist.hook[connectorDefines.A_Cr].gap) {
-            this.arraylist.hook[connectorDefines.A_Cr].gap =
-              this.arraylist.hook[connectorDefines.A_Cr].gap * primaryScale;
+          if (this.arraylist.hook[connectorDefines.ACr].gap) {
+            this.arraylist.hook[connectorDefines.ACr].gap =
+              this.arraylist.hook[connectorDefines.ACr].gap * primaryScale;
           }
         } else {
-          if (this.arraylist.hook[connectorDefines.A_Cl].gap) {
-            this.arraylist.hook[connectorDefines.A_Cl].gap =
-              this.arraylist.hook[connectorDefines.A_Cl].gap * secondaryScale;
+          if (this.arraylist.hook[connectorDefines.ACl].gap) {
+            this.arraylist.hook[connectorDefines.ACl].gap =
+              this.arraylist.hook[connectorDefines.ACl].gap * secondaryScale;
           }
-          if (this.arraylist.hook[connectorDefines.A_Cr].gap) {
-            this.arraylist.hook[connectorDefines.A_Cr].gap =
-              this.arraylist.hook[connectorDefines.A_Cr].gap * secondaryScale;
+          if (this.arraylist.hook[connectorDefines.ACr].gap) {
+            this.arraylist.hook[connectorDefines.ACr].gap =
+              this.arraylist.hook[connectorDefines.ACr].gap * secondaryScale;
           }
         }
       }
@@ -2395,8 +2356,8 @@ class Connector extends BaseDrawObject {
     let currentDimensions = this.GetDimensions();
     let hookCount: number;
     const styles = OptConstant.AStyles;
-    const hasBothSides = (this.arraylist.styleflags & styles.SEDA_BothSides) > 0;
-    const isLinear = (this.arraylist.styleflags & styles.SEDA_Linear) > 0;
+    const hasBothSides = (this.arraylist.styleflags & styles.BothSides) > 0;
+    const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
 
     hookCount = this.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
     backboneSegments = this.PrGetNBackBoneSegments();
@@ -2669,20 +2630,20 @@ class Connector extends BaseDrawObject {
     let connectorWidth = originalWidth;
 
     // Determine connector style flags
-    const isReverseColumn = Boolean(this.arraylist.styleflags & styleFlags.SEDA_ReverseCol);
-    const isDualSided = Boolean(this.arraylist.styleflags & styleFlags.SEDA_BothSides ||
-      (this.arraylist.styleflags & styleFlags.SEDA_PerpConn) === 0);
-    const isBalancedBothSides = Boolean(this.arraylist.styleflags & styleFlags.SEDA_BothSides &&
-      (this.arraylist.styleflags & styleFlags.SEDA_Stagger) === 0);
-    const isStaggerVertical = Boolean(this.arraylist.styleflags & styleFlags.SEDA_Stagger && this.vertical);
-    const isStartLeft = Boolean(this.arraylist.styleflags & styleFlags.SEDA_StartLeft);
-    const isLinear = Boolean(this.arraylist.styleflags & styleFlags.SEDA_Linear);
-    const isFlowConnector = Boolean(this.arraylist.styleflags & styleFlags.SEDA_FlowConn);
+    const isReverseColumn = Boolean(this.arraylist.styleflags & styleFlags.ReverseCol);
+    const isDualSided = Boolean(this.arraylist.styleflags & styleFlags.BothSides ||
+      (this.arraylist.styleflags & styleFlags.PerpConn) === 0);
+    const isBalancedBothSides = Boolean(this.arraylist.styleflags & styleFlags.BothSides &&
+      (this.arraylist.styleflags & styleFlags.Stagger) === 0);
+    const isStaggerVertical = Boolean(this.arraylist.styleflags & styleFlags.Stagger && this.vertical);
+    const isStartLeft = Boolean(this.arraylist.styleflags & styleFlags.StartLeft);
+    const isLinear = Boolean(this.arraylist.styleflags & styleFlags.Linear);
+    const isFlowConnector = Boolean(this.arraylist.styleflags & styleFlags.FlowConn);
 
     // Get connector configuration
     const stubIndex = this.PrGetStubIndex();
     const endShapeIndex = this.PrGetEndShapeIndex();
-    const isReverseLinear = isLinear && stubIndex === connectorDefines.A_Cr;
+    const isReverseLinear = isLinear && stubIndex === connectorDefines.ACr;
 
     // Calculate backbone segments
     let backboneSegments = this.PrGetNBackBoneSegments();
@@ -3392,9 +3353,9 @@ class Connector extends BaseDrawObject {
     let processHook = function (hook, hookIndex) {
       let hookId = hook.id;
       if (hook.id < 0) {
-        if (hookIndex === connectorDefines.A_Cl) {
-          hookId = self.arraylist.hook[connectorDefines.SEDA_NSkip].id;
-        } else if (hookIndex === connectorDefines.A_Cr) {
+        if (hookIndex === connectorDefines.ACl) {
+          hookId = self.arraylist.hook[connectorDefines.NSkip].id;
+        } else if (hookIndex === connectorDefines.ACr) {
           hookId = self.arraylist.hook[self.arraylist.hook.length - 1].id;
         }
       }
@@ -3423,8 +3384,8 @@ class Connector extends BaseDrawObject {
       let currentIndex, nextHook, followingHook, tempValue = 0;
       totalHooks = connectorData.hook.length;
       if (useStartAdjustment) {
-        if (stubIndex === connectorDefines.A_Cr) {
-          currentIndex = connectorDefines.A_Cr;
+        if (stubIndex === connectorDefines.ACr) {
+          currentIndex = connectorDefines.ACr;
           nextHook = connectorData.hook[currentIndex];
           T3Gv.opt.ConnectorWidthList[currentIndex] = nextHook.endpoint.h - nextHook.startpoint.h - nextHook.gap;
         }
@@ -3436,16 +3397,16 @@ class Connector extends BaseDrawObject {
             currentIndex++;
           }
         }
-        if (endShapeIndex === connectorDefines.A_Cl) {
-          currentIndex = connectorDefines.A_Cl;
+        if (endShapeIndex === connectorDefines.ACl) {
+          currentIndex = connectorDefines.ACl;
           nextHook = connectorData.hook[currentIndex];
           T3Gv.opt.ConnectorWidthList[currentIndex] = nextHook.startpoint.h - nextHook.endpoint.h - nextHook.gap;
         }
       } else {
         let startOffset = 0;
-        if (stubIndex === connectorDefines.A_Cl) {
+        if (stubIndex === connectorDefines.ACl) {
           startOffset = 0;
-          currentIndex = connectorDefines.A_Cl;
+          currentIndex = connectorDefines.ACl;
           nextHook = connectorData.hook[currentIndex];
           T3Gv.opt.ConnectorWidthList[currentIndex] = nextHook.startpoint.h - nextHook.endpoint.h - nextHook.gap;
         }
@@ -3460,8 +3421,8 @@ class Connector extends BaseDrawObject {
             currentIndex++;
           }
         }
-        if (endShapeIndex === connectorDefines.A_Cr) {
-          currentIndex = connectorDefines.A_Cr;
+        if (endShapeIndex === connectorDefines.ACr) {
+          currentIndex = connectorDefines.ACr;
           nextHook = connectorData.hook[currentIndex];
           T3Gv.opt.ConnectorWidthList[currentIndex] = nextHook.endpoint.h - nextHook.startpoint.h - nextHook.gap;
         }
@@ -3490,7 +3451,7 @@ class Connector extends BaseDrawObject {
         currentHook = this.arraylist.hook[T3Gv.opt.actionTriggerData];
         T3Gv.opt.OldConnectorExtra = currentHook.extra;
         totalHooks = this.arraylist.hook.length;
-        if (isLinear && stubIndex === connectorDefines.A_Cr) {
+        if (isLinear && stubIndex === connectorDefines.ACr) {
           for (index = OptConstant.ConnectorDefines.NSkip; index < connectorMultiplier; index++) {
             currentHook = this.arraylist.hook[index];
             processHook(currentHook, index);
@@ -3505,15 +3466,15 @@ class Connector extends BaseDrawObject {
       case OptConstant.ActionTriggerType.LineEnd:
         totalHooks = this.arraylist.hook.length;
         updateConnectorWidths(this.arraylist, false, stubIndex, endShapeIndex);
-        if (!(stubIndex === connectorDefines.A_Cl && endShapeIndex === connectorDefines.A_Cl)) {
+        if (!(stubIndex === connectorDefines.ACl && endShapeIndex === connectorDefines.ACl)) {
           connectorMultiplier = 0;
         }
         for (index = OptConstant.ConnectorDefines.NSkip + connectorMultiplier; index < totalHooks; index++) {
           currentHook = this.arraylist.hook[index];
           processHook(currentHook, index);
         }
-        if (totalHooks && this.arraylist.hook[connectorDefines.A_Cr].id >= 0) {
-          processHook(this.arraylist.hook[connectorDefines.A_Cr], connectorDefines.A_Cr);
+        if (totalHooks && this.arraylist.hook[connectorDefines.ACr].id >= 0) {
+          processHook(this.arraylist.hook[connectorDefines.ACr], connectorDefines.ACr);
         }
         break;
       case OptConstant.ActionTriggerType.LineStart:
@@ -3522,15 +3483,15 @@ class Connector extends BaseDrawObject {
           connectorMultiplier = 1;
         }
         updateConnectorWidths(this.arraylist, true, stubIndex, endShapeIndex);
-        if (!(stubIndex === connectorDefines.A_Cr && endShapeIndex === connectorDefines.A_Cr)) {
+        if (!(stubIndex === connectorDefines.ACr && endShapeIndex === connectorDefines.ACr)) {
           connectorMultiplier = 0;
         }
         for (index = totalHooks - 1 - connectorMultiplier; index >= OptConstant.ConnectorDefines.NSkip; index--) {
           currentHook = this.arraylist.hook[index];
           processHook(currentHook, index);
         }
-        if (totalHooks && this.arraylist.hook[connectorDefines.A_Cl].id >= 0) {
-          processHook(this.arraylist.hook[connectorDefines.A_Cl], connectorDefines.A_Cl);
+        if (totalHooks && this.arraylist.hook[connectorDefines.ACl].id >= 0) {
+          processHook(this.arraylist.hook[connectorDefines.ACl], connectorDefines.ACl);
         }
         break;
       case OptConstant.ActionTriggerType.ConnectorRerp:
@@ -3539,14 +3500,14 @@ class Connector extends BaseDrawObject {
         if (retrievedObject && linksObject) {
           childHookList = HookUtil.GetHookList(linksObject, childHookList, actionEvent, retrievedObject, NvConstant.ListCodes.ChildrenOnly, localParameters);
           totalHooks = childHookList.length;
-          if (this.arraylist.hook[connectorDefines.A_Cl].id >= 0) {
-            hookIndexToRemove = childHookList.indexOf(this.arraylist.hook[connectorDefines.A_Cl].id);
+          if (this.arraylist.hook[connectorDefines.ACl].id >= 0) {
+            hookIndexToRemove = childHookList.indexOf(this.arraylist.hook[connectorDefines.ACl].id);
             if (hookIndexToRemove >= 0) {
               childHookList.splice(hookIndexToRemove, 1);
             }
           }
-          if (this.arraylist.hook[connectorDefines.A_Cr].id >= 0) {
-            hookIndexToRemove = childHookList.indexOf(this.arraylist.hook[connectorDefines.A_Cr].id);
+          if (this.arraylist.hook[connectorDefines.ACr].id >= 0) {
+            hookIndexToRemove = childHookList.indexOf(this.arraylist.hook[connectorDefines.ACr].id);
             if (hookIndexToRemove >= 0) {
               childHookList.splice(hookIndexToRemove, 1);
             }
@@ -3704,9 +3665,9 @@ class Connector extends BaseDrawObject {
     const connectorDefines = OptConstant.ConnectorDefines;
 
     // Determine if "both sides" mode is active.
-    const isBothSides = (this.arraylist.styleflags & styleConstants.SEDA_BothSides) ||
-      ((this.arraylist.styleflags & styleConstants.SEDA_PerpConn) === 0);
-    const reverseColumnFlag = this.arraylist.styleflags & styleConstants.SEDA_ReverseCol;
+    const isBothSides = (this.arraylist.styleflags & styleConstants.BothSides) ||
+      ((this.arraylist.styleflags & styleConstants.PerpConn) === 0);
+    const reverseColumnFlag = this.arraylist.styleflags & styleConstants.ReverseCol;
 
     // If there is no arraylist, simply return the start point.
     resultPoint.x = this.StartPoint.x;
@@ -3721,7 +3682,7 @@ class Connector extends BaseDrawObject {
 
     // Check if hooks are not sufficient or object is marked not visible (and not of a special branch type).
     if (
-      (this.arraylist.hook.length <= connectorDefines.SEDA_NSkip ||
+      (this.arraylist.hook.length <= connectorDefines.NSkip ||
         (this.flags & NvConstant.ObjFlags.NotVisible)) /*&&
       this.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/
     ) {
@@ -3729,7 +3690,7 @@ class Connector extends BaseDrawObject {
       if (!isBothSides) {
         verticalFlag = !verticalFlag;
         // Use the SEDA_StartLeft flag if available.
-        let startLeftFlag = Boolean(this.arraylist.styleflags & styleConstants.SEDA_StartLeft);
+        let startLeftFlag = Boolean(this.arraylist.styleflags & styleConstants.StartLeft);
         if (startLeftFlag) {
           verticalFlag = !verticalFlag;
         }
@@ -3738,7 +3699,7 @@ class Connector extends BaseDrawObject {
         // (Not reassigning verticalFlag in this branch.)
       }
       // Choose appropriate hook point from the first hook.
-      const firstHookPoint = (this.arraylist.styleflags & styleConstants.SEDA_StartLeft)
+      const firstHookPoint = (this.arraylist.styleflags & styleConstants.StartLeft)
         ? this.arraylist.hook[0].endpoint
         : this.arraylist.hook[0].startpoint;
       if (verticalFlag) {
@@ -3760,8 +3721,8 @@ class Connector extends BaseDrawObject {
     }
 
     // Calculate intermediate points based on connector hooks.
-    const hookLeftData = this.arraylist.hook[connectorDefines.A_Cl];
-    const hookRightData = this.arraylist.hook[connectorDefines.A_Cr];
+    const hookLeftData = this.arraylist.hook[connectorDefines.ACl];
+    const hookRightData = this.arraylist.hook[connectorDefines.ACr];
 
     // Points computed from the hook endpoints and startpoints.
     let leftEndpointPoint: Point = { x: 0, y: 0 };
@@ -3844,77 +3805,68 @@ class Connector extends BaseDrawObject {
     const connectorDefs = OptConstant.ConnectorDefines;
     const hookPoints = OptConstant.HookPts;
 
-    // For certain object types, force flowConnectorFlag to false.
-    switch (this.objecttype) {
-      // case NvConstant.FNObjectTypes.SD_OBJT_STEPCHARTH_BRANCH:
-      // case NvConstant.FNObjectTypes.SD_OBJT_STEPCHARTV_BRANCH:
-      //   // Disable flow connector for these object types.
-      //   // (Do not use flowConnectorFlag; we simply ignore it)
-      //   break;
-    }
-
     // If HookNoExtra flag is set, disable end connector flag.
     if (hookFlags & NvConstant.HookFlags.LcHookNoExtra) {
       isEndConnector = false;
     }
 
-    const effectiveHookCount = hookCount - connectorDefs.SEDA_NSkip;
+    const effectiveHookCount = hookCount - connectorDefs.NSkip;
     if (effectiveHookCount <= 0 && !isEndConnector) {
       targetPoints.push(new Point(-3, 0));
     } else {
       // Push basic hook index points.
-      for (let index = connectorDefs.SEDA_NSkip; index < hookCount + 1; index++) {
-        targetPoints.push(new Point(index - connectorDefs.SEDA_NSkip, 0));
+      for (let index = connectorDefs.NSkip; index < hookCount + 1; index++) {
+        targetPoints.push(new Point(index - connectorDefs.NSkip, 0));
       }
       // Handle the End Connector case.
       if (isEndConnector) {
         if (
           (hookFlags & NvConstant.HookFlags.LcForceEnd) === 0 &&
-          (this.arraylist.hook[connectorDefs.A_Cl].index >= 0 || this.arraylist.hook[connectorDefs.A_Cr].index >= 0)
+          (this.arraylist.hook[connectorDefs.ACl].index >= 0 || this.arraylist.hook[connectorDefs.ACr].index >= 0)
         ) {
           isEndConnector = false;
         } else if (this.hooks.length) {
           switch (this.hooks[0].hookpt) {
-            case hookPoints.SED_LL:
-            case hookPoints.SED_LT:
-              targetPoints.push(new Point(-connectorDefs.A_Cr, 0));
+            case hookPoints.LL:
+            case hookPoints.LT:
+              targetPoints.push(new Point(-connectorDefs.ACr, 0));
               break;
             default:
-              targetPoints.push(new Point(-connectorDefs.A_Cl, 0));
+              targetPoints.push(new Point(-connectorDefs.ACl, 0));
           }
         } else {
-          targetPoints.push(new Point(-connectorDefs.A_Cl, 0));
+          targetPoints.push(new Point(-connectorDefs.ACl, 0));
         }
       }
 
       // Handle flow connector style.
       if (flowConnectorFlag && isLinear) {
-        for (let index = connectorDefs.SEDA_NSkip; index < hookCount; index++) {
+        for (let index = connectorDefs.NSkip; index < hookCount; index++) {
           if (excludedHookId && this.arraylist.hook[index].id === excludedHookId) {
             continue;
           }
-          targetPoints.push(new Point(index - connectorDefs.SEDA_NSkip, connectorDefs.SEDAC_ABOVE));
-          targetPoints.push(new Point(index - connectorDefs.SEDA_NSkip, connectorDefs.SEDAC_BELOW));
+          targetPoints.push(new Point(index - connectorDefs.NSkip, connectorDefs.Above));
+          targetPoints.push(new Point(index - connectorDefs.NSkip, connectorDefs.Below));
         }
         if (this.hooks.length) {
           switch (this.hooks[0].hookpt) {
             case OptConstant.HookPts.LL:
             case OptConstant.HookPts.LT:
-              targetPoints.push(new Point(0, connectorDefs.SEDAC_PARENT));
+              targetPoints.push(new Point(0, connectorDefs.Parent));
               break;
             default:
-              targetPoints.push(new Point(effectiveHookCount, connectorDefs.SEDAC_PARENT));
+              targetPoints.push(new Point(effectiveHookCount, connectorDefs.Parent));
           }
         }
       } else if (flowConnectorFlag && isRadial) {
-        for (let index = connectorDefs.SEDA_NSkip; index < hookCount; index++) {
+        for (let index = connectorDefs.NSkip; index < hookCount; index++) {
           if (excludedHookId && this.arraylist.hook[index].id === excludedHookId) {
             continue;
           }
           if (isStartLeft) {
-            targetPoints.push(new Point(index - connectorDefs.SEDA_NSkip, connectorDefs.SEDAC_ABOVE));
+            targetPoints.push(new Point(index - connectorDefs.NSkip, connectorDefs.Above));
           } else {
-            targetPoints.push(new Point(index - connectorDefs.SEDA_NSkip, connectorDefs.SEDAC_BELOW));
+            targetPoints.push(new Point(index - connectorDefs.NSkip, connectorDefs.Below));
           }
         }
       }
@@ -3932,35 +3884,11 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: ChangeHook called with", { triggerEvent, isUserInitiated, additionalInfo });
 
     const styleConstants = OptConstant.AStyles;
-    const autoFormatFlags = Business.FlowChart.AutoFormatFlags;
+    const autoFormatFlags =0;
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-    const isLinear = (this.arraylist.styleflags & styleConstants.SEDA_Linear) > 0;
-    const isFlowConnector = this.arraylist.styleflags & styleConstants.SEDA_FlowConn;
+    const isLinear = (this.arraylist.styleflags & styleConstants.Linear) > 0;
+    const isFlowConnector = this.arraylist.styleflags & styleConstants.FlowConn;
     let blockIdToUse = -1;
-
-    if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector) {
-      const hookObjectId = this.hooks[0].objid;
-      const shapeObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
-      if (shapeObject && shapeObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
-        if (isLinear) {
-          if (!isUserInitiated) {
-            blockIdToUse = this.BlockID;
-          }
-          if (1 === GlobalDatagFlowChartManager.SED_ArrayShapeIsThreeWay(shapeObject, this.BlockID, blockIdToUse)) {
-            GlobalDatagFlowChartManager.AutoFormatShape(hookObjectId, autoFormatFlags.SD_AutoFF_ToDiamond | autoFormatFlags.SD_AutoFF_ToDecStyle);
-          }
-        } else {
-          if (isUserInitiated) {
-            GlobalDatagFlowChartManager.AutoFormatShape(hookObjectId, autoFormatFlags.SD_AutoFF_ToDecStyle);
-          } else {
-            blockIdToUse = this.BlockID;
-            if (0 === GlobalDatagFlowChartManager.SED_ArrayShapeIsThreeWay(shapeObject, this.BlockID, blockIdToUse)) {
-              GlobalDatagFlowChartManager.AutoFormatShape(hookObjectId, autoFormatFlags.SD_AutoFF_ToDefStyle);
-            }
-          }
-        }
-      }
-    }
 
     T3Util.Log("S.Connector: ChangeHook completed");
   }
@@ -4009,16 +3937,9 @@ class Connector extends BaseDrawObject {
               this.PrRemoveHookedObject(targetHookId, hookIndexFound);
               this.PrAddHookedObject(targetHookId, newHookIndexInfo.x, storedTextId);
             }
-            if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector) {
-              GlobalDatagFlowChartManager.AutoFormat(this, -1);
-              GlobalDatagFlowChartManager.AutoFormat(this, newHookIndexInfo.x);
-            }
           }
         } else {
           this.PrAddHookedObject(targetHookId, newHookIndexInfo.x, -1);
-          if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector) {
-            GlobalDatagFlowChartManager.AutoFormat(this, newHookIndexInfo.x);
-          }
         }
       } else if (hookIndexFound >= 0) {
         // Remove any associated text block if exists.
@@ -4031,12 +3952,7 @@ class Connector extends BaseDrawObject {
 
         // Reset the subtype if the target object is a task.
         const targetObject = ObjectUtil.GetObjectPtr(targetHookId, true);
-        // if (targetObject && targetObject.subtype === NvConstant.ObjectSubTypes.SD_SUBT_TASK) {
-        //   targetObject.subtype = 0;
-        // }
-        if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector) {
-          GlobalDatagFlowChartManager.AutoFormat(this, -1);
-        }
+
         if (isLinear && hookIndexFound === skipCount && this.arraylist.hook.length >= skipCount) {
           if (this.arraylist.hook.length === skipCount) {
             for (let index = 0; index < skipCount; index++) {
@@ -4099,8 +4015,8 @@ class Connector extends BaseDrawObject {
 
     const styleConstants = OptConstant.AStyles;
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-    const isFlowConnector = Boolean(this.arraylist.styleflags & styleConstants.SEDA_FlowConn);
-    const autoFormatFlags = Business.FlowChart.AutoFormatFlags;
+    const isFlowConnector = Boolean(this.arraylist.styleflags & styleConstants.FlowConn);
+    const autoFormatFlags =0;
 
     // Loop through each hook and delete associated text objects if they exist
     const hookCount = this.arraylist.hook.length;
@@ -4116,27 +4032,6 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    // If auto-format is enabled for the session, the connector is a flow connector,
-    // and there is at least one hook, then auto-format the associated shape.
-    if (sessionObject.flags & OptConstant.SessionFlags.AutoFormat && isFlowConnector && this.hooks.length) {
-      const firstHookObjectId = this.hooks[0].objid;
-      const firstHookObject = ObjectUtil.GetObjectPtr(firstHookObjectId, false);
-      if (firstHookObject && firstHookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
-        const shapeFormatType = GlobalDatagFlowChartManager.SED_ArrayShapeIsThreeWay(firstHookObject, -1, this.BlockID);
-        T3Util.Log("S.Connector: Auto-format shape check returned format type", shapeFormatType, "for shape id", firstHookObjectId);
-
-        if (shapeFormatType === 0) {
-          GlobalDatagFlowChartManager.AutoFormatShape(firstHookObjectId,
-            autoFormatFlags.SD_AutoFF_ToRect | autoFormatFlags.SD_AutoFF_ToDefStyle | autoFormatFlags.SD_AutFF_Force);
-          T3Util.Log("S.Connector: Auto-format applied using ToRect, ToDefStyle, and Force flags");
-        } else if (shapeFormatType === 2) {
-          GlobalDatagFlowChartManager.AutoFormatShape(firstHookObjectId,
-            autoFormatFlags.SD_AutoFF_ToRect | autoFormatFlags.SD_AutoFF_ToDecStyle);
-          T3Util.Log("S.Connector: Auto-format applied using ToRect and ToDecStyle flags");
-        }
-      }
-    }
-
     T3Util.Log("S.Connector: DeleteObject completed with no output");
   }
 
@@ -4144,8 +4039,8 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: IsAsstConnector called");
 
     const styles = OptConstant.AStyles;
-    const isLinear = (this.arraylist.styleflags & styles.SEDA_Linear) > 0;
-    const isPerpConn = (this.arraylist.styleflags & styles.SEDA_PerpConn) > 0;
+    const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
+    const isPerpConn = (this.arraylist.styleflags & styles.PerpConn) > 0;
 
     const result = isLinear && isPerpConn;
     T3Util.Log("S.Connector: IsAsstConnector returning", result);
@@ -4157,9 +4052,9 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: AllowCurveOnConnector called with", curveParams);
 
     const styles = OptConstant.AStyles;
-    const isLinear = (this.arraylist.styleflags & styles.SEDA_Linear) === 0;
-    const isBothSides = (this.arraylist.styleflags & styles.SEDA_BothSides) === 0;
-    const isRadial = (this.arraylist.styleflags & styles.SEDA_Radial) === 0;
+    const isLinear = (this.arraylist.styleflags & styles.Linear) === 0;
+    const isBothSides = (this.arraylist.styleflags & styles.BothSides) === 0;
+    const isRadial = (this.arraylist.styleflags & styles.Radial) === 0;
     const isTiltZero = this.arraylist.tilt === 0;
     const isAngleZero = this.arraylist.angle === 0;
 
@@ -4201,8 +4096,8 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: IsGenoConnector called");
 
     const styles = OptConstant.AStyles;
-    const isLinear = (this.arraylist.styleflags & styles.SEDA_Linear) > 0;
-    const isGenoConn = (this.arraylist.styleflags & styles.SEDA_GenoConn) > 0;
+    const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
+    const isGenoConn = (this.arraylist.styleflags & styles.GenoConn) > 0;
 
     const result = isLinear && isGenoConn;
     T3Util.Log("S.Connector: IsGenoConnector returning", result);
@@ -4215,7 +4110,7 @@ class Connector extends BaseDrawObject {
 
     const isCoManager = (this.arraylist.styleflags & OptConstant.AStyles.CoManager) > 0;
     const styles = OptConstant.AStyles;
-    const startLeft = this.arraylist.styleflags & styles.SEDA_StartLeft;
+    const startLeft = this.arraylist.styleflags & styles.StartLeft;
 
     if (isCoManager && output) {
       if (this.flags & NvConstant.ObjFlags.Obj1) {
@@ -4315,7 +4210,7 @@ class Connector extends BaseDrawObject {
     // Calculate the length of inputPoints and hooks adjusted by skip constant
     numberOfInputPoints = inputPoints.length;
     hookCount = this.arraylist.hook.length;
-    remainingHooks = hookCount - connectorDefs.SEDA_NSkip;
+    remainingHooks = hookCount - connectorDefs.NSkip;
     if (remainingHooks < 0) {
       remainingHooks = 0;
     }
@@ -4360,10 +4255,10 @@ class Connector extends BaseDrawObject {
           }
           T3Util.Log("S.Connector: GetPerimeterPoints output:", resultPoints);
           return resultPoints;
-        } else if (inputPoints[index].x === -connectorDefs.A_Cl) {
-          currentHook = this.arraylist.hook[connectorDefs.A_Cl];
-        } else if (inputPoints[index].x === -connectorDefs.A_Cr) {
-          currentHook = this.arraylist.hook[connectorDefs.A_Cr];
+        } else if (inputPoints[index].x === -connectorDefs.ACl) {
+          currentHook = this.arraylist.hook[connectorDefs.ACl];
+        } else if (inputPoints[index].x === -connectorDefs.ACr) {
+          currentHook = this.arraylist.hook[connectorDefs.ACr];
         }
         if (currentHook) {
           if (this.vertical) {
@@ -4393,7 +4288,7 @@ class Connector extends BaseDrawObject {
     // Process the case when there is exactly one input point where x is non-negative.
     if (numberOfInputPoints === 1) {
       resultPoints.push(new Point(0, 0));
-      tempIndex = inputPoints[0].x + connectorDefs.SEDA_NSkip;
+      tempIndex = inputPoints[0].x + connectorDefs.NSkip;
       if (tempIndex >= hookCount) {
         tempIndex = hookCount - 1;
       }
@@ -4411,21 +4306,21 @@ class Connector extends BaseDrawObject {
       // When more than one input point exists, use the polyline points.
       polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, false, null);
       for (index = 0; index < numberOfInputPoints; index++) {
-        if (inputPoints[index].y === connectorDefs.SEDAC_PARENT) {
+        if (inputPoints[index].y === connectorDefs.Parent) {
           // If y indicates a "parent" hook point.
           if (inputPoints[index].x === 0) {
-            tempIndex = 2 * connectorDefs.A_Cl;
+            tempIndex = 2 * connectorDefs.ACl;
             resultPoints.push(new Point(polyPoints[tempIndex + 1].x, polyPoints[tempIndex + 1].y));
           } else {
-            tempIndex = 2 * connectorDefs.A_Cr;
+            tempIndex = 2 * connectorDefs.ACr;
             resultPoints.push(new Point(polyPoints[tempIndex + 1].x, polyPoints[tempIndex + 1].y));
           }
         } else if (index === 0 || inputPoints[index].x === 0) {
-          tempIndex = 2 * (inputPoints[index].x + connectorDefs.SEDA_NSkip);
+          tempIndex = 2 * (inputPoints[index].x + connectorDefs.NSkip);
           let startY = this.StartPoint.y;
           let startX = this.StartPoint.x;
           if (remainingHooks > 1) {
-            polyIndex = 2 * (inputPoints[index].x + 1 + connectorDefs.SEDA_NSkip);
+            polyIndex = 2 * (inputPoints[index].x + 1 + connectorDefs.NSkip);
             computedY = polyPoints[polyIndex].y;
             midValue = polyPoints[polyIndex].x;
           } else {
@@ -4434,7 +4329,7 @@ class Connector extends BaseDrawObject {
           }
           if (this.vertical) {
             switch (inputPoints[index].y) {
-              case connectorDefs.SEDAC_ABOVE:
+              case connectorDefs.Above:
                 if (flagRadial) {
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[tempIndex + 1].x - childFrame.width - this.arraylist.ht, polyPoints[tempIndex + 1].y));
@@ -4443,7 +4338,7 @@ class Connector extends BaseDrawObject {
                   resultPoints.push(new Point(computedX, (computedY + startY) / 2));
                 }
                 break;
-              case connectorDefs.SEDAC_BELOW:
+              case connectorDefs.Below:
                 if (flagRadial) {
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[tempIndex + 1].x + childFrame.width + this.arraylist.ht, polyPoints[tempIndex + 1].y));
@@ -4461,7 +4356,7 @@ class Connector extends BaseDrawObject {
             }
           } else {
             switch (inputPoints[index].y) {
-              case connectorDefs.SEDAC_ABOVE:
+              case connectorDefs.Above:
                 if (flagRadial) {
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[tempIndex + 1].x, polyPoints[tempIndex + 1].y - childFrame.height - this.arraylist.ht));
@@ -4470,7 +4365,7 @@ class Connector extends BaseDrawObject {
                   resultPoints.push(new Point((midValue + startX) / 2, computedValue));
                 }
                 break;
-              case connectorDefs.SEDAC_BELOW:
+              case connectorDefs.Below:
                 if (flagRadial) {
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[tempIndex + 1].x, polyPoints[tempIndex + 1].y + childFrame.height + this.arraylist.ht));
@@ -4488,7 +4383,7 @@ class Connector extends BaseDrawObject {
             }
           }
           if (flagBothSides && index + 1 < numberOfInputPoints) {
-            tempIndex = 2 * (inputPoints[++index].x + connectorDefs.SEDA_NSkip);
+            tempIndex = 2 * (inputPoints[++index].x + connectorDefs.NSkip);
             if (tempIndex < polyPoints.length - 1) {
               if (this.vertical) {
                 resultPoints.push(new Point(polyPoints[tempIndex + 1].x, polyPoints[tempIndex].y - 10));
@@ -4498,11 +4393,11 @@ class Connector extends BaseDrawObject {
             }
           }
         } else if (inputPoints[index].x > 0 && inputPoints[index].x < remainingHooks) {
-          tempIndex = 2 * (inputPoints[index].x - 1 + connectorDefs.SEDA_NSkip);
-          polyIndex = 2 * (inputPoints[index].x + connectorDefs.SEDA_NSkip);
+          tempIndex = 2 * (inputPoints[index].x - 1 + connectorDefs.NSkip);
+          polyIndex = 2 * (inputPoints[index].x + connectorDefs.NSkip);
           if (inputPoints[index].x < remainingHooks - 1) {
-            computedY = polyPoints[2 * (inputPoints[index].x + 1 + connectorDefs.SEDA_NSkip)].y;
-            midValue = polyPoints[2 * (inputPoints[index].x + 1 + connectorDefs.SEDA_NSkip)].x;
+            computedY = polyPoints[2 * (inputPoints[index].x + 1 + connectorDefs.NSkip)].y;
+            midValue = polyPoints[2 * (inputPoints[index].x + 1 + connectorDefs.NSkip)].x;
           } else {
             computedY = this.EndPoint.y;
             midValue = this.EndPoint.x;
@@ -4510,11 +4405,11 @@ class Connector extends BaseDrawObject {
           if (this.vertical) {
             if (flagLinear) {
               switch (inputPoints[index].y) {
-                case connectorDefs.SEDAC_ABOVE:
+                case connectorDefs.Above:
                   computedX = polyPoints[polyIndex + 1].x - flowConnectorSlop;
                   resultPoints.push(new Point(computedX, (computedY + polyPoints[polyIndex + 1].y) / 2));
                   break;
-                case connectorDefs.SEDAC_BELOW:
+                case connectorDefs.Below:
                   computedX = polyPoints[polyIndex + 1].x + flowConnectorSlop;
                   resultPoints.push(new Point(computedX, (computedY + polyPoints[polyIndex + 1].y) / 2));
                   break;
@@ -4524,11 +4419,11 @@ class Connector extends BaseDrawObject {
               }
             } else if (flagRadial) {
               switch (inputPoints[index].y) {
-                case connectorDefs.SEDAC_ABOVE:
+                case connectorDefs.Above:
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[polyIndex + 1].x - childFrame.width - this.arraylist.ht, polyPoints[polyIndex + 1].y));
                   break;
-                case connectorDefs.SEDAC_BELOW:
+                case connectorDefs.Below:
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[polyIndex + 1].x + childFrame.width + this.arraylist.ht, polyPoints[polyIndex + 1].y));
                   break;
@@ -4547,11 +4442,11 @@ class Connector extends BaseDrawObject {
           } else {
             if (flagLinear) {
               switch (inputPoints[index].y) {
-                case connectorDefs.SEDAC_ABOVE:
+                case connectorDefs.Above:
                   let computedYValue = polyPoints[tempIndex].y - flowConnectorDisp;
                   resultPoints.push(new Point((midValue + this.StartPoint.x) / 2, computedYValue));
                   break;
-                case connectorDefs.SEDAC_BELOW:
+                case connectorDefs.Below:
                   computedYValue = polyPoints[tempIndex].y + flowConnectorDisp;
                   resultPoints.push(new Point((midValue + this.StartPoint.x) / 2, computedYValue));
                   break;
@@ -4561,11 +4456,11 @@ class Connector extends BaseDrawObject {
               }
             } else if (flagRadial) {
               switch (inputPoints[index].y) {
-                case connectorDefs.SEDAC_ABOVE:
+                case connectorDefs.Above:
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[polyIndex + 1].x, polyPoints[polyIndex + 1].y - childFrame.height - this.arraylist.ht));
                   break;
-                case connectorDefs.SEDAC_BELOW:
+                case connectorDefs.Below:
                   childFrame = this.GetChildFrame(inputPoints[index].x);
                   resultPoints.push(new Point(polyPoints[polyIndex + 1].x, polyPoints[polyIndex + 1].y + childFrame.height + this.arraylist.ht));
                   break;
@@ -4586,7 +4481,7 @@ class Connector extends BaseDrawObject {
             }
           }
         } else if (index === remainingHooks) {
-          tempIndex = 2 * (inputPoints[index - 1].x + connectorDefs.SEDA_NSkip);
+          tempIndex = 2 * (inputPoints[index - 1].x + connectorDefs.NSkip);
           if (this.vertical) {
             if (flagBothSides) {
               resultPoints.push(new Point(polyPoints[tempIndex - 1].x, polyPoints[tempIndex].y + 10));
@@ -4638,31 +4533,31 @@ class Connector extends BaseDrawObject {
     if (this.arraylist.angle && this.arraylist.hook.length && targetHook !== currentHook) {
       let tempGap, hookObject;
 
-      if (this.arraylist.hook[connectorDefines.A_Cl].id >= 0) {
-        this.arraylist.hook[connectorDefines.A_Cr].id = this.arraylist.hook[connectorDefines.A_Cl].id;
-        this.arraylist.hook[connectorDefines.A_Cl].id = -1;
+      if (this.arraylist.hook[connectorDefines.ACl].id >= 0) {
+        this.arraylist.hook[connectorDefines.ACr].id = this.arraylist.hook[connectorDefines.ACl].id;
+        this.arraylist.hook[connectorDefines.ACl].id = -1;
 
-        tempGap = this.arraylist.hook[connectorDefines.A_Cr].gap;
-        this.arraylist.hook[connectorDefines.A_Cr].gap = this.arraylist.hook[connectorDefines.A_Cl].gap;
-        this.arraylist.hook[connectorDefines.A_Cl].gap = tempGap;
+        tempGap = this.arraylist.hook[connectorDefines.ACr].gap;
+        this.arraylist.hook[connectorDefines.ACr].gap = this.arraylist.hook[connectorDefines.ACl].gap;
+        this.arraylist.hook[connectorDefines.ACl].gap = tempGap;
 
-        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cr].id, true);
+        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.ACr].id, true);
         if (hookObject && hookObject.hooks.length) {
           hookObject.hooks[0].hookpt = OptConstant.HookPts.AKCT;
-          hookObject.hooks[0].connect.x = -connectorDefines.A_Cr;
+          hookObject.hooks[0].connect.x = -connectorDefines.ACr;
         }
-      } else if (this.arraylist.hook[connectorDefines.A_Cr].id >= 0) {
-        this.arraylist.hook[connectorDefines.A_Cl].id = this.arraylist.hook[connectorDefines.A_Cr].id;
-        this.arraylist.hook[connectorDefines.A_Cr].id = -1;
+      } else if (this.arraylist.hook[connectorDefines.ACr].id >= 0) {
+        this.arraylist.hook[connectorDefines.ACl].id = this.arraylist.hook[connectorDefines.ACr].id;
+        this.arraylist.hook[connectorDefines.ACr].id = -1;
 
-        tempGap = this.arraylist.hook[connectorDefines.A_Cl].gap;
-        this.arraylist.hook[connectorDefines.A_Cl].gap = this.arraylist.hook[connectorDefines.A_Cr].gap;
-        this.arraylist.hook[connectorDefines.A_Cr].gap = tempGap;
+        tempGap = this.arraylist.hook[connectorDefines.ACl].gap;
+        this.arraylist.hook[connectorDefines.ACr].gap = this.arraylist.hook[connectorDefines.ACr].gap;
+        this.arraylist.hook[connectorDefines.ACr].gap = tempGap;
 
-        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.A_Cl].id, true);
+        hookObject = ObjectUtil.GetObjectPtr(this.arraylist.hook[connectorDefines.ACl].id, true);
         if (hookObject && hookObject.hooks.length) {
           hookObject.hooks[0].hookpt = OptConstant.HookPts.AKCB;
-          hookObject.hooks[0].connect.x = -connectorDefines.A_Cl;
+          hookObject.hooks[0].connect.x = -connectorDefines.ACl;
         }
       }
 
@@ -4685,9 +4580,9 @@ class Connector extends BaseDrawObject {
     }
 
     const totalHooks = this.arraylist.hook.length;
-    const bothSides = this.arraylist.styleflags & styles.SEDA_BothSides ||
-      0 == (this.arraylist.styleflags & styles.SEDA_PerpConn);
-    const isLinear = (this.arraylist.styleflags & styles.SEDA_Linear) > 0;
+    const bothSides = this.arraylist.styleflags & styles.BothSides ||
+      0 == (this.arraylist.styleflags & styles.PerpConn);
+    const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
 
     if (totalHooks > 1 || isLinear) {
       hookPoints.push(new Point(-1, 0));
@@ -5045,10 +4940,6 @@ class Connector extends BaseDrawObject {
         Se = !1;
       else switch (this.objecttype) {
         case ue.CauseEffectMain:
-        // case ue.SD_OBJT_CAUSEEFFECT_BRANCH:
-        //   p = !0,
-        //     Se = !1;
-        //   break;
         default:
           p = !0,
             Se = !0
@@ -5406,10 +5297,10 @@ class Connector extends BaseDrawObject {
           this.arraylist.angle ? l.endpoint.h = - l.gap : (
             l.endpoint.h = - l.gap - f,
             0 == (
-              re.moreflags/* & NvConstant.SessionMoreFlags.SEDSM_Swimlane_Rows*/
+              re.moreflags
             ) &&
             0 == (
-              re.moreflags /*& NvConstant.SessionMoreFlags.SwimlaneCols*/
+              re.moreflags
             ) &&
             h &&
             J &&
@@ -5424,10 +5315,10 @@ class Connector extends BaseDrawObject {
             this.arraylist.angle ? s.endpoint.h = y + s.gap : (
             s.endpoint.h = y + s.gap + L,
             0 == (
-              re.moreflags/* & NvConstant.SessionMoreFlags.SEDSM_Swimlane_Rows*/
+              re.moreflags
             ) &&
             0 == (
-              re.moreflags /*& NvConstant.SessionMoreFlags.SwimlaneCols*/
+              re.moreflags
             ) &&
             h &&
             J &&
@@ -5589,7 +5480,7 @@ class Connector extends BaseDrawObject {
     T3Util.Log("S.Connector: AdjustAngleConnector called");
 
     const connectorDefines = OptConstant.ConnectorDefines;
-    const minHooks = connectorDefines.SEDA_NSkip;
+    const minHooks = connectorDefines.NSkip;
     const totalHooks = this.arraylist.hook.length;
 
     if (totalHooks < minHooks) return;
@@ -5597,19 +5488,19 @@ class Connector extends BaseDrawObject {
     let hook, angleDisp;
 
     // Adjust the back hook
-    hook = this.arraylist.hook[connectorDefines.A_Bk];
+    hook = this.arraylist.hook[connectorDefines.ABk];
     angleDisp = this.GetAngleDisp(hook);
     hook.startpoint.v += angleDisp.start;
     hook.endpoint.v -= angleDisp.end;
 
     // Adjust the left hook
-    hook = this.arraylist.hook[connectorDefines.A_Cl];
+    hook = this.arraylist.hook[connectorDefines.ACl];
     angleDisp = this.GetAngleDisp(hook);
     hook.startpoint.v += angleDisp.start;
     hook.endpoint.v -= angleDisp.end;
 
     // Adjust the right hook
-    hook = this.arraylist.hook[connectorDefines.A_Cr];
+    hook = this.arraylist.hook[connectorDefines.ACr];
     angleDisp = this.GetAngleDisp(hook);
     hook.startpoint.v -= angleDisp.start;
     hook.endpoint.v -= angleDisp.end;
@@ -6398,17 +6289,17 @@ class Connector extends BaseDrawObject {
     let adjustment = 0;
 
     switch (hookedObject.hooks[0].hookpt) {
-      case hookPoints.SED_AKCT:
-        oppositeHookType = hookPoints.SED_AKCB;
+      case hookPoints.AKCT:
+        oppositeHookType = hookPoints.AKCB;
         break;
-      case hookPoints.SED_AKCB:
-        oppositeHookType = hookPoints.SED_AKCT;
+      case hookPoints.AKCB:
+        oppositeHookType = hookPoints.AKCT;
         break;
-      case hookPoints.SED_AKCR:
-        oppositeHookType = hookPoints.SED_AKCL;
+      case hookPoints.AKCR:
+        oppositeHookType = hookPoints.AKCL;
         break;
-      case hookPoints.SED_AKCL:
-        oppositeHookType = hookPoints.SED_AKCR;
+      case hookPoints.AKCL:
+        oppositeHookType = hookPoints.AKCR;
         break;
     }
 
@@ -6417,16 +6308,16 @@ class Connector extends BaseDrawObject {
 
       if (hookCoordinates) {
         switch (oppositeHookType) {
-          case hookPoints.SED_AKCT:
+          case hookPoints.AKCT:
             adjustment = hookCoordinates.y - hookedObject.Frame.y;
             break;
-          case hookPoints.SED_AKCB:
+          case hookPoints.AKCB:
             adjustment = hookCoordinates.y - hookedObject.Frame.y - hookedObject.Frame.height;
             break;
-          case hookPoints.SED_AKCR:
+          case hookPoints.AKCR:
             adjustment = hookCoordinates.x - hookedObject.Frame.x - hookedObject.Frame.width;
             break;
-          case hookPoints.SED_AKCL:
+          case hookPoints.AKCL:
             adjustment = hookCoordinates.x - hookedObject.Frame.x;
             break;
         }
@@ -6469,16 +6360,16 @@ class Connector extends BaseDrawObject {
       hookCoordinates = hookedObject.HookToPoint(hookPointType, null);
       if (hookCoordinates) {
         switch (hookPointType) {
-          case hookPointsConstants.SED_AKCT:
+          case hookPointsConstants.AKCT:
             leftAdjustment = hookCoordinates.y - hookedObject.Frame.y;
             break;
-          case hookPointsConstants.SED_AKCB:
+          case hookPointsConstants.AKCB:
             leftAdjustment = hookCoordinates.y - hookedObject.Frame.y - hookedObject.Frame.height;
             break;
-          case hookPointsConstants.SED_AKCR:
+          case hookPointsConstants.AKCR:
             leftAdjustment = hookCoordinates.x - hookedObject.Frame.x - hookedObject.Frame.width;
             break;
-          case hookPointsConstants.SED_AKCL:
+          case hookPointsConstants.AKCL:
             leftAdjustment = hookCoordinates.x - hookedObject.Frame.x;
             break;
         }
@@ -6528,9 +6419,9 @@ class Connector extends BaseDrawObject {
     if (targetObj == null) return null;
 
     // Determine some flags from this connector's properties
-    let isCoManager = this.arraylist.styleflags & styles.SEDA_CoManager;
+    let isCoManager = this.arraylist.styleflags & styles.CoManager;
     if (referenceConnector) isCoManager = false;
-    let isLinear = this.arraylist.styleflags & styles.SEDA_Linear;
+    let isLinear = this.arraylist.styleflags & styles.Linear;
     let isAssistant = this.IsAsstConnector();
     let isGeno = this.IsGenoConnector();
     if (ignoreGenoFlag) isGeno = false;
@@ -6552,8 +6443,8 @@ class Connector extends BaseDrawObject {
       }
 
       // Get profile from target connector
-      const bothSides = targetObj.arraylist.styleflags & styles.SEDA_BothSides ||
-        (targetObj.arraylist.styleflags & styles.SEDA_PerpConn) === 0;
+      const bothSides = targetObj.arraylist.styleflags & styles.BothSides ||
+        (targetObj.arraylist.styleflags & styles.PerpConn) === 0;
       if (targetObj.vertical === this.vertical) {
         resultProfile.frame.h = targetObj.arraylist.profile.h;
         resultProfile.frame.hdist = targetObj.arraylist.profile.hdist;
@@ -6562,7 +6453,7 @@ class Connector extends BaseDrawObject {
       } else {
         resultProfile.frame.v = targetObj.arraylist.profile.h;
         resultProfile.frame.vdist = targetObj.arraylist.profile.hdist;
-        if (targetObj.arraylist.styleflags & styles.SEDA_CoManager && this.arraylist.styleflags & styles.SEDA_ReverseCol) {
+        if (targetObj.arraylist.styleflags & styles.CoManager && this.arraylist.styleflags & styles.ReverseCol) {
           resultProfile.frame.h = targetObj.arraylist.profile.vdist;
           resultProfile.frame.hdist = targetObj.arraylist.profile.v;
         } else {
@@ -6682,23 +6573,23 @@ class Connector extends BaseDrawObject {
         sourceSteps = childObj.arraylist.steps;
         if (childObj.vertical === this.vertical) {
           // Adjust profile for same vertical orientation
-          if (childObj.arraylist.styleflags & styles.SEDA_ReverseCol)
+          if (childObj.arraylist.styleflags & styles.ReverseCol)
             offset.h = -offset.h;
           adjustedProfile.h = childObj.arraylist.profile.h + offset.h;
           adjustedProfile.hdist = childObj.arraylist.profile.hdist - offset.h;
           adjustedProfile.v = childObj.arraylist.profile.v + offset.v;
           adjustedProfile.vdist = childObj.arraylist.profile.vdist - offset.v;
         } else {
-          if (childObj.arraylist.styleflags & styles.SEDA_ReverseCol)
+          if (childObj.arraylist.styleflags & styles.ReverseCol)
             offset.v = -offset.v;
-          if (childObj.arraylist.styleflags & styles.SEDA_StartLeft && !bothSides) {
+          if (childObj.arraylist.styleflags & styles.StartLeft && !bothSides) {
             adjustedProfile.hdist = childObj.arraylist.profile.v + offset.h;
             adjustedProfile.h = childObj.arraylist.profile.vdist - offset.h;
           } else {
             adjustedProfile.h = childObj.arraylist.profile.v + offset.h;
             adjustedProfile.hdist = childObj.arraylist.profile.vdist - offset.h;
           }
-          if (childObj.arraylist.styleflags & styles.SEDA_ReverseCol) {
+          if (childObj.arraylist.styleflags & styles.ReverseCol) {
             adjustedProfile.vdist = childObj.arraylist.profile.h + offset.v;
             adjustedProfile.v = childObj.arraylist.profile.hdist - offset.v;
           } else {
@@ -6725,7 +6616,7 @@ class Connector extends BaseDrawObject {
               ));
             }
           } else {
-            let deltaH = (useStartPointFlag && (childObj.arraylist.styleflags & styles.SEDA_StartLeft)) ? -offset.h : offset.h;
+            let deltaH = (useStartPointFlag && (childObj.arraylist.styleflags & styles.StartLeft)) ? -offset.h : offset.h;
             if (t) {
               for (let i = 0; i < childStepsCount; i++) {
                 resultProfile.steps.push(new StepRect(
@@ -6752,7 +6643,7 @@ class Connector extends BaseDrawObject {
       // If child profile exists but not applicable for re-orientation, adjust steps accordingly.
       if (childObj) {
         let deltaV = t ? -offset.v : offset.v;
-        let deltaH = (childObj.arraylist.styleflags & styles.SEDA_StartLeft) ? -offset.h : offset.h;
+        let deltaH = (childObj.arraylist.styleflags & styles.StartLeft) ? -offset.h : offset.h;
         if (t) {
           for (let i = 0; i < sourceSteps.length; i++) {
             resultProfile.steps.push(new StepRect(
@@ -6804,9 +6695,9 @@ class Connector extends BaseDrawObject {
     let newHook = new SDHook();
     let useStub = false;
     const styles = OptConstant.AStyles;
-    const bothSides = (this.arraylist.styleflags & styles.SEDA_BothSides) || (this.arraylist.styleflags & styles.SEDA_PerpConn) === 0;
-    const isLinear = this.arraylist.styleflags & styles.SEDA_Linear;
-    const isRadial = this.arraylist.styleflags & styles.SEDA_Radial;
+    const bothSides = (this.arraylist.styleflags & styles.BothSides) || (this.arraylist.styleflags & styles.PerpConn) === 0;
+    const isLinear = this.arraylist.styleflags & styles.Linear;
+    const isRadial = this.arraylist.styleflags & styles.Radial;
 
     if (this.arraylist != null) {
       // Reset match size length
@@ -6955,19 +6846,19 @@ class Connector extends BaseDrawObject {
 
     let stubIndex = 0;
     const styles = OptConstant.AStyles;
-    const isDualSide = (this.arraylist.styleflags & styles.SEDA_BothSides) ||
-      ((this.arraylist.styleflags & styles.SEDA_PerpConn) === 0);
+    const isDualSide = (this.arraylist.styleflags & styles.BothSides) ||
+      ((this.arraylist.styleflags & styles.PerpConn) === 0);
     const connectorDefines = OptConstant.ConnectorDefines;
     const hookPoints = OptConstant.HookPts;
 
     if (isDualSide && this.hooks.length) {
       switch (this.hooks[0].hookpt) {
-        case hookPoints.SED_LL:
-        case hookPoints.SED_LT:
-          stubIndex = connectorDefines.A_Cl;
+        case hookPoints.LL:
+        case hookPoints.LT:
+          stubIndex = connectorDefines.ACl;
           break;
         default:
-          stubIndex = connectorDefines.A_Cr;
+          stubIndex = connectorDefines.ACr;
       }
     }
 
@@ -6984,14 +6875,14 @@ class Connector extends BaseDrawObject {
     const hookPoints = OptConstant.HookPts;
 
     // Check if the connector has the "EndConn" flag and that hooks are available.
-    if ((this.arraylist.styleflags & styles.SEDA_EndConn) && this.hooks.length > 0) {
+    if ((this.arraylist.styleflags & styles.EndConn) && this.hooks.length > 0) {
       switch (this.hooks[0].hookpt) {
-        case hookPoints.SED_LL:
-        case hookPoints.SED_LT:
-          endShapeIndex = connectorDefines.A_Cr;
+        case hookPoints.LL:
+        case hookPoints.LT:
+          endShapeIndex = connectorDefines.ACr;
           break;
         default:
-          endShapeIndex = connectorDefines.A_Cl;
+          endShapeIndex = connectorDefines.ACl;
       }
     }
 
@@ -7008,16 +6899,16 @@ class Connector extends BaseDrawObject {
       d,
       D = 0,
       g = OptConstant.AStyles,
-      h = this.arraylist.styleflags & g.SEDA_BothSides ||
-        0 == (this.arraylist.styleflags & g.SEDA_PerpConn),
-      m = this.arraylist.styleflags & g.SEDA_BothSides &&
-        0 == (this.arraylist.styleflags & g.SEDA_Stagger),
-      C = this.arraylist.styleflags & g.SEDA_Stagger &&
+      h = this.arraylist.styleflags & g.BothSides ||
+        0 == (this.arraylist.styleflags & g.PerpConn),
+      m = this.arraylist.styleflags & g.BothSides &&
+        0 == (this.arraylist.styleflags & g.Stagger),
+      C = this.arraylist.styleflags & g.Stagger &&
         this.vertical,
-      y = this.arraylist.styleflags & g.SEDA_Linear,
+      y = this.arraylist.styleflags & g.Linear,
       f = this.arraylist.styleflags & OptConstant.AStyles.ReverseCol,
-      L = this.arraylist.styleflags & g.SEDA_StartLeft,
-      I = this.arraylist.styleflags & g.SEDA_Radial,
+      L = this.arraylist.styleflags & g.StartLeft,
+      I = this.arraylist.styleflags & g.Radial,
       T = OptConstant.ConnectorDefines,
       b = [],
       M = [],
@@ -7031,13 +6922,13 @@ class Connector extends BaseDrawObject {
           i = 0,
           n = 0;
         for (
-          o !== T.A_Cl &&
-          o !== T.A_Cr ||
+          o !== T.ACl &&
+          o !== T.ACr ||
           (
             a = o,
             c = _.arraylist.hook[a],
             b[a] = c.startpoint.h,
-            T.A_Cl,
+            T.ACl,
             M[a] = c.gap + P[a],
             n++,
             P[a] < 0 ? R[a] < - P[a] &&
@@ -7068,12 +6959,12 @@ class Connector extends BaseDrawObject {
           l = !1,
           S = 0;
         for (
-          o === T.A_Cl ? (
+          o === T.ACl ? (
             i = o,
             n = _.arraylist.hook[i],
             R[i] = n.startpoint.h - n.endpoint.h,
             P[i] = e
-          ) : o === T.A_Cr &&
+          ) : o === T.ACr &&
           (
             i = o,
             n = _.arraylist.hook[i],
@@ -7093,18 +6984,18 @@ class Connector extends BaseDrawObject {
         }
         if (r) {
           var c = _.arraylist.hook.length;
-          for (o === T.A_Cr && (S -= M[i = o] - R[i], b[i] += S, A[c - 1] = S), i = a - 1; i >= t; i--) S -= M[i] - R[i],
+          for (o === T.ACr && (S -= M[i = o] - R[i], b[i] += S, A[c - 1] = S), i = a - 1; i >= t; i--) S -= M[i] - R[i],
             b[i] += S,
             A[i - 1] = S
         } else {
           for (
-            o === T.A_Cl &&
+            o === T.ACl &&
             (
               S += M[i = o] - R[i],
               b[i] += S,
-              b[T.SEDA_NSkip] += S,
-              A[T.SEDA_NSkip] = S,
-              M[T.SEDA_NSkip] = 0
+              b[T.NSkip] += S,
+              A[T.NSkip] = S,
+              M[T.NSkip] = 0
             ),
             i = t + 1;
             i < a;
