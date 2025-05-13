@@ -113,8 +113,6 @@ class T3Clipboard {
   static Init(options?) {
     // Detect device and browser capabilities
     this.isMobileDevice = /mobile|ip(ad|hone|od)|android|silk/i.test(navigator.userAgent);
-    // this.isGestureCapable = "ontouchstart" in window ||
-    //   ("onpointerdown" in window && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
     this.isSafariBrowser = navigator.appVersion.includes("Safari") &&
       !navigator.appVersion.includes("Chrome") &&
       !navigator.appVersion.includes("CrMo") &&
@@ -130,7 +128,7 @@ class T3Clipboard {
     this.clipboardInputElement = $("#_clipboardInput");
 
     // Special handling for iOS Safari on Mac
-    if (this.isMacOS /*&& this.isGestureCapable */&& this.isMobileDevice && this.isSafariBrowser && this.isIOSDevice) {
+    if (this.isMacOS && this.isMobileDevice && this.isSafariBrowser && this.isIOSDevice) {
       T3Clipboard.clipboardInputElement.attr("readonly", "readonly");
       const crossTabDiv = $("#_crossTabClipboardDiv");
       crossTabDiv.css("left", "-100px");

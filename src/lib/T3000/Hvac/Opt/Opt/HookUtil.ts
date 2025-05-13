@@ -1917,7 +1917,6 @@ class HookUtil {
 
     T3Util.Log("O.Opt FixAnyCircularHooks - Output: Circular hooks fixed", { circularHookPairs });
   }
-
 }
 
 export default HookUtil

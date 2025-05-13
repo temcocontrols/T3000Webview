@@ -3,7 +3,7 @@ import IdxUtils from "./IdxUtils";
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg, loadSettings
+  globalMsg
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";

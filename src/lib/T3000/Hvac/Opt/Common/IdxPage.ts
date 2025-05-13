@@ -4,7 +4,7 @@
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg, loadSettings
+  globalMsg
 } from "../../Data/T3Data"
 import { liveApi } from '../../../../api'
 import panzoom from "panzoom"

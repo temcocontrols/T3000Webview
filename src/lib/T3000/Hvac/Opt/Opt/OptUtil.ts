@@ -56,7 +56,6 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
 import Utils5 from '../../Util/Utils5';
 import IdxPage2 from '../Common/IdxPage2';
 import Hvac from '../../Hvac';
-// import ConstantData from '../../Data/ConstantData';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.

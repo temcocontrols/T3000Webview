@@ -19,7 +19,6 @@ class PanelInfo {
   public panel_number: number;
   public pid: number;
   public serial_number: number;
-
 }
 
 export default PanelInfo

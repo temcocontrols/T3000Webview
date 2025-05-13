@@ -496,8 +496,6 @@ class SvgUtil {
   static RenderDirtySVGObjectsNoSetMouse() {
     this.RenderDirtySVGObjectsCommon(false);
   }
-
-
 }
 
 export default SvgUtil

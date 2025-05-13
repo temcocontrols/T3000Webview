@@ -69,16 +69,10 @@ SVGElement.prototype.getTransformToElement = function (element: SVGElement): SVG
  */
 class T3Opt {
 
-  /**
-   * Event operations handler for managing UI event bindings
-   */
-  public evtOpt: EvtOpt;
-
+  public evtOpt: EvtOpt;//Event operations handler for managing UI event bindings
   public userOpt: UserOpt;
 
-  /**
-   * Initializes a new instance of the DocOpt class
-   */
+  //Initializes a new instance of the DocOpt class
   constructor() {
     this.evtOpt = new EvtOpt();
     // this.keyBoardOpt = new KeyboardOpt();
@@ -138,7 +132,6 @@ class T3Opt {
   }
 
   Reload() {
-
     LayerUtil.ClearSVGHighlightLayer();
     LayerUtil.ClearSVGOverlayLayer();
     LayerUtil.ClearSVGObjectLayer();

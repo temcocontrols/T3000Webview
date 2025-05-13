@@ -167,40 +167,6 @@ class QuasarUtil {
     }
   }
 
-  // static SetSeletedTool() {
-  //   const defaultItem: any = {
-  //     active: false,
-  //     cat: "General",
-  //     group: {},
-  //     height: 60,
-  //     id: 1,
-  //     rotate: 0,
-  //     scaleX: 1,
-  //     scaleY: 1,
-  //     settings: {
-  //       bgColor: "inherit",
-  //       fillColor: "#659dc5",
-  //       fontSize: 16,
-  //       textColor: "inherit",
-  //       titleColor: "inherit",
-  //       t3EntryDisplayField: "none",
-  //       justifyContent: ''
-  //     },
-  //     showDimensions: true,
-  //     t3Entry: null,
-  //     title: null,
-  //     translate: [217, 49],
-  //     type: "G_Circle",
-  //     width: 60,
-  //     zindex: 1
-  //   };
-
-  //   this.SetCurrentObject(defaultItem);
-  // }
-
-
-
-
   static LinkT3EntryDialogActionV2() {
     T3Util.Log("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
     linkT3EntryDialogV2.value.active = true;
@@ -210,7 +176,6 @@ class QuasarUtil {
 
   static LinkT3EntrySaveV2() {
     T3Util.Log('= U.QuasarUtil Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
-    // T3Util.Log('linkT3EntrySave current values=', appState.value.items[appState.value.activeItemIndex].settings);
     // addActionToHistory("Link object to T3000 entry");
 
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField) {
@@ -410,7 +375,7 @@ class QuasarUtil {
 
     var dynamicCss =
       `
-    .in-alarm .fan {
+.in-alarm .fan {
   animation: fan-alarm 1s infinite;
 }
 
