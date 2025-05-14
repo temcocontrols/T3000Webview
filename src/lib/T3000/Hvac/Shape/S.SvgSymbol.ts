@@ -633,37 +633,20 @@ class SvgSymbol extends BaseSymbol {
     return this.drawSetting;
   }
 
+  // set the shape draw setting like fill color, stroke color, opacity base on the given setting in Object Config New
   SetDrawSetting(setting: any) {
-    this.drawSetting = setting;
+    T3Util.Log("= S.SvgSymbol | SetDrawSetting Input: setting", setting);
 
+    this.drawSetting = setting;
     var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     if (svgElement) {
       // T3Gv.opt.svgObjectLayer.RemoveElement(shapeElement);
       // var frame = this.GetSVGFrame();
       var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
-
-      T3Util.Log("= S.SvgSymbol | SetDrawSetting Input:", setting);
       element.SetDrawSetting(setting);
-
       element.RefreshDrawSetting();
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   /**
    * Dynamically adds CSS styles to the SVG fragment element

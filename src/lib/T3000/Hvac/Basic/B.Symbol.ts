@@ -91,7 +91,6 @@ class Symbol extends Element {
 
   InitSymbolSource() {
     var source = this.GetSymbolSource();
-
     var className = "object-svg";
 
     if (this.drawSetting) {
@@ -109,10 +108,10 @@ class Symbol extends Element {
     if (className !== "") {
       const newGSvg =
         `
-<g class="${className}">
-    ${source}
-</g>
-      `;
+          <g class="${className}">
+                    ${source}
+          </g>
+        `;
       source = newGSvg;
     }
 
@@ -120,7 +119,7 @@ class Symbol extends Element {
       this.SetSymbolSource(source);
       this.SetFillColor(this.drawSetting.fillColor, true);
     }
-    else{
+    else {
       this.SetSymbolSource(source);
       this.RebuildSymbol();
     }
@@ -155,25 +154,25 @@ class Symbol extends Element {
         BConstant.Placeholder.FillTrans,
         BConstant.PlaceholderDefault[BConstant.Placeholder.FillTrans]
       );
+
       source = source.replace(
-        new RegExp('fill="##FillColor', 'g'),
-        'fill-opacity="' + fillTransPlaceholder + '" fill="##FillColor'
+        new RegExp('fill="##FillColor', 'g'), 'fill-opacity="' + fillTransPlaceholder + '" fill="##FillColor'
       );
+
       this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
 
       const lineTransPlaceholder = Symbol.CreatePlaceholder(
         BConstant.Placeholder.LineTrans,
         BConstant.PlaceholderDefault[BConstant.Placeholder.LineTrans]
       );
-      source = source.replace(
-        new RegExp('stroke="##LineColor', 'g'),
-        'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LineColor'
-      ).replace(
-        new RegExp('fill="##LineColor', 'g'),
-        'fill-opacity="' + lineTransPlaceholder + '" fill="##LineColor'
-      );
-      this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
+      source = source.replace(
+        new RegExp('stroke="##LineColor', 'g'), 'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LineColor'
+      ).replace(
+        new RegExp('fill="##LineColor', 'g'), 'fill-opacity="' + lineTransPlaceholder + '" fill="##LineColor'
+      );
+
+      this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
       this.srcSymbolSvg = source;
     }
 
@@ -225,7 +224,7 @@ class Symbol extends Element {
    * @param skipClear - Whether to skip clearing existing color data
    */
   SetFillColor(color: string, skipClear: boolean) {
-    T3Util.Log('B.Symbol SetFillColor', color);
+    T3Util.Log('= B.Symbol SetFillColor | color,skipClear', color, skipClear);
     let updated = false;
 
     if (!skipClear) {
@@ -395,18 +394,16 @@ class Symbol extends Element {
     return this.svgContent;
   }
 
-  SetInActive(inActive: boolean) {
-
-  }
+  SetInActive(inActive: boolean) { }
 
   SetDrawSetting(drawSetting: any) {
     this.drawSetting = drawSetting;
-    T3Util.Log('= B.Symbol SetDrawSetting', drawSetting);
+    T3Util.Log('= B.Symbol SetDrawSetting Input/Output drawSetting', drawSetting);
   }
 
   RefreshDrawSetting() {
     // this.srcSymbolSvg=ToolSvgData.BoilerSvgData();
-    T3Util.Log('= B.Symbol RefreshDrawSetting', this.srcSymbolSvg);
+    T3Util.Log('= B.Symbol RefreshDrawSetting src-symbol-svg', this.srcSymbolSvg);
     this.InitSymbolSource();
   }
 

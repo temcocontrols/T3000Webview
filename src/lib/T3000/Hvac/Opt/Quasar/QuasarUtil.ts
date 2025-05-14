@@ -340,9 +340,9 @@ class QuasarUtil {
     }
   }
 
+  // Update the settings of the selected SVG element like color, size, etc.
   static UpdateSvgElementSettings(key: string, value: any) {
-
-    T3Util.Log("= U.QuasarUtil UpdateSvgElementSettings 1", key, value, T3Gv.stdObj);
+    T3Util.Log("= U.QuasarUtil UpdateSvgElementSettings Input: key,value", key, value, T3Gv.stdObj);
 
     /*
     // T3Gv.opt.SetBackgroundColor("#2a2a2a");
@@ -356,7 +356,6 @@ class QuasarUtil {
     // element.SetStrokeColor("black");
 
     element.SetAttributes("blue")
-
     T3Util.Log("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
     */
 

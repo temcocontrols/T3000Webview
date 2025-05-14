@@ -127,12 +127,12 @@
               @change="TraceSettingChange('bgColor', item.settings.bgColor)" />
             <label class="ml-2" for="bg-color-input">
               {{
-                settings.bgColor?.label || "Background color"
+                item.settings.bgColor?.label || "Background color"
               }}
             </label>
           </div>
           <template v-for="(setting, key) in settings" :key="key">
-            <template v-if="!['bgColor', 'title', 'titleColor'].includes(key)">
+            <template v-if="!['bgColor', 'title', 'titleColor'].includes(String(key))">
               <div class="flex flex-nowrap justify-center items-center mb-2" v-if="setting.type === 'justifyContent'">
                 <div class="mx-1">Align</div>
                 <q-btn-group push>
@@ -223,7 +223,6 @@
           </template>
         </div>
       </q-expansion-item>
-
     </div>
   </div>
   <!-- </a-drawer> -->
@@ -243,12 +242,24 @@ import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
 import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
 import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
 import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
-import { appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
+import { AllTool, appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
 import DataOpt from 'src/lib/T3000/Hvac/Opt/Data/DataOpt';
 import Hvac from 'src/lib/T3000/Hvac/Hvac';
 import SelectUtil from 'src/lib/T3000/Hvac/Opt/Opt/SelectUtil';
 import OptConstant from 'src/lib/T3000/Hvac/Data/Constant/OptConstant';
 import QuasarUtil from 'src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil';
+
+// Define interface for setting
+interface Setting {
+  type: string;
+  label?: string;
+  [key: string]: any;
+}
+
+// Define interface for settings collection
+interface SettingsCollection {
+  [key: string]: Setting;
+}
 
 type PlacementType = 'top' | 'right' | 'bottom' | 'left';
 
@@ -302,8 +313,6 @@ const props = defineProps<ObjectConfigProps>();
 // Object data
 let initialObject = ref<Item>(cloneDeep(props.current/*||  defaultItem*/));
 
-console.log("fffff", initialObject);
-
 // Computed properties
 const item = computed({
   get() {
@@ -317,9 +326,10 @@ const item = computed({
     emit("update:object", newValue);
   },
 });
-console.log("aaaaa", item.value);
-const settings = computed(() => {
-  return tools.find((i) => i.name === item.value.type)?.settings || {};
+
+const settings = computed<SettingsCollection>(() => {
+  // return tools.find((i) => i.name === item.value.type)?.settings || {};
+  return AllTool.find((i) => i.name === item.value.type)?.settings || {};
 });
 
 const rangeOptions = computed(() => {
@@ -407,7 +417,7 @@ function TraceSettingChange(key, value) {
 
 function T3UpdateEntryField(key, obj) {
   // emit("T3UpdateEntryField", key, obj);
-  T3Util.Log("= V.ObjectConfigNew",  "T3UpdateEntryField", key, obj);
+  T3Util.Log("= V.ObjectConfigNew", "T3UpdateEntryField", key, obj);
   Hvac.IdxPage2.T3UpdateEntryField(key, obj);
   EvtOpt.toolOpt.SaveAct();
 }
@@ -427,7 +437,6 @@ function getSwitchIcon(name) {
 }
 
 function updatePropsValue(key) {
-  console.log("AAAAAAAAAAAAAAAAAAAAAAAAupdatePropsValue", key, item.value.settings[key]);
   if (item.value.type === "Int_Ext_Wall") {
     item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
     emit("RefreshSelectedItem");
@@ -446,7 +455,7 @@ function getEntryRange(entry) {
 }
 
 onMounted(() => {
-  T3Util.Log("= V.OCN","ObjectConfigNew mounted", props.current);
+  T3Util.Log("= V.OCN", "ObjectConfigNew mounted", props.current);
 
   /*
   var selectedItem = DrawUtil.GetSelectObjectCoords();

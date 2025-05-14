@@ -22,7 +22,6 @@
   <div class="item-config flex flex-nowrap column" v-if="item">
     <h3 class="leading-8 font-bold text-white">{{ item.type }}</h3>
     <div class="item-config-inner">
-
       <div>
         <q-btn v-if="['Gauge', 'Dial'].includes(item.type)" dark outline no-caps stretch icon="settings"
           class="text-white w-full mb-2" label="Settings" @click="gaugeSettings(item)" />
@@ -107,11 +106,9 @@
           <q-select filled dark v-model="item.settings.t3EntryDisplayField" :options="t3EntryDisplayFieldOptions"
             label="Display field" emit-value map-options
             @update:model-value="DisplayFieldValueChanged(item.settings.t3EntryDisplayField)" />
-
         </div>
         <!-- </q-expansion-item> -->
       </div>
-
       <q-expansion-item class="mb-2 border border-solid border-gray-700" dark default-opened label="General">
         <div class="p-1">
           <div class="grid gap-4 grid-cols-2 mb-4">
@@ -119,7 +116,6 @@
               v-model.number="item.translate[0]" dark filled type="number" />
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Y"
               v-model.number="item.translate[1]" dark filled type="number" />
-
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Width"
               v-model.number="item.width" dark filled type="number" />
             <q-input input-style="width: 100%" @update:model-value="refreshMoveable" label="Height"
@@ -232,7 +228,6 @@
           </template>
         </div>
       </q-expansion-item>
-
     </div>
   </div>
 </template>
