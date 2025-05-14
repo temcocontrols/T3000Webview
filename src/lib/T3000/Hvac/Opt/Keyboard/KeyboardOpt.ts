@@ -11,6 +11,7 @@ import KeyboardUtil from "./KeyboardUtil"
 import T3Util from "../../Util/T3Util"
 import SvgUtil from "../Opt/SvgUtil"
 import T3Clipboard from "../Clipboard/T3Clipboard"
+import ArrowKeyOpt from "../Tool/ArrowKeyOpt"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -57,7 +58,7 @@ class KeyboardOpt {
    * @param context - The context for which to retrieve commands
    * @returns Array of keyboard commands for the specified context
    */
-  static GetCommandsInContext(context, kybUtil, toolUtil, docUtil) {
+  static GetCommandsInContext(context, kybUtil, toolUtil, docUtil, arrowKeyOpt) {
     T3Util.Log('U.KeyboardUtil: Getting commands for context', context);
 
     let commands = [];
@@ -80,6 +81,10 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Subtract, docUtil.ZoomOut, docUtil));
         commands.push(new KeyboardUtil().BuildCommand('ZoomIn', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Equal_Sign, docUtil.ZoomIn, docUtil));
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Dash, docUtil.ZoomOut, docUtil));
+        commands.push(new KeyboardUtil().BuildCommand('NavRight', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Right_Arrow, arrowKeyOpt.NavRight, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavLeft', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Left_Arrow, arrowKeyOpt.NavLeft, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavUp', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Up_Arrow, arrowKeyOpt.NavUp, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavDown', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Down_Arrow, arrowKeyOpt.NavDown, arrowKeyOpt));
         break;
       case KeyboardConstant.Contexts.ReadOnly:
         commands.push(new KeyboardUtil().BuildCommand('ZoomIn', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Add, docUtil.ZoomIn, docUtil));
@@ -88,6 +93,10 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Dash, docUtil.ZoomOut, docUtil));
         break;
       case KeyboardConstant.Contexts.Automation:
+        commands.push(new KeyboardUtil().BuildCommand('NavRight', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Right_Arrow, arrowKeyOpt.NavRight, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavLeft', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Left_Arrow, arrowKeyOpt.NavLeft, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavUp', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Up_Arrow, arrowKeyOpt.NavUp, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavDown', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Down_Arrow, arrowKeyOpt.NavDown, arrowKeyOpt));
         break;
       case KeyboardConstant.Contexts.AutomationNoCtrl:
         break;
@@ -177,6 +186,7 @@ class KeyboardOpt {
     let toolUtil = new ToolUtil();
     let kybUtil = new KeyboardUtil();
     let docUtil = new DocUtil();
+    let arrowKeyOpt = new ArrowKeyOpt();
 
     // Check if arrows are used and shape insert should be disabled
     const disableArrowShapeInsert = (
@@ -237,7 +247,7 @@ class KeyboardOpt {
       // Process each context to find matching keyboard commands
       for (let contextIndex = 0; contextIndex < contextCount; contextIndex++) {
         const currentContext = contexts[contextIndex];
-        const contextCommands = KeyboardOpt.GetCommandsInContext(currentContext, kybUtil, toolUtil, docUtil);
+        const contextCommands = KeyboardOpt.GetCommandsInContext(currentContext, kybUtil, toolUtil, docUtil, arrowKeyOpt);
         const commandCount = contextCommands.length;
 
         // Try to find and execute a command matching the key combination

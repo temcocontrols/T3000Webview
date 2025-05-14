@@ -13,14 +13,14 @@ class T3Gv {
    * T3Gv class manages global variables and state for the T3000 application.
    * This class provides centralized access to common utilities, settings, and event handlers.
    */
-  static clipboard: T3Clipboard;                  // Stores clipboard data for copy/paste operations
+  static clipboard: T3Clipboard;          // Stores clipboard data for copy/paste operations
   static currentObjSeqId: number;         // Tracks the current object sequence ID
   static docUtil: DocUtil;                // Document utility helper
   static opt: OptUtil;                    // Operation utility helper
   static wallOpt: WallOpt;                // Wall options configuration
   static maxUndo: number = 25;            // Maximum number of undo operations stored
   static state: StateOpt;                 // Application state utility
-  static stdObj: DataStore;             // Standard object storage
+  static stdObj: DataStore;               // Standard object storage
   static userSetting: any;                // User preferences and settings
 
   // Event handlers

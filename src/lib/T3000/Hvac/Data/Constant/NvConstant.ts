@@ -432,7 +432,8 @@ class NvConstant {
     Multiplicity: 39,         // Multiplicity indicator
     ShapeContainer: 55,       // Shape container
     FrameContainer: 75,       // Frame container
-    ExtraTextLable: 80        // Extra text label
+    ExtraTextLable: 80,       // Extra text label
+    GanttBar: 10,              // Gantt bar
   }
 
   /**

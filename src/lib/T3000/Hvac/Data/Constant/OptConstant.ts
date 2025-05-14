@@ -662,7 +662,8 @@ class OptConstant {
     LineThickness: 33,        // Line thickness adjustment
     DimLineAdj: 34,           // Dimension line adjustment
     UpdateLinks: 35,          // Update links
-    ContainerAdj: 36          // Container adjustment
+    ContainerAdj: 36,         // Container adjustment
+    TableSelect: 27,
   }
 
   /**
