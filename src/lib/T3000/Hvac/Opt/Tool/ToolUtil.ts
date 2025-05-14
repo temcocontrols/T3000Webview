@@ -1444,24 +1444,15 @@ class ToolUtil {
   }
 
   ToolDragDropSymbol(symbolType, useDragDrop) {
-    T3Util.Log("U.ToolUtil.dragDropSymbol - Input:", symbolType, useDragDrop);
-
     // Prepare symbol data
     var symbolObject = ToolSvgData.GetSvgData(symbolType);
     this.ToolDragDropNewSymbol(symbolObject, useDragDrop);
-
-    T3Util.Log("U.ToolUtil.dragDropSymbol - Output: void");
+    T3Util.Log("= U.ToolUtil.dragDropSymbol - Input/Output:", symbolType, useDragDrop);
   }
 
   ToolDragDropNewSymbol(symbolObject, useDragDrop) {
-    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolObject, useDragDrop);
-
-    // Add the symbol to the drawing using drag-drop mode
-    if (symbolObject) {
-      DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
-    }
-
-    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol output: void");
+    DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
+    T3Util.Log("= U.ToolUtil ToolDragDropNewSymbol input/output:", symbolObject, useDragDrop);
   }
 
   /**

@@ -7657,6 +7657,8 @@ class OptUtil {
     // Set nudge state to open for subsequent operations
     this.nudgeOpen = true;
 
+    DrawUtil.UpdateAppStateV2Frame();
+
     T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Output: Objects modified", { objectCount });
   }
 

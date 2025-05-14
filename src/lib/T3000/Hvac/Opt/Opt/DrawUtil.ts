@@ -211,7 +211,7 @@ class DrawUtil {
    * @param callbackUserData - User data to pass to the completion callback
    */
   static DragDropNewShape(drawingShape, horizontalCenter, verticalCenter, useDefaultStyle, completionCallback, callbackUserData) {
-    T3Util.Log("O.Opt DragDropNewShape - Input:", {
+    T3Util.Log("= U.DrawUtil DragDropNewShape - Input:", {
       drawingShape: drawingShape ? drawingShape.BlockID : null,
       horizontalCenter,
       verticalCenter,
@@ -267,9 +267,9 @@ class DrawUtil {
       LMEvtUtil.LMStampPreTrack();
       this.InitializeAutoGrowDrag();
 
-      T3Util.Log("O.Opt DragDropNewShape - Output: Drag and drop initialized");
+      T3Util.Log("= U.DrawUtil DragDropNewShape - Output: Drag and drop initialized");
     } catch (error) {
-      T3Util.Log("O.Opt DragDropNewShape - Error:", error);
+      T3Util.Log("= U.DrawUtil DragDropNewShape - Error:", error);
       OptCMUtil.CancelOperation();
       T3Gv.opt.ExceptionCleanup(error);
       throw error;

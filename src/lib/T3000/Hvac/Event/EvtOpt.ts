@@ -956,6 +956,32 @@ class EvtOpt {
     if (selectedTool.value.name == "Pointer") {
       EvtOpt.toolOpt.SelectAct(event);
     }
+
+    // New ducts
+    if (selectedTool.value.name == "Duct1") {
+      EvtOpt.toolOpt.LibToolShape("Duct1", true);
+    }
+    if (selectedTool.value.name == "Duct2") {
+      EvtOpt.toolOpt.LibToolShape("Duct2", true);
+    }
+    if (selectedTool.value.name == "Duct3") {
+      EvtOpt.toolOpt.LibToolShape("Duct3", true);
+    }
+    if (selectedTool.value.name == "Duct4") {
+      EvtOpt.toolOpt.LibToolShape("Duct4", true);
+    }
+    if (selectedTool.value.name == "Duct5") {
+      EvtOpt.toolOpt.LibToolShape("Duct5", true);
+    }
+    if (selectedTool.value.name == "Duct6") {
+      EvtOpt.toolOpt.LibToolShape("Duct6", true);
+    }
+    if (selectedTool.value.name == "Duct7") {
+      EvtOpt.toolOpt.LibToolShape("Duct7", true);
+    }
+    if (selectedTool.value.name == "Duct8") {
+      EvtOpt.toolOpt.LibToolShape("Duct8", true);
+    }
   }
 
   BindVueForeignObjectEvent() {
@@ -1070,7 +1096,7 @@ class EvtOpt {
     });
   }
 
-  BindDuct12Event(){
+  BindDuct12Event() {
     $("#btn_try_Duct_12").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibToolShape("Duct12", true);
     });

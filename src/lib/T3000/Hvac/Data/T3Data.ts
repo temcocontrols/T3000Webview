@@ -1550,6 +1550,35 @@ export const AllTool = [
       },
     },
   },
+  // New duct
+  {
+    name: "Duct1",
+    label: "Duct1",
+    icon: "svguse:icons.svg#room-temperature",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct2",
+    label: "Duct2",
+    icon: "svguse:icons.svg#room-temperature",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
 ];
 
 export default T3Data

@@ -44,12 +44,11 @@ class SvgSymbol extends BaseSymbol {
    * @param options - Configuration options for the symbol including dimensions, styling, and behavior
    */
   constructor(options: any) {
-    T3Util.Log("= S.SvgSymbol | Constructor Input:", options);
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.SvgSymbol;
     options.drawSetting = options.drawSetting || {};
     super(options);
-    T3Util.Log("= S.SvgSymbol | Constructor Output:", this);
+    T3Util.Log("= S.SvgSymbol | Constructor Input/Output:", options.this);
   }
 
   /**

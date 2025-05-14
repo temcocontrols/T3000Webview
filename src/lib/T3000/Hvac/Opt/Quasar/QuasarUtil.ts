@@ -224,7 +224,7 @@ class QuasarUtil {
     let targetSelectId = SelectUtil.GetTargetSelect();
     var targetObject = ObjectUtil.GetObjectPtr(targetSelectId, false);
 
-    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState", targetObject);
+    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState targetObject:", targetObject);
     var frame = {
       x: targetObject.Frame.x,
       y: targetObject.Frame.y,
@@ -234,6 +234,8 @@ class QuasarUtil {
 
     var uniqueId = targetObject.uniqueId;
     var uniType = targetObject.uniType;
+
+    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState uniqueId:|uniType:", frame, uniqueId, uniType);
 
     //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
     //Filter Humidifier Humidity Pressure Damper ThermalWheel Enthalpy Flow RoomHumidity RoomTemperature Gauge
@@ -306,7 +308,6 @@ class QuasarUtil {
     return item;
   }
 
-  //
   static SetAppStateV2SelectIndex(tool: any) {
     let selectedUniqueId = "";
 
