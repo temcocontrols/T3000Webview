@@ -171,12 +171,30 @@ class ArrowKeyOpt {
     }
   }
 
-  Nudge = function (e, t) {
-    T3Gv.opt.NudgeSelectedObjects(e, t, !1);
+  /**
+   * Nudges selected objects by specified X and Y offsets
+   * @param xOffset - Horizontal offset to move objects
+   * @param yOffset - Vertical offset to move objects
+   * @returns Result of nudging operation if available
+   */
+  Nudge(xOffset, yOffset) {
+    T3Util.Log(`= O.ArrowKeyOpt: Nudge input - xOffset: ${xOffset}, yOffset: ${yOffset}`);
+    const result = T3Gv.opt.NudgeSelectedObjects(xOffset, yOffset, false);
+    T3Util.Log(`= O.ArrowKeyOpt: Nudge complete`);
+    return result;
   }
 
-  NudgeGrow = function (e, t) {
-    T3Gv.opt.NudgeSelectedObjects(e, t, !0);
+  /**
+   * Grows selected objects by specified X and Y amounts
+   * @param xAmount - Horizontal amount to grow objects
+   * @param yAmount - Vertical amount to grow objects
+   * @returns Result of growing operation if available
+   */
+  NudgeGrow(xAmount, yAmount) {
+    T3Util.Log(`= O.ArrowKeyOpt: NudgeGrow input - xAmount: ${xAmount}, yAmount: ${yAmount}`);
+    const result = T3Gv.opt.NudgeSelectedObjects(xAmount, yAmount, true);
+    T3Util.Log(`= O.ArrowKeyOpt: NudgeGrow complete`);
+    return result;
   }
 }
 

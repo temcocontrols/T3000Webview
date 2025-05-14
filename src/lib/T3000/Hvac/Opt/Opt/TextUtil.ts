@@ -1727,7 +1727,7 @@ class TextUtil {
     }
 
     // Only check right/bottom boundaries if NoAuto flag is set
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       const documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
       // Check if frame extends beyond right edge
@@ -1763,7 +1763,7 @@ class TextUtil {
    */
   static TextResizeNeedPageResize(drawingObject, newWidth, newHeight) {
     // Only resize if auto-resize is allowed (NoAuto flag is not set)
-    if (!(T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto)) {
+    if (!(T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto)) {
       let newDimensions;
       let documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 

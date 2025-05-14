@@ -1082,7 +1082,7 @@ class LMEvtUtil {
     }
 
     // Handle auto-grow constraints
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       T3Gv.opt.dragEnclosingRect = T3Gv.opt.GetListSRect(T3Gv.opt.moveList);
     }
 

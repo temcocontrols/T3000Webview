@@ -1686,7 +1686,7 @@ class BaseShape extends BaseDrawObject {
       if (Math.floor(effectiveBox.y) < 0) return true;
 
       // Check if box exceeds document dimensions
-      if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+      if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
         const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         if (effectiveBox.x + effectiveBox.width > sessionBlock.dim.x) return true;
         if (effectiveBox.y + effectiveBox.height > sessionBlock.dim.y) return true;
@@ -2135,7 +2135,7 @@ class BaseShape extends BaseDrawObject {
         if (rotatedBounds.x < 0) break;
         if (rotatedBounds.y < 0) break;
 
-        if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+        if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
           const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
           if (rotatedBounds.x + rotatedBounds.width > sessionBlock.dim.x) break;
           if (rotatedBounds.y + rotatedBounds.height > sessionBlock.dim.y) break;
@@ -2525,7 +2525,7 @@ class BaseShape extends BaseDrawObject {
       coords.y = frameRect.top;
     }
 
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       const sessionBlock = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
       if (coords.x > sessionBlock.dim.x - frameRect.right) {
         coords.x = sessionBlock.dim.x - frameRect.right;

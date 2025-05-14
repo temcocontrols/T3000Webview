@@ -5663,7 +5663,7 @@ class OptUtil {
     // Get session data and check if auto-grow is disabled
     const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       // Constrain to document dimensions
       const rightEdge = T3Gv.opt.moveBounds.x +
         T3Gv.opt.moveBounds.width +
@@ -7410,7 +7410,7 @@ class OptUtil {
     let objectCount = selectedObjects.length;
 
     // Check if auto-grow from top-left is disabled
-    const isAutoGrowTopLeftDisabled = (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.AutoGrowTopLeft) === 0;
+    const isAutoGrowTopLeftDisabled = (T3Gv.opt.header.flags & OptConstant.HeaderFlags.AutoGrowTopLeft) === 0;
 
     // Get the target selection ID
     const targetSelectionId = SelectUtil.GetTargetSelect();

@@ -679,7 +679,7 @@ class UIUtil {
     }
 
     // Handle page-based layouts
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.Pages && !isUsingEdgeLayer) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.Pages && !isUsingEdgeLayer) {
       let widthInPages = Math.ceil(newWidth / pageWidth);
       let heightInPages = Math.ceil(newHeight / pageHeight);
 
@@ -727,7 +727,7 @@ class UIUtil {
       }
 
       // Honor no-auto-grow flag
-      if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+      if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
         if (newDocumentSize.x < sessionData.dim.x) newDocumentSize.x = sessionData.dim.x;
         if (newDocumentSize.y < sessionData.dim.y) newDocumentSize.y = sessionData.dim.y;
       }
@@ -754,7 +754,7 @@ class UIUtil {
             newDocumentSize.y = pageHeight;
           }
 
-          if (!(T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto)) {
+          if (!(T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto)) {
             T3Gv.opt.header.Page.minsize.y = newDocumentSize.y;
             T3Gv.opt.header.Page.minsize.x = newDocumentSize.x;
           }
@@ -788,7 +788,7 @@ class UIUtil {
     } else {
       // Handle no-auto-grow constraint
       if (
-        T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto &&
+        T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto &&
         !allowOverride &&
         (!isGrowing || isExactPageMultiple(sessionData.dim, pageWidth, pageHeight))
       ) {

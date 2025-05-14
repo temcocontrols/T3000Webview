@@ -2105,7 +2105,7 @@ class DrawUtil {
     let sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
 
     // If auto-grow is disabled by content header flags, constrain coordinates to session dimensions
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       if (dragPoint.x > sessionData.dim.x) {
         dragPoint.x = sessionData.dim.x;
       }

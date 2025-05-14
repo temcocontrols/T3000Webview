@@ -759,15 +759,16 @@ class OptConstant {
    * Content header flags
    * Controls display and behavior of content headers
    */
-  static CntHeaderFlags = {
-    Pages: 1024,            // Pages with direct access
-    NoAuto: 4096,           // No auto direct access
-    ShowRulers: 65536,         // Show rulers
-    ShowGrid: 131072,          // Show grid
-    SnapToGridTL: 262144,      // Snap to grid top-left
-    SnapToGridC: 524288,       // Snap to grid center
-    SnapToShapesOff: 1048576, // Turn off snap to shapes
-    ShowPageDividers: 2097152  // Show page dividers
+  static HeaderFlags = {
+    Pages: 1024,                 // Pages with direct access
+    NoAuto: 4096,                // No auto direct access
+    ShowRulers: 65536,           // Show rulers
+    ShowGrid: 131072,            // Show grid
+    SnapToGridTL: 262144,        // Snap to grid top-left
+    SnapToGridC: 524288,         // Snap to grid center
+    SnapToShapesOff: 1048576,    // Turn off snap to shapes
+    ShowPageDividers: 2097152 ,  // Show page dividers
+    AutoGrowTopLeft: 4194304,
   }
 
   /**

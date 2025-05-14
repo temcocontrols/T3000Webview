@@ -922,7 +922,7 @@ class ToolActUtil {
               shape.RotationAngle = angleDegrees;
               shape.UpdateFrame(shape.Frame);
 
-              if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+              if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
                 let rightBoundary = shape.r.x + shape.r.width;
                 let bottomBoundary = shape.r.y + shape.r.height;
                 let offsetX = 0, offsetY = 0;

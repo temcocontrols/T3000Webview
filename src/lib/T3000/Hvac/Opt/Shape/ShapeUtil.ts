@@ -455,7 +455,7 @@ class ShapeUtil {
 
           // Check if we need to adjust document size
           if (boundingRect.x + boundingRect.width > sessionBlock.dim.x) {
-            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
               offsetX = boundingRect.x + boundingRect.width - sessionBlock.dim.x;
               newWidth = 0;
             } else {
@@ -465,7 +465,7 @@ class ShapeUtil {
           }
 
           if (boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
-            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
               offsetY = boundingRect.y + boundingRect.height - sessionBlock.dim.y;
             } else {
               newHeight = boundingRect.y + boundingRect.height;

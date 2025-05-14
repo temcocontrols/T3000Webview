@@ -101,7 +101,7 @@ class HeaderInfo {
 
     this.DimensionFont = new FontRecord();
     this.DimensionFontStyle = new DefaultStyle();
-    this.flags = OptConstant.CntHeaderFlags.Pages;
+    this.flags = OptConstant.HeaderFlags.Pages;
     this.BusinessModule = '';
     this.dateformat = - 1;
     this.originaltemplate = '';
