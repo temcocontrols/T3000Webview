@@ -242,7 +242,7 @@ import EvtOpt from 'src/lib/T3000/Hvac/Event/EvtOpt';
 import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
 import DrawUtil from 'src/lib/T3000/Hvac/Opt/Opt/DrawUtil';
 import SvgUtil from 'src/lib/T3000/Hvac/Opt/Opt/SvgUtil';
-import { AllTool, appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
+import { NewTool, appStateV2 } from 'src/lib/T3000/Hvac/Data/T3Data';
 import DataOpt from 'src/lib/T3000/Hvac/Opt/Data/DataOpt';
 import Hvac from 'src/lib/T3000/Hvac/Hvac';
 import SelectUtil from 'src/lib/T3000/Hvac/Opt/Opt/SelectUtil';
@@ -329,7 +329,7 @@ const item = computed({
 
 const settings = computed<SettingsCollection>(() => {
   // return tools.find((i) => i.name === item.value.type)?.settings || {};
-  return AllTool.find((i) => i.name === item.value.type)?.settings || {};
+  return NewTool.find((i) => i.name === item.value.type)?.settings || {};
 });
 
 const rangeOptions = computed(() => {

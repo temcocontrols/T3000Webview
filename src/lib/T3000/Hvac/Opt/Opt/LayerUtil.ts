@@ -54,8 +54,6 @@ class LayerUtil {
    * @returns An array of z-indices from visible layers
    */
   static VisibleZList() {
-    T3Util.Log('O.Opt VisibleZList: input');
-
     const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numberOfLayers = layersManager.nlayers;
@@ -69,7 +67,7 @@ class LayerUtil {
       }
     }
 
-    T3Util.Log('O.Opt VisibleZList: output', visibleZList);
+    T3Util.Log('= U.LayerUtil VisibleZList: output | visibleZList', visibleZList);
     return visibleZList;
   }
 

@@ -2,7 +2,7 @@
 
 import { cloneDeep, fill } from "lodash";
 import { contextMenuShow, globalMsgShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
-import { AllTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
+import { NewTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
 import T3Util from "../../Util/T3Util";
@@ -240,7 +240,7 @@ class QuasarUtil {
     //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
     //Filter Humidifier Humidity Pressure Damper ThermalWheel Enthalpy Flow RoomHumidity RoomTemperature Gauge
     //Dial Value Wall G_Circle G_Rectangle g_arr_right Oval Switch LED Text Box Pointer Gauge IconBasic Icon Switch
-    const tool = AllTool.find((item) => item.name === uniType);
+    const tool = NewTool.find((item) => item.name === uniType);
 
     this.AddToAppStateV2(frame, tool, uniqueId);
     this.SetAppStateV2SelectIndex(tool);
@@ -262,8 +262,7 @@ class QuasarUtil {
   }
 
   static drawObject(size, pos, tool, uniqueId) {
-
-    const toolSettings = cloneDeep(AllTool.find((t) => t.name === tool?.name)?.settings) || {};
+    const toolSettings = cloneDeep(NewTool.find((t) => t.name === tool?.name)?.settings) || {};
     const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
       acc[key] = toolSettings[key].value;
       return acc;

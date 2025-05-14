@@ -661,7 +661,7 @@ const T3Data = {
   globalMessage: ref({})
 }
 
-export const AllTool = [
+export const NewTool = [
   {
     name: "Pointer",
     label: "Select",
@@ -1558,7 +1558,7 @@ export const AllTool = [
     cat: ["NewDuct"],
     settings: {
       fillColor: {
-        value: "#659dc5",
+        value: "#0173fe",//"#659dc5",
         type: "color",
         label: "Fill color",
         id: 1,
@@ -1572,7 +1572,7 @@ export const AllTool = [
     cat: ["NewDuct"],
     settings: {
       fillColor: {
-        value: "#659dc5",
+        value: "#0173fe",//"#659dc5",
         type: "color",
         label: "Fill color",
         id: 1,
