@@ -1,4 +1,3 @@
-import Led from "src/components/ObjectTypes/Led.vue";
 import QuickStyle from "../../Model/QuickStyle";
 import SvgSymbol from "../../Shape/S.SvgSymbol";
 import ToolDuctT2SvgData from "./ToolDuctT2SvgData";
@@ -8,9 +7,9 @@ import OptConstant from "../../Data/Constant/OptConstant";
 
 class ToolSvgData {
 
- static DuctSvg: any = ToolDuctT1SvgData;
-  //static DuctSvg: any = ToolDuctT2SvgData;
-   //  static DuctSvg: any = ToolDuctT3SvgData;
+  //static DuctSvg: any = ToolDuctT1SvgData;
+  static DuctSvg: any = ToolDuctT2SvgData;
+  //static DuctSvg: any = ToolDuctT3SvgData;
 
   static GetSvgData(symbolType) {
 

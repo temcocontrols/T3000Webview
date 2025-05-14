@@ -44,10 +44,10 @@ import QuasarUtil from "../Quasar/QuasarUtil"
 class ToolUtil {
 
   /**
-     * Sets the current selection tool and manages related states
-     * @param toolType - The type of selection tool to set
-     * @param isSticky - Whether the tool should be sticky
-     */
+   * Sets the current selection tool and manages related states
+   * @param toolType - The type of selection tool to set
+   * @param isSticky - Whether the tool should be sticky
+   */
   SetSelectionTool(toolType, isSticky) {
     T3Util.Log('O.ActiveSelection.SetSelectionTool - Input:', { toolType, isSticky });
 
@@ -1994,7 +1994,6 @@ class ToolUtil {
   }
 
   VueForeignObject() {
-
     this.tul.StampOrDragDropNewShape(event, shapeType);
   }
 }

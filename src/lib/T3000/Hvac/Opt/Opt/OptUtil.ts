@@ -118,23 +118,27 @@ class OptUtil {
    * Drag operation state variables
    * Track the state of objects being moved by drag operations
    */
-  public dragElementList: any[];     // List of elements being dragged
-  public dragBBoxList: any[];        // List of bounding boxes for dragged elements
-  public dragEnclosingRect: any;     // Rectangle enclosing all dragged elements
-  public dragStartX: number;         // Starting X coordinate for drag
-  public dragStartY: number;         // Starting Y coordinate for drag
-  public dragDeltaX: number;         // X distance moved during drag
-  public dragDeltaY: number;         // Y distance moved during drag
-  public dragTargetId: any;          // ID of the primary drag target
-  public dragTargetBBox: any;        // Bounding box of the target element
-  public dragGotMove: boolean;       // Flag indicating movement has occurred
+  public dragElementList: any[];             // List of elements being dragged
+  public dragBBoxList: any[];                // List of bounding boxes for dragged elements
+  public dragEnclosingRect: any;             // Rectangle enclosing all dragged elements
+  public dragStartX: number;                 // Starting X coordinate for drag
+  public dragStartY: number;                 // Starting Y coordinate for drag
+  public dragDeltaX: number;                 // X distance moved during drag
+  public dragDeltaY: number;                 // Y distance moved during drag
+  public dragTargetId: any;                  // ID of the primary drag target
+  public dragTargetBBox: any;                // Bounding box of the target element
+  public dragGotMove: boolean;               // Flag indicating movement has occurred
   public dragGotAutoResizeRight: boolean;    // Flag for auto-resize right during drag
   public dragGotAutoResizeBottom: boolean;   // Flag for auto-resize bottom during drag
   public dragGotAutoResizeOldX: any[];       // Previous X dimensions during auto-resize
   public dragGotAutoResizeOldY: any[];       // Previous Y dimensions during auto-resize
-  public moveList: any[];            // List of objects to move together
-  public moveBounds: any;            // Bounds of the move operation
-  public pinRect: any;               // Constraining rectangle for movement
+  public theDragGotAutoResizeOldLeft: any[]; // Previous X dimensions during auto-resize
+  public theDragGotAutoResizeOldTop: any[];  // Previous Y dimensions during auto-resize
+  public moveList: any[];                    // List of objects to move together
+  public moveBounds: any;                    // Bounds of the move operation
+  public pinRect: any;                       // Constraining rectangle for movement
+  public theDragGotAutoResizeLeft: boolean;  // Flag for auto-resize left during drag
+  public theDragGotAutoResizeTop: boolean;    // Flag for auto-resize top during drag
 
   /**
    * Action state tracking
@@ -434,6 +438,10 @@ class OptUtil {
     this.dragGotAutoResizeBottom = false;       // Whether bottom edge was auto-resized
     this.dragGotAutoResizeOldX = [];            // Previous X dimensions during resize
     this.dragGotAutoResizeOldY = [];            // Previous Y dimensions during resize
+    this.theDragGotAutoResizeOldLeft = [];      // Previous X dimensions during auto-resize
+    this.theDragGotAutoResizeOldTop = [];       // Previous Y dimensions during auto-resize
+    this.theDragGotAutoResizeLeft = false;      // Flag for auto-resize left during drag
+    this.theDragGotAutoResizeTop = false;       // Flag for auto-resize top during drag
 
     // Move lists
     this.moveList = [];                         // Objects to move together
@@ -2619,10 +2627,10 @@ class OptUtil {
   }
 
   /**
- * Recursively applies properties from one object to another
- * @param sourceProperties - Source object containing properties to copy
- * @param targetObject - Target object to receive the properties
- */
+  * Recursively applies properties from one object to another
+  * @param sourceProperties - Source object containing properties to copy
+  * @param targetObject - Target object to receive the properties
+  */
   ApplyProperties(sourceProperties, targetObject) {
     T3Util.Log("= O.OptUtil  ApplyProperties - Input:", {
       sourceProperties: Object.keys(sourceProperties),
@@ -7376,6 +7384,434 @@ class OptUtil {
       T3Util.Log("= O.OptUtil  LoadLibrary - Error:", error);
       return false;
     }
+  }
+
+  /**
+   * Moves or resizes selected objects by a specified amount using the nudge operation
+   * This function handles both moving objects (translation) and growing/shrinking objects (resize)
+   * based on the provided parameters.
+   *
+   * It processes all selected objects, filters those that shouldn't be modified (locked objects,
+   * objects with special constraints), and applies the appropriate transformations. After
+   * modification, it updates links, renders changes, and ensures the objects remain visible.
+   *
+   * @param horizontalDelta - Amount to move or resize horizontally (positive = right, negative = left)
+   * @param verticalDelta - Amount to move or resize vertically (positive = down, negative = up)
+   * @param isResizeMode - When true, objects are resized; when false, objects are moved
+   */
+  NudgeSelectedObjects(horizontalDelta, verticalDelta, isResizeMode) {
+    T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Input:", { horizontalDelta, verticalDelta, isResizeMode });
+
+    let originalObject;
+    let currentObject;
+
+    // Get the list of selected objects
+    let selectedObjects = T3Gv.stdObj.GetObject(this.selectObjsBlockId).Data;
+    let objectCount = selectedObjects.length;
+
+    // Check if auto-grow from top-left is disabled
+    const isAutoGrowTopLeftDisabled = (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.AutoGrowTopLeft) === 0;
+
+    // Get the target selection ID
+    const targetSelectionId = SelectUtil.GetTargetSelect();
+
+    // Early exit if no objects are selected
+    if (objectCount === 0) {
+      T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Output: No objects selected");
+      return;
+    }
+
+    // Remove any existing dynamic guides
+    if (T3Gv.opt.dynamicGuides) {
+      DynamicUtil.DynamicSnapsRemoveGuides(T3Gv.opt.dynamicGuides);
+      T3Gv.opt.dynamicGuides = null;
+    }
+
+    let objectIndex;
+    let hookIndex;
+    let hookObject;
+
+    // Bounds for the move operation
+    const moveBounds = {};
+
+    // Get all objects that should move together
+    let objectsToModify = SelectUtil.GetMoveList(selectedObjects[0], true, true, false, moveBounds, false);
+
+    // Filter out objects that shouldn't be modified
+    for (objectIndex = objectsToModify.length - 1; objectIndex >= 0; objectIndex--) {
+      currentObject = ObjectUtil.GetObjectPtr(objectsToModify[objectIndex], false);
+
+      // For resize mode, filter out objects that don't allow growth
+      if (isResizeMode && currentObject.NoGrow()) {
+        objectsToModify.splice(objectIndex, 1);
+      }
+      // For the first selected object, handle special cases
+      else if (objectsToModify[objectIndex] !== selectedObjects[0] ||
+        (currentObject.objecttype === NvConstant.FNObjectTypes.GanttBar &&
+          objectsToModify.splice(objectIndex, 1),
+          (currentObject.flags & NvConstant.ObjFlags.Lock) !== 0)) {
+
+        // Filter out locked objects
+        if (currentObject.flags & NvConstant.ObjFlags.Lock) {
+          objectsToModify.splice(objectIndex, 1);
+        }
+        // For move mode, filter out objects not connected through hooks
+        else if (!isResizeMode) {
+          for (hookIndex = 0; hookIndex < currentObject.hooks.length; hookIndex++) {
+            if (objectsToModify.indexOf(currentObject.hooks[hookIndex].objid) === -1) {
+              objectsToModify.splice(objectIndex, 1);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Update the list of objects to modify and count
+    selectedObjects = objectsToModify;
+    objectCount = selectedObjects.length;
+
+    // Skip if we can't move past document bounds and this would go negative
+    if ((!isResizeMode && isAutoGrowTopLeftDisabled &&
+      (moveBounds.x + horizontalDelta < 0 || moveBounds.y + verticalDelta < 0))) {
+      T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Output: Operation would move objects out of bounds");
+      return;
+    }
+
+    // Update bounds with deltas
+    moveBounds.x += horizontalDelta;
+    moveBounds.y += verticalDelta;
+
+    // Exit if no objects to modify
+    if (objectCount === 0) {
+      T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Output: No modifiable objects found");
+      return;
+    }
+
+    // Hide selection indicators during modification
+    SvgUtil.HideAllSVGSelectionStates();
+
+    let objectId;
+    let objectSize;
+    let newWidth;
+    let newHeight;
+    let maintainProportions;
+    let processedObjectCount = 0;
+
+    // Prepare for drag operation
+    this.dragBBoxList = [];
+
+    // Process each object
+    for (processedObjectCount = 0; processedObjectCount < objectCount; ++processedObjectCount) {
+      objectId = selectedObjects[processedObjectCount];
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
+
+      // Handle resize mode
+      if (isResizeMode) {
+        // Create a deep copy of the current object for reference
+        originalObject = Utils1.DeepCopy(currentObject);
+
+        // Get current dimensions
+        objectSize = currentObject.GetDimensions();
+
+        newWidth = null;
+        newHeight = null;
+        maintainProportions = false;
+
+        // Calculate new width if horizontal delta exists
+        if (horizontalDelta) {
+          if (
+            currentObject.ObjGrow === OptConstant.GrowBehavior.All ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.Horiz
+          ) {
+            newWidth = objectSize.x + horizontalDelta;
+
+            // Skip if resulting width would be too small
+            if (newWidth <= 10) {
+              continue;
+            }
+          }
+
+          // For proportional growth, also adjust height
+          if (objectSize.y > 0 && currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional) {
+            newHeight = objectSize.y + horizontalDelta;
+            maintainProportions = true;
+          }
+        }
+
+        // Calculate new height if vertical delta exists and not already maintaining proportions
+        if (verticalDelta && !maintainProportions) {
+          if (
+            currentObject.ObjGrow === OptConstant.GrowBehavior.All ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.Vertical
+          ) {
+            newHeight = objectSize.y + verticalDelta;
+
+            // Skip if resulting height would be too small
+            if (newHeight <= 10) {
+              continue;
+            }
+          }
+
+          // For proportional growth, also adjust width
+          if (objectSize.x > 0 && currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional) {
+            newWidth = objectSize.x + verticalDelta;
+          }
+        }
+
+        // Get writable copy of the object
+        currentObject = ObjectUtil.GetObjectPtr(objectId, true);
+
+        // Convert TextOnly objects to normal shapes if necessary
+        if (currentObject.flags & NvConstant.ObjFlags.TextOnly &&
+          currentObject.StyleRecord.Fill.Paint.FillType === NvConstant.FillTypes.Transparent) {
+          currentObject.flags = Utils2.SetFlag(currentObject.flags, NvConstant.ObjFlags.TextOnly, false);
+          currentObject.SetTextGrow(NvConstant.TextGrowBehavior.Vertical);
+        }
+
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Maintain links between objects
+        HookUtil.MaintainLink(currentObject.BlockID, currentObject, originalObject, OptConstant.ActionTriggerType.LineEnd);
+      }
+      // Handle move mode
+      else {
+        // Calculate new positions
+        if (horizontalDelta) {
+          // New x position calculation happens here
+        }
+
+        if (verticalDelta) {
+          // New y position calculation happens here
+        }
+
+        // Move the shape
+        ToolActUtil.OffsetShape(objectId, horizontalDelta, verticalDelta, OptConstant.ActionTriggerType.TableSelect);
+      }
+
+      // Add to dirty list to be re-rendered
+      ObjectUtil.AddToDirtyList(objectId, !isResizeMode);
+
+      // Update display coordinates if this is the target object
+      if (objectId === targetSelectionId) {
+        const displayDimensions = currentObject.GetDimensionsForDisplay();
+        UIUtil.UpdateDisplayCoordinates(displayDimensions, null, null, currentObject);
+      }
+
+      // Handle objects with a single hook in move mode
+      if (currentObject && currentObject.hooks.length === 1 && !isResizeMode) {
+        hookObject = ObjectUtil.GetObjectPtr(currentObject.hooks[0].objid, false);
+        this.HookedObjectMovingDebounced(currentObject, hookObject);
+      }
+    }
+
+    // Update nudge state
+    if (this.nudgeOpen) {
+      if (isResizeMode) {
+        this.nudgeGrowX += horizontalDelta;
+        this.nudgeGrowY += verticalDelta;
+      } else {
+        this.nudgeX += horizontalDelta;
+        this.nudgeY += verticalDelta;
+      }
+    } else {
+      if (isResizeMode) {
+        this.nudgeGrowX = horizontalDelta;
+        this.nudgeGrowY = verticalDelta;
+        this.nudgeX = 0;
+        this.nudgeY = 0;
+      } else {
+        this.nudgeGrowX = 0;
+        this.nudgeGrowY = 0;
+        this.nudgeX = horizontalDelta;
+        this.nudgeY = verticalDelta;
+      }
+    }
+
+    // Reset origin if needed
+    if (this.theDragGotAutoResizeLeft || this.theDragGotAutoResizeTop) {
+      this.ResetOrigin();
+    }
+
+    // Update state for next operation
+    this.nudgeOpen = false;
+
+    // Update links, line hops, and swimlanes
+    this.UpdateLinks();
+    HookUtil.UpdateLineHops(true);
+    // OptCMUtil.UpdateSwimlanes();
+
+    // Adjust document area if needed
+    UIUtil.FitDocumentWorkArea(false, false);
+
+    // Render updated objects
+    SvgUtil.RenderDirtySVGObjects();
+    SvgUtil.RenderAllSVGSelectionStates();
+
+    // Ensure objects remain visible
+    this.ScrollObjectIntoView(-1, false, moveBounds);
+
+    // Set nudge state to open for subsequent operations
+    this.nudgeOpen = true;
+
+    T3Util.Log("= O.OptUtil  NudgeSelectedObjects - Output: Objects modified", { objectCount });
+  }
+
+  /**
+   * Resets the origin for all objects in the document when auto-resize has occurred from left or top edge
+   * This function applies a correction offset to all objects in the document to maintain
+   * relative positioning after auto-resize operations. It shifts objects to compensate for
+   * changes in the document origin.
+   */
+  ResetOrigin() {
+    T3Util.Log("= O.OptUtil  ResetOrigin - Input: Starting reset");
+
+    // Calculate offsets needed to reset the origin
+    const horizontalOffset = this.theDragGotAutoResizeLeft ? -this.theDragGotAutoResizeOldLeft.at(-1) : 0;
+    const verticalOffset = this.theDragGotAutoResizeTop ? -this.theDragGotAutoResizeOldTop.at(-1) : 0;
+
+    // Apply the offset to all objects in the document
+    LayerUtil.ZList().forEach(objectId => {
+      const objectData = T3Gv.stdObj.PreserveBlock(objectId).Data;
+      if (objectData != null) {
+        objectData.OffsetShape(horizontalOffset, verticalOffset);
+        ObjectUtil.AddToDirtyList(objectId);
+      }
+    });
+
+    // Reset the SVG render offset and clear tracking state
+    this.ResetSVGRenderOffset();
+    this.theDragGotAutoResizeLeft = false;
+    this.theDragGotAutoResizeTop = false;
+    this.theDragGotAutoResizeOldLeft = [];
+    this.theDragGotAutoResizeOldTop = [];
+
+    T3Util.Log("= O.OptUtil  ResetOrigin - Output: Origin reset completed", {
+      horizontalOffset,
+      verticalOffset
+    });
+  }
+
+  /**
+   * Resets the SVG render offset to zero
+   * This function resets the positioning offsets of all SVG layers to their default values,
+   * effectively moving them back to their original positions.
+   */
+  ResetSVGRenderOffset() {
+    T3Util.Log("= O.OptUtil  ResetSVGRenderOffset - Input: Resetting offsets to zero");
+    this.SetSVGRenderOffset(0, 0);
+    T3Util.Log("= O.OptUtil  ResetSVGRenderOffset - Output: Offsets reset");
+  }
+
+  /**
+   * Sets the position offset for all SVG layers
+   * This function repositions all SVG layers (object, overlay, highlight, and collaboration)
+   * by applying the specified horizontal and vertical offsets. This is used for implementing
+   * visual effects like panning or temporary transformations.
+   *
+   * @param horizontalOffset - The horizontal offset to apply
+   * @param verticalOffset - The vertical offset to apply
+   */
+  SetSVGRenderOffset(horizontalOffset, verticalOffset) {
+    T3Util.Log("= O.OptUtil  SetSVGRenderOffset - Input:", { horizontalOffset, verticalOffset });
+
+    // Apply the offset to each SVG layer if it exists
+    if (this.svgObjectLayer) {
+      this.svgObjectLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgOverlayLayer) {
+      this.svgOverlayLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgHighlightLayer) {
+      this.svgHighlightLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgCollabLayer) {
+      this.svgCollabLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    T3Util.Log("= O.OptUtil  SetSVGRenderOffset - Output: Positions updated for all layers");
+  }
+
+  HookedObjectMovingTimer;
+  HookedObjectMovingLastExecutionTime;
+
+  /**
+   * Debounces calls to HookedObjectMoving when a hooked object is being moved
+   * This function ensures that HookedObjectMoving isn't called too frequently during
+   * continuous movement operations. It implements a debounce pattern with a 100ms
+   * threshold, which prevents performance issues during rapid updates.
+   *
+   * @param movingObject - The object that's being moved
+   * @param hookedObject - The object that's hooked to the moving object
+   */
+  HookedObjectMovingDebounced(movingObject, hookedObject) {
+    T3Util.Log("= O.OptUtil  HookedObjectMovingDebounced - Input:", {
+      movingObjectId: movingObject.BlockID,
+      hookedObjectId: hookedObject?.BlockID
+    });
+
+    // Only proceed if the hooked object exists and has the right dimensions flag
+    if (
+      hookedObject &&
+      hookedObject.HookedObjectMoving &&
+      hookedObject.Dimensions & (
+        NvConstant.DimensionFlags.Always | NvConstant.DimensionFlags.Select
+      )
+    ) {
+      // Clear any existing timer to prevent multiple executions
+      clearTimeout(this.HookedObjectMovingTimer);
+
+      // Determine delay: 0ms if first execution or >100ms since last execution, otherwise 100ms
+      const delay = !this.HookedObjectMovingLastExecutionTime ||
+        Date.now() - this.HookedObjectMovingLastExecutionTime >= 100 ? 0 : 100;
+
+      // Create reference to this for use in the timeout
+      const self = this;
+
+      // Set the timer to execute after the delay
+      this.HookedObjectMovingTimer = setTimeout(
+        function() {
+          // Call the HookedObjectMoving method with movement details
+          hookedObject.HookedObjectMoving({
+            linkParams: null,
+            movingShapeID: movingObject.BlockID,
+            movingShapeBBox: movingObject.GetDimensionsForDisplay()
+          });
+
+          // Update the last execution timestamp
+          self.HookedObjectMovingLastExecutionTime = Date.now();
+
+          T3Util.Log("= O.OptUtil  HookedObjectMovingDebounced - Output: HookedObjectMoving called");
+        },
+        delay
+      );
+    } else {
+      T3Util.Log("= O.OptUtil  HookedObjectMovingDebounced - Output: No action (hookedObject not eligible)");
+    }
+  }
+
+  /**
+   * Closes any open nudge operation and completes the current operation
+   * This function sets the nudge state to closed and finalizes the current
+   * operation, ensuring any pending changes are applied and the system
+   * returns to its normal state.
+   */
+  CloseOpenNudge() {
+    T3Util.Log("= O.OptUtil  CloseOpenNudge - Input: No parameters");
+
+    // Set the nudge state to closed
+    this.nudgeOpen = false;
+
+    // Complete the current operation with null parameter
+    DrawUtil.CompleteOperation(null);
+
+    T3Util.Log("= O.OptUtil  CloseOpenNudge - Output: Nudge closed and operation completed");
   }
 }
 
