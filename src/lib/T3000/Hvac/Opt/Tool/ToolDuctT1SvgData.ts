@@ -309,7 +309,7 @@ L28.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
 
   static Duct6Data() {
     const svgData =
-    `
+      `
 <g>
     <g width="17.833" height="0" transform="scale(1,1) translate(42.5,21.167)">
         <g transform="scale(1,1) translate(0,0)" fill="##LineColor=#000000##" stroke="##LineColor=#000000##"
@@ -401,11 +401,13 @@ sans-serif;">F</tspan>
   }
 
   static Duct8Data() {
+    // <rect x="0" y="0" width="30" height="60" />
+
     const svgData =
-      `
-  <g width="30" height="60" transform="scale(1,1) translate(0,0)">
-        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-opacity="1">
-           <rect x="0" y="0" width="30" height="60" />
+    `
+    <g width="30" height="60" transform="scale(1,1) translate(0,0)">
+        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
+            <path d="M 0,0 L30,0 L30,60 L0,60 L0,0" />
         </g>
     </g>
     `;
