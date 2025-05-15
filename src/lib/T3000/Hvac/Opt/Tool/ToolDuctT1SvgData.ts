@@ -32,7 +32,7 @@ class ToolDuctT1SvgData {
         frame = { width: 30, height: 60 };
         break;
       case "Duct9":
-        frame = { width: 0, height: 0 };
+        frame = { width: 60, height: 60 };
         break;
       case "Duct10":
         frame = { width: 0, height: 0 };
@@ -418,7 +418,12 @@ sans-serif;">F</tspan>
   static Duct9Data() {
     const svgData =
       `
-
+   <g width="60" height="60" transform="scale(1,1) translate(0,0)">
+        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
+            <path d="M0,0 A43.751,43.751 0 0,0 45.616,50" />
+            <path d="M0,0 A91.129,91.129 0 0,0 95.616,100" />
+        </g>
+    </g>
     `;
 
     return svgData;
