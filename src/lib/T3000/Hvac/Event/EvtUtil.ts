@@ -472,12 +472,12 @@ class EvtUtil {
    * @returns A function that handles tap/click events on the shape
    */
   static Evt_ShapeTapFactory(shape) {
-    T3Util.Log("E.Evt ShapeTapFactory input:", shape);
+    T3Util.Log("= U.EvtUtil: ShapeTapFactory input:", shape);
 
     let shapeElement;
 
     return function (tapEvent) {
-      T3Util.Log("E.Evt ShapeTap input:", tapEvent);
+      T3Util.Log("= U.EvtUtil: ShapeTap input:", tapEvent);
 
       // Prevent default browser behavior
       Utils2.StopPropagationAndDefaults(tapEvent);
@@ -489,12 +489,12 @@ class EvtUtil {
       if (T3Gv.docUtil.IsReadOnly()) {
         if (isRightClick) {
           shape.RightClick(tapEvent);
-          T3Util.Log("E.Evt ShapeTap output: right-click menu in read-only mode");
+          T3Util.Log("= U.EvtUtil: ShapeTap output: right-click menu in read-only mode");
           return false;
         }
       } else if (isRightClick) {
         shape.RightClick(tapEvent);
-        T3Util.Log("E.Evt ShapeTap output: right-click menu shown");
+        T3Util.Log("= U.EvtUtil: ShapeTap output: right-click menu shown");
         return false;
       }
 
@@ -515,12 +515,12 @@ class EvtUtil {
           // Set the selected shape in the UI
           QuasarUtil.SetAppStateV2SelectIndex(null);
 
-          T3Util.Log("E.Evt ShapeTap output: normal tap processed");
+          T3Util.Log("= U.EvtUtil: ShapeTap output: normal tap processed");
           return false;
 
         case OptConstant.OptTypes.Draw:
         case OptConstant.OptTypes.DrawPolyline:
-          T3Util.Log("E.Evt ShapeTap output: ignored in draw mode");
+          T3Util.Log("= U.EvtUtil: ShapeTap output: ignored in draw mode");
           return false;
 
         case OptConstant.OptTypes.StampTextOnTap:
@@ -534,7 +534,7 @@ class EvtUtil {
             TextUtil.ActivateTextEdit(shapeElement.svgObj.SDGObj, tapEvent, false);
           }
 
-          T3Util.Log("E.Evt ShapeTap output: text edit activated in stamp mode");
+          T3Util.Log("= U.EvtUtil: ShapeTap output: text edit activated in stamp mode");
           return false;
       }
     };

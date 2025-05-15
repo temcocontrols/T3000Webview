@@ -26,10 +26,10 @@ class ToolDuctT1SvgData {
         frame = { width: 66.33, height: 38.5 };
         break;
       case "Duct7":
-        frame = { width: 0, height: 0 };
+        frame = { width: 30, height: 60 };
         break;
       case "Duct8":
-        frame = { width: 0, height: 0 };
+        frame = { width: 30, height: 60 };
         break;
       case "Duct9":
         frame = { width: 0, height: 0 };
@@ -375,7 +375,26 @@ sans-serif;">F</tspan>
   static Duct7Data() {
     const svgData =
       `
-
+    <g>
+        <g>
+            <g width="30" height="60" transform="rotate(0,0) scale(1,1) translate(0,0)">
+                <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none" width="30" height="60"
+                    transform="scale(1,1) translate(0,0)" fill="#FFFFFF" fill-opacity="1" stroke-opacity="1">
+                    <rect width="30" height="60" />
+                </g>
+            </g>
+            <g width="30" height="60" transform="scale(1,1) translate(0,0)">
+                <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+                    <path d="M0,0 L30,60" fill="none" stroke-width="1" stroke-dasharray="none" />
+                    <g>
+                        <g stroke-dasharray="none">
+                            <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
     `;
 
     return svgData;
@@ -384,7 +403,11 @@ sans-serif;">F</tspan>
   static Duct8Data() {
     const svgData =
       `
-
+  <g width="30" height="60" transform="scale(1,1) translate(0,0)">
+        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-opacity="1">
+           <rect x="0" y="0" width="30" height="60" />
+        </g>
+    </g>
     `;
 
     return svgData;

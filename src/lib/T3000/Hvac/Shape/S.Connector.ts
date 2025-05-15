@@ -7760,7 +7760,7 @@ class Connector extends BaseDrawObject {
     // Apply horizontal offset if provided
     if (horizontalOffset) {
       // For balanced both sides, calculate the increment
-      const increment = isBalancedBothSides ? 2 : 1;
+      let increment = isBalancedBothSides ? 2 : 1;
       actualOffset = horizontalOffset;
 
       // Reverse direction if needed
