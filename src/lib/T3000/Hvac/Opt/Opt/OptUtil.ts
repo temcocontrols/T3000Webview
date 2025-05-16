@@ -2342,7 +2342,7 @@ class OptUtil {
      * Sets link flags on filled closed polylines
      * @param objectId - Optional ID of the object to process
      */
-  SetLinkFlagsOnFilledClosedPolylines(objectId) {
+  SetLinkFlagsOnFilledClosedPolylines(objectId?) {
     T3Util.Log("= O.OptUtil  SetLinkFlagsOnFilledClosedPolylines - Input:", objectId);
 
     let object = null;

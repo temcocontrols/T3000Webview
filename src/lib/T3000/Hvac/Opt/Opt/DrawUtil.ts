@@ -11,7 +11,6 @@ import T3Gv from '../../Data/T3Gv';
 import EvtUtil from "../../Event/EvtUtil";
 import DynamicGuides from "../../Model/DynamicGuides";
 import SelectionAttr from "../../Model/SelectionAttr";
-import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
@@ -32,6 +31,7 @@ import DynamicUtil from './DynamicUtil';
 import T3Clipboard from '../Clipboard/T3Clipboard';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import EvtOpt from '../../Event/EvtOpt';
+import '../../Util/T3Hammer';
 
 class DrawUtil {
 
@@ -923,6 +923,7 @@ class DrawUtil {
       objectRect = T3Gv.opt.dragBBoxList[objectIndex];
 
       // Update the shape origin
+      // drawingObject.SetShapeOrigin(objectRect?.x ?? 0 + xOffset, objectRect?.y ?? 0 + yOffset);
       drawingObject.SetShapeOrigin(objectRect.x + xOffset, objectRect.y + yOffset);
 
       // Apply any additional tracking logic
@@ -1088,7 +1089,7 @@ class DrawUtil {
       }
 
       // Update the shape origin again with final values
-      drawingObject.SetShapeOrigin(objectRect.x + xOffset, objectRect.y + yOffset);
+      drawingObject.SetShapeOrigin((objectRect?.x ?? 0) + xOffset, (objectRect?.y ?? 0) + yOffset);
 
       // Handle connections
       if (T3Gv.opt.linkParams &&
@@ -1345,6 +1346,71 @@ class DrawUtil {
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
+  }
+
+  /**
+   * Replaces a special object in the given list with a new object
+   * @param drawingObject - The new drawing object to replace with
+   * @param targetObjectId - ID of the object to be placed in the list
+   * @param zList - The z-ordering list containing object IDs
+   * @param objectType - Type of object to be replaced
+   * @returns ID of the replaced object, or 0 if no replacement occurred
+   */
+  static ReplaceSpecialObject(drawingObject, targetObjectId, zList, objectType) {
+    T3Util.Log("O.Opt ReplaceSpecialObject - Input:", {
+      drawingObject,
+      targetObjectId,
+      zList,
+      objectType
+    });
+
+    let i, listLength, currentObject, objectId;
+
+    // Get the visible z-list (though not used directly)
+    LayerUtil.VisibleZList();
+
+    // Loop through the provided z-list
+    listLength = zList.length;
+    for (i = 0; i < listLength; i++) {
+      objectId = zList[i];
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
+
+      // Check if this object matches the type and is not the target object
+      if (currentObject && currentObject.objecttype === objectType && objectId !== targetObjectId) {
+        // Replace the object ID in the list
+        zList[i] = targetObjectId;
+
+        // If the target object is at the end of the list, move the replaced object there
+        if (zList[listLength - 1] === targetObjectId) {
+          zList[listLength - 1] = objectId;
+        }
+
+        // Copy the frame from the replaced object to the drawing object
+        drawingObject.Frame = Utils1.DeepCopy(currentObject.Frame);
+
+        // Clear the "NoDelete" flag from the replaced object
+        currentObject.extraflags = Utils2.SetFlag(
+          currentObject.extraflags,
+          OptConstant.ExtraFlags.NoDelete,
+          false
+        );
+
+        // If the replaced object was locked, lock the new object too
+        if (currentObject.flags & NvConstant.ObjFlags.Lock) {
+          drawingObject.flags = Utils2.SetFlag(
+            drawingObject.flags,
+            NvConstant.ObjFlags.Lock,
+            true
+          );
+        }
+
+        T3Util.Log("O.Opt ReplaceSpecialObject - Output: Replaced object ID:", objectId);
+        return objectId;
+      }
+    }
+
+    T3Util.Log("O.Opt ReplaceSpecialObject - Output: No object replaced");
+    return 0;
   }
 
   /**

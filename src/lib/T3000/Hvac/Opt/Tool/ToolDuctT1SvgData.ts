@@ -404,7 +404,7 @@ sans-serif;">F</tspan>
     // <rect x="0" y="0" width="30" height="60" />
 
     const svgData =
-    `
+      `
     <g width="30" height="60" transform="scale(1,1) translate(0,0)">
         <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
             <path d="M 0,0 L30,0 L30,60 L0,60 L0,0" />
@@ -420,8 +420,8 @@ sans-serif;">F</tspan>
       `
    <g width="60" height="60" transform="scale(1,1) translate(0,0)">
         <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
-            <path d="M0,0 A43.751,43.751 0 0,0 45.616,50" />
-            <path d="M0,0 A91.129,91.129 0 0,0 95.616,100" />
+            <path d="M30,0 A26.25,26.25 0 0,0 57.37,30" />
+            <path d="M0,0 A54.68,54.68 0 0,0 57.37,60" />
         </g>
     </g>
     `;

@@ -57,6 +57,8 @@ class T3Constant {
     CurrentTextAlignment: 'center',
     SpacebarDown: false,
     CanTypeInWorkArea: true,
+    CurrentWidth: "0",
+    CurrentHeight: "0"
   }
 
   /**
