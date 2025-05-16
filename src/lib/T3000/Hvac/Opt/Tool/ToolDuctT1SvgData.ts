@@ -416,12 +416,21 @@ sans-serif;">F</tspan>
   }
 
   static Duct9Data() {
+
+    //  <path d="M30,0 A26.25,26.25 0 0,0 57.37,30" />
+    //  <path d="M0,0 A54.68,54.68 0 0,0 57.37,60" />
     const svgData =
       `
    <g width="60" height="60" transform="scale(1,1) translate(0,0)">
         <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
-            <path d="M30,0 A26.25,26.25 0 0,0 57.37,30" />
-            <path d="M0,0 A54.68,54.68 0 0,0 57.37,60" />
+
+<path d="
+    M 0,0
+    L 30,0
+    A 30,30 0 0,0 60,30
+    L 60,60
+    A 60,60 0 0,1 0,0
+    " />
         </g>
     </g>
     `;

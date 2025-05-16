@@ -68,7 +68,7 @@ class PolyLineContainer extends PolyLine {
     super(params);
 
     this.T3Type = "PolyLineContainer";
-    this.StyleRecord=new QuickStyle();
+    this.StyleRecord = new QuickStyle();
 
     T3Util.Log("= S.PolyLineContainer: Output instance:", this);
   }
@@ -1101,6 +1101,11 @@ class PolyLineContainer extends PolyLine {
     selectedData = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
 
     let groupObject = ObjectUtil.GetObjectPtr(groupID, true);
+
+    if (groupObject === null) {
+      return;
+    }
+
     T3Gv.opt.svgObjectLayer.GetElementById(groupObject.BlockID).SetRotation(rotationAngle);
     groupObject.RotationAngle = rotationAngle;
     ToolActUtil.UngroupShape(groupID, true);
