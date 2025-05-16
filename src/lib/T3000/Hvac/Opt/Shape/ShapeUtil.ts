@@ -348,7 +348,7 @@ class ShapeUtil {
 
     if (result.WarnMeta) {
       if (ignoreErrors) return ShapeUtil.Errors.WarnMeta;
-      alert('Metafile not read');
+      T3Util.Log('Metafile not read');
     }
 
     if (outputDimensions && errorCode !== ShapeUtil.Errors.WaitingForCallBack) {

@@ -414,11 +414,13 @@ class FreehandLine extends BaseLine {
     };
 
     let newBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    let deltaX = 0;
+    let deltaY = 0;
 
     switch (T3Gv.opt.actionTriggerId) {
       case OptConstant.ActionTriggerType.TopLeft:
-        let deltaX = newBBox.x - mouseX;
-        let deltaY = newBBox.y - mouseY;
+        deltaX = newBBox.x - mouseX;
+        deltaY = newBBox.y - mouseY;
         newBBox.x = mouseX;
         newBBox.y = mouseY;
         newBBox.width += deltaX;

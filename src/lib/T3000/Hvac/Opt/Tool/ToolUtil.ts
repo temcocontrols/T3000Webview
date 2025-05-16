@@ -172,7 +172,7 @@ class ToolUtil {
     let newShape = null;
 
     // Force line type to 'line'
-    lineType = "arcLine";
+    lineType = "polyLineContainer";
 
     switch (lineType) {
       case 'line':

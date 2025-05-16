@@ -52,20 +52,22 @@ class ToolAct2Util {
     const moveList = customSelectionList || SelectUtil.GetMoveList(-1, true, true, false, {}, false);
 
     // Check if grouping is allowed
+    /*
     if (!useAllShapes) {
       if (!DrawUtil.AllowGroup(moveList)) {
-        const msg = "Some of the objects you have selected to be grouped are locked, or hooked to other objects that must also be selected to become part of the same group.";
+        const msg = "== Grouping is not allowed for the selected objects.";
         return Utils1.Alert(msg, null, () => { });
       }
       if (T3Gv.opt.IsLinkedOutside(moveList)) {
-        const msg = "Some of the objects you have selected to be part of a group are linked to other objects that are not part of the group. \nEither deselect these objects or select the objects that they are linked to.";
+        const msg = "== You cannot group objects that are linked to other drawings.";
         return Utils1.Alert(msg, null, () => { });
       }
       if (T3Gv.opt.IsGroupNonDelete()) {
-        const msg = "You cannot group permanent objects like project charts and similar diagrams";
+        const msg = "== You cannot group objects that are part of a non-deletable group.";
         return Utils1.Alert(msg, null, () => { });
       }
     }
+    */
 
     // Handle dimensions of objects
     const preserveDimensions = function (objects) {

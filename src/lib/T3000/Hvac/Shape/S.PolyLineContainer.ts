@@ -24,6 +24,7 @@ import DrawUtil from '../Opt/Opt/DrawUtil';
 import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
+import QuickStyle from '../Model/QuickStyle';
 
 /**
  * A container class representing a polyline shape that can contain other objects.
@@ -67,6 +68,7 @@ class PolyLineContainer extends PolyLine {
     super(params);
 
     this.T3Type = "PolyLineContainer";
+    this.StyleRecord=new QuickStyle();
 
     T3Util.Log("= S.PolyLineContainer: Output instance:", this);
   }

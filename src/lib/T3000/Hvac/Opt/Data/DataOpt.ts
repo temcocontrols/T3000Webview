@@ -210,6 +210,11 @@ class DataOpt {
             const lineData = plainToInstance(Instance.Shape.PolyLine, objectData);
             storedObject.Data = lineData;
           }
+
+          if (lineType == OptConstant.LineType.FREEHAND) {
+            const lineData = plainToInstance(Instance.Shape.FreehandLine, objectData);
+            storedObject.Data = lineData;
+          }
         }
       }
 
@@ -295,6 +300,11 @@ class DataOpt {
           if (lineType == OptConstant.LineType.POLYLINE) {
             //5
             const lineData = plainToInstance(Instance.Shape.PolyLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.FREEHAND) {
+            const lineData = plainToInstance(Instance.Shape.FreehandLine, dataObj);
             shapeData = lineData;
           }
         }

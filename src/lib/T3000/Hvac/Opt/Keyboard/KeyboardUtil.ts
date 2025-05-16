@@ -73,7 +73,8 @@ class KeyboardUtil {
     this.KeyCode = keyCode !== null ? keyCode : null;
 
     this.Command = typeof commandFunction === 'function' ? commandFunction : function () {
-      alert('Keyboard command \'' + this.Name + '\' (' + this.ModifierKey + ' + ' + this.KeyCode + ') is unbound.');
+      // alert('Keyboard command \'' + this.Name + '\' (' + this.ModifierKey + ' + ' + this.KeyCode + ') is unbound.');
+      T3Util.Log('U.KeyboardUtil: Keyboard command is unbound', this.Name, this.ModifierKey, this.KeyCode);
     };
 
     this.CommandParent = commandParent !== null ? commandParent : this;
