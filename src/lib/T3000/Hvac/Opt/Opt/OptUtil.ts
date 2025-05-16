@@ -710,9 +710,7 @@ class OptUtil {
      */
     this.commentUserIDs = [];                    // User IDs for comments
     this.activeExpandedView = null;              // Currently expanded view
-    this.alternateStateManagerVars = {           // Alternate state variables
-      bHasBeenSaved: false
-    };
+    this.alternateStateManagerVars = {  bHasBeenSaved: false  };// Alternate state variables
     this.socketAction = [];                      // Actions for socket transmission
     this.pageAction = [];                        // Actions for page changes
     this.pagesToDelete = [];                     // Pages marked for deletion

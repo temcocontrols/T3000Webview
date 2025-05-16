@@ -52,23 +52,19 @@ class PolyLineContainer extends PolyLine {
 
   constructor(params) {
     T3Util.Log("= S.PolyLineContainer: Input parameters:", params);
-
     params = params || {};
-    if (params.Dimensions === undefined) {
-      params.Dimensions = NvConstant.DimensionFlags.Always;
-    }
-    if (params.objecttype === undefined) {
-      params.objecttype = NvConstant.FNObjectTypes.FlWall;
-    }
-    if (params.TextFlags === undefined) {
-      params.TextFlags = 0;
-    }
+    params.Dimensions = params.Dimensions === undefined ? NvConstant.DimensionFlags.Always : params.Dimensions;
+    params.objecttype = params.objecttype === undefined ? NvConstant.FNObjectTypes.FlWall : params.objecttype;
+    params.TextFlags = params.TextFlags === undefined ? 0 : params.TextFlags;
     params.TextFlags = Utils2.SetFlag(params.TextFlags, NvConstant.TextFlags.None, true);
 
     super(params);
 
     this.T3Type = "PolyLineContainer";
-    this.StyleRecord = new QuickStyle();
+
+    if (this.StyleRecord === null || this.StyleRecord === undefined) {
+      this.StyleRecord = new QuickStyle();
+    }
 
     T3Util.Log("= S.PolyLineContainer: Output instance:", this);
   }

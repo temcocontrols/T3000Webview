@@ -924,7 +924,7 @@ class DrawUtil {
 
       // Update the shape origin
       // drawingObject.SetShapeOrigin(objectRect?.x ?? 0 + xOffset, objectRect?.y ?? 0 + yOffset);
-      drawingObject.SetShapeOrigin(objectRect.x + xOffset, objectRect.y + yOffset);
+      drawingObject.SetShapeOrigin((objectRect?.x ?? 0) + xOffset, (objectRect?.y ?? 0) + yOffset);
 
       // Apply any additional tracking logic
       currentPosition = LMEvtUtil.LMStampDuringTrack(currentPosition, drawingObject);
