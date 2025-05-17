@@ -208,7 +208,7 @@ class DocUtil {
     // Initialize UI components visibility and content
     this.UpdateGridVisibility();
     // this.UpdatePageDividerVisibility();
-    this.SetupRulers();
+    this.SetUpRulers();
     this.UpdateGrid();
     this.UpdatePageDivider();
     this.UpdateWorkArea();
@@ -854,15 +854,8 @@ class DocUtil {
    * @returns number - The current zoom factor (scale) of the document
    */
   GetZoomFactor(): number {
-    T3Util.Log("= U.DocUtil: GetZoomFactor - Input: Retrieving current zoom factor");
-
-    let zoomFactor = 1;
-
-    if (this.svgDoc) {
-      zoomFactor = this.svgDoc.GetWorkArea().docScale;
-    }
-
-    T3Util.Log("= U.DocUtil: GetZoomFactor - Output:", zoomFactor);
+    let zoomFactor = this.svgDoc ? this.svgDoc.GetWorkArea().docScale : 1;
+    T3Util.Log("= U.DocUtil: GetZoomFactor - Input/Output:", zoomFactor);
     return zoomFactor;
   }
 
@@ -896,11 +889,8 @@ class DocUtil {
    * @returns boolean - True if scale-to-fit is enabled, false otherwise
    */
   GetSizeToFit(): boolean {
-    T3Util.Log("= U.DocUtil: GetSizeToFit - Input: Retrieving scale-to-fit setting");
-
     const result = this.scaleToFit;
-
-    T3Util.Log("= U.DocUtil: GetSizeToFit - Output:", result);
+    T3Util.Log("= U.DocUtil: GetSizeToFit - Retrieving scale-to-fit setting Input/Output: ", result);
     return result;
   }
 
@@ -934,11 +924,8 @@ class DocUtil {
    * @returns boolean - True if scale-to-page is enabled, false otherwise
    */
   GetSizeToPage(): boolean {
-    T3Util.Log("= U.DocUtil: GetSizeToPage - Input: Retrieving scale-to-page setting");
-
     const result = this.scaleToPage;
-
-    T3Util.Log("= U.DocUtil: GetSizeToPage - Output:", result);
+    T3Util.Log("= U.DocUtil: GetSizeToPage - Input/Output:", result);
     return result;
   }
 
@@ -948,11 +935,8 @@ class DocUtil {
    * @returns void
    */
   IdleZoomUI(): void {
-    T3Util.Log("= U.DocUtil: IdleZoomUI - Input: Updating zoom UI");
-
     UIUtil.UpdateDocumentScale();
-
-    T3Util.Log("= U.DocUtil: IdleZoomUI - Output: Zoom UI updated");
+    T3Util.Log("= U.DocUtil: IdleZoomUI - Input/Output: Zoom UI updated");
   }
 
   /**
@@ -1190,8 +1174,8 @@ class DocUtil {
    * Attaches event handlers for ruler interaction unless in read-only mode
    * @returns void
    */
-  SetupRulers(): void {
-    T3Util.Log("= U.DocUtil: SetupRulers - Input:", {
+  SetUpRulers(): void {
+    T3Util.Log("= U.DocUtil: SetUpRulers - Input:", {
       horizontalRulerAreaId: this.hRulerAreaId,
       verticalRulerAreaId: this.vRulerAreaId,
       centerRulerAreaId: this.cRulerAreaId,
@@ -1237,7 +1221,7 @@ class DocUtil {
     // Reset rulers to update display
     this.ResetRulers();
 
-    T3Util.Log("= U.DocUtil: SetupRulers - Output:", {
+    T3Util.Log("= U.DocUtil: SetUpRulers - Output:", {
       horizontalRulerDocInitialized: !!this.hRulerDoc,
       verticalRulerDocInitialized: !!this.vRulerDoc,
       rulerGuides: {
