@@ -1,5 +1,4 @@
 
-
 import RulerConfig from '../Model/RulerConfig'
 import $ from 'jquery'
 import T3Gv from '../Data/T3Gv'
@@ -2404,21 +2403,21 @@ class DocUtil {
 
   /**
    * Sets the zoom level of the document
-   * @param zoomPercentage - The zoom level as a percentage (e.g., 100 for 100%)
+   * @param zoomPct - The zoom level as a percentage (e.g., 100 for 100%)
    * @param eventSource - The source of the event triggering the zoom change
    * @returns void
    */
-  SetZoomLevel(zoomPercentage, eventSource?) {
-    T3Util.Log("O.DocOpt - SetZoomLevel - Input:", { zoomPercentage, eventSource });
+  SetZoomLevel(zoomPct, event?) {
+    T3Util.Log("O.DocOpt - SetZoomLevel - Input:", { zoomPct, event });
 
     // Only proceed if zoom percentage is positive and we're not in idle state
-    if (zoomPercentage > 0 && !this.inZoomIdle && T3Gv.opt) {
+    if (zoomPct > 0 && !this.inZoomIdle && T3Gv.opt) {
       // Convert percentage to factor (e.g., 100% -> 1.0)
-      UIUtil.SetDocumentScale(zoomPercentage / 100, eventSource);
-      T3Util.Log("O.DocOpt - SetZoomLevel - Applied zoom factor:", zoomPercentage / 100);
+      UIUtil.SetDocumentScale(zoomPct / 100, event);
+      T3Util.Log("O.DocOpt - SetZoomLevel - Applied zoom factor:", zoomPct / 100);
     } else {
       T3Util.Log("O.DocOpt - SetZoomLevel - Zoom not applied. Conditions not met:", {
-        validZoom: zoomPercentage > 0,
+        validZoom: zoomPct > 0,
         notIdle: !this.inZoomIdle,
         optManagerExists: !!T3Gv.opt
       });

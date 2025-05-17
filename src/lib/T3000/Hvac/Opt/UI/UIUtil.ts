@@ -546,11 +546,11 @@ class UIUtil {
     return isTransparent;
   }
 
-  static SetDocumentScale(scaleFactor, isAnimated?) {
-    T3Util.Log('= U.UIUtil: SetDocumentScale: input', { scaleFactor, isAnimated });
+  static SetDocumentScale(scaleFactor, skipCentering?) {
+    T3Util.Log('= U.UIUtil: SetDocumentScale: input', { scaleFactor, skipCentering });
 
     if (T3Gv.opt.svgDoc) {
-      T3Gv.docUtil.SetZoomFactor(scaleFactor, isAnimated);
+      T3Gv.docUtil.SetZoomFactor(scaleFactor, skipCentering);
     }
 
     T3Util.Log('= U.UIUtil: SetDocumentScale: output');

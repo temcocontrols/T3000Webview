@@ -138,7 +138,11 @@ class T3Opt {
       T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
 
     // Set the document scale (0.25 to 4)
-    T3Gv.docUtil.SetZoomLevel(0.5*100);
+    const docSetting = DataOpt.LoadDocSettingData();
+    const zoomPct = (docSetting.docInfo.docScale ?? 1) * 100;
+    T3Gv.docUtil.SetZoomLevel(zoomPct);
+
+    console.log(`T3Opt Initialize - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
   }
 
   Reload() {

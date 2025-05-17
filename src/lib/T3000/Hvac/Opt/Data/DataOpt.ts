@@ -60,8 +60,13 @@ class DataOpt {
   //Constant key for storing current object sequence ID in localStorage
   static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "t3.currentObjSeqId";
 
+  //Constant key for storing application state V2 data in localStorage vs appState used in v1
   static readonly APP_STATE_V2: string = "t3.stateV2";
+
+  //Constant key for storing drawing data in localStorage
   static readonly DRAW_KEY: string = "t3.draw";
+
+  static readonly DOC_INFO_KEY: string = "t3.doc";
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -370,7 +375,24 @@ class DataOpt {
     // Save current object sequence ID
     this.SaveData(this.CURRENT_OBJECT_SEQ_ID_KEY, T3Gv.currentObjSeqId);
 
+    // Save document settings
+    this.SaveDocSettingData();
+
     this.SaveAppStateV2();
+  }
+
+  static SaveDocSettingData(): void {
+    const docSetting = {
+      docConfig: T3Gv.docUtil.docConfig,
+      rulerConfig: T3Gv.docUtil.rulerConfig,
+      docInfo: T3Gv.docUtil.svgDoc.docInfo,
+    };
+    this.SaveData(this.DOC_INFO_KEY, docSetting);
+  }
+
+  static LoadDocSettingData(): any {
+    const docSetting = this.LoadData(this.DOC_INFO_KEY);
+    return docSetting;
   }
 
   static PrepareSaveData() {
