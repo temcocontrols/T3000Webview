@@ -133,9 +133,12 @@ class T3Opt {
 
     this.userOpt.Initialize();
 
-    //Test for SDData object
+    // Test for SDData object
     console.log("T3Opt Initialize - After initialize all and the T3Gv.stdObj loaded from storage data:",
       T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
+
+    // Set the document scale (0.25 to 4)
+    T3Gv.docUtil.SetZoomLevel(0.5*100);
   }
 
   Reload() {

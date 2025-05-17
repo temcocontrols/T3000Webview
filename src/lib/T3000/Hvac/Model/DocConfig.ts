@@ -58,14 +58,14 @@ class DocConfig {
   public enableSnap: boolean = false;
   public centerSnap: boolean = true;
   public zoom: boolean = true;
-  public zoomLevels: any;
+  public zoomLevels: any = 1;
   public scale: boolean = true;
   public showPageDivider: boolean = true;
   public spellCheck: boolean = true;
   public spellDict: boolean = true;
   public spellFlags: boolean = true;
   public snapToShapes: boolean = true;
-  public backgroundColor: string = "#FFFFFF"; // Default background color
+  public backgroundColor: string = "#FFFFFF";
 }
 
 export default DocConfig

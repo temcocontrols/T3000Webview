@@ -153,6 +153,8 @@ class EvtOpt {
       this.BindDuct10Event();
       this.BindDuct11Event();
       this.BindDuct12Event();
+
+      this.BindResetScaleEvent();
     });
   }
 
@@ -1099,6 +1101,12 @@ class EvtOpt {
   BindDuct12Event() {
     $("#btn_try_Duct_12").on("pointerdown", (event) => {
       EvtOpt.toolOpt.LibToolShape("Duct12", true);
+    });
+  }
+
+  BindResetScaleEvent() {
+    $("#btn_try_Reset_Scale").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.ResetScaleAct(event);
     });
   }
 }

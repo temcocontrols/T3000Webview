@@ -4795,8 +4795,8 @@ class BaseDrawObject {
     const rulerConfig = T3Gv.docUtil.rulerConfig;
     let granularity: number;
 
-    if (rulerConfig.fractionaldenominator >= 1) {
-      granularity = 1 / rulerConfig.fractionaldenominator;
+    if (rulerConfig.denom >= 1) {
+      granularity = 1 / rulerConfig.denom;
     } else if (rulerConfig.majorScale <= 1) {
       granularity = 1 / 16;
     } else if (rulerConfig.majorScale <= 2) {

@@ -363,7 +363,7 @@ class OptUtil {
    * Collaboration state variables
    * Variables for multi-user editing
    */
-  public commentUserIDs: any[];          // User IDs for comments
+  public commentUserIds: any[];          // User IDs for comments
   public activeExpandedView: any;        // Currently expanded view
   public alternateStateManagerVars: any; // Alternate state variables
   public socketAction: any[];            // Actions for socket transmission
@@ -702,7 +702,7 @@ class OptUtil {
      * Initialize properties for multi-user collaboration
      * These track state during collaborative editing
      */
-    this.commentUserIDs = [];                    // User IDs for comments
+    this.commentUserIds = [];                    // User IDs for comments
     this.activeExpandedView = null;              // Currently expanded view
     this.alternateStateManagerVars = { bHasBeenSaved: false };// Alternate state variables
     this.socketAction = [];                      // Actions for socket transmission

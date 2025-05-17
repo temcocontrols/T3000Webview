@@ -186,8 +186,8 @@ class RulerUtil {
    * @returns The denominator value for fractional display
    */
   static GetFractionStringGranularity(sessionData: any): number {
-    if (T3Gv.docUtil.rulerConfig.fractionaldenominator >= 1) {
-      return 1 / T3Gv.docUtil.rulerConfig.fractionaldenominator;
+    if (T3Gv.docUtil.rulerConfig.denom >= 1) {
+      return 1 / T3Gv.docUtil.rulerConfig.denom;
     } else if (T3Gv.docUtil.rulerConfig.majorScale <= 1) {
       return 1 / 16;
     } else if (T3Gv.docUtil.rulerConfig.majorScale <= 2) {

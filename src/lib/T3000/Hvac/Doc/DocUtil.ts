@@ -138,7 +138,7 @@ class DocUtil {
     this.docConfig.centerSnap = true;
     this.docConfig.snapToShapes = true;
 
-    // Zoom and scale controls
+    // Zoom and scale
     this.docConfig.zoom = true;
     this.docConfig.zoomLevels = true;
     this.docConfig.scale = true;
@@ -197,7 +197,7 @@ class DocUtil {
 
     // Initialize ruler configuration
     this.rulerConfig = new RulerConfig();
-    this.rulerConfig.fractionaldenominator = RulerUtil.GetFractionDenominator();
+    this.rulerConfig.denom = RulerUtil.GetFractionDenominator();
     this.UpdateRulerVisibility();
 
     // Bind mouse move event handler
@@ -1030,7 +1030,7 @@ class DocUtil {
       rulerConfig1.nMid != rulerConfig2.nMid ||
       rulerConfig1.nGrid != rulerConfig2.nGrid ||
       rulerConfig1.dp != rulerConfig2.dp ||
-      rulerConfig1.fractionaldenominator != rulerConfig2.fractionaldenominator ||
+      rulerConfig1.denom != rulerConfig2.denom ||
       rulerConfig1.originx != originX ||
       rulerConfig1.originy != originY;
 
@@ -1122,7 +1122,7 @@ class DocUtil {
       this.rulerConfig.originx = rulerSettings.originx !== undefined ? rulerSettings.originx : this.rulerConfig.originx;
       this.rulerConfig.originy = rulerSettings.originy !== undefined ? rulerSettings.originy : this.rulerConfig.originy;
       this.rulerConfig.dp = rulerSettings.dp !== undefined ? rulerSettings.dp : this.rulerConfig.dp;
-      this.rulerConfig.fractionaldenominator = rulerSettings.fractionaldenominator !== undefined ? rulerSettings.fractionaldenominator : this.rulerConfig.fractionaldenominator;
+      this.rulerConfig.denom = rulerSettings.denom !== undefined ? rulerSettings.denom : this.rulerConfig.denom;
 
       // Handle special case for showpixels property
       if (rulerSettings.showpixels != null) {
@@ -2397,6 +2397,9 @@ class DocUtil {
 
     // Convert zoom factor to percentage and apply it
     this.SetZoomLevel(100 * newZoomFactor, eventSource);
+
+    console.log("O.DocOpt - ZoomInAndOut - New zoom factor set:", newZoomFactor);
+    console.log("O.DocOpt - ZoomInAndOut - T3Gv:", T3Gv);
   }
 
   /**

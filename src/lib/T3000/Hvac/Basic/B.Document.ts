@@ -24,6 +24,7 @@ import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 import ForeignObject from './B.ForeignObject';
+import T3Util from "../Util/T3Util"
 
 /**
  * Represents the main drawing canvas for HVAC elements in T3000.
@@ -75,8 +76,9 @@ import ForeignObject from './B.ForeignObject';
  * doc.ApplyDocumentTransform();
  */
 class Document extends Container {
+
   GetSpellCheck() {
-    throw new Error('Method not implemented.')
+    T3Util.Log('= B.Document', 'GetSpellCheck', 'Not implemented');
   }
 
   /**
@@ -100,9 +102,7 @@ class Document extends Container {
     super();
 
     this.parentElem = parentElementSelector;
-    if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
-      this.parentElem = '#' + this.parentElem;
-    }
+    this.parentElem = this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.' ? '#' + this.parentElem : this.parentElem;
 
     this.svgObj = T3Svg.svg($(this.parentElem)[0]);
     this.docInfo = new DocInfo();
@@ -818,16 +818,16 @@ class Document extends Container {
    * @returns The formatting layer object
    */
   GetFormattingLayer() {
-    let formattingLayer = this.GetLayer('__FORMATTING__');
+    let formattingLayer = this.GetLayer('_formatting_');
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
       formattingLayer = null;
     }
 
     if (!formattingLayer) {
-      formattingLayer = this.AddLayer('__FORMATTING__');
+      formattingLayer = this.AddLayer('_formatting_');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', NvConstant.LayerMoveType.Bottom);
+      this.MoveLayer('_formatting_', NvConstant.LayerMoveType.Bottom);
       formattingLayer.SetOpacity(0);
       this.ApplyDocumentTransform();
     }

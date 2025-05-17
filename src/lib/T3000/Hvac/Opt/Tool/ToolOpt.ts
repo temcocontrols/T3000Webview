@@ -545,6 +545,15 @@ class ToolOpt {
       T3Gv.opt.ExceptionCleanup(ex);
     }
   }
+
+  ResetScaleAct(event){
+    try {
+      T3Gv.opt.CloseEdit();
+      T3Gv.docUtil.SetZoomLevel(1*100);
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
 }
 
 export default ToolOpt
