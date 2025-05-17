@@ -53,7 +53,6 @@ import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import KeyboardConstant from '../Keyboard/KeyboardConstant';
-import Utils5 from '../../Util/Utils5';
 import IdxPage2 from '../Common/IdxPage2';
 import Hvac from '../../Hvac';
 
@@ -99,10 +98,10 @@ class OptUtil {
    */
   public svgDocId: string;           // Selector for the SVG container element
   public svgDoc: Document;           // Reference to the SVG document
-  public svgObjectLayer: Document;        // Main layer for drawing content
-  public svgOverlayLayer: Document;       // Layer for UI elements (not exported)
-  public svgHighlightLayer: Document;     // Layer for selection highlighting
-  public svgCollabLayer: Document;        // Layer for collaboration indicators
+  public svgObjectLayer: any;        // Main layer for drawing content
+  public svgOverlayLayer: any;       // Layer for UI elements (not exported)
+  public svgHighlightLayer: any;     // Layer for selection highlighting
+  public svgCollabLayer: any;        // Layer for collaboration indicators
   public sVGroot: any;               // Root SVG DOM element
 
   /**
@@ -386,12 +385,7 @@ class OptUtil {
 
   //#endregion
 
-  /**
-   * Initializes the OptUtil instance by setting up all required properties and resources
-   * This is the main setup method that prepares the SVG document, UI elements, and system state
-   * It creates necessary data structures for managing shapes, selections, and user interactions
-   */
-  Initialize() {
+  InitializeProperties() {
     // #region SVG Document Elements
     /**
      * Configure main SVG document references and layers
@@ -710,7 +704,7 @@ class OptUtil {
      */
     this.commentUserIDs = [];                    // User IDs for comments
     this.activeExpandedView = null;              // Currently expanded view
-    this.alternateStateManagerVars = {  bHasBeenSaved: false  };// Alternate state variables
+    this.alternateStateManagerVars = { bHasBeenSaved: false };// Alternate state variables
     this.socketAction = [];                      // Actions for socket transmission
     this.pageAction = [];                        // Actions for page changes
     this.pagesToDelete = [];                     // Pages marked for deletion
@@ -777,10 +771,17 @@ class OptUtil {
     );
     this.linksBlockId = linksBlock.ID;
     // #endregion
+  }
 
-    // Initialize the system
+  /**
+   * Initializes the OptUtil instance by setting up all required properties and resources
+   * This is the main setup method that prepares the SVG document, UI elements, and system state
+   * It creates necessary data structures for managing shapes, selections, and user interactions
+   */
+  Initialize() {
     ObjectUtil.PreserveUndoState(true);
-    UIUtil.InitSVGDocument();
+    UIUtil.InitSvgDocument();
+    UIUtil.InitT3GvOpt();
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);
     this.BuildarrowHlkTables();
@@ -7776,7 +7777,7 @@ class OptUtil {
 
       // Set the timer to execute after the delay
       this.HookedObjectMovingTimer = setTimeout(
-        function() {
+        function () {
           // Call the HookedObjectMoving method with movement details
           hookedObject.HookedObjectMoving({
             linkParams: null,

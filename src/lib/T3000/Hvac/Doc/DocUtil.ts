@@ -242,7 +242,7 @@ class DocUtil {
 
     // Initialize SVG document if not already created
     if (!this.svgDoc) {
-      this.svgDoc = new Document(this.svgAreaId, [] /* Globals.WebFonts */);
+      this.svgDoc = new Document(this.svgAreaId, []);
     }
 
     // Set up background layer and shape

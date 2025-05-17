@@ -19,6 +19,7 @@ import SvgUtil from "../Opt/SvgUtil";
 import LayerUtil from '../Opt/LayerUtil';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import '../../Util/T3Hammer';
+import DataOpt from '../Data/DataOpt';
 
 class UIUtil {
 
@@ -348,22 +349,38 @@ class UIUtil {
    * - Collaboration layer for multi-user functionality
    * It also configures event handlers for user interactions.
    */
-  static InitSVGDocument() {
+  static InitSvgDocument() {
     // Get the session data from stored object
-    const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
+    const sdData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
+    T3Util.Log("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
 
-    // Get current screen dimensions
-    const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-    const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+    const storedDim = DataOpt.GetSDDataDimensions();
+    T3Util.Log("InitSvgDoc dim from storage data", storedDim);
+
+    const screenDim = this.GetScreenDimensions();
+
+    // Set the session data with previous saved dimensions
+    sdData.dim.x = storedDim.x;
+    sdData.dim.y = storedDim.y;
+
+    T3Util.Log("InitSvgDoc set the block data with previous dim", T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
+
+    // var width=screenDim.width;
+    // var height=screenDim.height;
+
+    var width = sdData.dim.x;
+    var height = sdData.dim.y;
 
     // Initialize the document work area
     T3Gv.docUtil.InitializeWorkArea({
       svgAreaId: T3Gv.opt.svgDocId,
-      documentWidth: screenWidth,
-      documentHeight: screenHeight,
+      documentWidth: width,
+      documentHeight: height,
       documentDPI: 100
     });
+  }
 
+  static InitT3GvOpt() {
     // Get document object and initialize layers
     T3Gv.opt.svgDoc = T3Gv.docUtil.DocObject();
 
@@ -852,6 +869,18 @@ class UIUtil {
         }
       }
     }
+  }
+
+  static GetScreenDimensions() {
+    // Get current screen dimensions
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+    const screenDimensions = {
+      width: screenWidth,
+      height: screenHeight
+    };
+    T3Util.Log('= U.UIUtil: GetScreenDimensions - Output:', screenDimensions);
+    return screenDimensions;
   }
 }
 

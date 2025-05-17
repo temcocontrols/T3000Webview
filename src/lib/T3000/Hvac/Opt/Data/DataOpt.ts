@@ -471,6 +471,54 @@ class DataOpt {
     localStorage.removeItem(this.APP_STATE_V2);
     localStorage.removeItem(this.DRAW_KEY);
   }
+
+  /**
+   * Loads SDData objects from the data store and extracts their dimensions
+   * @returns An array of dimension objects with x and y values
+   */
+  static GetSDDataDimensions(): { x: number, y: number } {
+    // Load data store from localStorage
+    const dataStoreJson = this.LoadData(this.OBJECT_STORE_KEY);
+
+    if (dataStoreJson === null) {
+      return { x: 1000, y: 750 };
+    }
+
+    // dataStoreJson is already parsed JSON object
+    const dimensions: { x: number, y: number }[] = [];
+
+    // Check if storedObjects exists and is an array
+    if (dataStoreJson.storedObjects && Array.isArray(dataStoreJson.storedObjects)) {
+      // Iterate through stored objects
+      for (let i = 0; i < dataStoreJson.storedObjects.length; i++) {
+        const storedObject = dataStoreJson.storedObjects[i];
+
+        // Check if this is an SDData object
+        if (storedObject.Data && storedObject.Data.Type === 'SDData') {
+          // Extract dimensions if available
+          if (storedObject.Data.dim &&
+            typeof storedObject.Data.dim.x === 'number' &&
+            typeof storedObject.Data.dim.y === 'number') {
+            dimensions.push({
+              x: storedObject.Data.dim.x,
+              y: storedObject.Data.dim.y
+            });
+          }
+        }
+      }
+    }
+
+    // Find the maximum x and y values
+    const maxDimensions = dimensions.reduce((max, dim) => {
+      return {
+        x: Math.max(max.x, dim.x),
+        y: Math.max(max.y, dim.y)
+      };
+    }, { x: 1000, y: 750 });
+
+    // Add the maximum dimensions to the result
+    return maxDimensions;
+  }
 }
 
 export default DataOpt

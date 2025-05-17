@@ -87,12 +87,18 @@ class T3Opt {
     T3Gv.quasar = quasarInstance;
     QuasarUtil.quasar = quasarInstance;
 
+    // Initialize Instance with modules to avoid circular references
+    initializeInstance(Basic, Shape);
+
     // Initialize data state and store
     DataOpt.InitStateAndStore();
 
     // Set up document handler and option manager
     T3Gv.docUtil = new DocUtil();
     T3Gv.opt = new OptUtil();
+
+    T3Gv.opt.InitializeProperties();
+
     T3Gv.opt.Initialize();
 
     // Initialize wall operations
@@ -115,9 +121,6 @@ class T3Opt {
     // Bind element control events
     this.evtOpt.BindElemCtlEvent();
 
-    // Initialize Instance with modules to avoid circular references
-    initializeInstance(Basic, Shape);
-
     // Initialize clipboard
     T3Clipboard.Init();
 
@@ -129,6 +132,10 @@ class T3Opt {
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
+
+    //Test for SDData object
+    console.log("T3Opt Initialize - After initialize all and the T3Gv.stdObj loaded from storage data:",
+      T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
   }
 
   Reload() {
