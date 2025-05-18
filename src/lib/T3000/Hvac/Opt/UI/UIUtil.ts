@@ -638,6 +638,10 @@ class UIUtil {
     let needMinHeightEnforcement = false;
     let needMinWidthEnforcement = false;
 
+    if (!T3Gv.opt) {
+      return;
+    }
+
     // Get the layers manager to check layer settings
     const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
 

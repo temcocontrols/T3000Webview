@@ -559,7 +559,7 @@ class Polygon extends BaseShape {
     }
 
     if (hasConnectPoints /*|| hasTableRows*/) {
-      const connectPoints = hasConnectPoints ? this.ConnectPoints : T3Gv.opt.Table_GetRowConnectPoints(this, table);
+      const connectPoints = hasConnectPoints ? this.ConnectPoints : T3Gv.opt.TableGetRowConnectPoints(this, table);
       const deepCopiedPoints = Utils1.DeepCopy(connectPoints);
       T3Util.Log('S.Polygon: GetTargetPoints output:', deepCopiedPoints);
       return deepCopiedPoints;

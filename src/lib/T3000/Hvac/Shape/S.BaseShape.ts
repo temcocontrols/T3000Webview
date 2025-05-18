@@ -42,8 +42,8 @@ import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import DynamicUtil from '../Opt/Opt/DynamicUtil';
-import { useQuasar } from 'quasar';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
+// import LineDraw from '../Opt/Opt/LineDrawUtil';
 
 /**
  * BaseShape is the foundation class for all shape types in the T3000 HVAC drawing system.
@@ -197,7 +197,7 @@ class BaseShape extends BaseDrawObject {
     let frameWithKnobsHeight = shapeFrame.height + scaledKnobSize;
 
     // Expand the frame bounds for trigger display
-    const expandedFrame = $.extend(true, {}, shapeFrame);
+    const expandedFrame = Utils1.DeepCopy(shapeFrame);// { ...shapeFrame };// $.extend(true, {}, shapeFrame);
     expandedFrame.x -= scaledKnobSize / 2;
     expandedFrame.y -= scaledKnobSize / 2;
     expandedFrame.width += scaledKnobSize;
@@ -257,7 +257,7 @@ class BaseShape extends BaseDrawObject {
       knobConfig.fillColor = 'white';
       knobConfig.strokeSize = 1;
       knobConfig.strokeColor = 'black';
-      knobConfig.fillOpacity = '0.0';
+      knobConfig.fillOpacity = 0.0;
     }
 
     // Apply special styling for locked or no-grow shapes
@@ -405,7 +405,7 @@ class BaseShape extends BaseDrawObject {
     // Add side knobs for polygon shapes if enabled
     if (enableSideKnobs) {
       const polygonShape = Utils1.DeepCopy(this);
-      polygonShape.inside = $.extend(true, {}, polygonShape.Frame);
+      polygonShape.inside = Utils1.DeepCopy(polygonShape.Frame);// { ...polygonShape.Frame };// $.extend(true, {}, polygonShape.Frame);
 
       // Get polygon points from the shape
       const polyPoints = T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true, polygonShape)
@@ -554,7 +554,7 @@ class BaseShape extends BaseDrawObject {
     const frame = this.Frame;
     let frameWidth = frame.width;
     let frameHeight = frame.height;
-    const expandedFrame = $.extend(true, {}, frame);
+    const expandedFrame = Utils1.DeepCopy(frame);// { ...frame };// $.extend(true, {}, frame);
     expandedFrame.x -= connectDim / 2;
     expandedFrame.y -= connectDim / 2;
     expandedFrame.width += connectDim;
@@ -864,7 +864,7 @@ class BaseShape extends BaseDrawObject {
 
     if (newDataClass !== this.dataclass || newShapeType === PolygonConstant.ShapeTypes.RECTANGLE) {
       // Create a deep copy of current properties
-      const newShapeProps = $.extend(true, {}, this);
+      const newShapeProps = Utils1.DeepCopy(this);// { ...this };// $.extend(true, {}, this);
 
       // Enforce aspect ratio if required
       if (preserveAspect) {
@@ -1001,7 +1001,7 @@ class BaseShape extends BaseDrawObject {
         this.TMargins.top = properties.tmargin;
         this.TMargins.bottom = properties.tmargin;
         changed = true;
-        const frameCopy = $.extend(true, {}, this.Frame);
+        const frameCopy = Utils1.DeepCopy(this.Frame);// { ...this.Frame };// $.extend(true, {}, this.Frame);
         this.UpdateFrame(frameCopy);
         if (this.trect.width < 0) {
           widthAdjust = -this.trect.width;
@@ -1200,23 +1200,8 @@ class BaseShape extends BaseDrawObject {
         Utils3.RotatePointsAboutCenter(rect, rotationRadians, connectPoints);
       }
     }
-    // else if (useTableRows) {
-    //   // connectPoints = T3Gv.opt.Table_GetRowConnectPoints(this, table);
-    //   if (point.x < 10) {
-    //     point.x = connectPoints[2].x;
-    //     point.y = connectPoints[2].y;
-    //     T3Util.Log("= S.BaseShape - GetClosestConnectPoint output:", point);
-    //     return true;
-    //   }
-    //   if (point.x > connectDimension - 10) {
-    //     point.x = connectPoints[2 + table.rows.length].x;
-    //     point.y = connectPoints[2 + table.rows.length].y;
-    //     T3Util.Log("= S.BaseShape - GetClosestConnectPoint output:", point);
-    //     return true;
-    //   }
-    // }
 
-    if (useConnect /*|| useTableRows*/) {
+    if (useConnect) {
       let bestDistanceSquared: number | undefined;
       let bestConnectPoint: { x: number; y: number };
 
@@ -1538,7 +1523,7 @@ class BaseShape extends BaseDrawObject {
             Utils3.RotatePointsAboutCenter(candidateObj.Frame, candidateRotation, candidatePoly);
             Utils2.GetPolyRect(polyRect, candidatePoly);
           } else {
-            candidateRect = $.extend(true, {}, candidateObj.Frame);
+            candidateRect = Utils1.DeepCopy(candidateObj.Frame);// $.extend(true, {}, candidateObj.Frame);
             polyRect = candidateRect;
           }
 
@@ -1659,8 +1644,8 @@ class BaseShape extends BaseDrawObject {
     let deltaY = mouseY - startY;
 
     // Clone the original bounding box to preserve it
-    const originalBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
-    const updatedBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    const originalBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);// $.extend(true, {}, T3Gv.opt.actionBBox);
+    const updatedBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);//$.extend(true, {}, T3Gv.opt.actionBBox);
 
     // Reference to current shape object
     const currentShape = this;
@@ -1674,7 +1659,7 @@ class BaseShape extends BaseDrawObject {
       if (currentShape.RotationAngle) {
         const rectPoints = Utils2.PolyFromRect(box);
         const rotationRadians = -currentShape.RotationAngle / (180 / NvConstant.Geometry.PI);
-        effectiveBox = $.extend(true, {}, box);
+        effectiveBox = Utils1.DeepCopy(box);// $.extend(true, {}, box);
         Utils3.RotatePointsAboutCenter(currentShape.Frame, rotationRadians, rectPoints);
         Utils2.GetPolyRect(effectiveBox, rectPoints);
       } else {
@@ -1739,7 +1724,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1766,7 +1751,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1808,7 +1793,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1833,7 +1818,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1870,7 +1855,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1895,7 +1880,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -1904,7 +1889,7 @@ class BaseShape extends BaseDrawObject {
         cursorPosition.x = mouseX;
         cursorPosition.y = mouseY;
         let shapeObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
-        const originalFrame = $.extend(true, {}, shapeObject.Frame);
+        const originalFrame = Utils1.DeepCopy(shapeObject.Frame);// $.extend(true, {}, shapeObject.Frame);
 
         // Apply grid snapping if enabled and not overridden
         if (T3Gv.docUtil.docConfig.enableSnap && !areSnapsOverridden) {
@@ -1958,7 +1943,7 @@ class BaseShape extends BaseDrawObject {
         }
 
         // Update the bounding box and resize the shape
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, shapeObject.Frame);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(shapeObject.Frame);// $.extend(true, {}, shapeObject.Frame);
         shapeObject.HandleActionTriggerCallResize(
           T3Gv.opt.actionNewBBox,
           OptConstant.ActionTriggerType.MovePolySeg,
@@ -1972,7 +1957,7 @@ class BaseShape extends BaseDrawObject {
         // Handle rotation adjustments if needed
         if (shapeObject.RotationAngle) {
           const currentRotation = T3Gv.opt.actionSvgObject.GetRotation();
-          const updatedFrame = $.extend(true, {}, shapeObject.Frame);
+          const updatedFrame = Utils1.DeepCopy(shapeObject.Frame);// $.extend(true, {}, shapeObject.Frame);
           const positionOffset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(
             originalFrame,
             updatedFrame,
@@ -2029,7 +2014,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -2056,7 +2041,7 @@ class BaseShape extends BaseDrawObject {
 
         if (isBoxPositionInvalid(updatedBBox)) break;
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, updatedBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(updatedBBox);// $.extend(true, {}, updatedBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, cursorPosition);
         break;
 
@@ -2179,11 +2164,11 @@ class BaseShape extends BaseDrawObject {
 
     // Store the previous bounding box for reference
     this.prevBBox = previousBoundingBox
-      ? $.extend(true, {}, previousBoundingBox)
-      : $.extend(true, {}, this.Frame);
+      ? Utils1.DeepCopy(previousBoundingBox)// $.extend(true, {}, previousBoundingBox)
+      : Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
 
     // Save original frame in case we need to revert
-    const originalFrame = $.extend(false, {}, this.Frame);
+    const originalFrame = Utils1.DeepCopy(this.Frame);// $.extend(false, {}, this.Frame);
 
     // Enforce minimum dimensions
     if (newBoundingBox.width < OptConstant.Common.MinDim) {
@@ -2281,10 +2266,10 @@ class BaseShape extends BaseDrawObject {
             };
 
             this.TRectToFrame(adjustedTextRect, actionType || isLineLengthAction);
-            newBoundingBox = $.extend(false, {}, this.Frame);
+            newBoundingBox = Utils1.DeepCopy(this.Frame);// $.extend(false, {}, this.Frame);
             return;
           } else if (actionType) {
-            T3Gv.opt.actionNewBBox = $.extend(false, {}, this.Frame);
+            T3Gv.opt.actionNewBBox = Utils1.DeepCopy(this.Frame);// $.extend(false, {}, this.Frame);
           }
         }
       }
@@ -2899,7 +2884,7 @@ class BaseShape extends BaseDrawObject {
       // Handle other operations that aren't table or polygon operations
       else if (!isTableOperation) {
         // Update the object frame
-        const newFrame = $.extend(true, {}, actionObject.Frame);
+        const newFrame = Utils1.DeepCopy(actionObject.Frame);// $.extend(true, {}, actionObject.Frame);
         T3Gv.opt.SetObjectFrame(T3Gv.opt.actionStoredObjectId, newFrame);
 
         // Scale polygon if needed
@@ -2974,11 +2959,7 @@ class BaseShape extends BaseDrawObject {
     // Handle format painter operations
     const applyFormatPainting = () => {
       if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
-        if (T3Gv.opt.formatPainterMode === TODO.formatPainterModes.OBJECT) {
-          // Format painting logic for objects would go here
-          // If table support is needed, uncomment:
-          // var activeTableId = T3Gv.opt.Table_GetActiveID();
-          // T3Gv.opt.Table_PasteFormat(activeTableId, T3Gv.opt.formatPainterStyle, false);
+        if (T3Gv.opt.formatPainterMode === StyleConstant.FormatPainterModes.Object) {
         }
 
         // If format painter is not sticky, disable it
@@ -3181,8 +3162,8 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Store bounding box information for the action
-    T3Gv.opt.actionBBox = $.extend(true, {}, objectFrame);
-    T3Gv.opt.actionNewBBox = $.extend(true, {}, objectFrame);
+    T3Gv.opt.actionBBox = Utils1.DeepCopy(objectFrame);// $.extend(true, {}, objectFrame);
+    T3Gv.opt.actionNewBBox = Utils1.DeepCopy(objectFrame);// $.extend(true, {}, objectFrame);
 
     // Hide overlay layer during the action
     LayerUtil.HideOverlayLayer();
@@ -3361,7 +3342,7 @@ class BaseShape extends BaseDrawObject {
     let deltaY = currentY - T3Gv.opt.actionStartY;
 
     // Calculate new bounding box by copying the current action bounding box
-    let newBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    let newBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);// $.extend(true, {}, T3Gv.opt.actionBBox);
     // (The sqrt is computed but not used; kept for potential side-effect)
     Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
@@ -3394,7 +3375,7 @@ class BaseShape extends BaseDrawObject {
     }
 
     // Set the updated bounding box as the action's new bounding box
-    T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+    T3Gv.opt.actionNewBBox = Utils1.DeepCopy(newBBox);// $.extend(true, {}, newBBox);
 
     // Update the shape's frame using the new bounding box and resize the SVG object
     this.UpdateFrame(T3Gv.opt.actionNewBBox);
@@ -3525,7 +3506,7 @@ class BaseShape extends BaseDrawObject {
       this.Frame.x = initialX;
       this.Frame.y = initialY;
       // Save a deep copy of the current frame as previous bounding box
-      this.prevBBox = $.extend(true, {}, this.Frame);
+      this.prevBBox = Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
 
       // Attach draggable event handlers for drawing tracking and release
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_DrawTrackHandlerFactory(this));
@@ -3758,7 +3739,7 @@ class BaseShape extends BaseDrawObject {
   GetAlignRect() {
     T3Util.Log("= S.BaseShape - GetAlignRect input");
 
-    const alignRect = $.extend(true, {}, this.Frame);
+    const alignRect = Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
 
     if (this.RotationAngle !== 0) {
       const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, true, null);
@@ -4619,8 +4600,8 @@ class BaseShape extends BaseDrawObject {
       return polyTargets;
     }
 
-    if (useConnectPoints /*|| isTableRows*/) {
-      const connectPoints = useConnectPoints ? this.ConnectPoints : this.ConnectPoints;// T3Gv.opt.Table_GetRowConnectPoints(this, table);
+    if (useConnectPoints) {
+      const connectPoints = useConnectPoints ? this.ConnectPoints : this.ConnectPoints;
       for (let i = 0; i < connectPoints.length; i++) {
         targetPoints.push({ x: connectPoints[i].x, y: connectPoints[i].y });
       }
@@ -4660,8 +4641,8 @@ class BaseShape extends BaseDrawObject {
     // const isTableRows = this.hookflags & NvConstant.HookFlags.LcTableRows && table;
     let connectPoints = [];
 
-    if (useConnectPoints /*|| isTableRows*/) {
-      connectPoints = useConnectPoints ? this.ConnectPoints : this.ConnectPoints;// T3Gv.opt.Table_GetRowConnectPoints(this, table);
+    if (useConnectPoints) {
+      connectPoints = useConnectPoints ? this.ConnectPoints : this.ConnectPoints;
       if (rotationAngle) {
         const rotationRadians = -rotationAngle / (180 / NvConstant.Geometry.PI);
         const frame = { x: 0, y: 0, width: m, height: m };
@@ -4748,15 +4729,12 @@ class BaseShape extends BaseDrawObject {
       const eventDetails = {
         action: actionType,
         prevBBox: previousBBox,
-        trect: $.extend(true, {}, this.trect)
+        trect: Utils1.DeepCopy(this.trect)// $.extend(true, {}, this.trect)
       };
 
-      // Double
-      // Collab.SendSVGEvent(this.BlockID, OptConstant.CollabSVGEventTypes.ShapeGrow, newSize, eventDetails);
-
-      const originalBBox = $.extend(true, {}, previousBBox);
-      const updatedBBox = $.extend(true, {}, newSize);
-      const inflatedBBox = $.extend(true, {}, newSize);
+      const originalBBox = Utils1.DeepCopy(previousBBox);//$.extend(true, {}, previousBBox);
+      const updatedBBox = Utils1.DeepCopy(newSize);// $.extend(true, {}, newSize);
+      const inflatedBBox = Utils1.DeepCopy(newSize);// $.extend(true, {}, newSize);
       const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(originalBBox, updatedBBox, rotation);
 
       if (this.StyleRecord.Line.BThick && this.polylist == null) {
@@ -4820,9 +4798,9 @@ class BaseShape extends BaseDrawObject {
     const rotation = element.GetRotation();
     this.SetDimensionLinesVisibility(element, false);
 
-    const originalFrame = $.extend(true, {}, this.Frame);
-    const updatedFrame = $.extend(true, {}, newSize);
-    const inflatedFrame = $.extend(true, {}, newSize);
+    const originalFrame = Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
+    const updatedFrame = Utils1.DeepCopy(newSize);// $.extend(true, {}, newSize);
+    const inflatedFrame = Utils1.DeepCopy(newSize);// $.extend(true, {}, newSize);
 
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(originalFrame, updatedFrame, rotation);
 
@@ -5259,7 +5237,7 @@ class BaseShape extends BaseDrawObject {
     T3Util.Log("= S.BaseShape - LMAddSVGTextObject input:", { svgDocument, targetElement });
 
     let cellRect;
-    const frameWithThickness = $.extend(true, {}, this.Frame);
+    const frameWithThickness = Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
     const textRect = Utils1.DeepCopy(this.trect);
     let cellDataId = -1;
     let tableObject = null;
@@ -5313,7 +5291,7 @@ class BaseShape extends BaseDrawObject {
 
       // Position text element based on text flags
       if (!(this.TextFlags & NvConstant.TextFlags.AttachA ||
-            this.TextFlags & NvConstant.TextFlags.AttachB)) {
+        this.TextFlags & NvConstant.TextFlags.AttachB)) {
         textElement.SetPos(textRect.x - frameWithThickness.x, textRect.y - frameWithThickness.y);
         textElement.SetSize(textRect.width, textRect.height);
       }
@@ -6240,9 +6218,9 @@ class BaseShape extends BaseDrawObject {
 
             if (actionButtons.custom) {
               // Create custom action buttons via the operation controller
-              const customButtons = gBusinessController.CreateCustomActionButtons(svgEvent, this, 0, this.BlockID);
+              const customButtons = new LineDraw().CreateCustomActionButtons(svgEvent, this, 0, this.BlockID);
               if (customButtons) {
-                const frameClone = $.extend(true, {}, this.Frame);
+                const frameClone = Utils1.DeepCopy(this.Frame);// $.extend(true, {}, this.Frame);
                 for (let idx = 0; idx < customButtons.length; idx++) {
                   const button = customButtons[idx];
                   button.SetID(OptConstant.ActionArrow.Custom + idx);
@@ -6255,7 +6233,7 @@ class BaseShape extends BaseDrawObject {
 
             // For left arrow
             if (actionButtons.left) {
-              let leftArrow = gBusinessController.CreateActionButton(svgEvent, rightAdjustment, centerY, this.BlockID);
+              let leftArrow = new LineDraw().CreateActionButton(svgEvent, rightAdjustment, centerY, this.BlockID);
               if (leftArrow == null) {
                 // If not created, draw a simple path as fallback
                 leftArrow = svgEvent.CreateShape(OptConstant.CSType.Path);
@@ -6278,7 +6256,7 @@ class BaseShape extends BaseDrawObject {
             }
             // For up arrow
             if (actionButtons.up) {
-              let upArrow = gBusinessController.CreateActionButton(svgEvent, centerX, topAdjustment, this.BlockID);
+              let upArrow = new LineDraw().CreateActionButton(svgEvent, centerX, topAdjustment, this.BlockID);
               if (upArrow == null) {
                 upArrow = svgEvent.CreateShape(OptConstant.CSType.Path);
                 const pathCreator = upArrow.PathCreator();
@@ -6300,7 +6278,7 @@ class BaseShape extends BaseDrawObject {
             }
             // For right arrow
             if (actionButtons.right) {
-              let rightArrow = gBusinessController.CreateActionButton(svgEvent, parentFrame.width - rightAdjustment, centerY, this.BlockID);
+              let rightArrow = new LineDraw().CreateActionButton(svgEvent, parentFrame.width - rightAdjustment, centerY, this.BlockID);
               if (rightArrow == null) {
                 rightArrow = svgEvent.CreateShape(OptConstant.CSType.Path);
                 const pathCreator = rightArrow.PathCreator();
@@ -6313,7 +6291,7 @@ class BaseShape extends BaseDrawObject {
                 pathCreator.Apply();
                 rightArrow.SetFillColor("#FFD64A");
                 rightArrow.SetStrokeWidth(0);
-                rightArrow.SetCursor(CursorConstant.CursorType.ADD_RIGHT);
+                rightArrow.SetCursor(CursorConstant.CursorType.AddRight);
               }
               rightArrow.SetID(OptConstant.ActionArrow.Right);
               rightArrow.SetUserData(currentBlockId);
@@ -6322,7 +6300,7 @@ class BaseShape extends BaseDrawObject {
             }
             // For down arrow
             if (actionButtons.down) {
-              let downArrow = gBusinessController.CreateActionButton(svgEvent, centerX, parentFrame.height - topAdjustment, this.BlockID);
+              let downArrow = new LineDraw().CreateActionButton(svgEvent, centerX, parentFrame.height - topAdjustment, this.BlockID);
               if (downArrow == null) {
                 downArrow = svgEvent.CreateShape(OptConstant.CSType.Path);
                 const pathCreator = downArrow.PathCreator();
@@ -6344,7 +6322,7 @@ class BaseShape extends BaseDrawObject {
             }
             arrowGroup.SetSize(parentFrame.width, parentFrame.height);
             arrowGroup.SetPos(parentFrame.x, parentFrame.y);
-            if (gBusinessController.RotateActionButtons()) {
+            if (new LineDraw().RotateActionButtons()) {
               arrowGroup.SetRotation(this.RotationAngle);
             }
             T3Gv.opt.svgOverlayLayer.AddElement(arrowGroup);
@@ -6360,14 +6338,14 @@ class BaseShape extends BaseDrawObject {
                   const userData = overlayElement.GetUserData();
                   const targetObj = ObjectUtil.GetObjectPtr(userData, false);
                   if (targetObj && targetObj instanceof BaseDrawObject && targetId != null && userData != null) {
-                    gBusinessController.ActionClick(evt, userData, targetId, null);
+                    new LineDraw().ActionClick(evt, userData, targetId, null);
                   }
                 }
               }
             };
             const arrowDragstartHandler = function (evt: any) {
               if (LMEvtUtil.IsWheelClick(evt) || T3Constant.DocContext.SpacebarDown) {
-                Evt_WorkAreaHammerDragStart(evt);
+                EvtUtil.Evt_WorkAreaHammerDragStart(evt);
                 Utils2.StopPropagationAndDefaults(evt);
                 return false;
               }
@@ -6386,20 +6364,20 @@ class BaseShape extends BaseDrawObject {
                   if (!(targetObj && targetObj instanceof BaseDrawObject)) return false;
                   switch (targetId) {
                     case OptConstant.ActionArrow.Up:
-                      gBusinessController.AddAbove(evt, userData);
+                      AddAbove(evt, userData);
                       break;
                     case OptConstant.ActionArrow.Left:
-                      gBusinessController.AddLeft(evt, userData);
+                      AddLeft(evt, userData);
                       break;
                     case OptConstant.ActionArrow.Down:
-                      gBusinessController.AddBelow(evt, userData);
+                      AddBelow(evt, userData);
                       break;
                     case OptConstant.ActionArrow.Right:
-                      gBusinessController.AddRight(evt, userData);
+                      AddRight(evt, userData);
                       break;
                     default:
                       if (targetId >= OptConstant.ActionArrow.Custom) {
-                        gBusinessController.AddCustom(evt, userData, targetId - OptConstant.ActionArrow.Custom);
+                        AddCustom(evt, userData, targetId - OptConstant.ActionArrow.Custom);
                       }
                   }
                   return false;
@@ -6407,23 +6385,23 @@ class BaseShape extends BaseDrawObject {
               }
             };
             const arrowMouseOutHandler = function (evt: any) {
-              T3Gv.opt.SetActionArrowTimer(currentBlockId);
+              ActionUtil.SetActionArrowTimer(currentBlockId);
             };
             const arrowMouseOverHandler = function (evt: any) {
-              T3Gv.opt.ClearActionArrowTimer(currentBlockId);
+              ActionUtil.ClearActionArrowTimer(currentBlockId);
             };
 
             // Attach event handlers using Hammer.js to all arrow elements
             for (let idx = 0; idx < arrowElements.length; idx++) {
               const arrowDomElem = arrowElements[idx];
-              const hammerInstance = Hammer(arrowDomElem);
+              const hammerInstance = new Hammer(arrowDomElem);
               hammerInstance.on('dragstart', arrowDragstartHandler);
               hammerInstance.on('click', arrowClickHandler);
               arrowDomElem.onmouseout = arrowMouseOutHandler;
               arrowDomElem.onmouseover = arrowMouseOverHandler;
             }
             rolloverElement.svgObj.mouseout(() => {
-              T3Gv.opt.SetActionArrowTimer(currentBlockId);
+              ActionUtil.SetActionArrowTimer(currentBlockId);
               self.SetRuntimeEffects(false);
               self.ClearCursors();
               T3Gv.opt.curHiliteShape = -1;

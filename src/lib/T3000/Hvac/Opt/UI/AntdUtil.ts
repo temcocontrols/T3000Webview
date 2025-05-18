@@ -28,7 +28,10 @@ class AntdUtil {
     commonMsg.value = messgage;
     // Hvac.QuasarUtil.setGlobalMsg('error', messgage, true, "common", null);
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
-    T3Gv.docUtil.UpdateWorkArea();
+
+    if (T3Gv.docUtil) {
+      T3Gv.docUtil.UpdateWorkArea();
+    }
   }
 
   static ShowMessage(type: string, msg: string) {
