@@ -142,7 +142,7 @@ class QuasarUtil {
     T3Util.Log("= U.QuasarUtil ShowObjectConfig", "show=>", show);
     // T3Gv.refreshPosition = true;
     // this.SetSeletedTool();
-    objectConfigShow.value = show;
+    // objectConfigShow.value = show;
   }
 
   // static SetCurrentObject(currentObj: any) {

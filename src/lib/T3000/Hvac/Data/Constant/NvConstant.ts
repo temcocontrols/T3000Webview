@@ -354,7 +354,8 @@ class NvConstant {
     LcForceEnd: 16384,       // Force to end point
     LcHookNoExtra: 131072,   // No extra hooks
     LcHookReverse: 262144,   // Reverse hook direction
-    LcNoContinuous: 524288   // Disable continuous connection
+    LcNoContinuous: 524288,   // Disable continuous connection
+    LcTableRows: 1048576
   }
 
   /**
