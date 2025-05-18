@@ -383,6 +383,8 @@ class OptUtil {
   ConnectorList: any;
   ConnectorWidthList: any;
 
+  flowchartShift: any;
+
   //#endregion
 
   InitializeProperties() {
@@ -7804,15 +7806,163 @@ class OptUtil {
    * returns to its normal state.
    */
   CloseOpenNudge() {
-    T3Util.Log("= O.OptUtil  CloseOpenNudge - Input: No parameters");
-
     // Set the nudge state to closed
     this.nudgeOpen = false;
 
     // Complete the current operation with null parameter
     DrawUtil.CompleteOperation(null);
 
-    T3Util.Log("= O.OptUtil  CloseOpenNudge - Output: Nudge closed and operation completed");
+    T3Util.Log("= O.OptUtil  CloseOpenNudge - Input/Output: Nudge closed and operation completed");
+  }
+
+  /**
+   * Flips an array of points horizontally and/or vertically around a reference frame
+   * This function mirrors points relative to the edges of a bounding rectangle,
+   * allowing for horizontal flips (left-to-right), vertical flips (top-to-bottom),
+   * or both simultaneously.
+   *
+   * @param frame - The reference rectangle frame for flipping (with x, y, width, height)
+   * @param flipFlags - Bit flags determining flip direction (FlipHoriz, FlipVert, or both)
+   * @param points - Array of points to be flipped
+   */
+  FlipPoints(frame, flipFlags, points) {
+    T3Util.Log("= O.OptUtil  FlipPoints - Input:", { frame, flipFlags, pointCount: points.length });
+
+    let distance;
+    let pointIndex;
+    let pointCount;
+    const extraFlags = OptConstant.ExtraFlags;
+
+    pointCount = points.length;
+    for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
+      // Horizontal flip - mirrors points across the vertical center line
+      if (flipFlags & extraFlags.FlipHoriz) {
+        distance = points[pointIndex].x - frame.x;
+        points[pointIndex].x = frame.x + frame.width - distance;
+      }
+
+      // Vertical flip - mirrors points across the horizontal center line
+      if (flipFlags & extraFlags.FlipVert) {
+        distance = points[pointIndex].y - frame.y;
+        points[pointIndex].y = frame.y + frame.height - distance;
+      }
+    }
+
+    T3Util.Log("= O.OptUtil  FlipPoints - Output: Points flipped", { pointCount });
+  }
+
+  /**
+   * Calculates the connection points for rows in a table
+   * This function computes connection points around a table's rows that can be used
+   * for connecting lines or other elements. It returns points for:
+   * - Top center and bottom center of the table
+   * - Left side of each row at the row's midpoint
+   * - Right side of each row at the row's midpoint
+   *
+   * The points are normalized to a standard coordinate system (0-1000 range)
+   *
+   * @param tableElement - The table element containing frame information
+   * @param tableData - Data structure containing table rows and cells
+   * @returns Array of connection point coordinates
+   */
+  TableGetRowConnectPoints(tableElement, tableData) {
+    T3Util.Log("= O.OptUtil  TableGetRowConnectPoints - Input:", {
+      tableElement: tableElement?.BlockID,
+      tableData: {
+        rowCount: tableData?.rows?.length,
+        cellCount: tableData?.cells?.length
+      }
+    });
+
+    let rowIndex, extraRowIndex, rowHeight, cellData, rowY, connectPoint, rowData, extraRowCount;
+    const rowCount = tableData.rows.length;
+    const connectPoints = [];
+    const tableHeight = tableElement.Frame.height;
+    const maxDimension = OptConstant.Common.DimMax;
+
+    // Add top center connection point
+    connectPoint = {
+      x: maxDimension / 2,
+      y: 0
+    };
+    connectPoints.push(connectPoint);
+
+    // Add bottom center connection point
+    connectPoint = {
+      x: maxDimension / 2,
+      y: maxDimension
+    };
+    connectPoints.push(connectPoint);
+
+    // Calculate vertical offset between text rectangle and frame
+    const textRectOffset = tableElement.trect.y - tableElement.Frame.y;
+
+    // Create connection points for left side of each row
+    for (rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      rowData = tableData.rows[rowIndex];
+      cellData = tableData.cells[rowData.start];
+
+      // Calculate row position and height
+      rowY = cellData.frame.y + textRectOffset;
+      rowHeight = cellData.frame.height;
+      extraRowCount = cellData.nextra;
+
+      // Add heights of any extra rows
+      for (extraRowIndex = 1; extraRowIndex <= extraRowCount; extraRowIndex++) {
+        cellData = tableData.cells[tableData.rows[rowIndex + extraRowIndex].start];
+        rowHeight += cellData.frame.height;
+      }
+
+      // Skip extra rows in next iterations since we already processed them
+      rowIndex += extraRowCount;
+
+      // Calculate vertical center of the row
+      rowY += rowHeight / 2;
+
+      // Create connection point at the left side of the row
+      connectPoint = {
+        x: 0,
+        y: (rowY / tableHeight) * maxDimension
+      };
+      connectPoints.push(connectPoint);
+    }
+
+    // Create connection points for right side of each row
+    for (rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      rowData = tableData.rows[rowIndex];
+      cellData = tableData.cells[rowData.start + rowData.ncells - 1]; // Last cell in the row
+
+      // Calculate row position and height
+      rowY = cellData.frame.y + textRectOffset;
+      rowHeight = cellData.frame.height;
+      extraRowCount = cellData.nextra;
+
+      // Add heights of any extra rows (using the last cell of each row)
+      for (extraRowIndex = 1; extraRowIndex <= extraRowCount; extraRowIndex++) {
+        const extraRowData = tableData.rows[rowIndex + extraRowIndex];
+        cellData = tableData.cells[extraRowData.start + extraRowData.ncells - 1];
+        rowHeight += cellData.frame.height;
+      }
+
+      // Skip extra rows in next iterations since we already processed them
+      rowIndex += extraRowCount;
+
+      // Calculate vertical center of the row
+      rowY += rowHeight / 2;
+
+      // Create connection point at the right side of the row
+      connectPoint = {
+        x: maxDimension,
+        y: (rowY / tableHeight) * maxDimension
+      };
+      connectPoints.push(connectPoint);
+    }
+
+    T3Util.Log("= O.OptUtil  TableGetRowConnectPoints - Output:", {
+      pointCount: connectPoints.length
+    });
+
+    return connectPoints;
   }
 }
 

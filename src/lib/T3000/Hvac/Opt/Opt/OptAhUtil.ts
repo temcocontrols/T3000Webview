@@ -289,6 +289,79 @@ class OptAhUtil {
     }
     return false;
   }
+
+  ShiftConnectedShapes  (e, t, a, r, i, n, o) {
+    var s, l, S, c = [], u = [], p = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, !1), d = OptConstant.ActionArrow;
+    SDJS.Business.GetLineTree(t, a, c),
+      s = SDJS.Business.FilterChartShapes(e, r, c, i);
+    var D, g, h = 0, m = 0, C = gListManager.GetObjectPtr(a, !1), y = gListManager.GetObjectPtr(e, !1);
+    if (i && null != n) {
+      var f = gListManager.GetObjectPtr(n, !1);
+      if (f)
+        if (f.flags & SDJS.ListManager.ObjFlags.SEDO_UseConnect && f.ConnectPoints) {
+          var L = SDJS.Editor.DeepCopy(f);
+          g = L.AdjustAutoInsertShape(L.Frame, r === d.UP || r === d.DOWN, !0) ? {
+            width: L.Frame.height,
+            height: L.Frame.width
+          } : f.Frame
+        } else
+          g = f.Frame
+    }
+    switch (null == g && (g = y.Frame),
+    r) {
+      case d.RIGHT:
+        null != o ? (h = o,
+          l = 20) : (h = g.width + p.def.h_arraywidth,
+            l = p.def.g_arraywidth),
+          D = Math.abs(C.EndPoint.x - C.StartPoint.x),
+          !i && D - h < l && (h = D - l);
+        break;
+      case d.LEFT:
+        h = null != o ? o : g.width + p.def.h_arraywidth,
+          D = Math.abs(C.EndPoint.x - C.StartPoint.x),
+          !i && D - h < p.def.h_arraywidth && (h = D - p.def.h_arraywidth),
+          h = -h;
+        break;
+      case d.DOWN:
+        null != o ? (m = o,
+          l = 20) : (m = g.height + p.def.v_arraywidth,
+            l = p.def.v_arraywidth),
+          D = Math.abs(C.EndPoint.y - C.StartPoint.y),
+          !i && D - m < l && (m = D - l);
+        break;
+      case d.UP:
+        m = null != o ? o : g.height + p.def.v_arraywidth,
+          D = Math.abs(C.EndPoint.y - C.StartPoint.y),
+          !i && D - m < p.def.v_arraywidth && (m = D - p.def.v_arraywidth),
+          m = -m
+    }
+    if (!i && (h = -h,
+      m = -m,
+      SDJS.Business.GetLineTree(t, -1, u),
+      (S = SDJS.Business.FilterChartShapes(e, r, u, i)).remainframe && s.shiftframe))
+      switch (s.shiftframe.x += h,
+      s.shiftframe.y += m,
+      r) {
+        case d.RIGHT:
+          if (s.shiftframe.x < S.remainframe.x + S.remainframe.width + 20)
+            return -1;
+          break;
+        case d.LEFT:
+          if (s.shiftframe.x + S.shiftframe.width + Mingap > S.remainframe.x)
+            return -1;
+          break;
+        case d.DOWN:
+          if (s.shiftframe.y < S.remainframe.y + S.remainframe.height + 20)
+            return -1;
+          break;
+        case d.LEFT:
+          if (s.shiftframe.y + S.shiftframe.height + Mingap > S.remainframe.y)
+            return -1
+      }
+    var I = (c = s.newlist).length;
+    for (j = 0; j < I; j++)
+      gListManager.OffsetShape(c[j], h, m, 0)
+  }
 }
 
 export default OptAhUtil

@@ -234,7 +234,7 @@ class OptCMUtil {
     T3Util.Log("O.Opt SetEditMode - Output:", { mode: stateMode, cursor: actualCursorType });
   }
 
-  static CancelOperation(): void {
+  static CancelOperation(type: any): void {
     T3Util.Log("O.Opt CancelOperation - Input: crtOpt =", T3Gv.opt.crtOpt);
     switch (T3Gv.opt.crtOpt) {
       case OptConstant.OptTypes.None:
@@ -686,8 +686,8 @@ class OptCMUtil {
    */
   static PolyTrimForArrow(pointsArray, startIndex, pointCount, width, height, startPoint, endPoint, isReversed) {
     let findPoint = new Point();
-    let result = {findpt: findPoint, npts: pointCount};
-    let output = {spt: {}, ept: {}, pts: [], npts: 0};
+    let result = { findpt: findPoint, npts: pointCount };
+    let output = { spt: {}, ept: {}, pts: [], npts: 0 };
 
     // Find the appropriate length and point
     result = this.PolyFindLength(pointsArray, startIndex, pointCount, height, isReversed, false, findPoint);
