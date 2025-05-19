@@ -3,4 +3,6 @@ import { ref } from "vue";
 export const contextMenuShow = ref<boolean>(false);
 export const objectConfigShow = ref<boolean>(false);
 export const globalMsgShow = ref<boolean>(false);
-export const commonMsg=ref<string>("");
+export const commonMsg = ref<string>("");
+
+export const user = ref(null);

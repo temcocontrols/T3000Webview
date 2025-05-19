@@ -1,12 +1,7 @@
 <template>
   <q-page class="flex items-center justify-center">
-    <q-inner-loading
-      v-if="!loggedIn"
-      :showing="true"
-      label="Waiting for the login in the browser window..."
-      label-class="text-teal"
-      label-style="font-size: 1.1em"
-    />
+    <q-inner-loading v-if="!loggedIn" :showing="true" label="Waiting for the login in the browser window..."
+      label-class="text-teal" label-style="font-size: 1.1em" />
     <div v-else>Logged in as {{ user.name }}</div>
   </q-page>
 </template>
@@ -16,7 +11,9 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
-import { user, globalNav, getModbusRegisterSettings } from "../lib/common";
+import { /*user,*/ globalNav, getModbusRegisterSettings } from "../lib/common";
+import { user } from "../lib/T3000/Hvac/Data/Constant/RefConstant";
+
 import { localApi } from "../lib/api";
 
 const router = useRouter();
@@ -28,6 +25,16 @@ onMounted(() => {
   const socket = new WebSocket(process.env.API_WS_URL);
   socket.onmessage = ({ data }) => {
     data = JSON.parse(data);
+
+    //dev test, need remove when release
+    if (data.type === "hello") {
+      loggedIn.value = true;
+      user.value = { id: 999, name: "test", token: 'test-token-000' };
+      localStorage.setItem("user", JSON.stringify(user.value));
+      router.replace({ path: "/" });
+      return;
+    }
+
     if (data.type === "hello") {
       cid.value = data.cid;
       const loginUrl = process.env.API_URL + "/login?cid=" + cid.value;
@@ -59,7 +66,7 @@ onMounted(() => {
             "Offline mode enabled, data will not be synced, you can change that from settings.",
           color: "warning",
           timeout: 0,
-          actions: [{ label: "Dismiss", color: "white", handler: () => {} }],
+          actions: [{ label: "Dismiss", color: "white", handler: () => { } }],
         });
       }
 

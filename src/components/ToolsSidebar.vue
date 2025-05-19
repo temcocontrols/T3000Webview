@@ -157,10 +157,11 @@
 
 <script setup>
 
-import { ref,watch } from "vue";
+import { ref, watch } from "vue";
 import { useQuasar } from "quasar";
 import FileUpload from "./FileUploadS3.vue";
-import { tools, toolsCategories, user } from "../lib/common";
+import { tools, toolsCategories/*, user*/ } from "../lib/common";
+import { user } from "../lib/T3000/Hvac/Data/T3Data";
 
 const props = defineProps({
   selectedTool: {
@@ -175,8 +176,8 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  isBuiltInEdge:{
-    type:Boolean
+  isBuiltInEdge: {
+    type: Boolean
   }
 });
 
@@ -282,8 +283,8 @@ function toolDropped(event, tool) {
   emit("toolDropped", event, tool);
 }
 
-let heightOffset=ref("37px");
-heightOffset.value=props.isBuiltInEdge?"37px":"93px";
+let heightOffset = ref("37px");
+heightOffset.value = props.isBuiltInEdge ? "37px" : "93px";
 
 watch(() => props.isBuiltInEdge, (newValue) => {
   heightOffset.value = newValue ? "37px" : "93px";
@@ -302,7 +303,7 @@ watch(() => props.isBuiltInEdge, (newValue) => {
   overflow-y: auto;
   /* max-height: calc(100vh - 37px); */
   /* max-height: calc(100vh - 93px); */
-  max-height:calc(100vh - v-bind("heightOffset"));
+  max-height: calc(100vh - v-bind("heightOffset"));
   scrollbar-width: thin;
   z-index: 1;
   flex-wrap: nowrap;
