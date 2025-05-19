@@ -1,7 +1,21 @@
 <template>
   <main-layout>
-    <!-- Hero Section -->
     <Hero/>
+    <section class="section">
+      <h2>Popular Models</h2>
+      <div class="model-list">
+        <div v-for="model in popularModels" :key="model.id">
+          {{ model.name }}
+        </div>
+      </div>
+
+      <h2>Featured Studios</h2>
+      <div class="studio-list">
+        <div v-for="studio in featuredStudios" :key="studio.id">
+          {{ studio.name }}
+        </div>
+      </div>
+    </section>
   </main-layout>
 </template>
 
@@ -9,15 +23,13 @@
 import { ref } from 'vue'
 import MainLayout from '../../layouts/MainLayout2.vue'
 import { Model, Studio } from '../../types'
-import {
-  EyeOutlined,
-  LikeOutlined,
-  CloudOutlined,
-  ThunderboltOutlined,
-  TeamOutlined
-} from '@ant-design/icons-vue'
 // These imports are commented out in the original code
 import Hero from '../../components/NewUI/Hero.vue'
+
+// Define component name
+defineOptions({
+  name: 'TestPageOne'
+})
 
 const popularModels = ref<Model[]>([
   {

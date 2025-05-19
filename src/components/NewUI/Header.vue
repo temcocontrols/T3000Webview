@@ -2,6 +2,7 @@
   <a-layout-header class="header">
     <div class="logo">
       <img src="../../assets/logo.png" alt="Logo" />
+       <label>T3000</label>
     </div>
     <a-menu
       v-model:selectedKeys="selectedKeys"
@@ -9,17 +10,14 @@
       mode="horizontal"
       :style="{ lineHeight: '64px' }"
     >
-      <a-menu-item key="home">
-         <router-link to="/new/new">Home</router-link>
+      <a-menu-item key="hvac">
+         <router-link to="/new/hvac">HVAC Drawer</router-link>
       </a-menu-item>
-      <a-menu-item key="studios">Studios
-          <router-link to="/new/models">Studios</router-link>
+      <a-menu-item key="test1">
+          <router-link to="/new/test1">Application Library</router-link>
       </a-menu-item>
-      <a-menu-item key="models">Models
-         <router-link to="/new/datasets">Models</router-link>
-      </a-menu-item>
-      <a-menu-item key="datasets">Datasets
-         <router-link to="/new/studios">Datasets</router-link>
+      <a-menu-item key="models">
+         <router-link to="/new/datasets">Modbus Register</router-link>
       </a-menu-item>
     </a-menu>
     <div class="header-right">
@@ -34,7 +32,7 @@ import { ref } from 'vue'
 export default {
   name:'HeaderView',
   setup() {
-    const selectedKeys = ref(['studios'])
+    const selectedKeys = ref(['hvac'])
     return {
       selectedKeys
     }
@@ -55,11 +53,28 @@ export default {
 }
 
 .logo {
-  margin-right: 30px;
+  margin-right: 32px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  display: -ms-flexbox;
+  -webkit-box-align: center;
 }
 
 .logo img {
-  height: 32px;
+  height: 16px;
+}
+
+.logo label {
+ font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%);
+    background-clip: border-box;
+  background-clip: border-box;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left:10px;
 }
 
 .header-right {

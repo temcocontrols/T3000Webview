@@ -15,11 +15,12 @@ const routes = [
     path: '/new',
     component: () => import('layouts/MainLayout2.vue'),
     children: [
-      { path: 'new', component: () => import('pages/Test/HomePage.vue') },
-      { path: 'models', component: () => import('pages/Test/ModelsPage.vue') },
-      { path: 'datasets', component: () => import('pages/Test/StudiosPage.vue') },
-      { path: 'studios', component: () => import('pages/Test/StudiosPage.vue') },
-      { path: 'docs', component: () => import('pages/Test/StudiosPage.vue') }
+      { path: '', component: () => import('src/pages/Test/HvacIndex.vue') },
+      { path: 'hvac', component: () => import('src/pages/Test/HvacT2.vue') },
+      { path: 'test1', component: () => import('src/pages/Test/Test1.vue') },
+      { path: 'datasets', component: () => import('src/pages/Test/Test2.vue') },
+      { path: 'studios', component: () => import('src/pages/Test/Test2.vue') },
+      { path: 'docs', component: () => import('src/pages/Test/Test2.vue') }
     ]
   },
   {
