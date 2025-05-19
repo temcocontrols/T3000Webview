@@ -7964,6 +7964,41 @@ class OptUtil {
 
     return connectPoints;
   }
+
+  /**
+   * Finds all child line objects connected to a parent object
+   * This function repeatedly searches for child lines of the specified parent,
+   * collecting their IDs into an array. It uses FindChildArrayByIndex to
+   * locate each child line in sequence.
+   *
+   * @param parentId - ID of the parent object to find child lines for
+   * @param linksList - Optional list of links to search through
+   * @returns Array of line object IDs that are children of the parent
+   */
+  FindAllChildLines(parentId, linksList?) {
+    // Initialize result tracker for FindChildArrayByIndex calls
+    const resultInfo = {
+      lindex: -1,
+      id: -1,
+      hookpt: 0
+    };
+
+    // Array to collect child line IDs
+    const childLineIds = [];
+
+    // Find all child lines by repeatedly calling FindChildArrayByIndex
+    // and collecting each found ID until no more are found
+    while (this.FindChildArrayByIndex(
+      parentId,
+      resultInfo,
+      linksList,
+      OptConstant.DrawObjectBaseClass.Line
+    ) > 0) {
+      childLineIds.push(resultInfo.id);
+    }
+
+    return childLineIds;
+  }
 }
 
 export default OptUtil
