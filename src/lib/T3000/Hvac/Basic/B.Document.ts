@@ -269,6 +269,12 @@ class Document extends Container {
    */
   CalcWorkArea() {
     // Get the offset position of the parent element relative to the document
+    T3Util.Log("= B.Document CalcWorkArea ", $(this.parentElem));
+
+    if ($(this.parentElem) === null || $(this.parentElem) === undefined) {
+      return;
+    }
+
     const parentOffset = $(this.parentElem).offset();
 
     // Set the display X and Y coordinates from the parent's offset
