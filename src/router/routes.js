@@ -12,6 +12,17 @@ const routes = [
     ],
   },
   {
+    path: '/new',
+    component: () => import('layouts/MainLayout2.vue'),
+    children: [
+      { path: 'new', component: () => import('pages/Test/HomePage.vue') },
+      { path: 'models', component: () => import('pages/Test/ModelsPage.vue') },
+      { path: 'datasets', component: () => import('pages/Test/StudiosPage.vue') },
+      { path: 'studios', component: () => import('pages/Test/StudiosPage.vue') },
+      { path: 'docs', component: () => import('pages/Test/StudiosPage.vue') }
+    ]
+  },
+  {
     path: "/hvac",
     component: () => import("layouts/MainLayout.vue"),
     children: [
