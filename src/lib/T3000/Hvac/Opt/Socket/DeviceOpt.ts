@@ -5,7 +5,7 @@ import MockData from "../../Data/MockData"
 import PanelInfo from "./PanelInfo"
 import DeviceItem from "./DeviceItem"
 
-import T3Data from '../../Data/T3Data'
+import { T3Data } from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 import Hvac from "../../Hvac"
 import T3Util from "../../Util/T3Util"

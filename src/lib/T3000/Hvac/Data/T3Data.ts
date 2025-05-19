@@ -1,10 +1,7 @@
 
-
-
-import { ref } from 'vue'
-import { cloneDeep } from "lodash"
-import GlobalMsgModel from '../Model/GlobalMsgModel'
-
+import { ref } from "vue";
+import { cloneDeep } from "lodash";
+import GlobalMsgModel from "../Model/GlobalMsgModel";
 
 const gaugeDefautColors = [
   { offset: 33, color: "#14BE64" },
@@ -654,7 +651,7 @@ export const devVersion = ref("V:25.0509.01");
 
 export const localSettings = ref({ version: "V:25.0509.01", transform: 0 });
 
-const T3Data = {
+export const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),
   currentDevice: ref(),
@@ -1580,5 +1577,3 @@ export const NewTool = [
     },
   },
 ];
-
-export default T3Data

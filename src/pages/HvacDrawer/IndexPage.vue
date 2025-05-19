@@ -214,7 +214,7 @@
                 @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
-                  ">
+                ">
                 <!-- Cursor Icon -->
                 <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
                   ? selectedTool.icon
@@ -542,8 +542,8 @@
 
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'"
-                      :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'" :item="item"
+                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
@@ -776,7 +776,7 @@ import {
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
-import {user} from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -2746,7 +2746,7 @@ async function saveLibImage(file) {
   if (user.value) {
 
     console.log('= Idx saveLibImage file', file);
-    console.log('= Idx saveLibImage user',user.value);
+    console.log('= Idx saveLibImage user', user.value);
 
     liveApi
       .post("hvacTools", {
@@ -3675,7 +3675,7 @@ function deleteLibImage(item) {
     if (!item.online) {
       // Delete the image from the webview
 
-      if(library.value.images.length<=0){
+      if (library.value.images.length <= 0) {
         return;
       }
 

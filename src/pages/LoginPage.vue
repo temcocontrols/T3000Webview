@@ -12,7 +12,7 @@ import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 
 import { /*user,*/ globalNav, getModbusRegisterSettings } from "../lib/common";
-import { user } from "../lib/T3000/Hvac/Data/Constant/RefConstant";
+import { user } from "../lib/T3000/Hvac/Data/T3Data";
 
 import { localApi } from "../lib/api";
 
@@ -31,6 +31,13 @@ onMounted(() => {
       loggedIn.value = true;
       user.value = { id: 999, name: "test", token: 'test-token-000' };
       localStorage.setItem("user", JSON.stringify(user.value));
+
+      $q.cookies.set("token", data.token, {
+        expires: 360, // in 360 days
+        sameSite: "Strict",
+        secure: true,
+      });
+
       router.replace({ path: "/" });
       return;
     }

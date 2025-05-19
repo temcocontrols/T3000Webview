@@ -6,7 +6,6 @@
 import MessageType from "../Socket/MessageType"
 import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
-import Utils5 from "../../Util/Utils5"
 import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
 import {
