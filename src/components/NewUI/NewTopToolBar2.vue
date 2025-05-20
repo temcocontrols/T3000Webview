@@ -289,10 +289,11 @@
               &nbsp;
               <button id="btn_try_SendToBack">S To Back</button>
 
-              &nbsp;
-              <button id="btn_try_Paste">Paste</button>
+            </div>
+            <div style="margin-left: 8px; margin-top: 5px;">
 
-              &nbsp;
+              <button id="btn_try_Paste">Paste</button>
+                   &nbsp;
               <button id="btn_try_Copy">Copy</button>
 
               &nbsp;
