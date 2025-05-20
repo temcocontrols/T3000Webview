@@ -293,7 +293,8 @@
             <div style="margin-left: 8px; margin-top: 5px;">
 
               <button id="btn_try_Paste">Paste</button>
-                   &nbsp;
+
+              &nbsp;
               <button id="btn_try_Copy">Copy</button>
 
               &nbsp;
@@ -323,10 +324,10 @@
               &nbsp;
               <button id="btn_try_Lib_SetBackgroundImage">Image</button>
 
-              &nbsp;
-              <button id="btn_try_vue_foreignObject">Vue Cpt</button>
+              <!-- &nbsp;
+              <button id="btn_try_vue_foreignObject">Vue Cpt</button> -->
 
-              &nbsp;
+              <!-- &nbsp;
               <button id="btn_try_x">X</button>
 
               &nbsp;
@@ -336,7 +337,7 @@
               <button id="btn_try_w">W</button>
 
               &nbsp;
-              <button id="btn_try_h">H</button>
+              <button id="btn_try_h">H</button> -->
 
               &nbsp;
               <button id="btn_try_Lib_Lock">Lock</button>
@@ -351,31 +352,31 @@
               <button id="btn_try_Load_Library">Load Lib</button>
 
               &nbsp;
-              <button id="btn_try_Duct_1">D1</button>
+              <button id="btn_try_Duct_1">Duct1</button>
 
               &nbsp;
-              <button id="btn_try_Duct_2">D2</button>
+              <button id="btn_try_Duct_2">Duct2</button>
 
               &nbsp;
-              <button id="btn_try_Duct_3">D3</button>
+              <button id="btn_try_Duct_3">Duct3</button>
 
               &nbsp;
-              <button id="btn_try_Duct_4">D4</button>
+              <button id="btn_try_Duct_4">Duct4</button>
 
               &nbsp;
-              <button id="btn_try_Duct_5">D5</button>
+              <button id="btn_try_Duct_5">Duct5</button>
+
+              <!-- &nbsp;
+              <button id="btn_try_Duct_6">D6</button> -->
 
               &nbsp;
-              <button id="btn_try_Duct_6">D6</button>
+              <button id="btn_try_Duct_7">Duct6</button>
 
               &nbsp;
-              <button id="btn_try_Duct_7">D7</button>
+              <button id="btn_try_Duct_8">Duct7</button>
 
               &nbsp;
-              <button id="btn_try_Duct_8">D8</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_9">D9</button>
+              <button id="btn_try_Duct_9">Duct8</button>
 
               <!-- &nbsp;
               <button id="btn_try_Duct_10">D10</button>
