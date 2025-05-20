@@ -1551,7 +1551,7 @@ export const NewTool = [
   {
     name: "Duct1",
     label: "Duct1",
-    icon: "svguse:icons.svg#duct1",
+    icon: "svguse:icons.svg#duct1 |0 0 12 12",
     cat: ["NewDuct"],
     settings: {
       fillColor: {

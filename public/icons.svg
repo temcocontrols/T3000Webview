@@ -778,7 +778,7 @@
 
 
   <symbol id="duct1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
-    <g>
+    <g transform="scale(1.8,1.8) translate(-15,-10)">
       <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.5)">
         <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
           <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
@@ -829,7 +829,7 @@
   </symbol>
 
   <symbol id="duct2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 21.83">
-    <g>
+    <g transform="scale(1.8,1.8) translate(-15,-10)">
       <g width="35.833" height="20.833" transform="scale(1,1) translate(19.5,0)">
         <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none"
           width="35.833" height="20.833" transform="scale(1,1)
@@ -864,7 +864,7 @@ translate(0.5,10.333)">
   </symbol>
 
   <symbol id="duct3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
-    <g>
+    <g transform="scale(1.6,1.6) translate(-15,-10)">
       <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
         <g transform="scale(1,1)
 translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
@@ -899,7 +899,7 @@ translate(48.333,14.833)">
   </symbol>
 
   <symbol id="duct4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 30.67">
-    <g>
+    <g transform="scale(1.6,1.6) translate(-15,-10)">
       <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
         <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
           stroke-opacity="1">
@@ -945,7 +945,7 @@ L28.667,28.667" fill="none" stroke-width="1" stroke-dasharray="none" />
   </symbol>
 
   <symbol id="duct5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
-    <g>
+    <g transform="scale(1.6,1.6) translate(-15,-10)">
       <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
         <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
           stroke-opacity="1">
