@@ -1551,7 +1551,7 @@ export const NewTool = [
   {
     name: "Duct1",
     label: "Duct1",
-    icon: "svguse:icons.svg#room-temperature",
+    icon: "svguse:icons.svg#duct1",
     cat: ["NewDuct"],
     settings: {
       fillColor: {
@@ -1565,7 +1565,91 @@ export const NewTool = [
   {
     name: "Duct2",
     label: "Duct2",
-    icon: "svguse:icons.svg#room-temperature",
+    icon: "svguse:icons.svg#duct2",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct3",
+    label: "Duct3",
+    icon: "svguse:icons.svg#duct3",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct4",
+    label: "Duct4",
+    icon: "svguse:icons.svg#duct4",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct5",
+    label: "Duct5",
+    icon: "svguse:icons.svg#duct5",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct6",
+    label: "Duct6",
+    icon: "svguse:icons.svg#duct6",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct7",
+    label: "Duct7",
+    icon: "svguse:icons.svg#duct7",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct8",
+    label: "Duct8",
+    icon: "svguse:icons.svg#duct8",
     cat: ["NewDuct"],
     settings: {
       fillColor: {

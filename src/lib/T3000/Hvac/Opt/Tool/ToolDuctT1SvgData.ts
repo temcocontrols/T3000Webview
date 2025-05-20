@@ -8,10 +8,10 @@ class ToolDuctT1SvgData {
 
     switch (symbolType) {
       case "Duct1":
-        frame = { width: 68.5, height: 29.667 };
+        frame = { width: 68.5, height: 29.67 };
         break;
       case "Duct2":
-        frame = { width: 76, height: 21.833 };
+        frame = { width: 76, height: 21.83 };
         break;
       case "Duct3":
         frame = { width: 68.5, height: 29.67 };
