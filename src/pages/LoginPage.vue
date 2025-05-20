@@ -26,7 +26,8 @@ onMounted(() => {
   socket.onmessage = ({ data }) => {
     data = JSON.parse(data);
 
-    //dev test, need remove when release
+    /*
+    //Local test for login
     if (data.type === "hello") {
       loggedIn.value = true;
       user.value = { id: 999, name: "test", token: 'test-token-000' };
@@ -41,6 +42,7 @@ onMounted(() => {
       router.replace({ path: "/" });
       return;
     }
+    */
 
     if (data.type === "hello") {
       cid.value = data.cid;
