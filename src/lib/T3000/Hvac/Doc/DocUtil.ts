@@ -18,6 +18,7 @@ import SelectUtil from '../Opt/Opt/SelectUtil'
 import RulerUtil from '../Opt/UI/RulerUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
+import DataOpt from '../Opt/Data/DataOpt'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -2380,8 +2381,10 @@ class DocUtil {
     // Convert zoom factor to percentage and apply it
     this.SetZoomLevel(100 * newZoomFactor, eventSource);
 
-    console.log("O.DocOpt - ZoomInAndOut - New zoom factor set:", newZoomFactor);
-    console.log("O.DocOpt - ZoomInAndOut - T3Gv:", T3Gv);
+    T3Util.Log("O.DocOpt - ZoomInAndOut - New zoom factor set:", newZoomFactor);
+    T3Util.Log("O.DocOpt - ZoomInAndOut - T3Gv:", T3Gv);
+
+    DataOpt.SaveToLocalStorage();
   }
 
   /**

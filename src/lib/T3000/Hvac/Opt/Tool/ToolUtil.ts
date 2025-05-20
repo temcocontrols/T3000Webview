@@ -172,7 +172,7 @@ class ToolUtil {
     let newShape = null;
 
     // Force line type to 'line'
-    lineType = "polyLineContainer";
+    lineType = "line";
 
     switch (lineType) {
       case 'line':
@@ -391,7 +391,7 @@ class ToolUtil {
       height = OptConstant.Common.ShapeSquare;
     } else {
       width = OptConstant.Common.ShapeWidth;
-      height = OptConstant.Common.ShapeHeight;
+      height = 60;// OptConstant.Common.ShapeHeight;
     }
 
     // Create shape attributes
@@ -403,7 +403,7 @@ class ToolUtil {
         height: height
       },
       TextGrow: NvConstant.TextGrowBehavior.ProPortional,
-      shapeparam: sessionBlock.def.rrectparam,
+      shapeparam: 0,// sessionBlock.def.rrectparam,
       moreflags: OptConstant.ObjMoreFlags.FixedRR,
       ObjGrow: OptConstant.GrowBehavior.All
     };
