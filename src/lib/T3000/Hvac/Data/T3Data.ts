@@ -1577,3 +1577,6 @@ export const NewTool = [
     },
   },
 ];
+
+// Adjust the height of the vertical scroll bar when global message is shown
+export const AdjustVlScrollHeight = 40;

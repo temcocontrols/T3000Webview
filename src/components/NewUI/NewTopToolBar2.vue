@@ -376,17 +376,17 @@
               &nbsp;
               <button id="btn_try_Duct_9">D9</button>
 
-              &nbsp;
+              <!-- &nbsp;
               <button id="btn_try_Duct_10">D10</button>
 
               &nbsp;
               <button id="btn_try_Duct_11">D11</button>
 
               &nbsp;
-              <button id="btn_try_Duct_12">D12</button>
+              <button id="btn_try_Duct_12">D12</button> -->
 
               &nbsp;
-              <button id="btn_try_Reset_Scale">Scale</button>
+              <button id="btn_try_Reset_Scale">Reset Zoom</button>
             </div>
           </q-tab-panel>
         </q-tab-panels>

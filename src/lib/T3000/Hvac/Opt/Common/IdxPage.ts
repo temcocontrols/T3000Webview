@@ -214,6 +214,8 @@ class IdxPage {
 
   static restDocumentAreaPosition(pzXY) {
     const div = document.querySelector('.full-area');
+    if(!div) return;
+
     documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
     documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
     documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";

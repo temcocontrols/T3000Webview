@@ -10,7 +10,6 @@ export default defineComponent({
 });
 </script> -->
 
-
 <template>
   <a-config-provider :locale="locale">
     <router-view />
@@ -19,9 +18,9 @@ export default defineComponent({
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import enUs from 'ant-design-vue/es/locale/en_US'
 
-const locale = ref(zhCN)
+const locale = ref(enUs)
 </script>
 
 <style>

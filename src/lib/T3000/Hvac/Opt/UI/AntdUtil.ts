@@ -3,6 +3,7 @@
 import { notification, message } from 'ant-design-vue';
 import UIUtil from './UIUtil';
 import { commonMsg, globalMsgShow } from '../../Data/Constant/RefConstant';
+import { AdjustVlScrollHeight } from '../../Data/T3Data';
 import Hvac from '../../Hvac';
 import DocUtil from '../../Doc/DocUtil';
 import T3Gv from '../../Data/T3Gv';
@@ -27,10 +28,20 @@ class AntdUtil {
     const fitOption = {};
     commonMsg.value = messgage;
     // Hvac.QuasarUtil.setGlobalMsg('error', messgage, true, "common", null);
-    UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
+    // UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
 
+    const vlScrollHeight = globalMsgShow.value ? AdjustVlScrollHeight : 0;
     if (T3Gv.docUtil) {
-      T3Gv.docUtil.UpdateWorkArea();
+      T3Gv.docUtil.UpdateWorkArea(vlScrollHeight);
+    }
+  }
+
+  // clear the global message
+  static CloseGlobalMsg() {
+    globalMsgShow.value = false;
+    const vlScrollHeight = globalMsgShow.value ? AdjustVlScrollHeight : 0;
+    if (T3Gv.docUtil) {
+      T3Gv.docUtil.UpdateWorkArea(vlScrollHeight);
     }
   }
 

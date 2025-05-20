@@ -277,6 +277,11 @@ class Document extends Container {
 
     const parentOffset = $(this.parentElem).offset();
 
+    // Temporary check of parent offset for draw area initialization bug in v1.0
+    if (parentOffset === null || parentOffset === undefined) {
+      return;
+    }
+
     // Set the display X and Y coordinates from the parent's offset
     this.docInfo.dispX = parentOffset.left;
     this.docInfo.dispY = parentOffset.top;

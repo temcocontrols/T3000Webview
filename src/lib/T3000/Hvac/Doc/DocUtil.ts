@@ -342,17 +342,20 @@ class DocUtil {
    * Updates the document work area layout and dimensions
    * Calculates and applies sizes and positions for SVG area and rulers
    * Manages scrollbars, scaling, and document positioning within the available space
+   * @param verticalScrollHeight - Optional height adjustment for vertical scrollbars when a global message is showing to make the horizon scrollbar present
    * @returns void
    */
-  UpdateWorkArea(): void {
+  UpdateWorkArea(adjustVlScrollHeight?: number): void {
     // Get input values
     const showRulers = this.docConfig.showRulers;
-    const workAreaSize = this.GetWorkAreaSize();
+
+    let workAreaSize = this.GetWorkAreaSize();
+    workAreaSize.height -= (adjustVlScrollHeight ?? 0);
+
     const verticalRulerWidth = $(this.vRulerAreaId).width();
     const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
-    T3Util.Log("= U.DocUtil: UpdateWorkArea - Input:",
-      { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
+    T3Util.Log("= U.DocUtil: UpdateWorkArea - Input:", { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
 
     // Initialize scrollbar width if not already set
     if (!this.scrollWidth) {
@@ -525,14 +528,10 @@ class DocUtil {
    * @returns Object containing width and height in pixels
    */
   GetWorkAreaSize(): { width: number; height: number } {
-    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Input:", { workAreaId: this.workAreaId });
-
     const width = $(this.workAreaId).width();
     const height = $(this.workAreaId).height();
-
     const result = { width, height };
-    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Output:", result);
-
+    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Input/Output:", { workAreaId: this.workAreaId }, result);
     return result;
   }
 

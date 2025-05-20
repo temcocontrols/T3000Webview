@@ -175,7 +175,7 @@
 }
 
 #svg-area {
-  scrollbar-width: thin;
+  /* scrollbar-width: thin; */
   position: absolute;
   left: 119px;
   top: 20px;
