@@ -239,28 +239,44 @@
               <button id="btn_try_ArrB">Arr B</button>
 
               &nbsp;
-              <button id="btn_try_Roate45">R 45</button>
+              <button id="btn_try_Roate45">R 45
+                <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Roate90">R 90</button>
+              <button id="btn_try_Roate90">R 90
+                <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_lefts">Align L</button>
+              <button id="btn_try_Align_lefts">Align L
+                <q-tooltip>Align selected shapes to the left</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_centers">Align C</button>
+              <button id="btn_try_Align_centers">Align C
+                <q-tooltip>Align selected shapes to the center</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_rights">Align R</button>
+              <button id="btn_try_Align_rights">Align R
+                <q-tooltip>Align selected shapes to the right</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_tops">Align T</button>
+              <button id="btn_try_Align_tops">Align T
+                <q-tooltip>Align selected shapes to the top</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_middles">Align M</button>
+              <button id="btn_try_Align_middles">Align M
+                <q-tooltip>Align selected shapes to the middle</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Align_bottoms">Align B</button>
+              <button id="btn_try_Align_bottoms">Align B
+                <q-tooltip>Align selected shapes to the bottom</q-tooltip>
+              </button>
 
               &nbsp;
               <button id="btn_try_Group">Group</button>
@@ -269,25 +285,39 @@
               <button id="btn_try_UnGroup">Un-group</button>
 
               &nbsp;
-              <button id="btn_try_Flip_Horizontal">Flip H</button>
+              <button id="btn_try_Flip_Horizontal">Flip H
+                <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Flip_Vertical">Flip V</button>
+              <button id="btn_try_Flip_Vertical">Flip V
+                <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Same_Height">Same H</button>
+              <button id="btn_try_Same_Height">Same H
+                <q-tooltip>Make selected shapes same height</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Same_Width">Same W</button>
+              <button id="btn_try_Same_Width">Same W
+                <q-tooltip>Make selected shapes same width</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Same_Both">Same B</button>
+              <button id="btn_try_Same_Both">Same B
+                <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_BringToFront">B To Front</button>
+              <button id="btn_try_BringToFront">B To Front
+                <q-tooltip>Bring selected shape(s) to front</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_SendToBack">S To Back</button>
+              <button id="btn_try_SendToBack">S To Back
+                <q-tooltip>Send selected shape(s) to back</q-tooltip>
+              </button>
 
             </div>
             <div style="margin-left: 8px; margin-top: 5px;">
@@ -313,16 +343,22 @@
               <button id="btn_try_Save">Save</button>
 
               &nbsp;
-              <button id="btn_try_Duplicate">Duplicate</button>
+              <button id="btn_try_Duplicate">Duplicate
+                <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Clear">Clear</button>
+              <button id="btn_try_Clear">Clear
+                <q-tooltip>Clear data</q-tooltip>
+              </button>
 
               &nbsp;
-              <button id="btn_try_Lib_SetBackgroundColor">Bk Color</button>
+              <button id="btn_try_Lib_SetBackgroundColor">Bk Color
+                <q-tooltip>Set background color</q-tooltip>
+              </button>
 
-              &nbsp;
-              <button id="btn_try_Lib_SetBackgroundImage">Image</button>
+              <!-- &nbsp;
+              <button id="btn_try_Lib_SetBackgroundImage">Image</button> -->
 
               <!-- &nbsp;
               <button id="btn_try_vue_foreignObject">Vue Cpt</button> -->

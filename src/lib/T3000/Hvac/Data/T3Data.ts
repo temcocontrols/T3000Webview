@@ -704,10 +704,51 @@ export const NewTool = [
       },
     },
   },
+
+  {
+    name: "Line",
+    label: "Line",
+    icon: "svguse:icons.svg#line",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+{
+    name: "SegLine",
+    label: "Segment Line",
+    icon: "svguse:icons.svg#segLine",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
   {
     name: "G_Rectangle",
     label: "Rectangle",
-    icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
+    icon: "svguse:icons.svg#rectangle|0 0 24 24",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -727,7 +768,7 @@ export const NewTool = [
   {
     name: "G_Circle",
     label: "Circle",
-    icon: "svguse:icons.svg#g_circle|0 0 24 24",
+    icon: "svguse:icons.svg#circle|0 0 24 24",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -744,30 +785,10 @@ export const NewTool = [
       },
     },
   },
-  {
-    name: "g_arr_right",
-    label: "Step",
-    icon: "svguse:icons.svg#g_arr_right|0 0 32 32",
-    cat: ["General"],
-    settings: {
-      // bgColor: {
-      //   value: "#000",
-      //   type: "color",
-      //   label: "Background Color",
-      //   id: 1,
-      // },
-      fillColor: {
-        value: "#659dc5",
-        type: "color",
-        label: "Fill color",
-        id: 2,
-      },
-    },
-  },
-  {
+   {
     name: "Oval",
     label: "Oval",
-    icon: "svguse:icons.svg#g_oval|0 0 30 30",
+    icon: "svguse:icons.svg#oval|0 0 30 30",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -785,20 +806,101 @@ export const NewTool = [
     },
   },
   {
-    name: "Duct",
-    label: "Duct",
-    icon: "svguse:icons.svg#duct|0 0 226 75",
-    cat: ["Duct"],
-    height: 40,
+    name: "ArrowRight",
+    label: "Arrow Right",
+    icon: "svguse:icons.svg#arrow_right|0 0 32 32",
+    cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#808080",
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
         type: "color",
         label: "Fill color",
-        id: 1,
+        id: 2,
       },
     },
   },
+  {
+    name: "ArrowLeft",
+    label: "Arrow Left",
+    icon: "svguse:icons.svg#arrow_left|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "ArrowTop",
+    label: "Arrow Top",
+    icon: "svguse:icons.svg#arrow_top|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "ArrowBottom",
+    label: "Arrow Bottom",
+    icon: "svguse:icons.svg#arrow_bottom|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+
+  // {
+  //   name: "Duct",
+  //   label: "Duct",
+  //   icon: "svguse:icons.svg#duct|0 0 226 75",
+  //   cat: ["Duct"],
+  //   height: 40,
+  //   settings: {
+  //     bgColor: {
+  //       value: "#808080",
+  //       type: "color",
+  //       label: "Fill color",
+  //       id: 1,
+  //     },
+  //   },
+  // },
   {
     name: "Fan",
     label: "Fan",
