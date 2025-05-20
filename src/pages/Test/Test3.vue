@@ -1,7 +1,7 @@
 <template>
   <main-layout>
     <div class="container">
-      <h1 class="page-title">AI 模型库</h1>
+      <h1 class="page-title">AI Model</h1>
 
       <!-- Search and Filters -->
       <div class="filters-container">
@@ -9,7 +9,7 @@
           <a-col :xs="24" :md="8">
             <a-input-search
               v-model:value="searchQuery"
-              placeholder="搜索模型名称、描述或标签"
+              placeholder="Model"
               enter-button
               allow-clear
               @search="onSearch"
@@ -20,39 +20,39 @@
             <div class="filters">
               <a-select
                 v-model:value="categoryFilter"
-                placeholder="类别"
+                placeholder="Model"
                 style="width: 120px; margin-right: 12px;"
                 @change="onFilterChange"
               >
-                <a-select-option value="">全部类别</a-select-option>
-                <a-select-option value="nlp">自然语言处理</a-select-option>
-                <a-select-option value="cv">计算机视觉</a-select-option>
-                <a-select-option value="audio">语音技术</a-select-option>
-                <a-select-option value="multimodal">多模态</a-select-option>
+                <a-select-option value="">Model</a-select-option>
+                <a-select-option value="nlp">Model</a-select-option>
+                <a-select-option value="cv">Model</a-select-option>
+                <a-select-option value="audio">Model</a-select-option>
+                <a-select-option value="multimodal">Model</a-select-option>
               </a-select>
 
               <a-select
                 v-model:value="taskFilter"
-                placeholder="任务"
+                placeholder="Test Data"
                 style="width: 140px; margin-right: 12px;"
                 @change="onFilterChange"
               >
-                <a-select-option value="">全部任务</a-select-option>
-                <a-select-option value="classification">分类</a-select-option>
-                <a-select-option value="detection">检测</a-select-option>
-                <a-select-option value="generation">生成</a-select-option>
-                <a-select-option value="segmentation">分割</a-select-option>
+                <a-select-option value="">Test Data</a-select-option>
+                <a-select-option value="classification">Test Data</a-select-option>
+                <a-select-option value="detection">Test Data</a-select-option>
+                <a-select-option value="generation">Test Data</a-select-option>
+                <a-select-option value="segmentation">Test Data</a-select-option>
               </a-select>
 
               <a-select
                 v-model:value="sortOrder"
-                placeholder="排序方式"
+                placeholder="Test Data"
                 style="width: 120px"
                 @change="onFilterChange"
               >
-                <a-select-option value="popular">最热门</a-select-option>
-                <a-select-option value="newest">最新发布</a-select-option>
-                <a-select-option value="name">名称</a-select-option>
+                <a-select-option value="popular">Test Data</a-select-option>
+                <a-select-option value="newest">Test Data</a-select-option>
+                <a-select-option value="name">Test Data</a-select-option>
               </a-select>
             </div>
           </a-col>
@@ -62,11 +62,11 @@
       <!-- Active Filters -->
       <div class="active-filters">
         <a-tag v-if="categoryFilter" closable @close="categoryFilter = ''">
-          类别: {{ getCategoryLabel(categoryFilter) }}
+          Test Data: {{ getCategoryLabel(categoryFilter) }}
         </a-tag>
 
         <a-tag v-if="taskFilter" closable @close="taskFilter = ''">
-          任务: {{ getTaskLabel(taskFilter) }}
+          Test Data: {{ getTaskLabel(taskFilter) }}
         </a-tag>
       </div>
 
@@ -102,7 +102,7 @@
 
       <!-- Empty State -->
       <a-empty v-if="filteredModels.length === 0"
-               description="没有找到符合条件的模型" />
+               description="Test Data" />
 
       <!-- Pagination -->
       <div class="pagination">
@@ -137,105 +137,105 @@ const pageSize = ref(12)
 const allModels = ref<Model[]>([
   {
     id: 1,
-    name: 'BERT 中文预训练模型',
-    description: '基于大规模中文语料训练的语言表示模型，适用于多种 NLP 任务',
+    name: 'BERT Test Data',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=BERT',
     avatar: 'https://via.placeholder.com/40',
     author: 'ModelScope Team',
     category: 'nlp',
     task: 'classification',
-    tags: ['NLP', '预训练', '中文'],
+    tags: ['NLP', 'Test Data', 'Test Data'],
     stars: 1245,
     forks: 320
   },
   {
     id: 2,
-    name: 'YOLOv8 目标检测',
-    description: '最新的 YOLO 系列模型，更快更准确的目标检测，支持多种目标类别',
+    name: 'YOLOv8 Test Data',
+    description: 'Test Data YOLO Test Data',
     image: 'https://via.placeholder.com/400x200?text=YOLOv8',
     avatar: 'https://via.placeholder.com/40',
     author: 'CV Team',
     category: 'cv',
     task: 'detection',
-    tags: ['目标检测', 'YOLO', '计算机视觉'],
+    tags: ['Test Data', 'YOLO', 'Test Data'],
     stars: 980,
     forks: 215
   },
   {
     id: 3,
     name: 'Stable Diffusion',
-    description: '文本到图像的生成模型，可创建高质量艺术图像，支持多种风格和提示词',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=StableDiffusion',
     avatar: 'https://via.placeholder.com/40',
     author: 'AI Lab',
     category: 'cv',
     task: 'generation',
-    tags: ['图像生成', '扩散模型', 'AI艺术'],
+    tags: ['Test Data', 'Test Data', 'Test Data'],
     stars: 2430,
     forks: 560
   },
   {
     id: 4,
-    name: 'GPT-2 中文模型',
-    description: '基于 Transformer 的语言生成模型中文版，可用于文章生成、对话等任务',
+    name: 'GPT-2 Test Data',
+    description: 'Test Data Transformer Test Data',
     image: 'https://via.placeholder.com/400x200?text=GPT-2',
     avatar: 'https://via.placeholder.com/40',
     author: 'NLP Research',
     category: 'nlp',
     task: 'generation',
-    tags: ['NLP', '文本生成', 'GPT'],
+    tags: ['NLP', 'Test Data', 'GPT'],
     stars: 1830,
     forks: 420
   },
   {
     id: 5,
-    name: '语音识别模型',
-    description: '中文普通话语音识别模型，准确率高，支持实时转录',
+    name: 'Test Data',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=ASR',
     avatar: 'https://via.placeholder.com/40',
     author: 'Speech AI',
     category: 'audio',
     task: 'recognition',
-    tags: ['语音识别', '中文', '实时'],
+    tags: ['Test Data', 'Test Data', 'Test Data'],
     stars: 756,
     forks: 182
   },
   {
     id: 6,
-    name: '人体姿态估计',
-    description: '实时人体姿态估计模型，可检测17个关键点，适用于健身、舞蹈等应用',
+    name: 'Test Data',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=PoseEstimation',
     avatar: 'https://via.placeholder.com/40',
     author: 'Vision Research',
     category: 'cv',
     task: 'detection',
-    tags: ['姿态估计', '人体检测', '关键点'],
+    tags: ['Test Data', 'Test Data', 'Test Data'],
     stars: 1120,
     forks: 245
   },
   {
     id: 7,
-    name: '中文情感分析',
-    description: '基于BERT的中文文本情感分析模型，可分析正面、负面和中性情感',
+    name: 'Test Data',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=SentimentAnalysis',
     avatar: 'https://via.placeholder.com/40',
     author: 'Text Mining Lab',
     category: 'nlp',
     task: 'classification',
-    tags: ['情感分析', '中文', 'BERT'],
+    tags: ['Test Data', 'Test Data', 'BERT'],
     stars: 865,
     forks: 193
   },
   {
     id: 8,
-    name: '图像分割模型',
-    description: '高精度语义分割模型，支持多种常见场景和物体的精细分割',
+    name: 'Test Data',
+    description: 'Test Data',
     image: 'https://via.placeholder.com/400x200?text=Segmentation',
     avatar: 'https://via.placeholder.com/40',
     author: 'Segmentation Team',
     category: 'cv',
     task: 'segmentation',
-    tags: ['语义分割', '计算机视觉', '实例分割'],
+    tags: ['Test Data', 'Test Data', 'Test Data'],
     stars: 732,
     forks: 168
   }
@@ -297,21 +297,21 @@ const onPageSizeChange = (current: number, size: number) => {
 
 const getCategoryLabel = (category: string): string => {
   const categories: Record<string, string> = {
-    'nlp': '自然语言处理',
-    'cv': '计算机视觉',
-    'audio': '语音技术',
-    'multimodal': '多模态'
+    'nlp': 'Test Data',
+    'cv': 'Test Data',
+    'audio': 'Test Data',
+    'multimodal': 'Test Data'
   }
   return categories[category] || category
 }
 
 const getTaskLabel = (task: string): string => {
   const tasks: Record<string, string> = {
-    'classification': '分类',
-    'detection': '检测',
-    'generation': '生成',
-    'segmentation': '分割',
-    'recognition': '识别'
+    'classification': 'Test Data',
+    'detection': 'Test Data',
+    'generation': 'Test Data',
+    'segmentation': 'Test Data',
+    'recognition': 'Test Data'
   }
   return tasks[task] || task
 }

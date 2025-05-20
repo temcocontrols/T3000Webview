@@ -19,7 +19,7 @@
 <template>
   <div class="tools flex column">
     <q-expansion-item v-for="cat in toolsCategories" :key="cat" class="mb-2 border border-solid border-gray-700" dark
-      default-opened :label="cat" header-class="p-2 min-h-0" expand-icon-class="!pl-2">
+      default-opened :label="cat === 'NewDuct' ? 'Duct' : cat" header-class="p-3 min-h-0" expand-icon-class="!pl-2">
       <q-list class="rounded-borders text-primary grid grid-cols-2 gap-1 p-1">
         <q-item v-for="tool in NewTool.filter((i) => i.cat.includes(cat))" :key="tool.name" @click="selectTool(tool)"
           @dragend="toolDropped($event, tool)" clickable v-ripple :active="selectedTool.name === tool.name"
@@ -160,7 +160,8 @@
 import { ref, watch } from "vue";
 import { useQuasar } from "quasar";
 import FileUpload from "../FileUploadS3.vue";
-import { /*tools,*/ toolsCategories/*, user*/ } from "../../lib/common";
+// import { /*tools,*/ toolsCategories/*, user*/ } from "../../lib/common";
+import { toolsCategories } from "../../lib/T3000/Hvac/Data/T3Data";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { NewTool } from "../../lib/T3000/Hvac/Data/T3Data";
 import T3Util from "../../lib/T3000/Hvac/Util/T3Util";

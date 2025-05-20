@@ -66,7 +66,6 @@ const gaugeDefautColors = [
 
 export const toolsCategories = [
   "Basic",
-  "NewDuct",
   "General",
   "Pipe",
   "Duct",

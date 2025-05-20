@@ -647,9 +647,9 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.0509.01");
+export const devVersion = ref("V:25.0520.01");
 
-export const localSettings = ref({ version: "V:25.0509.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.0520.01", transform: 0 });
 
 export const T3Data = {
   deviceList: ref([]),
@@ -1580,3 +1580,13 @@ export const NewTool = [
 
 // Adjust the height of the vertical scroll bar when global message is shown
 export const AdjustVlScrollHeight = 40;
+
+export const toolsCategories = [
+  "Basic",
+  "General",
+  "Pipe",
+  "NewDuct",
+  "Duct",
+  "Room",
+  "Metrics",
+];

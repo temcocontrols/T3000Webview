@@ -34,8 +34,8 @@ defineOptions({
 const popularModels = ref<Model[]>([
   {
     id: 1,
-    name: 'BERT 中文预训练模型',
-    description: '基于大规模中文语料训练的语言表示模型',
+    name: 'BERT',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=BERT',
     avatar: 'https://via.placeholder.com/40',
     author: 'ModelScope Team',
@@ -43,38 +43,38 @@ const popularModels = ref<Model[]>([
   },
   {
     id: 2,
-    name: 'YOLOv8 目标检测',
-    description: '最新的 YOLO 系列模型，更快更准确的目标检测',
+    name: 'YOLOv8',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=YOLOv8',
     avatar: 'https://via.placeholder.com/40',
     author: 'CV Team',
-    category: '计算机视觉'
+    category: ''
   },
   {
     id: 3,
     name: 'Stable Diffusion',
-    description: '文本到图像的生成模型，可创建高质量艺术图像',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=StableDiffusion',
     avatar: 'https://via.placeholder.com/40',
     author: 'AI Lab',
-    category: '图像生成'
+    category: ''
   },
   {
     id: 4,
-    name: 'GPT-2 中文模型',
-    description: '基于 Transformer 的语言生成模型中文版',
+    name: 'GPT-2 ',
+    description: ' Transformer ',
     image: 'https://via.placeholder.com/400x200?text=GPT-2',
     avatar: 'https://via.placeholder.com/40',
     author: 'NLP Research',
-    category: '自然语言生成'
+    category: ''
   }
 ])
 
 const featuredStudios = ref<Studio[]>([
   {
     id: 1,
-    name: '智能写作助手',
-    description: '基于 GPT 的智能写作辅助工具，提高写作效率',
+    name: '',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=WritingAssistant',
     avatar: 'https://via.placeholder.com/40',
     author: 'AIWriter',
@@ -83,8 +83,8 @@ const featuredStudios = ref<Studio[]>([
   },
   {
     id: 2,
-    name: '人脸动漫化',
-    description: '将真实人脸照片转换为动漫风格的 AI 工具',
+    name: '',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=FaceAnime',
     avatar: 'https://via.placeholder.com/40',
     author: 'AnimeStudio',
@@ -93,8 +93,8 @@ const featuredStudios = ref<Studio[]>([
   },
   {
     id: 3,
-    name: '语音合成工具',
-    description: '将文本转换为自然流畅的人声语音',
+    name: '',
+    description: '',
     image: 'https://via.placeholder.com/400x200?text=TextToSpeech',
     avatar: 'https://via.placeholder.com/40',
     author: 'VoiceAI',
