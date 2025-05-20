@@ -67,6 +67,11 @@ class EvtUtil {
   static Evt_MouseMove(mouseEvent) {
 
     const svgDoc = T3Gv.opt.svgDoc;
+
+    if(svgDoc===null){
+      return;
+    }
+
     const docInfo = svgDoc.docInfo;
 
     // Check if mouse is within the document bounds

@@ -133,8 +133,10 @@ class Oval extends BaseShape {
 
     shapeContainer.isShape = true;
 
+    /* Remove test foreign object
     const foreignObj = ForeignObjUtil.CreateVueObjectType(renderer, frameCopy);
     shapeContainer.AddElement(foreignObj);
+    */
 
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);

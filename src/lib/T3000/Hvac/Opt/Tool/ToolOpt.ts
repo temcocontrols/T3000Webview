@@ -58,9 +58,9 @@ class ToolOpt {
    * @param event - The DOM event that triggered the action
    * @returns void
    */
-  ToolLineAct(event) {
+  ToolLineAct(lineType, event) {
     // Parameters: lineType=2, isPolygon=false, isClosed=false
-    const lineType = 2;
+    // const lineType = 2;
     this.tul.DrawNewLineShape(lineType, false, false);
     T3Util.Log('= O.ToolOpt ToolLineAct - Output: Drew new line shape', "line type=", lineType);
   }
@@ -546,10 +546,10 @@ class ToolOpt {
     }
   }
 
-  ResetScaleAct(event){
+  ResetScaleAct(event) {
     try {
       T3Gv.opt.CloseEdit();
-      T3Gv.docUtil.SetZoomLevel(1*100);
+      T3Gv.docUtil.SetZoomLevel(1 * 100);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

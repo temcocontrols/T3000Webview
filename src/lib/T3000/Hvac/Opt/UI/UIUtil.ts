@@ -355,18 +355,17 @@ class UIUtil {
     T3Util.Log("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
 
     const storedDim = DataOpt.GetSDDataDimensions();
+    const useScreenDim = storedDim === null || storedDim === undefined || (storedDim.x === 0 && storedDim.y === 0);
+
     T3Util.Log("InitSvgDoc dim from storage data", storedDim);
 
     const screenDim = this.GetScreenDimensions();
 
     // Set the session data with previous saved dimensions
-    sdData.dim.x = storedDim.x;
-    sdData.dim.y = storedDim.y;
+    sdData.dim.x = useScreenDim ? screenDim.width : storedDim.x;
+    sdData.dim.y = useScreenDim ? screenDim.height : storedDim.y;
 
     T3Util.Log("InitSvgDoc set the block data with previous dim", T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
-
-    // var width=screenDim.width;
-    // var height=screenDim.height;
 
     var width = sdData.dim.x;
     var height = sdData.dim.y;

@@ -185,7 +185,7 @@ class EvtOpt {
    */
   BindLineEvent() {
     $("#btn_try_line").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.ToolLineAct(event);
+      EvtOpt.toolOpt.ToolLineAct("line", event);
     });
   }
 
@@ -195,7 +195,7 @@ class EvtOpt {
    */
   BindLine1Event() {
     $("#btn_try_line1").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.ToolLineAct(event);
+      EvtOpt.toolOpt.ToolLineAct("arcLine", event);
     });
   }
 
@@ -923,6 +923,39 @@ class EvtOpt {
       EvtOpt.toolOpt.DrawWall(event);
     }
 
+    // line
+    if (selectedTool.value.name == "Line") {
+      EvtOpt.toolOpt.ToolLineAct("line", event);
+    }
+
+    // if (selectedTool.value.name == "commline") {
+    //   EvtOpt.toolOpt.ToolLineAct("commline", event);
+    // }
+
+    // if (selectedTool.value.name == "digiline") {
+    //   EvtOpt.toolOpt.ToolLineAct("digiline", event);
+    // }
+
+    if (selectedTool.value.name == "ArcLine") {
+      EvtOpt.toolOpt.ToolLineAct("arcLine", event);
+    }
+
+    if (selectedTool.value.name == "SegLine") {
+      EvtOpt.toolOpt.ToolLineAct("segLine", event);
+    }
+
+    // if (selectedTool.value.name == "arcSegLine") {
+    //   EvtOpt.toolOpt.ToolLineAct("arcSegLine", event);
+    // }
+
+    if (selectedTool.value.name == "PolyLine") {
+      EvtOpt.toolOpt.ToolLineAct("polyLine", event);
+    }
+
+    // if (selectedTool.value.name == "polyLineContainer") {
+    //   EvtOpt.toolOpt.ToolLineAct("polyLineContainer", event);
+    // }
+
     if (selectedTool.value.name == "G_Circle") {
       EvtOpt.toolOpt.StampShapeFromToolAct(event, 9, "G_Circle");
     }
@@ -931,8 +964,20 @@ class EvtOpt {
       EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "G_Rectangle");
     }
 
-    if (selectedTool.value.name == "g_arr_right") {
+    if (selectedTool.value.name == "ArrowRight") {
       EvtOpt.toolOpt.StampShapeFromToolAct(event, 10, "g_arr_right");
+    }
+
+    if (selectedTool.value.name == "ArrowLeft") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11, "g_arr_left");
+    }
+
+    if (selectedTool.value.name == "ArrowTop") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12, "g_arr_top");
+    }
+
+    if (selectedTool.value.name == "ArrowBottom") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13, "g_arr_bottom");
     }
 
     if (selectedTool.value.name == "Oval") {

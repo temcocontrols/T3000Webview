@@ -503,7 +503,7 @@ class DataOpt {
     const dataStoreJson = this.LoadData(this.OBJECT_STORE_KEY);
 
     if (dataStoreJson === null) {
-      return { x: 1000, y: 750 };
+      return { x: 0, y: 0 };
     }
 
     // dataStoreJson is already parsed JSON object
@@ -536,7 +536,7 @@ class DataOpt {
         x: Math.max(max.x, dim.x),
         y: Math.max(max.y, dim.y)
       };
-    }, { x: 1000, y: 750 });
+    }, { x: 0, y: 0 });
 
     // Add the maximum dimensions to the result
     return maxDimensions;
