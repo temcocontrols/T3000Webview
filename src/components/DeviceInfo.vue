@@ -208,7 +208,7 @@ import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
 
 export default defineComponent({
-  name: 'NewTopBar',
+  name: 'DeviceInfo',
 
   props: {
     // locked: {

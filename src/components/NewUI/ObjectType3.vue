@@ -132,7 +132,7 @@ const emit = defineEmits<{
   (e: 'updateWeldModel', weldModel: unknown, itemList: unknown[]): void;
 }>();
 
-T3Util.Log('= Object Type 3', props.item);
+T3Util.Log('= v.ObjectType3 init', props.item);
 
 const range = computed(() => {
   return IdxUtils.getEntryRange(props.item?.t3Entry);

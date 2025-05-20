@@ -495,7 +495,7 @@
                             <q-list>
                               <q-item v-for="t in tools.filter(
                                 (i) =>
-                                  i.name !== item.type &&
+                                  i.name !== (item?.type ?? '') &&
                                   !['Duct', 'Pointer', 'Text'].includes(i.name)
                               )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
                                 <q-item-section avatar>
@@ -542,22 +542,22 @@
 
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'" :item="item"
-                      :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                    <object-type ref="objectsRef" v-if="(item?.type ?? '') !== 'Int_Ext_Wall'" :item="item"
+                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
-                      item.type === 'Weld_General' ||
-                      item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
+                      (item?.type ?? '') === 'Weld_General' ||
+                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + (item?.type ?? '')"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
                       @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
                       @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
+                    <WallExterior v-if="(item?.type ?? '') === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
+                      :key="item.id + (item?.type ?? '') + item.index" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModelCanvas">
@@ -1699,7 +1699,7 @@ function onRotateGroup(e) {
 // Adds a new object to the app state and updates guidelines
 function addObject(item, group = undefined, addToHistory = true) {
   if (addToHistory) {
-    addActionToHistory(`Add ${item.type}`);
+    addActionToHistory(`Add ${item?.type ?? ''}`);
   }
   appState.value.itemsCount++;
   item.id = appState.value.itemsCount;
@@ -1813,7 +1813,7 @@ function onSelectoDragEnd(e) {
   }
 
   const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item.type)) {
+  if (item && continuesObjectTypes.includes(item?.type ?? '')) {
     setTimeout(() => {
       isDrawing.value = true;
       appState.value.selectedTargets = [];
@@ -2555,7 +2555,7 @@ function drawWeldObjectCanvas(selectedItems) {
     previous = item.zindex;
   });
 
-  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
 
   if (isAllDuct) {
     // Get the new pos for all ducts
@@ -2665,7 +2665,7 @@ function weldSelected() {
     )
   );
 
-  if (selectedItems1.some((item) => item.type === "Weld")) {
+  if (selectedItems1.some((item) => (item?.type ?? "") === "Weld")) {
     $q.notify({
       type: "warning",
       message: "Currently not supported!",
@@ -2683,7 +2683,7 @@ function weldSelected() {
 
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
-  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
   // console.log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
   if (isAllGeneral || isAllDuct) {
@@ -3761,7 +3761,7 @@ function toolDropped(ev, tool) {
 
 const updateWeldModel = (weldModel, itemList) => {
   appState.value.items.map((item) => {
-    if (item.type === "Weld" && item.id === weldModel.id) {
+    if ((item?.type ?? "") === "Weld" && item.id === weldModel.id) {
       item.settings.weldItems = itemList;
     }
   });
@@ -3770,7 +3770,7 @@ const updateWeldModel = (weldModel, itemList) => {
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {
     if (
-      (item.type === "Weld_General" || item.type === "Weld_Duct") &&
+      ((item?.type ?? "") === "Weld_General" || (item?.type ?? "") === "Weld_Duct") &&
       item.id === weldModel.id
     ) {
       // Update the weld items's new width, height, translate
