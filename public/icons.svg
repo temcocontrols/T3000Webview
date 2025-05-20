@@ -778,60 +778,273 @@
 
 
   <symbol id="duct1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
-   <g>
-    <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.5)">
-        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
-            stroke-opacity="1">
-            <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
-            <g>
-                <g stroke-dasharray="none">
-                    <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
-                </g>
+    <g>
+      <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
             </g>
+          </g>
         </g>
+      </g>
+      <g width="18.667" height="0" transform="scale(1,1) translate(48.333,14.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,0 L18.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="rotate(270,33.667,14.333) scale(1,1) translate(19.333,0)">
+        <g width="28.667" height="28.667" transform="scale(1,1) translate(0,0)" stroke="#000000" stroke-width="1"
+          stroke-dasharray="none" fill="#FFFFFF" fill-opacity="1" stroke-opacity="1">
+          <ellipse rx="14.3335" ry="14.3335" cx="14.3335" cy="14.3335" />
+        </g>
+      </g>
+      <g width="20.333" height="20.333" transform="scale(1,1) translate(23.5,4.167)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,20.333 L20.333,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,19.333L1,19.333L1,21.333L-1,21.333z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="20.333" height="20.333" transform="scale(1,1) translate(23.5,4.167)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,0 L20.333,20.333" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
     </g>
-    <g width="18.667" height="0" transform="scale(1,1) translate(48.333,14.5)">
+  </symbol>
+
+  <symbol id="duct2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 21.83">
+    <g>
+      <g width="35.833" height="20.833" transform="scale(1,1) translate(19.5,0)">
+        <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none"
+          width="35.833" height="20.833" transform="scale(1,1)
+translate(0,0)" fill="#FFFFFF" fill-opacity="1" stroke-opacity="1">
+          <rect width="35.833" height="20.833" />
+        </g>
+      </g>
+      <g width="28.167" height="0" transform="scale(1,1)
+translate(0.5,10.333)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,0 L28.167,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="28.167" height="0" transform="scale(1,1) translate(46.333,10.333)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,0 L28.167,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </symbol>
+
+  <symbol id="duct3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
+    <g>
+      <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
         <g transform="scale(1,1)
 translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
-            <path d="M0,0 L18.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
-            <g>
-                <g stroke-dasharray="none">
-                    <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
-                </g>
+          <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
             </g>
+          </g>
         </g>
-    </g>
-    <g width="28.667" height="28.667" transform="rotate(270,33.667,14.333) scale(1,1) translate(19.333,0)">
-        <g width="28.667" height="28.667" transform="scale(1,1) translate(0,0)" stroke="#000000"
-            stroke-width="1" stroke-dasharray="none" fill="#FFFFFF" fill-opacity="1"
-            stroke-opacity="1">
-            <ellipse rx="14.3335" ry="14.3335" cx="14.3335" cy="14.3335" />
-        </g>
-    </g>
-    <g width="20.333" height="20.333" transform="scale(1,1) translate(23.5,4.167)">
+      </g>
+      <g width="18.667" height="0" transform="scale(1,1)
+translate(48.333,14.833)">
         <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
-            stroke-opacity="1">
-            <path d="M0,20.333
-L20.333,0" fill="none" stroke-width="1" stroke-dasharray="none" />
-            <g>
-                <g stroke-dasharray="none">
-                    <path d="M-1,19.333L1,19.333L1,21.333L-1,21.333z" stroke-width="0" fill="none" />
-                </g>
+          stroke-opacity="1">
+          <path d="M0,0 L18.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
             </g>
+          </g>
         </g>
+      </g>
+      <g width="28.667" height="28.667" transform="rotate(270,33.667,14.833) scale(1,1) translate(19.333,0.5)">
+        <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none"
+          width="28.667" height="28.667" transform="scale(1,1) translate(0,0)" fill="#FFFFFF"
+          fill-opacity="1" stroke-opacity="1">
+          <rect width="28.667" height="28.667" />
+        </g>
+      </g>
     </g>
-    <g width="20.333" height="20.333" transform="scale(1,1) translate(23.5,4.167)">
+  </symbol>
+
+  <symbol id="duct4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 30.67">
+    <g>
+      <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
         <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
-            stroke-opacity="1">
-            <path d="M0,0
-L20.333,20.333" fill="none" stroke-width="1" stroke-dasharray="none" />
-            <g>
-                <g stroke-dasharray="none">
-                    <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+          stroke-opacity="1">
+          <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="18.667" height="0" transform="scale(1,1) translate(48.333,14.833)">
+        <g transform="scale(1,1)
+translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,0 L18.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="rotate(270,33.667,14.833) scale(1,1) translate(19.333,0.5)">
+        <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none"
+          width="28.667" height="28.667" transform="scale(1,1) translate(0,0)" fill="#FFFFFF"
+          fill-opacity="1" stroke-opacity="1">
+          <rect width="28.667" height="28.667" />
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="scale(1,1) translate(19.333,0.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,0
+L28.667,28.667" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </symbol>
+
+  <symbol id="duct5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.5 29.67">
+    <g>
+      <g width="19.833" height="0" transform="scale(1,1) translate(0.5,14.833)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,0 L19.833,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="18.667" height="0" transform="scale(1,1) translate(48.333,14.833)">
+        <g transform="scale(1,1)
+translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+          <path d="M0,0 L18.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="rotate(270,33.667,14.833) scale(1,1) translate(19.333,0.5)">
+        <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none"
+          width="28.667" height="28.667" transform="scale(1,1) translate(0,0)" fill="#FFFFFF"
+          fill-opacity="1" stroke-opacity="1">
+          <rect width="28.667" height="28.667" />
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="scale(1,1) translate(19.333,0.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,0
+L28.667,28.667" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+      <g width="28.667" height="28.667" transform="scale(1,1) translate(19.333,0.5)">
+        <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000"
+          stroke-opacity="1">
+          <path d="M0,28.667
+L28.667,0" fill="none" stroke-width="1" stroke-dasharray="none" />
+          <g>
+            <g stroke-dasharray="none">
+              <path d="M-1,27.667L1,27.667L1,29.667L-1,29.667z" stroke-width="0" fill="none" />
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </symbol>
+
+  <symbol id="duct7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 60">
+   <g>
+        <g>
+            <g width="30" height="60" transform="rotate(0,0) scale(1,1) translate(0,0)">
+                <g stroke="#000000" opacity="1" stroke-width="1" stroke-dasharray="none" width="30" height="60"
+                    transform="scale(1,1) translate(0,0)" fill="#FFFFFF" fill-opacity="1" stroke-opacity="1">
+                    <rect width="30" height="60" />
+                </g>
+            </g>
+            <g width="30" height="60" transform="scale(1,1) translate(0,0)">
+                <g transform="scale(1,1) translate(0,0)" fill="#000000" stroke="#000000" stroke-opacity="1">
+                    <path d="M0,0 L30,60" fill="none" stroke-width="1" stroke-dasharray="none" />
+                    <g>
+                        <g stroke-dasharray="none">
+                            <path d="M-1,-1L1,-1L1,1L-1,1z" stroke-width="0" fill="none" />
+                        </g>
+                    </g>
                 </g>
             </g>
         </g>
     </g>
-</g>
+  </symbol>
+
+  <symbol id="duct8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 60">
+ <g width="30" height="60" transform="scale(1,1) translate(0,0)">
+        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
+            <path d="M 0,0 L30,0 L30,60 L0,60 L0,0" />
+        </g>
+    </g>
+  </symbol>
+
+  <symbol id="duct9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+    <g width="60" height="60" transform="scale(1,1) translate(0,0)">
+        <g transform="scale(1,1) translate(0,0)" fill="#FFFFFF" stroke="#000000" stroke-width="1" stroke-opacity="1">
+
+<path d="
+    M 0,0
+    L 30,0
+    A 30,30 0 0,0 60,30
+    L 60,60
+    A 60,60 0 0,1 0,0
+    " />
+        </g>
+    </g>
   </symbol>
 </svg>

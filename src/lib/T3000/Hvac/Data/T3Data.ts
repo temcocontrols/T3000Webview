@@ -1619,22 +1619,8 @@ export const NewTool = [
     },
   },
   {
-    name: "Duct6",
-    label: "Duct6",
-    icon: "svguse:icons.svg#duct6",
-    cat: ["NewDuct"],
-    settings: {
-      fillColor: {
-        value: "#0173fe",//"#659dc5",
-        type: "color",
-        label: "Fill color",
-        id: 1,
-      },
-    },
-  },
-  {
     name: "Duct7",
-    label: "Duct7",
+    label: "Duct6",
     icon: "svguse:icons.svg#duct7",
     cat: ["NewDuct"],
     settings: {
@@ -1648,7 +1634,7 @@ export const NewTool = [
   },
   {
     name: "Duct8",
-    label: "Duct8",
+    label: "Duct7",
     icon: "svguse:icons.svg#duct8",
     cat: ["NewDuct"],
     settings: {
@@ -1660,6 +1646,20 @@ export const NewTool = [
       },
     },
   },
+  {
+    name: "Duct9",
+    label: "Duct8",
+    icon: "svguse:icons.svg#duct9",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  }
 ];
 
 // Adjust the height of the vertical scroll bar when global message is shown

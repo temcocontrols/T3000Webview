@@ -984,6 +984,9 @@ class EvtOpt {
     if (selectedTool.value.name == "Duct8") {
       EvtOpt.toolOpt.LibToolShape("Duct8", true);
     }
+    if (selectedTool.value.name == "Duct9") {
+      EvtOpt.toolOpt.LibToolShape("Duct9", true);
+    }
   }
 
   BindVueForeignObjectEvent() {
