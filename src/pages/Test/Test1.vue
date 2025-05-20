@@ -28,7 +28,7 @@ import Hero from '../../components/NewUI/Hero.vue'
 
 // Define component name
 defineOptions({
-  name: 'TestPageOne'
+  name: 'Test1View'
 })
 
 const popularModels = ref<Model[]>([

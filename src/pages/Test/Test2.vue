@@ -1,7 +1,7 @@
 <template>
   <main-layout>
     <div class="container">
-      <!-- <h1 class="page-title">AI 创空间</h1> -->
+      <!-- <h1 class="page-title">AI Test data x</h1> -->
 
       <!-- Hero Banner -->
 
@@ -12,7 +12,7 @@
           <a-col :xs="24" :md="8">
             <a-input-search
               v-model:value="searchQuery"
-              placeholder="搜索创空间应用"
+              placeholder="Test data x"
               enter-button
               allow-clear
               @search="onSearch"
@@ -23,26 +23,26 @@
             <div class="filters">
               <a-select
                 v-model:value="categoryFilter"
-                placeholder="应用类别"
+                placeholder="Test data x"
                 style="width: 120px; margin-right: 12px;"
                 @change="onFilterChange"
               >
-                <a-select-option value="">全部类别</a-select-option>
-                <a-select-option value="image">图像处理</a-select-option>
-                <a-select-option value="text">文本生成</a-select-option>
-                <a-select-option value="audio">音频处理</a-select-option>
-                <a-select-option value="interactive">交互演示</a-select-option>
+                <a-select-option value="">Test data x</a-select-option>
+                <a-select-option value="image">Test data x</a-select-option>
+                <a-select-option value="text">Test data x</a-select-option>
+                <a-select-option value="audio">Test data x</a-select-option>
+                <a-select-option value="interactive">Test data x</a-select-option>
               </a-select>
 
               <a-select
                 v-model:value="sortOrder"
-                placeholder="排序方式"
+                placeholder="Test data x"
                 style="width: 120px"
                 @change="onFilterChange"
               >
-                <a-select-option value="popular">最热门</a-select-option>
-                <a-select-option value="newest">最新发布</a-select-option>
-                <a-select-option value="name">名称</a-select-option>
+                <a-select-option value="popular">Test data x</a-select-option>
+                <a-select-option value="newest">Test data x</a-select-option>
+                <a-select-option value="name">Test data x</a-select-option>
               </a-select>
             </div>
           </a-col>
@@ -78,7 +78,7 @@
               </template>
             </a-card-meta>
             <template #actions>
-              <a-button type="link">查看应用</a-button>
+              <a-button type="link">Test data x</a-button>
             </template>
           </a-card>
         </a-col>
@@ -86,7 +86,7 @@
 
       <!-- Empty State -->
       <a-empty v-if="filteredStudios.length === 0"
-               description="没有找到符合条件的创空间" />
+               description="Test data x" />
 
       <!-- Pagination -->
       <div class="pagination">
@@ -103,7 +103,7 @@
 
       <!-- Featured Collections -->
       <div class="collections-section">
-        <h2>精选合集</h2>
+        <h2>Test data x</h2>
 
         <a-row :gutter="[16, 16]">
           <a-col v-for="collection in featuredCollections" :key="collection.id"
@@ -113,7 +113,7 @@
                 <img :src="collection.image" :alt="collection.name" />
                 <div class="collection-overlay">
                   <h3>{{ collection.name }}</h3>
-                  <p>{{ collection.count }} 个应用</p>
+                  <p>{{ collection.count }} Test data x</p>
                 </div>
               </div>
               <a-card-meta>
@@ -141,140 +141,106 @@ const sortOrder = ref('popular')
 const currentPage = ref(1)
 const pageSize = ref(9)
 
+defineOptions({
+  name: 'Test2View'
+})
+
 // Mock data for studios
 const allStudios = ref<Studio[]>([
   {
     id: 1,
-    name: '图像风格迁移',
-    description: '将照片转换为不同艺术风格的图像，包括梵高、莫奈等多种风格',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=StyleTransfer',
     avatar: 'https://via.placeholder.com/40',
     author: 'ArtAI Studio',
     category: 'image',
-    tags: ['图像处理', '风格迁移', 'AI艺术'],
+    tags: ['Test data x', 'Test data x', 'Test data x'],
     views: '5.2k',
     likes: 943
   },
   {
     id: 2,
-    name: '智能写作助手',
-    description: '基于GPT模型的中文写作助手，可以生成文章、改写文本、润色内容',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=WritingAssistant',
     avatar: 'https://via.placeholder.com/40',
     author: 'NLP Workshop',
     category: 'text',
-    tags: ['文本生成', '写作辅助', 'GPT'],
+    tags: ['Test data x', 'Test data x', 'GPT'],
     views: '8.7k',
     likes: 1532
   },
   {
     id: 3,
-    name: '人脸动漫化',
-    description: '将真实人脸照片转换为动漫风格的肖像，支持多种动漫风格',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=AnimeGAN',
     avatar: 'https://via.placeholder.com/40',
     author: 'AnimeFace',
     category: 'image',
-    tags: ['人脸编辑', '动漫风格', 'GAN'],
+    tags: ['Test data x', 'Test data x', 'GAN'],
     views: '12.3k',
     likes: 2845
   },
   {
     id: 4,
-    name: '语音克隆工具',
-    description: '只需少量音频样本，即可克隆任何声音，生成自然流畅的语音',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=VoiceClone',
     avatar: 'https://via.placeholder.com/40',
     author: 'Voice Lab',
     category: 'audio',
-    tags: ['语音合成', '声音克隆', 'TTS'],
+    tags: ['Test data x', 'Test data x', 'TTS'],
     views: '4.5k',
     likes: 876
   },
   {
     id: 5,
-    name: '视频人物抠图',
-    description: '自动识别视频中的人物，去除背景，可用于视频合成和特效制作',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=VideoMatting',
     avatar: 'https://via.placeholder.com/40',
     author: 'VideoTech',
     category: 'image',
-    tags: ['视频处理', '抠图', '人物分割'],
+    tags: ['Test data x', 'Test data x', 'Test data x'],
     views: '3.8k',
     likes: 645
   },
   {
     id: 6,
-    name: '问答机器人生成器',
-    description: '快速构建专属知识库的智能问答机器人，无需编程',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=ChatbotBuilder',
     avatar: 'https://via.placeholder.com/40',
     author: 'AI Assistant',
     category: 'interactive',
-    tags: ['聊天机器人', '问答系统', 'RAG'],
+    tags: ['Test data x', 'Test data x', 'RAG'],
     views: '7.2k',
     likes: 1234
   },
   {
     id: 7,
-    name: '图片修复增强',
-    description: '自动修复和增强老照片，去除划痕、噪点，提升画质和清晰度',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/500x300?text=PhotoRestoration',
     avatar: 'https://via.placeholder.com/40',
     author: 'Photo Labs',
     category: 'image',
-    tags: ['图像修复', '超分辨率', '老照片修复'],
+    tags: ['Test data x', 'Test data x', 'Test data x'],
     views: '6.3k',
     likes: 1105
   },
-  {
-    id: 8,
-    name: '音频降噪工具',
-    description: '智能识别并去除音频中的背景噪音、杂音，提升声音质量',
-    image: 'https://via.placeholder.com/500x300?text=AudioDenoise',
-    avatar: 'https://via.placeholder.com/40',
-    author: 'Audio Engineer',
-    category: 'audio',
-    tags: ['音频处理', '降噪', '声音增强'],
-    views: '2.9k',
-    likes: 534
-  },
-  {
-    id: 9,
-    name: '3D 人物生成器',
-    description: '通过文本描述或图片生成 3D 人物模型，可用于游戏和虚拟现实',
-    image: 'https://via.placeholder.com/500x300?text=3DCharacterGen',
-    avatar: 'https://via.placeholder.com/40',
-    author: '3D Creator',
-    category: 'interactive',
-    tags: ['3D建模', '人物生成', '游戏资源'],
-    views: '5.7k',
-    likes: 982
-  }
 ])
 
 const featuredCollections = ref<Collection[]>([
   {
     id: 1,
-    name: '创意图像工具集',
-    description: '精选图像处理和创作工具，帮助您释放创意潜能',
+    name: 'Test data x',
+    description: 'Test data x',
     image: 'https://via.placeholder.com/600x300?text=CreativeImageTools',
     count: 12
   },
-  {
-    id: 2,
-    name: '内容创作助手',
-    description: '提升写作和内容创作效率的智能工具合集',
-    image: 'https://via.placeholder.com/600x300?text=ContentCreation',
-    count: 8
-  },
-  {
-    id: 3,
-    name: '多媒体处理工具箱',
-    description: '音视频处理和编辑的全能工具集',
-    image: 'https://via.placeholder.com/600x300?text=MultimediaTools',
-    count: 10
-  }
 ])
 
 // Filter studios based on search and filters

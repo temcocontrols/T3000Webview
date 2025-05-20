@@ -133,6 +133,10 @@ const sortOrder = ref('popular')
 const currentPage = ref(1)
 const pageSize = ref(12)
 
+defineOptions({
+  name: 'Test3View'
+})
+
 // Mock data for models
 const allModels = ref<Model[]>([
   {

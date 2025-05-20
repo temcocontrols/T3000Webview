@@ -554,7 +554,7 @@ import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
 import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
-import ToolsSidebar2 from "./ToolsSidebar2.vue";
+import ToolsSidebar2 from "../../components/NewUI/ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
