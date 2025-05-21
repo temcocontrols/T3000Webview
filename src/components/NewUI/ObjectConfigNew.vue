@@ -494,8 +494,9 @@ onUpdated(() => {
   position: absolute;
   right: 0;
   top: 37px;
-  height: calc(100% - 37px);
+  height: calc(100% - 92px);
   color: #ffffff99;
+  margin-top: 55px;
 }
 
 .item-config-inner {
