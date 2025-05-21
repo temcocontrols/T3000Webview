@@ -12,6 +12,9 @@ import DataOpt from "../Data/DataOpt";
 import T3Util from "../../Util/T3Util";
 import AntdUtil from "../UI/AntdUtil";
 
+import { isDrawing, selectedTool, lastAction } from "../../Data/Constant/RefConstant";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+
 class IdxPage2 {
 
   private webview = (window as any).chrome?.webview;
@@ -452,6 +455,119 @@ class IdxPage2 {
       online: isOnline,
     });
     IdxUtils.saveNewLib();
+  }
+
+  // Refactor below functions to Idx page2 util for backup (new ui will not use this function anymore)
+  viewportLeftClick(ev) {
+    // T3Util.Log('IndexPage.vue->viewportLeftClick->ev', ev);
+    ev.preventDefault();
+
+    const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
+      && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
+
+    if (check) {
+      // Manually create a shape at the mouse current position
+
+      var ePosition = {
+        rect: { width: 60, height: 60, top: ev.clientY, left: ev.clientX },
+        clientX: ev.clientX,
+        clientY: ev.clientY
+      };
+
+      onSelectoDragEnd(ePosition);
+
+      // Release the tool
+      this.selectTool(tools[0]);
+    }
+  }
+
+  // Select a tool and set its type
+  selectTool(tool, type = "default") {
+    T3Util.Log("= IdxPage selectTool", tool, type);
+    selectedTool.value = tool;
+    if (typeof tool === "string") {
+      selectedTool.value = tools.find((item) => item.name === tool);
+    }
+    selectedTool.value.type = type;
+
+    Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
+  }
+
+
+  // Handles a right-click event on the viewport
+  viewportRightClick(ev) {
+    ev.preventDefault();
+    this.selectTool(tools[0]);
+    if (isDrawing.value) {
+      isDrawing.value = false;
+      undoAction();
+      setTimeout(() => {
+        refreshObjects();
+      }, 10);
+
+      //clear empty drawing object
+      Hvac.PageMain.ClearItemsWithZeroWidth(appState);
+      Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    }
+  }
+
+  // Undo the last action
+  undoAction() {
+    if (undoHistory.value.length < 1) return;
+    redoHistory.value.unshift({
+      title: lastAction,
+      state: cloneDeep(appState.value),
+    });
+    appState.value = cloneDeep(undoHistory.value[0].state);
+    undoHistory.value.shift();
+    Hvac.IdxPage.refreshMoveable();
+  }
+
+  redoAction() {
+    if (redoHistory.value.length < 1) return;
+    undoHistory.value.unshift({
+      title: lastAction,
+      state: cloneDeep(appState.value),
+    });
+    appState.value = cloneDeep(redoHistory.value[0].state);
+    redoHistory.value.shift();
+    Hvac.IdxPage.refreshMoveable();
+  }
+
+  // Not used in new UI anymore, just for backup
+  updateWeldModelCanvas(weldModel, pathItemList) {
+    appState.value.items.map((item) => {
+      if (
+        (item.type === "Weld_General" || item.type === "Weld_Duct") &&
+        item.id === weldModel.id
+      ) {
+        // Update the weld items's new width, height, translate
+        const firstTrsx = item?.weldItems[0]?.translate[0];
+        const firstTrsy = item?.weldItems[0]?.translate[1];
+
+        item?.weldItems?.forEach((weldItem) => {
+          const pathItem = pathItemList?.find(
+            (itx) => itx?.item?.id === weldItem?.id
+          );
+          // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+          // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+          if (pathItem) {
+            weldItem.width = pathItem.newPos.width;
+            weldItem.height = pathItem.newPos.height;
+            weldItem.translate[0] = firstTrsx + pathItem.newPos.trsx;
+            weldItem.translate[1] = firstTrsy + pathItem.newPos.trsy;
+          }
+        });
+      }
+    })
+  }
+
+  updateWeldModel(weldModel, itemList) {
+    appState.value.items.map((item) => {
+      if (item.type === "Weld" && item.id === weldModel.id) {
+        item.settings.weldItems = itemList;
+      }
+    });
   }
 }
 
