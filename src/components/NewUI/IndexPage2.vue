@@ -500,12 +500,6 @@
         </div>
       </q-card-section>
 
-      <!-- <q-separator />
-
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn flat label="Save" :disable="!insertT3EntryDialog.data" color="primary" @click="linkT3EntrySave" />
-      </q-card-actions> -->
     </q-card>
   </q-dialog>
 
@@ -589,8 +583,7 @@ import {
   appStateV2
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
-// import { currentObject } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
-import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+ import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
 import { Alert as AAlert } from 'ant-design-vue';
@@ -605,14 +598,9 @@ useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
-// const moveable = ref(null); // Reference to the moveable component instance
-const selecto = ref(null); // Reference to the selecto component instance
-// const viewport = ref(null); // Reference to the viewport element
-const targets = ref([]); // Array of selected targets
+ const selecto = ref(null); // Reference to the selecto component instance
+ const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-// const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
-
-// const insertT3EntryDialog = ref({ activate: false, data: {} })
 
 // State variables for drawing and transformations
 const isDrawing = ref(false);
@@ -625,13 +613,6 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
-// const savedNotify = ref(false); // Notification state for saving
-//const contextMenuShow = ref(false); // State of the context menu visibility
-
-
-// // Panel options for selection
-// const selectPanelOptions = ref(T3000_Data.value.panelsData);
-// let getPanelsInterval = null; // Interval for fetching panel data
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
@@ -657,56 +638,10 @@ if (process.env.DEV) {
   });
 }
 
-// Initialization of empty project and library structures
-// let panzoomInstance = null;
-// const emptyProject = {
-//   version: process.env.VERSION,
-//   items: [],
-//   selectedTargets: [],
-//   elementGuidelines: [],
-//   itemsCount: 0,
-//   groupCount: 0,
-//   activeItemIndex: null,
-//   viewportTransform: { x: 0, y: 0, scale: 1 },
-// };
-// const emptyLib = {
-//   version: process.env.VERSION,
-//   imagesCount: 0,
-//   objLibItemsCount: 0,
-//   images: [],
-//   objLib: [],
-// };
-
-// State references for the library and application state
-// const library = ref(cloneDeep(emptyLib));
-// const appState = ref(cloneDeep(emptyProject));
-// const undoHistory = ref([]); // History for undo actions
-// const redoHistory = ref([]); // History for redo actions
-// const locked = ref(false); // State to lock or unlock the interface
-// const grpNav = ref([]); // Navigation history for grouped elements
 let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
-// const rulersGridVisible = ref(true);
-
-// const deviceModel = ref({ active: false, data: {} });
-// const deviceAppState = ref([]);
-
-// const handleScroll = (event) => {
-
-//   // Reset the h,v ruler's width for scrolling
-//   documentAreaPosition.value.vRuler.height += event.target.scrollTop;
-//   documentAreaPosition.value.hRuler.width += event.target.scrollLeft;
-
-//   // documentAreaPosition.value.wiewPortWH.width = documentAreaPosition.value.hRuler.width + "px";
-//   // documentAreaPosition.value.wiewPortWH.height = documentAreaPosition.value.vRuler.height + "px";
-
-//   // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
-
-//   document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
-//   document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
-// };
 
 // Lifecycle hook for component mount
 onMounted(() => {
@@ -716,195 +651,14 @@ onMounted(() => {
   Hvac.IdxPage2.initQuasar($q);
 
   Hvac.IdxPage2.initPage();
-
-  // Hvac.IdxPage.initQuasar($q);
-
-  // Hvac.IdxPage.initPage();
-
-  // // Set global navigation properties
-  // globalNav.value.title = "HVAC Drawer";
-  // globalNav.value.back = null;
-  // globalNav.value.home = "/";
-
-  // isLoggedIn(); // Check if user is logged in
-
-  // // Restore app state from local storage if not in a webview
-  // if (!window.chrome?.webview?.postMessage) {
-  //   const localState = localStorage.getItem("appState");
-  //   if (localState) {
-  //     appState.value = JSON.parse(localState);
-  //     rulersGridVisible.value = appState.value.rulersGridVisible;
-  //   }
-  // }
-
-  // if (window.chrome?.webview) {
-  //   isBuiltInEdge.value = true;
-  //   documentAreaPosition.value.widthOffset = '128px';
-  //   documentAreaPosition.value.heightOffset = '68px';
-
-  //   viewportMargins.top = 56;
-  // }
-  // else {
-  //   isBuiltInEdge.value = false;
-  //   viewportMargins.top = 95 + 20 + 2;
-  // }
-
-  // // Save the state before the window is unloaded
-  // window.addEventListener("beforeunload", function (event) {
-  //   // save();
-  //   Hvac.IdxPage.clearAutoSaveInterval();
-  //   Hvac.WsClient.clearInitialDataInterval();
-  // });
-
-  // // Initialize panzoom for viewport
-  // panzoomInstance = panzoom(viewport.value, {
-  //   maxZoom: 4,
-  //   minZoom: 0.1,
-  //   zoomDoubleClickSpeed: 1,
-  //   filterKey: function (/* e, dx, dy, dz */) {
-  //     // don't let panzoom handle this event:
-  //     return true;
-  //   },
-  //   beforeMouseDown: function (e) {
-  //     // allow mouse-down panning only if altKey is down. Otherwise - ignore
-  //     var shouldIgnore = !e.altKey;
-  //     return shouldIgnore;
-  //   },
-  //   // Add the focal point for zooming to be the center of the viewport
-  //   // transformOrigin: { x: 0.5, y: 0.5 },
-  // });
-
-  // // Update the viewport transform on panzoom transform event
-  // panzoomInstance.on("transform", function (e) {
-
-  //   const pzTrs = e.getTransform();
-  //   // pzTrs.x = pzTrs.x < 0 ? 0 : pzTrs.x;
-  //   // pzTrs.y = pzTrs.y < 0 ? 0 : pzTrs.y;
-
-  //   appState.value.viewportTransform = e.getTransform();
-  //   triggerRef(appState);
-
-  //   restDocumentAreaPosition(e.getTransform());
-  // });
-
-  //Hvac.IdxPage.initQuasar($q);
-
-  //Hvac.IdxPage.initPage();
-
-
-  // // Request initial data and panels list if in a webview
-  // window.chrome?.webview?.postMessage({
-  //   action: 1, // GET_INITIAL_DATA
-  // });
-
-  // window.chrome?.webview?.postMessage({
-  //   action: 4, // GET_PANELS_LIST
-  // });
-
-  // // Set intervals for fetching panel and entry data if in a webview
-  // if (window.chrome?.webview?.postMessage) {
-  //   getPanelsInterval = setInterval(window.chrome.webview.postMessage, 10000, {
-  //     action: 4, // GET_PANELS_LIST
-  //   });
-
-  //   setInterval(function () {
-  //     if (getLinkedEntries().length === 0) return;
-  //     window.chrome?.webview?.postMessage({
-  //       action: 6, // GET_ENTRIES
-  //       data: getLinkedEntries().map((ii) => {
-  //         return {
-  //           panelId: ii.t3Entry.pid,
-  //           index: ii.t3Entry.index,
-  //           type: T3_Types[ii.t3Entry.type],
-  //         };
-  //       }),
-  //     });
-  //   }, 10000);
-  // }
-
-  // Refresh moveable guides after a short delay
-  // setTimeout(() => {
-  //   refreshMoveableGuides();
-  // }, 100);
-
-  // // Viewport wrapper scroll event listener
-  // const div = document.querySelector('.viewport-wrapper');
-  // div.addEventListener('scroll', handleScroll);
-
-  // // Init ruler and grid default value
-  // documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-  // documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-  // documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-
-  // If accessed from an external browser
-  // initExternalBrowserOpt();
 });
 
-// function initExternalBrowserOpt() {
-
-//   if (isBuiltInEdge.value) {
-//     return;
-//   }
-
-//   // connect to the ws://localhost:9104 websocket server
-//   Hvac.WsClient.connect();
-
-//   // check if need to show the device list dialog
-//   setTimeout(() => {
-//     const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-//     if (!currentDevice) {
-//       deviceModel.value.active = true;
-//     }
-//     else {
-//       deviceModel.value.active = false;
-//       deviceModel.value.data = currentDevice;
-
-//       T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
-
-//       // load device appstate
-//       //Hvac.DeviceOpt.refreshDeviceAppState();
-//       Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
-
-//       // T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
-//       // T3Util.Log('=== indexPage.deviceModel changed', deviceModel.value);
-//     }
-//   }, 1000);
-
-//   setInterval(function () {
-//     if (getLinkedEntries().length === 0) return;
-
-//     const data = getLinkedEntries().map((ii) => {
-//       return {
-//         panelId: ii.t3Entry.pid,
-//         index: ii.t3Entry.index,
-//         type: T3_Types[ii.t3Entry.type],
-//       };
-//     });
-
-//     Hvac.WsClient.GetEntries(data);
-
-//     /*
-//     window.chrome?.webview?.postMessage({
-//       action: 6, // GET_ENTRIES
-//       data: getLinkedEntries().map((ii) => {
-//         return {
-//           panelId: ii.t3Entry.pid,
-//           index: ii.t3Entry.index,
-//           type: T3_Types[ii.t3Entry.type],
-//         };
-//       }),
-//     });
-//     */
-//   }, 10000);
-// }
 
 function updateDeviceModel(isActive, data) {
   T3Util.Log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
-  // load device appstate
-  // Hvac.DeviceOpt.refreshDeviceAppState();
 }
 
 function showMoreDevices() {
@@ -923,38 +677,6 @@ function showMoreDevices() {
   Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
 }
 
-/*
-function refreshDeviceAppState() {
-  const existAppState = Hvac.DeviceOpt.loadDeviceAppState(deviceAppState, deviceModel.value.data);
-  // T3Util.Log('=== indexPage.refreshDeviceAppState === existAppState', existAppState);
-
-  if (existAppState) {
-    // appState.value = cloneDeep(existAppState);
-    appState.value = existAppState;
-  }
-  else {
-    appState.value = cloneDeep(emptyProject);
-    appState.value.rulersGridVisible = rulersGridVisible.value;
-  }
-}
-*/
-
-// function saveDeviceAppState(clearSelected) {
-//   // T3Util.Log('=== indexPage.saveDeviceAppState === deviceModel.value.data', deviceModel.value.data);
-
-//   if (clearSelected) {
-//     appState.value.selectedTargets = [];
-//   }
-
-//   Hvac.DeviceOpt.saveDeviceAppState(deviceAppState, deviceModel, appState);
-
-//   // Post a save action to T3
-//   const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
-//   const panelId = currentDevice.deviceId;
-//   const graphicId = currentDevice.graphic;
-
-//   Hvac.WsClient.SaveGraphic(panelId, graphicId);
-// }
 
 onBeforeUnmount(() => {
 
@@ -962,199 +684,12 @@ onBeforeUnmount(() => {
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
-  // appState.value.selectedTargets = [];
-
-  // if (panzoomInstance?.dispose) return;
-  // panzoomInstance?.dispose();
 
   Hvac.IdxPage.clearAutoSaveInterval();
   Hvac.WsClient.clearInitialDataInterval();
   Hvac.IdxPage.clearIdx();
 });
 
-// Handle messages from the webview
-// window.chrome?.webview?.addEventListener("message", (arg) => {
-//   T3Util.Log("= Idx Received a message from webview", arg.data.action, arg.data);
-
-//   // Handle various actions based on message data
-//   if (!"action" in arg.data) return;
-
-/* move to WebViewClient.ts
-if (arg.data.action === "GET_PANELS_LIST_RES") {
-  if (arg.data.data?.length) {
-    T3000_Data.value.panelsList = arg.data.data;
-    T3000_Data.value.loadingPanel = 0;
-    window.chrome?.webview?.postMessage({
-      action: 0, // GET_PANEL_DATA
-      panelId: T3000_Data.value.panelsList[0].panel_number,
-    });
-  }
-}
-*/
-
-// if (arg.data.action === "UPDATE_ENTRY_RES") {
-//   // Handle update entry response
-// }
-
-/*
-if (arg.data.action === "GET_INITIAL_DATA_RES") {
-  if (arg.data.data) {
-    arg.data.data = JSON.parse(arg.data.data);
-  }
-
-  appState.value = arg.data.data;
-  rulersGridVisible.value = appState.value.rulersGridVisible;
-
-  grpNav.value = [arg.data.entry];
-  if (arg.data.library) {
-    arg.data.library = JSON.parse(arg.data.library);
-    library.value = arg.data.library;
-  }
-  setTimeout(() => {
-    IdxUtils.refreshMoveableGuides();
-  }, 100);
-}
-*/
-
-/*
-if (arg.data.action === "LOAD_GRAPHIC_ENTRY_RES") {
-  if (arg.data.data) {
-    arg.data.data = JSON.parse(arg.data.data);
-  }
-  appState.value = arg.data.data;
-  if (grpNav.value.length > 1) {
-    const navItem = grpNav.value[grpNav.value.length - 2];
-    if (
-      navItem.index !== arg.data.entry.index ||
-      navItem.pid !== arg.data.entry.pid
-    ) {
-      grpNav.value.push(arg.data.entry);
-    } else {
-      grpNav.value.pop();
-    }
-  } else {
-    grpNav.value.push(arg.data.entry);
-  }
-
-  setTimeout(() => {
-    IdxUtils.refreshMoveableGuides();
-  }, 100);
-}
-*/
-
-// if (arg.data.action === "GET_PANEL_DATA_RES") {
-//   // if (getPanelsInterval && arg.data?.panel_id) {
-//   //   clearInterval(getPanelsInterval);
-//   // }
-
-//   if (arg.data?.panel_id) {
-//     Hvac.IdxPage.clearGetPanelsInterval();
-//   }
-
-//   if (arg.data?.panel_id) {
-
-//     const check1 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel < T3000_Data.value.panelsList.length - 1;
-//     if (check1) {
-//       T3000_Data.value.loadingPanel++;
-//       const index = T3000_Data.value.loadingPanel;
-//       window.chrome?.webview?.postMessage({
-//         action: 0, // GET_PANEL_DATA
-//         panelId: T3000_Data.value.panelsList[index].panel_number,
-//       });
-//     }
-
-//     const check2 = T3000_Data.value.loadingPanel !== null && T3000_Data.value.loadingPanel === T3000_Data.value.panelsList.length - 1;
-//     if (check2) {
-//       T3000_Data.value.loadingPanel = null;
-//     }
-
-//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
-//       (item) => item.pid !== arg.data.panel_id
-//     );
-
-//     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
-//       arg.data.data
-//     );
-
-//     T3000_Data.value.panelsData.sort((a, b) => a.pid - b.pid);
-//     selectPanelOptions.value = T3000_Data.value.panelsData;
-
-//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.filter(
-//       (item) => item.pid !== arg.data.panel_id
-//     );
-
-//     T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(arg.data.ranges);
-
-//     refreshLinkedEntries(arg.data.data);
-//   }
-// }
-
-// if (arg.data.action === "GET_ENTRIES_RES") {
-//   arg.data.data.forEach((item) => {
-//     const itemIndex = T3000_Data.value.panelsData.findIndex(
-//       (ii) =>
-//         ii.index === item.index &&
-//         ii.type === item.type &&
-//         ii.pid === item.pid
-//     );
-//     if (itemIndex !== -1) {
-//       T3000_Data.value.panelsData[itemIndex] = item;
-//     }
-//   });
-
-//   if (!linkT3EntryDialog.value.active) {
-//     selectPanelOptions.value = T3000_Data.value.panelsData;
-//   }
-//   refreshLinkedEntries(arg.data.data);
-// }
-
-// if (arg.data.action === "SAVE_GRAPHIC_DATA_RES") {
-//   if (arg.data.data?.status === true) {
-//     if (!savedNotify.value) return;
-//     $q.notify({
-//       message: "Saved successfully.",
-//       color: "primary",
-//       icon: "check_circle",
-//       actions: [
-//         {
-//           label: "Dismiss",
-//           color: "white",
-//           handler: () => {
-//             /* ... */
-//           },
-//         },
-//       ],
-//     });
-//   } else {
-//     $q.notify({
-//       message: "Error, not saved!",
-//       color: "negative",
-//       icon: "error",
-//       actions: [
-//         {
-//           label: "Dismiss",
-//           color: "white",
-//           handler: () => {
-//             /* ... */
-//           },
-//         },
-//       ],
-//     });
-//   }
-// }
-
-// if (arg.data.action === "SAVE_IMAGE_RES") {
-//   library.value.imagesCount++;
-//   library.value.images.push({
-//     id: "IMG-" + library.value.imagesCount,
-//     name: arg.data.data.name,
-//     path: arg.data.data.path,
-//     online: false,
-//   });
-//   saveLib();
-// }
-
-// });
 
 function viewportMouseMoved(e) {
   // Move object icon with mouse
@@ -1196,16 +731,7 @@ function viewportMouseMoved(e) {
     refreshObjects();
   }
 }
-// // Refreshes the guidelines for the moveable elements
-// function refreshMoveableGuides() {
-//   appState.value.elementGuidelines = [];
-//   const lines = document.querySelectorAll(
-//     `.moveable-item-wrapper:not(moveable-item-index-${appState.value.activeItemIndex}) .moveable-item`
-//   );
-//   Array.from(lines).forEach(function (el) {
-//     appState.value.elementGuidelines.push(el);
-//   });
-// }
+
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
@@ -1403,9 +929,6 @@ function onResizeStart(e) {
 
 // Handles resizing of an element
 function onResize(e) {
-  // appState.value.items[itemIndex].width = e.width
-  // appState.value.items[itemIndex].height = e.height
-  // appState.value.items[itemIndex].translate = e.drag.beforeTranslate;
   const item = appState.value.items.find(
     (item) => `moveable-item-${item.id}` === e.target.id
   );
@@ -1511,40 +1034,6 @@ function onRotateGroup(e) {
   });
 }
 
-// // Adds a new object to the app state and updates guidelines
-// function addObject(item, group = undefined, addToHistory = true) {
-//   if (addToHistory) {
-//     addActionToHistory(`Add ${item.type}`);
-//   }
-//   appState.value.itemsCount++;
-//   item.id = appState.value.itemsCount;
-//   item.group = group;
-//   if (!item.settings.titleColor) {
-//     item.settings.titleColor = "inherit";
-//   }
-//   if (!item.settings.bgColor) {
-//     item.settings.bgColor = "inherit";
-//   }
-//   if (!item.settings.textColor) {
-//     item.settings.textColor = "inherit";
-//   }
-//   if (!item.settings.fontSize) {
-//     item.settings.fontSize = 16;
-//   }
-//   appState.value.items.push(item);
-//   const lines = document.querySelectorAll(".moveable-item");
-//   appState.value.elementGuidelines = [];
-//   Array.from(lines).forEach(function (el) {
-//     appState.value.elementGuidelines.push(el);
-//   });
-//   return item;
-// }
-
-// const viewportMargins = {
-//   // top: 36,93
-//   top: isBuiltInEdge?.value ? 36 : 95 + 20 + 2,
-//   left: 106 + 20 + 2,
-// };
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
@@ -1587,130 +1076,8 @@ function addLibItem(items, size, pos) {
       }, 1);
     }, 10);
   }, 10);
-  /* setTimeout(() => {
-    moveable.value.request(
-      "resizable",
-      {
-        offsetWidth: e.rect.width * scalPercentage,
-        offsetHeight: e.rect.height * scalPercentage,
-      },
-      true
-    );
-    refreshMoveable();
-  }, 60); */
 }
 
-// Ends a selecto drag event and handles object drawing based on tool type
-// function onSelectoDragEnd(e) {
-//   // T3000Util.HvacLog('2 onSelectoDragEnd', e);
-
-//   const size = { width: e.rect.width, height: e.rect.height };
-//   const pos = {
-//     clientX: e.clientX,
-//     clientY: e.clientY,
-//     top: e.rect.top,
-//     left: e.rect.left,
-//   };
-//   if (
-//     (selectedTool.value.name === "Pointer" ||
-//       size.width < 20 ||
-//       size.height < 20) &&
-//     !continuesObjectTypes.includes(selectedTool.value.name)
-//   ) {
-//     isDrawing.value = false;
-//     return;
-//   }
-//   if (
-//     continuesObjectTypes.includes(selectedTool.value.name) &&
-//     size.height < 20
-//   ) {
-//     size.height = selectedTool.value.height;
-//   }
-
-//   const item = drawObject(size, pos);
-//   if (item && continuesObjectTypes.includes(item.type)) {
-//     setTimeout(() => {
-//       isDrawing.value = true;
-//       appState.value.selectedTargets = [];
-//       appState.value.items[appState.value.activeItemIndex].rotate = 0;
-//       startTransform.value = cloneDeep(item.translate);
-//     }, 100);
-//   }
-// }
-
-// // Draws an object based on the provided size, position, and tool settings
-// function drawObject(size, pos, tool) {
-//   tool = tool || selectedTool.value;
-
-//   if (tool.type === "libItem") {
-//     addLibItem(tool.items, size, pos);
-//     return;
-//   }
-//   const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-//   const toolSettings =
-//     cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
-//   const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
-//     acc[key] = toolSettings[key].value;
-//     return acc;
-//   }, {});
-
-//   if (tool.name === "G_Rectangle") {
-//     size.width = 100;
-//   }
-
-//   const tempItem = {
-//     title: null,
-//     active: false,
-//     type: tool.name,
-//     translate: [
-//       (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
-//       scalPercentage,
-//       (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
-//       scalPercentage,
-//     ],
-//     width: size.width * scalPercentage,
-//     height: size.height * scalPercentage,
-//     rotate: 0,
-//     scaleX: 1,
-//     scaleY: 1,
-//     settings: objectSettings,
-//     zindex: 1,
-//     t3Entry: null,
-//     showDimensions: true
-//   };
-
-//   if (tool.type === "Image") {
-//     tempItem.image = tool;
-//     tempItem.type = tool.id;
-//   }
-
-//   // copy the first category from tool.cat to item.cat
-//   if (tool.cat) {
-//     const [first] = tool.cat;
-//     tempItem.cat = first;
-//   }
-
-//   const item = addObject(tempItem);
-
-//   if (["Value", "Icon", "Switch"].includes(tool.name)) {
-//     linkT3EntryDialog.value.active = true;
-//   }
-
-//   setTimeout(() => {
-//     if (locked.value) return;
-//     appState.value.activeItemIndex = appState.value.items.findIndex(
-//       (i) => i.id === item.id
-//     );
-//   }, 10);
-//   setTimeout(() => {
-//     if (locked.value) return;
-//     const target = document.querySelector(`#moveable-item-${item.id}`);
-//     appState.value.selectedTargets = [target];
-//     selecto.value.setSelectedTargets([target]);
-//   }, 100);
-//   return item;
-// }
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
@@ -1723,15 +1090,6 @@ function selectTool(tool, type = "default") {
 
   T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
 }
-
-// // Refresh the moveable object's rectangle after a short delay
-// function refreshMoveable() {
-//   // const targetsCache = cloneDeep(appState.value.selectedTargets);
-//   // appState.value.selectedTargets = [];
-//   setTimeout(() => {
-//     moveable.value.updateRect();
-//   }, 1);
-// }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
@@ -1927,11 +1285,6 @@ function insertT3EntryOnSave() {
 }
 
 function insertT3DefaultLoadData() {
-  // selectPanelOptions.value = T3000_Data.value.panelsData;
-  // selectPanelFilterFn('', (fn) => {
-  //   selectPanelOptions.value = T3000_Data.value.panelsData;
-  // });
-  // T3Util.Log('insertT3DefaultLoadData To load the data', selectPanelOptions.value)
 }
 
 // Save the current app state, optionally displaying a notification
@@ -2500,12 +1853,6 @@ function exportToJsonAction() {
   a.click();
 }
 
-// // Get all items linked to a T3 entry
-// function getLinkedEntries() {
-//   const items = appState.value.items;
-//   if (items.length === 0) return [];
-//   return toRaw(appState.value).items.filter((i) => i.t3Entry);
-// }
 
 // Handle the addition of an imported JSON file
 async function importJsonFileAdded(file) {
@@ -2570,24 +1917,6 @@ function executeImportFromJson() {
   }, 100);
   Hvac.IdxPage.refreshMoveable();
 }
-
-// // Computed property for zoom control
-// const zoom = computed({
-//   // Getter for zoom value
-//   get() {
-//     return parseInt(appState.value.viewportTransform.scale * 100);
-//   },
-//   // Setter for zoom value
-//   set(newValue) {
-//     if (!newValue) return;
-//     appState.value.viewportTransform.scale = newValue / 100;
-//     panzoomInstance.smoothZoomAbs(
-//       appState.value.viewportTransform.x,
-//       appState.value.viewportTransform.y,
-//       newValue / 100
-//     );
-//   },
-// });
 
 // Duplicate the selected items in the app state
 function duplicateSelected() {
@@ -2769,31 +2098,6 @@ function reloadPanelsData() {
   }
 }
 
-// // Refresh linked entries with updated panel data
-// function refreshLinkedEntries(panelData) {
-//   appState.value.items
-//     .filter((i) => i.t3Entry?.type)
-//     .forEach((item) => {
-//       const linkedEntry = panelData.find(
-//         (ii) =>
-//           ii.index === item.t3Entry.index &&
-//           ii.type === item.t3Entry.type &&
-//           ii.pid === item.t3Entry.pid
-//       );
-//       if (linkedEntry && linkedEntry.id) {
-
-//         const tempBefore = linkedEntry.value;
-
-//         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
-//         linkedEntry.value = newLkValue;
-//         item.t3Entry = linkedEntry;
-
-//         T3Util.Log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
-
-//         refreshObjectStatus(item);
-//       }
-//     });
-// }
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
@@ -2819,26 +2123,6 @@ function lockToggle() {
   // Update the document area position based on the lock state
   IdxPage.restDocumentAreaPosition();
 }
-
-// function restDocumentAreaPosition(pzXY) {
-//   const div = document.querySelector('.full-area');
-//   documentAreaPosition.value.workAreaPadding = locked.value ? "0px" : "110px";
-//   documentAreaPosition.value.hRulerWOffset = locked.value ? "24px" : "128px";
-//   documentAreaPosition.value.wpwWOffset = locked.value ? "24px" : "128px";
-//   documentAreaPosition.value.wpWOffset = locked.value ? "26px" : "136px";
-//   documentAreaPosition.value.hRuler = { width: div.clientWidth, height: 20 };
-//   documentAreaPosition.value.vRuler = { width: 20, height: div.clientHeight };
-//   documentAreaPosition.value.hvGrid = { width: div.clientWidth, height: div.clientHeight };
-//   documentAreaPosition.value.wiewPortWH = { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 93px)" };
-//   documentAreaPosition.value.widthOffset = locked.value ? "24px" : "128px";
-
-//   if (isBuiltInEdge.value) {
-//     documentAreaPosition.value.heightOffset = locked.value ? "68px" : "68px";
-//   }
-//   else {
-//     documentAreaPosition.value.heightOffset = locked.value ? "115px" : "115px";
-//   }
-// }
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
@@ -3530,8 +2814,6 @@ function viewportLeftClick(ev) {
     && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
 
   if (check) {
-    // T3Util.Log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
-
     // Manually create a shape at the mouse current position
 
     var ePosition = {
@@ -3563,57 +2845,6 @@ function viewportRightClick(ev) {
     T3000.Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
-
-// // Checks if the user is logged in
-// function isLoggedIn() {
-//   const hasToken = $q.cookies.has("token");
-//   if (!hasToken) {
-//     user.value = null;
-//     return;
-//   }
-
-//   // Get the user's data from the API
-//   liveApi
-//     .get("hvacTools")
-//     .then(async (res) => {
-//       const data = await res.json();
-//       if (data.length > 0) {
-//         data?.forEach((oItem) => {
-//           addOnlineLibImage(oItem);
-//         });
-//       }
-//     })
-//     .catch((err) => {
-//       T3Util.Log(err);
-//     });
-
-//   liveApi
-//     .get("hvacObjectLibs")
-//     .then(async (res) => {
-//       const data = await res.json();
-//       if (data.length > 0) {
-//         data.forEach((oItem) => {
-//           library.value.objLib.push({
-//             id: oItem.id,
-//             label: oItem.label,
-//             items: oItem.items,
-//             online: true,
-//           });
-//         });
-//       }
-//     })
-//     .catch((err) => {
-//       T3Util.Log(err);
-//     });
-//   liveApi
-//     .get("me")
-//     .then(async (res) => {
-//       user.value = await res.json();
-//     })
-//     .catch((err) => {
-//       // Not logged in
-//     });
-// }
 
 // Adds the online images to the library
 function addOnlineLibImage(oItem) {
