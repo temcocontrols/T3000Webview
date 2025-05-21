@@ -583,12 +583,15 @@ import {
   appStateV2
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
- import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
 import { Alert as AAlert } from 'ant-design-vue';
 import T3Message from "src/components/NewUI/T3Message.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
+
+import { isDrawing, startTransform, snappable, keepRatio } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -598,15 +601,10 @@ useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
- const selecto = ref(null); // Reference to the selecto component instance
- const targets = ref([]); // Array of selected targets
+const selecto = ref(null); // Reference to the selecto component instance
+const targets = ref([]); // Array of selected targets
 const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 
-// State variables for drawing and transformations
-const isDrawing = ref(false);
-const startTransform = ref([0, 0]);
-const snappable = ref(true); // Enable snapping for moveable components
-const keepRatio = ref(false); // Maintain aspect ratio for resizing
 
 // List of continuous object types
 const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];

@@ -1,5 +1,4 @@
 
-
 import HvConstant from "../Data/Constant/HvConstant"
 
 class T3Util {
@@ -12,6 +11,7 @@ class T3Util {
    * @param additionalParams - Optional additional parameters to log
    */
   static Log(message, ...additionalParams) {
+    return;
     if (HvConstant.Default.Environment.toLowerCase() !== "dev") {
       if (additionalParams == null || additionalParams.length === 0) {
         console.log.apply(console, [message]);
@@ -23,6 +23,7 @@ class T3Util {
 
   //@param forcePrint - If true, forces the message to be logged regardless of environment
   static LogDev(message: any, forcePrint: boolean, ...additionalParams: any[]): void {
+    return;
     if (forcePrint || HvConstant.Default.Environment.toLowerCase() !== "dev") {
       if (additionalParams == null || additionalParams.length === 0) {
         console.log.apply(console, [message]);
