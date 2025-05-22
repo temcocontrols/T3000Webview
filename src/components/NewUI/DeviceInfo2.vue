@@ -34,7 +34,7 @@
 
 <template>
 
-  <div class=".dvcontainer">
+  <div class="dvcontainer">
 
     <div class="q-pa-sm row" v-if="glMsg.isShow">
       <q-banner inline-actions class="text-white bg-purple" style="width: 100%;">
@@ -43,18 +43,13 @@
           <q-btn flat caption color="white" label="Reload data" @click="reloadPanelsData" />
         </template>
       </q-banner>
-      <!-- <a-alert message="Warning" type="warning" show-icon /> -->
     </div>
 
     <div class="q-pa-sm row ">
 
       <q-list bordered class="rounded-borders col-12" style="height: 50px;">
-        <!-- <q-item-label header>Current selection</q-item-label> -->
 
         <q-item>
-          <!-- <q-item-section avatar top>
-            <q-icon name="check" color="black" size="34px" />
-          </q-item-section> -->
 
           <q-item-section top class="col-1">
             <q-item-label class="q-mt-sm text-weight-medium" style="font-size: 13px;">Current:</q-item-label>
@@ -112,14 +107,6 @@
               </q-tooltip>
             </q-link>
           </q-item-section>
-
-          <!-- <q-item-section top side>
-            <div class="text-grey-8 q-gutter-xs">
-              <q-btn class="gt-xs" size="12px" flat dense round icon="delete" />
-              <q-btn class="gt-xs" size="12px" flat dense round icon="done" />
-              <q-btn size="12px" flat dense round icon="more_vert" />
-            </div>
-          </q-item-section> -->
         </q-item>
       </q-list>
     </div>
@@ -202,13 +189,13 @@ import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } fr
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
-import { T3Data } from '../lib/T3000/Hvac/Data/T3Data'
-import { globalMsg } from '../lib/T3000/Hvac/Data/T3Data'
+import { T3Data, globalMsg } from "../../lib/T3000/Hvac/Data/T3Data";
 import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
+import AntdUtil from 'src/lib/T3000/Hvac/Opt/UI/AntdUtil';
 
 export default defineComponent({
-  name: 'DeviceInfo',
+  name: 'DeviceInfo2',
 
   props: {
     // locked: {
@@ -249,28 +236,8 @@ export default defineComponent({
     const expanded = ref(["All Devices"]);
 
     const noNodesLabel = "No devices available";
-
-    // const x1 = ref();
-    // console.log('= Dvi x1', x1);
-
-    // watch(() => Hvac.DeviceOpt.x1, (newVal, oldVal) => {
-    //   console.log('= Dvi x1 changed:', newVal);
-    //   x1.value = newVal;
-    // }, { deep: true });
-
-    // const simple = MockData.DeviceList;
-    const dvList = T3Data.deviceList;// Hvac.DeviceOpt.deviceList;
-    // console.log('= Dvi real device data', dvList);
-
-    // watch(() => Hvac.DeviceOpt.deviceList, (newVal) => {
-    //   console.log('= Dvi device list changed:', newVal);
-    //   dvList.value = newVal;
-    // }, { deep: true });
-
-    // const graphicList = MockData.GraphicList;
+    const dvList = T3Data.deviceList;
     const graphicList = T3Data.graphicList;
-    // console.log('= Dvi real graphic data', graphicList);
-
     const currentDevice = ref({ device: "", deviceId: -1, serialNumber: -1, graphic: -1, graphicFull: { id: -1, fullLabel: '', label: '', elementCount: '' } });
 
     const myFilterMethod = (node, filter) => {
@@ -286,7 +253,7 @@ export default defineComponent({
     const clearGraphicSelection = () => {
       currentDevice.value.graphic = -1;
       currentDevice.value.graphicFull = { id: -1, fullLabel: '', label: '', elementCount: '' };
-      // console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     // graphic panel change event
@@ -302,8 +269,8 @@ export default defineComponent({
         currentDevice.value.graphicFull.elementCount = found.elementCount;
       }
 
-      // console.log('= Dvi graphic-selected 1 val:', val);
-      // console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi graphic-selected 1 val:', val);
+      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       const deviceId = currentDevice.value.deviceId;
 
@@ -314,7 +281,7 @@ export default defineComponent({
 
     // device tree selection event
     const treeSelected = (target) => {
-      // console.log('= Dvi tree-selected 1 target:', target)
+      console.log('= Dvi tree-selected 1 target:', target)
 
       // Clear the icon for all nodes
       const clearIcons = (nodes) => {
@@ -369,13 +336,7 @@ export default defineComponent({
 
       clearGraphicSelection();
 
-      // console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
-
-      // load hardware data from T3000
-      // Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
-
-      // update the graphic panel's elements count
-      // Hvac.DeviceOpt.refreshGraphicPanelElementCount(currentDevice.value);
+      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       // load real data from T3000
       if (currentDevice.value.device !== '') {
@@ -410,13 +371,15 @@ export default defineComponent({
     };
 
     const saveCurrentSelection = () => {
-      // console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
         $q.notify({
           type: "negative",
           message: "Please select a device and a graphic",
         });
+        // AntdUtil.ShowMessage('error', 'Please select a device and a graphic');
+        // AntdUtil.ShowNotification('error', 'Test title', 'Please select a device and a graphic');
         return;
       }
       else {
@@ -428,9 +391,6 @@ export default defineComponent({
           Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
           Hvac.DeviceOpt.addPresetsData();
           Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
-
-          // sync t3 appState data to ls [deviceAppState]
-          // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();
 
           emit('updateDeviceModel', false, currentDevice.value);
         }
@@ -449,7 +409,6 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      // console.log('= Dvi onMounted 1 deviceModel,selected', props.deviceModel);
 
       //load the saved current device from local storage
       const savedDevice = Hvac.DeviceOpt.getCurrentDevice();
@@ -457,16 +416,13 @@ export default defineComponent({
         currentDevice.value = savedDevice;
         Hvac.DeviceOpt.setDeviceAndGraphicDefaultData(savedDevice);
         selected.value = savedDevice.device;
-
-        // console.log('= Dvi onMounted 1 mockData:', MockData.DeviceList);
-        // console.log('= Dvi onMounted 2 dvList:', dvList);
       }
 
       const hasNoData = dvList.value.length === 0 || graphicList.value.length === 0;
       if (hasNoData) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
         Hvac.QuasarUtil.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
-        // console.log('= Dvi onMounted 3 dvList:', dvList);
+        console.log('= Dvi onMounted 3 dvList:', dvList);
       }
       else {
         Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");

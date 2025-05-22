@@ -310,8 +310,8 @@
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
-      <DeviceInfo :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel" @testSendMsg="testSendMsg">
-      </DeviceInfo>
+      <DeviceInfo2 :deviceModel="deviceModel" @updateDeviceModel="updateDeviceModel" @testSendMsg="testSendMsg">
+      </DeviceInfo2>
     </q-card>
   </q-dialog>
 </template>
@@ -342,7 +342,7 @@ import { use } from "echarts";
 import WallExterior from "src/components/ObjectTypes/WallExterior.vue";
 import NewTopBar from "src/components/NewTopBar.vue";
 import T3000 from "src/lib/T3000/T3000";
-import DeviceInfo from "src/components/DeviceInfo.vue";
+import DeviceInfo2 from "src/components/NewUI/DeviceInfo2.vue";
 import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
 
 // New import for Data
@@ -411,8 +411,7 @@ function showMoreDevices(): void {
   Hvac.IdxPage2.showMoreDevices();
 }
 
-onBeforeUnmount(() => {
-})
+onBeforeUnmount(() => { })
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {

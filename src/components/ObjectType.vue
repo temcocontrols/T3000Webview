@@ -235,7 +235,7 @@ export default defineComponent({
   ],
   setup(props, { emit }) {
 
-    console.log('= v.ObjectType setup', props.item);
+    // console.log('= v.ObjectType setup', props.item);
 
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
@@ -251,7 +251,7 @@ export default defineComponent({
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
-      console.log('= Ot range,t3e', range, props.item.t3Entry);
+      // console.log('= Ot range,t3e', range, props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";
