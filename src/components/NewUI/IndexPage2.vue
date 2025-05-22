@@ -576,7 +576,7 @@ import AntdTest from "src/components/NewUI/AntdTest.vue";
 
 import {
   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
-  gaugeSettingsDialog
+  gaugeSettingsDialog, insertCount
 } from
   "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
@@ -770,183 +770,57 @@ function onDragStart(e) {
 
 // Handles dragging of an element
 function onDrag(e) {
-  const item = appState.value.items.find(
-    (item) => `moveable-item-${item.id}` === e.target.id
-  );
-  // item.translate = e.beforeTranslate;
-  e.target.style.transform = e.transform;
+  Hvac.IdxPage2.onDrag(e);
 }
 
 // Ends the dragging of an element
 function onDragEnd(e) {
-  if (!e.lastEvent) {
-    undoHistory.value.shift(); // Remove the last action if dragging was not completed
-  } else {
-    const item = appState.value.items.find(
-      (item) => `moveable-item-${item.id}` === e.target.id
-    );
-    item.translate = e.lastEvent.beforeTranslate;
-
-    T3Util.Log('= IdxPage onDragEnd:', e, item.translate);
-    save(false, false); // Save the state after drag end
-    refreshObjects(); // Refresh objects
-  }
+  Hvac.IdxPage2.onDragEnd(e);
 }
 
 // Starts dragging a group of elements
 function onDragGroupStart(e) {
-  addActionToHistory("Move Group");
-  e.events.forEach((ev, i) => {
-    const itemIndex = appState.value.items.findIndex(
-      (item) => `moveable-item-${item.id}` === ev.target.id
-    );
-    ev.set(appState.value.items[itemIndex].translate);
-  });
+  Hvac.IdxPage2.onDragGroupStart(e);
 }
 
 // Handles dragging of a group of elements
 function onDragGroup(e) {
-  e.events.forEach((ev, i) => {
-    const itemIndex = appState.value.items.findIndex(
-      (item) => `moveable-item-${item.id}` === ev.target.id
-    );
-    appState.value.items[itemIndex].translate = ev.beforeTranslate;
-  });
+  Hvac.IdxPage2.onDragGroup(e);
 }
 
 // Ends the dragging of a group of elements
 function onDragGroupEnd(e) {
-  if (!e.lastEvent) {
-    undoHistory.value.shift(); // Remove the last action if dragging was not completed
-  } else {
-    refreshObjects(); // Refresh objects
-  }
+  Hvac.IdxPage2.onDragGroupEnd(e);
 }
 
 // Handles the start of a selecto drag event
 function onSelectoDragStart(e) {
-  // T3000Util.HvacLog('1 onSelectoDragStart', "e=", e, "target=", e.inputEvent.target);
-  const target = e.inputEvent.target;
-  if (
-    moveable.value.isMoveableElement(target) ||
-    appState.value.selectedTargets.some(
-      (t) => t === target || t.contains(target)
-    )
-  ) {
-    e.stop();
-  }
+  Hvac.IdxPage2.onSelectoDragStart(e);
 }
 
 // Handles the end of a selecto select event
 function onSelectoSelectEnd(e) {
-  // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
-  appState.value.selectedTargets = e.selected;
-  if (e?.selected && !e?.inputEvent?.ctrlKey) {
-    const selectedItems = appState.value.items.filter((i) =>
-      e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
-    );
-    const selectedGroups = [
-      ...new Set(
-        selectedItems.filter((iii) => iii.group).map((iiii) => iiii.group)
-      ),
-    ];
-    selectedGroups.forEach((gId) => {
-      selectGroup(gId);
-    });
-  }
-
-  if (appState.value.selectedTargets.length === 1) {
-    appState.value.activeItemIndex = appState.value.items.findIndex(
-      (item) =>
-        `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
-    );
-  } else {
-    appState.value.activeItemIndex = null;
-  }
-
-  if (e.isDragStart) {
-    e.inputEvent.preventDefault();
-
-    setTimeout(() => {
-      moveable.value.dragStart(e.inputEvent);
-    });
-  }
-
-  if (appState.value.selectedTargets.length > 1 && !locked.value) {
-    setTimeout(() => {
-      contextMenuShow.value = true;
-    }, 100);
-  } else {
-    contextMenuShow.value = false;
-  }
-
-  IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
-
-  setTimeout(() => {
-    T3000.Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
-  }, 100);
+  Hvac.IdxPage2.onSelectoSelectEnd(e);
 }
 
 // Selects a group of elements by their group ID
 function selectGroup(id) {
-  const targets = [];
-  appState.value.items
-    .filter(
-      (i) =>
-        i.group === id &&
-        !appState.value.selectedTargets.some(
-          (ii) => ii.id === `moveable-item-${i.id}`
-        )
-    )
-    .forEach((iii) => {
-      const target = document.querySelector(`#moveable-item-${iii.id}`);
-      targets.push(target);
-    });
-
-  appState.value.selectedTargets =
-    appState.value.selectedTargets.concat(targets);
-  selecto.value.setSelectedTargets(appState.value.selectedTargets);
+  Hvac.IdxPage2.selectGroup(id);
 }
 
 // Starts resizing an element
 function onResizeStart(e) {
-  addActionToHistory("Resize object");
-  const itemIndex = appState.value.items.findIndex(
-    (item) => `moveable-item-${item.id}` === e.target.id
-  );
-  e.setOrigin(["%", "%"]);
-  e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+  Hvac.IdxPage2.onResizeStart(e);
 }
 
 // Handles resizing of an element
 function onResize(e) {
-  const item = appState.value.items.find(
-    (item) => `moveable-item-${item.id}` === e.target.id
-  );
-  e.target.style.width = `${e.width}px`;
-  e.target.style.height = `${e.height}px`;
-  e.target.style.transform = `translate(${e.drag.beforeTranslate[0]}px, ${e.drag.beforeTranslate[1]}px) rotate(${item.rotate}deg) scaleX(${item.scaleX}) scaleY(${item.scaleY})`;
+  Hvac.IdxPage2.onResize(e);
 }
 
 // Ends the resizing of an element
 function onResizeEnd(e) {
-
-  // Fix bug for when double clicking on the selected object, also clicked the resize button accidentally
-  if (e.lastEvent === null || e.lastEvent === undefined) {
-    return;
-  }
-
-  const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
-
-  appState.value.items[itemIndex].width = e.lastEvent.width;
-  appState.value.items[itemIndex].height = e.lastEvent.height;
-  appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
-
-  // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000.Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
-
-  // Refresh objects after resizing
-  refreshObjects();
+  Hvac.IdxPage2.onResizeEnd(e);
 }
 
 // Starts rotating an element
@@ -956,11 +830,7 @@ function onRotateStart(e) {
 
 // Handles rotating of an element
 function onRotate(e) {
-  // e.target.style.transform = e.drag.transform;
-  const item = appState.value.items.find(
-    (item) => `moveable-item-${item.id}` === e.target.id
-  );
-  item.rotate = e.rotate;
+  Hvac.IdxPage2.onRotate(e);
 }
 
 // Refreshes objects on rotate end
@@ -980,191 +850,77 @@ function onResizeGroupStart(e) {
 
 // Handles resizing of a group of elements
 function onResizeGroup(e) {
-  e.events.forEach((ev, i) => {
-    ev.target.style.width = `${ev.width}px`;
-    ev.target.style.height = `${ev.height}px`;
-    ev.target.style.transform = ev.drag.transform;
-  });
+  Hvac.IdxPage2.onResizeGroup(e);
 }
 
 // Ends the resizing of a group of elements and updates the app state
 function onResizeGroupEnd(e) {
-  e.events.forEach((ev) => {
-    const itemIndex = appState.value.items.findIndex(
-      (item) => `moveable-item-${item.id}` === ev.lastEvent.target.id
-    );
-    appState.value.items[itemIndex].width = ev.lastEvent.width;
-    appState.value.items[itemIndex].height = ev.lastEvent.height;
-    appState.value.items[itemIndex].translate =
-      ev.lastEvent.drag.beforeTranslate;
-  });
-  refreshObjects();
-  keepRatio.value = false;
+  Hvac.IdxPage2.onResizeGroupEnd(e);
 }
 
 // Starts rotating a group of elements and adds the action to the history
 function onRotateGroupStart(e) {
-  addActionToHistory("Rotate Group");
-  e.events.forEach((ev) => {
-    const itemIndex = appState.value.items.findIndex(
-      (item) => `moveable-item-${item.id}` === ev.target.id
-    );
-    ev.set(appState.value.items[itemIndex].rotate);
-    ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
-  });
+  Hvac.IdxPage2.onRotateGroupStart(e);
 }
 
 // Handles rotating of a group of elements and updates their state
 function onRotateGroup(e) {
-  e.events.forEach((ev, i) => {
-    const itemIndex = appState.value.items.findIndex(
-      (item) => `moveable-item-${item.id}` === ev.target.id
-    );
-    appState.value.items[itemIndex].translate = ev.drag.beforeTranslate;
-    appState.value.items[itemIndex].rotate = ev.rotate;
-  });
+  Hvac.IdxPage2.onRotateGroup(e);
 }
-
 
 // Adds a library item to the app state and updates selection
 function addLibItem(items, size, pos) {
-  const elements = [];
-  const addedItems = [];
-  appState.value.groupCount++;
-  items.forEach((item) => {
-    addedItems.push(cloneObject(item, appState.value.groupCount));
-  });
-  setTimeout(() => {
-    addedItems.forEach((addedItem) => {
-      const el = document.querySelector(`#moveable-item-${addedItem.id}`);
-      elements.push(el);
-    });
-    appState.value.selectedTargets = elements;
-    selecto.value.setSelectedTargets(elements);
-    appState.value.activeItemIndex = null;
-    const scalPercentage = 1 / appState.value.viewportTransform.scale;
-    setTimeout(() => {
-      moveable.value.request(
-        "draggable",
-        {
-          x:
-            (pos.clientX -
-              viewportMargins.left -
-              appState.value.viewportTransform.x) *
-            scalPercentage -
-            size.width * scalPercentage,
-          y:
-            (pos.clientY -
-              viewportMargins.top -
-              appState.value.viewportTransform.y) *
-            scalPercentage -
-            size.height * scalPercentage,
-        },
-        true
-      );
-      setTimeout(() => {
-        Hvac.IdxPage.refreshMoveable();
-      }, 1);
-    }, 10);
-  }, 10);
+  Hvac.IdxPage2.addLibItem(items, size, pos);
 }
-
 
 // Select a tool and set its type
 function selectTool(tool, type = "default") {
-  T3Util.Log("= IdxPage selectTool", tool, type);
-  selectedTool.value = tool;
-  if (typeof tool === "string") {
-    selectedTool.value = tools.find((item) => item.name === tool);
-  }
-  selectedTool.value.type = type;
-
-  T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
+  Hvac.IdxPage2.selectTool(tool, type);
 }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
-  if (!item) return;
-  addActionToHistory("Rotate object");
-  if (!minues) {
-    item.rotate = item.rotate + 90;
-  } else {
-    item.rotate = item.rotate - 90;
-  }
-  Hvac.IdxPage.refreshMoveable();
+  Hvac.IdxPage2.rotate90(item, minues);
 }
 
 // Flip an item horizontally
 function flipH(item) {
-  addActionToHistory("Flip object H");
-  if (item.scaleX === 1) {
-    item.scaleX = -1;
-  } else {
-    item.scaleX = 1;
-  }
-  Hvac.IdxPage.refreshMoveable();
+  Hvac.IdxPage2.flipH(item);
 }
 
 // Flip an item vertically
 function flipV(item) {
-  addActionToHistory("Flip object V");
-  if (item.scaleY === 1) {
-    item.scaleY = -1;
-  } else {
-    item.scaleY = 1;
-  }
-  Hvac.IdxPage.refreshMoveable();
+  Hvac.IdxPage2.flipV(item);
 }
 
 // Bring an item to the front by increasing its z-index
 function bringToFront(item) {
-  addActionToHistory("Bring object to front");
-  item.zindex = item.zindex + 1;
+  Hvac.IdxPage2.bringToFront(item);
 }
 
 // Send an item to the back by decreasing its z-index
 function sendToBack(item) {
-  addActionToHistory("Send object to back");
-  item.zindex = item.zindex - 1;
+  Hvac.IdxPage2.sendToBack(item);
 }
 
 // Remove an item from the app state
 function removeObject(item) {
-  addActionToHistory("Remove object");
-  const index = appState.value.items.findIndex((i) => i.id === item.id);
-  appState.value.activeItemIndex = null;
-  appState.value.items.splice(index, 1);
-
-  appState.value.selectedTargets = [];
+  Hvac.IdxPage2.removeObject(item);
 }
 
 // Duplicate an item and select the new copy
 function duplicateObject(i) {
-  addActionToHistory(`Duplicate ${i.type}`);
-  appState.value.activeItemIndex = null;
-  const item = cloneObject(i);
-  appState.value.selectedTargets = [];
-  setTimeout(() => {
-    selectObject(item);
-  }, 10);
+  Hvac.IdxPage2.duplicateObject(i);
 }
 
 // Clone an object and adjust its position slightly
 function cloneObject(i, group = undefined) {
-  const dubItem = cloneDeep(i);
-  dubItem.translate[0] = dubItem.translate[0] + 5;
-  dubItem.translate[1] = dubItem.translate[1] + 5;
-  const item = addObject(dubItem, group, false);
-  return item;
+  Hvac.IdxPage2.cloneObject(i, group);
 }
 
 // Select an object and update the app state
 function selectObject(item) {
-  const target = document.querySelector(`#moveable-item-${item.id}`);
-  appState.value.selectedTargets = [target];
-  appState.value.activeItemIndex = appState.value.items.findIndex(
-    (ii) => ii.id === item.id
-  );
+  Hvac.IdxPage2.selectObject(item);
 }
 
 // Handle right-click selection
@@ -1195,84 +951,16 @@ function linkT3EntrySaveV2() {
 
 // Filter function for selecting panels in the UI
 function selectPanelFilterFn(val, update) {
-  if (val === "") {
-    update(() => {
-      selectPanelOptions.value = T3000_Data.value.panelsData;
-
-      // here you have access to "ref" which
-      // is the Vue reference of the QSelect
-    });
-    return;
-  }
-
-  update(() => {
-    const keyword = val.toUpperCase();
-    selectPanelOptions.value = T3000_Data.value.panelsData.filter(
-      (item) =>
-        item.command.toUpperCase().indexOf(keyword) > -1 ||
-        item.description?.toUpperCase().indexOf(keyword) > -1 ||
-        item.label?.toUpperCase().indexOf(keyword) > -1
-    );
-  });
+  Hvac.IdxPage2.selectPanelFilterFn(val, update);
 }
-
-const insertCount = ref(0);
 
 // Insert Key Function
 function insertT3EntrySelect(value) {
-  addActionToHistory("Insert object to T3000 entry");
-
-  const posIncrease = insertCount.value * 80;
-
-  // Add a shape to graphic area
-  const size = { width: 60, height: 60 };
-  const pos = { clientX: 300, clientY: 100, top: 100, left: 200 + posIncrease };
-  const tempTool = tools.find((item) => item.name === 'Pump');
-  const item = drawObject(size, pos, tempTool);
-
-  // Set the added shape to active
-  const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
-  appState.value.activeItemIndex = itemIndex;
-
-  // Link to T3 entry
-  insertT3EntryOnSave();
-
-  insertCount.value++;
-
-  // T3Util.Log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+  Hvac.IdxPage2.insertT3EntrySelect(value);
 }
 
 function insertT3EntryOnSave() {
-  addActionToHistory("Link object to T3000 entry");
-  if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
-    if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
-    } else {
-      appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
-    }
-  }
-
-  appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
-    toRaw(insertT3EntryDialog.value.data)
-  )
-
-  // Change the icon based on the linked entry type
-  if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
-    let icon = "fa-solid fa-camera-retro";
-    if (insertT3EntryDialog.value.data.type === "GRP") {
-      icon = "fa-solid fa-camera-retro";
-    } else if (insertT3EntryDialog.value.data.type === "SCHEDULE") {
-      icon = "schedule";
-    } else if (insertT3EntryDialog.value.data.type === "PROGRAM") {
-      icon = "fa-solid fa-laptop-code";
-    } else if (insertT3EntryDialog.value.data.type === "HOLIDAY") {
-      icon = "calendar_month";
-    }
-    appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
-  }
-  IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
-  insertT3EntryDialog.value.data = null;
-  insertT3EntryDialog.value.active = false;
+  Hvac.IdxPage2.insertT3EntryOnSave();
 }
 
 function insertT3DefaultLoadData() {
@@ -1290,22 +978,7 @@ function refreshMoveable() {
 
 // Create a new project, optionally confirming with the user if there's existing data
 function newProject() {
-  if (appState.value.items?.length > 0) {
-    $q.dialog({
-      dark: true,
-      title: "Do you want to clear the drawing and start over?",
-      message: "This will also erase your undo history",
-      cancel: true,
-      persistent: true,
-    })
-      .onOk(() => {
-        Hvac.IdxPage.newProject();
-      })
-      .onCancel(() => { });
-    return;
-  }
-
-  Hvac.IdxPage.newProject();
+  Hvac.IdxPage2.newProject();
 }
 
 // Handle keyup event for keyboard control
@@ -1437,235 +1110,28 @@ function linkT3EntryDialogActionV2() {
 
 // Delete selected objects from the app state
 function deleteSelected() {
-  addActionToHistory("Remove selected objects");
-  if (appState.value.selectedTargets.length > 0) {
-    appState.value.selectedTargets.forEach((el) => {
-      const iIndex = appState.value.items.findIndex(
-        (item) => `moveable-item-${item.id}` === el.id
-      );
-      if (iIndex !== -1) {
-        appState.value.items.splice(iIndex, 1);
-      }
-    });
-    appState.value.selectedTargets = [];
-    appState.value.activeItemIndex = null;
-  }
+  Hvac.IdxPage2.deleteSelected();
 }
 
 function drawWeldObject(selectedItems) {
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-  // Calculate the bounding box for the selected items
-  const firstX = selectedItems[0].translate[0];
-  const firstY = selectedItems[0].translate[1];
-  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
-  const minY = Math.min(...selectedItems.map((item) => item.translate[1]));
-  const maxX = Math.max(
-    ...selectedItems.map((item) => item.translate[0] + item.width)
-  );
-  const maxY = Math.max(
-    ...selectedItems.map((item) => item.translate[1] + item.height)
-  );
-
-  const transX = firstX < minX ? firstX : minX;
-
-  const title = selectedItems.map((item) => item?.type ?? "").join("-");
-
-  let previous = selectedItems[0].zindex;
-  selectedItems.forEach((item) => {
-    item.zindex = previous - 1;
-    previous = item.zindex;
-  });
-
-  const tempItem = {
-    title: `Weld-${title}`,
-    active: false,
-    type: "Weld",
-    translate: [transX, minY],
-    width: (maxX - minX) * scalPercentage,
-    height: (maxY - minY) * scalPercentage,
-    rotate: 0,
-    scaleX: 1,
-    scaleY: 1,
-    settings: {
-      active: false,
-      fillColor: "#659dc5",
-      fontSize: 16,
-      inAlarm: false,
-      textColor: "inherit",
-      titleColor: "inherit",
-      weldItems: cloneDeep(selectedItems),
-    },
-    zindex: 1,
-    t3Entry: null,
-    id: appState.value.itemsCount + 1,
-  };
-
-  addObject(tempItem);
+  Hvac.IdxPage2.drawWeldObject(selectedItems);
 }
 
 // Draw weld objects with canvas
 function drawWeldObjectCanvas(selectedItems) {
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-  // Calculate the bounding box for the selected items
-  const firstX = selectedItems[0].translate[0];
-  const firstY = selectedItems[0].translate[1];
-  const minX = Math.min(...selectedItems.map((item) => item.translate[0]));
-  let minY = Math.min(...selectedItems.map((item) => item.translate[1]));
-  const maxX = Math.max(
-    ...selectedItems.map((item) => item.translate[0] + item.width)
-  );
-  const maxY = Math.max(
-    ...selectedItems.map((item) => item.translate[1] + item.height)
-  );
-  let newMinX = firstX < minX ? firstX : minX;
-
-  const boundingBox = selectedItems.reduce(
-    (acc, item) => {
-      const rad = (item.rotate * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-
-      const corners = [
-        { x: item.translate[0], y: item.translate[1] },
-        {
-          x: item.translate[0] + item.width * cos,
-          y: item.translate[1] + item.width * sin,
-        },
-        {
-          x: item.translate[0] - item.height * sin,
-          y: item.translate[1] + item.height * cos,
-        },
-        {
-          x: item.translate[0] + item.width * cos - item.height * sin,
-          y: item.translate[1] + item.width * sin + item.height * cos,
-        },
-      ];
-
-      corners.forEach((corner) => {
-        acc.minX = Math.min(acc.minX, corner.x);
-        acc.minY = Math.min(acc.minY, corner.y);
-        acc.maxX = Math.max(acc.maxX, corner.x);
-        acc.maxY = Math.max(acc.maxY, corner.y);
-      });
-
-      return acc;
-    },
-    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
-  );
-
-  const transX = boundingBox.minX;
-  const transY = boundingBox.minY;
-  const width = boundingBox.maxX - boundingBox.minX;
-  const height = boundingBox.maxY - boundingBox.minY;
-
-  const title = selectedItems.map((item) => item?.type ?? "").join("-");
-  let previous = selectedItems[0].zindex;
-
-  selectedItems.forEach((item) => {
-    item.zindex = previous - 1;
-    previous = item.zindex;
-  });
-
-  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
-
-  if (isAllDuct) {
-    // Get the new pos for all ducts
-    const overlapList = checkIsOverlap(selectedItems);
-
-    selectedItems.forEach((item) => {
-      const overlapItem = overlapList.find((pos) => pos.id === item.id);
-      if (overlapItem) {
-        item.overlap = {
-          isStartOverlap: overlapItem.isStartOverlap,
-          isEndOverlap: overlapItem.isEndOverlap,
-        };
-      }
-    });
-  }
-
-  const newWidth = (maxX - minX) * scalPercentage + 8;
-  const newHeight = (maxY - minY) * scalPercentage + 8;
-
-  const tempItem = {
-    title: `Weld-${title}`,
-    active: false,
-    cat: "General",
-    type: isAllDuct ? "Weld_Duct" : "Weld_General",
-    translate: [newMinX, minY],
-    width: newWidth,
-    height: newHeight,
-    // translate: [transX, minY],
-    // width: width * scalPercentage,
-    // height: height * scalPercentage,
-    rotate: 0,
-    scaleX: 1,
-    scaleY: 1,
-    settings: {
-      active: false,
-      fillColor: "#659dc5",
-      fontSize: 16,
-      inAlarm: false,
-      textColor: "inherit",
-      titleColor: "inherit",
-    },
-    weldItems: cloneDeep(selectedItems),
-    zindex: 1,
-    t3Entry: null,
-    id: appState.value.itemsCount + 1,
-  };
-
-  addObject(tempItem);
+  Hvac.IdxPage2.drawWeldObjectCanvas(selectedItems);
 }
 
 function getDuctPoints(info) {
-  const { left, top, pos1, pos2, pos3, pos4 } = info;
-  return [pos1, pos2, pos4, pos3].map((pos) => [left + pos[0], top + pos[1]]);
+  Hvac.IdxPage2.getDuctPoints(info);
 }
 
 function isDuctOverlap(partEl) {
-  const parentDuct = partEl.closest(".moveable-item.Duct");
-  const element1Rect = getElementInfo(partEl);
-  const elements = document.querySelectorAll(".moveable-item.Duct");
-  for (const el of Array.from(elements)) {
-    if (parentDuct.isSameNode(el)) continue;
-    const element2Rect = getElementInfo(el);
-
-    const points1 = getDuctPoints(element1Rect);
-    const points2 = getDuctPoints(element2Rect);
-    const overlapSize = getOverlapSize(points1, points2);
-    if (overlapSize > 0) return true;
-  }
-  return false;
+  Hvac.IdxPage2.isDuctOverlap(partEl);
 }
 
 function checkIsOverlap(selectedItems) {
-  const itemList = [];
-
-  selectedItems.map((item) => {
-    const { width, height, translate, rotate } = item;
-
-    // const element = document.querySelector(`#moveable-item-${item.id}`);
-    // const elRect = element.getBoundingClientRect();
-    // const elInfo = getElementInfo(element);
-
-    const startEl = document.querySelector(
-      `#moveable-item-${item.id} .duct-start`
-    );
-    const endEl = document.querySelector(`#moveable-item-${item.id} .duct-end`);
-
-    const isStartOverlap = isDuctOverlap(startEl);
-    const isEndOverlap = isDuctOverlap(endEl);
-
-    itemList.push({
-      id: item.id,
-      isStartOverlap: isStartOverlap,
-      isEndOverlap: isEndOverlap,
-    });
-  });
-
-  return itemList;
+  Hvac.IdxPage2.checkIsOverlap(selectedItems);
 }
 
 // Weld selected objects into one shape

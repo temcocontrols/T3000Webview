@@ -44,3 +44,29 @@ export const gaugeSettingsDialog = ref({
   active: false,
   data: { settings: tools.find((tool) => tool.name === "Gauge")?.settings },
 });
+
+export const insertCount = ref(0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
