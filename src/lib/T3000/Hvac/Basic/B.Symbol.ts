@@ -461,7 +461,7 @@ class Symbol extends Element {
       }
     }
     catch (e) {
-      T3Util.LogError("Error getting placeholders:", e);
+      T3Util.Error("= b.Symbol: GetPlaceholders/ Error getting placeholders:", e);
     }
 
     return placeholders;

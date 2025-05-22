@@ -723,7 +723,7 @@ class SelectUtil {
 
       T3Gv.opt.noUndo = false;
     } catch (cleanupError) {
-      T3Util.LogError("O.Opt OptSltSelectExceptionCleanup - Cleanup Error:", cleanupError);
+      T3Util.Error("= u.SelectUtil: OptSltSelectExceptionCleanup/ - Cleanup Error:", cleanupError);
       throw cleanupError;
     }
 

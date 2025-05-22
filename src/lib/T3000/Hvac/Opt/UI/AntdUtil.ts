@@ -7,6 +7,8 @@ import { AdjustVlScrollHeight } from '../../Data/T3Data';
 import Hvac from '../../Hvac';
 import DocUtil from '../../Doc/DocUtil';
 import T3Gv from '../../Data/T3Gv';
+import T3Util from '../../Util/T3Util';
+import LogUtil from '../../Util/LogUtil';
 
 class AntdUtil {
 
@@ -16,9 +18,9 @@ class AntdUtil {
       description: description,
       style: { fontSize: '12px' },
       duration: 730,
-      placement: 'bottomLeft',
+      placement: 'topRight',
       onClick: () => {
-        console.log('Notification Clicked!');
+        LogUtil.Debug('= u.AntdUtil: ShowNotification/ Message callback clicked');
       }
     });
   }

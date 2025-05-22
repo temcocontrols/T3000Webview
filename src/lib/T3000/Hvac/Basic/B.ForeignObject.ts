@@ -113,7 +113,7 @@ class ForeignObject extends Element {
         }
       });
     } catch (error) {
-      T3Util.LogError('Failed to mount Vue component:', error);
+      T3Util.Error('= b.ForeignObject: MountVueComponent/ Failed to mount Vue component:', error);
     }
 
     return this;

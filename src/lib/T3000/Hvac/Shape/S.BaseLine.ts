@@ -1853,7 +1853,7 @@ class BaseLine extends BaseDrawObject {
 
       T3Util.Log("= S.BaseLine: LMActionClick setup completed for blockID:", blockID);
     } catch (error) {
-      T3Util.LogError("= S.BaseLine: LMActionClick encountered an error:", error);
+      T3Util.Error("= s.BaseLine: LMActionClick encountered an error:", error);
       this.LMActionClickExpCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
@@ -3096,7 +3096,7 @@ class BaseLine extends BaseDrawObject {
       OptCMUtil.CancelOperation();
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.LogError("= S.BaseLine: LMDrawRelease encountered error:", error);
+      T3Util.Error("= s.BaseLine: LMDrawRelease encountered error:", error);
       throw error;
     }
   }

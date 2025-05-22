@@ -63,7 +63,7 @@ class WebSocketClient {
   }
 
   private onError(event: Event) {
-    T3Util.LogError('= Ws error:', event);
+    T3Util.Error('= ws: onError/', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
     // Hvac.QuasarUtil.ShowWebSocketError(errorMsg);
@@ -142,7 +142,7 @@ class WebSocketClient {
             this.socket.send(pendingMessage);
             T3Util.Log('= Ws pending message sent after reconnection');
           } else {
-            T3Util.LogError('= Ws failed to send message after reconnection attempt');
+            T3Util.Error('= ws: sendMessage/ failed to send message after reconnection attempt');
           }
         };
       } else {
@@ -476,7 +476,7 @@ class WebSocketClient {
 
       T3Util.Log('= ========================');
     } catch (error) {
-      T3Util.LogError('= Ws failed to parse | process data:', error);
+      T3Util.Error('= ws: processMessage/ failed to parse | process data:', error);
     }
   }
 
@@ -790,7 +790,7 @@ class WebSocketClient {
 
   handleError(messageData) {
     if (!messageData && !messageData.error) return;
-    T3Util.LogError('= Ws error:', messageData);
+    T3Util.Error('= ws: handleError/ messageData:', messageData);
 
     const errorMsg = messageData?.error ?? "";
     const isSpecial = messageData.action === MessageType.GET_PANEL_DATA_RES || messageData.action === MessageType.GET_INITIAL_DATA_RES || messageData.action === MessageType.GET_PANELS_LIST_RES;

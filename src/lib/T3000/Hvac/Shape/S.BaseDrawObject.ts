@@ -1420,7 +1420,7 @@ class BaseDrawObject {
       const newBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.NotesObject, textObj);
 
       if (newBlock === null) {
-        T3Util.LogError("= S.BaseDrawObject: SetNoteContent error: null new text block allocation");
+        T3Util.Error("= s.BaseDrawObject: SetNoteContent error: null new text block allocation");
         throw "error: AddNewObject got a null new text block allocation";
       }
 

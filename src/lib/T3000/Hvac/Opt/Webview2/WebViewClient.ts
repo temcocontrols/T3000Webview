@@ -67,7 +67,7 @@ class WebViewClient {
       this.processMessageData(data);
       T3Util.Log('= Wv2 ========================');
     } catch (error) {
-      T3Util.LogError('= Wv2 failed to parse | process data:', error);
+      T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
     }
   }
 

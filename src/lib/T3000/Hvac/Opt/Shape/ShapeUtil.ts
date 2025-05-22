@@ -556,7 +556,7 @@ class ShapeUtil {
         jsonData = storageKeyOrData;
       }
     } catch (error) {
-      T3Util.LogError("Error parsing JSON data:", error);
+      T3Util.Error("= u.ShapeUtil: ReadBuffer/ Error parsing JSON data:", error);
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
@@ -568,8 +568,8 @@ class ShapeUtil {
     }
 
     // Set up result object properties based on JSON metadata
-    result.PVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
-    result.FVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
+    result.PVersion = jsonData.version;
+    result.FVersion = jsonData.version;
     result.coordScaleFactor = 1; // Modern JSON format uses 1:1 coordinates
     result.updatetext = true;
 
@@ -873,7 +873,7 @@ class ShapeUtil {
 
       return result.error;
     } catch (error) {
-      T3Util.LogError("Error processing JSON data:", error);
+      T3Util.Error("= u.ShapeUtil: ReadSymbolFromBufferComplete/ Error processing JSON data:", error);
       result.error = ShapeUtil.Errors.BadFormat;
       return result.error;
     }
@@ -1201,11 +1201,13 @@ class ShapeUtil {
         };
       }
 
+      /*
       // Add structured data if available and not ignored
       if (T3Gv.opt.header.STDataID >= 0 && !ignoreDataCheck) {
         const stData = ObjectUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
         jsonData.data.structuredData = stData ? JSON.parse(JSON.stringify(stData)) : null;
       }
+      */
 
       // Process and add drawing content
       const drawingData = {
@@ -1266,7 +1268,7 @@ class ShapeUtil {
       return (isSelectOnly || returnRawData) ? jsonString : storageKey;
 
     } catch (error) {
-      T3Util.LogError("Error serializing drawing to JSON:", error);
+      T3Util.Error("= u.ShapeUtil: WriteBuffer/ Error serializing drawing to JSON:", error);
       return null;
     }
   }

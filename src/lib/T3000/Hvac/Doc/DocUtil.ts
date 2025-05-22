@@ -19,6 +19,7 @@ import RulerUtil from '../Opt/UI/RulerUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 import DataOpt from '../Opt/Data/DataOpt'
+import LogUtil from '../Util/LogUtil'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -356,7 +357,7 @@ class DocUtil {
     const verticalRulerWidth = $(this.vRulerAreaId).width();
     const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
-    console.log("= U.DocUtil: UpdateWorkArea - Input:", { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
+    LogUtil.Debug("= u.DocUtil: UpdateWorkArea/ - Input:", { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
 
     // Initialize scrollbar width if not already set
     if (!this.scrollWidth) {
@@ -514,7 +515,7 @@ class DocUtil {
       this.svgDoc.ApplyDocumentTransform(true);
     }
 
-    T3Util.Log("= U.DocUtil: UpdateWorkArea - Output:", {
+    LogUtil.Debug("= u.DocUtil: UpdateWorkArea/ - Output:", {
       finalPosition,
       finalSize,
       targetDimensions,

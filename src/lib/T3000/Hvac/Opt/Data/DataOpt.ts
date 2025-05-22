@@ -68,6 +68,8 @@ class DataOpt {
 
   static readonly DOC_INFO_KEY: string = "t3.doc";
 
+  static readonly GLOBAL_CONFIG_KEY: string = "t3.config";
+
   /**
    * Initializes all stored data from localStorage after global data has been initialized
    * Loads state, clipboard, object store, and sequence ID data
@@ -492,6 +494,14 @@ class DataOpt {
     localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
     localStorage.removeItem(this.APP_STATE_V2);
     localStorage.removeItem(this.DRAW_KEY);
+  }
+
+  static LoadT3Config(): any {
+    return this.LoadData(this.GLOBAL_CONFIG_KEY) || {};
+  }
+
+  static SaveT3Config(config: any): void {
+    this.SaveData(this.GLOBAL_CONFIG_KEY, config);
   }
 
   /**
