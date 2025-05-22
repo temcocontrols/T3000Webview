@@ -3,7 +3,7 @@ import IdxUtils from "./IdxUtils";
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg
+  globalMsg, grpNav
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
@@ -12,7 +12,10 @@ import DataOpt from "../Data/DataOpt";
 import T3Util from "../../Util/T3Util";
 import AntdUtil from "../UI/AntdUtil";
 
-import { isDrawing, selectedTool, lastAction } from "../../Data/Constant/RefConstant";
+import {
+  isDrawing, selectedTool, lastAction, clipboardFull, topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable,
+  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue
+} from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
 class IdxPage2 {
@@ -568,6 +571,720 @@ class IdxPage2 {
         item.settings.weldItems = itemList;
       }
     });
+  }
+
+  toggleRulersGrid(val) {
+    rulersGridVisible.value = val === "Enable" ? true : false;
+    appState.value.rulersGridVisible = rulersGridVisible.value;
+    this.save(false, false);
+  }
+
+  convertObjectType(item, type) {
+    if (!item) {
+      item = appState.value.items[appState.value.activeItemIndex];
+    }
+    if (!item) return;
+    addActionToHistory("Convert object to " + type);
+
+    // Get the default settings for the new type
+    const toolSettings =
+      cloneDeep(tools.find((tool) => tool.name === type)?.settings) || {};
+    const defaultSettings = Object.keys(toolSettings).reduce((acc, key) => {
+      acc[key] = toolSettings[key].value;
+      return acc;
+    }, {});
+
+    // Merge the default settings with the item's current settings
+    const newSettings = {};
+    for (const key in defaultSettings) {
+      if (Object.hasOwnProperty.call(defaultSettings, key)) {
+        if (item.settings[key] !== undefined) {
+          newSettings[key] = item.settings[key];
+        } else {
+          newSettings[key] = defaultSettings[key];
+        }
+      }
+    }
+    const mainSettings = ["bgColor", "textColor", "title", "t3EntryDisplayField"];
+    for (const mSetting of mainSettings) {
+      if (newSettings[mSetting] === undefined) {
+        newSettings[mSetting] = item.settings[mSetting];
+      }
+    }
+    item.type = type;
+    item.settings = newSettings;
+  }
+
+  // Deletes a library image
+  deleteLibImage(item) {
+    if (item.online) {
+      // Delete the image from the API
+      liveApi
+        .delete("hvacTools/" + item.dbId || item.id.slice(4))
+        .then(async () => {
+          this.$q.notify({
+            type: "positive",
+            message: "Successfully deleted",
+          });
+        })
+        .catch((err) => {
+          this.$q.notify({
+            type: "negative",
+            message: err.message,
+          });
+        });
+    }
+
+    // Remove the image from the local library
+    const itemIndex = library.value.images.findIndex(
+      (obj) => obj.name === item.name
+    );
+    if (itemIndex !== -1) {
+      library.value.images.splice(itemIndex, 1);
+      if (!item.online) {
+        // Delete the image from the webview
+
+        if (library.value.images.length <= 0) {
+          return;
+        }
+
+        const imagePath = cloneDeep(library.value.images[itemIndex].path);
+
+        /*
+        window.chrome?.webview?.postMessage({
+          action: 11, // DELETE_IMAGE
+          data: toRaw(imagePath),
+        });
+        */
+
+        if (isBuiltInEdge.value) {
+          Hvac.WebClient.DeleteImage(toRaw(imagePath));
+        }
+        else {
+          Hvac.WsClient.DeleteImage(toRaw(imagePath));
+        }
+
+        IdxUtils.saveLib();
+      }
+    }
+  }
+
+  // Renames a library item
+  renameLibItem(item, name) {
+    if (user.value && item.online) {
+      // Update the item on the API
+      liveApi
+        .patch("hvacObjectLibs/" + item.id, {
+          json: {
+            label: name,
+          },
+        })
+        .then(async () => {
+          this.$q.notify({
+            type: "positive",
+            message: "Successfully updated",
+          });
+        })
+        .catch((err) => {
+          this.$q.notify({
+            type: "negative",
+            message: err.message,
+          });
+        });
+    }
+
+    // Update the local library
+    const itemIndex = library.value.objLib.findIndex(
+      (obj) => obj.name === item.name
+    );
+    if (itemIndex !== -1) {
+      library.value.objLib[itemIndex].label = name;
+    }
+    IdxUtils.saveLib();
+  }
+
+  // Deletes a library item
+  deleteLibItem(item) {
+    if (user.value && item.online) {
+      // Delete the item from the API
+      liveApi
+        .delete("hvacObjectLibs/" + item.id)
+        .then(async () => {
+          this.$q.notify({
+            type: "positive",
+            message: "Successfully deleted",
+          });
+        })
+        .catch((err) => {
+          this.$q.notify({
+            type: "negative",
+            message: err.message,
+          });
+        });
+    }
+
+    // Remove the item from the local library
+    const itemIndex = library.value.objLib.findIndex(
+      (obj) => obj.name === item.name
+    );
+    if (itemIndex !== -1) {
+      library.value.objLib.splice(itemIndex, 1);
+    }
+    IdxUtils.saveLib();
+  }
+
+  pasteFromClipboard() {
+    if (locked.value) return;
+    let items = [];
+    const clipboard = localStorage.getItem("clipboard");
+    if (clipboard) {
+      items = JSON.parse(clipboard);
+    }
+    if (!items) return;
+    addActionToHistory("Paste");
+    const elements = [];
+    const addedItems = [];
+    items.forEach((item) => {
+      addedItems.push(cloneObject(item));
+    });
+    setTimeout(() => {
+      addedItems.forEach((addedItem) => {
+        const el = document.querySelector(`#moveable-item-${addedItem.id}`);
+        elements.push(el);
+      });
+      appState.value.selectedTargets = elements;
+      selecto.value.setSelectedTargets(elements);
+      appState.value.activeItemIndex = null;
+    }, 10);
+  }
+
+  saveSelectedToClipboard() {
+    if (locked.value) return;
+    if (appState.value.selectedTargets.length === 0) return;
+    const selectedItems = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+
+    localStorage.setItem("clipboard", JSON.stringify(selectedItems));
+    clipboardFull.value = true;
+  }
+
+  // Rotate selected objects by 90 degrees
+  rotate90Selected(minues = false) {
+    moveable.value.request(
+      "rotatable",
+      {
+        deltaRotate: minues ? -90 : 90,
+      },
+      true
+    );
+    Hvac.IdxPage.refreshMoveable();
+  }
+
+  // Send selected objects to the back by decreasing their z-index
+  sendSelectedToBack() {
+    addActionToHistory("Send selected objects to back");
+    const selectedItems = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+    selectedItems.forEach((item) => {
+      item.zindex = item.zindex - 1;
+    });
+  }
+
+  // Bring selected objects to the front by increasing their z-index
+  bringSelectedToFront() {
+    addActionToHistory("Bring selected objects to front");
+    const selectedItems = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+    selectedItems.forEach((item) => {
+      item.zindex = item.zindex + 1;
+    });
+  }
+
+
+  // Add selected items to the library
+  addToLibrary() {
+
+    if (appState.value.selectedTargets.length < 1 || locked.value) return;
+    const selectedItems = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+    let isOnline = false;
+    const libItems = cloneDeep(selectedItems);
+    library.value.objLibItemsCount++;
+    let createdItem = null;
+    if (user.value) {
+      isOnline = true;
+      liveApi
+        .post("hvacObjectLibs", {
+          json: {
+            label: "Item " + library.value.objLibItemsCount,
+            items: libItems.map((i) => {
+              delete i.id;
+              return i;
+            }),
+          },
+        })
+        .then(async (res) => {
+          createdItem = await res.json();
+          this.$q.notify({
+            type: "positive",
+            message: "Successfully saved to library",
+          });
+
+          library.value.objLib.push({
+            id: createdItem?.id || library.value.objLibItemsCount,
+            label: "Item " + library.value.objLibItemsCount,
+            items: createdItem.items,
+            online: isOnline,
+          });
+          IdxUtils.saveLib();
+        })
+        .catch((err) => {
+          this.$q.notify({
+            type: "negative",
+            message: err.message,
+          });
+        });
+    }
+    library.value.objLib.push({
+      id: createdItem?.id || library.value.objLibItemsCount,
+      label: "Item " + library.value.objLibItemsCount,
+      items: libItems,
+      online: isOnline,
+    });
+    IdxUtils.saveLib();
+  }
+
+  // Navigate back in the group navigation history
+  navGoBack() {
+    if (grpNav.value.length > 1) {
+      const item = grpNav.value[grpNav.value.length - 2];
+
+      const message = {
+        action: 7, // LOAD_GRAPHIC_ENTRY
+        panelId: item.pid,
+        entryIndex: item.index,
+      };
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.LoadGraphicEntry(message);
+      }
+      else {
+        Hvac.WsClient.LoadGraphicEntry(message);
+      }
+    } else {
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.GetInitialData();
+      }
+      else {
+        const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+        const panelId = currentDevice.panelId;
+        const graphicId = currentDevice.graphic;
+        Hvac.WsClient.GetInitialData(panelId, graphicId, true);
+      }
+    }
+  }
+
+  setTheSettingContextMenuVisible() {
+
+    if (appState.value.selectedTargets.length > 1) {
+      topContextToggleVisible.value = false;
+      toggleValueShow.value = false;
+      toggleNumberShow.value = false;
+
+    } else {
+      if (appState.value.selectedTargets.length === 1) {
+        const selectedItem = appState.value.items.find(
+          (item) => `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+        )
+
+        if (selectedItem.t3Entry !== null) {
+          topContextToggleVisible.value = true;
+          ObjectRightClicked(selectedItem, null);
+        }
+        else {
+          topContextToggleVisible.value = false;
+          toggleValueShow.value = false;
+          toggleNumberShow.value = false;
+        }
+      }
+    }
+  }
+
+  toggleClicked(item, type, ev) {
+    // ev.preventDefault();
+    // T3Util.Log('toggleClicked->item,type', item, type, ev);
+    // T3Util.Log('toggleClicked->toggleModeValue,toggleValueValue',
+    //   toggleModeValue.value, toggleValueValue.value);
+    // T3Util.Log('toggleClicked->before item', item.t3Entry)
+
+    if (type === "mode") {
+
+      // Disable the value field if the mode is set to Auto
+      if (toggleModeValue.value === "Auto") {
+        toggleValueDisable.value = true;
+        toggleNumberDisable.value = true;
+      }
+      else {
+        toggleValueDisable.value = false;
+        toggleNumberDisable.value = false;
+      }
+
+      item.t3Entry.auto_manual = toggleModeValue.value === "Auto" ? 0 : 1;
+      T3UpdateEntryField("auto_manual", item);
+    }
+
+    if (type == "value") {
+      item.t3Entry.control = toggleValueValue.value === "Off" ? 0 : 1;
+      T3UpdateEntryField("control", item);
+    }
+
+    if (type === "number-value") {
+      item.t3Entry.value = toggleNumberValue.value * 1;// * 1000;
+      T3UpdateEntryField("value", item);
+    }
+
+    save(false, true);
+
+    // T3Util.Log('toggleClicked->after item', item.t3Entry)
+  }
+
+  ObjectRightClicked(item, ev) {
+    // ev.preventDefault();
+
+    // T3Util.Log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+    // T3Util.Log('ObjectRightClicked->ev,item', item);
+
+    if (item.t3Entry !== null) {
+
+      showSettingMenu.value = true;
+
+      // T3Util.Log('ObjectRightClicked->item.t3Entry', item.t3Entry);
+
+      // Load the default auto_manual value
+      if (item.t3Entry.auto_manual === 1) {
+        toggleModeValue.value = "Manual";
+        toggleValueDisable.value = false;
+        toggleNumberDisable.value = false;
+      }
+      else {
+        toggleModeValue.value = "Auto";
+        toggleValueDisable.value = true;
+        toggleNumberDisable.value = true;
+      }
+
+      // Show on/off value field only if the digital_analog is 0, otherwise show different value field (Input / Dropdown)
+
+      if (item.t3Entry.digital_analog === 0) {
+        toggleValueShow.value = true;
+      }
+      else {
+        toggleValueShow.value = false;
+      }
+
+      // Load the default control value
+      if (item.t3Entry.control === 1) {
+        toggleValueValue.value = "On";
+      }
+      else {
+        toggleValueValue.value = "Off";
+      }
+
+      // Set digital_analog field and value
+      if (item.t3Entry.digital_analog === 1 && item.t3Entry.range !== 101) {
+        toggleNumberShow.value = true;
+        toggleNumberValue.value = item.t3Entry.value * 1;/// 1000;
+      }
+      else {
+        toggleNumberShow.value = false;
+      }
+    }
+    else {
+      showSettingMenu.value = false;
+    }
+  }
+
+  // Updates an entry value
+  changeEntryValue(refItem, newVal, control) {
+    // T3Util.Log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
+    const key = control ? "control" : "value";
+    const item = appState.value.items.find((i) => i.id === refItem.id);
+    item.t3Entry[key] = newVal;
+    T3UpdateEntryField(key, item);
+  }
+
+  // Toggles the auto/manual mode of an item
+  autoManualToggle(item) {
+    T3Util.Log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
+
+    // if (!locked.value) return;
+    item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
+    T3UpdateEntryField("auto_manual", item);
+  }
+
+  // Handle object click events based on t3Entry type
+  objectClicked(item) {
+
+    T3Util.Log("= P.IDX2 objectClicked");
+    setTheSettingContextMenuVisible();
+
+    if (!locked.value) return;
+    if (item.t3Entry?.type === "GRP") {
+
+      const message = {
+        action: 7, // LOAD_GRAPHIC_ENTRY
+        panelId: item.t3Entry.pid,
+        entryIndex: item.t3Entry.index,
+      };
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.LoadGraphicEntry(message);
+      }
+      else {
+        Hvac.WsClient.LoadGraphicEntry(message);
+      }
+
+      /*
+      window.chrome?.webview?.postMessage({
+        action: 7, // LOAD_GRAPHIC_ENTRY
+        panelId: item.t3Entry.pid,
+        entryIndex: item.t3Entry.index,
+      });
+      */
+
+    } else if (["SCHEDULE", "PROGRAM", "HOLIDAY"].includes(item.t3Entry?.type)) {
+
+      const message = {
+        action: 8, // OPEN_ENTRY_EDIT_WINDOW
+        panelId: item.t3Entry.pid,
+        entryType: T3_Types[item.t3Entry.type],
+        entryIndex: item.t3Entry.index,
+      };
+
+      if (isBuiltInEdge.value) {
+        Hvac.WebClient.OpenEntryEditWindow(message);
+      }
+      else {
+        Hvac.WsClient.OpenEntryEditWindow(message);
+      }
+
+      /*
+      window.chrome?.webview?.postMessage({
+        action: 8, // OPEN_ENTRY_EDIT_WINDOW
+        panelId: item.t3Entry.pid,
+        entryType: T3_Types[item.t3Entry.type],
+        entryIndex: item.t3Entry.index,
+      });
+      */
+    } else if (
+      item.t3Entry?.auto_manual === 1 &&
+      item.t3Entry?.digital_analog === 0 &&
+      item.t3Entry?.range
+    ) {
+      item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
+      T3UpdateEntryField("control", item);
+    }
+  }
+
+  // Toggle the lock state of the application
+  lockToggle() {
+    appState.value.activeItemIndex = null;
+    appState.value.selectedTargets = [];
+    locked.value = !locked.value;
+    if (locked.value) {
+      selectTool("Pointer");
+    }
+
+    // Update the document area position based on the lock state
+    IdxPage.restDocumentAreaPosition();
+  }
+
+  // Create a label for an entry with optional prefix
+  entryLabel(option) {
+    // T3Util.Log('entryLabel - ', option);
+    let prefix =
+      (option.description && option.id !== option.description) ||
+        (!option.description && option.id !== option.label)
+        ? option.id + " - "
+        : "";
+    prefix = !option.description && !option.label ? option.id : prefix;
+    return prefix + (option.description || option.label || "");
+  }
+
+
+  // Reload panel data by requesting the panels list
+  reloadPanelsData() {
+    T3000_Data.value.loadingPanel = null;
+
+    /*
+    window.chrome?.webview?.postMessage({
+      action: 4, // GET_PANELS_LIST
+    });
+    */
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.GetPanelsList();
+    }
+    else {
+      Hvac.WsClient.GetPanelsList();
+    }
+  }
+
+  // Duplicate the selected items in the app state
+  duplicateSelected() {
+    if (appState.value.selectedTargets.length < 1) return;
+    addActionToHistory("Duplicate the selected objects");
+    const elements = [];
+    const dupGroups = {};
+    appState.value.selectedTargets.forEach((el) => {
+      const item = appState.value.items.find(
+        (i) => `moveable-item-${i.id}` === el.id
+      );
+      if (item) {
+        let group = undefined;
+        if (item.group) {
+          if (!dupGroups[`${item.group}`]) {
+            appState.value.groupCount++;
+            dupGroups[`${item.group}`] = appState.value.groupCount;
+          }
+
+          group = dupGroups[`${item.group}`];
+        }
+        const dupItem = cloneObject(item, group);
+        setTimeout(() => {
+          const dupElement = document.querySelector(
+            `#moveable-item-${dupItem.id}`
+          );
+          elements.push(dupElement);
+        }, 10);
+      }
+    });
+    setTimeout(() => {
+      appState.value.selectedTargets = elements;
+      selecto.value.setSelectedTargets(elements);
+      appState.value.activeItemIndex = null;
+    }, 20);
+  }
+
+
+  // Execute the import of the JSON data into the app state
+  executeImportFromJson() {
+    const importedState = JSON.parse(importJsonDialog.value.data);
+    if (!importedState.items?.[0].type) {
+      $q.notify({
+        message: "Error, Invalid json file",
+        color: "negative",
+        icon: "error",
+        actions: [
+          {
+            label: "Dismiss",
+            color: "white",
+            handler: () => {
+              /* ... */
+            },
+          },
+        ],
+      });
+      return;
+    }
+
+    if (appState.value.items?.length > 0) {
+      $q.dialog({
+        dark: true,
+        title: "You have unsaved drawing!",
+        message: `Before proceeding with the import, please note that any unsaved drawing will be lost,
+           and your undo history will also be erased. Are you sure you want to proceed?`,
+        cancel: true,
+        persistent: true,
+      })
+        .onOk(() => {
+          undoHistory.value = [];
+          redoHistory.value = [];
+          importJsonDialog.value.active = false;
+          appState.value = importedState;
+          importJsonDialog.value.data = null;
+          setTimeout(() => {
+            IdxUtils.refreshMoveableGuides();
+          }, 100);
+          Hvac.IdxPage.refreshMoveable();
+        })
+        .onCancel(() => {
+          importJsonDialog.value.active = false;
+        });
+      return;
+    }
+    undoHistory.value = [];
+    redoHistory.value = [];
+    importJsonDialog.value.active = false;
+    appState.value = importedState;
+    importJsonDialog.value.data = null;
+    setTimeout(() => {
+      IdxUtils.refreshMoveableGuides();
+    }, 100);
+    Hvac.IdxPage.refreshMoveable();
+  }
+
+  // Save an image to the library or online storage
+  async saveLibImage(file) {
+    if (user.value) {
+
+      T3Util.Log('= Idx saveLibImage file', file);
+      T3Util.Log('= Idx saveLibImage user', user.value);
+
+      liveApi
+        .post("hvacTools", {
+          json: {
+            name: file.name,
+            fileId: file.id,
+          },
+        })
+        .then(async (res) => {
+          this.$q.notify({
+            color: "positive",
+            message: "Image successfully saved",
+          });
+          const oItem = await res.json();
+          addOnlineLibImage(oItem);
+        })
+        .catch((err) => {
+          this.$q.notify({
+            color: "negative",
+            message: err.message,
+          });
+        });
+
+      return;
+    }
+
+    library.value.imagesCount++;
+
+    const message = {
+      action: 9, // SAVE_IMAGE
+      filename: file.name,
+      fileLength: file.size,
+      fileData: await readFile(file.data),
+    };
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveImage(message);
+    }
+    else {
+      Hvac.WsClient.SaveImage(message);
+    }
+
+    // window.chrome?.webview?.postMessage(message);
   }
 }
 

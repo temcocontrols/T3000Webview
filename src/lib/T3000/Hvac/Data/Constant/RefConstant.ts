@@ -28,3 +28,15 @@ export const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoa
 export const clipboardFull = ref(false); // State of the clipboard
 export let lastAction = null; // Store the last action performed
 
+export const topContextToggleVisible = ref(false);
+
+export const showSettingMenu = ref(false);
+export const toggleModeValue = ref('Auto');
+export const toggleValueValue = ref('Off');
+export const toggleValueDisable = ref(false);
+export const toggleValueShow = ref(false);
+
+export const toggleNumberDisable = ref(false);
+export const toggleNumberShow = ref(false);
+export const toggleNumberValue = ref(0);
+

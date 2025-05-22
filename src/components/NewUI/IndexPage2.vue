@@ -370,22 +370,6 @@
       </q-list>
     </q-menu>
 
-    <!-- <ObjectConfig :object="appState.items[appState.activeItemIndex]" v-if="!locked && appState.items[appState.activeItemIndex] &&
-      (appState.activeItemIndex || appState.activeItemIndex === 0) &&
-      (appState.selectedTargets.length > 0)" @refresh-moveable="refreshMoveable"
-      @T3UpdateEntryField="T3UpdateEntryField" @linkT3Entry="linkT3EntryDialogAction"
-      @gaugeSettings="gaugeSettingsDialogAction" @mounted="addActionToHistory('Object settings opened')"
-      @no-change="objectSettingsUnchanged" @DisplayFieldValueChanged="DisplayFieldValueChanged" >
-    </ObjectConfig> -->
-
-    <!-- <ObjectConfig2 v-if="objectConfigShow" @refresh-moveable="refreshMoveable" @T3UpdateEntryField="T3UpdateEntryField"
-      @linkT3Entry="linkT3EntryDialogAction" @gaugeSettings="gaugeSettingsDialogAction"
-      @mounted="addActionToHistory('Object settings opened')" @no-change="objectSettingsUnchanged">
-    </ObjectConfig2> -->
-
-
-    <!-- <ObjectConfigNew v-if="objectConfigShow" :current="currentObject" @linkT3Entry="linkT3EntryDialogActionV2">
-    </ObjectConfigNew> -->
 
     <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
       @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
@@ -583,19 +567,12 @@ import {
   appStateV2
 } from '../../lib/T3000/Hvac/Data/T3Data'
 import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
-import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+ import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
 import { Alert as AAlert } from 'ant-design-vue';
 import T3Message from "src/components/NewUI/T3Message.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
-
-import {
-  isDrawing, startTransform, snappable, keepRatio, selecto, targets, selectedTool, continuesObjectTypes, importJsonDialog, clipboardFull,
-  lastAction
-} from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
-import IdxPage2 from "src/lib/T3000/Hvac/Opt/Common/IdxPage2";
-
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -605,8 +582,21 @@ useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
+ const selecto = ref(null); // Reference to the selecto component instance
+ const targets = ref([]); // Array of selected targets
+const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
 
+// State variables for drawing and transformations
+const isDrawing = ref(false);
+const startTransform = ref([0, 0]);
+const snappable = ref(true); // Enable snapping for moveable components
+const keepRatio = ref(false); // Maintain aspect ratio for resizing
 
+// List of continuous object types
+const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
+
+// State of the import JSON dialog
+const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {
@@ -617,6 +607,7 @@ const loadingPanelsProgress = computed(() => {
   );
 });
 
+const clipboardFull = ref(false); // State of the clipboard
 
 
 const zoom = Hvac.IdxPage.zoom;
@@ -631,6 +622,7 @@ if (process.env.DEV) {
   });
 }
 
+let lastAction = null; // Store the last action performed
 const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
 const objectsRef = ref(null); // Reference to objects
 
@@ -1071,6 +1063,17 @@ function addLibItem(items, size, pos) {
 }
 
 
+// Select a tool and set its type
+function selectTool(tool, type = "default") {
+  T3Util.Log("= IdxPage selectTool", tool, type);
+  selectedTool.value = tool;
+  if (typeof tool === "string") {
+    selectedTool.value = tools.find((item) => item.name === tool);
+  }
+  selectedTool.value.type = type;
+
+  T3000.Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool);
+}
 
 // Rotate an item by 90 degrees, optionally in the negative direction
 function rotate90(item, minues = false) {
@@ -1707,12 +1710,26 @@ function weldSelected() {
 
 // Undo the last action
 function undoAction() {
-  Hvac.IdxPage2.undoAction();
+  if (undoHistory.value.length < 1) return;
+  redoHistory.value.unshift({
+    title: lastAction,
+    state: cloneDeep(appState.value),
+  });
+  appState.value = cloneDeep(undoHistory.value[0].state);
+  undoHistory.value.shift();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Redo the last undone action
 function redoAction() {
-  Hvac.IdxPage2.redoAction();
+  if (redoHistory.value.length < 1) return;
+  undoHistory.value.unshift({
+    title: lastAction,
+    state: cloneDeep(appState.value),
+  });
+  appState.value = cloneDeep(redoHistory.value[0].state);
+  redoHistory.value.shift();
+  Hvac.IdxPage.refreshMoveable();
 }
 
 // Handle file upload (empty function, add implementation as needed)
@@ -2310,6 +2327,14 @@ function navGoBack() {
   if (grpNav.value.length > 1) {
     const item = grpNav.value[grpNav.value.length - 2];
 
+    /*
+    window.chrome?.webview?.postMessage({
+      action: 7, // LOAD_GRAPHIC_ENTRY
+      panelId: item.pid,
+      entryIndex: item.index,
+    });
+    */
+
     const message = {
       action: 7, // LOAD_GRAPHIC_ENTRY
       panelId: item.pid,
@@ -2323,6 +2348,12 @@ function navGoBack() {
       Hvac.WsClient.LoadGraphicEntry(message);
     }
   } else {
+
+    /*
+    window.chrome?.webview?.postMessage({
+      action: 1, // GET_INITIAL_DATA
+    });
+    */
 
     if (isBuiltInEdge.value) {
       Hvac.WebClient.GetInitialData();
@@ -2708,24 +2739,112 @@ function toggleRulersGrid(val) {
 
 // Handles a tool being dropped
 function toolDropped(ev, tool) {
+  // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+  // drawObject(
+  //   //{ width: 60, height: 60 },
+  //   size,
+  //   {
+  //     clientX: ev.clientX,
+  //     clientY: ev.clientY,
+  //     top: ev.clientY,
+  //     left: ev.clientX,
+  //   },
+  //   tool
+  // );
+
   T3Util.Log("toolDropped->tool", ev, tool);
 }
 
-function updateWeldModel(weldModel, itemList) {
-  Hvac.IdxPage2.updateWeldModel(weldModel, itemList);
+const updateWeldModel = (weldModel, itemList) => {
+  appState.value.items.map((item) => {
+    if (item.type === "Weld" && item.id === weldModel.id) {
+      item.settings.weldItems = itemList;
+    }
+  });
+};
+
+const updateWeldModelCanvas = (weldModel, pathItemList) => {
+  appState.value.items.map((item) => {
+    if (
+      (item.type === "Weld_General" || item.type === "Weld_Duct") &&
+      item.id === weldModel.id
+    ) {
+      // Update the weld items's new width, height, translate
+      const firstTrsx = item?.weldItems[0]?.translate[0];
+      const firstTrsy = item?.weldItems[0]?.translate[1];
+
+      item?.weldItems?.forEach((weldItem) => {
+        const pathItem = pathItemList?.find(
+          (itx) => itx?.item?.id === weldItem?.id
+        );
+        // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+        // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+        if (pathItem) {
+          weldItem.width = pathItem.newPos.width;
+          weldItem.height = pathItem.newPos.height;
+          weldItem.translate[0] = firstTrsx + pathItem.newPos.trsx;
+          weldItem.translate[1] = firstTrsy + pathItem.newPos.trsy;
+        }
+      });
+    }
+  });
+};
+
+function viewportLeftClick(ev) {
+  // T3Util.Log('IndexPage.vue->viewportLeftClick->ev', ev);
+  ev.preventDefault();
+
+  const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
+    && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
+
+  if (check) {
+    // Manually create a shape at the mouse current position
+
+    var ePosition = {
+      rect: { width: 60, height: 60, top: ev.clientY, left: ev.clientX },
+      clientX: ev.clientX,
+      clientY: ev.clientY
+    };
+
+    onSelectoDragEnd(ePosition);
+
+    // Release the tool
+    selectTool(tools[0]);
+  }
 }
 
-function updateWeldModelCanvas(weldModel, pathItemList) {
-  Hvac.IdxPage2.updateWeldModelCanvas(weldModel, pathItemList);
-}
+// Handles a right-click event on the viewport
+function viewportRightClick(ev) {
+  ev.preventDefault();
+  selectTool(tools[0]);
+  if (isDrawing.value) {
+    isDrawing.value = false;
+    undoAction();
+    setTimeout(() => {
+      refreshObjects();
+    }, 10);
 
-function selectTool(tool, type = "default") {
-  Hvac.IdxPage2.selectTool(tool, type);
+    //clear empty drawing object
+    T3000.Hvac.PageMain.ClearItemsWithZeroWidth(appState);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+  }
 }
 
 // Adds the online images to the library
 function addOnlineLibImage(oItem) {
-  Hvac.IdxPage2.addOnlineLibImage(oItem);
+  const iIndex = library.value.images.findIndex(
+    (obj) => obj.id === "IMG-" + oItem.id
+  );
+  if (iIndex !== -1) {
+    library.value.images.splice(iIndex, 1);
+  }
+  library.value.images.push({
+    id: "IMG-" + oItem.id,
+    dbId: oItem.id,
+    name: oItem.name,
+    path: process.env.API_URL + "/file/" + oItem.file.path,
+    online: true,
+  });
 }
 </script>
 

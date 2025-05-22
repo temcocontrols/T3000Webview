@@ -356,7 +356,7 @@ class DocUtil {
     const verticalRulerWidth = $(this.vRulerAreaId).width();
     const horizontalRulerHeight = $(this.hRulerAreaId).height();
 
-    T3Util.Log("= U.DocUtil: UpdateWorkArea - Input:", { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
+    console.log("= U.DocUtil: UpdateWorkArea - Input:", { workAreaSize, showRulers, verticalRulerWidth, horizontalRulerHeight });
 
     // Initialize scrollbar width if not already set
     if (!this.scrollWidth) {
