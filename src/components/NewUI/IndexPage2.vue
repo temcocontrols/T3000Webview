@@ -10,7 +10,7 @@
     <div id="main-app">
       <div id="main-panel" class="main-panel">
         <NewTopToolBar2 :locked="locked" @lockToggle="lockToggle" @navGoBack="navGoBack" @menu-action="handleMenuAction"
-          :object="appState.items[appState.activeItemIndex]" :selected-count="appState.selectedTargets?.length"
+          :object="appStateV2.items[appStateV2.activeItemIndex]" :selected-count="appStateV2.selectedTargets?.length"
           :disable-undo="locked || undoHistory.length < 1" :disable-redo="locked || redoHistory.length < 1"
           :disable-paste="locked || !clipboardFull" :zoom="zoom" :rulersGridVisible="rulersGridVisible"
           :deviceModel="deviceModel" @showMoreDevices="showMoreDevices" v-if="!isBuiltInEdge && !locked">
@@ -688,7 +688,7 @@ keycon.keydown((e: any) => {
   }
 
   // If no targets are selected, exit the function
-  if (appState.value.selectedTargets.length < 1) return;
+  if (appStateV2.value.selectedTargets.length < 1) return;
 
   // Check for arrow keys to move objects
   if (["up", "down", "left", "right"].includes(e.key)) {
@@ -878,7 +878,7 @@ function ungroupSelected(): void {
 
 // Handle the menu action for the top toolbar
 function handleMenuAction(action: string, val?: any): void {
-  const item = appState.value.items[appState.value.activeItemIndex];
+  const item = appStateV2.value.items[appStateV2.value.activeItemIndex];
   switch (action) {
     case "newProject":
       newProject();
@@ -975,8 +975,8 @@ function reloadPanelsData(): void {
 }
 
 // Create a label for an entry with optional prefix
-function entryLabel(option: any): void {
-  Hvac.IdxPage2.entryLabel(option);
+function entryLabel(option: any): string {
+  return Hvac.IdxPage2.entryLabel(option) || '';
 }
 
 // Toggle the lock state of the application

@@ -3,7 +3,8 @@ import IdxUtils from "./IdxUtils";
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg, grpNav, T3000_Data, selectPanelOptions, linkT3EntryDialog
+  globalMsg, grpNav, T3000_Data, selectPanelOptions, linkT3EntryDialog,
+  appStateV2
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
@@ -68,7 +69,7 @@ class IdxPage2 {
 
     const localState = Hvac.LsOpt.loadParsedAppStateLS();
     if (localState) {
-      appState.value = localState;
+      appStateV2.value = localState;
       // rulersGridVisible.value = appState.value.rulersGridVisible;
     }
   }
@@ -342,7 +343,7 @@ class IdxPage2 {
   }
 
   prepareSaveData() {
-    const data = cloneDeep(toRaw(appState.value));
+    const data = cloneDeep(toRaw(appStateV2.value));
 
     // Recalculate the items count
     data.itemsCount = data.items.filter(item => item.width !== 0).length;
@@ -356,7 +357,7 @@ class IdxPage2 {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-    T3Util.Log('idx page 2  T3UpdateEntryField appState before', appState.value);
+    T3Util.Log('idx page 2  T3UpdateEntryField appState before', appStateV2.value);
     // T3Util.Log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
     // T3Util.Log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
@@ -410,9 +411,9 @@ class IdxPage2 {
 
   // add new library to t3
   addToNewLibrary() {
-    if (appState.value.selectedTargets.length < 1 || locked.value) return;
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    if (appStateV2.value.selectedTargets.length < 1 || locked.value) return;
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -513,8 +514,8 @@ class IdxPage2 {
       }, 10);
 
       //clear empty drawing object
-      Hvac.PageMain.ClearItemsWithZeroWidth(appState);
-      Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+      Hvac.PageMain.ClearItemsWithZeroWidth(appStateV2);
+      Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appStateV2, false);
     }
   }
 
@@ -523,9 +524,9 @@ class IdxPage2 {
     if (undoHistory.value.length < 1) return;
     redoHistory.value.unshift({
       title: lastAction,
-      state: cloneDeep(appState.value),
+      state: cloneDeep(appStateV2.value),
     });
-    appState.value = cloneDeep(undoHistory.value[0].state);
+    appStateV2.value = cloneDeep(undoHistory.value[0].state);
     undoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
@@ -534,16 +535,16 @@ class IdxPage2 {
     if (redoHistory.value.length < 1) return;
     undoHistory.value.unshift({
       title: lastAction,
-      state: cloneDeep(appState.value),
+      state: cloneDeep(appStateV2.value),
     });
-    appState.value = cloneDeep(redoHistory.value[0].state);
+    appStateV2.value = cloneDeep(redoHistory.value[0].state);
     redoHistory.value.shift();
     Hvac.IdxPage.refreshMoveable();
   }
 
   // Not used in new UI anymore, just for backup
   updateWeldModelCanvas(weldModel, pathItemList) {
-    appState.value.items.map((item) => {
+    appStateV2.value.items.map((item) => {
       if (
         (item.type === "Weld_General" || item.type === "Weld_Duct") &&
         item.id === weldModel.id
@@ -570,7 +571,7 @@ class IdxPage2 {
   }
 
   updateWeldModel(weldModel, itemList) {
-    appState.value.items.map((item) => {
+    appStateV2.value.items.map((item) => {
       if (item.type === "Weld" && item.id === weldModel.id) {
         item.settings.weldItems = itemList;
       }
@@ -579,13 +580,13 @@ class IdxPage2 {
 
   toggleRulersGrid(val) {
     rulersGridVisible.value = val === "Enable" ? true : false;
-    appState.value.rulersGridVisible = rulersGridVisible.value;
+    appStateV2.value.rulersGridVisible = rulersGridVisible.value;
     this.save(false, false);
   }
 
   convertObjectType(item, type) {
     if (!item) {
-      item = appState.value.items[appState.value.activeItemIndex];
+      item = appStateV2.value.items[appStateV2.value.activeItemIndex];
     }
     if (!item) return;
     addActionToHistory("Convert object to " + type);
@@ -756,17 +757,17 @@ class IdxPage2 {
         const el = document.querySelector(`#moveable-item-${addedItem.id}`);
         elements.push(el);
       });
-      appState.value.selectedTargets = elements;
+      appStateV2.value.selectedTargets = elements;
       selecto.value.setSelectedTargets(elements);
-      appState.value.activeItemIndex = null;
+      appStateV2.value.activeItemIndex = null;
     }, 10);
   }
 
   saveSelectedToClipboard() {
     if (locked.value) return;
-    if (appState.value.selectedTargets.length === 0) return;
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    if (appStateV2.value.selectedTargets.length === 0) return;
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -790,8 +791,8 @@ class IdxPage2 {
   // Send selected objects to the back by decreasing their z-index
   sendSelectedToBack() {
     this.addActionToHistory("Send selected objects to back");
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -803,8 +804,8 @@ class IdxPage2 {
   // Bring selected objects to the front by increasing their z-index
   bringSelectedToFront() {
     this.addActionToHistory("Bring selected objects to front");
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -821,9 +822,9 @@ class IdxPage2 {
   // Add selected items to the library
   addToLibrary() {
 
-    if (appState.value.selectedTargets.length < 1 || locked.value) return;
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    if (appStateV2.value.selectedTargets.length < 1 || locked.value) return;
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -921,15 +922,15 @@ class IdxPage2 {
 
   setTheSettingContextMenuVisible() {
 
-    if (appState.value.selectedTargets.length > 1) {
+    if (appStateV2.value.selectedTargets.length > 1) {
       topContextToggleVisible.value = false;
       toggleValueShow.value = false;
       toggleNumberShow.value = false;
 
     } else {
-      if (appState.value.selectedTargets.length === 1) {
-        const selectedItem = appState.value.items.find(
-          (item) => `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+      if (appStateV2.value.selectedTargets.length === 1) {
+        const selectedItem = appStateV2.value.items.find(
+          (item) => `moveable-item-${item.id}` === appStateV2.value.selectedTargets[0].id
         )
 
         if (selectedItem.t3Entry !== null) {
@@ -1042,7 +1043,7 @@ class IdxPage2 {
   changeEntryValue(refItem, newVal, control) {
     // T3Util.Log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
     const key = control ? "control" : "value";
-    const item = appState.value.items.find((i) => i.id === refItem.id);
+    const item = appStateV2.value.items.find((i) => i.id === refItem.id);
     item.t3Entry[key] = newVal;
     this.T3UpdateEntryField(key, item);
   }
@@ -1122,8 +1123,8 @@ class IdxPage2 {
 
   // Toggle the lock state of the application
   lockToggle() {
-    appState.value.activeItemIndex = null;
-    appState.value.selectedTargets = [];
+    appStateV2.value.activeItemIndex = null;
+    appStateV2.value.selectedTargets = [];
     locked.value = !locked.value;
     if (locked.value) {
       this.selectTool("Pointer");
@@ -1166,20 +1167,20 @@ class IdxPage2 {
 
   // Duplicate the selected items in the app state
   duplicateSelected() {
-    if (appState.value.selectedTargets.length < 1) return;
+    if (appStateV2.value.selectedTargets.length < 1) return;
     this.addActionToHistory("Duplicate the selected objects");
     const elements = [];
     const dupGroups = {};
-    appState.value.selectedTargets.forEach((el) => {
-      const item = appState.value.items.find(
+    appStateV2.value.selectedTargets.forEach((el) => {
+      const item = appStateV2.value.items.find(
         (i) => `moveable-item-${i.id}` === el.id
       );
       if (item) {
         let group = undefined;
         if (item.group) {
           if (!dupGroups[`${item.group}`]) {
-            appState.value.groupCount++;
-            dupGroups[`${item.group}`] = appState.value.groupCount;
+            appStateV2.value.groupCount++;
+            dupGroups[`${item.group}`] = appStateV2.value.groupCount;
           }
 
           group = dupGroups[`${item.group}`];
@@ -1194,9 +1195,9 @@ class IdxPage2 {
       }
     });
     setTimeout(() => {
-      appState.value.selectedTargets = elements;
+      appStateV2.value.selectedTargets = elements;
       selecto.value.setSelectedTargets(elements);
-      appState.value.activeItemIndex = null;
+      appStateV2.value.activeItemIndex = null;
     }, 20);
   }
 
@@ -1222,7 +1223,7 @@ class IdxPage2 {
       return;
     }
 
-    if (appState.value.items?.length > 0) {
+    if (appStateV2.value.items?.length > 0) {
       this.$q.dialog({
         dark: true,
         title: "You have unsaved drawing!",
@@ -1235,7 +1236,7 @@ class IdxPage2 {
           undoHistory.value = [];
           redoHistory.value = [];
           importJsonDialog.value.active = false;
-          appState.value = importedState;
+          appStateV2.value = importedState;
           importJsonDialog.value.data = null;
           setTimeout(() => {
             IdxUtils.refreshMoveableGuides();
@@ -1250,7 +1251,7 @@ class IdxPage2 {
     undoHistory.value = [];
     redoHistory.value = [];
     importJsonDialog.value.active = false;
-    appState.value = importedState;
+    appStateV2.value = importedState;
     importJsonDialog.value.data = null;
     setTimeout(() => {
       IdxUtils.refreshMoveableGuides();
@@ -1318,7 +1319,7 @@ class IdxPage2 {
       this.addLibItem(tool.items, size, pos);
       return;
     }
-    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
     const toolSettings =
       cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
@@ -1336,9 +1337,9 @@ class IdxPage2 {
       active: false,
       type: tool.name,
       translate: [
-        (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+        (pos.left - viewportMargins.left - appStateV2.value.viewportTransform.x) *
         scalPercentage,
-        (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+        (pos.top - viewportMargins.top - appStateV2.value.viewportTransform.y) *
         scalPercentage,
       ],
       width: size.width * scalPercentage,
@@ -1371,14 +1372,14 @@ class IdxPage2 {
 
     setTimeout(() => {
       if (locked.value) return;
-      appState.value.activeItemIndex = appState.value.items.findIndex(
+      appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
         (i) => i.id === item.id
       );
     }, 10);
     setTimeout(() => {
       if (locked.value) return;
       const target = document.querySelector(`#moveable-item-${item.id}`);
-      appState.value.selectedTargets = [target];
+      appStateV2.value.selectedTargets = [target];
       selecto.value.setSelectedTargets([target]);
     }, 100);
     return item;
@@ -1416,11 +1417,11 @@ class IdxPage2 {
   // }
 
   ungroupSelected() {
-    if (appState.value.selectedTargets.length < 2) return;
+    if (appStateV2.value.selectedTargets.length < 2) return;
     this.addActionToHistory("Ungroup the selected objects");
-    if (appState.value.selectedTargets.length > 0) {
-      appState.value.selectedTargets.forEach((el) => {
-        const item = appState.value.items.find(
+    if (appStateV2.value.selectedTargets.length > 0) {
+      appStateV2.value.selectedTargets.forEach((el) => {
+        const item = appStateV2.value.items.find(
           (i) => `moveable-item-${i.id}` === el.id
         );
         if (item) {
@@ -1431,23 +1432,23 @@ class IdxPage2 {
   }
 
   groupSelected() {
-    if (appState.value.selectedTargets.length < 2) return;
+    if (appStateV2.value.selectedTargets.length < 2) return;
     this.addActionToHistory("Group the selected objects");
-    if (appState.value.selectedTargets.length > 0) {
-      appState.value.groupCount++;
-      appState.value.selectedTargets.forEach((el) => {
-        const item = appState.value.items.find(
+    if (appStateV2.value.selectedTargets.length > 0) {
+      appStateV2.value.groupCount++;
+      appStateV2.value.selectedTargets.forEach((el) => {
+        const item = appStateV2.value.items.find(
           (i) => `moveable-item-${i.id}` === el.id
         );
         if (item) {
-          item.group = appState.value.groupCount;
+          item.group = appStateV2.value.groupCount;
         }
       });
     }
   }
 
   exportToJsonAction() {
-    const content = cloneDeep(toRaw(appState.value));
+    const content = cloneDeep(toRaw(appStateV2.value));
     content.selectedTargets = [];
     content.elementGuidelines = [];
 
@@ -1462,8 +1463,8 @@ class IdxPage2 {
 
   // Save the gauge settings and update the app state
   gaugeSettingsSave(item) {
-    const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
-    appState.value.items[itemIndex] = item;
+    const itemIndex = appStateV2.value.items.findIndex((i) => i.id === item.id);
+    appStateV2.value.items[itemIndex] = item;
     gaugeSettingsDialog.value.active = false;
     gaugeSettingsDialog.value.data = {};
   }
@@ -1489,10 +1490,10 @@ class IdxPage2 {
 
   // Weld selected objects into one shape
   weldSelected() {
-    if (appState.value.selectedTargets.length < 2) return;
+    if (appStateV2.value.selectedTargets.length < 2) return;
 
-    const selectedItems1 = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    const selectedItems1 = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -1507,8 +1508,8 @@ class IdxPage2 {
 
     this.addActionToHistory("Weld selected objects");
 
-    const selectedItems = appState.value.items.filter((i) =>
-      appState.value.selectedTargets.some(
+    const selectedItems = appStateV2.value.items.filter((i) =>
+      appStateV2.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
       )
     );
@@ -1525,9 +1526,9 @@ class IdxPage2 {
     }
 
     selectedItems.forEach((item) => {
-      const index = appState.value.items.findIndex((i) => i.id === item.id);
+      const index = appStateV2.value.items.findIndex((i) => i.id === item.id);
       if (index !== -1) {
-        appState.value.items.splice(index, 1);
+        appStateV2.value.items.splice(index, 1);
       }
     });
 
@@ -1585,7 +1586,7 @@ class IdxPage2 {
 
   // Draw weld objects with canvas
   drawWeldObjectCanvas(selectedItems) {
-    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
     // Calculate the bounding box for the selected items
     const firstX = selectedItems[0].translate[0];
@@ -1692,7 +1693,7 @@ class IdxPage2 {
       weldItems: cloneDeep(selectedItems),
       zindex: 1,
       t3Entry: null,
-      id: appState.value.itemsCount + 1,
+      id: appStateV2.value.itemsCount + 1,
     };
 
     this.addObject(tempItem);
@@ -1704,8 +1705,8 @@ class IdxPage2 {
     if (addToHistory) {
       this.addActionToHistory(`Add ${item?.type ?? ''}`);
     }
-    appState.value.itemsCount++;
-    item.id = appState.value.itemsCount;
+    appStateV2.value.itemsCount++;
+    item.id = appStateV2.value.itemsCount;
     item.group = group;
     if (!item.settings.titleColor) {
       item.settings.titleColor = "inherit";
@@ -1719,17 +1720,17 @@ class IdxPage2 {
     if (!item.settings.fontSize) {
       item.settings.fontSize = 16;
     }
-    appState.value.items.push(item);
+    appStateV2.value.items.push(item);
     const lines = document.querySelectorAll(".moveable-item");
-    appState.value.elementGuidelines = [];
+    appStateV2.value.elementGuidelines = [];
     Array.from(lines).forEach(function (el) {
-      appState.value.elementGuidelines.push(el);
+      appStateV2.value.elementGuidelines.push(el);
     });
     return item;
   }
 
   drawWeldObject(selectedItems) {
-    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
     // Calculate the bounding box for the selected items
     const firstX = selectedItems[0].translate[0];
@@ -1774,7 +1775,7 @@ class IdxPage2 {
       },
       zindex: 1,
       t3Entry: null,
-      id: appState.value.itemsCount + 1,
+      id: appStateV2.value.itemsCount + 1,
     };
 
     this.addObject(tempItem);
@@ -1783,22 +1784,22 @@ class IdxPage2 {
   // Delete selected objects from the app state
   deleteSelected() {
     this.addActionToHistory("Remove selected objects");
-    if (appState.value.selectedTargets.length > 0) {
-      appState.value.selectedTargets.forEach((el) => {
-        const iIndex = appState.value.items.findIndex(
+    if (appStateV2.value.selectedTargets.length > 0) {
+      appStateV2.value.selectedTargets.forEach((el) => {
+        const iIndex = appStateV2.value.items.findIndex(
           (item) => `moveable-item-${item.id}` === el.id
         );
         if (iIndex !== -1) {
-          appState.value.items.splice(iIndex, 1);
+          appStateV2.value.items.splice(iIndex, 1);
         }
       });
-      appState.value.selectedTargets = [];
-      appState.value.activeItemIndex = null;
+      appStateV2.value.selectedTargets = [];
+      appStateV2.value.activeItemIndex = null;
     }
   }
 
   newProject() {
-    if (appState.value.items?.length > 0) {
+    if (appStateV2.value.items?.length > 0) {
       this.$q.dialog({
         dark: true,
         title: "Do you want to clear the drawing and start over?",
@@ -1818,20 +1819,20 @@ class IdxPage2 {
 
   insertT3EntryOnSave() {
     this.addActionToHistory("Link object to T3000 entry");
-    if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
-      if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
-        appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
+    if (!appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField) {
+      if (appStateV2.value.items[appStateV2.value.activeItemIndex].label === undefined) {
+        appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField = "description";
       } else {
-        appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "label";
+        appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField = "label";
       }
     }
 
-    appState.value.items[appState.value.activeItemIndex].t3Entry = cloneDeep(
+    appStateV2.value.items[appStateV2.value.activeItemIndex].t3Entry = cloneDeep(
       toRaw(insertT3EntryDialog.value.data)
     )
 
     // Change the icon based on the linked entry type
-    if (appState.value.items[appState.value.activeItemIndex].type === "Icon") {
+    if (appStateV2.value.items[appStateV2.value.activeItemIndex].type === "Icon") {
       let icon = "fa-solid fa-camera-retro";
       if (insertT3EntryDialog.value.data.type === "GRP") {
         icon = "fa-solid fa-camera-retro";
@@ -1842,9 +1843,9 @@ class IdxPage2 {
       } else if (insertT3EntryDialog.value.data.type === "HOLIDAY") {
         icon = "calendar_month";
       }
-      appState.value.items[appState.value.activeItemIndex].settings.icon = icon;
+      appStateV2.value.items[appStateV2.value.activeItemIndex].settings.icon = icon;
     }
-    IdxUtils.refreshObjectStatus(appState.value.items[appState.value.activeItemIndex]);
+    IdxUtils.refreshObjectStatus(appStateV2.value.items[appStateV2.value.activeItemIndex]);
     insertT3EntryDialog.value.data = null;
     insertT3EntryDialog.value.active = false;
   }
@@ -1863,8 +1864,8 @@ class IdxPage2 {
     const item = this.drawObject(size, pos, tempTool);
 
     // Set the added shape to active
-    const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
-    appState.value.activeItemIndex = itemIndex;
+    const itemIndex = appStateV2.value.items.findIndex((i) => i.id === item.id);
+    appStateV2.value.activeItemIndex = itemIndex;
 
     // Link to T3 entry
     this.insertT3EntryOnSave();
@@ -1945,19 +1946,19 @@ class IdxPage2 {
   // Remove an item from the app state
   removeObject(item) {
     this.addActionToHistory("Remove object");
-    const index = appState.value.items.findIndex((i) => i.id === item.id);
-    appState.value.activeItemIndex = null;
-    appState.value.items.splice(index, 1);
+    const index = appStateV2.value.items.findIndex((i) => i.id === item.id);
+    appStateV2.value.activeItemIndex = null;
+    appStateV2.value.items.splice(index, 1);
 
-    appState.value.selectedTargets = [];
+    appStateV2.value.selectedTargets = [];
   }
 
   // Duplicate an item and select the new copy
   duplicateObject(i) {
     this.addActionToHistory(`Duplicate ${i.type}`);
-    appState.value.activeItemIndex = null;
+    appStateV2.value.activeItemIndex = null;
     const item = this.cloneObject(i);
-    appState.value.selectedTargets = [];
+    appStateV2.value.selectedTargets = [];
     setTimeout(() => {
       this.selectObject(item);
     }, 10);
@@ -1975,8 +1976,8 @@ class IdxPage2 {
   // Select an object and update the app state
   selectObject(item) {
     const target = document.querySelector(`#moveable-item-${item.id}`);
-    appState.value.selectedTargets = [target];
-    appState.value.activeItemIndex = appState.value.items.findIndex(
+    appStateV2.value.selectedTargets = [target];
+    appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
       (ii) => ii.id === item.id
     );
   }
@@ -1985,19 +1986,19 @@ class IdxPage2 {
   addLibItem(items, size, pos) {
     const elements = [];
     const addedItems = [];
-    appState.value.groupCount++;
+    appStateV2.value.groupCount++;
     items.forEach((item) => {
-      addedItems.push(this.cloneObject(item, appState.value.groupCount));
+      addedItems.push(this.cloneObject(item, appStateV2.value.groupCount));
     });
     setTimeout(() => {
       addedItems.forEach((addedItem) => {
         const el = document.querySelector(`#moveable-item-${addedItem.id}`);
         elements.push(el);
       });
-      appState.value.selectedTargets = elements;
+      appStateV2.value.selectedTargets = elements;
       selecto.value.setSelectedTargets(elements);
-      appState.value.activeItemIndex = null;
-      const scalPercentage = 1 / appState.value.viewportTransform.scale;
+      appStateV2.value.activeItemIndex = null;
+      const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
       setTimeout(() => {
         moveable.value.request(
           "draggable",
@@ -2005,13 +2006,13 @@ class IdxPage2 {
             x:
               (pos.clientX -
                 viewportMargins.left -
-                appState.value.viewportTransform.x) *
+                appStateV2.value.viewportTransform.x) *
               scalPercentage -
               size.width * scalPercentage,
             y:
               (pos.clientY -
                 viewportMargins.top -
-                appState.value.viewportTransform.y) *
+                appStateV2.value.viewportTransform.y) *
               scalPercentage -
               size.height * scalPercentage,
           },
@@ -2028,22 +2029,22 @@ class IdxPage2 {
   onRotateGroupStart(e) {
     this.addActionToHistory("Rotate Group");
     e.events.forEach((ev) => {
-      const itemIndex = appState.value.items.findIndex(
+      const itemIndex = appStateV2.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
       );
-      ev.set(appState.value.items[itemIndex].rotate);
-      ev.dragStart && ev.dragStart.set(appState.value.items[itemIndex].translate);
+      ev.set(appStateV2.value.items[itemIndex].rotate);
+      ev.dragStart && ev.dragStart.set(appStateV2.value.items[itemIndex].translate);
     });
   }
 
   // Handles rotating of a group of elements and updates their state
   onRotateGroup(e) {
     e.events.forEach((ev, i) => {
-      const itemIndex = appState.value.items.findIndex(
+      const itemIndex = appStateV2.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
       );
-      appState.value.items[itemIndex].translate = ev.drag.beforeTranslate;
-      appState.value.items[itemIndex].rotate = ev.rotate;
+      appStateV2.value.items[itemIndex].translate = ev.drag.beforeTranslate;
+      appStateV2.value.items[itemIndex].rotate = ev.rotate;
     });
   }
 
@@ -2059,12 +2060,12 @@ class IdxPage2 {
   // Ends the resizing of a group of elements and updates the app state
   onResizeGroupEnd(e) {
     e.events.forEach((ev) => {
-      const itemIndex = appState.value.items.findIndex(
+      const itemIndex = appStateV2.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.lastEvent.target.id
       );
-      appState.value.items[itemIndex].width = ev.lastEvent.width;
-      appState.value.items[itemIndex].height = ev.lastEvent.height;
-      appState.value.items[itemIndex].translate =
+      appStateV2.value.items[itemIndex].width = ev.lastEvent.width;
+      appStateV2.value.items[itemIndex].height = ev.lastEvent.height;
+      appStateV2.value.items[itemIndex].translate =
         ev.lastEvent.drag.beforeTranslate;
     });
     this.refreshObjects();
@@ -2073,7 +2074,7 @@ class IdxPage2 {
 
   onRotate(e) {
     // e.target.style.transform = e.drag.transform;
-    const item = appState.value.items.find(
+    const item = appStateV2.value.items.find(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     item.rotate = e.rotate;
@@ -2086,21 +2087,21 @@ class IdxPage2 {
       return;
     }
 
-    const itemIndex = appState.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
+    const itemIndex = appStateV2.value.items.findIndex((item) => `moveable-item-${item.id}` === e?.lastEvent?.target?.id);
 
-    appState.value.items[itemIndex].width = e.lastEvent.width;
-    appState.value.items[itemIndex].height = e.lastEvent.height;
-    appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
+    appStateV2.value.items[itemIndex].width = e.lastEvent.width;
+    appStateV2.value.items[itemIndex].height = e.lastEvent.height;
+    appStateV2.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
     // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-    Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+    Hvac.PageMain.UpdateExteriorWallStroke(appStateV2, itemIndex, e.lastEvent.height);
 
     // Refresh objects after resizing
     this.refreshObjects();
   }
 
   onResize(e) {
-    const item = appState.value.items.find(
+    const item = appStateV2.value.items.find(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     e.target.style.width = `${e.width}px`;
@@ -2110,7 +2111,7 @@ class IdxPage2 {
 
   // Handles dragging of an element
   onDrag(e) {
-    const item = appState.value.items.find(
+    const item = appStateV2.value.items.find(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     // item.translate = e.beforeTranslate;
@@ -2122,7 +2123,7 @@ class IdxPage2 {
     if (!e.lastEvent) {
       undoHistory.value.shift(); // Remove the last action if dragging was not completed
     } else {
-      const item = appState.value.items.find(
+      const item = appStateV2.value.items.find(
         (item) => `moveable-item-${item.id}` === e.target.id
       );
       item.translate = e.lastEvent.beforeTranslate;
@@ -2137,20 +2138,20 @@ class IdxPage2 {
   onDragGroupStart(e) {
     this.addActionToHistory("Move Group");
     e.events.forEach((ev, i) => {
-      const itemIndex = appState.value.items.findIndex(
+      const itemIndex = appStateV2.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
       );
-      ev.set(appState.value.items[itemIndex].translate);
+      ev.set(appStateV2.value.items[itemIndex].translate);
     });
   }
 
   // Handles dragging of a group of elements
   onDragGroup(e) {
     e.events.forEach((ev, i) => {
-      const itemIndex = appState.value.items.findIndex(
+      const itemIndex = appStateV2.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
       );
-      appState.value.items[itemIndex].translate = ev.beforeTranslate;
+      appStateV2.value.items[itemIndex].translate = ev.beforeTranslate;
     });
   }
 
@@ -2169,7 +2170,7 @@ class IdxPage2 {
     const target = e.inputEvent.target;
     if (
       moveable.value.isMoveableElement(target) ||
-      appState.value.selectedTargets.some(
+      appStateV2.value.selectedTargets.some(
         (t) => t === target || t.contains(target)
       )
     ) {
@@ -2180,9 +2181,9 @@ class IdxPage2 {
   // Handles the end of a selecto select event
   onSelectoSelectEnd(e) {
     // T3000Util.HvacLog('3 onSelectoSelectEnd 1', e, e.isDragStart);
-    appState.value.selectedTargets = e.selected;
+    appStateV2.value.selectedTargets = e.selected;
     if (e?.selected && !e?.inputEvent?.ctrlKey) {
-      const selectedItems = appState.value.items.filter((i) =>
+      const selectedItems = appStateV2.value.items.filter((i) =>
         e.selected.some((ii) => ii.id === `moveable-item-${i.id}`)
       );
       const selectedGroups = [
@@ -2195,13 +2196,13 @@ class IdxPage2 {
       });
     }
 
-    if (appState.value.selectedTargets.length === 1) {
-      appState.value.activeItemIndex = appState.value.items.findIndex(
+    if (appStateV2.value.selectedTargets.length === 1) {
+      appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
         (item) =>
-          `moveable-item-${item.id}` === appState.value.selectedTargets[0].id
+          `moveable-item-${item.id}` === appStateV2.value.selectedTargets[0].id
       );
     } else {
-      appState.value.activeItemIndex = null;
+      appStateV2.value.activeItemIndex = null;
     }
 
     if (e.isDragStart) {
@@ -2212,7 +2213,7 @@ class IdxPage2 {
       });
     }
 
-    if (appState.value.selectedTargets.length > 1 && !locked.value) {
+    if (appStateV2.value.selectedTargets.length > 1 && !locked.value) {
       setTimeout(() => {
         contextMenuShow.value = true;
       }, 100);
@@ -2223,18 +2224,18 @@ class IdxPage2 {
     IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
     setTimeout(() => {
-      Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+      Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appStateV2, null);
     }, 100);
   }
 
   // Selects a group of elements by their group ID
   selectGroup(id) {
     const targets = [];
-    appState.value.items
+    appStateV2.value.items
       .filter(
         (i) =>
           i.group === id &&
-          !appState.value.selectedTargets.some(
+          !appStateV2.value.selectedTargets.some(
             (ii) => ii.id === `moveable-item-${i.id}`
           )
       )
@@ -2243,19 +2244,19 @@ class IdxPage2 {
         targets.push(target);
       });
 
-    appState.value.selectedTargets =
-      appState.value.selectedTargets.concat(targets);
-    selecto.value.setSelectedTargets(appState.value.selectedTargets);
+    appStateV2.value.selectedTargets =
+      appStateV2.value.selectedTargets.concat(targets);
+    selecto.value.setSelectedTargets(appStateV2.value.selectedTargets);
   }
 
   // Starts resizing an element
   onResizeStart(e) {
     this.addActionToHistory("Resize object");
-    const itemIndex = appState.value.items.findIndex(
+    const itemIndex = appStateV2.value.items.findIndex(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
     e.setOrigin(["%", "%"]);
-    e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+    e.dragStart && e.dragStart.set(appStateV2.value.items[itemIndex].translate);
   }
 
   // Adds an action to the history for undo/redo functionality
@@ -2274,7 +2275,7 @@ class IdxPage2 {
     redoHistory.value = []; // Clear redo history
     undoHistory.value.unshift({
       title,
-      state: cloneDeep(appState.value),
+      state: cloneDeep(appStateV2.value),
     });
 
     // Maintain a maximum of 20 actions in the undo history
@@ -2290,19 +2291,19 @@ class IdxPage2 {
 
     // T3Util.Log('Viewport mouse moved cursorIconPos:', "mouse",
 
-    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+    const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
     // process drawing ducts
     if (
       isDrawing.value &&
       continuesObjectTypes.includes(selectedTool.value.name) &&
-      appState.value.activeItemIndex !== null
+      appStateV2.value.activeItemIndex !== null
     ) {
       // Check if the Ctrl key is pressed
       const isCtrlPressed = e.ctrlKey;
       // Calculate the distance and angle between the initial point and mouse cursor
-      const mouseX = (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) * scalPercentage;
-      const mouseY = (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) * scalPercentage;
+      const mouseX = (e.clientX - viewportMargins.left - appStateV2.value.viewportTransform.x) * scalPercentage;
+      const mouseY = (e.clientY - viewportMargins.top - appStateV2.value.viewportTransform.y) * scalPercentage;
       const dx = mouseX - startTransform.value[0];
       const dy = mouseY - startTransform.value[1];
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
@@ -2318,8 +2319,8 @@ class IdxPage2 {
       // T3Util.Log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
 
       // Set the scale and rotation of the drawing line
-      appState.value.items[appState.value.activeItemIndex].rotate = angle;
-      appState.value.items[appState.value.activeItemIndex].width = distance;
+      appStateV2.value.items[appStateV2.value.activeItemIndex].rotate = angle;
+      appStateV2.value.items[appStateV2.value.activeItemIndex].width = distance;
       this.refreshObjects();
     }
   }
@@ -2340,9 +2341,9 @@ class IdxPage2 {
     deviceModel.value.active = true;
 
     // clear the shape selection
-    appState.value.selectedTarget = [];
-    appState.value.selectedTargets = [];
-    appState.value.activeItemIndex = null;
+    appStateV2.value.selectedTarget = [];
+    appStateV2.value.selectedTargets = [];
+    appStateV2.value.activeItemIndex = null;
 
     // refresh the graphic panel data
     Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);

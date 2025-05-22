@@ -3129,7 +3129,7 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  // console.log('entryLabel - ', option);
+   console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
