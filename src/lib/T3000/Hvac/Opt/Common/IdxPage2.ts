@@ -21,6 +21,7 @@ import {
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
+import LogUtil from "../../Util/LogUtil";
 
 //  let lastAction = null; // Store the last action performed
 
@@ -275,9 +276,9 @@ class IdxPage2 {
 
   // Wrap a new function for saving data to localstorage and T3000
   save(notify: boolean = false, saveToT3: boolean = false) {
-    T3Util.Log('= Idx2 save to local storage', new Date().toLocaleString());
+    LogUtil.Debug('= Idx2 save to local storage', new Date().toLocaleString());
     savedNotify.value = notify;
-    this.saveToLocal();
+    // this.saveToLocal();
 
     // save the data for new ui to local storage
     DataOpt.SaveToLocalStorage();
@@ -508,9 +509,9 @@ class IdxPage2 {
     this.selectTool(tools[0]);
     if (isDrawing.value) {
       isDrawing.value = false;
-      undoAction();
+      this.undoAction();
       setTimeout(() => {
-        refreshObjects();
+        this.refreshObjects();
       }, 10);
 
       //clear empty drawing object
