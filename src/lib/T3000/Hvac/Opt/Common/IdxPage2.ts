@@ -3,7 +3,7 @@ import IdxUtils from "./IdxUtils";
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg, grpNav, T3000_Data, selectPanelOptions
+  globalMsg, grpNav, T3000_Data, selectPanelOptions, linkT3EntryDialog
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
@@ -14,10 +14,12 @@ import AntdUtil from "../UI/AntdUtil";
 
 import {
   isDrawing, selectedTool, lastAction, clipboardFull, topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable,
-  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog, insertCount,objectsRef,cursorIconPos,continuesObjectTypes,
-  startTransform,snappable,keepRatio,selecto,targets
+  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog, insertCount, objectsRef, cursorIconPos, continuesObjectTypes,
+  startTransform, snappable, keepRatio, selecto, targets, contextMenuShow, importJsonDialog
 } from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+
+import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 
 //  let lastAction = null; // Store the last action performed
 
@@ -743,11 +745,11 @@ class IdxPage2 {
       items = JSON.parse(clipboard);
     }
     if (!items) return;
-    addActionToHistory("Paste");
+    this.addActionToHistory("Paste");
     const elements = [];
     const addedItems = [];
     items.forEach((item) => {
-      addedItems.push(cloneObject(item));
+      addedItems.push(this.cloneObject(item));
     });
     setTimeout(() => {
       addedItems.forEach((addedItem) => {
@@ -787,7 +789,7 @@ class IdxPage2 {
 
   // Send selected objects to the back by decreasing their z-index
   sendSelectedToBack() {
-    addActionToHistory("Send selected objects to back");
+    this.addActionToHistory("Send selected objects to back");
     const selectedItems = appState.value.items.filter((i) =>
       appState.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
@@ -800,7 +802,7 @@ class IdxPage2 {
 
   // Bring selected objects to the front by increasing their z-index
   bringSelectedToFront() {
-    addActionToHistory("Bring selected objects to front");
+    this.addActionToHistory("Bring selected objects to front");
     const selectedItems = appState.value.items.filter((i) =>
       appState.value.selectedTargets.some(
         (ii) => ii.id === `moveable-item-${i.id}`
@@ -932,7 +934,7 @@ class IdxPage2 {
 
         if (selectedItem.t3Entry !== null) {
           topContextToggleVisible.value = true;
-          ObjectRightClicked(selectedItem, null);
+          this.ObjectRightClicked(selectedItem, null);
         }
         else {
           topContextToggleVisible.value = false;
@@ -963,20 +965,20 @@ class IdxPage2 {
       }
 
       item.t3Entry.auto_manual = toggleModeValue.value === "Auto" ? 0 : 1;
-      T3UpdateEntryField("auto_manual", item);
+      this.T3UpdateEntryField("auto_manual", item);
     }
 
     if (type == "value") {
       item.t3Entry.control = toggleValueValue.value === "Off" ? 0 : 1;
-      T3UpdateEntryField("control", item);
+      this.T3UpdateEntryField("control", item);
     }
 
     if (type === "number-value") {
       item.t3Entry.value = toggleNumberValue.value * 1;// * 1000;
-      T3UpdateEntryField("value", item);
+      this.T3UpdateEntryField("value", item);
     }
 
-    save(false, true);
+    this.save(false, true);
 
     // T3Util.Log('toggleClicked->after item', item.t3Entry)
   }
@@ -1042,7 +1044,7 @@ class IdxPage2 {
     const key = control ? "control" : "value";
     const item = appState.value.items.find((i) => i.id === refItem.id);
     item.t3Entry[key] = newVal;
-    T3UpdateEntryField(key, item);
+    this.T3UpdateEntryField(key, item);
   }
 
   // Toggles the auto/manual mode of an item
@@ -1051,14 +1053,14 @@ class IdxPage2 {
 
     // if (!locked.value) return;
     item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
-    T3UpdateEntryField("auto_manual", item);
+    this.T3UpdateEntryField("auto_manual", item);
   }
 
   // Handle object click events based on t3Entry type
   objectClicked(item) {
 
     T3Util.Log("= P.IDX2 objectClicked");
-    setTheSettingContextMenuVisible();
+    this.setTheSettingContextMenuVisible();
 
     if (!locked.value) return;
     if (item.t3Entry?.type === "GRP") {
@@ -1114,7 +1116,7 @@ class IdxPage2 {
       item.t3Entry?.range
     ) {
       item.t3Entry.control = item.t3Entry.control === 1 ? 0 : 1;
-      T3UpdateEntryField("control", item);
+      this.T3UpdateEntryField("control", item);
     }
   }
 
@@ -1124,16 +1126,16 @@ class IdxPage2 {
     appState.value.selectedTargets = [];
     locked.value = !locked.value;
     if (locked.value) {
-      selectTool("Pointer");
+      this.selectTool("Pointer");
     }
 
     // Update the document area position based on the lock state
-    IdxPage.restDocumentAreaPosition();
+    Hvac.IdxPage.restDocumentAreaPosition();
   }
 
   // Create a label for an entry with optional prefix
   entryLabel(option) {
-    // T3Util.Log('entryLabel - ', option);
+    T3Util.Log('entryLabel - ', option);
     let prefix =
       (option.description && option.id !== option.description) ||
         (!option.description && option.id !== option.label)
@@ -1165,7 +1167,7 @@ class IdxPage2 {
   // Duplicate the selected items in the app state
   duplicateSelected() {
     if (appState.value.selectedTargets.length < 1) return;
-    addActionToHistory("Duplicate the selected objects");
+    this.addActionToHistory("Duplicate the selected objects");
     const elements = [];
     const dupGroups = {};
     appState.value.selectedTargets.forEach((el) => {
@@ -1182,7 +1184,7 @@ class IdxPage2 {
 
           group = dupGroups[`${item.group}`];
         }
-        const dupItem = cloneObject(item, group);
+        const dupItem = this.cloneObject(item, group);
         setTimeout(() => {
           const dupElement = document.querySelector(
             `#moveable-item-${dupItem.id}`
@@ -1276,7 +1278,7 @@ class IdxPage2 {
             message: "Image successfully saved",
           });
           const oItem = await res.json();
-          addOnlineLibImage(oItem);
+          this.addOnlineLibImage(oItem);
         })
         .catch((err) => {
           this.$q.notify({
@@ -1294,7 +1296,7 @@ class IdxPage2 {
       action: 9, // SAVE_IMAGE
       filename: file.name,
       fileLength: file.size,
-      fileData: await readFile(file.data),
+      fileData: await this.readFile(file.data),
     };
 
     if (isBuiltInEdge.value) {
@@ -1306,6 +1308,82 @@ class IdxPage2 {
 
     // window.chrome?.webview?.postMessage(message);
   }
+
+
+  // Draws an object based on the provided size, position, and tool settings
+  drawObject(size, pos, tool) {
+    tool = tool || selectedTool.value;
+
+    if (tool.type === "libItem") {
+      this.addLibItem(tool.items, size, pos);
+      return;
+    }
+    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+    const toolSettings =
+      cloneDeep(tools.find((t) => t.name === tool.name)?.settings) || {};
+    const objectSettings = Object.keys(toolSettings).reduce((acc, key) => {
+      acc[key] = toolSettings[key].value;
+      return acc;
+    }, {});
+
+    if (tool.name === "G_Rectangle") {
+      size.width = 100;
+    }
+
+    const tempItem = {
+      title: null,
+      active: false,
+      type: tool.name,
+      translate: [
+        (pos.left - viewportMargins.left - appState.value.viewportTransform.x) *
+        scalPercentage,
+        (pos.top - viewportMargins.top - appState.value.viewportTransform.y) *
+        scalPercentage,
+      ],
+      width: size.width * scalPercentage,
+      height: size.height * scalPercentage,
+      rotate: 0,
+      scaleX: 1,
+      scaleY: 1,
+      settings: objectSettings,
+      zindex: 1,
+      t3Entry: null,
+      showDimensions: true
+    };
+
+    if (tool.type === "Image") {
+      tempItem.image = tool;
+      tempItem.type = tool.id;
+    }
+
+    // copy the first category from tool.cat to item.cat
+    if (tool.cat) {
+      const [first] = tool.cat;
+      tempItem.cat = first;
+    }
+
+    const item = this.addObject(tempItem);
+
+    if (["Value", "Icon", "Switch"].includes(tool.name)) {
+      linkT3EntryDialog.value.active = true;
+    }
+
+    setTimeout(() => {
+      if (locked.value) return;
+      appState.value.activeItemIndex = appState.value.items.findIndex(
+        (i) => i.id === item.id
+      );
+    }, 10);
+    setTimeout(() => {
+      if (locked.value) return;
+      const target = document.querySelector(`#moveable-item-${item.id}`);
+      appState.value.selectedTargets = [target];
+      selecto.value.setSelectedTargets([target]);
+    }, 100);
+    return item;
+  }
+
 
   toolDropped(ev, tool) {
     // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
@@ -1339,7 +1417,7 @@ class IdxPage2 {
 
   ungroupSelected() {
     if (appState.value.selectedTargets.length < 2) return;
-    addActionToHistory("Ungroup the selected objects");
+    this.addActionToHistory("Ungroup the selected objects");
     if (appState.value.selectedTargets.length > 0) {
       appState.value.selectedTargets.forEach((el) => {
         const item = appState.value.items.find(
@@ -1354,7 +1432,7 @@ class IdxPage2 {
 
   groupSelected() {
     if (appState.value.selectedTargets.length < 2) return;
-    addActionToHistory("Group the selected objects");
+    this.addActionToHistory("Group the selected objects");
     if (appState.value.selectedTargets.length > 0) {
       appState.value.groupCount++;
       appState.value.selectedTargets.forEach((el) => {
@@ -1427,7 +1505,7 @@ class IdxPage2 {
       return;
     }
 
-    addActionToHistory("Weld selected objects");
+    this.addActionToHistory("Weld selected objects");
 
     const selectedItems = appState.value.items.filter((i) =>
       appState.value.selectedTargets.some(
@@ -1441,9 +1519,9 @@ class IdxPage2 {
     // T3Util.Log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
     if (isAllGeneral || isAllDuct) {
-      drawWeldObjectCanvas(selectedItems);
+      this.drawWeldObjectCanvas(selectedItems);
     } else {
-      drawWeldObject(selectedItems);
+      this.drawWeldObject(selectedItems);
     }
 
     selectedItems.forEach((item) => {
@@ -1455,7 +1533,6 @@ class IdxPage2 {
 
     Hvac.IdxPage.refreshMoveable();
   }
-
 
   checkIsOverlap(selectedItems) {
     const itemList = [];
@@ -1472,8 +1549,8 @@ class IdxPage2 {
       );
       const endEl = document.querySelector(`#moveable-item-${item.id} .duct-end`);
 
-      const isStartOverlap = isDuctOverlap(startEl);
-      const isEndOverlap = isDuctOverlap(endEl);
+      const isStartOverlap = this.isDuctOverlap(startEl);
+      const isEndOverlap = this.isDuctOverlap(endEl);
 
       itemList.push({
         id: item.id,
@@ -1574,7 +1651,7 @@ class IdxPage2 {
 
     if (isAllDuct) {
       // Get the new pos for all ducts
-      const overlapList = checkIsOverlap(selectedItems);
+      const overlapList = this.checkIsOverlap(selectedItems);
 
       selectedItems.forEach((item) => {
         const overlapItem = overlapList.find((pos) => pos.id === item.id);
@@ -1618,7 +1695,37 @@ class IdxPage2 {
       id: appState.value.itemsCount + 1,
     };
 
-    addObject(tempItem);
+    this.addObject(tempItem);
+  }
+
+
+  // Adds a new object to the app state and updates guidelines
+  addObject(item, group = undefined, addToHistory = true) {
+    if (addToHistory) {
+      this.addActionToHistory(`Add ${item?.type ?? ''}`);
+    }
+    appState.value.itemsCount++;
+    item.id = appState.value.itemsCount;
+    item.group = group;
+    if (!item.settings.titleColor) {
+      item.settings.titleColor = "inherit";
+    }
+    if (!item.settings.bgColor) {
+      item.settings.bgColor = "inherit";
+    }
+    if (!item.settings.textColor) {
+      item.settings.textColor = "inherit";
+    }
+    if (!item.settings.fontSize) {
+      item.settings.fontSize = 16;
+    }
+    appState.value.items.push(item);
+    const lines = document.querySelectorAll(".moveable-item");
+    appState.value.elementGuidelines = [];
+    Array.from(lines).forEach(function (el) {
+      appState.value.elementGuidelines.push(el);
+    });
+    return item;
   }
 
   drawWeldObject(selectedItems) {
@@ -1670,12 +1777,12 @@ class IdxPage2 {
       id: appState.value.itemsCount + 1,
     };
 
-    addObject(tempItem);
+    this.addObject(tempItem);
   }
 
   // Delete selected objects from the app state
   deleteSelected() {
-    addActionToHistory("Remove selected objects");
+    this.addActionToHistory("Remove selected objects");
     if (appState.value.selectedTargets.length > 0) {
       appState.value.selectedTargets.forEach((el) => {
         const iIndex = appState.value.items.findIndex(
@@ -1710,7 +1817,7 @@ class IdxPage2 {
   }
 
   insertT3EntryOnSave() {
-    addActionToHistory("Link object to T3000 entry");
+    this.addActionToHistory("Link object to T3000 entry");
     if (!appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField) {
       if (appState.value.items[appState.value.activeItemIndex].label === undefined) {
         appState.value.items[appState.value.activeItemIndex].settings.t3EntryDisplayField = "description";
@@ -1745,7 +1852,7 @@ class IdxPage2 {
 
   // Insert Key Function
   insertT3EntrySelect(value) {
-    addActionToHistory("Insert object to T3000 entry");
+    this.addActionToHistory("Insert object to T3000 entry");
 
     const posIncrease = insertCount.value * 80;
 
@@ -1753,14 +1860,14 @@ class IdxPage2 {
     const size = { width: 60, height: 60 };
     const pos = { clientX: 300, clientY: 100, top: 100, left: 200 + posIncrease };
     const tempTool = tools.find((item) => item.name === 'Pump');
-    const item = drawObject(size, pos, tempTool);
+    const item = this.drawObject(size, pos, tempTool);
 
     // Set the added shape to active
     const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
     appState.value.activeItemIndex = itemIndex;
 
     // Link to T3 entry
-    insertT3EntryOnSave();
+    this.insertT3EntryOnSave();
 
     insertCount.value++;
 
@@ -1792,7 +1899,7 @@ class IdxPage2 {
   // Rotate an item by 90 degrees, optionally in the negative direction
   rotate90(item, minues = false) {
     if (!item) return;
-    addActionToHistory("Rotate object");
+    this.addActionToHistory("Rotate object");
     if (!minues) {
       item.rotate = item.rotate + 90;
     } else {
@@ -1803,7 +1910,7 @@ class IdxPage2 {
 
   // Flip an item horizontally
   flipH(item) {
-    addActionToHistory("Flip object H");
+    this.addActionToHistory("Flip object H");
     if (item.scaleX === 1) {
       item.scaleX = -1;
     } else {
@@ -1814,7 +1921,7 @@ class IdxPage2 {
 
   // Flip an item vertically
   flipV(item) {
-    addActionToHistory("Flip object V");
+    this.addActionToHistory("Flip object V");
     if (item.scaleY === 1) {
       item.scaleY = -1;
     } else {
@@ -1825,19 +1932,19 @@ class IdxPage2 {
 
   // Bring an item to the front by increasing its z-index
   bringToFront(item) {
-    addActionToHistory("Bring object to front");
+    this.addActionToHistory("Bring object to front");
     item.zindex = item.zindex + 1;
   }
 
   // Send an item to the back by decreasing its z-index
   sendToBack(item) {
-    addActionToHistory("Send object to back");
+    this.addActionToHistory("Send object to back");
     item.zindex = item.zindex - 1;
   }
 
   // Remove an item from the app state
   removeObject(item) {
-    addActionToHistory("Remove object");
+    this.addActionToHistory("Remove object");
     const index = appState.value.items.findIndex((i) => i.id === item.id);
     appState.value.activeItemIndex = null;
     appState.value.items.splice(index, 1);
@@ -1847,12 +1954,12 @@ class IdxPage2 {
 
   // Duplicate an item and select the new copy
   duplicateObject(i) {
-    addActionToHistory(`Duplicate ${i.type}`);
+    this.addActionToHistory(`Duplicate ${i.type}`);
     appState.value.activeItemIndex = null;
-    const item = cloneObject(i);
+    const item = this.cloneObject(i);
     appState.value.selectedTargets = [];
     setTimeout(() => {
-      selectObject(item);
+      this.selectObject(item);
     }, 10);
   }
 
@@ -1861,7 +1968,7 @@ class IdxPage2 {
     const dubItem = cloneDeep(i);
     dubItem.translate[0] = dubItem.translate[0] + 5;
     dubItem.translate[1] = dubItem.translate[1] + 5;
-    const item = addObject(dubItem, group, false);
+    const item = this.addObject(dubItem, group, false);
     return item;
   }
 
@@ -1880,7 +1987,7 @@ class IdxPage2 {
     const addedItems = [];
     appState.value.groupCount++;
     items.forEach((item) => {
-      addedItems.push(cloneObject(item, appState.value.groupCount));
+      addedItems.push(this.cloneObject(item, appState.value.groupCount));
     });
     setTimeout(() => {
       addedItems.forEach((addedItem) => {
@@ -1919,7 +2026,7 @@ class IdxPage2 {
 
   // Starts rotating a group of elements and adds the action to the history
   onRotateGroupStart(e) {
-    addActionToHistory("Rotate Group");
+    this.addActionToHistory("Rotate Group");
     e.events.forEach((ev) => {
       const itemIndex = appState.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
@@ -1960,7 +2067,7 @@ class IdxPage2 {
       appState.value.items[itemIndex].translate =
         ev.lastEvent.drag.beforeTranslate;
     });
-    refreshObjects();
+    this.refreshObjects();
     keepRatio.value = false;
   }
 
@@ -1986,10 +2093,10 @@ class IdxPage2 {
     appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
     // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-    T3000.Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+    Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
     // Refresh objects after resizing
-    refreshObjects();
+    this.refreshObjects();
   }
 
   onResize(e) {
@@ -2021,14 +2128,14 @@ class IdxPage2 {
       item.translate = e.lastEvent.beforeTranslate;
 
       T3Util.Log('= IdxPage onDragEnd:', e, item.translate);
-      save(false, false); // Save the state after drag end
-      refreshObjects(); // Refresh objects
+      this.save(false, false); // Save the state after drag end
+      this.refreshObjects(); // Refresh objects
     }
   }
 
   // Starts dragging a group of elements
   onDragGroupStart(e) {
-    addActionToHistory("Move Group");
+    this.addActionToHistory("Move Group");
     e.events.forEach((ev, i) => {
       const itemIndex = appState.value.items.findIndex(
         (item) => `moveable-item-${item.id}` === ev.target.id
@@ -2052,7 +2159,7 @@ class IdxPage2 {
     if (!e.lastEvent) {
       undoHistory.value.shift(); // Remove the last action if dragging was not completed
     } else {
-      refreshObjects(); // Refresh objects
+      this.refreshObjects(); // Refresh objects
     }
   }
 
@@ -2084,7 +2191,7 @@ class IdxPage2 {
         ),
       ];
       selectedGroups.forEach((gId) => {
-        selectGroup(gId);
+        this.selectGroup(gId);
       });
     }
 
@@ -2116,7 +2223,7 @@ class IdxPage2 {
     IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
     setTimeout(() => {
-      T3000.Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+      Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
     }, 100);
   }
 
@@ -2143,7 +2250,7 @@ class IdxPage2 {
 
   // Starts resizing an element
   onResizeStart(e) {
-    addActionToHistory("Resize object");
+    this.addActionToHistory("Resize object");
     const itemIndex = appState.value.items.findIndex(
       (item) => `moveable-item-${item.id}` === e.target.id
     );
@@ -2159,8 +2266,8 @@ class IdxPage2 {
     if (title !== "Move Object") {
       setTimeout(() => {
         T3Util.Log("= IdxPage addActionToHistory", title);
-        save(false, false); // Save the current state
-        refreshObjects(); // Refresh objects
+        this.save(false, false); // Save the current state
+        this.refreshObjects(); // Refresh objects
       }, 200);
     }
 
@@ -2213,7 +2320,7 @@ class IdxPage2 {
       // Set the scale and rotation of the drawing line
       appState.value.items[appState.value.activeItemIndex].rotate = angle;
       appState.value.items[appState.value.activeItemIndex].width = distance;
-      refreshObjects();
+      this.refreshObjects();
     }
   }
 

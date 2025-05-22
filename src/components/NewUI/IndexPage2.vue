@@ -371,6 +371,7 @@ import {
   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
   gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
 } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 // Meta information for the application
 const metaData = { title: "HVAC Drawer" };
@@ -389,6 +390,7 @@ const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 if (process.env.DEV) {
+  console.log("process.env.dev",T3000_Data)
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
     T3000_Data.value.panelsRanges = data.ranges;
@@ -627,6 +629,7 @@ function linkT3EntrySaveV2(): void {
 
 // Filter function for selecting panels in the UI
 function selectPanelFilterFn(val: string, update: Function): void {
+  LogUtil.Debug("selectPanelFilterFn")
   Hvac.IdxPage2.selectPanelFilterFn(val, update);
 }
 

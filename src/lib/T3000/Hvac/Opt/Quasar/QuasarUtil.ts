@@ -14,6 +14,7 @@ import DataOpt from "../Data/DataOpt";
 import DrawUtil from "../Opt/DrawUtil";
 import SvgUtil from "../Opt/SvgUtil";
 import OptConstant from "../../Data/Constant/OptConstant";
+import LogUtil from "../../Util/LogUtil";
 
 class QuasarUtil {
 
@@ -168,7 +169,7 @@ class QuasarUtil {
   }
 
   static LinkT3EntryDialogActionV2() {
-    T3Util.Log("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
+    LogUtil.Debug("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "open linkT3EntryDialog V2");
     linkT3EntryDialogV2.value.active = true;
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry) return;
     linkT3EntryDialogV2.value.data = cloneDeep(appStateV2.value.items[appStateV2.value.activeItemIndex]?.t3Entry);

@@ -2420,6 +2420,7 @@ function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
   linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
+  console.log('= Idx linkT3EntryDialogAction linkT3EntryDialog.value.data:', linkT3EntryDialog.value.data);
 }
 
 // Delete selected objects from the app state
