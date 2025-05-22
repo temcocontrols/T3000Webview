@@ -1,207 +1,3 @@
-<style scoped>
-.full-area {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.main-area {
-  display: flex;
-  flex: 1;
-}
-
-.side-bar {
-  /* background-color: #f4f4f4; */
-  width: 106px;
-}
-
-.work-area {
-  top: 0px;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  width: auto;
-  flex: 1;
-  margin-top: 1px;
-  position: relative;
-}
-
-.document-area {
-  position: relative;
-  /* background-color: #ebeced; */
-  height: 100%;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.c-ruler {
-  width: 20px;
-  height: 20px;
-  /* background-color: #ebeced; */
-  position: absolute;
-  overflow: hidden;
-  left: 1px;
-  top: 1px;
-}
-
-.h-ruler {
-  position: absolute;
-  overflow: hidden;
-  /* background-color: #ebeced; */
-  top: 1px;
-  left: 22px;
-  height: 20px;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-}
-
-.v-ruler {
-  position: absolute;
-  overflow: hidden;
-  /* background-color: #ebeced; */
-  width: 20px;
-  left: 1px;
-  top: 22px;
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.hv-grid {
-  position: absolute;
-  /* background-color: #ebeced; */
-  inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  overflow: hidden;
-}
-
-.viewport-wrapper {
-  position: relative;
-  background-color: transparent;
-  scrollbar-width: thin;
-  inset: 22px 0px 0px 22px;
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-  overflow: hidden;
-}
-
-.viewport {
-  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
-  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
-}
-
-.default-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.main-panel {
-  margin-left: 0px;
-  position: absolute;
-  width: 100%;
-}
-
-#main-toolbar {
-  position: fixed;
-  left: 0;
-  padding-top: 0;
-  padding-left: 0px;
-  z-index: 1;
-  width: 100%;
-  max-height: none;
-  height: 93px;
-}
-
-.left-panel {
-  position: fixed;
-  top: 90px;
-  z-index: 1;
-  bottom: 0;
-  left: 0px;
-  right: 0;
-  overflow: hidden;
-  width: 105px;
-  /* border-right: 1px solid #ddd; */
-  z-index: 4;
-}
-
-.main-panel {
-  margin-left: 0px;
-}
-
-#work-area {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: none;
-  padding-left: 105px;
-  margin-top: 93px;
-  width: auto;
-}
-
-#document-area {
-  position: relative;
-  height: 100%;
-}
-
-.document-ruler-corner {
-  width: 20px;
-  height: 20px;
-  user-select: none;
-  left: 99px;
-  top: 0px;
-  overflow: hidden;
-  position: absolute;
-}
-
-.document-ruler-top {
-  overflow: hidden;
-  position: absolute;
-  user-select: none;
-  left: 119px;
-  top: 0px;
-  width: 100%;
-  height: 20px;
-}
-
-.document-ruler-left {
-  overflow: hidden;
-  position: absolute;
-  user-select: none;
-  left: 99px;
-  top: 20px;
-  width: 20px;
-  height: auto;
-}
-
-#svg-area {
-  /* scrollbar-width: thin; */
-  position: absolute;
-  left: 119px;
-  top: 20px;
-  width: 100%;
-  height: auto;
-  overflow: hidden scroll;
-  user-select: none;
-  background-color: #ffffff;
-}
-
-.doc-toolbar {
-  background-color: transparent;
-  bottom: 10px;
-  right: 10px;
-  padding-left: 187px;
-  padding-right: 10px;
-  border: none;
-  display: flex;
-  align-items: flex-end;
-  height: auto;
-  width: auto;
-  position: absolute;
-  left: 0;
-}
-</style>
-
 <template>
   <q-page>
 
@@ -210,7 +6,6 @@
       <div id="_IEclipboardDiv" contenteditable="true"></div>
       <input id="_clipboardInput" type="text" value=" ">
     </div>
-
 
     <div id="main-app">
       <div id="main-panel" class="main-panel">
@@ -521,12 +316,11 @@
   </q-dialog>
 </template>
 
-<script setup>
-
-import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef } from "vue";
-import { useQuasar, useMeta } from "quasar";
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, toRaw, triggerRef, ComputedRef } from "vue";
+import { useQuasar, useMeta, QVueGlobals } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
-import KeyController /* , { getCombi, getKey } */ from "keycon";
+import KeyController from "keycon";
 import { cloneDeep } from "lodash";
 import ObjectType from "../../components/ObjectType.vue";
 import GaugeSettingsDialog from "../../components/GaugeSettingsDialog.vue";
@@ -535,7 +329,7 @@ import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar2 from "./ToolsSidebar2.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
+import { tools, demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -554,19 +348,18 @@ import NewTopToolBar2 from "src/components/NewUI/NewTopToolBar2.vue";
 // New import for Data
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
-import Hvac from "src/lib/T3000/Hvac/Hvac"
-import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
+import Hvac from "src/lib/T3000/Hvac/Hvac";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
-import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {
   emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialogV2,
-  savedNotify, undoHistory, redoHistory, moveable,
-  appStateV2
-} from '../../lib/T3000/Hvac/Data/T3Data'
-import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage"
+  savedNotify, undoHistory, redoHistory, moveable, appStateV2
+} from '../../lib/T3000/Hvac/Data/T3Data';
+import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
 import QuasarUtil from "src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil";
 
@@ -576,35 +369,25 @@ import AntdTest from "src/components/NewUI/AntdTest.vue";
 
 import {
   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
-  gaugeSettingsDialog, insertCount, selectedTool
-} from
-  "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+  gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
+} from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 
 // Meta information for the application
-// Set the meta information
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
-const $q = useQuasar(); // Access Quasar framework instance
-
-// State of the import JSON dialog
-const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
+const $q: QVueGlobals = useQuasar(); // Access Quasar framework instance
 
 // Computed property for loading panels progress
-const loadingPanelsProgress = computed(() => {
+const loadingPanelsProgress: ComputedRef<number> = computed(() => {
   if (T3000_Data.value.loadingPanel === null) return 100;
-  return parseInt(
-    (T3000_Data.value.loadingPanel + 1 / T3000_Data.value.panelsList.length) *
-    100
-  );
+  return Math.round(((T3000_Data.value.loadingPanel + 1) / T3000_Data.value.panelsList.length) * 100);
 });
 
-const clipboardFull = ref(false); // State of the clipboard
 const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
-
 if (process.env.DEV) {
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
@@ -620,11 +403,11 @@ onMounted(() => {
   Hvac.IdxPage2.initPage();
 });
 
-function updateDeviceModel(isActive, data) {
+function updateDeviceModel(isActive: boolean, data: any): void {
   Hvac.IdxPage2.updateDeviceModel(isActive, data);
 }
 
-function showMoreDevices() {
+function showMoreDevices(): void {
   Hvac.IdxPage2.showMoreDevices();
 }
 
@@ -638,246 +421,245 @@ onUnmounted(() => {
   Hvac.IdxPage.clearIdx();
 });
 
-
-function viewportMouseMoved(e) {
+function viewportMouseMoved(e: MouseEvent): void {
   Hvac.IdxPage2.viewportMouseMoved(e);
 }
 
 // Refreshes objects by calling their refresh method, if available
-function refreshObjects() {
+function refreshObjects(): void {
   Hvac.IdxPage2.refreshObjects();
 }
 
 // Adds an action to the history for undo/redo functionality
-function addActionToHistory(title) {
+function addActionToHistory(title: string): void {
   Hvac.IdxPage2.addActionToHistory(title);
 }
 
 // Handles click events on group elements
-function onClickGroup(e) {
+function onClickGroup(e: any): void {
   selecto.value.clickTarget(e.inputEvent, e.inputTarget);
 }
 
 // Starts dragging an element
-function onDragStart(e) {
+function onDragStart(e: any): void {
   addActionToHistory("Move Object");
 }
 
 // Handles dragging of an element
-function onDrag(e) {
+function onDrag(e: any): void {
   Hvac.IdxPage2.onDrag(e);
 }
 
 // Ends the dragging of an element
-function onDragEnd(e) {
+function onDragEnd(e: any): void {
   Hvac.IdxPage2.onDragEnd(e);
 }
 
 // Starts dragging a group of elements
-function onDragGroupStart(e) {
+function onDragGroupStart(e: any): void {
   Hvac.IdxPage2.onDragGroupStart(e);
 }
 
 // Handles dragging of a group of elements
-function onDragGroup(e) {
+function onDragGroup(e: any): void {
   Hvac.IdxPage2.onDragGroup(e);
 }
 
 // Ends the dragging of a group of elements
-function onDragGroupEnd(e) {
+function onDragGroupEnd(e: any): void {
   Hvac.IdxPage2.onDragGroupEnd(e);
 }
 
 // Handles the start of a selecto drag event
-function onSelectoDragStart(e) {
+function onSelectoDragStart(e: any): void {
   Hvac.IdxPage2.onSelectoDragStart(e);
 }
 
 // Handles the end of a selecto select event
-function onSelectoSelectEnd(e) {
+function onSelectoSelectEnd(e: any): void {
   Hvac.IdxPage2.onSelectoSelectEnd(e);
 }
 
 // Selects a group of elements by their group ID
-function selectGroup(id) {
+function selectGroup(id: string): void {
   Hvac.IdxPage2.selectGroup(id);
 }
 
 // Starts resizing an element
-function onResizeStart(e) {
+function onResizeStart(e: any): void {
   Hvac.IdxPage2.onResizeStart(e);
 }
 
 // Handles resizing of an element
-function onResize(e) {
+function onResize(e: any): void {
   Hvac.IdxPage2.onResize(e);
 }
 
 // Ends the resizing of an element
-function onResizeEnd(e) {
+function onResizeEnd(e: any): void {
   Hvac.IdxPage2.onResizeEnd(e);
 }
 
 // Starts rotating an element
-function onRotateStart(e) {
+function onRotateStart(e: any): void {
   addActionToHistory("Rotate object");
 }
 
 // Handles rotating of an element
-function onRotate(e) {
+function onRotate(e: any): void {
   Hvac.IdxPage2.onRotate(e);
 }
 
 // Refreshes objects on rotate end
-function onRotateEnd(e) {
+function onRotateEnd(e: any): void {
   refreshObjects();
 }
 
 // refreshes objects on rotate group end
-function onRotateGroupEnd(e) {
+function onRotateGroupEnd(e: any): void {
   refreshObjects();
 }
 
 // Maintaining aspect ratio on resize group start
-function onResizeGroupStart(e) {
+function onResizeGroupStart(e: any): void {
   keepRatio.value = true;
 }
 
 // Handles resizing of a group of elements
-function onResizeGroup(e) {
+function onResizeGroup(e: any): void {
   Hvac.IdxPage2.onResizeGroup(e);
 }
 
 // Ends the resizing of a group of elements and updates the app state
-function onResizeGroupEnd(e) {
+function onResizeGroupEnd(e: any): void {
   Hvac.IdxPage2.onResizeGroupEnd(e);
 }
 
 // Starts rotating a group of elements and adds the action to the history
-function onRotateGroupStart(e) {
+function onRotateGroupStart(e: any): void {
   Hvac.IdxPage2.onRotateGroupStart(e);
 }
 
 // Handles rotating of a group of elements and updates their state
-function onRotateGroup(e) {
+function onRotateGroup(e: any): void {
   Hvac.IdxPage2.onRotateGroup(e);
 }
 
 // Adds a library item to the app state and updates selection
-function addLibItem(items, size, pos) {
+function addLibItem(items: any[], size: any, pos: any): void {
   Hvac.IdxPage2.addLibItem(items, size, pos);
 }
 
 // Select a tool and set its type
-function selectTool(tool, type = "default") {
+function selectTool(tool: any, type: string = "default"): void {
   Hvac.IdxPage2.selectTool(tool, type);
 }
 
 // Rotate an item by 90 degrees, optionally in the negative direction
-function rotate90(item, minues = false) {
+function rotate90(item: any, minues: boolean = false): void {
   Hvac.IdxPage2.rotate90(item, minues);
 }
 
 // Flip an item horizontally
-function flipH(item) {
+function flipH(item: any): void {
   Hvac.IdxPage2.flipH(item);
 }
 
 // Flip an item vertically
-function flipV(item) {
+function flipV(item: any): void {
   Hvac.IdxPage2.flipV(item);
 }
 
 // Bring an item to the front by increasing its z-index
-function bringToFront(item) {
+function bringToFront(item: any): void {
   Hvac.IdxPage2.bringToFront(item);
 }
 
 // Send an item to the back by decreasing its z-index
-function sendToBack(item) {
+function sendToBack(item: any): void {
   Hvac.IdxPage2.sendToBack(item);
 }
 
 // Remove an item from the app state
-function removeObject(item) {
+function removeObject(item: any): void {
   Hvac.IdxPage2.removeObject(item);
 }
 
 // Duplicate an item and select the new copy
-function duplicateObject(i) {
+function duplicateObject(i: any): void {
   Hvac.IdxPage2.duplicateObject(i);
 }
 
 // Clone an object and adjust its position slightly
-function cloneObject(i, group = undefined) {
+function cloneObject(i: any, group: any = undefined): void {
   Hvac.IdxPage2.cloneObject(i, group);
 }
 
 // Select an object and update the app state
-function selectObject(item) {
+function selectObject(item: any): void {
   Hvac.IdxPage2.selectObject(item);
 }
 
 // Handle right-click selection
-function selectByRightClick(e) {
+function selectByRightClick(e: MouseEvent): void {
   // selecto.value.clickTarget(e);
 }
 
 // Update a T3 entry field for an object
-function T3UpdateEntryField(key, obj) {
+function T3UpdateEntryField(key: string, obj: any): void {
   Hvac.IdxPage2.T3UpdateEntryField(key, obj);
 }
 
 // Trigger the save event when user changed the "Display Field" value
-function DisplayFieldValueChanged(value) {
+function DisplayFieldValueChanged(value: any): void {
   T3Util.Log("= IdxPage DX DisplayFieldValueChanged", value);
   save(false, true);
 }
 
 // Define a condition for drag events in Selecto
-function selectoDragCondition(e) {
+function selectoDragCondition(e: any): boolean {
   return !e.inputEvent.altKey;
 }
 
 // Save the linked T3 entry for an object and update its icon if necessary
-function linkT3EntrySaveV2() {
+function linkT3EntrySaveV2(): void {
   QuasarUtil.LinkT3EntrySaveV2();
 }
 
 // Filter function for selecting panels in the UI
-function selectPanelFilterFn(val, update) {
+function selectPanelFilterFn(val: string, update: Function): void {
   Hvac.IdxPage2.selectPanelFilterFn(val, update);
 }
 
 // Insert Key Function
-function insertT3EntrySelect(value) {
+function insertT3EntrySelect(value: any): void {
   Hvac.IdxPage2.insertT3EntrySelect(value);
 }
 
-function insertT3EntryOnSave() {
+function insertT3EntryOnSave(): void {
   Hvac.IdxPage2.insertT3EntryOnSave();
 }
 
-function insertT3DefaultLoadData() {
+function insertT3DefaultLoadData(): void {
 }
 
 // Save the current app state, optionally displaying a notification
-function save(notify = false, saveToT3 = false) {
+function save(notify: boolean = false, saveToT3: boolean = false): void {
   T3Util.Log("= IdxPage save", notify, saveToT3);
   Hvac.IdxPage2.save(notify, saveToT3);
 }
 
-function refreshMoveable() {
+function refreshMoveable(): void {
   Hvac.IdxPage.refreshMoveable();
 }
 
 // Create a new project, optionally confirming with the user if there's existing data
-function newProject() {
+function newProject(): void {
   Hvac.IdxPage2.newProject();
 }
 
 // Handle keyup event for keyboard control
-keycon.keyup((e) => {
+keycon.keyup((e: any) => {
   // Enable snapping when the "ctrl" key is released
   if (e.key === "ctrl") {
     snappable.value = true;
@@ -885,7 +667,7 @@ keycon.keyup((e) => {
 });
 
 // Handle keydown event for keyboard control
-keycon.keydown((e) => {
+keycon.keydown((e: any) => {
   if (e.key === "esc") {
     // Select the default tool and navigate back if applicable
     selectTool(tools[0]);
@@ -927,185 +709,173 @@ keycon.keydown((e) => {
   }
 });
 
-// Save the current state when "Ctrl + S" is pressed
-keycon.keydown(["ctrl", "s"], (e) => {
+// Other keyboard handlers
+keycon.keydown(["ctrl", "s"], (e: any) => {
   e.inputEvent.preventDefault();
   save(true, true);
 });
 
-// Undo the last action when "Ctrl + Z" is pressed
-keycon.keydown(["ctrl", "z"], (e) => {
+keycon.keydown(["ctrl", "z"], (e: any) => {
   e.inputEvent.preventDefault();
   if (locked.value) return;
   undoAction();
 });
 
-// Redo the last undone action when "Ctrl + Y" is pressed
-keycon.keydown(["ctrl", "y"], (e) => {
+keycon.keydown(["ctrl", "y"], (e: any) => {
   e.inputEvent.preventDefault();
   if (locked.value) return;
   redoAction();
 });
 
-// Create a new project when "Ctrl + R" is pressed
-keycon.keydown(["ctrl", "r"], (e) => {
+keycon.keydown(["ctrl", "r"], (e: any) => {
   e.inputEvent.preventDefault();
   newProject();
 });
 
-// Duplicate the selected object when "Ctrl + D" is pressed
-keycon.keydown(["ctrl", "d"], (e) => {
+keycon.keydown(["ctrl", "d"], (e: any) => {
   e.inputEvent.preventDefault();
   duplicateSelected();
 });
 
-// Group selected objects when "Ctrl + G" is pressed
-keycon.keydown(["ctrl", "g"], (e) => {
+keycon.keydown(["ctrl", "g"], (e: any) => {
   e.inputEvent.preventDefault();
   groupSelected();
 });
 
-// Ungroup selected objects when "Ctrl + Shift + G" is pressed
-keycon.keydown(["ctrl", "shift", "g"], (e) => {
+keycon.keydown(["ctrl", "shift", "g"], (e: any) => {
   e.inputEvent.preventDefault();
   ungroupSelected();
 });
 
-// Copy selected objects to clipboard when "Ctrl + C" is pressed
-keycon.keydown(["ctrl", "c"], (e) => {
-  if (!document.activeElement.matches(".viewport")) return;
+keycon.keydown(["ctrl", "c"], (e: any) => {
+  if (!document.activeElement?.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   saveSelectedToClipboard();
 });
 
-// Paste objects from clipboard when "Ctrl + V" is pressed
-keycon.keydown(["ctrl", "v"], (e) => {
-  if (!document.activeElement.matches(".viewport")) return;
+keycon.keydown(["ctrl", "v"], (e: any) => {
+  if (!document.activeElement?.matches(".viewport")) return;
   e.inputEvent.preventDefault();
   pasteFromClipboard();
 });
 
-// Weld selected objects when "Ctrl + W" is pressed
-keycon.keydown(["ctrl", "b"], (e) => {
+keycon.keydown(["ctrl", "b"], (e: any) => {
   e.inputEvent.preventDefault();
   weldSelected();
 });
 
-// Insert function
-keycon.keydown(["insert"], (e) => {
-  // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
+keycon.keydown(["insert"], (e: any) => {
   T3000.Hvac.KiOpt.InsertT3EntryDialog();
-  // T3Util.Log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
-function linkT3EntryDialogActionV2() {
+function linkT3EntryDialogActionV2(): void {
   QuasarUtil.LinkT3EntryDialogActionV2();
 }
 
 // Delete selected objects from the app state
-function deleteSelected() {
+function deleteSelected(): void {
   Hvac.IdxPage2.deleteSelected();
 }
 
-function drawWeldObject(selectedItems) {
+function drawWeldObject(selectedItems: any[]): void {
   Hvac.IdxPage2.drawWeldObject(selectedItems);
 }
 
 // Draw weld objects with canvas
-function drawWeldObjectCanvas(selectedItems) {
+function drawWeldObjectCanvas(selectedItems: any[]): void {
   Hvac.IdxPage2.drawWeldObjectCanvas(selectedItems);
 }
 
-function getDuctPoints(info) {
+function getDuctPoints(info: any): void {
   Hvac.IdxPage2.getDuctPoints(info);
 }
 
-function isDuctOverlap(partEl) {
+function isDuctOverlap(partEl: any): void {
   Hvac.IdxPage2.isDuctOverlap(partEl);
 }
 
-function checkIsOverlap(selectedItems) {
+function checkIsOverlap(selectedItems: any[]): void {
   Hvac.IdxPage2.checkIsOverlap(selectedItems);
 }
 
 // Weld selected objects into one shape
-function weldSelected() {
+function weldSelected(): void {
   Hvac.IdxPage2.weldSelected();
 }
 
 // Undo the last action
-function undoAction() {
+function undoAction(): void {
   Hvac.IdxPage2.undoAction();
 }
 
 // Redo the last undone action
-function redoAction() {
+function redoAction(): void {
   Hvac.IdxPage2.redoAction();
 }
 
 // Handle file upload (empty function, add implementation as needed)
-function handleFileUploaded(data) { }
+function handleFileUploaded(data: any): void { }
 
 // Read a file and return its data as a promise
-async function readFile(file) {
-  return Hvac.IdxPage2.readFile(file);
+async function readFile(file: File): Promise<string> {
+  return Hvac.IdxPage2.readFile(file) as Promise<string>;
 }
 
 // Save an image to the library or online storage
-async function saveLibImage(file) {
+async function saveLibImage(file: File): Promise<void> {
   Hvac.IdxPage2.saveLibImage(file);
 }
 
 // Open the gauge settings dialog with the provided item data
-function gaugeSettingsDialogAction(item) {
+function gaugeSettingsDialogAction(item: any): void {
   Hvac.IdxPage2.gaugeSettingsDialogAction(item);
 }
 
 // Save the gauge settings and update the app state
-function gaugeSettingsSave(item) {
+function gaugeSettingsSave(item: any): void {
   Hvac.IdxPage2.gaugeSettingsSave(item);
 }
 
 // Open the import JSON dialog
-function importJsonAction() {
+function importJsonAction(): void {
   importJsonDialog.value.active = true;
 }
 
 // Export the current app state to a JSON file
-function exportToJsonAction() {
+function exportToJsonAction(): void {
   Hvac.IdxPage2.exportToJsonAction();
 }
 
 // Handle the addition of an imported JSON file
-async function importJsonFileAdded(file) {
+async function importJsonFileAdded(file: any): Promise<void> {
   const blob = await file.data.text();
   importJsonDialog.value.data = blob;
   executeImportFromJson();
 }
 
 // Execute the import of the JSON data into the app state
-function executeImportFromJson() {
+function executeImportFromJson(): void {
   Hvac.IdxPage2.executeImportFromJson();
 }
 
 // Duplicate the selected items in the app state
-function duplicateSelected() {
+function duplicateSelected(): void {
   Hvac.IdxPage2.duplicateSelected();
 }
 
 // Group the selected items together
-function groupSelected() {
+function groupSelected(): void {
   Hvac.IdxPage2.groupSelected();
 }
 
 // Ungroup the selected items
-function ungroupSelected() {
+function ungroupSelected(): void {
   Hvac.IdxPage2.ungroupSelected();
 }
 
 // Handle the menu action for the top toolbar
-function handleMenuAction(action, val) {
+function handleMenuAction(action: string, val?: any): void {
   const item = appState.value.items[appState.value.activeItemIndex];
   switch (action) {
     case "newProject":
@@ -1198,145 +968,349 @@ function handleMenuAction(action, val) {
 }
 
 // Reload panel data by requesting the panels list
-function reloadPanelsData() {
+function reloadPanelsData(): void {
   Hvac.IdxPage2.reloadPanelsData();
 }
 
 // Create a label for an entry with optional prefix
-function entryLabel(option) {
+function entryLabel(option: any): void {
   Hvac.IdxPage2.entryLabel(option);
 }
 
 // Toggle the lock state of the application
-function lockToggle() {
+function lockToggle(): void {
   Hvac.IdxPage2.lockToggle();
 }
 
 // Handle object click events based on t3Entry type
-function objectClicked(item) {
+function objectClicked(item: any): void {
   Hvac.IdxPage2.objectClicked(item);
 }
 
 // Updates an entry value
-function changeEntryValue(refItem, newVal, control) {
+function changeEntryValue(refItem: any, newVal: any, control: any): void {
   Hvac.IdxPage2.changeEntryValue(refItem, newVal, control);
 }
 
 // Toggles the auto/manual mode of an item
-function autoManualToggle(item) {
+function autoManualToggle(item: any): void {
   Hvac.IdxPage2.autoManualToggle(item);
 }
 
-function ObjectRightClicked(item, ev) {
+function ObjectRightClicked(item: any, ev: MouseEvent): void {
   Hvac.IdxPage2.ObjectRightClicked(item, ev);
 }
 
-function toggleClicked(item, type, ev) {
+function toggleClicked(item: any, type: string, ev: MouseEvent): void {
   Hvac.IdxPage2.toggleClicked(item, type, ev);
 }
 
-function setTheSettingContextMenuVisible() {
+function setTheSettingContextMenuVisible(): void {
   Hvac.IdxPage2.setTheSettingContextMenuVisible();
 }
 
 // Navigate back in the group navigation history
-function navGoBack() {
+function navGoBack(): void {
   Hvac.IdxPage2.navGoBack();
 }
 
 // Remove the latest undo history entry
-function objectSettingsUnchanged() {
+function objectSettingsUnchanged(): void {
   Hvac.IdxPage2.objectSettingsUnchanged();
 }
 
 // Add selected items to the library
-async function addToLibrary() {
+async function addToLibrary(): Promise<void> {
   Hvac.IdxPage2.addToLibrary();
 }
 
 // add new library to t3
-async function addToNewLibrary() {
+async function addToNewLibrary(): Promise<void> {
   Hvac.IdxPage2.addToNewLibrary();
 }
 
 // Bring selected objects to the front by increasing their z-index
-function bringSelectedToFront() {
+function bringSelectedToFront(): void {
   Hvac.IdxPage2.bringSelectedToFront();
 }
 
 // Send selected objects to the back by decreasing their z-index
-function sendSelectedToBack() {
+function sendSelectedToBack(): void {
   Hvac.IdxPage2.sendSelectedToBack();
 }
 
 // Rotate selected objects by 90 degrees
-function rotate90Selected(minues = false) {
+function rotate90Selected(minues: boolean = false): void {
   Hvac.IdxPage2.rotate90Selected(minues);
 }
 
 // Save selected items to the clipboard
-function saveSelectedToClipboard() {
+function saveSelectedToClipboard(): void {
   Hvac.IdxPage2.saveSelectedToClipboard();
 }
 
 // Paste items from the clipboard into the application state
-function pasteFromClipboard() {
+function pasteFromClipboard(): void {
   Hvac.IdxPage2.pasteFromClipboard();
 }
 
 // Deletes a library item
-function deleteLibItem(item) {
+function deleteLibItem(item: any): void {
   Hvac.IdxPage2.deleteLibItem(item);
 }
 
 // Renames a library item
-function renameLibItem(item, name) {
+function renameLibItem(item: any, name: string): void {
   Hvac.IdxPage2.renameLibItem(item, name);
 }
 
 // Deletes a library image
-function deleteLibImage(item) {
+function deleteLibImage(item: any): void {
   Hvac.IdxPage2.deleteLibImage(item);
 }
 
 // Converts an object to a different type
-function convertObjectType(item, type) {
+function convertObjectType(item: any, type: string): void {
   Hvac.IdxPage2.convertObjectType(item, type);
 }
 
-function toggleRulersGrid(val) {
+function toggleRulersGrid(val: any): void {
   Hvac.IdxPage2.toggleRulersGrid(val);
 }
 
 // Handles a tool being dropped
-function toolDropped(ev, tool) {
+function toolDropped(ev: DragEvent, tool: any): void {
   Hvac.IdxPage2.toolDropped(ev, tool);
 }
 
-const updateWeldModel = (weldModel, itemList) => {
+const updateWeldModel = (weldModel: any, itemList: any[]): void => {
   Hvac.IdxPage2.updateWeldModel(weldModel, itemList);
 };
 
-const updateWeldModelCanvas = (weldModel, pathItemList) => {
+const updateWeldModelCanvas = (weldModel: any, pathItemList: any[]): void => {
   Hvac.IdxPage2.updateWeldModelCanvas(weldModel, pathItemList);
 };
 
-function viewportLeftClick(ev) {
+function viewportLeftClick(ev: MouseEvent): void {
   Hvac.IdxPage2.viewportLeftClick(ev);
 }
 
 // Handles a right-click event on the viewport
-function viewportRightClick(ev) {
+function viewportRightClick(ev: MouseEvent): void {
   Hvac.IdxPage2.viewportRightClick(ev);
 }
 
 // Adds the online images to the library
-function addOnlineLibImage(oItem) {
+function addOnlineLibImage(oItem: any): void {
   Hvac.IdxPage2.addOnlineLibImage(oItem);
 }
 </script>
 
-<style>
+<style scoped>
+.full-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-area {
+  display: flex;
+  flex: 1;
+}
+
+.side-bar {
+  /* background-color: #f4f4f4; */
+  width: 106px;
+}
+
+.work-area {
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  width: auto;
+  flex: 1;
+  margin-top: 1px;
+  position: relative;
+}
+
+.document-area {
+  position: relative;
+  /* background-color: #ebeced; */
+  height: 100%;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.c-ruler {
+  width: 20px;
+  height: 20px;
+  /* background-color: #ebeced; */
+  position: absolute;
+  overflow: hidden;
+  left: 1px;
+  top: 1px;
+}
+
+.h-ruler {
+  position: absolute;
+  overflow: hidden;
+  /* background-color: #ebeced; */
+  top: 1px;
+  left: 22px;
+  height: 20px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+}
+
+.v-ruler {
+  position: absolute;
+  overflow: hidden;
+  /* background-color: #ebeced; */
+  width: 20px;
+  left: 1px;
+  top: 22px;
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.hv-grid {
+  position: absolute;
+  /* background-color: #ebeced; */
+  inset: 22px 0px 0px 22px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
+}
+
+.viewport-wrapper {
+  position: relative;
+  background-color: transparent;
+  scrollbar-width: thin;
+  inset: 22px 0px 0px 22px;
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+  overflow: hidden;
+}
+
+.viewport {
+  width: calc(100vw - v-bind("documentAreaPosition.widthOffset"));
+  height: calc(100vh - v-bind("documentAreaPosition.heightOffset"));
+}
+
+.default-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.main-panel {
+  margin-left: 0px;
+  position: absolute;
+  width: 100%;
+}
+
+#main-toolbar {
+  position: fixed;
+  left: 0;
+  padding-top: 0;
+  padding-left: 0px;
+  z-index: 1;
+  width: 100%;
+  max-height: none;
+  height: 93px;
+}
+
+.left-panel {
+  position: fixed;
+  top: 90px;
+  z-index: 1;
+  bottom: 0;
+  left: 0px;
+  right: 0;
+  overflow: hidden;
+  width: 105px;
+  /* border-right: 1px solid #ddd; */
+  z-index: 4;
+}
+
+.main-panel {
+  margin-left: 0px;
+}
+
+#work-area {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: none;
+  padding-left: 105px;
+  margin-top: 93px;
+  width: auto;
+}
+
+#document-area {
+  position: relative;
+  height: 100%;
+}
+
+.document-ruler-corner {
+  width: 20px;
+  height: 20px;
+  user-select: none;
+  left: 99px;
+  top: 0px;
+  overflow: hidden;
+  position: absolute;
+}
+
+.document-ruler-top {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 119px;
+  top: 0px;
+  width: 100%;
+  height: 20px;
+}
+
+.document-ruler-left {
+  overflow: hidden;
+  position: absolute;
+  user-select: none;
+  left: 99px;
+  top: 20px;
+  width: 20px;
+  height: auto;
+}
+
+#svg-area {
+  /* scrollbar-width: thin; */
+  position: absolute;
+  left: 119px;
+  top: 20px;
+  width: 100%;
+  height: auto;
+  overflow: hidden scroll;
+  user-select: none;
+  background-color: #ffffff;
+}
+
+.doc-toolbar {
+  background-color: transparent;
+  bottom: 10px;
+  right: 10px;
+  padding-left: 187px;
+  padding-right: 10px;
+  border: none;
+  display: flex;
+  align-items: flex-end;
+  height: auto;
+  width: auto;
+  position: absolute;
+  left: 0;
+}
+</style>
+
+<style scoped>
 .viewport .selected {
   color: #fff;
   background: #333;
