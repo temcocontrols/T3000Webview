@@ -14,9 +14,12 @@ import AntdUtil from "../UI/AntdUtil";
 
 import {
   isDrawing, selectedTool, lastAction, clipboardFull, topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable,
-  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog, insertCount
+  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog, insertCount,objectsRef,cursorIconPos,continuesObjectTypes,
+  startTransform,snappable,keepRatio,selecto,targets
 } from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
+
+//  let lastAction = null; // Store the last action performed
 
 class IdxPage2 {
 
@@ -2146,6 +2149,103 @@ class IdxPage2 {
     );
     e.setOrigin(["%", "%"]);
     e.dragStart && e.dragStart.set(appState.value.items[itemIndex].translate);
+  }
+
+  // Adds an action to the history for undo/redo functionality
+  addActionToHistory(title) {
+    if (process.env.DEV) {
+      // T3Util.Log(title); // Log the action title in development mode
+    }
+    if (title !== "Move Object") {
+      setTimeout(() => {
+        T3Util.Log("= IdxPage addActionToHistory", title);
+        save(false, false); // Save the current state
+        refreshObjects(); // Refresh objects
+      }, 200);
+    }
+
+    redoHistory.value = []; // Clear redo history
+    undoHistory.value.unshift({
+      title,
+      state: cloneDeep(appState.value),
+    });
+
+    // Maintain a maximum of 20 actions in the undo history
+    if (undoHistory.value.length > 20) {
+      undoHistory.value.pop();
+    }
+  }
+
+  viewportMouseMoved(e) {
+    // Move object icon with mouse
+    cursorIconPos.value.x = e.clientX - viewportMargins.left;
+    cursorIconPos.value.y = e.clientY - viewportMargins.top;
+
+    // T3Util.Log('Viewport mouse moved cursorIconPos:', "mouse",
+
+    const scalPercentage = 1 / appState.value.viewportTransform.scale;
+
+    // process drawing ducts
+    if (
+      isDrawing.value &&
+      continuesObjectTypes.includes(selectedTool.value.name) &&
+      appState.value.activeItemIndex !== null
+    ) {
+      // Check if the Ctrl key is pressed
+      const isCtrlPressed = e.ctrlKey;
+      // Calculate the distance and angle between the initial point and mouse cursor
+      const mouseX = (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) * scalPercentage;
+      const mouseY = (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) * scalPercentage;
+      const dx = mouseX - startTransform.value[0];
+      const dy = mouseY - startTransform.value[1];
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      // Rotate in 5-degree increments when Ctrl is held
+      if (isCtrlPressed) {
+        angle = Math.round(angle / 5) * 5;
+      }
+
+      // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // T3Util.Log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
+
+      // Set the scale and rotation of the drawing line
+      appState.value.items[appState.value.activeItemIndex].rotate = angle;
+      appState.value.items[appState.value.activeItemIndex].width = distance;
+      refreshObjects();
+    }
+  }
+
+  refreshObjects() {
+    if (!objectsRef.value) return;
+    for (const obj of objectsRef.value) {
+      if (!obj.refresh) continue;
+      obj.refresh();
+    }
+  }
+
+  showMoreDevices() {
+
+    // clear the dirty selection data
+    Hvac.DeviceOpt.clearDirtyCurrentDevice();
+
+    deviceModel.value.active = true;
+
+    // clear the shape selection
+    appState.value.selectedTarget = [];
+    appState.value.selectedTargets = [];
+    appState.value.activeItemIndex = null;
+
+    // refresh the graphic panel data
+    Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+  }
+
+  updateDeviceModel(isActive, data) {
+    T3Util.Log('= Idx updateDeviceModel ===', isActive, data)
+    deviceModel.value.active = isActive;
+    deviceModel.value.data = data;
+
   }
 }
 

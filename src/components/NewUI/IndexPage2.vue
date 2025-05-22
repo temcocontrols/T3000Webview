@@ -576,11 +576,9 @@ import AntdTest from "src/components/NewUI/AntdTest.vue";
 
 import {
   topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable, toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue,
-  gaugeSettingsDialog, insertCount
+  gaugeSettingsDialog, insertCount, selectedTool
 } from
   "src/lib/T3000/Hvac/Data/Constant/RefConstant";
-
-// const isBuiltInEdge = ref(false);
 
 // Meta information for the application
 // Set the meta information
@@ -589,18 +587,6 @@ useMeta(metaData);
 
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q = useQuasar(); // Access Quasar framework instance
-const selecto = ref(null); // Reference to the selecto component instance
-const targets = ref([]); // Array of selected targets
-const selectedTool = ref({ ...tools[0], type: "default" }); // Default selected tool
-
-// State variables for drawing and transformations
-const isDrawing = ref(false);
-const startTransform = ref([0, 0]);
-const snappable = ref(true); // Enable snapping for moveable components
-const keepRatio = ref(false); // Maintain aspect ratio for resizing
-
-// List of continuous object types
-const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 
 // State of the import JSON dialog
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
@@ -615,8 +601,6 @@ const loadingPanelsProgress = computed(() => {
 });
 
 const clipboardFull = ref(false); // State of the clipboard
-
-
 const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
@@ -629,53 +613,26 @@ if (process.env.DEV) {
   });
 }
 
-let lastAction = null; // Store the last action performed
-const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
-const objectsRef = ref(null); // Reference to objects
-
-
 // Lifecycle hook for component mount
 onMounted(() => {
-
   Hvac.UI.Initialize($q); // Initialize the HVAC UI
-
   Hvac.IdxPage2.initQuasar($q);
-
   Hvac.IdxPage2.initPage();
 });
 
-
 function updateDeviceModel(isActive, data) {
-  T3Util.Log('= Idx updateDeviceModel ===', isActive, data)
-  deviceModel.value.active = isActive;
-  deviceModel.value.data = data;
-
+  Hvac.IdxPage2.updateDeviceModel(isActive, data);
 }
 
 function showMoreDevices() {
-
-  // clear the dirty selection data
-  Hvac.DeviceOpt.clearDirtyCurrentDevice();
-
-  deviceModel.value.active = true;
-
-  // clear the shape selection
-  appState.value.selectedTarget = [];
-  appState.value.selectedTargets = [];
-  appState.value.activeItemIndex = null;
-
-  // refresh the graphic panel data
-  Hvac.DeviceOpt.refreshGraphicPanelElementCount(deviceModel.value.data);
+  Hvac.IdxPage2.showMoreDevices();
 }
 
-
 onBeforeUnmount(() => {
-
 })
 
 // Lifecycle hook for component unmount
 onUnmounted(() => {
-
   Hvac.IdxPage.clearAutoSaveInterval();
   Hvac.WsClient.clearInitialDataInterval();
   Hvac.IdxPage.clearIdx();
@@ -683,79 +640,17 @@ onUnmounted(() => {
 
 
 function viewportMouseMoved(e) {
-  // Move object icon with mouse
-  cursorIconPos.value.x = e.clientX - viewportMargins.left;
-  cursorIconPos.value.y = e.clientY - viewportMargins.top;
-
-  // T3Util.Log('Viewport mouse moved cursorIconPos:', "mouse",
-
-  const scalPercentage = 1 / appState.value.viewportTransform.scale;
-
-  // process drawing ducts
-  if (
-    isDrawing.value &&
-    continuesObjectTypes.includes(selectedTool.value.name) &&
-    appState.value.activeItemIndex !== null
-  ) {
-    // Check if the Ctrl key is pressed
-    const isCtrlPressed = e.ctrlKey;
-    // Calculate the distance and angle between the initial point and mouse cursor
-    const mouseX = (e.clientX - viewportMargins.left - appState.value.viewportTransform.x) * scalPercentage;
-    const mouseY = (e.clientY - viewportMargins.top - appState.value.viewportTransform.y) * scalPercentage;
-    const dx = mouseX - startTransform.value[0];
-    const dy = mouseY - startTransform.value[1];
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-    // Rotate in 5-degree increments when Ctrl is held
-    if (isCtrlPressed) {
-      angle = Math.round(angle / 5) * 5;
-    }
-
-    // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // T3Util.Log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
-
-    // Set the scale and rotation of the drawing line
-    appState.value.items[appState.value.activeItemIndex].rotate = angle;
-    appState.value.items[appState.value.activeItemIndex].width = distance;
-    refreshObjects();
-  }
+  Hvac.IdxPage2.viewportMouseMoved(e);
 }
-
 
 // Refreshes objects by calling their refresh method, if available
 function refreshObjects() {
-  if (!objectsRef.value) return;
-  for (const obj of objectsRef.value) {
-    if (!obj.refresh) continue;
-    obj.refresh();
-  }
+  Hvac.IdxPage2.refreshObjects();
 }
 
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
-  if (process.env.DEV) {
-    // T3Util.Log(title); // Log the action title in development mode
-  }
-  if (title !== "Move Object") {
-    setTimeout(() => {
-      T3Util.Log("= IdxPage addActionToHistory", title);
-      save(false, false); // Save the current state
-      refreshObjects(); // Refresh objects
-    }, 200);
-  }
-
-  redoHistory.value = []; // Clear redo history
-  undoHistory.value.unshift({
-    title,
-    state: cloneDeep(appState.value),
-  });
-
-  // Maintain a maximum of 20 actions in the undo history
-  if (undoHistory.value.length > 20) {
-    undoHistory.value.pop();
-  }
+  Hvac.IdxPage2.addActionToHistory(title);
 }
 
 // Handles click events on group elements

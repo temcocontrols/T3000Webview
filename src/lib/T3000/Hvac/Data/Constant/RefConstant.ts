@@ -47,12 +47,8 @@ export const gaugeSettingsDialog = ref({
 
 export const insertCount = ref(0);
 
-
-
-
-
-
-
+export const cursorIconPos = ref({ x: 0, y: 0 }); // Position of the cursor icon
+export const objectsRef = ref(null); // Reference to objects
 
 
 
