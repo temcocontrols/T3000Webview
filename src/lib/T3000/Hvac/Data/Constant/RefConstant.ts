@@ -40,3 +40,7 @@ export const toggleNumberDisable = ref(false);
 export const toggleNumberShow = ref(false);
 export const toggleNumberValue = ref(0);
 
+export const gaugeSettingsDialog = ref({
+  active: false,
+  data: { settings: tools.find((tool) => tool.name === "Gauge")?.settings },
+});

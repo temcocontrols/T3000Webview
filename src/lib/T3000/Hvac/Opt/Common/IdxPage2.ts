@@ -3,7 +3,7 @@ import IdxUtils from "./IdxUtils";
 import {
   globalNav, user, emptyLib, library, appState, rulersGridVisible, isBuiltInEdge, documentAreaPosition, savedNotify,
   viewportMargins, viewport, locked, deviceModel, T3_Types, emptyProject, undoHistory, redoHistory, moveable, deviceAppState,
-  globalMsg, grpNav
+  globalMsg, grpNav, T3000_Data
 } from "../../Data/T3Data"
 import { cloneDeep } from "lodash";
 import { toRaw } from "vue";
@@ -14,7 +14,7 @@ import AntdUtil from "../UI/AntdUtil";
 
 import {
   isDrawing, selectedTool, lastAction, clipboardFull, topContextToggleVisible, showSettingMenu, toggleModeValue, toggleValueValue, toggleValueDisable,
-  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue
+  toggleValueShow, toggleNumberDisable, toggleNumberShow, toggleNumberValue, gaugeSettingsDialog
 } from "../../Data/Constant/RefConstant";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
@@ -809,6 +809,10 @@ class IdxPage2 {
     });
   }
 
+  // Remove the latest undo history entry
+  objectSettingsUnchanged() {
+    undoHistory.value.shift();
+  }
 
   // Add selected items to the library
   addToLibrary() {
@@ -871,6 +875,14 @@ class IdxPage2 {
     if (grpNav.value.length > 1) {
       const item = grpNav.value[grpNav.value.length - 2];
 
+      /*
+      window.chrome?.webview?.postMessage({
+        action: 7, // LOAD_GRAPHIC_ENTRY
+        panelId: item.pid,
+        entryIndex: item.index,
+      });
+      */
+
       const message = {
         action: 7, // LOAD_GRAPHIC_ENTRY
         panelId: item.pid,
@@ -884,6 +896,12 @@ class IdxPage2 {
         Hvac.WsClient.LoadGraphicEntry(message);
       }
     } else {
+
+      /*
+      window.chrome?.webview?.postMessage({
+        action: 1, // GET_INITIAL_DATA
+      });
+      */
 
       if (isBuiltInEdge.value) {
         Hvac.WebClient.GetInitialData();
@@ -1183,7 +1201,7 @@ class IdxPage2 {
   executeImportFromJson() {
     const importedState = JSON.parse(importJsonDialog.value.data);
     if (!importedState.items?.[0].type) {
-      $q.notify({
+      this.$q.notify({
         message: "Error, Invalid json file",
         color: "negative",
         icon: "error",
@@ -1201,7 +1219,7 @@ class IdxPage2 {
     }
 
     if (appState.value.items?.length > 0) {
-      $q.dialog({
+      this.$q.dialog({
         dark: true,
         title: "You have unsaved drawing!",
         message: `Before proceeding with the import, please note that any unsaved drawing will be lost,
@@ -1286,6 +1304,157 @@ class IdxPage2 {
 
     // window.chrome?.webview?.postMessage(message);
   }
+
+  toolDropped(ev, tool) {
+    // const size = tool.name === "Int_Ext_Wall" ? { width: 200, height: 10 } : { width: 60, height: 60 };
+    // drawObject(
+    //   //{ width: 60, height: 60 },
+    //   size,
+    //   {
+    //     clientX: ev.clientX,
+    //     clientY: ev.clientY,
+    //     top: ev.clientY,
+    //     left: ev.clientX,
+    //   },
+    //   tool
+    // );
+
+    T3Util.Log("toolDropped->tool", ev, tool);
+  }
+
+  // // Saves the library data to the webview
+  // function saveLib() {
+  //   // Filter out online images and objects from the library
+  //   const libImages = toRaw(library.value.images.filter((item) => !item.online));
+  //   const libObjects = toRaw(library.value.objLib.filter((item) => !item.online));
+
+  //   // Post a message to the webview with the saved data
+  //   window.chrome?.webview?.postMessage({
+  //     action: 10, // SAVE_LIBRARY_DATA
+  //     data: { ...toRaw(library.value), images: libImages, objLib: libObjects },
+  //   });
+  // }
+
+  ungroupSelected() {
+    if (appState.value.selectedTargets.length < 2) return;
+    addActionToHistory("Ungroup the selected objects");
+    if (appState.value.selectedTargets.length > 0) {
+      appState.value.selectedTargets.forEach((el) => {
+        const item = appState.value.items.find(
+          (i) => `moveable-item-${i.id}` === el.id
+        );
+        if (item) {
+          item.group = undefined;
+        }
+      });
+    }
+  }
+
+  groupSelected() {
+    if (appState.value.selectedTargets.length < 2) return;
+    addActionToHistory("Group the selected objects");
+    if (appState.value.selectedTargets.length > 0) {
+      appState.value.groupCount++;
+      appState.value.selectedTargets.forEach((el) => {
+        const item = appState.value.items.find(
+          (i) => `moveable-item-${i.id}` === el.id
+        );
+        if (item) {
+          item.group = appState.value.groupCount;
+        }
+      });
+    }
+  }
+
+  exportToJsonAction() {
+    const content = cloneDeep(toRaw(appState.value));
+    content.selectedTargets = [];
+    content.elementGuidelines = [];
+
+    const a = document.createElement("a");
+    const file = new Blob([JSON.stringify(content)], {
+      type: "application/json",
+    });
+    a.href = URL.createObjectURL(file);
+    a.download = "HVAC_Drawer_Project.json";
+    a.click();
+  }
+
+  // Save the gauge settings and update the app state
+  gaugeSettingsSave(item) {
+    const itemIndex = appState.value.items.findIndex((i) => i.id === item.id);
+    appState.value.items[itemIndex] = item;
+    gaugeSettingsDialog.value.active = false;
+    gaugeSettingsDialog.value.data = {};
+  }
+
+  // Open the gauge settings dialog with the provided item data
+  gaugeSettingsDialogAction(item) {
+    gaugeSettingsDialog.value.active = true;
+    gaugeSettingsDialog.value.data = item;
+  }
+
+  // Read a file and return its data as a promise
+  readFile(file) {
+    return new Promise((resolve, reject) => {
+      var fr = new FileReader();
+      fr.onload = () => {
+        resolve(fr.result);
+      };
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+
+
+  // Weld selected objects into one shape
+  weldSelected() {
+    if (appState.value.selectedTargets.length < 2) return;
+
+    const selectedItems1 = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+
+    if (selectedItems1.some((item) => item.type === "Weld")) {
+      this.$q.notify({
+        type: "warning",
+        message: "Currently not supported!",
+      });
+      return;
+    }
+
+    addActionToHistory("Weld selected objects");
+
+    const selectedItems = appState.value.items.filter((i) =>
+      appState.value.selectedTargets.some(
+        (ii) => ii.id === `moveable-item-${i.id}`
+      )
+    );
+
+    // Check whether the selected items's type are all General
+    const isAllGeneral = selectedItems.every((item) => item.cat === "General");
+    const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+    // T3Util.Log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
+
+    if (isAllGeneral || isAllDuct) {
+      drawWeldObjectCanvas(selectedItems);
+    } else {
+      drawWeldObject(selectedItems);
+    }
+
+    selectedItems.forEach((item) => {
+      const index = appState.value.items.findIndex((i) => i.id === item.id);
+      if (index !== -1) {
+        appState.value.items.splice(index, 1);
+      }
+    });
+
+    Hvac.IdxPage.refreshMoveable();
+  }
+
+
 }
 
 export default IdxPage2;
