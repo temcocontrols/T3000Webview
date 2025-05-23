@@ -7999,6 +7999,10 @@ class OptUtil {
 
     return childLineIds;
   }
+
+  CommentUngroup(commentThreadIds) { }
+
+  CommentGroup(commentThreadIds) { }
 }
 
 export default OptUtil

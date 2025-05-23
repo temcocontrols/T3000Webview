@@ -1505,7 +1505,7 @@ class ToolActUtil {
 
     // Handle comment ungrouping if needed
     if (commentIds.length) {
-      T3Gv.opt.Comment_Ungroup(commentIds);
+      T3Gv.opt.CommentUngroup(commentIds);
     }
 
     // Render all dirty SVG objects

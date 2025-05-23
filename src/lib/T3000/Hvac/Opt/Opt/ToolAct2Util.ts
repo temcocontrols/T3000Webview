@@ -214,7 +214,7 @@ class ToolAct2Util {
 
     // Handle comments
     if (commentIds.length) {
-      T3Gv.opt.Comment_Group(commentIds);
+      T3Gv.opt.CommentGroup(commentIds);
     }
 
     // Update visible shapes list
