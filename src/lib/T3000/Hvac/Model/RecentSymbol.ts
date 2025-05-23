@@ -16,10 +16,10 @@
 //  * // Create a recent symbol with item id 100, a title "Sensor" and no menu flag set to false.
 //  * const recentSymbol = new RecentSymbol(100, "Sensor", false);
 //  *
-//  * T3Util.Log(recentSymbol.ContentTitle);      // "Sensor"
-//  * T3Util.Log(recentSymbol.ContentImageUrl);     // "symbols/BTN/100.png"
-//  * T3Util.Log(recentSymbol.ContentTT);           // "Sensor" (with double quotes replaced if present)
-//  * T3Util.Log(recentSymbol.NoMenu);              // false
+//  * LogUtil.Debug(recentSymbol.ContentTitle);      // "Sensor"
+//  * LogUtil.Debug(recentSymbol.ContentImageUrl);     // "symbols/BTN/100.png"
+//  * LogUtil.Debug(recentSymbol.ContentTT);           // "Sensor" (with double quotes replaced if present)
+//  * LogUtil.Debug(recentSymbol.NoMenu);              // false
 //  * ```
 //  *
 //  * @public

@@ -27,12 +27,12 @@ import OptConstant from '../Data/Constant/OptConstant';
  * @example
  * // Creating an instance of RulerConfig and modifying its properties:
  * const rulerConfig = new RulerConfig();
- * T3Util.Log('Using inches:', rulerConfig.useInches);
+ * LogUtil.Debug('Using inches:', rulerConfig.useInches);
  *
  * // To switch to metric units:
  * rulerConfig.useInches = false;
  * rulerConfig.units = 'Metric'; // You would typically set this using a relevant constant.
- * T3Util.Log('Updated Units:', rulerConfig.units);
+ * LogUtil.Debug('Updated Units:', rulerConfig.units);
  */
 class RulerConfig {
 

@@ -25,9 +25,9 @@ import StateConstant from "../Data/State/StateConstant";
  * };
  * const textObj = new TextObject(sampleData);
  *
- * T3Util.Log(textObj.Type);         // Outputs the constant for TextObject type
- * T3Util.Log(textObj.runtimeText);  // "Sample HVAC Text"
- * T3Util.Log(textObj.selrange);     // { start: 0, end: 16, line: 1 }
+ * LogUtil.Debug(textObj.Type);         // Outputs the constant for TextObject type
+ * LogUtil.Debug(textObj.runtimeText);  // "Sample HVAC Text"
+ * LogUtil.Debug(textObj.selrange);     // { start: 0, end: 16, line: 1 }
  * ```
  *
  * @public

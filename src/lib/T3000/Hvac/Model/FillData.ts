@@ -34,7 +34,7 @@ import NvConstant from '../Data/Constant/NvConstant'
  * fillData.SetPaint(customPaint);
  *
  * // Now fillData.Paint reflects the updated PaintData instance.
- * T3Util.Log(fillData);
+ * LogUtil.Debug(fillData);
  * ```
  */
 class FillData {

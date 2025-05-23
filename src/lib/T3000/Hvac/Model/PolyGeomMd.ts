@@ -28,7 +28,7 @@
  *   5      // numPoints: The polygon consists of 5 points.
  * );
  *
- * T3Util.Log(polygon);
+ * LogUtil.Debug(polygon);
  *
  * @public
  */

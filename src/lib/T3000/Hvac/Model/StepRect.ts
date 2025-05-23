@@ -21,8 +21,8 @@
  * const rect = new StepRect(10, 20, 30, 40);
  *
  * // Access the properties of the rectangle.
- * T3Util.Log(`Horizontal start: ${rect.h}, Vertical start: ${rect.v}`);
- * T3Util.Log(`Horizontal end: ${rect.hend}, Vertical end: ${rect.vend}`);
+ * LogUtil.Debug(`Horizontal start: ${rect.h}, Vertical start: ${rect.v}`);
+ * LogUtil.Debug(`Horizontal end: ${rect.hend}, Vertical end: ${rect.vend}`);
  * ```
  *
  * @public

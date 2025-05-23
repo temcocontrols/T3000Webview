@@ -49,7 +49,7 @@
  * config.spellFlags = true;
  * config.snapToShapes = false;
  *
- * T3Util.Log('Document configuration:', config);
+ * LogUtil.Debug('Document configuration:', config);
  * ```
  */
 class DocConfig {

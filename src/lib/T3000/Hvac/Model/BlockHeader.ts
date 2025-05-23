@@ -21,7 +21,7 @@
  * // Creating a new BlockHeader instance with sample values:
  * const header = new BlockHeader(1, 0.5, 2, 1001, 0, 5);
  *
- * T3Util.Log(header);
+ * LogUtil.Debug(header);
  * // Expected output:
  * // BlockHeader {
  * //   state: 1,

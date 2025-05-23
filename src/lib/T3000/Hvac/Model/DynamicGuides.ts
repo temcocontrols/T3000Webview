@@ -21,7 +21,7 @@
  * guides.below_right = { x: 90, y: 100 };
  *
  * // When configuring your HVAC layout, these guide points can help align components.
- * T3Util.Log('Left-Top Guide:', guides.left_top);
+ * LogUtil.Debug('Left-Top Guide:', guides.left_top);
  * ```
  */
 class DynamicGuides {

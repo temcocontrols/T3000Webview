@@ -15,8 +15,8 @@
  * const fontRecord = new FontRecord();
  *
  * // Access default properties
- * T3Util.Log(fontRecord.fontName);  // Output: "Arial"
- * T3Util.Log(fontRecord.fontSize);  // Output: 10
+ * LogUtil.Debug(fontRecord.fontName);  // Output: "Arial"
+ * LogUtil.Debug(fontRecord.fontSize);  // Output: 10
  *
  * // Modify font properties as needed
  * fontRecord.fontName = "Courier New";

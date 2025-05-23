@@ -27,21 +27,21 @@
  *
  * // Retrieve a canvas shape type constant for a rectangle
  * const rectType = OptConstant.CSType.Rect;
- * T3Util.Log("Rectangle type identifier:", rectType);
+ * LogUtil.Debug("Rectangle type identifier:", rectType);
  *
  * // Determine the event behavior for a shape
  * const eventBehavior = OptConstant.EventBehavior.Normal;
- * T3Util.Log("Normal event behavior:", eventBehavior);
+ * LogUtil.Debug("Normal event behavior:", eventBehavior);
  *
  * // Use an export format constant
  * const exportFormat = OptConstant.ExportType.PNG;
  * if (exportFormat === OptConstant.ExportType.PNG) {
- *   T3Util.Log("Exporting drawing as PNG image.");
+ *   LogUtil.Debug("Exporting drawing as PNG image.");
  * }
  *
  * // Example: Using a system-wide measurement constant
  * const maxCanvasDimension = OptConstant.Common.DimMax;
- * T3Util.Log("Maximum canvas dimension allowed:", maxCanvasDimension);
+ * LogUtil.Debug("Maximum canvas dimension allowed:", maxCanvasDimension);
  *
  * @public
  */

@@ -12,7 +12,7 @@
  * const arrowSizes = new ArrowSizes();
  *
  * // Log the predefined arrow sizes to the console
- * T3Util.Log(arrowSizes.uiarrowSizes); // Output: [2, 4, 6, 1.5, 3, 12, 24]
+ * LogUtil.Debug(arrowSizes.uiarrowSizes); // Output: [2, 4, 6, 1.5, 3, 12, 24]
  */
 class ArrowSizes {
 

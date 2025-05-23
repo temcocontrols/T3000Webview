@@ -28,7 +28,7 @@ import QuickStyle from "./QuickStyle"
  * import { SDGraphDefault } from './path/to/SDGraphDefault';
  *
  * const graphConfig = new SDGraphDefault();
- * T3Util.Log(graphConfig.type); // Expected to log the default graph type (NvConstant.GraphType.Bar)
+ * LogUtil.Debug(graphConfig.type); // Expected to log the default graph type (NvConstant.GraphType.Bar)
  *
  * // Customizing the QuickStyle for the graph title:
  * graphConfig.titleStyle.fontSize = 16;

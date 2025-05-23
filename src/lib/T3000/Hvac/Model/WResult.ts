@@ -25,7 +25,7 @@ import WinSetting from './WinSetting'
  *
  * // Check for processing errors after operations
  * if (result.error !== 0) {
- *   T3Util.LogError(`Processing failed with error code: ${result.error}`);
+ *   LogUtil.DebugError(`Processing failed with error code: ${result.error}`);
  * }
  * ```
  */

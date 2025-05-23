@@ -17,10 +17,10 @@
  * // Initialize a rectangle with a width of 10, height of 20, and both horizontal and vertical distances of 5.
  * const rect = new CRect(10, 20, 5, 5);
  *
- * T3Util.Log(rect.h);     // Output: 10
- * T3Util.Log(rect.v);     // Output: 20
- * T3Util.Log(rect.hdist); // Output: 5
- * T3Util.Log(rect.vdist); // Output: 5
+ * LogUtil.Debug(rect.h);     // Output: 10
+ * LogUtil.Debug(rect.v);     // Output: 20
+ * LogUtil.Debug(rect.hdist); // Output: 5
+ * LogUtil.Debug(rect.vdist); // Output: 5
  * ```
  *
  * @param h - The horizontal measurement of the rectangle. Defaults to 0 if not provided.

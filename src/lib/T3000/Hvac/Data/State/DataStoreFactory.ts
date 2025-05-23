@@ -23,14 +23,14 @@ import DataStore from './DataStore'
  * const store = factory.Create([{ id: 1, name: "Object 1" }, { id: 2, name: "Object 2" }]);
  *
  * // Retrieving objects from the store
- * T3Util.Log(store.Get()); // Output: [{ id: 1, name: "Object 1" }, { id: 2, name: "Object 2" }]
+ * LogUtil.Debug(store.Get()); // Output: [{ id: 1, name: "Object 1" }, { id: 2, name: "Object 2" }]
  *
  * // Updating the store with a new set of objects
  * store.Set([{ id: 3, name: "Object 3" }]);
  *
  * // Clearing the store
  * store.Clear();
- * T3Util.Log(store.Get()); // Output: []
+ * LogUtil.Debug(store.Get()); // Output: []
  *
  * @public
  */

@@ -20,9 +20,9 @@
  *   minHeight: 50,    // Minimum height of 50 units
  * };
  *
- * T3Util.Log(`Text minimum width: ${textSettings.minWidth}`);
- * T3Util.Log(`Text maximum width: ${textSettings.maxWidth}`);
- * T3Util.Log(`Text minimum height: ${textSettings.minHeight}`);
+ * LogUtil.Debug(`Text minimum width: ${textSettings.minWidth}`);
+ * LogUtil.Debug(`Text maximum width: ${textSettings.maxWidth}`);
+ * LogUtil.Debug(`Text minimum height: ${textSettings.minHeight}`);
  * ```
  *
  * @property {number | null} minWidth - The minimum width for text. Use null to indicate no minimum constraint.

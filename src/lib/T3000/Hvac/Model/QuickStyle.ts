@@ -19,7 +19,7 @@ import TextFmtData from './TextFmtData'
  * style.Border.width = 2;       // Example: Set border width to 2 pixels
  * style.Line.style = 'dashed';  // Example: Define the line style as dashed
  * style.Text.font = 'Arial';    // Example: Set text font to Arial
- * T3Util.Log(style);
+ * LogUtil.Debug(style);
  *
  * @remarks
  * This class uses decorators (e.g., @Type) from the class-transformer library to facilitate data transformation

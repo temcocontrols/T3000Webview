@@ -30,7 +30,7 @@
  * rcm.context = 2;
  *
  * // The instance now holds all the necessary data for handling a right-click event.
- * T3Util.Log(rcm);
+ * LogUtil.Debug(rcm);
  * ```
  *
  * @class

@@ -15,7 +15,7 @@
  * ```typescript
  * // Creating a new Link instance connecting target 1 with hook 202 in cell 3
  * const link = new Link(1, 202, 3);
- * T3Util.Log(link);
+ * LogUtil.Debug(link);
  * // Expected output:
  * // Link { targetid: 1, hookid: 202, flags: 0, cellid: 3 }
  * ```

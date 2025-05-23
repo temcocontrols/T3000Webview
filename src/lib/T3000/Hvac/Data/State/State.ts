@@ -44,7 +44,7 @@ import DataStore from './DataStore'
  *
  * // Retrieve a deep copy of the stored objects
  * const currentObjects = hvacState.GetStoredObjects();
- * T3Util.Log(currentObjects);
+ * LogUtil.Debug(currentObjects);
  * ```
  *
  * @public

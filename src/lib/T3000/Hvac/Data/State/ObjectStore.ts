@@ -33,11 +33,11 @@ import StoredObject from "./StoredObject"
  *
  * // Retrieve the block by its ID
  * const retrievedBlock = store.GetObject(newBlockId);
- * T3Util.Log(retrievedBlock);
+ * LogUtil.Debug(retrievedBlock);
  *
  * // Get all stored objects of type 'Sensor'
  * const sensorBlocks = store.GetObjects('Sensor');
- * T3Util.Log(sensorBlocks);
+ * LogUtil.Debug(sensorBlocks);
  *
  * // Delete the block and update current state
  * store.DeleteObject(newBlockId);

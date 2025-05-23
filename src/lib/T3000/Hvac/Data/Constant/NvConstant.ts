@@ -32,7 +32,7 @@
  *
  * // Applying an object flag during a hit test:
  * if (hitCode === NvConstant.HitCodes.Inside) {
- *   T3Util.Log("User clicked inside the object");
+ *   LogUtil.Debug("User clicked inside the object");
  * }
  *
  * @public

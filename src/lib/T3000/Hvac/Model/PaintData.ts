@@ -28,9 +28,9 @@ import NvConstant from '../Data/Constant/NvConstant'
  * const paintData = new PaintData('#FF0000');
  *
  * // Accessing properties
- * T3Util.Log(paintData.Color);         // Expected output: "#FF0000"
- * T3Util.Log(paintData.Opacity);       // Expected output: 1 (default opacity)
- * T3Util.Log(paintData.TextureScale);  // An instance of TextureScale with default values
+ * LogUtil.Debug(paintData.Color);         // Expected output: "#FF0000"
+ * LogUtil.Debug(paintData.Opacity);       // Expected output: 1 (default opacity)
+ * LogUtil.Debug(paintData.TextureScale);  // An instance of TextureScale with default values
  * ```
  *
  * @public

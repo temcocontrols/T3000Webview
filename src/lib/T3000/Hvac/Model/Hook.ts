@@ -12,7 +12,7 @@
  * Here's an example of how to create an instance of Hook:
  * ```typescript
  * const hook = new Hook(1, 100, 2, 50, { x: 10, y: 20 });
- * T3Util.Log(hook.connect); // Output: { x: 10, y: 20 }
+ * LogUtil.Debug(hook.connect); // Output: { x: 10, y: 20 }
  * ```
  *
  * @param objid - Unique identifier for the object. Defaults to 0 if not provided.
