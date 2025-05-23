@@ -302,7 +302,6 @@ class IdxPage2 {
     }
   }
 
-
   // Save data to T3000
   saveToT3000() {
     // Prepare data

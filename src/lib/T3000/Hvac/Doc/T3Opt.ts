@@ -135,15 +135,14 @@ class T3Opt {
     this.userOpt.Initialize();
 
     // Test for SDData object
-    T3Util.Log("= o.T3Opt Initialize - After initialize all and the T3Gv.stdObj loaded from storage data:",
-      T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
+    T3Util.Log("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
 
     // Set the document scale (0.25 to 4)
     const docSetting = DataOpt.LoadDocSettingData();
     const zoomPct = (docSetting?.docInfo?.docScale ?? 1) * 100;
     T3Gv.docUtil.SetZoomLevel(zoomPct);
 
-    T3Util.Log(`= o.T3Opt Initialize - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
+    T3Util.Log(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
   }
 
   Reload() {

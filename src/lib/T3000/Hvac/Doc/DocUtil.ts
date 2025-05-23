@@ -348,7 +348,6 @@ class DocUtil {
    * @returns void
    */
   UpdateWorkArea(adjustVlScrollHeight?: number): void {
-    // Get input values
     const showRulers = this.docConfig.showRulers;
 
     let workAreaSize = this.GetWorkAreaSize();
@@ -533,7 +532,7 @@ class DocUtil {
     const width = $(this.workAreaId).width();
     const height = $(this.workAreaId).height();
     const result = { width, height };
-    T3Util.Log("= U.DocUtil: GetWorkAreaSize - Input/Output:", { workAreaId: this.workAreaId }, result);
+    LogUtil.Debug("= u.DocUtil: GetWorkAreaSize/ - Input/Output:", { workAreaId: this.workAreaId }, result);
     return result;
   }
 
@@ -613,12 +612,9 @@ class DocUtil {
    * @returns void
    */
   HandleResizeEvent(): void {
-    T3Util.Log("= U.DocUtil: HandleResizeEvent - Input: Window resize detected");
-
     // Update work area dimensions and layout
     this.UpdateWorkArea();
-
-    T3Util.Log("= U.DocUtil: HandleResizeEvent - Output: Work area updated");
+    LogUtil.Debug("= u.DocUtil: HandleResizeEvent/ - Input/Output: Work area updated");
   }
 
   /**

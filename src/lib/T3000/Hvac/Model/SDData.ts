@@ -165,7 +165,7 @@ class SDData {
     const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 
     // Set the default dim to screen width and height
-    this.dim = { x: 1000, y: 750 };
+    this.dim = { x: screenWidth, y: screenHeight };
     // this.dim = { x: screenWidth, y: screenHeight };
 
     this.Type = StateConstant.StoredObjectType.SDDataObject;
