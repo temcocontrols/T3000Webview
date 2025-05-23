@@ -28,7 +28,7 @@ class ToolAct2Util {
   GroupSelectedShapes(action, customSelectionList, useAllShapes, skipRender, enableCollaboration) {
     let index, currentObject;
     let hasNoRotateObject = false;
-    let commentIDs = [];
+    let commentIds = [];
 
     // Get either all visible shapes or just selected shapes based on parameters
     let visibleShapes = LayerUtil.ActiveVisibleZList();
@@ -118,8 +118,8 @@ class ToolAct2Util {
       shape = ObjectUtil.GetObjectPtr(shapesToGroup[index], true);
 
       // Track comments
-      if (shape.CommentID >= 0) {
-        commentIDs.push(shape.CommentID);
+      if (shape.commentId >= 0) {
+        commentIds.push(shape.commentId);
       }
 
       // Adjust frame position
@@ -213,8 +213,8 @@ class ToolAct2Util {
     }
 
     // Handle comments
-    if (commentIDs.length) {
-      T3Gv.opt.Comment_Group(commentIDs);
+    if (commentIds.length) {
+      T3Gv.opt.Comment_Group(commentIds);
     }
 
     // Update visible shapes list
@@ -291,8 +291,8 @@ class ToolAct2Util {
     for (i = 0; i < shapeCount; ++i) {
       currentShape = ObjectUtil.GetObjectPtr(shapesInGroup[i], true);
 
-      if (currentShape.CommentID >= 0) {
-        commentIds.push(currentShape.CommentID);
+      if (currentShape.commentId >= 0) {
+        commentIds.push(currentShape.commentId);
       }
 
       if (currentShape instanceof Instance.Shape.ShapeContainer) {

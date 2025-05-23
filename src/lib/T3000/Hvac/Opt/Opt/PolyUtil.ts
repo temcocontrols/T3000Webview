@@ -1099,8 +1099,8 @@ class PolyUtil {
     noteId = sourceObject.NoteID;
     if (targetObject.NoteID >= 0) noteId = targetObject.NoteID;
 
-    commentId = sourceObject.CommentID;
-    if (targetObject.CommentID >= 0) commentId = targetObject.CommentID;
+    commentId = sourceObject.commentId;
+    if (targetObject.commentId >= 0) commentId = targetObject.commentId;
 
     hyperlinkText = sourceObject.HyperlinkText;
     if (targetObject.HyperlinkText) hyperlinkText = targetObject.HyperlinkText;
@@ -1689,14 +1689,14 @@ class PolyUtil {
         );
       }
 
-      // Transfer CommentID
-      if (mainPolyline && mainPolyline.CommentID < 0) {
-        mainPolyline.CommentID = commentId;
+      // Transfer commentId
+      if (mainPolyline && mainPolyline.commentId < 0) {
+        mainPolyline.commentId = commentId;
 
-        if (sourceObject.CommentID === commentId) {
-          sourceObject.CommentID = -1;
-        } else if (targetObject.CommentID === commentId) {
-          targetObject.CommentID = -1;
+        if (sourceObject.commentId === commentId) {
+          sourceObject.commentId = -1;
+        } else if (targetObject.commentId === commentId) {
+          targetObject.commentId = -1;
         }
 
         mainPolyline.TextFlags = Utils2.SetFlag(

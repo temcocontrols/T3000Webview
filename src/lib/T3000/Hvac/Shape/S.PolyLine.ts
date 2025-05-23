@@ -4531,7 +4531,7 @@ class PolyLine extends BaseLine {
       OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
     }
 
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
+    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
       ObjectUtil.AddToDirtyList(this.BlockID);
     }
 

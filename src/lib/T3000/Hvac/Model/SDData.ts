@@ -5,7 +5,6 @@ import 'reflect-metadata'
 import RulerConfig from "./RulerConfig"
 import PageSetting from "./PageSetting"
 import NvConstant from "../Data/Constant/NvConstant"
-// import RecentSymbol from "./RecentSymbol"
 import FillData from "./FillData"
 import SDDefault from './SDDefault'
 import SDGraphDefault from './SDGraphDefault'
@@ -85,8 +84,8 @@ import OptConstant from '../Data/Constant/OptConstant'
  * @property {RulerConfig} rulerConfig - Configuration settings for on-screen rulers.
  * @property {PageSetting} Page - Represents the page setting associated with the session.
  *
- * @property {number} CommentListID - Identifier for the comment list associated with the session.
- * @property {number} CommentID - Identifier for a specific comment within the session.
+ * @property {number} commentListId - Identifier for the comment list associated with the session.
+ * @property {number} commentId - Identifier for a specific comment within the session.
  */
 
 class SDData {
@@ -147,11 +146,8 @@ class SDData {
   @Type(() => PageSetting)
   public Page: PageSetting;
 
-  // @Type(() => RecentSymbol)
-  // public RecentSymbols: RecentSymbol[];
-
-  public CommentListID: number;
-  public CommentID: number;
+  public commentListId: number;
+  public commentId: number;
 
   //#endregion
 
@@ -166,7 +162,7 @@ class SDData {
 
     // Set the default dim to screen width and height
     this.dim = { x: screenWidth, y: screenHeight };
-    // this.dim = { x: screenWidth, y: screenHeight };
+    // this.dim = { x: 1000, y: 750 };
 
     this.Type = StateConstant.StoredObjectType.SDDataObject;
     this.flags = OptConstant.SessionFlags.LLink | OptConstant.SessionFlags.FreeHand | OptConstant.SessionFlags.NoTreeOverlap;
@@ -211,9 +207,8 @@ class SDData {
     this.EnableSpellCheck = true;
     this.rulerConfig = new RulerConfig();
     this.Page = new PageSetting();
-    // this.RecentSymbols = [];
-    this.CommentListID = -1;
-    this.CommentID = -1;
+    this.commentListId = -1;
+    this.commentId = -1;
 
     //#endregion
   }

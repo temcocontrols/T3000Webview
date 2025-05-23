@@ -137,7 +137,7 @@ class BaseDrawObject {
   public ImageID: number;
   public ContentType: number;
   public ContentID: number;
-  public CommentID: number;
+  public commentId: number;
   public TextParams: any;
   public TextGrow: number;
   public TextAlign: any;
@@ -264,7 +264,7 @@ class BaseDrawObject {
     this.ImageID = config.ImageID || -1;
     this.ContentType = config.ContentType || OptConstant.ContentType.None;
     this.ContentID = config.ContentID || -1;
-    this.CommentID = config.CommentID || -1;
+    this.commentId = config.commentId || -1;
     this.TextParams = config.TextParams || null;
     this.TextGrow = config.TextGrow || NvConstant.TextGrowBehavior.ProPortional;
     this.TextAlign = config.TextAlign || TextConstant.TextAlign.Center;
@@ -1126,7 +1126,7 @@ class BaseDrawObject {
       BlobBytesID: this.BlobBytesID,
       EMFBlobBytesID: this.EMFBlobBytesID,
       OleBlobBytesID: this.OleBlobBytesID,
-      CommentID: this.CommentID
+      commentId: this.commentId
     });
 
     let tempObj: any = null;
@@ -1215,7 +1215,7 @@ class BaseDrawObject {
     }
 
     // Delete comment object if applicable
-    if (this.CommentID >= 0) {
+    if (this.commentId >= 0) {
       T3Gv.opt.CommentObjectDelete(this);
     }
 
@@ -5316,7 +5316,7 @@ class BaseDrawObject {
       this.nIcons = 0;
       if (!this.bInGroup) {
         // Comment icon
-        if (this.CommentID >= 0) {
+        if (this.commentId >= 0) {
           iconParams.iconID = OptConstant.ShapeIconType.Comment;
           iconParams.imageURL = Constants.FilePath_Icons + Constants.Icon_Comment;
           const commentIcon = this.AddIcon(svgDoc, container, iconParams);

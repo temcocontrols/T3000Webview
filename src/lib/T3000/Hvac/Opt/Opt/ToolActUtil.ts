@@ -1382,8 +1382,8 @@ class ToolActUtil {
       const currentShape = ObjectUtil.GetObjectPtr(shapesInGroup[index], true);
 
       // Track comment IDs
-      if (currentShape.CommentID >= 0) {
-        commentIds.push(currentShape.CommentID);
+      if (currentShape.commentId >= 0) {
+        commentIds.push(currentShape.commentId);
       }
 
       // Track container objects

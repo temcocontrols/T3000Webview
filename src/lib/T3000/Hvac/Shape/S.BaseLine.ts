@@ -1413,7 +1413,7 @@ class BaseLine extends BaseDrawObject {
 
     this.LMActionPostRelease(T3Gv.opt.actionStoredObjectId);
 
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
+    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
       ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
     }
 
@@ -1729,7 +1729,7 @@ class BaseLine extends BaseDrawObject {
     this.LMActionPreTrack(actionStoredObjectID, actionTriggerID);
     T3Gv.opt.actionSvgObject = T3Gv.opt.svgObjectLayer.GetElementById(actionStoredObjectID);
 
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
+    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
       this.HideAllIcons(T3Gv.opt.svgDoc, T3Gv.opt.actionSvgObject);
     }
 
@@ -4959,7 +4959,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     // If hyperlink, note, comment, or field data exists, add this block to the dirty list
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
+    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
       ObjectUtil.AddToDirtyList(this.BlockID);
       T3Util.Log("= S.BaseLine: Added BlockID to dirty list", this.BlockID);
     }
