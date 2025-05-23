@@ -8,6 +8,7 @@ import NvConstant from '../Data/Constant/NvConstant'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents an SVG foreignObject shape that can contain HTML content and Vue components.
@@ -37,8 +38,8 @@ class ForeignObject extends BaseShape {
    * @param options - Configuration options for the foreign object
    */
   constructor(options: any) {
-    T3Util.Log("= S.ForeignObject Input:", options);
-    T3Util.Log("= S.ForeignObject Input:", options);
+    LogUtil.Debug("= S.ForeignObject Input:", options);
+    LogUtil.Debug("= S.ForeignObject Input:", options);
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.ForeignObject;
 
@@ -53,7 +54,7 @@ class ForeignObject extends BaseShape {
     this.vueProps = options.vueProps || {};
     this.htmlContent = options.htmlContent || null;
 
-    T3Util.Log("= S.ForeignObject Created instance:", this);
+    LogUtil.Debug("= S.ForeignObject Created instance:", this);
   }
 
   /**
@@ -148,8 +149,8 @@ class ForeignObject extends BaseShape {
 
           // Try to reload the component by name
           if (componentName) {
-            T3Util.Log(`Attempting to load component by name: ${componentName}`);
-            T3Util.Log(`this.vueProps:  `,this.vueProps);
+            LogUtil.Debug(`Attempting to load component by name: ${componentName}`);
+            LogUtil.Debug(`this.vueProps:  `,this.vueProps);
 
             // You may need to implement a mapping from component names to import paths
             let possiblePath = `../../../../components/${componentName}.vue`;
@@ -217,7 +218,7 @@ class ForeignObject extends BaseShape {
    * Uses rectangular boundary like Rect shape
    */
   GetPolyPoints(event, type, arg, rect, index) {
-    T3Util.Log("= S.ForeignObject GetPolyPoints Input:", { event, type, arg, rect, index });
+    LogUtil.Debug("= S.ForeignObject GetPolyPoints Input:", { event, type, arg, rect, index });
 
     // Use the same polygon points as a rectangle
     const points = [];
@@ -243,7 +244,7 @@ class ForeignObject extends BaseShape {
       }
     }
 
-    T3Util.Log("= S.ForeignObject GetPolyPoints Output:", points);
+    LogUtil.Debug("= S.ForeignObject GetPolyPoints Output:", points);
     return points;
   }
 
@@ -252,12 +253,12 @@ class ForeignObject extends BaseShape {
    * @param content - HTML content as string or element
    */
   SetHtmlContent(content: string | HTMLElement) {
-    T3Util.Log("= S.ForeignObject SetHtmlContent Input:", content);
+    LogUtil.Debug("= S.ForeignObject SetHtmlContent Input:", content);
     this.htmlContent = content;
     this.vueComponent = null;
     this.vueProps = {};
     this.vueInstance = null;
-    T3Util.Log("= S.ForeignObject SetHtmlContent Output: Updated content");
+    LogUtil.Debug("= S.ForeignObject SetHtmlContent Output: Updated content");
     return true;
   }
 
@@ -267,11 +268,11 @@ class ForeignObject extends BaseShape {
    * @param props - Props to pass to the component
    */
   SetVueComponent(vueComponent: any, props: any = {}) {
-    T3Util.Log("= S.ForeignObject SetVueComponent Input:", { component: vueComponent, props });
+    LogUtil.Debug("= S.ForeignObject SetVueComponent Input:", { component: vueComponent, props });
     this.vueComponent = vueComponent;
     this.vueProps = props || {};
     this.htmlContent = null;
-    T3Util.Log("= S.ForeignObject SetVueComponent Output: Updated component");
+    LogUtil.Debug("= S.ForeignObject SetVueComponent Output: Updated component");
     return true;
   }
 
@@ -297,7 +298,7 @@ class ForeignObject extends BaseShape {
    * Override SetShapeProperties to handle foreign object specific properties
    */
   SetShapeProperties(properties: any) {
-    T3Util.Log("= S.ForeignObject SetShapeProperties Input:", properties);
+    LogUtil.Debug("= S.ForeignObject SetShapeProperties Input:", properties);
 
     let updated = false;
 
@@ -320,7 +321,7 @@ class ForeignObject extends BaseShape {
       updated = true;
     }
 
-    T3Util.Log("= S.ForeignObject SetShapeProperties Output:", updated);
+    LogUtil.Debug("= S.ForeignObject SetShapeProperties Output:", updated);
     return updated;
   }
 
@@ -328,7 +329,7 @@ class ForeignObject extends BaseShape {
    * Clean up resources when element is removed or destroyed
    */
   RemoveElement() {
-    T3Util.Log("= S.ForeignObject RemoveElement");
+    LogUtil.Debug("= S.ForeignObject RemoveElement");
 
     // Clean up Vue instance if one exists
     if (this.vueInstance) {
@@ -351,7 +352,7 @@ class ForeignObject extends BaseShape {
    * Override LMActionPostRelease to handle Vue component refresh after resizing
    */
   LMActionPostRelease(objectId: number) {
-    T3Util.Log("= S.ForeignObject LMActionPostRelease Input:", objectId);
+    LogUtil.Debug("= S.ForeignObject LMActionPostRelease Input:", objectId);
 
     // Call parent implementation first
     super.LMActionPostRelease(objectId);
@@ -368,12 +369,12 @@ class ForeignObject extends BaseShape {
         if (foreignObj) {
           // Re-mount the Vue component with current props to refresh after resize
           foreignObj.MountVueComponent(this.vueComponent, this.vueProps);
-          T3Util.Log("= S.ForeignObject LMActionPostRelease: Vue component refreshed");
+          LogUtil.Debug("= S.ForeignObject LMActionPostRelease: Vue component refreshed");
         }
       }
     }
 
-    T3Util.Log("= S.ForeignObject LMActionPostRelease Output: completed");
+    LogUtil.Debug("= S.ForeignObject LMActionPostRelease Output: completed");
   }
 }
 

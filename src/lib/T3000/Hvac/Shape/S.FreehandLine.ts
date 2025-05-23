@@ -783,7 +783,7 @@ class FreehandLine extends BaseLine {
    * @param mouseY - The Y coordinate where the drawing starts
    */
   LMDrawClick(mouseX, mouseY) {
-    T3Util.Log('ListManager.FreehandLine.prototype.LMDrawClick e, t=>', mouseX, mouseY);
+    LogUtil.Debug('ListManager.FreehandLine.prototype.LMDrawClick e, t=>', mouseX, mouseY);
 
     try {
       this.Frame.x = mouseX;

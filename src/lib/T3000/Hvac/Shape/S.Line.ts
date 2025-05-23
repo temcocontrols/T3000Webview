@@ -19,6 +19,7 @@ import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a line shape in the T3000 HVAC drawing system.
@@ -102,7 +103,7 @@ class Line extends BaseLine {
   }
 
   GetLineShapePolyPoints(numPoints: number, adjustForFrame: boolean) {
-    T3Util.Log('S.Line - Input:', { numPoints, adjustForFrame });
+    LogUtil.Debug('S.Line - Input:', { numPoints, adjustForFrame });
 
     let points: Point[] = [];
     let shapeParam = this.shapeparam;
@@ -205,12 +206,12 @@ class Line extends BaseLine {
       }
     }
 
-    T3Util.Log('S.Line - Output:', points);
+    LogUtil.Debug('S.Line - Output:', points);
     return points;
   }
 
   CreateShape(svgContainer, isHidden) {
-    T3Util.Log('S.Line - Input:', { svgContainer, isHidden });
+    LogUtil.Debug('S.Line - Input:', { svgContainer, isHidden });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) return null;
 
@@ -319,12 +320,12 @@ class Line extends BaseLine {
     shapeContainer.isShape = true;
     this.AddIcons(svgContainer, shapeContainer);
 
-    T3Util.Log('S.Line - Output:', shapeContainer);
+    LogUtil.Debug('S.Line - Output:', shapeContainer);
     return shapeContainer;
   }
 
   SetCursors() {
-    T3Util.Log('S.Line - Input:', { crtOpt: T3Gv.opt.crtOpt });
+    LogUtil.Debug('S.Line - Input:', { crtOpt: T3Gv.opt.crtOpt });
 
     let shapeElement;
     const shapeContainer = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
@@ -338,11 +339,11 @@ class Line extends BaseLine {
       this.BaseDrawingObjectSetCursors();
     }
 
-    T3Util.Log('S.Line - Output:', { shapeElement });
+    LogUtil.Debug('S.Line - Output:', { shapeElement });
   }
 
   BaseDrawingObjectSetCursors() {
-    T3Util.Log('S.Line - Input:', { BlockID: this.BlockID, flags: this.flags });
+    LogUtil.Debug('S.Line - Input:', { BlockID: this.BlockID, flags: this.flags });
 
     const shapeContainer = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     let isDimensionTextActive = false;
@@ -408,11 +409,11 @@ class Line extends BaseLine {
       }
     }
 
-    T3Util.Log('S.Line - Output:', { shapeContainer, isDimensionTextActive });
+    LogUtil.Debug('S.Line - Output:', { shapeContainer, isDimensionTextActive });
   }
 
   AdjustLineStart(svgContainer, startX, startY, endX, endY, enforceMinimum) {
-    T3Util.Log('S.Line - Input:', { svgContainer, startX, startY, endX, endY, enforceMinimum });
+    LogUtil.Debug('S.Line - Input:', { svgContainer, startX, startY, endX, endY, enforceMinimum });
 
     let points = [];
     let shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
@@ -525,11 +526,11 @@ class Line extends BaseLine {
       this.LMResizeSVGTextObject(svgContainer, this, this.Frame);
     }
 
-    T3Util.Log('S.Line - Output:', { shapeElement, slopElement, points });
+    LogUtil.Debug('S.Line - Output:', { shapeElement, slopElement, points });
   }
 
   AdjustLineEnd(svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap) {
-    T3Util.Log("S.Connector - Input:", { svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap });
+    LogUtil.Debug("S.Connector - Input:", { svgContainer, newEndPointX, newEndPointY, unusedParam, forceAngleSnap });
 
     let points = [];
     let shapeElement, slopElement;
@@ -656,14 +657,14 @@ class Line extends BaseLine {
       }
     }
 
-    T3Util.Log("S.Connector - Output:", {
+    LogUtil.Debug("S.Connector - Output:", {
       shapeElement: svgContainer ? svgContainer.GetElementById(OptConstant.SVGElementClass.Shape) : null,
       slopElement: svgContainer ? svgContainer.GetElementById(OptConstant.SVGElementClass.Slop) : null
     });
   }
 
   Flip(flipFlags: number) {
-    T3Util.Log('S.Line - Input:', { flipFlags });
+    LogUtil.Debug('S.Line - Input:', { flipFlags });
 
     let temp;
     let swapped = false;
@@ -703,11 +704,11 @@ class Line extends BaseLine {
     }
 
     T3Gv.opt.ob = {};
-    T3Util.Log('S.Line - Output:', { swapped });
+    LogUtil.Debug('S.Line - Output:', { swapped });
   }
 
   AddCorner(event, point) {
-    T3Util.Log('S.Line - Input:', { event, point });
+    LogUtil.Debug('S.Line - Input:', { event, point });
 
     let angle, rotatedPoints, newPoints = [], tempPoints = [], isStartPoint = false;
     T3Gv.opt.ob = Utils1.DeepCopy(this);
@@ -788,11 +789,11 @@ class Line extends BaseLine {
       DrawUtil.CompleteOperation(null);
     }
 
-    T3Util.Log('S.Line - Output:', { newPoints, tempPoints, isStartPoint });
+    LogUtil.Debug('S.Line - Output:', { newPoints, tempPoints, isStartPoint });
   }
 
   UseEdges(enableX: boolean, enableY: boolean, alignX: boolean, alignY: boolean, startPoint: Point, endPoint: Point) {
-    T3Util.Log('S.Line - Input:', { enableX, enableY, alignX, alignY, startPoint, endPoint });
+    LogUtil.Debug('S.Line - Input:', { enableX, enableY, alignX, alignY, startPoint, endPoint });
 
     let offsetX = 0, offsetY = 0, newWidth = 0, newHeight = 0, deltaX = 0, deltaY = 0;
     let shouldAdjust = false;
@@ -846,7 +847,7 @@ class Line extends BaseLine {
       ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    T3Util.Log('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });
+    LogUtil.Debug('S.Line - Output:', { offsetX, offsetY, newWidth, newHeight, deltaX, deltaY, shouldAdjust });
     return shouldAdjust;
   }
 }

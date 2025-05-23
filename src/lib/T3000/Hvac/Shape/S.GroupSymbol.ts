@@ -21,6 +21,7 @@ import T3Util from '../Util/T3Util';
 import DSUtil from '../Opt/DS/DSUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a group symbol that contains multiple shapes treated as a single entity.
@@ -75,26 +76,26 @@ class GroupSymbol extends BaseSymbol {
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.GroupSymbol;
     options.flags = NvConstant.ObjFlags.ImageOnly;
-    T3Util.Log('S.GroupSymbol - Input options:', options);
+    LogUtil.Debug('S.GroupSymbol - Input options:', options);
     super(options);
-    T3Util.Log('S.GroupSymbol - GroupSymbol created');
+    LogUtil.Debug('S.GroupSymbol - GroupSymbol created');
   }
 
   CreateShape(svgDocument, shapeOptions) {
-    T3Util.Log("S.GroupSymbol - CreateShape input:", { svgDocument, shapeOptions });
+    LogUtil.Debug("S.GroupSymbol - CreateShape input:", { svgDocument, shapeOptions });
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("S.GroupSymbol - CreateShape output:", null);
+      LogUtil.Debug("S.GroupSymbol - CreateShape output:", null);
       return null;
     }
     // Retrieve any style override if present
     this.GetFieldDataStyleOverride();
     const shapeContainer = svgDocument.CreateShape(OptConstant.CSType.ShapeContainer);
-    T3Util.Log("S.GroupSymbol - CreateShape output:", shapeContainer);
+    LogUtil.Debug("S.GroupSymbol - CreateShape output:", shapeContainer);
     return shapeContainer;
   }
 
   PostCreateShapeCallback(svgDocument, groupElement, eventSettings, extraFlags) {
-    T3Util.Log("S.GroupSymbol - PostCreateShapeCallback input:", {
+    LogUtil.Debug("S.GroupSymbol - PostCreateShapeCallback input:", {
       svgDocument,
       groupElement,
       eventSettings,
@@ -199,17 +200,17 @@ class GroupSymbol extends BaseSymbol {
       this.AddIcons(svgDocument, groupElement);
       this.ApplyEffects(groupElement, false, false);
     }
-    T3Util.Log("S.GroupSymbol - PostCreateShapeCallback output executed");
+    LogUtil.Debug("S.GroupSymbol - PostCreateShapeCallback output executed");
   }
 
   SetObjectStyle(styleOptions: any) {
-    T3Util.Log("S.GroupSymbol - SetObjectStyle input:", styleOptions);
+    LogUtil.Debug("S.GroupSymbol - SetObjectStyle input:", styleOptions);
     if (!styleOptions.ImageURL || styleOptions.ImageURL === '') {
       const filteredStyle = T3Gv.opt.ApplyColorFilter(styleOptions, this, this.StyleRecord, this.colorfilter);
       T3Gv.opt.ApplyGroupProperties(filteredStyle, this);
-      T3Util.Log("S.GroupSymbol - SetObjectStyle output: Applied color filter and group properties");
+      LogUtil.Debug("S.GroupSymbol - SetObjectStyle output: Applied color filter and group properties");
     } else {
-      T3Util.Log("S.GroupSymbol - SetObjectStyle output: No changes applied since ImageURL exists");
+      LogUtil.Debug("S.GroupSymbol - SetObjectStyle output: No changes applied since ImageURL exists");
     }
   }
 
@@ -223,7 +224,7 @@ class GroupSymbol extends BaseSymbol {
     parentElementOverride: any,
     forceUpdate: any
   ) {
-    T3Util.Log("S.GroupSymbol - ChangeTextAttributes input:", {
+    LogUtil.Debug("S.GroupSymbol - ChangeTextAttributes input:", {
       textContent,
       styleOptions,
       textAlignment,
@@ -328,11 +329,11 @@ class GroupSymbol extends BaseSymbol {
         this.ConvertToNative(T3Gv.opt.richGradients, false);
       }
     }
-    T3Util.Log("S.GroupSymbol - ChangeTextAttributes output executed");
+    LogUtil.Debug("S.GroupSymbol - ChangeTextAttributes output executed");
   }
 
   GetTextures(textureList: any): void {
-    T3Util.Log("S.GroupSymbol - GetTextures input:", textureList);
+    LogUtil.Debug("S.GroupSymbol - GetTextures input:", textureList);
     const totalShapes = this.ShapesInGroup.length;
     for (let index = 0; index < totalShapes; index++) {
       const shapeObject = ObjectUtil.GetObjectPtr(this.ShapesInGroup[index], false);
@@ -340,11 +341,11 @@ class GroupSymbol extends BaseSymbol {
         shapeObject.GetTextures(textureList);
       }
     }
-    T3Util.Log("S.GroupSymbol - GetTextures output executed");
+    LogUtil.Debug("S.GroupSymbol - GetTextures output executed");
   }
 
   Resize(svgElement, newDimensions, resizeInfo) {
-    T3Util.Log("S.GroupSymbol - Resize input:", { svgElement, newDimensions, resizeInfo });
+    LogUtil.Debug("S.GroupSymbol - Resize input:", { svgElement, newDimensions, resizeInfo });
 
     const rotation = svgElement.GetRotation();
     const previousBoundingBox = $.extend(true, {}, this.prevBBox);
@@ -369,19 +370,19 @@ class GroupSymbol extends BaseSymbol {
     svgElement.SetRotation(rotation);
     this.UpdateDimensionLines(svgElement);
 
-    T3Util.Log("S.GroupSymbol - Resize output:", offset);
+    LogUtil.Debug("S.GroupSymbol - Resize output:", offset);
     return offset;
   }
 
   CreateActionTriggers(svgDocument, triggerType, shapeOptions, actionRequest) {
-    T3Util.Log("S.GroupSymbol - CreateActionTriggers input:", { svgDocument, triggerType, shapeOptions, actionRequest });
+    LogUtil.Debug("S.GroupSymbol - CreateActionTriggers input:", { svgDocument, triggerType, shapeOptions, actionRequest });
     const actionTriggers = this.BaseShapeCreateActionTriggers(svgDocument, triggerType, shapeOptions, actionRequest);
-    T3Util.Log("S.GroupSymbol - CreateActionTriggers output:", actionTriggers);
+    LogUtil.Debug("S.GroupSymbol - CreateActionTriggers output:", actionTriggers);
     return actionTriggers;
   }
 
   BaseShapeCreateActionTriggers(svgDocument, triggerType, shapeOptions, actionRequest) {
-    T3Util.Log("S.GroupSymbol - BaseShapeCreateActionTriggers input:", { svgDocument, triggerType, shapeOptions, actionRequest });
+    LogUtil.Debug("S.GroupSymbol - BaseShapeCreateActionTriggers input:", { svgDocument, triggerType, shapeOptions, actionRequest });
 
     // Define the list of resize cursors in a clockwise order starting from the top-left
     const resizeCursorList = [
@@ -658,7 +659,7 @@ class GroupSymbol extends BaseSymbol {
     actionTriggerGroup.isShape = true;
     actionTriggerGroup.SetID(OptConstant.Common.Action + triggerType);
 
-    T3Util.Log("S.GroupSymbol - BaseShapeCreateActionTriggers output:", actionTriggerGroup);
+    LogUtil.Debug("S.GroupSymbol - BaseShapeCreateActionTriggers output:", actionTriggerGroup);
     return actionTriggerGroup;
   }
 
@@ -667,31 +668,31 @@ class GroupSymbol extends BaseSymbol {
   // }
 
   ContainsText(): boolean {
-    T3Util.Log("S.GroupSymbol - ContainsText input:", {
+    LogUtil.Debug("S.GroupSymbol - ContainsText input:", {
       DataID: this.DataID,
       BlockID: this.BlockID,
       ShapesCount: this.ShapesInGroup.length
     });
 
     if (this.DataID >= 0) {
-      T3Util.Log("S.GroupSymbol - ContainsText output:", false);
+      LogUtil.Debug("S.GroupSymbol - ContainsText output:", false);
       return false;
     }
 
     for (let index = 0; index < this.ShapesInGroup.length; index++) {
       const shapeObject = ObjectUtil.GetObjectPtr(this.ShapesInGroup[index], false);
       if (shapeObject.ContainsText()) {
-        T3Util.Log("S.GroupSymbol - ContainsText output:", true);
+        LogUtil.Debug("S.GroupSymbol - ContainsText output:", true);
         return true;
       }
     }
 
-    T3Util.Log("S.GroupSymbol - ContainsText output:", false);
+    LogUtil.Debug("S.GroupSymbol - ContainsText output:", false);
     return false;
   }
 
   ConvertToNative(richGradients: any, shouldReturnBuffer: boolean) {
-    T3Util.Log('S.GroupSymbol - ConvertToNative input:', { richGradients, shouldReturnBuffer });
+    LogUtil.Debug('S.GroupSymbol - ConvertToNative input:', { richGradients, shouldReturnBuffer });
 
     let preservedBlock: any;
     const result = new WResult();
@@ -720,7 +721,7 @@ class GroupSymbol extends BaseSymbol {
 
       const buffer = ShapeUtil.WriteBuffer(result, true, true, true);
       if (shouldReturnBuffer === true) {
-        T3Util.Log('S.GroupSymbol - ConvertToNative output:', buffer);
+        LogUtil.Debug('S.GroupSymbol - ConvertToNative output:', buffer);
         return buffer;
       }
 
@@ -737,14 +738,14 @@ class GroupSymbol extends BaseSymbol {
           this.NativeID = preservedBlock.ID;
         }
       }
-      T3Util.Log('S.GroupSymbol - ConvertToNative output:', { preservedBlock });
+      LogUtil.Debug('S.GroupSymbol - ConvertToNative output:', { preservedBlock });
     } else {
-      T3Util.Log('S.GroupSymbol - ConvertToNative output: No shapes in group');
+      LogUtil.Debug('S.GroupSymbol - ConvertToNative output: No shapes in group');
     }
   }
 
   DeleteObject() {
-    T3Util.Log("S.GroupSymbol - DeleteObject input: none");
+    LogUtil.Debug("S.GroupSymbol - DeleteObject input: none");
     const shapesInGroup = this.ShapesInGroup;
     const count = shapesInGroup.length;
     for (let index = 0; index < count; index++) {
@@ -758,11 +759,11 @@ class GroupSymbol extends BaseSymbol {
       }
     }
     this.BaseDrawObjectDeleteObject();
-    T3Util.Log("S.GroupSymbol - DeleteObject output: deleted");
+    LogUtil.Debug("S.GroupSymbol - DeleteObject output: deleted");
   }
 
   BaseDrawObjectDeleteObject() {
-    T3Util.Log("S.GroupSymbol - BaseDrawObjectDeleteObject input: none");
+    LogUtil.Debug("S.GroupSymbol - BaseDrawObjectDeleteObject input: none");
 
     let currentObject = null;
     let hookObject = null;
@@ -835,11 +836,11 @@ class GroupSymbol extends BaseSymbol {
       }
     }
 
-    T3Util.Log("S.GroupSymbol - BaseDrawObjectDeleteObject output: executed");
+    LogUtil.Debug("S.GroupSymbol - BaseDrawObjectDeleteObject output: executed");
   }
 
   BaseDrawObjectRemoveFieldData(shouldRemove: boolean, fieldDataTableId?: number) {
-    T3Util.Log("S.GroupSymbol - BaseDrawObjectRemoveFieldData input:", { shouldRemove, fieldDataTableId });
+    LogUtil.Debug("S.GroupSymbol - BaseDrawObjectRemoveFieldData input:", { shouldRemove, fieldDataTableId });
 
     if (this.HasFieldData() && (!fieldDataTableId || this.fieldDataTableID === fieldDataTableId)) {
       // Retrieve the object pointer for the current BlockID (forcing load)
@@ -866,14 +867,14 @@ class GroupSymbol extends BaseSymbol {
       this.BaseDrawObjectRefreshFromFieldData();
     }
 
-    T3Util.Log("S.GroupSymbol - BaseDrawObjectRemoveFieldData output executed");
+    LogUtil.Debug("S.GroupSymbol - BaseDrawObjectRemoveFieldData output executed");
   }
 
   BaseDrawObjectRefreshFromFieldData(tableId) {
-    T3Util.Log('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData input:', { tableId });
+    LogUtil.Debug('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData input:', { tableId });
 
     if (tableId && this.fieldDataTableID !== tableId) {
-      T3Util.Log('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', false);
+      LogUtil.Debug('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', false);
       return false;
     }
 
@@ -882,7 +883,7 @@ class GroupSymbol extends BaseSymbol {
     let needsRefresh = false;
 
     if (!hasFieldDataInText && !hasFieldDataRules) {
-      T3Util.Log('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', false);
+      LogUtil.Debug('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', false);
       return false;
     }
 
@@ -898,21 +899,21 @@ class GroupSymbol extends BaseSymbol {
       needsRefresh = true;
     }
 
-    T3Util.Log('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', needsRefresh);
+    LogUtil.Debug('S.GroupSymbol - BaseDrawingObject_RefreshFromFieldData output:', needsRefresh);
     return needsRefresh;
   }
 
   ApplyEffects(svgElement, isHighlighted, extraParam) {
-    T3Util.Log("S.GroupSymbol - ApplyEffects input:", { svgElement, isHighlighted, extraParam });
+    LogUtil.Debug("S.GroupSymbol - ApplyEffects input:", { svgElement, isHighlighted, extraParam });
 
     svgElement = svgElement || T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     if (!svgElement) {
-      T3Util.Log("S.GroupSymbol - ApplyEffects output: No SVG element found");
+      LogUtil.Debug("S.GroupSymbol - ApplyEffects output: No SVG element found");
       return;
     }
 
     if (!T3Gv.opt.bDrawEffects || T3Gv.opt.bTokenizeStyle) {
-      T3Util.Log("S.GroupSymbol - ApplyEffects output: Global flags disable effects");
+      LogUtil.Debug("S.GroupSymbol - ApplyEffects output: Global flags disable effects");
       return;
     }
 
@@ -940,26 +941,26 @@ class GroupSymbol extends BaseSymbol {
         }
       });
       targetElement.Effects().SetEffects(effectsList, this.Frame);
-      T3Util.Log("S.GroupSymbol - ApplyEffects output:", "Effects applied with glowColor", glowColor);
+      LogUtil.Debug("S.GroupSymbol - ApplyEffects output:", "Effects applied with glowColor", glowColor);
     } else {
-      T3Util.Log("S.GroupSymbol - ApplyEffects output: No glow color configured");
+      LogUtil.Debug("S.GroupSymbol - ApplyEffects output: No glow color configured");
     }
   }
 
   AllowTextEdit(): boolean {
-    T3Util.Log("S.GroupSymbol - AllowTextEdit input:", {});
+    LogUtil.Debug("S.GroupSymbol - AllowTextEdit input:", {});
     const canEdit = Boolean(
       (this.TextFlags & NvConstant.TextFlags.AttachB) ||
       (this.TextFlags & NvConstant.TextFlags.AttachA) ||
       (this.TextFlags & NvConstant.TextFlags.AttachD) ||
       (this.DataID >= 0)
     );
-    T3Util.Log("S.GroupSymbol - AllowTextEdit output:", canEdit);
+    LogUtil.Debug("S.GroupSymbol - AllowTextEdit output:", canEdit);
     return canEdit;
   }
 
   RemoveFieldData(fieldKey, fieldValue) {
-    T3Util.Log("S.GroupSymbol - RemoveFieldData input:", { fieldKey, fieldValue });
+    LogUtil.Debug("S.GroupSymbol - RemoveFieldData input:", { fieldKey, fieldValue });
     Instance.Shape.BaseSymbol.prototype.RemoveFieldData.call(this, fieldKey, fieldValue);
     const shapesList = this.ShapesInGroup;
     const totalShapes = shapesList.length;
@@ -969,63 +970,63 @@ class GroupSymbol extends BaseSymbol {
         shapeObject.RemoveFieldData(fieldKey, fieldValue);
       }
     }
-    T3Util.Log("S.GroupSymbol - RemoveFieldData output executed");
+    LogUtil.Debug("S.GroupSymbol - RemoveFieldData output executed");
   }
 
   HasFieldDataInText(fieldData: any): boolean {
-    T3Util.Log("S.GroupSymbol - HasFieldDataInText input:", { fieldData });
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataInText input:", { fieldData });
 
     const shapesInGroup = this.ShapesInGroup;
     const totalShapes = shapesInGroup.length;
 
     if (Instance.Shape.BaseSymbol.prototype.HasFieldDataInText.call(this, fieldData)) {
-      T3Util.Log("S.GroupSymbol - HasFieldDataInText output:", true);
+      LogUtil.Debug("S.GroupSymbol - HasFieldDataInText output:", true);
       return true;
     }
 
     for (let index = 0; index < totalShapes; ++index) {
       const shapeObject = ObjectUtil.GetObjectPtr(shapesInGroup[index], false);
       if (shapeObject && shapeObject.HasFieldDataInText(fieldData)) {
-        T3Util.Log("S.GroupSymbol - HasFieldDataInText output:", true);
+        LogUtil.Debug("S.GroupSymbol - HasFieldDataInText output:", true);
         return true;
       }
     }
 
-    T3Util.Log("S.GroupSymbol - HasFieldDataInText output:", false);
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataInText output:", false);
     return false;
   }
 
   HasFieldDataRules(criteria: any): boolean {
-    T3Util.Log("S.GroupSymbol - HasFieldDataRules input:", { criteria });
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataRules input:", { criteria });
 
     const shapesInGroup = this.ShapesInGroup;
     const shapesCount = shapesInGroup.length;
 
     if (Instance.Shape.BaseSymbol.prototype.HasFieldDataRules.call(this, criteria)) {
-      T3Util.Log("S.GroupSymbol - HasFieldDataRules output:", true);
+      LogUtil.Debug("S.GroupSymbol - HasFieldDataRules output:", true);
       return true;
     }
 
     for (let index = 0; index < shapesCount; index++) {
       const shapeObject = ObjectUtil.GetObjectPtr(shapesInGroup[index], false);
       if (shapeObject && shapeObject.HasFieldDataRules(criteria)) {
-        T3Util.Log("S.GroupSymbol - HasFieldDataRules output:", true);
+        LogUtil.Debug("S.GroupSymbol - HasFieldDataRules output:", true);
         return true;
       }
     }
 
-    T3Util.Log("S.GroupSymbol - HasFieldDataRules output:", false);
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataRules output:", false);
     return false;
   }
 
   HasFieldDataForTable(tableId: any): boolean {
-    T3Util.Log("S.GroupSymbol - HasFieldDataForTable input:", { tableId });
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataForTable input:", { tableId });
     const groupShapes = this.ShapesInGroup;
     const totalShapes = groupShapes.length;
 
     // Check in base symbol first
     if (Instance.Shape.BaseSymbol.prototype.HasFieldDataForTable.call(this, tableId)) {
-      T3Util.Log("S.GroupSymbol - HasFieldDataForTable output:", true);
+      LogUtil.Debug("S.GroupSymbol - HasFieldDataForTable output:", true);
       return true;
     }
 
@@ -1033,41 +1034,41 @@ class GroupSymbol extends BaseSymbol {
     for (let index = 0; index < totalShapes; index++) {
       const shapeObj = ObjectUtil.GetObjectPtr(groupShapes[index], false);
       if (shapeObj && shapeObj.HasFieldDataForTable(tableId)) {
-        T3Util.Log("S.GroupSymbol - HasFieldDataForTable output:", true);
+        LogUtil.Debug("S.GroupSymbol - HasFieldDataForTable output:", true);
         return true;
       }
     }
 
-    T3Util.Log("S.GroupSymbol - HasFieldDataForTable output:", false);
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataForTable output:", false);
     return false;
   }
 
   HasFieldDataRecord(fieldKey, fieldValue, recordId) {
-    T3Util.Log("S.GroupSymbol - HasFieldDataRecord input:", { fieldKey, fieldValue, recordId });
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataRecord input:", { fieldKey, fieldValue, recordId });
     const shapesInGroup = this.ShapesInGroup;
     const totalShapes = shapesInGroup.length;
 
     if (Instance.Shape.BaseSymbol.prototype.HasFieldDataRecord.call(this, fieldKey, fieldValue, recordId)) {
-      T3Util.Log("S.GroupSymbol - HasFieldDataRecord output:", true);
+      LogUtil.Debug("S.GroupSymbol - HasFieldDataRecord output:", true);
       return true;
     }
     if (!recordId) {
-      T3Util.Log("S.GroupSymbol - HasFieldDataRecord output:", false);
+      LogUtil.Debug("S.GroupSymbol - HasFieldDataRecord output:", false);
       return false;
     }
     for (let index = 0; index < totalShapes; ++index) {
       const shapeObject = ObjectUtil.GetObjectPtr(shapesInGroup[index], false);
       if (shapeObject && shapeObject.HasFieldDataRecord(fieldKey, fieldValue, recordId)) {
-        T3Util.Log("S.GroupSymbol - HasFieldDataRecord output:", true);
+        LogUtil.Debug("S.GroupSymbol - HasFieldDataRecord output:", true);
         return true;
       }
     }
-    T3Util.Log("S.GroupSymbol - HasFieldDataRecord output:", false);
+    LogUtil.Debug("S.GroupSymbol - HasFieldDataRecord output:", false);
     return false;
   }
 
   RefreshFromFieldData(fieldData) {
-    T3Util.Log("S.GroupSymbol - refreshFromFieldData input:", fieldData);
+    LogUtil.Debug("S.GroupSymbol - refreshFromFieldData input:", fieldData);
 
     let needsRefresh = false;
 
@@ -1086,12 +1087,12 @@ class GroupSymbol extends BaseSymbol {
       needsRefresh = true;
     }
 
-    T3Util.Log("S.GroupSymbol - refreshFromFieldData output:", needsRefresh);
+    LogUtil.Debug("S.GroupSymbol - refreshFromFieldData output:", needsRefresh);
     return needsRefresh;
   }
 
   RemapDataFields(fieldData) {
-    T3Util.Log("S.GroupSymbol - remapDataFields input:", fieldData);
+    LogUtil.Debug("S.GroupSymbol - remapDataFields input:", fieldData);
 
     Instance.Shape.BaseSymbol.prototype.RemapDataFields.call(this, fieldData);
     const shapesGroup = this.ShapesInGroup;
@@ -1102,7 +1103,7 @@ class GroupSymbol extends BaseSymbol {
       }
     }
 
-    T3Util.Log("S.GroupSymbol - remapDataFields output: completed");
+    LogUtil.Debug("S.GroupSymbol - remapDataFields output: completed");
   }
 }
 

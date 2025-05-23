@@ -15,6 +15,7 @@ import Instance from '../Data/Instance/Instance';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents an SVG Fragment Symbol that can be inserted into documents as a reusable graphical element.
@@ -48,7 +49,7 @@ class SvgSymbol extends BaseSymbol {
     options.ShapeType = OptConstant.ShapeType.SvgSymbol;
     options.drawSetting = options.drawSetting || {};
     super(options);
-    T3Util.Log("= S.SvgSymbol | Constructor Input/Output:", options.this);
+    LogUtil.Debug("= S.SvgSymbol | Constructor Input/Output:", options.this);
   }
 
   /**
@@ -58,7 +59,7 @@ class SvgSymbol extends BaseSymbol {
    * @returns The created SVG shape container element, or null if the shape is not visible
    */
   CreateShape(svgDocument: any, enableEvents: any) {
-    T3Util.Log("= S.SvgSymbol | CreateShape Input:", { svgDocument, enableEvents });
+    LogUtil.Debug("= S.SvgSymbol | CreateShape Input:", { svgDocument, enableEvents });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
       return null;
@@ -148,11 +149,11 @@ class SvgSymbol extends BaseSymbol {
     container.isShape = true;
 
     var apsItem = QuasarUtil.GetItemFromAPSV2(this.uniqueId);
-    T3Util.Log("= S.SvgSymbol | CreateShape apsItem:", apsItem);
+    LogUtil.Debug("= S.SvgSymbol | CreateShape apsItem:", apsItem);
 
     var needRefreshVue = apsItem && apsItem.t3Entry;
     if (needRefreshVue) {
-      T3Util.Log("= S.SvgSymbol | CreateShape apsItem:", apsItem);
+      LogUtil.Debug("= S.SvgSymbol | CreateShape apsItem:", apsItem);
       const foreignObj = ForeignObjUtil.CreateVueObject(svgDocument, frame, apsItem);
       container.AddElement(foreignObj);
     }
@@ -162,7 +163,7 @@ class SvgSymbol extends BaseSymbol {
       this.LMAddSVGTextObject(svgDocument, container);
     }
 
-    T3Util.Log("= S.SvgSymbol | CreateShape Output:", container);
+    LogUtil.Debug("= S.SvgSymbol | CreateShape Output:", container);
     return container;
   }
 
@@ -172,7 +173,7 @@ class SvgSymbol extends BaseSymbol {
    * @param styleRecord - The style record containing appearance information
    */
   ApplyStyles(shapeElement, styleRecord) {
-    T3Util.Log("S.SvgSymbol | ApplyStyles Input:", { shapeElement, styleRecord });
+    LogUtil.Debug("S.SvgSymbol | ApplyStyles Input:", { shapeElement, styleRecord });
 
     const fieldDataStyle = this.GetFieldDataStyleOverride();
     const overrideFillColor = fieldDataStyle && fieldDataStyle.fillColor;
@@ -210,7 +211,7 @@ class SvgSymbol extends BaseSymbol {
       }
     }
 
-    T3Util.Log("S.SvgSymbol | ApplyStyles Output:", { shapeElement });
+    LogUtil.Debug("S.SvgSymbol | ApplyStyles Output:", { shapeElement });
   }
 
   /**
@@ -221,7 +222,7 @@ class SvgSymbol extends BaseSymbol {
    * @returns Offset object with x and y values for position adjustment
    */
   Resize(shapeElement, newBoundingBox, eventInfo) {
-    T3Util.Log("= S.SvgSymbol | Resize Input:", {
+    LogUtil.Debug("= S.SvgSymbol | Resize Input:", {
       shapeElement,
       newBoundingBox,
       eventInfo
@@ -258,7 +259,7 @@ class SvgSymbol extends BaseSymbol {
     shapeElement.SetRotation(rotation);
     this.UpdateDimensionLines(shapeElement);
 
-    T3Util.Log("= S.SvgSymbol | Resize Output:", {
+    LogUtil.Debug("= S.SvgSymbol | Resize Output:", {
       offset,
       shapeElement
     });
@@ -272,7 +273,7 @@ class SvgSymbol extends BaseSymbol {
    * @returns Offset object with x and y values for position adjustment
    */
   ResizeInTextEdit(shapeElement, newBoundingBox) {
-    T3Util.Log("= S.SvgSymbol | ResizeInTextEdit Input:", { shapeElement, newBoundingBox });
+    LogUtil.Debug("= S.SvgSymbol | ResizeInTextEdit Input:", { shapeElement, newBoundingBox });
 
     if (shapeElement) {
       const shapeID = shapeElement.GetID();
@@ -280,13 +281,13 @@ class SvgSymbol extends BaseSymbol {
         const shapeObject = ObjectUtil.GetObjectPtr(shapeID, false);
         this.prevBBox = $.extend(true, {}, this.Frame);
         const offset = this.Resize(shapeElement, newBoundingBox, shapeObject);
-        T3Util.Log("= S.SvgSymbol | ResizeInTextEdit Output:", { offset });
+        LogUtil.Debug("= S.SvgSymbol | ResizeInTextEdit Output:", { offset });
         return offset;
       }
     }
 
     const defaultOffset = { x: 0, y: 0 };
-    T3Util.Log("= S.SvgSymbol | ResizeInTextEdit Output:", { offset: defaultOffset });
+    LogUtil.Debug("= S.SvgSymbol | ResizeInTextEdit Output:", { offset: defaultOffset });
     return defaultOffset;
   }
 
@@ -299,14 +300,14 @@ class SvgSymbol extends BaseSymbol {
    * @returns The created trigger elements
    */
   CreateActionTriggers(svgDocument, triggerType, actionHandler, additionalParameters) {
-    T3Util.Log("= S.SvgSymbol | CreateActionTriggers Input:", {
+    LogUtil.Debug("= S.SvgSymbol | CreateActionTriggers Input:", {
       svgDocument,
       triggerType,
       actionHandler,
       additionalParameters
     });
     const result = super.CreateActionTriggers2(svgDocument, triggerType, actionHandler, additionalParameters);
-    T3Util.Log("= S.SvgSymbol | CreateActionTriggers Output:", result);
+    LogUtil.Debug("= S.SvgSymbol | CreateActionTriggers Output:", result);
     return result;
   }
 
@@ -319,7 +320,7 @@ class SvgSymbol extends BaseSymbol {
    * @returns The group shape containing all trigger elements
    */
   BaseShapeCreateActionTriggers(svgDoc: any, triggerId: any, shape: any, additionalParams: any) {
-    T3Util.Log("= S.SvgSymbol | BaseShapeCreateActionTriggers Input:", { svgDoc, triggerId, shape, additionalParams });
+    LogUtil.Debug("= S.SvgSymbol | BaseShapeCreateActionTriggers Input:", { svgDoc, triggerId, shape, additionalParams });
 
     const cursors = [
       CursorConstant.CursorType.ResizeLT,
@@ -609,7 +610,7 @@ class SvgSymbol extends BaseSymbol {
     groupShape.isShape = true;
     groupShape.SetID(OptConstant.Common.Action + triggerId);
 
-    T3Util.Log("= S.SvgSymbol | BaseShapeCreateActionTriggers Output:", groupShape);
+    LogUtil.Debug("= S.SvgSymbol | BaseShapeCreateActionTriggers Output:", groupShape);
     return groupShape;
   }
 
@@ -624,8 +625,8 @@ class SvgSymbol extends BaseSymbol {
       element.SetFillColor(color);
 
       var svgSymbol = element.GetSvgSymbol();
-      T3Util.Log("= S.SvgSymbol | SetFillColor Output 1:", this.SVGFragment);
-      T3Util.Log("= S.SvgSymbol | SetFillColor Output 2:", svgSymbol);
+      LogUtil.Debug("= S.SvgSymbol | SetFillColor Output 1:", this.SVGFragment);
+      LogUtil.Debug("= S.SvgSymbol | SetFillColor Output 2:", svgSymbol);
     }
   }
 
@@ -635,7 +636,7 @@ class SvgSymbol extends BaseSymbol {
 
   // set the shape draw setting like fill color, stroke color, opacity base on the given setting in Object Config New
   SetDrawSetting(setting: any) {
-    T3Util.Log("= S.SvgSymbol | SetDrawSetting Input: setting", setting);
+    LogUtil.Debug("= S.SvgSymbol | SetDrawSetting Input: setting", setting);
 
     this.drawSetting = setting;
     var svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
@@ -655,26 +656,26 @@ class SvgSymbol extends BaseSymbol {
    * @returns Boolean indicating whether the CSS was successfully applied
    */
   AddDynamicCSS(cssStyles: string | Record<string, any>, targetSelector?: string): boolean {
-    T3Util.Log("= S.SvgSymbol | AddDynamicCSS Input:", { cssStyles, targetSelector });
+    LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS Input:", { cssStyles, targetSelector });
 
     // Get the SVG element for this symbol
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     if (!svgElement) {
-      T3Util.Log("= S.SvgSymbol | AddDynamicCSS: SVG element not found");
+      LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS: SVG element not found");
       return false;
     }
 
     // Get the shape element within the SVG container
     const shapeElement = svgElement.GetElementById(OptConstant.SVGElementClass.Shape);
     if (!shapeElement) {
-      T3Util.Log("= S.SvgSymbol | AddDynamicCSS: Shape element not found");
+      LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS: Shape element not found");
       return false;
     }
 
     // Get the actual SVG symbol DOM element
     const svgDomElement = shapeElement.GetSvgSymbol();
     if (!svgDomElement) {
-      T3Util.Log("= S.SvgSymbol | AddDynamicCSS: SVG DOM element not found");
+      LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS: SVG DOM element not found");
       return false;
     }
 
@@ -709,10 +710,10 @@ class SvgSymbol extends BaseSymbol {
         });
       }
 
-      T3Util.Log("= S.SvgSymbol | AddDynamicCSS: CSS applied successfully");
+      LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS: CSS applied successfully");
       return true;
     } catch (error) {
-      T3Util.Log("= S.SvgSymbol | AddDynamicCSS Error:", error);
+      LogUtil.Debug("= S.SvgSymbol | AddDynamicCSS Error:", error);
       return false;
     }
   }

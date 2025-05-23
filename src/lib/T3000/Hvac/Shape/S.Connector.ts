@@ -94,7 +94,7 @@ class Connector extends BaseDrawObject {
   lasttexthook: number;
 
   constructor(options) {
-    T3Util.Log('S.Connector: Input options:', options);
+    LogUtil.Debug('S.Connector: Input options:', options);
 
     options = options || {};
     options.DrawingObjectBaseClass = OptConstant.DrawObjectBaseClass.Connector;
@@ -148,52 +148,52 @@ class Connector extends BaseDrawObject {
     this.theMinTextDim = { width: 0, height: 0 };
     this.TextFlags = Utils2.SetFlag(this.TextFlags, NvConstant.TextFlags.HorizText, !this.TextDirection);
 
-    T3Util.Log('S.Connector: Output instance:', this);
+    LogUtil.Debug('S.Connector: Output instance:', this);
   }
 
   IsChildOfAssistant() {
-    T3Util.Log('S.Connector: Checking if child of assistant. Hooks:', this.hooks);
+    LogUtil.Debug('S.Connector: Checking if child of assistant. Hooks:', this.hooks);
 
     if (this.hooks.length) {
       const firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
-      T3Util.Log('S.Connector: First hook object:', firstHookObject);
+      LogUtil.Debug('S.Connector: First hook object:', firstHookObject);
 
       if (firstHookObject && firstHookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
         const isAssistantConnector = firstHookObject.IsAsstConnector();
-        T3Util.Log('S.Connector: Is assistant connector:', isAssistantConnector);
+        LogUtil.Debug('S.Connector: Is assistant connector:', isAssistantConnector);
         return isAssistantConnector;
       }
     }
 
-    T3Util.Log('S.Connector: Not a child of assistant.');
+    LogUtil.Debug('S.Connector: Not a child of assistant.');
     return false;
   }
 
   LinkNotVisible() {
-    T3Util.Log('S.Connector: Checking link visibility.');
+    LogUtil.Debug('S.Connector: Checking link visibility.');
 
     const isCoManager = this.arraylist.styleflags & OptConstant.AStyles.CoManager;
     const isChildOfAssistant = this.IsChildOfAssistant();
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
       if (!this.hooks.length || isCoManager || isChildOfAssistant) {
-        T3Util.Log('S.Connector: Link is not visible due to hooks, co-manager, or assistant status.');
+        LogUtil.Debug('S.Connector: Link is not visible due to hooks, co-manager, or assistant status.');
         return true;
       }
 
       const firstHookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
       if (firstHookObject && (firstHookObject.flags & NvConstant.ObjFlags.NotVisible)) {
-        T3Util.Log('S.Connector: Link is not visible due to first hook object visibility.');
+        LogUtil.Debug('S.Connector: Link is not visible due to first hook object visibility.');
         return true;
       }
     }
 
-    T3Util.Log('S.Connector: Link is visible.');
+    LogUtil.Debug('S.Connector: Link is visible.');
     return false;
   }
 
   GetTextOnLineParams(hook) {
-    T3Util.Log('S.Connector: Input hook:', hook);
+    LogUtil.Debug('S.Connector: Input hook:', hook);
 
     const params = {
       Frame: Utils1.DeepCopy(this.Frame),
@@ -213,12 +213,12 @@ class Connector extends BaseDrawObject {
       params.EndPoint.y = hook.endpoint.v + this.StartPoint.y;
     }
 
-    T3Util.Log('S.Connector: Output params:', params);
+    LogUtil.Debug('S.Connector: Output params:', params);
     return params;
   }
 
   ChangeBackgroundColor(newColor: string, currentColor: string) {
-    T3Util.Log('S.Connector: Input newColor:', newColor, 'currentColor:', currentColor);
+    LogUtil.Debug('S.Connector: Input newColor:', newColor, 'currentColor:', currentColor);
 
     if (
       this.StyleRecord.Fill.Paint.FillType !== NvConstant.FillTypes.Transparent &&
@@ -229,11 +229,11 @@ class Connector extends BaseDrawObject {
       ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    T3Util.Log('S.Connector: Updated StyleRecord.Fill.Paint.Color:', this.StyleRecord.Fill.Paint.Color);
+    LogUtil.Debug('S.Connector: Updated StyleRecord.Fill.Paint.Color:', this.StyleRecord.Fill.Paint.Color);
   }
 
   AddSVGTextObject(svgDoc, parentElement, hookIndex) {
-    T3Util.Log('S.Connector: Input svgDoc:', svgDoc, 'parentElement:', parentElement, 'hookIndex:', hookIndex);
+    LogUtil.Debug('S.Connector: Input svgDoc:', svgDoc, 'parentElement:', parentElement, 'hookIndex:', hookIndex);
 
     let rect, startPoint = {}, endPoint = {};
     if (hookIndex === undefined) {
@@ -307,11 +307,11 @@ class Connector extends BaseDrawObject {
     Instance.Shape.BaseLine.prototype.TextDirectionCommon.call(this, textElement, backgroundRect, false, hook);
     textElement.SetEditCallback(T3Gv.opt.TextCallback, parentElement);
 
-    T3Util.Log('S.Connector: Output textElement:', textElement);
+    LogUtil.Debug('S.Connector: Output textElement:', textElement);
   }
 
   CreateShape(svgDoc, isHidden) {
-    T3Util.Log('S.Connector: Input svgDoc:', svgDoc, 'isHidden:', isHidden);
+    LogUtil.Debug('S.Connector: Input svgDoc:', svgDoc, 'isHidden:', isHidden);
 
     let isCoManager = (this.arraylist.styleflags & OptConstant.AStyles.CoManager) > 0;
     let isChildOfAssistant = this.IsChildOfAssistant();
@@ -329,11 +329,11 @@ class Connector extends BaseDrawObject {
           let shapeContainer = svgDoc.CreateShape(OptConstant.CSType.ShapeContainer);
           this.CreateCollapseButton(svgDoc, shapeContainer, true);
           shapeContainer.ExcludeFromExport(true);
-          T3Util.Log('S.Connector: Output shapeContainer:', shapeContainer);
+          LogUtil.Debug('S.Connector: Output shapeContainer:', shapeContainer);
           return shapeContainer;
         }
       }
-      T3Util.Log('S.Connector: Output null due to visibility.');
+      LogUtil.Debug('S.Connector: Output null due to visibility.');
       return null;
     }
 
@@ -392,12 +392,12 @@ class Connector extends BaseDrawObject {
       this.AddIcons(svgDoc, shapeContainer);
     }
 
-    T3Util.Log('S.Connector: Output shapeContainer:', shapeContainer);
+    LogUtil.Debug('S.Connector: Output shapeContainer:', shapeContainer);
     return shapeContainer;
   }
 
   AddIcon(svgDoc, parentElement, iconParams) {
-    T3Util.Log('S.Connector: Input svgDoc:', svgDoc, 'parentElement:', parentElement, 'iconParams:', iconParams);
+    LogUtil.Debug('S.Connector: Input svgDoc:', svgDoc, 'parentElement:', parentElement, 'iconParams:', iconParams);
 
     if (parentElement) {
       const isFlowChartConnector = this.IsFlowChartConnector();
@@ -436,13 +436,13 @@ class Connector extends BaseDrawObject {
       this.nIcons++;
       parentElement.AddElement(iconElement);
 
-      T3Util.Log('S.Connector: Output iconElement:', iconElement);
+      LogUtil.Debug('S.Connector: Output iconElement:', iconElement);
       return iconElement;
     }
   }
 
   PostCreateShapeCallback(svgDoc, parentElement, shapeId, shapeType) {
-    T3Util.Log('S.Connector: PostCreateShapeCallback input:', svgDoc, parentElement, shapeId, shapeType);
+    LogUtil.Debug('S.Connector: PostCreateShapeCallback input:', svgDoc, parentElement, shapeId, shapeType);
 
     if (!(this.flags & NvConstant.ObjFlags.NotVisible)) {
       let hookCount,
@@ -478,20 +478,20 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log('S.Connector: PostCreateShapeCallback output:', this);
+    LogUtil.Debug('S.Connector: PostCreateShapeCallback output:', this);
   }
 
   SetRuntimeEffects(enableEffects: boolean): void {
-    T3Util.Log('S.Connector: SetRuntimeEffects input:', enableEffects);
+    LogUtil.Debug('S.Connector: SetRuntimeEffects input:', enableEffects);
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     if (svgElement) {
       this.ApplyEffects(svgElement, enableEffects, true);
     }
-    T3Util.Log('S.Connector: SetRuntimeEffects output:', this);
+    LogUtil.Debug('S.Connector: SetRuntimeEffects output:', this);
   }
 
   ApplyStyles(shape, styleRecord) {
-    T3Util.Log("S.Connector: ApplyStyles input - shape:", shape, "styleRecord:", styleRecord);
+    LogUtil.Debug("S.Connector: ApplyStyles input - shape:", shape, "styleRecord:", styleRecord);
     const fillType = styleRecord.Line.Paint.FillType;
     shape.SetStrokeOpacity(styleRecord.Line.Paint.Opacity);
 
@@ -523,14 +523,14 @@ class Connector extends BaseDrawObject {
     } else {
       shape.SetStrokeColor('none');
     }
-    T3Util.Log("S.Connector: ApplyStyles output - shape:", shape);
+    LogUtil.Debug("S.Connector: ApplyStyles output - shape:", shape);
   }
   CreateRIchGradientRecord(GradientFlags: any): any {
     throw new Error('Method not implemented.');
   }
 
   GetDimensionPoints() {
-    T3Util.Log("S.Connector: GetDimensionPoints input:", { Dimensions: this.Dimensions, Frame: this.Frame });
+    LogUtil.Debug("S.Connector: GetDimensionPoints input:", { Dimensions: this.Dimensions, Frame: this.Frame });
     let resultPoints: Point[] = [];
     let polyPoints: Point[] = [];
     let segmentIndex = 0;
@@ -584,12 +584,12 @@ class Connector extends BaseDrawObject {
     } else {
       resultPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, null);
     }
-    T3Util.Log("S.Connector: GetDimensionPoints output:", resultPoints);
+    LogUtil.Debug("S.Connector: GetDimensionPoints output:", resultPoints);
     return resultPoints;
   }
 
   FindTextLabel(event) {
-    T3Util.Log("S.Connector: _findTextLabel input:", event);
+    LogUtil.Debug("S.Connector: _findTextLabel input:", event);
     // Get the polyline points for the connector shape
     const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, false, null);
     const minHookIndex = OptConstant.ConnectorDefines.NSkip;
@@ -655,12 +655,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: _findTextLabel output:", textLabelIndex);
+    LogUtil.Debug("S.Connector: _findTextLabel output:", textLabelIndex);
     return textLabelIndex;
   }
 
   SetTextObject(textId: number): boolean {
-    T3Util.Log('S.Connector: SetTextObject input textId:', textId);
+    LogUtil.Debug('S.Connector: SetTextObject input textId:', textId);
 
     const skipCount = OptConstant.ConnectorDefines.NSkip;
     let lastTextHook = this.arraylist.lasttexthook;
@@ -680,7 +680,7 @@ class Connector extends BaseDrawObject {
 
     // If textId is -2, do nothing.
     if (textId === -2) {
-      T3Util.Log('S.Connector: SetTextObject output: false (textId is -2)');
+      LogUtil.Debug('S.Connector: SetTextObject output: false (textId is -2)');
       return false;
     }
 
@@ -700,16 +700,16 @@ class Connector extends BaseDrawObject {
       if (textId < 0) {
         this.arraylist.lasttexthook = -1;
       }
-      T3Util.Log('S.Connector: SetTextObject output: true');
+      LogUtil.Debug('S.Connector: SetTextObject output: true');
       return true;
     }
 
-    T3Util.Log('S.Connector: SetTextObject output: false');
+    LogUtil.Debug('S.Connector: SetTextObject output: false');
     return false;
   }
 
   GetTextObject(inputEvent, unusedParam, hookContext) {
-    T3Util.Log('S.Connector: GetTextObject input:', { inputEvent, hookContext });
+    LogUtil.Debug('S.Connector: GetTextObject input:', { inputEvent, hookContext });
 
     let hookIndex;
     if (inputEvent === null && hookContext !== null) {
@@ -722,13 +722,13 @@ class Connector extends BaseDrawObject {
     }
 
     if (hookIndex < 0) {
-      T3Util.Log('S.Connector: GetTextObject output:', null);
+      LogUtil.Debug('S.Connector: GetTextObject output:', null);
       return null;
     }
 
     const hook = this.arraylist.hook[hookIndex];
     if (hook === undefined) {
-      T3Util.Log('S.Connector: GetTextObject output:', null);
+      LogUtil.Debug('S.Connector: GetTextObject output:', null);
       return null;
     }
 
@@ -740,12 +740,12 @@ class Connector extends BaseDrawObject {
       svgElement.textElem = svgElement.GetElementById(OptConstant.SVGElementClass.Text, hookIndex);
     }
 
-    T3Util.Log('S.Connector: GetTextObject output:', hook.textid);
+    LogUtil.Debug('S.Connector: GetTextObject output:', hook.textid);
     return hook.textid;
   }
 
   AdjustTextEditBackground(newColor: string, svgDoc: any) {
-    T3Util.Log('S.Connector: AdjustTextEditBackground input - newColor:', newColor, 'svgDoc:', svgDoc);
+    LogUtil.Debug('S.Connector: AdjustTextEditBackground input - newColor:', newColor, 'svgDoc:', svgDoc);
 
     if (this.DataID !== -1) {
       const hookCount = this.arraylist.hook.length;
@@ -766,11 +766,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log('S.Connector: AdjustTextEditBackground output - DataID:', this.DataID);
+    LogUtil.Debug('S.Connector: AdjustTextEditBackground output - DataID:', this.DataID);
   }
 
   UpdateSVG(svgDoc, shapeElement, polyPoints) {
-    T3Util.Log('S.Connector: UpdateSVG input:', { svgDoc, shapeElement, polyPoints });
+    LogUtil.Debug('S.Connector: UpdateSVG input:', { svgDoc, shapeElement, polyPoints });
     // Clear the current shape
     shapeElement.Clear();
     const styles = OptConstant.AStyles;
@@ -861,11 +861,11 @@ class Connector extends BaseDrawObject {
       }
     }
     shapeElement.BuildPath();
-    T3Util.Log('S.Connector: UpdateSVG output:', shapeElement);
+    LogUtil.Debug('S.Connector: UpdateSVG output:', shapeElement);
   }
 
   CreateCollapseButton(svgDocument, parentElement, adjustCollapse) {
-    T3Util.Log("S.Connector: CreateCollapseButton input:", { svgDocument, parentElement, adjustCollapse });
+    LogUtil.Debug("S.Connector: CreateCollapseButton input:", { svgDocument, parentElement, adjustCollapse });
 
     // Define local variables with readable names
     let collapseButton;
@@ -959,11 +959,11 @@ class Connector extends BaseDrawObject {
       parentElement.AddElement(collapseButton);
     }
 
-    T3Util.Log("S.Connector: CreateCollapseButton output:", { collapseButton });
+    LogUtil.Debug("S.Connector: CreateCollapseButton output:", { collapseButton });
   }
 
   CreateActionTriggers(svgDoc, targetId, extraParam, refId) {
-    T3Util.Log("S.Connector: CreateActionTriggers input:", { svgDoc, targetId, extraParam, refId });
+    LogUtil.Debug("S.Connector: CreateActionTriggers input:", { svgDoc, targetId, extraParam, refId });
 
     // Create a group for all action trigger knobs
     const actionGroup = svgDoc.CreateShape(OptConstant.CSType.Group);
@@ -987,7 +987,7 @@ class Connector extends BaseDrawObject {
 
     // Only continue if there are sufficient hooks or if object is of the proper type.
     if (hookCount <= connectorDefines.NSkip /*&& this.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/) {
-      T3Util.Log("S.Connector: CreateActionTriggers output:", actionGroup);
+      LogUtil.Debug("S.Connector: CreateActionTriggers output:", actionGroup);
       return actionGroup;
     }
 
@@ -1220,12 +1220,12 @@ class Connector extends BaseDrawObject {
     actionGroup.isShape = true;
     actionGroup.SetID(OptConstant.Common.Action + targetId);
 
-    T3Util.Log("S.Connector: CreateActionTriggers output:", actionGroup);
+    LogUtil.Debug("S.Connector: CreateActionTriggers output:", actionGroup);
     return actionGroup;
   }
 
   CreateConnectHilites(svgDoc: any, targetElement: any, unusedParam1: any, unusedParam2: any, hookIndex: number, unusedParam3: any) {
-    T3Util.Log("S.Connector: CreateConnectHilites input:", { svgDoc, targetElement, hookIndex });
+    LogUtil.Debug("S.Connector: CreateConnectHilites input:", { svgDoc, targetElement, hookIndex });
 
     const styleConstants = OptConstant.AStyles;
     const groupShape = svgDoc.CreateShape(OptConstant.CSType.Group);
@@ -1498,13 +1498,13 @@ class Connector extends BaseDrawObject {
       groupShape.SetPos(extendedFrame.x, extendedFrame.y);
       groupShape.isShape = true;
       groupShape.SetID('hilite_' + targetElement);
-      T3Util.Log("S.Connector: CreateConnectHilites output:", groupShape);
+      LogUtil.Debug("S.Connector: CreateConnectHilites output:", groupShape);
       return groupShape;
     }
   }
 
   SetCursors() {
-    T3Util.Log('S.Connector: SetCursors input');
+    LogUtil.Debug('S.Connector: SetCursors input');
 
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     Instance.Shape.BaseDrawObject.prototype.SetCursors.call(this);
@@ -1516,11 +1516,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log('S.Connector: SetCursors output');
+    LogUtil.Debug('S.Connector: SetCursors output');
   }
 
   GetArrowheadSelection(params) {
-    T3Util.Log('S.Connector: GetArrowheadSelection input:', params);
+    LogUtil.Debug('S.Connector: GetArrowheadSelection input:', params);
 
     if (params) {
       params.StartArrowID = this.StartArrowID;
@@ -1530,7 +1530,7 @@ class Connector extends BaseDrawObject {
       params.ArrowSizeIndex = this.ArrowSizeIndex;
     }
 
-    T3Util.Log('S.Connector: GetArrowheadSelection output:', params);
+    LogUtil.Debug('S.Connector: GetArrowheadSelection output:', params);
     return true;
   }
 
@@ -1624,7 +1624,7 @@ class Connector extends BaseDrawObject {
   }
 
   HitAreaClick(hitAreaID) {
-    T3Util.Log('S.Connector: HitAreaClick input:', hitAreaID);
+    LogUtil.Debug('S.Connector: HitAreaClick input:', hitAreaID);
 
     T3Gv.opt.CloseEdit();
     let connector = this;
@@ -1650,7 +1650,7 @@ class Connector extends BaseDrawObject {
 
     DrawUtil.CompleteOperation(null);
 
-    T3Util.Log('S.Connector: HitAreaClick output');
+    LogUtil.Debug('S.Connector: HitAreaClick output');
   }
 
   /**
@@ -2153,7 +2153,7 @@ class Connector extends BaseDrawObject {
   }
 
   OffsetShape(offsetX: number, offsetY: number, additionalParam: any) {
-    T3Util.Log('S.Connector: OffsetShape input:', { offsetX, offsetY, additionalParam });
+    LogUtil.Debug('S.Connector: OffsetShape input:', { offsetX, offsetY, additionalParam });
 
     this.Frame.x += offsetX;
     this.Frame.y += offsetY;
@@ -2168,11 +2168,11 @@ class Connector extends BaseDrawObject {
     this.EndPoint.x += offsetX;
     this.EndPoint.y += offsetY;
 
-    T3Util.Log('S.Connector: OffsetShape output:', this);
+    LogUtil.Debug('S.Connector: OffsetShape output:', this);
   }
 
   CalcFrame() {
-    T3Util.Log('S.Connector: CalcFrame input');
+    LogUtil.Debug('S.Connector: CalcFrame input');
 
     let polyPoints = [];
     const isLinear = this.arraylist.styleflags & OptConstant.AStyles.Linear;
@@ -2191,11 +2191,11 @@ class Connector extends BaseDrawObject {
 
     this.UpdateFrame(this.Frame);
 
-    T3Util.Log('S.Connector: CalcFrame output:', this.Frame);
+    LogUtil.Debug('S.Connector: CalcFrame output:', this.Frame);
   }
 
   GetDimensions() {
-    T3Util.Log('S.Connector: GetDimensions input');
+    LogUtil.Debug('S.Connector: GetDimensions input');
 
     let dimensions = {};
     const isLinear = this.arraylist.styleflags & OptConstant.AStyles.Linear;
@@ -2215,12 +2215,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log('S.Connector: GetDimensions output:', dimensions);
+    LogUtil.Debug('S.Connector: GetDimensions output:', dimensions);
     return dimensions;
   }
 
   CanSnapToShapes() {
-    T3Util.Log('S.Connector: CanSnapToShapes input');
+    LogUtil.Debug('S.Connector: CanSnapToShapes input');
 
     const isFlowChartConnector = this.IsFlowChartConnector();
     const hasNoHooks = this.hooks.length === 0;
@@ -2228,11 +2228,11 @@ class Connector extends BaseDrawObject {
 
     if (isFlowChartConnector && hasNoHooks && hasSingleHook) {
       const hookId = this.arraylist.hook[OptConstant.ConnectorDefines.NSkip].id;
-      T3Util.Log('S.Connector: CanSnapToShapes output:', hookId);
+      LogUtil.Debug('S.Connector: CanSnapToShapes output:', hookId);
       return hookId;
     }
 
-    T3Util.Log('S.Connector: CanSnapToShapes output: -1');
+    LogUtil.Debug('S.Connector: CanSnapToShapes output: -1');
     return -1;
   }
 
@@ -2245,7 +2245,7 @@ class Connector extends BaseDrawObject {
     secondaryScale: number,
     extraFactor: number
   ): void {
-    T3Util.Log("S.Connector: ScaleObject input:", {
+    LogUtil.Debug("S.Connector: ScaleObject input:", {
       scaleX,
       scaleY,
       offsetX,
@@ -2341,14 +2341,14 @@ class Connector extends BaseDrawObject {
       );
     }
 
-    T3Util.Log("S.Connector: ScaleObject output:", {
+    LogUtil.Debug("S.Connector: ScaleObject output:", {
       arraylist: this.arraylist,
       rflags: this.rflags,
     });
   }
 
   SetSize(primarySize: number, secondarySize: number, extraInfo: any) {
-    T3Util.Log("S.Connector: SetSize input:", { primarySize, secondarySize, extraInfo });
+    LogUtil.Debug("S.Connector: SetSize input:", { primarySize, secondarySize, extraInfo });
 
     let backboneSegments: number;
     let diff: number;
@@ -2410,11 +2410,11 @@ class Connector extends BaseDrawObject {
 
     OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
 
-    T3Util.Log("S.Connector: SetSize output:", { arraylist: this.arraylist, rflags: this.rflags });
+    LogUtil.Debug("S.Connector: SetSize output:", { arraylist: this.arraylist, rflags: this.rflags });
   }
 
   UpdateFrame(newFrame: any) {
-    T3Util.Log("S.Connector: UpdateFrame input:", newFrame);
+    LogUtil.Debug("S.Connector: UpdateFrame input:", newFrame);
 
     // Use provided newFrame or fall back to the existing frame
     let updatedFrame = newFrame || this.Frame;
@@ -2454,11 +2454,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: UpdateFrame output:", this.r);
+    LogUtil.Debug("S.Connector: UpdateFrame output:", this.r);
   }
 
   GetHitTestFrame(): any {
-    T3Util.Log('S.Connector: GetHitTestFrame input');
+    LogUtil.Debug('S.Connector: GetHitTestFrame input');
 
     // Readable flag names from styleflags
     const isLinear = Boolean(this.arraylist.styleflags & OptConstant.AStyles.Linear);
@@ -2513,19 +2513,19 @@ class Connector extends BaseDrawObject {
     // Combine the hit test frame with the object's bounding rect
     hitTestFrame = Utils2.UnionRect(this.r, hitTestFrame, hitTestFrame);
 
-    T3Util.Log('S.Connector: GetHitTestFrame output', hitTestFrame);
+    LogUtil.Debug('S.Connector: GetHitTestFrame output', hitTestFrame);
     return hitTestFrame;
   }
 
   GetMoveRect(unusedParam: any, shouldInflate: boolean): any {
-    T3Util.Log("S.Connector: GetMoveRect input:", { unusedParam, shouldInflate });
+    LogUtil.Debug("S.Connector: GetMoveRect input:", { unusedParam, shouldInflate });
     let moveRect = {};
 
     if (this.arraylist.hook.length === 1) {
       Utils2.CopyRect(moveRect, this.Frame);
       moveRect.height = 0;
       moveRect.width = 0;
-      T3Util.Log("S.Connector: GetMoveRect output for single hook:", moveRect);
+      LogUtil.Debug("S.Connector: GetMoveRect output for single hook:", moveRect);
       return moveRect;
     }
 
@@ -2536,12 +2536,12 @@ class Connector extends BaseDrawObject {
       Utils2.CopyRect(moveRect, this.Frame);
     }
 
-    T3Util.Log("S.Connector: GetMoveRect output:", moveRect);
+    LogUtil.Debug("S.Connector: GetMoveRect output:", moveRect);
     return moveRect;
   }
 
   SetShapeOrigin(originX: number, originY: number) {
-    T3Util.Log("S.Connector: SetShapeOrigin input: originX =", originX, ", originY =", originY);
+    LogUtil.Debug("S.Connector: SetShapeOrigin input: originX =", originX, ", originY =", originY);
     let offsetX = 0;
     let offsetY = 0;
 
@@ -2553,31 +2553,31 @@ class Connector extends BaseDrawObject {
     }
 
     this.OffsetShape(offsetX, offsetY);
-    T3Util.Log("S.Connector: SetShapeOrigin output: Offset applied with offsetX =", offsetX, ", offsetY =", offsetY);
+    LogUtil.Debug("S.Connector: SetShapeOrigin output: Offset applied with offsetX =", offsetX, ", offsetY =", offsetY);
   }
 
   Hit(point, isBorderCheck, additionalParam, anotherParam) {
-    T3Util.Log('S.Connector: Hit input:', { point, isBorderCheck, additionalParam, anotherParam });
+    LogUtil.Debug('S.Connector: Hit input:', { point, isBorderCheck, additionalParam, anotherParam });
 
     if (this.IsCoManager()) {
-      T3Util.Log('S.Connector: Hit output:', 0);
+      LogUtil.Debug('S.Connector: Hit output:', 0);
       return 0;
     }
 
     if (isBorderCheck) {
       if (Utils2.pointInRect(this.r, point)) {
-        T3Util.Log('S.Connector: Hit output:', NvConstant.HitCodes.Border);
+        LogUtil.Debug('S.Connector: Hit output:', NvConstant.HitCodes.Border);
         return NvConstant.HitCodes.Border;
       }
     } else {
       const hitTestFrame = this.GetHitTestFrame();
       if (Utils2.pointInRect(hitTestFrame, point)) {
-        T3Util.Log('S.Connector: Hit output:', NvConstant.HitCodes.Border);
+        LogUtil.Debug('S.Connector: Hit output:', NvConstant.HitCodes.Border);
         return NvConstant.HitCodes.Border;
       }
     }
 
-    T3Util.Log('S.Connector: Hit output:', 0);
+    LogUtil.Debug('S.Connector: Hit output:', 0);
     return 0;
   }
 
@@ -3328,7 +3328,7 @@ class Connector extends BaseDrawObject {
   }
 
   LMActionPreTrack(actionEvent, triggerType) {
-    T3Util.Log("S.Connector: LMActionPreTrack input:", { actionEvent, triggerType });
+    LogUtil.Debug("S.Connector: LMActionPreTrack input:", { actionEvent, triggerType });
 
     let currentHook,
       retrievedObject,
@@ -3525,31 +3525,31 @@ class Connector extends BaseDrawObject {
         }
         break;
     }
-    T3Util.Log("S.Connector: LMActionPreTrack output:", true);
+    LogUtil.Debug("S.Connector: LMActionPreTrack output:", true);
     return true;
   }
 
   LMActionDuringTrack(event) {
-    T3Util.Log('S.Connector: LMActionDuringTrack input:', event);
+    LogUtil.Debug('S.Connector: LMActionDuringTrack input:', event);
 
     const result = event;
 
-    T3Util.Log('S.Connector: LMActionDuringTrack output:', result);
+    LogUtil.Debug('S.Connector: LMActionDuringTrack output:', result);
     return result;
   }
 
   LMActionPostRelease(releasedConnectorId: number): void {
-    T3Util.Log("S.Connector: LMActionPostRelease input:", { releasedConnectorId });
+    LogUtil.Debug("S.Connector: LMActionPostRelease input:", { releasedConnectorId });
 
     T3Gv.opt.ConnectorList = [];
     T3Gv.opt.ConnectorWidthList = [];
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-    T3Util.Log("S.Connector: LMActionPostRelease output: completed");
+    LogUtil.Debug("S.Connector: LMActionPostRelease output: completed");
   }
 
   GetBestHook(targetObjectId, unusedParam, hookPosition) {
-    T3Util.Log("S.Connector: GetBestHook input:", { targetObjectId, unusedParam, hookPosition });
+    LogUtil.Debug("S.Connector: GetBestHook input:", { targetObjectId, unusedParam, hookPosition });
 
     // Calculate flags and readable variables.
     const bothSidesFlag = this.arraylist.styleflags & OptConstant.AStyles.BothSides;
@@ -3578,7 +3578,7 @@ class Connector extends BaseDrawObject {
             ? OptConstant.HookPts.AKCR
             : OptConstant.HookPts.AKCL;
         }
-        T3Util.Log("S.Connector: GetBestHook output:", resultHook);
+        LogUtil.Debug("S.Connector: GetBestHook output:", resultHook);
         return resultHook;
       }
       // For vertical and linear connectors.
@@ -3602,7 +3602,7 @@ class Connector extends BaseDrawObject {
             resultHook = OptConstant.HookPts.AKCT;
           }
       }
-      T3Util.Log("S.Connector: GetBestHook output:", resultHook);
+      LogUtil.Debug("S.Connector: GetBestHook output:", resultHook);
       return resultHook;
     } else {
       // Non-vertical connectors.
@@ -3621,7 +3621,7 @@ class Connector extends BaseDrawObject {
             resultHook = OptConstant.HookPts.AKCT;
           }
         }
-        T3Util.Log("S.Connector: GetBestHook output:", resultHook);
+        LogUtil.Debug("S.Connector: GetBestHook output:", resultHook);
         return resultHook;
       }
       // For non-vertical and linear connectors.
@@ -3645,7 +3645,7 @@ class Connector extends BaseDrawObject {
             resultHook = OptConstant.HookPts.AKCL;
           }
       }
-      T3Util.Log("S.Connector: GetBestHook output:", resultHook);
+      LogUtil.Debug("S.Connector: GetBestHook output:", resultHook);
       return resultHook;
     }
   }
@@ -3655,7 +3655,7 @@ class Connector extends BaseDrawObject {
   }
 
   HookToPoint(hookPoint: number, outputRectangle?: { x: number; y: number; width: number; height: number }): Point {
-    T3Util.Log("S.Connector: HookToPoint input:", { hookPoint, outputRectangle });
+    LogUtil.Debug("S.Connector: HookToPoint input:", { hookPoint, outputRectangle });
 
     // Initialize the result point with default values.
     let resultPoint: Point = { x: 0, y: 0 };
@@ -3673,7 +3673,7 @@ class Connector extends BaseDrawObject {
     resultPoint.x = this.StartPoint.x;
     resultPoint.y = this.StartPoint.y;
     if (this.arraylist == null) {
-      T3Util.Log("S.Connector: HookToPoint output:", resultPoint);
+      LogUtil.Debug("S.Connector: HookToPoint output:", resultPoint);
       return resultPoint;
     }
 
@@ -3716,7 +3716,7 @@ class Connector extends BaseDrawObject {
         outputRectangle.width = rect.width;
         outputRectangle.height = rect.height;
       }
-      T3Util.Log("S.Connector: HookToPoint output:", resultPoint);
+      LogUtil.Debug("S.Connector: HookToPoint output:", resultPoint);
       return resultPoint;
     }
 
@@ -3781,16 +3781,16 @@ class Connector extends BaseDrawObject {
         }
     }
 
-    T3Util.Log("S.Connector: HookToPoint output:", resultPoint);
+    LogUtil.Debug("S.Connector: HookToPoint output:", resultPoint);
     return resultPoint;
   }
 
   GetTargetPoints(unusedParam: any, hookFlags: number, excludedHookId: number): Point[] {
-    T3Util.Log("S.Connector: GetTargetPoints input:", { unusedParam, hookFlags, excludedHookId });
+    LogUtil.Debug("S.Connector: GetTargetPoints input:", { unusedParam, hookFlags, excludedHookId });
 
     let targetPoints: Point[] = [];
     if (this.arraylist == null) {
-      T3Util.Log("S.Connector: GetTargetPoints output:", { points: targetPoints });
+      LogUtil.Debug("S.Connector: GetTargetPoints output:", { points: targetPoints });
       return targetPoints;
     }
 
@@ -3872,7 +3872,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetTargetPoints output:", { points: targetPoints });
+    LogUtil.Debug("S.Connector: GetTargetPoints output:", { points: targetPoints });
     return targetPoints;
   }
 
@@ -3881,7 +3881,7 @@ class Connector extends BaseDrawObject {
   }
 
   ChangeHook(triggerEvent: any, isUserInitiated: boolean, additionalInfo: any): void {
-    T3Util.Log("S.Connector: ChangeHook called with", { triggerEvent, isUserInitiated, additionalInfo });
+    LogUtil.Debug("S.Connector: ChangeHook called with", { triggerEvent, isUserInitiated, additionalInfo });
 
     const styleConstants = OptConstant.AStyles;
     const autoFormatFlags =0;
@@ -3890,11 +3890,11 @@ class Connector extends BaseDrawObject {
     const isFlowConnector = this.arraylist.styleflags & styleConstants.FlowConn;
     let blockIdToUse = -1;
 
-    T3Util.Log("S.Connector: ChangeHook completed");
+    LogUtil.Debug("S.Connector: ChangeHook completed");
   }
 
   ChangeTarget(connectorBlockId, targetHookId, unusedParam1, unusedParam2, newHookIndexInfo, shouldUpdate) {
-    T3Util.Log("S.Connector: ChangeTarget called with", {
+    LogUtil.Debug("S.Connector: ChangeTarget called with", {
       connectorBlockId,
       targetHookId,
       unusedParam1,
@@ -4007,11 +4007,11 @@ class Connector extends BaseDrawObject {
     } else {
       this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, true);
     }
-    T3Util.Log("S.Connector: ChangeTarget completed");
+    LogUtil.Debug("S.Connector: ChangeTarget completed");
   }
 
   DeleteObject(): void {
-    T3Util.Log("S.Connector: DeleteObject called with no input parameters");
+    LogUtil.Debug("S.Connector: DeleteObject called with no input parameters");
 
     const styleConstants = OptConstant.AStyles;
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -4026,30 +4026,30 @@ class Connector extends BaseDrawObject {
       if (currentHook.textid !== -1) {
         const textObject = T3Gv.stdObj.GetObject(currentHook.textid);
         if (textObject) {
-          T3Util.Log("S.Connector: Deleting text object with id", currentHook.textid);
+          LogUtil.Debug("S.Connector: Deleting text object with id", currentHook.textid);
           textObject.Delete();
         }
       }
     }
 
-    T3Util.Log("S.Connector: DeleteObject completed with no output");
+    LogUtil.Debug("S.Connector: DeleteObject completed with no output");
   }
 
   IsAsstConnector() {
-    T3Util.Log("S.Connector: IsAsstConnector called");
+    LogUtil.Debug("S.Connector: IsAsstConnector called");
 
     const styles = OptConstant.AStyles;
     const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
     const isPerpConn = (this.arraylist.styleflags & styles.PerpConn) > 0;
 
     const result = isLinear && isPerpConn;
-    T3Util.Log("S.Connector: IsAsstConnector returning", result);
+    LogUtil.Debug("S.Connector: IsAsstConnector returning", result);
 
     return result;
   }
 
   AllowCurveOnConnector(curveParams) {
-    T3Util.Log("S.Connector: AllowCurveOnConnector called with", curveParams);
+    LogUtil.Debug("S.Connector: AllowCurveOnConnector called with", curveParams);
 
     const styles = OptConstant.AStyles;
     const isLinear = (this.arraylist.styleflags & styles.Linear) === 0;
@@ -4082,31 +4082,31 @@ class Connector extends BaseDrawObject {
             curveParams.index = hookIndex;
             curveParams.left = isLeft;
           }
-          T3Util.Log("S.Connector: AllowCurveOnConnector returning true");
+          LogUtil.Debug("S.Connector: AllowCurveOnConnector returning true");
           return true;
         }
       }
     }
 
-    T3Util.Log("S.Connector: AllowCurveOnConnector returning", allowCurve);
+    LogUtil.Debug("S.Connector: AllowCurveOnConnector returning", allowCurve);
     return allowCurve;
   }
 
   IsGenoConnector() {
-    T3Util.Log("S.Connector: IsGenoConnector called");
+    LogUtil.Debug("S.Connector: IsGenoConnector called");
 
     const styles = OptConstant.AStyles;
     const isLinear = (this.arraylist.styleflags & styles.Linear) > 0;
     const isGenoConn = (this.arraylist.styleflags & styles.GenoConn) > 0;
 
     const result = isLinear && isGenoConn;
-    T3Util.Log("S.Connector: IsGenoConnector returning", result);
+    LogUtil.Debug("S.Connector: IsGenoConnector returning", result);
 
     return result;
   }
 
   IsCoManager(output) {
-    T3Util.Log("S.Connector: IsCoManager called with output:", output);
+    LogUtil.Debug("S.Connector: IsCoManager called with output:", output);
 
     const isCoManager = (this.arraylist.styleflags & OptConstant.AStyles.CoManager) > 0;
     const styles = OptConstant.AStyles;
@@ -4128,12 +4128,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: IsCoManager returning", isCoManager);
+    LogUtil.Debug("S.Connector: IsCoManager returning", isCoManager);
     return isCoManager;
   }
 
   GetChildFrame(hookIndex) {
-    T3Util.Log("S.Connector: GetChildFrame called with hookIndex:", hookIndex);
+    LogUtil.Debug("S.Connector: GetChildFrame called with hookIndex:", hookIndex);
 
     let childFrame = {
       x: 0,
@@ -4155,7 +4155,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetChildFrame returning", childFrame);
+    LogUtil.Debug("S.Connector: GetChildFrame returning", childFrame);
     return childFrame;
   }
 
@@ -4167,7 +4167,7 @@ class Connector extends BaseDrawObject {
     unusedParamI: any,
     unusedParamN: any
   ): Point[] {
-    T3Util.Log("S.Connector: GetPerimeterPoints input:", {
+    LogUtil.Debug("S.Connector: GetPerimeterPoints input:", {
       formatParam,
       inputPoints,
       unusedParamA,
@@ -4253,7 +4253,7 @@ class Connector extends BaseDrawObject {
               )
             );
           }
-          T3Util.Log("S.Connector: GetPerimeterPoints output:", resultPoints);
+          LogUtil.Debug("S.Connector: GetPerimeterPoints output:", resultPoints);
           return resultPoints;
         } else if (inputPoints[index].x === -connectorDefs.ACl) {
           currentHook = this.arraylist.hook[connectorDefs.ACl];
@@ -4281,7 +4281,7 @@ class Connector extends BaseDrawObject {
           }
         }
       }
-      T3Util.Log("S.Connector: GetPerimeterPoints output:", resultPoints);
+      LogUtil.Debug("S.Connector: GetPerimeterPoints output:", resultPoints);
       return resultPoints;
     }
 
@@ -4521,12 +4521,12 @@ class Connector extends BaseDrawObject {
         }
       }
     }
-    T3Util.Log("S.Connector: GetPerimeterPoints output:", resultPoints);
+    LogUtil.Debug("S.Connector: GetPerimeterPoints output:", resultPoints);
     return resultPoints;
   }
 
   SetHookAlign(currentHook, targetHook) {
-    T3Util.Log("S.Connector: SetHookAlign called with", { currentHook, targetHook });
+    LogUtil.Debug("S.Connector: SetHookAlign called with", { currentHook, targetHook });
 
     const connectorDefines = OptConstant.ConnectorDefines;
 
@@ -4565,17 +4565,17 @@ class Connector extends BaseDrawObject {
       this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, true);
     }
 
-    T3Util.Log("S.Connector: SetHookAlign completed");
+    LogUtil.Debug("S.Connector: SetHookAlign completed");
   }
 
   GetHookPoints() {
-    T3Util.Log("S.Connector: GetHookPoints called");
+    LogUtil.Debug("S.Connector: GetHookPoints called");
 
     const hookPoints = [];
     const styles = OptConstant.AStyles;
 
     if (this.arraylist == null) {
-      T3Util.Log("S.Connector: GetHookPoints returning null");
+      LogUtil.Debug("S.Connector: GetHookPoints returning null");
       return null;
     }
 
@@ -4609,12 +4609,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetHookPoints returning", hookPoints);
+    LogUtil.Debug("S.Connector: GetHookPoints returning", hookPoints);
     return hookPoints;
   }
 
   GetTextIDs() {
-    T3Util.Log("S.Connector: GetTextIDs called");
+    LogUtil.Debug("S.Connector: GetTextIDs called");
 
     const textIDs = [];
     const totalHooks = this.arraylist.hook.length;
@@ -4626,38 +4626,38 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetTextIDs returning", textIDs);
+    LogUtil.Debug("S.Connector: GetTextIDs returning", textIDs);
     return textIDs;
   }
 
   NoFlip() {
-    T3Util.Log("S.Connector: NoFlip called");
+    LogUtil.Debug("S.Connector: NoFlip called");
     const result = true;
-    T3Util.Log("S.Connector: NoFlip returning", result);
+    LogUtil.Debug("S.Connector: NoFlip returning", result);
     return result;
   }
 
   NoRotate() {
-    T3Util.Log("S.Connector: NoRotate called");
+    LogUtil.Debug("S.Connector: NoRotate called");
     const result = true;
-    T3Util.Log("S.Connector: NoRotate returning", result);
+    LogUtil.Debug("S.Connector: NoRotate returning", result);
     return result;
   }
 
   AllowTextEdit() {
-    T3Util.Log("S.Connector: AllowTextEdit called");
+    LogUtil.Debug("S.Connector: AllowTextEdit called");
 
     const isLocked = this.flags & NvConstant.ObjFlags.Lock;
     const canEditText = this.TextFlags & NvConstant.TextFlags.AttachC;
 
     const result = !isLocked && canEditText;
-    T3Util.Log("S.Connector: AllowTextEdit returning", result);
+    LogUtil.Debug("S.Connector: AllowTextEdit returning", result);
 
     return result;
   }
 
   GetArrowheadFormat() {
-    T3Util.Log("S.Connector: GetArrowheadFormat called");
+    LogUtil.Debug("S.Connector: GetArrowheadFormat called");
 
     const arrowheadRecord = new ArrowheadRecord();
 
@@ -4667,7 +4667,7 @@ class Connector extends BaseDrawObject {
     arrowheadRecord.EndArrowDisp = this.EndArrowDisp;
     arrowheadRecord.ArrowSizeIndex = this.ArrowSizeIndex;
 
-    T3Util.Log("S.Connector: GetArrowheadFormat returning", arrowheadRecord);
+    LogUtil.Debug("S.Connector: GetArrowheadFormat returning", arrowheadRecord);
     return arrowheadRecord;
   }
 
@@ -4681,7 +4681,7 @@ class Connector extends BaseDrawObject {
     svgElement: any,
     additionalParams: any
   ) {
-    T3Util.Log("S.Connector: ChangeTextAttributes called with", {
+    LogUtil.Debug("S.Connector: ChangeTextAttributes called with", {
       fontName,
       fontAttributes,
       fontSize,
@@ -4722,11 +4722,11 @@ class Connector extends BaseDrawObject {
       this.lasttexthook = -1;
     }
 
-    T3Util.Log("S.Connector: ChangeTextAttributes completed");
+    LogUtil.Debug("S.Connector: ChangeTextAttributes completed");
   }
 
   CollapseCoManager(connectorId) {
-    T3Util.Log("S.Connector: CollapseCoManager called with connectorId:", connectorId);
+    LogUtil.Debug("S.Connector: CollapseCoManager called with connectorId:", connectorId);
 
     let remainingHooks = this.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
     let objectsToDelete = [];
@@ -4785,11 +4785,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: CollapseCoManager completed");
+    LogUtil.Debug("S.Connector: CollapseCoManager completed");
   }
 
   CollapseAssistant() {
-    T3Util.Log("S.Connector: CollapseAssistant called");
+    LogUtil.Debug("S.Connector: CollapseAssistant called");
 
     let remainingHooks = this.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
     let objectsToDelete = [];
@@ -4838,7 +4838,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: CollapseAssistant completed");
+    LogUtil.Debug("S.Connector: CollapseAssistant completed");
   }
 
   /**
@@ -4853,7 +4853,7 @@ class Connector extends BaseDrawObject {
    * @param connectorBlockId - The ID of the connector block to format
    */
   PrFormat(connectorBlockId) {
-    T3Util.Log("S.Connector: PrFormat input:", { connectorBlockId });
+    LogUtil.Debug("S.Connector: PrFormat input:", { connectorBlockId });
 
     // Variable declarations with descriptive names
     let totalHooks,
@@ -4888,7 +4888,7 @@ class Connector extends BaseDrawObject {
 
     // If no array list or no hooks, nothing to do
     if (this.arraylist == null || (totalHooks = this.arraylist.hook.length) === 0) {
-      T3Util.Log("S.Connector: PrFormat early exit - no hooks");
+      LogUtil.Debug("S.Connector: PrFormat early exit - no hooks");
       return;
     }
 
@@ -5082,7 +5082,7 @@ class Connector extends BaseDrawObject {
 
       // Calculate final frame and exit
       this.CalcFrame();
-      T3Util.Log("S.Connector: PrFormat exit for empty connector:", this.arraylist);
+      LogUtil.Debug("S.Connector: PrFormat exit for empty connector:", this.arraylist);
       return;
     }
 
@@ -5819,7 +5819,7 @@ class Connector extends BaseDrawObject {
       );
     }
 
-    T3Util.Log("S.Connector: PrFormat output:", {
+    LogUtil.Debug("S.Connector: PrFormat output:", {
       horizontalPosition,
       stepsCount: stepBuffer.length,
       profile: this.arraylist.profile
@@ -5827,7 +5827,7 @@ class Connector extends BaseDrawObject {
   }
 
   GetAngleDisp(hook) {
-    T3Util.Log("S.Connector: GetAngleDisp called with hook:", hook);
+    LogUtil.Debug("S.Connector: GetAngleDisp called with hook:", hook);
 
     const angleDisplacement = {
       start: 0,
@@ -5839,12 +5839,12 @@ class Connector extends BaseDrawObject {
       angleDisplacement.end = -hook.endpoint.h * this.arraylist.angle;
     }
 
-    T3Util.Log("S.Connector: GetAngleDisp returning angleDisplacement:", angleDisplacement);
+    LogUtil.Debug("S.Connector: GetAngleDisp returning angleDisplacement:", angleDisplacement);
     return angleDisplacement;
   }
 
   AdjustAngleConnector() {
-    T3Util.Log("S.Connector: AdjustAngleConnector called");
+    LogUtil.Debug("S.Connector: AdjustAngleConnector called");
 
     const connectorDefines = OptConstant.ConnectorDefines;
     const minHooks = connectorDefines.NSkip;
@@ -5880,11 +5880,11 @@ class Connector extends BaseDrawObject {
       hook.endpoint.v -= angleDisp.end;
     }
 
-    T3Util.Log("S.Connector: AdjustAngleConnector completed");
+    LogUtil.Debug("S.Connector: AdjustAngleConnector completed");
   }
 
   GetTilt(height?: number): number {
-    T3Util.Log("S.Connector: GetTilt called with height:", height);
+    LogUtil.Debug("S.Connector: GetTilt called with height:", height);
 
     let tiltValue = 0;
     if (this.arraylist.tilt) {
@@ -5896,12 +5896,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetTilt returning tiltValue:", tiltValue);
+    LogUtil.Debug("S.Connector: GetTilt returning tiltValue:", tiltValue);
     return tiltValue;
   }
 
   AdjustTiltConnector() {
-    T3Util.Log("S.Connector: AdjustTiltConnector called");
+    LogUtil.Debug("S.Connector: AdjustTiltConnector called");
 
     const minHooks = OptConstant.ConnectorDefines.NSkip;
     const tiltValue = this.GetTilt();
@@ -5915,7 +5915,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: AdjustTiltConnector completed");
+    LogUtil.Debug("S.Connector: AdjustTiltConnector completed");
   }
 
   FormatLinear(
@@ -5927,7 +5927,7 @@ class Connector extends BaseDrawObject {
     skipAdjustment: boolean,
     output: any
   ): StepRect[] {
-    T3Util.Log("S.Connector: FormatLinear called with input:", {
+    LogUtil.Debug("S.Connector: FormatLinear called with input:", {
       session,
       useSteps,
       resultFrame,
@@ -6083,7 +6083,7 @@ class Connector extends BaseDrawObject {
     }
     resultFrame.x = currentX;
 
-    T3Util.Log("S.Connector: FormatLinear output:", {
+    LogUtil.Debug("S.Connector: FormatLinear output:", {
       resultFrame,
       stepsBuffer,
     });
@@ -6091,7 +6091,7 @@ class Connector extends BaseDrawObject {
   }
 
   AddCoManagerChildren(useStartPointFlag: boolean, copySteps: boolean, currentSteps: StepRect[]): StepRect[] {
-    T3Util.Log("S.Connector: AddCoManagerChildren input:", { useStartPointFlag, copySteps, currentSteps });
+    LogUtil.Debug("S.Connector: AddCoManagerChildren input:", { useStartPointFlag, copySteps, currentSteps });
 
     const skipHooks = OptConstant.ConnectorDefines.NSkip;
     const totalHooks = this.arraylist.hook.length;
@@ -6116,12 +6116,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: AddCoManagerChildren output:", currentSteps);
+    LogUtil.Debug("S.Connector: AddCoManagerChildren output:", currentSteps);
     return currentSteps;
   }
 
   AddAssistantChildren(useStartPointFlag: boolean, copySteps: boolean, currentSteps: StepRect[]): StepRect[] {
-    T3Util.Log("S.Connector: AddAssistantChildren input:", { useStartPointFlag, copySteps, currentSteps });
+    LogUtil.Debug("S.Connector: AddAssistantChildren input:", { useStartPointFlag, copySteps, currentSteps });
 
     // Rename local variables for clarity
     let totalHooks = this.arraylist.hook.length;
@@ -6201,12 +6201,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: AddAssistantChildren output:", currentSteps);
+    LogUtil.Debug("S.Connector: AddAssistantChildren output:", currentSteps);
     return currentSteps;
   }
 
   CompareSteps(existingSteps: StepRect[], newSteps: StepRect[]): number {
-    T3Util.Log("S.Connector: CompareSteps called with", {
+    LogUtil.Debug("S.Connector: CompareSteps called with", {
       existingSteps: JSON.stringify(existingSteps),
       newSteps: JSON.stringify(newSteps)
     });
@@ -6247,7 +6247,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: CompareSteps returning output:", longestDifference);
+    LogUtil.Debug("S.Connector: CompareSteps returning output:", longestDifference);
     return longestDifference;
   }
 
@@ -6259,7 +6259,7 @@ class Connector extends BaseDrawObject {
     offset: number,
     newOffset: number
   ): StepRect[] {
-    T3Util.Log("S.Connector: AddStepsToProfile called with", {
+    LogUtil.Debug("S.Connector: AddStepsToProfile called with", {
       existingSteps: JSON.stringify(existingSteps),
       newSteps: JSON.stringify(newSteps),
       transform,
@@ -6280,7 +6280,7 @@ class Connector extends BaseDrawObject {
       for (let i = 0; i < existingLength; i++) {
         resultSteps.push(new StepRect(existingSteps[i].h, existingSteps[i].v, offset, existingSteps[i].vend));
       }
-      T3Util.Log("S.Connector: AddStepsToProfile output", JSON.stringify(resultSteps));
+      LogUtil.Debug("S.Connector: AddStepsToProfile output", JSON.stringify(resultSteps));
       return resultSteps;
     }
 
@@ -6420,12 +6420,12 @@ class Connector extends BaseDrawObject {
     }
     resultSteps.length = resultSteps.length >= mergeIndex ? mergeIndex : resultSteps.length;
 
-    T3Util.Log("S.Connector: AddStepsToProfile output", JSON.stringify(resultSteps));
+    LogUtil.Debug("S.Connector: AddStepsToProfile output", JSON.stringify(resultSteps));
     return resultSteps;
   }
 
   BuildSideConnectorSteps() {
-    T3Util.Log("S.Connector: BuildSideConnectorSteps called, total hooks =", this.arraylist.hook.length);
+    LogUtil.Debug("S.Connector: BuildSideConnectorSteps called, total hooks =", this.arraylist.hook.length);
 
     const multiplier = 1;
     let resultSteps: StepRect[] = [];
@@ -6489,12 +6489,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: BuildSideConnectorSteps completed with output:", JSON.stringify(resultSteps));
+    LogUtil.Debug("S.Connector: BuildSideConnectorSteps completed with output:", JSON.stringify(resultSteps));
     return resultSteps;
   }
 
   InsertStepIntoProfile(profileSteps: StepRect[], newStep: StepRect): void {
-    T3Util.Log("S.Connector: InsertStepIntoProfile called with", {
+    LogUtil.Debug("S.Connector: InsertStepIntoProfile called with", {
       profileSteps: JSON.stringify(profileSteps),
       newStep: JSON.stringify(newStep)
     });
@@ -6511,11 +6511,11 @@ class Connector extends BaseDrawObject {
       profileSteps[index].vend += verticalOffset;
     }
 
-    T3Util.Log("S.Connector: InsertStepIntoProfile completed with output", JSON.stringify(profileSteps));
+    LogUtil.Debug("S.Connector: InsertStepIntoProfile completed with output", JSON.stringify(profileSteps));
   }
 
   UpdateCurrentProfile(profile: Rectangle, hook: any, flag: boolean): void {
-    T3Util.Log("S.Connector: UpdateCurrentProfile called with", {
+    LogUtil.Debug("S.Connector: UpdateCurrentProfile called with", {
       profile: JSON.stringify(profile),
       hook: JSON.stringify(hook),
       flag
@@ -6544,7 +6544,7 @@ class Connector extends BaseDrawObject {
       profile.vdist = newValue;
     }
 
-    T3Util.Log("S.Connector: UpdateCurrentProfile completed with output", JSON.stringify(profile));
+    LogUtil.Debug("S.Connector: UpdateCurrentProfile completed with output", JSON.stringify(profile));
   }
 
   GetFullShapeProfile(
@@ -6554,7 +6554,7 @@ class Connector extends BaseDrawObject {
     resultRect: Rectangle,
     updateUnion: boolean
   ): void {
-    T3Util.Log("S.Connector: GetFullShapeProfile called with", {
+    LogUtil.Debug("S.Connector: GetFullShapeProfile called with", {
       targetObjectId,
       offsetX,
       offsetY,
@@ -6632,22 +6632,22 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetFullShapeProfile completed with resultRect:", resultRect);
+    LogUtil.Debug("S.Connector: GetFullShapeProfile completed with resultRect:", resultRect);
   }
 
   GetRightAdjustment(hookedObjectId: number): number {
-    T3Util.Log("S.Connector: GetRightAdjustment called with hookedObjectId:", hookedObjectId);
+    LogUtil.Debug("S.Connector: GetRightAdjustment called with hookedObjectId:", hookedObjectId);
 
     const hookPoints = OptConstant.HookPts;
     const hookedObject = ObjectUtil.GetObjectPtr(hookedObjectId, false);
 
     if (hookedObject == null) {
-      T3Util.Log("S.Connector: GetRightAdjustment returning output: 0 (hookedObject is null)");
+      LogUtil.Debug("S.Connector: GetRightAdjustment returning output: 0 (hookedObject is null)");
       return 0;
     }
 
     if (hookedObject.hooks.length === 0) {
-      T3Util.Log("S.Connector: GetRightAdjustment returning output: 0 (hookedObject has no hooks)");
+      LogUtil.Debug("S.Connector: GetRightAdjustment returning output: 0 (hookedObject has no hooks)");
       return 0;
     }
 
@@ -6694,28 +6694,28 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetRightAdjustment returning output:", adjustment);
+    LogUtil.Debug("S.Connector: GetRightAdjustment returning output:", adjustment);
     return adjustment;
   }
 
   GetLeftAdjustment(hookObjectId: number): number {
-    T3Util.Log("S.Connector: GetLeftAdjustment called with hookObjectId:", hookObjectId);
+    LogUtil.Debug("S.Connector: GetLeftAdjustment called with hookObjectId:", hookObjectId);
 
     const hookPointsConstants = OptConstant.HookPts;
     const hookedObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
 
     if (hookedObject == null) {
-      T3Util.Log("S.Connector: GetLeftAdjustment returning 0 because hookedObject is null");
+      LogUtil.Debug("S.Connector: GetLeftAdjustment returning 0 because hookedObject is null");
       return 0;
     }
 
     if (hookedObject.DrawingObjectBaseClass !== OptConstant.DrawObjectBaseClass.Shape) {
-      T3Util.Log("S.Connector: GetLeftAdjustment returning 0 because hookedObject is not of type SHAPE");
+      LogUtil.Debug("S.Connector: GetLeftAdjustment returning 0 because hookedObject is not of type SHAPE");
       return 0;
     }
 
     if (hookedObject.hooks.length === 0) {
-      T3Util.Log("S.Connector: GetLeftAdjustment returning 0 because hookedObject has no hooks");
+      LogUtil.Debug("S.Connector: GetLeftAdjustment returning 0 because hookedObject has no hooks");
       return 0;
     }
 
@@ -6746,7 +6746,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetLeftAdjustment returning leftAdjustment:", leftAdjustment);
+    LogUtil.Debug("S.Connector: GetLeftAdjustment returning leftAdjustment:", leftAdjustment);
     return leftAdjustment;
   }
 
@@ -6758,7 +6758,7 @@ class Connector extends BaseDrawObject {
     useFullShapeProfile: boolean,
     ignoreGenoFlag: boolean
   ) {
-    T3Util.Log("S.Connector: GetElementProfile called with", {
+    LogUtil.Debug("S.Connector: GetElementProfile called with", {
       targetObjectId,
       useStartPointFlag,
       copySteps,
@@ -6805,7 +6805,7 @@ class Connector extends BaseDrawObject {
           resultProfile.frame.v = this.arraylist.hook[hookSkipCount].pr.v;
         }
         resultProfile.steps.push(new StepRect(-resultProfile.frame.h, -resultProfile.frame.v, resultProfile.frame.hdist, resultProfile.frame.vdist));
-        T3Util.Log("S.Connector: GetElementProfile output", resultProfile);
+        LogUtil.Debug("S.Connector: GetElementProfile output", resultProfile);
         return resultProfile;
       }
 
@@ -6848,7 +6848,7 @@ class Connector extends BaseDrawObject {
           }
         }
       }
-      T3Util.Log("S.Connector: GetElementProfile output", resultProfile);
+      LogUtil.Debug("S.Connector: GetElementProfile output", resultProfile);
       return resultProfile;
     }
 
@@ -7033,12 +7033,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: GetElementProfile output", resultProfile);
+    LogUtil.Debug("S.Connector: GetElementProfile output", resultProfile);
     return resultProfile;
   }
 
   PrAdjustHooks(startIndex: number, offsetAdjustment: number) {
-    T3Util.Log("S.Connector: PrAdjustHooks called with startIndex:", startIndex, "offsetAdjustment:", offsetAdjustment);
+    LogUtil.Debug("S.Connector: PrAdjustHooks called with startIndex:", startIndex, "offsetAdjustment:", offsetAdjustment);
     const skipHooksCount = OptConstant.ConnectorDefines.NSkip;
     const totalHooks = this.arraylist.hook.length;
     for (let index = startIndex; index < totalHooks; index++) {
@@ -7053,11 +7053,11 @@ class Connector extends BaseDrawObject {
         }
       }
     }
-    T3Util.Log("S.Connector: PrAdjustHooks completed");
+    LogUtil.Debug("S.Connector: PrAdjustHooks completed");
   }
 
   PrAddHookedObject(objectId, hookPoint, textId) {
-    T3Util.Log("S.Connector: PrAddHookedObject called with objectId:", objectId, "hookPoint:", hookPoint, "textId:", textId);
+    LogUtil.Debug("S.Connector: PrAddHookedObject called with objectId:", objectId, "hookPoint:", hookPoint, "textId:", textId);
     let currentHookCount, tempHook, insertIndex;
     let newHook = new SDHook();
     let useStub = false;
@@ -7077,7 +7077,7 @@ class Connector extends BaseDrawObject {
       } else {
         if (hookPoint === -1 || hookPoint === -2) {
           this.arraylist.hook[-hookPoint].id = objectId;
-          T3Util.Log("S.Connector: PrAddHookedObject early exit for negative hookPoint:", hookPoint);
+          LogUtil.Debug("S.Connector: PrAddHookedObject early exit for negative hookPoint:", hookPoint);
           return;
         }
         if (targetObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector &&
@@ -7149,11 +7149,11 @@ class Connector extends BaseDrawObject {
         this.PrAdjustHooks(insertIndex + 1, 1);
       }
     }
-    T3Util.Log("S.Connector: PrAddHookedObject completed with objectId:", objectId);
+    LogUtil.Debug("S.Connector: PrAddHookedObject completed with objectId:", objectId);
   }
 
   PrRemoveHookedObject(objectId, hookIndex) {
-    T3Util.Log("S.Connector: PrRemoveHookedObject called with objectId:", objectId, "hookIndex:", hookIndex);
+    LogUtil.Debug("S.Connector: PrRemoveHookedObject called with objectId:", objectId, "hookIndex:", hookIndex);
 
     let removedExtra = 0;
     if (this.arraylist != null) {
@@ -7190,11 +7190,11 @@ class Connector extends BaseDrawObject {
       this.PrAdjustHooks(hookIndex, -1);
     }
 
-    T3Util.Log("S.Connector: PrRemoveHookedObject completed for hookIndex:", hookIndex);
+    LogUtil.Debug("S.Connector: PrRemoveHookedObject completed for hookIndex:", hookIndex);
   }
 
   PrGetNBackBoneSegments(): number {
-    T3Util.Log("S.Connector: PrGetNBackBoneSegments() called, input: none");
+    LogUtil.Debug("S.Connector: PrGetNBackBoneSegments() called, input: none");
 
     let backboneSegmentCount = this.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip;
 
@@ -7203,13 +7203,13 @@ class Connector extends BaseDrawObject {
     }
 
     const result = backboneSegmentCount - 1;
-    T3Util.Log("S.Connector: PrGetNBackBoneSegments() returning output:", result);
+    LogUtil.Debug("S.Connector: PrGetNBackBoneSegments() returning output:", result);
 
     return result;
   }
 
   PrGetStubIndex() {
-    T3Util.Log("S.Connector: PrGetStubIndex called");
+    LogUtil.Debug("S.Connector: PrGetStubIndex called");
 
     let stubIndex = 0;
     const styles = OptConstant.AStyles;
@@ -7229,12 +7229,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: PrGetStubIndex returning output:", stubIndex);
+    LogUtil.Debug("S.Connector: PrGetStubIndex returning output:", stubIndex);
     return stubIndex;
   }
 
   PrGetEndShapeIndex() {
-    T3Util.Log("S.Connector: PrGetEndShapeIndex called");
+    LogUtil.Debug("S.Connector: PrGetEndShapeIndex called");
 
     let endShapeIndex = 0;
     const styles = OptConstant.AStyles;
@@ -7253,7 +7253,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: PrGetEndShapeIndex returning output:", endShapeIndex);
+    LogUtil.Debug("S.Connector: PrGetEndShapeIndex returning output:", endShapeIndex);
     return endShapeIndex;
   }
 
@@ -7276,7 +7276,7 @@ class Connector extends BaseDrawObject {
    * @returns Object containing line start positions, line lengths, and line displacements
    */
   PrAdjustFormat(horizontalOffset, verticalOffset, gapAdjustment, actionTriggerType, actionTriggerData, backboneSegments, stubIndex, endShapeIndex) {
-    T3Util.Log("S.Connector: PrAdjustFormat input:", {
+    LogUtil.Debug("S.Connector: PrAdjustFormat input:", {
       horizontalOffset,
       verticalOffset,
       gapAdjustment,
@@ -8108,12 +8108,12 @@ class Connector extends BaseDrawObject {
       linedisp: lineDisplacement
     };
 
-    T3Util.Log("S.Connector: PrAdjustFormat output:", result);
+    LogUtil.Debug("S.Connector: PrAdjustFormat output:", result);
     return result;
   }
 
   PrGetShapeConnectorInfo(hookDetails) {
-    T3Util.Log("S.Connector: PrGetShapeConnectorInfo called with input:", hookDetails);
+    LogUtil.Debug("S.Connector: PrGetShapeConnectorInfo called with input:", hookDetails);
 
     let firstHook;
     let connectionAdjustment;
@@ -8306,12 +8306,12 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: PrGetShapeConnectorInfo returning output:", knobInfoList);
+    LogUtil.Debug("S.Connector: PrGetShapeConnectorInfo returning output:", knobInfoList);
     return knobInfoList;
   }
 
   GetConnectorOrientation(isReversed: boolean) {
-    T3Util.Log("S.Connector: GetConnectorOrientation called with isReversed:", isReversed);
+    LogUtil.Debug("S.Connector: GetConnectorOrientation called with isReversed:", isReversed);
 
     const styles = OptConstant.AStyles;
     let startLeft = Boolean(this.arraylist.styleflags & styles.StartLeft);
@@ -8334,22 +8334,22 @@ class Connector extends BaseDrawObject {
       orientation = startLeft ? Instance.Shape.ConnectorDir.ORG_VERTICALUP : Instance.Shape.ConnectorDir.ORG_VERTICALDOWN;
     }
 
-    T3Util.Log("S.Connector: GetConnectorOrientation result:", orientation);
+    LogUtil.Debug("S.Connector: GetConnectorOrientation result:", orientation);
     return orientation;
   }
 
   IsFlowChartConnector(): boolean {
-    T3Util.Log("S.Connector: IsFlowChartConnector called");
+    LogUtil.Debug("S.Connector: IsFlowChartConnector called");
 
     const styles = OptConstant.AStyles;
     const isFlowChartConnector = (this.arraylist.styleflags & styles.FlowConn) > 0;
 
-    T3Util.Log("S.Connector: IsFlowChartConnector result:", isFlowChartConnector);
+    LogUtil.Debug("S.Connector: IsFlowChartConnector result:", isFlowChartConnector);
     return isFlowChartConnector;
   }
 
   IsOrgChartConnector(allowedTypes: number[]): boolean {
-    T3Util.Log("S.Connector: IsOrgChartConnector called with allowedTypes:", allowedTypes);
+    LogUtil.Debug("S.Connector: IsOrgChartConnector called with allowedTypes:", allowedTypes);
 
     let isOrgChartType = (this.objecttype === 0);
 
@@ -8363,23 +8363,23 @@ class Connector extends BaseDrawObject {
     }
 
     const isOrgChartConnector = !this.IsFlowChartConnector() && isOrgChartType;
-    T3Util.Log("S.Connector: IsOrgChartConnector result:", isOrgChartConnector);
+    LogUtil.Debug("S.Connector: IsOrgChartConnector result:", isOrgChartConnector);
     return isOrgChartConnector;
   }
 
   IsCauseAndEffectChartConnector(): boolean {
-    T3Util.Log("S.Connector: IsCauseAndEffectChartConnector called");
+    LogUtil.Debug("S.Connector: IsCauseAndEffectChartConnector called");
 
     const objectTypes = NvConstant.FNObjectTypes;
     const isCauseAndEffectChartConnector = this.objecttype === objectTypes.CauseEffectMain;
     // || this.objecttype === objectTypes.SD_OBJT_CAUSEEFFECT_BRANCH;
 
-    T3Util.Log("S.Connector: IsCauseAndEffectChartConnector result:", isCauseAndEffectChartConnector);
+    LogUtil.Debug("S.Connector: IsCauseAndEffectChartConnector result:", isCauseAndEffectChartConnector);
     return isCauseAndEffectChartConnector;
   }
 
   IsOrgChartTypeConnector(): boolean {
-    T3Util.Log("S.Connector: IsOrgChartTypeConnector called");
+    LogUtil.Debug("S.Connector: IsOrgChartTypeConnector called");
 
     const objectTypes = NvConstant.FNObjectTypes;
     let isOrgChartConnector = false;
@@ -8390,12 +8390,12 @@ class Connector extends BaseDrawObject {
         isOrgChartConnector = false;
     }
 
-    T3Util.Log("S.Connector: IsOrgChartTypeConnector result:", isOrgChartConnector);
+    LogUtil.Debug("S.Connector: IsOrgChartTypeConnector result:", isOrgChartConnector);
     return isOrgChartConnector;
   }
 
   FixHook(preserveOriginalPosition: boolean, forceCoManagerUpdate: boolean) {
-    T3Util.Log(
+    LogUtil.Debug(
       "S.Connector: FixHook called with preserveOriginalPosition:",
       preserveOriginalPosition,
       "forceCoManagerUpdate:",
@@ -8504,7 +8504,7 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log(
+    LogUtil.Debug(
       "S.Connector: FixHook completed with hook position:",
       this.hooks[0].connect,
       "hook point:",
@@ -8513,7 +8513,7 @@ class Connector extends BaseDrawObject {
   }
 
   SetDirection(invertStyle: boolean, toggleOrientation: boolean, propagate: boolean): void {
-    T3Util.Log("S.Connector: SetDirection called with invertStyle:", invertStyle, "toggleOrientation:", toggleOrientation, "propagate:", propagate);
+    LogUtil.Debug("S.Connector: SetDirection called with invertStyle:", invertStyle, "toggleOrientation:", toggleOrientation, "propagate:", propagate);
 
     const styles = OptConstant.AStyles;
     const skipCount = OptConstant.ConnectorDefines.NSkip;
@@ -8603,11 +8603,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: SetDirection completed");
+    LogUtil.Debug("S.Connector: SetDirection completed");
   }
 
   SetSpacing(adjustPrimaryDimension: boolean, spacingValue: number) {
-    T3Util.Log("S.Connector: SetSpacing called with adjustPrimaryDimension:", adjustPrimaryDimension, "spacingValue:", spacingValue);
+    LogUtil.Debug("S.Connector: SetSpacing called with adjustPrimaryDimension:", adjustPrimaryDimension, "spacingValue:", spacingValue);
 
     let effectiveSpacing: number = spacingValue;
     let hookCount: number = this.arraylist.hook.length;
@@ -8714,29 +8714,29 @@ class Connector extends BaseDrawObject {
     // update either width or height and adjust extra spacing if necessary.
     if (this.vertical) {
       if (adjustPrimaryDimension) {
-        T3Util.Log("S.Connector: Setting width to", effectiveSpacing);
+        LogUtil.Debug("S.Connector: Setting width to", effectiveSpacing);
         this.arraylist.wd = effectiveSpacing;
         adjustExtraSpacing(this.arraylist, effectiveSpacing);
       } else {
-        T3Util.Log("S.Connector: Setting height to", effectiveSpacing);
+        LogUtil.Debug("S.Connector: Setting height to", effectiveSpacing);
         this.arraylist.ht = effectiveSpacing;
       }
     } else {
       if (adjustPrimaryDimension) {
-        T3Util.Log("S.Connector: Setting height to", effectiveSpacing);
+        LogUtil.Debug("S.Connector: Setting height to", effectiveSpacing);
         this.arraylist.ht = effectiveSpacing;
       } else {
-        T3Util.Log("S.Connector: Setting width to", effectiveSpacing);
+        LogUtil.Debug("S.Connector: Setting width to", effectiveSpacing);
         this.arraylist.wd = effectiveSpacing;
         adjustExtraSpacing(this.arraylist, effectiveSpacing);
       }
     }
 
-    T3Util.Log("S.Connector: SetSpacing completed");
+    LogUtil.Debug("S.Connector: SetSpacing completed");
   }
 
   CollapseConnector(collapseState, updateLinkFlags, propagateCollapse) {
-    T3Util.Log("S.Connector: CollapseConnector called with collapseState:", collapseState, "updateLinkFlags:", updateLinkFlags, "propagateCollapse:", propagateCollapse);
+    LogUtil.Debug("S.Connector: CollapseConnector called with collapseState:", collapseState, "updateLinkFlags:", updateLinkFlags, "propagateCollapse:", propagateCollapse);
 
     var obj,
       childObj,
@@ -8819,11 +8819,11 @@ class Connector extends BaseDrawObject {
       this.PrFormat(this.BlockID);
     }
 
-    T3Util.Log("S.Connector: CollapseConnector completed for BlockID:", this.BlockID, "with collapseState:", collapseState);
+    LogUtil.Debug("S.Connector: CollapseConnector completed for BlockID:", this.BlockID, "with collapseState:", collapseState);
   }
 
   MatchSize(applyNewWidth: boolean, newWidth: number) {
-    T3Util.Log("S.Connector: MatchSize called with applyNewWidth:", applyNewWidth, "newWidth:", newWidth);
+    LogUtil.Debug("S.Connector: MatchSize called with applyNewWidth:", applyNewWidth, "newWidth:", newWidth);
 
     let hookIndex: number;
     const totalHooks = this.arraylist.hook.length;
@@ -8960,11 +8960,11 @@ class Connector extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("S.Connector: MatchSize completed with reference width:", refWidth, "max combined distance:", maxCombined);
+    LogUtil.Debug("S.Connector: MatchSize completed with reference width:", refWidth, "max combined distance:", maxCombined);
   }
 
   FoundText(searchText: string, length: number, blockID: number): boolean {
-    T3Util.Log("S.Connector: FoundText called with searchText:", searchText, "length:", length, "blockID:", blockID);
+    LogUtil.Debug("S.Connector: FoundText called with searchText:", searchText, "length:", length, "blockID:", blockID);
 
     let hookIndex = 0;
     const hooksLength = this.arraylist.hook.length;
@@ -8982,21 +8982,21 @@ class Connector extends BaseDrawObject {
             this.arraylist.lasttexthook = i;
             TextUtil.ActivateTextEdit(svgElement);
             textElement.SetSelectedRange(textElement.GetText(0).search(searchText), textElement.GetText(0).search(searchText) + length);
-            T3Util.Log("S.Connector: FoundText found text at hook index:", i);
+            LogUtil.Debug("S.Connector: FoundText found text at hook index:", i);
             return true;
           }
         }
       }
     }
 
-    T3Util.Log("S.Connector: FoundText did not find the text");
+    LogUtil.Debug("S.Connector: FoundText did not find the text");
     return false;
   }
 
   FieldDataAllowed(): boolean {
-    T3Util.Log("S.Connector: Checking if field data is allowed");
+    LogUtil.Debug("S.Connector: Checking if field data is allowed");
     const isAllowed = false;
-    T3Util.Log("S.Connector: Field data allowed:", isAllowed);
+    LogUtil.Debug("S.Connector: Field data allowed:", isAllowed);
     return isAllowed;
   }
 }

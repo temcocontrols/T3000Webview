@@ -20,6 +20,7 @@ import UIUtil from '../Opt/UI/UIUtil'
 import OptCMUtil from '../Opt/Opt/OptCMUtil'
 import HookUtil from '../Opt/Opt/HookUtil'
 import PolyUtil from '../Opt/Opt/PolyUtil'
+import LogUtil from '../Util/LogUtil'
 
 /**
  * ArcLine class represents a curved line segment in the T3000 HVAC drawing system.
@@ -85,7 +86,7 @@ class ArcLine extends BaseLine {
   public OriginalCenterPointDistance: any;
 
   constructor(options: any = {}) {
-    T3Util.Log("= S.ArcLine constructor input:", options);
+    LogUtil.Debug("= S.ArcLine constructor input:", options);
 
     // Set line type and call the super constructor
     options.LineType = OptConstant.LineType.ARCLINE;
@@ -113,11 +114,11 @@ class ArcLine extends BaseLine {
     this.ArrowSizeIndex = options.ArrowSizeIndex || 0;
     this.TextDirection = options.TextDirection || false;
 
-    T3Util.Log("= S.ArcLine constructor output:", this);
+    LogUtil.Debug("= S.ArcLine constructor output:", this);
   }
 
   CalcRadiusAndCenter(startX, startY, endX, endY, curveAdjust, isReversed) {
-    T3Util.Log("= S.ArcLine CalcRadiusAndCenter input:", { startX, startY, endX, endY, curveAdjust, isReversed });
+    LogUtil.Debug("= S.ArcLine CalcRadiusAndCenter input:", { startX, startY, endX, endY, curveAdjust, isReversed });
 
     const result = {
       centerX: 0,
@@ -137,7 +138,7 @@ class ArcLine extends BaseLine {
     let chordLength = Math.sqrt(dx * dx + dy * dy);
 
     if (chordLength === 0) {
-      T3Util.Log("= S.ArcLine CalcRadiusAndCenter output:", result);
+      LogUtil.Debug("= S.ArcLine CalcRadiusAndCenter output:", result);
       result.valid = false;
       return result;
     }
@@ -198,12 +199,12 @@ class ArcLine extends BaseLine {
     result.actionY = actionY;
     result.valid = true;
 
-    T3Util.Log("= S.ArcLine CalcRadiusAndCenter output:", result);
+    LogUtil.Debug("= S.ArcLine CalcRadiusAndCenter output:", result);
     return result;
   }
 
   GetLineChangeFrame() {
-    T3Util.Log("= S.ArcLine GetLineChangeFrame input:", {
+    LogUtil.Debug("= S.ArcLine GetLineChangeFrame input:", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint
     });
@@ -218,15 +219,15 @@ class ArcLine extends BaseLine {
       frame.height = OptConstant.Common.SegDefLen;
     }
 
-    T3Util.Log("= S.ArcLine GetLineChangeFrame output:", frame);
+    LogUtil.Debug("= S.ArcLine GetLineChangeFrame output:", frame);
     return frame;
   }
 
   CreateArcShapeForHops(svgDoc, isTouch) {
-    T3Util.Log("= S.ArcLine CreateArcShapeForHops input:", { svgDoc, isTouch });
+    LogUtil.Debug("= S.ArcLine CreateArcShapeForHops input:", { svgDoc, isTouch });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("= S.ArcLine CreateArcShapeForHops output:", null);
+      LogUtil.Debug("= S.ArcLine CreateArcShapeForHops output:", null);
       return null;
     }
 
@@ -293,15 +294,15 @@ class ArcLine extends BaseLine {
     container.isShape = true;
     this.AddIcons(svgDoc, container);
 
-    T3Util.Log("= S.ArcLine CreateArcShapeForHops output:", container);
+    LogUtil.Debug("= S.ArcLine CreateArcShapeForHops output:", container);
     return container;
   }
 
   CreateShape(svgDoc, isTouch) {
-    T3Util.Log("= S.ArcLine CreateShape input:", { svgDoc, isTouch });
+    LogUtil.Debug("= S.ArcLine CreateShape input:", { svgDoc, isTouch });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("= S.ArcLine CreateShape output:", null);
+      LogUtil.Debug("= S.ArcLine CreateShape output:", null);
       return null;
     }
 
@@ -357,18 +358,18 @@ class ArcLine extends BaseLine {
       container.isShape = true;
       this.AddIcons(svgDoc, container);
 
-      T3Util.Log("= S.ArcLine CreateShape output:", container);
+      LogUtil.Debug("= S.ArcLine CreateShape output:", container);
       return container;
     }
 
     // When hops are present, delegate to CreateArcShapeForHops.
     const arcShape = this.CreateArcShapeForHops(svgDoc, isTouch);
-    T3Util.Log("= S.ArcLine CreateShape output:", arcShape);
+    LogUtil.Debug("= S.ArcLine CreateShape output:", arcShape);
     return arcShape;
   }
 
   PostCreateShapeCallback(svgDoc, svgContainer, callbackData, event) {
-    T3Util.Log("= S.ArcLine PostCreateShapeCallback input:", { svgDoc, svgContainer, callbackData, event });
+    LogUtil.Debug("= S.ArcLine PostCreateShapeCallback input:", { svgDoc, svgContainer, callbackData, event });
 
     if (this.hoplist.nhops === 0) {
       this.RegenerateGenerateArc(svgContainer);
@@ -382,11 +383,11 @@ class ArcLine extends BaseLine {
 
     this.UpdateDimensionLines(svgContainer);
 
-    T3Util.Log("= S.ArcLine PostCreateShapeCallback output:", "Callback completed");
+    LogUtil.Debug("= S.ArcLine PostCreateShapeCallback output:", "Callback completed");
   }
 
   CreateActionTriggers(svgDoc, targetId, triggerType, compareId) {
-    T3Util.Log("= S.ArcLine CreateActionTriggers input:", { svgDoc, targetId, triggerType, compareId });
+    LogUtil.Debug("= S.ArcLine CreateActionTriggers input:", { svgDoc, targetId, triggerType, compareId });
 
     // Create a group container for the action triggers.
     let group = svgDoc.CreateShape(OptConstant.CSType.Group);
@@ -555,12 +556,12 @@ class ArcLine extends BaseLine {
     group.isShape = true;
     group.SetID(OptConstant.Common.Action + targetId);
 
-    T3Util.Log("= S.ArcLine CreateActionTriggers output:", group);
+    LogUtil.Debug("= S.ArcLine CreateActionTriggers output:", group);
     return group;
   }
 
   GetTextOnLineParams(e) {
-    T3Util.Log("= S.ArcLine GetTextOnLineParams input:", { param: e });
+    LogUtil.Debug("= S.ArcLine GetTextOnLineParams input:", { param: e });
 
     let result = {
       Frame: new Instance.Shape.Rect(),
@@ -617,12 +618,12 @@ class ArcLine extends BaseLine {
         break;
     }
 
-    T3Util.Log("= S.ArcLine GetTextOnLineParams output:", result);
+    LogUtil.Debug("= S.ArcLine GetTextOnLineParams output:", result);
     return result;
   }
 
   RegenerateGenerateArc(svgDoc) {
-    T3Util.Log("= S.ArcLine RegenerateGenerateArc input:", { svgDoc });
+    LogUtil.Debug("= S.ArcLine RegenerateGenerateArc input:", { svgDoc });
 
     let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
     let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
@@ -691,11 +692,11 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine RegenerateGenerateArc output:", { pathData: shapeElement ? shapeElement.PathCreator ? shapeElement.PathCreator().ToString() : null : null });
+    LogUtil.Debug("= S.ArcLine RegenerateGenerateArc output:", { pathData: shapeElement ? shapeElement.PathCreator ? shapeElement.PathCreator().ToString() : null : null });
   }
 
   RegenerateGenerateArcForHops(svgDoc) {
-    T3Util.Log("= S.ArcLine RegenerateGenerateArcForHops input:", { svgDoc });
+    LogUtil.Debug("= S.ArcLine RegenerateGenerateArcForHops input:", { svgDoc });
 
     // Retrieve arrowhead definitions and arrow size
     let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
@@ -754,11 +755,11 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine RegenerateGenerateArcForHops output:", { polyPoints, rect });
+    LogUtil.Debug("= S.ArcLine RegenerateGenerateArcForHops output:", { polyPoints, rect });
   }
 
   AdjustLineStart(svgDoc, newStartX, newStartY) {
-    T3Util.Log("= S.ArcLine AdjustLineStart input:", { svgDoc, newStartX, newStartY });
+    LogUtil.Debug("= S.ArcLine AdjustLineStart input:", { svgDoc, newStartX, newStartY });
 
     // Save the current StartPoint values before update
     const originalStart = {
@@ -807,14 +808,14 @@ class ArcLine extends BaseLine {
       this.LMResizeSVGTextObject(svgDoc, this, this.Frame);
     }
 
-    T3Util.Log("= S.ArcLine AdjustLineStart output:", {
+    LogUtil.Debug("= S.ArcLine AdjustLineStart output:", {
       updatedStartPoint: this.StartPoint,
       updatedFrame: this.Frame
     });
   }
 
   AdjustLineEnd(svgDoc: any, newEndX: number, newEndY: number, trigger: any) {
-    T3Util.Log("= S.ArcLine AdjustLineEnd input:", { svgDoc, newEndX, newEndY, trigger });
+    LogUtil.Debug("= S.ArcLine AdjustLineEnd input:", { svgDoc, newEndX, newEndY, trigger });
 
     // Save original end point coordinates
     const originalEnd = { x: this.EndPoint.x, y: this.EndPoint.y };
@@ -858,11 +859,11 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine AdjustLineEnd output:", { updatedEndPoint: this.EndPoint, frame: this.Frame });
+    LogUtil.Debug("= S.ArcLine AdjustLineEnd output:", { updatedEndPoint: this.EndPoint, frame: this.Frame });
   }
 
   Flip(flipFlag: number) {
-    T3Util.Log("= S.ArcLine Flip input:", { flipFlag });
+    LogUtil.Debug("= S.ArcLine Flip input:", { flipFlag });
 
     let swapped = false;
     const temp: any = {};
@@ -876,7 +877,7 @@ class ArcLine extends BaseLine {
       this.StartPoint.y = this.EndPoint.y;
       this.EndPoint.y = temp.y;
       swapped = true;
-      T3Util.Log("= S.ArcLine Flip: Performed vertical flip.");
+      LogUtil.Debug("= S.ArcLine Flip: Performed vertical flip.");
     }
 
     // Flip horizontally if flag is set
@@ -885,12 +886,12 @@ class ArcLine extends BaseLine {
       this.StartPoint.x = this.EndPoint.x;
       this.EndPoint.x = temp.x;
       swapped = true;
-      T3Util.Log("= S.ArcLine Flip: Performed horizontal flip.");
+      LogUtil.Debug("= S.ArcLine Flip: Performed horizontal flip.");
     }
 
     if (swapped) {
       this.IsReversed = !this.IsReversed;
-      T3Util.Log("= S.ArcLine Flip: Toggled IsReversed to", this.IsReversed);
+      LogUtil.Debug("= S.ArcLine Flip: Toggled IsReversed to", this.IsReversed);
 
       const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
       if (svgElement) {
@@ -914,7 +915,7 @@ class ArcLine extends BaseLine {
     // Reset the backup object
     T3Gv.opt.ob = {};
 
-    T3Util.Log("= S.ArcLine Flip output:", {
+    LogUtil.Debug("= S.ArcLine Flip output:", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
       IsReversed: this.IsReversed,
@@ -922,7 +923,7 @@ class ArcLine extends BaseLine {
   }
 
   ModifyShape(svgDoc: any, x: number, y: number, trigger: number, additional?: any): void {
-    T3Util.Log("= S.ArcLine ModifyShape input:", { svgDoc, x, y, trigger, additional });
+    LogUtil.Debug("= S.ArcLine ModifyShape input:", { svgDoc, x, y, trigger, additional });
 
     // Determine the side based on the current start and end points and the provided coordinates.
     let side = this.FindSide(
@@ -996,7 +997,7 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine ModifyShape output:", { CurveAdjust: this.CurveAdjust, Frame: this.Frame });
+    LogUtil.Debug("= S.ArcLine ModifyShape output:", { CurveAdjust: this.CurveAdjust, Frame: this.Frame });
   }
 
   FindSide(
@@ -1007,7 +1008,7 @@ class ArcLine extends BaseLine {
     testX: number,
     testY: number
   ): number {
-    T3Util.Log("= S.ArcLine FindSide input:", {
+    LogUtil.Debug("= S.ArcLine FindSide input:", {
       startX,
       startY,
       endX,
@@ -1027,7 +1028,7 @@ class ArcLine extends BaseLine {
       } else {
         side = 0;
       }
-      T3Util.Log("= S.ArcLine FindSide output:", side);
+      LogUtil.Debug("= S.ArcLine FindSide output:", side);
       return side;
     }
 
@@ -1040,7 +1041,7 @@ class ArcLine extends BaseLine {
       } else {
         side = 0;
       }
-      T3Util.Log("= S.ArcLine FindSide output:", side);
+      LogUtil.Debug("= S.ArcLine FindSide output:", side);
       return side;
     }
 
@@ -1056,12 +1057,12 @@ class ArcLine extends BaseLine {
       side = 0;
     }
 
-    T3Util.Log("= S.ArcLine FindSide output:", side);
+    LogUtil.Debug("= S.ArcLine FindSide output:", side);
     return side;
   }
 
   BeforeModifyShape(mouseX: number, mouseY: number, extra: any) {
-    T3Util.Log("= S.ArcLine BeforeModifyShape input:", { mouseX, mouseY, extra });
+    LogUtil.Debug("= S.ArcLine BeforeModifyShape input:", { mouseX, mouseY, extra });
 
     // Store the original curve adjustment value
     this.OriginalCurveAdjust = this.CurveAdjust;
@@ -1091,7 +1092,7 @@ class ArcLine extends BaseLine {
           mouseY
         );
 
-    T3Util.Log("= S.ArcLine BeforeModifyShape output:", {
+    LogUtil.Debug("= S.ArcLine BeforeModifyShape output:", {
       OriginalCurveAdjust: this.OriginalCurveAdjust,
       OriginalCenterPointDistance: this.OriginalCenterPointDistance,
       OriginalLineSide: this.OriginalLineSide,
@@ -1099,7 +1100,7 @@ class ArcLine extends BaseLine {
   }
 
   StartNewObjectDrawTrackCommon(drawX: number, drawY: number, extra: any) {
-    T3Util.Log("= S.ArcLine StartNewObjectDrawTrackCommon input:", { drawX, drawY, extra });
+    LogUtil.Debug("= S.ArcLine StartNewObjectDrawTrackCommon input:", { drawX, drawY, extra });
 
     const startX = T3Gv.opt.actionStartX;
     const startY = T3Gv.opt.actionStartY;
@@ -1130,7 +1131,7 @@ class ArcLine extends BaseLine {
       OptConstant.ActionTriggerType.LineEnd
     );
 
-    T3Util.Log("= S.ArcLine StartNewObjectDrawTrackCommon output:", { CurveAdjust: this.CurveAdjust, IsReversed: this.IsReversed });
+    LogUtil.Debug("= S.ArcLine StartNewObjectDrawTrackCommon output:", { CurveAdjust: this.CurveAdjust, IsReversed: this.IsReversed });
   }
 
   GetPolyPoints(
@@ -1140,7 +1141,7 @@ class ArcLine extends BaseLine {
     extraParam1?: any,
     extraParam2?: any
   ): Point[] {
-    T3Util.Log("= S.ArcLine GetPolyPoints input:", {
+    LogUtil.Debug("= S.ArcLine GetPolyPoints input:", {
       numPoints,
       skipOffset,
       useSuper,
@@ -1155,7 +1156,7 @@ class ArcLine extends BaseLine {
     // If using superclass implementation, delegate.
     if (useSuper) {
       polyPoints = super.GetPolyPoints(numPoints, skipOffset, useSuper, extraParam1, extraParam2);
-      T3Util.Log("= S.ArcLine GetPolyPoints output (using super):", polyPoints);
+      LogUtil.Debug("= S.ArcLine GetPolyPoints output (using super):", polyPoints);
       return polyPoints;
     }
 
@@ -1238,12 +1239,12 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine GetPolyPoints output:", polyPoints);
+    LogUtil.Debug("= S.ArcLine GetPolyPoints output:", polyPoints);
     return polyPoints;
   }
 
   GetConnectLine() {
-    T3Util.Log("= S.ArcLine GetConnectLine input:", {
+    LogUtil.Debug("= S.ArcLine GetConnectLine input:", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
       CurveAdjust: this.CurveAdjust,
@@ -1337,23 +1338,23 @@ class ArcLine extends BaseLine {
       result.endpt = { x: points[1].x, y: points[1].y };
       result.center = { x: centerPoint.x + rect.x, y: centerPoint.y + rect.y };
 
-      T3Util.Log("= S.ArcLine GetConnectLine intermediate values:", {
+      LogUtil.Debug("= S.ArcLine GetConnectLine intermediate values:", {
         rotatedPoints: points,
         computedFrame,
         computedLength,
         resultCenter: result.center
       });
 
-      T3Util.Log("= S.ArcLine GetConnectLine output:", result);
+      LogUtil.Debug("= S.ArcLine GetConnectLine output:", result);
       return result;
     } else {
-      T3Util.Log("= S.ArcLine GetConnectLine output:", null);
+      LogUtil.Debug("= S.ArcLine GetConnectLine output:", null);
       return null;
     }
   }
 
   GetTargetPoints(hookElement, hookFlags, targetId) {
-    T3Util.Log("= S.ArcLine GetTargetPoints input:", { hookElement, hookFlags, targetId });
+    LogUtil.Debug("= S.ArcLine GetTargetPoints input:", { hookElement, hookFlags, targetId });
 
     // Initialize the target point with default values.
     const targetPoints = [{ x: 0, y: 0 }];
@@ -1375,7 +1376,7 @@ class ArcLine extends BaseLine {
         case hookPts.KRC:
         case hookPts.KLC:
           const baseTargetPoints = super.GetTargetPoints(hookElement, hookFlags, targetId);
-          T3Util.Log("= S.ArcLine GetTargetPoints output:", baseTargetPoints);
+          LogUtil.Debug("= S.ArcLine GetTargetPoints output:", baseTargetPoints);
           return baseTargetPoints;
       }
     }
@@ -1448,12 +1449,12 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine GetTargetPoints output:", targetPoints);
+    LogUtil.Debug("= S.ArcLine GetTargetPoints output:", targetPoints);
     return targetPoints;
   }
 
   GetPerimPts(event: any, hooks: any[], param3: any, param4: any, param5: any, targetId: any): Point[] {
-    T3Util.Log("= S.ArcLine GetPerimPts input:", { event, hooks, param3, param4, param5, targetId });
+    LogUtil.Debug("= S.ArcLine GetPerimPts input:", { event, hooks, param3, param4, param5, targetId });
 
     let resultPoints: Point[] = [];
     const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
@@ -1474,7 +1475,7 @@ class ArcLine extends BaseLine {
       let ptEnd = new Point(this.EndPoint.x, this.EndPoint.y);
       ptEnd.id = hooks[1].id;
       resultPoints.push(ptStart, ptEnd);
-      T3Util.Log("= S.ArcLine GetPerimPts output (direct start/end):", resultPoints);
+      LogUtil.Debug("= S.ArcLine GetPerimPts output (direct start/end):", resultPoints);
       return resultPoints;
     }
 
@@ -1482,12 +1483,12 @@ class ArcLine extends BaseLine {
     const refObject = ObjectUtil.GetObjectPtr(targetId, false);
     if (refObject && refObject.objecttype === NvConstant.FNObjectTypes.Multiplicity) {
       resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
-      T3Util.Log("= S.ArcLine GetPerimPts output (Multiplicity):", resultPoints);
+      LogUtil.Debug("= S.ArcLine GetPerimPts output (Multiplicity):", resultPoints);
       return resultPoints;
     }
     if (refObject && refObject.objecttype === NvConstant.FNObjectTypes.ExtraTextLable && hooks.length === 1) {
       resultPoints = super.GetPerimPts(event, hooks, param3, param4, param5, targetId);
-      T3Util.Log("= S.ArcLine GetPerimPts output (ExtraTextLabel):", resultPoints);
+      LogUtil.Debug("= S.ArcLine GetPerimPts output (ExtraTextLabel):", resultPoints);
       return resultPoints;
     }
 
@@ -1531,12 +1532,12 @@ class ArcLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.ArcLine GetPerimPts output:", resultPoints);
+    LogUtil.Debug("= S.ArcLine GetPerimPts output:", resultPoints);
     return resultPoints;
   }
 
   MaintainPoint(event: any, targetId: any, maintainDistParam: any, drawingObject: any, extraParam: any): any {
-    T3Util.Log("= S.ArcLine MaintainPoint input:", { event, targetId, maintainDistParam, drawingObject, extraParam });
+    LogUtil.Debug("= S.ArcLine MaintainPoint input:", { event, targetId, maintainDistParam, drawingObject, extraParam });
 
     let hookFound = false;
     let hookPoint: any = {};
@@ -1556,7 +1557,7 @@ class ArcLine extends BaseLine {
               }
             }
             if (!hookFound) {
-              T3Util.Log("= S.ArcLine MaintainPoint output:", true);
+              LogUtil.Debug("= S.ArcLine MaintainPoint output:", true);
               return true;
             }
             newDrawingObject = Utils1.DeepCopy(drawingObject);
@@ -1565,15 +1566,15 @@ class ArcLine extends BaseLine {
             newDrawingObject.StartPoint.y = hookPoint.y;
             newDrawingObject.EndPoint.x = hookPoint.x + hookPoint.width;
             newDrawingObject.EndPoint.y = hookPoint.y + hookPoint.height;
-            T3Util.Log("= S.ArcLine MaintainPoint output:", newDrawingObject);
+            LogUtil.Debug("= S.ArcLine MaintainPoint output:", newDrawingObject);
             return newDrawingObject;
         }
         if (T3Gv.opt.ArcCheckPoint(this, event)) {
-          T3Util.Log("= S.ArcLine MaintainPoint output:", true);
+          LogUtil.Debug("= S.ArcLine MaintainPoint output:", true);
           return true;
         }
         if (T3Gv.opt.ArcIntersect(this, drawingObject, event)) {
-          T3Util.Log("= S.ArcLine MaintainPoint output:", true);
+          LogUtil.Debug("= S.ArcLine MaintainPoint output:", true);
           return true;
         }
         T3Gv.opt.LinesMaintainDist(this, maintainDistParam, extraParam, event);
@@ -1584,7 +1585,7 @@ class ArcLine extends BaseLine {
         break;
     }
 
-    T3Util.Log("= S.ArcLine MaintainPoint output:", true);
+    LogUtil.Debug("= S.ArcLine MaintainPoint output:", true);
     return true;
   }
 }

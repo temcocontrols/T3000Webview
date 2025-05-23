@@ -9,6 +9,7 @@ import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a base symbol shape in the T3000 HVAC visualization system.
@@ -49,7 +50,7 @@ class BaseSymbol extends BaseShape {
 
   constructor(options: any) {
     // Log input parameters
-    T3Util.Log("S.BaseSymbol - Constructor input:", options);
+    LogUtil.Debug("S.BaseSymbol - Constructor input:", options);
 
     // Ensure options is initialized and set readable property names
     options = options || {};
@@ -64,18 +65,18 @@ class BaseSymbol extends BaseShape {
     this.SymbolData = options.SymbolData || null;
 
     // Log the state after construction
-    T3Util.Log("S.BaseSymbol - Constructor output:", this);
+    LogUtil.Debug("S.BaseSymbol - Constructor output:", this);
   }
 
   CreateActionTriggers2(svgDocument: any, triggerId: any, actionHandler: any, releaseHandler: any) {
-    T3Util.Log("S.BaseSymbol - CreateActionTriggers2 input:", { svgDocument, triggerId, actionHandler, releaseHandler });
+    LogUtil.Debug("S.BaseSymbol - CreateActionTriggers2 input:", { svgDocument, triggerId, actionHandler, releaseHandler });
     const result = super.CreateActionTriggers(svgDocument, triggerId, actionHandler, releaseHandler);
-    T3Util.Log("S.BaseSymbol - CreateActionTriggers2 output:", result);
+    LogUtil.Debug("S.BaseSymbol - CreateActionTriggers2 output:", result);
     return result;
   }
 
   CreateActionTriggers(svgDocument, triggerId, actionHandler, releaseHandler) {
-    T3Util.Log("S.BaseSymbol - CreateActionTriggers input:", { svgDocument, triggerId, actionHandler, releaseHandler });
+    LogUtil.Debug("S.BaseSymbol - CreateActionTriggers input:", { svgDocument, triggerId, actionHandler, releaseHandler });
 
     // List of cursor types for resize handles
     const resizeCursorTypes = [
@@ -211,19 +212,19 @@ class BaseSymbol extends BaseShape {
     knobGroup.isShape = true;
     knobGroup.SetID(OptConstant.Common.Action + triggerId);
 
-    T3Util.Log("S.BaseSymbol - CreateActionTriggers output:", knobGroup);
+    LogUtil.Debug("S.BaseSymbol - CreateActionTriggers output:", knobGroup);
     return knobGroup;
   }
 
   ChangeShape(event: any, targetElement: any, newProperties: any, previousState: any, additionalData: any): boolean {
-    T3Util.Log("S.BaseSymbol - ChangeShape input:", { event, targetElement, newProperties, previousState, additionalData });
+    LogUtil.Debug("S.BaseSymbol - ChangeShape input:", { event, targetElement, newProperties, previousState, additionalData });
     const result = false;
-    T3Util.Log("S.BaseSymbol - ChangeShape output:", result);
+    LogUtil.Debug("S.BaseSymbol - ChangeShape output:", result);
     return result;
   }
 
   Flip(flipFlags: number) {
-    T3Util.Log("S.BaseSymbol - Flip input:", flipFlags);
+    LogUtil.Debug("S.BaseSymbol - Flip input:", flipFlags);
 
     // Retrieve the element by block ID (for potential further operations)
     T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
@@ -248,11 +249,11 @@ class BaseSymbol extends BaseShape {
       );
     }
 
-    T3Util.Log("S.BaseSymbol - Flip output:", this.extraflags);
+    LogUtil.Debug("S.BaseSymbol - Flip output:", this.extraflags);
   }
 
   LMActionPreTrack(event: any, trigger: any): void {
-    T3Util.Log("S.BaseSymbol - LMActionPreTrack input:", { event, trigger });
+    LogUtil.Debug("S.BaseSymbol - LMActionPreTrack input:", { event, trigger });
 
     if (this.DataID !== -1) {
       if (this.TextFlags & NvConstant.TextFlags.AttachA ||
@@ -266,11 +267,11 @@ class BaseSymbol extends BaseShape {
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
     }
 
-    T3Util.Log("S.BaseSymbol - LMActionPreTrack output: completed");
+    LogUtil.Debug("S.BaseSymbol - LMActionPreTrack output: completed");
   }
 
   LMActionPostRelease(event: any): void {
-    T3Util.Log("S.BaseSymbol - LMActionPostRelease input:", event);
+    LogUtil.Debug("S.BaseSymbol - LMActionPostRelease input:", event);
 
     if (this.DataID !== -1) {
       if (
@@ -288,7 +289,7 @@ class BaseSymbol extends BaseShape {
     this.sizedim.width = this.Frame.width;
     this.sizedim.height = this.Frame.height;
 
-    T3Util.Log("S.BaseSymbol - LMActionPostRelease output: completed");
+    LogUtil.Debug("S.BaseSymbol - LMActionPostRelease output: completed");
   }
 }
 

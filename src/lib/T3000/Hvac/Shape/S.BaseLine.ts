@@ -36,6 +36,7 @@ import SelectUtil from "../Opt/Opt/SelectUtil";
 import ToolActUtil from "../Opt/Opt/ToolActUtil";
 import PolyUtil from "../Opt/Opt/PolyUtil";
 import TextUtil from "../Opt/Opt/TextUtil";
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a base line object in the T3000 drawing system.
@@ -89,7 +90,7 @@ class BaseLine extends BaseDrawObject {
   public ArrowSizeIndex: any;
 
   constructor(params: any) {
-    T3Util.Log("= S.BaseLine: constructor called with input:", params);
+    LogUtil.Debug("= S.BaseLine: constructor called with input:", params);
 
     // Ensure params is defined and set default values
     params = params || {};
@@ -115,61 +116,61 @@ class BaseLine extends BaseDrawObject {
     this.iconShapeBottomOffset = 20;
     this.iconShapeRightOffset = 0;
 
-    T3Util.Log("= S.BaseLine: constructor output:", this);
+    LogUtil.Debug("= S.BaseLine: constructor output:", this);
   }
 
   checkIfPolyLine(polylineObj: any): boolean {
-    T3Util.Log("= S.BaseLine: checkIfPolyLine called with input:", polylineObj);
+    LogUtil.Debug("= S.BaseLine: checkIfPolyLine called with input:", polylineObj);
 
     const PolyLineClass = Instance.Shape.PolyLine;
     const isPolyLine = polylineObj instanceof PolyLineClass;
 
-    T3Util.Log("= S.BaseLine: checkIfPolyLine output:", isPolyLine);
+    LogUtil.Debug("= S.BaseLine: checkIfPolyLine output:", isPolyLine);
     return isPolyLine;
   }
 
   CalcFrame(inputFlag?: boolean): void {
-    T3Util.Log("= S.BaseLine: CalcFrame called with inputFlag =", inputFlag);
+    LogUtil.Debug("= S.BaseLine: CalcFrame called with inputFlag =", inputFlag);
 
     // Calculate the initial frame from start and end points
     let isSegLine = false;
     this.Frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    T3Util.Log("= S.BaseLine: Initial Frame calculated as", this.Frame);
+    LogUtil.Debug("= S.BaseLine: Initial Frame calculated as", this.Frame);
 
     // Check if the line type requires segment processing
     if (this.LineType === OptConstant.LineType.SEGLINE) {
       isSegLine = true;
-      T3Util.Log("= S.BaseLine: LineType is SEGLINE, setting isSegLine to", isSegLine);
+      LogUtil.Debug("= S.BaseLine: LineType is SEGLINE, setting isSegLine to", isSegLine);
     }
 
     // Get the polygon points for the frame computation
     const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, isSegLine, false, null);
-    T3Util.Log("= S.BaseLine: Retrieved polyPoints:", polyPoints);
+    LogUtil.Debug("= S.BaseLine: Retrieved polyPoints:", polyPoints);
 
     // If polyPoints exist, update the frame accordingly
     if (polyPoints && polyPoints.length) {
       Utils2.GetPolyRect(this.Frame, polyPoints);
-      T3Util.Log("= S.BaseLine: Updated Frame using polyPoints:", this.Frame);
+      LogUtil.Debug("= S.BaseLine: Updated Frame using polyPoints:", this.Frame);
     }
 
     // Update the frame with additional properties if needed
     this.UpdateFrame(this.Frame, inputFlag);
-    T3Util.Log("= S.BaseLine: Final Frame after UpdateFrame:", this.Frame);
+    LogUtil.Debug("= S.BaseLine: Final Frame after UpdateFrame:", this.Frame);
   }
 
   GetArrowheadFormat(): ArrowheadRecord {
-    T3Util.Log("= S.BaseLine: GetArrowheadFormat called");
-    T3Util.Log("= S.BaseLine: Input this =", this);
+    LogUtil.Debug("= S.BaseLine: GetArrowheadFormat called");
+    LogUtil.Debug("= S.BaseLine: Input this =", this);
 
     const arrHead = new ArrowheadRecord();
     if (ShapeUtil.LineIsReversed(this, null, false)) {
-      T3Util.Log("= S.BaseLine: Line is reversed");
+      LogUtil.Debug("= S.BaseLine: Line is reversed");
       arrHead.StartArrowID = this.EndArrowID;
       arrHead.EndArrowID = this.StartArrowID;
       arrHead.StartArrowDisp = this.EndArrowDisp;
       arrHead.EndArrowDisp = this.StartArrowDisp;
     } else {
-      T3Util.Log("= S.BaseLine: Line is not reversed");
+      LogUtil.Debug("= S.BaseLine: Line is not reversed");
       arrHead.StartArrowID = this.StartArrowID;
       arrHead.EndArrowID = this.EndArrowID;
       arrHead.StartArrowDisp = this.StartArrowDisp;
@@ -177,12 +178,12 @@ class BaseLine extends BaseDrawObject {
     }
     arrHead.ArrowSizeIndex = this.ArrowSizeIndex;
 
-    T3Util.Log("= S.BaseLine: Output ArrowheadRecord =", arrHead);
+    LogUtil.Debug("= S.BaseLine: Output ArrowheadRecord =", arrHead);
     return arrHead;
   }
 
   GetSVGFrame(inputFrame?: any): any {
-    T3Util.Log("= S.BaseLine: GetSVGFrame called with input:", inputFrame);
+    LogUtil.Debug("= S.BaseLine: GetSVGFrame called with input:", inputFrame);
     let frame: any = {};
 
     if (inputFrame != null) {
@@ -191,39 +192,39 @@ class BaseLine extends BaseDrawObject {
       frame = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
     }
 
-    T3Util.Log("= S.BaseLine: GetSVGFrame output:", frame);
+    LogUtil.Debug("= S.BaseLine: GetSVGFrame output:", frame);
     return frame;
   }
 
   GetPositionRect(): any {
-    T3Util.Log("= S.BaseLine: GetPositionRect called with StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: GetPositionRect called with StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
     const positionRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    T3Util.Log("= S.BaseLine: GetPositionRect output:", positionRect);
+    LogUtil.Debug("= S.BaseLine: GetPositionRect output:", positionRect);
     return positionRect;
   }
 
   AdjustPinRect(pinRect: any, offset: any, additional: any): any {
-    T3Util.Log("= S.BaseLine: AdjustPinRect called with", { pinRect, offset, additional });
+    LogUtil.Debug("= S.BaseLine: AdjustPinRect called with", { pinRect, offset, additional });
     const adjustedPinRect = pinRect;
-    T3Util.Log("= S.BaseLine: AdjustPinRect output:", adjustedPinRect);
+    LogUtil.Debug("= S.BaseLine: AdjustPinRect output:", adjustedPinRect);
     return adjustedPinRect;
   }
 
   GetDimensions(): { x: number; y: number } {
-    T3Util.Log("= S.BaseLine: GetDimensions called with StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: GetDimensions called with StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
     const deltaX = this.EndPoint.x - this.StartPoint.x;
     const deltaY = this.EndPoint.y - this.StartPoint.y;
     const distance = Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
     const dimensions = { x: distance, y: 0 };
-    T3Util.Log("= S.BaseLine: GetDimensions output:", dimensions);
+    LogUtil.Debug("= S.BaseLine: GetDimensions output:", dimensions);
     return dimensions;
   }
 
   GetDimensionsForDisplay(): { x: number; y: number; width: number; height: number } {
-    T3Util.Log("= S.BaseLine: GetDimensionsForDisplay called with no input parameters");
+    LogUtil.Debug("= S.BaseLine: GetDimensionsForDisplay called with no input parameters");
 
     const dimensions = this.GetDimensions();
-    T3Util.Log("= S.BaseLine: Dimensions retrieved:", dimensions);
+    LogUtil.Debug("= S.BaseLine: Dimensions retrieved:", dimensions);
 
     const result = {
       x: this.Frame.x,
@@ -232,17 +233,17 @@ class BaseLine extends BaseDrawObject {
       height: dimensions.y,
     };
 
-    T3Util.Log("= S.BaseLine: GetDimensionsForDisplay output:", result);
+    LogUtil.Debug("= S.BaseLine: GetDimensionsForDisplay output:", result);
     return result;
   }
 
   GetSnapRect() {
-    T3Util.Log("= S.BaseLine: GetSnapRect called with no input");
+    LogUtil.Debug("= S.BaseLine: GetSnapRect called with no input");
 
     // Create a snap rectangle by copying the current frame.
     let snapRect: any = {};
     Utils2.CopyRect(snapRect, this.Frame);
-    T3Util.Log("= S.BaseLine: Initial snapRect copied from Frame:", snapRect);
+    LogUtil.Debug("= S.BaseLine: Initial snapRect copied from Frame:", snapRect);
 
     // If the object is a wall opt wall, adjust the snap rectangle dimensions.
     if (this.objecttype === NvConstant.FNObjectTypes.FlWall) {
@@ -260,47 +261,47 @@ class BaseLine extends BaseDrawObject {
       }
 
       Utils2.InflateRect(snapRect, widthInflation, heightInflation);
-      T3Util.Log("= S.BaseLine: snapRect after inflation for wall opt wall:", snapRect);
+      LogUtil.Debug("= S.BaseLine: snapRect after inflation for wall opt wall:", snapRect);
     }
 
-    T3Util.Log("= S.BaseLine: GetSnapRect returning:", snapRect);
+    LogUtil.Debug("= S.BaseLine: GetSnapRect returning:", snapRect);
     return snapRect;
   }
 
   CanSnapToShapes(input: any): number {
-    T3Util.Log("= S.BaseLine: CanSnapToShapes called with input:", input);
+    LogUtil.Debug("= S.BaseLine: CanSnapToShapes called with input:", input);
 
     if (input && this.objecttype === NvConstant.FNObjectTypes.FlWall) {
       if (Utils2.IsEqual(this.StartPoint.x, this.EndPoint.x, this.StyleRecord.Line.BThick)) {
         input.distanceonly = NvConstant.GuideDistanceTypes.Vertical_Wall;
-        T3Util.Log("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Vertical_Wall");
+        LogUtil.Debug("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Vertical_Wall");
         return this.BlockID;
       }
       if (Utils2.IsEqual(this.StartPoint.y, this.EndPoint.y, this.StyleRecord.Line.BThick)) {
         input.distanceonly = NvConstant.GuideDistanceTypes.Horizontal_Wall;
-        T3Util.Log("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Horizontal_Wall");
+        LogUtil.Debug("= S.BaseLine: CanSnapToShapes output:", this.BlockID, "for Horizontal_Wall");
         return this.BlockID;
       }
     }
 
-    T3Util.Log("= S.BaseLine: CanSnapToShapes output: -1");
+    LogUtil.Debug("= S.BaseLine: CanSnapToShapes output: -1");
     return -1;
   }
 
   IsSnapTarget(): boolean {
-    T3Util.Log("= S.BaseLine: IsSnapTarget called with no input");
+    LogUtil.Debug("= S.BaseLine: IsSnapTarget called with no input");
     const result = false;
-    T3Util.Log("= S.BaseLine: IsSnapTarget output:", result);
+    LogUtil.Debug("= S.BaseLine: IsSnapTarget output:", result);
     return result;
   }
 
   GuideDistanceOnly(): any {
-    T3Util.Log("= S.BaseLine: GuideDistanceOnly called");
+    LogUtil.Debug("= S.BaseLine: GuideDistanceOnly called");
 
     const isFloorPlanWall = this.objecttype === NvConstant.FNObjectTypes.FlWall;
     const result = isFloorPlanWall ? NvConstant.GuideDistanceTypes.PolyWall : false;
 
-    T3Util.Log("= S.BaseLine: GuideDistanceOnly returning", result);
+    LogUtil.Debug("= S.BaseLine: GuideDistanceOnly returning", result);
     return result;
   }
 
@@ -317,7 +318,7 @@ class BaseLine extends BaseDrawObject {
     extraParam7: any,
     extraParam8: any
   ): any {
-    T3Util.Log("= S.BaseLine: CreateDimension called with input:", {
+    LogUtil.Debug("= S.BaseLine: CreateDimension called with input:", {
       startPoint,
       endPoint,
       dimensionParam,
@@ -350,16 +351,16 @@ class BaseLine extends BaseDrawObject {
         extraParam7,
         extraParam8
       );
-      T3Util.Log("= S.BaseLine: CreateDimension output:", result);
+      LogUtil.Debug("= S.BaseLine: CreateDimension output:", result);
       return result;
     }
 
-    T3Util.Log("= S.BaseLine: CreateDimension condition not met, returning undefined.");
+    LogUtil.Debug("= S.BaseLine: CreateDimension condition not met, returning undefined.");
     return undefined;
   }
 
   GetDimensionTextForPoints(startPoint: Point, endPoint: Point): string {
-    T3Util.Log("= S.BaseDrawObject: GetDimensionTextForPoints input:", { startPoint, endPoint });
+    LogUtil.Debug("= S.BaseDrawObject: GetDimensionTextForPoints input:", { startPoint, endPoint });
 
     let totalLength = 0;
 
@@ -393,12 +394,12 @@ class BaseLine extends BaseDrawObject {
 
     // Convert the calculated length in pixels (or document units) into ruler units (e.g. inches, cm, etc.).
     const dimensionText: string = RulerUtil.GetLengthInRulerUnits(totalLength);
-    T3Util.Log("= S.BaseDrawObject: GetDimensionTextForPoints output:", dimensionText);
+    LogUtil.Debug("= S.BaseDrawObject: GetDimensionTextForPoints output:", dimensionText);
     return dimensionText;
   }
 
   EnforceMinimum(isPrimary: boolean): void {
-    T3Util.Log("= S.BaseDrawObject: EnforceMinimum input:", { isPrimary, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
+    LogUtil.Debug("= S.BaseDrawObject: EnforceMinimum input:", { isPrimary, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
 
     const minDim = OptConstant.Common.MinDim;
 
@@ -480,11 +481,11 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseDrawObject: EnforceMinimum output:", { StartPoint: this.StartPoint, EndPoint: this.EndPoint });
+    LogUtil.Debug("= S.BaseDrawObject: EnforceMinimum output:", { StartPoint: this.StartPoint, EndPoint: this.EndPoint });
   }
 
   UpdateDimensions(newLength: number, unusedParam1: any, unusedParam2: any): void {
-    T3Util.Log("= S.BaseLine: UpdateDimensions called with input:", { newLength, unusedParam1, unusedParam2 });
+    LogUtil.Debug("= S.BaseLine: UpdateDimensions called with input:", { newLength, unusedParam1, unusedParam2 });
 
     let angleDegrees = 0;
     let adjustedX = 0;
@@ -549,11 +550,11 @@ class BaseLine extends BaseDrawObject {
       this.AdjustLineStart(svgElement, adjustedX, adjustedY, OptConstant.ActionTriggerType.LineStart, true);
     }
 
-    T3Util.Log("= S.BaseLine: UpdateDimensions output: StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: UpdateDimensions output: StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
   OffsetShape(offsetX: number, offsetY: number): void {
-    T3Util.Log("= S.BaseLine: OffsetShape called with offsetX:", offsetX, "offsetY:", offsetY);
+    LogUtil.Debug("= S.BaseLine: OffsetShape called with offsetX:", offsetX, "offsetY:", offsetY);
 
     // Update frame and points with the given offsets
     this.Frame.x += offsetX;
@@ -568,11 +569,11 @@ class BaseLine extends BaseDrawObject {
     // Recalculate the frame
     this.CalcFrame();
 
-    T3Util.Log("= S.BaseLine: OffsetShape updated Frame:", this.Frame, "StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: OffsetShape updated Frame:", this.Frame, "StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
   SetShapeOrigin(newX: number, newY: number, additionalParam: any): void {
-    T3Util.Log("= S.BaseLine: SetShapeOrigin called with newX:", newX, "newY:", newY, "additionalParam:", additionalParam);
+    LogUtil.Debug("= S.BaseLine: SetShapeOrigin called with newX:", newX, "newY:", newY, "additionalParam:", additionalParam);
 
     const frame = this.GetSVGFrame();
     let deltaX = 0;
@@ -593,11 +594,11 @@ class BaseLine extends BaseDrawObject {
 
     this.CalcFrame();
 
-    T3Util.Log("= S.BaseLine: SetShapeOrigin updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: SetShapeOrigin updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
   UpdateFrame(inputFrame, shouldRedraw) {
-    T3Util.Log("= S.BaseLine: UpdateFrame called with inputFrame:", inputFrame, "shouldRedraw:", shouldRedraw);
+    LogUtil.Debug("= S.BaseLine: UpdateFrame called with inputFrame:", inputFrame, "shouldRedraw:", shouldRedraw);
 
     let arrowheadBounds;
     let shapeElement;
@@ -696,31 +697,31 @@ class BaseLine extends BaseDrawObject {
       this.trect.height = lineTextRect.height;
     }
 
-    T3Util.Log("= S.BaseLine: UpdateFrame output:", this.Frame, this.r);
+    LogUtil.Debug("= S.BaseLine: UpdateFrame output:", this.Frame, this.r);
   }
 
   GetHitTestFrame(): any {
-    T3Util.Log("= S.BaseLine: GetHitTestFrame called");
+    LogUtil.Debug("= S.BaseLine: GetHitTestFrame called");
 
     // Create a copy of the current frame
     let hitTestFrame = {};
     Utils2.CopyRect(hitTestFrame, this.Frame);
-    T3Util.Log("= S.BaseLine: Initial hitTestFrame copied from Frame:", hitTestFrame);
+    LogUtil.Debug("= S.BaseLine: Initial hitTestFrame copied from Frame:", hitTestFrame);
 
     // Inflate the rectangle by half the knob size
     const knobSize = OptConstant.Common.KnobSize;
     Utils2.InflateRect(hitTestFrame, knobSize / 2, knobSize / 2);
-    T3Util.Log("= S.BaseLine: Inflated hitTestFrame by knob size:", hitTestFrame);
+    LogUtil.Debug("= S.BaseLine: Inflated hitTestFrame by knob size:", hitTestFrame);
 
     // Union the inflated rectangle with the main rectangle
     hitTestFrame = Utils2.UnionRect(hitTestFrame, this.r, hitTestFrame);
-    T3Util.Log("= S.BaseLine: Final hitTestFrame after union with main rectangle:", hitTestFrame);
+    LogUtil.Debug("= S.BaseLine: Final hitTestFrame after union with main rectangle:", hitTestFrame);
 
     return hitTestFrame;
   }
 
   GetMoveRect(includeInflation: boolean): any {
-    T3Util.Log("= S.BaseLine: GetMoveRect called with includeInflation:", includeInflation);
+    LogUtil.Debug("= S.BaseLine: GetMoveRect called with includeInflation:", includeInflation);
 
     const moveRect: any = {};
 
@@ -731,12 +732,12 @@ class BaseLine extends BaseDrawObject {
       Utils2.CopyRect(moveRect, this.Frame);
     }
 
-    T3Util.Log("= S.BaseLine: GetMoveRect output:", moveRect);
+    LogUtil.Debug("= S.BaseLine: GetMoveRect output:", moveRect);
     return moveRect;
   }
 
   SetSize(newWidth: number, newHeight: number, actionType: number): void {
-    T3Util.Log("= S.BaseLine: SetSize called with newWidth:", newWidth, "newHeight:", newHeight, "actionType:", actionType);
+    LogUtil.Debug("= S.BaseLine: SetSize called with newWidth:", newWidth, "newHeight:", newHeight, "actionType:", actionType);
 
     let shouldAdjustEnd = false;
     let widthDifference = 0;
@@ -772,11 +773,11 @@ class BaseLine extends BaseDrawObject {
       this.UpdateDimensions(newWidth);
     }
 
-    T3Util.Log("= S.BaseLine: SetSize completed with updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: SetSize completed with updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
   AdjustForLineAngleSnap(startPoint: Point, endPoint: Point): boolean {
-    T3Util.Log("= S.BaseLine: AdjustForLineAngleSnap called with startPoint:", startPoint, "endPoint:", endPoint);
+    LogUtil.Debug("= S.BaseLine: AdjustForLineAngleSnap called with startPoint:", startPoint, "endPoint:", endPoint);
 
     let angle = Utils1.CalcAngleFromPoints(startPoint, endPoint);
     let adjusted = false;
@@ -792,12 +793,12 @@ class BaseLine extends BaseDrawObject {
       adjusted = true;
     }
 
-    T3Util.Log("= S.BaseLine: AdjustForLineAngleSnap output endPoint:", endPoint, "adjusted:", adjusted);
+    LogUtil.Debug("= S.BaseLine: AdjustForLineAngleSnap output endPoint:", endPoint, "adjusted:", adjusted);
     return adjusted;
   }
 
   GetAngle(params: any): number {
-    T3Util.Log("= S.BaseLine: GetAngle called with params:", params);
+    LogUtil.Debug("= S.BaseLine: GetAngle called with params:", params);
 
     let angle = 0;
     const textParams = this.GetTextOnLineParams(params);
@@ -825,12 +826,12 @@ class BaseLine extends BaseDrawObject {
       angle = T3Gv.opt.GetClockwiseAngleBetween2PointsInDegrees(startPoint, endPoint);
     }
 
-    T3Util.Log("= S.BaseLine: GetAngle output:", angle);
+    LogUtil.Debug("= S.BaseLine: GetAngle output:", angle);
     return angle;
   }
 
   GetDrawNormalizedAngle(startPoint: Point, endPoint: Point): number {
-    T3Util.Log("= S.BaseLine: GetDrawNormalizedAngle called with startPoint:", startPoint, "endPoint:", endPoint);
+    LogUtil.Debug("= S.BaseLine: GetDrawNormalizedAngle called with startPoint:", startPoint, "endPoint:", endPoint);
 
     let angle = Utils1.CalcAngleFromPoints(startPoint, endPoint);
     let isReversed = false;
@@ -852,28 +853,28 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: GetDrawNormalizedAngle output:", angle);
+    LogUtil.Debug("= S.BaseLine: GetDrawNormalizedAngle output:", angle);
     return angle;
   }
 
   GetApparentAngle(params: any): number {
-    T3Util.Log("= S.BaseLine: GetApparentAngle called with params:", params);
+    LogUtil.Debug("= S.BaseLine: GetApparentAngle called with params:", params);
 
     const angle = this.GetDrawNormalizedAngle(this.StartPoint, this.EndPoint);
 
-    T3Util.Log("= S.BaseLine: GetApparentAngle output:", angle);
+    LogUtil.Debug("= S.BaseLine: GetApparentAngle output:", angle);
     return angle;
   }
 
   IsReverseWinding(): boolean {
-    T3Util.Log("= S.BaseLine: IsReverseWinding called");
+    LogUtil.Debug("= S.BaseLine: IsReverseWinding called");
 
     let points = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, false, null);
-    T3Util.Log("= S.BaseLine: Retrieved points:", points);
+    LogUtil.Debug("= S.BaseLine: Retrieved points:", points);
 
     if (points.length === 2) {
       const isReversed = points[0].x > points[1].x;
-      T3Util.Log("= S.BaseLine: IsReverseWinding output (2 points):", isReversed);
+      LogUtil.Debug("= S.BaseLine: IsReverseWinding output (2 points):", isReversed);
       return isReversed;
     }
 
@@ -883,12 +884,12 @@ class BaseLine extends BaseDrawObject {
     }
 
     const isReversed = 0.5 * area >= 0;
-    T3Util.Log("= S.BaseLine: IsReverseWinding output:", isReversed);
+    LogUtil.Debug("= S.BaseLine: IsReverseWinding output:", isReversed);
     return isReversed;
   }
 
   LinkGrow(blockID: number, hookPoint: number, newPoint: Point): void {
-    T3Util.Log("= S.BaseLine: LinkGrow called with blockID:", blockID, "hookPoint:", hookPoint, "newPoint:", newPoint);
+    LogUtil.Debug("= S.BaseLine: LinkGrow called with blockID:", blockID, "hookPoint:", hookPoint, "newPoint:", newPoint);
 
     switch (hookPoint) {
       case OptConstant.HookPts.KTL:
@@ -905,7 +906,7 @@ class BaseLine extends BaseDrawObject {
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     ObjectUtil.AddToDirtyList(blockID);
 
-    T3Util.Log("= S.BaseLine: LinkGrow updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: LinkGrow updated StartPoint:", this.StartPoint, "EndPoint:", this.EndPoint);
   }
 
   HandleActionTriggerTrackCommon(
@@ -914,7 +915,7 @@ class BaseLine extends BaseDrawObject {
     redrawFlag: boolean,
     eventObj: any
   ): void {
-    T3Util.Log("= S.BaseLine: HandleActionTriggerTrackCommon called with input:", {
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerTrackCommon called with input:", {
       newX,
       newY,
       redrawFlag,
@@ -1027,12 +1028,12 @@ class BaseLine extends BaseDrawObject {
         break;
     }
 
-    T3Util.Log("= S.BaseLine: HandleActionTriggerTrackCommon completed with updated StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerTrackCommon completed with updated StartPoint:", this.StartPoint, "and EndPoint:", this.EndPoint);
   }
 
 
   AdjustRotate(mouseX: number, mouseY: number, event: any): void {
-    T3Util.Log("= S.BaseLine: AdjustRotate called with mouseX:", mouseX, "mouseY:", mouseY, "event:", event);
+    LogUtil.Debug("= S.BaseLine: AdjustRotate called with mouseX:", mouseX, "mouseY:", mouseY, "event:", event);
 
     const pivotX = T3Gv.opt.rotatePivotX;
     const pivotY = T3Gv.opt.rotatePivotY;
@@ -1063,11 +1064,11 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.rotateEndRotation = angle;
     }
 
-    T3Util.Log("= S.BaseLine: AdjustRotate output angle:", angle);
+    LogUtil.Debug("= S.BaseLine: AdjustRotate output angle:", angle);
   }
 
   DimensionLineDeflectionAdjust(svgDoc, mouseX, mouseY, actionTriggerID, triggerData) {
-    T3Util.Log('= S.BaseLine: DimensionLineDeflectionAdjust called with', {
+    LogUtil.Debug('= S.BaseLine: DimensionLineDeflectionAdjust called with', {
       svgDoc,
       mouseX,
       mouseY,
@@ -1077,23 +1078,23 @@ class BaseLine extends BaseDrawObject {
 
     // Calculate the horizontal deflection for the dimension line
     this.dimensionDeflectionH = this.GetDimensionLineDeflection(svgDoc, mouseX, mouseY, triggerData);
-    T3Util.Log('= S.BaseLine: Calculated dimensionDeflectionH:', this.dimensionDeflectionH);
+    LogUtil.Debug('= S.BaseLine: Calculated dimensionDeflectionH:', this.dimensionDeflectionH);
 
     // Update the dimension lines on the SVG document
     this.UpdateDimensionLines(svgDoc);
-    T3Util.Log('= S.BaseLine: Dimension lines updated');
+    LogUtil.Debug('= S.BaseLine: Dimension lines updated');
 
     // Check if the dimension should be shown only when selected
     const isDimSelect = this.Dimensions & NvConstant.DimensionFlags.Select;
-    T3Util.Log('= S.BaseLine: isDimSelect:', isDimSelect);
+    LogUtil.Debug('= S.BaseLine: isDimSelect:', isDimSelect);
 
     // Hide or show dimensions based on selection state
     if (isDimSelect) {
       this.HideOrShowSelectOnlyDimensions(true);
-      T3Util.Log('= S.BaseLine: Select-only dimensions shown');
+      LogUtil.Debug('= S.BaseLine: Select-only dimensions shown');
     }
 
-    T3Util.Log('= S.BaseLine: DimensionLineDeflectionAdjust completed');
+    LogUtil.Debug('= S.BaseLine: DimensionLineDeflectionAdjust completed');
   }
 
   ScaleObject(
@@ -1105,7 +1106,7 @@ class BaseLine extends BaseDrawObject {
     scaleY: number,
     adjustThickness: boolean
   ) {
-    T3Util.Log("= S.BaseLine: ScaleObject called with", {
+    LogUtil.Debug("= S.BaseLine: ScaleObject called with", {
       offsetX,
       offsetY,
       rotationCenter,
@@ -1149,7 +1150,7 @@ class BaseLine extends BaseDrawObject {
     // Recalculate the frame
     this.CalcFrame();
 
-    T3Util.Log("= S.BaseLine: ScaleObject output", {
+    LogUtil.Debug("= S.BaseLine: ScaleObject output", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
       CurveAdjust: this.CurveAdjust,
@@ -1158,14 +1159,14 @@ class BaseLine extends BaseDrawObject {
   }
 
   CanUseStandOffDimensionLines(): boolean {
-    T3Util.Log("= S.BaseLine: CanUseStandOffDimensionLines called");
+    LogUtil.Debug("= S.BaseLine: CanUseStandOffDimensionLines called");
     const result = true;
-    T3Util.Log("= S.BaseLine: CanUseStandOffDimensionLines output:", result);
+    LogUtil.Debug("= S.BaseLine: CanUseStandOffDimensionLines output:", result);
     return result;
   }
 
   GetDimensionLineDeflection(svgDoc, mouseX, mouseY, triggerData) {
-    T3Util.Log("= S.BaseLine: GetDimensionLineDeflection called with", {
+    LogUtil.Debug("= S.BaseLine: GetDimensionLineDeflection called with", {
       svgDoc,
       mouseX,
       mouseY,
@@ -1214,12 +1215,12 @@ class BaseLine extends BaseDrawObject {
       deflection = triggerData.originalDeflection + deflection;
     }
 
-    T3Util.Log("= S.BaseLine: GetDimensionLineDeflection output:", deflection);
+    LogUtil.Debug("= S.BaseLine: GetDimensionLineDeflection output:", deflection);
     return deflection;
   }
 
   HandleActionTriggerCallResize(event, triggerData) {
-    T3Util.Log("= S.BaseLine: HandleActionTriggerCallResize called with event:", event, "triggerData:", triggerData);
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerCallResize called with event:", event, "triggerData:", triggerData);
 
     // Perform the resize operation
     const resizeAdjustment = this.Resize(
@@ -1233,18 +1234,18 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.actionStartX += resizeAdjustment.x;
     T3Gv.opt.actionStartY += resizeAdjustment.y;
 
-    T3Util.Log("= S.BaseLine: HandleActionTriggerCallResize output resizeAdjustment:", resizeAdjustment);
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerCallResize output resizeAdjustment:", resizeAdjustment);
   }
 
   HandleActionTriggerDoAutoScroll() {
-    T3Util.Log("= S.BaseLine: HandleActionTriggerDoAutoScroll called");
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerDoAutoScroll called");
 
     // Set a timeout for the auto-scroll function
     T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout('HandleActionTriggerDoAutoScroll', 100);
 
     // Convert window coordinates to document coordinates
     const docCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(T3Gv.opt.autoScrollXPos, T3Gv.opt.autoScrollYPos);
-    T3Util.Log("= S.BaseLine: Converted document coordinates:", docCoords);
+    LogUtil.Debug("= S.BaseLine: Converted document coordinates:", docCoords);
 
     // Track the pin point if pinRect is defined
     if (T3Gv.opt.pinRect) {
@@ -1253,7 +1254,7 @@ class BaseLine extends BaseDrawObject {
 
     // Perform auto-grow drag adjustments
     const adjustedCoords = DrawUtil.DoAutoGrowDrag(docCoords);
-    T3Util.Log("= S.BaseLine: Adjusted coordinates after auto-grow drag:", adjustedCoords);
+    LogUtil.Debug("= S.BaseLine: Adjusted coordinates after auto-grow drag:", adjustedCoords);
 
     // Scroll to the new position
     T3Gv.docUtil.ScrollToPosition(adjustedCoords.x, adjustedCoords.y);
@@ -1261,11 +1262,11 @@ class BaseLine extends BaseDrawObject {
     // Handle the common action trigger track
     this.HandleActionTriggerTrackCommon(adjustedCoords.x, adjustedCoords.y);
 
-    T3Util.Log("= S.BaseLine: HandleActionTriggerDoAutoScroll completed");
+    LogUtil.Debug("= S.BaseLine: HandleActionTriggerDoAutoScroll completed");
   }
 
   AutoScrollCommon(event, enableSnap, autoScrollCallback) {
-    T3Util.Log('= S.BaseLine: AutoScrollCommon called with event:', event, 'enableSnap:', enableSnap, 'autoScrollCallback:', autoScrollCallback);
+    LogUtil.Debug('= S.BaseLine: AutoScrollCommon called with event:', event, 'enableSnap:', enableSnap, 'autoScrollCallback:', autoScrollCallback);
 
     let clientX, clientY;
     let shouldAutoScroll = false;
@@ -1320,18 +1321,18 @@ class BaseLine extends BaseDrawObject {
         T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout(autoScrollCallback, 0);
       }
 
-      T3Util.Log('= S.BaseLine: AutoScrollCommon output: shouldAutoScroll = false');
+      LogUtil.Debug('= S.BaseLine: AutoScrollCommon output: shouldAutoScroll = false');
       return false;
     }
 
     // Reset the auto-scroll timer if no auto-scroll is needed
     this.ResetAutoScrollTimer();
-    T3Util.Log('= S.BaseLine: AutoScrollCommon output: shouldAutoScroll = true');
+    LogUtil.Debug('= S.BaseLine: AutoScrollCommon output: shouldAutoScroll = true');
     return true;
   }
 
   LMActionTrack(event) {
-    T3Util.Log('= S.BaseLine: LMActionTrack called with event:', event);
+    LogUtil.Debug('= S.BaseLine: LMActionTrack called with event:', event);
 
     let t;
     let a;
@@ -1376,11 +1377,11 @@ class BaseLine extends BaseDrawObject {
       this.HandleActionTriggerTrackCommon(trackCoords.x, trackCoords.y, o, event);
     }
 
-    T3Util.Log('= S.BaseLine: LMActionTrack completed with updated coordinates:', trackCoords);
+    LogUtil.Debug('= S.BaseLine: LMActionTrack completed with updated coordinates:', trackCoords);
   }
 
   LMActionRelease(event, isSecondary) {
-    T3Util.Log("= S.BaseLine: LMActionRelease called with event:", event, "isSecondary:", isSecondary);
+    LogUtil.Debug("= S.BaseLine: LMActionRelease called with event:", event, "isSecondary:", isSecondary);
 
     if (!isSecondary) {
       LMEvtUtil.UnbindActionClickHammerEvents();
@@ -1425,18 +1426,18 @@ class BaseLine extends BaseDrawObject {
     LayerUtil.ShowOverlayLayer();
     DrawUtil.CompleteOperation(null);
 
-    T3Util.Log("= S.BaseLine: LMActionRelease completed");
+    LogUtil.Debug("= S.BaseLine: LMActionRelease completed");
   }
 
   LMActionPreTrack(actionStoredObjectID, actionTriggerID) {
-    T3Util.Log("= S.BaseLine: LMActionPreTrack called with actionStoredObjectID:", actionStoredObjectID, "actionTriggerID:", actionTriggerID);
+    LogUtil.Debug("= S.BaseLine: LMActionPreTrack called with actionStoredObjectID:", actionStoredObjectID, "actionTriggerID:", actionTriggerID);
 
     let objectPtr, sessionPtr, linkParams, hookIndex = -1;
 
     // Retrieve the object pointer for the given actionStoredObjectID
     objectPtr = ObjectUtil.GetObjectPtr(actionStoredObjectID, false);
     if (!objectPtr) {
-      T3Util.Log("= S.BaseLine: LMActionPreTrack - objectPtr not found");
+      LogUtil.Debug("= S.BaseLine: LMActionPreTrack - objectPtr not found");
       return;
     }
 
@@ -1470,7 +1471,7 @@ class BaseLine extends BaseDrawObject {
         }
         break;
       default:
-        T3Util.Log("= S.BaseLine: LMActionPreTrack - invalid actionTriggerID");
+        LogUtil.Debug("= S.BaseLine: LMActionPreTrack - invalid actionTriggerID");
         return;
     }
 
@@ -1526,12 +1527,12 @@ class BaseLine extends BaseDrawObject {
       linkParams.lpCircList.push(objectPtr.hooks[0].objid);
     }
 
-    T3Util.Log("= S.BaseLine: LMActionPreTrack completed with linkParams:", linkParams);
+    LogUtil.Debug("= S.BaseLine: LMActionPreTrack completed with linkParams:", linkParams);
     return true;
   }
 
   LMActionDuringTrack(event) {
-    T3Util.Log('= S.BaseLine: LMActionDuringTrack called with event:', event);
+    LogUtil.Debug('= S.BaseLine: LMActionDuringTrack called with event:', event);
 
     const points = [{ x: 0, y: 0 }];
 
@@ -1562,23 +1563,23 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log('= S.BaseLine: LMActionDuringTrack output event:', event);
+    LogUtil.Debug('= S.BaseLine: LMActionDuringTrack output event:', event);
     return event;
   }
 
   AfterRotateShape(blockID: number): void {
-    T3Util.Log("= S.BaseLine: AfterRotateShape called with blockID:", blockID);
+    LogUtil.Debug("= S.BaseLine: AfterRotateShape called with blockID:", blockID);
 
     // Check if the rectangle's x or y coordinates are negative
     if (this.r.x < 0 || this.r.y < 0) {
-      T3Util.Log("= S.BaseLine: Rectangle coordinates are negative, performing undo operation");
+      LogUtil.Debug("= S.BaseLine: Rectangle coordinates are negative, performing undo operation");
       ToolActUtil.Undo();
       return;
     }
 
     // Maintain link if the frame is defined
     if (T3Gv.opt.ob.Frame) {
-      T3Util.Log("= S.BaseLine: Maintaining link with frame:", T3Gv.opt.ob.Frame);
+      LogUtil.Debug("= S.BaseLine: Maintaining link with frame:", T3Gv.opt.ob.Frame);
       HookUtil.MaintainLink(blockID, this, T3Gv.opt.ob, OptConstant.ActionTriggerType.Rotate);
       T3Gv.opt.ob = {};
     }
@@ -1587,46 +1588,46 @@ class BaseLine extends BaseDrawObject {
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
 
-    T3Util.Log("= S.BaseLine: AfterRotateShape completed for blockID:", blockID);
+    LogUtil.Debug("= S.BaseLine: AfterRotateShape completed for blockID:", blockID);
   }
 
   AfterModifyShape(blockID: number, actionTriggerID: number): void {
-    T3Util.Log("= S.BaseLine: AfterModifyShape called with blockID:", blockID, "actionTriggerID:", actionTriggerID);
+    LogUtil.Debug("= S.BaseLine: AfterModifyShape called with blockID:", blockID, "actionTriggerID:", actionTriggerID);
 
     if (T3Gv.opt.actionSvgObject) {
       const ellipseAxesElement = T3Gv.opt.actionSvgObject.GetElementById(OptConstant.Common.EllipseAxes);
       if (ellipseAxesElement != null) {
         T3Gv.opt.actionSvgObject.RemoveElement(ellipseAxesElement);
-        T3Util.Log("= S.BaseLine: Removed ellipseAxesElement:", ellipseAxesElement);
+        LogUtil.Debug("= S.BaseLine: Removed ellipseAxesElement:", ellipseAxesElement);
       }
     }
 
     if (T3Gv.opt.ob.Frame) {
       HookUtil.MaintainLink(blockID, this, T3Gv.opt.ob, actionTriggerID);
       T3Gv.opt.ob = {};
-      T3Util.Log("= S.BaseLine: Maintained link and reset ob.Frame");
+      LogUtil.Debug("= S.BaseLine: Maintained link and reset ob.Frame");
     }
 
     if (this.rflags) {
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Width, false);
       this.rflags = Utils2.SetFlag(this.rflags, NvConstant.FloatingPointDim.Height, false);
-      T3Util.Log("= S.BaseLine: Reset floating point dimensions flags");
+      LogUtil.Debug("= S.BaseLine: Reset floating point dimensions flags");
     }
 
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
     T3Gv.opt.UpdateLinks();
-    T3Util.Log("= S.BaseLine: Set link flag and updated links");
+    LogUtil.Debug("= S.BaseLine: Set link flag and updated links");
 
     if (this.arcobj) {
       this.arcobj = null;
-      T3Util.Log("= S.BaseLine: Reset arcobj to null");
+      LogUtil.Debug("= S.BaseLine: Reset arcobj to null");
     }
 
-    T3Util.Log("= S.BaseLine: AfterModifyShape completed for blockID:", blockID);
+    LogUtil.Debug("= S.BaseLine: AfterModifyShape completed for blockID:", blockID);
   }
 
   LMActionPostRelease(blockID: number): void {
-    T3Util.Log("= S.BaseLine: LMActionPostRelease called with blockID:", blockID);
+    LogUtil.Debug("= S.BaseLine: LMActionPostRelease called with blockID:", blockID);
 
     // Set edit mode to default
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
@@ -1688,11 +1689,11 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.linkParams = null;
     }
 
-    T3Util.Log("= S.BaseLine: LMActionPostRelease completed for blockID:", blockID);
+    LogUtil.Debug("= S.BaseLine: LMActionPostRelease completed for blockID:", blockID);
   }
 
   LMSetupActionClick(event, isSecondary) {
-    T3Util.Log("= S.BaseLine: LMSetupActionClick called with event:", event, "isSecondary:", isSecondary);
+    LogUtil.Debug("= S.BaseLine: LMSetupActionClick called with event:", event, "isSecondary:", isSecondary);
 
     let actionStoredObjectID, actionTriggerID, preservedBlock, targetElement;
 
@@ -1775,12 +1776,12 @@ class BaseLine extends BaseDrawObject {
       this.BeforeModifyShape(startX, startY, T3Gv.opt.actionTriggerData);
     }
 
-    T3Util.Log("= S.BaseLine: LMSetupActionClick output:", true);
+    LogUtil.Debug("= S.BaseLine: LMSetupActionClick output:", true);
     return true;
   }
 
   BeforeRotate(frame: any): void {
-    T3Util.Log("= S.BaseLine: BeforeRotate called with frame:", frame);
+    LogUtil.Debug("= S.BaseLine: BeforeRotate called with frame:", frame);
 
     // Set the rotation knob center divisor
     T3Gv.opt.rotateKnobCenterDivisor = this.RotateKnobCenterDivisor();
@@ -1799,7 +1800,7 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.rotateStartPoint = $.extend(true, {}, this.StartPoint);
     T3Gv.opt.rotateEndPoint = $.extend(true, {}, this.EndPoint);
 
-    T3Util.Log("= S.BaseLine: BeforeRotate output:", {
+    LogUtil.Debug("= S.BaseLine: BeforeRotate output:", {
       rotateStartRotation: T3Gv.opt.rotateStartRotation,
       rotateEndRotation: T3Gv.opt.rotateEndRotation,
       rotatePivotX: T3Gv.opt.rotatePivotX,
@@ -1810,7 +1811,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   LMActionClickExpCleanup(error) {
-    T3Util.Log("= S.BaseLine: LMActionClickExpCleanup called with error:", error);
+    LogUtil.Debug("= S.BaseLine: LMActionClickExpCleanup called with error:", error);
 
     // Unbind action click hammer events
     LMEvtUtil.UnbindActionClickHammerEvents();
@@ -1826,32 +1827,32 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.actionStoredObjectId = -1;
     T3Gv.opt.actionSvgObject = null;
 
-    T3Util.Log("= S.BaseLine: LMActionClickExpCleanup completed");
+    LogUtil.Debug("= S.BaseLine: LMActionClickExpCleanup completed");
   }
 
   LMActionClick(event, isSecondary) {
-    T3Util.Log("= S.BaseLine: LMActionClick called with event:", event, "isSecondary:", isSecondary);
+    LogUtil.Debug("= S.BaseLine: LMActionClick called with event:", event, "isSecondary:", isSecondary);
 
     try {
       const blockID = this.BlockID;
       const objectPtr = ObjectUtil.GetObjectPtr(blockID, false);
 
       if (!(objectPtr && objectPtr instanceof BaseDrawObject)) {
-        T3Util.Log("= S.BaseLine: LMActionClick - objectPtr is not an instance of BaseDrawObject");
+        LogUtil.Debug("= S.BaseLine: LMActionClick - objectPtr is not an instance of BaseDrawObject");
         return false;
       }
 
       DrawUtil.InitializeAutoGrowDrag(0, blockID);
 
       if (!this.LMSetupActionClick(event, isSecondary)) {
-        T3Util.Log("= S.BaseLine: LMActionClick - LMSetupActionClick returned false");
+        LogUtil.Debug("= S.BaseLine: LMActionClick - LMSetupActionClick returned false");
         return;
       }
       const actionObjectPtr = ObjectUtil.GetObjectPtr(blockID, false);
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_ActionTrackHandlerFactory(actionObjectPtr));
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_ActionReleaseHandlerFactory(actionObjectPtr));
 
-      T3Util.Log("= S.BaseLine: LMActionClick setup completed for blockID:", blockID);
+      LogUtil.Debug("= S.BaseLine: LMActionClick setup completed for blockID:", blockID);
     } catch (error) {
       T3Util.Error("= s.BaseLine: LMActionClick encountered an error:", error);
       this.LMActionClickExpCleanup(error);
@@ -1861,7 +1862,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   Rotate(svgElement: any, endRotation: number): boolean {
-    T3Util.Log("= S.BaseLine: Rotate called with svgElement:", svgElement, "endRotation:", endRotation);
+    LogUtil.Debug("= S.BaseLine: Rotate called with svgElement:", svgElement, "endRotation:", endRotation);
 
     const pivotPoint = {
       x: T3Gv.opt.rotatePivotX,
@@ -1872,17 +1873,17 @@ class BaseLine extends BaseDrawObject {
     const rotatedStartPoint = T3Gv.opt.RotatePointAroundPoint(pivotPoint, T3Gv.opt.rotateStartPoint, rotationRadians);
     const rotatedEndPoint = T3Gv.opt.RotatePointAroundPoint(pivotPoint, T3Gv.opt.rotateEndPoint, rotationRadians);
 
-    T3Util.Log("= S.BaseLine: Rotated points calculated as rotatedStartPoint:", rotatedStartPoint, "rotatedEndPoint:", rotatedEndPoint);
+    LogUtil.Debug("= S.BaseLine: Rotated points calculated as rotatedStartPoint:", rotatedStartPoint, "rotatedEndPoint:", rotatedEndPoint);
 
     if (rotatedStartPoint.x < 0 || rotatedStartPoint.y < 0 || rotatedEndPoint.x < 0 || rotatedEndPoint.y < 0) {
-      T3Util.Log("= S.BaseLine: Rotation resulted in negative coordinates, returning false");
+      LogUtil.Debug("= S.BaseLine: Rotation resulted in negative coordinates, returning false");
       return false;
     }
 
     if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (rotatedStartPoint.x > sessionObject.dim.x || rotatedStartPoint.y > sessionObject.dim.y || rotatedEndPoint.x > sessionObject.dim.x || rotatedEndPoint.y > sessionObject.dim.y) {
-        T3Util.Log("= S.BaseLine: Rotation resulted in coordinates outside session dimensions, returning false");
+        LogUtil.Debug("= S.BaseLine: Rotation resulted in coordinates outside session dimensions, returning false");
         return false;
       }
     }
@@ -1890,30 +1891,30 @@ class BaseLine extends BaseDrawObject {
     this.AdjustLineStart(svgElement, rotatedStartPoint.x, rotatedStartPoint.y, 0, true);
     this.AdjustLineEnd(svgElement, rotatedEndPoint.x, rotatedEndPoint.y, OptConstant.ActionTriggerType.LineEnd, true);
 
-    T3Util.Log("= S.BaseLine: Rotate completed successfully");
+    LogUtil.Debug("= S.BaseLine: Rotate completed successfully");
     return true;
   }
 
   RotateKnobCenterDivisor(): { x: number; y: number } {
-    T3Util.Log("= S.BaseLine: RotateKnobCenterDivisor called");
+    LogUtil.Debug("= S.BaseLine: RotateKnobCenterDivisor called");
 
     const divisor = {
       x: 2,
       y: 2
     };
 
-    T3Util.Log("= S.BaseLine: RotateKnobCenterDivisor output:", divisor);
+    LogUtil.Debug("= S.BaseLine: RotateKnobCenterDivisor output:", divisor);
     return divisor;
   }
 
   GetHookFlags(): number {
-    T3Util.Log("= S.BaseLine: GetHookFlags called");
+    LogUtil.Debug("= S.BaseLine: GetHookFlags called");
 
     const hookFlags = NvConstant.HookFlags.LcShape |
       NvConstant.HookFlags.LcLine |
       NvConstant.HookFlags.LcCHook;
 
-    T3Util.Log("= S.BaseLine: GetHookFlags output:", hookFlags);
+    LogUtil.Debug("= S.BaseLine: GetHookFlags output:", hookFlags);
     return hookFlags;
   }
 
@@ -1930,7 +1931,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   GetHookPoints(): { x: number; y: number; id: number }[] {
-    T3Util.Log("= S.BaseLine: GetHookPoints called");
+    LogUtil.Debug("= S.BaseLine: GetHookPoints called");
 
     const hookDimension = OptConstant.Common.DimMax;
     const hookPoints = [
@@ -1946,12 +1947,12 @@ class BaseLine extends BaseDrawObject {
       }
     ];
 
-    T3Util.Log("= S.BaseLine: GetHookPoints output:", hookPoints);
+    LogUtil.Debug("= S.BaseLine: GetHookPoints output:", hookPoints);
     return hookPoints;
   }
 
   PrGetWidthAdjustment() {
-    T3Util.Log("= S.BaseLine: PrGetWidthAdjustment called");
+    LogUtil.Debug("= S.BaseLine: PrGetWidthAdjustment called");
 
     const lineThicknessHalf = this.StyleRecord.Line.Thickness / 2;
     let angle = this.GetAngle(null);
@@ -1969,23 +1970,23 @@ class BaseLine extends BaseDrawObject {
       deltay: deltaY
     };
 
-    T3Util.Log("= S.BaseLine: PrGetWidthAdjustment output:", result);
+    LogUtil.Debug("= S.BaseLine: PrGetWidthAdjustment output:", result);
     return result;
   }
 
   GetConnectLine(): { startpt: Point; endpt: Point } | null {
-    T3Util.Log("= S.BaseLine: GetConnectLine called");
+    LogUtil.Debug("= S.BaseLine: GetConnectLine called");
 
     // This method is intended to be overridden by subclasses if needed.
     // By default, it returns null indicating no specific connection line.
     const result = null;
 
-    T3Util.Log("= S.BaseLine: GetConnectLine output:", result);
+    LogUtil.Debug("= S.BaseLine: GetConnectLine output:", result);
     return result;
   }
 
   GetPerimPts(hookPoints, targetPoints, targetID, isRelative, additionalParam, hookIndex) {
-    T3Util.Log("= S.BaseLine: GetPerimPts called with", { hookPoints, targetPoints, targetID, isRelative, additionalParam, hookIndex });
+    LogUtil.Debug("= S.BaseLine: GetPerimPts called with", { hookPoints, targetPoints, targetID, isRelative, additionalParam, hookIndex });
 
     let resultPoints = [];
     let startPoint = {};
@@ -2021,7 +2022,7 @@ class BaseLine extends BaseDrawObject {
         }
         resultPoints.push(point);
       }
-      T3Util.Log("= S.BaseLine: GetPerimPts output:", resultPoints);
+      LogUtil.Debug("= S.BaseLine: GetPerimPts output:", resultPoints);
       return resultPoints;
     }
 
@@ -2074,14 +2075,14 @@ class BaseLine extends BaseDrawObject {
           resultPoints.push(new Point(this.EndPoint.x - offsetX, this.EndPoint.y + offsetY));
           resultPoints[0].id = targetPoints[0].id;
         }
-        T3Util.Log("= S.BaseLine: GetPerimPts output:", resultPoints);
+        LogUtil.Debug("= S.BaseLine: GetPerimPts output:", resultPoints);
         return resultPoints;
       } else if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.ExtraTextLable && numTargetPoints === 1) {
         const proportion = targetPoints[0].x / OptConstant.Common.DimMax;
         const pointOnLine = this.GetPointOnLine(proportion);
         resultPoints.push(pointOnLine);
         resultPoints[0].id = targetPoints[0].id;
-        T3Util.Log("= S.BaseLine: GetPerimPts output:", resultPoints);
+        LogUtil.Debug("= S.BaseLine: GetPerimPts output:", resultPoints);
         return resultPoints;
       }
     }
@@ -2112,12 +2113,12 @@ class BaseLine extends BaseDrawObject {
       if (targetPoints[i].id != null) resultPoints[i].id = targetPoints[i].id;
     }
 
-    T3Util.Log("= S.BaseLine: GetPerimPts output:", resultPoints);
+    LogUtil.Debug("= S.BaseLine: GetPerimPts output:", resultPoints);
     return resultPoints;
   }
 
   GetPointOnLine(proportion: number): Point {
-    T3Util.Log("= S.BaseLine: GetPointOnLine called with proportion:", proportion);
+    LogUtil.Debug("= S.BaseLine: GetPointOnLine called with proportion:", proportion);
 
     const distanceBetweenPoints = (point1: Point, point2: Point): number => {
       const deltaX = point1.x - point2.x;
@@ -2153,12 +2154,12 @@ class BaseLine extends BaseDrawObject {
       accumulatedLength += len;
     }
 
-    T3Util.Log("= S.BaseLine: GetPointOnLine output:", resultPoint);
+    LogUtil.Debug("= S.BaseLine: GetPointOnLine output:", resultPoint);
     return resultPoint;
   }
 
   GetTargetPoints(hookPoint, hookFlags, targetID) {
-    T3Util.Log("= S.BaseLine: GetTargetPoints called with", { hookPoint, hookFlags, targetID });
+    LogUtil.Debug("= S.BaseLine: GetTargetPoints called with", { hookPoint, hookFlags, targetID });
 
     let isVertical = false;
     let isHorizontal = false;
@@ -2186,20 +2187,20 @@ class BaseLine extends BaseDrawObject {
                 targetPoints[0].y = 0;
                 targetPoints.push({ x: OptConstant.Common.DimMax, y: OptConstant.Common.DimMax });
               }
-              T3Util.Log("= S.BaseLine: GetTargetPoints output:", targetPoints);
+              LogUtil.Debug("= S.BaseLine: GetTargetPoints output:", targetPoints);
               return targetPoints;
             }
             if (this.hooks.length === 1) {
               if (this.hooks[0].hookpt === hookPts.SED_KTR) {
                 targetPoints[0].x = 0;
                 targetPoints[0].y = 0;
-                T3Util.Log("= S.BaseLine: GetTargetPoints output:", targetPoints);
+                LogUtil.Debug("= S.BaseLine: GetTargetPoints output:", targetPoints);
                 return targetPoints;
               }
               if (this.hooks[0].hookpt === hookPts.SED_KTL) {
                 targetPoints[0].x = OptConstant.Common.DimMax;
                 targetPoints[0].y = OptConstant.Common.DimMax;
-                T3Util.Log("= S.BaseLine: GetTargetPoints output:", targetPoints);
+                LogUtil.Debug("= S.BaseLine: GetTargetPoints output:", targetPoints);
                 return targetPoints;
               }
             }
@@ -2279,12 +2280,12 @@ class BaseLine extends BaseDrawObject {
       targetPoints[0].y = 0;
     }
 
-    T3Util.Log("= S.BaseLine: GetTargetPoints output:", targetPoints);
+    LogUtil.Debug("= S.BaseLine: GetTargetPoints output:", targetPoints);
     return targetPoints;
   }
 
   AllowHook(hookPoint: any, targetID: number, distance: number): boolean {
-    T3Util.Log("= S.BaseLine: AllowHook called with hookPoint:", hookPoint, "targetID:", targetID, "distance:", distance);
+    LogUtil.Debug("= S.BaseLine: AllowHook called with hookPoint:", hookPoint, "targetID:", targetID, "distance:", distance);
 
     const HookPts = OptConstant.HookPts;
 
@@ -2298,25 +2299,25 @@ class BaseLine extends BaseDrawObject {
           case HookPts.KRC:
           case HookPts.KLC:
             if (distance > 200) {
-              T3Util.Log("= S.BaseLine: AllowHook output: false (distance > 200)");
+              LogUtil.Debug("= S.BaseLine: AllowHook output: false (distance > 200)");
               return false;
             }
             break;
           default:
             if (hookPoint.id >= HookPts.CustomBase && hookPoint.id < HookPts.CustomBase + 100 && distance > 200) {
-              T3Util.Log("= S.BaseLine: AllowHook output: false (custom hook point and distance > 200)");
+              LogUtil.Debug("= S.BaseLine: AllowHook output: false (custom hook point and distance > 200)");
               return false;
             }
         }
       }
     }
 
-    T3Util.Log("= S.BaseLine: AllowHook output: true");
+    LogUtil.Debug("= S.BaseLine: AllowHook output: true");
     return true;
   }
 
   DeleteObject() {
-    T3Util.Log("= S.BaseLine: DeleteObject called");
+    LogUtil.Debug("= S.BaseLine: DeleteObject called");
 
     // Call the base class DeleteObject method
     super.DeleteObject();
@@ -2325,27 +2326,27 @@ class BaseLine extends BaseDrawObject {
     switch (this.objecttype) {
 
       case NvConstant.FNObjectTypes.NgEvent:
-        T3Util.Log("= S.BaseLine: Handling NgEvent");
+        LogUtil.Debug("= S.BaseLine: Handling NgEvent");
 
         if (this.hooks.length) {
           const hookObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
 
           // if (hookObject && hookObject.objecttype === NvConstant.FNObjectTypes.SD_OBJT_NG_TIMELINE) {
-          //   T3Util.Log("= S.BaseLine: Returning NG timeline object:", hookObject);
+          //   LogUtil.Debug("= S.BaseLine: Returning NG timeline object:", hookObject);
           //   return hookObject;
           // }
         }
         break;
 
       default:
-        T3Util.Log("= S.BaseLine: No specific handling for objecttype:", this.objecttype);
+        LogUtil.Debug("= S.BaseLine: No specific handling for objecttype:", this.objecttype);
     }
 
-    T3Util.Log("= S.BaseLine: DeleteObject completed");
+    LogUtil.Debug("= S.BaseLine: DeleteObject completed");
   }
 
   GetSegLFace(objectType: number, point: Point, referencePoint: Point): number {
-    T3Util.Log("= S.BaseLine: GetSegLFace called with objectType:", objectType, "point:", point, "referencePoint:", referencePoint);
+    LogUtil.Debug("= S.BaseLine: GetSegLFace called with objectType:", objectType, "point:", point, "referencePoint:", referencePoint);
 
     let result: number;
 
@@ -2355,12 +2356,12 @@ class BaseLine extends BaseDrawObject {
       result = point.x >= referencePoint.x ? OptConstant.HookPts.KRC : OptConstant.HookPts.KLC;
     }
 
-    T3Util.Log("= S.BaseLine: GetSegLFace output:", result);
+    LogUtil.Debug("= S.BaseLine: GetSegLFace output:", result);
     return result;
   }
 
   GetSpacing(): { width: number | null; height: number | null } {
-    T3Util.Log("= S.BaseLine: GetSpacing called");
+    LogUtil.Debug("= S.BaseLine: GetSpacing called");
 
     const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
     const spacing = { width: null, height: null };
@@ -2386,12 +2387,12 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: GetSpacing output:", spacing);
+    LogUtil.Debug("= S.BaseLine: GetSpacing output:", spacing);
     return spacing;
   }
 
   GetShapeConnectPoint(hookPointID) {
-    T3Util.Log("= S.BaseLine: GetShapeConnectPoint called with hookPointID:", hookPointID);
+    LogUtil.Debug("= S.BaseLine: GetShapeConnectPoint called with hookPointID:", hookPointID);
 
     const connectPoint = { x: 0, y: 0 };
     const alternatePoint = { x: 0, y: 0 };
@@ -2421,7 +2422,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     const result = hookPointID === OptConstant.HookPts.KTL ? alternatePoint : connectPoint;
-    T3Util.Log("= S.BaseLine: GetShapeConnectPoint output:", result);
+    LogUtil.Debug("= S.BaseLine: GetShapeConnectPoint output:", result);
     return result;
   }
 
@@ -2494,7 +2495,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   CreateConnectHilites(svgDoc, targetPoint, hookPoint, isJoin, hookIndex, additionalParam) {
-    T3Util.Log("= S.BaseLine: CreateConnectHilites called with", {
+    LogUtil.Debug("= S.BaseLine: CreateConnectHilites called with", {
       svgDoc,
       targetPoint,
       hookPoint,
@@ -2565,13 +2566,13 @@ class BaseLine extends BaseDrawObject {
       groupElement.isShape = true;
       groupElement.SetID('hilite_' + targetPoint);
 
-      T3Util.Log("= S.BaseLine: CreateConnectHilites output:", groupElement);
+      LogUtil.Debug("= S.BaseLine: CreateConnectHilites output:", groupElement);
       return groupElement;
     }
   }
 
   HookToPoint(hookId: number, outRect?: any): Point {
-    T3Util.Log("= S.BaseLine: HookToPoint input, hookId:", hookId, "outRect:", outRect);
+    LogUtil.Debug("= S.BaseLine: HookToPoint input, hookId:", hookId, "outRect:", outRect);
 
     // Initialize the result point
     let resultPoint: Point = { x: 0, y: 0, id: 0 };
@@ -2622,12 +2623,12 @@ class BaseLine extends BaseDrawObject {
       outRect.height = computedRect.height;
     }
 
-    T3Util.Log("= S.BaseLine: HookToPoint output, resultPoint:", resultPoint, "outRect:", outRect);
+    LogUtil.Debug("= S.BaseLine: HookToPoint output, resultPoint:", resultPoint, "outRect:", outRect);
     return resultPoint;
   }
 
   MaintainPoint(point: Point, targetId: number, distance: number, lineObj: any, offset: any): boolean {
-    T3Util.Log("= S.BaseLine: MaintainPoint input:", { point, targetId, distance, lineObj, offset });
+    LogUtil.Debug("= S.BaseLine: MaintainPoint input:", { point, targetId, distance, lineObj, offset });
 
     let hookIndex: number = -1;
     let currentLine = lineObj;
@@ -2648,7 +2649,7 @@ class BaseLine extends BaseDrawObject {
             }
           }
           if (hookIndex !== 0) {
-            T3Util.Log("= S.BaseLine: MaintainPoint output: returning true early (no matching hook)");
+            LogUtil.Debug("= S.BaseLine: MaintainPoint output: returning true early (no matching hook)");
             return true;
           }
           newLine = Utils1.DeepCopy(currentLine);
@@ -2661,11 +2662,11 @@ class BaseLine extends BaseDrawObject {
           break;
       }
       if (T3Gv.opt.LineCheckPoint(this, point)) {
-        T3Util.Log("= S.BaseLine: MaintainPoint output: returning true early (LineCheckPoint true)");
+        LogUtil.Debug("= S.BaseLine: MaintainPoint output: returning true early (LineCheckPoint true)");
         return true;
       }
       if (T3Gv.opt.LinesIntersect(this, currentLine, point)) {
-        T3Util.Log("= S.BaseLine: MaintainPoint output: returning true early (LinesIntersect true)");
+        LogUtil.Debug("= S.BaseLine: MaintainPoint output: returning true early (LinesIntersect true)");
         return true;
       }
       PolyUtil.LinesMaintainDist(this, distance, offset, point);
@@ -2673,12 +2674,12 @@ class BaseLine extends BaseDrawObject {
       PolyUtil.LinesMaintainDist(this, distance, offset, point);
     }
 
-    T3Util.Log("= S.BaseLine: MaintainPoint output: returning true");
+    LogUtil.Debug("= S.BaseLine: MaintainPoint output: returning true");
     return true;
   }
 
   ChangeTarget(e: any, targetId: any, a: any, r: any, i: any, n: any): void {
-    T3Util.Log("= S.BaseLine: ChangeTarget called with e:", e, "targetId:", targetId, "a:", a, "r:", r, "i:", i, "n:", n);
+    LogUtil.Debug("= S.BaseLine: ChangeTarget called with e:", e, "targetId:", targetId, "a:", a, "r:", r, "i:", i, "n:", n);
 
     let apparentAngle = 0;
     let targetObj: any = ObjectUtil.GetObjectPtr(targetId, false);
@@ -2690,7 +2691,7 @@ class BaseLine extends BaseDrawObject {
       apparentAngle = Math.abs(apparentAngle) % 180;
 
       let targetRotation = Math.abs(targetObj.RotationAngle % 180);
-      T3Util.Log("= S.BaseLine: ChangeTarget computed apparentAngle:", apparentAngle, "targetRotation:", targetRotation);
+      LogUtil.Debug("= S.BaseLine: ChangeTarget computed apparentAngle:", apparentAngle, "targetRotation:", targetRotation);
 
       if (Math.abs(targetRotation - apparentAngle) > 2 &&
         Math.abs(targetRotation - (apparentAngle - 180)) > 2) {
@@ -2700,18 +2701,18 @@ class BaseLine extends BaseDrawObject {
           DSConstant.LinkFlags.Move | DSConstant.LinkFlags.Change
         );
         ObjectUtil.AddToDirtyList(targetId);
-        T3Util.Log("= S.BaseLine: ChangeTarget updated targetObj.RotationAngle to:", apparentAngle);
+        LogUtil.Debug("= S.BaseLine: ChangeTarget updated targetObj.RotationAngle to:", apparentAngle);
       } else {
-        T3Util.Log("= S.BaseLine: ChangeTarget rotation difference within tolerance, no update performed");
+        LogUtil.Debug("= S.BaseLine: ChangeTarget rotation difference within tolerance, no update performed");
       }
     }
 
     ObjectUtil.AddToDirtyList(this.BlockID);
-    T3Util.Log("= S.BaseLine: ChangeTarget completed for BlockID:", this.BlockID);
+    LogUtil.Debug("= S.BaseLine: ChangeTarget completed for BlockID:", this.BlockID);
   }
 
   GetPolyPoints(numPoints: number, isRelative: boolean, a: any, r: any, i?: any): Point[] {
-    T3Util.Log("= S.BaseLine: GetPolyPoints called with:", { numPoints, isRelative, a, r, i });
+    LogUtil.Debug("= S.BaseLine: GetPolyPoints called with:", { numPoints, isRelative, a, r, i });
 
     // Create the points array using StartPoint and EndPoint
     const points: Point[] = [
@@ -2727,7 +2728,7 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: GetPolyPoints output:", points);
+    LogUtil.Debug("= S.BaseLine: GetPolyPoints output:", points);
     return points;
   }
 
@@ -2738,7 +2739,7 @@ class BaseLine extends BaseDrawObject {
     hitResult: any,
     hookPointID: number
   ): number {
-    T3Util.Log("= S.BaseLine: Hit called with input:", { point, t, isKnob, hitResult, hookPointID });
+    LogUtil.Debug("= S.BaseLine: Hit called with input:", { point, t, isKnob, hitResult, hookPointID });
 
     let hitCode: number;
     let inflatedStartPoint: any;
@@ -2784,7 +2785,7 @@ class BaseLine extends BaseDrawObject {
             hitResult.pt.x = this.StartPoint.x;
             hitResult.pt.y = this.StartPoint.y;
           }
-          T3Util.Log("= S.BaseLine: Hit output:", NvConstant.HitCodes.PLApp);
+          LogUtil.Debug("= S.BaseLine: Hit output:", NvConstant.HitCodes.PLApp);
           return NvConstant.HitCodes.PLApp;
         }
       }
@@ -2798,7 +2799,7 @@ class BaseLine extends BaseDrawObject {
             hitResult.pt.x = this.EndPoint.x;
             hitResult.pt.y = this.EndPoint.y;
           }
-          T3Util.Log("= S.BaseLine: Hit output:", NvConstant.HitCodes.PLApp);
+          LogUtil.Debug("= S.BaseLine: Hit output:", NvConstant.HitCodes.PLApp);
           return NvConstant.HitCodes.PLApp;
         }
       }
@@ -2824,52 +2825,52 @@ class BaseLine extends BaseDrawObject {
       hitResult.hitcode = hitCode;
     }
 
-    T3Util.Log("= S.BaseLine: Hit output:", hitCode);
+    LogUtil.Debug("= S.BaseLine: Hit output:", hitCode);
     return hitCode;
   }
 
   StartNewObjectDrawDoAutoScroll() {
-    T3Util.Log("= S.BaseLine: StartNewObjectDrawDoAutoScroll called");
+    LogUtil.Debug("= S.BaseLine: StartNewObjectDrawDoAutoScroll called");
 
     // Set the auto-scroll timer with a 100ms timeout
     T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout(
       'StartNewObjectDrawDoAutoScroll',
       100
     );
-    T3Util.Log("= S.BaseLine: autoScrollTimerId set to", T3Gv.opt.autoScrollTimerId);
+    LogUtil.Debug("= S.BaseLine: autoScrollTimerId set to", T3Gv.opt.autoScrollTimerId);
 
     // Convert window coordinates (autoScrollXPos, autoScrollYPos) to document coordinates
     let docCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       T3Gv.opt.autoScrollXPos,
       T3Gv.opt.autoScrollYPos
     );
-    T3Util.Log("= S.BaseLine: Converted window coords to docCoords:", docCoords);
+    LogUtil.Debug("= S.BaseLine: Converted window coords to docCoords:", docCoords);
 
     // Adjust the document coordinates for auto-grow drag
     docCoords = DrawUtil.DoAutoGrowDrag(docCoords);
-    T3Util.Log("= S.BaseLine: After DoAutoGrowDrag, docCoords:", docCoords);
+    LogUtil.Debug("= S.BaseLine: After DoAutoGrowDrag, docCoords:", docCoords);
 
     // Scroll the document to the new position
     T3Gv.docUtil.ScrollToPosition(docCoords.x, docCoords.y);
-    T3Util.Log("= S.BaseLine: Scrolled to position:", docCoords);
+    LogUtil.Debug("= S.BaseLine: Scrolled to position:", docCoords);
 
     // Continue drawing tracking with the updated coordinates
     this.StartNewObjectDrawTrackCommon(docCoords.x, docCoords.y, null);
-    T3Util.Log("= S.BaseLine: Called StartNewObjectDrawTrackCommon with coords:", docCoords.x, docCoords.y);
+    LogUtil.Debug("= S.BaseLine: Called StartNewObjectDrawTrackCommon with coords:", docCoords.x, docCoords.y);
   }
 
   StartNewObjectDrawTrackCommon(x: number, y: number, extraFlag: any): void {
-    T3Util.Log("= S.BaseLine: StartNewObjectDrawTrackCommon called with x:", x, "y:", y, "extraFlag:", extraFlag);
+    LogUtil.Debug("= S.BaseLine: StartNewObjectDrawTrackCommon called with x:", x, "y:", y, "extraFlag:", extraFlag);
 
     // Compute differences relative to the action start coordinates
     const deltaX = x - T3Gv.opt.actionStartX;
     const deltaY = y - T3Gv.opt.actionStartY;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    T3Util.Log("= S.BaseLine: Computed deltaX:", deltaX, "deltaY:", deltaY, "distance:", distance);
+    LogUtil.Debug("= S.BaseLine: Computed deltaX:", deltaX, "deltaY:", deltaY, "distance:", distance);
 
     // Make a deep copy of the action bounding box
     const actionBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
-    T3Util.Log("= S.BaseLine: actionBBox:", actionBBox);
+    LogUtil.Debug("= S.BaseLine: actionBBox:", actionBBox);
 
     // Adjust the line end point
     this.AdjustLineEnd(
@@ -2879,11 +2880,11 @@ class BaseLine extends BaseDrawObject {
       OptConstant.ActionTriggerType.LineEnd,
       extraFlag
     );
-    T3Util.Log("= S.BaseLine: AdjustLineEnd called with x:", x, "y:", y, "trigger:", OptConstant.ActionTriggerType.LineEnd, "extraFlag:", extraFlag);
+    LogUtil.Debug("= S.BaseLine: AdjustLineEnd called with x:", x, "y:", y, "trigger:", OptConstant.ActionTriggerType.LineEnd, "extraFlag:", extraFlag);
   }
 
   LMDrawTrack(event: any) {
-    T3Util.Log("= S.BaseLine: LMDrawTrack called with event:", event);
+    LogUtil.Debug("= S.BaseLine: LMDrawTrack called with event:", event);
 
     // Stop propagation and default handling
     Utils2.StopPropagationAndDefaults(event);
@@ -2893,7 +2894,7 @@ class BaseLine extends BaseDrawObject {
 
     // Check if action stored object is valid
     if (T3Gv.opt.actionStoredObjectId === -1) {
-      T3Util.Log("= S.BaseLine: LMDrawTrack aborted, actionStoredObjectId is -1");
+      LogUtil.Debug("= S.BaseLine: LMDrawTrack aborted, actionStoredObjectId is -1");
       return false;
     }
 
@@ -2911,11 +2912,11 @@ class BaseLine extends BaseDrawObject {
       );
     }
 
-    T3Util.Log("= S.BaseLine: LMDrawTrack input point (before track):", trackPoint);
+    LogUtil.Debug("= S.BaseLine: LMDrawTrack input point (before track):", trackPoint);
 
     // Process during track
     trackPoint = this.LMDrawDuringTrack(trackPoint);
-    T3Util.Log("= S.BaseLine: After LMDrawDuringTrack, trackPoint:", trackPoint);
+    LogUtil.Debug("= S.BaseLine: After LMDrawDuringTrack, trackPoint:", trackPoint);
 
     // Determine if link parameters indicate an active connection
     let hasLinkParams =
@@ -2931,34 +2932,34 @@ class BaseLine extends BaseDrawObject {
     if (T3Gv.docUtil.docConfig.enableSnap && !hasLinkParams) {
       const deltaX = trackPoint.x - T3Gv.opt.actionStartX;
       const deltaY = trackPoint.y - T3Gv.opt.actionStartY;
-      T3Util.Log("= S.BaseLine: Calculated delta for snapping:", { deltaX, deltaY });
+      LogUtil.Debug("= S.BaseLine: Calculated delta for snapping:", { deltaX, deltaY });
       if (!this.CustomSnap(this.Frame.x, this.Frame.y, deltaX, deltaY, false, trackPoint)) {
         trackPoint = T3Gv.docUtil.SnapToGrid(trackPoint);
-        T3Util.Log("= S.BaseLine: After SnapToGrid, trackPoint:", trackPoint);
+        LogUtil.Debug("= S.BaseLine: After SnapToGrid, trackPoint:", trackPoint);
       }
     }
 
     // Adjust the point for auto-grow dragging
     trackPoint = DrawUtil.DoAutoGrowDrag(trackPoint);
-    T3Util.Log("= S.BaseLine: After DoAutoGrowDrag, trackPoint:", trackPoint);
+    LogUtil.Debug("= S.BaseLine: After DoAutoGrowDrag, trackPoint:", trackPoint);
 
     // Auto-scroll and process new object drawing
     if (this.AutoScrollCommon(event, !hasLinkParams, "StartNewObjectDrawDoAutoScroll")) {
-      T3Util.Log("= S.BaseLine: AutoScrollCommon returned true. Calling StartNewObjectDrawTrackCommon with:", {
+      LogUtil.Debug("= S.BaseLine: AutoScrollCommon returned true. Calling StartNewObjectDrawTrackCommon with:", {
         x: trackPoint.x,
         y: trackPoint.y,
         altKey: altKeyFlag
       });
       this.StartNewObjectDrawTrackCommon(trackPoint.x, trackPoint.y, altKeyFlag);
     } else {
-      T3Util.Log("= S.BaseLine: AutoScrollCommon returned false, not calling StartNewObjectDrawTrackCommon");
+      LogUtil.Debug("= S.BaseLine: AutoScrollCommon returned false, not calling StartNewObjectDrawTrackCommon");
     }
 
-    T3Util.Log("= S.BaseLine: LMDrawTrack completed with final trackPoint:", trackPoint);
+    LogUtil.Debug("= S.BaseLine: LMDrawTrack completed with final trackPoint:", trackPoint);
   }
 
   CancelObjectDraw(): boolean {
-    T3Util.Log("= S.BaseLine: CancelObjectDraw called");
+    LogUtil.Debug("= S.BaseLine: CancelObjectDraw called");
 
     // Unbind click hammer events
     LMEvtUtil.UnbindActionClickHammerEvents();
@@ -2980,12 +2981,12 @@ class BaseLine extends BaseDrawObject {
     // Reset auto-scroll timer
     this.ResetAutoScrollTimer();
 
-    T3Util.Log("= S.BaseLine: CancelObjectDraw completed with output: true");
+    LogUtil.Debug("= S.BaseLine: CancelObjectDraw completed with output: true");
     return true;
   }
 
   LMDrawRelease(event: any, touch: any) {
-    T3Util.Log("= S.BaseLine: LMDrawRelease called with input:", { event: event, touch: touch });
+    LogUtil.Debug("= S.BaseLine: LMDrawRelease called with input:", { event: event, touch: touch });
     try {
       // Determine pointer position and conversion point (document coordinates)
       let conversionPoint: any;
@@ -3009,7 +3010,7 @@ class BaseLine extends BaseDrawObject {
         pointerPos = { x: event.clientX, y: event.clientY };
         conversionPoint = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(event.clientX, event.clientY);
       }
-      T3Util.Log("= S.BaseLine: LMDrawRelease - pointerPos:", pointerPos, "conversionPoint:", conversionPoint);
+      LogUtil.Debug("= S.BaseLine: LMDrawRelease - pointerPos:", pointerPos, "conversionPoint:", conversionPoint);
 
       if (event) {
         Utils2.StopPropagationAndDefaults(event);
@@ -3028,7 +3029,7 @@ class BaseLine extends BaseDrawObject {
         deltaX = T3Gv.opt.drawStartX - conversionPoint.x;
         deltaY = T3Gv.opt.drawStartY - conversionPoint.y;
       }
-      T3Util.Log("= S.BaseLine: LMDrawRelease - deltaX:", deltaX, "deltaY:", deltaY, "minLength:", minLength);
+      LogUtil.Debug("= S.BaseLine: LMDrawRelease - deltaX:", deltaX, "deltaY:", deltaY, "minLength:", minLength);
 
       // If movement is very small and lineStamp flag is not set, set lineStamp and bind mousemove (for desktop)
       if (
@@ -3045,7 +3046,7 @@ class BaseLine extends BaseDrawObject {
           );
         }
 
-        T3Util.Log("= S.BaseLine: LMDrawRelease - negligible movement; early exit.");
+        LogUtil.Debug("= S.BaseLine: LMDrawRelease - negligible movement; early exit.");
         return;
       }
 
@@ -3091,7 +3092,7 @@ class BaseLine extends BaseDrawObject {
       if (T3Gv.opt.fromOverlayLayer) {
         T3Gv.opt.fromOverlayLayer = false;
       }
-      T3Util.Log("= S.BaseLine: LMDrawRelease output: completed successfully");
+      LogUtil.Debug("= S.BaseLine: LMDrawRelease output: completed successfully");
     } catch (error) {
       OptCMUtil.CancelOperation();
       this.LMDrawClickExceptionCleanup(error);
@@ -3102,7 +3103,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   LMDrawPreTrack(event: any): boolean {
-    T3Util.Log("= S.BaseLine: LMDrawPreTrack called with event:", event);
+    LogUtil.Debug("= S.BaseLine: LMDrawPreTrack called with event:", event);
 
     // Initialize variables with readable names
     let hookFlags = this.GetHookFlags();
@@ -3204,14 +3205,14 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: LMDrawPreTrack returning:", true);
+    LogUtil.Debug("= S.BaseLine: LMDrawPreTrack returning:", true);
     return true;
   }
 
   // LMDrawDuringTrack(e) { }
 
   LMDrawDuringTrack(event: any) {
-    T3Util.Log("= S.BaseLine: LMDrawDuringTrack called with input:", event);
+    LogUtil.Debug("= S.BaseLine: LMDrawDuringTrack called with input:", event);
 
     let connectionResult: any;
     let hitResult: HitResult;
@@ -3222,7 +3223,7 @@ class BaseLine extends BaseDrawObject {
 
     // If no linkParams then skip connection logic
     if (T3Gv.opt.linkParams == null) {
-      T3Util.Log("= S.BaseLine: LMDrawDuringTrack output (no linkParams):", event);
+      LogUtil.Debug("= S.BaseLine: LMDrawDuringTrack output (no linkParams):", event);
       return event;
     }
 
@@ -3297,12 +3298,12 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: LMDrawDuringTrack output:", event);
+    LogUtil.Debug("= S.BaseLine: LMDrawDuringTrack output:", event);
     return event;
   }
 
   LMDrawPostRelease(actionTarget: number): number {
-    T3Util.Log("= S.BaseLine: LMDrawPostRelease input:", actionTarget);
+    LogUtil.Debug("= S.BaseLine: LMDrawPostRelease input:", actionTarget);
 
     // Check if linkParams exist
     if (T3Gv.opt.linkParams != null) {
@@ -3423,7 +3424,7 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.UpdateLinks();
       T3Gv.opt.linkParams = null;
 
-      T3Util.Log("= S.BaseLine: LMDrawPostRelease output:", result);
+      LogUtil.Debug("= S.BaseLine: LMDrawPostRelease output:", result);
       return result;
     }
     // If no linkParams, do nothing and return default (0)
@@ -3431,7 +3432,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   LMDrawClickExceptionCleanup(event) {
-    T3Util.Log("= S.BaseLine: LMDrawClickExceptionCleanup called with input:", event);
+    LogUtil.Debug("= S.BaseLine: LMDrawClickExceptionCleanup called with input:", event);
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
@@ -3453,14 +3454,14 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.fromOverlayLayer = false;
     T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
 
-    T3Util.Log("= S.BaseLine: LMDrawClickExceptionCleanup output: cleanup complete");
+    LogUtil.Debug("= S.BaseLine: LMDrawClickExceptionCleanup output: cleanup complete");
   }
 
   LMDrawClick(docCorX, docCorY) {
 
     //docCorX, docCorY
 
-    T3Util.Log('3 ========= LMDrawClick 1 draw click e=>', docCorX, docCorY);
+    LogUtil.Debug('3 ========= LMDrawClick 1 draw click e=>', docCorX, docCorY);
 
     try {
       this.Frame.x = docCorX;
@@ -3472,7 +3473,7 @@ class BaseLine extends BaseDrawObject {
       T3Gv.opt.WorkAreaHammer.off('tap');
     } catch (error) {
 
-      T3Util.Log('3 ========= LMDrawClick 2 eRRdraw click e=>', error);
+      LogUtil.Debug('3 ========= LMDrawClick 2 eRRdraw click e=>', error);
 
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
@@ -3481,30 +3482,30 @@ class BaseLine extends BaseDrawObject {
   }
 
   ChangeBackgroundColor(newColor: string, currentColor: string): void {
-    T3Util.Log("= S.BaseLine: ChangeBackgroundColor called with newColor:", newColor, "currentColor:", currentColor);
+    LogUtil.Debug("= S.BaseLine: ChangeBackgroundColor called with newColor:", newColor, "currentColor:", currentColor);
 
     if (
       this.StyleRecord.Fill.Paint.FillType !== NvConstant.FillTypes.Transparent &&
       this.StyleRecord.Fill.Paint.Color === currentColor
     ) {
-      T3Util.Log("= S.BaseLine: Condition met. Updating background color.");
+      LogUtil.Debug("= S.BaseLine: Condition met. Updating background color.");
       ObjectUtil.GetObjectPtr(this.BlockID, true);
       this.StyleRecord.Fill.Paint.Color = newColor;
-      T3Util.Log("= S.BaseLine: Background color updated to:", this.StyleRecord.Fill.Paint.Color);
+      LogUtil.Debug("= S.BaseLine: Background color updated to:", this.StyleRecord.Fill.Paint.Color);
     } else {
-      T3Util.Log("= S.BaseLine: Condition not met. Background color remains:", this.StyleRecord.Fill.Paint.Color);
+      LogUtil.Debug("= S.BaseLine: Condition not met. Background color remains:", this.StyleRecord.Fill.Paint.Color);
     }
   }
 
   ResizeInTextEdit(textObject: any, newSize: any): { x: number; y: number } {
-    T3Util.Log("= S.BaseLine: ResizeInTextEdit called with input:", { textObject, newSize });
+    LogUtil.Debug("= S.BaseLine: ResizeInTextEdit called with input:", { textObject, newSize });
     const result = { x: 0, y: 0 };
-    T3Util.Log("= S.BaseLine: ResizeInTextEdit output:", result);
+    LogUtil.Debug("= S.BaseLine: ResizeInTextEdit output:", result);
     return result;
   }
 
   CalcTextPosition(params: any) {
-    T3Util.Log("= S.BaseLine: CalcTextPosition input:", params);
+    LogUtil.Debug("= S.BaseLine: CalcTextPosition input:", params);
 
     // Calculate the center of the incoming frame
     const paramsCenter = {
@@ -3572,7 +3573,7 @@ class BaseLine extends BaseDrawObject {
       this.trect = $.extend(true, {}, params.trect);
     }
 
-    T3Util.Log("= S.BaseLine: CalcTextPosition output:", {
+    LogUtil.Debug("= S.BaseLine: CalcTextPosition output:", {
       LineTextX: this.LineTextX,
       LineTextY: this.LineTextY,
       TextWrapWidth: this.TextWrapWidth,
@@ -3581,7 +3582,7 @@ class BaseLine extends BaseDrawObject {
   }
 
   SetTextObject(newDataId: any): boolean {
-    T3Util.Log("= S.BaseLine: SetTextObject called with newDataId =", newDataId);
+    LogUtil.Debug("= S.BaseLine: SetTextObject called with newDataId =", newDataId);
 
     // Set the DataID property
     this.DataID = newDataId;
@@ -3601,12 +3602,12 @@ class BaseLine extends BaseDrawObject {
       this.StyleRecord.Fill.Paint.FillType = NvConstant.FillTypes.Transparent;
     }
 
-    T3Util.Log("= S.BaseLine: SetTextObject output, DataID =", this.DataID, "StyleRecord.Fill =", this.StyleRecord.Fill);
+    LogUtil.Debug("= S.BaseLine: SetTextObject output, DataID =", this.DataID, "StyleRecord.Fill =", this.StyleRecord.Fill);
     return true;
   }
 
   GetTextOnLineParams(e) {
-    T3Util.Log("= S.BaseLine: GetTextOnLineParams called with input:", e);
+    LogUtil.Debug("= S.BaseLine: GetTextOnLineParams called with input:", e);
 
     let params = {
       Frame: new Rect(),
@@ -3629,12 +3630,12 @@ class BaseLine extends BaseDrawObject {
       params.Displacement = this.LineTextY;
     }
 
-    T3Util.Log("= S.BaseLine: GetTextOnLineParams output:", params);
+    LogUtil.Debug("= S.BaseLine: GetTextOnLineParams output:", params);
     return params;
   }
 
   TextDirectionCommon(textObj, bgObj, useOriginal, extraParam) {
-    T3Util.Log("= S.BaseLine: TextDirectionCommon input:", { textObj, bgObj, useOriginal, extraParam });
+    LogUtil.Debug("= S.BaseLine: TextDirectionCommon input:", { textObj, bgObj, useOriginal, extraParam });
     // Get the minimum text dimensions
     let textMinDim = textObj.GetTextMinDimensions();
     let textWidth = textMinDim.width;
@@ -3869,11 +3870,11 @@ class BaseLine extends BaseDrawObject {
       this.TextDirection = origTextDirection;
       this.TextAlign = origTextAlign;
     }
-    T3Util.Log("= S.BaseLine: TextDirectionCommon output:", { linerect: this.linetrect });
+    LogUtil.Debug("= S.BaseLine: TextDirectionCommon output:", { linerect: this.linetrect });
   }
 
   LMAddSVGTextObject(svgDoc, container) {
-    T3Util.Log("= S.BaseLine: LMAddSVGTextObject input:", { svgDoc, container });
+    LogUtil.Debug("= S.BaseLine: LMAddSVGTextObject input:", { svgDoc, container });
 
     // Use the text rectangle stored in this.trect to size the text object.
     const trect = this.trect;
@@ -3971,11 +3972,11 @@ class BaseLine extends BaseDrawObject {
     // Set the text edit callback.
     textShape.SetEditCallback(T3Gv.opt.TextCallback, container);
 
-    T3Util.Log("= S.BaseLine: LMAddSVGTextObject output:", { addedTextElement: textShape });
+    LogUtil.Debug("= S.BaseLine: LMAddSVGTextObject output:", { addedTextElement: textShape });
   }
 
   LMResizeSVGTextObject(svgDoc: any, textContainer: any, extraData: any): void {
-    T3Util.Log("= S.BaseLine: LMResizeSVGTextObject called with input:", { svgDoc, textContainer, extraData });
+    LogUtil.Debug("= S.BaseLine: LMResizeSVGTextObject called with input:", { svgDoc, textContainer, extraData });
 
     if (textContainer.DataID !== -1) {
       const textBackground = svgDoc.GetElementById(OptConstant.SVGElementClass.TextBackground);
@@ -3986,50 +3987,50 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: LMResizeSVGTextObject completed");
+    LogUtil.Debug("= S.BaseLine: LMResizeSVGTextObject completed");
   }
 
   AdjustTextEditBackground(elementId: string | number, container?: any) {
-    T3Util.Log("= S.BaseLine: AdjustTextEditBackground called with input:", { elementId, container });
+    LogUtil.Debug("= S.BaseLine: AdjustTextEditBackground called with input:", { elementId, container });
 
     // Only adjust if a valid DataID exists
     if (this.DataID !== -1) {
       // Use provided container if available; otherwise get it from the SVG object layer by elementId
       const svgContainer = container ? container : T3Gv.opt.svgObjectLayer.GetElementById(elementId);
-      T3Util.Log("= S.BaseLine: Retrieved svgContainer:", svgContainer);
+      LogUtil.Debug("= S.BaseLine: Retrieved svgContainer:", svgContainer);
 
       // Retrieve text background and text elements from the container
       const textBackgroundElement = svgContainer.GetElementById(OptConstant.SVGElementClass.TextBackground);
       const textElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Text);
-      T3Util.Log("= S.BaseLine: Retrieved textBackgroundElement:", textBackgroundElement, "and textElement:", textElement);
+      LogUtil.Debug("= S.BaseLine: Retrieved textBackgroundElement:", textBackgroundElement, "and textElement:", textElement);
 
       // If a text element is present, adjust its text direction
       if (textElement) {
         // If no container parameter was provided we treat it as original (true)
         const useOriginal = container == null;
         this.TextDirectionCommon(textElement, textBackgroundElement, useOriginal, null);
-        T3Util.Log("= S.BaseLine: TextDirectionCommon applied with useOriginal =", useOriginal);
+        LogUtil.Debug("= S.BaseLine: TextDirectionCommon applied with useOriginal =", useOriginal);
       } else {
-        T3Util.Log("= S.BaseLine: No text element found in the SVG container.");
+        LogUtil.Debug("= S.BaseLine: No text element found in the SVG container.");
       }
     } else {
-      T3Util.Log("= S.BaseLine: Skipped AdjustTextEditBackground because DataID is -1.");
+      LogUtil.Debug("= S.BaseLine: Skipped AdjustTextEditBackground because DataID is -1.");
     }
 
-    T3Util.Log("= S.BaseLine: AdjustTextEditBackground completed.");
+    LogUtil.Debug("= S.BaseLine: AdjustTextEditBackground completed.");
   }
 
   AddCorner(cornerIndex: number, cornerData: any): void {
-    T3Util.Log("= S.BaseLine: AddCorner called with input:", { cornerIndex, cornerData });
+    LogUtil.Debug("= S.BaseLine: AddCorner called with input:", { cornerIndex, cornerData });
 
     // TODO: Implement the logic to add a corner using the provided parameters.
     // For example, you might want to update internal corner lists or recalc shapes.
 
-    T3Util.Log("= S.BaseLine: AddCorner completed with no output (void)");
+    LogUtil.Debug("= S.BaseLine: AddCorner completed with no output (void)");
   }
 
   SVGTokenizerHook(e: any): any {
-    T3Util.Log("= S.BaseLine: SVGTokenizerHook called with input:", e);
+    LogUtil.Debug("= S.BaseLine: SVGTokenizerHook called with input:", e);
 
     if (T3Gv.opt.bTokenizeStyle) {
       // Make a deep copy of input object
@@ -4056,43 +4057,43 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Util.Log("= S.BaseLine: SVGTokenizerHook output:", e);
+    LogUtil.Debug("= S.BaseLine: SVGTokenizerHook output:", e);
     return e;
   }
 
   GetDimensionPoints(): Point[] {
-    T3Util.Log("= S.BaseLine: GetDimensionPoints called, input: none");
+    LogUtil.Debug("= S.BaseLine: GetDimensionPoints called, input: none");
 
     const points: Point[] = [];
     const rect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
-    T3Util.Log("= S.BaseLine: Computed rect =", rect);
+    LogUtil.Debug("= S.BaseLine: Computed rect =", rect);
 
     const startPointRelative = new Point(this.StartPoint.x - rect.x, this.StartPoint.y - rect.y);
-    T3Util.Log("= S.BaseLine: Computed relative start point =", startPointRelative);
+    LogUtil.Debug("= S.BaseLine: Computed relative start point =", startPointRelative);
 
     const endPointRelative = new Point(this.EndPoint.x - rect.x, this.EndPoint.y - rect.y);
-    T3Util.Log("= S.BaseLine: Computed relative end point =", endPointRelative);
+    LogUtil.Debug("= S.BaseLine: Computed relative end point =", endPointRelative);
 
     points.push(startPointRelative);
     points.push(endPointRelative);
 
-    T3Util.Log("= S.BaseLine: GetDimensionPoints output =", points);
+    LogUtil.Debug("= S.BaseLine: GetDimensionPoints output =", points);
     return points;
   }
 
   PostCreateShapeCallback(svgDoc: any, shapeContainer: any, flag: boolean, extra: any): void {
-    T3Util.Log("= S.BaseLine: PostCreateShapeCallback input:", { svgDoc, shapeContainer, flag, extra });
+    LogUtil.Debug("= S.BaseLine: PostCreateShapeCallback input:", { svgDoc, shapeContainer, flag, extra });
 
     // Retrieve the main shape and the slop elements from the container.
     const shapeElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopElement = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-    T3Util.Log("= S.BaseLine: Retrieved shapeElement and slopElement", { shapeElement, slopElement });
+    LogUtil.Debug("= S.BaseLine: Retrieved shapeElement and slopElement", { shapeElement, slopElement });
 
     // Look up arrowhead definitions using constants.
     let startArrow = T3Gv.arrowHlkTable[this.StartArrowID];
     let endArrow = T3Gv.arrowHlkTable[this.EndArrowID];
     const arrowSize = T3Gv.arrowHsTable[this.ArrowSizeIndex];
-    T3Util.Log("= S.BaseLine: Arrow lookup:", { startArrow, endArrow, arrowSize });
+    LogUtil.Debug("= S.BaseLine: Arrow lookup:", { startArrow, endArrow, arrowSize });
 
     // If arrow id is zero, set the corresponding arrow to null.
     if (startArrow.id === 0) {
@@ -4101,34 +4102,34 @@ class BaseLine extends BaseDrawObject {
     if (endArrow.id === 0) {
       endArrow = null;
     }
-    T3Util.Log("= S.BaseLine: Arrow after check:", { startArrow, endArrow });
+    LogUtil.Debug("= S.BaseLine: Arrow after check:", { startArrow, endArrow });
 
     // If either arrow is set, assign them to both shapeElement and slopElement.
     if (startArrow || endArrow) {
       shapeElement.SetArrowheads(startArrow, arrowSize, endArrow, arrowSize, this.StartArrowDisp, this.EndArrowDisp);
       slopElement.SetArrowheads(startArrow, arrowSize, endArrow, arrowSize, this.StartArrowDisp, this.EndArrowDisp);
-      T3Util.Log("= S.BaseLine: Arrowheads set on shapeElement and slopElement");
+      LogUtil.Debug("= S.BaseLine: Arrowheads set on shapeElement and slopElement");
     } else {
-      T3Util.Log("= S.BaseLine: No arrowheads to set (both null)");
+      LogUtil.Debug("= S.BaseLine: No arrowheads to set (both null)");
     }
 
     // If DataID is valid, add the SVG text object.
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(svgDoc, shapeContainer);
-      T3Util.Log("= S.BaseLine: SVG text object added");
+      LogUtil.Debug("= S.BaseLine: SVG text object added");
     } else {
-      T3Util.Log("= S.BaseLine: DataID is invalid, skipping text object addition");
+      LogUtil.Debug("= S.BaseLine: DataID is invalid, skipping text object addition");
     }
 
     // Update dimension lines.
     this.UpdateDimensionLines(shapeContainer, null);
-    T3Util.Log("= S.BaseLine: Dimension lines updated");
+    LogUtil.Debug("= S.BaseLine: Dimension lines updated");
 
     // Update coordinate lines (horizontal/vertical) fixed at the start point.
     // this.UpdateCoordinateLines(shapeContainer, null);
-    T3Util.Log("= S.BaseLine: Coordinate lines updated");
+    LogUtil.Debug("= S.BaseLine: Coordinate lines updated");
 
-    T3Util.Log("= S.BaseLine: PostCreateShapeCallback completed");
+    LogUtil.Debug("= S.BaseLine: PostCreateShapeCallback completed");
   }
 
   CreateActionTriggers(
@@ -4137,7 +4138,7 @@ class BaseLine extends BaseDrawObject {
     unusedParam: any,
     secondaryTarget: any
   ): any {
-    T3Util.Log("= S.BaseLine: CreateActionTriggers input:", { svgDoc, triggerTarget, unusedParam, secondaryTarget });
+    LogUtil.Debug("= S.BaseLine: CreateActionTriggers input:", { svgDoc, triggerTarget, unusedParam, secondaryTarget });
 
     let isInteractive = true,
       actionKnob: any,
@@ -4318,41 +4319,41 @@ class BaseLine extends BaseDrawObject {
       groupShape.isShape = true;
       groupShape.SetID(OptConstant.Common.Action + triggerTarget);
 
-      T3Util.Log("= S.BaseLine: CreateActionTriggers output:", groupShape);
+      LogUtil.Debug("= S.BaseLine: CreateActionTriggers output:", groupShape);
       return groupShape;
     }
   }
 
   CalcCursorForSegment(startPoint: Point, endPoint: Point, flag?: boolean): string {
-    T3Util.Log("= S.BaseLine: CalcCursorForSegment input:", { startPoint, endPoint, flag });
+    LogUtil.Debug("= S.BaseLine: CalcCursorForSegment input:", { startPoint, endPoint, flag });
     const angle = Utils1.CalcAngleFromPoints(startPoint, endPoint);
-    T3Util.Log("= S.BaseLine: Calculated angle:", angle);
+    LogUtil.Debug("= S.BaseLine: Calculated angle:", angle);
     const cursor = this.CalcCursorForAngle(angle, flag);
-    T3Util.Log("= S.BaseLine: CalcCursorForSegment output:", { cursor });
+    LogUtil.Debug("= S.BaseLine: CalcCursorForSegment output:", { cursor });
     return cursor;
   }
 
   NoRotate(): boolean {
-    T3Util.Log("= S.BaseLine: NoRotate called, input: none");
+    LogUtil.Debug("= S.BaseLine: NoRotate called, input: none");
     const result = this.hooks.length > 1;
-    T3Util.Log("= S.BaseLine: NoRotate output:", result);
+    LogUtil.Debug("= S.BaseLine: NoRotate output:", result);
     return result;
   }
 
   SetRuntimeEffects(effects: any): void {
-    T3Util.Log("= S.BaseLine: SetRuntimeEffects called with input:", effects);
+    LogUtil.Debug("= S.BaseLine: SetRuntimeEffects called with input:", effects);
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     if (svgElement) {
-      T3Util.Log("= S.BaseLine: Retrieved SVG element for BlockID", this.BlockID, ":", svgElement);
+      LogUtil.Debug("= S.BaseLine: Retrieved SVG element for BlockID", this.BlockID, ":", svgElement);
       this.ApplyEffects(svgElement, effects, true);
-      T3Util.Log("= S.BaseLine: Applied runtime effects with input:", effects);
+      LogUtil.Debug("= S.BaseLine: Applied runtime effects with input:", effects);
     } else {
-      T3Util.Log("= S.BaseLine: No SVG element found for BlockID", this.BlockID);
+      LogUtil.Debug("= S.BaseLine: No SVG element found for BlockID", this.BlockID);
     }
   }
 
   ApplyStyles(element: any, styleObj: any) {
-    T3Util.Log("= S.BaseLine: ApplyStyles called with input:", { element, styleObj });
+    LogUtil.Debug("= S.BaseLine: ApplyStyles called with input:", { element, styleObj });
 
     // Retrieve fill and stroke types and check if an image is set
     const fillType = styleObj.Fill.Paint.FillType;
@@ -4377,7 +4378,7 @@ class BaseLine extends BaseDrawObject {
             scaleType = 'NOPROP';
           }
         }
-        T3Util.Log("= S.BaseLine: Applying image fill with", { url: this.ImageURL, scaleType, cropRect });
+        LogUtil.Debug("= S.BaseLine: Applying image fill with", { url: this.ImageURL, scaleType, cropRect });
         element.SetImageFill(this.ImageURL, { scaleType, cropRect });
         element.SetFillOpacity(styleObj.Fill.Paint.Opacity);
       }
@@ -4391,11 +4392,11 @@ class BaseLine extends BaseDrawObject {
           styleObj.Fill.Paint.EndColor,
           styleObj.Fill.Paint.EndOpacity
         );
-        T3Util.Log("= S.BaseLine: Applying gradient fill with record:", gradientRecord);
+        LogUtil.Debug("= S.BaseLine: Applying gradient fill with record:", gradientRecord);
         element.SetGradientFill(gradientRecord);
       } else if (fillType === NvConstant.FillTypes.RichGradient) {
         const richGradientRecord = this.CreateRichGradientRecord(styleObj.Fill.Paint.GradientFlags);
-        T3Util.Log("= S.BaseLine: Applying rich gradient fill with record:", richGradientRecord);
+        LogUtil.Debug("= S.BaseLine: Applying rich gradient fill with record:", richGradientRecord);
         element.SetGradientFill(richGradientRecord);
       } else if (fillType === NvConstant.FillTypes.Texture) {
         const textureParams = {
@@ -4413,15 +4414,15 @@ class BaseLine extends BaseDrawObject {
             textureParams.url = Constants.FilePath_CMSRoot + Constants.FilePath_Textures +
               T3Gv.opt.TextureList.Textures[textureIndex].filename;
           }
-          T3Util.Log("= S.BaseLine: Applying texture fill with params:", textureParams);
+          LogUtil.Debug("= S.BaseLine: Applying texture fill with params:", textureParams);
           element.SetTextureFill(textureParams);
           element.SetFillOpacity(styleObj.Fill.Paint.Opacity);
         }
       } else if (fillType === NvConstant.FillTypes.Transparent) {
-        T3Util.Log("= S.BaseLine: Applying transparent fill");
+        LogUtil.Debug("= S.BaseLine: Applying transparent fill");
         element.SetFillColor('none');
       } else {
-        T3Util.Log("= S.BaseLine: Applying solid fill with color:", styleObj.Fill.Paint.Color);
+        LogUtil.Debug("= S.BaseLine: Applying solid fill with color:", styleObj.Fill.Paint.Color);
         element.SetFillColor(styleObj.Fill.Paint.Color);
         element.SetFillOpacity(styleObj.Fill.Paint.Opacity);
       }
@@ -4436,11 +4437,11 @@ class BaseLine extends BaseDrawObject {
         styleObj.Line.Paint.EndColor,
         styleObj.Line.Paint.EndOpacity
       );
-      T3Util.Log("= S.BaseLine: Applying gradient stroke with record:", gradientStrokeRecord);
+      LogUtil.Debug("= S.BaseLine: Applying gradient stroke with record:", gradientStrokeRecord);
       element.SetGradientStroke(gradientStrokeRecord);
     } else if (lineFillType === NvConstant.FillTypes.RichGradient) {
       const richGradientStrokeRecord = this.CreateRichGradientRecord(styleObj.Line.Paint.GradientFlags);
-      T3Util.Log("= S.BaseLine: Applying rich gradient stroke with record:", richGradientStrokeRecord);
+      LogUtil.Debug("= S.BaseLine: Applying rich gradient stroke with record:", richGradientStrokeRecord);
       element.SetGradientStroke(richGradientStrokeRecord);
     } else if (lineFillType === NvConstant.FillTypes.Texture) {
       const textureStrokeParams = {
@@ -4456,23 +4457,23 @@ class BaseLine extends BaseDrawObject {
           Constants.FilePath_Textures +
           T3Gv.opt.TextureList.Textures[textureIndex].filename;
       }
-      T3Util.Log("= S.BaseLine: Applying texture stroke with params:", textureStrokeParams);
+      LogUtil.Debug("= S.BaseLine: Applying texture stroke with params:", textureStrokeParams);
       element.SetTextureStroke(textureStrokeParams);
       element.SetStrokeOpacity(styleObj.Line.Paint.Opacity);
     } else if (lineFillType === NvConstant.FillTypes.Solid) {
-      T3Util.Log("= S.BaseLine: Applying solid stroke with color:", styleObj.Line.Paint.Color);
+      LogUtil.Debug("= S.BaseLine: Applying solid stroke with color:", styleObj.Line.Paint.Color);
       element.SetStrokeColor(styleObj.Line.Paint.Color);
       element.SetStrokeOpacity(styleObj.Line.Paint.Opacity);
     } else {
-      T3Util.Log("= S.BaseLine: No stroke to apply, setting stroke color to none");
+      LogUtil.Debug("= S.BaseLine: No stroke to apply, setting stroke color to none");
       element.SetStrokeColor('none');
     }
 
-    T3Util.Log("= S.BaseLine: ApplyStyles completed for element:", element);
+    LogUtil.Debug("= S.BaseLine: ApplyStyles completed for element:", element);
   }
 
   CalcLineHops(targetShape: any, hopData: any): void {
-    T3Util.Log("= S.BaseLine: CalcLineHops called with targetShape =", targetShape, "and hopData =", hopData);
+    LogUtil.Debug("= S.BaseLine: CalcLineHops called with targetShape =", targetShape, "and hopData =", hopData);
 
     // Get poly-points for the current object and the target shape
     const basePolyPoints: Point[] = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, false, null);
@@ -4484,7 +4485,7 @@ class BaseLine extends BaseDrawObject {
     for (let baseIdx = 0; baseIdx < basePointCount; ++baseIdx) {
       // Check if maximum hops is exceeded
       if (this.hoplist.nhops > OptConstant.Common.MaxHops) {
-        T3Util.Log("= S.BaseLine: Maximum hop count exceeded, exiting CalcLineHops");
+        LogUtil.Debug("= S.BaseLine: Maximum hop count exceeded, exiting CalcLineHops");
         return;
       }
 
@@ -4499,50 +4500,50 @@ class BaseLine extends BaseDrawObject {
         baseIdx++;
       }
 
-      T3Util.Log("= S.BaseLine: Processing base segment between", prevPoint, "and", currPoint);
+      LogUtil.Debug("= S.BaseLine: Processing base segment between", prevPoint, "and", currPoint);
 
       // Try to add a hop point using the current segment and target poly points
       let hopResult = this.AddHopPoint(prevPoint, currPoint, targetPolyPoints, targetPointCount, baseIdx, hopData);
       if (hopResult == null) {
-        T3Util.Log("= S.BaseLine: AddHopPoint returned null, breaking out of loop");
+        LogUtil.Debug("= S.BaseLine: AddHopPoint returned null, breaking out of loop");
         break;
       }
-      T3Util.Log("= S.BaseLine: AddHopPoint result =", hopResult);
+      LogUtil.Debug("= S.BaseLine: AddHopPoint result =", hopResult);
 
       // If hop was successful, refine the target poly points further
       if (hopResult.bSuccess) {
         let tIndex: number = hopResult.tindex;
         if (tIndex >= 1 && targetPointCount > 2) {
-          T3Util.Log("= S.BaseLine: First hop success with tindex =", tIndex, "; refining target poly points");
+          LogUtil.Debug("= S.BaseLine: First hop success with tindex =", tIndex, "; refining target poly points");
           targetPolyPoints = targetPolyPoints.slice(tIndex);
           targetPointCount -= tIndex;
           hopResult = this.AddHopPoint(prevPoint, currPoint, targetPolyPoints, targetPointCount, baseIdx, hopData);
           if (hopResult == null) {
-            T3Util.Log("= S.BaseLine: Second AddHopPoint returned null, breaking out of loop");
+            LogUtil.Debug("= S.BaseLine: Second AddHopPoint returned null, breaking out of loop");
             break;
           }
           tIndex = hopResult.tindex;
-          T3Util.Log("= S.BaseLine: Refined hop result, new tindex =", tIndex);
+          LogUtil.Debug("= S.BaseLine: Refined hop result, new tindex =", tIndex);
         }
         if (tIndex < targetPointCount - 1) {
-          T3Util.Log("= S.BaseLine: tindex =", tIndex, "is less than targetPointCount - 1 =", targetPointCount - 1, "; further refining target poly points");
+          LogUtil.Debug("= S.BaseLine: tindex =", tIndex, "is less than targetPointCount - 1 =", targetPointCount - 1, "; further refining target poly points");
           targetPolyPoints = targetPolyPoints.slice(tIndex);
           targetPointCount -= tIndex;
           hopResult = this.AddHopPoint(prevPoint, currPoint, targetPolyPoints, targetPointCount, baseIdx, hopData);
           if (hopResult == null) {
-            T3Util.Log("= S.BaseLine: Third AddHopPoint returned null, breaking out of loop");
+            LogUtil.Debug("= S.BaseLine: Third AddHopPoint returned null, breaking out of loop");
             break;
           }
           tIndex = hopResult.tindex;
-          T3Util.Log("= S.BaseLine: Final hop refinement, new tindex =", tIndex);
+          LogUtil.Debug("= S.BaseLine: Final hop refinement, new tindex =", tIndex);
         }
       }
     }
-    T3Util.Log("= S.BaseLine: CalcLineHops completed");
+    LogUtil.Debug("= S.BaseLine: CalcLineHops completed");
   }
 
   DebugLineHops(svgDoc: any): void {
-    T3Util.Log("= S.BaseLine: DebugLineHops called with input:", svgDoc);
+    LogUtil.Debug("= S.BaseLine: DebugLineHops called with input:", svgDoc);
 
     // Total number of hops in the hoplist
     const totalHops: number = this.hoplist.nhops;
@@ -4612,7 +4613,7 @@ class BaseLine extends BaseDrawObject {
             cursorType: CursorConstant.CursorType.Cross
           };
 
-          T3Util.Log("= S.BaseLine: DebugLineHops knobParams:", knobParams);
+          LogUtil.Debug("= S.BaseLine: DebugLineHops knobParams:", knobParams);
 
           // Create a knob element based on the parameters
           const knob = this.GenericKnob(knobParams);
@@ -4628,7 +4629,7 @@ class BaseLine extends BaseDrawObject {
         }
       }
     }
-    T3Util.Log("= S.BaseLine: DebugLineHops completed");
+    LogUtil.Debug("= S.BaseLine: DebugLineHops completed");
   }
 
   AddHopPoint(
@@ -4639,7 +4640,7 @@ class BaseLine extends BaseDrawObject {
     segmentIndex: number,
     hopIndex: number
   ): { bSuccess: boolean; tindex: number } {
-    T3Util.Log("= S.BaseLine: AddHopPoint called with input:", {
+    LogUtil.Debug("= S.BaseLine: AddHopPoint called with input:", {
       startPoint,
       endPoint,
       polyPoints,
@@ -4658,7 +4659,7 @@ class BaseLine extends BaseDrawObject {
 
     // Exit early if maximum hops reached
     if (this.hoplist.nhops > OptConstant.Common.MaxHops) {
-      T3Util.Log("= S.BaseLine: Maximum hops exceeded, no hop added.");
+      LogUtil.Debug("= S.BaseLine: Maximum hops exceeded, no hop added.");
       return { bSuccess: false, tindex: 0 };
     }
 
@@ -4699,7 +4700,7 @@ class BaseLine extends BaseDrawObject {
         this.hoplist.hops.push(hopObj);
         this.hoplist.nhops++;
         const output = { bSuccess: true, tindex: tindexAcc };
-        T3Util.Log("= S.BaseLine: AddHopPoint output:", output);
+        LogUtil.Debug("= S.BaseLine: AddHopPoint output:", output);
         return output;
       }
 
@@ -4722,7 +4723,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     const output = { bSuccess: false, tindex: tindexAcc };
-    T3Util.Log("= S.BaseLine: AddHopPoint output:", output);
+    LogUtil.Debug("= S.BaseLine: AddHopPoint output:", output);
     return output;
   }
 
@@ -4743,36 +4744,36 @@ class BaseLine extends BaseDrawObject {
    * @returns Boolean indicating whether the right-click was handled successfully
    */
   RightClick(event) {
-    T3Util.Log("= S.BaseLine: RightClick called with input:", event);
+    LogUtil.Debug("= S.BaseLine: RightClick called with input:", event);
 
     // Convert window coordinates to document coordinates
     const documentPosition = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       event.gesture.center.clientX,
       event.gesture.center.clientY
     );
-    T3Util.Log("= S.BaseLine: Converted document coords:", documentPosition);
+    LogUtil.Debug("= S.BaseLine: Converted document coords:", documentPosition);
 
     // Find the target SVG element that was clicked
     const targetElement = T3Gv.opt.svgObjectLayer.FindElementByDOMElement(event.currentTarget);
-    T3Util.Log("= S.BaseLine: Found target element:", targetElement);
+    LogUtil.Debug("= S.BaseLine: Found target element:", targetElement);
 
     // Select the object from the click; if not selected, exit
     if (!SelectUtil.SelectObjectFromClick(event, targetElement)) {
-      T3Util.Log("= S.BaseLine: RightClick - selection failed, returning false");
+      LogUtil.Debug("= S.BaseLine: RightClick - selection failed, returning false");
       return false;
     }
 
     // Retrieve the object via its ID
     const objectId = targetElement.GetID();
     let objectPointer = ObjectUtil.GetObjectPtr(objectId, false);
-    T3Util.Log("= S.BaseLine: Retrieved object:", objectPointer);
+    LogUtil.Debug("= S.BaseLine: Retrieved object:", objectPointer);
 
     // If the object has a text component, check for spell location and activate text edit if needed
     if (objectPointer && objectPointer.GetTextObject() >= 0) {
       const textElement = targetElement.textElem;
       if (textElement) {
         const spellIndex = textElement.GetSpellAtLocation(event.gesture.center.clientX, event.gesture.center.clientY);
-        T3Util.Log("= S.BaseLine: Spell index at location:", spellIndex);
+        LogUtil.Debug("= S.BaseLine: Spell index at location:", spellIndex);
         if (spellIndex >= 0) {
           TextUtil.ActivateTextEdit(targetElement, event, true);
         }
@@ -4785,7 +4786,7 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.rClickParam.hitPoint.x = documentPosition.x;
     T3Gv.opt.rClickParam.hitPoint.y = documentPosition.y;
     T3Gv.opt.rClickParam.locked = ((this.flags & NvConstant.ObjFlags.Lock) > 0);
-    T3Util.Log("= S.BaseLine: Set Right click param:", T3Gv.opt.rClickParam);
+    LogUtil.Debug("= S.BaseLine: Set Right click param:", T3Gv.opt.rClickParam);
 
     // Handle active text editing - show spell menu or context menu as appropriate
     if (TextUtil.GetActiveTextEdit() != null) {
@@ -4799,7 +4800,7 @@ class BaseLine extends BaseDrawObject {
         );
       }
 
-      T3Util.Log("= S.BaseLine: Active edit spell index:", spellIndex);
+      LogUtil.Debug("= S.BaseLine: Active edit spell index:", spellIndex);
 
       if (spellIndex >= 0) {
         // Show spell checking menu at the click location
@@ -4818,11 +4819,11 @@ class BaseLine extends BaseDrawObject {
       UIUtil.ShowContextMenu(true, "", event.gesture.center.clientX, event.gesture.center.clientY);
     }
 
-    T3Util.Log("= S.BaseLine: RightClick completed");
+    LogUtil.Debug("= S.BaseLine: RightClick completed");
   }
 
   SetObjectStyle(style: any) {
-    T3Util.Log("= S.BaseLine: SetObjectStyle called with input:", style);
+    LogUtil.Debug("= S.BaseLine: SetObjectStyle called with input:", style);
 
     // Make a deep copy of the input style
     let newStyle = Utils1.DeepCopy(style);
@@ -4879,12 +4880,12 @@ class BaseLine extends BaseDrawObject {
       this.ImageURL = '';
     }
 
-    T3Util.Log("= S.BaseLine: SetObjectStyle output:", result);
+    LogUtil.Debug("= S.BaseLine: SetObjectStyle output:", result);
     return result;
   }
 
   GetArrowheadSelection(selection: any): boolean {
-    T3Util.Log("= S.BaseLine: GetArrowheadSelection - input:", selection);
+    LogUtil.Debug("= S.BaseLine: GetArrowheadSelection - input:", selection);
 
     if (selection) {
       // Determine if the arrowhead order should be reversed
@@ -4913,12 +4914,12 @@ class BaseLine extends BaseDrawObject {
       selection.ArrowSizeIndex = this.ArrowSizeIndex;
     }
 
-    T3Util.Log("= S.BaseLine: GetArrowheadSelection - output:", selection);
+    LogUtil.Debug("= S.BaseLine: GetArrowheadSelection - output:", selection);
     return true;
   }
 
   UpdateDimensionFromTextObj(sourceElement: any, textData: any) {
-    T3Util.Log("= S.BaseLine: UpdateDimensionFromTextObj called with input:", { sourceElement, textData });
+    LogUtil.Debug("= S.BaseLine: UpdateDimensionFromTextObj called with input:", { sourceElement, textData });
 
     // Local variables for text content and user data
     let textContent: string = "";
@@ -4932,7 +4933,7 @@ class BaseLine extends BaseDrawObject {
 
     // Retrieve the SVG element for this block
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
-    T3Util.Log("= S.BaseLine: Retrieved SVG element for BlockID", this.BlockID, svgElement);
+    LogUtil.Debug("= S.BaseLine: Retrieved SVG element for BlockID", this.BlockID, svgElement);
 
     // Get text content and user data either from textData or from the source element
     if (textData) {
@@ -4942,43 +4943,43 @@ class BaseLine extends BaseDrawObject {
       textContent = sourceElement.GetText();
       userData = sourceElement.GetUserData();
     }
-    T3Util.Log("= S.BaseLine: Determined text content and userData:", { textContent, userData });
+    LogUtil.Debug("= S.BaseLine: Determined text content and userData:", { textContent, userData });
 
     // Update dimensions based on the text content and user data
     this.UpdateDimensionFromText(svgElement, textContent, userData);
-    T3Util.Log("= S.BaseLine: UpdateDimensionFromText completed");
+    LogUtil.Debug("= S.BaseLine: UpdateDimensionFromText completed");
 
     // Set link flag for the current block
     OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
-    T3Util.Log("= S.BaseLine: Set link flag for BlockID", this.BlockID);
+    LogUtil.Debug("= S.BaseLine: Set link flag for BlockID", this.BlockID);
 
     // Set link flag for each hooked object
     for (let i = 0; i < this.hooks.length; i++) {
       OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
-      T3Util.Log("= S.BaseLine: Set link flag for hook object with id", this.hooks[i].objid);
+      LogUtil.Debug("= S.BaseLine: Set link flag for hook object with id", this.hooks[i].objid);
     }
 
     // If hyperlink, note, comment, or field data exists, add this block to the dirty list
     if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
       ObjectUtil.AddToDirtyList(this.BlockID);
-      T3Util.Log("= S.BaseLine: Added BlockID to dirty list", this.BlockID);
+      LogUtil.Debug("= S.BaseLine: Added BlockID to dirty list", this.BlockID);
     }
 
     // Complete the current operation
     DrawUtil.CompleteOperation(null);
-    T3Util.Log("= S.BaseLine: Completed operation for BlockID", this.BlockID);
+    LogUtil.Debug("= S.BaseLine: Completed operation for BlockID", this.BlockID);
 
     // If frame coordinates are negative, scroll the object into view
     if (this.Frame.x < 0 || this.Frame.y < 0) {
       T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
-      T3Util.Log("= S.BaseLine: Scrolled object into view for BlockID", this.BlockID);
+      LogUtil.Debug("= S.BaseLine: Scrolled object into view for BlockID", this.BlockID);
     }
 
-    T3Util.Log("= S.BaseLine: UpdateDimensionFromTextObj completed for BlockID", this.BlockID);
+    LogUtil.Debug("= S.BaseLine: UpdateDimensionFromTextObj completed for BlockID", this.BlockID);
   }
 
   UpdateDimensionFromText(inputElement: any, textValue: string, options: any): void {
-    T3Util.Log("= S.BaseLine: UpdateDimensionFromText called with input:", { inputElement, textValue, options });
+    LogUtil.Debug("= S.BaseLine: UpdateDimensionFromText called with input:", { inputElement, textValue, options });
 
     let dimensionValue: number;
     let segment: number;
@@ -4988,7 +4989,7 @@ class BaseLine extends BaseDrawObject {
     // If hooked object info exists, delegate accordingly.
     if (options.hookedObjectInfo) {
       const hookedResult = this.UpdateDimensionsFromTextForHookedObject(inputElement, textValue, options);
-      T3Util.Log("= S.BaseLine: UpdateDimensionFromText (hooked) output:", hookedResult);
+      LogUtil.Debug("= S.BaseLine: UpdateDimensionFromText (hooked) output:", hookedResult);
       return;
     }
 
@@ -5005,7 +5006,7 @@ class BaseLine extends BaseDrawObject {
     if (dimensionLength < 0) {
       ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
-      T3Util.Log("= S.BaseLine: UpdateDimensionFromText output: invalid dimensionLength (< 0), early return");
+      LogUtil.Debug("= S.BaseLine: UpdateDimensionFromText output: invalid dimensionLength (< 0), early return");
       return;
     }
 
@@ -5038,11 +5039,11 @@ class BaseLine extends BaseDrawObject {
     // Update the dimension lines based on the new dimensions.
     this.UpdateDimensionLines(inputElement);
 
-    T3Util.Log("= S.BaseLine: UpdateDimensionFromText completed, output dimensionLength:", dimensionLength);
+    LogUtil.Debug("= S.BaseLine: UpdateDimensionFromText completed, output dimensionLength:", dimensionLength);
   }
 
   UpdateSecondaryDimensions(container: any, creator: any, forcedUpdate: boolean): void {
-    T3Util.Log("= S.BaseLine: UpdateSecondaryDimensions called with input:", { container, creator, forcedUpdate });
+    LogUtil.Debug("= S.BaseLine: UpdateSecondaryDimensions called with input:", { container, creator, forcedUpdate });
 
     const isWall: boolean = this.objecttype === NvConstant.FNObjectTypes.FlWall;
     const isHookedDimVisible: boolean = !(this.Dimensions & NvConstant.DimensionFlags.HideHookedObjDimensions);
@@ -5054,15 +5055,15 @@ class BaseLine extends BaseDrawObject {
       this.UpdateHookedObjectDimensionLines(container, creator, forcedUpdate);
     }
 
-    T3Util.Log("= S.BaseLine: UpdateSecondaryDimensions completed");
+    LogUtil.Debug("= S.BaseLine: UpdateSecondaryDimensions completed");
   }
 
   GetBoundingBoxesForSecondaryDimensions(): any[] {
-    T3Util.Log("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions called, input: none");
+    LogUtil.Debug("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions called, input: none");
 
     // Retrieve hooked object dimension info
     const hookedInfo = this.GetHookedObjectDimensionInfo();
-    T3Util.Log("= S.BaseLine: Retrieved hookedInfo:", hookedInfo);
+    LogUtil.Debug("= S.BaseLine: Retrieved hookedInfo:", hookedInfo);
 
     const boundingBoxes: any[] = [];
 
@@ -5072,25 +5073,25 @@ class BaseLine extends BaseDrawObject {
       !(this.Dimensions & NvConstant.DimensionFlags.HideHookedObjDimensions) &&
       (this.Dimensions & NvConstant.DimensionFlags.AllSeg)
     ) {
-      T3Util.Log("= S.BaseLine: Conditions met for processing secondary dimensions.");
+      LogUtil.Debug("= S.BaseLine: Conditions met for processing secondary dimensions.");
 
       for (let index = 0, count = hookedInfo.length; index < count; index++) {
         const dimensionInfo = hookedInfo[index];
-        T3Util.Log(`= S.BaseLine: Processing hookedInfo[${index}]:`, dimensionInfo);
+        LogUtil.Debug(`= S.BaseLine: Processing hookedInfo[${index}]:`, dimensionInfo);
 
         // Skip processing if start and end points are identical
         if (Utils2.EqualPt(dimensionInfo.start, dimensionInfo.end)) {
-          T3Util.Log(`= S.BaseLine: Skipping index ${index} as start and end points are equal.`);
+          LogUtil.Debug(`= S.BaseLine: Skipping index ${index} as start and end points are equal.`);
           continue;
         }
 
         // Calculate angle between start and end points
         const angle = Utils1.CalcAngleFromPoints(dimensionInfo.start, dimensionInfo.end);
-        T3Util.Log(`= S.BaseLine: Calculated angle at index ${index}:`, angle);
+        LogUtil.Debug(`= S.BaseLine: Calculated angle at index ${index}:`, angle);
 
         // Get the dimension text for the current segment
         const dimensionText = this.GetDimensionTextForPoints(dimensionInfo.start, dimensionInfo.end);
-        T3Util.Log(`= S.BaseLine: Retrieved dimensionText at index ${index}:`, dimensionText);
+        LogUtil.Debug(`= S.BaseLine: Retrieved dimensionText at index ${index}:`, dimensionText);
 
         // Retrieve left, right, and text frame bounding boxes for the dimension
         const dimensionPoints = this.GetPointsForDimension(
@@ -5101,20 +5102,20 @@ class BaseLine extends BaseDrawObject {
           dimensionInfo.segment,
           true
         );
-        T3Util.Log(`= S.BaseLine: Retrieved dimensionPoints at index ${index}:`, dimensionPoints);
+        LogUtil.Debug(`= S.BaseLine: Retrieved dimensionPoints at index ${index}:`, dimensionPoints);
 
         if (dimensionPoints) {
           boundingBoxes.push(dimensionPoints.left);
           boundingBoxes.push(dimensionPoints.right);
           boundingBoxes.push(dimensionPoints.textFrame);
-          T3Util.Log(`= S.BaseLine: Added bounding boxes from index ${index}.`);
+          LogUtil.Debug(`= S.BaseLine: Added bounding boxes from index ${index}.`);
         }
       }
     } else {
-      T3Util.Log("= S.BaseLine: Conditions not met for processing secondary dimensions.");
+      LogUtil.Debug("= S.BaseLine: Conditions not met for processing secondary dimensions.");
     }
 
-    T3Util.Log("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions output:", boundingBoxes);
+    LogUtil.Debug("= S.BaseLine: GetBoundingBoxesForSecondaryDimensions output:", boundingBoxes);
     return boundingBoxes;
   }
 
@@ -5133,7 +5134,7 @@ class BaseLine extends BaseDrawObject {
    * @returns The created icon element
    */
   AddIcon(eventData: any, svgContainer: any, iconPositionCoords: any): any {
-    T3Util.Log("= S.BaseLine: AddIcon called with input:", { eventData, svgContainer, iconPositionCoords });
+    LogUtil.Debug("= S.BaseLine: AddIcon called with input:", { eventData, svgContainer, iconPositionCoords });
 
     let targetX: number, targetY: number;
     const polylinePoints: any[] = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true);
@@ -5202,12 +5203,12 @@ class BaseLine extends BaseDrawObject {
     this.nIcons++;
     svgContainer.AddElement(iconElement);
 
-    T3Util.Log("= S.BaseLine: AddIcon output:", iconElement);
+    LogUtil.Debug("= S.BaseLine: AddIcon output:", iconElement);
     return iconElement;
   }
 
   GetNotePos(event: any, param: any): { x: number; y: number } {
-    T3Util.Log("= S.BaseLine: GetNotePos called with input:", { event, param });
+    LogUtil.Debug("= S.BaseLine: GetNotePos called with input:", { event, param });
 
     // Retrieve polyline points (relative to frame)
     const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true);
@@ -5248,7 +5249,7 @@ class BaseLine extends BaseDrawObject {
         x: svgFrame.x + adjustedPos.x,
         y: svgFrame.y + adjustedPos.y + this.iconSize
       };
-      T3Util.Log("= S.BaseLine: GetNotePos output (DataID valid):", result);
+      LogUtil.Debug("= S.BaseLine: GetNotePos output (DataID valid):", result);
       return result;
     } else {
       // When DataID is not valid, use alternative positioning based on polyline midpoint
@@ -5287,7 +5288,7 @@ class BaseLine extends BaseDrawObject {
         x: svgFrame.x + adjustedPos.x,
         y: svgFrame.y + adjustedPos.y + this.iconSize
       };
-      T3Util.Log("= S.BaseLine: GetNotePos output (DataID invalid):", result);
+      LogUtil.Debug("= S.BaseLine: GetNotePos output (DataID invalid):", result);
       return result;
     }
   }
@@ -5297,7 +5298,7 @@ class BaseLine extends BaseDrawObject {
     endPoint: Point,
     angle: number
   ): { param: number; ShortRef: number } {
-    T3Util.Log("= S.BaseLine: PolyLinePrPolyLGetArcQuadrant - input:", {
+    LogUtil.Debug("= S.BaseLine: PolyLinePrPolyLGetArcQuadrant - input:", {
       startPoint,
       endPoint,
       angle,
@@ -5311,11 +5312,11 @@ class BaseLine extends BaseDrawObject {
       new Point(startPoint.x, startPoint.y),
       new Point(endPoint.x, endPoint.y)
     ];
-    T3Util.Log("= S.BaseLine: Points array before rotation:", points);
+    LogUtil.Debug("= S.BaseLine: Points array before rotation:", points);
 
     // Define the center of rotation (use startPoint as center)
     let center = { x: startPoint.x, y: startPoint.y };
-    T3Util.Log("= S.BaseLine: Center of rotation:", center);
+    LogUtil.Debug("= S.BaseLine: Center of rotation:", center);
 
     // If the angle is significant, rotate the points about the center
     if (Math.abs(angle) >= 0.01) {
@@ -5325,66 +5326,66 @@ class BaseLine extends BaseDrawObject {
       if (cosValue < 0) {
         rotationAngle = -rotationAngle;
       }
-      T3Util.Log("= S.BaseLine: rotationAngle computed:", rotationAngle);
+      LogUtil.Debug("= S.BaseLine: rotationAngle computed:", rotationAngle);
       Utils3.RotatePointsAboutPoint(center, rotationAngle, points);
-      T3Util.Log("= S.BaseLine: Points array after rotation:", points);
+      LogUtil.Debug("= S.BaseLine: Points array after rotation:", points);
     } else {
-      T3Util.Log("= S.BaseLine: Angle less than threshold, no rotation applied.");
+      LogUtil.Debug("= S.BaseLine: Angle less than threshold, no rotation applied.");
     }
 
     // Extract the rotated start and end points
     const rotatedStart = points[0];
     const rotatedEnd = points[1];
-    T3Util.Log("= S.BaseLine: Rotated start point:", rotatedStart);
-    T3Util.Log("= S.BaseLine: Rotated end point:", rotatedEnd);
+    LogUtil.Debug("= S.BaseLine: Rotated start point:", rotatedStart);
+    LogUtil.Debug("= S.BaseLine: Rotated end point:", rotatedEnd);
 
     // Determine the quadrant of the arc and set parameters accordingly
     if (rotatedEnd.x > rotatedStart.x) {
       if (rotatedEnd.y > rotatedStart.y) {
         result.param = -NvConstant.Geometry.PI / 2;
         result.ShortRef = OptConstant.ArcQuad.PLA_BL;
-        T3Util.Log("= S.BaseLine: Condition: rotatedEnd.x > rotatedStart.x and rotatedEnd.y > rotatedStart.y");
+        LogUtil.Debug("= S.BaseLine: Condition: rotatedEnd.x > rotatedStart.x and rotatedEnd.y > rotatedStart.y");
         if (endPoint.notclockwise) {
           result.param = 0;
-          T3Util.Log("= S.BaseLine: endPoint.notclockwise is true, setting result.param to 0");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.param to 0");
         }
       } else {
         result.ShortRef = OptConstant.ArcQuad.PLA_TL;
-        T3Util.Log("= S.BaseLine: Condition: rotatedEnd.x > rotatedStart.x and rotatedEnd.y <= rotatedStart.y");
+        LogUtil.Debug("= S.BaseLine: Condition: rotatedEnd.x > rotatedStart.x and rotatedEnd.y <= rotatedStart.y");
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_TR;
           result.param = NvConstant.Geometry.PI / 2;
-          T3Util.Log("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_TR and result.param to PI/2");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_TR and result.param to PI/2");
         }
       }
     } else {
       if (rotatedEnd.y > rotatedStart.y) {
         result.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
-        T3Util.Log("= S.BaseLine: Condition: rotatedEnd.x <= rotatedStart.x and rotatedEnd.y > rotatedStart.y");
+        LogUtil.Debug("= S.BaseLine: Condition: rotatedEnd.x <= rotatedStart.x and rotatedEnd.y > rotatedStart.y");
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_BL;
           result.param = NvConstant.Geometry.PI / 2;
-          T3Util.Log("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_BL and result.param to PI/2");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_BL and result.param to PI/2");
         }
       } else {
         result.param = -NvConstant.Geometry.PI / 2;
         result.ShortRef = OptConstant.ArcQuad.PLA_TR;
-        T3Util.Log("= S.BaseLine: Condition: rotatedEnd.x <= rotatedStart.x and rotatedEnd.y <= rotatedStart.y");
+        LogUtil.Debug("= S.BaseLine: Condition: rotatedEnd.x <= rotatedStart.x and rotatedEnd.y <= rotatedStart.y");
         if (endPoint.notclockwise) {
           result.param = 0;
-          T3Util.Log("= S.BaseLine: endPoint.notclockwise is true, setting result.param to 0");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.param to 0");
         }
       }
     }
 
-    T3Util.Log("= S.BaseLine: PolyLinePrPolyLGetArcQuadrant - output:", result);
+    LogUtil.Debug("= S.BaseLine: PolyLinePrPolyLGetArcQuadrant - output:", result);
     return result;
   }
 
   FieldDataAllowed(): boolean {
-    T3Util.Log("= S.BaseLine: FieldDataAllowed called, input: none");
+    LogUtil.Debug("= S.BaseLine: FieldDataAllowed called, input: none");
     const result: boolean = false;
-    T3Util.Log("= S.BaseLine: FieldDataAllowed output:", result);
+    LogUtil.Debug("= S.BaseLine: FieldDataAllowed output:", result);
     return result;
   }
 }
