@@ -1,6 +1,7 @@
 import { cloneDeep } from "lodash";
 import T3Util from "../Util/T3Util";
 import HvConstant from "../Data/Constant/HvConstant";
+import LogUtil from "../Util/LogUtil";
 
 class PageMain {
 
@@ -16,11 +17,11 @@ class PageMain {
     const newPaddingLeft = isLocked ? 0 : HvConstant.DocumentAreaModel.WORK_AREA_PADDING_LEFT;
     workArea.setAttribute("style", `padding-left: ${newPaddingLeft}px`);
 
-    T3Util.Log("ResetLeftPanel=>", `isLocked=${isLocked}`, `newWidth=${newWidth}`, `newPaddingLeft=${newPaddingLeft}`);
+    LogUtil.Debug("ResetLeftPanel=>", `isLocked=${isLocked}`, `newWidth=${newWidth}`, `newPaddingLeft=${newPaddingLeft}`);
   }
 
   ResetZoom = () => {
-    T3Util.Log("ResetZoom=>");
+    LogUtil.Debug("ResetZoom=>");
   }
 
   UpdateExteriorWallStroke = (appState, itemIndex, resizedHeight) => {
@@ -114,7 +115,7 @@ class PageMain {
 
   // Start auto join wall
   StartAutoJoinWall = (appState, pos) => {
-    T3Util.Log("AutoJoinWall StartAutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, pos);
+    LogUtil.Debug("AutoJoinWall StartAutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, pos);
 
     const currentItem = appState.value.items[appState.value.activeItemIndex];
 
@@ -122,8 +123,8 @@ class PageMain {
     const previousItem = appState.value.items[previousItemIndex];
 
 
-    T3Util.Log("AutoJoinWall StartAutoJoinWall Current item:", currentItem);
-    T3Util.Log("AutoJoinWall StartAutoJoinWall Previous item:", previousItem);
+    LogUtil.Debug("AutoJoinWall StartAutoJoinWall Current item:", currentItem);
+    LogUtil.Debug("AutoJoinWall StartAutoJoinWall Previous item:", previousItem);
 
     if (previousItem !== null && previousItem !== undefined) {
       if (previousItem.joinWall) {
@@ -136,7 +137,7 @@ class PageMain {
 
   // Auto Join the wall
   AutoJoinWall = (appState, mouseX, mouseY, rotate, width) => {
-    T3Util.Log("AutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, mouseX, mouseY, rotate, width);
+    LogUtil.Debug("AutoJoinWall=>", appState.value.items, appState.value.activeItemIndex, mouseX, mouseY, rotate, width);
 
     const previousItemIndex = this.GetPreviousItem(appState);
     const previousItem = appState.value.items[previousItemIndex];

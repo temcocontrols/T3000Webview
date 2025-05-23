@@ -1,5 +1,6 @@
 import OptConstant from "../../Data/Constant/OptConstant";
 import T3Gv from "../../Data/T3Gv";
+import LogUtil from "../../Util/LogUtil";
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import DSConstant from "../DS/DSConstant";
@@ -19,13 +20,13 @@ class ObjectUtil {
    * @returns The data of the retrieved object, or null if the object is not found
    */
   static GetObjectPtr(objectId, preserveObjectBlock?) {
-    // T3Util.Log('O.Opt GetObjectPtr - Input:', { objectId, preserveObjectBlock });
+    // LogUtil.Debug('O.Opt GetObjectPtr - Input:', { objectId, preserveObjectBlock });
 
     const targetObject = T3Gv.stdObj.GetObject(objectId);
 
     // Return null if object not found or ID is invalid
     if (targetObject == null || objectId < 0) {
-      // T3Util.Log('O.Opt GetObjectPtr - Output: null (invalid object ID or not found)');
+      // LogUtil.Debug('O.Opt GetObjectPtr - Output: null (invalid object ID or not found)');
       return null;
     }
 
@@ -34,12 +35,12 @@ class ObjectUtil {
       ? T3Gv.stdObj.PreserveBlock(objectId).Data
       : targetObject.Data;
 
-    // T3Util.Log('O.Opt GetObjectPtr - Output:', objectData);
+    // LogUtil.Debug('O.Opt GetObjectPtr - Output:', objectData);
     return objectData;
   }
 
   static AddToDirtyList(objectId: number, isMoveOnly?: boolean) {
-    T3Util.Log('O.Opt AddToDirtyList - Input:', { objectId, isMoveOnly });
+    LogUtil.Debug('O.Opt AddToDirtyList - Input:', { objectId, isMoveOnly });
 
     if (T3Gv.opt.dirtyList.indexOf(objectId) < 0) {
       T3Gv.opt.dirtyList.push(objectId);
@@ -48,7 +49,7 @@ class ObjectUtil {
       T3Gv.opt.dirtyListMoveOnly[objectId] = false;
     }
 
-    T3Util.Log('O.Opt AddToDirtyList - Output: Dirty list updated');
+    LogUtil.Debug('O.Opt AddToDirtyList - Output: Dirty list updated');
   }
 
   /**
@@ -57,7 +58,7 @@ class ObjectUtil {
   * @param forceDelete - Whether to force deletion of objects with the NoDelete flag
   */
   static DeleteObjects(objectIds, forceDelete) {
-    T3Util.Log("O.Opt DeleteObjects - Input:", { objectIds, forceDelete });
+    LogUtil.Debug("O.Opt DeleteObjects - Input:", { objectIds, forceDelete });
 
     let objectIndex, objectCount, objectId, svgElement, overlayId;
     let overlayElement, objectData, hookCount, hookId, hookObject;
@@ -137,7 +138,7 @@ class ObjectUtil {
       }
     }
 
-    T3Util.Log("O.Opt DeleteObjects - Output: Objects deleted:", objectCount);
+    LogUtil.Debug("O.Opt DeleteObjects - Output: Objects deleted:", objectCount);
   }
 
   /**
@@ -149,7 +150,7 @@ class ObjectUtil {
    *                              for future changes. If false, finalizes the state for undo history.
    */
   static PreserveUndoState(shouldKeepStateOpen) {
-    T3Util.Log('O.Opt PreserveUndoState - Input:', { shouldKeepStateOpen });
+    LogUtil.Debug('O.Opt PreserveUndoState - Input:', { shouldKeepStateOpen });
 
     // Skip if undo functionality is disabled
     if (!T3Gv.opt.noUndo) {
@@ -179,17 +180,17 @@ class ObjectUtil {
       }
     }
 
-    T3Util.Log('O.Opt PreserveUndoState - Output: State preserved');
+    LogUtil.Debug('O.Opt PreserveUndoState - Output: State preserved');
   }
 
   static ClearDirtyList() {
-    T3Util.Log('O.Opt ClearDirtyList - Input: No parameters');
+    LogUtil.Debug('O.Opt ClearDirtyList - Input: No parameters');
 
     T3Gv.opt.dirtyList = [];
     T3Gv.opt.dirtyListMoveOnly = [];
     T3Gv.opt.dirtyListReOrder = false;
 
-    T3Util.Log('O.Opt ClearDirtyList - Output: Dirty list cleared');
+    LogUtil.Debug('O.Opt ClearDirtyList - Output: Dirty list cleared');
   }
 
   static ClearFutureUndoStates() {

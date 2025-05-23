@@ -7,6 +7,7 @@ import T3Constant from '../../Data/Constant/T3Constant'
 import T3Util from '../../Util/T3Util'
 import ObjectUtil from '../Data/ObjectUtil'
 import ToolActUtil from '../Opt/ToolActUtil'
+import LogUtil from '../../Util/LogUtil'
 
 /**
  * A utility class for handling clipboard operations with cross-browser and cross-platform support.
@@ -320,7 +321,7 @@ class T3Clipboard {
       systemClipboardData.setData("text/html", this.GetCutCopyHTML());
       clipboardEvent.preventDefault();
 
-      T3Util.Log("=== Clipboard data copied to system clipboard and the data is: ", systemClipboardData);
+      LogUtil.Debug("=== Clipboard data copied to system clipboard and the data is: ", systemClipboardData);
     }
   }
 
@@ -441,7 +442,7 @@ class T3Clipboard {
    * @param {ClipboardEvent} clipboardEvent - The system clipboard event object
    */
   static PasteFromSystemEvent(clipboardEvent) {
-    T3Util.Log("Pasting from system event: ", clipboardEvent);
+    LogUtil.Debug("Pasting from system event: ", clipboardEvent);
 
     // Define browser-specific handlers
     const browserHandlers = [
@@ -641,7 +642,7 @@ class T3Clipboard {
       const message = T3Gv.opt.isMac
         ? "Use Command-V to paste this information"
         : "Use ctrl+v to paste this information";
-      T3Util.Log(message);
+      LogUtil.Debug(message);
       return false;
     }
 

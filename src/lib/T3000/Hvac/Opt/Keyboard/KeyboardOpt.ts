@@ -12,6 +12,7 @@ import T3Util from "../../Util/T3Util"
 import SvgUtil from "../Opt/SvgUtil"
 import T3Clipboard from "../Clipboard/T3Clipboard"
 import ArrowKeyOpt from "../Tool/ArrowKeyOpt"
+import LogUtil from "../../Util/LogUtil"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -59,7 +60,7 @@ class KeyboardOpt {
    * @returns Array of keyboard commands for the specified context
    */
   static GetCommandsInContext(context, kybUtil, toolUtil, docUtil, arrowKeyOpt) {
-    T3Util.Log('U.KeyboardUtil: Getting commands for context', context);
+    LogUtil.Debug('U.KeyboardUtil: Getting commands for context', context);
 
     let commands = [];
 
@@ -114,7 +115,7 @@ class KeyboardOpt {
         break;
     }
 
-    T3Util.Log('U.KeyboardUtil: Retrieved', commands?.length, 'commands for context', context);
+    LogUtil.Debug('U.KeyboardUtil: Retrieved', commands?.length, 'commands for context', context);
     return commands;
   }
 
@@ -123,10 +124,10 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyUp(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key up event', event.keyCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key up event', event.keyCode);
 
     if (event.keyCode === KeyboardConstant.Keys.Space) {
-      T3Util.Log('U.KeyboardUtil: Space key released, updating spacebar state');
+      LogUtil.Debug('U.KeyboardUtil: Space key released, updating spacebar state');
       T3Constant.DocContext.SpacebarDown = false;
     }
   }
@@ -136,14 +137,14 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyDown(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key down event', event.keyCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key down event', event.keyCode);
 
     const keyCode = event.keyCode;
     const modifierKeys = Utils3.GetModifierKeys(event);
 
     // Update spacebar state
     if (keyCode === KeyboardConstant.Keys.Space) {
-      T3Util.Log('U.KeyboardUtil: Space key pressed, updating spacebar state');
+      LogUtil.Debug('U.KeyboardUtil: Space key pressed, updating spacebar state');
       T3Constant.DocContext.SpacebarDown = true;
     }
 
@@ -155,7 +156,7 @@ class KeyboardOpt {
       !(targetElement.is('input,[contenteditable="true"],textarea') &&
         targetElement.attr("type") !== "radio" &&
         targetElement.attr("type") !== "checkbox")) {
-      T3Util.Log('U.KeyboardUtil: Preventing default backspace behavior');
+      LogUtil.Debug('U.KeyboardUtil: Preventing default backspace behavior');
       event.preventDefault();
     }
 
@@ -175,7 +176,7 @@ class KeyboardOpt {
    * @param modifierKey - The modifier key that was pressed with the key
    */
   static HandleKeyDown(event, keyCode, modifierKey) {
-    T3Util.Log('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
+    LogUtil.Debug('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
 
     let selectionObj;
     let isTextContext = false;
@@ -205,7 +206,7 @@ class KeyboardOpt {
     )) {
       if (T3Clipboard.isFirefox) {
         T3Clipboard.FocusOnIEclipboardDiv();
-        T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
+        LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
     } else {
       // Get the current selection context
@@ -259,7 +260,7 @@ class KeyboardOpt {
             }
 
             if (!command.Execute()) {
-              T3Util.Log('U.KeyboardUtil: Command executed and prevented default', { command: command.Name });
+              LogUtil.Debug('U.KeyboardUtil: Command executed and prevented default', { command: command.Name });
               event.stopPropagation();
               event.preventDefault();
               return;
@@ -311,16 +312,16 @@ class KeyboardOpt {
           SvgUtil.RenderAllSVGSelectionStates();
           event.stopPropagation();
           event.preventDefault();
-          T3Util.Log('U.KeyboardUtil: Text edit closed with Escape key');
+          LogUtil.Debug('U.KeyboardUtil: Text edit closed with Escape key');
         } else if (toolUtil.HandleKeyDown(event, keyCode, modifierKey)) {
           event.stopPropagation();
           event.preventDefault();
-          T3Util.Log('U.KeyboardUtil: Key event handled by shapes controller');
+          LogUtil.Debug('U.KeyboardUtil: Key event handled by shapes controller');
         }
       }
     }
 
-    T3Util.Log('U.KeyboardUtil: Key down handling complete');
+    LogUtil.Debug('U.KeyboardUtil: Key down handling complete');
   }
 
   /**
@@ -328,12 +329,12 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyPress(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key press event', event.charCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key press event', event.charCode);
 
     const charCode = event.charCode;
 
     try {
-      T3Util.Log('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
+      LogUtil.Debug('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
       KeyboardOpt.HandleKeyPress(event, charCode);
     } catch (error) {
       T3Util.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
@@ -347,7 +348,7 @@ class KeyboardOpt {
    * @param charCode - The character code of the pressed key
    */
   static HandleKeyPress(event, charCode) {
-    T3Util.Log('U.KeyboardUtil: Handling key press event', { charCode });
+    LogUtil.Debug('U.KeyboardUtil: Handling key press event', { charCode });
 
     let isTextContext = false;
     let toolUtil = new ToolUtil();
@@ -360,7 +361,7 @@ class KeyboardOpt {
           charCode == 88 || charCode == 120 || // 'X' or 'x'
           charCode == 86 || charCode == 118)) { // 'V' or 'v'
         if (T3Clipboard.isFirefox) {
-          T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
+          LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
           T3Clipboard.FocusOnIEclipboardDiv();
         }
       } else if (T3Constant.DocContext.CanTypeInWorkArea !== false && !T3Gv.docUtil.IsReadOnly()) {
@@ -375,7 +376,7 @@ class KeyboardOpt {
           selectionContext === KeyboardConstant.Contexts.Text ||
           selectionContext === KeyboardConstant.Contexts.DimensionText) {
 
-          T3Util.Log('U.KeyboardUtil: Delegating key press to shape handler in text context');
+          LogUtil.Debug('U.KeyboardUtil: Delegating key press to shape handler in text context');
           if (toolUtil.HandleKeyPress(event, charCode)) {
             event.stopPropagation();
           }
@@ -383,7 +384,7 @@ class KeyboardOpt {
       }
     }
 
-    T3Util.Log('U.KeyboardUtil: Key press handling complete');
+    LogUtil.Debug('U.KeyboardUtil: Key press handling complete');
   }
 }
 

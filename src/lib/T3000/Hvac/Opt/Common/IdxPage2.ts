@@ -78,7 +78,7 @@ class IdxPage2 {
   // Checks if the user is logged in
   isLoggedIn() {
     // const $q = useQuasar();
-    // T3Util.Log("= Idx $q:", $q);
+    // LogUtil.Debug("= Idx $q:", $q);
 
     const hasToken = this.$q.cookies.has("token");
     if (!hasToken) {
@@ -96,7 +96,7 @@ class IdxPage2 {
       }
     })
       .catch((err) => {
-        T3Util.Log(err);
+        LogUtil.Debug(err);
       });
 
     liveApi.get("hvacObjectLibs").then(async (res: any) => {
@@ -113,7 +113,7 @@ class IdxPage2 {
       }
     })
       .catch((err) => {
-        T3Util.Log(err);
+        LogUtil.Debug(err);
       });
 
     liveApi.get("me").then(async (res) => {
@@ -126,7 +126,7 @@ class IdxPage2 {
 
   // Toggles the auto/manual mode of an item
   static autoManualToggle(item) {
-    T3Util.Log('5555555 IndexPage2.vue->autoManualToggle->item, locked value', item);
+    LogUtil.Debug('5555555 IndexPage2.vue->autoManualToggle->item, locked value', item);
 
     // if (!locked.value) return;
     item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
@@ -164,7 +164,7 @@ class IdxPage2 {
       Hvac.WsClient.UpdateEntry(msgData);
     }
 
-    T3Util.Log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+    LogUtil.Debug('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
   }
 
   // Set intervals for fetching panel and entry data if in a webview
@@ -234,14 +234,14 @@ class IdxPage2 {
         deviceModel.value.active = false;
         deviceModel.value.data = currentDevice;
 
-        T3Util.Log('= IdxPage load from local storage', currentDevice);
+        LogUtil.Debug('= IdxPage load from local storage', currentDevice);
 
         // load device appstate
         //Hvac.DeviceOpt.refreshDeviceAppState();
         Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
 
-        // T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
-        // T3Util.Log('=== indexPage.deviceModel changed', deviceModel.value);
+        // LogUtil.Debug('=== indexPage.currentDevice load from local storage', currentDevice);
+        // LogUtil.Debug('=== indexPage.deviceModel changed', deviceModel.value);
       }
     }, 1000);
 
@@ -313,7 +313,7 @@ class IdxPage2 {
     else {
       const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
       if (msgType) {
-        T3Util.Log('= Idx save to T3000 with initial data status error, cancel auto save');
+        LogUtil.Debug('= Idx save to T3000 with initial data status error, cancel auto save');
         return;
       }
 
@@ -326,7 +326,7 @@ class IdxPage2 {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
       }
       else {
-        T3Util.Log('= Idx save to T3000 current device is null');
+        LogUtil.Debug('= Idx save to T3000 current device is null');
       }
     }
   }
@@ -336,7 +336,7 @@ class IdxPage2 {
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
-        T3Util.Log('= Idx auto save every 30s', new Date().toLocaleString());
+        LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
       }, 30000);
     }, 10000);
@@ -357,9 +357,9 @@ class IdxPage2 {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-    T3Util.Log('idx page 2  T3UpdateEntryField appState before', appStateV2.value);
-    // T3Util.Log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-    // T3Util.Log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
+    LogUtil.Debug('idx page 2  T3UpdateEntryField appState before', appStateV2.value);
+    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
     let fieldVal = obj.t3Entry[key];
 
@@ -389,7 +389,7 @@ class IdxPage2 {
       Hvac.WsClient.UpdateEntry(msgData);
     }
 
-    T3Util.Log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+    LogUtil.Debug('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
   }
 
   // Adds the online images to the library
@@ -468,7 +468,7 @@ class IdxPage2 {
 
   // Refactor below functions to Idx page2 util for backup (new ui will not use this function anymore)
   viewportLeftClick(ev) {
-    // T3Util.Log('IndexPage.vue->viewportLeftClick->ev', ev);
+    // LogUtil.Debug('IndexPage.vue->viewportLeftClick->ev', ev);
     ev.preventDefault();
 
     const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
@@ -492,7 +492,7 @@ class IdxPage2 {
 
   // Select a tool and set its type
   selectTool(tool, type = "default") {
-    T3Util.Log("= IdxPage selectTool", tool, type);
+    LogUtil.Debug("= IdxPage selectTool", tool, type);
     selectedTool.value = tool;
     if (typeof tool === "string") {
       selectedTool.value = tools.find((item) => item.name === tool);
@@ -557,8 +557,8 @@ class IdxPage2 {
           const pathItem = pathItemList?.find(
             (itx) => itx?.item?.id === weldItem?.id
           );
-          // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
-          // T3Util.Log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
+          // LogUtil.Debug('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
+          // LogUtil.Debug('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
           if (pathItem) {
             weldItem.width = pathItem.newPos.width;
             weldItem.height = pathItem.newPos.height;
@@ -948,10 +948,10 @@ class IdxPage2 {
 
   toggleClicked(item, type, ev) {
     // ev.preventDefault();
-    // T3Util.Log('toggleClicked->item,type', item, type, ev);
-    // T3Util.Log('toggleClicked->toggleModeValue,toggleValueValue',
+    // LogUtil.Debug('toggleClicked->item,type', item, type, ev);
+    // LogUtil.Debug('toggleClicked->toggleModeValue,toggleValueValue',
     //   toggleModeValue.value, toggleValueValue.value);
-    // T3Util.Log('toggleClicked->before item', item.t3Entry)
+    // LogUtil.Debug('toggleClicked->before item', item.t3Entry)
 
     if (type === "mode") {
 
@@ -981,20 +981,20 @@ class IdxPage2 {
 
     this.save(false, true);
 
-    // T3Util.Log('toggleClicked->after item', item.t3Entry)
+    // LogUtil.Debug('toggleClicked->after item', item.t3Entry)
   }
 
   ObjectRightClicked(item, ev) {
     // ev.preventDefault();
 
-    // T3Util.Log('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
-    // T3Util.Log('ObjectRightClicked->ev,item', item);
+    // LogUtil.Debug('ObjectRightClicked->appState.selectedTargets', appState.value.selectedTargets[0]);
+    // LogUtil.Debug('ObjectRightClicked->ev,item', item);
 
     if (item.t3Entry !== null) {
 
       showSettingMenu.value = true;
 
-      // T3Util.Log('ObjectRightClicked->item.t3Entry', item.t3Entry);
+      // LogUtil.Debug('ObjectRightClicked->item.t3Entry', item.t3Entry);
 
       // Load the default auto_manual value
       if (item.t3Entry.auto_manual === 1) {
@@ -1041,7 +1041,7 @@ class IdxPage2 {
 
   // Updates an entry value
   changeEntryValue(refItem, newVal, control) {
-    // T3Util.Log('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
+    // LogUtil.Debug('2222222222 IndexPage.vue->changeEntryValue->refItem,newVal,control', refItem, newVal, control);
     const key = control ? "control" : "value";
     const item = appStateV2.value.items.find((i) => i.id === refItem.id);
     item.t3Entry[key] = newVal;
@@ -1050,7 +1050,7 @@ class IdxPage2 {
 
   // Toggles the auto/manual mode of an item
   autoManualToggle(item) {
-    T3Util.Log('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
+    LogUtil.Debug('5555555 IndexPage.vue->autoManualToggle->item, locked value', item);
 
     // if (!locked.value) return;
     item.t3Entry.auto_manual = item.t3Entry.auto_manual ? 0 : 1;
@@ -1060,7 +1060,7 @@ class IdxPage2 {
   // Handle object click events based on t3Entry type
   objectClicked(item) {
 
-    T3Util.Log("= P.IDX2 objectClicked");
+    LogUtil.Debug("= P.IDX2 objectClicked");
     this.setTheSettingContextMenuVisible();
 
     if (!locked.value) return;
@@ -1136,7 +1136,7 @@ class IdxPage2 {
 
   // Create a label for an entry with optional prefix
   entryLabel(option) {
-    T3Util.Log('entryLabel - ', option);
+    LogUtil.Debug('entryLabel - ', option);
     let prefix =
       (option.description && option.id !== option.description) ||
         (!option.description && option.id !== option.label)
@@ -1263,8 +1263,8 @@ class IdxPage2 {
   async saveLibImage(file) {
     if (user.value) {
 
-      T3Util.Log('= Idx saveLibImage file', file);
-      T3Util.Log('= Idx saveLibImage user', user.value);
+      LogUtil.Debug('= Idx saveLibImage file', file);
+      LogUtil.Debug('= Idx saveLibImage user', user.value);
 
       liveApi
         .post("hvacTools", {
@@ -1400,7 +1400,7 @@ class IdxPage2 {
     //   tool
     // );
 
-    T3Util.Log("toolDropped->tool", ev, tool);
+    LogUtil.Debug("toolDropped->tool", ev, tool);
   }
 
   // // Saves the library data to the webview
@@ -1517,7 +1517,7 @@ class IdxPage2 {
     // Check whether the selected items's type are all General
     const isAllGeneral = selectedItems.every((item) => item.cat === "General");
     const isAllDuct = selectedItems.every((item) => item.type === "Duct");
-    // T3Util.Log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
+    // LogUtil.Debug('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
     if (isAllGeneral || isAllDuct) {
       this.drawWeldObjectCanvas(selectedItems);
@@ -1872,7 +1872,7 @@ class IdxPage2 {
 
     insertCount.value++;
 
-    // T3Util.Log('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
+    // LogUtil.Debug('insertT3EntrySelect item:', appState.value.items[appState.value.activeItemIndex]);
   }
 
   selectPanelFilterFn(val, update) {
@@ -2128,7 +2128,7 @@ class IdxPage2 {
       );
       item.translate = e.lastEvent.beforeTranslate;
 
-      T3Util.Log('= IdxPage onDragEnd:', e, item.translate);
+      LogUtil.Debug('= IdxPage onDragEnd:', e, item.translate);
       this.save(false, false); // Save the state after drag end
       this.refreshObjects(); // Refresh objects
     }
@@ -2262,11 +2262,11 @@ class IdxPage2 {
   // Adds an action to the history for undo/redo functionality
   addActionToHistory(title) {
     if (process.env.DEV) {
-      // T3Util.Log(title); // Log the action title in development mode
+      // LogUtil.Debug(title); // Log the action title in development mode
     }
     if (title !== "Move Object") {
       setTimeout(() => {
-        T3Util.Log("= IdxPage addActionToHistory", title);
+        LogUtil.Debug("= IdxPage addActionToHistory", title);
         this.save(false, false); // Save the current state
         this.refreshObjects(); // Refresh objects
       }, 200);
@@ -2289,7 +2289,7 @@ class IdxPage2 {
     cursorIconPos.value.x = e.clientX - viewportMargins.left;
     cursorIconPos.value.y = e.clientY - viewportMargins.top;
 
-    // T3Util.Log('Viewport mouse moved cursorIconPos:', "mouse",
+    // LogUtil.Debug('Viewport mouse moved cursorIconPos:', "mouse",
 
     const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
 
@@ -2316,7 +2316,7 @@ class IdxPage2 {
       // const distance = Math.sqrt(dx * dx + dy * dy) + selectedTool.value.height;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // T3Util.Log('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
+      // LogUtil.Debug('Viewport mouse moved:', e, 'angle:', angle, 'distance:', distance);
 
       // Set the scale and rotation of the drawing line
       appStateV2.value.items[appStateV2.value.activeItemIndex].rotate = angle;
@@ -2350,7 +2350,7 @@ class IdxPage2 {
   }
 
   updateDeviceModel(isActive, data) {
-    T3Util.Log('= Idx updateDeviceModel ===', isActive, data)
+    LogUtil.Debug('= Idx updateDeviceModel ===', isActive, data)
     deviceModel.value.active = isActive;
     deviceModel.value.data = data;
 

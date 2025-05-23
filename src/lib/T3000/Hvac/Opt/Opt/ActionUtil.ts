@@ -1,4 +1,5 @@
 import T3Gv from '../../Data/T3Gv';
+import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -15,7 +16,7 @@ class ActionUtil {
    * @returns {void}
    */
   static ClearAllActionArrowTimers() {
-    T3Util.Log('O.Opt ClearAllActionArrowTimers: input');
+    LogUtil.Debug('O.Opt ClearAllActionArrowTimers: input');
 
     const visibleObjects = LayerUtil.VisibleZList();
 
@@ -29,7 +30,7 @@ class ActionUtil {
       }
     }
 
-    T3Util.Log('O.Opt ClearAllActionArrowTimers: output');
+    LogUtil.Debug('O.Opt ClearAllActionArrowTimers: output');
   }
 
   /**
@@ -38,7 +39,7 @@ class ActionUtil {
   * associated with them, clearing timers as well.
   */
   static RemoveAllActionArrows() {
-    T3Util.Log("O.Opt RemoveAllActionArrows - Input: no parameters");
+    LogUtil.Debug("O.Opt RemoveAllActionArrows - Input: no parameters");
 
     const visibleObjects = LayerUtil.VisibleZList();
 
@@ -46,32 +47,32 @@ class ActionUtil {
       this.RemoveActionArrows(visibleObjects[i], true);
     }
 
-    T3Util.Log("O.Opt RemoveAllActionArrows - Output: Removed arrows from", visibleObjects.length, "objects");
+    LogUtil.Debug("O.Opt RemoveAllActionArrows - Output: Removed arrows from", visibleObjects.length, "objects");
   }
 
   static ClearActionArrowTimer(objectId: number) {
-    T3Util.Log("O.Opt ClearActionArrowTimer - Input:", objectId);
+    LogUtil.Debug("O.Opt ClearActionArrowTimer - Input:", objectId);
     if (objectId >= 0) {
       const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (targetObject) {
         if (targetObject.actionArrowHideTimerID >= 0) {
           T3Gv.opt.actionArrowHideTimer.clearTimeout(targetObject.actionArrowHideTimerID);
           targetObject.actionArrowHideTimerID = -1;
-          T3Util.Log("O.Opt ClearActionArrowTimer - Timer cleared for object", objectId);
+          LogUtil.Debug("O.Opt ClearActionArrowTimer - Timer cleared for object", objectId);
         } else {
-          T3Util.Log("O.Opt ClearActionArrowTimer - No active timer for object", objectId);
+          LogUtil.Debug("O.Opt ClearActionArrowTimer - No active timer for object", objectId);
         }
       } else {
-        T3Util.Log("O.Opt ClearActionArrowTimer - No target object found for id", objectId);
+        LogUtil.Debug("O.Opt ClearActionArrowTimer - No target object found for id", objectId);
       }
     } else {
-      T3Util.Log("O.Opt ClearActionArrowTimer - Invalid objectId:", objectId);
+      LogUtil.Debug("O.Opt ClearActionArrowTimer - Invalid objectId:", objectId);
     }
-    T3Util.Log("O.Opt ClearActionArrowTimer - Output: Completed");
+    LogUtil.Debug("O.Opt ClearActionArrowTimer - Output: Completed");
   }
 
   static RemoveActionArrows(objectId, clearTimer) {
-    T3Util.Log("O.Opt RemoveActionArrows - Input:", { objectId, clearTimer });
+    LogUtil.Debug("O.Opt RemoveActionArrows - Input:", { objectId, clearTimer });
     const actionArrowId = 'actionArrow' + objectId;
 
     if (clearTimer) {
@@ -91,7 +92,7 @@ class ActionUtil {
       SvgUtil.ClearOverlayElementsByID(actionArrowId);
     }
 
-    T3Util.Log("O.Opt RemoveActionArrows - Output: Completed");
+    LogUtil.Debug("O.Opt RemoveActionArrows - Output: Completed");
   }
 
   /**
@@ -102,7 +103,7 @@ class ActionUtil {
    * @returns {void}
    */
   static SetActionArrowTimer(objectId: number): void {
-    T3Util.Log("O.Opt SetActionArrowTimer - Input:", objectId);
+    LogUtil.Debug("O.Opt SetActionArrowTimer - Input:", objectId);
 
     if (objectId >= 0) {
       const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
@@ -118,15 +119,15 @@ class ActionUtil {
           objectId
         );
 
-        T3Util.Log("O.Opt SetActionArrowTimer - Timer set for object", objectId);
+        LogUtil.Debug("O.Opt SetActionArrowTimer - Timer set for object", objectId);
       } else {
-        T3Util.Log("O.Opt SetActionArrowTimer - No target object found for id", objectId);
+        LogUtil.Debug("O.Opt SetActionArrowTimer - No target object found for id", objectId);
       }
     } else {
-      T3Util.Log("O.Opt SetActionArrowTimer - Invalid objectId:", objectId);
+      LogUtil.Debug("O.Opt SetActionArrowTimer - Invalid objectId:", objectId);
     }
 
-    T3Util.Log("O.Opt SetActionArrowTimer - Output: Completed");
+    LogUtil.Debug("O.Opt SetActionArrowTimer - Output: Completed");
   }
 }
 

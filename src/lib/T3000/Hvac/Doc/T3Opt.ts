@@ -20,6 +20,7 @@ import ObjectUtil from '../Opt/Data/ObjectUtil';
 import StateOpt from '../Data/State/StateOpt';
 import DataStore from '../Data/State/DataStore';
 import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references
@@ -135,14 +136,14 @@ class T3Opt {
     this.userOpt.Initialize();
 
     // Test for SDData object
-    T3Util.Log("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
+    LogUtil.Debug("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
 
     // Set the document scale (0.25 to 4)
     const docSetting = DataOpt.LoadDocSettingData();
     const zoomPct = (docSetting?.docInfo?.docScale ?? 1) * 100;
     T3Gv.docUtil.SetZoomLevel(zoomPct);
 
-    T3Util.Log(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
+    LogUtil.Debug(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
   }
 
   Reload() {

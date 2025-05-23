@@ -26,6 +26,7 @@ import UIUtil from '../UI/UIUtil'
 import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
 import T3Util from '../../Util/T3Util'
+import LogUtil from '../../Util/LogUtil'
 
 class ShapeUtil {
 
@@ -348,7 +349,7 @@ class ShapeUtil {
 
     if (result.WarnMeta) {
       if (ignoreErrors) return ShapeUtil.Errors.WarnMeta;
-      T3Util.Log('Metafile not read');
+      LogUtil.Debug('Metafile not read');
     }
 
     if (outputDimensions && errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
@@ -1143,7 +1144,7 @@ class ShapeUtil {
     // Update layer information for selected objects
     LayerUtil.UpdateObjectLayerIndices(result);
 
-    T3Util.Log("= U.ShapeUtil WriteSelect result=", result);
+    LogUtil.Debug("= U.ShapeUtil WriteSelect result=", result);
 
     // Write objects to localStorage with selection-only flag
     return ShapeUtil.WriteBuffer(result, true, true, ignoreDataCheck);

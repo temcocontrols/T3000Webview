@@ -2503,7 +2503,7 @@ SVG.Text &&
  * @example
  * // Add a click handler to a rectangle
  * rect.click(function(event) {
- *   T3Util.Log('Rectangle was clicked!', event);
+ *   LogUtil.Debug('Rectangle was clicked!', event);
  * });
  */
 [
@@ -2621,13 +2621,13 @@ SVG.extend(SVG.Container, {
 extend(Element.prototype, {});
 extend(Element, {
   t1: function () {
-    T3Util.Log(
+    LogUtil.Debug(
       `Hvac.SVG.js extend svg.js Element ${this.type.toString()}---------------------------------------`,
       this
     );
   },
   // data: function () {
-  //   T3Util.Log("extend Element data", this);
+  //   LogUtil.Debug("extend Element data", this);
   // },
 });
 */

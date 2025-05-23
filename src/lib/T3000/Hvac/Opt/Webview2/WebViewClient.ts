@@ -14,6 +14,7 @@ import {
 } from "../../Data/T3Data"
 import Utils1 from "../../Util/Utils1"
 import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 
 
 class WebViewClient {
@@ -50,22 +51,22 @@ class WebViewClient {
   // Send a message to the native code T3 application
   sendMessage(message: any) {
     if (!this.webview) {
-      T3Util.Log('= Wv2 window.chrome.webview is not available');
+      LogUtil.Debug('= Wv2 window.chrome.webview is not available');
       return;
     }
 
     this.webview.postMessage(message);
-    T3Util.Log('= Wv2 Sent message to T3:', message);
+    LogUtil.Debug('= Wv2 Sent message to T3:', message);
   }
 
   // Handle messages received from the native code T3 application
   handleMessage(event: any) {
     const data = event?.data ?? {};
-    T3Util.Log('= Wv2 Received message from T3:', data);
+    LogUtil.Debug('= Wv2 Received message from T3:', data);
 
     try {
       this.processMessageData(data);
-      T3Util.Log('= Wv2 ========================');
+      LogUtil.Debug('= Wv2 ========================');
     } catch (error) {
       T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
     }
@@ -705,7 +706,7 @@ class WebViewClient {
 
   public HandleSaveNewLibraryDataRes(msgData) {
     // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
-    T3Util.Log('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
+    LogUtil.Debug('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
   }
 
   public HandleDeleteImageRes(msgData) {

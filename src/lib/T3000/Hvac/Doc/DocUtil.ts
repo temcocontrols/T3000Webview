@@ -67,7 +67,7 @@ import HvConstant from '../Data/Constant/HvConstant'
  *
  * // Snap a point to the nearest grid intersection.
  * const snappedPoint = docUtil.SnapToGrid({ x: 150, y: 200 });
- * T3Util.Log('Snapped Point:', snappedPoint);
+ * LogUtil.Debug('Snapped Point:', snappedPoint);
  * ```
  */
 class DocUtil {
@@ -125,7 +125,7 @@ class DocUtil {
    * @returns void
    */
   InitDocConfig(): void {
-    T3Util.Log("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
+    LogUtil.Debug("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
 
     // Create new document configuration
     this.docConfig = new DocConfig();
@@ -150,7 +150,7 @@ class DocUtil {
     this.docConfig.spellDict = true;
     this.docConfig.spellFlags = true;
 
-    T3Util.Log("= U.DocUtil: InitDocConfig - Output:", this.docConfig);
+    LogUtil.Debug("= U.DocUtil: InitDocConfig - Output:", this.docConfig);
   }
 
   /**
@@ -160,7 +160,7 @@ class DocUtil {
    * @returns void
    */
   InitializeWorkArea(workAreaConfig: any): void {
-    T3Util.Log("= U.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
+    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
     // Use provided configuration or defaults
     workAreaConfig = workAreaConfig || {};
@@ -216,7 +216,7 @@ class DocUtil {
     this.UpdatePageDivider();
     this.UpdateWorkArea();
 
-    T3Util.Log("= U.DocUtil: InitializeWorkArea - Output:", {
+    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Output:", {
       workAreaId: this.workAreaId,
       svgAreaId: this.svgAreaId,
       hRulerAreaId: this.hRulerAreaId,
@@ -237,7 +237,7 @@ class DocUtil {
    * @returns void
    */
   InitSvgArea(configuration: any) {
-    T3Util.Log("= U.DocUtil: InitSvgArea - Input:", configuration);
+    LogUtil.Debug("= U.DocUtil: InitSvgArea - Input:", configuration);
 
     // Use provided configuration or empty object as fallback
     configuration = configuration || {};
@@ -292,7 +292,7 @@ class DocUtil {
     // Reset image loading reference count
     this.svgDoc.ImageLoadResetRefCount();
 
-    T3Util.Log("= U.DocUtil: InitSvgArea - Output:", {
+    LogUtil.Debug("= U.DocUtil: InitSvgArea - Output:", {
       documentWidth: this.svgDoc.docInfo.docWidth,
       documentHeight: this.svgDoc.docInfo.docHeight,
       layers: [this.backgroundLayer, this.gridLayer, this.pageDividerLayer]
@@ -305,10 +305,10 @@ class DocUtil {
    * @returns boolean - True if scale adjustment is needed, false otherwise
    */
   CheckScaleToFit(): boolean {
-    T3Util.Log("= U.DocUtil: CheckScaleToFit - Input: scaleToFit =", this.scaleToFit);
+    LogUtil.Debug("= U.DocUtil: CheckScaleToFit - Input: scaleToFit =", this.scaleToFit);
 
     if (!this.scaleToFit) {
-      T3Util.Log("= U.DocUtil: CheckScaleToFit - Output: false (scaleToFit disabled)");
+      LogUtil.Debug("= U.DocUtil: CheckScaleToFit - Output: false (scaleToFit disabled)");
       return false;
     }
 
@@ -330,13 +330,13 @@ class DocUtil {
       availableRect.height -= horizontalRulerHeight;
     }
 
-    T3Util.Log("= U.DocUtil: CheckScaleToFit - Available rect:", availableRect);
+    LogUtil.Debug("= U.DocUtil: CheckScaleToFit - Available rect:", availableRect);
 
     const scalingResult = this.svgDoc.CalcScaleToFit(availableRect.width - 20, availableRect.height - 20);
-    T3Util.Log("= U.DocUtil: CheckScaleToFit - CalcScaleToFit result:", scalingResult);
+    LogUtil.Debug("= U.DocUtil: CheckScaleToFit - CalcScaleToFit result:", scalingResult);
 
     const result = (this.svgDoc.docInfo.docScale !== scalingResult.scale);
-    T3Util.Log("= U.DocUtil: CheckScaleToFit - Output:", result);
+    LogUtil.Debug("= U.DocUtil: CheckScaleToFit - Output:", result);
 
     return result;
   }
@@ -543,7 +543,7 @@ class DocUtil {
    * @returns Number representing scrollbar width in pixels
    */
   GetScrollBarSize(): number {
-    T3Util.Log("= U.DocUtil: GetScrollBarSize - Input: Measuring scrollbar width");
+    LogUtil.Debug("= U.DocUtil: GetScrollBarSize - Input: Measuring scrollbar width");
 
     // Create a temporary container with overflow set to auto
     const container = $('<div style="width:50px;height:50px;overflow:auto"><div/></div>').appendTo('body');
@@ -564,7 +564,7 @@ class DocUtil {
     // Remove the temporary elements from DOM
     container.remove();
 
-    T3Util.Log("= U.DocUtil: GetScrollBarSize - Output:", { scrollbarWidth });
+    LogUtil.Debug("= U.DocUtil: GetScrollBarSize - Output:", { scrollbarWidth });
     return scrollbarWidth;
   }
 
@@ -577,7 +577,7 @@ class DocUtil {
    * @returns void
    */
   AdjustScroll(horizontalScroll?: number, verticalScroll?: number): void {
-    T3Util.Log("= U.DocUtil: AdjustScroll - Input:", { horizontalScroll, verticalScroll });
+    LogUtil.Debug("= U.DocUtil: AdjustScroll - Input:", { horizontalScroll, verticalScroll });
 
     const workArea = this.svgDoc.GetWorkArea();
 
@@ -601,7 +601,7 @@ class DocUtil {
     // Synchronize rulers with the new scroll position
     this.SyncRulers();
 
-    T3Util.Log("= U.DocUtil: AdjustScroll - Output:", {
+    LogUtil.Debug("= U.DocUtil: AdjustScroll - Output:", {
       targetHorizontalScroll,
       targetVerticalScroll
     });
@@ -625,7 +625,7 @@ class DocUtil {
    * @returns void
    */
   HandleScrollEvent(): void {
-    T3Util.Log("= U.DocUtil: HandleScrollEvent - Input: Handling scroll event");
+    LogUtil.Debug("= U.DocUtil: HandleScrollEvent - Input: Handling scroll event");
 
     // Get initial work area to access current scroll positions
     const initialWorkArea = this.svgDoc.GetWorkArea();
@@ -643,7 +643,7 @@ class DocUtil {
     const deltaScrollX = initialScrollX - updatedWorkArea.scrollX;
     const deltaScrollY = initialScrollY - updatedWorkArea.scrollY;
 
-    T3Util.Log("= U.DocUtil: HandleScrollEvent - Output:", {
+    LogUtil.Debug("= U.DocUtil: HandleScrollEvent - Output:", {
       initialScroll: { x: initialScrollX, y: initialScrollY },
       currentScroll: { x: updatedWorkArea.scrollX, y: updatedWorkArea.scrollY },
       deltaScroll: { x: deltaScrollX, y: deltaScrollY }
@@ -657,14 +657,14 @@ class DocUtil {
    * @returns void
    */
   SetResolution(resolution: number): void {
-    T3Util.Log("= U.DocUtil: SetResolution - Input:", resolution);
+    LogUtil.Debug("= U.DocUtil: SetResolution - Input:", resolution);
 
     if (this.svgDoc) {
       this.svgDoc.SetDocumentDPI(resolution);
       this.UpdateWorkArea();
     }
 
-    T3Util.Log("= U.DocUtil: SetResolution - Output: Resolution updated");
+    LogUtil.Debug("= U.DocUtil: SetResolution - Output: Resolution updated");
   }
 
   /**
@@ -676,7 +676,7 @@ class DocUtil {
    * @returns void
    */
   ResizeDocument(width, height, skipUIUpdate?): void {
-    T3Util.Log("= U.DocUtil: ResizeDocument - Input:", { width, height, skipUIUpdate });
+    LogUtil.Debug("= U.DocUtil: ResizeDocument - Input:", { width, height, skipUIUpdate });
 
     if (this.svgDoc) {
       // Update the document size
@@ -694,7 +694,7 @@ class DocUtil {
       }
     }
 
-    T3Util.Log("= U.DocUtil: ResizeDocument - Output: Document resized to", { width, height });
+    LogUtil.Debug("= U.DocUtil: ResizeDocument - Output: Document resized to", { width, height });
   }
 
   /**
@@ -703,11 +703,11 @@ class DocUtil {
    * @returns Object containing document width and height in document units
    */
   GetDocumentSize(): { width: number; height: number } {
-    T3Util.Log("= U.DocUtil: GetDocumentSize - Input: Retrieving document dimensions");
+    LogUtil.Debug("= U.DocUtil: GetDocumentSize - Input: Retrieving document dimensions");
 
     const documentSize = this.svgDoc.GetDocumentSize();
 
-    T3Util.Log("= U.DocUtil: GetDocumentSize - Output:", documentSize);
+    LogUtil.Debug("= U.DocUtil: GetDocumentSize - Output:", documentSize);
     return documentSize;
   }
 
@@ -717,7 +717,7 @@ class DocUtil {
    * @returns void
    */
   DocumentPageSizeChanged(): void {
-    T3Util.Log("= U.DocUtil: DocumentPageSizeChanged - Input: Document page size changed");
+    LogUtil.Debug("= U.DocUtil: DocumentPageSizeChanged - Input: Document page size changed");
 
     if (this.svgDoc) {
       if (this.scaleToPage) {
@@ -727,7 +727,7 @@ class DocUtil {
       }
     }
 
-    T3Util.Log("= U.DocUtil: DocumentPageSizeChanged - Output: Display updated");
+    LogUtil.Debug("= U.DocUtil: DocumentPageSizeChanged - Output: Display updated");
   }
 
   /**
@@ -737,7 +737,7 @@ class DocUtil {
    * @returns void
    */
   MaintainView(skipSelection: boolean): void {
-    T3Util.Log("= U.DocUtil: MaintainView - Input:", { skipSelection });
+    LogUtil.Debug("= U.DocUtil: MaintainView - Input:", { skipSelection });
 
     // Get current work area metrics
     const workArea = this.svgDoc.GetWorkArea();
@@ -771,7 +771,7 @@ class DocUtil {
     // Apply scroll adjustment
     this.AdjustScroll(horizontalScroll, verticalScroll);
 
-    T3Util.Log("= U.DocUtil: MaintainView - Output:", {
+    LogUtil.Debug("= U.DocUtil: MaintainView - Output:", {
       horizontalScroll,
       verticalScroll,
       boundingRect
@@ -786,17 +786,17 @@ class DocUtil {
    * @returns boolean - True if zoom was changed, false otherwise
    */
   SetZoomFactor(zoomFactor: number, skipCentering?: boolean): boolean {
-    T3Util.Log("= u.DocUtil: SetZoomFactor/ - Input: zoomFactor,skipCentering", { zoomFactor, skipCentering });
+    LogUtil.Debug("= u.DocUtil: SetZoomFactor/ - Input: zoomFactor,skipCentering", { zoomFactor, skipCentering });
 
     // Return false if document doesn't exist
     if (!this.svgDoc) {
-      T3Util.Log("= u.DocUtil: SetZoomFactor/ - Output: false (no svgDoc)");
+      LogUtil.Debug("= u.DocUtil: SetZoomFactor/ - Output: false (no svgDoc)");
       return false;
     }
 
     // Return false if not changing anything
     if (!this.scaleToFit && !this.scaleToPage && zoomFactor === this.GetZoomFactor()) {
-      T3Util.Log("= u.DocUtil: SetZoomFactor/ - Output: false (zoom unchanged)");
+      LogUtil.Debug("= u.DocUtil: SetZoomFactor/ - Output: false (zoom unchanged)");
       return false;
     }
 
@@ -842,7 +842,7 @@ class DocUtil {
     this.UpdatePageDivider();
     this.UpdateWorkArea();
 
-    T3Util.Log("= U.DocUtil: SetZoomFactor - Output: true (zoom updated)");
+    LogUtil.Debug("= U.DocUtil: SetZoomFactor - Output: true (zoom updated)");
     return true;
   }
 
@@ -864,7 +864,7 @@ class DocUtil {
    * @returns void
    */
   SetSizeToFit(enableScaleToFit: boolean): void {
-    T3Util.Log("= U.DocUtil: SetSizeToFit - Input:", enableScaleToFit);
+    LogUtil.Debug("= U.DocUtil: SetSizeToFit - Input:", enableScaleToFit);
 
     this.scaleToFit = enableScaleToFit;
 
@@ -876,7 +876,7 @@ class DocUtil {
     // Update the work area to apply the new scaling setting
     this.UpdateWorkArea();
 
-    T3Util.Log("= U.DocUtil: SetSizeToFit - Output:", {
+    LogUtil.Debug("= U.DocUtil: SetSizeToFit - Output:", {
       scaleToFit: this.scaleToFit,
       scaleToPage: this.scaleToPage
     });
@@ -888,7 +888,7 @@ class DocUtil {
    */
   GetSizeToFit(): boolean {
     const result = this.scaleToFit;
-    T3Util.Log("= U.DocUtil: GetSizeToFit - Retrieving scale-to-fit setting Input/Output: ", result);
+    LogUtil.Debug("= U.DocUtil: GetSizeToFit - Retrieving scale-to-fit setting Input/Output: ", result);
     return result;
   }
 
@@ -899,7 +899,7 @@ class DocUtil {
    * @returns void
    */
   SetSizeToPage(enableScaleToPage: boolean): void {
-    T3Util.Log("= U.DocUtil: SetSizeToPage - Input:", enableScaleToPage);
+    LogUtil.Debug("= U.DocUtil: SetSizeToPage - Input:", enableScaleToPage);
 
     this.scaleToPage = enableScaleToPage;
 
@@ -911,7 +911,7 @@ class DocUtil {
     // Update the work area to apply the new scaling setting
     this.UpdateWorkArea();
 
-    T3Util.Log("= U.DocUtil: SetSizeToPage - Output:", {
+    LogUtil.Debug("= U.DocUtil: SetSizeToPage - Output:", {
       scaleToPage: this.scaleToPage,
       scaleToFit: this.scaleToFit
     });
@@ -923,7 +923,7 @@ class DocUtil {
    */
   GetSizeToPage(): boolean {
     const result = this.scaleToPage;
-    T3Util.Log("= U.DocUtil: GetSizeToPage - Input/Output:", result);
+    LogUtil.Debug("= U.DocUtil: GetSizeToPage - Input/Output:", result);
     return result;
   }
 
@@ -934,7 +934,7 @@ class DocUtil {
    */
   IdleZoomUI(): void {
     UIUtil.UpdateDocumentScale();
-    T3Util.Log("= U.DocUtil: IdleZoomUI - Input/Output: Zoom UI updated");
+    LogUtil.Debug("= U.DocUtil: IdleZoomUI - Input/Output: Zoom UI updated");
   }
 
   /**
@@ -945,11 +945,11 @@ class DocUtil {
    * @returns void
    */
   SetScroll(horizontalScroll: number, verticalScroll: number): void {
-    T3Util.Log("= U.DocUtil: SetScroll - Input:", { horizontalScroll, verticalScroll });
+    LogUtil.Debug("= U.DocUtil: SetScroll - Input:", { horizontalScroll, verticalScroll });
 
     this.AdjustScroll(horizontalScroll, verticalScroll);
 
-    T3Util.Log("= U.DocUtil: SetScroll - Output: Scroll position updated");
+    LogUtil.Debug("= U.DocUtil: SetScroll - Output: Scroll position updated");
   }
 
   /**
@@ -960,7 +960,7 @@ class DocUtil {
    * @returns void
    */
   ScrollToPosition(xPosition: number, yPosition: number): void {
-    T3Util.Log("= U.DocUtil: ScrollToPosition - Input:", { xPosition, yPosition });
+    LogUtil.Debug("= U.DocUtil: ScrollToPosition - Input:", { xPosition, yPosition });
 
     // Calculate required scroll offsets to make position visible
     const scrollOffsets = this.svgDoc.CalcScrollToVisible(xPosition, yPosition);
@@ -970,7 +970,7 @@ class DocUtil {
       this.AdjustScroll(scrollOffsets.xOff, scrollOffsets.yOff);
     }
 
-    T3Util.Log("= U.DocUtil: ScrollToPosition - Output:", {
+    LogUtil.Debug("= U.DocUtil: ScrollToPosition - Output:", {
       calculatedOffsets: scrollOffsets,
       scrollApplied: !!scrollOffsets
     });
@@ -984,7 +984,7 @@ class DocUtil {
    * @returns boolean - True if configurations differ, false if they are the same
    */
   RulersNotEqual(rulerConfig1, rulerConfig2): boolean {
-    T3Util.Log("= U.DocUtil: RulersNotEqual - Input:", { rulerConfig1, rulerConfig2 });
+    LogUtil.Debug("= U.DocUtil: RulersNotEqual - Input:", { rulerConfig1, rulerConfig2 });
 
     // Initialize default configurations if not provided
     rulerConfig1 = rulerConfig1 || {};
@@ -1027,7 +1027,7 @@ class DocUtil {
       configurationsDiffer = true;
     }
 
-    T3Util.Log("= U.DocUtil: RulersNotEqual - Output:", configurationsDiffer);
+    LogUtil.Debug("= U.DocUtil: RulersNotEqual - Output:", configurationsDiffer);
     return configurationsDiffer;
   }
 
@@ -1039,7 +1039,7 @@ class DocUtil {
    * @returns boolean - True if configurations differ, false if they are the same
    */
   PagesNotEqual(pageConfig1, pageConfig2): boolean {
-    T3Util.Log("= U.DocUtil: PagesNotEqual - Input:", { pageConfig1, pageConfig2 });
+    LogUtil.Debug("= U.DocUtil: PagesNotEqual - Input:", { pageConfig1, pageConfig2 });
 
     // Check if either configuration is undefined or null
     const configurationsInvalid = pageConfig1 == undefined ||
@@ -1048,7 +1048,7 @@ class DocUtil {
       pageConfig2 === null;
 
     if (configurationsInvalid) {
-      T3Util.Log("= U.DocUtil: PagesNotEqual - Output: false (invalid configs)");
+      LogUtil.Debug("= U.DocUtil: PagesNotEqual - Output: false (invalid configs)");
       return false;
     }
 
@@ -1061,7 +1061,7 @@ class DocUtil {
       pageConfig1.margins.bottom != pageConfig2.margins.bottom ||
       pageConfig1.landscape != pageConfig2.landscape;
 
-    T3Util.Log("= U.DocUtil: PagesNotEqual - Output:", configurationsDiffer);
+    LogUtil.Debug("= U.DocUtil: PagesNotEqual - Output:", configurationsDiffer);
     return configurationsDiffer;
   }
 
@@ -1071,10 +1071,10 @@ class DocUtil {
    * @returns Document - The SVG document object
    */
   DocObject() {
-    T3Util.Log("= U.DocUtil: DocObject - Input: Getting document object");
+    LogUtil.Debug("= U.DocUtil: DocObject - Input: Getting document object");
 
     const documentObject = this.svgDoc;
-    T3Util.Log("= U.DocUtil: DocObject - Output:", documentObject ? "Document object returned" : "No document object");
+    LogUtil.Debug("= U.DocUtil: DocObject - Output:", documentObject ? "Document object returned" : "No document object");
 
     return documentObject;
   }
@@ -1088,7 +1088,7 @@ class DocUtil {
    * @returns void
    */
   SetRulers(rulerSettings: any, shouldPropagate?: boolean): void {
-    T3Util.Log("= U.DocUtil: SetRulers - Input:", { rulerSettings, shouldPropagate });
+    LogUtil.Debug("= U.DocUtil: SetRulers - Input:", { rulerSettings, shouldPropagate });
     let sessionDataPointer;
 
     if (rulerSettings) {
@@ -1122,7 +1122,7 @@ class DocUtil {
       this.UpdatePageDivider();
     }
 
-    T3Util.Log("= U.DocUtil: SetRulers - Output:", { updatedRulerConfig: this.rulerConfig });
+    LogUtil.Debug("= U.DocUtil: SetRulers - Output:", { updatedRulerConfig: this.rulerConfig });
   }
 
   ShowCoordinates(show: boolean): boolean {
@@ -1138,7 +1138,7 @@ class DocUtil {
    * @returns boolean - Always returns true to indicate operation completed
    */
   UpdateRulerVisibility(): boolean {
-    T3Util.Log("= U.DocUtil: UpdateRulerVisibility - Input:", {
+    LogUtil.Debug("= U.DocUtil: UpdateRulerVisibility - Input:", {
       showRulers: this.docConfig.showRulers,
       currentVisibility: this.rulerVis
     });
@@ -1159,7 +1159,7 @@ class DocUtil {
       this.rulerVis = this.docConfig.showRulers;
     }
 
-    T3Util.Log("= U.DocUtil: UpdateRulerVisibility - Output:", {
+    LogUtil.Debug("= U.DocUtil: UpdateRulerVisibility - Output:", {
       updatedVisibility: this.rulerVis
     });
 
@@ -1173,7 +1173,7 @@ class DocUtil {
    * @returns void
    */
   SetUpRulers(): void {
-    T3Util.Log("= U.DocUtil: SetUpRulers - Input:", {
+    LogUtil.Debug("= U.DocUtil: SetUpRulers - Input:", {
       horizontalRulerAreaId: this.hRulerAreaId,
       verticalRulerAreaId: this.vRulerAreaId,
       centerRulerAreaId: this.cRulerAreaId,
@@ -1219,7 +1219,7 @@ class DocUtil {
     // Reset rulers to update display
     this.ResetRulers();
 
-    T3Util.Log("= U.DocUtil: SetUpRulers - Output:", {
+    LogUtil.Debug("= U.DocUtil: SetUpRulers - Output:", {
       horizontalRulerDocInitialized: !!this.hRulerDoc,
       verticalRulerDocInitialized: !!this.vRulerDoc,
       rulerGuides: {
@@ -1236,7 +1236,7 @@ class DocUtil {
    * @returns void
    */
   ResetRulers(): void {
-    T3Util.Log("= U.DocUtil: ResetRulers - Input: Resetting horizontal and vertical rulers");
+    LogUtil.Debug("= U.DocUtil: ResetRulers - Input: Resetting horizontal and vertical rulers");
 
     // Get current work area dimensions and ruler sizes
     const workArea = this.svgDoc.GetWorkArea();
@@ -1255,7 +1255,7 @@ class DocUtil {
     this.SetRulerContent(this.hRulerDoc, true);
     this.SetRulerContent(this.vRulerDoc, false);
 
-    T3Util.Log("= U.DocUtil: ResetRulers - Output: Rulers have been reset and redrawn");
+    LogUtil.Debug("= U.DocUtil: ResetRulers - Output: Rulers have been reset and redrawn");
   }
 
   /**
@@ -1265,7 +1265,7 @@ class DocUtil {
    * @returns number - Adjusted scale factor for ruler calculations
    */
   GetScaledRuler(conversionFactor: number): number {
-    T3Util.Log("= U.DocUtil: GetScaledRuler - Input:", {
+    LogUtil.Debug("= U.DocUtil: GetScaledRuler - Input:", {
       conversionFactor,
       documentScale: this.svgDoc.docInfo.docScale
     });
@@ -1285,7 +1285,7 @@ class DocUtil {
       conversionFactor *= documentScaleFloor;
     }
 
-    T3Util.Log("= U.DocUtil: GetScaledRuler - Output:", {
+    LogUtil.Debug("= U.DocUtil: GetScaledRuler - Output:", {
       adjustedFactor: conversionFactor
     });
 
@@ -1301,7 +1301,7 @@ class DocUtil {
    * @returns void
    */
   SetRulerContent(rulerDocument, isHorizontalRuler): void {
-    T3Util.Log("= U.DocUtil: SetRulerContent - Input:", { rulerDocument, isHorizontalRuler });
+    LogUtil.Debug("= U.DocUtil: SetRulerContent - Input:", { rulerDocument, isHorizontalRuler });
 
     // Get work area and ruler dimensions
     const workArea = this.svgDoc.GetWorkArea();
@@ -1441,7 +1441,7 @@ class DocUtil {
       labelElement.SetPos(tickLabels[i].x, tickLabels[i].y);
     }
 
-    T3Util.Log("= U.DocUtil: SetRulerContent - Output:", {
+    LogUtil.Debug("= U.DocUtil: SetRulerContent - Output:", {
       pathLength: pathCommands.length,
       labelCount: totalLabels,
       displayedLabels: Math.ceil(totalLabels / labelDisplayInterval)
@@ -1460,14 +1460,14 @@ class DocUtil {
     const verticalScroll: number = $(this.svgAreaId).scrollTop();
 
     // Log input values
-    T3Util.Log("= U.DocUtil: SyncRulers - Input:", { horizontalScroll, verticalScroll });
+    LogUtil.Debug("= U.DocUtil: SyncRulers - Input:", { horizontalScroll, verticalScroll });
 
     // Sync horizontal and vertical rulers with the SVG area's scroll positions
     $(this.hRulerAreaId).scrollLeft(horizontalScroll);
     $(this.vRulerAreaId).scrollTop(verticalScroll);
 
     // Log output after synchronizing rulers
-    T3Util.Log("= U.DocUtil: SyncRulers - Output: Rulers synchronized", { horizontalScroll, verticalScroll });
+    LogUtil.Debug("= U.DocUtil: SyncRulers - Output: Rulers synchronized", { horizontalScroll, verticalScroll });
   }
 
   /**
@@ -1476,7 +1476,7 @@ class DocUtil {
    * @returns boolean - True if grid visibility was changed, false otherwise
    */
   UpdateGridVisibility(): boolean {
-    T3Util.Log("= U.DocUtil: UpdateGridVisibility - Input:", {
+    LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Input:", {
       showGrid: this.docConfig.showGrid,
       currentGridVisibility: this.gridVis
     });
@@ -1485,12 +1485,12 @@ class DocUtil {
     let visibilityChanged = false;
 
     if (!gridLayer) {
-      T3Util.Log("= U.DocUtil: UpdateGridVisibility - Output: Grid layer not found.");
+      LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Output: Grid layer not found.");
       return visibilityChanged;
     }
 
     if (this.docConfig.showGrid === this.gridVis) {
-      T3Util.Log("= U.DocUtil: UpdateGridVisibility - Output: No change in grid visibility. Current value:", this.gridVis);
+      LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Output: No change in grid visibility. Current value:", this.gridVis);
       return visibilityChanged;
     }
 
@@ -1498,7 +1498,7 @@ class DocUtil {
     this.gridVis = this.docConfig.showGrid;
     visibilityChanged = true;
 
-    T3Util.Log("= U.DocUtil: UpdateGridVisibility - Output: Grid visibility updated to", this.gridVis);
+    LogUtil.Debug("= U.DocUtil: UpdateGridVisibility - Output: Grid visibility updated to", this.gridVis);
     return visibilityChanged;
   }
 
@@ -1509,7 +1509,7 @@ class DocUtil {
    * @returns void
    */
   UpdateGrid(): void {
-    T3Util.Log("= U.DocUtil: UpdateGrid - Input:", {
+    LogUtil.Debug("= U.DocUtil: UpdateGrid - Input:", {
       workArea: this.svgDoc.GetWorkArea(),
       gridLayer: this.gridLayer,
       rulerSettings: this.rulerConfig
@@ -1644,7 +1644,7 @@ class DocUtil {
       gridLayer.AddElement(majorGridPath);
       gridLayer.SetEventBehavior(OptConstant.EventBehavior.None);
 
-      T3Util.Log("= U.DocUtil: UpdateGrid - Output:", {
+      LogUtil.Debug("= U.DocUtil: UpdateGrid - Output:", {
         majorPathCommands,
         minorPathCommands,
         boundaries: { startX, startY, endX, endY, maxX, maxY }
@@ -1659,7 +1659,7 @@ class DocUtil {
    * @returns void
    */
   UpdatePageDivider(): void {
-    T3Util.Log("= U.DocUtil: UpdatePageDivider - Input: Updating page dividers");
+    LogUtil.Debug("= U.DocUtil: UpdatePageDivider - Input: Updating page dividers");
 
     // Retrieve current work area and page divider layer
     const workArea = this.svgDoc.GetWorkArea();
@@ -1721,12 +1721,12 @@ class DocUtil {
       // Add the completed shape to the page divider layer
       pageDividerLayer.AddElement(dividerPathShape);
 
-      T3Util.Log("= U.DocUtil: UpdatePageDivider - Output:", {
+      LogUtil.Debug("= U.DocUtil: UpdatePageDivider - Output:", {
         screenPaperDimensions: { width: screenPaperWidth, height: screenPaperHeight },
         pathCommandLength: pathCommands.length
       });
     } else {
-      T3Util.Log("= U.DocUtil: UpdatePageDivider - Output: No page divider layer found");
+      LogUtil.Debug("= U.DocUtil: UpdatePageDivider - Output: No page divider layer found");
     }
   }
 
@@ -1738,7 +1738,7 @@ class DocUtil {
    * @returns Object containing the snapped x and y coordinates
    */
   SnapToGrid(point: { x: number; y: number }): { x: number; y: number } {
-    T3Util.Log("= U.DocUtil: SnapToGrid - Input:", point);
+    LogUtil.Debug("= U.DocUtil: SnapToGrid - Input:", point);
 
     // Ensure the work area is updated
     this.svgDoc.GetWorkArea();
@@ -1776,7 +1776,7 @@ class DocUtil {
     const snapStepCountY = Math.round(remainingDistance.y / snapStepSize);
     snappedCoordinates.y += snapStepCountY * snapStepSize;
 
-    T3Util.Log("= U.DocUtil: SnapToGrid - Output:", snappedCoordinates);
+    LogUtil.Debug("= U.DocUtil: SnapToGrid - Output:", snappedCoordinates);
     return snappedCoordinates;
   }
 
@@ -1787,12 +1787,12 @@ class DocUtil {
    * @returns void
    */
   RulerTopDoubleClick(event: any): void {
-    T3Util.Log("= U.DocUtil: RulerTopDoubleClick - Input:", { event });
+    LogUtil.Debug("= U.DocUtil: RulerTopDoubleClick - Input:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, false, true);
 
-    T3Util.Log("= U.DocUtil: RulerTopDoubleClick - Output: Completed");
+    LogUtil.Debug("= U.DocUtil: RulerTopDoubleClick - Output: Completed");
   }
 
   /**
@@ -1802,12 +1802,12 @@ class DocUtil {
    * @returns void
    */
   RulerLeftDoubleClick(event: any): void {
-    T3Util.Log("= U.DocUtil: RulerLeftDoubleClick - Input:", { event });
+    LogUtil.Debug("= U.DocUtil: RulerLeftDoubleClick - Input:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, true, false);
 
-    T3Util.Log("= U.DocUtil: RulerLeftDoubleClick - Output: Completed");
+    LogUtil.Debug("= U.DocUtil: RulerLeftDoubleClick - Output: Completed");
   }
 
   /**
@@ -1817,12 +1817,12 @@ class DocUtil {
    * @returns void
    */
   RulerCenterDoubleClick(event: any): void {
-    T3Util.Log("= U.DocUtil: RulerCenterDoubleClick - Input:", { event });
+    LogUtil.Debug("= U.DocUtil: RulerCenterDoubleClick - Input:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerHandleDoubleClick(event, true, true);
 
-    T3Util.Log("= U.DocUtil: RulerCenterDoubleClick - Output: Completed");
+    LogUtil.Debug("= U.DocUtil: RulerCenterDoubleClick - Output: Completed");
   }
 
   /**
@@ -1833,18 +1833,18 @@ class DocUtil {
    * @returns void
    */
   RulerDragStart(dragEvent: any): void {
-    T3Util.Log("= U.DocUtil: RulerDragStart - Input:", { dragEvent });
+    LogUtil.Debug("= U.DocUtil: RulerDragStart - Input:", { dragEvent });
 
     if (!T3Gv.docUtil.IsReadOnly()) {
       if (MouseUtil.IsRightClick(dragEvent)) {
         Utils2.StopPropagationAndDefaults(dragEvent);
-        T3Util.Log("= U.DocUtil: RulerDragStart - Output: Right click detected, operation canceled");
+        LogUtil.Debug("= U.DocUtil: RulerDragStart - Output: Right click detected, operation canceled");
         return;
       }
       T3Gv.docUtil.rulerInDrag = true;
     }
 
-    T3Util.Log("= U.DocUtil: RulerDragStart - Output:", { rulerInDrag: T3Gv.docUtil.rulerInDrag });
+    LogUtil.Debug("= U.DocUtil: RulerDragStart - Output:", { rulerInDrag: T3Gv.docUtil.rulerInDrag });
   }
 
   /**
@@ -1855,19 +1855,19 @@ class DocUtil {
    * @returns void
    */
   RulerTopDrag(dragEvent: any): void {
-    T3Util.Log("= U.DocUtil: RulerTopDrag - Input:", { dragEvent });
+    LogUtil.Debug("= U.DocUtil: RulerTopDrag - Input:", { dragEvent });
 
     Utils2.StopPropagationAndDefaults(dragEvent);
 
     if (LMEvtUtil.IsCtrlClick(dragEvent)) {
       Utils2.StopPropagationAndDefaults(dragEvent);
       T3Gv.docUtil.RulerHandleDoubleClick(dragEvent, false, true);
-      T3Util.Log("= U.DocUtil: RulerTopDrag - Output: Handled as double click");
+      LogUtil.Debug("= U.DocUtil: RulerTopDrag - Output: Handled as double click");
       return;
     }
 
     T3Gv.docUtil.RulerDragGuides(dragEvent, false, true);
-    T3Util.Log("= U.DocUtil: RulerTopDrag - Output: Drag guides initiated");
+    LogUtil.Debug("= U.DocUtil: RulerTopDrag - Output: Drag guides initiated");
   }
 
   /**
@@ -1878,21 +1878,21 @@ class DocUtil {
    * @returns void
    */
   RulerLeftDrag(dragEvent: any): void {
-    T3Util.Log("= U.DocUtil: RulerLeftDrag - Input:", { dragEvent });
+    LogUtil.Debug("= U.DocUtil: RulerLeftDrag - Input:", { dragEvent });
 
     // Stop event propagation and defaults
     Utils2.StopPropagationAndDefaults(dragEvent);
 
     if (LMEvtUtil.IsCtrlClick(dragEvent)) {
-      T3Util.Log("= U.DocUtil: RulerLeftDrag - Ctrl click detected");
+      LogUtil.Debug("= U.DocUtil: RulerLeftDrag - Ctrl click detected");
       Utils2.StopPropagationAndDefaults(dragEvent);
       T3Gv.docUtil.RulerHandleDoubleClick(dragEvent, true, false);
-      T3Util.Log("= U.DocUtil: RulerLeftDrag - Output: Handled as double click");
+      LogUtil.Debug("= U.DocUtil: RulerLeftDrag - Output: Handled as double click");
       return;
     }
 
     T3Gv.docUtil.RulerDragGuides(dragEvent, true, false);
-    T3Util.Log("= U.DocUtil: RulerLeftDrag - Output: Drag guides initiated");
+    LogUtil.Debug("= U.DocUtil: RulerLeftDrag - Output: Drag guides initiated");
   }
 
   /**
@@ -1903,23 +1903,23 @@ class DocUtil {
    * @returns void
    */
   RulerCenterDrag(event: any): void {
-    T3Util.Log("= U.DocUtil: RulerCenterDrag - Input:", { event });
+    LogUtil.Debug("= U.DocUtil: RulerCenterDrag - Input:", { event });
 
     // Stop event propagation and defaults
     Utils2.StopPropagationAndDefaults(event);
 
     // Check if Ctrl-click is detected
     if (LMEvtUtil.IsCtrlClick(event)) {
-      T3Util.Log("= U.DocUtil: RulerCenterDrag - Ctrl click detected, invoking double click handler");
+      LogUtil.Debug("= U.DocUtil: RulerCenterDrag - Ctrl click detected, invoking double click handler");
       Utils2.StopPropagationAndDefaults(event);
       T3Gv.docUtil.RulerHandleDoubleClick(event, true, true);
-      T3Util.Log("= U.DocUtil: RulerCenterDrag - Output: Double click action completed");
+      LogUtil.Debug("= U.DocUtil: RulerCenterDrag - Output: Double click action completed");
       return;
     }
 
     // Initiate ruler drag guides for center ruler
     T3Gv.docUtil.RulerDragGuides(event, true, true);
-    T3Util.Log("= U.DocUtil: RulerCenterDrag - Output: Drag guides initiated");
+    LogUtil.Debug("= U.DocUtil: RulerCenterDrag - Output: Drag guides initiated");
   }
 
   /**
@@ -1930,12 +1930,12 @@ class DocUtil {
    * @returns void
    */
   RulerDragEnd(event) {
-    T3Util.Log("= U.DocUtil: RulerDragEnd - Input:", { event });
+    LogUtil.Debug("= U.DocUtil: RulerDragEnd - Input:", { event });
 
     Utils2.StopPropagationAndDefaults(event);
     T3Gv.docUtil.RulerEndGuides();
 
-    T3Util.Log("= U.DocUtil: RulerDragEnd - Output: Completed");
+    LogUtil.Debug("= U.DocUtil: RulerDragEnd - Output: Completed");
   }
 
   /**
@@ -1948,7 +1948,7 @@ class DocUtil {
    * @returns void
    */
   RulerHandleDoubleClick(clickEvent: any, isVerticalRuler: boolean, isIntersectionPoint: boolean): void {
-    T3Util.Log("= U.DocUtil: RulerHandleDoubleClick - Input:", { clickEvent, isVerticalRuler, isIntersectionPoint });
+    LogUtil.Debug("= U.DocUtil: RulerHandleDoubleClick - Input:", { clickEvent, isVerticalRuler, isIntersectionPoint });
 
     // Check if the event is not a right-click
     if (!MouseUtil.IsRightClick(clickEvent)) {
@@ -1986,7 +1986,7 @@ class DocUtil {
             originUpdates.originy *= OptConstant.Common.MetricConv;
           }
         } else {
-          T3Util.Log("= U.DocUtil: RulerHandleDoubleClick - Early Exit: No valid direction specified.");
+          LogUtil.Debug("= U.DocUtil: RulerHandleDoubleClick - Early Exit: No valid direction specified.");
           return;
         }
 
@@ -1998,7 +1998,7 @@ class DocUtil {
         const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
         SelectUtil.UpdateSelectionAttributes(selectedObjects);
 
-        T3Util.Log("= U.DocUtil: RulerHandleDoubleClick - Output:", { updatedOrigins: originUpdates, selectedObjects });
+        LogUtil.Debug("= U.DocUtil: RulerHandleDoubleClick - Output:", { updatedOrigins: originUpdates, selectedObjects });
       }
     }
   }
@@ -2013,7 +2013,7 @@ class DocUtil {
    * @returns void
    */
   RulerDragGuides(dragEvent: any, isVerticalRuler: boolean, isHorizontalRuler: boolean): void {
-    T3Util.Log("= U.DocUtil: RulerDragGuides - Input:", { dragEvent, isVerticalRuler, isHorizontalRuler });
+    LogUtil.Debug("= U.DocUtil: RulerDragGuides - Input:", { dragEvent, isVerticalRuler, isHorizontalRuler });
 
     const workArea = this.svgDoc.GetWorkArea();
     const scaleFactor = 1 / workArea.docScale;
@@ -2081,7 +2081,7 @@ class DocUtil {
       }
     }
 
-    T3Util.Log("= U.DocUtil: RulerDragGuides - Output:", {
+    LogUtil.Debug("= U.DocUtil: RulerDragGuides - Output:", {
       horizontalGuide: this.hRulerGuide ? "exists" : "null",
       verticalGuide: this.vRulerGuide ? "exists" : "null",
       guidePosition: this.rulerGuideWinPos,
@@ -2096,7 +2096,7 @@ class DocUtil {
    * @returns void
    */
   RulerAutoScrollGuides(): void {
-    T3Util.Log("= U.DocUtil: RulerAutoScrollGuides - Input:", {
+    LogUtil.Debug("= U.DocUtil: RulerAutoScrollGuides - Input:", {
       rulerGuideWinPos: this.rulerGuideWinPos,
       workArea: this.svgDoc.GetWorkArea()
     });
@@ -2123,7 +2123,7 @@ class DocUtil {
       this.RulerDrawGuides();
     }
 
-    T3Util.Log("= U.DocUtil: RulerAutoScrollGuides - Output:", {
+    LogUtil.Debug("= U.DocUtil: RulerAutoScrollGuides - Output:", {
       autoScrollPerformed: requiresAutoScroll,
       documentCoordinates: documentCoordinates
     });
@@ -2136,7 +2136,7 @@ class DocUtil {
    * @returns void
    */
   RulerDrawGuides(): void {
-    T3Util.Log("= U.DocUtil: RulerDrawGuides - Input:", {
+    LogUtil.Debug("= U.DocUtil: RulerDrawGuides - Input:", {
       mouseWindowPosition: this.rulerGuideWinPos,
       hRulerGuide: this.hRulerGuide ? "exists" : "null",
       vRulerGuide: this.vRulerGuide ? "exists" : "null"
@@ -2188,7 +2188,7 @@ class DocUtil {
       );
     }
 
-    T3Util.Log("= U.DocUtil: RulerDrawGuides - Output:", {
+    LogUtil.Debug("= U.DocUtil: RulerDrawGuides - Output:", {
       constrainedCoordinates: documentCoordinates,
       workAreaBounds: {
         horizontal: { min: workArea.docVisX, max: workArea.docVisX + workArea.docVisWidth },
@@ -2203,7 +2203,7 @@ class DocUtil {
    * @returns void
    */
   RulerEndGuides(): void {
-    T3Util.Log("= U.DocUtil: RulerEndGuides - Input:", {
+    LogUtil.Debug("= U.DocUtil: RulerEndGuides - Input:", {
       rulerGuideScrollTimer: this.rulerGuideScrollTimer,
       horizontalRulerGuide: this.hRulerGuide,
       verticalRulerGuide: this.vRulerGuide,
@@ -2231,7 +2231,7 @@ class DocUtil {
     // Reset ruler drag state
     this.rulerInDrag = false;
 
-    T3Util.Log("= U.DocUtil: RulerEndGuides - Output:", {
+    LogUtil.Debug("= U.DocUtil: RulerEndGuides - Output:", {
       rulerGuideScrollTimer: this.rulerGuideScrollTimer,
       horizontalRulerGuide: this.hRulerGuide,
       verticalRulerGuide: this.vRulerGuide,
@@ -2247,7 +2247,7 @@ class DocUtil {
    * @returns Object containing x and y offsets to apply for snapping
    */
   SnapRect(rectangle: { x: number; y: number; width: number; height: number }): { x: number; y: number } {
-    T3Util.Log("= U.DocUtil: SnapRect - Input:", rectangle);
+    LogUtil.Debug("= U.DocUtil: SnapRect - Input:", rectangle);
 
     // Calculate the original top-left and bottom-right coordinates
     const topLeftCorner = { x: rectangle.x, y: rectangle.y };
@@ -2272,7 +2272,7 @@ class DocUtil {
       : yOffsetFromTopLeft;
 
     const snapOffsets = { x: optimalXOffset, y: optimalYOffset };
-    T3Util.Log("= U.DocUtil: SnapRect - Output:", snapOffsets);
+    LogUtil.Debug("= U.DocUtil: SnapRect - Output:", snapOffsets);
     return snapOffsets;
   }
 
@@ -2283,12 +2283,12 @@ class DocUtil {
    * @returns void
    */
   UpdateConfig(documentConfiguration: any): void {
-    T3Util.Log("= U.DocUtil: UpdateConfig - Input:", documentConfiguration);
+    LogUtil.Debug("= U.DocUtil: UpdateConfig - Input:", documentConfiguration);
     this.docConfig = documentConfiguration;
     this.UpdateRulerVisibility();
     this.UpdateGridVisibility();
     // this.UpdatePageDividerVisibility();
-    T3Util.Log("= U.DocUtil: UpdateConfig - Output: Updated docConfig", this.docConfig);
+    LogUtil.Debug("= U.DocUtil: UpdateConfig - Output: Updated docConfig", this.docConfig);
   }
 
   /**
@@ -2297,11 +2297,11 @@ class DocUtil {
    * @returns SVG element for the document background
    */
   GetBackground(): any {
-    T3Util.Log("= U.DocUtil: GetBackground - Input: Getting background element");
+    LogUtil.Debug("= U.DocUtil: GetBackground - Input: Getting background element");
 
     const backgroundElement = this.backgroundElem;
 
-    T3Util.Log("= U.DocUtil: GetBackground - Output:", backgroundElement ? "Background element retrieved" : "No background element");
+    LogUtil.Debug("= U.DocUtil: GetBackground - Output:", backgroundElement ? "Background element retrieved" : "No background element");
     return backgroundElement;
   }
 
@@ -2311,11 +2311,11 @@ class DocUtil {
    * @returns boolean - False if document is editable, true if read-only
    */
   IsReadOnly(): boolean {
-    // T3Util.Log("= U.DocUtil: IsReadOnly - Input: Checking document read-only state");
+    // LogUtil.Debug("= U.DocUtil: IsReadOnly - Input: Checking document read-only state");
 
     const readOnlyState = false;
 
-    // T3Util.Log("= U.DocUtil: IsReadOnly - Output:", readOnlyState);
+    // LogUtil.Debug("= U.DocUtil: IsReadOnly - Output:", readOnlyState);
     return readOnlyState;
   }
 
@@ -2376,7 +2376,7 @@ class DocUtil {
     this.SetZoomLevel(100 * newZoomFactor, eventSource);
     DataOpt.SaveToLocalStorage();
 
-    T3Util.Log("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", newZoomFactor);
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", newZoomFactor);
   }
 
   /**
@@ -2406,11 +2406,11 @@ class DocUtil {
    * @returns void
    */
   SetZoomLevelByIndex(zoomIndex) {
-    T3Util.Log("O.DocOpt - SetZoomLevelByIndex - Input:", { zoomIndex });
+    LogUtil.Debug("O.DocOpt - SetZoomLevelByIndex - Input:", { zoomIndex });
 
     // Validate the zoom index is within bounds
     if (zoomIndex < 0 || zoomIndex >= this.docConfig.zoomLevels.length) {
-      T3Util.Log("O.DocOpt - SetZoomLevelByIndex - Invalid zoom index, out of bounds");
+      LogUtil.Debug("O.DocOpt - SetZoomLevelByIndex - Invalid zoom index, out of bounds");
       return;
     }
 
@@ -2420,10 +2420,10 @@ class DocUtil {
     // Apply zoom if opt is available
     if (T3Gv.opt) {
       const zoomFactor = this.docConfig.zoomLevels[zoomIndex] / 100;
-      T3Util.Log("O.DocOpt - SetZoomLevelByIndex - Setting zoom factor:", zoomFactor);
+      LogUtil.Debug("O.DocOpt - SetZoomLevelByIndex - Setting zoom factor:", zoomFactor);
       UIUtil.SetDocumentScale(zoomFactor);
     } else {
-      T3Util.Log("O.DocOpt - SetZoomLevelByIndex - OptManager not available, zoom not applied");
+      LogUtil.Debug("O.DocOpt - SetZoomLevelByIndex - OptManager not available, zoom not applied");
     }
   }
 
@@ -2433,12 +2433,12 @@ class DocUtil {
    * @returns void
    */
   IdleZoomCtls() {
-    T3Util.Log("O.DocOpt - IdleZoomControls - Entering function");
+    LogUtil.Debug("O.DocOpt - IdleZoomControls - Entering function");
 
     const zoomControl = $('#zoom-ctl-id');
     const zoomPercentage = Math.round(100 * T3Gv.docUtil.GetZoomFactor());
 
-    T3Util.Log("O.DocOpt - IdleZoomControls - Current zoom percentage:", zoomPercentage);
+    LogUtil.Debug("O.DocOpt - IdleZoomControls - Current zoom percentage:", zoomPercentage);
 
     // Get the size to fit calculation from document handler
     T3Gv.docUtil.GetSizeToFit();
@@ -2448,7 +2448,7 @@ class DocUtil {
     zoomControl.val(zoomPercentage).change();
     this.inZoomIdle = false;
 
-    T3Util.Log("O.DocOpt - IdleZoomControls - Zoom controls updated");
+    LogUtil.Debug("O.DocOpt - IdleZoomControls - Zoom controls updated");
   }
 
   ZoomIn() {

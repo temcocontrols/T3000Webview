@@ -54,12 +54,12 @@ class QuasarUtil {
       globalMsg.value.push(gmm);
     }
 
-    T3Util.Log("= U.QuasarUtil setGlobalMsg", { ...globalMsg.value });
+    LogUtil.Debug("= U.QuasarUtil setGlobalMsg", { ...globalMsg.value });
   }
 
   clearGlobalMsg(msgType: string) {
     globalMsg.value = globalMsg.value.filter((msg: GlobalMsgModel) => msg.msgType !== msgType);
-    T3Util.Log("= U.QuasarUtil clearGlobalMsg", { ...globalMsg.value });
+    LogUtil.Debug("= U.QuasarUtil clearGlobalMsg", { ...globalMsg.value });
   }
 
   clearAllGlobalMsg() {
@@ -82,7 +82,7 @@ class QuasarUtil {
     //   ],
     // });
 
-    T3Util.Log('= U.QuasarUtil Graphic loaded successfully');
+    LogUtil.Debug('= U.QuasarUtil Graphic loaded successfully');
   }
 
   ShowGET_INITIAL_DATA_RESSuccess() {
@@ -101,7 +101,7 @@ class QuasarUtil {
     //   ],
     // });
 
-    T3Util.Log('= U.QuasarUtil Initial data loaded successfully');
+    LogUtil.Debug('= U.QuasarUtil Initial data loaded successfully');
   }
 
   ShowWebSocketError(errorMsg: string) {
@@ -140,7 +140,7 @@ class QuasarUtil {
   }
 
   static ShowObjectConfig(show: boolean) {
-    T3Util.Log("= U.QuasarUtil ShowObjectConfig", "show=>", show);
+    LogUtil.Debug("= U.QuasarUtil ShowObjectConfig", "show=>", show);
     // T3Gv.refreshPosition = true;
     // this.SetSeletedTool();
     objectConfigShow.value = show;
@@ -176,7 +176,7 @@ class QuasarUtil {
   }
 
   static LinkT3EntrySaveV2() {
-    T3Util.Log('= U.QuasarUtil Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
+    LogUtil.Debug('= U.QuasarUtil Idx linkT3EntrySave linkT3EntryDialog.value.data=', linkT3EntryDialogV2.value.data);
     // addActionToHistory("Link object to T3000 entry");
 
     if (!appStateV2.value.items[appStateV2.value.activeItemIndex].settings.t3EntryDisplayField) {
@@ -218,14 +218,14 @@ class QuasarUtil {
 
     DataOpt.SaveAppStateV2();
     SvgUtil.RenderAllSVGObjects();
-    T3Util.Log("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "close linkT3EntryDialog V2", appStateV2.value);
+    LogUtil.Debug("= U.QuasarUtil P.IDX2 linkT3EntryDialogAction", "close linkT3EntryDialog V2", appStateV2.value);
   }
 
   static AddCurrentObjectToAppState() {
     let targetSelectId = SelectUtil.GetTargetSelect();
     var targetObject = ObjectUtil.GetObjectPtr(targetSelectId, false);
 
-    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState targetObject:", targetObject);
+    LogUtil.Debug("= U.QuasarUtil AddCurrentObjectToAppState targetObject:", targetObject);
     var frame = {
       x: targetObject.Frame.x,
       y: targetObject.Frame.y,
@@ -236,7 +236,7 @@ class QuasarUtil {
     var uniqueId = targetObject.uniqueId;
     var uniType = targetObject.uniType;
 
-    T3Util.Log("= U.QuasarUtil AddCurrentObjectToAppState uniqueId:|uniType:", frame, uniqueId, uniType);
+    LogUtil.Debug("= U.QuasarUtil AddCurrentObjectToAppState uniqueId:|uniType:", frame, uniqueId, uniType);
 
     //Oval Rect Polygon Temperature Boiler Heatpump Pump ValveThreeWay ValveTwoWay Duct Fan CoolingCoil HeatingCoil
     //Filter Humidifier Humidity Pressure Damper ThermalWheel Enthalpy Flow RoomHumidity RoomTemperature Gauge
@@ -259,7 +259,7 @@ class QuasarUtil {
     }
 
     const item = this.drawObject(size, pos, tool, uniqueId);
-    T3Util.Log("= U.QuasarUtil AddToAppStateV2", item, appStateV2.value);
+    LogUtil.Debug("= U.QuasarUtil AddToAppStateV2", item, appStateV2.value);
   }
 
   static drawObject(size, pos, tool, uniqueId) {
@@ -327,7 +327,7 @@ class QuasarUtil {
       (item) => `${item.uniqueId}` === selectedUniqueId
     );
 
-    T3Util.Log("= U.QuasarUtil SetAppStateV2SelectIndex", appStateV2.value);
+    LogUtil.Debug("= U.QuasarUtil SetAppStateV2SelectIndex", appStateV2.value);
   }
 
   static GetItemFromAPSV2(shapeUniqueId: string) {
@@ -335,14 +335,14 @@ class QuasarUtil {
     if (item) {
       return item;
     } else {
-      T3Util.Log(`= U.QuasarUtil Item with id ${shapeUniqueId} not found in appStateV2`);
+      LogUtil.Debug(`= U.QuasarUtil Item with id ${shapeUniqueId} not found in appStateV2`);
       return null;
     }
   }
 
   // Update the settings of the selected SVG element like color, size, etc.
   static UpdateSvgElementSettings(key: string, value: any) {
-    T3Util.Log("= U.QuasarUtil UpdateSvgElementSettings Input: key,value", key, value, T3Gv.stdObj);
+    LogUtil.Debug("= U.QuasarUtil UpdateSvgElementSettings Input: key,value", key, value, T3Gv.stdObj);
 
     /*
     // T3Gv.opt.SetBackgroundColor("#2a2a2a");
@@ -351,12 +351,12 @@ class QuasarUtil {
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(selection.selectedId);
     //OptConstant.SVGElementClass.for
     var element = svgElement.GetElementById(OptConstant.SVGElementClass.Shape)
-    T3Util.Log("element", element);
+    LogUtil.Debug("element", element);
     element.SetFillColor("red");
     // element.SetStrokeColor("black");
 
     element.SetAttributes("blue")
-    T3Util.Log("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
+    LogUtil.Debug("= QuasarUtil UpdateSvgElementSettings 2", T3Gv.stdObj);
     */
 
     var selection = SelectUtil.GetSelectedObject();
@@ -370,7 +370,7 @@ class QuasarUtil {
     // Set the key-value pair on the drawSetting object
     drawSetting[key] = value;
 
-    T3Util.Log(`= U.QuasarUtil Updated drawSetting: ${key}=${value}`, drawSetting);
+    LogUtil.Debug(`= U.QuasarUtil Updated drawSetting: ${key}=${value}`, drawSetting);
     selection.selectedObject.SetDrawSetting(drawSetting);
 
     var dynamicCss =

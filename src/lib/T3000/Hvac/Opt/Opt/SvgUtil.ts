@@ -5,6 +5,7 @@ import OptConstant from "../../Data/Constant/OptConstant";
 import T3Gv from '../../Data/T3Gv';
 import T3Opt from '../../Doc/T3Opt';
 import EvtUtil from "../../Event/EvtUtil";
+import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -22,7 +23,7 @@ class SvgUtil {
    * @returns {void}
    */
   static RenderAllSVGSelectionStates() {
-    T3Util.Log('= U.SvgUtil: RenderAllSVGSelectionStates - Input: No parameters');
+    LogUtil.Debug('= U.SvgUtil: RenderAllSVGSelectionStates - Input: No parameters');
 
     // Get the visible objects list and the currently selected objects
     const visibleObjectIds = LayerUtil.ActiveVisibleZList();
@@ -121,7 +122,7 @@ class SvgUtil {
       }
     }
 
-    T3Util.Log('= U.SvgUtil: RenderAllSVGSelectionStates - Output: Selection states rendered');
+    LogUtil.Debug('= U.SvgUtil: RenderAllSVGSelectionStates - Output: Selection states rendered');
   }
 
   /**
@@ -131,7 +132,7 @@ class SvgUtil {
    * @returns {void}
    */
   static HideAllSVGSelectionStates() {
-    T3Util.Log('= U.SvgUtil: HideAllSVGSelectionStates: input');
+    LogUtil.Debug('= U.SvgUtil: HideAllSVGSelectionStates: input');
 
     const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     T3Gv.opt.SetDimensionVisibility(selectedList, false);
@@ -143,7 +144,7 @@ class SvgUtil {
     ActionUtil.ClearAllActionArrowTimers();
     LayerUtil.ShowOverlayLayer();
 
-    T3Util.Log('= U.SvgUtil: HideAllSVGSelectionStates: output');
+    LogUtil.Debug('= U.SvgUtil: HideAllSVGSelectionStates: output');
   }
 
   static RenderDirtySVGObjects() {
@@ -151,7 +152,7 @@ class SvgUtil {
   }
 
   static RenderDirtySVGObjectsCommon(renderSelectionStates: boolean) {
-    T3Util.Log("= U.SvgUtil: RenderDirtySVGObjectsCommon - Input:", { renderSelectionStates });
+    LogUtil.Debug("= U.SvgUtil: RenderDirtySVGObjectsCommon - Input:", { renderSelectionStates });
 
     // Process if there are dirty objects.
     if (T3Gv.opt.dirtyList.length !== 0) {
@@ -222,19 +223,19 @@ class SvgUtil {
       // Finally, clear the dirty list.
       ObjectUtil.ClearDirtyList();
     }
-    T3Util.Log("= U.SvgUtil: RenderDirtySVGObjectsCommon - Output: Completed rendering dirty SVG objects");
+    LogUtil.Debug("= U.SvgUtil: RenderDirtySVGObjectsCommon - Output: Completed rendering dirty SVG objects");
   }
 
   static AddSVGObject(containerElement, objectId, removeExisting, renderCallback) {
-    T3Util.Log("= U.SvgUtil: AddSVGObject - Input:", { containerElement, objectId, removeExisting, renderCallback });
+    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Input:", { containerElement, objectId, removeExisting, renderCallback });
 
     let svgDocument = T3Gv.opt.svgDoc;
     let drawingObject = T3Gv.stdObj.GetObject(objectId);
 
-    T3Util.Log("= U.SvgUtil: AddSVGObject - Drawing object:", drawingObject);
+    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Drawing object:", drawingObject);
 
     if (!drawingObject) {
-      T3Util.Log("= U.SvgUtil: AddSVGObject - Output: No drawing object found.");
+      LogUtil.Debug("= U.SvgUtil: AddSVGObject - Output: No drawing object found.");
       return;
     }
 
@@ -269,7 +270,7 @@ class SvgUtil {
           drawingData.Frame.y + drawingData.Frame.height / 2
         );
       } catch (error) {
-        T3Util.Log("= U.SvgUtil: AddSVGObject - SetRotation error:", error);
+        LogUtil.Debug("= U.SvgUtil: AddSVGObject - SetRotation error:", error);
         throw error;
       }
 
@@ -310,7 +311,7 @@ class SvgUtil {
       }
     }
 
-    T3Util.Log("= U.SvgUtil: AddSVGObject - Output: Completed adding SVG object for objectId", objectId);
+    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Output: Completed adding SVG object for objectId", objectId);
   }
 
   /**
@@ -326,7 +327,7 @@ class SvgUtil {
    * All inputs (if any) and outputs are logged with the prefix "O.Opt".
    */
   static RenderAllSVGObjects(): void {
-    T3Util.Log("= U.SvgUtil: RenderAllSVGObjects - Input: no parameters");
+    LogUtil.Debug("= U.SvgUtil: RenderAllSVGObjects - Input: no parameters");
 
     // Retrieve the lists of objects to be rendered
     const visibleObjectList = LayerUtil.VisibleZList();
@@ -351,7 +352,7 @@ class SvgUtil {
     SvgUtil.RenderAllSVGSelectionStates();
     ObjectUtil.ClearDirtyList();
 
-    T3Util.Log("= U.SvgUtil: RenderAllSVGObjects - Output: rendering complete");
+    LogUtil.Debug("= U.SvgUtil: RenderAllSVGObjects - Output: rendering complete");
   }
 
   /**
@@ -360,17 +361,17 @@ class SvgUtil {
    * @returns The SVG element or null if index is invalid
    */
   static GetSVGDragElement(index) {
-    T3Util.Log("= U.SvgUtil: GetSVGDragElement - Input:", index);
+    LogUtil.Debug("= U.SvgUtil: GetSVGDragElement - Input:", index);
 
     if (!T3Gv.opt.dragElementList ||
       index < 0 ||
       index >= T3Gv.opt.dragElementList.length) {
-      T3Util.Log("= U.SvgUtil: GetSVGDragElement - Output: null (invalid index)");
+      LogUtil.Debug("= U.SvgUtil: GetSVGDragElement - Output: null (invalid index)");
       return null;
     }
 
     const element = T3Gv.opt.svgObjectLayer.GetElementById(T3Gv.opt.dragElementList[index]);
-    T3Util.Log("= U.SvgUtil: GetSVGDragElement - Output:", element ? "Element found" : "null");
+    LogUtil.Debug("= U.SvgUtil: GetSVGDragElement - Output:", element ? "Element found" : "null");
     return element;
   }
 
@@ -381,7 +382,7 @@ class SvgUtil {
      * @param isSelected - A boolean flag indicating whether the object is selected.
      */
   static ShowSVGSelectionState(objectId: number, isSelected: boolean): void {
-    T3Util.Log("= U.SvgUtil: ShowSVGSelectionState - Input:", { objectId, isSelected });
+    LogUtil.Debug("= U.SvgUtil: ShowSVGSelectionState - Input:", { objectId, isSelected });
 
     // Build an action element id using the constant prefix and object id.
     const actionElementId = OptConstant.Common.Action + objectId;
@@ -444,11 +445,11 @@ class SvgUtil {
       }
     }
 
-    T3Util.Log("= U.SvgUtil: ShowSVGSelectionState - Output:", { objectId, isSelected });
+    LogUtil.Debug("= U.SvgUtil: ShowSVGSelectionState - Output:", { objectId, isSelected });
   }
 
   static ClearOverlayElementsByID(elementID: string, resetHighlight?: boolean) {
-    T3Util.Log("= U.SvgUtil: ClearOverlayElementsByID - Input:", { elementID, resetHighlight });
+    LogUtil.Debug("= U.SvgUtil: ClearOverlayElementsByID - Input:", { elementID, resetHighlight });
 
     // Get list of overlay elements matching the provided ID
     const overlayElementList = T3Gv.opt.svgOverlayLayer.GetElementListWithId(elementID);
@@ -468,12 +469,12 @@ class SvgUtil {
       }
     }
 
-    T3Util.Log("= U.SvgUtil: ClearOverlayElementsByID - Output: Completed");
+    LogUtil.Debug("= U.SvgUtil: ClearOverlayElementsByID - Output: Completed");
   }
 
   static RenderLastSVGObject(shouldRenderSelectionStates) {
 
-    T3Util.Log('= U.SvgUtil: RenderLastSVGObject shouldRenderSelectionStates', shouldRenderSelectionStates);
+    LogUtil.Debug('= U.SvgUtil: RenderLastSVGObject shouldRenderSelectionStates', shouldRenderSelectionStates);
 
     const isfromOverlayLayer = T3Gv.opt.fromOverlayLayer;
     const activeLayerZList = LayerUtil.ActiveLayerZList();

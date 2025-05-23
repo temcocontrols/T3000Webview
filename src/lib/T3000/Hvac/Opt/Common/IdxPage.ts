@@ -13,6 +13,7 @@ import Hvac from "../../Hvac"
 import IdxUtils from "./IdxUtils"
 import { cloneDeep } from "lodash"
 import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 
 let panzoomInstance = null;
 
@@ -79,7 +80,7 @@ class IdxPage {
       this.zoom.value += 10;
     }
 
-    T3Util.Log('= Idx zoomAction', this.zoom.value);
+    LogUtil.Debug('= Idx zoomAction', this.zoom.value);
   }
 
   initWindowListener() {
@@ -92,7 +93,7 @@ class IdxPage {
 
     window.addEventListener("resize", () => {
       IdxPage.restDocumentAreaPosition(null);
-      // T3Util.Log('= Idx window resize', documentAreaPosition.value);
+      // LogUtil.Debug('= Idx window resize', documentAreaPosition.value);
     });
   }
 
@@ -106,7 +107,7 @@ class IdxPage {
 
     window.addEventListener("resize", () => {
       // IdxPage.restDocumentAreaPosition(null);
-      // T3Util.Log('= Idx window resize', documentAreaPosition.value);
+      // LogUtil.Debug('= Idx window resize', documentAreaPosition.value);
     });
   }
 
@@ -333,14 +334,14 @@ class IdxPage {
         deviceModel.value.active = false;
         deviceModel.value.data = currentDevice;
 
-        T3Util.Log('= IdxPage load from local storage', currentDevice);
+        LogUtil.Debug('= IdxPage load from local storage', currentDevice);
 
         // load device appstate
         //Hvac.DeviceOpt.refreshDeviceAppState();
         Hvac.WsClient.GetInitialData(currentDevice.deviceId, currentDevice.graphic, true);
 
-        // T3Util.Log('=== indexPage.currentDevice load from local storage', currentDevice);
-        // T3Util.Log('=== indexPage.deviceModel changed', deviceModel.value);
+        // LogUtil.Debug('=== indexPage.currentDevice load from local storage', currentDevice);
+        // LogUtil.Debug('=== indexPage.deviceModel changed', deviceModel.value);
       }
     }, 1000);
 
@@ -389,7 +390,7 @@ class IdxPage {
   // Checks if the user is logged in
   isLoggedIn() {
     // const $q = useQuasar();
-    // T3Util.Log("= Idx $q:", $q);
+    // LogUtil.Debug("= Idx $q:", $q);
 
     const hasToken = this.$q.cookies.has("token");
     if (!hasToken) {
@@ -407,7 +408,7 @@ class IdxPage {
       }
     })
       .catch((err) => {
-        T3Util.Log(err);
+        LogUtil.Debug(err);
       });
 
     liveApi.get("hvacObjectLibs").then(async (res: any) => {
@@ -424,7 +425,7 @@ class IdxPage {
       }
     })
       .catch((err) => {
-        T3Util.Log(err);
+        LogUtil.Debug(err);
       });
 
     liveApi.get("me").then(async (res) => {
@@ -437,9 +438,9 @@ class IdxPage {
 
   // Update a T3 entry field for an object
   T3UpdateEntryField(key, obj) {
-    // T3Util.Log('IndexPage.vue T3UpdateEntryField appState before', appState.value);
-    // T3Util.Log('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
-    // T3Util.Log('IndexPage.vue T3UpdateEntryField appState after', appState.value);
+    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState before', appState.value);
+    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField key=', key, 'obj=', obj);
+    // LogUtil.Debug('IndexPage.vue T3UpdateEntryField appState after', appState.value);
     if (!obj.t3Entry) return;
     let fieldVal = obj.t3Entry[key];
 
@@ -469,7 +470,7 @@ class IdxPage {
       Hvac.WsClient.UpdateEntry(msgData);
     }
 
-    T3Util.Log('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
+    LogUtil.Debug('= Idx T3UpdateEntryField to T3 before, after', tempFieldBefore, fieldVal);
   }
 
   // Clear ls appState and deviceAppState and tempAppState
@@ -581,7 +582,7 @@ class IdxPage {
     else {
       const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
       if (msgType) {
-        T3Util.Log('= Idx save to T3000 with initial data status error, cancel auto save');
+        LogUtil.Debug('= Idx save to T3000 with initial data status error, cancel auto save');
         return;
       }
 
@@ -594,7 +595,7 @@ class IdxPage {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
       }
       else {
-        T3Util.Log('= Idx save to T3000 current device is null');
+        LogUtil.Debug('= Idx save to T3000 current device is null');
       }
     }
   }
@@ -604,7 +605,7 @@ class IdxPage {
     // from T3000, and the auto save will overwrite the graphic data if it will take a long time to load the initial data
     setTimeout(() => {
       this.autoSaveInterval = setInterval(() => {
-        T3Util.Log('= Idx auto save every 30s', new Date().toLocaleString());
+        LogUtil.Debug('= Idx auto save every 30s', new Date().toLocaleString());
         this.save(true, true);
       }, 30000);
     }, 10000);

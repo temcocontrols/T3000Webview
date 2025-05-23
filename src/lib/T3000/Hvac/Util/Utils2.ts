@@ -412,7 +412,7 @@ class Utils2 {
    */
   static InflatePoint(point, size) {
     const halfSize = size / 2;
-    const rect = {};
+    const rect = { x: 0, y: 0, width: 0, height: 0 };
     rect.x = point.x - halfSize;
     rect.width = 2 * halfSize;
     rect.y = point.y - halfSize;
@@ -620,7 +620,7 @@ class Utils2 {
       height = diagonalLength;
     } else {
       ratio = originalRect.height / originalRect.width;
-      width = this.sqrt(diagonalLength * diagonalLength / (1 + ratio * ratio));
+      width = this.Sqrt(diagonalLength * diagonalLength / (1 + ratio * ratio));
       height = ratio * width;
     }
 
@@ -868,7 +868,7 @@ class Utils2 {
       currentPoint.y = bounds.top + (halfHeight - currentDistance);
 
       ratio = halfHeight ? currentDistance / halfHeight : 0;
-      xPos = this.sqrt(1 - ratio * ratio) * totalWidth;
+      xPos = this.Sqrt(1 - ratio * ratio) * totalWidth;
 
       currentPoint.x = isRightToLeft ? bounds.right - xPos : bounds.left + xPos;
 
@@ -1210,7 +1210,7 @@ class Utils2 {
   static GetDistanceBetween2Points(point1: { x: number; y: number }, point2: { x: number; y: number }): number {
     const deltaX = point2.x - point1.x;
     const deltaY = point2.y - point1.y;
-    return this.sqrt(deltaX * deltaX + deltaY * deltaY);
+    return this.Sqrt(deltaX * deltaX + deltaY * deltaY);
   }
 
   /**
@@ -1305,12 +1305,10 @@ class Utils2 {
   }
 
   static IsRectangleFullyEnclosed(outerRect: { x: number; y: number; width: number; height: number }, innerRect: { x: number; y: number; width: number; height: number }): boolean {
-    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Input:", { outerRect, innerRect });
     const isEnclosed = innerRect.x >= outerRect.x &&
       innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
       innerRect.y >= outerRect.y &&
       innerRect.y + innerRect.height <= outerRect.y + outerRect.height;
-    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Output:", false, isEnclosed);
     return isEnclosed;
   }
 }

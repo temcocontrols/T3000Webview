@@ -13,6 +13,7 @@ import UIUtil from "../Opt/UI/UIUtil";
 import Hvac from "../Hvac";
 import T3Opt from "../Doc/T3Opt";
 import T3Util from "../Util/T3Util";
+import LogUtil from "../Util/LogUtil";
 
 class EvtOpt {
 
@@ -824,7 +825,7 @@ class EvtOpt {
   }
 
   HandleSidebarToolEvent(selectedTool: any) {
-    T3Util.Log("Selected tool: ", selectedTool);
+    LogUtil.Debug("Selected tool: ", selectedTool);
 
 
     if (selectedTool.value.name == "Temperature") {

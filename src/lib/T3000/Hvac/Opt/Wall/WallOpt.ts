@@ -21,6 +21,7 @@ import SelectUtil from '../Opt/SelectUtil'
 import OptCMUtil from '../Opt/OptCMUtil'
 import DrawUtil from '../Opt/DrawUtil'
 import UIUtil from '../UI/UIUtil'
+import LogUtil from '../../Util/LogUtil'
 
 class WallOpt {
 
@@ -32,9 +33,9 @@ class WallOpt {
    * @returns Boolean indicating if action buttons are allowed or null
    */
   AllowActionButtons(object) {
-    T3Util.Log('= U.WallUtil AllowActionButtons input:', object);
+    LogUtil.Debug('= U.WallUtil AllowActionButtons input:', object);
     const result = null;
-    T3Util.Log('= U.WallUtil AllowActionButtons output:', result);
+    LogUtil.Debug('= U.WallUtil AllowActionButtons output:', result);
     return result;
   }
 
@@ -44,8 +45,8 @@ class WallOpt {
    * @param targetData - The target data
    */
   ShapeSaveData(shapeObject, targetData) {
-    T3Util.Log('= U.WallUtil ShapeSaveData input:', { shapeObject, targetData });
-    T3Util.Log('= U.WallUtil ShapeSaveData completed');
+    LogUtil.Debug('= U.WallUtil ShapeSaveData input:', { shapeObject, targetData });
+    LogUtil.Debug('= U.WallUtil ShapeSaveData completed');
   }
 
   /**
@@ -54,7 +55,7 @@ class WallOpt {
    * @param additionalData - Additional data for wall creation (optional)
    */
   AddWall(event?, additionalData?) {
-    T3Util.Log('= U.WallUtil AddWall input:', { event, additionalData });
+    LogUtil.Debug('= U.WallUtil AddWall input:', { event, additionalData });
 
     let scaleFactor;
 
@@ -90,7 +91,7 @@ class WallOpt {
     wallStyle.Line.LinePattern = 0;
     wallStyle.Line.Paint.Color = '#000000';
 
-    T3Util.Log('= WallOpt AddWall o', wallStyle);
+    LogUtil.Debug('= WallOpt AddWall o', wallStyle);
 
     // Configure wall dimensions
     const dimensions = sessionData.dimensions;
@@ -123,7 +124,7 @@ class WallOpt {
     OptCMUtil.SetEditMode(NvConstant.EditState.Edit);
     SelectUtil.SelectObjects(currentSelection, false, false);
 
-    T3Util.Log('= U.WallUtil AddWall output:', { wallLine });
+    LogUtil.Debug('= U.WallUtil AddWall output:', { wallLine });
   }
 
   /**
@@ -131,7 +132,7 @@ class WallOpt {
    * @param event - Optional event that triggered the stopping of wall creation
    */
   StopAddingWalls(event?) {
-    T3Util.Log('= U.WallUtil StopAddingWalls input:', event);
+    LogUtil.Debug('= U.WallUtil StopAddingWalls input:', event);
 
     const optTypes = OptConstant.OptTypes;
 
@@ -173,7 +174,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('= U.WallUtil StopAddingWalls output: completed');
+    LogUtil.Debug('= U.WallUtil StopAddingWalls output: completed');
   }
 
   /**
@@ -181,9 +182,9 @@ class WallOpt {
    * Delegates to StopAddingWalls to handle necessary cleanup
    */
   CancelObjectDraw() {
-    T3Util.Log('= U.WallUtil CancelObjectDraw input: none');
+    LogUtil.Debug('= U.WallUtil CancelObjectDraw input: none');
     this.StopAddingWalls();
-    T3Util.Log('= U.WallUtil CancelObjectDraw output: completed');
+    LogUtil.Debug('= U.WallUtil CancelObjectDraw output: completed');
   }
 
   /**
@@ -191,9 +192,9 @@ class WallOpt {
    * @param forceState - Optional boolean to explicitly set the adding walls state
    */
   ToggleAddingWalls(forceState?) {
-    T3Util.Log('= U.WallUtil ToggleAddingWalls input:', forceState);
+    LogUtil.Debug('= U.WallUtil ToggleAddingWalls input:', forceState);
     this.addingWalls = forceState !== undefined ? forceState : !this.addingWalls;
-    T3Util.Log('= U.WallUtil ToggleAddingWalls output:', this.addingWalls);
+    LogUtil.Debug('= U.WallUtil ToggleAddingWalls output:', this.addingWalls);
   }
 
   /**
@@ -201,9 +202,9 @@ class WallOpt {
    * @returns Boolean indicating if walls are being added
    */
   IsAddingWalls() {
-    T3Util.Log('= U.WallUtil IsAddingWalls input: none');
+    LogUtil.Debug('= U.WallUtil IsAddingWalls input: none');
     const result = this.addingWalls;
-    T3Util.Log('= U.WallUtil IsAddingWalls output:', result);
+    LogUtil.Debug('= U.WallUtil IsAddingWalls output:', result);
     return result;
   }
 
@@ -214,15 +215,15 @@ class WallOpt {
    * @returns New PolyLineContainer instance or null if type doesn't match
    */
   AddNewPolyLine(objectType, parameters) {
-    T3Util.Log('= U.WallUtil AddNewPolyLine input:', { objectType, parameters });
+    LogUtil.Debug('= U.WallUtil AddNewPolyLine input:', { objectType, parameters });
 
     if (objectType !== NvConstant.FNObjectTypes.FlWall) {
-      T3Util.Log('= U.WallUtil AddNewPolyLine output: null');
+      LogUtil.Debug('= U.WallUtil AddNewPolyLine output: null');
       return null;
     }
 
     const newPolyLine = new PolyLineContainer(parameters);
-    T3Util.Log('= U.WallUtil AddNewPolyLine output:', newPolyLine);
+    LogUtil.Debug('= U.WallUtil AddNewPolyLine output:', newPolyLine);
     return newPolyLine;
   }
 
@@ -231,7 +232,7 @@ class WallOpt {
    * Resets edit mode, cancels modal operation, and resets object drawing
    */
   AddCornerCancel() {
-    T3Util.Log('= U.WallUtil AddCornerCancel input: none');
+    LogUtil.Debug('= U.WallUtil AddCornerCancel input: none');
 
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
     OptCMUtil.CancelOperation();
@@ -239,7 +240,7 @@ class WallOpt {
     T3Gv.wallOpt.PostObjectDrawHook();
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-    T3Util.Log('= U.WallUtil AddCornerCancel output: completed');
+    LogUtil.Debug('= U.WallUtil AddCornerCancel output: completed');
   }
 
   /**
@@ -248,7 +249,7 @@ class WallOpt {
    * @returns Boolean indicating if the default event was prevented
    */
   AddCorner(event) {
-    T3Util.Log('= U.WallUtil AddCorner input:', event);
+    LogUtil.Debug('= U.WallUtil AddCorner input:', event);
 
     try {
       let hitPoint;
@@ -289,7 +290,7 @@ class WallOpt {
       T3Gv.wallOpt.PostObjectDrawHook();
       OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-      T3Util.Log('= U.WallUtil AddCorner output: false');
+      LogUtil.Debug('= U.WallUtil AddCorner output: false');
       return false;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
@@ -302,7 +303,7 @@ class WallOpt {
    * @param event - The event that triggered corner addition
    */
   AddCornerStart(event) {
-    T3Util.Log('= U.WallUtil AddCornerStart input:', event);
+    LogUtil.Debug('= U.WallUtil AddCornerStart input:', event);
 
     this.StopAddingWalls();
     T3Gv.opt.CloseEdit();
@@ -324,7 +325,7 @@ class WallOpt {
 
     UIUtil.SetModalOperation(OptConstant.OptTypes.AddCorner);
 
-    T3Util.Log('= U.WallUtil AddCornerStart output: completed');
+    LogUtil.Debug('= U.WallUtil AddCornerStart output: completed');
   }
 
   /**
@@ -332,7 +333,7 @@ class WallOpt {
    * @param drawEvent - The draw event type
    */
   PostObjectDrawHook(drawEvent?) {
-    T3Util.Log('= U.WallUtil PostObjectDrawHook input:', drawEvent);
+    LogUtil.Debug('= U.WallUtil PostObjectDrawHook input:', drawEvent);
 
     if (this.addingWalls) {
       if (drawEvent === BaseLine.prototype.LMDrawRelease) {
@@ -342,7 +343,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('= U.WallUtil PostObjectDrawHook output: completed');
+    LogUtil.Debug('= U.WallUtil PostObjectDrawHook output: completed');
   }
 
   /**
@@ -351,7 +352,7 @@ class WallOpt {
    * @returns Boolean indicating if default behavior should be prevented
    */
   NotifySetEditMode(editMode) {
-    T3Util.Log('= U.WallUtil NotifySetEditMode input:', editMode);
+    LogUtil.Debug('= U.WallUtil NotifySetEditMode input:', editMode);
 
     if (
       editMode === NvConstant.EditState.Edit ||
@@ -359,7 +360,7 @@ class WallOpt {
       editMode === NvConstant.EditState.LinkConnect ||
       editMode === NvConstant.EditState.LinkJoin
     ) {
-      T3Util.Log('= U.WallUtil NotifySetEditMode output:', false);
+      LogUtil.Debug('= U.WallUtil NotifySetEditMode output:', false);
       return false;
     }
 
@@ -367,7 +368,7 @@ class WallOpt {
       this.StopAddingWalls();
     }
 
-    T3Util.Log('= U.WallUtil NotifySetEditMode output: completed');
+    LogUtil.Debug('= U.WallUtil NotifySetEditMode output: completed');
   }
 
   /**
@@ -375,9 +376,9 @@ class WallOpt {
    * @returns Boolean indicating layers should always be visible
    */
   AlwaysShowLayers() {
-    T3Util.Log('= U.WallUtil AlwaysShowLayers input: none');
+    LogUtil.Debug('= U.WallUtil AlwaysShowLayers input: none');
     const result = true;
-    T3Util.Log('= U.WallUtil AlwaysShowLayers output:', result);
+    LogUtil.Debug('= U.WallUtil AlwaysShowLayers output:', result);
     return result;
   }
 
@@ -387,7 +388,7 @@ class WallOpt {
    * @param objectId - The ID of the object to check
    */
   EnsureCubicleBehindOutline(objectId) {
-    T3Util.Log('= U.WallUtil EnsureCubicleBehindOutline input:', objectId);
+    LogUtil.Debug('= U.WallUtil EnsureCubicleBehindOutline input:', objectId);
 
     const visibleObjectIds = LayerUtil.ActiveVisibleZList();
     let compareObject = null;
@@ -455,7 +456,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('= U.WallUtil EnsureCubicleBehindOutline output: completed');
+    LogUtil.Debug('= U.WallUtil EnsureCubicleBehindOutline output: completed');
   }
 
   /**
@@ -463,9 +464,9 @@ class WallOpt {
    * @returns Boolean indicating if auto-insert is allowed
    */
   AllowAutoInsert() {
-    T3Util.Log('= U.WallUtil AllowAutoInsert input: none');
+    LogUtil.Debug('= U.WallUtil AllowAutoInsert input: none');
     const result = false;
-    T3Util.Log('= U.WallUtil AllowAutoInsert output:', result);
+    LogUtil.Debug('= U.WallUtil AllowAutoInsert output:', result);
     return result;
   }
 
@@ -474,9 +475,9 @@ class WallOpt {
    * @returns The floor plan context identifier
    */
   GetAutomationContext() {
-    T3Util.Log('= U.WallUtil GetAutomationContext input: none');
+    LogUtil.Debug('= U.WallUtil GetAutomationContext input: none');
     const result = KeyboardConstant.Contexts.WallOpt;
-    T3Util.Log('= U.WallUtil GetAutomationContext output:', result);
+    LogUtil.Debug('= U.WallUtil GetAutomationContext output:', result);
     return result;
   }
 }

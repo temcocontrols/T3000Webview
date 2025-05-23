@@ -1,4 +1,5 @@
 import T3Gv from "../../Data/T3Gv";
+import LogUtil from "../../Util/LogUtil";
 import T3Util from "../../Util/T3Util";
 
 
@@ -8,11 +9,11 @@ class ArrowKeyOpt {
    * @returns Result from the business manager if available
    */
   NavRight() {
-    T3Util.Log("= O.ArrowKeyOpt: NavRight called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NavRight called");
     try {
       this.NudgeRight();
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NavRight error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NavRight error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -22,11 +23,11 @@ class ArrowKeyOpt {
    * @returns Result from the business manager if available
    */
   NavLeft() {
-    T3Util.Log("= O.ArrowKeyOpt: NavLeft called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NavLeft called");
     try {
       this.NudgeLeft();
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NavLeft error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NavLeft error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -36,11 +37,11 @@ class ArrowKeyOpt {
    * @returns Result from the business manager if available
    */
   NavUp() {
-    T3Util.Log("= O.ArrowKeyOpt: NavUp called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NavUp called");
     try {
       this.NudgeUp();
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NavUp error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NavUp error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -50,11 +51,11 @@ class ArrowKeyOpt {
    * @returns Result from the business manager if available
    */
   NavDown() {
-    T3Util.Log("= O.ArrowKeyOpt: NavDown called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NavDown called");
     try {
       this.NudgeDown();
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NavDown error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NavDown error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -64,11 +65,11 @@ class ArrowKeyOpt {
    * @returns Result of the nudge operation if available
    */
   NudgeRight() {
-    T3Util.Log("= O.ArrowKeyOpt: NudgeRight called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NudgeRight called");
     try {
       this.Nudge(1, 0);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NudgeRight error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NudgeRight error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -78,11 +79,11 @@ class ArrowKeyOpt {
    * @returns Result of the nudge operation if available
    */
   NudgeLeft() {
-    T3Util.Log("= O.ArrowKeyOpt: NudgeLeft called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NudgeLeft called");
     try {
       this.Nudge(-1, 0);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NudgeLeft error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NudgeLeft error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -92,11 +93,11 @@ class ArrowKeyOpt {
    * @returns Result of the nudge operation if available
    */
   NudgeUp() {
-    T3Util.Log("= O.ArrowKeyOpt: NudgeUp called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NudgeUp called");
     try {
       this.Nudge(0, -1);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NudgeUp error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NudgeUp error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -106,11 +107,11 @@ class ArrowKeyOpt {
    * @returns Result of the nudge operation if available
    */
   NudgeDown() {
-    T3Util.Log("= O.ArrowKeyOpt: NudgeDown called");
+    LogUtil.Debug("= O.ArrowKeyOpt: NudgeDown called");
     try {
       this.Nudge(0, 1);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: NudgeDown error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: NudgeDown error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -120,11 +121,11 @@ class ArrowKeyOpt {
    * @returns Result of the grow operation if available
    */
   GrowRight() {
-    T3Util.Log("= O.ArrowKeyOpt: GrowRight called");
+    LogUtil.Debug("= O.ArrowKeyOpt: GrowRight called");
     try {
       this.NudgeGrow(1, 0);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: GrowRight error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: GrowRight error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -134,11 +135,11 @@ class ArrowKeyOpt {
    * @returns Result of the grow operation if available
    */
   GrowLeft() {
-    T3Util.Log("= O.ArrowKeyOpt: GrowLeft called");
+    LogUtil.Debug("= O.ArrowKeyOpt: GrowLeft called");
     try {
       this.NudgeGrow(-1, 0);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: GrowLeft error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: GrowLeft error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -148,11 +149,11 @@ class ArrowKeyOpt {
    * @returns Result of the grow operation if available
    */
   GrowDown() {
-    T3Util.Log("= O.ArrowKeyOpt: GrowDown called");
+    LogUtil.Debug("= O.ArrowKeyOpt: GrowDown called");
     try {
       this.NudgeGrow(0, 1);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: GrowDown error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: GrowDown error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -162,11 +163,11 @@ class ArrowKeyOpt {
    * @returns Result of the grow operation if available
    */
   GrowUp() {
-    T3Util.Log("= O.ArrowKeyOpt: GrowUp called");
+    LogUtil.Debug("= O.ArrowKeyOpt: GrowUp called");
     try {
       this.NudgeGrow(0, -1);
     } catch (error) {
-      T3Util.Log("= O.ArrowKeyOpt: GrowUp error:", error);
+      LogUtil.Debug("= O.ArrowKeyOpt: GrowUp error:", error);
       T3Gv.opt.ExceptionCleanup(error);
     }
   }
@@ -178,9 +179,9 @@ class ArrowKeyOpt {
    * @returns Result of nudging operation if available
    */
   Nudge(xOffset, yOffset) {
-    T3Util.Log(`= O.ArrowKeyOpt: Nudge input - xOffset: ${xOffset}, yOffset: ${yOffset}`);
+    LogUtil.Debug(`= O.ArrowKeyOpt: Nudge input - xOffset: ${xOffset}, yOffset: ${yOffset}`);
     const result = T3Gv.opt.NudgeSelectedObjects(xOffset, yOffset, false);
-    T3Util.Log(`= O.ArrowKeyOpt: Nudge complete`);
+    LogUtil.Debug(`= O.ArrowKeyOpt: Nudge complete`);
     return result;
   }
 
@@ -191,9 +192,9 @@ class ArrowKeyOpt {
    * @returns Result of growing operation if available
    */
   NudgeGrow(xAmount, yAmount) {
-    T3Util.Log(`= O.ArrowKeyOpt: NudgeGrow input - xAmount: ${xAmount}, yAmount: ${yAmount}`);
+    LogUtil.Debug(`= O.ArrowKeyOpt: NudgeGrow input - xAmount: ${xAmount}, yAmount: ${yAmount}`);
     const result = T3Gv.opt.NudgeSelectedObjects(xAmount, yAmount, true);
-    T3Util.Log(`= O.ArrowKeyOpt: NudgeGrow complete`);
+    LogUtil.Debug(`= O.ArrowKeyOpt: NudgeGrow complete`);
     return result;
   }
 }

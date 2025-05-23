@@ -40,17 +40,17 @@ class UIUtil {
   }
 
   static ShowFrame(isShowFrame: boolean) {
-    T3Util.Log('= U.UIUtil: ShowFrame - Input:', { isShowFrame });
+    LogUtil.Debug('= U.UIUtil: ShowFrame - Input:', { isShowFrame });
 
     const isShowRulers = T3Gv.docUtil.docConfig.showRulers;
 
     if (!isShowRulers) {
-      T3Util.Log('= U.UIUtil: ShowFrame - Output: Rulers are not shown');
+      LogUtil.Debug('= U.UIUtil: ShowFrame - Output: Rulers are not shown');
       return;
     }
 
     // Double show frame details
-    T3Util.Log('= U.UIUtil: ShowFrame - Output: Frame visibility set to', isShowFrame);
+    LogUtil.Debug('= U.UIUtil: ShowFrame - Output: Frame visibility set to', isShowFrame);
   }
 
   static UpdateDisplayCoordinates(dimensions, position, cursorType, drawingObject) {
@@ -89,15 +89,15 @@ class UIUtil {
         // Helper function to format number values for display (assuming it's defined elsewhere)
         const formatValue = (value) => value ? value : "";
 
-        T3Util.Log('= U.UIUtil: Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
-        T3Util.Log('= U.UIUtil: Formatted Values: Dimension x,y,w,h', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+        LogUtil.Debug('= U.UIUtil: Formatted Values: Origin x,y,w,h', xLength, yLength, width, height);
+        LogUtil.Debug('= U.UIUtil: Formatted Values: Dimension x,y,w,h', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
 
         const xVal = formatStringWithPadding(formatNumberToString(xLength, useFeet));
         const yVal = formatStringWithPadding(formatNumberToString(yLength, useFeet));
         const wVal = formatStringWithPadding(formatNumberToString(width, useFeet));
         const hVal = formatStringWithPadding(formatNumberToString(height, useFeet));
 
-        T3Util.Log('= U.UIUtil: Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
+        LogUtil.Debug('= U.UIUtil: Formatted Values: After x,y,w,h', xVal, yVal, wVal, hVal);
 
         var objNewFrame = {
           translate: [dimensions.x, dimensions.y],
@@ -107,7 +107,7 @@ class UIUtil {
 
         // if (T3Gv.refreshPosition) {
         //   QuasarUtil.UpdateCurrentObjectPos(objNewFrame);
-        //   T3Util.Log('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+        //   LogUtil.Debug('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', dimensions.x, dimensions.y, dimensions.width, dimensions.height);
         // }
       }
 
@@ -205,13 +205,13 @@ class UIUtil {
       return trimmedText;
     }
 
-    T3Util.Log("= U.UIUtil: UpdateDisplayCoordinates - Output: Coordinates updated in UI");
+    LogUtil.Debug("= U.UIUtil: UpdateDisplayCoordinates - Output: Coordinates updated in UI");
   }
 
   static ShowXY(showCoordinates) {
-    // T3Util.Log("= U.UIUtil: ShowXY - Input:", { showCoordinates });
+    // LogUtil.Debug("= U.UIUtil: ShowXY - Input:", { showCoordinates });
     //Show the x and y coordinates of the mouse pointer
-    // T3Util.Log("= U.UIUtil: ShowXY - Output: Coordinates display updated");
+    // LogUtil.Debug("= U.UIUtil: ShowXY - Output: Coordinates display updated");
   }
 
   /**
@@ -220,11 +220,11 @@ class UIUtil {
    * @returns True if the document has unsaved changes, false otherwise
    */
   static GetDocDirtyState(): boolean {
-    T3Util.Log("= U.UIUtil: GetDocDirtyState - Input: no parameters");
+    LogUtil.Debug("= U.UIUtil: GetDocDirtyState - Input: no parameters");
 
     const isDirty = T3Gv.opt.header.DocIsDirty;
 
-    T3Util.Log("= U.UIUtil: GetDocDirtyState - Output:", isDirty);
+    LogUtil.Debug("= U.UIUtil: GetDocDirtyState - Output:", isDirty);
     return isDirty;
   }
 
@@ -238,7 +238,7 @@ class UIUtil {
    * @param allowReplaceWhenClean - If true and isDirty is false, allows document replacement
    */
   static SetDocDirtyState(isDirty: boolean, allowReplaceWhenClean?: boolean): void {
-    T3Util.Log("= U.UIUtil: SetDocDirtyState - Input:", { isDirty, allowReplaceWhenClean });
+    LogUtil.Debug("= U.UIUtil: SetDocDirtyState - Input:", { isDirty, allowReplaceWhenClean });
 
     // Set the document dirty state
     T3Gv.opt.header.DocIsDirty = isDirty;
@@ -250,11 +250,11 @@ class UIUtil {
       T3Gv.opt.header.AllowReplace = true;
     }
 
-    T3Util.Log("= U.UIUtil: SetDocDirtyState - Output: Document dirty state set to", isDirty);
+    LogUtil.Debug("= U.UIUtil: SetDocDirtyState - Output: Document dirty state set to", isDirty);
   }
 
   static SetFormatPainter(shouldDisable: boolean, makeSticky: boolean) {
-    T3Util.Log("= U.UIUtil: SetFormatPainter - Input:", { shouldDisable, makeSticky });
+    LogUtil.Debug("= U.UIUtil: SetFormatPainter - Input:", { shouldDisable, makeSticky });
 
     let targetObject;
     let tableObject;
@@ -268,7 +268,7 @@ class UIUtil {
       T3Gv.opt.crtOpt = OptConstant.OptTypes.None;
       OptCMUtil.SetEditMode(NvConstant.EditState.Default);
       T3Gv.opt.formatPainterSticky = false;
-      T3Util.Log("= U.UIUtil: SetFormatPainter - Output: Format painter disabled");
+      LogUtil.Debug("= U.UIUtil: SetFormatPainter - Output: Format painter disabled");
       return;
     }
 
@@ -334,7 +334,7 @@ class UIUtil {
       }
     }
 
-    T3Util.Log("= U.UIUtil: SetFormatPainter - Output:", {
+    LogUtil.Debug("= U.UIUtil: SetFormatPainter - Output:", {
       mode: T3Gv.opt.formatPainterMode,
       isSticky: T3Gv.opt.formatPainterSticky,
       crtOpt: T3Gv.opt.crtOpt
@@ -353,12 +353,12 @@ class UIUtil {
   static InitSvgDocument() {
     // Get the session data from stored object
     const sdData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
-    T3Util.Log("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
+    LogUtil.Debug("InitSvgDoc dim from T3Gv.stdObj without load storage data", T3Gv.opt.sdDataBlockId, T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
 
     const storedDim = DataOpt.GetSDDataDimensions();
     const useScreenDim = storedDim === null || storedDim === undefined || (storedDim.x === 0 && storedDim.y === 0);
 
-    T3Util.Log("InitSvgDoc dim from storage data", storedDim);
+    LogUtil.Debug("InitSvgDoc dim from storage data", storedDim);
 
     const screenDim = this.GetScreenDimensions();
 
@@ -366,7 +366,7 @@ class UIUtil {
     sdData.dim.x = useScreenDim ? screenDim.width : storedDim.x;
     sdData.dim.y = useScreenDim ? screenDim.height : storedDim.y;
 
-    T3Util.Log("InitSvgDoc set the block data with previous dim", T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
+    LogUtil.Debug("InitSvgDoc set the block data with previous dim", T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data);
 
     var width = sdData.dim.x;
     var height = sdData.dim.y;
@@ -418,7 +418,7 @@ class UIUtil {
   }
 
   static SetModalOperation(operation) {
-    T3Util.Log("= U.UIUtil: SetModalOperation - Input:", { operation });
+    LogUtil.Debug("= U.UIUtil: SetModalOperation - Input:", { operation });
 
     if (
       operation !== OptConstant.OptTypes.None &&
@@ -429,14 +429,14 @@ class UIUtil {
     }
     T3Gv.opt.crtOpt = operation;
 
-    T3Util.Log("= U.UIUtil: SetModalOperation - Output:", { crtOpt: operation });
+    LogUtil.Debug("= U.UIUtil: SetModalOperation - Output:", { crtOpt: operation });
   }
 
   /**
    * Resizes the SVG document based on session dimensions
    */
   static ResizeSVGDocument() {
-    T3Util.Log("= U.UIUtil: ResizeSVGDocument - Input: No parameters");
+    LogUtil.Debug("= U.UIUtil: ResizeSVGDocument - Input: No parameters");
 
     // Get the session data from stored object
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -444,7 +444,7 @@ class UIUtil {
     // Resize the document to the dimensions specified in session data
     T3Gv.docUtil.ResizeDocument(sessionData.dim.x, sessionData.dim.y);
 
-    T3Util.Log("= U.UIUtil: ResizeSVGDocument - Output: Document resized to", sessionData.dim);
+    LogUtil.Debug("= U.UIUtil: ResizeSVGDocument - Output: Document resized to", sessionData.dim);
   }
 
   /**
@@ -455,7 +455,7 @@ class UIUtil {
   * @returns void
   */
   static SetBackgroundColor(): void {
-    T3Util.Log("= U.UIUtil: SetBackgroundColor - Input:", {});
+    LogUtil.Debug("= U.UIUtil: SetBackgroundColor - Input:", {});
 
     // Retrieve the session object background and the document background element.
     const sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -507,7 +507,7 @@ class UIUtil {
       }
     }
 
-    T3Util.Log("= U.UIUtil: SetBackgroundColor - Output:", {});
+    LogUtil.Debug("= U.UIUtil: SetBackgroundColor - Output:", {});
   }
 
   /**
@@ -515,7 +515,7 @@ class UIUtil {
    * @returns True if the background is transparent, false otherwise.
    */
   static GetBackgroundTransparent(): boolean {
-    T3Util.Log("= U.UIUtil: GetBackgroundTransparent - Input: no parameters");
+    LogUtil.Debug("= U.UIUtil: GetBackgroundTransparent - Input: no parameters");
 
     const session = ObjectUtil.GetObjectPtr(
       T3Gv.opt.sdDataBlockId,
@@ -542,7 +542,7 @@ class UIUtil {
       }
     }
 
-    T3Util.Log("= U.UIUtil: GetBackgroundTransparent - Output:", isTransparent);
+    LogUtil.Debug("= U.UIUtil: GetBackgroundTransparent - Output:", isTransparent);
     return isTransparent;
   }
 
@@ -555,7 +555,7 @@ class UIUtil {
   }
 
   static UpdateDocumentScale() {
-    T3Util.Log('= U.UIUtil: UpdateDocumentScale: input');
+    LogUtil.Debug('= U.UIUtil: UpdateDocumentScale: input');
 
     if (T3Gv.opt.svgDoc) {
       const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
@@ -577,7 +577,7 @@ class UIUtil {
   * @returns True if touch-based UI adaptations should be applied, false otherwise
   */
   static GetUIAdaptation(event) {
-    T3Util.Log("= U.UIUtil: GetUIAdaptation - Input:", event);
+    LogUtil.Debug("= U.UIUtil: GetUIAdaptation - Input:", event);
 
     let isTouchInterface = false;
 
@@ -615,12 +615,12 @@ class UIUtil {
       }
     }
 
-    T3Util.Log("= U.UIUtil: GetUIAdaptation - Output:", isTouchInterface);
+    LogUtil.Debug("= U.UIUtil: GetUIAdaptation - Output:", isTouchInterface);
     return isTouchInterface;
   }
 
   static FitDocumentWorkArea(preserveState, forceFlag, allowOverride, fitOptions) {
-    T3Util.Log('= U.UIUtil: FitDocumentWorkArea - Input:', { preserveState, forceFlag, allowOverride, fitOptions });
+    LogUtil.Debug('= U.UIUtil: FitDocumentWorkArea - Input:', { preserveState, forceFlag, allowOverride, fitOptions });
 
     let objectEnclosingRect;
     let layerIndex;
@@ -723,7 +723,7 @@ class UIUtil {
         currentWidthInPages === 1 &&
         currentHeightInPages === 1
       ) {
-        T3Util.Log('= U.UIUtil: FitDocumentWorkArea - Output: No resize needed');
+        LogUtil.Debug('= U.UIUtil: FitDocumentWorkArea - Output: No resize needed');
         return;
       }
 
@@ -811,7 +811,7 @@ class UIUtil {
           error.name = '1';
           throw error;
         }
-        T3Util.Log('= U.UIUtil: FitDocumentWorkArea - Output: No resize needed (NoAuto constraint)');
+        LogUtil.Debug('= U.UIUtil: FitDocumentWorkArea - Output: No resize needed (NoAuto constraint)');
         return;
       }
 
@@ -827,7 +827,7 @@ class UIUtil {
       this.ResizeSVGDocument();
     }
 
-    T3Util.Log('= U.UIUtil: FitDocumentWorkArea - Output:', {
+    LogUtil.Debug('= U.UIUtil: FitDocumentWorkArea - Output:', {
       newSize: newDocumentSize,
       documentSizeChanged,
       isGrowing
@@ -877,7 +877,7 @@ class UIUtil {
       width: screenWidth,
       height: screenHeight
     };
-    T3Util.Log('= U.UIUtil: GetScreenDimensions - Output:', screenDimensions);
+    LogUtil.Debug('= U.UIUtil: GetScreenDimensions - Output:', screenDimensions);
     return screenDimensions;
   }
 }

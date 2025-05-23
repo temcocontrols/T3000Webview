@@ -1,5 +1,6 @@
 
 
+import LogUtil from "../Util/LogUtil";
 import T3Util from "../Util/T3Util";
 
 class MouseUtil {
@@ -15,7 +16,7 @@ class MouseUtil {
      * @returns True if the event was a right-click or equivalent, false otherwise
      */
   static IsRightClick(event) {
-    T3Util.Log('= U.MouseUtil: IsRightClick - Input:', event);
+    LogUtil.Debug('= U.MouseUtil: IsRightClick - Input:', event);
 
     let isRightClick = false;
 
@@ -34,7 +35,7 @@ class MouseUtil {
       isRightClick = (event.which === 3);
     }
 
-    T3Util.Log('= U.MouseUtil: IsRightClick - Output:', isRightClick);
+    LogUtil.Debug('= U.MouseUtil: IsRightClick - Output:', isRightClick);
     return isRightClick;
   }
 }

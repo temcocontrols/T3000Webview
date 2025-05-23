@@ -8,6 +8,7 @@ import Hook from "../../Model/Hook";
 import Link from '../../Model/Link';
 import Point from '../../Model/Point';
 import Rectangle from "../../Model/Rectangle";
+import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils2 from "../../Util/Utils2";
@@ -31,7 +32,7 @@ class HookUtil {
    * @returns 0 on success, 1 on failure
    */
   static UpdateHook(objectId, hookIndex, targetObjectId, hookPointType, connectionPoint, cellId) {
-    T3Util.Log("O.Opt UpdateHook - Input:", {
+    LogUtil.Debug("O.Opt UpdateHook - Input:", {
       objectId,
       hookIndex,
       targetObjectId,
@@ -50,7 +51,7 @@ class HookUtil {
     // Get the object that owns the hook (with preserved state)
     const sourceObject = ObjectUtil.GetObjectPtr(objectId, true);
     if (sourceObject == null) {
-      T3Util.Log("O.Opt UpdateHook - Output: Failed to get source object");
+      LogUtil.Debug("O.Opt UpdateHook - Output: Failed to get source object");
       return 1;
     }
 
@@ -63,7 +64,7 @@ class HookUtil {
     // Get links list (with preserved state)
     const linksList = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
     if (linksList == null) {
-      T3Util.Log("O.Opt UpdateHook - Output: Failed to get links list");
+      LogUtil.Debug("O.Opt UpdateHook - Output: Failed to get links list");
       return 1;
     }
 
@@ -71,7 +72,7 @@ class HookUtil {
     if (targetObjectId >= 0) {
       targetObject = ObjectUtil.GetObjectPtr(targetObjectId, true);
       if (targetObject == null) {
-        T3Util.Log("O.Opt UpdateHook - Output: Failed to get target object");
+        LogUtil.Debug("O.Opt UpdateHook - Output: Failed to get target object");
         return 1;
       }
     } else {
@@ -167,7 +168,7 @@ class HookUtil {
       ObjectUtil.AddToDirtyList(objectId);
     }
 
-    T3Util.Log("O.Opt UpdateHook - Output: Hook updated successfully");
+    LogUtil.Debug("O.Opt UpdateHook - Output: Hook updated successfully");
     return 0;
   }
 
@@ -179,7 +180,7 @@ class HookUtil {
   * @param hookData - Additional hook data
   */
   static CNChangeHook(sourceObject, hookIndex, isAdding, hookData) {
-    T3Util.Log("O.Opt CNChangeHook - Input:", {
+    LogUtil.Debug("O.Opt CNChangeHook - Input:", {
       sourceObjectId: sourceObject.BlockID,
       hookIndex,
       isAdding,
@@ -211,13 +212,13 @@ class HookUtil {
           // Get the connector object
           connectorObject = ObjectUtil.GetObjectPtr(childConnectorId, false);
           if (!connectorObject) {
-            T3Util.Log("O.Opt CNChangeHook - Output: Failed (no connector object)");
+            LogUtil.Debug("O.Opt CNChangeHook - Output: Failed (no connector object)");
             return;
           }
 
           // Skip special connector types
           if (connectorObject.IsFlowChartConnector()) {
-            T3Util.Log("O.Opt CNChangeHook - Output: Skipped (flowchart connector)");
+            LogUtil.Debug("O.Opt CNChangeHook - Output: Skipped (flowchart connector)");
             return;
           }
 
@@ -227,12 +228,12 @@ class HookUtil {
             hasCoManagerFlag &&
             connectorObject.arraylist.hook.length - OptConstant.ConnectorDefines.NSkip >= 1
           ) {
-            T3Util.Log("O.Opt CNChangeHook - Output: Skipped (co-manager limit reached)");
+            LogUtil.Debug("O.Opt CNChangeHook - Output: Skipped (co-manager limit reached)");
             return;
           }
 
           if (connectorObject.IsAsstConnector()) {
-            T3Util.Log("O.Opt CNChangeHook - Output: Skipped (assistant connector)");
+            LogUtil.Debug("O.Opt CNChangeHook - Output: Skipped (assistant connector)");
             return;
           }
 
@@ -255,7 +256,7 @@ class HookUtil {
             }
 
             if (!childConnector) {
-              T3Util.Log("O.Opt CNChangeHook - Output: Failed to create child connector");
+              LogUtil.Debug("O.Opt CNChangeHook - Output: Failed to create child connector");
               return;
             }
 
@@ -308,7 +309,7 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt CNChangeHook - Output: Operation completed");
+    LogUtil.Debug("O.Opt CNChangeHook - Output: Operation completed");
   }
 
   /**
@@ -319,13 +320,13 @@ class HookUtil {
      * @returns 0 on success, 1 on failure
      */
   static RemoveHook(objectId, targetObjectId, targetCellId) {
-    T3Util.Log("O.Opt RemoveHook - Input:", { objectId, targetObjectId, targetCellId });
+    LogUtil.Debug("O.Opt RemoveHook - Input:", { objectId, targetObjectId, targetCellId });
 
     // Get a preserved copy of the object for modification
     const sourceObject = ObjectUtil.GetObjectPtr(objectId, true);
 
     if (sourceObject == null) {
-      T3Util.Log("O.Opt RemoveHook - Output: Failed to get object (1)");
+      LogUtil.Debug("O.Opt RemoveHook - Output: Failed to get object (1)");
       return 1;
     }
 
@@ -346,7 +347,7 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt RemoveHook - Output: Hook removed successfully (0)");
+    LogUtil.Debug("O.Opt RemoveHook - Output: Hook removed successfully (0)");
     return 0;
   }
 
@@ -362,7 +363,7 @@ class HookUtil {
    * @returns Updated hook list with added objects
    */
   static AddToHookList(linksList, hookList, startLinkIndex, targetId, listCode, recursionLevel, boundingRect) {
-    T3Util.Log("O.Opt AddToHookList - Input:", {
+    LogUtil.Debug("O.Opt AddToHookList - Input:", {
       linksListLength: linksList.length,
       hookListCount: hookList.length,
       startLinkIndex,
@@ -498,7 +499,7 @@ class HookUtil {
       startLinkIndex++;
     }
 
-    T3Util.Log("O.Opt AddToHookList - Output: Updated hook list with", hookList.length, "items");
+    LogUtil.Debug("O.Opt AddToHookList - Output: Updated hook list with", hookList.length, "items");
     return hookList;
   }
 
@@ -508,7 +509,7 @@ class HookUtil {
     * @param boundingBox - The bounding box of the moving object
     */
   static HandleHookedObjectMoving(drawingObject, boundingBox) {
-    T3Util.Log("O.Opt HandleHookedObjectMoving - Input:", {
+    LogUtil.Debug("O.Opt HandleHookedObjectMoving - Input:", {
       drawingObjectId: drawingObject.BlockID,
       boundingBox
     });
@@ -552,7 +553,7 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt HandleHookedObjectMoving - Output: Notified connected objects");
+    LogUtil.Debug("O.Opt HandleHookedObjectMoving - Output: Notified connected objects");
   }
 
   /**
@@ -565,7 +566,7 @@ class HookUtil {
      * @param cellId - Optional cell ID for container objects
      */
   static HiliteConnect(objectId, connectIndex, shouldHighlight, connectPoint, hookPointType, cellId) {
-    T3Util.Log("O.Opt HiliteConnect - Input:", {
+    LogUtil.Debug("O.Opt HiliteConnect - Input:", {
       objectId,
       connectIndex,
       shouldHighlight,
@@ -583,7 +584,7 @@ class HookUtil {
     // Get the drawing object
     drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (drawingObject == null) {
-      T3Util.Log("O.Opt HiliteConnect - Output: No drawing object found");
+      LogUtil.Debug("O.Opt HiliteConnect - Output: No drawing object found");
       return;
     }
 
@@ -593,7 +594,7 @@ class HookUtil {
     // Get the SVG element for this object
     svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
     if (svgElement == null || svgElement.GetElementById(OptConstant.SVGElementClass.Shape) == null) {
-      T3Util.Log("O.Opt HiliteConnect - Output: No SVG element found");
+      LogUtil.Debug("O.Opt HiliteConnect - Output: No SVG element found");
       return;
     }
 
@@ -624,17 +625,17 @@ class HookUtil {
           throw error;
         }
 
-        T3Util.Log("O.Opt HiliteConnect - Output: Highlight added");
+        LogUtil.Debug("O.Opt HiliteConnect - Output: Highlight added");
       } else {
-        T3Util.Log("O.Opt HiliteConnect - Output: Failed to create highlight");
+        LogUtil.Debug("O.Opt HiliteConnect - Output: Failed to create highlight");
       }
     }
     // Remove highlight if requested and present
     else if (highlightElement != null && !shouldHighlight) {
       T3Gv.opt.svgHighlightLayer.RemoveElement(highlightElement);
-      T3Util.Log("O.Opt HiliteConnect - Output: Highlight removed");
+      LogUtil.Debug("O.Opt HiliteConnect - Output: Highlight removed");
     } else {
-      T3Util.Log("O.Opt HiliteConnect - Output: No change needed");
+      LogUtil.Debug("O.Opt HiliteConnect - Output: No change needed");
     }
   }
 
@@ -647,7 +648,7 @@ class HookUtil {
   * @returns 0 on success, 1 on failure
   */
   static MoveLinks(targetObjectId, sourceObjectId, linkIndices, hookResults) {
-    T3Util.Log("O.Opt MoveLinks - Input:", {
+    LogUtil.Debug("O.Opt MoveLinks - Input:", {
       targetObjectId,
       sourceObjectId,
       linkIndices: linkIndices ? linkIndices.length : 'null',
@@ -662,7 +663,7 @@ class HookUtil {
 
     // Check if links list exists
     if (linksList == null) {
-      T3Util.Log("O.Opt MoveLinks - Output: Failed (no links list)");
+      LogUtil.Debug("O.Opt MoveLinks - Output: Failed (no links list)");
       return 1;
     }
 
@@ -671,13 +672,13 @@ class HookUtil {
 
     // Check if target object exists
     if (ObjectUtil.GetObjectPtr(sourceObjectId, false) == null) {
-      T3Util.Log("O.Opt MoveLinks - Output: Failed (source object not found)");
+      LogUtil.Debug("O.Opt MoveLinks - Output: Failed (source object not found)");
       return 1;
     }
 
     // Check if source object exists
     if ((targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false)) == null) {
-      T3Util.Log("O.Opt MoveLinks - Output: Failed (target object not found)");
+      LogUtil.Debug("O.Opt MoveLinks - Output: Failed (target object not found)");
       return 1;
     }
 
@@ -776,7 +777,7 @@ class HookUtil {
       } while (swapNeeded);
     }
 
-    T3Util.Log("O.Opt MoveLinks - Output: Links moved successfully");
+    LogUtil.Debug("O.Opt MoveLinks - Output: Links moved successfully");
     return 0;
   }
 
@@ -789,7 +790,7 @@ class HookUtil {
    * @returns 0 on success, 1 on failure
    */
   static InsertLink(linksList, hookObjectId, hookIndex, flagValue) {
-    T3Util.Log("O.Opt InsertLink - Input:", {
+    LogUtil.Debug("O.Opt InsertLink - Input:", {
       linksList: linksList?.length,
       hookObjectId,
       hookIndex,
@@ -801,12 +802,12 @@ class HookUtil {
 
     // Validation checks
     if (hookObject == null) {
-      T3Util.Log("O.Opt InsertLink - Output: Failed to get hook object (1)");
+      LogUtil.Debug("O.Opt InsertLink - Output: Failed to get hook object (1)");
       return 1;
     }
 
     if (hookIndex < 0 || hookIndex >= hookObject.hooks.length) {
-      T3Util.Log("O.Opt InsertLink - Output: Invalid hook index (1)");
+      LogUtil.Debug("O.Opt InsertLink - Output: Invalid hook index (1)");
       return 1;
     }
 
@@ -818,7 +819,7 @@ class HookUtil {
       // Check if this link already exists
       while (linkIndex < linksList.length && linksList[linkIndex].targetid === targetObjectId) {
         if (linksList[linkIndex].hookid == hookObjectId) {
-          T3Util.Log("O.Opt InsertLink - Output: Link already exists (1)");
+          LogUtil.Debug("O.Opt InsertLink - Output: Link already exists (1)");
           return 1;
         }
         linkIndex++;
@@ -835,7 +836,7 @@ class HookUtil {
       linksList.splice(linkIndex, 0, newLink);
     }
 
-    T3Util.Log("O.Opt InsertLink - Output: Link inserted successfully (0)");
+    LogUtil.Debug("O.Opt InsertLink - Output: Link inserted successfully (0)");
     return 0;
   }
 
@@ -846,7 +847,7 @@ class HookUtil {
    * @param hookPointType - Type of hook point
    */
   static MoveConnectHilite(objectId, connectionPoint, hookPointType) {
-    T3Util.Log("O.Opt MoveConnectHilite - Input:", { objectId, connectionPoint, hookPointType });
+    LogUtil.Debug("O.Opt MoveConnectHilite - Input:", { objectId, connectionPoint, hookPointType });
 
     let targetId;
     let connectionIndex;
@@ -890,7 +891,7 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt MoveConnectHilite - Output: Highlight moved to", connectionIndex ? connectionIndex[0] : "null");
+    LogUtil.Debug("O.Opt MoveConnectHilite - Output: Highlight moved to", connectionIndex ? connectionIndex[0] : "null");
   }
 
   /**
@@ -904,7 +905,7 @@ class HookUtil {
    * @returns 0 to indicate success
    */
   static DeleteLink(linksList, targetId, hookObjectId, cellId, hookPointType, skipHookRemoval) {
-    T3Util.Log("O.Opt DeleteLink - Input:", {
+    LogUtil.Debug("O.Opt DeleteLink - Input:", {
       targetId,
       hookObjectId,
       cellId,
@@ -955,7 +956,7 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt DeleteLink - Output: Links deleted successfully");
+    LogUtil.Debug("O.Opt DeleteLink - Output: Links deleted successfully");
     return 0;
   }
 
@@ -966,7 +967,7 @@ class HookUtil {
      * @returns True if a link exists between the objects, false otherwise
      */
   static HasExistingLink(objectId1, objectId2) {
-    T3Util.Log("O.Opt HasExistingLink - Input:", { objectId1, objectId2 });
+    LogUtil.Debug("O.Opt HasExistingLink - Input:", { objectId1, objectId2 });
 
     // Helper function to check if source object has a hook to target object
     function hasHookToTarget(sourceId, targetId) {
@@ -984,7 +985,7 @@ class HookUtil {
     // Check links in both directions
     const linkExists = !(!hasHookToTarget(objectId1, objectId2) && !hasHookToTarget(objectId2, objectId1));
 
-    T3Util.Log("O.Opt HasExistingLink - Output:", linkExists);
+    LogUtil.Debug("O.Opt HasExistingLink - Output:", linkExists);
     return linkExists;
   }
 
@@ -995,7 +996,7 @@ class HookUtil {
    * @returns Hook index if link is valid, -1 if link should be deleted
    */
   static VerifyLink(sourceObject, linkData) {
-    T3Util.Log("O.Opt VerifyLink - Input:", { sourceObjectId: sourceObject.BlockID, linkData });
+    LogUtil.Debug("O.Opt VerifyLink - Input:", { sourceObjectId: sourceObject.BlockID, linkData });
 
     // Get the target object
     const targetObject = ObjectUtil.GetObjectPtr(linkData.targetid, false);
@@ -1005,7 +1006,7 @@ class HookUtil {
     if (targetObject == null) {
       // Mark link for deletion if target object doesn't exist
       linkData.flags = Utils2.SetFlag(linkData.flags, linkFlags.DeleteLink, true);
-      T3Util.Log("O.Opt VerifyLink - Output: Target object doesn't exist (-1)");
+      LogUtil.Debug("O.Opt VerifyLink - Output: Target object doesn't exist (-1)");
       return -1;
     }
 
@@ -1016,19 +1017,19 @@ class HookUtil {
 
         // If no cell ID, link is valid
         if (sourceObject.hooks[hookIndex].cellid === null) {
-          T3Util.Log("O.Opt VerifyLink - Output: Valid link found at index", hookIndex);
+          LogUtil.Debug("O.Opt VerifyLink - Output: Valid link found at index", hookIndex);
           return hookIndex;
         }
 
         // Mark link for deletion if cell doesn't exist
         linkData.flags = Utils2.SetFlag(linkData.flags, linkFlags.DeleteLink, true);
-        T3Util.Log("O.Opt VerifyLink - Output: Cell doesn't exist (-1)");
+        LogUtil.Debug("O.Opt VerifyLink - Output: Cell doesn't exist (-1)");
         return -1;
       }
     }
 
     // No matching hook found
-    T3Util.Log("O.Opt VerifyLink - Output: No matching hook found (-1)");
+    LogUtil.Debug("O.Opt VerifyLink - Output: No matching hook found (-1)");
     return -1;
   }
 
@@ -1038,7 +1039,7 @@ class HookUtil {
      * @param shapeId - ID of the shape that may have hooks
      */
   static CleanupHooks(connectorId, shapeId) {
-    T3Util.Log("O.Opt CleanupHooks - Input:", { connectorId, shapeId });
+    LogUtil.Debug("O.Opt CleanupHooks - Input:", { connectorId, shapeId });
 
     // Get the connector object
     const connectorObject = ObjectUtil.GetObjectPtr(connectorId, false);
@@ -1065,13 +1066,13 @@ class HookUtil {
           objectsToDelete.push(childConnectorId);
           ObjectUtil.DeleteObjects(objectsToDelete, false);
 
-          T3Util.Log("O.Opt CleanupHooks - Output: Deleted orphaned connector", childConnectorId);
+          LogUtil.Debug("O.Opt CleanupHooks - Output: Deleted orphaned connector", childConnectorId);
           return;
         }
       }
     }
 
-    T3Util.Log("O.Opt CleanupHooks - Output: No cleanup needed");
+    LogUtil.Debug("O.Opt CleanupHooks - Output: No cleanup needed");
   }
 
   /**
@@ -1081,7 +1082,7 @@ class HookUtil {
      * @returns Array of child connector IDs
      */
   static FindAllChildConnectors(objectId, linksList?) {
-    T3Util.Log("O.Opt FindAllChildConnectors - Input:", { objectId, linksList });
+    LogUtil.Debug("O.Opt FindAllChildConnectors - Input:", { objectId, linksList });
 
     const searchInfo = {
       lindex: -1,
@@ -1096,7 +1097,7 @@ class HookUtil {
       childConnectors.push(searchInfo.id);
     }
 
-    T3Util.Log("O.Opt FindAllChildConnectors - Output:", childConnectors);
+    LogUtil.Debug("O.Opt FindAllChildConnectors - Output:", childConnectors);
     return childConnectors;
   }
 
@@ -1109,7 +1110,7 @@ class HookUtil {
    * @param maintainMode - Mode for maintaining the link
    */
   static MaintainLink(targetId, drawingObject, changeEvent, triggerType, maintainMode?) {
-    T3Util.Log("O.Opt MaintainLink - Input:", { targetId, drawingObject: drawingObject.BlockID, triggerType, maintainMode });
+    LogUtil.Debug("O.Opt MaintainLink - Input:", { targetId, drawingObject: drawingObject.BlockID, triggerType, maintainMode });
 
     let linkIndex, hookObject;
     let hookFlags = 0;
@@ -1119,14 +1120,14 @@ class HookUtil {
 
     // Exit if no links or object doesn't allow maintaining links
     if (!links || !drawingObject.AllowMaintainLink()) {
-      T3Util.Log("O.Opt MaintainLink - Output: No links or link maintenance not allowed");
+      LogUtil.Debug("O.Opt MaintainLink - Output: No links or link maintenance not allowed");
       return;
     }
 
     // Find the first link for this target
     linkIndex = OptCMUtil.FindLink(links, targetId, true);
     if (linkIndex < 0) {
-      T3Util.Log("O.Opt MaintainLink - Output: No links found for targetId", targetId);
+      LogUtil.Debug("O.Opt MaintainLink - Output: No links found for targetId", targetId);
       return;
     }
 
@@ -1219,7 +1220,7 @@ class HookUtil {
       linkIndex++;
     }
 
-    T3Util.Log("O.Opt MaintainLink - Output: Links maintained successfully");
+    LogUtil.Debug("O.Opt MaintainLink - Output: Links maintained successfully");
   }
 
   /**
@@ -1228,7 +1229,7 @@ class HookUtil {
      * @param flagValue - Flag value to set
      */
   static ResizeSetLinkFlag(objectId, flagValue) {
-    T3Util.Log("O.Opt ResizeSetLinkFlag - Input:", { objectId, flagValue });
+    LogUtil.Debug("O.Opt ResizeSetLinkFlag - Input:", { objectId, flagValue });
 
     const object = ObjectUtil.GetObjectPtr(objectId, false);
 
@@ -1247,7 +1248,7 @@ class HookUtil {
     // Set the flag for the object itself
     OptCMUtil.SetLinkFlag(objectId, flagValue);
 
-    T3Util.Log("O.Opt ResizeSetLinkFlag - Output: Link flags updated");
+    LogUtil.Debug("O.Opt ResizeSetLinkFlag - Output: Link flags updated");
   }
 
   /**
@@ -1259,7 +1260,7 @@ class HookUtil {
    * @returns Array of hook points or null if hooking not allowed
    */
   static MoveGetHookPoints(objectId, drawingObject, deltaX, deltaY) {
-    T3Util.Log("O.Opt MoveGetHookPoints - Input:", {
+    LogUtil.Debug("O.Opt MoveGetHookPoints - Input:", {
       objectId,
       drawingObject: drawingObject ? drawingObject.BlockID : null,
       deltaX,
@@ -1282,27 +1283,27 @@ class HookUtil {
 
     // Early return conditions
     if (drawingObject == null) {
-      T3Util.Log("O.Opt MoveGetHookPoints - Output: null (No drawing object)");
+      LogUtil.Debug("O.Opt MoveGetHookPoints - Output: null (No drawing object)");
       return null;
     }
 
     if (T3Gv.opt.linkParams == null) {
-      T3Util.Log("O.Opt MoveGetHookPoints - Output: null (No link parameters)");
+      LogUtil.Debug("O.Opt MoveGetHookPoints - Output: null (No link parameters)");
       return null;
     }
 
     if (drawingObject.hooks && drawingObject.hooks.length === 2) {
-      T3Util.Log("O.Opt MoveGetHookPoints - Output: null (Object already has 2 hooks)");
+      LogUtil.Debug("O.Opt MoveGetHookPoints - Output: null (Object already has 2 hooks)");
       return null;
     }
 
     if (drawingObject.flags & NvConstant.ObjFlags.Assoc) {
-      T3Util.Log("O.Opt MoveGetHookPoints - Output: null (Object is associated)");
+      LogUtil.Debug("O.Opt MoveGetHookPoints - Output: null (Object is associated)");
       return null;
     }
 
     if (drawingObject.PreventLink()) {
-      T3Util.Log("O.Opt MoveGetHookPoints - Output: null (Object prevents linking)");
+      LogUtil.Debug("O.Opt MoveGetHookPoints - Output: null (Object prevents linking)");
       return null;
     }
 
@@ -1398,7 +1399,7 @@ class HookUtil {
       perimeterPoints[i].y += deltaY;
     }
 
-    T3Util.Log("O.Opt MoveGetHookPoints - Output:", {
+    LogUtil.Debug("O.Opt MoveGetHookPoints - Output:", {
       pointCount: perimeterPoints.length,
       allowDropOnLine: T3Gv.opt.linkParams.DropOnLine,
       allowJoin: T3Gv.opt.linkParams.AllowJoin
@@ -1412,12 +1413,12 @@ class HookUtil {
  * @returns {boolean} True if handled successfully
  */
   static HandleMultipleSelectionHooks() {
-    T3Util.Log("O.Opt HandleMultipleSelectionHooks - Input: No parameters");
+    LogUtil.Debug("O.Opt HandleMultipleSelectionHooks - Input: No parameters");
 
     // Get selected objects
     const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     if (selectedList.length <= 1) {
-      T3Util.Log("O.Opt HandleMultipleSelectionHooks - Output: false (Only one object selected)");
+      LogUtil.Debug("O.Opt HandleMultipleSelectionHooks - Output: false (Only one object selected)");
       return false;
     }
 
@@ -1574,16 +1575,16 @@ class HookUtil {
         );
       }
 
-      T3Util.Log("O.Opt HandleMultipleSelectionHooks - Output: true (Multiple hooks updated)");
+      LogUtil.Debug("O.Opt HandleMultipleSelectionHooks - Output: true (Multiple hooks updated)");
       return true;
     }
 
-    T3Util.Log("O.Opt HandleMultipleSelectionHooks - Output: false (No matching objects found)");
+    LogUtil.Debug("O.Opt HandleMultipleSelectionHooks - Output: false (No matching objects found)");
     return false;
   }
 
   static JoinHookList(targetList, sourceList) {
-    T3Util.Log("O.Opt JoinHookList - Input:", { targetList, sourceList });
+    LogUtil.Debug("O.Opt JoinHookList - Input:", { targetList, sourceList });
 
     if (targetList != null && sourceList != null) {
       for (let i = 0; i < sourceList.length; i++) {
@@ -1593,11 +1594,11 @@ class HookUtil {
       }
     }
 
-    T3Util.Log("O.Opt JoinHookList - Output: Lists joined");
+    LogUtil.Debug("O.Opt JoinHookList - Output: Lists joined");
   }
 
   static GetHookList(links, hookList, objectId, object, listCode, boundsRect) {
-    T3Util.Log("O.Opt GetHookList - Input:", {
+    LogUtil.Debug("O.Opt GetHookList - Input:", {
       objectId,
       listCode,
       hookListLength: hookList ? hookList.length : 0,
@@ -1632,7 +1633,7 @@ class HookUtil {
 
         // Return if objectId is already in the list
         if (hookList.indexOf(objectId) >= 0) {
-          T3Util.Log("O.Opt GetHookList - Output: Object already in list", hookList);
+          LogUtil.Debug("O.Opt GetHookList - Output: Object already in list", hookList);
           return hookList;
         }
         break;
@@ -1640,7 +1641,7 @@ class HookUtil {
       case NvConstant.ListCodes.MoveHook:
         // Return if objectId is already in the list
         if (hookList.indexOf(objectId) >= 0) {
-          T3Util.Log("O.Opt GetHookList - Output: Object already in list", hookList);
+          LogUtil.Debug("O.Opt GetHookList - Output: Object already in list", hookList);
           return hookList;
         }
         break;
@@ -1696,7 +1697,7 @@ class HookUtil {
       this.GetTargetList(objectId, links, hookList, boundsRect, listCode);
     }
 
-    T3Util.Log("O.Opt GetHookList - Output: Hook list updated", {
+    LogUtil.Debug("O.Opt GetHookList - Output: Hook list updated", {
       hookListLength: hookList.length,
       boundsRect
     });
@@ -1705,7 +1706,7 @@ class HookUtil {
   }
 
   static UpdateLineHops(forceUpdate: boolean) {
-    T3Util.Log("O.Opt UpdateLineHops - Input:", { forceUpdate });
+    LogUtil.Debug("O.Opt UpdateLineHops - Input:", { forceUpdate });
 
     // Retrieve the session object and check if hops are allowed
     const session = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -1825,11 +1826,11 @@ class HookUtil {
         }
       }
     }
-    T3Util.Log("O.Opt UpdateLineHops - Output: Completed updating line hops");
+    LogUtil.Debug("O.Opt UpdateLineHops - Output: Completed updating line hops");
   }
 
   static FixAnyCircularHooks(initialLinkObject?: any): void {
-    T3Util.Log("O.Opt FixAnyCircularHooks - Input:", { initialLinkObject });
+    LogUtil.Debug("O.Opt FixAnyCircularHooks - Input:", { initialLinkObject });
 
     // Determine the initial hook IDs
     const hookIds = initialLinkObject
@@ -1915,7 +1916,7 @@ class HookUtil {
       }
     })(circularHookPairs);
 
-    T3Util.Log("O.Opt FixAnyCircularHooks - Output: Circular hooks fixed", { circularHookPairs });
+    LogUtil.Debug("O.Opt FixAnyCircularHooks - Output: Circular hooks fixed", { circularHookPairs });
   }
 }
 

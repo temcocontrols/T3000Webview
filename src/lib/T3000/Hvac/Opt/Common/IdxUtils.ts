@@ -3,6 +3,7 @@ import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge, appS
 import { toRaw } from 'vue'
 import Hvac from '../../Hvac'
 import T3Util from '../../Util/T3Util';
+import LogUtil from '../../Util/LogUtil';
 
 class IdxUtils {
 
@@ -231,7 +232,7 @@ class IdxUtils {
       //   ],
       // });
 
-      T3Util.Log('= IdxUtils Saved successfully.');
+      LogUtil.Debug('= IdxUtils Saved successfully.');
 
     } else {
       $q.notify({

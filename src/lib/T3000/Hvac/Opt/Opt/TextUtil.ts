@@ -27,6 +27,7 @@ import PolyUtil from './PolyUtil';
 import UIUtil from '../UI/UIUtil';
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
+import LogUtil from '../../Util/LogUtil';
 
 class TextUtil {
 
@@ -39,7 +40,7 @@ class TextUtil {
    * @param shouldCloseTable - If true, closes the associated table after deactivation
    */
   static DeactivateTextEdit(preventCompleteOperation?, shouldCloseTable?) {
-    T3Util.Log("O.Opt DeactivateTextEdit - Input:", { preventCompleteOperation, shouldCloseTable });
+    LogUtil.Debug("O.Opt DeactivateTextEdit - Input:", { preventCompleteOperation, shouldCloseTable });
 
     let textDataId, objectIndex, cellCount;
     let session = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -199,7 +200,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log("O.Opt DeactivateTextEdit - Output: Text edit deactivated");
+    LogUtil.Debug("O.Opt DeactivateTextEdit - Output: Text edit deactivated");
   }
 
   /**
@@ -211,7 +212,7 @@ class TextUtil {
    * @param lastOp - The operation code representing the last text editor operation (CHAR, INIT, SELECT, TIMEOUT)
    */
   static RegisterLastTEOp(lastOp) {
-    T3Util.Log("O.Opt RegisterLastTEOp - Input:", { lastOp });
+    LogUtil.Debug("O.Opt RegisterLastTEOp - Input:", { lastOp });
 
     // Only proceed if not in note edit mode
     if (!T3Gv.opt.bInNoteEdit) {
@@ -315,7 +316,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log("O.Opt RegisterLastTEOp - Output: Completed");
+    LogUtil.Debug("O.Opt RegisterLastTEOp - Output: Completed");
   }
 
   /**
@@ -324,7 +325,7 @@ class TextUtil {
    * @param textStyle - The text style parameters containing font, size, weight, style, baseOffset, decoration, color, and color transparency.
    */
   static TextStyleToText(sdText, textStyle) {
-    T3Util.Log("O.Opt TextStyleToText - Input:", { sdText, textStyle });
+    LogUtil.Debug("O.Opt TextStyleToText - Input:", { sdText, textStyle });
 
     // Convert the font size from percentage to points (72 points per inch conversion)
     sdText.FontSize = Math.round(72 * textStyle.size / 100);
@@ -362,11 +363,11 @@ class TextUtil {
     sdText.Paint.Color = textStyle.color;
     sdText.Paint.Opacity = textStyle.colorTrans;
 
-    T3Util.Log("O.Opt TextStyleToText - Output:", sdText);
+    LogUtil.Debug("O.Opt TextStyleToText - Output:", sdText);
   }
 
   static TEUnregisterEvents(event?) {
-    T3Util.Log('O.Opt TEUnregisterEvents - Input:', event);
+    LogUtil.Debug('O.Opt TEUnregisterEvents - Input:', event);
 
     T3Gv.opt.svgDoc.ClearActiveEdit(event);
 
@@ -400,7 +401,7 @@ class TextUtil {
       T3Gv.opt.TEWorkAreaHammer = null;
     }
 
-    T3Util.Log('O.Opt TEUnregisterEvents - Output: done');
+    LogUtil.Debug('O.Opt TEUnregisterEvents - Output: done');
   }
 
   /**
@@ -410,7 +411,7 @@ class TextUtil {
    * @returns A DefaultStyle object with computed style properties.
    */
   static CalcDefaultInitialTextStyle(inputStyle) {
-    T3Util.Log("O.Opt CalcDefaultInitialTextStyle - Input:", inputStyle);
+    LogUtil.Debug("O.Opt CalcDefaultInitialTextStyle - Input:", inputStyle);
 
     const defaultStyle = new DefaultStyle();
     const textFace = TextConstant.TextFace;
@@ -424,7 +425,7 @@ class TextUtil {
     defaultStyle.style = (inputStyle.Face & textFace.Italic) ? 'italic' : 'normal';
     defaultStyle.decoration = (inputStyle.Face & textFace.Underline) ? 'underline' : 'none';
 
-    T3Util.Log("O.Opt CalcDefaultInitialTextStyle - Output:", defaultStyle);
+    LogUtil.Debug("O.Opt CalcDefaultInitialTextStyle - Output:", defaultStyle);
     return defaultStyle;
   }
 
@@ -437,7 +438,7 @@ class TextUtil {
   * @param skipLinkFlagUpdate - Whether to skip updating link flags
   */
   static TextResizeCommon(shapeId, constrainWidth, allowResize, svgElement, skipLinkFlagUpdate) {
-    T3Util.Log("O.Opt: TextResizeCommon inputs:", {
+    LogUtil.Debug("O.Opt: TextResizeCommon inputs:", {
       shapeId,
       constrainWidth,
       allowResize,
@@ -692,7 +693,7 @@ class TextUtil {
       shape.AdjustTextEditBackground(shapeId, svgElement);
     }
 
-    T3Util.Log("O.Opt: TextResizeCommon completed for shape:", shapeId);
+    LogUtil.Debug("O.Opt: TextResizeCommon completed for shape:", shapeId);
   }
 
   /**
@@ -700,7 +701,7 @@ class TextUtil {
    * @param runtimeTextOverride - Optional runtime text to use instead of the object's current text
    */
   static ResetActiveTextEditAfterUndo(runtimeTextOverride) {
-    T3Util.Log("O.Opt: ResetActiveTextEditAfterUndo called with text override:",
+    LogUtil.Debug("O.Opt: ResetActiveTextEditAfterUndo called with text override:",
       runtimeTextOverride ? "provided" : "none");
 
     const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -709,7 +710,7 @@ class TextUtil {
       const activeTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, false);
 
       if (!activeTextObject) {
-        T3Util.Log("O.Opt: ActiveTextObject not found, aborting");
+        LogUtil.Debug("O.Opt: ActiveTextObject not found, aborting");
         return;
       }
 
@@ -752,7 +753,7 @@ class TextUtil {
 
             // Initialize empty text formatting if needed
             if (runtimeText.text === '') {
-              T3Util.Log("O.Opt: Initializing empty text formatting");
+              LogUtil.Debug("O.Opt: Initializing empty text formatting");
               this.InitEmptyText(activeTextObject, svgElement);
             }
           }
@@ -764,7 +765,7 @@ class TextUtil {
       SvgUtil.ShowSVGSelectionState(textEditSession.theActiveTextEditObjectID, false);
     }
 
-    T3Util.Log("O.Opt: ResetActiveTextEditAfterUndo complete");
+    LogUtil.Debug("O.Opt: ResetActiveTextEditAfterUndo complete");
   }
 
   /**
@@ -777,7 +778,7 @@ class TextUtil {
    * @returns Object containing indentation values for each side of the text (left, right, top, bottom)
    */
   static GuessTextIndents(polygonPoints, shapeFrame) {
-    T3Util.Log("O.Opt GuessTextIndents - Input:", { polygonPoints, shapeFrame });
+    LogUtil.Debug("O.Opt GuessTextIndents - Input:", { polygonPoints, shapeFrame });
 
     // Initialize variables with descriptive names
     let shapeWidth, shapeHeight, frameWidth, frameHeight;
@@ -1035,7 +1036,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log("O.Opt GuessTextIndents - Output:", indentationValues);
+    LogUtil.Debug("O.Opt GuessTextIndents - Output:", indentationValues);
     return indentationValues;
   }
 
@@ -1047,10 +1048,10 @@ class TextUtil {
    * @returns The font size in points, or -1 if the input is invalid.
    */
   static FontSizeToPoints(fontSizeValue: number): number {
-    T3Util.Log("O.Opt FontSizeToPoints - Input:", fontSizeValue);
+    LogUtil.Debug("O.Opt FontSizeToPoints - Input:", fontSizeValue);
 
     if (!fontSizeValue) {
-      T3Util.Log("O.Opt FontSizeToPoints - Output:", -1);
+      LogUtil.Debug("O.Opt FontSizeToPoints - Output:", -1);
       return -1;
     }
 
@@ -1060,12 +1061,12 @@ class TextUtil {
       ? (72 * fontSizeValue) / docDpi
       : Math.round((72 * fontSizeValue) / docDpi);
 
-    T3Util.Log("O.Opt FontSizeToPoints - Output:", points);
+    LogUtil.Debug("O.Opt FontSizeToPoints - Output:", points);
     return points;
   }
 
   static TextRegisterEvents(textEditorWrapper, activationEvent?, additionalOptions?) {
-    T3Util.Log("O.Opt TextRegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
+    LogUtil.Debug("O.Opt TextRegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
     if (textEditorWrapper != null) {
       // Set up virtual keyboard for the text editor
       T3Gv.opt.SetVirtualKeyboardLifter(textEditorWrapper);
@@ -1085,19 +1086,19 @@ class TextUtil {
       T3Gv.opt.TEWorkAreaHammer.on("drag", this.TEDragFactory(textEditorWrapper.editor));
       T3Gv.opt.TEWorkAreaHammer.on("dragend", this.TEDragEndFactory(textEditorWrapper.editor));
     }
-    T3Util.Log("O.Opt TextRegisterEvents - Output: Registered events");
+    LogUtil.Debug("O.Opt TextRegisterEvents - Output: Registered events");
   }
 
   static TargetPasteText(): boolean {
-    T3Util.Log("O.Opt TargetPasteText - Input: no parameters");
+    LogUtil.Debug("O.Opt TargetPasteText - Input: no parameters");
 
     // Check if text clipboard exists and has text content
     if (!T3Gv.opt.textClipboard) {
-      T3Util.Log("O.Opt TargetPasteText - Output: false (text clipboard does not exist)");
+      LogUtil.Debug("O.Opt TargetPasteText - Output: false (text clipboard does not exist)");
       return false;
     }
     if (T3Gv.opt.textClipboard.text == null) {
-      T3Util.Log("O.Opt TargetPasteText - Output: false (text clipboard text is null)");
+      LogUtil.Debug("O.Opt TargetPasteText - Output: false (text clipboard text is null)");
       return false;
     }
 
@@ -1121,11 +1122,11 @@ class TextUtil {
         activeEditor.Paste(T3Gv.opt.textClipboard, true);
         this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
 
-        T3Util.Log("O.Opt TargetPasteText - Output: true (text pasted successfully)");
+        LogUtil.Debug("O.Opt TargetPasteText - Output: true (text pasted successfully)");
         return true;
       }
     }
-    T3Util.Log("O.Opt TargetPasteText - Output: false (invalid target or text editing not allowed)");
+    LogUtil.Debug("O.Opt TargetPasteText - Output: false (invalid target or text editing not allowed)");
     return false;
   }
 
@@ -1134,7 +1135,7 @@ class TextUtil {
   * @returns The ID of the active text edit object, or null if none
   */
   static GetActiveTextEdit() {
-    T3Util.Log("O.Opt GetActiveTextEdit - Input: No parameters");
+    LogUtil.Debug("O.Opt GetActiveTextEdit - Input: No parameters");
 
     let activeTextEditObjectId = null;
     const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -1143,7 +1144,7 @@ class TextUtil {
       activeTextEditObjectId = textEditSession.theActiveTextEditObjectID;
     }
 
-    T3Util.Log("O.Opt GetActiveTextEdit - Output:", activeTextEditObjectId);
+    LogUtil.Debug("O.Opt GetActiveTextEdit - Output:", activeTextEditObjectId);
     return activeTextEditObjectId;
   }
 
@@ -1158,7 +1159,7 @@ class TextUtil {
    * @param textData - Optional data for collaborative text editing
    */
   static ActivateTextEdit(drawingElement, event?, preventSelectionChange?, textData?) {
-    T3Util.Log('O.Opt ActivateTextEdit - Input:', {
+    LogUtil.Debug('O.Opt ActivateTextEdit - Input:', {
       drawingElementId: drawingElement?.ID,
       hasEvent: !!event,
       preventSelectionChange,
@@ -1180,7 +1181,7 @@ class TextUtil {
     if (!(drawingObject = ObjectUtil.GetObjectPtr(objectId, false)) ||
       !(drawingObject instanceof Instance.Shape.BaseDrawObject) ||
       (drawingObject.flags & NvConstant.ObjFlags.Lock)) {
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Object invalid or locked');
+      LogUtil.Debug('O.Opt ActivateTextEdit - Output: Object invalid or locked');
       return;
     }
 
@@ -1242,7 +1243,7 @@ class TextUtil {
         textBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TextObject, textObject);
 
         if (textBlock === null) {
-          T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to create text block');
+          LogUtil.Debug('O.Opt ActivateTextEdit - Output: Failed to create text block');
           return;
         }
 
@@ -1379,7 +1380,7 @@ class TextUtil {
       ObjectUtil.PreserveUndoState(false);
     }
 
-    T3Util.Log('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
+    LogUtil.Debug('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
   }
 
   /**
@@ -1389,25 +1390,25 @@ class TextUtil {
    * @returns True if a hyperlink was clicked, false otherwise
    */
   static CheckTextHyperlinkHit(drawingObject, eventPosition) {
-    T3Util.Log("O.Opt CheckTextHyperlinkHit - Input:", {
+    LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Input:", {
       drawingObject: drawingObject.BlockID,
       eventPosition
     });
 
     // Return false if object has no text data or is locked
     if (drawingObject.DataID === -1 && drawingObject.TableID === -1) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no text data)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no text data)");
       return false;
     }
 
     if (drawingObject.flags & NvConstant.ObjFlags.Lock) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (object locked)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (object locked)");
       return false;
     }
 
     // Return false if not in default edit mode
     if (OptCMUtil.GetEditMode() !== NvConstant.EditState.Default) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (not in default edit mode)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (not in default edit mode)");
       return false;
     }
 
@@ -1418,7 +1419,7 @@ class TextUtil {
     const textElement = svgElement ? svgElement.textElem : null;
 
     if (!textElement) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no text element)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no text element)");
       return false;
     }
 
@@ -1429,16 +1430,16 @@ class TextUtil {
       return true;
     }
 
-    T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no hyperlink found)");
+    LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no hyperlink found)");
     return false;
   }
 
   static NoteIsShowing(noteShapeId, noteTableCell) {
-    T3Util.Log('O.Opt NoteIsShowing - Input:', { noteShapeId, noteTableCell });
+    LogUtil.Debug('O.Opt NoteIsShowing - Input:', { noteShapeId, noteTableCell });
 
     let isShowing = false;
 
-    T3Util.Log('O.Opt NoteIsShowing - Output:', isShowing);
+    LogUtil.Debug('O.Opt NoteIsShowing - Output:', isShowing);
     return isShowing;
   }
 
@@ -1505,7 +1506,7 @@ class TextUtil {
   static ClearFieldDataDatePicker() { }
 
   static HandleTextFormatAttributes(textObject, objectIndex) {
-    T3Util.Log('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
+    LogUtil.Debug('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
 
     const TEXT_FACE = TextConstant.TextFace;
     const textData = { hasText: false };
@@ -1549,7 +1550,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log('O.Opt HandleTextFormatAttributes - Output: Text format attributes processed');
+    LogUtil.Debug('O.Opt HandleTextFormatAttributes - Output: Text format attributes processed');
   }
 
   /**
@@ -1559,16 +1560,16 @@ class TextUtil {
    * @returns A function to handle the mouse down event.
    */
   static TEDragStartFactory(mouseDragHandler: any) {
-    T3Util.Log("O.Opt TEDragStartFactory - Input:", { mouseDragHandler });
+    LogUtil.Debug("O.Opt TEDragStartFactory - Input:", { mouseDragHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragStartHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragStartHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse down method.
       mouseDragHandler.HandleMouseDown(pointerEvent);
-      T3Util.Log("O.Opt TEDragStartHandler - Output: Mouse down handled");
+      LogUtil.Debug("O.Opt TEDragStartHandler - Output: Mouse down handled");
       return false;
     };
   }
@@ -1580,16 +1581,16 @@ class TextUtil {
    * @returns A function to handle the mouse down event for the click area.
    */
   static TEClickAreaDragStartFactory(clickAreaHandler: any) {
-    T3Util.Log("O.Opt TEClickAreaDragStartFactory - Input:", { clickAreaHandler });
+    LogUtil.Debug("O.Opt TEClickAreaDragStartFactory - Input:", { clickAreaHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEClickAreaDragStartHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEClickAreaDragStartHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse down method.
       clickAreaHandler.HandleMouseDown(pointerEvent);
-      T3Util.Log("O.Opt TEClickAreaDragStartHandler - Output: Mouse down handled");
+      LogUtil.Debug("O.Opt TEClickAreaDragStartHandler - Output: Mouse down handled");
       return false;
     };
   }
@@ -1601,16 +1602,16 @@ class TextUtil {
    * @returns A function to handle the mouse move event.
    */
   static TEDragFactory(dragMoveHandler: any) {
-    T3Util.Log("O.Opt TEDragFactory - Input:", { dragMoveHandler });
+    LogUtil.Debug("O.Opt TEDragFactory - Input:", { dragMoveHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse move method.
       dragMoveHandler.HandleMouseMove(pointerEvent);
-      T3Util.Log("O.Opt TEDragHandler - Output: Mouse move handled");
+      LogUtil.Debug("O.Opt TEDragHandler - Output: Mouse move handled");
       return false;
     };
   }
@@ -1623,16 +1624,16 @@ class TextUtil {
    * @returns A function to handle the mouse up event.
    */
   static TEDragEndFactory(dragEndHandler: any) {
-    T3Util.Log("O.Opt TEDragEndFactory - Input:", { dragEndHandler });
+    LogUtil.Debug("O.Opt TEDragEndFactory - Input:", { dragEndHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragEndHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragEndHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse up method.
       dragEndHandler.HandleMouseUp(pointerEvent);
-      T3Util.Log("O.Opt TEDragEndHandler - Output: Mouse up handled and messages unblocked");
+      LogUtil.Debug("O.Opt TEDragEndHandler - Output: Mouse up handled and messages unblocked");
       return false;
     };
   }
@@ -1741,7 +1742,7 @@ class TextUtil {
       if (overflow > 0) {
         // If we can't move the frame up due to minimum height constraints, throw an error
         if (!(frame.y - minimumHeight >= overflow)) {
-          T3Util.Log("O.Opt TextPinFrame - Error: Frame cannot be pinned within bounds");
+          LogUtil.Debug("O.Opt TextPinFrame - Error: Frame cannot be pinned within bounds");
         }
 
         // Move the frame up to stay in bounds

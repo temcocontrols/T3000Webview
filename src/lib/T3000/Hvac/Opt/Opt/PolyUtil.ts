@@ -7,6 +7,7 @@ import T3Gv from '../../Data/T3Gv';
 import Point from '../../Model/Point';
 import PolyList from "../../Model/PolyList";
 import PolySeg from "../../Model/PolySeg";
+import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
@@ -37,7 +38,7 @@ class PolyUtil {
    * @returns Array of points representing the arc
    */
   static ArcToPoly(segments, center, radius, startY, endY, targetX, flipArc, isComplexArc) {
-    T3Util.Log("O.Opt: ArcToPoly inputs:", {
+    LogUtil.Debug("O.Opt: ArcToPoly inputs:", {
       segments,
       center: { x: center.x, y: center.y },
       radius,
@@ -79,7 +80,7 @@ class PolyUtil {
       this.ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide);
     }
 
-    T3Util.Log("O.Opt: ArcToPoly output points:", points.length);
+    LogUtil.Debug("O.Opt: ArcToPoly output points:", points.length);
     return points;
   }
 
@@ -97,7 +98,7 @@ class PolyUtil {
    * @returns Array of points representing the arc segment
    */
   static ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide) {
-    T3Util.Log("O.Opt: ArcToPolySeg inputs:", {
+    LogUtil.Debug("O.Opt: ArcToPolySeg inputs:", {
       segments,
       center: { x: center.x, y: center.y },
       radius,
@@ -136,7 +137,7 @@ class PolyUtil {
       points.push(point);
     }
 
-    T3Util.Log("O.Opt: ArcToPolySeg output points count:", points.length);
+    LogUtil.Debug("O.Opt: ArcToPolySeg output points count:", points.length);
     return points;
   }
 
@@ -156,7 +157,7 @@ class PolyUtil {
     resultIndices?: number[],
     isHorizontal?: boolean
   ): number {
-    T3Util.Log("O.Opt PolyGetIntersect - Input:", {
+    LogUtil.Debug("O.Opt PolyGetIntersect - Input:", {
       pointCount: polylinePoints.length,
       intersectValue,
       isHorizontal
@@ -245,7 +246,7 @@ class PolyUtil {
           if (foundIntersection) {
             // Stop if we've found too many intersections
             if (intersectionCount >= 2) {
-              T3Util.Log("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
+              LogUtil.Debug("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
               return intersectionCount + 1;
             }
 
@@ -298,7 +299,7 @@ class PolyUtil {
 
           if (foundIntersection) {
             if (intersectionCount >= 2) {
-              T3Util.Log("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
+              LogUtil.Debug("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
               return intersectionCount + 1;
             }
 
@@ -325,7 +326,7 @@ class PolyUtil {
       }
     }
 
-    T3Util.Log("O.Opt PolyGetIntersect - Output: Found", intersectionCount, "intersections");
+    LogUtil.Debug("O.Opt PolyGetIntersect - Output: Found", intersectionCount, "intersections");
     return intersectionCount;
   }
 
@@ -1764,7 +1765,7 @@ class PolyUtil {
  * @returns Object containing quadrant parameters and reference
  */
   static PolyLinePrPolyLGetArcQuadrant(startPoint, endPoint, arcAngle) {
-    T3Util.Log("O.Opt PolyLinePrPolyLGetArcQuadrant - Input:", {
+    LogUtil.Debug("O.Opt PolyLinePrPolyLGetArcQuadrant - Input:", {
       startPoint,
       endPoint,
       arcAngle
@@ -1841,7 +1842,7 @@ class PolyUtil {
       }
     }
 
-    T3Util.Log("O.Opt PolyLinePrPolyLGetArcQuadrant - Output:", result);
+    LogUtil.Debug("O.Opt PolyLinePrPolyLGetArcQuadrant - Output:", result);
     return result;
   }
 
@@ -1859,7 +1860,7 @@ class PolyUtil {
      * @returns The input points array with new points added
      */
   static PolyYCurve(points, rect, segmentCount, minOffset, maxOffset, startOffset, endOffset, isRightSide) {
-    T3Util.Log("O.Opt PolyYCurve - Input:", {
+    LogUtil.Debug("O.Opt PolyYCurve - Input:", {
       pointCount: points.length,
       rect,
       segmentCount,
@@ -1934,7 +1935,7 @@ class PolyUtil {
       points.push(point);
     }
 
-    T3Util.Log("O.Opt PolyYCurve - Output: Generated points:", points.length);
+    LogUtil.Debug("O.Opt PolyYCurve - Output: Generated points:", points.length);
     return points;
   }
 
@@ -1945,7 +1946,7 @@ class PolyUtil {
    * @returns True if the point is inside the polygon, false otherwise
    */
   static PolyPtInPolygon(polygonPoints, testPoint) {
-    T3Util.Log("O.Opt PolyPtInPolygon - Input:", { polygonPointsCount: polygonPoints.length, testPoint });
+    LogUtil.Debug("O.Opt PolyPtInPolygon - Input:", { polygonPointsCount: polygonPoints.length, testPoint });
 
     // Initialize triangle points
     const trianglePoints = [
@@ -2027,7 +2028,7 @@ class PolyUtil {
 
     // Point is inside if number of intersections is odd
     const isInside = (intersectionCount % 2) !== 0;
-    T3Util.Log("O.Opt PolyPtInPolygon - Output:", isInside);
+    LogUtil.Debug("O.Opt PolyPtInPolygon - Output:", isInside);
     return isInside;
   }
 

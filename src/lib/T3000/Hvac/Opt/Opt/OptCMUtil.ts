@@ -18,6 +18,7 @@ import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import DSUtil from '../DS/DSUtil';
 import Instance from '../../Data/Instance/Instance';
+import LogUtil from '../../Util/LogUtil';
 
 class OptCMUtil {
 
@@ -29,7 +30,7 @@ class OptCMUtil {
    * @returns The identified clipboard content type (Text, LM, Table, or None)
    */
   static GetClipboardType() {
-    T3Util.Log('O.Opt GetClipboardType - Input: No parameters');
+    LogUtil.Debug('O.Opt GetClipboardType - Input: No parameters');
 
     // Get the text edit session data
     const textEditData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -67,7 +68,7 @@ class OptCMUtil {
       clipboardType = T3Constant.ClipboardType.None;
     }
 
-    T3Util.Log('O.Opt GetClipboardType - Output:', clipboardType);
+    LogUtil.Debug('O.Opt GetClipboardType - Output:', clipboardType);
     return clipboardType;
   }
 
@@ -90,12 +91,12 @@ class OptCMUtil {
   * @returns 0 on success, 1 on failure
   */
   static SetLinkFlag(targetId, flagValue) {
-    T3Util.Log("O.Opt SetLinkFlag - Input:", { targetId, flagValue });
+    LogUtil.Debug("O.Opt SetLinkFlag - Input:", { targetId, flagValue });
 
     const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
 
     if (links == null) {
-      T3Util.Log("O.Opt SetLinkFlag - Output: 1 (links not found)");
+      LogUtil.Debug("O.Opt SetLinkFlag - Output: 1 (links not found)");
       return 1;
     }
 
@@ -109,7 +110,7 @@ class OptCMUtil {
       // Get the target object and ensure it exists
       const targetObject = ObjectUtil.GetObjectPtr(targetId, true);
       if (targetObject == null) {
-        T3Util.Log("O.Opt SetLinkFlag - Output: 1 (target object not found)");
+        LogUtil.Debug("O.Opt SetLinkFlag - Output: 1 (target object not found)");
         return 1;
       }
 
@@ -123,42 +124,42 @@ class OptCMUtil {
       }
     }
 
-    T3Util.Log("O.Opt SetLinkFlag - Output: 0 (success)");
+    LogUtil.Debug("O.Opt SetLinkFlag - Output: 0 (success)");
     return 0;
   }
 
   static FindLink(links, targetId, exactMatchOnly) {
-    T3Util.Log("O.Opt FindLink - Input:", { links, targetId, exactMatchOnly });
+    LogUtil.Debug("O.Opt FindLink - Input:", { links, targetId, exactMatchOnly });
 
     if (links.length === 0) {
       const result = exactMatchOnly ? -1 : 0;
-      T3Util.Log("O.Opt FindLink - Output (empty links):", result);
+      LogUtil.Debug("O.Opt FindLink - Output (empty links):", result);
       return result;
     }
 
     for (let index = 0; index < links.length; index++) {
       // If we find an exact match for the target ID
       if (links[index].targetid === targetId) {
-        T3Util.Log("O.Opt FindLink - Output (exact match):", index);
+        LogUtil.Debug("O.Opt FindLink - Output (exact match):", index);
         return index;
       }
 
       // If we're not requiring an exact match and found a target ID that's greater
       // than what we're looking for (used for sorted insertion)
       if (!exactMatchOnly && links[index].targetid > targetId) {
-        T3Util.Log("O.Opt FindLink - Output (insertion point):", index);
+        LogUtil.Debug("O.Opt FindLink - Output (insertion point):", index);
         return index;
       }
     }
 
     // No match found - return appropriate value based on exactMatchOnly
     const result = exactMatchOnly ? -1 : links.length;
-    T3Util.Log("O.Opt FindLink - Output (no match):", result);
+    LogUtil.Debug("O.Opt FindLink - Output (no match):", result);
     return result;
   }
 
   static SetEditMode(stateMode, cursorType?, shouldAddToList?, preserveExisting?) {
-    T3Util.Log("O.Opt SetEditMode - Input:", { stateMode, cursorType, shouldAddToList, preserveExisting });
+    LogUtil.Debug("O.Opt SetEditMode - Input:", { stateMode, cursorType, shouldAddToList, preserveExisting });
 
     let actualCursorType = cursorType;
 
@@ -231,11 +232,11 @@ class OptCMUtil {
       }
     }
 
-    T3Util.Log("O.Opt SetEditMode - Output:", { mode: stateMode, cursor: actualCursorType });
+    LogUtil.Debug("O.Opt SetEditMode - Output:", { mode: stateMode, cursor: actualCursorType });
   }
 
   static CancelOperation(type: any): void {
-    T3Util.Log("O.Opt CancelOperation - Input: crtOpt =", T3Gv.opt.crtOpt);
+    LogUtil.Debug("O.Opt CancelOperation - Input: crtOpt =", T3Gv.opt.crtOpt);
     switch (T3Gv.opt.crtOpt) {
       case OptConstant.OptTypes.None:
         break;
@@ -260,7 +261,7 @@ class OptCMUtil {
         }
         break;
     }
-    T3Util.Log("O.Opt CancelOperation - Output: completed");
+    LogUtil.Debug("O.Opt CancelOperation - Output: completed");
   }
 
   /**
@@ -273,7 +274,7 @@ class OptCMUtil {
    * @returns void
    */
   static RebuildURLs(stateId: number, isNextState: boolean): void {
-    T3Util.Log("O.Opt RebuildURLs - Input:", { stateId, isNextState });
+    LogUtil.Debug("O.Opt RebuildURLs - Input:", { stateId, isNextState });
 
     let storedObjectCount: number;
     let objectIndex: number;
@@ -383,7 +384,7 @@ class OptCMUtil {
       }
     }
 
-    T3Util.Log("O.Opt RebuildURLs - Output: URLs rebuilt for state:", stateId);
+    LogUtil.Debug("O.Opt RebuildURLs - Output: URLs rebuilt for state:", stateId);
   }
 
   /**
@@ -392,11 +393,11 @@ class OptCMUtil {
    * @returns True if the URL is a blob URL, false otherwise
    */
   static IsBlobURL(url) {
-    T3Util.Log("O.Opt IsBlobURL - Input:", url);
+    LogUtil.Debug("O.Opt IsBlobURL - Input:", url);
 
     const isBlobUrl = !!(url && url.length > 0 && 'blob:' === url.substring(0, 5));
 
-    T3Util.Log("O.Opt IsBlobURL - Output:", isBlobUrl);
+    LogUtil.Debug("O.Opt IsBlobURL - Output:", isBlobUrl);
     return isBlobUrl;
   }
 
@@ -775,7 +776,7 @@ class OptCMUtil {
   }
 
   static GetEditMode() {
-    T3Util.Log('= O.Opt GetEditMode - Input');
+    LogUtil.Debug('= O.Opt GetEditMode - Input');
 
     const editModeList = T3Gv.opt.editModeList || [];
     let currentEditMode = NvConstant.EditState.Default;
@@ -784,7 +785,7 @@ class OptCMUtil {
       currentEditMode = editModeList[editModeList.length - 1].mode;
     }
 
-    T3Util.Log('= O.Opt GetEditMode - Output:', currentEditMode);
+    LogUtil.Debug('= O.Opt GetEditMode - Output:', currentEditMode);
     return currentEditMode;
   }
 

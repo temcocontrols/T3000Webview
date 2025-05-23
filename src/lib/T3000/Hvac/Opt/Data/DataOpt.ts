@@ -416,7 +416,6 @@ class DataOpt {
    */
   static SaveToT3000(): void {
     // Prepare data
-    T3Util.Log('= O.DataOpt save to T3000');
     const data = this.PrepareSaveData();
 
     if (isBuiltInEdge.value) {
@@ -425,7 +424,6 @@ class DataOpt {
     else {
       const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
       if (msgType) {
-        T3Util.Log('= O.DataOpt save to T3000 with initial data status error, cancel auto save');
         return;
       }
 
@@ -438,7 +436,6 @@ class DataOpt {
         Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
       }
       else {
-        T3Util.Log('= O.DataOpt save to T3000 current device is null');
       }
     }
   }

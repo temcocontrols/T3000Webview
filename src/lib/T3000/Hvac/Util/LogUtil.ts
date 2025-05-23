@@ -1,6 +1,6 @@
 
 import HvConstant from "../Data/Constant/HvConstant"
-import DataOpt from "../Opt/Data/DataOpt";
+// import DataOpt from "../Opt/Data/DataOpt";
 
 /**
  * Utility class for conditional logging with different severity levels.
@@ -24,7 +24,9 @@ class LogUtil {
    */
   static LoadConfig(): void {
     try {
-      const config = DataOpt.LoadT3Config();
+      // const config = DataOpt.LoadT3Config();
+      const data = localStorage.getItem("t3.config");
+      const config = data ? JSON.parse(data) : null;
       if (config && config.log) {
         this.enableDebug = config.log.debug ?? this.enableDebug;
         this.enableInfo = config.log.info ?? this.enableInfo;

@@ -32,6 +32,7 @@ import T3Clipboard from '../Clipboard/T3Clipboard';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import EvtOpt from '../../Event/EvtOpt';
 import '../../Util/T3Hammer';
+import LogUtil from '../../Util/LogUtil';
 
 class DrawUtil {
 
@@ -40,7 +41,7 @@ class DrawUtil {
    * @param shouldUnbindEvents - Whether to unbind event handlers
    */
   static CancelObjectStamp(shouldUnbindEvents) {
-    T3Util.Log("O.Opt CancelObjectStamp - Input:", { shouldUnbindEvents });
+    LogUtil.Debug("O.Opt CancelObjectStamp - Input:", { shouldUnbindEvents });
 
     // Clear modal operation state
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
@@ -78,7 +79,7 @@ class DrawUtil {
     T3Gv.opt.stampVCenter = false;
     T3Gv.opt.stampSticky = false;
 
-    T3Util.Log("O.Opt CancelObjectStamp - Output: Object stamp canceled");
+    LogUtil.Debug("O.Opt CancelObjectStamp - Output: Object stamp canceled");
   }
 
   /**
@@ -87,7 +88,7 @@ class DrawUtil {
    * @returns void
    */
   static CancelObjectStampTextOnTap(event: any): void {
-    T3Util.Log("O.Opt CancelObjectStampTextOnTap - Input:", event);
+    LogUtil.Debug("O.Opt CancelObjectStampTextOnTap - Input:", event);
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
     LMEvtUtil.LMStampPostRelease(false);
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
@@ -105,7 +106,7 @@ class DrawUtil {
     T3Gv.opt.moveList = null;
     T3Gv.opt.actionStoredObjectId = -1;
     T3Gv.opt.actionSvgObject = null;
-    T3Util.Log("O.Opt CancelObjectStampTextOnTap - Output: Completed");
+    LogUtil.Debug("O.Opt CancelObjectStampTextOnTap - Output: Completed");
   }
 
   /**
@@ -113,7 +114,7 @@ class DrawUtil {
    * @param shouldUnbindEvents - Whether to unbind event handlers
    */
   static CancelObjectDragDrop(shouldUnbindEvents) {
-    T3Util.Log("O.Opt CancelObjectDragDrop - Input:", { shouldUnbindEvents });
+    LogUtil.Debug("O.Opt CancelObjectDragDrop - Input:", { shouldUnbindEvents });
 
     // Clear modal operation state
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
@@ -152,11 +153,11 @@ class DrawUtil {
     T3Gv.opt.stampHCenter = false;
     T3Gv.opt.stampVCenter = false;
 
-    T3Util.Log("O.Opt CancelObjectDragDrop - Output: Drag and drop canceled");
+    LogUtil.Debug("O.Opt CancelObjectDragDrop - Output: Drag and drop canceled");
   }
 
   static CancelObjectDraw(): void {
-    T3Util.Log("O.Opt CancelObjectDraw - Input: No parameters");
+    LogUtil.Debug("O.Opt CancelObjectDraw - Input: No parameters");
 
     const actionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
     const isPolyLineOrContainer = actionObject instanceof Instance.Shape.PolyLine || actionObject instanceof Instance.Shape.PolyLineContainer;
@@ -198,7 +199,7 @@ class DrawUtil {
     }
 
     // Set the selection tool to the default select tool.
-    T3Util.Log("O.Opt CancelObjectDraw - Output: Object draw canceled.");
+    LogUtil.Debug("O.Opt CancelObjectDraw - Output: Object draw canceled.");
   }
 
   /**
@@ -211,7 +212,7 @@ class DrawUtil {
    * @param callbackUserData - User data to pass to the completion callback
    */
   static DragDropNewShape(drawingShape, horizontalCenter, verticalCenter, useDefaultStyle, completionCallback, callbackUserData) {
-    T3Util.Log("= U.DrawUtil DragDropNewShape - Input:", {
+    LogUtil.Debug("= U.DrawUtil DragDropNewShape - Input:", {
       drawingShape: drawingShape ? drawingShape.BlockID : null,
       horizontalCenter,
       verticalCenter,
@@ -267,9 +268,9 @@ class DrawUtil {
       LMEvtUtil.LMStampPreTrack();
       this.InitializeAutoGrowDrag();
 
-      T3Util.Log("= U.DrawUtil DragDropNewShape - Output: Drag and drop initialized");
+      LogUtil.Debug("= U.DrawUtil DragDropNewShape - Output: Drag and drop initialized");
     } catch (error) {
-      T3Util.Log("= U.DrawUtil DragDropNewShape - Error:", error);
+      LogUtil.Debug("= U.DrawUtil DragDropNewShape - Error:", error);
       OptCMUtil.CancelOperation();
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
@@ -277,21 +278,21 @@ class DrawUtil {
   }
 
   static AllowAutoInsert() {
-    T3Util.Log("O.Opt AllowAutoInsert - Input: No parameters");
+    LogUtil.Debug("O.Opt AllowAutoInsert - Input: No parameters");
     const result = T3Gv.wallOpt.AllowAutoInsert();
-    T3Util.Log("O.Opt AllowAutoInsert - Output:", result);
+    LogUtil.Debug("O.Opt AllowAutoInsert - Output:", result);
     return result;
   }
 
   static InitializeAutoGrowDrag(actionType?, shouldCloseEdit?) {
-    T3Util.Log('O.Opt InitializeAutoGrowDrag - Input:', { actionType, shouldCloseEdit });
+    LogUtil.Debug('O.Opt InitializeAutoGrowDrag - Input:', { actionType, shouldCloseEdit });
 
     T3Gv.opt.dragGotAutoResizeRight = false;
     T3Gv.opt.dragGotAutoResizeBottom = false;
     T3Gv.opt.dragGotAutoResizeOldX = [];
     T3Gv.opt.dragGotAutoResizeOldY = [];
 
-    T3Util.Log('O.Opt InitializeAutoGrowDrag - Output: Auto grow drag initialized');
+    LogUtil.Debug('O.Opt InitializeAutoGrowDrag - Output: Auto grow drag initialized');
   }
 
   /**
@@ -304,7 +305,7 @@ class DrawUtil {
   * @param userData - User data to pass to the callback function
   */
   static MouseStampNewShape(drawingShape, centerHorizontally, centerVertically, useDefaultStyle, completionCallback, userData) {
-    T3Util.Log("O.Opt MouseStampNewShape - Input:", {
+    LogUtil.Debug("O.Opt MouseStampNewShape - Input:", {
       drawingShape: drawingShape ? drawingShape.BlockID : null,
       centerHorizontally,
       centerVertically,
@@ -354,7 +355,7 @@ class DrawUtil {
     LMEvtUtil.LMStampPreTrack();
     this.InitializeAutoGrowDrag();
 
-    T3Util.Log("O.Opt MouseStampNewShape - Output: Stamp operation initialized");
+    LogUtil.Debug("O.Opt MouseStampNewShape - Output: Stamp operation initialized");
   }
 
   /**
@@ -363,7 +364,7 @@ class DrawUtil {
   * @param additionalData - Optional additional data for the operation
   */
   static MouseStampObjectDone(event, additionalData) {
-    T3Util.Log("O.Opt MouseStampObjectDone - Input:", { event, additionalData });
+    LogUtil.Debug("O.Opt MouseStampObjectDone - Input:", { event, additionalData });
 
     try {
       // Get document information
@@ -385,13 +386,13 @@ class DrawUtil {
       // If cursor is outside document, cancel the operation
       if (isOutsideWorkArea) {
         this.CancelObjectStamp(true);
-        T3Util.Log("O.Opt MouseStampObjectDone - Output: Canceled (outside work area)");
+        LogUtil.Debug("O.Opt MouseStampObjectDone - Output: Canceled (outside work area)");
         return;
       }
 
       // If no object has been created yet, exit
       if (T3Gv.opt.actionStoredObjectId < 0) {
-        T3Util.Log("O.Opt MouseStampObjectDone - Output: No object created yet");
+        LogUtil.Debug("O.Opt MouseStampObjectDone - Output: No object created yet");
         return;
       }
 
@@ -550,9 +551,9 @@ class DrawUtil {
 
       QuasarUtil.AddCurrentObjectToAppState();
 
-      T3Util.Log("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
+      LogUtil.Debug("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
     } catch (error) {
-      T3Util.Log("O.Opt MouseStampObjectDone - Error:", error);
+      LogUtil.Debug("O.Opt MouseStampObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
       this.DragDrop_ExceptionCleanup();
       T3Gv.opt.ExceptionCleanup(error);
@@ -564,7 +565,7 @@ class DrawUtil {
    * @param useDefaultStyle - Whether to use default style for the shape
    */
   static MouseAddNewShape(useDefaultStyle) {
-    T3Util.Log(`O.Opt MouseAddNewShape - Input:`, { useDefaultStyle });
+    LogUtil.Debug(`O.Opt MouseAddNewShape - Input:`, { useDefaultStyle });
 
     let newObjectID;
     let hasNativeData = T3Gv.opt.drawShape.nativeDataArrayBuffer !== null;
@@ -656,7 +657,7 @@ class DrawUtil {
       UIUtil.ShowXY(true);
     }
 
-    T3Util.Log(`O.Opt MouseAddNewShape - Output: New object created with ID:`, newObjectID);
+    LogUtil.Debug(`O.Opt MouseAddNewShape - Output: New object created with ID:`, newObjectID);
   }
 
   /**
@@ -664,7 +665,7 @@ class DrawUtil {
    * @param event - The mouse event
    */
   static MouseStampObjectMove(event) {
-    T3Util.Log("O.Opt MouseStampObjectMove - Input:", event);
+    LogUtil.Debug("O.Opt MouseStampObjectMove - Input:", event);
 
     // Convert window coordinates to document coordinates
     const documentCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(event.clientX, event.clientY);
@@ -677,13 +678,13 @@ class DrawUtil {
           event.clientY >= T3Gv.opt.svgDoc.docInfo.dispY
         )
       ) {
-        T3Util.Log("O.Opt MouseStampObjectMove - Output: Cursor outside document boundaries");
+        LogUtil.Debug("O.Opt MouseStampObjectMove - Output: Cursor outside document boundaries");
         return;
       }
 
       this.MouseAddNewShape(T3Gv.opt.useDefaultStyle);
       T3Gv.opt.newObjectVisible = true;
-      T3Util.Log("O.Opt MouseStampObjectMove - Created new shape with ID:", T3Gv.opt.actionStoredObjectId);
+      LogUtil.Debug("O.Opt MouseStampObjectMove - Created new shape with ID:", T3Gv.opt.actionStoredObjectId);
     }
 
     // Handle auto-scrolling and movement
@@ -691,7 +692,7 @@ class DrawUtil {
       this.StampObjectMoveCommon(documentCoords.x, documentCoords.y, event);
     }
 
-    T3Util.Log("O.Opt MouseStampObjectMove - Output: Movement processed");
+    LogUtil.Debug("O.Opt MouseStampObjectMove - Output: Movement processed");
   }
 
   /**
@@ -701,7 +702,7 @@ class DrawUtil {
    * @param event - The event that triggered the movement
    */
   static StampObjectMoveCommon(mouseX, mouseY, event?) {
-    T3Util.Log("O.Opt StampObjectMoveCommon - Input:", { mouseX, mouseY, event });
+    LogUtil.Debug("O.Opt StampObjectMoveCommon - Input:", { mouseX, mouseY, event });
 
     let drawingObject, objectIndex, objectCount, objectId, xOffset, yOffset;
     let dragElement, visibleList, listIndex, svgElement;
@@ -715,7 +716,7 @@ class DrawUtil {
     // Convert document coordinates to window coordinates
     const windowCoords = T3Gv.opt.svgDoc.ConvertDocToWindowCoords(mouseX, mouseY);
     if (!windowCoords) {
-      T3Util.Log("O.Opt StampObjectMoveCommon - Output: No valid window coordinates");
+      LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: No valid window coordinates");
       return;
     }
 
@@ -744,7 +745,7 @@ class DrawUtil {
           UIUtil.ShowFrame(false);
           UIUtil.ShowXY(false);
         }
-        T3Util.Log("O.Opt StampObjectMoveCommon - Output: Object outside viewport, hidden");
+        LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: Object outside viewport, hidden");
         return;
       }
 
@@ -771,7 +772,7 @@ class DrawUtil {
     // Get the drawing object
     drawingObject = ObjectUtil.GetObjectPtr(T3Gv.opt.actionStoredObjectId, false);
     if (!drawingObject) {
-      T3Util.Log("O.Opt StampObjectMoveCommon - Output: No valid drawing object");
+      LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: No valid drawing object");
       return;
     }
 
@@ -1123,7 +1124,7 @@ class DrawUtil {
       }
     }
 
-    T3Util.Log("O.Opt StampObjectMoveCommon - Output: Object positioned at", currentPosition);
+    LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: Object positioned at", currentPosition);
   }
 
   /**
@@ -1132,7 +1133,7 @@ class DrawUtil {
    * @param additionalData - Optional additional data for the operation
    */
   static DragDropObjectDone(event: any, additionalData?: any) {
-    T3Util.Log('DragDropObjectDone - Input:', { event, additionalData });
+    LogUtil.Debug('DragDropObjectDone - Input:', { event, additionalData });
 
     // Re-enable work area event handling
     T3Gv.opt.WorkAreaHammer.enable(true);
@@ -1164,14 +1165,14 @@ class DrawUtil {
       // If outside work area, cancel the operation
       if (isOutsideWorkArea) {
         this.CancelObjectDragDrop(true);
-        T3Util.Log("DragDropObjectDone - Output: Canceled (outside work area)");
+        LogUtil.Debug("DragDropObjectDone - Output: Canceled (outside work area)");
         return;
       }
 
       // Verify that link parameters are initialized
       if (T3Gv.opt.linkParams == null) {
         this.CancelObjectDragDrop(true);
-        T3Util.Log("DragDropObjectDone - Output: Canceled (no link parameters)");
+        LogUtil.Debug("DragDropObjectDone - Output: Canceled (no link parameters)");
         return;
       }
 
@@ -1338,9 +1339,9 @@ class DrawUtil {
 
       QuasarUtil.AddCurrentObjectToAppState();
 
-      T3Util.Log("DragDropObjectDone - Output: Drag-drop operation completed successfully");
+      LogUtil.Debug("DragDropObjectDone - Output: Drag-drop operation completed successfully");
     } catch (error) {
-      T3Util.Log("DragDropObjectDone - Error:", error);
+      LogUtil.Debug("DragDropObjectDone - Error:", error);
       OptCMUtil.CancelOperation();
       this.DragDrop_ExceptionCleanup();
       T3Gv.opt.ExceptionCleanup(error);
@@ -1357,7 +1358,7 @@ class DrawUtil {
    * @returns ID of the replaced object, or 0 if no replacement occurred
    */
   static ReplaceSpecialObject(drawingObject, targetObjectId, zList, objectType) {
-    T3Util.Log("O.Opt ReplaceSpecialObject - Input:", {
+    LogUtil.Debug("O.Opt ReplaceSpecialObject - Input:", {
       drawingObject,
       targetObjectId,
       zList,
@@ -1404,12 +1405,12 @@ class DrawUtil {
           );
         }
 
-        T3Util.Log("O.Opt ReplaceSpecialObject - Output: Replaced object ID:", objectId);
+        LogUtil.Debug("O.Opt ReplaceSpecialObject - Output: Replaced object ID:", objectId);
         return objectId;
       }
     }
 
-    T3Util.Log("O.Opt ReplaceSpecialObject - Output: No object replaced");
+    LogUtil.Debug("O.Opt ReplaceSpecialObject - Output: No object replaced");
     return 0;
   }
 
@@ -1417,13 +1418,13 @@ class DrawUtil {
      * Cleans up resources when an exception occurs during drag and drop operations
      */
   static DragDrop_ExceptionCleanup(): void {
-    T3Util.Log('O.Opt DragDrop_ExceptionCleanup - Input: No parameters');
+    LogUtil.Debug('O.Opt DragDrop_ExceptionCleanup - Input: No parameters');
 
     // Reset empty lists
     T3Gv.opt.emptyEMFList = [];
     T3Gv.opt.emptySymbolList = [];
 
-    T3Util.Log('O.Opt DragDrop_ExceptionCleanup - Output: Cleanup completed');
+    LogUtil.Debug('O.Opt DragDrop_ExceptionCleanup - Output: Cleanup completed');
   }
 
   /**
@@ -1431,7 +1432,7 @@ class DrawUtil {
   * @param event - The mouse or touch event that triggered the movement
   */
   static StampObjectMove(event) {
-    T3Util.Log(`O.Opt StampObjectMove - Input:`, event);
+    LogUtil.Debug(`O.Opt StampObjectMove - Input:`, event);
 
     // Prevent default browser behavior
     Utils2.StopPropagationAndDefaults(event);
@@ -1450,20 +1451,20 @@ class DrawUtil {
 
     // Convert window coordinates to document coordinates
     const documentCoordinates = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(clientX, clientY);
-    T3Util.Log(`O.Opt StampObjectMove - Converted coordinates:`, documentCoordinates);
+    LogUtil.Debug(`O.Opt StampObjectMove - Converted coordinates:`, documentCoordinates);
 
     // If no object has been created yet, create it when cursor is within document boundaries
     if (T3Gv.opt.actionStoredObjectId < 0) {
       // Check if cursor is within document boundaries
       if (clientX < T3Gv.opt.svgDoc.docInfo.dispX ||
         clientY < T3Gv.opt.svgDoc.docInfo.dispY) {
-        T3Util.Log(`O.Opt StampObjectMove - Output: Cursor outside document boundaries`);
+        LogUtil.Debug(`O.Opt StampObjectMove - Output: Cursor outside document boundaries`);
         return;
       }
 
       this.MouseAddNewShape(T3Gv.opt.useDefaultStyle);
       T3Gv.opt.newObjectVisible = true;
-      T3Util.Log(`O.Opt StampObjectMove - Created new shape with ID:`, T3Gv.opt.actionStoredObjectId);
+      LogUtil.Debug(`O.Opt StampObjectMove - Created new shape with ID:`, T3Gv.opt.actionStoredObjectId);
     }
 
     // Handle auto-scrolling and movement
@@ -1471,14 +1472,14 @@ class DrawUtil {
       this.StampObjectMoveCommon(documentCoordinates.x, documentCoordinates.y, event);
     }
 
-    T3Util.Log(`O.Opt StampObjectMove - Output: Movement processed`);
+    LogUtil.Debug(`O.Opt StampObjectMove - Output: Movement processed`);
   }
 
   /**
    * Prepares the application for drag-drop or stamp operations
    */
   static PreDragDropOrStamp() {
-    T3Util.Log("O.Opt PreDragDropOrStamp - Input: No parameters");
+    LogUtil.Debug("O.Opt PreDragDropOrStamp - Input: No parameters");
 
     // Clean up existing hammer instance if it exists
     if (T3Gv.opt.mainAppHammer) {
@@ -1488,11 +1489,11 @@ class DrawUtil {
     // Create a new hammer instance for the main application element
     T3Gv.opt.mainAppHammer = new Hammer(T3Gv.opt.mainAppElement);
 
-    T3Util.Log("O.Opt PreDragDropOrStamp - Output: Hammer manager created for drag/drop operations");
+    LogUtil.Debug("O.Opt PreDragDropOrStamp - Output: Hammer manager created for drag/drop operations");
   }
 
   static DrawNewObject(newShape, clearExistingSection) {
-    T3Util.Log("O.Opt DrawNewObject - Input:", { newShape, clearExistingSection });
+    LogUtil.Debug("O.Opt DrawNewObject - Input:", { newShape, clearExistingSection });
 
     UIUtil.SetModalOperation(OptConstant.OptTypes.Draw);
     ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -1504,15 +1505,15 @@ class DrawUtil {
     OptCMUtil.SetEditMode(NvConstant.EditState.Edit);
     T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDrawStart);
 
-    T3Util.Log("O.Opt DrawNewObject - Output: Draw new object initialized");
+    LogUtil.Debug("O.Opt DrawNewObject - Output: Draw new object initialized");
   }
 
   static StartNewObjectDraw(inputEvent) {
-    T3Util.Log("O.Opt StartNewObjectDraw - Input:", inputEvent);
+    LogUtil.Debug("O.Opt StartNewObjectDraw - Input:", inputEvent);
 
     // Abort drawing if lineStamp is active
     if (T3Gv.opt.lineStamp) {
-      T3Util.Log("O.Opt StartNewObjectDraw - Output: lineStamp active, aborting draw");
+      LogUtil.Debug("O.Opt StartNewObjectDraw - Output: lineStamp active, aborting draw");
       return;
     }
 
@@ -1521,17 +1522,17 @@ class DrawUtil {
       inputEvent.gesture.center.clientX,
       inputEvent.gesture.center.clientY
     );
-    T3Util.Log("O.Opt StartNewObjectDraw: Client coords and Doc coords", inputEvent.gesture.center.clientX, inputEvent.gesture.center.clientY, docCoords);
+    LogUtil.Debug("O.Opt StartNewObjectDraw: Client coords and Doc coords", inputEvent.gesture.center.clientX, inputEvent.gesture.center.clientY, docCoords);
 
     // Set the starting point for drawing
     T3Gv.opt.drawStartX = docCoords.x;
     T3Gv.opt.drawStartY = docCoords.y;
-    T3Util.Log("O.Opt StartNewObjectDraw: Draw start coordinates set", T3Gv.opt.drawStartX, T3Gv.opt.drawStartY);
+    LogUtil.Debug("O.Opt StartNewObjectDraw: Draw start coordinates set", T3Gv.opt.drawStartX, T3Gv.opt.drawStartY);
 
     // Pre-track check before drawing
     const preTrackCheck = T3Gv.opt.drawShape.LMDrawPreTrack(docCoords);
     if (!preTrackCheck) {
-      T3Util.Log("O.Opt StartNewObjectDraw - Output: Pre-track check failed");
+      LogUtil.Debug("O.Opt StartNewObjectDraw - Output: Pre-track check failed");
       return;
     }
 
@@ -1616,7 +1617,7 @@ class DrawUtil {
       T3Gv.opt.linkParams.SHiliteJoin = T3Gv.opt.linkParams.SJoinIndex;
     }
 
-    T3Util.Log("O.Opt StartNewObjectDraw - Output: New object drawn with ID", T3Gv.opt.actionStoredObjectId);
+    LogUtil.Debug("O.Opt StartNewObjectDraw - Output: New object drawn with ID", T3Gv.opt.actionStoredObjectId);
   }
 
   /**
@@ -1626,7 +1627,7 @@ class DrawUtil {
    * @returns void
    */
   static StampTextObjectOnTapDone(event, optionalParam) {
-    T3Util.Log("O.Opt StampTextObjectOnTapDone - Input:", { event, optionalParam });
+    LogUtil.Debug("O.Opt StampTextObjectOnTapDone - Input:", { event, optionalParam });
 
     let objectIds = [];
     let docCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
@@ -1699,7 +1700,7 @@ class DrawUtil {
     T3Gv.opt.actionSvgObject = null;
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
 
-    T3Util.Log("O.Opt StampTextObjectOnTapDone - Output:", { stampedShapeId: T3Gv.opt.actionStoredObjectId, objectIds });
+    LogUtil.Debug("O.Opt StampTextObjectOnTapDone - Output:", { stampedShapeId: T3Gv.opt.actionStoredObjectId, objectIds });
   }
 
   /**
@@ -1713,7 +1714,7 @@ class DrawUtil {
      * @param completeUserData - Additional user data to pass to the callback.
      */
   static StampNewTextShapeOnTap(shape, hCenter, vCenter, operation, isSticky, completeCallback, completeUserData) {
-    T3Util.Log("O.Opt StampNewTextShapeOnTap - Input:", { shape, hCenter, vCenter, operation, isSticky, completeCallback, completeUserData });
+    LogUtil.Debug("O.Opt StampNewTextShapeOnTap - Input:", { shape, hCenter, vCenter, operation, isSticky, completeCallback, completeUserData });
 
     UIUtil.SetModalOperation(OptConstant.OptTypes.StampTextOnTap);
     T3Gv.opt.stampCompleteCallback = completeCallback || null;
@@ -1743,7 +1744,7 @@ class DrawUtil {
     T3Gv.opt.WorkAreaHammer.on('tap', WorkAreaHammerTap);
     LMEvtUtil.LMStampPreTrack();
 
-    T3Util.Log("O.Opt StampNewTextShapeOnTap - Output: Completed");
+    LogUtil.Debug("O.Opt StampNewTextShapeOnTap - Output: Completed");
   }
 
   /**
@@ -1758,14 +1759,14 @@ class DrawUtil {
      * - Logs the input and output with the prefix "O.Opt".
      */
   static BringToFrontOf(): void {
-    T3Util.Log("O.Opt BringToFrontOf - Input: no parameters");
+    LogUtil.Debug("O.Opt BringToFrontOf - Input: no parameters");
 
     const layerData = LayerUtil.GetFrontBackLayersForSelected();
     if (layerData.result) {
       this.BringToFrontOfSpecificLayer(layerData.frontmostindex);
     }
 
-    T3Util.Log("O.Opt BringToFrontOf - Output: completed");
+    LogUtil.Debug("O.Opt BringToFrontOf - Output: completed");
   }
 
   /**
@@ -1774,7 +1775,7 @@ class DrawUtil {
    * @param updateSelectedBlock - Optional flag indicating whether to update the selected block.
    */
   static BringToFrontOfSpecificLayer(targetLayerIndex: number, updateSelectedBlock?: any): void {
-    T3Util.Log("O.Opt BringToFrontOfSpecificLayer - Input:", { targetLayerIndex, updateSelectedBlock });
+    LogUtil.Debug("O.Opt BringToFrontOfSpecificLayer - Input:", { targetLayerIndex, updateSelectedBlock });
 
     const selectedObjectBlock = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     let selectedObjectList = Utils1.DeepCopy(selectedObjectBlock.Data);
@@ -1788,7 +1789,7 @@ class DrawUtil {
       if (associatedCount !== 0) {
         const visibleZList = LayerUtil.VisibleZList();
         if (visibleZList.length < 1) {
-          T3Util.Log("O.Opt BringToFrontOfSpecificLayer - Output:", "No visible objects found");
+          LogUtil.Debug("O.Opt BringToFrontOfSpecificLayer - Output:", "No visible objects found");
           return;
         }
 
@@ -1825,7 +1826,7 @@ class DrawUtil {
 
         SvgUtil.RenderAllSVGObjects();
         this.CompleteOperation();
-        T3Util.Log("O.Opt BringToFrontOfSpecificLayer - Output:", "Operation completed");
+        LogUtil.Debug("O.Opt BringToFrontOfSpecificLayer - Output:", "Operation completed");
       }
     }
   }
@@ -1839,32 +1840,32 @@ class DrawUtil {
    * @returns True if grouping is allowed, false otherwise.
    */
   static AllowGroup(objectIds: number[]): boolean {
-    T3Util.Log("O.Opt AllowGroup - Input:", objectIds);
+    LogUtil.Debug("O.Opt AllowGroup - Input:", objectIds);
 
     for (const objectId of objectIds) {
       const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (currentObject) {
         // If object has a lock flag, grouping is not allowed.
         if (currentObject.flags & NvConstant.ObjFlags.Lock) {
-          T3Util.Log("O.Opt AllowGroup - Output: false");
+          LogUtil.Debug("O.Opt AllowGroup - Output: false");
           return false;
         }
         // Check each hook: if the hooked object is not in the group, grouping is not allowed.
         for (const hook of currentObject.hooks) {
           if (objectIds.indexOf(hook.objid) < 0) {
-            T3Util.Log("O.Opt AllowGroup - Output: false");
+            LogUtil.Debug("O.Opt AllowGroup - Output: false");
             return false;
           }
         }
       }
     }
 
-    T3Util.Log("O.Opt AllowGroup - Output: true");
+    LogUtil.Debug("O.Opt AllowGroup - Output: true");
     return true;
   }
 
   static ResetObjectDraw() {
-    T3Util.Log('O.Opt ResetObjectDraw - Input: No parameters');
+    LogUtil.Debug('O.Opt ResetObjectDraw - Input: No parameters');
 
     // Reset object references
     T3Gv.opt.actionStoredObjectId = -1;
@@ -1883,11 +1884,11 @@ class DrawUtil {
     // Clear any modal operations
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
 
-    T3Util.Log('O.Opt ResetObjectDraw - Output: Object draw state reset');
+    LogUtil.Debug('O.Opt ResetObjectDraw - Output: Object draw state reset');
   }
 
   static PostObjectDraw(event?) {
-    T3Util.Log('O.Opt PostObjectDraw - Input:', event);
+    LogUtil.Debug('O.Opt PostObjectDraw - Input:', event);
 
     let affectedObjects = [];
     let actionObject = T3Gv.stdObj.GetObject(T3Gv.opt.actionStoredObjectId);
@@ -1913,17 +1914,17 @@ class DrawUtil {
       }
 
       this.PostObjectDrawCommon(affectedObjects, event);
-      T3Util.Log('O.Opt PostObjectDraw - Output:', affectedObjects.length);
+      LogUtil.Debug('O.Opt PostObjectDraw - Output:', affectedObjects.length);
       return affectedObjects.length;
     }
 
     this.PostObjectDrawCommon(null, event);
-    T3Util.Log('O.Opt PostObjectDraw - Output: 0');
+    LogUtil.Debug('O.Opt PostObjectDraw - Output: 0');
     return 0;
   }
 
   static PostObjectDrawCommon(affectedObjects, event) {
-    T3Util.Log('O.Opt PostObjectDrawCommon - Input:', { affectedObjects, event });
+    LogUtil.Debug('O.Opt PostObjectDrawCommon - Input:', { affectedObjects, event });
 
     this.CompleteOperation(affectedObjects);
     this.ResetObjectDraw();
@@ -1936,11 +1937,11 @@ class DrawUtil {
     T3Gv.opt.actionStoredObjectId = -1;
     T3Gv.opt.actionSvgObject = null;
 
-    T3Util.Log('O.Opt PostObjectDrawCommon - Output: Operation completed');
+    LogUtil.Debug('O.Opt PostObjectDrawCommon - Output: Operation completed');
   }
 
   static AddNewObject(drawingObject, shouldStyleCopy, renderSelection?, textContent?) {
-    T3Util.Log("O.Opt AddNewObject - Input:", { drawingObject, shouldStyleCopy, renderSelection, textContent });
+    LogUtil.Debug("O.Opt AddNewObject - Input:", { drawingObject, shouldStyleCopy, renderSelection, textContent });
 
     let nativeSymbolResult;
     let symbolTitle;
@@ -2022,7 +2023,7 @@ class DrawUtil {
     T3Gv.opt.actionBBox = $.extend(true, {}, drawingObject.Frame);
     T3Gv.opt.dragEnclosingRect = drawingObject.GetDragR();
 
-    T3Util.Log("O.Opt AddNewObject - Output:", newBlock.ID);
+    LogUtil.Debug("O.Opt AddNewObject - Output:", newBlock.ID);
     return newBlock.ID;
   }
 
@@ -2032,10 +2033,10 @@ class DrawUtil {
    * @returns True if duplication should occur, false otherwise
    */
   static DragDuplicate(event) {
-    T3Util.Log("O.Opt DragDuplicate - Input:", event);
+    LogUtil.Debug("O.Opt DragDuplicate - Input:", event);
 
     if (event == null) {
-      T3Util.Log("O.Opt DragDuplicate - Output: false (null event)");
+      LogUtil.Debug("O.Opt DragDuplicate - Output: false (null event)");
       return false;
     }
 
@@ -2062,7 +2063,7 @@ class DrawUtil {
       }
     }
 
-    T3Util.Log("O.Opt DragDuplicate - Output:", isCtrlKeyPressed);
+    LogUtil.Debug("O.Opt DragDuplicate - Output:", isCtrlKeyPressed);
     return isCtrlKeyPressed;
   }
 
@@ -2071,7 +2072,7 @@ class DrawUtil {
   }
 
   static AutoScrollCommon(event, snapEnabled, callback) {
-    T3Util.Log("O.Opt AutoScrollCommon - Input:", { event, snapEnabled, callback });
+    LogUtil.Debug("O.Opt AutoScrollCommon - Input:", { event, snapEnabled, callback });
 
     let clientX: number, clientY: number;
     let requiresAutoScroll = false;
@@ -2132,33 +2133,33 @@ class DrawUtil {
       T3Gv.opt.autoScrollXPos = newX;
       T3Gv.opt.autoScrollYPos = newY;
       if (T3Gv.opt.autoScrollTimerId !== -1) {
-        T3Util.Log("O.Opt AutoScrollCommon - Output: Auto scroll already scheduled");
+        LogUtil.Debug("O.Opt AutoScrollCommon - Output: Auto scroll already scheduled");
         return false;
       } else {
         T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout(callback, 0);
-        T3Util.Log("O.Opt AutoScrollCommon - Output: Auto scroll timer set", { newX, newY });
+        LogUtil.Debug("O.Opt AutoScrollCommon - Output: Auto scroll timer set", { newX, newY });
         return false;
       }
     } else {
       DrawUtil.ResetAutoScrollTimer();
-      T3Util.Log("O.Opt AutoScrollCommon - Output: No auto scroll needed, timer reset");
+      LogUtil.Debug("O.Opt AutoScrollCommon - Output: No auto scroll needed, timer reset");
       return true;
     }
   }
 
   static ResetAutoScrollTimer() {
-    T3Util.Log('O.Opt ResetAutoScrollTimer - Input:');
+    LogUtil.Debug('O.Opt ResetAutoScrollTimer - Input:');
 
     if (T3Gv.opt.autoScrollTimerId !== -1) {
       T3Gv.opt.autoScrollTimer.clearTimeout(T3Gv.opt.autoScrollTimerId);
       T3Gv.opt.autoScrollTimerId = -1;
     }
 
-    T3Util.Log('O.Opt ResetAutoScrollTimer - Output: Timer reset');
+    LogUtil.Debug('O.Opt ResetAutoScrollTimer - Output: Timer reset');
   }
 
   static DoAutoGrowDrag(dragPoint: { x: number; y: number }): { x: number; y: number } {
-    T3Util.Log("O.Opt DoAutoGrowDrag - Input:", dragPoint);
+    LogUtil.Debug("O.Opt DoAutoGrowDrag - Input:", dragPoint);
 
     // Ensure the drag point coordinates are non-negative
     if (dragPoint.x < 0) {
@@ -2178,7 +2179,7 @@ class DrawUtil {
       if (dragPoint.y > sessionData.dim.y) {
         dragPoint.y = sessionData.dim.y;
       }
-      T3Util.Log("O.Opt DoAutoGrowDrag - Output:", dragPoint);
+      LogUtil.Debug("O.Opt DoAutoGrowDrag - Output:", dragPoint);
       return dragPoint;
     } else {
       let newDimension: { x: number; y: number };
@@ -2269,7 +2270,7 @@ class DrawUtil {
           T3Gv.opt.dragGotAutoResizeBottom = false;
         }
       }
-      T3Util.Log("O.Opt DoAutoGrowDrag - Output:", dragPoint);
+      LogUtil.Debug("O.Opt DoAutoGrowDrag - Output:", dragPoint);
       return dragPoint;
     }
   }
@@ -2280,7 +2281,7 @@ class DrawUtil {
     fitOption?: any,
     unusedParameter?: any
   ) {
-    T3Util.Log("O.Opt CompleteOperation - Input:", { selectionObjects, preserveUndoState, fitOption, unusedParameter });
+    LogUtil.Debug("O.Opt CompleteOperation - Input:", { selectionObjects, preserveUndoState, fitOption, unusedParameter });
 
     SvgUtil.HideAllSVGSelectionStates();
 
@@ -2314,17 +2315,17 @@ class DrawUtil {
 
     this.UpdateAppStateV2Frame();
 
-    T3Util.Log("O.Opt CompleteOperation - Output: Operation completed.");
+    LogUtil.Debug("O.Opt CompleteOperation - Output: Operation completed.");
   }
 
   static AllowSnapToShapes() {
-    T3Util.Log("O.Opt AllowSnapToShapes - Input: No parameters");
+    LogUtil.Debug("O.Opt AllowSnapToShapes - Input: No parameters");
 
     // Get session data (unused in function but was in original code)
     ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     const result = T3Gv.docUtil.docConfig.snapToShapes;
-    T3Util.Log("O.Opt AllowSnapToShapes - Output:", result);
+    LogUtil.Debug("O.Opt AllowSnapToShapes - Output:", result);
     return result;
   }
 
@@ -2355,7 +2356,7 @@ class DrawUtil {
    *
    * @static
    * @remarks When refreshPosition is enabled, the method also logs the updated
-   * position data using T3Util.Log for development tracking purposes.
+   * position data using LogUtil.Debug for development tracking purposes.
    * @returns {void}
    */
   static UpdateAppStateV2Frame() {
@@ -2369,7 +2370,7 @@ class DrawUtil {
     QuasarUtil.UpdateCurrentObjectPos(objCoords);
     EvtOpt.toolOpt.SaveAct();
 
-    T3Util.Log('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
+    LogUtil.Debug('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);
   }
 }
 

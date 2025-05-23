@@ -1,5 +1,6 @@
 
 import { insertT3EntryDialog } from "../../Data/Data";
+import LogUtil from "../../Util/LogUtil";
 import T3Util from "../../Util/T3Util";
 
 class KeyInsertOpt {
@@ -11,8 +12,8 @@ class KeyInsertOpt {
   }
 
   InsertT3EntryDialog() {
-    T3Util.Log('= O.KeyInsertOpt InsertT3EntryDialog: The insert key has been pressed')
-    T3Util.Log('= O.KeyInsertOpt InsertT3EntryDialog: The insertT3EntryDialog data been initial with value', this.insertT3EntryDialog)
+    LogUtil.Debug('= O.KeyInsertOpt InsertT3EntryDialog: The insert key has been pressed')
+    LogUtil.Debug('= O.KeyInsertOpt InsertT3EntryDialog: The insertT3EntryDialog data been initial with value', this.insertT3EntryDialog)
 
     // Set the t3 insert dialog state to open
     this.insertT3EntryDialog.active = true;
@@ -23,7 +24,7 @@ class KeyInsertOpt {
   }
 
   InsertT3EntrySelect(value) {
-    T3Util.Log('= O.KeyInsertOpt InsertT3EntryDialog: value', value)
+    LogUtil.Debug('= O.KeyInsertOpt InsertT3EntryDialog: value', value)
   }
 }
 

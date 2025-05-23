@@ -28,6 +28,7 @@ import SvgUtil from "./SvgUtil";
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
 import TextUtil from './TextUtil';
+import LogUtil from '../../Util/LogUtil';
 
 class SelectUtil {
 
@@ -39,19 +40,19 @@ class SelectUtil {
    * @returns Boolean indicating whether object was selected successfully
    */
   static SelectObjectFromClick(event, svgElement, preserveSelection) {
-    T3Util.Log('O.Opt SelectObjectFromClick - Input:', { event, svgElement, preserveSelection });
+    LogUtil.Debug('O.Opt SelectObjectFromClick - Input:', { event, svgElement, preserveSelection });
 
     const visibleObjectCount = LayerUtil.ActiveVisibleZList().length;
     const shapeContainerType = NvConstant.FNObjectTypes.ShapeContainer;
 
     // Exit if no visible objects or no SVG element provided
     if (visibleObjectCount === 0) {
-      T3Util.Log('O.Opt SelectObjectFromClick - Output: false (no visible objects)');
+      LogUtil.Debug('O.Opt SelectObjectFromClick - Output: false (no visible objects)');
       return false;
     }
 
     if (svgElement === null) {
-      T3Util.Log('O.Opt SelectObjectFromClick - Output: false (no SVG element)');
+      LogUtil.Debug('O.Opt SelectObjectFromClick - Output: false (no SVG element)');
       return false;
     }
 
@@ -61,7 +62,7 @@ class SelectUtil {
 
     // Verify the object is a valid drawing object
     if (!(object && object instanceof Instance.Shape.BaseDrawObject)) {
-      T3Util.Log('O.Opt SelectObjectFromClick - Output: false (not a drawing object)');
+      LogUtil.Debug('O.Opt SelectObjectFromClick - Output: false (not a drawing object)');
       return false;
     }
 
@@ -87,7 +88,7 @@ class SelectUtil {
     if (indexInSelectedList == -1) {
       // Object is not already selected - select it
       this.SelectObjects(objectsToSelect, isMultipleSelection, false);
-      T3Util.Log('O.Opt SelectObjectFromClick - Output: true (object selected)');
+      LogUtil.Debug('O.Opt SelectObjectFromClick - Output: true (object selected)');
       return true;
     }
     else {
@@ -111,7 +112,7 @@ class SelectUtil {
    * @returns The selected object ID or -1 if none selected
    */
   static SelectObjects(objectsToSelect, isMultipleSelection?, preserveSelectionState?) {
-    T3Util.Log("O.Opt SelectObjects - Input:", { objectsToSelect, isMultipleSelection, preserveSelectionState });
+    LogUtil.Debug("O.Opt SelectObjects - Input:", { objectsToSelect, isMultipleSelection, preserveSelectionState });
 
     let selectedIndex = -1;
 
@@ -197,7 +198,7 @@ class SelectUtil {
       SvgUtil.RenderAllSVGSelectionStates();
     }
 
-    T3Util.Log("O.Opt SelectObjects - Output:", { selectedIndex, selectedCount: objectsToSelect?.length || 0 });
+    LogUtil.Debug("O.Opt SelectObjects - Output:", { selectedIndex, selectedCount: objectsToSelect?.length || 0 });
     return selectedIndex;
   }
 
@@ -206,7 +207,7 @@ class SelectUtil {
    * @returns The ID of the currently targeted object or -1 if none selected
    */
   static GetTargetSelect() {
-    T3Util.Log('O.Opt GetTargetSelect - Input: No parameters');
+    LogUtil.Debug('O.Opt GetTargetSelect - Input: No parameters');
 
     // Get session data
     const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -222,7 +223,7 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log('O.Opt GetTargetSelect - Output:', targetSelectId);
+    LogUtil.Debug('O.Opt GetTargetSelect - Output:', targetSelectId);
     return targetSelectId;
   }
 
@@ -232,7 +233,7 @@ class SelectUtil {
    * @param preserveSession - Whether to preserve the current session data
    */
   static SetTargetSelect(targetId: number, preserveSession?: boolean) {
-    T3Util.Log("O.Opt SetTargetSelect - Input:", { targetId, preserveSession });
+    LogUtil.Debug("O.Opt SetTargetSelect - Input:", { targetId, preserveSession });
 
     // Get session data
     let sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, preserveSession);
@@ -260,7 +261,7 @@ class SelectUtil {
       UIUtil.ShowFrame(false);
     }
 
-    T3Util.Log("O.Opt SetTargetSelect - Output:", { targetId: sessionData.tselect, dimensions });
+    LogUtil.Debug("O.Opt SetTargetSelect - Output:", { targetId: sessionData.tselect, dimensions });
   }
 
   /**
@@ -268,10 +269,10 @@ class SelectUtil {
    * @param selectedObjects - Array of currently selected object IDs
    */
   static UpdateSelectionAttributes(selectedObjects) {
-    T3Util.Log('O.Opt UpdateSelectionAttributes - Input:', selectedObjects);
+    LogUtil.Debug('O.Opt UpdateSelectionAttributes - Input:', selectedObjects);
 
     if (!selectedObjects) {
-      T3Util.Log('O.Opt UpdateSelectionAttributes - Output: No selection objects provided, exiting early');
+      LogUtil.Debug('O.Opt UpdateSelectionAttributes - Output: No selection objects provided, exiting early');
       return;
     }
 
@@ -320,14 +321,14 @@ class SelectUtil {
     // Special case: dimension editing mode
     if (T3Gv.opt.bInDimensionEdit) {
       T3Gv.opt.HandleDimensionEditMode(sessionData);
-      T3Util.Log('O.Opt UpdateSelectionAttributes - Output: Dimension edit mode handled');
+      LogUtil.Debug('O.Opt UpdateSelectionAttributes - Output: Dimension edit mode handled');
       return;
     }
 
     // No selection or note editing mode
     if (objectCount === 0 || T3Gv.opt.bInNoteEdit) {
       T3Gv.opt.HandleEmptySelectionOrNoteEditMode(sessionData);
-      T3Util.Log('O.Opt UpdateSelectionAttributes - Output: Empty selection or note edit mode handled');
+      LogUtil.Debug('O.Opt UpdateSelectionAttributes - Output: Empty selection or note edit mode handled');
       return;
     }
 
@@ -384,7 +385,7 @@ class SelectUtil {
       selectionAttributes.fontsize = OptCMUtil.PixelstoPoints(selectionAttributes.fontsize);
     }
 
-    T3Util.Log('O.Opt UpdateSelectionAttributes - Output:', {
+    LogUtil.Debug('O.Opt UpdateSelectionAttributes - Output:', {
       nselect: selectState.nselect,
       nshapeselected: selectState.nshapeselected,
       nlineselected: selectState.nlineselected,
@@ -402,7 +403,7 @@ class SelectUtil {
    * @returns void
    */
   static ResetSelectionState() {
-    T3Util.Log('O.Opt ResetSelectionState - Input: No parameters');
+    LogUtil.Debug('O.Opt ResetSelectionState - Input: No parameters');
 
     const selectionState = T3Gv.opt.selectionState;
 
@@ -460,7 +461,7 @@ class SelectUtil {
     selectionState.paste = OptCMUtil.GetClipboardType();
     selectionState.csOptMng = T3Gv.wallOpt;
 
-    T3Util.Log('O.Opt ResetSelectionState - Output: Selection state reset');
+    LogUtil.Debug('O.Opt ResetSelectionState - Output: Selection state reset');
   }
 
   /**
@@ -468,7 +469,7 @@ class SelectUtil {
    * @param objectId - ID of the object to remove from selection
    */
   static RemoveFromSelectedList(objectId) {
-    T3Util.Log("O.Opt RemoveFromSelectedList - Input:", objectId);
+    LogUtil.Debug("O.Opt RemoveFromSelectedList - Input:", objectId);
 
     // Get the current selected list (without preserving state)
     const selectedList = ObjectUtil.GetObjectPtr(
@@ -506,20 +507,20 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log("O.Opt RemoveFromSelectedList - Output: Object removed from selection");
+    LogUtil.Debug("O.Opt RemoveFromSelectedList - Output: Object removed from selection");
   }
 
   static StartOptSltSelect(event: any) {
-    T3Util.Log('O.Opt StartOptSltSelect - Input event:', event);
+    LogUtil.Debug('O.Opt StartOptSltSelect - Input event:', event);
     try {
       if (T3Gv.docUtil.IsReadOnly()) {
-        T3Util.Log('O.Opt StartOptSltSelect - Document is read-only; aborting.');
+        LogUtil.Debug('O.Opt StartOptSltSelect - Document is read-only; aborting.');
         return;
       }
 
       if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
         if (T3Gv.opt.formatPainterSticky) {
-          T3Util.Log('O.Opt StartOptSltSelect - formatPainterSticky active; aborting.');
+          LogUtil.Debug('O.Opt StartOptSltSelect - formatPainterSticky active; aborting.');
           return;
         }
         UIUtil.SetFormatPainter(true, false);
@@ -555,7 +556,7 @@ class SelectUtil {
       optSltShape.SetPos(startCoordinates.x, startCoordinates.y);
       T3Gv.opt.svgOverlayLayer.AddElement(optSltShape);
 
-      T3Util.Log('O.Opt StartOptSltSelect - Opt Slt shape created:', optSltShape);
+      LogUtil.Debug('O.Opt StartOptSltSelect - Opt Slt shape created:', optSltShape);
       T3Gv.opt.optSlt = optSltShape;
       T3Gv.opt.EndStampSession();
 
@@ -563,9 +564,9 @@ class SelectUtil {
       T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_OptSltDrag);
       T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_OptSltDragEnd);
 
-      T3Util.Log('O.Opt StartOptSltSelect - Output opt slt set successfully:', T3Gv.opt.optSlt);
+      LogUtil.Debug('O.Opt StartOptSltSelect - Output opt slt set successfully:', T3Gv.opt.optSlt);
     } catch (error) {
-      T3Util.Log('O.Opt StartOptSltSelect - Error:', error);
+      LogUtil.Debug('O.Opt StartOptSltSelect - Error:', error);
       this.OptSltSelectExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
@@ -573,7 +574,7 @@ class SelectUtil {
   }
 
   static SelectAllInRect(selectionRect, allowMultipleSelection) {
-    T3Util.Log("O.Opt SelectAllInRect - Input:", { selectionRect, allowMultipleSelection });
+    LogUtil.Debug("O.Opt SelectAllInRect - Input:", { selectionRect, allowMultipleSelection });
 
     // Get all visible objects and filter out objects flagged as not visible
     const visibleObjects = LayerUtil.ActiveVisibleZList();
@@ -624,21 +625,21 @@ class SelectUtil {
 
       // Handle the selection results
       if (selectedObjects.length === 0) {
-        T3Util.Log("O.Opt SelectAllInRect - No objects found in selection rectangle");
+        LogUtil.Debug("O.Opt SelectAllInRect - No objects found in selection rectangle");
         this.ClearSelectionClick();
       } else {
-        T3Util.Log("O.Opt SelectAllInRect - Found objects:", selectedObjects.length);
+        LogUtil.Debug("O.Opt SelectAllInRect - Found objects:", selectedObjects.length);
         SelectUtil.SelectObjects(selectedObjects, allowMultipleSelection, false);
       }
     } else {
-      T3Util.Log("O.Opt SelectAllInRect - No visible objects to select");
+      LogUtil.Debug("O.Opt SelectAllInRect - No visible objects to select");
     }
 
-    T3Util.Log("O.Opt SelectAllInRect - Output: Selection processing completed");
+    LogUtil.Debug("O.Opt SelectAllInRect - Output: Selection processing completed");
   }
 
   static OptSltSelectMoveCommon(mouseX: number, mouseY: number) {
-    T3Util.Log('O.Opt OptSltSelectMoveCommon - Input:', { mouseX, mouseY });
+    LogUtil.Debug('O.Opt OptSltSelectMoveCommon - Input:', { mouseX, mouseY });
 
     if (T3Gv.opt.optSlt === null) {
       return;
@@ -688,22 +689,22 @@ class SelectUtil {
       };
     }
 
-    T3Util.Log('O.Opt OptSltSelectMoveCommon - Output:', { optSltFrame: T3Gv.opt.optSltFrame });
+    LogUtil.Debug('O.Opt OptSltSelectMoveCommon - Output:', { optSltFrame: T3Gv.opt.optSltFrame });
   }
 
   static UnbindOptSltHammerEvents() {
-    T3Util.Log('O.Opt UnbindOptSltHammerEvents - Input');
+    LogUtil.Debug('O.Opt UnbindOptSltHammerEvents - Input');
 
     if (T3Gv.opt.WorkAreaHammer) {
       T3Gv.opt.WorkAreaHammer.off('drag');
       T3Gv.opt.WorkAreaHammer.off('dragend');
     }
 
-    T3Util.Log('O.Opt UnbindOptSltHammerEvents - Output: done');
+    LogUtil.Debug('O.Opt UnbindOptSltHammerEvents - Output: done');
   }
 
   static OptSltSelectExceptionCleanup(exception: any): never {
-    T3Util.Log("O.Opt OptSltSelectExceptionCleanup - Input:", exception);
+    LogUtil.Debug("O.Opt OptSltSelectExceptionCleanup - Input:", exception);
 
     try {
       // Unbind opt slt related hammer events and reset auto-scroll timer.
@@ -727,33 +728,33 @@ class SelectUtil {
       throw cleanupError;
     }
 
-    T3Util.Log("O.Opt OptSltSelectExceptionCleanup - Output: Cleanup completed");
+    LogUtil.Debug("O.Opt OptSltSelectExceptionCleanup - Output: Cleanup completed");
     throw exception;
   }
 
   static ClearAnySelection(preserveBlock: boolean) {
-    T3Util.Log("O.Opt ClearAnySelection - Input:", { preserveBlock });
+    LogUtil.Debug("O.Opt ClearAnySelection - Input:", { preserveBlock });
     const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, preserveBlock);
     if (selectedList.length !== 0) {
       SelectUtil.SetTargetSelect(-1, preserveBlock);
       SvgUtil.HideAllSVGSelectionStates();
       selectedList.length = 0;
     }
-    T3Util.Log("O.Opt ClearAnySelection - Output: selection cleared");
+    LogUtil.Debug("O.Opt ClearAnySelection - Output: selection cleared");
   }
 
   static ClearSelectionClick() {
-    T3Util.Log('O.Opt ClearSelectionClick: input');
+    LogUtil.Debug('O.Opt ClearSelectionClick: input');
 
     T3Gv.opt.CloseEdit();
     this.ClearAnySelection(false);
     SelectUtil.UpdateSelectionAttributes(null);
 
-    T3Util.Log('O.Opt ClearSelectionClick: output');
+    LogUtil.Debug('O.Opt ClearSelectionClick: output');
   }
 
   static OptSltSelectCancel(event?) {
-    T3Util.Log("O.Opt OptSltSelectCancel - Input:", event);
+    LogUtil.Debug("O.Opt OptSltSelectCancel - Input:", event);
 
     if (T3Gv.opt.optSlt) {
       // Unbind related event handlers
@@ -779,7 +780,7 @@ class SelectUtil {
       };
     }
 
-    T3Util.Log("O.Opt OptSltSelectCancel - Output: Opt slt selection canceled");
+    LogUtil.Debug("O.Opt OptSltSelectCancel - Output: Opt slt selection canceled");
   }
 
   /**
@@ -791,7 +792,7 @@ class SelectUtil {
    * @param typeFilter - Optional array of object types to filter by
    */
   static SelectAllObjects(typeFilter?) {
-    T3Util.Log("U.Util1 SelectAllObjects - Input:", { typeFilter });
+    LogUtil.Debug("U.Util1 SelectAllObjects - Input:", { typeFilter });
 
     let svgElement;
     let currentObject;
@@ -811,7 +812,7 @@ class SelectUtil {
 
       // If there's text or no active table, we're done after selecting text
       if (!(textLength === 0 && textEditSession.theActiveTableObjectID >= 0)) {
-        T3Util.Log("U.Util1 SelectAllObjects - Output: All text selected");
+        LogUtil.Debug("U.Util1 SelectAllObjects - Output: All text selected");
         return;
       }
 
@@ -853,7 +854,7 @@ class SelectUtil {
       objectsToSelect.push(visibleObjects[objectIndex]);
 
       SelectUtil.SelectObjects(objectsToSelect, false, false);
-      T3Util.Log("U.Util1 SelectAllObjects - Output: Selected", objectsToSelect.length, "objects");
+      LogUtil.Debug("U.Util1 SelectAllObjects - Output: Selected", objectsToSelect.length, "objects");
     }
   }
 
@@ -862,7 +863,7 @@ class SelectUtil {
      * @returns The context(s) indicating the current selection state.
      */
   static GetSelectionContext(): any {
-    T3Util.Log("O.Opt GetSelectionContext - Input:", {});
+    LogUtil.Debug("O.Opt GetSelectionContext - Input:", {});
 
     let optMng: any;
     let selectionContexts: any[] = [];
@@ -874,10 +875,10 @@ class SelectUtil {
       if (optMng) {
         selectionContexts.push(DSConstant.Contexts.Text);
         selectionContexts.push(T3Gv.opt.GetAutomationContext(optMng));
-        T3Util.Log("O.Opt GetSelectionContext - Output:", selectionContexts);
+        LogUtil.Debug("O.Opt GetSelectionContext - Output:", selectionContexts);
         return selectionContexts;
       } else {
-        T3Util.Log("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Text);
+        LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Text);
         return DSConstant.Contexts.Text;
       }
     }
@@ -885,11 +886,11 @@ class SelectUtil {
     // Check if the active edit element corresponds to dimension or note text.
     const activeEditElement = T3Gv.opt.svgDoc.GetActiveEdit();
     if (activeEditElement !== null && activeEditElement.ID === OptConstant.SVGElementClass.DimText) {
-      T3Util.Log("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.DimensionText);
+      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.DimensionText);
       return DSConstant.Contexts.DimensionText;
     }
     if (activeEditElement !== null && activeEditElement.ID === OptConstant.SVGElementClass.NoteText) {
-      T3Util.Log("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.NoteText);
+      LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.NoteText);
       return DSConstant.Contexts.NoteText;
     }
 
@@ -908,21 +909,21 @@ class SelectUtil {
       if (objectData.AllowTextEdit()) {
         if (selectionContexts.length) {
           selectionContexts.push(DSConstant.Contexts.Text);
-          T3Util.Log("O.Opt GetSelectionContext - Output:", selectionContexts);
+          LogUtil.Debug("O.Opt GetSelectionContext - Output:", selectionContexts);
           return selectionContexts;
         } else {
-          T3Util.Log("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Text);
+          LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.Text);
           return DSConstant.Contexts.Text;
         }
       }
     }
 
-    T3Util.Log("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.None);
+    LogUtil.Debug("O.Opt GetSelectionContext - Output:", DSConstant.Contexts.None);
     return DSConstant.Contexts.None;
   }
 
   static FindAllChildObjects(targetObjectId: number, filterDrawingBaseClass?: number, filterObjectType?: number): number[] {
-    T3Util.Log("O.Opt FindAllChildObjects - Input:", {
+    LogUtil.Debug("O.Opt FindAllChildObjects - Input:", {
       targetObjectId,
       filterDrawingBaseClass,
       filterObjectType
@@ -948,20 +949,20 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log("O.Opt FindAllChildObjects - Output:", { childObjectIds });
+    LogUtil.Debug("O.Opt FindAllChildObjects - Output:", { childObjectIds });
     return childObjectIds;
   }
 
   static AreSelectedObjects(): boolean {
-    T3Util.Log("O.Opt AreSelectedObjects - Input: No parameters");
+    LogUtil.Debug("O.Opt AreSelectedObjects - Input: No parameters");
     const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId);
     const hasSelection = selectedObjects !== null && selectedObjects.Data.length !== 0;
-    T3Util.Log("O.Opt AreSelectedObjects - Output:", hasSelection);
+    LogUtil.Debug("O.Opt AreSelectedObjects - Output:", hasSelection);
     return hasSelection;
   }
 
   static FindConnect(targetObjectId, drawingObject, hookPoints, showVisuals, isAttachMode, allowJoin, eventPosition) {
-    T3Util.Log("O.Opt FindConnect - Input:", {
+    LogUtil.Debug("O.Opt FindConnect - Input:", {
       targetObjectId,
       drawingObject: drawingObject ? drawingObject.BlockID : null,
       hookPointsCount: hookPoints ? hookPoints.length : 0,
@@ -1016,14 +1017,14 @@ class SelectUtil {
 
     // Input validation
     if (hookPoints == null) {
-      T3Util.Log("O.Opt FindConnect - Output: false (No hook points)");
+      LogUtil.Debug("O.Opt FindConnect - Output: false (No hook points)");
       return false;
     }
 
     // Get list of objects to check for connections
     const circularList = T3Gv.opt.linkParams.lpCircList;
     if (circularList == null) {
-      T3Util.Log("O.Opt FindConnect - Output: false (No circular list)");
+      LogUtil.Debug("O.Opt FindConnect - Output: false (No circular list)");
       return false;
     }
 
@@ -1164,7 +1165,7 @@ class SelectUtil {
       if (hitResult && hitResult.hitcode) {
         targetObject = ObjectUtil.GetObjectPtr(hitResult.objectid, false);
         if (targetObject == null) {
-          T3Util.Log("O.Opt FindConnect - Output: false (Target object not found)");
+          LogUtil.Debug("O.Opt FindConnect - Output: false (Target object not found)");
           return false;
         }
 
@@ -1247,7 +1248,7 @@ class SelectUtil {
         );
 
         if (!targetPoints || targetPoints.length === 0) {
-          T3Util.Log("O.Opt FindConnect - Output: false (No target points)");
+          LogUtil.Debug("O.Opt FindConnect - Output: false (No target points)");
           return false;
         }
 
@@ -1294,12 +1295,12 @@ class SelectUtil {
           );
 
           if (!segmentCheck) {
-            T3Util.Log("O.Opt FindConnect - Output: false (Segment check failed)");
+            LogUtil.Debug("O.Opt FindConnect - Output: false (Segment check failed)");
             return false;
           }
 
           if (segmentCheck.segment != hitResult.segment) {
-            T3Util.Log("O.Opt FindConnect - Output: false (Segment mismatch)");
+            LogUtil.Debug("O.Opt FindConnect - Output: false (Segment mismatch)");
             return false;
           }
         }
@@ -1566,7 +1567,7 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log("O.Opt FindConnect - Output:", foundConnection);
+    LogUtil.Debug("O.Opt FindConnect - Output:", foundConnection);
     return foundConnection;
   }
 
@@ -1578,7 +1579,7 @@ class SelectUtil {
     usePreciseHitTest?: boolean,
     containerObject?: any
   ) {
-    T3Util.Log("O.Opt FindObject - Input:", {
+    LogUtil.Debug("O.Opt FindObject - Input:", {
       point,
       objectIdFilter,
       classFilter,
@@ -1595,7 +1596,7 @@ class SelectUtil {
     const visibleObjects = LayerUtil.ActiveVisibleZList();
 
     if (visibleObjects == null) {
-      T3Util.Log("O.Opt FindObject - Output: no visible objects");
+      LogUtil.Debug("O.Opt FindObject - Output: no visible objects");
       return -1;
     }
 
@@ -1656,7 +1657,7 @@ class SelectUtil {
               hitResult.objectid = visibleObjects[idx];
               hitResult.hitcode = NvConstant.HitCodes.InContainer;
               hitResult.theContainerPt = containerPoint;
-              T3Util.Log("O.Opt FindObject - Output:", hitResult);
+              LogUtil.Debug("O.Opt FindObject - Output:", hitResult);
               return hitResult;
             }
             continue;
@@ -1664,7 +1665,7 @@ class SelectUtil {
 
           // For swimlanes, if the point is inside the hit frame, return null.
           if (false/*currentObject.IsSwimlane()*/ && Utils2.pointInRect(hitTestFrame, point)) {
-            T3Util.Log("O.Opt FindObject - Output: found swimlane containment is null");
+            LogUtil.Debug("O.Opt FindObject - Output: found swimlane containment is null");
             return null;
           }
 
@@ -1673,7 +1674,7 @@ class SelectUtil {
             hitResult.objectid = visibleObjects[idx];
             hitResult.hitcode = currentObject.Hit(point, hitTestOptions, usePreciseHitTest, hitResult);
             if (hitResult.hitcode) {
-              T3Util.Log("O.Opt FindObject - Output:", hitResult);
+              LogUtil.Debug("O.Opt FindObject - Output:", hitResult);
               return hitResult;
             }
           }
@@ -1681,7 +1682,7 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log("O.Opt FindObject - Output: result null");
+    LogUtil.Debug("O.Opt FindObject - Output: result null");
     return null;
   }
 
@@ -1698,7 +1699,7 @@ class SelectUtil {
    * @returns Array of object IDs that should move together
    */
   static GetMoveList(objectId, useSelectedList, includeEnclosedObjects, useVisibleList, boundsRect, targetOnlyMode) {
-    T3Util.Log("O.Opt GetMoveList - Input:", {
+    LogUtil.Debug("O.Opt GetMoveList - Input:", {
       objectId,
       useSelectedList,
       includeEnclosedObjects,
@@ -1714,7 +1715,7 @@ class SelectUtil {
     const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
 
     if (links == null) {
-      T3Util.Log("O.Opt GetMoveList - Output: No links found, returning empty list");
+      LogUtil.Debug("O.Opt GetMoveList - Output: No links found, returning empty list");
       return T3Gv.opt.moveList;
     }
 
@@ -1812,7 +1813,7 @@ class SelectUtil {
       }
     }
 
-    T3Util.Log("O.Opt GetMoveList - Output:", {
+    LogUtil.Debug("O.Opt GetMoveList - Output:", {
       objectCount: T3Gv.opt.moveList.length,
       moveList: T3Gv.opt.moveList
     });

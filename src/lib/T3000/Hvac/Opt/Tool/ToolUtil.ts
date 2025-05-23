@@ -39,6 +39,7 @@ import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
 import ObjectType from "src/components/ObjectType.vue"
 import QuasarUtil from "../Quasar/QuasarUtil"
+import LogUtil from "../../Util/LogUtil"
 
 
 class ToolUtil {
@@ -49,7 +50,7 @@ class ToolUtil {
    * @param isSticky - Whether the tool should be sticky
    */
   SetSelectionTool(toolType, isSticky) {
-    T3Util.Log('O.ActiveSelection.SetSelectionTool - Input:', { toolType, isSticky });
+    LogUtil.Debug('O.ActiveSelection.SetSelectionTool - Input:', { toolType, isSticky });
 
     // Initial render of all SVG selection states
     SvgUtil.RenderAllSVGSelectionStates();
@@ -61,11 +62,11 @@ class ToolUtil {
    * @returns false to indicate operation was cancelled
    */
   CancelOperation(skipMessageHandling?) {
-    T3Util.Log("O.ToolOpt CancelOperation input:", skipMessageHandling);
+    LogUtil.Debug("O.ToolOpt CancelOperation input:", skipMessageHandling);
 
     this.SetSelectionTool(ToolConstant.Tools.Select, false);
     OptCMUtil.CancelOperation();
-    T3Util.Log("O.ToolOpt CancelOperation output: false");
+    LogUtil.Debug("O.ToolOpt CancelOperation output: false");
     return false;
   }
 
@@ -76,7 +77,7 @@ class ToolUtil {
    * @returns void
    */
   SetDefaultWallThickness(thickness, wallObj) {
-    T3Util.Log("O.ToolOpt SetDefaultWallThickness input:", thickness, wallObj);
+    LogUtil.Debug("O.ToolOpt SetDefaultWallThickness input:", thickness, wallObj);
 
     var conversionFactor = 1;
     if (!T3Gv.docUtil.rulerConfig.useInches) {
@@ -104,7 +105,7 @@ class ToolUtil {
       DrawUtil.CompleteOperation(null);
     }
 
-    T3Util.Log("O.ToolOpt SetDefaultWallThickness output: void");
+    LogUtil.Debug("O.ToolOpt SetDefaultWallThickness output: void");
   }
 
   /**
@@ -114,7 +115,7 @@ class ToolUtil {
      * @returns The created wall object if isTargetValid is true
      */
   DrawNewWallShape(event, target) {
-    T3Util.Log("O.ToolOpt DrawNewWallShape input:", event, target);
+    LogUtil.Debug("O.ToolOpt DrawNewWallShape input:", event, target);
 
     var wallObject;
     var isTargetValid = target != null;
@@ -127,10 +128,10 @@ class ToolUtil {
     }
 
     if (isTargetValid) {
-      T3Util.Log("O.ToolOpt DrawNewWallShape output:", wallObject);
+      LogUtil.Debug("O.ToolOpt DrawNewWallShape output:", wallObject);
       return wallObject;
     }
-    T3Util.Log("O.ToolOpt DrawNewWallShape output: undefined");
+    LogUtil.Debug("O.ToolOpt DrawNewWallShape output: undefined");
   }
 
   /**
@@ -139,7 +140,7 @@ class ToolUtil {
    * @param shapeType - The type of shape to create
    */
   StampOrDragDropNewShape(event, shapeType, uniShapeType) {
-    T3Util.Log('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
+    LogUtil.Debug('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
 
     // Initialize cancel flag
     let cancelOperation = false;
@@ -154,7 +155,7 @@ class ToolUtil {
     // Set a timeout to execute the callback after a short delay
     T3Gv.opt.stampTimeout = window.setTimeout(callbackFunction, 200, context, shapeType, uniShapeType);
 
-    T3Util.Log('U.ToolUtil.StampOrDragDropNewShape - Output: stampTimeout set');
+    LogUtil.Debug('U.ToolUtil.StampOrDragDropNewShape - Output: stampTimeout set');
   }
 
   /**
@@ -166,7 +167,7 @@ class ToolUtil {
     * @returns The created line shape object if in drawing mode
     */
   DrawNewLineShape(lineType, targetPosition, eventObject, referenceObject?) {
-    T3Util.Log("O.ToolOpt DrawNewLineShape input:", lineType, targetPosition, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewLineShape input:", lineType, targetPosition, eventObject, referenceObject);
 
     let isDrawing = false;
     let newShape = null;
@@ -211,7 +212,7 @@ class ToolUtil {
         break;
     }
 
-    T3Util.Log("O.ToolOpt DrawNewLineShape output:", newShape);
+    LogUtil.Debug("O.ToolOpt DrawNewLineShape output:", newShape);
 
     if (isDrawing) {
       return newShape;
@@ -227,7 +228,7 @@ class ToolUtil {
    * @returns The created line object if in drawing mode
    */
   DrawNewLine(event, lineType, isDrawing, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewLine input:", event, lineType, isDrawing, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewLine input:", event, lineType, isDrawing, referenceObject);
 
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
     const isVerticalText = 0 == (sessionData.def.textflags & NvConstant.TextFlags.HorizText);
@@ -312,12 +313,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewLine output:", lineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewLine output:", lineShape);
       return lineShape;
     }
 
     DrawUtil.DrawNewObject(lineShape, event);
-    T3Util.Log("O.ToolOpt DrawNewLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewLine output: void");
   }
 
   /**
@@ -327,7 +328,7 @@ class ToolUtil {
    * @returns void
    */
   StampOrDragDropCallback(context: ToolUtil, shapeType, uniShapeType) {
-    T3Util.Log("O.ToolOpt StampOrDragDropCallback input:", context, shapeType);
+    LogUtil.Debug("O.ToolOpt StampOrDragDropCallback input:", context, shapeType);
 
     var result;
     var shapeTypes = PolygonConstant.ShapeTypes;
@@ -370,7 +371,7 @@ class ToolUtil {
         context.StampShape(shapeType, result);
     }
 
-    T3Util.Log("O.ToolOpt StampOrDragDropCallback output: void");
+    LogUtil.Debug("O.ToolOpt StampOrDragDropCallback output: void");
   }
 
   /**
@@ -380,7 +381,7 @@ class ToolUtil {
    * @returns void
    */
   StampRectangle(isDragDropMode, isSquare) {
-    T3Util.Log("O.ToolOpt StampRectangle input:", isDragDropMode, isSquare);
+    LogUtil.Debug("O.ToolOpt StampRectangle input:", isDragDropMode, isSquare);
 
     let width, height;
     const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -419,7 +420,7 @@ class ToolUtil {
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(rectangleShape, true, true, true, null, null);
 
-    T3Util.Log("O.ToolOpt StampRectangle output: void");
+    LogUtil.Debug("O.ToolOpt StampRectangle output: void");
   }
 
   /**
@@ -429,7 +430,7 @@ class ToolUtil {
    * @returns void
    */
   StampRoundRect(isDragDropMode, isSquare) {
-    T3Util.Log("O.ToolOpt StampRoundRect input:", isDragDropMode, isSquare);
+    LogUtil.Debug("O.ToolOpt StampRoundRect input:", isDragDropMode, isSquare);
 
     let width, height;
     const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -468,7 +469,7 @@ class ToolUtil {
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(roundRectShape, true, true, true, null, null);
 
-    T3Util.Log("O.ToolOpt StampRoundRect output: void");
+    LogUtil.Debug("O.ToolOpt StampRoundRect output: void");
   }
 
   /**
@@ -478,7 +479,7 @@ class ToolUtil {
    * @returns void
    */
   StampCircle(isDragDropMode, isCircle) {
-    T3Util.Log("O.ToolOpt StampCircle input:", isDragDropMode, isCircle);
+    LogUtil.Debug("O.ToolOpt StampCircle input:", isDragDropMode, isCircle);
 
     let width, height;
 
@@ -528,12 +529,12 @@ class ToolUtil {
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);
 
-    T3Util.Log("O.ToolOpt StampCircle output: void");
+    LogUtil.Debug("O.ToolOpt StampCircle output: void");
   }
 
   StampVueComponent(isDragDropMode, uniShapeType) {
 
-    T3Util.Log("U.ToolUtil StampVueComponent:", isDragDropMode, uniShapeType);
+    LogUtil.Debug("U.ToolUtil StampVueComponent:", isDragDropMode, uniShapeType);
 
     let width, height;
 
@@ -614,7 +615,7 @@ class ToolUtil {
     };
 
     var apsItem = QuasarUtil.GetItemFromAPSV2(uniShapeType);
-    T3Util.Log("apsItem", apsItem);
+    LogUtil.Debug("apsItem", apsItem);
     // props = {
     //   item: apsItem,
     //   showArrows: true,
@@ -626,7 +627,7 @@ class ToolUtil {
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(fiObShape, true, true, true, null, null);
 
-    T3Util.Log("U.ToolUtil StampVueComponent output: void");
+    LogUtil.Debug("U.ToolUtil StampVueComponent output: void");
 
     /*
     // Get your document instance
@@ -661,7 +662,7 @@ class ToolUtil {
       ...shapeAttributes
     });
 
-    T3Util.Log("ToolUtil->CreateForeignObjectWithVue After", shape);
+    LogUtil.Debug("ToolUtil->CreateForeignObjectWithVue After", shape);
 
     /*
     // Set size and position
@@ -682,7 +683,7 @@ class ToolUtil {
    * @returns void
    */
   StampTextLabel(isDragDropMode, skipTargetCheck) {
-    T3Util.Log("O.ToolOpt StampTextLabel input:", isDragDropMode, skipTargetCheck);
+    LogUtil.Debug("O.ToolOpt StampTextLabel input:", isDragDropMode, skipTargetCheck);
 
     // Get the text edit session block
     const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
@@ -770,7 +771,7 @@ class ToolUtil {
       { bActivateText: true }
     );
 
-    T3Util.Log("O.ToolOpt StampTextLabel output: void");
+    LogUtil.Debug("O.ToolOpt StampTextLabel output: void");
   }
 
   /**
@@ -794,7 +795,7 @@ class ToolUtil {
    * @returns void
    */
   StampShape(shapeType, isDragMode) {
-    T3Util.Log("U.ToolUtil.StampShape - Input:", shapeType, isDragMode);
+    LogUtil.Debug("U.ToolUtil.StampShape - Input:", shapeType, isDragMode);
 
     let newShape;
     const shapeTypes = PolygonConstant.ShapeTypes;
@@ -846,7 +847,7 @@ class ToolUtil {
     // Stamp the shape onto the canvas
     DrawUtil.MouseStampNewShape(newShape, true, true, true, null, null);
 
-    T3Util.Log("U.ToolUtil.StampShape - Output: Shape stamped successfully");
+    LogUtil.Debug("U.ToolUtil.StampShape - Output: Shape stamped successfully");
   }
 
   /**
@@ -855,7 +856,7 @@ class ToolUtil {
    * @returns void
    */
   RotateShapes(rotationAngle) {
-    T3Util.Log("O.ToolOpt RotateShapes input:", rotationAngle);
+    LogUtil.Debug("O.ToolOpt RotateShapes input:", rotationAngle);
 
     try {
       T3Gv.opt.CloseEdit();
@@ -865,7 +866,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt RotateShapes output: void");
+    LogUtil.Debug("O.ToolOpt RotateShapes output: void");
   }
 
   /**
@@ -874,7 +875,7 @@ class ToolUtil {
    * @returns void
    */
   AlignShapes(alignmentType) {
-    T3Util.Log("O.ToolOpt AlignShapes input:", alignmentType);
+    LogUtil.Debug("O.ToolOpt AlignShapes input:", alignmentType);
 
     try {
       T3Gv.opt.CloseEdit();
@@ -884,7 +885,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt AlignShapes output: void");
+    LogUtil.Debug("O.ToolOpt AlignShapes output: void");
   }
 
   /**
@@ -892,7 +893,7 @@ class ToolUtil {
    * @returns void
    */
   DeleteSelectedObjects() {
-    T3Util.Log("O.ToolOpt DeleteSelectedObjects input: no parameters");
+    LogUtil.Debug("O.ToolOpt DeleteSelectedObjects input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -902,7 +903,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt DeleteSelectedObjects output: void");
+    LogUtil.Debug("O.ToolOpt DeleteSelectedObjects output: void");
   }
 
   /**
@@ -910,7 +911,7 @@ class ToolUtil {
    * @returns void
    */
   Undo() {
-    T3Util.Log("O.ToolOpt Undo input: no parameters");
+    LogUtil.Debug("O.ToolOpt Undo input: no parameters");
 
     try {
       ToolActUtil.Undo();
@@ -920,7 +921,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt Undo output: void");
+    LogUtil.Debug("O.ToolOpt Undo output: void");
   }
 
   /**
@@ -928,7 +929,7 @@ class ToolUtil {
    * @returns void
    */
   Redo() {
-    T3Util.Log("O.ToolOpt Redo input: no parameters");
+    LogUtil.Debug("O.ToolOpt Redo input: no parameters");
 
     try {
       ToolActUtil.Redo();
@@ -937,7 +938,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt Redo output: void");
+    LogUtil.Debug("O.ToolOpt Redo output: void");
   }
 
   /**
@@ -945,7 +946,7 @@ class ToolUtil {
    * @returns void
    */
   Copy() {
-    T3Util.Log("O.ToolOpt Copy input: no parameters");
+    LogUtil.Debug("O.ToolOpt Copy input: no parameters");
 
     try {
       let clipboardSuccess = false;
@@ -965,7 +966,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt Copy output: void");
+    LogUtil.Debug("O.ToolOpt Copy output: void");
   }
 
   /**
@@ -973,7 +974,7 @@ class ToolUtil {
    * @returns void
    */
   Cut() {
-    T3Util.Log("O.ToolOpt Cut input: no parameters");
+    LogUtil.Debug("O.ToolOpt Cut input: no parameters");
 
     try {
       let clipboardSuccess = false;
@@ -993,7 +994,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt Cut output: void");
+    LogUtil.Debug("O.ToolOpt Cut output: void");
   }
 
   /**
@@ -1002,7 +1003,7 @@ class ToolUtil {
    * @returns void
    */
   Paste(eventData) {
-    T3Util.Log("O.ToolOpt Paste input:", eventData);
+    LogUtil.Debug("O.ToolOpt Paste input:", eventData);
 
     try {
       T3Gv.opt.PastePoint = null;
@@ -1017,7 +1018,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt Paste output: void");
+    LogUtil.Debug("O.ToolOpt Paste output: void");
   }
 
   /**
@@ -1025,7 +1026,7 @@ class ToolUtil {
    * @returns void
    */
   SendToBackOf() {
-    T3Util.Log("O.ToolOpt SendToBackOf input: no parameters");
+    LogUtil.Debug("O.ToolOpt SendToBackOf input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1035,7 +1036,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt SendToBackOf output: void");
+    LogUtil.Debug("O.ToolOpt SendToBackOf output: void");
   }
 
   /**
@@ -1043,7 +1044,7 @@ class ToolUtil {
    * @returns void
    */
   BringToFrontOf() {
-    T3Util.Log("O.ToolOpt BringToFrontOf input: no parameters");
+    LogUtil.Debug("O.ToolOpt BringToFrontOf input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1053,7 +1054,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt BringToFrontOf output: void");
+    LogUtil.Debug("O.ToolOpt BringToFrontOf output: void");
   }
 
   /**
@@ -1061,7 +1062,7 @@ class ToolUtil {
    * @returns void
    */
   GroupSelected() {
-    T3Util.Log("O.ToolOpt GroupSelected input: no parameters");
+    LogUtil.Debug("O.ToolOpt GroupSelected input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1072,7 +1073,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt GroupSelected output: void");
+    LogUtil.Debug("O.ToolOpt GroupSelected output: void");
   }
 
   /**
@@ -1080,7 +1081,7 @@ class ToolUtil {
    * @returns void
    */
   UnGroupSelected() {
-    T3Util.Log("O.ToolOpt UnGroupSelected input: no parameters");
+    LogUtil.Debug("O.ToolOpt UnGroupSelected input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1090,7 +1091,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt UnGroupSelected output: void");
+    LogUtil.Debug("O.ToolOpt UnGroupSelected output: void");
   }
 
   /**
@@ -1098,7 +1099,7 @@ class ToolUtil {
    * @returns void
    */
   FlipHorizontal() {
-    T3Util.Log("O.ToolOpt FlipHorizontal input: no parameters");
+    LogUtil.Debug("O.ToolOpt FlipHorizontal input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1108,7 +1109,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt FlipHorizontal output: void");
+    LogUtil.Debug("O.ToolOpt FlipHorizontal output: void");
   }
 
   /**
@@ -1116,7 +1117,7 @@ class ToolUtil {
    * @returns void
    */
   FlipVertical() {
-    T3Util.Log("O.ToolOpt FlipVertical input: no parameters");
+    LogUtil.Debug("O.ToolOpt FlipVertical input: no parameters");
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1126,7 +1127,7 @@ class ToolUtil {
       throw error;
     }
 
-    T3Util.Log("O.ToolOpt FlipVertical output: void");
+    LogUtil.Debug("O.ToolOpt FlipVertical output: void");
   }
 
   /**
@@ -1135,7 +1136,7 @@ class ToolUtil {
    * @returns void
    */
   MakeSameSize(dimensionType) {
-    T3Util.Log("O.ToolOpt MakeSameSize input:", dimensionType);
+    LogUtil.Debug("O.ToolOpt MakeSameSize input:", dimensionType);
 
     try {
       T3Gv.opt.CloseEdit();
@@ -1144,7 +1145,7 @@ class ToolUtil {
       T3Gv.opt.ExceptionCleanup(error);
     }
 
-    T3Util.Log("O.ToolOpt MakeSameSize output: void");
+    LogUtil.Debug("O.ToolOpt MakeSameSize output: void");
   }
 
   /**
@@ -1152,11 +1153,11 @@ class ToolUtil {
    * @returns Object containing information about the current selection state
    */
   GetSelectionContext() {
-    T3Util.Log("O.ToolOpt GetSelectionContext input: no parameters");
+    LogUtil.Debug("O.ToolOpt GetSelectionContext input: no parameters");
 
     try {
       const context = SelectUtil.GetSelectionContext();
-      T3Util.Log("O.ToolOpt GetSelectionContext output:", context);
+      LogUtil.Debug("O.ToolOpt GetSelectionContext output:", context);
       return context;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
@@ -1168,17 +1169,17 @@ class ToolUtil {
    * @returns Boolean indicating whether text editing is active
    */
   IsActiveTextEdit() {
-    T3Util.Log("O.ToolOpt IsActiveTextEdit input: no parameters");
+    LogUtil.Debug("O.ToolOpt IsActiveTextEdit input: no parameters");
 
     try {
       const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
       const isActive = textEditSession.theActiveTextEditObjectID !== -1;
 
-      T3Util.Log("O.ToolOpt IsActiveTextEdit output:", isActive);
+      LogUtil.Debug("O.ToolOpt IsActiveTextEdit output:", isActive);
       return isActive;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("O.ToolOpt IsActiveTextEdit output: undefined (error)");
+      LogUtil.Debug("O.ToolOpt IsActiveTextEdit output: undefined (error)");
     }
   }
 
@@ -1190,15 +1191,15 @@ class ToolUtil {
    * @returns Result of the key down handling operation
    */
   HandleKeyDown(keyEvent, targetElement, eventModifier) {
-    T3Util.Log("O.ToolOpt HandleKeyDown input:", keyEvent, targetElement, eventModifier);
+    LogUtil.Debug("O.ToolOpt HandleKeyDown input:", keyEvent, targetElement, eventModifier);
 
     try {
       const result = LMEvtUtil.HandleKeyDown(keyEvent, targetElement, eventModifier);
-      T3Util.Log("O.ToolOpt HandleKeyDown output:", result);
+      LogUtil.Debug("O.ToolOpt HandleKeyDown output:", result);
       return result;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("O.ToolOpt HandleKeyDown output: undefined (error)");
+      LogUtil.Debug("O.ToolOpt HandleKeyDown output: undefined (error)");
     }
   }
 
@@ -1207,15 +1208,15 @@ class ToolUtil {
    * @returns void
    */
   Duplicate() {
-    T3Util.Log("O.ToolOpt Duplicate input: no parameters");
+    LogUtil.Debug("O.ToolOpt Duplicate input: no parameters");
 
     try {
       ToolActUtil.DuplicateObjects();
-      T3Util.Log("O.ToolOpt Duplicate output: void");
+      LogUtil.Debug("O.ToolOpt Duplicate output: void");
     } catch (error) {
       T3Gv.opt.RestorePrimaryStateManager();
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("O.ToolOpt Duplicate output: void (error)");
+      LogUtil.Debug("O.ToolOpt Duplicate output: void (error)");
     }
   }
 
@@ -1226,15 +1227,15 @@ class ToolUtil {
    * @returns Result of the key press handling operation
    */
   HandleKeyPress(keyEvent, targetElement) {
-    T3Util.Log("O.ToolOpt HandleKeyPress input:", keyEvent, targetElement);
+    LogUtil.Debug("O.ToolOpt HandleKeyPress input:", keyEvent, targetElement);
 
     try {
       const result = LMEvtUtil.HandleKeyPress(keyEvent, targetElement);
-      T3Util.Log("O.ToolOpt HandleKeyPress output:", result);
+      LogUtil.Debug("O.ToolOpt HandleKeyPress output:", result);
       return result;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("O.ToolOpt HandleKeyPress output: undefined (error)");
+      LogUtil.Debug("O.ToolOpt HandleKeyPress output: undefined (error)");
     }
   }
 
@@ -1245,11 +1246,11 @@ class ToolUtil {
    * @returns void
    */
   DragDropSymbol(contextObject, symbolData) {
-    T3Util.Log("U.ToolUtil.dragDropSymbol - Input:", contextObject, symbolData);
+    LogUtil.Debug("U.ToolUtil.dragDropSymbol - Input:", contextObject, symbolData);
 
     this.StampOrDragDropNewSymbol(contextObject, symbolData);
 
-    T3Util.Log("U.ToolUtil.dragDropSymbol - Output: void");
+    LogUtil.Debug("U.ToolUtil.dragDropSymbol - Output: void");
   }
 
   /**
@@ -1259,7 +1260,7 @@ class ToolUtil {
    * @returns void
    */
   StampOrDragDropNewSymbol(symbolData, useDragDrop) {
-    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol input:", symbolData, useDragDrop);
+    LogUtil.Debug("O.ToolOpt StampOrDragDropNewSymbol input:", symbolData, useDragDrop);
 
     // SVG fragment definitions
     const boiler = `
@@ -1296,7 +1297,7 @@ class ToolUtil {
 
     // Convert multiline SVG to a single line, removing newlines but preserving structure
     const testSvgString = boiler.replace(/\n\s*/g, ' ').trim();
-    T3Util.Log("D.D testSvgString", testSvgString);
+    LogUtil.Debug("D.D testSvgString", testSvgString);
 
     const newTest1_inline = `
     <g><g width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,20.833)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(56.833,21.167)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"13.667\" height=\"10.167\" transform=\"rotate(270,34.667,6.75) scale(1,1) translate(27.833,1.667)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"13.667\" height=\"10.167\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"13.667\" height=\"10.167\"/></g></g><g width=\"46.167\" height=\"25.5\" transform=\"scale(1,1) translate(12,12.667)\"><g stroke=\"##LINECOLOR=#000000##\" opacity=\"1\" stroke-width=\"##LINETHICK=1##\" stroke-dasharray=\"none\" width=\"46.167\" height=\"25.5\" transform=\"scale(1,1) translate(0,0)\" fill=\"##FILLCOLOR=#FFFFFF##\" fill-opacity=\"1\" stroke-opacity=\"1\"><rect width=\"46.167\" height=\"25.5\"/></g></g></g>
@@ -1440,19 +1441,19 @@ class ToolUtil {
       DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
     }
 
-    T3Util.Log("O.ToolOpt StampOrDragDropNewSymbol output: void");
+    LogUtil.Debug("O.ToolOpt StampOrDragDropNewSymbol output: void");
   }
 
   ToolDragDropSymbol(symbolType, useDragDrop) {
     // Prepare symbol data
     var symbolObject = ToolSvgData.GetSvgData(symbolType);
     this.ToolDragDropNewSymbol(symbolObject, useDragDrop);
-    T3Util.Log("= U.ToolUtil.dragDropSymbol - Input/Output:", symbolType, useDragDrop);
+    LogUtil.Debug("= U.ToolUtil.dragDropSymbol - Input/Output:", symbolType, useDragDrop);
   }
 
   ToolDragDropNewSymbol(symbolObject, useDragDrop) {
     DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
-    T3Util.Log("= U.ToolUtil ToolDragDropNewSymbol input/output:", symbolObject, useDragDrop);
+    LogUtil.Debug("= U.ToolUtil ToolDragDropNewSymbol input/output:", symbolObject, useDragDrop);
   }
 
   /**
@@ -1463,7 +1464,7 @@ class ToolUtil {
    * @returns The created segmented line shape if in drawing mode
    */
   DrawNewSegLine(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewSegLine input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewSegLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1539,12 +1540,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewSegLine output:", segmentedLineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewSegLine output:", segmentedLineShape);
       return segmentedLineShape;
     }
 
     DrawUtil.DrawNewObject(segmentedLineShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewSegLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewSegLine output: void");
   }
 
   /**
@@ -1555,7 +1556,7 @@ class ToolUtil {
    * @returns The created arc segmented line shape if in drawing mode
    */
   DrawNewArcSegLine(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewArcSegLine input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewArcSegLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1630,12 +1631,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewArcSegLine output:", arcSegmentedLineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewArcSegLine output:", arcSegmentedLineShape);
       return arcSegmentedLineShape;
     }
 
     DrawUtil.DrawNewObject(arcSegmentedLineShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewArcSegLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewArcSegLine output: void");
   }
 
   /**
@@ -1646,7 +1647,7 @@ class ToolUtil {
    * @returns The created polyline shape if in drawing mode
    */
   DrawNewPolyLine(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewPolyLine input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewPolyLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1726,12 +1727,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewPolyLine output:", polyLineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewPolyLine output:", polyLineShape);
       return polyLineShape;
     }
 
     DrawUtil.DrawNewObject(polyLineShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewPolyLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewPolyLine output: void");
   }
 
   /**
@@ -1742,7 +1743,7 @@ class ToolUtil {
    * @returns The created polyline container shape if in drawing mode
    */
   DrawNewPolyLineContainer(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewPolyLineContainer input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewPolyLineContainer input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1795,12 +1796,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewPolyLineContainer output:", polyLineContainerShape);
+      LogUtil.Debug("O.ToolOpt DrawNewPolyLineContainer output:", polyLineContainerShape);
       return polyLineContainerShape;
     }
 
     DrawUtil.DrawNewObject(polyLineContainerShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewPolyLineContainer output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewPolyLineContainer output: void");
   }
 
   /**
@@ -1811,7 +1812,7 @@ class ToolUtil {
    * @returns The created freehand line shape if in drawing mode
    */
   DrawNewFreehandLine(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewFreehandLine input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewFreehandLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1858,12 +1859,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewFreehandLine output:", freehandLineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewFreehandLine output:", freehandLineShape);
       return freehandLineShape;
     }
 
     DrawUtil.DrawNewObject(freehandLineShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewFreehandLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewFreehandLine output: void");
   }
 
   /**
@@ -1874,7 +1875,7 @@ class ToolUtil {
    * @returns The created arc line shape if in drawing mode
    */
   DrawNewArcLine(isDrawing, eventObject, referenceObject) {
-    T3Util.Log("O.ToolOpt DrawNewArcLine input:", isDrawing, eventObject, referenceObject);
+    LogUtil.Debug("O.ToolOpt DrawNewArcLine input:", isDrawing, eventObject, referenceObject);
 
     let attributes;
     const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
@@ -1949,12 +1950,12 @@ class ToolUtil {
 
     // Return shape if in drawing mode, otherwise draw it
     if (isDrawing) {
-      T3Util.Log("O.ToolOpt DrawNewArcLine output:", arcLineShape);
+      LogUtil.Debug("O.ToolOpt DrawNewArcLine output:", arcLineShape);
       return arcLineShape;
     }
 
     DrawUtil.DrawNewObject(arcLineShape, eventObject);
-    T3Util.Log("O.ToolOpt DrawNewArcLine output: void");
+    LogUtil.Debug("O.ToolOpt DrawNewArcLine output: void");
   }
 
   /**
@@ -1962,7 +1963,7 @@ class ToolUtil {
    * @returns void
    */
   SelectAllObjects() {
-    T3Util.Log("O.ToolOpt SelectAllObjects input: no parameters");
+    LogUtil.Debug("O.ToolOpt SelectAllObjects input: no parameters");
 
     try {
       SelectUtil.SelectAllObjects();
@@ -1970,7 +1971,7 @@ class ToolUtil {
       T3Gv.opt.ExceptionCleanup(error);
     }
 
-    T3Util.Log("O.ToolOpt SelectAllObjects output: void");
+    LogUtil.Debug("O.ToolOpt SelectAllObjects output: void");
   }
 
   /**
