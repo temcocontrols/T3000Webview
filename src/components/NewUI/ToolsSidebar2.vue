@@ -165,6 +165,7 @@ import { toolsCategories } from "../../lib/T3000/Hvac/Data/T3Data";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { NewTool } from "../../lib/T3000/Hvac/Data/T3Data";
 import T3Util from "../../lib/T3000/Hvac/Util/T3Util";
+import LogUtil from "../../lib/T3000/Hvac/Util/LogUtil";
 
 const props = defineProps({
   selectedTool: {
@@ -243,10 +244,10 @@ function renameLibItem(item) {
       emit("renameLibItem", item, data);
     })
     .onCancel(() => {
-      // T3Util.Log('>>>> Cancel')
+      // LogUtil.Debug('>>>> Cancel')
     })
     .onDismiss(() => {
-      // T3Util.Log('I am triggered on both OK and Cancel')
+      // LogUtil.Debug('I am triggered on both OK and Cancel')
     });
 }
 
@@ -259,7 +260,7 @@ const imgTabUploader = ref({
 });
 
 function imageFileAdded(file) {
-  T3Util.Log("file", file);
+  LogUtil.Debug("file", file);
   imgTabUploader.value.uploadBtnDisabled = false;
   imgTabUploader.value.file = file;
 }
@@ -283,7 +284,7 @@ function saveLibImageEmit(data) {
 }
 
 function toolDropped(event, tool) {
-  T3Util.Log("toolDropped", event, tool);
+  LogUtil.Debug("toolDropped", event, tool);
   emit("toolDropped", event, tool);
 }
 

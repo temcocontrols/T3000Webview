@@ -8,6 +8,7 @@ import Utils1 from "../Util/Utils1"
 import Instance from "../Data/Instance/Instance";
 import BConstant from "./B.Constant";
 import OptConstant from "../Data/Constant/OptConstant";
+import LogUtil from "../Util/LogUtil";
 
 /**
  * Represents an SVG path with configurable stroke properties and optional arrowheads at either end.
@@ -576,69 +577,74 @@ class Path extends Container {
       return;
     }
 
-    const totalLength = this.pathElem.node.getTotalLength();
-    let startPoint = this.pathElem.node.getPointAtLength(0);
-    let endPoint = this.pathElem.node.getPointAtLength(totalLength);
-    let startTrimAmount = startArrowRecord ? this.sArrowMetrics.trimAmount : 0;
-    let endTrimAmount = endArrowRecord ? this.eArrowMetrics.trimAmount : 0;
+    try {
+      const totalLength = this.pathElem.node.getTotalLength();
+      let startPoint = this.pathElem.node.getPointAtLength(0);
+      let endPoint = this.pathElem.node.getPointAtLength(totalLength);
+      let startTrimAmount = startArrowRecord ? this.sArrowMetrics.trimAmount : 0;
+      let endTrimAmount = endArrowRecord ? this.eArrowMetrics.trimAmount : 0;
 
-    // Handle case where arrows would overlap
-    if (startTrimAmount + endTrimAmount >= totalLength) {
-      const midPoint = this.pathElem.node.getPointAtLength(totalLength / 2);
-      if (startTrimAmount && endTrimAmount) {
-        this.sArrowMetrics.trimAmount = totalLength / 2;
-        this.eArrowMetrics.trimAmount = totalLength / 2;
-        startTrimAmount = endTrimAmount = totalLength / 2;
-      } else if (startTrimAmount) {
-        this.sArrowMetrics.trimAmount = totalLength;
-        startTrimAmount = totalLength;
-      } else {
-        this.eArrowMetrics.trimAmount = totalLength;
-        endTrimAmount = totalLength;
+      // Handle case where arrows would overlap
+      if (startTrimAmount + endTrimAmount >= totalLength) {
+        const midPoint = this.pathElem.node.getPointAtLength(totalLength / 2);
+        if (startTrimAmount && endTrimAmount) {
+          this.sArrowMetrics.trimAmount = totalLength / 2;
+          this.eArrowMetrics.trimAmount = totalLength / 2;
+          startTrimAmount = endTrimAmount = totalLength / 2;
+        } else if (startTrimAmount) {
+          this.sArrowMetrics.trimAmount = totalLength;
+          startTrimAmount = totalLength;
+        } else {
+          this.eArrowMetrics.trimAmount = totalLength;
+          endTrimAmount = totalLength;
+        }
+        startPoint = midPoint;
+        endPoint = midPoint;
       }
-      startPoint = midPoint;
-      endPoint = midPoint;
+
+      // Determine points for arrows
+      let startArrowPoint = startArrowRecord ? (startArrowRecord.centered ?
+        this.pathElem.node.getPointAtLength(totalLength / 2) :
+        this.pathElem.node.getPointAtLength(startTrimAmount)) : null;
+
+      let endArrowPoint = endArrowRecord ? (endArrowRecord.centered ?
+        this.pathElem.node.getPointAtLength(totalLength / 2) :
+        this.pathElem.node.getPointAtLength(totalLength - endTrimAmount)) : null;
+
+      // Calculate start arrow position and rotation
+      if (startArrowRecord) {
+        let startArrowAnglePoint = startArrowPoint.x === startPoint.x && startArrowPoint.y === startPoint.y ?
+          (totalLength < 2 ? { x: startPoint.x + 2, y: startPoint.y } : this.pathElem.node.getPointAtLength(2)) :
+          startArrowPoint;
+
+        if (startArrowRecord.centered && totalLength >= 4) {
+          startPoint = this.pathElem.node.getPointAtLength(totalLength / 2 - 2);
+        }
+
+        this.sArrowMetrics.angle = startArrowRecord.noRotate ? 0 : Utils1.CalcAngleFromPoints(startArrowAnglePoint, startPoint);
+        this.sArrowMetrics.rotatePt = startArrowPoint;
+        this.sArrowMetrics.offsetX = startArrowPoint.x - this.sArrowMetrics.attachX;
+        this.sArrowMetrics.offsetY = startArrowPoint.y - this.sArrowMetrics.attachY;
+      }
+
+      // Calculate end arrow position and rotation
+      if (endArrowRecord) {
+        let endArrowAnglePoint = endArrowPoint.x === endPoint.x && endArrowPoint.y === endPoint.y ?
+          (totalLength < 2 ? { x: endPoint.x - 2, y: endPoint.y } : this.pathElem.node.getPointAtLength(totalLength - 2)) :
+          endArrowPoint;
+
+        if (endArrowRecord.centered && totalLength >= 4) {
+          endPoint = this.pathElem.node.getPointAtLength(totalLength / 2 + 2);
+        }
+
+        this.eArrowMetrics.angle = endArrowRecord.noRotate ? 0 : Utils1.CalcAngleFromPoints(endArrowAnglePoint, endPoint);
+        this.eArrowMetrics.rotatePt = endArrowPoint;
+        this.eArrowMetrics.offsetX = endArrowPoint.x - this.eArrowMetrics.attachX;
+        this.eArrowMetrics.offsetY = endArrowPoint.y - this.eArrowMetrics.attachY;
+      }
     }
-
-    // Determine points for arrows
-    let startArrowPoint = startArrowRecord ? (startArrowRecord.centered ?
-      this.pathElem.node.getPointAtLength(totalLength / 2) :
-      this.pathElem.node.getPointAtLength(startTrimAmount)) : null;
-
-    let endArrowPoint = endArrowRecord ? (endArrowRecord.centered ?
-      this.pathElem.node.getPointAtLength(totalLength / 2) :
-      this.pathElem.node.getPointAtLength(totalLength - endTrimAmount)) : null;
-
-    // Calculate start arrow position and rotation
-    if (startArrowRecord) {
-      let startArrowAnglePoint = startArrowPoint.x === startPoint.x && startArrowPoint.y === startPoint.y ?
-        (totalLength < 2 ? { x: startPoint.x + 2, y: startPoint.y } : this.pathElem.node.getPointAtLength(2)) :
-        startArrowPoint;
-
-      if (startArrowRecord.centered && totalLength >= 4) {
-        startPoint = this.pathElem.node.getPointAtLength(totalLength / 2 - 2);
-      }
-
-      this.sArrowMetrics.angle = startArrowRecord.noRotate ? 0 : Utils1.CalcAngleFromPoints(startArrowAnglePoint, startPoint);
-      this.sArrowMetrics.rotatePt = startArrowPoint;
-      this.sArrowMetrics.offsetX = startArrowPoint.x - this.sArrowMetrics.attachX;
-      this.sArrowMetrics.offsetY = startArrowPoint.y - this.sArrowMetrics.attachY;
-    }
-
-    // Calculate end arrow position and rotation
-    if (endArrowRecord) {
-      let endArrowAnglePoint = endArrowPoint.x === endPoint.x && endArrowPoint.y === endPoint.y ?
-        (totalLength < 2 ? { x: endPoint.x - 2, y: endPoint.y } : this.pathElem.node.getPointAtLength(totalLength - 2)) :
-        endArrowPoint;
-
-      if (endArrowRecord.centered && totalLength >= 4) {
-        endPoint = this.pathElem.node.getPointAtLength(totalLength / 2 + 2);
-      }
-
-      this.eArrowMetrics.angle = endArrowRecord.noRotate ? 0 : Utils1.CalcAngleFromPoints(endArrowAnglePoint, endPoint);
-      this.eArrowMetrics.rotatePt = endArrowPoint;
-      this.eArrowMetrics.offsetX = endArrowPoint.x - this.eArrowMetrics.attachX;
-      this.eArrowMetrics.offsetY = endArrowPoint.y - this.eArrowMetrics.attachY;
+    catch (error) {
+      LogUtil.Error('= b.Path: CalcArrowheadPlacement/ Error in CalcArrowheadPlacement:', error);
     }
   }
 

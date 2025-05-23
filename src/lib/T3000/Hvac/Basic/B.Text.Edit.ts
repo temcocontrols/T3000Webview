@@ -49,18 +49,18 @@ import MouseUtil from "../Event/MouseUtil"
  *     },
  *     geometryBBox: { width: 500, height: 300 },
  *     GetTextLength: () => { return 100; },
- *     SetSelectionVisible: (visible) => { T3Util.Log("Selection_visible:", visible); },
- *     ClearDataFieldHilites: () => { T3Util.Log("Data field hilites cleared."); },
- *     CallEditCallback: (eventName, ...args) => { T3Util.Log("Callback:", eventName, args); },
- *     SetCursorState: (state) => { T3Util.Log("Cursor state set to", state); },
- *     HideSelection: () => { T3Util.Log("Selection hidden"); },
- *     ShowSelection: (pathString) => { T3Util.Log("Selection shown with path", pathString); },
- *     HideInputCursor: () => { T3Util.Log("Input cursor hidden"); },
- *     ShowInputCursor: (left, top, bottom) => { T3Util.Log("Input cursor shown at", left, top, bottom); },
- *     UpdateTextObject: () => { T3Util.Log("Text object updated"); },
- *     Paste: (text, flag1, flag2?) => { T3Util.Log("Pasted text", text); },
- *     Delete: (flag?) => { T3Util.Log("Text deleted"); },
- *     DoSpellCheck: () => { T3Util.Log("Spell check performed"); },
+ *     SetSelectionVisible: (visible) => { LogUtil.Debug("Selection_visible:", visible); },
+ *     ClearDataFieldHilites: () => { LogUtil.Debug("Data field hilites cleared."); },
+ *     CallEditCallback: (eventName, ...args) => { LogUtil.Debug("Callback:", eventName, args); },
+ *     SetCursorState: (state) => { LogUtil.Debug("Cursor state set to", state); },
+ *     HideSelection: () => { LogUtil.Debug("Selection hidden"); },
+ *     ShowSelection: (pathString) => { LogUtil.Debug("Selection shown with path", pathString); },
+ *     HideInputCursor: () => { LogUtil.Debug("Input cursor hidden"); },
+ *     ShowInputCursor: (left, top, bottom) => { LogUtil.Debug("Input cursor shown at", left, top, bottom); },
+ *     UpdateTextObject: () => { LogUtil.Debug("Text object updated"); },
+ *     Paste: (text, flag1, flag2?) => { LogUtil.Debug("Pasted text", text); },
+ *     Delete: (flag?) => { LogUtil.Debug("Text deleted"); },
+ *     DoSpellCheck: () => { LogUtil.Debug("Spell check performed"); },
  *     activeEditStyle: 0,
  *     GetPos: () => { return { x: 10, y: 10 }; }
  *   };
@@ -77,7 +77,7 @@ import MouseUtil from "../Event/MouseUtil"
  *
  *   // Attach a virtual keyboard hook and initialize the text entry field:
  *   textEdit.SetVirtualKeyboardHook((parent, activated) => {
- *     T3Util.Log(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
+ *     LogUtil.Debug(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
  *   }, document.getElementById('textEntry'));
  *
  *   // Manipulate text selection:

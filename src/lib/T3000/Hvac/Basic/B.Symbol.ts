@@ -8,6 +8,7 @@ import $ from 'jquery'
 import T3Util from "../Util/T3Util"
 import ToolSvgData from "../Opt/Tool/ToolSvgData"
 import { TouchSwipe } from "quasar"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents an SVG symbol element that supports dynamic modification and placeholder replacement.
@@ -224,7 +225,7 @@ class Symbol extends Element {
    * @param skipClear - Whether to skip clearing existing color data
    */
   SetFillColor(color: string, skipClear: boolean) {
-    T3Util.Log('= B.Symbol SetFillColor | color,skipClear', color, skipClear);
+    LogUtil.Debug('= B.Symbol SetFillColor | color,skipClear', color, skipClear);
     let updated = false;
 
     if (!skipClear) {
@@ -398,12 +399,12 @@ class Symbol extends Element {
 
   SetDrawSetting(drawSetting: any) {
     this.drawSetting = drawSetting;
-    T3Util.Log('= B.Symbol SetDrawSetting Input/Output drawSetting', drawSetting);
+    LogUtil.Debug('= B.Symbol SetDrawSetting Input/Output drawSetting', drawSetting);
   }
 
   RefreshDrawSetting() {
     // this.srcSymbolSvg=ToolSvgData.BoilerSvgData();
-    T3Util.Log('= B.Symbol RefreshDrawSetting src-symbol-svg', this.srcSymbolSvg);
+    LogUtil.Debug('= B.Symbol RefreshDrawSetting src-symbol-svg', this.srcSymbolSvg);
     this.InitSymbolSource();
   }
 

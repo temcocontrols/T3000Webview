@@ -248,6 +248,7 @@ import Hvac from 'src/lib/T3000/Hvac/Hvac';
 import SelectUtil from 'src/lib/T3000/Hvac/Opt/Opt/SelectUtil';
 import OptConstant from 'src/lib/T3000/Hvac/Data/Constant/OptConstant';
 import QuasarUtil from 'src/lib/T3000/Hvac/Opt/Quasar/QuasarUtil';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
 // Define interface for setting
 interface Setting {
@@ -410,20 +411,20 @@ function refreshRotate() {
 }
 
 function TraceSettingChange(key, value) {
-  T3Util.Log("= V.ObjectConfigNew", "TraceSettingChange", key, value);
+  LogUtil.Debug("= V.ObjectConfigNew", "TraceSettingChange", key, value);
   QuasarUtil.UpdateSvgElementSettings(key, value);
   EvtOpt.toolOpt.SaveAct();
 }
 
 function T3UpdateEntryField(key, obj) {
   // emit("T3UpdateEntryField", key, obj);
-  T3Util.Log("= V.ObjectConfigNew", "T3UpdateEntryField", key, obj);
+  LogUtil.Debug("= V.ObjectConfigNew", "T3UpdateEntryField", key, obj);
   Hvac.IdxPage2.T3UpdateEntryField(key, obj);
   EvtOpt.toolOpt.SaveAct();
 }
 
 function linkT3Entry() {
-  T3Util.Log("LINKE-T3-ENTRY", true);
+  LogUtil.Debug("LINKE-T3-ENTRY", true);
   emit("linkT3Entry");
 }
 
@@ -455,7 +456,7 @@ function getEntryRange(entry) {
 }
 
 onMounted(() => {
-  T3Util.Log("= V.OCN", "ObjectConfigNew mounted", props.current);
+  LogUtil.Debug("= V.OCN", "ObjectConfigNew mounted", props.current);
 
   /*
   var selectedItem = DrawUtil.GetSelectObjectCoords();
@@ -473,11 +474,11 @@ onBeforeUnmount(() => {
   if (isEqual(props.object, initialObject.value)) {
     emit("noChange");
   }
-  T3Util.Log("= V.OCN", "ObjectConfigNew is about to unmount");
+  LogUtil.Debug("= V.OCN", "ObjectConfigNew is about to unmount");
 });
 
 onUpdated(() => {
-  T3Util.Log("= V.OCN", "ObjectConfigNew updated");
+  LogUtil.Debug("= V.OCN", "ObjectConfigNew updated");
 });
 
 </script>

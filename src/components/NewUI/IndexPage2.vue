@@ -613,7 +613,7 @@ function T3UpdateEntryField(key: string, obj: any): void {
 
 // Trigger the save event when user changed the "Display Field" value
 function DisplayFieldValueChanged(value: any): void {
-  T3Util.Log("= IdxPage DX DisplayFieldValueChanged", value);
+  LogUtil.Debug("= IdxPage DX DisplayFieldValueChanged", value);
   save(false, true);
 }
 
@@ -647,7 +647,7 @@ function insertT3DefaultLoadData(): void {
 
 // Save the current app state, optionally displaying a notification
 function save(notify: boolean = false, saveToT3: boolean = false): void {
-  T3Util.Log("= IdxPage save", notify, saveToT3);
+  LogUtil.Debug("= IdxPage save", notify, saveToT3);
   Hvac.IdxPage2.save(notify, saveToT3);
 }
 

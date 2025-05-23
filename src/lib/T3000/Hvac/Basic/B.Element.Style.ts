@@ -17,14 +17,14 @@ import T3Gv from '../Data/T3Gv'
  * @example
  * // Define a custom color
  * const purple = Style.DefineColor(128, 0, 255);
- * T3Util.Log(purple); // Outputs: #8000ff
+ * LogUtil.Debug(purple); // Outputs: #8000ff
  *
  * // Calculate image dimensions
  * Style.CalcImageSize('path/to/image.svg',
  *   (width, height, error, data) => {
  *     if (!error) {
- *       T3Util.Log(`Image dimensions: ${width}x${height}`);
- *       T3Util.Log(`Custom data:`, data);
+ *       LogUtil.Debug(`Image dimensions: ${width}x${height}`);
+ *       LogUtil.Debug(`Custom data:`, data);
  *     }
  *   },
  *   { id: 'myImage' }

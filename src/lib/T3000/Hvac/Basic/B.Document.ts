@@ -25,6 +25,7 @@ import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
 import ForeignObject from './B.ForeignObject';
 import T3Util from "../Util/T3Util"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents the main drawing canvas for HVAC elements in T3000.
@@ -78,7 +79,7 @@ import T3Util from "../Util/T3Util"
 class Document extends Container {
 
   GetSpellCheck() {
-    T3Util.Log('= B.Document', 'GetSpellCheck', 'Not implemented');
+    LogUtil.Debug('= B.Document', 'GetSpellCheck', 'Not implemented');
   }
 
   /**
@@ -269,7 +270,7 @@ class Document extends Container {
    */
   CalcWorkArea() {
     // Get the offset position of the parent element relative to the document
-    T3Util.Log("= B.Document CalcWorkArea ", $(this.parentElem));
+    LogUtil.Debug("= B.Document CalcWorkArea ", $(this.parentElem));
 
     if ($(this.parentElem) === null || $(this.parentElem) === undefined) {
       return;
@@ -671,11 +672,26 @@ class Document extends Container {
    * @returns The rotated point coordinates {x, y}
    */
   RotateAroundCenterPt(point, center, angle) {
+
+    /*
+    // Check if point and center are valid and their x,y properties are finite numbers
+    if (!point || !center ||
+        !isFinite(point.x) || isNaN(point.x) ||
+        !isFinite(point.y) || isNaN(point.y) ||
+        !isFinite(center.x) || isNaN(center.x) ||
+        !isFinite(center.y) || isNaN(center.y)) {
+      return { x: 0, y: 0 };
+    }
+    */
+
     const svgPoint = this.DOMElement().createSVGPoint();
     const svgMatrix = this.DOMElement().createSVGMatrix();
 
-    svgPoint.x = point.x - center.x;
-    svgPoint.y = point.y - center.y;
+    const pcx = (!isNaN(point.x) ? point.x : 0) - (!isNaN(center.x) ? center.x : 0);
+    const pcy = (!isNaN(point.y) ? point.y : 0) - (!isNaN(center.y) ? center.y : 0);
+
+    svgPoint.x = pcx;// (point?.x ?? 0) - (center?.x ?? 0);
+    svgPoint.y = pcy;// (point?.y ?? 0) - (center?.y ?? 0);
 
     const rotatedPoint = svgPoint.matrixTransform(svgMatrix.rotate(angle));
 

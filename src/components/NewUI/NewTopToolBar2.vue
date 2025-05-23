@@ -442,6 +442,7 @@ import { tools/*, user*/ } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
 import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
+import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
 export default defineComponent({
   name: 'NewTopToolBar2',
@@ -496,7 +497,7 @@ export default defineComponent({
 
     const navigateTo = (routeName) => {
 
-      T3Util.Log(router);
+      LogUtil.Debug(router);
       router.push({ path: routeName });
     }
 

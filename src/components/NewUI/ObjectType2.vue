@@ -12,6 +12,7 @@ import { Button as AButton } from 'ant-design-vue';
 import { EditOutlined } from '@ant-design/icons-vue';
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 interface Item {
   title?: string;
@@ -40,7 +41,7 @@ const emit = defineEmits<{
   (e: 'updateWeldModel', weldModel: any, itemList: any[]): void;
 }>();
 
-T3Util.Log('ObjectType2 props', props.item);
+LogUtil.Debug('ObjectType2 props', props.item);
 
 const range = computed(() => {
   return IdxUtils.getEntryRange(props.item?.t3Entry);
@@ -52,7 +53,7 @@ const dispalyText = computed(() => {
   }
 
   const range = IdxUtils.getEntryRange(props.item.t3Entry);
-  T3Util.Log('= Ot range,t3e', range, props.item.t3Entry);
+  LogUtil.Debug('= Ot range,t3e', range, props.item.t3Entry);
 
   if (props.item.settings.t3EntryDisplayField === "description") {
     const description = props.item.t3Entry.description || "";
@@ -141,7 +142,7 @@ function emitObjectClicked(): void {
 
 // Note: Add onMounted to your imports - import { computed, ref, onMounted } from "vue";
 onMounted(() => {
-  T3Util.Log('Component mounted with props:', {
+  LogUtil.Debug('Component mounted with props:', {
     item: props.item,
     showArrows: props.showArrows,
     title: props.item.title,

@@ -81,6 +81,7 @@ import { Button as AButton } from 'ant-design-vue';
 import IdxPage2 from "src/lib/T3000/Hvac/Opt/Common/IdxPage2";
 import DataOpt from "src/lib/T3000/Hvac/Opt/Data/DataOpt";
 import T3Util from "src/lib/T3000/Hvac/Util/T3Util";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 interface T3Entry {
   id?: string;
@@ -132,7 +133,7 @@ const emit = defineEmits<{
   (e: 'updateWeldModel', weldModel: unknown, itemList: unknown[]): void;
 }>();
 
-T3Util.Log('= v.ObjectType3 init', props.item);
+LogUtil.Debug('= v.ObjectType3 init', props.item);
 
 const range = computed(() => {
   return IdxUtils.getEntryRange(props.item?.t3Entry);
@@ -144,7 +145,7 @@ const dispalyText = computed(() => {
   }
 
   const range = IdxUtils.getEntryRange(props.item.t3Entry);
-  T3Util.Log('= Ot range,t3e', range, props.item.t3Entry);
+  LogUtil.Debug('= Ot range,t3e', range, props.item.t3Entry);
 
   if (props.item.settings.t3EntryDisplayField === "description") {
     const description = props.item.t3Entry.description || "";
