@@ -156,13 +156,11 @@ class SDData {
     //#region Initialize Properties
 
     // Get current screen dimensions
-
     const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
     const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 
     // Set the default dim to screen width and height
     this.dim = { x: screenWidth, y: screenHeight };
-    // this.dim = { x: 1000, y: 750 };
 
     this.Type = StateConstant.StoredObjectType.SDDataObject;
     this.flags = OptConstant.SessionFlags.LLink | OptConstant.SessionFlags.FreeHand | OptConstant.SessionFlags.NoTreeOverlap;
@@ -181,7 +179,7 @@ class SDData {
     this.hopdim = { x: NvConstant.HopDimX[1], y: NvConstant.HopDimY[1] };
     this.hopstyle = NvConstant.HopStyle.Arc;
 
-    // Double change it to Select: 8 | Always: 16
+    // Change it to Select: 8 | Always: 16
     this.dimensions = NvConstant.DimensionFlags.Total;
     this.shapedimensions = 0;
     this.background = new FillData();

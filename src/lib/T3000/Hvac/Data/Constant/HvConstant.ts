@@ -54,6 +54,16 @@ class HvConstant {
     Info: true,
     Error: true,
   }
+
+  static T3Config = {
+    log: {},
+    Zoom: {
+      Step: 0.25,
+      Min: 0.25,
+      Max: 4.0,
+      Default: 1.0
+    }
+  }
 }
 
 export default HvConstant

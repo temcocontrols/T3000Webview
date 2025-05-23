@@ -20,6 +20,7 @@ import UIUtil from '../Opt/UI/UIUtil'
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 import DataOpt from '../Opt/Data/DataOpt'
 import LogUtil from '../Util/LogUtil'
+import HvConstant from '../Data/Constant/HvConstant'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -785,17 +786,17 @@ class DocUtil {
    * @returns boolean - True if zoom was changed, false otherwise
    */
   SetZoomFactor(zoomFactor: number, skipCentering?: boolean): boolean {
-    T3Util.Log("= U.DocUtil: SetZoomFactor - Input:", { zoomFactor, skipCentering });
+    T3Util.Log("= u.DocUtil: SetZoomFactor/ - Input: zoomFactor,skipCentering", { zoomFactor, skipCentering });
 
     // Return false if document doesn't exist
     if (!this.svgDoc) {
-      T3Util.Log("= U.DocUtil: SetZoomFactor - Output: false (no svgDoc)");
+      T3Util.Log("= u.DocUtil: SetZoomFactor/ - Output: false (no svgDoc)");
       return false;
     }
 
     // Return false if not changing anything
     if (!this.scaleToFit && !this.scaleToPage && zoomFactor === this.GetZoomFactor()) {
-      T3Util.Log("= U.DocUtil: SetZoomFactor - Output: false (zoom unchanged)");
+      T3Util.Log("= u.DocUtil: SetZoomFactor/ - Output: false (zoom unchanged)");
       return false;
     }
 
@@ -851,8 +852,8 @@ class DocUtil {
    * @returns number - The current zoom factor (scale) of the document
    */
   GetZoomFactor(): number {
-    let zoomFactor = this.svgDoc ? this.svgDoc.GetWorkArea().docScale : 1;
-    T3Util.Log("= U.DocUtil: GetZoomFactor - Input/Output:", zoomFactor);
+    let zoomFactor = this.svgDoc ? this.svgDoc.GetWorkArea().docScale : HvConstant.T3Config.Zoom.Default;
+    LogUtil.Debug("= u.DocUtil: GetZoomFactor/ - Input/Output:", zoomFactor);
     return zoomFactor;
   }
 
@@ -2325,18 +2326,17 @@ class DocUtil {
    * @returns void
    */
   ZoomInAndOut(isZoomIn, eventSource?) {
-    T3Util.Log("O.DocOpt - ZoomInAndOut - Input:", { isZoomIn, eventSource });
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Input:", { isZoomIn, eventSource });
 
-    const zoomStep = 0.25;
-    let newZoomFactor;
+    const zoomStep = HvConstant.T3Config.Zoom.Step;
+    const zoomMax = HvConstant.T3Config.Zoom.Max;
+    const zoomMin = HvConstant.T3Config.Zoom.Min;
     const currentZoomFactor = T3Gv.docUtil.GetZoomFactor();
-
-    T3Util.Log("O.DocOpt - ZoomInAndOut - Current zoom factor:", currentZoomFactor);
+    let newZoomFactor = 1;
 
     if (isZoomIn) {
-      // Zoom in logic
-      if (currentZoomFactor >= 4) {
-        T3Util.Log("O.DocOpt - ZoomInAndOut - Already at maximum zoom (4x), exiting");
+      if (currentZoomFactor >= zoomMax) {
+        LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Already at maximum zoom (4x), exiting");
         return;
       }
 
@@ -2349,13 +2349,12 @@ class DocUtil {
       }
 
       // Ensure we don't exceed maximum zoom
-      if (newZoomFactor > 4) {
-        newZoomFactor = 4;
+      if (newZoomFactor > zoomMax) {
+        newZoomFactor = zoomMax;
       }
     } else {
-      // Zoom out logic
-      if (currentZoomFactor <= 0.25) {
-        T3Util.Log("O.DocOpt - ZoomInAndOut - Already at minimum zoom (0.25x), exiting");
+      if (currentZoomFactor <= zoomMin) {
+        LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Already at minimum zoom (0.25x), exiting");
         return;
       }
 
@@ -2368,20 +2367,16 @@ class DocUtil {
       }
 
       // Ensure we don't go below minimum zoom
-      if (newZoomFactor < 0.25) {
-        newZoomFactor = 0.25;
+      if (newZoomFactor < zoomMin) {
+        newZoomFactor = zoomMin;
       }
     }
 
-    T3Util.Log("O.DocOpt - ZoomInAndOut - Setting new zoom factor:", newZoomFactor);
-
     // Convert zoom factor to percentage and apply it
     this.SetZoomLevel(100 * newZoomFactor, eventSource);
-
-    T3Util.Log("O.DocOpt - ZoomInAndOut - New zoom factor set:", newZoomFactor);
-    T3Util.Log("O.DocOpt - ZoomInAndOut - T3Gv:", T3Gv);
-
     DataOpt.SaveToLocalStorage();
+
+    T3Util.Log("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", newZoomFactor);
   }
 
   /**
@@ -2391,20 +2386,18 @@ class DocUtil {
    * @returns void
    */
   SetZoomLevel(zoomPct, event?) {
-    T3Util.Log("O.DocOpt - SetZoomLevel - Input:", { zoomPct, event });
+    LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Input: zoomPct, event?", { zoomPct, event });
 
     // Only proceed if zoom percentage is positive and we're not in idle state
     if (zoomPct > 0 && !this.inZoomIdle && T3Gv.opt) {
       // Convert percentage to factor (e.g., 100% -> 1.0)
       UIUtil.SetDocumentScale(zoomPct / 100, event);
-      T3Util.Log("O.DocOpt - SetZoomLevel - Applied zoom factor:", zoomPct / 100);
+      LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Applied zoom factor:", zoomPct / 100);
     } else {
-      T3Util.Log("O.DocOpt - SetZoomLevel - Zoom not applied. Conditions not met:", {
-        validZoom: zoomPct > 0,
-        notIdle: !this.inZoomIdle,
-        optManagerExists: !!T3Gv.opt
-      });
+      LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Zoom not applied. Conditions not met:", { validZoom: zoomPct > 0, notIdle: !this.inZoomIdle, optManagerExists: !!T3Gv.opt });
     }
+
+    DataOpt.SaveToLocalStorage();
   }
 
   /**

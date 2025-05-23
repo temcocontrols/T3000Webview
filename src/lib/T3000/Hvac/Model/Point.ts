@@ -21,7 +21,7 @@ class Point {
 
   public x: number;
   public y: number;
-    id: any;
+  // public id: any;
 
   constructor(x: number, y: number) {
     this.x = x || 0;

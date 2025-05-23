@@ -448,9 +448,7 @@ class Document extends Container {
    * @param scale - New scale factor
    */
   SetDocumentScale(scale: number) {
-    this.SetDocumentMetrics({
-      scale: scale
-    });
+    this.SetDocumentMetrics({ scale: scale });
   }
 
   /**

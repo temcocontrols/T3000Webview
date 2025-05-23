@@ -11,6 +11,8 @@ import StyleConstant from "../../Data/Constant/StyleConstant";
 import DrawUtil from "../Opt/DrawUtil";
 import UIUtil from "../UI/UIUtil";
 import QuasarUtil from "../Quasar/QuasarUtil";
+import HvConstant from "../../Data/Constant/HvConstant";
+import DataOpt from "../Data/DataOpt";
 
 class ToolOpt {
 
@@ -549,7 +551,7 @@ class ToolOpt {
   ResetScaleAct(event) {
     try {
       T3Gv.opt.CloseEdit();
-      T3Gv.docUtil.SetZoomLevel(1 * 100);
+      T3Gv.docUtil.SetZoomLevel(HvConstant.T3Config.Zoom.Default * 100);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

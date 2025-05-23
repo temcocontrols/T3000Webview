@@ -25,6 +25,7 @@ import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
 import QuickStyle from '../Model/QuickStyle';
+import Rectangle from '../Model/Rectangle';
 
 /**
  * A container class representing a polyline shape that can contain other objects.
@@ -1385,10 +1386,10 @@ class PolyLineContainer extends PolyLine {
     return dimensions;
   }
 
-  GetDragR() {
+  GetDragR(): Rectangle {
     T3Util.Log("= S.PolyLineContainer: Getting drag rectangle");
 
-    const dragRectangle = {};
+    let dragRectangle = new Rectangle();
     Utils2.CopyRect(dragRectangle, this.r);
 
     if (this.polylist && this.polylist.closed && this.StyleRecord && this.StyleRecord.Line) {

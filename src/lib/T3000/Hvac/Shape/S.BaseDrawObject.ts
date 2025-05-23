@@ -818,8 +818,7 @@ class BaseDrawObject {
   }
 
   GetDragR(): Rectangle {
-    T3Util.Log("= S.BaseDrawObject: GetDragR input");
-    const dragRect: Rectangle = {} as Rectangle;
+    let dragRect = new Rectangle();
     Utils2.CopyRect(dragRect, this.r);
     T3Util.Log("= S.BaseDrawObject: GetDragR output:", dragRect);
     return dragRect;
@@ -3537,7 +3536,7 @@ class BaseDrawObject {
 
     // Check if dimensions should be shown based on flags
     const alwaysOrSelectDimension = this.Dimensions & NvConstant.DimensionFlags.Always ||
-                                   this.Dimensions & NvConstant.DimensionFlags.Select;
+      this.Dimensions & NvConstant.DimensionFlags.Select;
     dimensionPoints = this.GetDimensionPoints();
     pointsLength = dimensionPoints.length;
     isPolygon = this instanceof Instance.Shape.Polygon;
@@ -3551,7 +3550,7 @@ class BaseDrawObject {
 
           // Get the dimension text (use floating point value if available, otherwise calculate from points)
           dimensionText = this.GetDimensionFloatingPointValue(segmentIndex) ||
-                          this.GetDimensionTextForPoints(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex]);
+            this.GetDimensionTextForPoints(dimensionPoints[segmentIndex - 1], dimensionPoints[segmentIndex]);
 
           // Create the dimension element
           this.CreateDimension(

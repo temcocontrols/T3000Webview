@@ -20,6 +20,7 @@ import LayerUtil from '../Opt/LayerUtil';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import '../../Util/T3Hammer';
 import DataOpt from '../Data/DataOpt';
+import LogUtil from '../../Util/LogUtil';
 
 class UIUtil {
 
@@ -546,13 +547,11 @@ class UIUtil {
   }
 
   static SetDocumentScale(scaleFactor, skipCentering?) {
-    T3Util.Log('= U.UIUtil: SetDocumentScale: input', { scaleFactor, skipCentering });
+    LogUtil.Debug('= u.UIUtil: SetDocumentScale/ input', { scaleFactor, skipCentering });
 
     if (T3Gv.opt.svgDoc) {
       T3Gv.docUtil.SetZoomFactor(scaleFactor, skipCentering);
     }
-
-    T3Util.Log('= U.UIUtil: SetDocumentScale: output');
   }
 
   static UpdateDocumentScale() {
@@ -565,11 +564,7 @@ class UIUtil {
         SvgUtil.HideAllSVGSelectionStates();
         SvgUtil.RenderAllSVGSelectionStates();
       }
-
-      // Double IdleZoomControls();
     }
-
-    T3Util.Log('= U.UIUtil: UpdateDocumentScale: output');
   }
 
   static IsPlanningDocument() {

@@ -1342,7 +1342,7 @@ class HookUtil {
       attachmentPoints.push(new Point(drawingObject.attachpoint.x, drawingObject.attachpoint.y));
 
       // Apply flipping if needed
-      if (drawingObject.extraflags & (extraFlags.SEDE_FlipHoriz | extraFlags.SEDE_FlipVert)) {
+      if (drawingObject.extraflags & (extraFlags.FlipHoriz | extraFlags.FlipVert)) {
         const flipRect = new Rectangle(0, 0, centerDimension, centerDimension);
         T3Gv.opt.FlipPoints(flipRect, drawingObject.extraflags, attachmentPoints);
       }
