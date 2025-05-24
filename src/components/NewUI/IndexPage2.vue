@@ -390,7 +390,7 @@ const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 if (process.env.DEV) {
-  console.log("process.env.dev",T3000_Data)
+  // console.log("process.env.dev",T3000_Data)
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
     T3000_Data.value.panelsRanges = data.ranges;
