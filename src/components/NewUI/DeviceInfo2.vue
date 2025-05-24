@@ -164,14 +164,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, defineProps, defineEmits } from 'vue'
-import MockData from 'src/lib/T3000/Hvac/Data/MockData'
-import Hvac from 'src/lib/T3000/Hvac/Hvac'
-import { useQuasar } from "quasar"
-import { T3Data, globalMsg } from "../../lib/T3000/Hvac/Data/T3Data"
-import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
-import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
-import AntdUtil from 'src/lib/T3000/Hvac/Opt/UI/AntdUtil'
+import { ref, onMounted, watch, defineProps, defineEmits } from "vue";
+import { useQuasar } from "quasar";
+import { T3Data, globalMsg } from "src/lib/T3000/Hvac/Data/T3Data";
+import MockData from "src/lib/T3000/Hvac/Data/MockData";
+import Hvac from "src/lib/T3000/Hvac/Hvac";
+import MessageType from "src/lib/T3000/Hvac/Opt/Socket/MessageType";
+import GlobalMsgModel from "src/lib/T3000/Hvac/Model/GlobalMsgModel";
+import AntdUtil from "src/lib/T3000/Hvac/Opt/UI/AntdUtil";
+import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
 
 interface TreeNode {
   id: number;
@@ -255,7 +256,7 @@ const resetFilter = () => {
 const clearGraphicSelection = () => {
   currentDevice.value.graphic = -1;
   currentDevice.value.graphicFull = { id: -1, fullLabel: '', label: '', elementCount: '' };
-  console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+  LogUtil.Debug('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 }
 
 // graphic panel change event
@@ -271,8 +272,8 @@ const updateGraphicSelection = (val: number | null) => {
     currentDevice.value.graphicFull.elementCount = found.elementCount;
   }
 
-  console.log('= Dvi graphic-selected 1 val:', val);
-  console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+  LogUtil.Debug('= Dvi graphic-selected 1 val:', val);
+  LogUtil.Debug('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
   const deviceId = currentDevice.value.deviceId;
 
@@ -283,7 +284,7 @@ const updateGraphicSelection = (val: number | null) => {
 
 // device tree selection event
 const treeSelected = (target: string | null) => {
-  console.log('= Dvi tree-selected 1 target:', target)
+  LogUtil.Debug('= Dvi tree-selected 1 target:', target)
 
   // Clear the icon for all nodes
   const clearIcons = (nodes: any[]) => {
@@ -337,7 +338,7 @@ const treeSelected = (target: string | null) => {
 
   clearGraphicSelection();
 
-  console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+  LogUtil.Debug('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
   // load real data from T3000
   if (currentDevice.value.device !== '') {
@@ -372,7 +373,7 @@ const getPlFromDvList = (label: string) => {
 };
 
 const saveCurrentSelection = () => {
-  console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+  LogUtil.Debug('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
   if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
     $q.notify({
@@ -425,7 +426,7 @@ onMounted(() => {
   if (hasNoData) {
     const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
     Hvac.QuasarUtil.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
-    console.log('= Dvi onMounted 3 dvList:', dvList);
+    LogUtil.Debug('= Dvi onMounted 3 dvList:', dvList);
   }
   else {
     Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");
