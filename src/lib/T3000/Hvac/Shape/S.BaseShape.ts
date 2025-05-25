@@ -6636,7 +6636,7 @@ class BaseShape extends BaseDrawObject {
    * @returns {boolean} False if the event should not propagate further, undefined otherwise
    */
   RightClick(event) {
-    LogUtil.Debug("= S.BaseShape - RightClick input:", event);
+    LogUtil.Debug("= s.BaseShape: RightClick/ - RightClick input:", event);
 
     // Convert window coordinates to document coordinates
     const documentCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
@@ -6736,8 +6736,6 @@ class BaseShape extends BaseDrawObject {
 
         // Show appropriate context menu based on object type
         switch (clickedObject.objecttype) {
-
-
           case NvConstant.FNObjectTypes.FrameContainer:
             QuasarUtil.ShowContextMenu(true);
             break;

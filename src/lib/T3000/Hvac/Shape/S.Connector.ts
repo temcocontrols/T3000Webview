@@ -35,6 +35,7 @@ import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a connector drawing object that connects elements in a diagram.

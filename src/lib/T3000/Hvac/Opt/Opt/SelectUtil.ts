@@ -39,7 +39,7 @@ class SelectUtil {
    * @param preserveSelection - Whether to preserve existing selection state
    * @returns Boolean indicating whether object was selected successfully
    */
-  static SelectObjectFromClick(event, svgElement, preserveSelection) {
+  static SelectObjectFromClick(event, svgElement, preserveSelection?) {
     LogUtil.Debug('O.Opt SelectObjectFromClick - Input:', { event, svgElement, preserveSelection });
 
     const visibleObjectCount = LayerUtil.ActiveVisibleZList().length;

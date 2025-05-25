@@ -16,7 +16,7 @@ class MouseUtil {
      * @returns True if the event was a right-click or equivalent, false otherwise
      */
   static IsRightClick(event) {
-    LogUtil.Debug('= U.MouseUtil: IsRightClick - Input:', event);
+    LogUtil.Debug('= u.MouseUtil: IsRightClick - Input:', event);
 
     let isRightClick = false;
 
@@ -35,7 +35,7 @@ class MouseUtil {
       isRightClick = (event.which === 3);
     }
 
-    LogUtil.Debug('= U.MouseUtil: IsRightClick - Output:', isRightClick);
+    LogUtil.Debug('= u.MouseUtil: IsRightClick - Output:', isRightClick);
     return isRightClick;
   }
 }
