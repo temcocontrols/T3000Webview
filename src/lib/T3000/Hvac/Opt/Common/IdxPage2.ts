@@ -35,15 +35,15 @@ class IdxPage2 {
   public autoSaveInterval: any;
 
   initPage() {
-    Hvac.WebClient.initMessageHandler();
-    this.initGlobalNav();
-    this.isLoggedIn();
-    this.restoreAppState();
+    // Hvac.WebClient.initMessageHandler();
+    // this.initGlobalNav();
+    // this.isLoggedIn();
+    // this.restoreAppState();
     //  this.setDocMarginOffset();
     //  this.initPanzoom();
-    this.initMessageClient();
+    // this.initMessageClient();
     //  this.initScorller();
-    this.initAutoSaveInterval();
+    // this.initAutoSaveInterval();
     //  this.initWindowListener();
     //  this.refreshMoveableGuides();
     //  this.resetPanzoom();
