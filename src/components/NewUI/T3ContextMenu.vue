@@ -1,6 +1,26 @@
 <template>
   <div class="t3-context-menu">
     <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" @click="handleMenuClick">
+
+      <!-- <a-menu-divider /> -->
+
+      <a-menu-item key="add-to-library" @click="handleSubMenuClick('add-to-library')">
+        <template #icon>
+          <FileAddOutlined />
+        </template>
+        <span>Add to Library</span>
+        <span class="menu-shortcut">Ctrl+Shift+A</span>
+      </a-menu-item>
+
+      <a-menu-item key="load-from-library" @click="handleSubMenuClick('load-from-library')">
+        <template #icon>
+          <CopyOutlined />
+        </template>
+        <span>Load from Library</span>
+        <span class="menu-shortcut">Ctrl+Shift+L</span>
+      </a-menu-item>
+
+
       <a-menu-divider />
 
       <a-sub-menu key="bgColorSub">
@@ -29,7 +49,9 @@
         <a-menu-item key="bg-color-custom" @click="handleSubMenuClick('bg-color-custom')">
           <span>Custom Color...</span>
           <span class="menu-shortcut">Alt+C</span>
+          <a-color-picker v-model:value="selectedColor" @change="handleColorChange" style="width: 100%" />
         </a-menu-item>
+
       </a-sub-menu>
       <a-menu-divider />
 
@@ -154,26 +176,6 @@
         <span class="menu-shortcut">Alt+S</span>
       </a-menu-item>
 
-
-
-
-      <a-menu-divider />
-
-      <a-menu-item key="add-to-library" @click="handleSubMenuClick('add-to-library')">
-        <template #icon>
-          <FileAddOutlined />
-        </template>
-        <span>Add to Library</span>
-        <span class="menu-shortcut">Ctrl+Shift+A</span>
-      </a-menu-item>
-
-      <a-menu-item key="load-from-library" @click="handleSubMenuClick('load-from-library')">
-        <template #icon>
-          <CopyOutlined />
-        </template>
-        <span>Load from Library</span>
-        <span class="menu-shortcut">Ctrl+Shift+L</span>
-      </a-menu-item>
 
       <a-menu-divider />
 
@@ -379,6 +381,19 @@ import {
   GatewayOutlined
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
+
+
+// import { ColorPicker } from 'ant-design-vue';
+
+// Color picker state
+const selectedColor = ref<string>('#1890ff'); // Default color
+
+// Color change handler
+const handleColorChange = (color: string) => {
+  console.log('Color changed to:', color);
+  message.info(`Background color changed to ${color}`);
+  // Here you would update the background color of the selected element
+};
 
 // Menu state
 const selectedKeys = ref<string[]>([]);

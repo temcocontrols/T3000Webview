@@ -34,13 +34,13 @@
               </div>
               <div id="v-ruler" class="document-ruler-left">
               </div>
-              <!-- <a-dropdown :trigger="['contextmenu']"> -->
-              <div id="svg-area" class="svg-area">
-              </div>
-              <!-- <template #overlay>
+              <a-dropdown :trigger="['contextmenu']">
+                <div id="svg-area" class="svg-area">
+                </div>
+                <template #overlay>
                   <T3ContextMenu v-if="contextMenuShow"></T3ContextMenu>
                 </template>
-</a-dropdown> -->
+              </a-dropdown>
             </div>
             <div id="doc-toolbar" class="doc-toolbar">
             </div>
@@ -49,7 +49,7 @@
       </div>
     </div>
 
-    <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
+    <!-- <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
       <q-list>
         <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
           <q-item-section avatar>
@@ -157,7 +157,7 @@
           </q-item-section>
         </q-item>
       </q-list>
-    </q-menu>
+    </q-menu> -->
 
     <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
       @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
