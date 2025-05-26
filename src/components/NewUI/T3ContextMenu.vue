@@ -1,111 +1,112 @@
 <template>
-  <teleport to="body">
-    <a-menu v-if="visible" class="t3-context-menu" :style="menuStyle" v-bind="$attrs" @click="handleMenuClick">
-      <slot></slot>
+  <div class="t3-context-menu">
+    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" @click="handleMenuClick">
+      <a-menu-item key="item1">
+        <template #icon>
+          <file-outlined />
+        </template>
+        <span>Item 1</span>
+        <span class="menu-shortcut">Ctrl+1</span>
+      </a-menu-item>
+
+      <a-menu-item key="item2">
+        <template #icon>
+          <edit-outlined />
+        </template>
+        <span>Item 2</span>
+        <span class="menu-shortcut">Ctrl+2</span>
+      </a-menu-item>
+
+      <a-sub-menu key="sub1">
+        <template #icon>
+          <setting-outlined />
+        </template>
+        <template #title>Item 3</template>
+        <template #expandIcon>
+          <right-outlined />
+        </template>
+        <a-menu-item key="sub1-1" @click="handleSubMenuClick('sub1-1')">
+          <span>Submenu 1</span>
+          <span class="menu-shortcut">Alt+1</span>
+        </a-menu-item>
+        <a-menu-item key="sub1-2" @click="handleSubMenuClick('sub1-2')">
+          <span>Submenu 2</span>
+          <span class="menu-shortcut">Alt+2</span>
+        </a-menu-item>
+      </a-sub-menu>
+
+      <a-menu-item key="item4">
+        <template #icon>
+          <delete-outlined />
+        </template>
+        <span>Item 4</span>
+        <span class="menu-shortcut">Ctrl+4</span>
+      </a-menu-item>
     </a-menu>
-  </teleport>
+  </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { Menu } from 'ant-design-vue';
+<script lang="ts" setup>
+import { ref } from 'vue';
+import {
+  FileOutlined,
+  EditOutlined,
+  SettingOutlined,
+  DeleteOutlined,
+  RightOutlined
+} from '@ant-design/icons-vue';
+import { message } from 'ant-design-vue';
 
-interface ContextMenuProps {
-  visible: boolean;
-  x: number;
-  y: number;
-}
+// Menu state
+const selectedKeys = ref<string[]>([]);
+const theme = ref<'light' | 'dark'>('light');
 
-const props = withDefaults(defineProps<ContextMenuProps>(), {
-  visible: true,
-  x: 0,
-  y: 0
-});
-
-const emit = defineEmits(['update:visible', 'click']);
-
-const menuRef = ref<HTMLElement | null>(null);
-const adjustedPosition = ref({ x: props.x, y: props.y });
-
-const menuStyle = computed(() => ({
-  position: 'fixed',
-  left: `${adjustedPosition.value.x}px`,
-  top: `${adjustedPosition.value.y}px`,
-  zIndex: 1001
-}));
-
-const handleMenuClick = (event: any) => {
-  emit('click', event);
-  emit('update:visible', false);
-};
-
-const handleClickOutside = (event: MouseEvent) => {
-  if (props.visible) {
-    emit('update:visible', false);
+// Menu click handlers
+const handleMenuClick = (e: { key: string }) => {
+  switch (e.key) {
+    case 'item1':
+      message.info('Item 1 clicked');
+      console.log('Item 1 action executed');
+      break;
+    case 'item2':
+      message.info('Item 2 clicked');
+      console.log('Item 2 action executed');
+      break;
+    case 'item4':
+      message.info('Item 4 clicked');
+      console.log('Item 4 action executed');
+      break;
+    default:
+      break;
   }
 };
 
-const adjustPosition = () => {
-  if (!menuRef.value) return;
-
-  setTimeout(() => {
-    const menu = document.querySelector('.t3-context-menu');
-    if (!menu) return;
-
-    const rect = menu.getBoundingClientRect();
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    let { x, y } = props;
-
-    if (x + rect.width > windowWidth) {
-      x = windowWidth - rect.width - 5;
-    }
-
-    if (y + rect.height > windowHeight) {
-      y = windowHeight - rect.height - 5;
-    }
-
-    adjustedPosition.value = { x, y };
-  });
+// Submenu click handlers
+const handleSubMenuClick = (key: string) => {
+  message.info(`Submenu ${key} clicked`);
+  console.log(`Submenu ${key} action executed`);
 };
-
-watch(() => props.visible, (newVisible) => {
-  if (newVisible) {
-    adjustPosition();
-    setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    });
-  } else {
-    document.removeEventListener('mousedown', handleClickOutside);
-  }
-});
-
-watch(() => [props.x, props.y], () => {
-  adjustedPosition.value = { x: props.x, y: props.y };
-  if (props.visible) {
-    adjustPosition();
-  }
-});
-
-onMounted(() => {
-  if (props.visible) {
-    document.addEventListener('mousedown', handleClickOutside);
-  }
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside);
-});
 </script>
 
 <style scoped>
 .t3-context-menu {
-  min-width: 160px;
-  background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
-    0 6px 16px 0 rgba(0, 0, 0, 0.08),
-    0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  /* width: 256px; */
+}
+
+.menu-shortcut {
+  float: right;
+  color: #999;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+:deep(.ant-menu-submenu-title) {
+  display: flex;
+  align-items: center;
+}
+
+:deep(.ant-menu-item) {
+  display: flex;
+  align-items: center;
 }
 </style>
