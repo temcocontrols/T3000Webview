@@ -12,23 +12,22 @@
  * Creating a new Rectangle instance:
  * ```typescript
  * const rect = new Rectangle(10, 20, 100, 50);
- * console.log(`x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`);
+ * LogUtil.Debug(`x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`);
  * // Output: x: 10, y: 20, width: 100, height: 50
  * ```
  *
  * @public
  */
 class Rectangle {
-
   public x: number;
   public y: number;
   public width: number;
   public height: number;
-    firstconnector_x: number;
-    h: number;
-    hdist: number;
-    v: number;
-    vdist: number;
+  public firstconnector_x: number;
+  public h: number;
+  public hdist: number;
+  public v: number;
+  public vdist: number;
 
   constructor(x?: number, y?: number, width?: number, height?: number) {
     this.x = x || 0;

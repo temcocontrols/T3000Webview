@@ -5,6 +5,10 @@ import Element from './B.Element'
 import BConstant from './B.Constant'
 import Instance from '../Data/Instance/Instance'
 import $ from 'jquery'
+import T3Util from "../Util/T3Util"
+import ToolSvgData from "../Opt/Tool/ToolSvgData"
+import { TouchSwipe } from "quasar"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents an SVG symbol element that supports dynamic modification and placeholder replacement.
@@ -54,7 +58,11 @@ class Symbol extends Element {
   public solidFills: any;
   public fillTrans: any;
   public lineTrans: any;
-  public srcSymbolSVG: any;
+  public strokeColors: any;
+  public srcSymbolSvg: any;
+  public svgContent: any;
+  public symbolName: string;
+  public drawSetting: any;
 
   constructor() {
     super()
@@ -77,9 +85,53 @@ class Symbol extends Element {
     this.solidFills = [];
     this.fillTrans = [];
     this.lineTrans = [];
-    this.srcSymbolSVG = '';
-
+    this.srcSymbolSvg = '';
+    this.strokeColors = [];
     return this.svgObj;
+  }
+
+  InitSymbolSource() {
+    var source = this.GetSymbolSource();
+    var className = "object-svg";
+
+    if (this.drawSetting) {
+      if (this.drawSetting.active && this.drawSetting.inAlarm) {
+        className = `${className} active in-alarm`;
+      }
+      else if (this.drawSetting.active) {
+        className = `${className} active`;
+      }
+      else if (this.drawSetting.inAlarm) {
+        className = `${className} in-alarm`;
+      }
+    }
+
+    if (className !== "") {
+      const newGSvg =
+        `
+          <g class="${className}">
+                    ${source}
+          </g>
+        `;
+      source = newGSvg;
+    }
+
+    if (this.drawSetting && this.drawSetting.fillColor) {
+      this.SetSymbolSource(source);
+      this.SetFillColor(this.drawSetting.fillColor, true);
+    }
+    else {
+      this.SetSymbolSource(source);
+      this.RebuildSymbol();
+    }
+  }
+
+  GetSymbolSource(source?: string) {
+    if (source === undefined || source === null || source === '') {
+      return ToolSvgData.GetSvgDataString(this.symbolName);
+    }
+
+    return source;
   }
 
   /**
@@ -87,13 +139,14 @@ class Symbol extends Element {
    * @param source - The SVG source string
    */
   SetSymbolSource(source: string) {
-    this.srcSymbolSVG = source;
+    this.srcSymbolSvg = source;
     this.fillColors = Symbol.GetPlaceholders(BConstant.Placeholder.FillColor, source);
     this.lineColors = Symbol.GetPlaceholders(BConstant.Placeholder.LineColor, source);
     this.lineWidths = Symbol.GetPlaceholders(BConstant.Placeholder.LineThick, source);
     this.solidFills = Symbol.GetPlaceholders(BConstant.Placeholder.SolidFill, source);
     this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
     this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
+    this.strokeColors = Symbol.GetPlaceholders(BConstant.Placeholder.StrokeColor, source);
 
     if (source) {
       source = source.replace(/fill-opacity="[\d.]*"/g, '').replace(/stroke-opacity="[\d.]*"/g, '');
@@ -102,29 +155,29 @@ class Symbol extends Element {
         BConstant.Placeholder.FillTrans,
         BConstant.PlaceholderDefault[BConstant.Placeholder.FillTrans]
       );
+
       source = source.replace(
-        new RegExp('fill="##FillColor', 'g'),
-        'fill-opacity="' + fillTransPlaceholder + '" fill="##FillColor'
+        new RegExp('fill="##FillColor', 'g'), 'fill-opacity="' + fillTransPlaceholder + '" fill="##FillColor'
       );
+
       this.fillTrans = Symbol.GetPlaceholders(BConstant.Placeholder.FillTrans, source);
 
       const lineTransPlaceholder = Symbol.CreatePlaceholder(
         BConstant.Placeholder.LineTrans,
         BConstant.PlaceholderDefault[BConstant.Placeholder.LineTrans]
       );
-      source = source.replace(
-        new RegExp('stroke="##LineColor', 'g'),
-        'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LineColor'
-      ).replace(
-        new RegExp('fill="##LineColor', 'g'),
-        'fill-opacity="' + lineTransPlaceholder + '" fill="##LineColor'
-      );
-      this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
 
-      this.srcSymbolSVG = source;
+      source = source.replace(
+        new RegExp('stroke="##LineColor', 'g'), 'stroke-opacity="' + lineTransPlaceholder + '" stroke="##LineColor'
+      ).replace(
+        new RegExp('fill="##LineColor', 'g'), 'fill-opacity="' + lineTransPlaceholder + '" fill="##LineColor'
+      );
+
+      this.lineTrans = Symbol.GetPlaceholders(BConstant.Placeholder.LineTrans, source);
+      this.srcSymbolSvg = source;
     }
 
-    this.RebuildSymbol();
+    // this.RebuildSymbol();
   }
 
   /**
@@ -132,7 +185,7 @@ class Symbol extends Element {
    * in the SVG source and adding the elements to the DOM
    */
   RebuildSymbol() {
-    let svgContent = `<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>${this.srcSymbolSVG}</svg>`;
+    let svgContent = `<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>${this.srcSymbolSvg}</svg>`;
     const parser = new DOMParser();
 
     this.shapeElem.clear();
@@ -145,6 +198,7 @@ class Symbol extends Element {
     svgContent = Symbol.ReplacePlaceholder(this.solidFills, svgContent);
     svgContent = Symbol.ReplacePlaceholder(this.fillTrans, svgContent);
     svgContent = Symbol.ReplacePlaceholder(this.lineTrans, svgContent);
+    svgContent = Symbol.ReplacePlaceholder(this.strokeColors, svgContent);
 
     parser.async = false;
     let element = parser.parseFromString(svgContent, 'text/xml').documentElement.firstChild;
@@ -153,6 +207,8 @@ class Symbol extends Element {
       this.shapeElem.node.appendChild(this.svgObj.node.ownerDocument.importNode(element, true));
       element = element.nextSibling;
     }
+
+    this.svgContent = svgContent;
   }
 
   /**
@@ -169,6 +225,7 @@ class Symbol extends Element {
    * @param skipClear - Whether to skip clearing existing color data
    */
   SetFillColor(color: string, skipClear: boolean) {
+    LogUtil.Debug('= B.Symbol SetFillColor | color,skipClear', color, skipClear);
     let updated = false;
 
     if (!skipClear) {
@@ -234,11 +291,11 @@ class Symbol extends Element {
       this.ClearColorData(false);
     }
 
-    for (let i = 0; i < this.lineColors.length; i++) {
-      this.lineColors[i].val = color;
+    for (let i = 0; i < this.strokeColors.length; i++) {
+      this.strokeColors[i].val = color;
     }
 
-    if (this.lineColors.length) {
+    if (this.strokeColors.length) {
       this.RebuildSymbol();
     }
   }
@@ -328,6 +385,33 @@ class Symbol extends Element {
   SetStrokePattern(event) {
   }
 
+  SetAttributes(strokeColor: string) {
+    this.svgObj.attr('background-color', strokeColor);
+    this.shapeElem.attr('background-color', strokeColor);
+    // this.ClearColorData(false);
+  }
+
+  GetSvgSymbol() {
+    return this.svgContent;
+  }
+
+  SetInActive(inActive: boolean) { }
+
+  SetDrawSetting(drawSetting: any) {
+    this.drawSetting = drawSetting;
+    LogUtil.Debug('= B.Symbol SetDrawSetting Input/Output drawSetting', drawSetting);
+  }
+
+  RefreshDrawSetting() {
+    // this.srcSymbolSvg=ToolSvgData.BoilerSvgData();
+    LogUtil.Debug('= B.Symbol RefreshDrawSetting src-symbol-svg', this.srcSymbolSvg);
+    this.InitSymbolSource();
+  }
+
+  SetSymbolName(symbolName: string) {
+    this.symbolName = symbolName;
+  }
+
   /**
    * Creates a placeholder string with the specified type and default value
    * @param placeholderType - The type of placeholder
@@ -378,7 +462,7 @@ class Symbol extends Element {
       }
     }
     catch (e) {
-      console.error("Error getting placeholders:", e);
+      T3Util.Error("= b.Symbol: GetPlaceholders/ Error getting placeholders:", e);
     }
 
     return placeholders;

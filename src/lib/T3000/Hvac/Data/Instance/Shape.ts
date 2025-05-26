@@ -19,10 +19,11 @@ import Rect from "../../Shape/S.Rect"
 import RRect from "../../Shape/S.RRect"
 import SegmentedLine from "../../Shape/S.SegmentedLine"
 import ShapeContainer from "../../Shape/S.ShapeContainer"
-import SVGFragmentSymbol from "../../Shape/S.SVGFragmentSymbol"
+import SvgSymbol from "../../Shape/S.SvgSymbol"
 import BaseDrawObject from "../../Shape/S.BaseDrawObject"
 import BitmapImporter from "../../Shape/S.BitmapImporter"
-import SVGImporter from "../../Shape/S.SVGImporter"
+import SvgImporter from "../../Shape/S.SvgImporter"
+import ForeignObject from '../../Shape/S.ForeignObject';
 
 /**
  * The Shape object is a centralized registry for various shape and symbol implementations
@@ -56,7 +57,7 @@ import SVGImporter from "../../Shape/S.SVGImporter"
  * - RRect: A variant of the rectangle that features rounded corners for enhanced aesthetics.
  * - SegmentedLine: Builds multi-segmented straight lines, useful for sectional representations.
  * - ShapeContainer: A container for grouping multiple shape objects together.
- * - SVGFragmentSymbol: Facilitates the inclusion of scalable vector graphics (SVG) into diagrams.
+ * - SvgSymbol: Facilitates the inclusion of scalable vector graphics (SVG) into diagrams.
  *
  * @example
  * // Import the Shape registry.
@@ -249,7 +250,7 @@ const Shape = {
    * @param dimensions - Size information for the SVG
    * @returns SVG fragment symbol object
    */
-  SVGFragmentSymbol,
+  SvgSymbol,
 
   /**
    * Imports and processes bitmap images for use in diagrams
@@ -265,7 +266,9 @@ const Shape = {
    * @param importOptions - Options for importing the SVG
    * @returns SVG importer object
    */
-  SVGImporter
+  SvgImporter,
+
+  ForeignObject
 }
 
 export default Shape

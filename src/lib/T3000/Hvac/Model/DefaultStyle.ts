@@ -24,8 +24,8 @@
  * @example
  * // Create a new instance of DefaultStyle with default values.
  * const defaultStyle = new DefaultStyle();
- * console.log(defaultStyle.font); // Output: "Arial"
- * console.log(defaultStyle.size); // Output: 10
+ * LogUtil.Debug(defaultStyle.font); // Output: "Arial"
+ * LogUtil.Debug(defaultStyle.size); // Output: 10
  *
  * // Customize some of the style properties.
  * defaultStyle.font = "Helvetica";

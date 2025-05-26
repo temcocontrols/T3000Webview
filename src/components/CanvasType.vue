@@ -290,7 +290,7 @@
 <script>
 import { defineComponent, computed, onMounted, watch, ref } from "vue";
 // import { getEntryRange } from "src/lib/common";
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import paper from "paper";
 
 // import DuctEl from "./ObjectTypes/Duct.vue";

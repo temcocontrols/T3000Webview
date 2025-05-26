@@ -22,17 +22,17 @@ import OptConstant from '../Data/Constant/OptConstant';
  * - metricConv: Contains conversion factor(s) for metric units, defined by common constants.
  * - dp: The number of decimal places used when displaying measurements.
  * - showpixels: A flag that indicates whether pixel measurements should be shown alongside standard units.
- * - fractionaldenominator: Denotes the denominator used to represent fractional measurements.
+ * - denom(Fractional Denominator): Denotes the denominator used to represent fractional measurements.
  *
  * @example
  * // Creating an instance of RulerConfig and modifying its properties:
  * const rulerConfig = new RulerConfig();
- * console.log('Using inches:', rulerConfig.useInches);
+ * LogUtil.Debug('Using inches:', rulerConfig.useInches);
  *
  * // To switch to metric units:
  * rulerConfig.useInches = false;
  * rulerConfig.units = 'Metric'; // You would typically set this using a relevant constant.
- * console.log('Updated Units:', rulerConfig.units);
+ * LogUtil.Debug('Updated Units:', rulerConfig.units);
  */
 class RulerConfig {
 
@@ -48,7 +48,9 @@ class RulerConfig {
   public metricConv: any;
   public dp: number;
   public showpixels: boolean;
-  public fractionaldenominator: number;
+
+  //fractional denominator
+  public denom: number;
 
   constructor() {
 
@@ -64,8 +66,7 @@ class RulerConfig {
     this.metricConv = OptConstant.Common.MetricConv;
     this.dp = 2;
     this.showpixels = false;
-    this.fractionaldenominator = 1;
-
+    this.denom = 1;
   }
 }
 

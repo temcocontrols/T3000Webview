@@ -1,6 +1,7 @@
 
 
 import T3Gv from '../Data/T3Gv'
+import LogUtil from '../Util/LogUtil';
 import T3Util from '../Util/T3Util';
 
 /**
@@ -43,7 +44,7 @@ class BitmapImporter {
    * @param onCompleteCallback - Function to call when import is complete
    */
   ImportBitmapV1(imageFile: File, targetWidth: number, targetHeight: number, resolution: number, onCompleteCallback: Function) {
-    T3Util.Log("S.BitmapImporter - Input:", { imageFile, targetWidth, targetHeight, resolution });
+    LogUtil.Debug("S.BitmapImporter - Input:", { imageFile, targetWidth, targetHeight, resolution });
 
     if (!imageFile || !onCompleteCallback || resolution <= 0) {
       return;
@@ -67,7 +68,7 @@ class BitmapImporter {
         T3Gv.opt.bitmapImportEXIFdata = null;
         T3Gv.opt.bitmapImportFile = imageFile;
         T3Gv.opt.bitmapImportResult = event.target.result;
-        console.log("S.BitmapImporter - Output (JPEG/PNG):", { result: event.target.result });
+        LogUtil.Debug("S.BitmapImporter - Output (JPEG/PNG):", { result: event.target.result });
         // EXIF.getData(imageFile, GotEXIF);
       };
       fileReader.readAsDataURL(imageFile);
@@ -81,7 +82,7 @@ class BitmapImporter {
 
         if (urlCreator && urlCreator.createObjectURL) {
           const objectUrl = urlCreator.createObjectURL(blob);
-          T3Util.Log(`S.BitmapImporter - Output (${imageType === 'image/svg+xml' ? 'SVG' : 'Other'}):`,
+          LogUtil.Debug(`S.BitmapImporter - Output (${imageType === 'image/svg+xml' ? 'SVG' : 'Other'}):`,
             { objectUrl, blob, byteArray });
           onCompleteCallback(objectUrl, blob, byteArray);
         }

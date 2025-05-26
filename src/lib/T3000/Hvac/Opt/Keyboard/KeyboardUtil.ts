@@ -2,6 +2,7 @@
 
 import KeyboardConstant from "./KeyboardConstant"
 import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 
 /**
  * Utility class for creating and managing keyboard commands in the T3000 application.
@@ -65,7 +66,7 @@ class KeyboardUtil {
    * @param commandParams - Parameters to pass to the command function
    */
   BuildCommand(name, context, modifierKey, keyCode, commandFunction, commandParent, commandParams?) {
-    T3Util.Log('U.KeyboardUtil: Creating keyboard command', name, context, modifierKey, keyCode);
+    LogUtil.Debug('U.KeyboardUtil: Creating keyboard command', name, context, modifierKey, keyCode);
 
     this.Name = name !== null ? name : null;
     this.Context = context !== null ? context : KeyboardConstant.Contexts.None;
@@ -73,7 +74,7 @@ class KeyboardUtil {
     this.KeyCode = keyCode !== null ? keyCode : null;
 
     this.Command = typeof commandFunction === 'function' ? commandFunction : function () {
-      alert('Keyboard command \'' + this.Name + '\' (' + this.ModifierKey + ' + ' + this.KeyCode + ') is unbound.');
+      LogUtil.Debug('U.KeyboardUtil: Keyboard command is unbound', this.Name, this.ModifierKey, this.KeyCode);
     };
 
     this.CommandParent = commandParent !== null ? commandParent : this;
@@ -84,9 +85,9 @@ class KeyboardUtil {
      * @returns Result of the command execution
      */
     this.Execute = function () {
-      T3Util.Log('U.KeyboardUtil: Executing command', this.Name);
+      LogUtil.Debug('U.KeyboardUtil: Executing command', this.Name);
       const result = this.Command.apply(this.CommandParent, this.CommandParams);
-      T3Util.Log('U.KeyboardUtil: Command execution complete', this.Name);
+      LogUtil.Debug('U.KeyboardUtil: Command execution complete', this.Name);
       return result;
     };
 

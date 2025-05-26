@@ -16,8 +16,8 @@
  * const bbox = new BBoxModel();
  *
  * // Accessing properties of the bounding box
- * console.log(`Position: (${bbox.x}, ${bbox.y})`);
- * console.log(`Dimensions: width=${bbox.width}, height=${bbox.height}`);
+ * LogUtil.Debug(`Position: (${bbox.x}, ${bbox.y})`);
+ * LogUtil.Debug(`Dimensions: width=${bbox.width}, height=${bbox.height}`);
  */
 class BBoxModel {
 

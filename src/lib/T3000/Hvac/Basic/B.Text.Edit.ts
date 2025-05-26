@@ -49,18 +49,18 @@ import MouseUtil from "../Event/MouseUtil"
  *     },
  *     geometryBBox: { width: 500, height: 300 },
  *     GetTextLength: () => { return 100; },
- *     SetSelectionVisible: (visible) => { console.log("Selection_visible:", visible); },
- *     ClearDataFieldHilites: () => { console.log("Data field hilites cleared."); },
- *     CallEditCallback: (eventName, ...args) => { console.log("Callback:", eventName, args); },
- *     SetCursorState: (state) => { console.log("Cursor state set to", state); },
- *     HideSelection: () => { console.log("Selection hidden"); },
- *     ShowSelection: (pathString) => { console.log("Selection shown with path", pathString); },
- *     HideInputCursor: () => { console.log("Input cursor hidden"); },
- *     ShowInputCursor: (left, top, bottom) => { console.log("Input cursor shown at", left, top, bottom); },
- *     UpdateTextObject: () => { console.log("Text object updated"); },
- *     Paste: (text, flag1, flag2?) => { console.log("Pasted text", text); },
- *     Delete: (flag?) => { console.log("Text deleted"); },
- *     DoSpellCheck: () => { console.log("Spell check performed"); },
+ *     SetSelectionVisible: (visible) => { LogUtil.Debug("Selection_visible:", visible); },
+ *     ClearDataFieldHilites: () => { LogUtil.Debug("Data field hilites cleared."); },
+ *     CallEditCallback: (eventName, ...args) => { LogUtil.Debug("Callback:", eventName, args); },
+ *     SetCursorState: (state) => { LogUtil.Debug("Cursor state set to", state); },
+ *     HideSelection: () => { LogUtil.Debug("Selection hidden"); },
+ *     ShowSelection: (pathString) => { LogUtil.Debug("Selection shown with path", pathString); },
+ *     HideInputCursor: () => { LogUtil.Debug("Input cursor hidden"); },
+ *     ShowInputCursor: (left, top, bottom) => { LogUtil.Debug("Input cursor shown at", left, top, bottom); },
+ *     UpdateTextObject: () => { LogUtil.Debug("Text object updated"); },
+ *     Paste: (text, flag1, flag2?) => { LogUtil.Debug("Pasted text", text); },
+ *     Delete: (flag?) => { LogUtil.Debug("Text deleted"); },
+ *     DoSpellCheck: () => { LogUtil.Debug("Spell check performed"); },
  *     activeEditStyle: 0,
  *     GetPos: () => { return { x: 10, y: 10 }; }
  *   };
@@ -77,7 +77,7 @@ import MouseUtil from "../Event/MouseUtil"
  *
  *   // Attach a virtual keyboard hook and initialize the text entry field:
  *   textEdit.SetVirtualKeyboardHook((parent, activated) => {
- *     console.log(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
+ *     LogUtil.Debug(`Virtual keyboard ${activated ? 'activated' : 'deactivated'}`);
  *   }, document.getElementById('textEntry'));
  *
  *   // Manipulate text selection:

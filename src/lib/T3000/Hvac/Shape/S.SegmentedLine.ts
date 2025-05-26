@@ -17,12 +17,14 @@ import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
 import TextConstant from '../Data/Constant/TextConstant';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
+import LogUtil from '../Util/LogUtil';
+
 
 /**
  * A specialized line class that implements segmented (polyline) functionality with advanced features.
@@ -76,7 +78,7 @@ class SegmentedLine extends BaseLine {
    * The constructor initializes the line and calculates its frame dimensions.
    */
   constructor(options: any) {
-    T3Util.Log("= S.SegmentedLine: constructor input", options);
+    LogUtil.Debug("= S.SegmentedLine: constructor input", options);
 
     const configOptions = options || {};
     configOptions.LineType = configOptions.LineType || OptConstant.LineType.SEGLINE;
@@ -109,7 +111,7 @@ class SegmentedLine extends BaseLine {
     this.ArrowSizeIndex = configOptions.ArrowSizeIndex || 0;
     this.TextDirection = configOptions.TextDirection || false;
 
-    T3Util.Log("= S.SegmentedLine: constructor output", {
+    LogUtil.Debug("= S.SegmentedLine: constructor output", {
       segl: this.segl,
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
@@ -136,7 +138,7 @@ class SegmentedLine extends BaseLine {
    * Handles application of styles, hop points, and effects to the shape.
    */
   CreateShape(svgDoc, isHidden) {
-    T3Util.Log("= S.SegmentedLine: CreateShape input", { svgDoc, isHidden });
+    LogUtil.Debug("= S.SegmentedLine: CreateShape input", { svgDoc, isHidden });
     if (this.flags & NvConstant.ObjFlags.NotVisible) return null;
 
     let linePoints = [];
@@ -216,7 +218,7 @@ class SegmentedLine extends BaseLine {
     containerShape.isShape = true;
     this.AddIcons(svgDoc, containerShape);
 
-    T3Util.Log("= S.SegmentedLine: CreateShape output", { shape: containerShape });
+    LogUtil.Debug("= S.SegmentedLine: CreateShape output", { shape: containerShape });
     return containerShape;
   }
 
@@ -230,11 +232,11 @@ class SegmentedLine extends BaseLine {
    * This function is used to redraw the line after changes to its path.
    */
   UpdateSVG(shape, points) {
-    T3Util.Log("= S.SegmentedLine: UpdateSVG input", { shape, points });
+    LogUtil.Debug("= S.SegmentedLine: UpdateSVG input", { shape, points });
     if (shape && shape.SetPoints) {
       shape.SetPoints(points);
     }
-    T3Util.Log("= S.SegmentedLine: UpdateSVG output", { shape });
+    LogUtil.Debug("= S.SegmentedLine: UpdateSVG output", { shape });
   }
 
   /**
@@ -246,9 +248,9 @@ class SegmentedLine extends BaseLine {
    * which reconnects broken or disconnected line segments during optimization.
    */
   AllowHeal(): boolean {
-    T3Util.Log("= S.SegmentedLine: AllowHeal input");
+    LogUtil.Debug("= S.SegmentedLine: AllowHeal input");
     const result: boolean = true;
-    T3Util.Log("= S.SegmentedLine: AllowHeal output", result);
+    LogUtil.Debug("= S.SegmentedLine: AllowHeal output", result);
     return result;
   }
 
@@ -261,9 +263,9 @@ class SegmentedLine extends BaseLine {
    * don't support the stand-off dimension lines used by other shapes.
    */
   CanUseStandOffDimensionLines() {
-    T3Util.Log("= S.SegmentedLine: CanUseStandOffDimensionLines input");
+    LogUtil.Debug("= S.SegmentedLine: CanUseStandOffDimensionLines input");
     const result = false;
-    T3Util.Log("= S.SegmentedLine: CanUseStandOffDimensionLines output", result);
+    LogUtil.Debug("= S.SegmentedLine: CanUseStandOffDimensionLines output", result);
     return result;
   }
 
@@ -284,7 +286,7 @@ class SegmentedLine extends BaseLine {
    * directional flags that control how segments connect at junction points.
    */
   SegLFormat(targetPoint: Point, actionType: number, initialDirection: number) {
-    T3Util.Log("= S.SegmentedLine: SegLFormat input", { targetPoint, actionType, initialDirection });
+    LogUtil.Debug("= S.SegmentedLine: SegLFormat input", { targetPoint, actionType, initialDirection });
 
     let deltaX: number, deltaY: number, absDeltaX: number, absDeltaY: number;
     let boundingRect: any;
@@ -528,7 +530,7 @@ class SegmentedLine extends BaseLine {
         }
       }
 
-      T3Util.Log("= S.SegmentedLine: SegLFormat output", {
+      LogUtil.Debug("= S.SegmentedLine: SegLFormat output", {
         StartPoint: this.StartPoint,
         EndPoint: this.EndPoint,
         segl: this.segl
@@ -548,7 +550,7 @@ class SegmentedLine extends BaseLine {
    * - The start and end points relative to the bounding rectangle as a fallback
    */
   GetDimensionPoints() {
-    T3Util.Log("= S.SegmentedLine: GetDimensionPoints input", {
+    LogUtil.Debug("= S.SegmentedLine: GetDimensionPoints input", {
       Dimensions: this.Dimensions,
       Frame: this.Frame,
       StartPoint: this.StartPoint,
@@ -575,7 +577,7 @@ class SegmentedLine extends BaseLine {
         const deltaX = Math.abs(adjustedPoints[i - 1].x - adjustedPoints[i].x);
         const deltaY = Math.abs(adjustedPoints[i - 1].y - adjustedPoints[i].y);
         const segmentLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        T3Util.Log("= S.SegmentedLine: Segment distance", { index: i, segmentLength });
+        LogUtil.Debug("= S.SegmentedLine: Segment distance", { index: i, segmentLength });
       }
 
       // Calculate center based on the overall rectangle
@@ -601,7 +603,7 @@ class SegmentedLine extends BaseLine {
       dimensionPoints.push(new Point(this.EndPoint.x - boundingRect.x, this.EndPoint.y - boundingRect.y));
     }
 
-    T3Util.Log("= S.SegmentedLine: GetDimensionPoints output", dimensionPoints);
+    LogUtil.Debug("= S.SegmentedLine: GetDimensionPoints output", dimensionPoints);
     return dimensionPoints;
   }
 
@@ -626,7 +628,7 @@ class SegmentedLine extends BaseLine {
     isVertical: boolean,
     forcePreserveFormat: boolean
   ) {
-    T3Util.Log("= S.SegmentedLine: SegLTopToTop input", {
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToTop input", {
       actionType,
       targetPoint,
       directionFactor,
@@ -702,7 +704,7 @@ class SegmentedLine extends BaseLine {
         // Look for KTL hook point
         for (let j = 0; j < this.hooks.length; j++) {
           if (this.hooks[j].hookpt === OptConstant.HookPts.KTL) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[j].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[j].objid, false);
             if (hookObj) {
               hookObjectRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -726,7 +728,7 @@ class SegmentedLine extends BaseLine {
         // Look for KTR hook point
         for (let j = 0; j < this.hooks.length; j++) {
           if (this.hooks[j].hookpt === OptConstant.HookPts.KTR) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[j].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[j].objid, false);
             if (hookObj) {
               hookObjectRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -997,7 +999,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: SegLTopToTop output", {
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToTop output", {
       pts: this.segl.pts,
       lengths: this.segl.lengths,
     });
@@ -1017,7 +1019,7 @@ class SegmentedLine extends BaseLine {
    * (like segment adjustments) and hook points for connections to other objects.
    */
   SegLTopToBottom(actionType: number, targetPoint: Point, directionFactor: number, isVertical: boolean) {
-    T3Util.Log("= S.SegmentedLine: SegLTopToBottom input", { actionType, targetPoint, directionFactor, isVertical });
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToBottom input", { actionType, targetPoint, directionFactor, isVertical });
 
     // Define variables with meaningful names
     let secondaryDistance: number;
@@ -1183,7 +1185,7 @@ class SegmentedLine extends BaseLine {
       if (this.hooks && this.hooks.length > 0) {
         for (let hookIndex = 0; hookIndex < this.hooks.length; hookIndex++) {
           if (this.hooks[hookIndex].hookpt === OptConstant.HookPts.KTL) {
-            const hookObj = DataUtil.GetObjectPtr(this.hooks[hookIndex].objid, false);
+            const hookObj = ObjectUtil.GetObjectPtr(this.hooks[hookIndex].objid, false);
             if (hookObj) {
               const hookRect = hookObj.GetTargetRect();
               if (isVertical) {
@@ -1333,7 +1335,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: SegLTopToBottom output", { pts: this.segl.pts, lengths: this.segl.lengths });
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToBottom output", { pts: this.segl.pts, lengths: this.segl.lengths });
   }
 
   /**
@@ -1356,7 +1358,7 @@ class SegmentedLine extends BaseLine {
     isVertical: boolean,
     directionFlag: boolean
   ) {
-    T3Util.Log("= S.SegmentedLine: SegLTopToLeft input", { actionType, point, primaryFactor, secondaryFactor, isVertical, directionFlag });
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToLeft input", { actionType, point, primaryFactor, secondaryFactor, isVertical, directionFlag });
 
     // Variable declarations with meaningful names
     let coordU: number,
@@ -1385,7 +1387,7 @@ class SegmentedLine extends BaseLine {
     const segmentDimension = OptConstant.Common.DimMax;
 
     // Check if auto-insert is allowed
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     if (DrawUtil.AllowAutoInsert()) {
       isAutoInsertAllowed = true;
     }
@@ -1479,7 +1481,7 @@ class SegmentedLine extends BaseLine {
             // Look for hook at KTR point
             for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
               if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-                hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+                hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
                 if (hookObj) {
                   const hookRect = hookObj.GetTargetRect();
                   const heightDiff = startSecondary - (hookRect.y + hookRect.height);
@@ -1500,7 +1502,7 @@ class SegmentedLine extends BaseLine {
             // Handle other factor cases
             for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
               if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-                hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+                hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
                 if (hookObj) {
                   const hookRect = hookObj.GetTargetRect();
                   hookStartAdjustment = isVertical ?
@@ -1515,7 +1517,7 @@ class SegmentedLine extends BaseLine {
           // Handle the case where primary is greater than or equal to secondary
           for (loopIndex = 0; loopIndex < this.hooks.length; loopIndex++) {
             if (this.hooks[loopIndex].hookpt === OptConstant.HookPts.KTR) {
-              hookObj = DataUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
+              hookObj = ObjectUtil.GetObjectPtr(this.hooks[loopIndex].objid, false);
               if (hookObj) {
                 const hookRect = hookObj.GetTargetRect();
                 hookEndAdjustment = isVertical ?
@@ -1706,7 +1708,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: SegLTopToLeft output", {
+    LogUtil.Debug("= S.SegmentedLine: SegLTopToLeft output", {
       pts: this.segl.pts,
       lengths: this.segl.lengths
     });
@@ -1724,7 +1726,7 @@ class SegmentedLine extends BaseLine {
    * are proportional to segment lengths while respecting maximum constraints.
    */
   GetCornerSize(cornerBaseSize: number, maxCornerSize: number): number {
-    T3Util.Log("= S.SegmentedLine: GetCornerSize input", { cornerBaseSize, maxCornerSize });
+    LogUtil.Debug("= S.SegmentedLine: GetCornerSize input", { cornerBaseSize, maxCornerSize });
 
     // Choose the smaller of the two sizes as the base for calculation
     const baseSize = Math.min(cornerBaseSize, maxCornerSize);
@@ -1736,7 +1738,7 @@ class SegmentedLine extends BaseLine {
     // Limit the curve parameter to the maximum allowed value if necessary
     const cornerSize = currentCurve > maxCurve ? maxCurve : currentCurve;
 
-    T3Util.Log("= S.SegmentedLine: GetCornerSize output", { cornerSize });
+    LogUtil.Debug("= S.SegmentedLine: GetCornerSize output", { cornerSize });
     return cornerSize;
   }
 
@@ -1756,7 +1758,7 @@ class SegmentedLine extends BaseLine {
    * as an SVG polyline or for hit testing purposes.
    */
   GetPolyPoints(maxPointCount, shouldTranslatePoints, shouldSkipCurves, reserved, extraOptions?) {
-    T3Util.Log("= S.SegmentedLine: GetPolyPoints input", {
+    LogUtil.Debug("= S.SegmentedLine: GetPolyPoints input", {
       maxPointCount,
       shouldTranslatePoints,
       shouldSkipCurves,
@@ -1847,7 +1849,7 @@ class SegmentedLine extends BaseLine {
       polyPoints = super.GetPolyPoints(maxPointCount, shouldTranslatePoints, true, extraOptions);
     }
 
-    T3Util.Log("= S.SegmentedLine: GetPolyPoints output", polyPoints);
+    LogUtil.Debug("= S.SegmentedLine: GetPolyPoints output", polyPoints);
     return polyPoints;
   }
 
@@ -1863,18 +1865,18 @@ class SegmentedLine extends BaseLine {
    * proper segmentation direction flags based on connected shapes.
    */
   LMDrawPreTrack(svgDoc) {
-    T3Util.Log("= S.SegmentedLine: LMDrawPreTrack input", { svgDoc });
+    LogUtil.Debug("= S.SegmentedLine: LMDrawPreTrack input", { svgDoc });
 
     // Call the base class method and log its result
     const basePreTrackResult = super.LMDrawPreTrack(svgDoc);
-    T3Util.Log("= S.SegmentedLine: Base LMDrawPreTrack output", { basePreTrackResult });
+    LogUtil.Debug("= S.SegmentedLine: Base LMDrawPreTrack output", { basePreTrackResult });
 
     let connectedObject;
     if (
       T3Gv.opt.linkParams &&
       T3Gv.opt.linkParams.SConnectIndex >= 0
     ) {
-      connectedObject = DataUtil.GetObjectPtr(
+      connectedObject = ObjectUtil.GetObjectPtr(
         T3Gv.opt.linkParams.SConnectIndex,
         false
       );
@@ -1884,13 +1886,13 @@ class SegmentedLine extends BaseLine {
           this.EndPoint,
           svgDoc
         );
-        T3Util.Log("= S.SegmentedLine: Updated segl.firstdir", {
+        LogUtil.Debug("= S.SegmentedLine: Updated segl.firstdir", {
           firstdir: this.segl.firstdir
         });
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: LMDrawPreTrack output", { result: true });
+    LogUtil.Debug("= S.SegmentedLine: LMDrawPreTrack output", { result: true });
     return true;
   }
 
@@ -1908,7 +1910,7 @@ class SegmentedLine extends BaseLine {
    * both the visible line shape and its "slop" shape used for interaction.
    */
   AdjustLine(svgDoc, newX, newY, triggerType) {
-    T3Util.Log("= S.SegmentedLine: AdjustLine input", { svgDoc, newX, newY, triggerType });
+    LogUtil.Debug("= S.SegmentedLine: AdjustLine input", { svgDoc, newX, newY, triggerType });
 
     let visibleLineShape, interactionLineShape;
     if (svgDoc) {
@@ -1949,7 +1951,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: AdjustLine output", { Frame: this.Frame, adjustmentPoint });
+    LogUtil.Debug("= S.SegmentedLine: AdjustLine output", { Frame: this.Frame, adjustmentPoint });
   }
 
   /**
@@ -1964,7 +1966,7 @@ class SegmentedLine extends BaseLine {
    * enforcing minimum dimensions. Updates direction properties based on connected objects.
    */
   AdjustLineEnd(svgDocument, newEndX, newEndY, triggerType) {
-    T3Util.Log("= S.SegmentedLine: AdjustLineEnd input", { svgDocument, newEndX, newEndY, triggerType });
+    LogUtil.Debug("= S.SegmentedLine: AdjustLineEnd input", { svgDocument, newEndX, newEndY, triggerType });
 
     // Save current endpoint values
     const originalEndPoint = { x: this.EndPoint.x, y: this.EndPoint.y };
@@ -1987,7 +1989,7 @@ class SegmentedLine extends BaseLine {
 
     // Update directional properties based on connected object if applicable
     if (T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0) {
-      const connectedObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
+      const connectedObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
       if (connectedObject) {
         this.segl.lastdir = connectedObject.GetSegLFace(
           T3Gv.opt.linkParams.ConnectPt,
@@ -2003,7 +2005,7 @@ class SegmentedLine extends BaseLine {
     // Adjust the line using the svg document and the new endpoint values
     this.AdjustLine(svgDocument, newEndX, newEndY, OptConstant.ActionTriggerType.LineEnd);
 
-    T3Util.Log("= S.SegmentedLine: AdjustLineEnd output", { EndPoint: this.EndPoint, segl: this.segl });
+    LogUtil.Debug("= S.SegmentedLine: AdjustLineEnd output", { EndPoint: this.EndPoint, segl: this.segl });
   }
 
   /**
@@ -2018,7 +2020,7 @@ class SegmentedLine extends BaseLine {
    * Updates direction properties based on connected objects.
    */
   AdjustLineStart(svgDocument, newStartX, newStartY) {
-    T3Util.Log("= S.SegmentedLine: AdjustLineStart input", { svgDocument, newStartX, newStartY });
+    LogUtil.Debug("= S.SegmentedLine: AdjustLineStart input", { svgDocument, newStartX, newStartY });
 
     // Save the original StartPoint values
     const originalStartPoint = {
@@ -2062,7 +2064,7 @@ class SegmentedLine extends BaseLine {
 
     // Update segl.firstdir based on a connected object if available
     if (T3Gv.opt.linkParams && T3Gv.opt.linkParams.ConnectIndex >= 0) {
-      const connectedObject = DataUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
+      const connectedObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linkParams.ConnectIndex, false);
       if (connectedObject) {
         this.segl.firstdir = connectedObject.GetSegLFace(
           T3Gv.opt.linkParams.ConnectPt,
@@ -2079,7 +2081,7 @@ class SegmentedLine extends BaseLine {
     // Adjust the line using the updated parameters
     this.AdjustLine(svgDocument, adjustedStartX, adjustedStartY, OptConstant.ActionTriggerType.LineStart);
 
-    T3Util.Log("= S.SegmentedLine: AdjustLineStart output", {
+    LogUtil.Debug("= S.SegmentedLine: AdjustLineStart output", {
       originalStartPoint,
       adjustedPoint: connectionPoint,
       seglFirstDir: this.segl.firstdir,
@@ -2096,7 +2098,7 @@ class SegmentedLine extends BaseLine {
    * to determine the overall dimensions of the segmented line.
    */
   GetDimensions() {
-    T3Util.Log("= S.SegmentedLine: GetDimensions input", {
+    LogUtil.Debug("= S.SegmentedLine: GetDimensions input", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint
     });
@@ -2105,7 +2107,7 @@ class SegmentedLine extends BaseLine {
     const height = Math.abs(this.EndPoint.y - this.StartPoint.y);
     const dimensions = { x: width, y: height };
 
-    T3Util.Log("= S.SegmentedLine: GetDimensions output", dimensions);
+    LogUtil.Debug("= S.SegmentedLine: GetDimensions output", dimensions);
     return dimensions;
   }
 
@@ -2118,7 +2120,7 @@ class SegmentedLine extends BaseLine {
    * entire area covered by all segments, not just the direct start-to-end dimensions.
    */
   GetDimensionsForDisplay() {
-    T3Util.Log("= S.SegmentedLine: GetDimensionsForDisplay input", { Frame: this.Frame });
+    LogUtil.Debug("= S.SegmentedLine: GetDimensionsForDisplay input", { Frame: this.Frame });
 
     const displayDimensions = {
       x: this.Frame.x,
@@ -2127,7 +2129,7 @@ class SegmentedLine extends BaseLine {
       height: this.Frame.height
     };
 
-    T3Util.Log("= S.SegmentedLine: GetDimensionsForDisplay output", displayDimensions);
+    LogUtil.Debug("= S.SegmentedLine: GetDimensionsForDisplay output", displayDimensions);
     return displayDimensions;
   }
 
@@ -2142,16 +2144,16 @@ class SegmentedLine extends BaseLine {
    * the start point, allowing for dimensional changes to be applied.
    */
   UpdateDimensions(offsetElement, offsetX, offsetY) {
-    T3Util.Log("= S.SegmentedLine: UpdateDimensions input", { offsetElement, offsetX, offsetY });
+    LogUtil.Debug("= S.SegmentedLine: UpdateDimensions input", { offsetElement, offsetX, offsetY });
 
     const svgObject = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
     const newEndX = offsetX ? this.StartPoint.x + offsetX : this.EndPoint.x;
     const newEndY = offsetY ? this.StartPoint.y + offsetY : this.EndPoint.y;
 
-    T3Util.Log("= S.SegmentedLine: UpdateDimensions computed", { newEndX, newEndY });
+    LogUtil.Debug("= S.SegmentedLine: UpdateDimensions computed", { newEndX, newEndY });
     this.AdjustLineEnd(svgObject, newEndX, newEndY, OptConstant.ActionTriggerType.LineEnd);
 
-    T3Util.Log("= S.SegmentedLine: UpdateDimensions output", { EndPoint: this.EndPoint });
+    LogUtil.Debug("= S.SegmentedLine: UpdateDimensions output", { EndPoint: this.EndPoint });
   }
 
   /**
@@ -2166,7 +2168,7 @@ class SegmentedLine extends BaseLine {
    * the relative positions of the start and end points.
    */
   SetSize(newWidth, newHeight, forceFlag) {
-    T3Util.Log("= S.SegmentedLine: SetSize input", { newWidth, newHeight, forceFlag });
+    LogUtil.Debug("= S.SegmentedLine: SetSize input", { newWidth, newHeight, forceFlag });
 
     let isEndAdjusted = false;
     let deltaWidth = 0;
@@ -2204,7 +2206,7 @@ class SegmentedLine extends BaseLine {
     }
 
     OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
-    T3Util.Log("= S.SegmentedLine: SetSize output", { deltaWidth, deltaHeight, isEndAdjusted });
+    LogUtil.Debug("= S.SegmentedLine: SetSize output", { deltaWidth, deltaHeight, isEndAdjusted });
   }
 
   /**
@@ -2218,7 +2220,7 @@ class SegmentedLine extends BaseLine {
    * The function also updates any text associated with the line.
    */
   Flip(flipFlags: number): void {
-    T3Util.Log("= S.SegmentedLine: Flip input", { flipFlags });
+    LogUtil.Debug("= S.SegmentedLine: Flip input", { flipFlags });
     let isFlipped = false;
     let boundingRect: any;
     let pointIndex: number;
@@ -2367,7 +2369,7 @@ class SegmentedLine extends BaseLine {
     }
 
     T3Gv.opt.ob = {};
-    T3Util.Log("= S.SegmentedLine: Flip output", {
+    LogUtil.Debug("= S.SegmentedLine: Flip output", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint,
       segl: this.segl,
@@ -2389,7 +2391,7 @@ class SegmentedLine extends BaseLine {
    * for auto-insertion of components along the line.
    */
   GetFrameIntersects(intersectFrame: any, shapeDoc: any, outputPoints: Point[], resultContext: any): boolean {
-    T3Util.Log("= S.SegmentedLine: GetFrameIntersects input", { intersectFrame, shapeDoc, outputPoints, resultContext });
+    LogUtil.Debug("= S.SegmentedLine: GetFrameIntersects input", { intersectFrame, shapeDoc, outputPoints, resultContext });
 
     const minimumSegmentLength = 2 * OptConstant.Common.SegMinLen;
 
@@ -2451,7 +2453,7 @@ class SegmentedLine extends BaseLine {
             outputPoints[1].index = segmentIndex;
           }
 
-          T3Util.Log("= S.SegmentedLine: GetFrameIntersects output", {
+          LogUtil.Debug("= S.SegmentedLine: GetFrameIntersects output", {
             outputPoints,
             resultContext,
             hitSegment: segmentIndex
@@ -2500,7 +2502,7 @@ class SegmentedLine extends BaseLine {
             outputPoints[1].index = segmentIndex;
           }
 
-          T3Util.Log("= S.SegmentedLine: GetFrameIntersects output", {
+          LogUtil.Debug("= S.SegmentedLine: GetFrameIntersects output", {
             outputPoints,
             resultContext,
             hitSegment: segmentIndex
@@ -2511,7 +2513,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: GetFrameIntersects output", { result: false });
+    LogUtil.Debug("= S.SegmentedLine: GetFrameIntersects output", { result: false });
     return false;
   }
 
@@ -2526,9 +2528,9 @@ class SegmentedLine extends BaseLine {
    * flipping or adjusting segment points.
    */
   NoRotate(): boolean {
-    T3Util.Log("= S.SegmentedLine: NoRotate input", {});
+    LogUtil.Debug("= S.SegmentedLine: NoRotate input", {});
     const result = true;
-    T3Util.Log("= S.SegmentedLine: NoRotate output", result);
+    LogUtil.Debug("= S.SegmentedLine: NoRotate output", result);
     return result;
   }
 
@@ -2548,14 +2550,14 @@ class SegmentedLine extends BaseLine {
    * The perpendicular offset from the line is stored in LineTextY.
    */
   CalcTextPosition(textPositioningParams) {
-    T3Util.Log("= S.SegmentedLine: CalcTextPosition input", { textPositioningParams });
+    LogUtil.Debug("= S.SegmentedLine: CalcTextPosition input", { textPositioningParams });
 
     // Calculate the center of the text position relative to the object's frame
     const centerPoint = {
       x: textPositioningParams.Frame.x + textPositioningParams.Frame.width / 2 - this.Frame.x,
       y: textPositioningParams.Frame.y + textPositioningParams.Frame.height / 2 - this.Frame.y,
     };
-    T3Util.Log("= S.SegmentedLine: Center calculated", { centerPoint });
+    LogUtil.Debug("= S.SegmentedLine: Center calculated", { centerPoint });
 
     const totalPoints = this.segl.pts.length;
     let bestSegmentIndex = 1; // index of the segment chosen for alignment
@@ -2587,7 +2589,7 @@ class SegmentedLine extends BaseLine {
         const segmentLength = Math.abs(previousPoint.y - currentPoint.y);
         segmentLengths.push(segmentLength);
         totalSegmentLength += segmentLength;
-        T3Util.Log("= S.SegmentedLine: Vertical segment", { index: segmentIndex, segmentLength, totalSegmentLength });
+        LogUtil.Debug("= S.SegmentedLine: Vertical segment", { index: segmentIndex, segmentLength, totalSegmentLength });
       } else {
         // Horizontal segment
         const segmentMinX = Math.min(previousPoint.x, currentPoint.x);
@@ -2606,11 +2608,11 @@ class SegmentedLine extends BaseLine {
         const segmentLength = Math.abs(previousPoint.x - currentPoint.x);
         segmentLengths.push(segmentLength);
         totalSegmentLength += segmentLength;
-        T3Util.Log("= S.SegmentedLine: Horizontal segment", { index: segmentIndex, segmentLength, totalSegmentLength });
+        LogUtil.Debug("= S.SegmentedLine: Horizontal segment", { index: segmentIndex, segmentLength, totalSegmentLength });
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: Chosen segment", {
+    LogUtil.Debug("= S.SegmentedLine: Chosen segment", {
       bestSegmentIndex,
       minimumDistance,
       segmentReferenceCoordinate,
@@ -2627,12 +2629,12 @@ class SegmentedLine extends BaseLine {
       // For vertical segment: primary offset is along the Y axis; secondary offset is horizontal
       offsetAlongSegment = Math.abs(centerPoint.y - segmentReferenceCoordinate);
       offsetAcrossSegment = -(centerPoint.x - segmentStartPoint.x);
-      T3Util.Log("= S.SegmentedLine: Vertical offset", { offsetAlongSegment, offsetAcrossSegment });
+      LogUtil.Debug("= S.SegmentedLine: Vertical offset", { offsetAlongSegment, offsetAcrossSegment });
     } else {
       // For horizontal segment: primary offset is along the X axis; secondary offset is vertical
       offsetAlongSegment = Math.abs(centerPoint.x - segmentReferenceCoordinate);
       offsetAcrossSegment = centerPoint.y - segmentStartPoint.y;
-      T3Util.Log("= S.SegmentedLine: Horizontal offset", { offsetAlongSegment, offsetAcrossSegment });
+      LogUtil.Debug("= S.SegmentedLine: Horizontal offset", { offsetAlongSegment, offsetAcrossSegment });
     }
 
     // Calculate the accumulated distance along the polyline up to the chosen segment
@@ -2641,7 +2643,7 @@ class SegmentedLine extends BaseLine {
       accumulatedDistance += segmentLengths[i];
     }
     accumulatedDistance += offsetAlongSegment;
-    T3Util.Log("= S.SegmentedLine: Accumulated distance", { accumulatedDistance });
+    LogUtil.Debug("= S.SegmentedLine: Accumulated distance", { accumulatedDistance });
 
     // Set relative text positions
     this.LineTextX = totalSegmentLength ? accumulatedDistance / totalSegmentLength : 0;
@@ -2656,7 +2658,7 @@ class SegmentedLine extends BaseLine {
     textPositioningParams.TextGrow = NvConstant.TextGrowBehavior.Vertical;
     this.TextFlags = Utils2.SetFlag(this.TextFlags, NvConstant.TextFlags.HorizText, true);
 
-    T3Util.Log("= S.SegmentedLine: CalcTextPosition output", {
+    LogUtil.Debug("= S.SegmentedLine: CalcTextPosition output", {
       LineTextX: this.LineTextX,
       LineTextY: this.LineTextY,
       trect: this.trect,
@@ -2674,7 +2676,7 @@ class SegmentedLine extends BaseLine {
    * @returns Object containing text positioning data including frame, start/end points and center proportion
    */
   GetTextOnLineParams(textOptions) {
-    T3Util.Log("= S.SegmentedLine: GetTextOnLineParams input", { textOptions });
+    LogUtil.Debug("= S.SegmentedLine: GetTextOnLineParams input", { textOptions });
 
     // Initialize variables and the result structure
     let segmentStartIndex, segmentEndIndex;
@@ -2722,7 +2724,7 @@ class SegmentedLine extends BaseLine {
 
       // Determine the target distance along the line based on LineTextX proportion
       const targetDistance = this.LineTextX * totalLineLength;
-      T3Util.Log("= S.SegmentedLine: Total line length calculated", { totalLineLength, targetDistance });
+      LogUtil.Debug("= S.SegmentedLine: Total line length calculated", { totalLineLength, targetDistance });
 
       accumulatedLineLength = 0;
       selectedSegmentIndex = pointCount - 2; // default value if not found
@@ -2838,7 +2840,7 @@ class SegmentedLine extends BaseLine {
       positionParams.Frame = Utils1.DeepCopy(this.Frame);
     }
 
-    T3Util.Log("= S.SegmentedLine: GetTextOnLineParams output", positionParams);
+    LogUtil.Debug("= S.SegmentedLine: GetTextOnLineParams output", positionParams);
     return positionParams;
   }
 
@@ -2863,7 +2865,7 @@ class SegmentedLine extends BaseLine {
     optionalParam: any,
     connectedObjectId: any
   ) {
-    T3Util.Log("= S.SegmentedLine: CreateActionTriggers input", {
+    LogUtil.Debug("= S.SegmentedLine: CreateActionTriggers input", {
       svgDocument,
       objectId,
       optionalParam,
@@ -2886,7 +2888,7 @@ class SegmentedLine extends BaseLine {
     let adjustedHeight = this.Frame.height + knobSize;
 
     // Get the connected object if available
-    const connectedObject = DataUtil.GetObjectPtr(objectId, false);
+    const connectedObject = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Create an adjusted frame that accounts for knob dimensions
     const adjustedFrame = $.extend(true, {}, this.Frame);
@@ -3007,7 +3009,7 @@ class SegmentedLine extends BaseLine {
     knobGroup.isShape = true;
     knobGroup.SetID(OptConstant.Common.Action + objectId);
 
-    T3Util.Log("= S.SegmentedLine: CreateActionTriggers output", {
+    LogUtil.Debug("= S.SegmentedLine: CreateActionTriggers output", {
       knobGroup,
       adjustedFrame,
       adjustedWidth,
@@ -3033,7 +3035,7 @@ class SegmentedLine extends BaseLine {
    * and any associated text.
    */
   ModifyShape(svgDocument, newXCoord, newYCoord, triggerType, extraData) {
-    T3Util.Log("= S.SegmentedLine: ModifyShape input", {
+    LogUtil.Debug("= S.SegmentedLine: ModifyShape input", {
       svgDocument,
       newXCoord,
       newYCoord,
@@ -3076,7 +3078,7 @@ class SegmentedLine extends BaseLine {
       this.LMResizeSVGTextObject(svgDocument, this, this.Frame);
     }
 
-    T3Util.Log("= S.SegmentedLine: ModifyShape output", {
+    LogUtil.Debug("= S.SegmentedLine: ModifyShape output", {
       Frame: this.Frame,
       polylinePoints,
       boundingRect
@@ -3099,7 +3101,7 @@ class SegmentedLine extends BaseLine {
    * consistency.
    */
   OnConnect(elementId, connectedObject, hookPoint, connectionCoordinate, extraData) {
-    T3Util.Log("= S.SegmentedLine: OnConnect input", {
+    LogUtil.Debug("= S.SegmentedLine: OnConnect input", {
       elementId,
       connectedObject,
       hookPoint,
@@ -3137,12 +3139,12 @@ class SegmentedLine extends BaseLine {
         break;
 
       default:
-        T3Util.Log("= S.SegmentedLine: OnConnect unknown hookPoint", { hookPoint });
+        LogUtil.Debug("= S.SegmentedLine: OnConnect unknown hookPoint", { hookPoint });
     }
 
     // Adjust line geometry if an action trigger has been determined
     if (actionTrigger) {
-      T3Util.Log("= S.SegmentedLine: OnConnect calling AdjustLine", {
+      LogUtil.Debug("= S.SegmentedLine: OnConnect calling AdjustLine", {
         svgDocument,
         adjustXCoord,
         adjustYCoord,
@@ -3151,7 +3153,7 @@ class SegmentedLine extends BaseLine {
       this.AdjustLine(svgDocument, adjustXCoord, adjustYCoord, actionTrigger);
     }
 
-    T3Util.Log("= S.SegmentedLine: OnConnect output");
+    LogUtil.Debug("= S.SegmentedLine: OnConnect output");
   }
 
   /**
@@ -3168,7 +3170,7 @@ class SegmentedLine extends BaseLine {
    * object and any global object references are properly updated.
    */
   OnDisconnect(elementId: string, unusedParam: any, hookType: number, extraData: any): void {
-    T3Util.Log("= S.SegmentedLine: OnDisconnect input", {
+    LogUtil.Debug("= S.SegmentedLine: OnDisconnect input", {
       elementId,
       unusedParam,
       hookType,
@@ -3220,7 +3222,7 @@ class SegmentedLine extends BaseLine {
 
     // Adjust line geometry if an action trigger was determined
     if (actionTrigger) {
-      T3Util.Log("= S.SegmentedLine: OnDisconnect - calling AdjustLine", {
+      LogUtil.Debug("= S.SegmentedLine: OnDisconnect - calling AdjustLine", {
         svgDocument,
         adjustXCoord,
         adjustYCoord,
@@ -3229,7 +3231,7 @@ class SegmentedLine extends BaseLine {
       this.AdjustLine(svgDocument, adjustXCoord, adjustYCoord, actionTrigger);
     }
 
-    T3Util.Log("= S.SegmentedLine: OnDisconnect output", {
+    LogUtil.Debug("= S.SegmentedLine: OnDisconnect output", {
       updatedStartPoint: this.StartPoint,
       updatedEndPoint: this.EndPoint,
       actionTrigger
@@ -3249,7 +3251,7 @@ class SegmentedLine extends BaseLine {
    * The function optimizes performance by only updating when the position has actually changed.
    */
   LinkGrow(elementId, hookType, newPosition) {
-    T3Util.Log("= S.SegmentedLine: LinkGrow input", {
+    LogUtil.Debug("= S.SegmentedLine: LinkGrow input", {
       elementId,
       hookType,
       newPosition
@@ -3286,9 +3288,9 @@ class SegmentedLine extends BaseLine {
     // Recalculate the frame and mark element as modified
     this.CalcFrame(true);
     OptCMUtil.SetLinkFlag(elementId, DSConstant.LinkFlags.Move);
-    DataUtil.AddToDirtyList(elementId);
+    ObjectUtil.AddToDirtyList(elementId);
 
-    T3Util.Log("= S.SegmentedLine: LinkGrow output", {
+    LogUtil.Debug("= S.SegmentedLine: LinkGrow output", {
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint
     });
@@ -3307,7 +3309,7 @@ class SegmentedLine extends BaseLine {
    * to the hook point. This is used when calculating connections between objects.
    */
   HookToPoint(hookId: number, outRect?: { x: number; y: number; width: number; height: number }): Point {
-    T3Util.Log("= S.SegmentedLine: HookToPoint input", { hookId, outRect });
+    LogUtil.Debug("= S.SegmentedLine: HookToPoint input", { hookId, outRect });
 
     const hookPointTypes = OptConstant.HookPts;
     let resultPoint: Point = { x: 0, y: 0 };
@@ -3347,7 +3349,7 @@ class SegmentedLine extends BaseLine {
         break;
     }
 
-    T3Util.Log("= S.SegmentedLine: HookToPoint output", { resultPoint, segmentRect });
+    LogUtil.Debug("= S.SegmentedLine: HookToPoint output", { resultPoint, segmentRect });
     return resultPoint;
   }
 
@@ -3369,7 +3371,7 @@ class SegmentedLine extends BaseLine {
    * that represent potential connection points on the line.
    */
   GetTargetPoints(hookData, targetFlags, connectedObjectId) {
-    T3Util.Log("= S.SegmentedLine: GetTargetPoints input", { hookData, targetFlags, connectedObjectId });
+    LogUtil.Debug("= S.SegmentedLine: GetTargetPoints input", { hookData, targetFlags, connectedObjectId });
 
     const hookPointTypes = OptConstant.HookPts;
     const maxDimension = OptConstant.Common.DimMax;
@@ -3382,7 +3384,7 @@ class SegmentedLine extends BaseLine {
     if (
       connectedObjectId != null &&
       connectedObjectId >= 0 &&
-      DataUtil.GetObjectPtr(connectedObjectId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
+      ObjectUtil.GetObjectPtr(connectedObjectId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape
     ) {
       // Determine a normalized hook id value
       let normalizedHookId = hookData.id;
@@ -3412,16 +3414,16 @@ class SegmentedLine extends BaseLine {
 
           // Process hooks if available
           if (this.hooks.length === 0) {
-            T3Util.Log("= S.SegmentedLine: GetTargetPoints output", targetPoints);
+            LogUtil.Debug("= S.SegmentedLine: GetTargetPoints output", targetPoints);
             return targetPoints;
           }
           if (this.hooks.length !== 1) {
-            T3Util.Log("= S.SegmentedLine: GetTargetPoints output", []);
+            LogUtil.Debug("= S.SegmentedLine: GetTargetPoints output", []);
             return [];
           }
           if (this.hooks[0].hookpt === hookPointTypes.KTR) {
             targetPoints[1].skip = true;
-            T3Util.Log("= S.SegmentedLine: GetTargetPoints output", targetPoints);
+            LogUtil.Debug("= S.SegmentedLine: GetTargetPoints output", targetPoints);
             return targetPoints;
           }
           if (this.hooks[0].hookpt === hookPointTypes.KTL) {
@@ -3429,7 +3431,7 @@ class SegmentedLine extends BaseLine {
             // Mirror target point 1 into target point 0 if necessary
             targetPoints[0].x = targetPoints[1].x;
             targetPoints[0].y = targetPoints[1].y;
-            T3Util.Log("= S.SegmentedLine: GetTargetPoints output", targetPoints);
+            LogUtil.Debug("= S.SegmentedLine: GetTargetPoints output", targetPoints);
             return targetPoints;
           }
           break;
@@ -3439,7 +3441,7 @@ class SegmentedLine extends BaseLine {
 
     // Fallback to base shape poly get targets
     const result = this.BaseShapePolyGetTargets(hookData, targetFlags, this.Frame);
-    T3Util.Log("= S.SegmentedLine: GetTargetPoints output", result);
+    LogUtil.Debug("= S.SegmentedLine: GetTargetPoints output", result);
     return result;
   }
 
@@ -3455,12 +3457,12 @@ class SegmentedLine extends BaseLine {
    * @returns Array of normalized target points or null if no suitable target found
    */
   BaseShapePolyGetTargets(inputPoint, hookFlags, boundingRect) {
-    T3Util.Log("= S.SegmentedLine: BaseShapePolyGetTargets input", { inputPoint, hookFlags, boundingRect });
+    LogUtil.Debug("= S.SegmentedLine: BaseShapePolyGetTargets input", { inputPoint, hookFlags, boundingRect });
 
     // Get the list of target points from the polyline
     const polylinePoints = this.PolyGetTargetPointList(hookFlags);
     if (inputPoint == null) {
-      T3Util.Log("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: null });
+      LogUtil.Debug("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: null });
       return null;
     }
 
@@ -3598,11 +3600,11 @@ class SegmentedLine extends BaseLine {
         normalizedY * OptConstant.Common.DimMax
       ));
 
-      T3Util.Log("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: targetPoints });
+      LogUtil.Debug("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: targetPoints });
       return targetPoints;
     }
 
-    T3Util.Log("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: null });
+    LogUtil.Debug("= S.SegmentedLine: BaseShapePolyGetTargets output", { targets: null });
     return null;
   }
 
@@ -3625,7 +3627,7 @@ class SegmentedLine extends BaseLine {
    * - General coordinate mapping for other hook types
    */
   GetPerimPts(unusedInputParam: any, hookPointDefinitions: any, currentHookType: any, unusedParamR: any, unusedParamI: any, connectedObjectId: number) {
-    T3Util.Log("= S.SegmentedLine: GetPerimPts input", {
+    LogUtil.Debug("= S.SegmentedLine: GetPerimPts input", {
       unusedInputParam,
       hookPointDefinitions,
       currentHookType,
@@ -3659,13 +3661,13 @@ class SegmentedLine extends BaseLine {
           resultPoints.push(new Point(this.EndPoint.x, this.EndPoint.y));
           resultPoints[pointIndex].id = hookPointDefinitions[1].id;
         }
-        T3Util.Log("= S.SegmentedLine: GetPerimPts output", resultPoints);
+        LogUtil.Debug("= S.SegmentedLine: GetPerimPts output", resultPoints);
         return resultPoints;
       }
 
       // Handle connected object cases if provided
       if (connectedObjectId >= 0) {
-        const connectedObject = DataUtil.GetObjectPtr(connectedObjectId, false);
+        const connectedObject = ObjectUtil.GetObjectPtr(connectedObjectId, false);
         if (connectedObject) {
           // Case for multiplicity object
           if (connectedObject.objecttype === NvConstant.FNObjectTypes.Multiplicity && hookCount === 1) {
@@ -3719,13 +3721,13 @@ class SegmentedLine extends BaseLine {
                 resultPoints[0].id = hookPointDefinitions[0].id;
               }
             }
-            T3Util.Log("= S.SegmentedLine: GetPerimPts output", resultPoints);
+            LogUtil.Debug("= S.SegmentedLine: GetPerimPts output", resultPoints);
             return resultPoints;
           }
           // Case for extra text label object
           if (connectedObject.objecttype === NvConstant.FNObjectTypes.ExtraTextLable && hookCount === 1) {
             const extraLabelPoints = super.GetPerimPts(unusedInputParam, hookPointDefinitions, currentHookType, unusedParamR, unusedParamI, connectedObjectId);
-            T3Util.Log("= S.SegmentedLine: GetPerimPts output", extraLabelPoints);
+            LogUtil.Debug("= S.SegmentedLine: GetPerimPts output", extraLabelPoints);
             return extraLabelPoints;
           }
         }
@@ -3745,7 +3747,7 @@ class SegmentedLine extends BaseLine {
         resultPoints[hookIndex].id = hookPointDefinitions[hookIndex].id;
       }
     }
-    T3Util.Log("= S.SegmentedLine: GetPerimPts output", resultPoints);
+    LogUtil.Debug("= S.SegmentedLine: GetPerimPts output", resultPoints);
     return resultPoints;
   }
 
@@ -3774,7 +3776,7 @@ class SegmentedLine extends BaseLine {
     pivotY: number,
     preserveAspectRatio: boolean
   ): void {
-    T3Util.Log("= S.SegmentedLine: ScaleObject input", {
+    LogUtil.Debug("= S.SegmentedLine: ScaleObject input", {
       scaleX,
       scaleY,
       deltaX,
@@ -3795,7 +3797,7 @@ class SegmentedLine extends BaseLine {
     );
     this.CalcFrame();
 
-    T3Util.Log("= S.SegmentedLine: ScaleObject output", {
+    LogUtil.Debug("= S.SegmentedLine: ScaleObject output", {
       EndPoint: this.EndPoint,
       Frame: this.Frame,
     });
@@ -3813,7 +3815,7 @@ class SegmentedLine extends BaseLine {
    * @returns The appropriate hook direction (SED_KTC, SED_KBC, SED_KLC, or SED_KRC) or 0 if no intersection
    */
   GetSegLFace(hookPoint, referencePoint, testPoint) {
-    T3Util.Log("= S.SegmentedLine: GetSegLFace input", { hookPoint, referencePoint, testPoint });
+    LogUtil.Debug("= S.SegmentedLine: GetSegLFace input", { hookPoint, referencePoint, testPoint });
 
     // Get the polyline points with curves skipped (third parameter true)
     const polylinePoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, null);
@@ -3845,7 +3847,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: GetSegLFace output", { hookDirection });
+    LogUtil.Debug("= S.SegmentedLine: GetSegLFace output", { hookDirection });
     return hookDirection;
   }
 
@@ -3863,7 +3865,7 @@ class SegmentedLine extends BaseLine {
    * the distance between connection points.
    */
   GetSpacing() {
-    T3Util.Log("= S.SegmentedLine: GetSpacing input", {
+    LogUtil.Debug("= S.SegmentedLine: GetSpacing input", {
       hooks: this.hooks,
       segl: this.segl,
       StartPoint: this.StartPoint,
@@ -3875,8 +3877,8 @@ class SegmentedLine extends BaseLine {
 
     let firstConnectedObject, secondConnectedObject;
     if (this.hooks.length === 2) {
-      firstConnectedObject = DataUtil.GetObjectPtr(this.hooks[0].objid, false);
-      secondConnectedObject = DataUtil.GetObjectPtr(this.hooks[1].objid, false);
+      firstConnectedObject = ObjectUtil.GetObjectPtr(this.hooks[0].objid, false);
+      secondConnectedObject = ObjectUtil.GetObjectPtr(this.hooks[1].objid, false);
     }
 
     switch (this.segl.firstdir) {
@@ -3930,7 +3932,7 @@ class SegmentedLine extends BaseLine {
         break;
     }
 
-    T3Util.Log("= S.SegmentedLine: GetSpacing output", spacing);
+    LogUtil.Debug("= S.SegmentedLine: GetSpacing output", spacing);
     return spacing;
   }
 
@@ -3948,7 +3950,7 @@ class SegmentedLine extends BaseLine {
    * the line's directional properties to maintain proper connection relationships.
    */
   GetShapeConnectPoint(hookType: number) {
-    T3Util.Log("= S.SegmentedLine: GetShapeConnectPoint input", { hookType });
+    LogUtil.Debug("= S.SegmentedLine: GetShapeConnectPoint input", { hookType });
 
     let firstPoint: Point, secondPoint: Point;
     let leftConnectionPoint: { x?: number; y?: number } = {};
@@ -4010,7 +4012,7 @@ class SegmentedLine extends BaseLine {
       resultConnectionPoint = leftConnectionPoint;
     }
 
-    T3Util.Log("= S.SegmentedLine: GetShapeConnectPoint output", resultConnectionPoint);
+    LogUtil.Debug("= S.SegmentedLine: GetShapeConnectPoint output", resultConnectionPoint);
     return resultConnectionPoint;
   }
 
@@ -4027,7 +4029,7 @@ class SegmentedLine extends BaseLine {
    * connection relationships regardless of line orientation.
    */
   ConnectToHook(connectedObjectId: number, hookType: number): number {
-    T3Util.Log("= S.SegmentedLine: ConnectToHook input", { connectedObjectId, hookType });
+    LogUtil.Debug("= S.SegmentedLine: ConnectToHook input", { connectedObjectId, hookType });
 
     let adjustedHookType = hookType;
     if (ShapeUtil.LineIsReversed(this, null, false)) {
@@ -4038,7 +4040,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: ConnectToHook output", { result: adjustedHookType });
+    LogUtil.Debug("= S.SegmentedLine: ConnectToHook output", { result: adjustedHookType });
     return adjustedHookType;
   }
 
@@ -4060,7 +4062,7 @@ class SegmentedLine extends BaseLine {
    * points based on the segment direction. For other objects, it returns the input hook.
    */
   GetBestHook(objectId: number, initialHookType: number, referencePoint: Point): number {
-    T3Util.Log("= S.SegmentedLine: GetBestHook input", { objectId, initialHookType, referencePoint });
+    LogUtil.Debug("= S.SegmentedLine: GetBestHook input", { objectId, initialHookType, referencePoint });
 
     // Define constants and extract hook points from constant data
     const maxCoordinate: number = OptConstant.Common.DimMax;
@@ -4101,7 +4103,7 @@ class SegmentedLine extends BaseLine {
     }
 
     // Retrieve the object pointer for the given objectId
-    const connectedShape = DataUtil.GetObjectPtr(objectId, false);
+    const connectedShape = ObjectUtil.GetObjectPtr(objectId, false);
     let bestHookType = initialHookType;
     if (connectedShape && connectedShape.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
       switch (initialHookType) {
@@ -4124,7 +4126,7 @@ class SegmentedLine extends BaseLine {
       }
     }
 
-    T3Util.Log("= S.SegmentedLine: GetBestHook output", { bestHookType });
+    LogUtil.Debug("= S.SegmentedLine: GetBestHook output", { bestHookType });
     return bestHookType;
   }
 
@@ -4149,7 +4151,7 @@ class SegmentedLine extends BaseLine {
     objectToCheck: any,
     extraParams: any
   ): boolean {
-    T3Util.Log("= S.SegmentedLine: MaintainPoint input", { point, targetObjectId, additionalParams, objectToCheck, extraParams });
+    LogUtil.Debug("= S.SegmentedLine: MaintainPoint input", { point, targetObjectId, additionalParams, objectToCheck, extraParams });
 
     let result = true;
     let currentObject = objectToCheck;
@@ -4173,8 +4175,8 @@ class SegmentedLine extends BaseLine {
               }
             }
             if (!hookFound) {
-              T3Util.Log("= S.SegmentedLine: MaintainPoint - no matching hook found, returning true");
-              T3Util.Log("= S.SegmentedLine: MaintainPoint output", true);
+              LogUtil.Debug("= S.SegmentedLine: MaintainPoint - no matching hook found, returning true");
+              LogUtil.Debug("= S.SegmentedLine: MaintainPoint output", true);
               return true;
             }
             // Create a deep copy and update its Frame and endpoints based on hookRectangle
@@ -4189,9 +4191,9 @@ class SegmentedLine extends BaseLine {
         }
         break;
       case OptConstant.DrawObjectBaseClass.Shape:
-        T3Gv.opt.Lines_MaintainDist(this, additionalParams, extraParams, point);
-        T3Util.Log("= S.SegmentedLine: MaintainPoint processed for SHAPE, returning true");
-        T3Util.Log("= S.SegmentedLine: MaintainPoint output", true);
+        PolyUtil.LinesMaintainDist(this, additionalParams, extraParams, point);
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint processed for SHAPE, returning true");
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint output", true);
         return true;
     }
 
@@ -4213,20 +4215,20 @@ class SegmentedLine extends BaseLine {
 
       // Check if the point lies on this segment
       if (T3Gv.opt.LineCheckPoint(objectCopy, point)) {
-        T3Util.Log("= S.SegmentedLine: MaintainPoint - LineCheckPoint returned true", { segment: pointIndex, lineSegmentRectangle });
-        T3Util.Log("= S.SegmentedLine: MaintainPoint output", true);
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint - LineCheckPoint returned true", { segment: pointIndex, lineSegmentRectangle });
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint output", true);
         return true;
       }
       // Check for intersection with the current object
       if (T3Gv.opt.LinesIntersect(objectCopy, currentObject, point)) {
-        T3Util.Log("= S.SegmentedLine: MaintainPoint - LinesIntersect returned true", { segment: pointIndex, lineSegmentRectangle });
-        T3Util.Log("= S.SegmentedLine: MaintainPoint output", true);
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint - LinesIntersect returned true", { segment: pointIndex, lineSegmentRectangle });
+        LogUtil.Debug("= S.SegmentedLine: MaintainPoint output", true);
         return true;
       }
     }
 
-    T3Gv.opt.Lines_MaintainDist(this, additionalParams, extraParams, point);
-    T3Util.Log("= S.SegmentedLine: MaintainPoint output", result);
+    PolyUtil.LinesMaintainDist(this, additionalParams, extraParams, point);
+    LogUtil.Debug("= S.SegmentedLine: MaintainPoint output", result);
     return result;
   }
 }

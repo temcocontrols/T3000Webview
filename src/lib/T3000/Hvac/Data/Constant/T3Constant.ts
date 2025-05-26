@@ -24,7 +24,7 @@
  * }
  *
  * // Use the clipboard type to conditionally handle pasted text
- * if (clipboard.type === T3Constant.ClipboardType.Text) {
+ * if (T3Clipboard.type === T3Constant.ClipboardType.Text) {
  *   processTextClipboard(clipboard.data);
  * }
  *
@@ -57,6 +57,8 @@ class T3Constant {
     CurrentTextAlignment: 'center',
     SpacebarDown: false,
     CanTypeInWorkArea: true,
+    CurrentWidth: "0",
+    CurrentHeight: "0"
   }
 
   /**

@@ -25,7 +25,7 @@ import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -37,6 +37,8 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
+import PolyUtil from '../Opt/Opt/PolyUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a polyline shape with multiple connected segments.
@@ -96,7 +98,7 @@ class PolyLine extends BaseLine {
   public TextDirection: any;
 
   constructor(options) {
-    T3Util.Log('S.PolyLine: constructor input', options);
+    LogUtil.Debug('S.PolyLine: constructor input', options);
 
     options = options || {};
     options.DrawingObjectBaseClass = OptConstant.DrawObjectBaseClass.Line;
@@ -122,11 +124,11 @@ class PolyLine extends BaseLine {
 
     this.CalcFrame();
 
-    T3Util.Log('S.PolyLine: constructor output', this);
+    LogUtil.Debug('S.PolyLine: constructor output', this);
   }
 
   CreateShape(svgDoc, isHidden) {
-    T3Util.Log('S.PolyLine: CreateShape input', svgDoc, isHidden);
+    LogUtil.Debug('S.PolyLine: CreateShape input', svgDoc, isHidden);
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) return null;
 
@@ -142,7 +144,7 @@ class PolyLine extends BaseLine {
     const frame = this.Frame;
     let styleRecord = this.StyleRecord;
 
-    styleRecord = this.SVGTokenizerHook(styleRecord) || DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false)?.def.style;
+    styleRecord = this.SVGTokenizerHook(styleRecord) || ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false)?.def.style;
 
     const strokeColor = styleRecord.Line.Paint.Color;
     let strokeWidth = styleRecord.Line.Thickness;
@@ -194,12 +196,12 @@ class PolyLine extends BaseLine {
     shapeContainer.isShape = true;
     this.AddIcons(svgDoc, shapeContainer);
 
-    T3Util.Log('S.PolyLine: CreateShape output', shapeContainer);
+    LogUtil.Debug('S.PolyLine: CreateShape output', shapeContainer);
     return shapeContainer;
   }
 
   PostCreateShapeCallback(svgDoc, shapeContainer, shape, isHidden) {
-    T3Util.Log('= S.PolyLine PostCreateShapeCallback input', svgDoc, shapeContainer, shape, isHidden);
+    LogUtil.Debug('= S.PolyLine PostCreateShapeCallback input', svgDoc, shapeContainer, shape, isHidden);
 
     const mainShape = shapeContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopShape = shapeContainer.GetElementById(OptConstant.SVGElementClass.Slop);
@@ -223,11 +225,11 @@ class PolyLine extends BaseLine {
       this.UpdateDimensionLines(shapeContainer);
     }
 
-    T3Util.Log('= S.PolyLine PostCreateShapeCallback output', shapeContainer);
+    LogUtil.Debug('= S.PolyLine PostCreateShapeCallback output', shapeContainer);
   }
 
   UpdateSVG(pathShape, polyPoints) {
-    T3Util.Log('S.PolyLine: UpdateSVG input', pathShape, polyPoints);
+    LogUtil.Debug('S.PolyLine: UpdateSVG input', pathShape, polyPoints);
 
     const pointCount = polyPoints.length;
     if (pathShape && pathShape.PathCreator) {
@@ -245,11 +247,11 @@ class PolyLine extends BaseLine {
       pathCreator.Apply();
     }
 
-    T3Util.Log('S.PolyLine: UpdateSVG output', pathShape);
+    LogUtil.Debug('S.PolyLine: UpdateSVG output', pathShape);
   }
 
   SetFillHatch(shape, hatchType, color) {
-    T3Util.Log('S.PolyLine: SetFillHatch input', shape, hatchType, color);
+    LogUtil.Debug('S.PolyLine: SetFillHatch input', shape, hatchType, color);
 
     if (hatchType !== -1 && hatchType !== 0) {
       let hatchIndex = hatchType - 1;
@@ -278,11 +280,11 @@ class PolyLine extends BaseLine {
       shape.SetFillColor("none");
     }
 
-    T3Util.Log('S.PolyLine: SetFillHatch output', shape);
+    LogUtil.Debug('S.PolyLine: SetFillHatch output', shape);
   }
 
   GetDimensionPoints() {
-    T3Util.Log('S.PolyLine: GetDimensionPoints input');
+    LogUtil.Debug('S.PolyLine: GetDimensionPoints input');
 
     var dimensionPoints = [];
     var polyPoints = [];
@@ -320,12 +322,12 @@ class PolyLine extends BaseLine {
       dimensionPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, null);
     }
 
-    T3Util.Log('S.PolyLine: GetDimensionPoints output', dimensionPoints);
+    LogUtil.Debug('S.PolyLine: GetDimensionPoints output', dimensionPoints);
     return dimensionPoints;
   }
 
   AdjustDimensionLineDeflection(event, target, angle, segment, segmentInfo) {
-    T3Util.Log('S.PolyLine: adjustDimensionLineDeflection input', event, target, angle, segment, segmentInfo);
+    LogUtil.Debug('S.PolyLine: adjustDimensionLineDeflection input', event, target, angle, segment, segmentInfo);
 
     const segmentIndex = segmentInfo.segmentIndex;
     if (this.polylist && this.polylist.segs && this.polylist.segs.length !== 0) {
@@ -338,57 +340,57 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: adjustDimensionLineDeflection output', this.polylist);
+    LogUtil.Debug('S.PolyLine: adjustDimensionLineDeflection output', this.polylist);
   }
 
   GetDimensionDeflectionValue(segmentIndex) {
-    T3Util.Log('S.PolyLine: GetDimensionDeflectionValue input', segmentIndex);
+    LogUtil.Debug('S.PolyLine: GetDimensionDeflectionValue input', segmentIndex);
 
     if (this.polylist && this.polylist.segs && this.polylist.segs.length > 0 && segmentIndex >= 0 && segmentIndex < this.polylist.segs.length) {
       const deflectionValue = this.polylist.segs[segmentIndex].dimDeflection;
-      T3Util.Log('S.PolyLine: GetDimensionDeflectionValue output', deflectionValue);
+      LogUtil.Debug('S.PolyLine: GetDimensionDeflectionValue output', deflectionValue);
       return deflectionValue;
     }
 
-    T3Util.Log('S.PolyLine: GetDimensionDeflectionValue output', null);
+    LogUtil.Debug('S.PolyLine: GetDimensionDeflectionValue output', null);
     return null;
   }
 
   GetDimensionFloatingPointValue(dimensionType: number): number | null {
-    T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue input", dimensionType);
+    LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue input", dimensionType);
     let dimensionValue = 0;
     let dimensionsInfo: any = {};
 
     if (!(this.rflags & NvConstant.FloatingPointDim.Width || this.rflags & NvConstant.FloatingPointDim.Height)) {
-      T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue output", null);
+      LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue output", null);
       return null;
     }
     if (!this.GetPolyRectangularInfo(dimensionsInfo)) {
-      T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue output", null);
+      LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue output", null);
       return null;
     }
     if (dimensionsInfo.wdDim === dimensionType || dimensionsInfo.wdDim + 2 === dimensionType) {
       if (this.rflags & NvConstant.FloatingPointDim.Width) {
         dimensionValue = this.GetDimensionLengthFromValue(this.rwd);
         const result = RulerUtil.GetLengthInRulerUnits(dimensionValue);
-        T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue output", result);
+        LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue output", result);
         return result;
       }
     } else if ((dimensionsInfo.htDim === dimensionType || dimensionsInfo.htDim + 2 === dimensionType) &&
       (this.rflags & NvConstant.FloatingPointDim.Height)) {
       dimensionValue = this.GetDimensionLengthFromValue(this.rht);
       const result = RulerUtil.GetLengthInRulerUnits(dimensionValue);
-      T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue output", result);
+      LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue output", result);
       return result;
     }
-    T3Util.Log("S.PolyLine: GetDimensionFloatingPointValue output", null);
+    LogUtil.Debug("S.PolyLine: GetDimensionFloatingPointValue output", null);
     return null;
   }
 
   UpdateDrawing(svgDocument) {
-    T3Util.Log("S.PolyLine: UpdateDrawing input", svgDocument);
+    LogUtil.Debug("S.PolyLine: UpdateDrawing input", svgDocument);
 
-    T3Util.Log("S.PolyLine: UpdateDrawing - Starting update of dimensions and lines");
+    LogUtil.Debug("S.PolyLine: UpdateDrawing - Starting update of dimensions and lines");
 
     // Get primary SVG elements for shape and slop
     const shapeElement = svgDocument.GetElementById(OptConstant.SVGElementClass.Shape);
@@ -422,11 +424,11 @@ class PolyLine extends BaseLine {
       this.UpdateDimensionLines(svgDocument);
     }
 
-    T3Util.Log("S.PolyLine: UpdateDrawing output", svgDocument);
+    LogUtil.Debug("S.PolyLine: UpdateDrawing output", svgDocument);
   }
 
   ScaleEndPoints() {
-    T3Util.Log('S.PolyLine: ScaleEndPoints input', {
+    LogUtil.Debug('S.PolyLine: ScaleEndPoints input', {
       Frame: this.Frame,
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint
@@ -437,7 +439,7 @@ class PolyLine extends BaseLine {
 
     // No scaling needed if both scales are 1
     if (scaleX === 1 && scaleY === 1) {
-      T3Util.Log('S.PolyLine: ScaleEndPoints output - no scaling performed', {
+      LogUtil.Debug('S.PolyLine: ScaleEndPoints output - no scaling performed', {
         Frame: this.Frame,
         StartPoint: this.StartPoint,
         EndPoint: this.EndPoint
@@ -463,7 +465,7 @@ class PolyLine extends BaseLine {
     deltaY = centerPoint.y - this.EndPoint.y;
     this.EndPoint.y = centerPoint.y - deltaY * scaleY;
 
-    T3Util.Log('S.PolyLine: ScaleEndPoints output', {
+    LogUtil.Debug('S.PolyLine: ScaleEndPoints output', {
       Frame: this.Frame,
       StartPoint: this.StartPoint,
       EndPoint: this.EndPoint
@@ -471,16 +473,16 @@ class PolyLine extends BaseLine {
   }
 
   UpdateFrame(newFrame: any) {
-    T3Util.Log("S.PolyLine: UpdateFrame input", newFrame);
+    LogUtil.Debug("S.PolyLine: UpdateFrame input", newFrame);
     super.UpdateFrame(newFrame);
     if (this.polylist.closed && this.StyleRecord && this.StyleRecord.Line) {
       // Additional logic for closed polyline with line style can be added here if needed
     }
-    T3Util.Log("S.PolyLine: UpdateFrame output", this.Frame);
+    LogUtil.Debug("S.PolyLine: UpdateFrame output", this.Frame);
   }
 
   CalcFrame() {
-    T3Util.Log("S.PolyLine: CalcFrame input");
+    LogUtil.Debug("S.PolyLine: CalcFrame input");
 
     let lineThickness: number;
     let polyPoints: any[] = [];
@@ -525,32 +527,32 @@ class PolyLine extends BaseLine {
       }
     }
     this.UpdateFrame(this.Frame);
-    T3Util.Log("S.PolyLine: CalcFrame output", this.Frame);
+    LogUtil.Debug("S.PolyLine: CalcFrame output", this.Frame);
   }
 
   GetSVGFrame(inputFrame: any): any {
-    T3Util.Log("S.PolyLine:GetSVGFrame input:", inputFrame);
+    LogUtil.Debug("S.PolyLine:GetSVGFrame input:", inputFrame);
     let outputFrame = {};
     if (inputFrame == null) {
       inputFrame = this.Frame;
     }
     Utils2.CopyRect(outputFrame, inputFrame);
-    T3Util.Log("S.PolyLine:GetSVGFrame output:", outputFrame);
+    LogUtil.Debug("S.PolyLine:GetSVGFrame output:", outputFrame);
     return outputFrame;
   }
 
   GetDimensions(): { x: number; y: number } {
-    T3Util.Log('S.PolyLine: GetDimensions input - Frame:', this.Frame);
+    LogUtil.Debug('S.PolyLine: GetDimensions input - Frame:', this.Frame);
     const dimensions = {
       x: this.Frame.width,
       y: this.Frame.height
     };
-    T3Util.Log('S.PolyLine: GetDimensions output:', dimensions);
+    LogUtil.Debug('S.PolyLine: GetDimensions output:', dimensions);
     return dimensions;
   }
 
   SetSize(newWidth, newHeight, extraParam) {
-    T3Util.Log('S.PolyLine: SetSize input', { newWidth, newHeight, extraParam });
+    LogUtil.Debug('S.PolyLine: SetSize input', { newWidth, newHeight, extraParam });
 
     // Default scale factors and order flags
     let scaleX = 1;
@@ -620,11 +622,11 @@ class PolyLine extends BaseLine {
     this.CalcFrame();
     OptCMUtil.SetLinkFlag(this.BlockID, DSConstant.LinkFlags.Move);
 
-    T3Util.Log('S.PolyLine: SetSize output', { frame: this.Frame, startPoint: this.StartPoint, endPoint: this.EndPoint });
+    LogUtil.Debug('S.PolyLine: SetSize output', { frame: this.Frame, startPoint: this.StartPoint, endPoint: this.EndPoint });
   }
 
   UpdateDimensions(svgDocument, xOffset, yOffset) {
-    T3Util.Log("S.PolyLine: UpdateDimensions input", { svgDocument, xOffset, yOffset });
+    LogUtil.Debug("S.PolyLine: UpdateDimensions input", { svgDocument, xOffset, yOffset });
     // Get the SVG element for this BlockID
     const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
 
@@ -639,11 +641,11 @@ class PolyLine extends BaseLine {
     // Adjust the end of the line accordingly
     this.AdjustLineEnd(svgElement, newX, newY, OptConstant.ActionTriggerType.LineEnd);
 
-    T3Util.Log("S.PolyLine: UpdateDimensions output", { newX, newY });
+    LogUtil.Debug("S.PolyLine: UpdateDimensions output", { newX, newY });
   }
 
   GetApparentAngle(point: any): number {
-    T3Util.Log("S.PolyLine: GetApparentAngle input:", point);
+    LogUtil.Debug("S.PolyLine: GetApparentAngle input:", point);
 
     const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, true, false, null);
     const segmentIndex = this.PolyHitSeg(point);
@@ -655,12 +657,12 @@ class PolyLine extends BaseLine {
       apparentAngle = this.GetDrawNormalizedAngle(polyPoints[segmentIndex - 1], polyPoints[segmentIndex]);
     }
 
-    T3Util.Log("S.PolyLine: GetApparentAngle output:", apparentAngle);
+    LogUtil.Debug("S.PolyLine: GetApparentAngle output:", apparentAngle);
     return apparentAngle;
   }
 
   SnapPointToSegment(segmentIndex, pointToSnap) {
-    T3Util.Log("S.PolyLine: SnapPointToSegment input", { segmentIndex, pointToSnap });
+    LogUtil.Debug("S.PolyLine: SnapPointToSegment input", { segmentIndex, pointToSnap });
 
     // Create an empty bounding rectangle
     const boundingRect = {};
@@ -690,11 +692,11 @@ class PolyLine extends BaseLine {
     // Rotate the point back using the positive rotation angle
     Utils3.RotatePointsAboutCenter(boundingRect, angleRadians, [pointToSnap]);
 
-    T3Util.Log("S.PolyLine: SnapPointToSegment output", { pointToSnap });
+    LogUtil.Debug("S.PolyLine: SnapPointToSegment output", { pointToSnap });
   }
 
   CalcTextPosition(svgShape) {
-    T3Util.Log("S.PolyLine: CalcTextPosition input", { svgShape });
+    LogUtil.Debug("S.PolyLine: CalcTextPosition input", { svgShape });
 
     // Local variables renamed for clarity.
     let totalSegmentCount, currentSegmentLength = 0, currentSegIndex, currentSegmentStart = {}, currentSegmentEnd = {};
@@ -726,7 +728,7 @@ class PolyLine extends BaseLine {
       for (let idx = startIdx; idx < endIdx; idx++) {
         dx = pointsArray[idx - 1].x - pointsArray[idx].x;
         dy = pointsArray[idx - 1].y - pointsArray[idx].y;
-        lengthSum += Utils2.sqrt(dx * dx + dy * dy);
+        lengthSum += Utils2.Sqrt(dx * dx + dy * dy);
       }
       return lengthSum;
     };
@@ -796,7 +798,7 @@ class PolyLine extends BaseLine {
           rotatedPoints.push({ ...secondPoint });
 
           // Get the clockwise angle (in radians) between first and second points.
-          let angleRadians = T3Gv.opt.GetClockwiseAngleBetween2PointsInRadians(firstPoint, secondPoint);
+          let angleRadians = PolyUtil.GetClockwiseAngleBetween2PointsInRadians(firstPoint, secondPoint);
           let angleDegrees = (angleRadians * (180 / NvConstant.Geometry.PI)) % 180;
           // If the angle is nonzero and no rotation is applied, mark text as horizontal.
           if (!Utils2.IsEqual(angleDegrees, 0) && svgShape.RotationAngle === 0) {
@@ -831,7 +833,7 @@ class PolyLine extends BaseLine {
       this.trect = $.extend(true, {}, svgShape.trect);
     }
 
-    T3Util.Log("S.PolyLine: CalcTextPosition output", {
+    LogUtil.Debug("S.PolyLine: CalcTextPosition output", {
       LineTextX: this.LineTextX,
       LineTextY: this.LineTextY,
       trect: this.trect
@@ -839,7 +841,7 @@ class PolyLine extends BaseLine {
   }
 
   GetTextOnLineParams(textPositionFactor: number) {
-    T3Util.Log("S.PolyLine: GetTextOnLineParams input:", { textPositionFactor });
+    LogUtil.Debug("S.PolyLine: GetTextOnLineParams input:", { textPositionFactor });
 
     // Prepare the output parameters object with a new frame and points.
     let textParameters = {
@@ -905,7 +907,7 @@ class PolyLine extends BaseLine {
             let previousPt = polyPoints[i - 1];
             let dx = currentPt.x - previousPt.x;
             let dy = currentPt.y - previousPt.y;
-            let segmentLength = Utils2.sqrt(dx * dx + dy * dy);
+            let segmentLength = Utils2.Sqrt(dx * dx + dy * dy);
             segmentLengths.push(segmentLength);
             totalLength += segmentLength;
           }
@@ -931,12 +933,12 @@ class PolyLine extends BaseLine {
     // Deep copy the current frame to the output parameters.
     textParameters.Frame = Utils1.DeepCopy(this.Frame);
 
-    T3Util.Log("S.PolyLine: GetTextOnLineParams output:", textParameters);
+    LogUtil.Debug("S.PolyLine: GetTextOnLineParams output:", textParameters);
     return textParameters;
   }
 
   AddCorner(svgElement: any, cornerPoint: Point) {
-    T3Util.Log("S.PolyLine: AddCorner - input:", { svgElement, cornerPoint });
+    LogUtil.Debug("S.PolyLine: AddCorner - input:", { svgElement, cornerPoint });
 
     // Rename variables for readability:
     let tempOffsetX: number, tempOffsetY: number;
@@ -949,7 +951,7 @@ class PolyLine extends BaseLine {
 
     // Get the segment where the corner was hit.
     const cornerSegmentIndex = this.PolyHitSeg(cornerPoint);
-    const linksObject = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+    const linksObject = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
     let hookList: any[] = [];
 
     // If no svgElement provided, get by BlockID.
@@ -1119,27 +1121,27 @@ class PolyLine extends BaseLine {
       DrawUtil.CompleteOperation(null);
     }
 
-    T3Util.Log("S.PolyLine: AddCorner - output: Corner added successfully");
+    LogUtil.Debug("S.PolyLine: AddCorner - output: Corner added successfully");
   }
 
   GetKnobSize(svgDocument) {
-    T3Util.Log("S.PolyLine: GetKnobSize input", svgDocument);
+    LogUtil.Debug("S.PolyLine: GetKnobSize input", svgDocument);
     const knobSize = OptConstant.Common.KnobSize;
-    T3Util.Log("S.PolyLine: GetKnobSize output", knobSize);
+    LogUtil.Debug("S.PolyLine: GetKnobSize output", knobSize);
     return knobSize;
   }
 
   GetCornerKnobImages() {
-    T3Util.Log("S.PolyLine: GetCornerKnobImages input");
+    LogUtil.Debug("S.PolyLine: GetCornerKnobImages input");
 
     const knobImages = null;
 
-    T3Util.Log("S.PolyLine: GetCornerKnobImages output", knobImages);
+    LogUtil.Debug("S.PolyLine: GetCornerKnobImages output", knobImages);
     return knobImages;
   }
 
   CreateActionTriggers(svgDocument, targetObject, additionalData, actionId) {
-    T3Util.Log("S.PolyLine: CreateActionTriggers input", { svgDocument, targetObject, additionalData, actionId });
+    LogUtil.Debug("S.PolyLine: CreateActionTriggers input", { svgDocument, targetObject, additionalData, actionId });
 
     // Determine whether rotation knob is allowed
     let allowRotateKnob = !this.NoRotate();
@@ -1176,7 +1178,7 @@ class PolyLine extends BaseLine {
     paddedFrame.height += adjustedKnobSize;
 
     // Get the target object pointer (if exists) for hooks checking later.
-    let targetObj = DataUtil.GetObjectPtr(targetObject, false);
+    let targetObj = ObjectUtil.GetObjectPtr(targetObject, false);
 
     // The width and height of the group shape are based on the frame dimensions plus padding.
     let groupWidth = frame.width + adjustedKnobSize;
@@ -1360,6 +1362,10 @@ class PolyLine extends BaseLine {
     knobProps.fillOpacity = 0.001;
     knobProps.strokeSize = 1;
     knobProps.strokeColor = "green";
+
+    let u=1;
+    let p=1;
+
     for (let segmentIndex = 1; segmentIndex < segmentsCount; segmentIndex++) {
       // For curved segments such as ARCLINE, set adjustment knob position.
       if (this.polylist.segs[segmentIndex].LineType === OptConstant.LineType.ARCLINE) {
@@ -1407,7 +1413,7 @@ class PolyLine extends BaseLine {
 
     // If the document is not touch initiated and the object is not locked and can grow,
     // create a rotate knob.
-    if (/*!T3Gv.opt.touchInitiated &&*/ !knobProps.locked && !this.NoGrow()) {
+    if (!knobProps.locked && !this.NoGrow()) {
       knobProps.shapeType = OptConstant.CSType.Oval;
       // Position the rotate knob roughly at the top-right corner of the frame.
       if (frame.width < frame.height) {
@@ -1444,7 +1450,7 @@ class PolyLine extends BaseLine {
     actionTriggersGroup.isShape = true;
     actionTriggersGroup.SetID(OptConstant.Common.Action + targetObject);
 
-    T3Util.Log("S.PolyLine: CreateActionTriggers output", actionTriggersGroup);
+    LogUtil.Debug("S.PolyLine: CreateActionTriggers output", actionTriggersGroup);
     return actionTriggersGroup;
   }
 
@@ -1457,7 +1463,7 @@ class PolyLine extends BaseLine {
     scaleY: number,
     adjustLineThickness: boolean
   ) {
-    T3Util.Log('S.PolyLine: ScaleObject input', { offsetX, offsetY, rotationCenter, rotationAngleDegrees, scaleX, scaleY, adjustLineThickness });
+    LogUtil.Debug('S.PolyLine: ScaleObject input', { offsetX, offsetY, rotationCenter, rotationAngleDegrees, scaleX, scaleY, adjustLineThickness });
 
     let segIndex: number,
       numSegments: number,
@@ -1560,7 +1566,7 @@ class PolyLine extends BaseLine {
         this.polylist.offset.y = scaledOffset.y;
         this.polylist.dim.x = this.inside.width;
         this.polylist.dim.y = this.inside.height;
-        T3Util.Log('S.PolyLine: ScaleObject output (BaseShape scaling applied)', {
+        LogUtil.Debug('S.PolyLine: ScaleObject output (BaseShape scaling applied)', {
           StartPoint: this.StartPoint,
           EndPoint: this.EndPoint,
           Frame: this.Frame
@@ -1595,11 +1601,11 @@ class PolyLine extends BaseLine {
     this.EndPoint.y = polyPoints[numSegments - 1].y;
     this.CalcFrame();
 
-    T3Util.Log('S.PolyLine: ScaleObject output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
+    LogUtil.Debug('S.PolyLine: ScaleObject output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
   }
 
   GetScale() {
-    T3Util.Log("S.PolyLine: GetScale input", {});
+    LogUtil.Debug("S.PolyLine: GetScale input", {});
 
     let polyWidth: number;
     let polyHeight: number;
@@ -1627,12 +1633,12 @@ class PolyLine extends BaseLine {
     scaleFactor.x = scaleFactorX;
     scaleFactor.y = scaleFactorX;
 
-    T3Util.Log("S.PolyLine: GetScale output", scaleFactor);
+    LogUtil.Debug("S.PolyLine: GetScale output", scaleFactor);
     return scaleFactor;
   }
 
   GetPolyPoints(pointCount, includeFrameOffset, includeAllSegments, includeClosedSegments, segmentIndices) {
-    T3Util.Log('S.PolyLine: GetPolyPoints input', { pointCount, includeFrameOffset, includeAllSegments, includeClosedSegments, segmentIndices });
+    LogUtil.Debug('S.PolyLine: GetPolyPoints input', { pointCount, includeFrameOffset, includeAllSegments, includeClosedSegments, segmentIndices });
 
     let polyPoints = [];
     let scaleX = 1, scaleY = 1;
@@ -1756,12 +1762,12 @@ class PolyLine extends BaseLine {
       polyPoints = super.GetPolyPoints(pointCount, includeFrameOffset, true);
     }
 
-    T3Util.Log('S.PolyLine: GetPolyPoints output', polyPoints);
+    LogUtil.Debug('S.PolyLine: GetPolyPoints output', polyPoints);
     return polyPoints;
   }
 
   BeforeModifyShape(event, x, y) {
-    T3Util.Log('S.PolyLine: BeforeModifyShape input', { event, x, y });
+    LogUtil.Debug('S.PolyLine: BeforeModifyShape input', { event, x, y });
 
     let segmentCount, scaleX, scaleY, startX, startY, arcParams = {};
     segmentCount = this.polylist && this.polylist.segs ? this.polylist.segs.length : 0;
@@ -1805,11 +1811,11 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: BeforeModifyShape output', { arcParams });
+    LogUtil.Debug('S.PolyLine: BeforeModifyShape output', { arcParams });
   }
 
   SnapNewPointTo90Degrees(segmentIndex, newPoint) {
-    T3Util.Log('S.PolyLine: SnapNewPointTo90Degrees input', { segmentIndex, newPoint });
+    LogUtil.Debug('S.PolyLine: SnapNewPointTo90Degrees input', { segmentIndex, newPoint });
 
     let previousSegmentIndex = -1;
     let nextSegmentIndex = -1;
@@ -1838,12 +1844,12 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: SnapNewPointTo90Degrees output', snapped);
+    LogUtil.Debug('S.PolyLine: SnapNewPointTo90Degrees output', snapped);
     return snapped;
   }
 
   ModifyShape(event, x, y, actionType, segmentIndex, snapToGrid) {
-    T3Util.Log('S.PolyLine: ModifyShape input', { event, x, y, actionType, segmentIndex, snapToGrid });
+    LogUtil.Debug('S.PolyLine: ModifyShape input', { event, x, y, actionType, segmentIndex, snapToGrid });
 
     let segmentCount = this.polylist && this.polylist.segs ? this.polylist.segs.length : 0;
     let arcParams = {};
@@ -1901,11 +1907,11 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: ModifyShape output', { polylist: this.polylist, Frame: this.Frame });
+    LogUtil.Debug('S.PolyLine: ModifyShape output', { polylist: this.polylist, Frame: this.Frame });
   }
 
   BeforeRotate(event) {
-    T3Util.Log('S.PolyLine: BeforeRotate input', event);
+    LogUtil.Debug('S.PolyLine: BeforeRotate input', event);
 
     const frame = this.Frame;
     T3Gv.opt.rotateKnobCenterDivisor = this.RotateKnobCenterDivisor();
@@ -1916,7 +1922,7 @@ class PolyLine extends BaseLine {
     T3Gv.opt.rotatePivotX = frame.x + frame.width / T3Gv.opt.rotateKnobCenterDivisor.x;
     T3Gv.opt.rotatePivotY = frame.y + frame.height / T3Gv.opt.rotateKnobCenterDivisor.y;
 
-    T3Util.Log('S.PolyLine: BeforeRotate output', {
+    LogUtil.Debug('S.PolyLine: BeforeRotate output', {
       rotateKnobCenterDivisor: T3Gv.opt.rotateKnobCenterDivisor,
       rotateStartRotation: T3Gv.opt.rotateStartRotation,
       rotateEndRotation: T3Gv.opt.rotateEndRotation,
@@ -1927,7 +1933,7 @@ class PolyLine extends BaseLine {
   }
 
   AdjustRotate(mouseX, mouseY, event) {
-    T3Util.Log('S.PolyLine: AdjustRotate input', { mouseX, mouseY, event });
+    LogUtil.Debug('S.PolyLine: AdjustRotate input', { mouseX, mouseY, event });
 
     let rotationAngle;
     const pivotX = T3Gv.opt.rotatePivotX;
@@ -1962,8 +1968,8 @@ class PolyLine extends BaseLine {
     Utils2.GetPolyRect(boundingRect, polyPoints);
 
     if (boundingRect.x >= 0 && boundingRect.y >= 0) {
-      if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-        const sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
+        const sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
         if (boundingRect.x + boundingRect.width > sessionBlock.dim.x || boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
           return;
         }
@@ -1972,19 +1978,19 @@ class PolyLine extends BaseLine {
       this.Rotate(T3Gv.opt.actionSvgObject, rotationAngle);
     }
 
-    T3Util.Log('S.PolyLine: AdjustRotate output', { rotationAngle });
+    LogUtil.Debug('S.PolyLine: AdjustRotate output', { rotationAngle });
   }
 
   Rotate(svgElement, rotationAngle) {
-    T3Util.Log('S.PolyLine: Rotate input', { svgElement, rotationAngle });
+    LogUtil.Debug('S.PolyLine: Rotate input', { svgElement, rotationAngle });
 
     svgElement.SetRotation(rotationAngle, T3Gv.opt.rotatePivotX, T3Gv.opt.rotatePivotY);
 
-    T3Util.Log('S.PolyLine: Rotate output', { svgElement, rotationAngle });
+    LogUtil.Debug('S.PolyLine: Rotate output', { svgElement, rotationAngle });
   }
 
   AfterRotateShape(event, actionType) {
-    T3Util.Log('S.PolyLine: AfterRotateShape input', { event, actionType });
+    LogUtil.Debug('S.PolyLine: AfterRotateShape input', { event, actionType });
 
     const endRotation = T3Gv.opt.rotateEndRotation;
     const pivotPoint = {
@@ -2017,7 +2023,7 @@ class PolyLine extends BaseLine {
 
     if (actionType !== OptConstant.ActionTriggerType.MovePolySeg) {
       this.CalcFrame();
-      DataUtil.AddToDirtyList(event);
+      ObjectUtil.AddToDirtyList(event);
       SvgUtil.RenderDirtySVGObjects();
       this.UpdateFrame();
 
@@ -2038,14 +2044,14 @@ class PolyLine extends BaseLine {
 
       OptCMUtil.SetLinkFlag(event, DSConstant.LinkFlags.Move);
       T3Gv.opt.UpdateLinks();
-      DataUtil.AddToDirtyList(event);
+      ObjectUtil.AddToDirtyList(event);
     }
 
-    T3Util.Log('S.PolyLine: AfterRotateShape output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
+    LogUtil.Debug('S.PolyLine: AfterRotateShape output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
   }
 
   IsAdjustingToClosed(x: number, y: number): boolean {
-    T3Util.Log('S.PolyLine: isAdjustingToClosed input', { x, y });
+    LogUtil.Debug('S.PolyLine: isAdjustingToClosed input', { x, y });
 
     const hitResult = new HitResult(-1, 0, null);
     const hookPoint = {
@@ -2056,12 +2062,12 @@ class PolyLine extends BaseLine {
 
     const result = this.ClosePolygon(this.BlockID, [hookPoint], hitResult);
 
-    T3Util.Log('S.PolyLine: isAdjustingToClosed output', result);
+    LogUtil.Debug('S.PolyLine: isAdjustingToClosed output', result);
     return result;
   }
 
   AdjustLine(event, newX, newY, actionType, snapToGrid) {
-    T3Util.Log('S.PolyLine: AdjustLine input', { event, newX, newY, actionType, snapToGrid });
+    LogUtil.Debug('S.PolyLine: AdjustLine input', { event, newX, newY, actionType, snapToGrid });
 
     let segmentCount = this.polylist.segs.length;
     let arcParams = {};
@@ -2140,11 +2146,11 @@ class PolyLine extends BaseLine {
     const dimensions = this.GetDimensionsForDisplay();
     UIUtil.UpdateDisplayCoordinates(dimensions, newPoint, CursorConstant.CursorTypes.Grow, this);
 
-    T3Util.Log('S.PolyLine: AdjustLine output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
+    LogUtil.Debug('S.PolyLine: AdjustLine output', { StartPoint: this.StartPoint, EndPoint: this.EndPoint, Frame: this.Frame });
   }
 
   AdjustLineEnd(event, newX, newY, actionType, snapToGrid) {
-    T3Util.Log('S.PolyLine: AdjustLineEnd input', { event, newX, newY, actionType, snapToGrid });
+    LogUtil.Debug('S.PolyLine: AdjustLineEnd input', { event, newX, newY, actionType, snapToGrid });
 
     if (this.polylist.segs.length === 2) {
       const originalEndPoint = {
@@ -2162,11 +2168,11 @@ class PolyLine extends BaseLine {
 
     this.AdjustLine(event, newX, newY, actionType, snapToGrid);
 
-    T3Util.Log('S.PolyLine: AdjustLineEnd output', { EndPoint: this.EndPoint });
+    LogUtil.Debug('S.PolyLine: AdjustLineEnd output', { EndPoint: this.EndPoint });
   }
 
   AdjustLineStart(event, newX, newY, actionType, snapToGrid) {
-    T3Util.Log('S.PolyLine: AdjustLineStart input', { event, newX, newY, actionType, snapToGrid });
+    LogUtil.Debug('S.PolyLine: AdjustLineStart input', { event, newX, newY, actionType, snapToGrid });
 
     if (this.polylist.segs.length === 2) {
       const originalStartPoint = {
@@ -2184,11 +2190,11 @@ class PolyLine extends BaseLine {
 
     this.AdjustLine(event, newX, newY, OptConstant.ActionTriggerType.LineStart, snapToGrid);
 
-    T3Util.Log('S.PolyLine: AdjustLineStart output', { StartPoint: this.StartPoint });
+    LogUtil.Debug('S.PolyLine: AdjustLineStart output', { StartPoint: this.StartPoint });
   }
 
   Flip(flags, isTemporary) {
-    T3Util.Log('S.PolyLine: Flip input', { flags, isTemporary });
+    LogUtil.Debug('S.PolyLine: Flip input', { flags, isTemporary });
 
     let segmentCount, frame, width, height, isFlipped = false;
     const points = [], parabolaAdjPoints = [], tempPoint = {};
@@ -2301,11 +2307,11 @@ class PolyLine extends BaseLine {
     }
 
     T3Gv.opt.ob = {};
-    T3Util.Log('S.PolyLine: Flip output', this);
+    LogUtil.Debug('S.PolyLine: Flip output', this);
   }
 
   LinkGrow(blockID, hookPoint, newPoint) {
-    T3Util.Log('S.PolyLine: LinkGrow input', { blockID, hookPoint, newPoint });
+    LogUtil.Debug('S.PolyLine: LinkGrow input', { blockID, hookPoint, newPoint });
 
     switch (hookPoint) {
       case OptConstant.HookPts.KTL:
@@ -2317,13 +2323,13 @@ class PolyLine extends BaseLine {
     }
 
     OptCMUtil.SetLinkFlag(blockID, DSConstant.LinkFlags.Move);
-    DataUtil.AddToDirtyList(blockID);
+    ObjectUtil.AddToDirtyList(blockID);
 
-    T3Util.Log('S.PolyLine: LinkGrow output', { blockID, hookPoint, newPoint });
+    LogUtil.Debug('S.PolyLine: LinkGrow output', { blockID, hookPoint, newPoint });
   }
 
   ClosePolygon(blockID, hookPoints, hitResult) {
-    T3Util.Log('S.PolyLine: ClosePolygon input', { blockID, hookPoints, hitResult });
+    LogUtil.Debug('S.PolyLine: ClosePolygon input', { blockID, hookPoints, hitResult });
 
     if (hookPoints && hookPoints.length && this.polylist && this.polylist.segs.length > 3 && !this.polylist.closed) {
       this.Hit(hookPoints[0], false, true, hitResult, hookPoints[0].id);
@@ -2333,25 +2339,25 @@ class PolyLine extends BaseLine {
           hitResult.objectid = blockID;
           hitResult.pt.x = this.polylist.segs[this.polylist.segs.length - 1].pt.x + this.StartPoint.x;
           hitResult.pt.y = this.polylist.segs[this.polylist.segs.length - 1].pt.y + this.StartPoint.y;
-          T3Util.Log('S.PolyLine: ClosePolygon output', true);
+          LogUtil.Debug('S.PolyLine: ClosePolygon output', true);
           return true;
         }
         if (hookPoints[0].id === OptConstant.HookPts.KTR && hitResult.segment === OptConstant.HookPts.KTL) {
           hitResult.objectid = blockID;
           hitResult.pt.x = this.polylist.segs[0].pt.x + this.StartPoint.x;
           hitResult.pt.y = this.polylist.segs[0].pt.y + this.StartPoint.y;
-          T3Util.Log('S.PolyLine: ClosePolygon output', true);
+          LogUtil.Debug('S.PolyLine: ClosePolygon output', true);
           return true;
         }
       }
     }
 
-    T3Util.Log('S.PolyLine: ClosePolygon output', false);
+    LogUtil.Debug('S.PolyLine: ClosePolygon output', false);
     return false;
   }
 
   PolyGetTargetPointList(hookFlags) {
-    T3Util.Log("S.PolyLine: PolyGetTargetPointList input", { hookFlags });
+    LogUtil.Debug("S.PolyLine: PolyGetTargetPointList input", { hookFlags });
 
     let polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, true, null);
     let inflatedPoints = [];
@@ -2368,32 +2374,32 @@ class PolyLine extends BaseLine {
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngleRadians, polyPoints);
     }
 
-    T3Util.Log("S.PolyLine: PolyGetTargetPointList output", polyPoints);
+    LogUtil.Debug("S.PolyLine: PolyGetTargetPointList output", polyPoints);
     return polyPoints;
   }
 
   GetTargetPoints(hookPoint, hookFlags, targetObjectID) {
-    T3Util.Log("S.PolyLine: GetTargetPoints input", { hookPoint, hookFlags, targetObjectID });
+    LogUtil.Debug("S.PolyLine: GetTargetPoints input", { hookPoint, hookFlags, targetObjectID });
 
     const HookPts = OptConstant.HookPts;
-    if (targetObjectID != null && targetObjectID >= 0 && DataUtil.GetObjectPtr(targetObjectID, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
+    if (targetObjectID != null && targetObjectID >= 0 && ObjectUtil.GetObjectPtr(targetObjectID, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
       switch (hookPoint.id) {
         case HookPts.KTC:
         case HookPts.KBC:
         case HookPts.KRC:
         case HookPts.KLC:
-          T3Util.Log("S.PolyLine: GetTargetPoints output", null);
+          LogUtil.Debug("S.PolyLine: GetTargetPoints output", null);
           return null;
       }
     }
 
     const result = this.BaseShapePolyGetTargets(hookPoint, hookFlags, this.Frame);
-    T3Util.Log("S.PolyLine: GetTargetPoints output", result);
+    LogUtil.Debug("S.PolyLine: GetTargetPoints output", result);
     return result;
   }
 
   BaseShapePolyGetTargets(hookPoint, hookFlags, targetFrame) {
-    T3Util.Log("S.PolyLine: BaseShapePolyGetTargets input", { hookPoint, hookFlags, targetFrame });
+    LogUtil.Debug("S.PolyLine: BaseShapePolyGetTargets input", { hookPoint, hookFlags, targetFrame });
 
     let closestPointIndex = -1;
     let minDistance = OptConstant.Common.LongIntMax;
@@ -2467,16 +2473,16 @@ class PolyLine extends BaseLine {
       const relativeY = height === 0 ? 0 : (relativePoint[0].y - targetFrame.y) / height;
 
       const result = [new Point(relativeX * OptConstant.Common.DimMax, relativeY * OptConstant.Common.DimMax)];
-      T3Util.Log("S.PolyLine: BaseShapePolyGetTargets output", result);
+      LogUtil.Debug("S.PolyLine: BaseShapePolyGetTargets output", result);
       return result;
     }
 
-    T3Util.Log("S.PolyLine: BaseShapePolyGetTargets output", null);
+    LogUtil.Debug("S.PolyLine: BaseShapePolyGetTargets output", null);
     return null;
   }
 
   GetPerimeterPoints(event, hookPoints, hookPointID, rotationAngle, scaleFactor, targetObjectID) {
-    T3Util.Log('S.PolyLine: GetPerimeterPoints input', { event, hookPoints, hookPointID, rotationAngle, scaleFactor, targetObjectID });
+    LogUtil.Debug('S.PolyLine: GetPerimeterPoints input', { event, hookPoints, hookPointID, rotationAngle, scaleFactor, targetObjectID });
 
     let perimeterPoints = [];
     let frame = this.Frame;
@@ -2486,11 +2492,11 @@ class PolyLine extends BaseLine {
       perimeterPoints[0].id = hookPoints[0].id;
       perimeterPoints.push(new Point(this.EndPoint.x, this.EndPoint.y));
       perimeterPoints[1].id = hookPoints[1].id;
-      T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+      LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
       return perimeterPoints;
     }
 
-    let targetObject = DataUtil.GetObjectPtr(targetObjectID, false);
+    let targetObject = ObjectUtil.GetObjectPtr(targetObjectID, false);
 
     if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.Multiplicity && hookPoints) {
       let baseLine, polyPoints = this.GetPolyPoints(1, false, true, false, null), segmentInfo = {}, polyPointsLength = polyPoints.length;
@@ -2514,25 +2520,25 @@ class PolyLine extends BaseLine {
         baseLine.Frame = Utils2.Pt2Rect(segmentInfo.StartPoint, segmentInfo.EndPoint);
         perimeterPoints = super.GetPerimeterPoints(event, hookPoints, hookPointID, rotationAngle, scaleFactor, targetObjectID);
       }
-      T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+      LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
       return perimeterPoints;
     }
 
     if (targetObject && targetObject.objecttype === NvConstant.FNObjectTypes.ExtraTextLable && hookPoints.length === 1) {
       perimeterPoints = super.GetPerimeterPoints(event, hookPoints, hookPointID, rotationAngle, scaleFactor, targetObjectID);
-      T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+      LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
       return perimeterPoints;
     }
 
     if (hookPointID >= OptConstant.HookPts.KCTL && hookPointID <= OptConstant.HookPts.KCC) {
       if (hookPoints[0].x === 0) {
         perimeterPoints[0] = { x: this.StartPoint.x, y: this.StartPoint.y, id: hookPoints[0].id || 0 };
-        T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+        LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
         return perimeterPoints;
       }
       if (hookPoints[0].x === OptConstant.Common.DimMax) {
         perimeterPoints[0] = { x: this.EndPoint.x, y: this.EndPoint.y, id: hookPoints[0].id || 0 };
-        T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+        LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
         return perimeterPoints;
       }
     }
@@ -2548,12 +2554,12 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
+    LogUtil.Debug('S.PolyLine: GetPerimeterPoints output', perimeterPoints);
     return perimeterPoints;
   }
 
   HookToPoint(hookPoint, rect) {
-    T3Util.Log('S.PolyLine: HookToPoint input', { hookPoint, rect });
+    LogUtil.Debug('S.PolyLine: HookToPoint input', { hookPoint, rect });
 
     let segmentCount;
     const startPoint = { x: 0, y: 0 };
@@ -2589,12 +2595,12 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log('S.PolyLine: HookToPoint output', startPoint);
+    LogUtil.Debug('S.PolyLine: HookToPoint output', startPoint);
     return startPoint;
   }
 
   GetSegmentLineFace(event, targetPoint, anchorPoint) {
-    T3Util.Log('S.PolyLine: GetSegmentLineFace input', { event, targetPoint, anchorPoint });
+    LogUtil.Debug('S.PolyLine: GetSegmentLineFace input', { event, targetPoint, anchorPoint });
 
     let hitResult = 0;
     const hitInfo = {};
@@ -2609,12 +2615,12 @@ class PolyLine extends BaseLine {
         : (targetPoint.x >= anchorPoint.x ? OptConstant.HookPts.KRC : OptConstant.HookPts.KLC);
     }
 
-    T3Util.Log('S.PolyLine: GetSegmentLineFace output', hitResult);
+    LogUtil.Debug('S.PolyLine: GetSegmentLineFace output', hitResult);
     return hitResult;
   }
 
   PolyHitSeg(point) {
-    T3Util.Log("S.PolyLine: PolyHitSeg input", { point });
+    LogUtil.Debug("S.PolyLine: PolyHitSeg input", { point });
     // Get the polyline points and collect segment indices into an array
     let segmentIndices = [];
     let polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, false, false, false, segmentIndices);
@@ -2631,15 +2637,15 @@ class PolyLine extends BaseLine {
         }
       }
       const result = hitResult.lpHit + 1;
-      T3Util.Log("S.PolyLine: PolyHitSeg output", result);
+      LogUtil.Debug("S.PolyLine: PolyHitSeg output", result);
       return result;
     }
-    T3Util.Log("S.PolyLine: PolyHitSeg output", -1);
+    LogUtil.Debug("S.PolyLine: PolyHitSeg output", -1);
     return -1;
   }
 
   MaintainPoint(point, targetID, targetObject, drawingObject, actionType) {
-    T3Util.Log('S.PolyLine: MaintainPoint input', { point, targetID, targetObject, drawingObject, actionType });
+    LogUtil.Debug('S.PolyLine: MaintainPoint input', { point, targetID, targetObject, drawingObject, actionType });
 
     let segmentIndex, hitSegment, polyPoints, inflatedPolyPoints, hitResult = {}, startPoint = {}, endPoint = {}, tempRect = {}, tempObject = {}, tempPolyPoints = [], tempHitResult = {}, tempInflatedPolyPoints = [];
     let isLine = drawingObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Line;
@@ -2717,7 +2723,7 @@ class PolyLine extends BaseLine {
       tempHitResult.EndPoint.y = tempPolyPoints[hitSegmentIndex].y;
 
       if (drawingObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
-        return T3Gv.opt.LineCheckPoint(tempObject, point) || T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+        return T3Gv.opt.LineCheckPoint(tempObject, point) || PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
       }
 
       switch (actionType) {
@@ -2728,7 +2734,7 @@ class PolyLine extends BaseLine {
             OptConstant.ActionTriggerType.LineStart : OptConstant.ActionTriggerType.LineEnd;
           break;
         case OptConstant.ActionTriggerType.Rotate:
-          return T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+          return PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
         default:
           actionType = OptConstant.ActionTriggerType.LineEnd;
       }
@@ -2739,11 +2745,11 @@ class PolyLine extends BaseLine {
         T3Gv.opt.LinesMaintainDistWithinSegment(this, targetObject, segmentIndex, point);
         return true;
       } else {
-        return T3Gv.opt.LinesIntersect(tempObject, drawingObject, point) || T3Gv.opt.Lines_MaintainDist(tempObject, tempHitResult, actionType, point), true;
+        return T3Gv.opt.LinesIntersect(tempObject, drawingObject, point) || PolyUtil.LinesMaintainDist(tempObject, tempHitResult, actionType, point), true;
       }
     }
 
-    T3Util.Log('S.PolyLine: MaintainPoint output', true);
+    LogUtil.Debug('S.PolyLine: MaintainPoint output', true);
     return true;
   }
 
@@ -2755,7 +2761,7 @@ class PolyLine extends BaseLine {
     paramI: any,
     paramN: any
   ) {
-    T3Util.Log("S.PolyLine: ChangeTarget input", {
+    LogUtil.Debug("S.PolyLine: ChangeTarget input", {
       objectHookID,
       objectTargetID,
       paramA,
@@ -2770,7 +2776,7 @@ class PolyLine extends BaseLine {
     let hookedPoint: any = null;
     let loopIndex = 0;
 
-    targetObject = DataUtil.GetObjectPtr(objectTargetID, false);
+    targetObject = ObjectUtil.GetObjectPtr(objectTargetID, false);
     if (
       this.TextFlags & NvConstant.TextFlags.HorizText &&
       targetObject instanceof BaseShape
@@ -2799,14 +2805,14 @@ class PolyLine extends BaseLine {
             DSConstant.LinkFlags.Move |
             DSConstant.LinkFlags.Change
           );
-          DataUtil.AddToDirtyList(objectTargetID);
+          ObjectUtil.AddToDirtyList(objectTargetID);
         }
       }
     }
 
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
 
-    T3Util.Log("S.PolyLine: ChangeTarget output", {
+    LogUtil.Debug("S.PolyLine: ChangeTarget output", {
       angle,
       hookedPoint,
       loopIndex
@@ -2814,7 +2820,7 @@ class PolyLine extends BaseLine {
   }
 
   LMDrawPreTrack(event) {
-    T3Util.Log("S.PolyLine: LMDrawPreTrack input", { event });
+    LogUtil.Debug("S.PolyLine: LMDrawPreTrack input", { event });
 
     if (
       T3Gv.opt.linkParams &&
@@ -2822,24 +2828,22 @@ class PolyLine extends BaseLine {
         T3Gv.opt.linkParams.JoinIndex >= 0)
     ) {
       this.LMDrawRelease();
-      T3Util.Log("S.PolyLine: LMDrawPreTrack output", false);
+      LogUtil.Debug("S.PolyLine: LMDrawPreTrack output", false);
       return false;
     } else {
       super.LMDrawPreTrack(event);
-      T3Util.Log("S.PolyLine: LMDrawPreTrack output", true);
+      LogUtil.Debug("S.PolyLine: LMDrawPreTrack output", true);
       return true;
     }
   }
 
   LMDrawClickExceptionCleanup(event: any): void {
-    T3Util.Log("S.PolyLine: LMDrawClickExceptionCleanup input", { event });
+    LogUtil.Debug("S.PolyLine: LMDrawClickExceptionCleanup input", { event });
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
 
     this.ResetAutoScrollTimer();
     T3Gv.opt.linkParams = null;
@@ -2847,11 +2851,11 @@ class PolyLine extends BaseLine {
     T3Gv.opt.actionSvgObject = null;
     T3Gv.opt.WorkAreaHammer.on("dragstart", EvtUtil.Evt_WorkAreaHammerDragStart);
 
-    T3Util.Log("S.PolyLine: LMDrawClickExceptionCleanup output", {});
+    LogUtil.Debug("S.PolyLine: LMDrawClickExceptionCleanup output", {});
   }
 
   LMDrawClick(initialX: number, initialY: number) {
-    T3Util.Log("S.PolyLine: LMDrawClick input", { initialX, initialY });
+    LogUtil.Debug("S.PolyLine: LMDrawClick input", { initialX, initialY });
     try {
       // Initialize the frame and points
       this.Frame.x = initialX;
@@ -2864,27 +2868,11 @@ class PolyLine extends BaseLine {
       const self = this;
       T3Gv.opt.WorkAreaHammer.off("dragstart");
 
-      // if (T3Gv.opt.isMobilePlatform) {
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "dragstart",
-      //     EvtUtil.Evt_PolyLineDrawDragStart
-      //   );
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "drag",
-      //     EvtUtil.Evt_DrawTrackHandlerFactory(this)
-      //   );
-      //   T3Gv.opt.WorkAreaHammer.on(
-      //     "dragend",
-      //     EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
-      //   );
-      // }
-
       T3Gv.opt.WorkAreaHammer.on(
         "doubletap",
         EvtUtil.Evt_DrawReleaseHandlerFactory(this)
       );
 
-      // if (!T3Gv.opt.isMobilePlatform) {
       T3Gv.opt.WorkAreaHammer.on(
         "tap",
         EvtUtil.Evt_PolyLineDrawExtendHandlerFactory(this)
@@ -2906,9 +2894,8 @@ class PolyLine extends BaseLine {
           throw error;
         }
       });
-      // }
 
-      T3Util.Log("S.PolyLine: LMDrawClick output", { message: "Click handled successfully" });
+      LogUtil.Debug("S.PolyLine: LMDrawClick output", { message: "Click handled successfully" });
     } catch (error) {
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
@@ -2917,17 +2904,15 @@ class PolyLine extends BaseLine {
   }
 
   LMDrawRelease(event) {
-    T3Util.Log("S.PolyLine: LMDrawRelease input", { event });
+    LogUtil.Debug("S.PolyLine: LMDrawRelease input", { event });
 
     // Stop gesture detection if available
     if (event && event.gesture) {
       event.gesture.stopDetect();
     }
     LMEvtUtil.UnbindActionClickHammerEvents();
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
 
     // Calculate distance between the last two segments
     const segmentCount = this.polylist.segs.length;
@@ -2945,11 +2930,11 @@ class PolyLine extends BaseLine {
     this.LMDrawPostRelease(T3Gv.opt.actionStoredObjectId);
     DrawUtil.PostObjectDraw();
 
-    T3Util.Log("S.PolyLine: LMDrawRelease output", { segmentCount, segmentDistance });
+    LogUtil.Debug("S.PolyLine: LMDrawRelease output", { segmentCount, segmentDistance });
   }
 
   LMDrawExtend(event: any) {
-    T3Util.Log("S.PolyLine: LMDrawExtend input", event);
+    LogUtil.Debug("S.PolyLine: LMDrawExtend input", event);
 
     // If there is an active link (either ConnectIndex or JoinIndex is set), release the drawing.
     if (
@@ -2990,7 +2975,7 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: LMDrawExtend output", { polySegments: this.polylist.segs });
+    LogUtil.Debug("S.PolyLine: LMDrawExtend output", { polySegments: this.polylist.segs });
   }
 
   /**
@@ -3024,7 +3009,7 @@ class PolyLine extends BaseLine {
     const elementId = targetElement.GetID();
 
     // Check for text objects and handle text-related interactions
-    if ((object = DataUtil.GetObjectPtr(elementId, false)) && object.GetTextObject() >= 0) {
+    if ((object = ObjectUtil.GetObjectPtr(elementId, false)) && object.GetTextObject() >= 0) {
       const textElement = targetElement.textElem;
 
       if (textElement) {
@@ -3083,7 +3068,7 @@ class PolyLine extends BaseLine {
     scaleX: number,
     scaleY: number
   ): Point[] {
-    T3Util.Log("S.PolyLine: PrGetNURBSPoints input", { startSegmentIndex, numPoints, xOffset, yOffset, scaleX, scaleY });
+    LogUtil.Debug("S.PolyLine: PrGetNURBSPoints input", { startSegmentIndex, numPoints, xOffset, yOffset, scaleX, scaleY });
 
     // Internal helper: Compute the NURBS basis functions.
     function computeNURBSBasis(): Float64Array {
@@ -3278,7 +3263,7 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: PrGetNURBSPoints output", resultPoints);
+    LogUtil.Debug("S.PolyLine: PrGetNURBSPoints output", resultPoints);
     return resultPoints;
   }
 
@@ -3290,7 +3275,7 @@ class PolyLine extends BaseLine {
     scaleX: number,
     scaleY: number
   ): Point[] {
-    T3Util.Log("S.PolyLine: PrGetSPLINEPoints input", {
+    LogUtil.Debug("S.PolyLine: PrGetSPLINEPoints input", {
       startSegmentIndex,
       numPoints,
       xOffset,
@@ -3450,7 +3435,7 @@ class PolyLine extends BaseLine {
       // In a full implementation, you would iterate over the remaining knot spans to compute more points.
     }
 
-    T3Util.Log("S.PolyLine: PrGetSPLINEPoints output", splinePoints);
+    LogUtil.Debug("S.PolyLine: PrGetSPLINEPoints output", splinePoints);
     return splinePoints;
   }
 
@@ -3462,7 +3447,7 @@ class PolyLine extends BaseLine {
     scaleX: number,
     scaleY: number
   ): Point[] {
-    T3Util.Log("S.PolyLine: PrGetQuadraticBezierPoints input", {
+    LogUtil.Debug("S.PolyLine: PrGetQuadraticBezierPoints input", {
       startIndex,
       pointCount,
       xOffset,
@@ -3493,7 +3478,7 @@ class PolyLine extends BaseLine {
       t += step;
     }
 
-    T3Util.Log("S.PolyLine: PrGetQuadraticBezierPoints output", resultPoints);
+    LogUtil.Debug("S.PolyLine: PrGetQuadraticBezierPoints output", resultPoints);
     return resultPoints;
   }
 
@@ -3505,7 +3490,7 @@ class PolyLine extends BaseLine {
     scaleX: number,
     scaleY: number
   ): Point[] {
-    T3Util.Log("S.PolyLine: PrGetCubicBezierPoints input", {
+    LogUtil.Debug("S.PolyLine: PrGetCubicBezierPoints input", {
       startSegmentIndex,
       pointCount,
       xOffset,
@@ -3555,7 +3540,7 @@ class PolyLine extends BaseLine {
       t += tStep;
     }
 
-    T3Util.Log("S.PolyLine: PrGetCubicBezierPoints output", bezierPoints);
+    LogUtil.Debug("S.PolyLine: PrGetCubicBezierPoints output", bezierPoints);
     return bezierPoints;
   }
 
@@ -3567,7 +3552,7 @@ class PolyLine extends BaseLine {
     scaleX: number,
     scaleY: number
   ) {
-    T3Util.Log("S.PolyLine: PrGetEllipticalArcPoints input", {
+    LogUtil.Debug("S.PolyLine: PrGetEllipticalArcPoints input", {
       segmentIndex,
       pointCount,
       xOffset,
@@ -3590,7 +3575,7 @@ class PolyLine extends BaseLine {
     if ((x2 === x1 && y2 === y1) || (x2 === x3 && y2 === y3)) {
       points.push(new Point(x1 * scaleX + xOffset, y1 * scaleY + yOffset));
       points.push(new Point(x3 * scaleX + xOffset, y3 * scaleY + yOffset));
-      T3Util.Log("S.PolyLine: PrGetEllipticalArcPoints output", points);
+      LogUtil.Debug("S.PolyLine: PrGetEllipticalArcPoints output", points);
       return points;
     }
 
@@ -3631,7 +3616,7 @@ class PolyLine extends BaseLine {
     if (arcDirection === 0) {
       points.push(new Point(x2 * scaleX + xOffset, y2 * scaleY + yOffset));
       points.push(new Point(x3 * scaleX + xOffset, y3 * scaleY + yOffset));
-      T3Util.Log("S.PolyLine: PrGetEllipticalArcPoints output", points);
+      LogUtil.Debug("S.PolyLine: PrGetEllipticalArcPoints output", points);
       return points;
     }
 
@@ -3788,12 +3773,12 @@ class PolyLine extends BaseLine {
       pointCount
     );
 
-    T3Util.Log("S.PolyLine: PrGetEllipticalArcPoints output", arcPoints);
+    LogUtil.Debug("S.PolyLine: PrGetEllipticalArcPoints output", arcPoints);
     return arcPoints;
   }
 
   PrGetParabolaPoints(numPoints, isClosed, segmentIndex, param, shortRef, scaleX, scaleY) {
-    T3Util.Log("S.PolyLine: PrGetParabolaPoints input", { numPoints, isClosed, segmentIndex, param, shortRef, scaleX, scaleY });
+    LogUtil.Debug("S.PolyLine: PrGetParabolaPoints input", { numPoints, isClosed, segmentIndex, param, shortRef, scaleX, scaleY });
 
     let deltaX, deltaY, distance, center = {}, isRotated = false, points = [], parabolaPoints = [];
     let startX = this.StartPoint.x - this.Frame.x;
@@ -3807,7 +3792,7 @@ class PolyLine extends BaseLine {
     if (Math.abs(param) < 1) {
       parabolaPoints.push(new Point(this.polylist.segs[segmentIndex - 1].pt.x * scaleX + startX, this.polylist.segs[segmentIndex - 1].pt.y * scaleY + startY));
       parabolaPoints.push(new Point(this.polylist.segs[segmentIndex].pt.x * scaleX + startX, this.polylist.segs[segmentIndex].pt.y * scaleY + startY));
-      T3Util.Log("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
+      LogUtil.Debug("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
       return parabolaPoints;
     }
 
@@ -3819,7 +3804,7 @@ class PolyLine extends BaseLine {
     distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     if (distance < 1) {
-      T3Util.Log("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
+      LogUtil.Debug("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
       return parabolaPoints;
     }
 
@@ -3868,12 +3853,12 @@ class PolyLine extends BaseLine {
       parabolaPoints.push(new Point(x + midX + startX, y + midY + startY));
     }
 
-    T3Util.Log("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
+    LogUtil.Debug("S.PolyLine: PrGetParabolaPoints output", parabolaPoints);
     return parabolaPoints;
   }
 
   PrPolyLGetParabolaAdjPoint(event, segmentIndex) {
-    T3Util.Log("S.PolyLine: PrPolyLGetParabolaAdjPoint input", { event, segmentIndex });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetParabolaAdjPoint input", { event, segmentIndex });
 
     let deltaX, deltaY, distance, param, shortRef, center = {}, isRotated = false, points = [], adjPoint = {};
 
@@ -3885,7 +3870,7 @@ class PolyLine extends BaseLine {
     distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     if (distance < 1) {
-      T3Util.Log("S.PolyLine: PrPolyLGetParabolaAdjPoint output", adjPoint);
+      LogUtil.Debug("S.PolyLine: PrPolyLGetParabolaAdjPoint output", adjPoint);
       return adjPoint;
     }
 
@@ -3921,12 +3906,12 @@ class PolyLine extends BaseLine {
       adjPoint.y += this.StartPoint.y;
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetParabolaAdjPoint output", adjPoint);
+    LogUtil.Debug("S.PolyLine: PrPolyLGetParabolaAdjPoint output", adjPoint);
     return adjPoint;
   }
 
   PrPolyLGetParabolaParam(event, segmentIndex) {
-    T3Util.Log("S.PolyLine: PrPolyLGetParabolaParam input", { event, segmentIndex });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetParabolaParam input", { event, segmentIndex });
 
     let deltaX, deltaY, distance, rotationAngle, sinAngle, cosAngle, center = {}, direction = 1, points = [];
 
@@ -3967,11 +3952,11 @@ class PolyLine extends BaseLine {
       this.polylist.segs[segmentIndex].ShortRef = adjustedShortRef / 6;
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetParabolaParam output", { param: this.polylist.segs[segmentIndex].param, ShortRef: this.polylist.segs[segmentIndex].ShortRef });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetParabolaParam output", { param: this.polylist.segs[segmentIndex].param, ShortRef: this.polylist.segs[segmentIndex].ShortRef });
   }
 
   PrPolyLGetArc(segmentIndex, offset) {
-    T3Util.Log("S.PolyLine: PrPolyLGetArc input", { segmentIndex, offset });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArc input", { segmentIndex, offset });
 
     let arcLine, radiusAndCenter, startPoint = {}, endPoint = {}, centerPoint = {}, result = {
       arcObject: null,
@@ -4011,12 +3996,12 @@ class PolyLine extends BaseLine {
     result.arcObject = arcObject;
     result.point = centerPoint;
 
-    T3Util.Log("S.PolyLine: PrPolyLGetArc output", result);
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArc output", result);
     return result;
   }
 
   PrPolyLGetArcParam(shape, targetPoint, segmentIndex) {
-    T3Util.Log("S.PolyLine: PrPolyLGetArcParam input", { shape, targetPoint, segmentIndex });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArcParam input", { shape, targetPoint, segmentIndex });
 
     if (shape) {
       shape.ModifyShape(null, targetPoint.x, targetPoint.y, -1, 0);
@@ -4027,11 +4012,11 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetArcParam output", this.polylist.segs[segmentIndex].param);
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArcParam output", this.polylist.segs[segmentIndex].param);
   }
 
   PrGetEllipsePoints(numPoints, isClosed, segmentIndex, rotationAngle, arcQuadrant, scaleX, scaleY) {
-    T3Util.Log("S.PolyLine: PrGetEllipsePoints input", { numPoints, isClosed, segmentIndex, rotationAngle, arcQuadrant, scaleX, scaleY });
+    LogUtil.Debug("S.PolyLine: PrGetEllipsePoints input", { numPoints, isClosed, segmentIndex, rotationAngle, arcQuadrant, scaleX, scaleY });
 
     let deltaX, deltaY, distance, center = {}, sinAngle, cosAngle, adjustedAngle, rotatedPoints = [], ellipsePoints = [], tempPoint = {};
     let startX = this.StartPoint.x - this.Frame.x;
@@ -4055,7 +4040,7 @@ class PolyLine extends BaseLine {
     if (distance < 1) {
       ellipsePoints.push(new Point(this.polylist.segs[segmentIndex - 1].pt.x * scaleX + startX, this.polylist.segs[segmentIndex - 1].pt.y * scaleY + startY));
       ellipsePoints.push(new Point(this.polylist.segs[segmentIndex].pt.x * scaleX + startX, this.polylist.segs[segmentIndex].pt.y * scaleY + startY));
-      T3Util.Log("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
+      LogUtil.Debug("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
       return ellipsePoints;
     }
 
@@ -4092,7 +4077,7 @@ class PolyLine extends BaseLine {
     if (width < 0.0001) {
       ellipsePoints.push(new Point(this.polylist.segs[segmentIndex - 1].pt.x * scaleX + startX, this.polylist.segs[segmentIndex - 1].pt.y * scaleY + startY));
       ellipsePoints.push(new Point(this.polylist.segs[segmentIndex].pt.x * scaleX + startX, this.polylist.segs[segmentIndex].pt.y * scaleY + startY));
-      T3Util.Log("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
+      LogUtil.Debug("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
       return ellipsePoints;
     }
 
@@ -4110,12 +4095,12 @@ class PolyLine extends BaseLine {
       ellipsePoints.push(new Point(tempPoint.x * scaleX + startX, tempPoint.y * scaleY + startY));
     }
 
-    T3Util.Log("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
+    LogUtil.Debug("S.PolyLine: PrGetEllipsePoints output", ellipsePoints);
     return ellipsePoints;
   }
 
   PrPolyLGetEllipseAdjPoint(event, segmentIndex) {
-    T3Util.Log("S.PolyLine: PrPolyLGetEllipseAdjPoint input", { event, segmentIndex });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetEllipseAdjPoint input", { event, segmentIndex });
 
     let sinAngle, cosAngle, adjustedAngle, rotatedPoints = [], center = {}, ellipseAdjPoint = {};
 
@@ -4147,12 +4132,12 @@ class PolyLine extends BaseLine {
       ellipseAdjPoint.y += this.StartPoint.y;
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetEllipseAdjPoint output", ellipseAdjPoint);
+    LogUtil.Debug("S.PolyLine: PrPolyLGetEllipseAdjPoint output", ellipseAdjPoint);
     return ellipseAdjPoint;
   }
 
   PrPolyLGetEllipseParam(event, segmentIndex, svgDocument) {
-    T3Util.Log("S.PolyLine: PrPolyLGetEllipseParam input", { event, segmentIndex, svgDocument });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetEllipseParam input", { event, segmentIndex, svgDocument });
 
     let deltaX, deltaY, slope, angle, quadrant, ellipseAdjPoint, polyPoints = [], boundingRect = {}, ellipseAxesElement = {};
 
@@ -4215,11 +4200,11 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetEllipseParam output", { polyPoints, boundingRect, ellipseAxesElement });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetEllipseParam output", { polyPoints, boundingRect, ellipseAxesElement });
   }
 
   PrPolyLGetArcQuadrant(startPoint, endPoint, angle) {
-    T3Util.Log("S.PolyLine: PrPolyLGetArcQuadrant input", { startPoint, endPoint, angle });
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArcQuadrant input", { startPoint, endPoint, angle });
 
     let sinAngle, cosAngle, adjustedAngle, rotatedPoints = [], result = { param: 0, ShortRef: 0 }, center = {};
 
@@ -4265,21 +4250,21 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: PrPolyLGetArcQuadrant output", result);
+    LogUtil.Debug("S.PolyLine: PrPolyLGetArcQuadrant output", result);
     return result;
   }
 
   NeedsAddLineThicknessToDimension(event, target) {
-    T3Util.Log("S.PolyLine: NeedsAddLineThicknessToDimension input", { event, target });
+    LogUtil.Debug("S.PolyLine: NeedsAddLineThicknessToDimension input", { event, target });
 
     const needsAddLineThickness = !!this.polylist.closed;
 
-    T3Util.Log("S.PolyLine: NeedsAddLineThicknessToDimension output", needsAddLineThickness);
+    LogUtil.Debug("S.PolyLine: NeedsAddLineThicknessToDimension output", needsAddLineThickness);
     return needsAddLineThickness;
   }
 
   GetExteriorDimensionMeasurementLineThicknessAdjustment(segmentIndex: number): number {
-    T3Util.Log("S.PolyLine: GetExteriorDimensionMeasurementLineThicknessAdjustment input", { segmentIndex });
+    LogUtil.Debug("S.PolyLine: GetExteriorDimensionMeasurementLineThicknessAdjustment input", { segmentIndex });
 
     let thickness = this.ConvToUnits(this.StyleRecord.Line.Thickness, T3Gv.docUtil.rulerConfig.originx);
     thickness /= 2;
@@ -4288,21 +4273,21 @@ class PolyLine extends BaseLine {
       thickness *= 2;
     }
 
-    T3Util.Log("S.PolyLine: GetExteriorDimensionMeasurementLineThicknessAdjustment output", thickness);
+    LogUtil.Debug("S.PolyLine: GetExteriorDimensionMeasurementLineThicknessAdjustment output", thickness);
     return thickness;
   }
 
   CanUseStandOffDimensionLines() {
-    T3Util.Log("S.PolyLine: CanUseStandOffDimensionLines input");
+    LogUtil.Debug("S.PolyLine: CanUseStandOffDimensionLines input");
 
     const canUse = !!this.polylist.closed || !(this.Dimensions & NvConstant.DimensionFlags.Total) && !(this.Dimensions & NvConstant.DimensionFlags.EndPts);
 
-    T3Util.Log("S.PolyLine: CanUseStandOffDimensionLines output", canUse);
+    LogUtil.Debug("S.PolyLine: CanUseStandOffDimensionLines output", canUse);
     return canUse;
   }
 
   GetDimensionTextForPoints(startPoint, endPoint) {
-    T3Util.Log("S.PolyLine: GetDimensionTextForPoints input", { startPoint, endPoint });
+    LogUtil.Debug("S.PolyLine: GetDimensionTextForPoints input", { startPoint, endPoint });
 
     let polyPoints = [];
     let totalLength = 0;
@@ -4329,12 +4314,12 @@ class PolyLine extends BaseLine {
     }
 
     const result = RulerUtil.GetLengthInRulerUnits(totalLength);
-    T3Util.Log("S.PolyLine: GetDimensionTextForPoints output", result);
+    LogUtil.Debug("S.PolyLine: GetDimensionTextForPoints output", result);
     return result;
   }
 
   UpdateSecondaryDimensions(event, target, additionalData) {
-    T3Util.Log("S.PolyLine: UpdateSecondaryDimensions input", { event, target, additionalData });
+    LogUtil.Debug("S.PolyLine: UpdateSecondaryDimensions input", { event, target, additionalData });
 
     let polyPoints = [];
     let pointCount = 0;
@@ -4350,16 +4335,16 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: UpdateSecondaryDimensions output", { polyPoints, pointCount });
+    LogUtil.Debug("S.PolyLine: UpdateSecondaryDimensions output", { polyPoints, pointCount });
   }
 
   GetBoundingBoxesForSecondaryDimensions() {
-    T3Util.Log("S.PolyLine: GetBoundingBoxesForSecondaryDimensions input");
+    LogUtil.Debug("S.PolyLine: GetBoundingBoxesForSecondaryDimensions input");
 
     let boundingBoxes = super.GetBoundingBoxesForSecondaryDimensions();
 
     if (!(this.Dimensions & NvConstant.DimensionFlags.ShowLineAngles)) {
-      T3Util.Log("S.PolyLine: GetBoundingBoxesForSecondaryDimensions output", boundingBoxes);
+      LogUtil.Debug("S.PolyLine: GetBoundingBoxesForSecondaryDimensions output", boundingBoxes);
       return boundingBoxes;
     }
 
@@ -4374,12 +4359,12 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: GetBoundingBoxesForSecondaryDimensions output", boundingBoxes);
+    LogUtil.Debug("S.PolyLine: GetBoundingBoxesForSecondaryDimensions output", boundingBoxes);
     return boundingBoxes;
   }
 
   GetAreaWidthAndHeightText(polyPoints) {
-    T3Util.Log("S.PolyLine: GetAreaWidthAndHeightText input", { polyPoints });
+    LogUtil.Debug("S.PolyLine: GetAreaWidthAndHeightText input", { polyPoints });
 
     let width, height, widthIndex, heightIndex, angle, result = "";
 
@@ -4400,21 +4385,21 @@ class PolyLine extends BaseLine {
       result = RulerUtil.GetLengthInRulerUnits(height) + " x " + RulerUtil.GetLengthInRulerUnits(width);
     }
 
-    T3Util.Log("S.PolyLine: GetAreaWidthAndHeightText output", result);
+    LogUtil.Debug("S.PolyLine: GetAreaWidthAndHeightText output", result);
     return result;
   }
 
   SetSegmentAngle(event, segmentIndex, angle) {
-    T3Util.Log('S.PolyLine: SetSegmentAngle input', { event, segmentIndex, angle });
+    LogUtil.Debug('S.PolyLine: SetSegmentAngle input', { event, segmentIndex, angle });
 
     let rotationAngle, counterClockwiseAngle, segmentPoints = [], previousSegmentPoints = [], actionType = -1, offsetX = 0, offsetY = 0;
 
     if (segmentIndex <= 0 || segmentIndex >= this.polylist.segs.length) {
-      T3Util.Log('S.PolyLine: SetSegmentAngle output', false);
+      LogUtil.Debug('S.PolyLine: SetSegmentAngle output', false);
       return;
     }
 
-    DataUtil.GetObjectPtr(this.BlockID, true);
+    ObjectUtil.GetObjectPtr(this.BlockID, true);
     const originalState = Utils1.DeepCopy(this);
 
     segmentPoints.push(new Point(this.polylist.segs[segmentIndex - 1].pt.x, this.polylist.segs[segmentIndex - 1].pt.y));
@@ -4432,7 +4417,7 @@ class PolyLine extends BaseLine {
       previousSegmentPoints.push(new Point(segmentPoints[0].x, segmentPoints[0].y));
       if (segmentIndex === 1) {
         if (!this.polylist.closed) {
-          T3Util.Log('S.PolyLine: SetSegmentAngle output', false);
+          LogUtil.Debug('S.PolyLine: SetSegmentAngle output', false);
           return;
         }
         previousSegmentPoints.push(new Point(this.polylist.segs[this.polylist.segs.length - 2].pt.x, this.polylist.segs[this.polylist.segs.length - 2].pt.y));
@@ -4496,11 +4481,11 @@ class PolyLine extends BaseLine {
       this.LMResizeSVGTextObject(event, this, this.Frame);
     }
 
-    T3Util.Log('S.PolyLine: SetSegmentAngle output', true);
+    LogUtil.Debug('S.PolyLine: SetSegmentAngle output', true);
   }
 
   IsTextFrameOverlap(textFrame, rotationAngle) {
-    T3Util.Log("S.PolyLine: IsTextFrameOverlap input", { textFrame, rotationAngle });
+    LogUtil.Debug("S.PolyLine: IsTextFrameOverlap input", { textFrame, rotationAngle });
 
     const polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, null);
     const adjustedAngle = 360 - rotationAngle;
@@ -4509,21 +4494,21 @@ class PolyLine extends BaseLine {
     Utils3.RotatePointsAboutCenter(this.Frame, -rotationRadians, polyPoints);
     const isOverlap = Utils2.IsFrameCornersInPoly(polyPoints, textFrame);
 
-    T3Util.Log("S.PolyLine: IsTextFrameOverlap output", isOverlap);
+    LogUtil.Debug("S.PolyLine: IsTextFrameOverlap output", isOverlap);
     return isOverlap;
   }
 
   IsTerminalSegment(segmentIndex: number): boolean {
-    T3Util.Log("S.PolyLine: IsTerminalSegment input", { segmentIndex });
+    LogUtil.Debug("S.PolyLine: IsTerminalSegment input", { segmentIndex });
 
     const isTerminal = !this.polylist.closed && (segmentIndex === 1 || segmentIndex === this.polylist.segs.length - 1);
 
-    T3Util.Log("S.PolyLine: IsTerminalSegment output", isTerminal);
+    LogUtil.Debug("S.PolyLine: IsTerminalSegment output", isTerminal);
     return isTerminal;
   }
 
   UpdateDimensionFromTextObj(event, textObject) {
-    T3Util.Log("S.PolyLine: UpdateDimensionFromTextObj input", { event, textObject });
+    LogUtil.Debug("S.PolyLine: UpdateDimensionFromTextObj input", { event, textObject });
 
     let text = "";
     let userData = null;
@@ -4547,17 +4532,17 @@ class PolyLine extends BaseLine {
       OptCMUtil.SetLinkFlag(this.hooks[i].objid, DSConstant.LinkFlags.Move);
     }
 
-    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.CommentID !== -1 || this.HasFieldData()) {
-      DataUtil.AddToDirtyList(this.BlockID);
+    if (this.HyperlinkText !== "" || this.NoteID !== -1 || this.commentId !== -1 || this.HasFieldData()) {
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
     DrawUtil.CompleteOperation(null);
 
-    T3Util.Log("S.PolyLine: UpdateDimensionFromTextObj output", { text, userData });
+    LogUtil.Debug("S.PolyLine: UpdateDimensionFromTextObj output", { text, userData });
   }
 
   UpdateEndPointDimensionFromText(event, dimensionLength) {
-    T3Util.Log("S.PolyLine: UpdateEndPointDimensionFromText input", { event, dimensionLength });
+    LogUtil.Debug("S.PolyLine: UpdateEndPointDimensionFromText input", { event, dimensionLength });
 
     const points = [this.StartPoint, this.EndPoint];
 
@@ -4573,11 +4558,11 @@ class PolyLine extends BaseLine {
       this.AdjustLineEnd(null, points[1].x, points[1].y, OptConstant.ActionTriggerType.LineEnd);
     }
 
-    T3Util.Log("S.PolyLine: UpdateEndPointDimensionFromText output", { StartPoint: this.StartPoint, EndPoint: this.EndPoint });
+    LogUtil.Debug("S.PolyLine: UpdateEndPointDimensionFromText output", { StartPoint: this.StartPoint, EndPoint: this.EndPoint });
   }
 
   UpdateTotalDimensionFromText(event, dimensionLength) {
-    T3Util.Log("S.PolyLine: UpdateTotalDimensionFromText input", { event, dimensionLength });
+    LogUtil.Debug("S.PolyLine: UpdateTotalDimensionFromText input", { event, dimensionLength });
 
     let totalLength = 0;
     let deltaX = 0;
@@ -4600,11 +4585,11 @@ class PolyLine extends BaseLine {
 
     this.ScaleObject(offsetX, offsetY, null, 0, scaleFactor, scaleFactor, false);
 
-    T3Util.Log("S.PolyLine: UpdateTotalDimensionFromText output", { Frame: this.Frame, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
+    LogUtil.Debug("S.PolyLine: UpdateTotalDimensionFromText output", { Frame: this.Frame, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
   }
 
   UpdateSegmentDimensionFromText(event, dimensionLength, segmentIndex) {
-    T3Util.Log("S.PolyLine: UpdateSegmentDimensionFromText input", { event, dimensionLength, segmentIndex });
+    LogUtil.Debug("S.PolyLine: UpdateSegmentDimensionFromText input", { event, dimensionLength, segmentIndex });
 
     let angle, rotatedAngle, polyPoints, inflatedPoints, startX, startY, endX, endY, deltaX, deltaY;
     const hitResult = new HitResult(-1, 0, null);
@@ -4689,11 +4674,11 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: UpdateSegmentDimensionFromText output", { polylist: this.polylist, Frame: this.Frame });
+    LogUtil.Debug("S.PolyLine: UpdateSegmentDimensionFromText output", { polylist: this.polylist, Frame: this.Frame });
   }
 
   UpdateDimensionFromText(event, dimensionText, dimensionData) {
-    T3Util.Log("S.PolyLine: UpdateDimensionFromText input", { event, dimensionText, dimensionData });
+    LogUtil.Debug("S.PolyLine: UpdateDimensionFromText input", { event, dimensionText, dimensionData });
 
     let dimensionLength = -1;
     let widthAdjustment = 0;
@@ -4713,7 +4698,7 @@ class PolyLine extends BaseLine {
     }
 
     if (dimensionLength < 0) {
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       SvgUtil.RenderDirtySVGObjects();
       return;
     }
@@ -4780,11 +4765,11 @@ class PolyLine extends BaseLine {
       this.LMResizeSVGTextObject(event, this, this.Frame);
     }
 
-    T3Util.Log("S.PolyLine: UpdateDimensionFromText output", { Frame: this.Frame, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
+    LogUtil.Debug("S.PolyLine: UpdateDimensionFromText output", { Frame: this.Frame, StartPoint: this.StartPoint, EndPoint: this.EndPoint });
   }
 
   GetLineChangeFrame() {
-    T3Util.Log("S.PolyLine: GetLineChangeFrame input");
+    LogUtil.Debug("S.PolyLine: GetLineChangeFrame input");
 
     let frameRect = Utils2.Pt2Rect(this.StartPoint, this.EndPoint);
 
@@ -4795,46 +4780,44 @@ class PolyLine extends BaseLine {
       frameRect.height = OptConstant.Common.SegDefLen;
     }
 
-    T3Util.Log("S.PolyLine: GetLineChangeFrame output", frameRect);
+    LogUtil.Debug("S.PolyLine: GetLineChangeFrame output", frameRect);
     return frameRect;
   }
 
   CancelObjectDraw() {
-    T3Util.Log("S.PolyLine: CancelObjectDraw input");
+    LogUtil.Debug("S.PolyLine: CancelObjectDraw input");
 
     LMEvtUtil.UnbindActionClickHammerEvents();
     T3Gv.opt.WorkAreaHammer.off("doubletap");
 
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind("mousemove");
     T3Gv.opt.WorkAreaHammer.on("tap", EvtUtil.Evt_WorkAreaHammerClick);
-    // }
 
     this.ResetAutoScrollTimer();
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
     SvgUtil.RenderDirtySVGObjects();
     SelectUtil.SelectObjects([this.BlockID], false, true);
 
-    T3Util.Log("S.PolyLine: CancelObjectDraw output", true);
+    LogUtil.Debug("S.PolyLine: CancelObjectDraw output", true);
     return true;
   }
 
   GetBoundingBox() {
-    T3Util.Log("S.PolyLine: GetBoundingBox input");
+    LogUtil.Debug("S.PolyLine: GetBoundingBox input");
 
     const boundingBox = this.Frame;
 
-    T3Util.Log("S.PolyLine: GetBoundingBox output", boundingBox);
+    LogUtil.Debug("S.PolyLine: GetBoundingBox output", boundingBox);
     return boundingBox;
   }
 
   IsRightAngle(segmentIndex: number, tolerance: number): boolean {
-    T3Util.Log("S.PolyLine: IsRightAngle input", { segmentIndex, tolerance });
+    LogUtil.Debug("S.PolyLine: IsRightAngle input", { segmentIndex, tolerance });
 
     let previousSegmentIndex = segmentIndex - 1;
     if (previousSegmentIndex < 0) {
       if (!this.polylist.closed) {
-        T3Util.Log("S.PolyLine: IsRightAngle output", false);
+        LogUtil.Debug("S.PolyLine: IsRightAngle output", false);
         return false;
       }
       previousSegmentIndex = this.polylist.segs.length - 1;
@@ -4843,7 +4826,7 @@ class PolyLine extends BaseLine {
     let nextSegmentIndex = segmentIndex + 1;
     if (nextSegmentIndex > this.polylist.segs.length - 1) {
       if (!this.polylist.closed) {
-        T3Util.Log("S.PolyLine: IsRightAngle output", false);
+        LogUtil.Debug("S.PolyLine: IsRightAngle output", false);
         return false;
       }
       nextSegmentIndex = 1;
@@ -4854,12 +4837,12 @@ class PolyLine extends BaseLine {
     const angleDifference = Math.abs(angle1 - angle2);
 
     const isRightAngle = Math.abs(90 - angleDifference) <= tolerance || Math.abs(270 - angleDifference) <= tolerance;
-    T3Util.Log("S.PolyLine: IsRightAngle output", isRightAngle);
+    LogUtil.Debug("S.PolyLine: IsRightAngle output", isRightAngle);
     return isRightAngle;
   }
 
   GetPolyRectangularInfo(dimensionInfo: any): boolean {
-    T3Util.Log("S.PolyLine: GetPolyRectangularInfo input:", dimensionInfo);
+    LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo input:", dimensionInfo);
 
     // Get polyline points with full details.
     let polyPoints = this.GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, null);
@@ -4867,7 +4850,7 @@ class PolyLine extends BaseLine {
 
     // Only consider a rectangle if exactly 5 segments and the polyline is closed.
     if (this.polylist.segs.length !== 5 || !this.polylist.closed) {
-      T3Util.Log("S.PolyLine: GetPolyRectangularInfo output:", false);
+      LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo output:", false);
       return false;
     }
 
@@ -4884,7 +4867,7 @@ class PolyLine extends BaseLine {
     polyPoints = uniquePoints;
 
     if (polyPoints.length !== 5) {
-      T3Util.Log("S.PolyLine: GetPolyRectangularInfo output:", false);
+      LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo output:", false);
       return false;
     }
 
@@ -4913,7 +4896,7 @@ class PolyLine extends BaseLine {
     let sideLength2 = Utils2.GetDistanceBetween2Points(polyPoints[2], polyPoints[3]);
     let ratio1 = sideLength1 / sideLength2;
     if (ratio1 <= 0.99 || ratio1 >= 1.01) {
-      T3Util.Log("S.PolyLine: GetPolyRectangularInfo output:", false);
+      LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo output:", false);
       return false;
     }
 
@@ -4921,7 +4904,7 @@ class PolyLine extends BaseLine {
     sideLength2 = Utils2.GetDistanceBetween2Points(polyPoints[3], polyPoints[4]);
     let ratio2 = sideLength1 / sideLength2;
     if (ratio2 <= 0.99 || ratio2 >= 1.01) {
-      T3Util.Log("S.PolyLine: GetPolyRectangularInfo output:", false);
+      LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo output:", false);
       return false;
     }
 
@@ -4942,12 +4925,12 @@ class PolyLine extends BaseLine {
       dimensionInfo.htDim = htDimension;
     }
 
-    T3Util.Log("S.PolyLine: GetPolyRectangularInfo output:", true);
+    LogUtil.Debug("S.PolyLine: GetPolyRectangularInfo output:", true);
     return true;
   }
 
   GetSegmentsBeforeAndAfter(segmentIndex: number, segmentsInfo: { segBefore: number; segAfter: number }) {
-    T3Util.Log("S.PolyLine: GetSegmentsBeforeAndAfter input:", { segmentIndex, segmentsInfo });
+    LogUtil.Debug("S.PolyLine: GetSegmentsBeforeAndAfter input:", { segmentIndex, segmentsInfo });
 
     segmentsInfo.segAfter = segmentIndex + 1;
     if (segmentsInfo.segAfter >= this.polylist.segs.length) {
@@ -4959,11 +4942,11 @@ class PolyLine extends BaseLine {
       segmentsInfo.segBefore = this.polylist.closed ? this.polylist.segs.length - 1 : -1;
     }
 
-    T3Util.Log("S.PolyLine: GetSegmentsBeforeAndAfter output:", segmentsInfo);
+    LogUtil.Debug("S.PolyLine: GetSegmentsBeforeAndAfter output:", segmentsInfo);
   }
 
   MaintainDimensionThroughPolygonOpennessChange(isPolygonClosed) {
-    T3Util.Log("S.PolyLine: MaintainDimensionThroughPolygonOpennessChange input:", isPolygonClosed);
+    LogUtil.Debug("S.PolyLine: MaintainDimensionThroughPolygonOpennessChange input:", isPolygonClosed);
 
     if (isPolygonClosed) {
       this.Dimensions = Utils2.SetFlag(
@@ -4978,11 +4961,11 @@ class PolyLine extends BaseLine {
       );
     }
 
-    T3Util.Log("S.PolyLine: MaintainDimensionThroughPolygonOpennessChange output:", this.Dimensions);
+    LogUtil.Debug("S.PolyLine: MaintainDimensionThroughPolygonOpennessChange output:", this.Dimensions);
   }
 
   GetUnrotatedBoundingBoxOfProposedFrame(proposedFrame: any) {
-    T3Util.Log("S.PolyLine: GetUnrotatedBoundingBoxOfProposedFrame input:", proposedFrame);
+    LogUtil.Debug("S.PolyLine: GetUnrotatedBoundingBoxOfProposedFrame input:", proposedFrame);
 
     let cloneFrame = Utils1.DeepCopy(proposedFrame);
     let dimensionsRect = this.GetDimensionsRect();
@@ -5001,7 +4984,7 @@ class PolyLine extends BaseLine {
 
     Utils2.InflateRect(cloneFrame, horizontalDiff / 2, verticalDiff / 2);
 
-    T3Util.Log("S.PolyLine: GetUnrotatedBoundingBoxOfProposedFrame output:", cloneFrame);
+    LogUtil.Debug("S.PolyLine: GetUnrotatedBoundingBoxOfProposedFrame output:", cloneFrame);
     return cloneFrame;
   }
 
@@ -5016,7 +4999,7 @@ class PolyLine extends BaseLine {
     minDistance: number,
     maxDistance: number
   ): boolean {
-    T3Util.Log("S.PolyLine: AdjustPolylineSegment input:", {
+    LogUtil.Debug("S.PolyLine: AdjustPolylineSegment input:", {
       event,
       initialX,
       initialY,
@@ -5066,17 +5049,17 @@ class PolyLine extends BaseLine {
 
     // If the moved distance is too small, cancel the adjustment.
     if (Math.abs(pointArray[1].x - pointArray[0].x) < minDistance) {
-      T3Util.Log("S.PolyLine: AdjustPolylineSegment output: false (<minDistance)");
+      LogUtil.Debug("S.PolyLine: AdjustPolylineSegment output: false (<minDistance)");
       return false;
     }
     // If a maxDistance is provided and exceeded, cancel the adjustment.
     if (maxDistance && maxDistance > 0 && Math.abs(pointArray[1].x - pointArray[0].x) > maxDistance) {
-      T3Util.Log("S.PolyLine: AdjustPolylineSegment output: false (>maxDistance)");
+      LogUtil.Debug("S.PolyLine: AdjustPolylineSegment output: false (>maxDistance)");
       return false;
     }
 
     if (isNaN(pointArray[1].x - pointArray[0].x)) {
-      T3Util.Log("S.PolyLine: AdjustPolylineSegment output: false (NaN difference)");
+      LogUtil.Debug("S.PolyLine: AdjustPolylineSegment output: false (NaN difference)");
       return false;
     }
 
@@ -5157,9 +5140,9 @@ class PolyLine extends BaseLine {
         this.OffsetShape(offset.x, offset.y);
         const enclosedObjects = this.GetListOfEnclosedObjects(false);
         for (let idx = 0; idx < enclosedObjects.length; idx++) {
-          DataUtil.GetObjectPtr(enclosedObjects[idx], true).OffsetShape(offset.x, offset.y);
+          ObjectUtil.GetObjectPtr(enclosedObjects[idx], true).OffsetShape(offset.x, offset.y);
           OptCMUtil.SetLinkFlag(enclosedObjects[idx], DSConstant.LinkFlags.Move);
-          DataUtil.AddToDirtyList(enclosedObjects[idx]);
+          ObjectUtil.AddToDirtyList(enclosedObjects[idx]);
         }
         this.UpdateDrawing(event);
       } else {
@@ -5189,7 +5172,7 @@ class PolyLine extends BaseLine {
       this
     );
 
-    T3Util.Log("S.PolyLine: AdjustPolylineSegment output:", {
+    LogUtil.Debug("S.PolyLine: AdjustPolylineSegment output:", {
       polylist: this.polylist,
       Frame: this.Frame,
       StartPoint: this.StartPoint,
@@ -5199,7 +5182,7 @@ class PolyLine extends BaseLine {
   }
 
   GetSegmentAdjustAngle(segmentIndex: number): number {
-    T3Util.Log("S.PolyLine: GetSegmentAdjustAngle input:", segmentIndex);
+    LogUtil.Debug("S.PolyLine: GetSegmentAdjustAngle input:", segmentIndex);
 
     let adjustedAngle = 9999;
     let segmentsInfo = { segBefore: 0, segAfter: 0 };
@@ -5258,7 +5241,7 @@ class PolyLine extends BaseLine {
       }
     }
 
-    T3Util.Log("S.PolyLine: GetSegmentAdjustAngle output:", adjustedAngle);
+    LogUtil.Debug("S.PolyLine: GetSegmentAdjustAngle output:", adjustedAngle);
     return adjustedAngle;
   }
 }

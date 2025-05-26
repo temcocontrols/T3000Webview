@@ -22,9 +22,9 @@ import 'reflect-metadata'
  * Here's how to instantiate and use the PageSetting class:
  *
  * const pageSetting = new PageSetting();
- * console.log(pageSetting.papersize);  // Output: { x: 1100, y: 850 }
- * console.log(pageSetting.minsize);    // Output: { x: 1000, y: 750 }
- * console.log(pageSetting.margins);    // Output: { left: 50, top: 50, right: 50, bottom: 50 }
+ * LogUtil.Debug(pageSetting.papersize);  // Output: { x: 1100, y: 850 }
+ * LogUtil.Debug(pageSetting.minsize);    // Output: { x: 1000, y: 750 }
+ * LogUtil.Debug(pageSetting.margins);    // Output: { left: 50, top: 50, right: 50, bottom: 50 }
  */
 class PageSetting {
 

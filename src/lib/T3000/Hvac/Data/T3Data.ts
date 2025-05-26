@@ -1,10 +1,7 @@
 
-
-
-import { ref } from 'vue'
-import { cloneDeep } from "lodash"
-import GlobalMsgModel from '../Model/GlobalMsgModel'
-
+import { ref } from "vue";
+import { cloneDeep } from "lodash";
+import GlobalMsgModel from "../Model/GlobalMsgModel";
 
 const gaugeDefautColors = [
   { offset: 33, color: "#14BE64" },
@@ -566,6 +563,9 @@ export const emptyLib = {
 
 export const appState = ref(cloneDeep(emptyProject));
 
+// app state v2 for new ui
+export const appStateV2 = ref(cloneDeep(emptyProject));
+
 export const deviceAppState = ref([]);
 
 export const deviceModel = ref({ active: false, data: {} });
@@ -630,6 +630,7 @@ export const grpNav = ref([]); // Navigation history for grouped elements
 // Panel options for selection
 export const selectPanelOptions = ref(T3000_Data.value.panelsData);
 export const linkT3EntryDialog = ref({ active: false, data: null }); // State of the link T3 entry dialog
+export const linkT3EntryDialogV2 = ref({ active: false, data: null }); // State of the link T3 entry dialog 2
 export const savedNotify = ref(false); // Notification state for saving
 export const undoHistory = ref([]); // History for undo actions
 export const redoHistory = ref([]); // History for redo actions
@@ -646,18 +647,18 @@ export const moveable = ref(null); // Reference to the moveable component instan
 // export const globalMsg = ref({ type: "info", message: "", isShow: false, msgType: "" });// Global message state
 export const globalMsg = ref<GlobalMsgModel[]>([]);
 
-export const devVersion = ref("V:25.0414.01");
+export const devVersion = ref("V:25.0521.01");
 
-export const localSettings = ref({ version: "V:25.0414.01", transform: 0 });
+export const localSettings = ref({ version: "V:25.0521.01", transform: 0 });
 
-const T3Data = {
+export const T3Data = {
   deviceList: ref([]),
   graphicList: ref([]),
   currentDevice: ref(),
   globalMessage: ref({})
 }
 
-export const AllTool = [
+export const NewTool = [
   {
     name: "Pointer",
     label: "Select",
@@ -703,10 +704,51 @@ export const AllTool = [
       },
     },
   },
+
+  {
+    name: "Line",
+    label: "Line",
+    icon: "svguse:icons.svg#line",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+{
+    name: "SegLine",
+    label: "Segment Line",
+    icon: "svguse:icons.svg#segLine",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
   {
     name: "G_Rectangle",
     label: "Rectangle",
-    icon: "svguse:icons.svg#g_rectangle|0 0 24 24",
+    icon: "svguse:icons.svg#rectangle|0 0 24 24",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -726,7 +768,7 @@ export const AllTool = [
   {
     name: "G_Circle",
     label: "Circle",
-    icon: "svguse:icons.svg#g_circle|0 0 24 24",
+    icon: "svguse:icons.svg#circle|0 0 24 24",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -743,30 +785,10 @@ export const AllTool = [
       },
     },
   },
-  {
-    name: "g_arr_right",
-    label: "Step",
-    icon: "svguse:icons.svg#g_arr_right|0 0 32 32",
-    cat: ["General"],
-    settings: {
-      // bgColor: {
-      //   value: "#000",
-      //   type: "color",
-      //   label: "Background Color",
-      //   id: 1,
-      // },
-      fillColor: {
-        value: "#659dc5",
-        type: "color",
-        label: "Fill color",
-        id: 2,
-      },
-    },
-  },
-  {
+   {
     name: "Oval",
     label: "Oval",
-    icon: "svguse:icons.svg#g_oval|0 0 30 30",
+    icon: "svguse:icons.svg#oval|0 0 30 30",
     cat: ["General"],
     settings: {
       // bgColor: {
@@ -784,20 +806,101 @@ export const AllTool = [
     },
   },
   {
-    name: "Duct",
-    label: "Duct",
-    icon: "svguse:icons.svg#duct|0 0 226 75",
-    cat: ["Duct"],
-    height: 40,
+    name: "ArrowRight",
+    label: "Arrow Right",
+    icon: "svguse:icons.svg#arrow_right|0 0 32 32",
+    cat: ["General"],
     settings: {
-      bgColor: {
-        value: "#808080",
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
         type: "color",
         label: "Fill color",
-        id: 1,
+        id: 2,
       },
     },
   },
+  {
+    name: "ArrowLeft",
+    label: "Arrow Left",
+    icon: "svguse:icons.svg#arrow_left|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "ArrowTop",
+    label: "Arrow Top",
+    icon: "svguse:icons.svg#arrow_top|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+  {
+    name: "ArrowBottom",
+    label: "Arrow Bottom",
+    icon: "svguse:icons.svg#arrow_bottom|0 0 32 32",
+    cat: ["General"],
+    settings: {
+      // bgColor: {
+      //   value: "#000",
+      //   type: "color",
+      //   label: "Background Color",
+      //   id: 1,
+      // },
+      fillColor: {
+        value: "#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 2,
+      },
+    },
+  },
+
+  // {
+  //   name: "Duct",
+  //   label: "Duct",
+  //   icon: "svguse:icons.svg#duct|0 0 226 75",
+  //   cat: ["Duct"],
+  //   height: 40,
+  //   settings: {
+  //     bgColor: {
+  //       value: "#808080",
+  //       type: "color",
+  //       label: "Fill color",
+  //       id: 1,
+  //     },
+  //   },
+  // },
   {
     name: "Fan",
     label: "Fan",
@@ -1546,6 +1649,130 @@ export const AllTool = [
       },
     },
   },
+  // New duct
+  {
+    name: "Duct1",
+    label: "Duct1",
+    icon: "svguse:icons.svg#duct1 |0 0 12 12",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct2",
+    label: "Duct2",
+    icon: "svguse:icons.svg#duct2",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct3",
+    label: "Duct3",
+    icon: "svguse:icons.svg#duct3",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct4",
+    label: "Duct4",
+    icon: "svguse:icons.svg#duct4",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct5",
+    label: "Duct5",
+    icon: "svguse:icons.svg#duct5",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct7",
+    label: "Duct6",
+    icon: "svguse:icons.svg#duct7",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct8",
+    label: "Duct7",
+    icon: "svguse:icons.svg#duct8",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  },
+  {
+    name: "Duct9",
+    label: "Duct8",
+    icon: "svguse:icons.svg#duct9",
+    cat: ["NewDuct"],
+    settings: {
+      fillColor: {
+        value: "#0173fe",//"#659dc5",
+        type: "color",
+        label: "Fill color",
+        id: 1,
+      },
+    },
+  }
 ];
 
-export default T3Data
+// Adjust the height of the vertical scroll bar when global message is shown
+export const AdjustVlScrollHeight = 42;
+
+export const toolsCategories = [
+  "Basic",
+  "General",
+  "Pipe",
+  "NewDuct",
+  "Duct",
+  "Room",
+  "Metrics",
+];

@@ -106,7 +106,6 @@ export default defineComponent({
     const model = ref(25);
 
     const onChange = () => {
-      T3000.Utils.Log("--------------------------------")
       emit('bottomSliderbarEvent', "change", model.value);
     }
 

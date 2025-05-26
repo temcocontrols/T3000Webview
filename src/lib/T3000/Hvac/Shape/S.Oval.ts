@@ -11,6 +11,9 @@ import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import PolyUtil from '../Opt/Opt/PolyUtil';
+import VueCircle from '../../../../components/Basic/Circle.vue';
+import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents an oval shape in the HVAC visualization system.
@@ -52,8 +55,9 @@ class Oval extends BaseShape {
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Oval;
     options.Frame;
+    options.uniType = "Oval";
 
-    T3Util.Log('S.Oval: Input options:', options);
+    LogUtil.Debug('S.Oval: Input options:', options);
 
     super(options);
 
@@ -61,13 +65,13 @@ class Oval extends BaseShape {
       ? PolygonConstant.ShapeTypes.CIRCLE
       : PolygonConstant.ShapeTypes.OVAL;
 
-    T3Util.Log('S.Oval: Output dataclass:', this.dataclass);
+    LogUtil.Debug('S.Oval: Output dataclass:', this.dataclass);
   }
 
   CreateShape(renderer, isHidden) {
     if (this.flags & NvConstant.ObjFlags.NotVisible) return null;
 
-    T3Util.Log('S.Oval: Input renderer:', renderer, 'isHidden:', isHidden);
+    LogUtil.Debug('S.Oval: Input renderer:', renderer, 'isHidden:', isHidden);
 
     const shapeContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
     const frameCopy = $.extend(true, {}, this.Frame);
@@ -130,17 +134,22 @@ class Oval extends BaseShape {
 
     shapeContainer.isShape = true;
 
+    /* Remove test foreign object
+    const foreignObj = ForeignObjUtil.CreateVueObjectType(renderer, frameCopy);
+    shapeContainer.AddElement(foreignObj);
+    */
+
     if (this.DataID >= 0) {
       this.LMAddSVGTextObject(renderer, shapeContainer);
     }
 
-    T3Util.Log('S.Oval: Output shapeContainer:', shapeContainer);
+    LogUtil.Debug('S.Oval: Output shapeContainer:', shapeContainer);
 
     return shapeContainer;
   }
 
   GetPolyPoints(curveType, frame, inflate, isClosed, isReversed) {
-    T3Util.Log('S.Oval: Input parameters:', { curveType, frame, inflate, isClosed, isReversed });
+    LogUtil.Debug('S.Oval: Input parameters:', { curveType, frame, inflate, isClosed, isReversed });
 
     let points = [];
     let frameCopy = {};
@@ -179,16 +188,16 @@ class Oval extends BaseShape {
       }
     }
 
-    T3Util.Log('S.Oval: Output points:', points);
+    LogUtil.Debug('S.Oval: Output points:', points);
     return points;
   }
 
   ExtendLines() {
-    T3Util.Log('S.Oval: ExtendLines called');
+    LogUtil.Debug('S.Oval: ExtendLines called');
   }
 
   GetPerimeterPoints(event, points, hookType, isClosed, tableIndex, isReversed) {
-    T3Util.Log('S.Oval: Input parameters:', { event, points, hookType, isClosed, tableIndex, isReversed });
+    LogUtil.Debug('S.Oval: Input parameters:', { event, points, hookType, isClosed, tableIndex, isReversed });
 
     let perimeterPoints = [];
     let frameWidth = this.Frame.width;
@@ -202,13 +211,13 @@ class Oval extends BaseShape {
       if (points[0].id != null) {
         perimeterPoints[0].id = points[0].id;
       }
-      T3Util.Log('S.Oval: Output perimeterPoints:', perimeterPoints);
+      LogUtil.Debug('S.Oval: Output perimeterPoints:', perimeterPoints);
       return perimeterPoints;
     }
 
     if (hookType === OptConstant.HookPts.KAT) {
       perimeterPoints = this.BaseDrawingObject_GetPerimPts(event, points, hookType, false, tableIndex, isReversed);
-      T3Util.Log('S.Oval: Output perimeterPoints:', perimeterPoints);
+      LogUtil.Debug('S.Oval: Output perimeterPoints:', perimeterPoints);
       return perimeterPoints;
     }
 
@@ -246,12 +255,12 @@ class Oval extends BaseShape {
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, perimeterPoints);
     }
 
-    T3Util.Log('S.Oval: Output perimeterPoints:', perimeterPoints);
+    LogUtil.Debug('S.Oval: Output perimeterPoints:', perimeterPoints);
     return perimeterPoints;
   }
 
   BaseDrawingObject_GetPerimPts(event, points, hookType, isClosed, tableIndex, isReversed) {
-    T3Util.Log('S.Oval: Input parameters:', { event, points, hookType, isClosed, tableIndex, isReversed });
+    LogUtil.Debug('S.Oval: Input parameters:', { event, points, hookType, isClosed, tableIndex, isReversed });
 
     const perimeterPoints = [];
     const numPoints = points.length;
@@ -272,12 +281,12 @@ class Oval extends BaseShape {
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, perimeterPoints);
     }
 
-    T3Util.Log('S.Oval: Output perimeterPoints:', perimeterPoints);
+    LogUtil.Debug('S.Oval: Output perimeterPoints:', perimeterPoints);
     return perimeterPoints;
   }
 
   SetShapeIndent(isIndented) {
-    T3Util.Log('S.Oval: Input isIndented:', isIndented);
+    LogUtil.Debug('S.Oval: Input isIndented:', isIndented);
 
     const roundFactor = OptConstant.Common.RoundFactor / 2;
     const width = this.inside.width;
@@ -303,7 +312,7 @@ class Oval extends BaseShape {
     this.tindent.right = this.rightIndent * width / rightFactor;
     this.tindent.bottom = this.bottomIndent * height / bottomFactor;
 
-    T3Util.Log('S.Oval: Output tindent:', this.tindent);
+    LogUtil.Debug('S.Oval: Output tindent:', this.tindent);
   }
 }
 

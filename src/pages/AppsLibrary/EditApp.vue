@@ -3,32 +3,14 @@
     <div class="flex flex-col w-full max-w-7xl">
       <div class="flex items-center">
         <div class="image-container relative w-52">
-          <file-upload
-            ref="fileUploaderRef"
-            path="app-images"
-            :types="['image/*']"
-            :height="150"
-            @uploaded="handleUploaded"
-            @file-removed="handleFileRemoved"
-          />
+          <file-upload ref="fileUploaderRef" path="app-images" :types="['image/*']" :height="150"
+            @uploaded="handleUploaded" @file-removed="handleFileRemoved" />
         </div>
         <q-input class="grow px-4" v-model="appData.name" label="Name" />
       </div>
-      <q-input
-        class="py-2"
-        v-model="appData.description"
-        label="Description"
-        type="textarea"
-        autogrow
-      />
+      <q-input class="py-2" v-model="appData.description" label="Description" type="textarea" autogrow />
       <div class="flex grid-cols-4 gap-4">
-        <q-btn
-          label="Save"
-          color="primary"
-          icon="save"
-          @click="SaveApp"
-          :disable="saveBtnDisabled"
-        />
+        <q-btn label="Save" color="primary" icon="save" @click="SaveApp" :disable="saveBtnDisabled" />
         <q-btn label="Cancel" icon="cancel" to="/apps-library" />
       </div>
     </div>
@@ -40,7 +22,8 @@ import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
-import { user, globalNav, isAdmin } from "../../lib/common";
+import { /*user,*/ globalNav, isAdmin } from "../../lib/common";
+import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { liveApi } from "../../lib/api";
 import ky from "ky";
 

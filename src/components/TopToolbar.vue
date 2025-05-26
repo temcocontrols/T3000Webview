@@ -473,7 +473,8 @@
 <script>
 import { defineComponent, ref, watch } from "vue"
 import { useQuasar } from "quasar"
-import { tools, user } from "../lib/common"
+import { tools/*, user*/ } from "../lib/common";
+import { user } from "../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from "../lib/T3000/Hvac/Data/T3Data"
 
 export default defineComponent({

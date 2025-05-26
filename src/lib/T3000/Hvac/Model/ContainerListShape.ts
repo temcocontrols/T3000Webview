@@ -16,7 +16,7 @@
  * container.pt = { x: 150, y: 75 };
  * container.extra = 5;
  *
- * console.log(`Container ID: ${container.id}, Position: (${container.pt.x}, ${container.pt.y}), Extra: ${container.extra}`);
+ * LogUtil.Debug(`Container ID: ${container.id}, Position: (${container.pt.x}, ${container.pt.y}), Extra: ${container.extra}`);
  */
 class ContainerListShape {
 

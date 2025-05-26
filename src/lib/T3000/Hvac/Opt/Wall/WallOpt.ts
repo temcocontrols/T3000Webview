@@ -15,28 +15,17 @@ import PolygonConstant from '../Polygon/PolygonConstant'
 import DSConstant from '../DS/DSConstant'
 import OptConstant from '../../Data/Constant/OptConstant'
 import T3Util from '../../Util/T3Util'
-import DataUtil from '../Data/DataUtil'
+import ObjectUtil from '../Data/ObjectUtil'
 import LayerUtil from '../Opt/LayerUtil'
 import SelectUtil from '../Opt/SelectUtil'
 import OptCMUtil from '../Opt/OptCMUtil'
 import DrawUtil from '../Opt/DrawUtil'
 import UIUtil from '../UI/UIUtil'
+import LogUtil from '../../Util/LogUtil'
 
 class WallOpt {
 
   addingWalls: boolean;
-
-  // /**
-  //  * Gets the right-click menu ID for a line
-  //  * @param lineObject - The line object
-  //  * @returns Menu ID or null
-  //  */
-  // GetLineRightClickMenuID(lineObject) {
-  //   T3Util.Log('U.WallUtil GetLineRightClickMenuID input:', lineObject);
-  //   const result = null;
-  //   T3Util.Log('U.WallUtil GetLineRightClickMenuID output:', result);
-  //   return result;
-  // }
 
   /**
    * Determines if action buttons are allowed for the specified object
@@ -44,9 +33,9 @@ class WallOpt {
    * @returns Boolean indicating if action buttons are allowed or null
    */
   AllowActionButtons(object) {
-    T3Util.Log('U.WallUtil AllowActionButtons input:', object);
+    LogUtil.Debug('= U.WallUtil AllowActionButtons input:', object);
     const result = null;
-    T3Util.Log('U.WallUtil AllowActionButtons output:', result);
+    LogUtil.Debug('= U.WallUtil AllowActionButtons output:', result);
     return result;
   }
 
@@ -56,8 +45,8 @@ class WallOpt {
    * @param targetData - The target data
    */
   ShapeSaveData(shapeObject, targetData) {
-    T3Util.Log('U.WallUtil ShapeSaveData input:', { shapeObject, targetData });
-    T3Util.Log('U.WallUtil ShapeSaveData completed');
+    LogUtil.Debug('= U.WallUtil ShapeSaveData input:', { shapeObject, targetData });
+    LogUtil.Debug('= U.WallUtil ShapeSaveData completed');
   }
 
   /**
@@ -66,7 +55,7 @@ class WallOpt {
    * @param additionalData - Additional data for wall creation (optional)
    */
   AddWall(event?, additionalData?) {
-    T3Util.Log('U.WallUtil AddWall input:', { event, additionalData });
+    LogUtil.Debug('= U.WallUtil AddWall input:', { event, additionalData });
 
     let scaleFactor;
 
@@ -102,7 +91,7 @@ class WallOpt {
     wallStyle.Line.LinePattern = 0;
     wallStyle.Line.Paint.Color = '#000000';
 
-    T3Util.Log('= WallOpt AddWall o', wallStyle);
+    LogUtil.Debug('= WallOpt AddWall o', wallStyle);
 
     // Configure wall dimensions
     const dimensions = sessionData.dimensions;
@@ -124,7 +113,7 @@ class WallOpt {
     };
 
     // Get current selection and create a copy to restore after adding the wall
-    const selectionList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    const selectionList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
     const currentSelection = Utils1.DeepCopy(selectionList);
 
     // Create a new wall line
@@ -135,7 +124,7 @@ class WallOpt {
     OptCMUtil.SetEditMode(NvConstant.EditState.Edit);
     SelectUtil.SelectObjects(currentSelection, false, false);
 
-    T3Util.Log('U.WallUtil AddWall output:', { wallLine });
+    LogUtil.Debug('= U.WallUtil AddWall output:', { wallLine });
   }
 
   /**
@@ -143,7 +132,7 @@ class WallOpt {
    * @param event - Optional event that triggered the stopping of wall creation
    */
   StopAddingWalls(event?) {
-    T3Util.Log('U.WallUtil StopAddingWalls input:', event);
+    LogUtil.Debug('= U.WallUtil StopAddingWalls input:', event);
 
     const optTypes = OptConstant.OptTypes;
 
@@ -152,12 +141,11 @@ class WallOpt {
       this.ToggleAddingWalls();
 
       // Get currently selected objects
-      let selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      let selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         // Reset object draw state and selection properties
         DrawUtil.ResetObjectDraw();
-        // T3Constant.DocContext.SelectionToolSticky = false;
         T3Gv.wallOpt.PostObjectDrawHook();
       } else {
         // Cancel current modal operation
@@ -169,7 +157,7 @@ class WallOpt {
 
       // Re-select any previously selected objects
       let objectsToSelect = [];
-      selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
       if (selectedObjects && selectedObjects.length > 0) {
         objectsToSelect = Utils1.DeepCopy(selectedObjects);
@@ -186,7 +174,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('U.WallUtil StopAddingWalls output: completed');
+    LogUtil.Debug('= U.WallUtil StopAddingWalls output: completed');
   }
 
   /**
@@ -194,9 +182,9 @@ class WallOpt {
    * Delegates to StopAddingWalls to handle necessary cleanup
    */
   CancelObjectDraw() {
-    T3Util.Log('U.WallUtil CancelObjectDraw input: none');
+    LogUtil.Debug('= U.WallUtil CancelObjectDraw input: none');
     this.StopAddingWalls();
-    T3Util.Log('U.WallUtil CancelObjectDraw output: completed');
+    LogUtil.Debug('= U.WallUtil CancelObjectDraw output: completed');
   }
 
   /**
@@ -204,9 +192,9 @@ class WallOpt {
    * @param forceState - Optional boolean to explicitly set the adding walls state
    */
   ToggleAddingWalls(forceState?) {
-    T3Util.Log('U.WallUtil ToggleAddingWalls input:', forceState);
+    LogUtil.Debug('= U.WallUtil ToggleAddingWalls input:', forceState);
     this.addingWalls = forceState !== undefined ? forceState : !this.addingWalls;
-    T3Util.Log('U.WallUtil ToggleAddingWalls output:', this.addingWalls);
+    LogUtil.Debug('= U.WallUtil ToggleAddingWalls output:', this.addingWalls);
   }
 
   /**
@@ -214,9 +202,9 @@ class WallOpt {
    * @returns Boolean indicating if walls are being added
    */
   IsAddingWalls() {
-    T3Util.Log('U.WallUtil IsAddingWalls input: none');
+    LogUtil.Debug('= U.WallUtil IsAddingWalls input: none');
     const result = this.addingWalls;
-    T3Util.Log('U.WallUtil IsAddingWalls output:', result);
+    LogUtil.Debug('= U.WallUtil IsAddingWalls output:', result);
     return result;
   }
 
@@ -227,15 +215,15 @@ class WallOpt {
    * @returns New PolyLineContainer instance or null if type doesn't match
    */
   AddNewPolyLine(objectType, parameters) {
-    T3Util.Log('U.WallUtil AddNewPolyLine input:', { objectType, parameters });
+    LogUtil.Debug('= U.WallUtil AddNewPolyLine input:', { objectType, parameters });
 
     if (objectType !== NvConstant.FNObjectTypes.FlWall) {
-      T3Util.Log('U.WallUtil AddNewPolyLine output: null');
+      LogUtil.Debug('= U.WallUtil AddNewPolyLine output: null');
       return null;
     }
 
     const newPolyLine = new PolyLineContainer(parameters);
-    T3Util.Log('U.WallUtil AddNewPolyLine output:', newPolyLine);
+    LogUtil.Debug('= U.WallUtil AddNewPolyLine output:', newPolyLine);
     return newPolyLine;
   }
 
@@ -244,7 +232,7 @@ class WallOpt {
    * Resets edit mode, cancels modal operation, and resets object drawing
    */
   AddCornerCancel() {
-    T3Util.Log('U.WallUtil AddCornerCancel input: none');
+    LogUtil.Debug('= U.WallUtil AddCornerCancel input: none');
 
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
     OptCMUtil.CancelOperation();
@@ -252,7 +240,7 @@ class WallOpt {
     T3Gv.wallOpt.PostObjectDrawHook();
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-    T3Util.Log('U.WallUtil AddCornerCancel output: completed');
+    LogUtil.Debug('= U.WallUtil AddCornerCancel output: completed');
   }
 
   /**
@@ -261,7 +249,7 @@ class WallOpt {
    * @returns Boolean indicating if the default event was prevented
    */
   AddCorner(event) {
-    T3Util.Log('U.WallUtil AddCorner input:', event);
+    LogUtil.Debug('= U.WallUtil AddCorner input:', event);
 
     try {
       let hitPoint;
@@ -289,7 +277,7 @@ class WallOpt {
       }
 
       // Get the target object and add corner if it's valid
-      const targetObject = DataUtil.GetObjectPtr(targetId, true);
+      const targetObject = ObjectUtil.GetObjectPtr(targetId, true);
 
       if (targetObject && typeof targetObject.AddCorner === 'function') {
         targetObject.AddCorner(targetElement, hitPoint);
@@ -302,7 +290,7 @@ class WallOpt {
       T3Gv.wallOpt.PostObjectDrawHook();
       OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
-      T3Util.Log('U.WallUtil AddCorner output: false');
+      LogUtil.Debug('= U.WallUtil AddCorner output: false');
       return false;
     } catch (error) {
       T3Gv.opt.ExceptionCleanup(error);
@@ -315,7 +303,7 @@ class WallOpt {
    * @param event - The event that triggered corner addition
    */
   AddCornerStart(event) {
-    T3Util.Log('U.WallUtil AddCornerStart input:', event);
+    LogUtil.Debug('= U.WallUtil AddCornerStart input:', event);
 
     this.StopAddingWalls();
     T3Gv.opt.CloseEdit();
@@ -326,7 +314,7 @@ class WallOpt {
 
     for (let i = 0; i < visibleObjectIds.length; i++) {
       const objectId = visibleObjectIds[i];
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (!(object.flags & NvConstant.ObjFlags.Lock)) {
         if (object.objecttype === NvConstant.FNObjectTypes.FlWall) {
@@ -337,7 +325,7 @@ class WallOpt {
 
     UIUtil.SetModalOperation(OptConstant.OptTypes.AddCorner);
 
-    T3Util.Log('U.WallUtil AddCornerStart output: completed');
+    LogUtil.Debug('= U.WallUtil AddCornerStart output: completed');
   }
 
   /**
@@ -345,7 +333,7 @@ class WallOpt {
    * @param drawEvent - The draw event type
    */
   PostObjectDrawHook(drawEvent?) {
-    T3Util.Log('U.WallUtil PostObjectDrawHook input:', drawEvent);
+    LogUtil.Debug('= U.WallUtil PostObjectDrawHook input:', drawEvent);
 
     if (this.addingWalls) {
       if (drawEvent === BaseLine.prototype.LMDrawRelease) {
@@ -355,7 +343,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('U.WallUtil PostObjectDrawHook output: completed');
+    LogUtil.Debug('= U.WallUtil PostObjectDrawHook output: completed');
   }
 
   /**
@@ -364,7 +352,7 @@ class WallOpt {
    * @returns Boolean indicating if default behavior should be prevented
    */
   NotifySetEditMode(editMode) {
-    T3Util.Log('U.WallUtil NotifySetEditMode input:', editMode);
+    LogUtil.Debug('= U.WallUtil NotifySetEditMode input:', editMode);
 
     if (
       editMode === NvConstant.EditState.Edit ||
@@ -372,7 +360,7 @@ class WallOpt {
       editMode === NvConstant.EditState.LinkConnect ||
       editMode === NvConstant.EditState.LinkJoin
     ) {
-      T3Util.Log('U.WallUtil NotifySetEditMode output:', false);
+      LogUtil.Debug('= U.WallUtil NotifySetEditMode output:', false);
       return false;
     }
 
@@ -380,123 +368,7 @@ class WallOpt {
       this.StopAddingWalls();
     }
 
-    T3Util.Log('U.WallUtil NotifySetEditMode output: completed');
-  }
-
-  /**
-   * Creates and adds a new measurement line to the document
-   */
-  AddMeasureLine() {
-    T3Util.Log('U.WallUtil AddMeasureLine input: none');
-
-    const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
-    const isTextVertical = (sessionData.def.textflags & NvConstant.TextFlags.HorizText) === 0;
-    let dimensions = NvConstant.DimensionFlags.Always | sessionData.dimensions;
-    dimensions = Utils2.SetFlag(dimensions, NvConstant.DimensionFlags.Standoff, false);
-
-    this.StopAddingWalls();
-
-    const lineStyle = Utils1.DeepCopy(sessionData.def.style);
-    lineStyle.Line.Thickness = 1;
-    lineStyle.Line.Paint.Color = '#000000';
-    lineStyle.Line.Paint.EndColor = '#000000';
-
-    const measureLineParams = {
-      Frame: { x: 0, y: 0, width: 1, height: 1 },
-      StartPoint: { x: 0, y: 0 },
-      EndPoint: { x: 0, y: 0 },
-      StartArrowID: 32,
-      EndArrowID: 32,
-      StartArrowDisp: false,
-      EndArrowDisp: false,
-      ArrowSizeIndex: 1,
-      StyleRecord: lineStyle,
-      TextGrow: NvConstant.TextGrowBehavior.Horizontal,
-      TextAlign: T3Constant.DocContext.CurrentTextAlignment,
-      TextDirection: isTextVertical,
-      Dimensions: dimensions,
-      TextFlags: NvConstant.TextFlags.HorizText,
-      ShortRef: OptConstant.LineTypes.LsMeasuringTape,
-      targflags: 0,
-      hookflags: 0,
-      bOverrideDefaultStyleOnDraw: true
-    };
-
-    const measureLine = new Line(measureLineParams);
-    DrawUtil.DrawNewObject(measureLine, false);
-
-    T3Util.Log('U.WallUtil AddMeasureLine output: completed');
-  }
-
-  /**
-   * Creates and adds a new measurement area to the document
-   * Configures a rectangular shape with appropriate styling for area measurement
-   */
-  AddMeasureArea() {
-    T3Util.Log('U.WallUtil AddMeasureArea input: none');
-
-    // Get session data
-    const sessionData = T3Gv.stdObj.GetObject(T3Gv.opt.sdDataBlockId).Data;
-
-    // Determine text orientation
-    const isTextVertical = (sessionData.def.textflags & NvConstant.TextFlags.HorizText) === 0;
-
-    // Create a copy of the style
-    const areaStyle = Utils1.DeepCopy(sessionData.def.style);
-
-    // Stop any ongoing wall creation
-    this.StopAddingWalls();
-
-    // Configure measurement area parameters
-    const measureAreaParams = {
-      Frame: {
-        x: 0,
-        y: 0,
-        width: 1,
-        height: 1
-      },
-      StartPoint: {
-        x: 0,
-        y: 0
-      },
-      EndPoint: {
-        x: 0,
-        y: 0
-      },
-      StartArrowID: sessionData.d_sarrow,
-      StartArrowDisp: sessionData.d_sarrowdisp,
-      EndArrowID: sessionData.d_earrow,
-      EndArrowDisp: sessionData.d_earrowdisp,
-      ArrowSizeIndex: sessionData.d_arrowsize,
-      targflags: 0,
-      TextGrow: NvConstant.TextGrowBehavior.Horizontal,
-      TextAlign: T3Constant.DocContext.CurrentTextAlignment,
-      TextDirection: isTextVertical,
-      Dimensions: NvConstant.DimensionFlags.Always | NvConstant.DimensionFlags.Area,
-      TextFlags: NvConstant.TextFlags.HorizText,
-      StyleRecord: areaStyle,
-      bOverrideDefaultStyleOnDraw: true,
-      dataclass: PolygonConstant.ShapeTypes.MEASURE_AREA
-    };
-
-    // Set style properties for area measurement visualization
-    measureAreaParams.StyleRecord.Fill.Paint.FillType = NvConstant.FillTypes.Solid;
-    measureAreaParams.StyleRecord.Fill.Paint.Color = '#FF0000';
-    measureAreaParams.StyleRecord.Fill.Paint.EndColor = '#FF0000';
-    measureAreaParams.StyleRecord.Fill.FillEffect = 0;
-    measureAreaParams.StyleRecord.OutsideEffect.OutsideType = 0;
-    measureAreaParams.StyleRecord.Border.Thickness = 1;
-    measureAreaParams.StyleRecord.Border.LinePattern = DSConstant.LinePatternData[DSConstant.WinLinePatterns.SEP_Dotted];
-    measureAreaParams.StyleRecord.Fill.Paint.Opacity = 0.4;
-    measureAreaParams.StyleRecord.Fill.Paint.EndOpacity = 0.4;
-
-    // Create a new rectangle for area measurement
-    const measureAreaRect = new Instance.Shape.Rect(measureAreaParams);
-
-    // Add the area measurement to the document
-    DrawUtil.DrawNewObject(measureAreaRect, false);
-
-    T3Util.Log('U.WallUtil AddMeasureArea output: completed');
+    LogUtil.Debug('= U.WallUtil NotifySetEditMode output: completed');
   }
 
   /**
@@ -504,9 +376,9 @@ class WallOpt {
    * @returns Boolean indicating layers should always be visible
    */
   AlwaysShowLayers() {
-    T3Util.Log('U.WallUtil AlwaysShowLayers input: none');
+    LogUtil.Debug('= U.WallUtil AlwaysShowLayers input: none');
     const result = true;
-    T3Util.Log('U.WallUtil AlwaysShowLayers output:', result);
+    LogUtil.Debug('= U.WallUtil AlwaysShowLayers output:', result);
     return result;
   }
 
@@ -516,11 +388,11 @@ class WallOpt {
    * @param objectId - The ID of the object to check
    */
   EnsureCubicleBehindOutline(objectId) {
-    T3Util.Log('U.WallUtil EnsureCubicleBehindOutline input:', objectId);
+    LogUtil.Debug('= U.WallUtil EnsureCubicleBehindOutline input:', objectId);
 
     const visibleObjectIds = LayerUtil.ActiveVisibleZList();
     let compareObject = null;
-    const targetObject = DataUtil.GetObjectPtr(objectId, false);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Helper function to check if one object is contained within another
     function isObjectContained(containerObject, contentObject) {
@@ -564,7 +436,7 @@ class WallOpt {
         const currentObjectId = visibleObjectIds[i];
 
         if (objectId !== currentObjectId) {
-          compareObject = DataUtil.GetObjectPtr(currentObjectId, false);
+          compareObject = ObjectUtil.GetObjectPtr(currentObjectId, false);
 
           if (compareObject instanceof PolyLineContainer && isObjectContained(compareObject, targetObject)) {
             const targetIndex = visibleObjectIds.indexOf(targetObject.BlockID);
@@ -584,7 +456,7 @@ class WallOpt {
       }
     }
 
-    T3Util.Log('U.WallUtil EnsureCubicleBehindOutline output: completed');
+    LogUtil.Debug('= U.WallUtil EnsureCubicleBehindOutline output: completed');
   }
 
   /**
@@ -592,9 +464,9 @@ class WallOpt {
    * @returns Boolean indicating if auto-insert is allowed
    */
   AllowAutoInsert() {
-    T3Util.Log('U.WallUtil AllowAutoInsert input: none');
+    LogUtil.Debug('= U.WallUtil AllowAutoInsert input: none');
     const result = false;
-    T3Util.Log('U.WallUtil AllowAutoInsert output:', result);
+    LogUtil.Debug('= U.WallUtil AllowAutoInsert output:', result);
     return result;
   }
 
@@ -603,12 +475,11 @@ class WallOpt {
    * @returns The floor plan context identifier
    */
   GetAutomationContext() {
-    T3Util.Log('U.WallUtil GetAutomationContext input: none');
+    LogUtil.Debug('= U.WallUtil GetAutomationContext input: none');
     const result = KeyboardConstant.Contexts.WallOpt;
-    T3Util.Log('U.WallUtil GetAutomationContext output:', result);
+    LogUtil.Debug('= U.WallUtil GetAutomationContext output:', result);
     return result;
   }
-
 }
 
 export default WallOpt

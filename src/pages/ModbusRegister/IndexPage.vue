@@ -7,87 +7,42 @@
         <q-separator vertical color="white" spaced inset />
         <template v-if="user && isAdmin(user)">
           <!-- Toggle button for live mode -->
-          <q-btn-toggle
-            v-model="liveMode"
-            no-caps
-            rounded
-            unelevated
-            dense
-            size="0.8rem"
-            toggle-color="white"
-            color="blue-6"
-            text-color="white"
-            toggle-text-color="black"
-            padding="2px 10px"
-            :options="[
+          <q-btn-toggle v-model="liveMode" no-caps rounded unelevated dense size="0.8rem" toggle-color="white"
+            color="blue-6" text-color="white" toggle-text-color="black" padding="2px 10px" :options="[
               { label: 'Offline Mode', value: false },
               { label: 'Live Mode', value: true, disable: !isOnline },
-            ]"
-          />
+            ]" />
           <!-- Separator -->
           <q-separator vertical color="white" spaced inset />
           <!-- Toggle button for active tab -->
           <template v-if="liveMode">
-            <q-btn-toggle
-              v-model="activeTab"
-              @update:model-value="reloadData"
-              no-caps
-              rounded
-              unelevated
-              dense
-              size="0.8rem"
-              toggle-color="white"
-              color="blue-6"
-              text-color="white"
-              toggle-text-color="black"
-              padding="2px 10px"
-              :options="[
+            <q-btn-toggle v-model="activeTab" @update:model-value="reloadData" no-caps rounded unelevated dense
+              size="0.8rem" toggle-color="white" color="blue-6" text-color="white" toggle-text-color="black"
+              padding="2px 10px" :options="[
                 { label: 'All Entries', value: 'all' },
                 { label: 'User Pending Changes', value: 'changes' },
-              ]"
-            />
+              ]" />
             <!-- Separator -->
             <q-separator vertical color="white" spaced inset />
           </template>
         </template>
         <!-- Add new row button -->
-        <q-btn
-          icon="add_circle"
-          label="Add New Row"
-          @click="addNewRow"
-          color="white"
-          text-color="grey-8"
-          size="0.7rem"
-          no-caps
-          dense
-          padding="3px 5px"
-        />
+        <q-btn icon="add_circle" label="Add New Row" @click="addNewRow" color="white" text-color="grey-8" size="0.7rem"
+          no-caps dense padding="3px 5px" />
       </template>
       <!-- Search input -->
       <template v-slot:search-input>
-        <q-input
-          class="toolbar-input mr-2"
-          dense
-          standout="bg-grey-2 text-black"
-          v-model="filter"
-          placeholder="Search"
-          @update:model-value="triggerFilterChanged()"
-        >
+        <q-input class="toolbar-input mr-2" dense standout="bg-grey-2 text-black" v-model="filter" placeholder="Search"
+          @update:model-value="triggerFilterChanged()">
           <!-- Search icon -->
           <template #prepend>
             <q-icon v-if="filter === ''" name="search" color="white" />
-            <q-icon
-              v-else
-              name="clear"
-              color="white"
-              class="cursor-pointer"
-              @click="
-                () => {
-                  filter = '';
-                  gridApi.onFilterChanged();
-                }
-              "
-            />
+            <q-icon v-else name="clear" color="white" class="cursor-pointer" @click="
+              () => {
+                filter = '';
+                gridApi.onFilterChanged();
+              }
+            " />
           </template>
         </q-input>
       </template>
@@ -100,156 +55,86 @@
             <q-infinite-scroll @load="loadMoreNotifications" :offset="100">
               <q-list v-if="notifications.length > 0">
                 <!-- Notification list -->
-                <q-item
-                  v-for="notification in notifications"
-                  :key="notification.id"
-                  clickable
-                  class="pt-4 pb-3"
-                >
+                <q-item v-for="notification in notifications" :key="notification.id" clickable class="pt-4 pb-3">
                   <!-- Notification details -->
                   <q-item-section avatar>
                     <q-avatar>
                       <!-- Notification type icon -->
-                      <q-icon
-                        name="check_circle"
-                        size="lg"
-                        v-if="notification.type.endsWith('_APPROVED')"
-                      />
-                      <q-icon
-                        name="cancel"
-                        size="lg"
-                        v-else-if="notification.type.endsWith('_REJECTED')"
-                      />
-                      <q-icon
-                        name="account_circle"
-                        size="lg"
-                        v-else-if="notification.type.startsWith('ADMIN_')"
-                      />
+                      <q-icon name="check_circle" size="lg" v-if="notification.type.endsWith('_APPROVED')" />
+                      <q-icon name="cancel" size="lg" v-else-if="notification.type.endsWith('_REJECTED')" />
+                      <q-icon name="account_circle" size="lg" v-else-if="notification.type.startsWith('ADMIN_')" />
                       <q-icon name="chat" size="lg" v-else />
                       <!-- Unread badge -->
-                      <q-badge
-                        color="red"
-                        rounded
-                        floating
-                        v-if="notification.status === 'UNREAD'"
-                      />
+                      <q-badge color="red" rounded floating v-if="notification.status === 'UNREAD'" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
                     <!-- Notification message -->
-                    <q-item-label
-                      :class="{
-                        'text-gray-400': notification.status !== 'UNREAD',
-                      }"
-                      >{{ notification.message }}</q-item-label
-                    >
+                    <q-item-label :class="{
+                      'text-gray-400': notification.status !== 'UNREAD',
+                    }">{{ notification.message }}</q-item-label>
                     <!-- Notification timestamp -->
                     <q-item-label caption>{{
                       new Date(notification.createdAt).toLocaleString()
-                    }}</q-item-label>
+                      }}</q-item-label>
                     <!-- Notification actions -->
                     <div class="flex justify-end mt-1">
                       <!-- Mark as read button -->
-                      <q-btn
-                        v-if="
-                          notification.status === 'UNREAD' &&
-                          !notification.type.startsWith('ADMIN_')
-                        "
-                        flat
-                        color="primary"
-                        size="0.7rem"
-                        label="Mark as read"
-                        @click="notificationStatusChange(notification, 'READ')"
-                      />
+                      <q-btn v-if="
+                        notification.status === 'UNREAD' &&
+                        !notification.type.startsWith('ADMIN_')
+                      " flat color="primary" size="0.7rem" label="Mark as read"
+                        @click="notificationStatusChange(notification, 'READ')" />
                       <!-- Review button for admin notifications -->
-                      <template
-                        v-else-if="
-                          notification.status === 'UNREAD' &&
-                          notification.type.startsWith('ADMIN_')
-                        "
-                      >
-                        <q-btn
-                          v-if="
-                            [
-                              'ADMIN_ENTRY_CHANGED',
-                              'ADMIN_ENTRY_ADDED',
-                            ].includes(notification.type)
-                          "
-                          flat
-                          size="0.7rem"
-                          label="Review"
-                          @click="
+                      <template v-else-if="
+                        notification.status === 'UNREAD' &&
+                        notification.type.startsWith('ADMIN_')
+                      ">
+                        <q-btn v-if="
+                          [
+                            'ADMIN_ENTRY_CHANGED',
+                            'ADMIN_ENTRY_ADDED',
+                          ].includes(notification.type)
+                        " flat size="0.7rem" label="Review" @click="
                             notificationChangesReviewAction(
                               notification.entry,
                               notification.type
                             )
-                          "
-                        />
-                        <q-btn
-                          v-else-if="
-                            [
-                              'ADMIN_DEVICE_ADDED',
-                              'ADMIN_DEVICE_CHANGED',
-                            ].includes(notification.type)
-                          "
-                          flat
-                          size="0.7rem"
-                          label="Review"
-                          @click="
+                            " />
+                        <q-btn v-else-if="
+                          [
+                            'ADMIN_DEVICE_ADDED',
+                            'ADMIN_DEVICE_CHANGED',
+                          ].includes(notification.type)
+                        " flat size="0.7rem" label="Review" @click="
                             notificationChangesReviewAction(
                               notification.device,
                               notification.type
                             )
-                          "
-                        />
+                            " />
                       </template>
                       <!-- Archive button -->
-                      <template
-                        v-else-if="
-                          notification.status !== 'UNREAD' &&
-                          notification.type.startsWith('ADMIN_')
-                        "
-                      >
-                        <q-chip
-                          v-if="notification.status === 'ADMIN_APPROVED'"
-                          dense
-                          color="primary"
-                          text-color="white"
-                          icon="check_circle"
-                          size="0.7rem"
-                        >
+                      <template v-else-if="
+                        notification.status !== 'UNREAD' &&
+                        notification.type.startsWith('ADMIN_')
+                      ">
+                        <q-chip v-if="notification.status === 'ADMIN_APPROVED'" dense color="primary" text-color="white"
+                          icon="check_circle" size="0.7rem">
                           Approved
                         </q-chip>
-                        <q-chip
-                          v-else-if="notification.status === 'ADMIN_REJECTED'"
-                          dense
-                          color="negative"
-                          text-color="white"
-                          icon="cancel"
-                          size="0.7rem"
-                        >
+                        <q-chip v-else-if="notification.status === 'ADMIN_REJECTED'" dense color="negative"
+                          text-color="white" icon="cancel" size="0.7rem">
                           Rejected
                         </q-chip>
-                        <q-btn
-                          flat
-                          color="primary"
-                          size="0.7rem"
-                          label="Archive"
-                          @click="
-                            notificationStatusChange(notification, 'ARCHIVED')
-                          "
-                        />
+                        <q-btn flat color="primary" size="0.7rem" label="Archive" @click="
+                          notificationStatusChange(notification, 'ARCHIVED')
+                          " />
                       </template>
                       <!-- Mark as unread button -->
-                      <q-btn
-                        v-else-if="notification.status === 'READ'"
-                        flat
-                        size="0.7rem"
-                        label="Mark as unread"
+                      <q-btn v-else-if="notification.status === 'READ'" flat size="0.7rem" label="Mark as unread"
                         @click="
                           notificationStatusChange(notification, 'UNREAD')
-                        "
-                      />
+                          " />
                     </div>
                   </q-item-section>
                 </q-item>
@@ -264,128 +149,58 @@
             </q-infinite-scroll>
           </q-menu>
           <!-- Notification badge -->
-          <q-badge
-            color="red"
-            rounded
-            floating
-            v-if="notifications.find((n) => n.status === 'UNREAD')"
-          />
+          <q-badge color="red" rounded floating v-if="notifications.find((n) => n.status === 'UNREAD')" />
           <q-tooltip>Notifications</q-tooltip>
         </q-btn>
         <!-- Settings button -->
-        <q-btn
-          flat
-          round
-          dense
-          icon="settings"
-          class="mr-2"
-          @click="openSettingsDialog"
-        >
+        <q-btn flat round dense icon="settings" class="mr-2" @click="openSettingsDialog">
           <q-tooltip>Settings</q-tooltip>
         </q-btn>
       </template>
     </user-top-bar>
-    <q-page
-      class="flex flex-col justify-center p-2 flex-1 overflow-hidden"
-      :style-fn="() => {}"
-    >
+    <q-page class="flex flex-col justify-center p-2 flex-1 overflow-hidden" :style-fn="() => { }">
       <div class="flex justify-center mb-2">
-        <q-select
-          ref="deviceSelectRef"
-          class="grow max-w-3xl select-device"
-          options-selected-class="bg-gray-300 text-primary"
-          v-model="selectedDevice"
-          input-debounce="200"
-          option-value="id"
-          option-label="name"
-          fill-input
-          use-input
-          hide-selected
-          filled
-          dense
-          hide-bottom-space
-          popup-content-class="!max-w-min"
-          :options="selectDeviceOptions"
-          @filter="selectDeviceFilterFn"
-          @popup-hide="onSelectDeviceHide"
-          @update:model-value="onSelectDeviceUpdate"
-        >
+        <q-select ref="deviceSelectRef" class="grow max-w-3xl select-device"
+          options-selected-class="bg-gray-300 text-primary" v-model="selectedDevice" input-debounce="200"
+          option-value="id" option-label="name" fill-input use-input hide-selected filled dense hide-bottom-space
+          popup-content-class="!max-w-min" :options="selectDeviceOptions" @filter="selectDeviceFilterFn"
+          @popup-hide="onSelectDeviceHide" @update:model-value="onSelectDeviceUpdate">
           <template #option="opt">
             <q-item v-bind="opt.itemProps" class="flex device-list-item">
               <q-item-section avatar>
-                <q-avatar
-                  square
-                  size="80px"
-                  font-size="70px"
-                  text-color="cyan-8"
-                  icon="image"
-                  v-if="!opt.opt.image && opt.label !== 'All Devices'"
-                />
-                <q-avatar
-                  square
-                  size="80px"
-                  v-else-if="opt.label !== 'All Devices'"
-                >
-                  <img
-                    :src="
-                      liveMode
-                        ? fileUploadEndpoint +
-                          '/' +
-                          opt.opt.image.path +
-                          '?w=80'
-                        : opt.opt.image.path
-                    "
-                  />
+                <q-avatar square size="80px" font-size="70px" text-color="cyan-8" icon="image"
+                  v-if="!opt.opt.image && opt.label !== 'All Devices'" />
+                <q-avatar square size="80px" v-else-if="opt.label !== 'All Devices'">
+                  <img :src="liveMode
+                      ? fileUploadEndpoint +
+                      '/' +
+                      opt.opt.image.path +
+                      '?w=80'
+                      : opt.opt.image.path
+                    " />
                 </q-avatar>
-                <q-avatar
-                  icon="devices"
-                  square
-                  size="80px"
-                  font-size="70px"
-                  v-else
-                />
+                <q-avatar icon="devices" square size="80px" font-size="70px" v-else />
               </q-item-section>
               <q-item-section>
                 <q-item-label>{{ opt.label }}</q-item-label>
                 <q-item-label caption lines="2">{{
                   opt.opt.description
-                }}</q-item-label>
-                <q-btn
-                  v-if="opt.label !== 'All Devices'"
-                  class="device-action-btn hidden absolute right-2.5 top-8"
-                  :id="'device-action-btn-' + opt.opt.id"
-                  dense
-                  flat
-                  size="md"
-                  round
-                  color="primary"
-                  icon="more_vert"
-                  @click.stop
-                >
-                  <q-menu
-                    @update:model-value="
-                      actionMenuToggle('device-action-btn-' + opt.opt.id)
-                    "
-                  >
+                  }}</q-item-label>
+                <q-btn v-if="opt.label !== 'All Devices'" class="device-action-btn hidden absolute right-2.5 top-8"
+                  :id="'device-action-btn-' + opt.opt.id" dense flat size="md" round color="primary" icon="more_vert"
+                  @click.stop>
+                  <q-menu @update:model-value="
+                    actionMenuToggle('device-action-btn-' + opt.opt.id)
+                    ">
                     <q-list style="min-width: 70px">
-                      <q-item
-                        dense
-                        clickable
-                        v-close-popup
-                        @click="updateDeviceAction(opt.opt)"
-                      >
+                      <q-item dense clickable v-close-popup @click="updateDeviceAction(opt.opt)">
                         <q-item-section avatar>
                           <q-icon name="edit" />
                         </q-item-section>
                         <q-item-section>Edit</q-item-section>
                       </q-item>
                       <q-separator />
-                      <q-item
-                        clickable
-                        v-close-popup
-                        dense
-                        @click="deleteDeviceAction(opt.opt)"
-                      >
+                      <q-item clickable v-close-popup dense @click="deleteDeviceAction(opt.opt)">
                         <q-item-section avatar>
                           <q-icon name="delete" />
                         </q-item-section>
@@ -399,40 +214,19 @@
           </template>
         </q-select>
         <div class="flex items-center ml-2">
-          <q-btn
-            icon="add_circle"
-            label="Create New Device"
-            @click="createNewDeviceAction"
-            color="white"
-            text-color="grey-8"
-            size="0.7rem"
-            no-caps
-            dense
-          />
+          <q-btn icon="add_circle" label="Create New Device" @click="createNewDeviceAction" color="white"
+            text-color="grey-8" size="0.7rem" no-caps dense />
         </div>
       </div>
       <div class="flex flex-col flex-1 flex-nowrap">
-        <ag-grid-vue
-          style="width: 100%; height: 100%"
-          class="data-table ag-theme-quartz"
-          :columnDefs="modbusRegColumns"
-          @grid-ready="onGridReady"
-          @firstDataRendered="onFirstDataRendered"
-          @cell-value-changed="updateRow"
-          :getRowId="getRowId"
-          :autoSizeStrategy="autoSizeStrategy"
-          :defaultColDef="defaultColDef"
-          rowModelType="serverSide"
-          :enableBrowserTooltips="true"
-          :suppressCsvExport="true"
-          :suppressExcelExport="true"
-          :columnTypes="columnTypes"
-          :components="{
+        <ag-grid-vue style="width: 100%; height: 100%" class="data-table ag-theme-quartz" :columnDefs="modbusRegColumns"
+          @grid-ready="onGridReady" @firstDataRendered="onFirstDataRendered" @cell-value-changed="updateRow"
+          :getRowId="getRowId" :autoSizeStrategy="autoSizeStrategy" :defaultColDef="defaultColDef"
+          rowModelType="serverSide" :enableBrowserTooltips="true" :suppressCsvExport="true" :suppressExcelExport="true"
+          :columnTypes="columnTypes" :components="{
             RowActionsRenderer,
             SelectEditor,
-          }"
-          :context="gridContext"
-        ></ag-grid-vue>
+          }" :context="gridContext"></ag-grid-vue>
       </div>
     </q-page>
   </div>
@@ -452,24 +246,19 @@
             </tr>
           </thead>
           <tbody>
-            <template
-              v-for="col in [
-                'register_address',
-                'operation',
-                'register_length',
-                'register_name',
-                'data_format',
-                'description',
-                'device_id',
-              ]"
-              :key="col"
-            >
-              <tr
-                v-if="
-                  reviewRowChangesDialog.entry[col] !==
-                  reviewRowChangesDialog.entry.parent[col]
-                "
-              >
+            <template v-for="col in [
+              'register_address',
+              'operation',
+              'register_length',
+              'register_name',
+              'data_format',
+              'description',
+              'device_id',
+            ]" :key="col">
+              <tr v-if="
+                reviewRowChangesDialog.entry[col] !==
+                reviewRowChangesDialog.entry.parent[col]
+              ">
                 <th class="text-left">
                   {{
                     modbusRegColumns.find((c) => c.field === col)?.headerName
@@ -489,23 +278,9 @@
       <q-separator />
 
       <q-card-actions align="right" class="mt-0">
-        <q-btn
-          label="Cancel"
-          color="primary"
-          flat
-          class="q-ml-sm"
-          @click="reviewRowChangesDialog.active = false"
-        />
-        <q-btn
-          label="Reject"
-          color="negative"
-          @click="rejectEntryChanges(reviewRowChangesDialog.entry)"
-        />
-        <q-btn
-          label="Approve"
-          color="primary"
-          @click="approveEntryChanges(reviewRowChangesDialog.entry)"
-        />
+        <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="reviewRowChangesDialog.active = false" />
+        <q-btn label="Reject" color="negative" @click="rejectEntryChanges(reviewRowChangesDialog.entry)" />
+        <q-btn label="Approve" color="primary" @click="approveEntryChanges(reviewRowChangesDialog.entry)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -522,11 +297,7 @@
             <tr>
               <th class="text-left">Actions</th>
               <th class="text-left">User</th>
-              <th
-                class="text-left"
-                v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')"
-                :key="col.field"
-              >
+              <th class="text-left" v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')" :key="col.field">
                 {{ col.headerName }}
               </th>
             </tr>
@@ -535,59 +306,26 @@
             <tr>
               <td class="text-left"></td>
               <td class="text-left font-bold">Original</td>
-              <td
-                class="text-left font-bold"
-                v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')"
-                :key="col.field"
-              >
+              <td class="text-left font-bold" v-for="col in modbusRegColumns.filter((c) => c.field !== 'id')"
+                :key="col.field">
                 {{ reviewAllRowChangesDialog.entry[col.field] }}
               </td>
             </tr>
-            <template
-              v-for="rev in reviewAllRowChangesDialog.entry.revisions"
-              :key="rev.id"
-            >
+            <template v-for="rev in reviewAllRowChangesDialog.entry.revisions" :key="rev.id">
               <tr>
                 <td class="text-left">
                   <div class="flex flex-nowrap gap-2" v-if="!rev.action">
-                    <q-btn
-                      color="primary"
-                      size="sm"
-                      dense
-                      no-caps
-                      label="Approve"
-                      class="px-1"
-                      @click="approveEntryChanges(rev)"
-                    />
-                    <q-btn
-                      color="negative"
-                      size="sm"
-                      dense
-                      no-caps
-                      label="Reject"
-                      class="px-1"
-                      @click="rejectEntryChanges(rev)"
-                    />
+                    <q-btn color="primary" size="sm" dense no-caps label="Approve" class="px-1"
+                      @click="approveEntryChanges(rev)" />
+                    <q-btn color="negative" size="sm" dense no-caps label="Reject" class="px-1"
+                      @click="rejectEntryChanges(rev)" />
                   </div>
                   <div v-else>
-                    <q-chip
-                      v-if="rev.action === 'APPROVED'"
-                      dense
-                      color="primary"
-                      text-color="white"
-                      icon="check_circle"
-                      size="0.7rem"
-                    >
+                    <q-chip v-if="rev.action === 'APPROVED'" dense color="primary" text-color="white"
+                      icon="check_circle" size="0.7rem">
                       Approved
                     </q-chip>
-                    <q-chip
-                      v-else
-                      dense
-                      color="negative"
-                      text-color="white"
-                      icon="cancel"
-                      size="0.7rem"
-                    >
+                    <q-chip v-else dense color="negative" text-color="white" icon="cancel" size="0.7rem">
                       Rejected
                     </q-chip>
                   </div>
@@ -595,18 +333,13 @@
                 <td class="text-left font-bold text-sky-500">
                   {{ rev.user.name }}
                 </td>
-                <td
-                  class="text-left"
-                  v-for="col in modbusRegColumns.filter(
-                    (c) => c.field !== 'id'
-                  )"
-                  :key="col.field"
-                  :class="{
+                <td class="text-left" v-for="col in modbusRegColumns.filter(
+                  (c) => c.field !== 'id'
+                )" :key="col.field" :class="{
                     'bg-yellow-2':
                       rev[col.field] !==
                       reviewAllRowChangesDialog.entry[col.field],
-                  }"
-                >
+                  }">
                   {{ rev[col.field] }}
                 </td>
               </tr>
@@ -617,13 +350,7 @@
       <q-separator />
 
       <q-card-actions align="right" class="mt-0">
-        <q-btn
-          label="Close"
-          color="primary"
-          flat
-          class="q-ml-sm"
-          @click="reviewAllRowChangesDialog.active = false"
-        />
+        <q-btn label="Close" color="primary" flat class="q-ml-sm" @click="reviewAllRowChangesDialog.active = false" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -649,19 +376,15 @@
           </thead>
           <tbody>
             <tr>
-              <td
-                class="text-left"
-                v-for="col in [
-                  'register_address',
-                  'operation',
-                  'register_length',
-                  'register_name',
-                  'data_format',
-                  'description',
-                  'device_id',
-                ]"
-                :key="col"
-              >
+              <td class="text-left" v-for="col in [
+                'register_address',
+                'operation',
+                'register_length',
+                'register_name',
+                'data_format',
+                'description',
+                'device_id',
+              ]" :key="col">
                 {{ reviewRowAddedDialog.entry[col] }}
               </td>
             </tr>
@@ -671,23 +394,9 @@
       <q-separator />
 
       <q-card-actions align="right" class="mt-0">
-        <q-btn
-          label="Cancel"
-          color="primary"
-          flat
-          class="q-ml-sm"
-          @click="reviewRowAddedDialog.active = false"
-        />
-        <q-btn
-          label="Reject"
-          color="negative"
-          @click="rejectEntryChanges(reviewRowAddedDialog.entry)"
-        />
-        <q-btn
-          label="Approve"
-          color="primary"
-          @click="approveEntryChanges(reviewRowAddedDialog.entry)"
-        />
+        <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="reviewRowAddedDialog.active = false" />
+        <q-btn label="Reject" color="negative" @click="rejectEntryChanges(reviewRowAddedDialog.entry)" />
+        <q-btn label="Approve" color="primary" @click="approveEntryChanges(reviewRowAddedDialog.entry)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -701,41 +410,21 @@
       <q-form ref="form" class="flex flex-col" @submit="saveSettings">
         <q-card-section class="scroll" style="max-height: 50vh">
           <q-list bordered class="rounded-borders">
-            <q-expansion-item
-              expand-separator
-              icon="perm_identity"
-              label="Sync Data"
-              caption="Pull & push data to the public modbus registry"
-              default-opened
-            >
+            <q-expansion-item expand-separator icon="perm_identity" label="Sync Data"
+              caption="Pull & push data to the public modbus registry" default-opened>
               <q-card>
                 <q-card-section>
-                  <q-option-group
-                    v-model="settingsDialog.settings.syncData"
-                    :options="[
-                      { label: 'Offline Only', value: 'OFFLINE' },
-                      { label: 'Sync Data', value: 'SYNC' },
-                    ]"
-                  />
-                  <div
-                    v-if="settingsDialog.settings.syncData === 'SYNC'"
-                    class="flex flex-col ml-4"
-                  >
-                    <q-toggle
-                      v-model="settingsDialog.settings.push"
-                      label="Push my changes to the public registry ( except private rows )"
-                    />
-                    <q-toggle
-                      v-model="settingsDialog.settings.pull"
-                      label="Pull data from the public registry"
-                    />
+                  <q-option-group v-model="settingsDialog.settings.syncData" :options="[
+                    { label: 'Offline Only', value: 'OFFLINE' },
+                    { label: 'Sync Data', value: 'SYNC' },
+                  ]" />
+                  <div v-if="settingsDialog.settings.syncData === 'SYNC'" class="flex flex-col ml-4">
+                    <q-toggle v-model="settingsDialog.settings.push"
+                      label="Push my changes to the public registry ( except private rows )" />
+                    <q-toggle v-model="settingsDialog.settings.pull" label="Pull data from the public registry" />
                     <div v-if="settings.pull || settings.push" class="mt-4">
-                      <q-btn
-                        class="q-mt-sm"
-                        label="Sync
-                    Now"
-                        @click="triggerSyncData"
-                      />
+                      <q-btn class="q-mt-sm" label="Sync
+                    Now" @click="triggerSyncData" />
                     </div>
                   </div>
                 </q-card-section>
@@ -746,13 +435,7 @@
         <q-separator />
 
         <q-card-actions align="right" class="mt-0">
-          <q-btn
-            label="Cancel"
-            color="primary"
-            flat
-            class="q-ml-sm"
-            @click="settingsDialog.active = false"
-          />
+          <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="settingsDialog.active = false" />
           <q-btn label="Save" type="submit" color="primary" />
         </q-card-actions>
       </q-form>
@@ -766,53 +449,29 @@
       </q-card-section>
       <q-separator />
       <q-form ref="form" class="q-gutter-md" @submit="createNewDevice">
-        <q-card-section
-          class="flex flex-col flex-nowrap gap-4 scroll"
-          style="max-height: 50vh"
-        >
+        <q-card-section class="flex flex-col flex-nowrap gap-4 scroll" style="max-height: 50vh">
           <div class="flex items-center">
             <div class="image-container relative w-52">
-              <file-upload
-                ref="createDeviceFileUploaderRef"
-                :endpoint="fileUploadEndpoint"
-                :headers="fileUploadHeaders"
-                path="modbus-register/devices"
-                :types="['image/*']"
-                :height="150"
-                @uploaded="newDeviceImageUploaded"
-              />
+              <file-upload ref="createDeviceFileUploaderRef" :endpoint="fileUploadEndpoint" :headers="fileUploadHeaders"
+                path="modbus-register/devices" :types="['image/*']" :height="150" @uploaded="newDeviceImageUploaded" />
             </div>
             <div class="grow ml-4">
-              <q-input
-                v-model="newDevice.name"
-                label="Name"
-                :rules="[
-                  (val) =>
-                    (val && val.length > 0) ||
-                    'Please enter the new device name',
-                ]"
-              />
+              <q-input v-model="newDevice.name" label="Name" :rules="[
+                (val) =>
+                  (val && val.length > 0) ||
+                  'Please enter the new device name',
+              ]" />
             </div>
           </div>
           <div>
             <q-checkbox v-model="newDevice.private" label="Private" />
           </div>
-          <q-input
-            v-model="newDevice.description"
-            label="Description"
-            type="textarea"
-          />
+          <q-input v-model="newDevice.description" label="Description" type="textarea" />
         </q-card-section>
         <q-separator />
 
         <q-card-actions align="right" class="mt-0">
-          <q-btn
-            label="Cancel"
-            color="primary"
-            flat
-            class="q-ml-sm"
-            @click="createDeviceDialog = false"
-          />
+          <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="createDeviceDialog = false" />
           <q-btn label="Submit" type="submit" color="primary" />
         </q-card-actions>
       </q-form>
@@ -826,76 +485,42 @@
       </q-card-section>
       <q-separator />
       <q-form ref="form" class="q-gutter-md" @submit="updateDevice">
-        <q-card-section
-          class="flex flex-col flex-nowrap gap-4 scroll"
-          style="max-height: 50vh"
-        >
+        <q-card-section class="flex flex-col flex-nowrap gap-4 scroll" style="max-height: 50vh">
           <div class="flex items-center">
             <div class="image-container relative w-52">
-              <file-upload
-                v-if="!updateDeviceDialog.data.image"
-                ref="updateDeviceFileUploaderRef"
-                :endpoint="fileUploadEndpoint"
-                :headers="fileUploadHeaders"
-                path="modbus-register/devices"
-                :types="['image/*']"
-                :height="150"
-                @uploaded="updateDeviceImageUploaded"
-              />
+              <file-upload v-if="!updateDeviceDialog.data.image" ref="updateDeviceFileUploaderRef"
+                :endpoint="fileUploadEndpoint" :headers="fileUploadHeaders" path="modbus-register/devices"
+                :types="['image/*']" :height="150" @uploaded="updateDeviceImageUploaded" />
               <q-avatar v-else square size="180px">
                 <img :src="updateDeviceDialog.data.image.path" />
                 <div class="image-actions">
-                  <q-btn
-                    class="absolute right-0 top-0"
-                    flat
-                    size="sm"
-                    color="primary"
-                    icon="delete"
-                    @click="
-                      updateDeviceDialog.data.image_id = null;
-                      updateDeviceDialog.data.image = null;
-                    "
-                  >
+                  <q-btn class="absolute right-0 top-0" flat size="sm" color="primary" icon="delete" @click="
+                    updateDeviceDialog.data.image_id = null;
+                  updateDeviceDialog.data.image = null;
+                  ">
                     <q-tooltip> Delete image </q-tooltip>
                   </q-btn>
                 </div>
               </q-avatar>
             </div>
             <div class="grow ml-4">
-              <q-input
-                v-model="updateDeviceDialog.data.name"
-                label="Name"
-                :rules="[
-                  (val) =>
-                    (val && val.length > 0) ||
-                    'The device name cannot be empty',
-                ]"
-              />
+              <q-input v-model="updateDeviceDialog.data.name" label="Name" :rules="[
+                (val) =>
+                  (val && val.length > 0) ||
+                  'The device name cannot be empty',
+              ]" />
             </div>
           </div>
 
           <div>
-            <q-checkbox
-              v-model="updateDeviceDialog.data.private"
-              label="Private"
-            />
+            <q-checkbox v-model="updateDeviceDialog.data.private" label="Private" />
           </div>
-          <q-input
-            v-model="updateDeviceDialog.data.description"
-            label="Description"
-            type="textarea"
-          />
+          <q-input v-model="updateDeviceDialog.data.description" label="Description" type="textarea" />
         </q-card-section>
         <q-separator />
 
         <q-card-actions align="right" class="mt-0">
-          <q-btn
-            label="Cancel"
-            color="primary"
-            flat
-            class="q-ml-sm"
-            @click="updateDeviceDialog = false"
-          />
+          <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="updateDeviceDialog = false" />
           <q-btn label="Submit" type="submit" color="primary" />
         </q-card-actions>
       </q-form>
@@ -919,11 +544,7 @@
           </thead>
           <tbody>
             <tr>
-              <td
-                class="text-left"
-                v-for="col in ['name', 'description']"
-                :key="col"
-              >
+              <td class="text-left" v-for="col in ['name', 'description']" :key="col">
                 {{ reviewDeviceAddedDialog.data[col] }}
               </td>
             </tr>
@@ -933,23 +554,9 @@
       <q-separator />
 
       <q-card-actions align="right" class="mt-0">
-        <q-btn
-          label="Cancel"
-          color="primary"
-          flat
-          class="q-ml-sm"
-          @click="reviewDeviceAddedDialog.active = false"
-        />
-        <q-btn
-          label="Reject"
-          color="negative"
-          @click="rejectDeviceChanges(reviewDeviceAddedDialog.data)"
-        />
-        <q-btn
-          label="Approve"
-          color="primary"
-          @click="approveDeviceChanges(reviewDeviceAddedDialog.data)"
-        />
+        <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="reviewDeviceAddedDialog.active = false" />
+        <q-btn label="Reject" color="negative" @click="rejectDeviceChanges(reviewDeviceAddedDialog.data)" />
+        <q-btn label="Approve" color="primary" @click="approveDeviceChanges(reviewDeviceAddedDialog.data)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -972,12 +579,10 @@
           </thead>
           <tbody>
             <template v-for="col in ['name', 'description']" :key="col">
-              <tr
-                v-if="
-                  reviewDeviceChangesDialog.data[col] !==
-                  reviewDeviceChangesDialog.data.parent[col]
-                "
-              >
+              <tr v-if="
+                reviewDeviceChangesDialog.data[col] !==
+                reviewDeviceChangesDialog.data.parent[col]
+              ">
                 <th class="text-left capitalize">
                   {{ col }}
                 </th>
@@ -995,23 +600,9 @@
       <q-separator />
 
       <q-card-actions align="right" class="mt-0">
-        <q-btn
-          label="Cancel"
-          color="primary"
-          flat
-          class="q-ml-sm"
-          @click="reviewDeviceChangesDialog.active = false"
-        />
-        <q-btn
-          label="Reject"
-          color="negative"
-          @click="rejectDeviceChanges(reviewDeviceChangesDialog.data)"
-        />
-        <q-btn
-          label="Approve"
-          color="primary"
-          @click="approveDeviceChanges(reviewDeviceChangesDialog.data)"
-        />
+        <q-btn label="Cancel" color="primary" flat class="q-ml-sm" @click="reviewDeviceChangesDialog.active = false" />
+        <q-btn label="Reject" color="negative" @click="rejectDeviceChanges(reviewDeviceChangesDialog.data)" />
+        <q-btn label="Approve" color="primary" @click="approveDeviceChanges(reviewDeviceChangesDialog.data)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -1039,11 +630,12 @@ import {
   modbusRegColumns,
   cellClassRules,
   columnTypes,
-  user,
+  /*user,*/
   isAdmin,
   getModbusRegisterSettings,
   devices,
 } from "../../lib/common";
+import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import UserTopBar from "../../components/UserTopBar.vue";
 
 import RowActionsRenderer from "../../components/grid/RowActionsRenderer.vue";
@@ -1457,7 +1049,7 @@ async function onGridReady(params) {
       });
   });
 }
-function onFirstDataRendered(params) {}
+function onFirstDataRendered(params) { }
 
 // Cleanup function called when the component unmounts
 onBeforeUnmount(() => {
@@ -1524,19 +1116,19 @@ function getServerSideDatasource() {
       api
         .get(
           "modbus-registers?limit=" +
-            limit +
-            "&offset=" +
-            request.startRow +
-            "&order_by=" +
-            sortCol.colDef.field +
-            "&order_dir=" +
-            (request.sortModel[0]?.sort || "desc") +
-            (filter.value ? "&filter=" + filter.value : "") +
-            (activeTab.value === "changes" ? "&has_changes=1" : "") +
-            (selectedDevice.value.name &&
+          limit +
+          "&offset=" +
+          request.startRow +
+          "&order_by=" +
+          sortCol.colDef.field +
+          "&order_dir=" +
+          (request.sortModel[0]?.sort || "desc") +
+          (filter.value ? "&filter=" + filter.value : "") +
+          (activeTab.value === "changes" ? "&has_changes=1" : "") +
+          (selectedDevice.value.name &&
             selectedDevice.value.name !== "All Devices"
-              ? "&device_id=" + selectedDevice.value.id
-              : "")
+            ? "&device_id=" + selectedDevice.value.id
+            : "")
         )
         .then(async (res) => {
           res = await res.json();
@@ -2776,9 +2368,11 @@ function rejectDeviceChanges(device) {
   color: white;
   width: 30%;
 }
+
 .toolbar-input input {
   color: white;
 }
+
 .q-field--focused.toolbar-input input,
 .q-field--focused.toolbar-input .q-icon {
   color: black !important;
@@ -2787,15 +2381,18 @@ function rejectDeviceChanges(device) {
 .data-table {
   max-height: 100%;
 }
+
 .ag-row .row-actions {
   visibility: hidden;
   position: absolute;
   top: 0;
   right: 0;
 }
+
 .ag-row:hover .row-actions {
   visibility: visible;
 }
+
 .select-device.q-field--auto-height.q-field--dense .q-field__control {
   align-items: center;
 }

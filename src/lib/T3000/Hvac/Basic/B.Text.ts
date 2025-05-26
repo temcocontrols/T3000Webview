@@ -8,6 +8,7 @@ import Edit from "./B.Text.Edit"
 import T3Gv from "../Data/T3Gv"
 import CursorConstant from "../Data/Constant/CursorConstant"
 import T3Util from "../Util/T3Util"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents an advanced text editor element with SVG rendering, inline editing,
@@ -138,7 +139,7 @@ class Text extends Element {
   }
 
   SetText(newText, formatStyle?, startPos?, preserveFormatting?, updateTextEntry?) {
-    T3Util.Log("B.Text: SetText input:", { newText, formatStyle, startPos, preserveFormatting, updateTextEntry });
+    LogUtil.Debug("B.Text: SetText input:", { newText, formatStyle, startPos, preserveFormatting, updateTextEntry });
 
     const insertPosition = startPos || 0;
     const textLength = newText.length;
@@ -162,25 +163,25 @@ class Text extends Element {
       this.editor.SetInsertPos(insertPosition + textLength, null, updateTextEntry);
     }
 
-    T3Util.Log("B.Text: SetText output: text updated successfully");
+    LogUtil.Debug("B.Text: SetText output: text updated successfully");
   }
 
   GetText(startIndex, textLength) {
-    T3Util.Log("B.Text: GetText input:", { startIndex, textLength });
+    LogUtil.Debug("B.Text: GetText input:", { startIndex, textLength });
     const result = this.formatter.GetText(startIndex, textLength);
-    T3Util.Log("B.Text: GetText output:", result);
+    LogUtil.Debug("B.Text: GetText output:", result);
     return result;
   }
 
   GetTextLength(): number {
-    T3Util.Log("B.Text: GetTextLength input: none");
+    LogUtil.Debug("B.Text: GetTextLength input: none");
     const textLength = this.formatter.GetTextLength();
-    T3Util.Log("B.Text: GetTextLength output:", textLength);
+    LogUtil.Debug("B.Text: GetTextLength output:", textLength);
     return textLength;
   }
 
   SetRuntimeText(textData, startPos, textLength, preserveFormatting, updateTextEntry) {
-    T3Util.Log("B.Text: SetRuntimeText input:", { textData, startPos, textLength, preserveFormatting, updateTextEntry });
+    LogUtil.Debug("B.Text: SetRuntimeText input:", { textData, startPos, textLength, preserveFormatting, updateTextEntry });
 
     const effectiveStartPos = startPos || 0;
     const newTextLength = textData.text.length;
@@ -200,18 +201,18 @@ class Text extends Element {
       this.editor.SetInsertPos(effectiveStartPos + newTextLength, null, updateTextEntry);
     }
 
-    T3Util.Log("B.Text: SetRuntimeText output: text updated successfully");
+    LogUtil.Debug("B.Text: SetRuntimeText output: text updated successfully");
   }
 
   GetRuntimeText(startIndex, textLength) {
-    T3Util.Log("B.Text: GetRuntimeText input:", { startIndex, textLength });
+    LogUtil.Debug("B.Text: GetRuntimeText input:", { startIndex, textLength });
     const runtimeText = this.formatter.GetRuntimeText(startIndex, textLength);
-    T3Util.Log("B.Text: GetRuntimeText output:", runtimeText);
+    LogUtil.Debug("B.Text: GetRuntimeText output:", runtimeText);
     return runtimeText;
   }
 
   DeleteText(startPosition, deleteLength, updateTextEntry) {
-    T3Util.Log("B.Text: DeleteText input:", { startPosition, deleteLength, updateTextEntry });
+    LogUtil.Debug("B.Text: DeleteText input:", { startPosition, deleteLength, updateTextEntry });
 
     startPosition = startPosition || 0;
 
@@ -244,11 +245,11 @@ class Text extends Element {
       this.editor.SetInsertPos(startPosition, null, updateTextEntry);
     }
 
-    T3Util.Log("B.Text: DeleteText output:", { deletedCharacters: deleteLength, startPosition });
+    LogUtil.Debug("B.Text: DeleteText output:", { deletedCharacters: deleteLength, startPosition });
   }
 
   Copy(useRuntime: boolean): any {
-    T3Util.Log("B.Text: Copy input:", { useRuntime });
+    LogUtil.Debug("B.Text: Copy input:", { useRuntime });
 
     let selectionStart: number = 0;
     let selectionLength: number = 0;
@@ -256,7 +257,7 @@ class Text extends Element {
     if (this.editor.IsActive()) {
       const selection = this.editor.GetSelection();
       if (selection.start === selection.end) {
-        T3Util.Log("B.Text: Copy output: null (empty selection)");
+        LogUtil.Debug("B.Text: Copy output: null (empty selection)");
         return null;
       }
       if (selection.start >= 0 && selection.end > selection.start) {
@@ -269,12 +270,12 @@ class Text extends Element {
       ? this.GetRuntimeText(selectionStart, selectionLength)
       : this.GetText(selectionStart, selectionLength);
 
-    T3Util.Log("B.Text: Copy output:", result);
+    LogUtil.Debug("B.Text: Copy output:", result);
     return result;
   }
 
   Paste(inputText, useRuntime, updateTextEntry) {
-    T3Util.Log("B.Text: Paste input:", { inputText, useRuntime, updateTextEntry });
+    LogUtil.Debug("B.Text: Paste input:", { inputText, useRuntime, updateTextEntry });
     let selectionStart = 0;
     let selectionLength = 0;
     let selection;
@@ -308,11 +309,11 @@ class Text extends Element {
     }
 
     this.CallEditCallback("edit");
-    T3Util.Log("B.Text: Paste output: finished pasting");
+    LogUtil.Debug("B.Text: Paste output: finished pasting");
   }
 
   Delete(updateTextEntry: any) {
-    T3Util.Log("B.Text: Delete input:", { updateTextEntry });
+    LogUtil.Debug("B.Text: Delete input:", { updateTextEntry });
     let selectionStart: number;
     let selectionLength: number;
     let selection: any;
@@ -327,11 +328,11 @@ class Text extends Element {
 
     this.DeleteText(selectionStart, selectionLength, updateTextEntry);
     this.CallEditCallback('edit');
-    T3Util.Log("B.Text: Delete output:", { deletedCharacters: selectionLength, startPosition: selectionStart });
+    LogUtil.Debug("B.Text: Delete output:", { deletedCharacters: selectionLength, startPosition: selectionStart });
   }
 
   SetSelectedFormat(formatStyle) {
-    T3Util.Log("B.Text: SetSelectedFormat input:", { formatStyle });
+    LogUtil.Debug("B.Text: SetSelectedFormat input:", { formatStyle });
     let selectionStart;
     let selectionLength;
 
@@ -345,11 +346,11 @@ class Text extends Element {
 
     this.SetFormat(formatStyle, selectionStart, selectionLength);
     this.CallEditCallback('edit');
-    T3Util.Log("B.Text: SetSelectedFormat output: completed");
+    LogUtil.Debug("B.Text: SetSelectedFormat output: completed");
   }
 
   GetSelectedFormat() {
-    T3Util.Log("B.Text: GetSelectedFormat input: none");
+    LogUtil.Debug("B.Text: GetSelectedFormat input: none");
     let selection, selectionStart, selectionLength;
     if (this.editor.IsActive()) {
       selection = this.editor.GetSelection();
@@ -359,12 +360,12 @@ class Text extends Element {
       }
     }
     const formatResult = this.GetFormat(selectionStart, selectionLength);
-    T3Util.Log("B.Text: GetSelectedFormat output:", formatResult);
+    LogUtil.Debug("B.Text: GetSelectedFormat output:", formatResult);
     return formatResult;
   }
 
   SetSelectedAlignment(alignment: string) {
-    T3Util.Log("B.Text: SetSelectedAlignment input:", { alignment });
+    LogUtil.Debug("B.Text: SetSelectedAlignment input:", { alignment });
     let selectionStart = 0;
     let selectionLength = 0;
     if (this.editor.IsActive()) {
@@ -376,11 +377,11 @@ class Text extends Element {
     }
     this.SetParagraphAlignment(alignment, selectionStart, selectionLength);
     this.CallEditCallback('edit');
-    T3Util.Log("B.Text: SetSelectedAlignment output:", { alignment, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: SetSelectedAlignment output:", { alignment, selectionStart, selectionLength });
   }
 
   GetSelectedAlignment() {
-    T3Util.Log("B.Text: GetSelectedAlignment called");
+    LogUtil.Debug("B.Text: GetSelectedAlignment called");
     let selection, startIndex = 0;
 
     if (this.editor.IsActive()) {
@@ -391,12 +392,12 @@ class Text extends Element {
     }
 
     const alignment = this.GetParagraphAlignment(startIndex);
-    T3Util.Log("B.Text: GetSelectedAlignment output:", alignment);
+    LogUtil.Debug("B.Text: GetSelectedAlignment output:", alignment);
     return alignment;
   }
 
   SetSelectedParagraphStyle(paragraphStyle) {
-    T3Util.Log("B.Text: SetSelectedParagraphStyle input:", { paragraphStyle });
+    LogUtil.Debug("B.Text: SetSelectedParagraphStyle input:", { paragraphStyle });
 
     let selectionStart;
     let selectionLength;
@@ -412,11 +413,11 @@ class Text extends Element {
     this.SetParagraphStyle(paragraphStyle, selectionStart, selectionLength);
     this.CallEditCallback('edit');
 
-    T3Util.Log("B.Text: SetSelectedParagraphStyle output:", { paragraphStyle, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: SetSelectedParagraphStyle output:", { paragraphStyle, selectionStart, selectionLength });
   }
 
   GetSelectedParagraphStyle() {
-    T3Util.Log("B.Text: GetSelectedParagraphStyle input: none");
+    LogUtil.Debug("B.Text: GetSelectedParagraphStyle input: none");
     let selection;
     let startIndex = 0;
 
@@ -428,12 +429,12 @@ class Text extends Element {
     }
 
     const paragraphStyle = this.GetParagraphStyle(startIndex);
-    T3Util.Log("B.Text: GetSelectedParagraphStyle output:", paragraphStyle);
+    LogUtil.Debug("B.Text: GetSelectedParagraphStyle output:", paragraphStyle);
     return paragraphStyle;
   }
 
   SetSelectedHyperlink(hyperlink) {
-    T3Util.Log("B.Text: SetSelectedHyperlink input:", { hyperlink });
+    LogUtil.Debug("B.Text: SetSelectedHyperlink input:", { hyperlink });
 
     let selection;
     let startPosition = 0;
@@ -450,11 +451,11 @@ class Text extends Element {
     this.SetHyperlink(hyperlink, startPosition, selectionLength);
     this.CallEditCallback('edit');
 
-    T3Util.Log("B.Text: SetSelectedHyperlink output:", { hyperlink, startPosition, selectionLength });
+    LogUtil.Debug("B.Text: SetSelectedHyperlink output:", { hyperlink, startPosition, selectionLength });
   }
 
   GetSelectedHyperlink() {
-    T3Util.Log("B.Text: GetSelectedHyperlink input: none");
+    LogUtil.Debug("B.Text: GetSelectedHyperlink input: none");
     let selection = undefined;
     let startPosition = 0;
 
@@ -466,12 +467,12 @@ class Text extends Element {
     }
 
     const hyperlink = this.GetHyperlink(startPosition);
-    T3Util.Log("B.Text: GetSelectedHyperlink output:", hyperlink);
+    LogUtil.Debug("B.Text: GetSelectedHyperlink output:", hyperlink);
     return hyperlink;
   }
 
   DeleteSelectedHyperlink() {
-    T3Util.Log("B.Text: DeleteSelectedHyperlink input: no parameters; checking editor state");
+    LogUtil.Debug("B.Text: DeleteSelectedHyperlink input: no parameters; checking editor state");
     let selection, selectionStart = 0;
     if (this.editor.IsActive()) {
       selection = this.editor.GetSelection();
@@ -481,19 +482,19 @@ class Text extends Element {
     }
     this.DeleteHyperlink(selectionStart);
     this.CallEditCallback("edit");
-    T3Util.Log("B.Text: DeleteSelectedHyperlink output: Deleted hyperlink at position", selectionStart);
+    LogUtil.Debug("B.Text: DeleteSelectedHyperlink output: Deleted hyperlink at position", selectionStart);
   }
 
   SetFormat(newFormat: any, selectionStart: any, selectionLength: any) {
-    T3Util.Log("B.Text: SetFormat input:", { newFormat, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: SetFormat input:", { newFormat, selectionStart, selectionLength });
     const updatedActiveEditStyle = this.formatter.SetFormat(newFormat, selectionStart, selectionLength);
     this.activeEditStyle = updatedActiveEditStyle;
     this.UpdateTextObject();
-    T3Util.Log("B.Text: SetFormat output:", { activeEditStyle: this.activeEditStyle });
+    LogUtil.Debug("B.Text: SetFormat output:", { activeEditStyle: this.activeEditStyle });
   }
 
   GetFormat(startIndex, rangeLength) {
-    T3Util.Log("B.Text: GetFormat input:", { startIndex, rangeLength });
+    LogUtil.Debug("B.Text: GetFormat input:", { startIndex, rangeLength });
     let activeStyle = this.activeEditStyle;
     let result;
     if (rangeLength === 0 && activeStyle >= 0) {
@@ -501,106 +502,106 @@ class Text extends Element {
     } else {
       result = this.formatter.GetCommonFormatForRange(startIndex, rangeLength);
     }
-    T3Util.Log("B.Text: GetFormat output:", result);
+    LogUtil.Debug("B.Text: GetFormat output:", result);
     return result;
   }
 
   SetVerticalAlignment(newAlignment) {
-    T3Util.Log("B.Text: SetVerticalAlignment input:", newAlignment);
+    LogUtil.Debug("B.Text: SetVerticalAlignment input:", newAlignment);
     this.vAlign = newAlignment;
     this.UpdateTextObject();
-    T3Util.Log("B.Text: SetVerticalAlignment output: vAlign updated to", this.vAlign);
+    LogUtil.Debug("B.Text: SetVerticalAlignment output: vAlign updated to", this.vAlign);
   }
 
   GetVerticalAlignment(): string {
-    T3Util.Log("B.Text: GetVerticalAlignment input: none");
+    LogUtil.Debug("B.Text: GetVerticalAlignment input: none");
     const verticalAlignment = this.vAlign;
-    T3Util.Log("B.Text: GetVerticalAlignment output:", verticalAlignment);
+    LogUtil.Debug("B.Text: GetVerticalAlignment output:", verticalAlignment);
     return verticalAlignment;
   }
 
   SetParagraphAlignment(alignment: string, selectionStart: number, selectionLength: number) {
-    T3Util.Log("B.Text: SetParagraphAlignment input:", { alignment, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: SetParagraphAlignment input:", { alignment, selectionStart, selectionLength });
     this.SetParagraphStyle({ just: alignment }, selectionStart, selectionLength);
-    T3Util.Log("B.Text: SetParagraphAlignment output: completed", { alignment, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: SetParagraphAlignment output: completed", { alignment, selectionStart, selectionLength });
   }
 
   GetParagraphAlignment(paragraphIndex: number): string {
-    T3Util.Log("B.Text: GetParagraphAlignment input:", { paragraphIndex });
+    LogUtil.Debug("B.Text: GetParagraphAlignment input:", { paragraphIndex });
     const paragraphStyle = this.GetParagraphStyle(paragraphIndex);
     const alignment = paragraphStyle.just;
-    T3Util.Log("B.Text: GetParagraphAlignment output:", alignment);
+    LogUtil.Debug("B.Text: GetParagraphAlignment output:", alignment);
     return alignment;
   }
 
   SetParagraphStyle(paragraphStyle, startPosition, selectionLength) {
-    T3Util.Log("B.Text: SetParagraphStyle input:", { paragraphStyle, startPosition, selectionLength });
+    LogUtil.Debug("B.Text: SetParagraphStyle input:", { paragraphStyle, startPosition, selectionLength });
     this.formatter.SetParagraphStyle(paragraphStyle, startPosition, selectionLength);
     this.UpdateTextObject();
-    T3Util.Log("B.Text: SetParagraphStyle output: completed");
+    LogUtil.Debug("B.Text: SetParagraphStyle output: completed");
   }
 
   GetParagraphStyle(paragraphIndex: number) {
-    T3Util.Log("B.Text: GetParagraphStyle input:", { paragraphIndex });
+    LogUtil.Debug("B.Text: GetParagraphStyle input:", { paragraphIndex });
     const paragraphStyle = this.formatter.GetParagraphStyle(paragraphIndex);
-    T3Util.Log("B.Text: GetParagraphStyle output:", paragraphStyle);
+    LogUtil.Debug("B.Text: GetParagraphStyle output:", paragraphStyle);
     return paragraphStyle;
   }
 
   GetParagraphCount(): number {
-    T3Util.Log("B.Text: GetParagraphCount input: none");
+    LogUtil.Debug("B.Text: GetParagraphCount input: none");
     const paragraphCount = this.formatter.GetParagraphCount();
-    T3Util.Log("B.Text: GetParagraphCount output:", paragraphCount);
+    LogUtil.Debug("B.Text: GetParagraphCount output:", paragraphCount);
     return paragraphCount;
   }
 
   GetParagraphPosition(paragraphIndex: number) {
-    T3Util.Log("B.Text: GetParagraphPosition input:", { paragraphIndex });
+    LogUtil.Debug("B.Text: GetParagraphPosition input:", { paragraphIndex });
     const position = this.formatter.GetParagraphPosition(paragraphIndex);
-    T3Util.Log("B.Text: GetParagraphPosition output:", position);
+    LogUtil.Debug("B.Text: GetParagraphPosition output:", position);
     return position;
   }
 
   SetHyperlink(url: string, startPos: number, selectionLength: number) {
-    T3Util.Log("B.Text: SetHyperlink input:", { url, startPos, selectionLength });
+    LogUtil.Debug("B.Text: SetHyperlink input:", { url, startPos, selectionLength });
     if (url && url.length) {
       this.formatter.SetHyperlink(url, startPos, selectionLength);
       this.UpdateTextObject();
-      T3Util.Log("B.Text: SetHyperlink output: hyperlink set successfully");
+      LogUtil.Debug("B.Text: SetHyperlink output: hyperlink set successfully");
     } else {
       this.DeleteHyperlink(startPos);
-      T3Util.Log("B.Text: SetHyperlink output: hyperlink deleted");
+      LogUtil.Debug("B.Text: SetHyperlink output: hyperlink deleted");
     }
   }
 
   GetHyperlink(offset) {
-    T3Util.Log("B.Text: GetHyperlink input:", offset);
+    LogUtil.Debug("B.Text: GetHyperlink input:", offset);
     const hyperlink = this.formatter.GetHyperlinkAtOffset(offset);
     const result = hyperlink ? hyperlink.url : null;
-    T3Util.Log("B.Text: GetHyperlink output:", result);
+    LogUtil.Debug("B.Text: GetHyperlink output:", result);
     return result;
   }
 
   DeleteHyperlink(hyperlinkStart: number) {
-    T3Util.Log("B.Text: DeleteHyperlink input:", { hyperlinkStart });
+    LogUtil.Debug("B.Text: DeleteHyperlink input:", { hyperlinkStart });
     this.formatter.ClearHyperlink(hyperlinkStart);
     this.UpdateTextObject();
-    T3Util.Log("B.Text: DeleteHyperlink output: Hyperlink removed at", hyperlinkStart);
+    LogUtil.Debug("B.Text: DeleteHyperlink output: Hyperlink removed at", hyperlinkStart);
   }
 
   GetHyperlinkAtLocation(gestureEvent: any) {
-    T3Util.Log("B.Text: GetHyperlinkAtLocation input:", gestureEvent);
+    LogUtil.Debug("B.Text: GetHyperlinkAtLocation input:", gestureEvent);
     const clientX = gestureEvent.gesture.center.clientX;
     const clientY = gestureEvent.gesture.center.clientY + $(window).scrollTop();
     const convertedCoords = this.doc.ConvertWindowToElemCoords(clientX, clientY, this.textElem.node);
     const hyperlink = this.formatter.GetHyperlinkAtPoint(convertedCoords);
     const result = hyperlink ? hyperlink.url : null;
-    T3Util.Log("B.Text: GetHyperlinkAtLocation output:", result);
+    LogUtil.Debug("B.Text: GetHyperlinkAtLocation output:", result);
     return result;
   }
 
   SetConstraints(maxWidth: number, minWidth: number, minHeight: number) {
-    T3Util.Log("B.Text: SetConstraints input:", { maxWidth, minWidth, minHeight });
+    LogUtil.Debug("B.Text: SetConstraints input:", { maxWidth, minWidth, minHeight });
 
     if (maxWidth !== undefined || minWidth !== undefined) {
       this.formatter.SetLimits({
@@ -614,70 +615,70 @@ class Text extends Element {
     }
 
     this.UpdateTextObject();
-    T3Util.Log("B.Text: SetConstraints output: Constraints updated");
+    LogUtil.Debug("B.Text: SetConstraints output: Constraints updated");
   }
 
   SetEditCallback(callback, callbackData) {
-    T3Util.Log("B.Text: SetEditCallback input:", { callback, callbackData });
+    LogUtil.Debug("B.Text: SetEditCallback input:", { callback, callbackData });
     this.editCallback = callback;
     this.editCallbackData = callbackData;
-    T3Util.Log("B.Text: SetEditCallback output: Callback set successfully");
+    LogUtil.Debug("B.Text: SetEditCallback output: Callback set successfully");
   }
 
   CallEditCallback(actionType, callbackData?) {
-    T3Util.Log("B.Text: CallEditCallback input:", { actionType, callbackData });
+    LogUtil.Debug("B.Text: CallEditCallback input:", { actionType, callbackData });
     if (this.editCallback) {
       const result = this.editCallback(actionType, callbackData, this, this.editCallbackData);
-      T3Util.Log("B.Text: CallEditCallback output:", result);
+      LogUtil.Debug("B.Text: CallEditCallback output:", result);
       return result;
     }
-    T3Util.Log("B.Text: CallEditCallback output:", "No editCallback defined");
+    LogUtil.Debug("B.Text: CallEditCallback output:", "No editCallback defined");
   }
 
   GetTextSize() {
-    T3Util.Log("B.Text: GetTextSize input: no parameters");
+    LogUtil.Debug("B.Text: GetTextSize input: no parameters");
     let textSize = this.formatter.GetTextFormatSize();
     textSize.height = Math.max(textSize.height, this.minHeight);
-    T3Util.Log("B.Text: GetTextSize output:", textSize);
+    LogUtil.Debug("B.Text: GetTextSize output:", textSize);
     return textSize;
   }
 
   GetTextMinDimensions(): any {
-    T3Util.Log("B.Text: GetTextMinDimensions input: none");
+    LogUtil.Debug("B.Text: GetTextMinDimensions input: none");
     const dimensions = this.formatter.GetFormatTextMinDimensions();
-    T3Util.Log("B.Text: GetTextMinDimensions output:", dimensions);
+    LogUtil.Debug("B.Text: GetTextMinDimensions output:", dimensions);
     return dimensions;
   }
 
   SetSize(width: number, minHeight: number) {
-    T3Util.Log("B.Text: SetSize input:", { width, minHeight });
+    LogUtil.Debug("B.Text: SetSize input:", { width, minHeight });
     this.SetConstraints(width, width, minHeight);
-    T3Util.Log("B.Text: SetSize output: constraints set with", { maxWidth: width, minWidth: width, minHeight });
+    LogUtil.Debug("B.Text: SetSize output: constraints set with", { maxWidth: width, minWidth: width, minHeight });
   }
 
   CalcTextFit(inputDimensions: any): any {
-    T3Util.Log("B.Text: CalcTextFit input:", inputDimensions);
+    LogUtil.Debug("B.Text: CalcTextFit input:", inputDimensions);
     const result = this.formatter.CalcTextFit(inputDimensions);
-    T3Util.Log("B.Text: CalcTextFit output:", result);
+    LogUtil.Debug("B.Text: CalcTextFit output:", result);
     return result;
   }
 
   CalcTextWrap(inputDimensions) {
-    T3Util.Log("B.Text: CalcTextWrap input:", inputDimensions);
+    LogUtil.Debug("B.Text: CalcTextWrap input:", inputDimensions);
     const result = this.formatter.CalcTextWrap(inputDimensions);
-    T3Util.Log("B.Text: CalcTextWrap output:", result);
+    LogUtil.Debug("B.Text: CalcTextWrap output:", result);
     return result;
   }
 
   CalcFormatChange(changeData: any): any {
-    T3Util.Log("B.Text: CalcFormatChange input:", changeData);
+    LogUtil.Debug("B.Text: CalcFormatChange input:", changeData);
     const result = this.formatter.CalcFormatChange(changeData);
-    T3Util.Log("B.Text: CalcFormatChange output:", result);
+    LogUtil.Debug("B.Text: CalcFormatChange output:", result);
     return result;
   }
 
   SetRenderingEnabled(isEnabled: boolean) {
-    T3Util.Log("B.Text: SetRenderingEnabled input:", { isEnabled });
+    LogUtil.Debug("B.Text: SetRenderingEnabled input:", { isEnabled });
     const deferredRenderWasNeeded = this.formatter.deferredRenderNeeded;
 
     if (isEnabled === undefined) {
@@ -691,32 +692,32 @@ class Text extends Element {
       }
     }
 
-    T3Util.Log("B.Text: SetRenderingEnabled output: rendering enabled set to", isEnabled);
+    LogUtil.Debug("B.Text: SetRenderingEnabled output: rendering enabled set to", isEnabled);
   }
 
   IsRenderingEnabled(renderingFlag?: any): boolean {
-    T3Util.Log("B.Text: IsRenderingEnabled input:", { renderingFlag });
+    LogUtil.Debug("B.Text: IsRenderingEnabled input:", { renderingFlag });
     const isEnabled = this.formatter.renderingEnabled;
-    T3Util.Log("B.Text: IsRenderingEnabled output:", isEnabled);
+    LogUtil.Debug("B.Text: IsRenderingEnabled output:", isEnabled);
     return isEnabled;
   }
 
   GetContentVersion(): number {
-    T3Util.Log("B.Text: GetContentVersion input: none");
+    LogUtil.Debug("B.Text: GetContentVersion input: none");
     const contentVersion = this.formatter.GetContentVersion();
-    T3Util.Log("B.Text: GetContentVersion output:", contentVersion);
+    LogUtil.Debug("B.Text: GetContentVersion output:", contentVersion);
     return contentVersion;
   }
 
   GetSpellCheck(): any {
-    T3Util.Log("B.Text: GetSpellCheck input: none");
+    LogUtil.Debug("B.Text: GetSpellCheck input: none");
     const spellCheckStatus = this.formatter.GetSpellCheck();
-    T3Util.Log("B.Text: GetSpellCheck output:", spellCheckStatus);
+    LogUtil.Debug("B.Text: GetSpellCheck output:", spellCheckStatus);
     return spellCheckStatus;
   }
 
   SetSpellCheck(isSpellCheckEnabled, updateImmediately) {
-    T3Util.Log("B.Text: SetSpellCheck input:", { isSpellCheckEnabled, updateImmediately });
+    LogUtil.Debug("B.Text: SetSpellCheck input:", { isSpellCheckEnabled, updateImmediately });
 
     // Set the spell check state in the formatter
     this.formatter.SetSpellCheck(isSpellCheckEnabled);
@@ -732,25 +733,25 @@ class Text extends Element {
       }
     }
 
-    T3Util.Log("B.Text: SetSpellCheck output: completed");
+    LogUtil.Debug("B.Text: SetSpellCheck output: completed");
   }
 
   UpdateSpellCheck(isSpellCheckEnabled: boolean): void {
-    T3Util.Log("B.Text: UpdateSpellCheck input:", isSpellCheckEnabled);
+    LogUtil.Debug("B.Text: UpdateSpellCheck input:", isSpellCheckEnabled);
     this.formatter.UpdateSpellCheck(isSpellCheckEnabled);
     this.UpdateTextObject();
-    T3Util.Log("B.Text: UpdateSpellCheck output: Spell check updated and text object refreshed");
+    LogUtil.Debug("B.Text: UpdateSpellCheck output: Spell check updated and text object refreshed");
   }
 
   GetSpellCheckList() {
-    T3Util.Log("B.Text: GetSpellCheckList input: no parameters");
+    LogUtil.Debug("B.Text: GetSpellCheckList input: no parameters");
     const wordList = this.formatter.GetWordList();
-    T3Util.Log("B.Text: GetSpellCheckList output:", wordList);
+    LogUtil.Debug("B.Text: GetSpellCheckList output:", wordList);
     return wordList;
   }
 
   DoSpellCheck(): void {
-    T3Util.Log("B.Text: DoSpellCheck input: none");
+    LogUtil.Debug("B.Text: DoSpellCheck input: none");
 
     if (this.formatter.SpellCheckValid()) {
       this.doc.spellChecker.CheckSpellingForTextObj(this);
@@ -758,20 +759,20 @@ class Text extends Element {
       this.formatter.UpdateSpellCheckFormatting();
     }
 
-    T3Util.Log("B.Text: DoSpellCheck output: completed");
+    LogUtil.Debug("B.Text: DoSpellCheck output: completed");
   }
 
   GetSpellAtLocation(clientX: number, clientY: number) {
-    T3Util.Log("B.Text: GetSpellAtLocation input:", { clientX, clientY });
+    LogUtil.Debug("B.Text: GetSpellAtLocation input:", { clientX, clientY });
     clientY += $(window).scrollTop();
     const elementCoordinates = this.doc.ConvertWindowToElemCoords(clientX, clientY, this.textElem.node);
     const spellResult = this.formatter.GetSpellAtPoint(elementCoordinates);
-    T3Util.Log("B.Text: GetSpellAtLocation output:", spellResult);
+    LogUtil.Debug("B.Text: GetSpellAtLocation output:", spellResult);
     return spellResult;
   }
 
   UpdateTextObject() {
-    T3Util.Log("B.Text: UpdateTextObject input:");
+    LogUtil.Debug("B.Text: UpdateTextObject input:");
 
     const formatSize = this.formatter.GetTextFormatSize();
     let isResized = false;
@@ -842,12 +843,12 @@ class Text extends Element {
       }
       this.lastFmtSize = newFormatSize;
 
-      T3Util.Log("B.Text: UpdateTextObject output:", newFormatSize);
+      LogUtil.Debug("B.Text: UpdateTextObject output:", newFormatSize);
     }
   }
 
   Activate(inputEvent, callbackData) {
-    T3Util.Log("B.Text: Activate input:", { inputEvent, callbackData });
+    LogUtil.Debug("B.Text: Activate input:", { inputEvent, callbackData });
 
     // Reset active edit style and make selection visible
     this.activeEditStyle = -1;
@@ -859,32 +860,32 @@ class Text extends Element {
     // Activate the editor with the provided input event and callback data
     this.editor.Activate(inputEvent, callbackData);
 
-    T3Util.Log("B.Text: Activate output: Editor activated");
+    LogUtil.Debug("B.Text: Activate output: Editor activated");
   }
 
   Deactivate(deactivationEvent: any): void {
-    T3Util.Log("B.Text: Deactivate input:", { deactivationEvent });
+    LogUtil.Debug("B.Text: Deactivate input:", { deactivationEvent });
     this.activeEditStyle = -1;
     this.doc.activeEdit = null;
     this.editor.Deactivate(deactivationEvent);
-    T3Util.Log("B.Text: Deactivate output: Editor deactivated");
+    LogUtil.Debug("B.Text: Deactivate output: Editor deactivated");
   }
 
   IsActive(): boolean {
-    T3Util.Log("B.Text: IsActive input: none");
+    LogUtil.Debug("B.Text: IsActive input: none");
     const isActive = this.editor.IsActive();
-    T3Util.Log("B.Text: IsActive output:", isActive);
+    LogUtil.Debug("B.Text: IsActive output:", isActive);
     return isActive;
   }
 
   SetVirtualKeyboardHook(callback, hookData) {
-    T3Util.Log("B.Text: SetVirtualKeyboardHook input:", { callback, hookData });
+    LogUtil.Debug("B.Text: SetVirtualKeyboardHook input:", { callback, hookData });
     this.editor.SetVirtualKeyboardHook(callback, hookData);
-    T3Util.Log("B.Text: SetVirtualKeyboardHook output: hook set successfully");
+    LogUtil.Debug("B.Text: SetVirtualKeyboardHook output: hook set successfully");
   }
 
   GetSelectedRange(): { start: number; end: number } {
-    T3Util.Log("B.Text: GetSelectedRange input: none");
+    LogUtil.Debug("B.Text: GetSelectedRange input: none");
 
     let selectionRange = { start: -1, end: -1 };
 
@@ -892,16 +893,16 @@ class Text extends Element {
       selectionRange = this.editor.GetSelection();
     }
 
-    T3Util.Log("B.Text: GetSelectedRange output:", selectionRange);
+    LogUtil.Debug("B.Text: GetSelectedRange output:", selectionRange);
     return selectionRange;
   }
 
   SetSelectedRange(startIndex: number, endIndex: number, selectionExtra: any, updateFlag: any) {
-    T3Util.Log("B.Text: SetSelectedRange input:", { startIndex, endIndex, selectionExtra, updateFlag });
+    LogUtil.Debug("B.Text: SetSelectedRange input:", { startIndex, endIndex, selectionExtra, updateFlag });
 
     // If start index is invalid or editor is not active, exit early
     if (startIndex < 0 || !this.editor.IsActive()) {
-      T3Util.Log("B.Text: SetSelectedRange output: Invalid start index or editor not active");
+      LogUtil.Debug("B.Text: SetSelectedRange output: Invalid start index or editor not active");
       return;
     }
 
@@ -914,34 +915,34 @@ class Text extends Element {
     this.editor.SetSelection(startIndex, endIndex, selectionExtra, updateFlag);
     this.CallEditCallback('select');
 
-    T3Util.Log("B.Text: SetSelectedRange output:", { startIndex, endIndex });
+    LogUtil.Debug("B.Text: SetSelectedRange output:", { startIndex, endIndex });
   }
 
   HandleKeyPressEvent(event: any): boolean {
-    T3Util.Log("B.Text: HandleKeyPressEvent input:", event);
+    LogUtil.Debug("B.Text: HandleKeyPressEvent input:", event);
     const isEditorActive = this.editor && this.editor.IsActive();
     const handled = !!isEditorActive && this.editor.HandleKeyPress(event);
-    T3Util.Log("B.Text: HandleKeyPressEvent output:", handled);
+    LogUtil.Debug("B.Text: HandleKeyPressEvent output:", handled);
     return handled;
   }
 
   HandleKeyDownEvent(event: any): boolean {
-    T3Util.Log("B.Text: HandleKeyDownEvent input:", event);
+    LogUtil.Debug("B.Text: HandleKeyDownEvent input:", event);
     const isEditorActive = this.editor && this.editor.IsActive();
     const result = isEditorActive && this.editor.HandleKeyDown(event);
-    T3Util.Log("B.Text: HandleKeyDownEvent output:", result);
+    LogUtil.Debug("B.Text: HandleKeyDownEvent output:", result);
     return result;
   }
 
   HideSelection(): void {
-    T3Util.Log("B.Text: HideSelection input: none");
+    LogUtil.Debug("B.Text: HideSelection input: none");
     this.selectElem.plot();
     this.svgObj.remove(this.selectElem);
-    T3Util.Log("B.Text: HideSelection output: selection hidden");
+    LogUtil.Debug("B.Text: HideSelection output: selection hidden");
   }
 
   ShowSelection(selectionData: any): void {
-    T3Util.Log("B.Text: ShowSelection input:", selectionData);
+    LogUtil.Debug("B.Text: ShowSelection input:", selectionData);
 
     this.selectElem.attr('fill', '#8888FF');
     this.selectElem.attr('stroke-width', 0);
@@ -961,11 +962,11 @@ class Text extends Element {
 
     this.svgObj.add(this.selectElem);
 
-    T3Util.Log("B.Text: ShowSelection output: selection displayed successfully");
+    LogUtil.Debug("B.Text: ShowSelection output: selection displayed successfully");
   }
 
   SetSelectionVisible(isVisible: boolean) {
-    T3Util.Log("B.Text: SetSelectionVisible input:", { isVisible });
+    LogUtil.Debug("B.Text: SetSelectionVisible input:", { isVisible });
 
     this.selectHidden = !isVisible;
 
@@ -979,11 +980,11 @@ class Text extends Element {
       }
     }
 
-    T3Util.Log("B.Text: SetSelectionVisible output: selection visibility set to", isVisible);
+    LogUtil.Debug("B.Text: SetSelectionVisible output: selection visibility set to", isVisible);
   }
 
   HideInputCursor(): void {
-    T3Util.Log("B.Text: HideInputCursor input: no parameters");
+    LogUtil.Debug("B.Text: HideInputCursor input: no parameters");
     if (this.cursorTimer !== undefined) {
       clearInterval(this.cursorTimer);
       this.cursorTimer = undefined;
@@ -991,11 +992,11 @@ class Text extends Element {
     this.cursorElem.attr('visibility', 'hidden');
     this.svgObj.remove(this.cursorElem);
     this.cursorPos = undefined;
-    T3Util.Log("B.Text: HideInputCursor output: Cursor hidden");
+    LogUtil.Debug("B.Text: HideInputCursor output: Cursor hidden");
   }
 
   ShowInputCursor(x: number, startY: number, endY: number) {
-    T3Util.Log("B.Text: ShowInputCursor input:", { x, startY, endY });
+    LogUtil.Debug("B.Text: ShowInputCursor input:", { x, startY, endY });
 
     const strokeWidth = this.doc.ConverWindowToDocLength(1);
     if (this.cursorTimer !== undefined) {
@@ -1036,7 +1037,7 @@ class Text extends Element {
       this.editor.virtualKeyboardHook(this, true);
     }
 
-    T3Util.Log("B.Text: ShowInputCursor output: Cursor shown at", {
+    LogUtil.Debug("B.Text: ShowInputCursor output: Cursor shown at", {
       x,
       y1: startY + this.textElemOffset,
       y2: endY + this.textElemOffset
@@ -1044,7 +1045,7 @@ class Text extends Element {
   }
 
   GetInputCursorPos(): { x1: number, y1: number, x2: number, y2: number } | null {
-    T3Util.Log("B.Text: GetInputCursorPos input: none");
+    LogUtil.Debug("B.Text: GetInputCursorPos input: none");
 
     if (this.cursorPos) {
       const startWindowCoords = this.doc.ConvertElemToWindowCoords(this.cursorPos.x, this.cursorPos.y1, this.svgObj.node);
@@ -1055,16 +1056,16 @@ class Text extends Element {
         x2: endWindowCoords.x,
         y2: endWindowCoords.y
       };
-      T3Util.Log("B.Text: GetInputCursorPos output:", cursorWindowPosition);
+      LogUtil.Debug("B.Text: GetInputCursorPos output:", cursorWindowPosition);
       return cursorWindowPosition;
     }
 
-    T3Util.Log("B.Text: GetInputCursorPos output: cursor position is not defined");
+    LogUtil.Debug("B.Text: GetInputCursorPos output: cursor position is not defined");
     return null;
   }
 
   SetCursorState(newCursorState) {
-    T3Util.Log("B.Text: SetCursorState input:", newCursorState);
+    LogUtil.Debug("B.Text: SetCursorState input:", newCursorState);
 
     // Update the cursor state and clear all existing cursors
     this.cursorState = newCursorState;
@@ -1089,32 +1090,32 @@ class Text extends Element {
       this.formatter.SetHyperlinkCursor();
     }
 
-    T3Util.Log("B.Text: SetCursorState output: cursorState set to", newCursorState);
+    LogUtil.Debug("B.Text: SetCursorState output: cursorState set to", newCursorState);
   }
 
   GetCursorState(): number {
-    T3Util.Log("B.Text: GetCursorState input: none");
+    LogUtil.Debug("B.Text: GetCursorState input: none");
     const currentCursorState = this.cursorState;
-    T3Util.Log("B.Text: GetCursorState output:", currentCursorState);
+    LogUtil.Debug("B.Text: GetCursorState output:", currentCursorState);
     return currentCursorState;
   }
 
   DisableHyperlinks(shouldDisableHyperlinks: boolean) {
-    T3Util.Log("B.Text: DisableHyperlinks input:", { shouldDisableHyperlinks });
+    LogUtil.Debug("B.Text: DisableHyperlinks input:", { shouldDisableHyperlinks });
 
     this.linksDisabled = shouldDisableHyperlinks;
     this.SetCursorState(this.cursorState);
     this.UpdateTextObject();
 
-    T3Util.Log("B.Text: DisableHyperlinks output:", { linksDisabled: this.linksDisabled });
+    LogUtil.Debug("B.Text: DisableHyperlinks output:", { linksDisabled: this.linksDisabled });
   }
 
   InitDataSettings(tableId: number, recordId: number, styleOverride: any) {
-    T3Util.Log("B.Text: InitDataSettings input:", { tableId, recordId, styleOverride });
+    LogUtil.Debug("B.Text: InitDataSettings input:", { tableId, recordId, styleOverride });
     this.dataTableID = tableId;
     this.dataRecordID = recordId;
     this.dataStyleOverride = styleOverride;
-    T3Util.Log("B.Text: InitDataSettings output:", {
+    LogUtil.Debug("B.Text: InitDataSettings output:", {
       dataTableID: this.dataTableID,
       dataRecordID: this.dataRecordID,
       dataStyleOverride: this.dataStyleOverride
@@ -1122,31 +1123,31 @@ class Text extends Element {
   }
 
   IsDataInitialized(): boolean {
-    T3Util.Log("B.Text: isDataInitialized input: no parameters");
+    LogUtil.Debug("B.Text: isDataInitialized input: no parameters");
     const initialized = this.dataTableID > 0 && this.dataRecordID > 0;
-    T3Util.Log("B.Text: isDataInitialized output:", initialized);
+    LogUtil.Debug("B.Text: isDataInitialized output:", initialized);
     return initialized;
   }
 
   GetDataField(startPosition: number) {
-    T3Util.Log("B.Text: GetDataField input:", { startPosition });
+    LogUtil.Debug("B.Text: GetDataField input:", { startPosition });
     const dataField = this.formatter.GetDataField(startPosition);
-    T3Util.Log("B.Text: GetDataField output:", dataField);
+    LogUtil.Debug("B.Text: GetDataField output:", dataField);
     return dataField;
   }
 
   InsertDataField(fieldId: string, startPosition: number, preserveFormatting: boolean) {
-    T3Util.Log("B.Text: InsertDataField input:", { fieldId, startPosition, preserveFormatting });
+    LogUtil.Debug("B.Text: InsertDataField input:", { fieldId, startPosition, preserveFormatting });
     const dataText = this.GetDataText(fieldId, this.formatter.GetDataNameDisplay());
     const dataFieldInfo = {
       dataField: Formatter.FormatDataFieldID(fieldId, true)
     };
     this.SetText(dataText, dataFieldInfo, startPosition, preserveFormatting);
-    T3Util.Log("B.Text: InsertDataField output: data field inserted", { fieldId, startPosition, preserveFormatting });
+    LogUtil.Debug("B.Text: InsertDataField output: data field inserted", { fieldId, startPosition, preserveFormatting });
   }
 
   PasteDataField(dataFieldId: string): void {
-    T3Util.Log("B.Text: PasteDataField input:", { dataFieldId });
+    LogUtil.Debug("B.Text: PasteDataField input:", { dataFieldId });
     let selectionStart = 0;
     let selectionLength = 0;
     let selection;
@@ -1161,25 +1162,25 @@ class Text extends Element {
 
     this.InsertDataField(dataFieldId, selectionStart, selectionLength);
     this.CallEditCallback('edit');
-    T3Util.Log("B.Text: PasteDataField output:", { dataFieldId, selectionStart, selectionLength });
+    LogUtil.Debug("B.Text: PasteDataField output:", { dataFieldId, selectionStart, selectionLength });
   }
 
   HasDataFields(): boolean {
-    T3Util.Log("B.Text: HasDataFields input: no parameters");
+    LogUtil.Debug("B.Text: HasDataFields input: no parameters");
     const hasDataFields = this.formatter.HasDataFields();
-    T3Util.Log("B.Text: HasDataFields output:", hasDataFields);
+    LogUtil.Debug("B.Text: HasDataFields output:", hasDataFields);
     return hasDataFields;
   }
 
   HasDataField(dataField: any) {
-    T3Util.Log("B.Text: HasDataField input:", dataField);
+    LogUtil.Debug("B.Text: HasDataField input:", dataField);
     const result = this.formatter.HasDataField(dataField);
-    T3Util.Log("B.Text: HasDataField output:", result);
+    LogUtil.Debug("B.Text: HasDataField output:", result);
     return result;
   }
 
   UpdateFromData(tableId?, recordId?) {
-    T3Util.Log("B.Text: UpdateFromData input:", { tableId, recordId });
+    LogUtil.Debug("B.Text: UpdateFromData input:", { tableId, recordId });
 
     if (tableId !== undefined && recordId !== undefined) {
       // If the provided table or record id is different, reset the style override
@@ -1192,32 +1193,32 @@ class Text extends Element {
     this.formatter.RebuildFromData();
     this.UpdateTextObject();
 
-    T3Util.Log("B.Text: UpdateFromData output:", "Data updated successfully");
+    LogUtil.Debug("B.Text: UpdateFromData output:", "Data updated successfully");
   }
 
   SetDataNameDisplay(dataName: string) {
-    T3Util.Log("B.Text: SetDataNameDisplay input:", { dataName });
+    LogUtil.Debug("B.Text: SetDataNameDisplay input:", { dataName });
 
     this.formatter.SetDataNameDisplay(dataName);
     this.UpdateFromData(this.dataTableID, this.dataRecordID);
 
-    T3Util.Log("B.Text: SetDataNameDisplay output: Data name display updated");
+    LogUtil.Debug("B.Text: SetDataNameDisplay output: Data name display updated");
   }
 
   GetDataNameDisplay(): string {
-    T3Util.Log("B.Text: GetDataNameDisplay input: no parameters");
+    LogUtil.Debug("B.Text: GetDataNameDisplay input: no parameters");
     const dataNameDisplay = this.formatter.GetDataNameDisplay();
-    T3Util.Log("B.Text: GetDataNameDisplay output:", dataNameDisplay);
+    LogUtil.Debug("B.Text: GetDataNameDisplay output:", dataNameDisplay);
     return dataNameDisplay;
   }
 
   GetDataText(fieldId: string, useFieldName: boolean): string {
-    T3Util.Log("B.Text: GetDataText input:", { fieldId, useFieldName });
+    LogUtil.Debug("B.Text: GetDataText input:", { fieldId, useFieldName });
 
     let result: string = ' ';
 
     if (this.dataTableID < 0 || this.dataRecordID < 0) {
-      T3Util.Log("B.Text: GetDataText output:", result);
+      LogUtil.Debug("B.Text: GetDataText output:", result);
       return result;
     }
 
@@ -1236,16 +1237,16 @@ class Text extends Element {
       result = ' ';
     }
 
-    T3Util.Log("B.Text: GetDataText output:", result);
+    LogUtil.Debug("B.Text: GetDataText output:", result);
     return result;
   }
 
   GetDataStyle(dataFieldId: string): any[] {
-    T3Util.Log("B.Text: GetDataStyle input:", { dataFieldId });
+    LogUtil.Debug("B.Text: GetDataStyle input:", { dataFieldId });
     let styleArray: any[] = [];
 
     if (this.dataTableID < 0 || this.dataRecordID < 0) {
-      T3Util.Log("B.Text: GetDataStyle output:", styleArray);
+      LogUtil.Debug("B.Text: GetDataStyle output:", styleArray);
       return styleArray;
     }
 
@@ -1256,12 +1257,12 @@ class Text extends Element {
       styleArray = TData.FieldedDataParseStyle(fieldStyle);
     }
 
-    T3Util.Log("B.Text: GetDataStyle output:", styleArray);
+    LogUtil.Debug("B.Text: GetDataStyle output:", styleArray);
     return styleArray;
   }
 
   CheckDataExists(dataFieldId: string): boolean {
-    T3Util.Log("B.Text: CheckDataExists input:", { dataFieldId });
+    LogUtil.Debug("B.Text: CheckDataExists input:", { dataFieldId });
 
     const tableIsValid = this.dataTableID >= 0;
     const recordIsValid = this.dataRecordID >= 0;
@@ -1273,34 +1274,34 @@ class Text extends Element {
       exists = !!record[formattedFieldId];
     }
 
-    T3Util.Log("B.Text: CheckDataExists output:", exists);
+    LogUtil.Debug("B.Text: CheckDataExists output:", exists);
     return exists;
   }
 
   RenderDataFieldHilites(): void {
-    T3Util.Log("B.Text: RenderDataFieldHilites input: no parameters");
+    LogUtil.Debug("B.Text: RenderDataFieldHilites input: no parameters");
     this.formatter.RenderDataFieldHilites(this.decorationAreaElem);
-    T3Util.Log("B.Text: RenderDataFieldHilites output: Data field highlights rendered");
+    LogUtil.Debug("B.Text: RenderDataFieldHilites output: Data field highlights rendered");
   }
 
   ClearDataFieldHilites() {
-    T3Util.Log("B.Text: ClearDataFieldHilites input: no parameters");
+    LogUtil.Debug("B.Text: ClearDataFieldHilites input: no parameters");
     this.formatter.ClearDataFieldHilites(this.decorationAreaElem);
-    T3Util.Log("B.Text: ClearDataFieldHilites output: Data field hilites cleared");
+    LogUtil.Debug("B.Text: ClearDataFieldHilites output: Data field hilites cleared");
   }
 
   RemapDataFields(dataMapping: any) {
-    T3Util.Log("B.Text: RemapDataFields input:", dataMapping);
+    LogUtil.Debug("B.Text: RemapDataFields input:", dataMapping);
 
     if (this.HasDataFields()) {
       this.formatter.RemapDataFields(dataMapping);
     }
 
-    T3Util.Log("B.Text: RemapDataFields output: completed remapping");
+    LogUtil.Debug("B.Text: RemapDataFields output: completed remapping");
   }
 
   static RemapDataFieldsInRuntimeText(runtimeText: any, mappingArray: any[]) {
-    T3Util.Log("B.Text: RemapDataFieldsInRuntimeText input:", { runtimeText, mappingArray });
+    LogUtil.Debug("B.Text: RemapDataFieldsInRuntimeText input:", { runtimeText, mappingArray });
 
     function transformDataField(dataField: string): string {
       const parts = dataField.split('_');
@@ -1323,7 +1324,7 @@ class Text extends Element {
       }
     }
 
-    T3Util.Log("B.Text: RemapDataFieldsInRuntimeText output:", runtimeText);
+    LogUtil.Debug("B.Text: RemapDataFieldsInRuntimeText output:", runtimeText);
   }
 }
 

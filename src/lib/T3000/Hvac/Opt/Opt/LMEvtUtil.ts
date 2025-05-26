@@ -15,7 +15,7 @@ import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import KeyboardConstant from "../Keyboard/KeyboardConstant";
 import WallOpt from '../Wall/WallOpt';
@@ -31,11 +31,12 @@ import TextUtil from './TextUtil';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import UIUtil from '../UI/UIUtil';
 import ToolActUtil from './ToolActUtil';
+import LogUtil from '../../Util/LogUtil';
 
 class LMEvtUtil {
 
   static LMStampPostRelease(completeOperation: boolean): void {
-    T3Util.Log("O.Opt LMStampPostRelease - Input:", { completeOperation });
+    LogUtil.Debug("= U.LMEvtUtil LMStampPostRelease - Input:", { completeOperation });
 
     let hookUpdateStatus: number;
     let flowHookResult: boolean = false;
@@ -82,16 +83,7 @@ class LMEvtUtil {
           false
         );
       } else if (T3Gv.opt.linkParams && (T3Gv.opt.linkParams.ConnectIndex >= 0 || T3Gv.opt.linkParams.InitialHook >= 0)) {
-        // If connection indexes or an initial hook exists, handle flow chart hook logic
-        // if (T3Gv.gFlowChartManager) {
-        //   flowHookResult = T3Gv.gFlowChartManager.FlowChartHook(
-        //     this.actionStoredObjectId,
-        //     this.linkParams.InitialHook,
-        //     this.linkParams.ConnectIndex,
-        //     this.linkParams.HookIndex,
-        //     this.linkParams.ConnectPt
-        //   );
-        // }
+
         if (!flowHookResult) {
           if (T3Gv.opt.linkParams.ConnectHookFlag === NvConstant.HookFlags.LcAutoInsert) {
             this.SD_AutoInsertShape(T3Gv.opt.actionStoredObjectId, T3Gv.opt.linkParams.ConnectIndex);
@@ -117,17 +109,17 @@ class LMEvtUtil {
     // Reset linkParams
     T3Gv.opt.linkParams = null;
 
-    T3Util.Log("O.Opt LMStampPostRelease - Output: Operation completed");
+    LogUtil.Debug("= U.LMEvtUtil LMStampPostRelease - Output: Operation completed");
   }
 
   /**
    * Prepares for stamping an object onto the document
    */
   static LMStampPreTrack() {
-    T3Util.Log("O.Opt LMStampPreTrack - Input: No parameters");
+    LogUtil.Debug("= U.LMEvtUtil LMStampPreTrack - Input: No parameters");
 
     // Get the session data (not directly used in this function)
-    DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Initialize link parameters
     T3Gv.opt.linkParams = new LinkParameters();
@@ -140,7 +132,7 @@ class LMEvtUtil {
       T3Gv.opt.linkParams.DropOnLine = true;
     }
 
-    T3Util.Log("O.Opt LMStampPreTrack - Output: Link parameters initialized", {
+    LogUtil.Debug("= U.LMEvtUtil LMStampPreTrack - Output: Link parameters initialized", {
       autoInsert: T3Gv.opt.linkParams.AutoInsert,
       dropOnLine: T3Gv.opt.linkParams.DropOnLine || false
     });
@@ -153,30 +145,30 @@ class LMEvtUtil {
    * @returns The adjusted position based on connections
    */
   static LMStampDuringTrack(position, drawingObject) {
-    T3Util.Log("O.Opt LMStampDuringTrack - Input:", { position, drawingObject: drawingObject?.BlockID });
+    LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Input:", { position, drawingObject: drawingObject?.BlockID });
 
     let hookPoints;
 
     // Early exit conditions
     if (T3Gv.opt.actionStoredObjectId < 0) {
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: No action object ID", position);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: No action object ID", position);
       return position;
     }
 
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: Using move list, returning original position", position);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: Using move list, returning original position", position);
       return position;
     }
 
     if (drawingObject == null) {
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: No drawing object", position);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: No drawing object", position);
       return position;
     }
 
     // Get hook points for the object
     hookPoints = HookUtil.MoveGetHookPoints(T3Gv.opt.actionStoredObjectId, drawingObject, 0, 0);
     if (!hookPoints) {
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: No hook points", position);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: No hook points", position);
       return position;
     }
 
@@ -202,7 +194,7 @@ class LMEvtUtil {
         y: position.y + T3Gv.opt.dragDeltaY
       };
 
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: Drop-on-line adjusted position", adjustedPosition);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: Drop-on-line adjusted position", adjustedPosition);
       return adjustedPosition;
     }
 
@@ -229,130 +221,12 @@ class LMEvtUtil {
         y: position.y + T3Gv.opt.dragDeltaY
       };
 
-      T3Util.Log("O.Opt LMStampDuringTrack - Output: Connection/join adjusted position", adjustedPosition);
+      LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: Connection/join adjusted position", adjustedPosition);
       return adjustedPosition;
     }
 
-    T3Util.Log("O.Opt LMStampDuringTrack - Output: No adjustments needed", position);
+    LogUtil.Debug("= U.LMEvtUtil LMStampDuringTrack - Output: No adjustments needed", position);
     return position;
-  }
-
-  /**
-   * Handles clicks on shape icons in the SVG document
-   * @param event - The event that triggered the icon click
-   * @param objectId - ID of the object containing the icon
-   * @param iconType - Type of icon that was clicked
-   * @param userData - Additional data related to the icon
-   * @returns True if the click was handled, false otherwise
-   */
-  static LMShapeIconClick(event, objectId, iconType, userData) {
-    T3Util.Log("O.Opt LMShapeIconClick - Input:", { event, objectId, iconType, userData });
-
-    // Get the object corresponding to the icon
-    let drawingObject = DataUtil.GetObjectPtr(objectId, false);
-    if (drawingObject == null) {
-      T3Util.Log("O.Opt LMShapeIconClick - Output: false (Object not found)");
-      return false;
-    }
-
-    // Check if object is inside a container cell
-    if (drawingObject instanceof Instance.Shape.ShapeContainer) {
-      const cellContainer = T3Gv.opt.ContainerIsInCell(drawingObject);
-      if (cellContainer) {
-        drawingObject = cellContainer.obj;
-        objectId = drawingObject.BlockID;
-      }
-    }
-
-    // Prevent clicking on locked objects
-    if (drawingObject.flags & NvConstant.ObjFlags.Lock) {
-      T3Util.Log("O.Opt LMShapeIconClick - Output: false (Object is locked)");
-      return false;
-    }
-
-    // Only handle clicks in default edit mode
-    if (OptCMUtil.GetEditMode() !== NvConstant.EditState.Default) {
-      T3Util.Log("O.Opt LMShapeIconClick - Output: false (Not in default edit mode)");
-      return false;
-    }
-
-    // Handle based on icon type
-    switch (iconType) {
-      case OptConstant.ShapeIconType.HyperLink:
-        // Handle regular hyperlink
-        const hyperlinkUrl = drawingObject.GetHyperlink(userData);
-
-        if (hyperlinkUrl !== '') {
-          if (event.gesture) {
-            event.gesture.stopDetect();
-          }
-          return true;
-        }
-        return true;
-
-      case OptConstant.ShapeIconType.ExpandedView:
-        // Handle expanded view
-        let expandedViewId;
-        const cellForExpandedView = drawingObject.IsNoteCell(userData);
-        expandedViewId = cellForExpandedView ? cellForExpandedView.ExpandedViewID : drawingObject.ExpandedViewID;
-        T3Gv.opt.ShowExpandedView(expandedViewId, event);
-        T3Util.Log("O.Opt LMShapeIconClick - Output: false (Expanded view shown)");
-        break;
-
-      case OptConstant.ShapeIconType.Comment:
-        // Handle comment icon
-        let commentId = null;
-
-        // Extract comment ID from user data if available
-        if (userData && userData.split) {
-          const parts = userData.split('.');
-          if (parts[1]) {
-            commentId = parseInt(parts[1], 10);
-          }
-        }
-
-        T3Gv.opt.EditComments(commentId);
-        T3Util.Log("O.Opt LMShapeIconClick - Output: false (Comment edit opened)");
-        break;
-
-      case OptConstant.ShapeIconType.Notes:
-        // Handle notes icon
-        const cellForNote = drawingObject.IsNoteCell(userData);
-
-        // Close any active text edit
-        if (!T3Gv.opt.bInNoteEdit) {
-          T3Gv.opt.DeactivateAllTextEdit(false);
-        } else if (T3Gv.opt.curNoteShape == objectId && T3Gv.opt.curNoteTableCell == cellForNote) {
-          // Toggle off current note if clicking the same one
-          this.ToggleNote(T3Gv.opt.curNoteShape, T3Gv.opt.curNoteTableCell);
-        }
-
-        // Toggle on the new note
-        this.ToggleNote(objectId, cellForNote, userData);
-        T3Util.Log("O.Opt LMShapeIconClick - Output: true (Note toggled)");
-        return true;
-
-      case OptConstant.ShapeIconType.FieldData:
-        // Handle field data icon
-        let isShiftPressed = event.shiftKey;
-
-        // Check for shift key in gesture events
-        if (event.gesture && event.gesture.srcEvent) {
-          isShiftPressed = event.gesture.srcEvent.shiftKey;
-        }
-
-        this.ToggleFieldedDataTooltip(objectId, isShiftPressed);
-        T3Util.Log("O.Opt LMShapeIconClick - Output: true (Field data tooltip toggled)");
-        return true;
-
-      case OptConstant.ShapeIconType.Attachment:
-        // Handle attachment icon (no action defined in original code)
-        T3Util.Log("O.Opt LMShapeIconClick - Output: true (Attachment icon clicked)");
-        return true;
-    }
-
-    T3Util.Log("O.Opt LMShapeIconClick - Output: false (Default return)");
-    return false;
   }
 
   /**
@@ -361,7 +235,7 @@ class LMEvtUtil {
    * @returns The adjusted position based on connections and snapping
    */
   static LMMoveDuringTrack(position) {
-    T3Util.Log("O.Opt LMMoveDuringTrack - Input:", position);
+    LogUtil.Debug("= U.LMEvtUtil LMMoveDuringTrack - Input:", position);
 
     let hasConnection;
     let targetObject;
@@ -374,14 +248,14 @@ class LMEvtUtil {
 
     // Early return if there's no valid drag target
     if (T3Gv.opt.dragTargetId < 0) {
-      T3Util.Log("O.Opt LMMoveDuringTrack - Output: Invalid drag target");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveDuringTrack - Output: Invalid drag target");
       return position;
     }
 
     // Get the object being dragged
-    targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     if (targetObject == null) {
-      T3Util.Log("O.Opt LMMoveDuringTrack - Output: Target object not found");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveDuringTrack - Output: Target object not found");
       return position;
     }
 
@@ -402,7 +276,7 @@ class LMEvtUtil {
         // Delete objects that were healed
         if (healedLineId >= 0) {
           objectsToDelete.push(healedLineId);
-          DataUtil.DeleteObjects(objectsToDelete, false);
+          ObjectUtil.DeleteObjects(objectsToDelete, false);
         }
 
         // Update dirty list to redraw correctly
@@ -410,7 +284,7 @@ class LMEvtUtil {
         if (indexInDirtyList >= 0) {
           T3Gv.opt.dirtyList.splice(indexInDirtyList, 1);
           SvgUtil.RenderDirtySVGObjects();
-          DataUtil.AddToDirtyList(T3Gv.opt.dragTargetId);
+          ObjectUtil.AddToDirtyList(T3Gv.opt.dragTargetId);
         }
 
         // Regenerate the move list
@@ -469,7 +343,7 @@ class LMEvtUtil {
         if (hasConnection) {
           position.x += T3Gv.opt.dragDeltaX;
           position.y += T3Gv.opt.dragDeltaY;
-          T3Util.Log("O.Opt LMMoveDuringTrack - Output (drop connection):", position);
+          LogUtil.Debug("= U.LMEvtUtil LMMoveDuringTrack - Output (drop connection):", position);
           return position;
         }
       }
@@ -496,7 +370,7 @@ class LMEvtUtil {
       }
     }
 
-    T3Util.Log("O.Opt LMMoveDuringTrack - Output:", position);
+    LogUtil.Debug("= U.LMEvtUtil LMMoveDuringTrack - Output:", position);
     return position;
   }
 
@@ -506,11 +380,11 @@ class LMEvtUtil {
    * @param skipScrolling - Flag to indicate if scrolling should be skipped
    */
   static LMMoveTrack(event, skipScrolling) {
-    T3Util.Log("O.Opt LMMoveTrack - Input:", { event, skipScrolling });
+    LogUtil.Debug("= U.LMEvtUtil LMMoveTrack - Input:", { event, skipScrolling });
 
     // Prevent too frequent updates (throttling)
     if (Date.now() - T3Gv.opt.eventTimestamp < 250) {
-      T3Util.Log("O.Opt LMMoveTrack - Output: Throttled (skipping)");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveTrack - Output: Throttled (skipping)");
       return;
     }
 
@@ -522,8 +396,8 @@ class LMEvtUtil {
         // Check if we need to duplicate objects (Ctrl+drag)
         if (DrawUtil.DragDuplicate(event)) {
           // Get selection list and session data
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
-          const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+          const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
+          const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
 
           // Store current selection for duplication
           selectedList.length = 0;
@@ -532,7 +406,7 @@ class LMEvtUtil {
           }
 
           // Get target object information
-          const targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+          const targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
           let targetObjectBaseClass = -1;
           let targetObjectFrame = null;
 
@@ -560,7 +434,7 @@ class LMEvtUtil {
 
           // Rebuild lists with duplicated objects
           for (let i = duplicatedObjects.length - 1; i >= 0; i--) {
-            const duplicatedObject = DataUtil.GetObjectPtr(duplicatedObjects[i], false);
+            const duplicatedObject = ObjectUtil.GetObjectPtr(duplicatedObjects[i], false);
             if (duplicatedObject) {
               T3Gv.opt.moveList.push(duplicatedObjects[i]);
               T3Gv.opt.linkParams.lpCircList.push(duplicatedObjects[i]);
@@ -588,7 +462,7 @@ class LMEvtUtil {
         const objectCount = objectsToMove.length;
         for (let i = 0; i < objectCount; i++) {
           const objectId = objectsToMove[i];
-          const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+          const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
 
           if (drawingObject) {
             const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
@@ -608,7 +482,7 @@ class LMEvtUtil {
     if (skipScrolling) {
       DrawUtil.ResetAutoScrollTimer();
     } else if (!DrawUtil.AutoScrollCommon(event, !isConnecting, "HandleObjectDragDoAutoScroll")) {
-      T3Util.Log("O.Opt LMMoveTrack - Output: Auto-scroll in progress");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveTrack - Output: Auto-scroll in progress");
       return;
     }
 
@@ -629,7 +503,7 @@ class LMEvtUtil {
       event
     );
 
-    T3Util.Log("O.Opt LMMoveTrack - Output: Objects moved to", adjustedCoordinates);
+    LogUtil.Debug("= U.LMEvtUtil LMMoveTrack - Output: Objects moved to", adjustedCoordinates);
   }
 
   /**
@@ -638,7 +512,7 @@ class LMEvtUtil {
   * @param moveData - Optional data from a collaborative move
   */
   static LMMoveRelease(event, moveData?) {
-    T3Util.Log("O.Opt LMMoveRelease - Input:", { event, moveData });
+    LogUtil.Debug("= U.LMEvtUtil LMMoveRelease - Input:", { event, moveData });
 
     let waslastOpDuplicate = false;
 
@@ -654,7 +528,7 @@ class LMEvtUtil {
     )) {
       // Handle dropping over custom library
       if (DrawUtil.CheckDragIsOverCustomLibrary(event)) {
-        const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+        const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
 
         // Add moved objects to selection if not already there
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
@@ -666,7 +540,7 @@ class LMEvtUtil {
 
         // Add all moved objects to dirty list for rendering
         for (let i = 0; i < T3Gv.opt.moveList.length; i++) {
-          DataUtil.AddToDirtyList(T3Gv.opt.moveList[i]);
+          ObjectUtil.AddToDirtyList(T3Gv.opt.moveList[i]);
         }
 
         SvgUtil.RenderDirtySVGObjects();
@@ -676,7 +550,7 @@ class LMEvtUtil {
       SvgUtil.RenderAllSVGSelectionStates();
       T3Gv.opt.moveList = null;
 
-      T3Util.Log("O.Opt LMMoveRelease - Output: Early exit condition met");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveRelease - Output: Early exit condition met");
       return;
     }
 
@@ -684,7 +558,7 @@ class LMEvtUtil {
     const objectCount = T3Gv.opt.moveList ? T3Gv.opt.moveList.length : 0;
 
     if (objectCount === 0) {
-      T3Util.Log("O.Opt LMMoveRelease - Output: No objects to move");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveRelease - Output: No objects to move");
       return;
     }
 
@@ -753,7 +627,7 @@ class LMEvtUtil {
         drawingObject.Dimensions & NvConstant.DimensionFlags.Select ||
         moveData ||
         drawingObject.Dimensions & NvConstant.DimensionFlags.Area) {
-        DataUtil.AddToDirtyList(objectId);
+        ObjectUtil.AddToDirtyList(objectId);
       }
     }
 
@@ -763,7 +637,7 @@ class LMEvtUtil {
     // Handle duplicate operation tracking
     if (!moveData && T3Gv.opt.lastOpDuplicate) {
       waslastOpDuplicate = true;
-      const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
       sessionData.dupdisp.x += T3Gv.opt.dragDeltaX;
       sessionData.dupdisp.y += T3Gv.opt.dragDeltaY;
     }
@@ -778,7 +652,7 @@ class LMEvtUtil {
       T3Gv.opt.moveList = null;
     }
 
-    T3Util.Log("O.Opt LMMoveRelease - Output: Move operation completed");
+    LogUtil.Debug("= U.LMEvtUtil LMMoveRelease - Output: Move operation completed");
   }
 
   /**
@@ -787,7 +661,7 @@ class LMEvtUtil {
    * @param moveData - Optional data from a collaborative move operation
    */
   static LMMovePostRelease(completeOperation, moveData) {
-    T3Util.Log("O.Opt LMMovePostRelease - Input:", { completeOperation, moveData });
+    LogUtil.Debug("= U.LMEvtUtil LMMovePostRelease - Input:", { completeOperation, moveData });
 
     let flowChartHookResult = false;
     const objectsToSelect = [];
@@ -828,7 +702,7 @@ class LMEvtUtil {
     // Process the completed move if requested
     if (completeOperation) {
       // Get the target object that was dragged
-      let targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId);
+      let targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId);
 
       // Special handling for timeline events
       if (targetObject.objecttype === NvConstant.FNObjectTypes.NgEvent ||
@@ -926,11 +800,11 @@ class LMEvtUtil {
       T3Gv.opt.dragBBoxList = [];
     }
 
-    T3Util.Log("O.Opt LMMovePostRelease - Output: Move post-processing completed");
+    LogUtil.Debug("= U.LMEvtUtil LMMovePostRelease - Output: Move post-processing completed");
   }
 
   static LMSetupMove(event) {
-    T3Util.Log("O.Opt LMSetupMove - Input:", event);
+    LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Input:", event);
 
     // Variables for target tracking
     let svgElement;
@@ -947,7 +821,7 @@ class LMEvtUtil {
     // Find the SVG element from the event target
     svgElement = T3Gv.opt.svgObjectLayer.FindElementByDOMElement(event.currentTarget);
     if (!svgElement) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (No SVG element found)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (No SVG element found)");
       return false;
     }
 
@@ -958,9 +832,9 @@ class LMEvtUtil {
 
     // Get object ID and verify it's a valid drawing object
     const objectId = svgElement.GetID();
-    const drawingObjectRef = DataUtil.GetObjectPtr(objectId, false);
+    const drawingObjectRef = ObjectUtil.GetObjectPtr(objectId, false);
     if (!(drawingObjectRef && drawingObjectRef instanceof Instance.Shape.BaseDrawObject)) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Not a valid drawing object)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Not a valid drawing object)");
       return false;
     }
 
@@ -968,7 +842,7 @@ class LMEvtUtil {
     if (T3Gv.opt.bInDimensionEdit) {
       T3Gv.opt.CloseEdit(false, true);
       T3Gv.opt.bInDimensionEdit = false;
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Was in dimension edit)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Was in dimension edit)");
       return false;
     }
 
@@ -978,13 +852,13 @@ class LMEvtUtil {
       (targetElement.ID === OptConstant.SVGElementClass.DimText ||
         targetElement.ID === OptConstant.SVGElementClass.DimTextNoEdit)
     ) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Is dimension text)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Is dimension text)");
       return false;
     }
 
     // Prevent moving icon elements
     if (targetElement instanceof Image && this.UserDataisIcon(targetElement.GetUserData())) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Is icon element)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Is icon element)");
       return false;
     }
 
@@ -992,7 +866,7 @@ class LMEvtUtil {
     if (T3Gv.opt.crtOpt === OptConstant.OptTypes.FormatPainter) {
       targetId = svgElement.GetID();
       if (this.FormatPainterClick(targetId, event)) {
-        T3Util.Log("O.Opt LMSetupMove - Output: false (Format painter handled click)");
+        LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Format painter handled click)");
         return false;
       }
       svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1031,7 +905,7 @@ class LMEvtUtil {
           isOneClickTextObject = false;
         } else if (drawingObject.flags & NvConstant.ObjFlags.Lock) {
           SelectUtil.SelectObjectFromClick(event, svgElement);
-          T3Util.Log("O.Opt LMSetupMove - Output: false (Object is locked)");
+          LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Object is locked)");
           return false;
         }
       }
@@ -1061,28 +935,28 @@ class LMEvtUtil {
           if (event.gesture) {
             event.gesture.stopDetect();
           }
-          T3Util.Log("O.Opt LMSetupMove - Output: false (Hit area click)");
+          LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Hit area click)");
           return false;
       }
 
       // Handle one-click text objects
       if (isOneClickTextObject) {
         TextUtil.ActivateTextEdit(svgElement.svgObj.SDGObj, event, false);
-        T3Util.Log("O.Opt LMSetupMove - Output: false (Activated text edit)");
+        LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Activated text edit)");
         return false;
       }
     }
 
     // Handle selection
     if (!SelectUtil.SelectObjectFromClick(event, svgElement, true)) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Selection failed)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Selection failed)");
       return false;
     }
 
     // Get updated target object
     targetObject = T3Gv.stdObj.GetObject(T3Gv.opt.dragTargetId);
     if (targetObject == null) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Target object is null)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Target object is null)");
       return false;
     }
 
@@ -1095,7 +969,7 @@ class LMEvtUtil {
 
     // Allow object to intercept the move operation
     if (drawingObject.InterceptMoveOperation(event)) {
-      T3Util.Log("O.Opt LMSetupMove - Output: false (Move intercepted by object)");
+      LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: false (Move intercepted by object)");
       return false;
     }
 
@@ -1147,7 +1021,7 @@ class LMEvtUtil {
     let filteredObjects = [];
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
 
       if (currentObject &&
         !(currentObject instanceof Instance.Shape.Connector) &&
@@ -1159,7 +1033,7 @@ class LMEvtUtil {
     // Filter objects: second pass - handle connector objects
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
 
       if (currentObject instanceof Instance.Shape.Connector) {
         // Use complex connector logic to determine if it should be included
@@ -1167,7 +1041,7 @@ class LMEvtUtil {
           filteredObjects.push(currentId);
         } else if (currentObject.hooks.length) {
           const hookId = currentObject.hooks[0].objid;
-          const hookObject = DataUtil.GetObjectPtr(hookId);
+          const hookObject = ObjectUtil.GetObjectPtr(hookId);
 
           if (hookObject instanceof Instance.Shape.Connector) {
             if (!(currentObject.flags & NvConstant.ObjFlags.NotVisible)) {
@@ -1195,7 +1069,7 @@ class LMEvtUtil {
     // Create bounding box list for all objects being moved
     for (let i = 0; i < objectCount; ++i) {
       const currentId = objectsToMove[i];
-      const currentObject = DataUtil.GetObjectPtr(currentId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(currentId, false);
       const objectFrame = currentObject.GetSVGFrame();
 
       T3Gv.opt.dragBBoxList.push(objectFrame);
@@ -1209,19 +1083,19 @@ class LMEvtUtil {
     }
 
     // Handle auto-grow constraints
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       T3Gv.opt.dragEnclosingRect = T3Gv.opt.GetListSRect(T3Gv.opt.moveList);
     }
 
     // Setup move tracking
     this.LMMovePreTrack(objectsToMove, event);
 
-    T3Util.Log("O.Opt LMSetupMove - Output: true (Move setup complete)");
+    LogUtil.Debug("= U.LMEvtUtil LMSetupMove - Output: true (Move setup complete)");
     return true;
   }
 
   static LMMoveExceptionCleanup(error) {
-    T3Util.Log('O.Opt LMMoveExceptionCleanup - Input:', error);
+    LogUtil.Debug('= U.LMEvtUtil LMMoveExceptionCleanup - Input:', error);
 
     // Clean up resources
     T3Gv.opt.linkParams = null;
@@ -1233,14 +1107,14 @@ class LMEvtUtil {
     T3Gv.opt.UnbindShapeMoveHammerEvents();
     DrawUtil.ResetAutoScrollTimer();
 
-    T3Util.Log('O.Opt LMMoveExceptionCleanup - Output: Cleanup completed');
+    LogUtil.Debug('= U.LMEvtUtil LMMoveExceptionCleanup - Output: Cleanup completed');
 
     // Re-throw the exception after cleanup
     throw error;
   }
 
   static LMMoveClick(event) {
-    T3Util.Log("O.Opt LMMoveClick - Input:", event);
+    LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Input:", event);
 
     if (
       this.IsWheelClick(event) ||
@@ -1248,7 +1122,7 @@ class LMEvtUtil {
     ) {
       EvtUtil.Evt_WorkAreaHammerDragStart(event);
       Utils2.StopPropagationAndDefaults(event);
-      T3Util.Log("O.Opt LMMoveClick - Output: Wheel click or spacebar down detected, redirected to WorkAreaHammerDragStart");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Output: Wheel click or spacebar down detected, redirected to WorkAreaHammerDragStart");
       return;
     }
 
@@ -1272,10 +1146,10 @@ class LMEvtUtil {
       // Handle different setup results
       if (setupResult !== true) {
         if (setupResult === -1) {
-          T3Util.Log("O.Opt LMMoveClick - Output: Setup failed with -1, unlocked messages");
+          LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Output: Setup failed with -1, unlocked messages");
           return;
         } else {
-          T3Util.Log("O.Opt LMMoveClick - Output: Setup failed, unlocked and unblocked messages");
+          LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Output: Setup failed, unlocked and unblocked messages");
           return;
         }
       }
@@ -1293,19 +1167,20 @@ class LMEvtUtil {
       const isRightClick = MouseUtil.IsRightClick(event);
       if (!isRightClick) {
         UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        // UIUtil.ShowObjectConfig(false);
       }
 
-      T3Util.Log("O.Opt LMMoveClick - Output: Move operation set up successfully");
+      LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Output: Move operation set up successfully");
     } catch (error) {
       this.LMMoveExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Log("O.Opt LMMoveClick - Error:", error);
+      LogUtil.Debug("= U.LMEvtUtil LMMoveClick - Error:", error);
       throw error;
     }
   }
 
   static IsCtrlClick(event) {
-    T3Util.Log('O.Opt IsCtrlClick - Input:', event);
+    LogUtil.Debug('= U.LMEvtUtil IsCtrlClick - Input:', event);
 
     let isCtrlClick = false;
 
@@ -1319,12 +1194,12 @@ class LMEvtUtil {
       isCtrlClick = event.ctrlKey;
     }
 
-    T3Util.Log('O.Opt IsCtrlClick - Output:', isCtrlClick);
+    LogUtil.Debug('= U.LMEvtUtil IsCtrlClick - Output:', isCtrlClick);
     return isCtrlClick;
   }
 
   static IsWheelClick(event) {
-    T3Util.Log("O.Opt IsWheelClick - Input:", event);
+    LogUtil.Debug("= U.LMEvtUtil IsWheelClick - Input:", event);
 
     let isMiddleButtonClick = false;
 
@@ -1340,7 +1215,7 @@ class LMEvtUtil {
       isMiddleButtonClick = (event.which === 2);
     }
 
-    T3Util.Log("O.Opt IsWheelClick - Output:", isMiddleButtonClick);
+    LogUtil.Debug("= U.LMEvtUtil IsWheelClick - Output:", isMiddleButtonClick);
     return isMiddleButtonClick;
   }
 
@@ -1355,7 +1230,7 @@ class LMEvtUtil {
    * @returns True if the event was handled and should be prevented from bubbling, false otherwise
    */
   static HandleKeyDown(event, keyCode, altKey) {
-    T3Util.Log("O.Opt HandleKeyDown - Input:", {
+    LogUtil.Debug("= U.LMEvtUtil HandleKeyDown - Input:", {
       eventType: event.type,
       keyCode: keyCode,
       altKey: altKey
@@ -1366,7 +1241,7 @@ class LMEvtUtil {
     if (activeEdit && activeEdit.IsActive()) {
       // Handle active text editor cases
       if (!T3Gv.opt.bInNoteEdit) {
-        const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+        const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
         if (textEditSession.theActiveTextEditObjectID !== -1) {
           switch (keyCode) {
@@ -1388,7 +1263,7 @@ class LMEvtUtil {
       }
 
       if (activeEdit.HandleKeyDownEvent(event)) {
-        T3Util.Log("O.Opt HandleKeyDown - Output: true (activeEdit handled event)");
+        LogUtil.Debug("= U.LMEvtUtil HandleKeyDown - Output: true (activeEdit handled event)");
         return true;
       }
     } else if (keyCode === 32) { // Space key
@@ -1396,7 +1271,7 @@ class LMEvtUtil {
       const targetId = SelectUtil.GetTargetSelect();
 
       if (targetId !== -1) {
-        const targetObject = DataUtil.GetObjectPtr(targetId, false);
+        const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
         if (targetObject && targetObject.AllowTextEdit()) {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1409,13 +1284,13 @@ class LMEvtUtil {
           TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Char);
           activeEdit.HandleKeyDownEvent(event);
 
-          T3Util.Log("O.Opt HandleKeyDown - Output: true (space activated text edit)");
+          LogUtil.Debug("= U.LMEvtUtil HandleKeyDown - Output: true (space activated text edit)");
           return true;
         }
       }
     }
 
-    T3Util.Log("O.Opt HandleKeyDown - Output: false");
+    LogUtil.Debug("= U.LMEvtUtil HandleKeyDown - Output: false");
     return false;
   }
 
@@ -1429,7 +1304,7 @@ class LMEvtUtil {
    * @returns True if the event was handled and should be prevented from bubbling, false otherwise
    */
   static HandleKeyPress(event, keyCode) {
-    T3Util.Log("O.Opt HandleKeyPress - Input:", {
+    LogUtil.Debug("= U.LMEvtUtil HandleKeyPress - Input:", {
       eventType: event.type,
       keyCode: keyCode
     });
@@ -1439,7 +1314,7 @@ class LMEvtUtil {
     if (activeEdit && activeEdit.IsActive()) {
       // Handle active text editor cases
       if (!T3Gv.opt.bInNoteEdit) {
-        const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+        const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
         if (textEditSession.theActiveTextEditObjectID !== -1) {
           TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Char);
@@ -1448,7 +1323,7 @@ class LMEvtUtil {
 
       if (activeEdit.HandleKeyPressEvent(event)) {
         event.preventDefault();
-        T3Util.Log("O.Opt HandleKeyPress - Output: true (activeEdit handled event)");
+        LogUtil.Debug("= U.LMEvtUtil HandleKeyPress - Output: true (activeEdit handled event)");
         return true;
       }
     } else {
@@ -1456,7 +1331,7 @@ class LMEvtUtil {
       const targetId = SelectUtil.GetTargetSelect();
 
       if (targetId !== -1) {
-        const targetObject = DataUtil.GetObjectPtr(targetId, false);
+        const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
 
         if (targetObject && targetObject.AllowTextEdit()) {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(targetId);
@@ -1470,63 +1345,22 @@ class LMEvtUtil {
             TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Char);
             activeEdit.HandleKeyPressEvent(event);
 
-            T3Util.Log("O.Opt HandleKeyPress - Output: true (activated text edit)");
+            LogUtil.Debug("= U.LMEvtUtil HandleKeyPress - Output: true (activated text edit)");
             return true;
           }
         }
       }
     }
 
-    T3Util.Log("O.Opt HandleKeyPress - Output: false");
+    LogUtil.Debug("= U.LMEvtUtil HandleKeyPress - Output: false");
     return false;
   }
 
-  /**
-   * Handles clicks on test icons in the SVG document
-   * @param event - The event that triggered the icon click
-   */
-  static LMTestIconClick(event) {
-    T3Util.Log("O.Opt LMTestIconClick - Input:", event);
-
-    // Find the SVG element corresponding to the clicked DOM element
-    const svgElement = T3Gv.opt.svgObjectLayer.FindElementByDOMElement(event.currentTarget);
-
-    if (svgElement) {
-      // Get target element and its metadata
-      const targetElement = svgElement.GetTargetForEvent(event);
-      const elementId = targetElement.GetID();
-      const elementUserData = targetElement.GetUserData();
-      const objectId = svgElement.GetID();
-      const drawingObject = DataUtil.GetObjectPtr(objectId, false);
-
-      // Validate that we have a drawing object
-      if (!(drawingObject && drawingObject instanceof Instance.Shape.BaseDrawObject)) {
-        T3Util.Log("O.Opt LMTestIconClick - Output: false (no valid drawing object)");
-        return false;
-      }
-
-      // Handle different element types
-      switch (elementId) {
-        case OptConstant.Common.HitAreas:
-          // Handle hit area click
-          const hitAreaData = targetElement.GetUserData();
-          this.LM_HitAreaClick(objectId, hitAreaData);
-          break;
-
-        default:
-          // Handle shape icon click
-          this.LMShapeIconClick(event, objectId, elementId, elementUserData);
-      }
-    }
-
-    T3Util.Log("O.Opt LMTestIconClick - Output: Operation completed");
-  }
-
   static LMMovePreTrack(objectsToMove, event) {
-    T3Util.Log("O.Opt LMMovePreTrack - Input:", { objectsToMove, event });
+    LogUtil.Debug("= U.LMEvtUtil LMMovePreTrack - Input:", { objectsToMove, event });
 
     // Get the session data
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
     // Check for alt key press
     const isAltKeyPressed = event.gesture && event.gesture.srcEvent && event.gesture.srcEvent.altKey;
@@ -1537,7 +1371,7 @@ class LMEvtUtil {
 
     // Disable auto-insert if multiple objects are selected or alt key is pressed
     if (T3Gv.opt.linkParams.AutoInsert) {
-      const selectedObjects = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       if (selectedObjects.length > 1) {
         T3Gv.opt.linkParams.AutoInsert = false;
       }
@@ -1548,7 +1382,7 @@ class LMEvtUtil {
     }
 
     // Get the target object being dragged
-    const drawingObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    const drawingObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     if (drawingObject) {
       // Store original object state for reference
       T3Gv.opt.ob = Utils1.DeepCopy(drawingObject);
@@ -1570,7 +1404,7 @@ class LMEvtUtil {
       }
 
       // Get links and build the circular list
-      const links = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
+      const links = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, false);
       T3Gv.opt.linkParams.lpCircList = HookUtil.GetHookList(
         links,
         T3Gv.opt.linkParams.lpCircList,
@@ -1611,7 +1445,7 @@ class LMEvtUtil {
 
         if (snapTargetId >= 0) {
           // Get snap target rectangle
-          const targetRect = DataUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
+          const targetRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
           const targetRectCopy = $.extend(true, {}, targetRect);
 
           // Initialize dynamic guides for snapping
@@ -1628,11 +1462,11 @@ class LMEvtUtil {
       }
     }
 
-    T3Util.Log("O.Opt LMMovePreTrack - Output: Link parameters initialized");
+    LogUtil.Debug("= U.LMEvtUtil LMMovePreTrack - Output: Link parameters initialized");
   }
 
   static UnbindActionClickHammerEvents() {
-    T3Util.Log('O.Opt UnbindActionClickHammerEvents - Input:');
+    LogUtil.Debug('= U.LMEvtUtil UnbindActionClickHammerEvents - Input:');
 
     const workAreaHammer = T3Gv.opt.WorkAreaHammer;
     if (workAreaHammer) {
@@ -1641,24 +1475,24 @@ class LMEvtUtil {
       workAreaHammer.off('doubletap');
     }
 
-    T3Util.Log('O.Opt UnbindActionClickHammerEvents - Output: Events unbound');
+    LogUtil.Debug('= U.LMEvtUtil UnbindActionClickHammerEvents - Output: Events unbound');
   }
 
   static GetEventShapeParent(objectId) {
-    T3Util.Log('O.Opt GetEventShapeParent - Input:', objectId);
+    LogUtil.Debug('= U.LMEvtUtil GetEventShapeParent - Input:', objectId);
 
-    const object = DataUtil.GetObjectPtr(objectId);
+    const object = ObjectUtil.GetObjectPtr(objectId);
 
     if (object && object.objecttype === NvConstant.FNObjectTypes.NgEventLabel) {
-      const associatedObject = DataUtil.GetObjectPtr(object.associd);
+      const associatedObject = ObjectUtil.GetObjectPtr(object.associd);
 
       if (associatedObject && associatedObject.objecttype === NvConstant.FNObjectTypes.NgEvent) {
-        T3Util.Log('O.Opt GetEventShapeParent - Output:', object.associd);
+        LogUtil.Debug('= U.LMEvtUtil GetEventShapeParent - Output:', object.associd);
         return object.associd;
       }
     }
 
-    T3Util.Log('O.Opt GetEventShapeParent - Output:', objectId);
+    LogUtil.Debug('= U.LMEvtUtil GetEventShapeParent - Output:', objectId);
     return objectId;
   }
 }

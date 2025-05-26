@@ -13,7 +13,7 @@
 <template>
   <q-card class="app-card">
     <q-btn
-      v-if="showActions"
+      v-if="true||showActions"
       class="app-card-action-btn hidden absolute right-2.5 top-2.5"
       :id="'app-card-action-btn-' + app.id"
       dense

@@ -1,8 +1,19 @@
 
 
 import T3Gv from "../Data/T3Gv";
+import DataOpt from "../Opt/Data/DataOpt";
+import ObjectUtil from "../Opt/Data/ObjectUtil";
+import DrawUtil from "../Opt/Opt/DrawUtil";
+import LayerUtil from "../Opt/Opt/LayerUtil";
+import SvgUtil from "../Opt/Opt/SvgUtil";
+import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
+import UIUtil from "../Opt/UI/UIUtil";
+import Hvac from "../Hvac";
+import T3Opt from "../Doc/T3Opt";
+import T3Util from "../Util/T3Util";
+import LogUtil from "../Util/LogUtil";
 
 class EvtOpt {
 
@@ -14,6 +25,9 @@ class EvtOpt {
    */
   BindElemCtlEvent() {
     $(document).ready(() => {
+
+      this.BindVueForeignObjectEvent();
+
       // Selection and basic tools
       this.BindSelectEvent();
       this.BindLibraryEvent();
@@ -80,10 +94,6 @@ class EvtOpt {
       this.BindDuplicateEvent();
       this.BindClearEvent();
 
-      // Measurement tools
-      this.BindMeasureEvent();
-      this.BindAreaMeasureEvent();
-
       this.BindLibSelectEvent();
       this.BindLibBoxEvent();
       this.BindLibTextEvent();
@@ -94,10 +104,10 @@ class EvtOpt {
       this.BindLibRoomTemperatureEvent();
       this.BindLibTemperatureEvent();
       this.BindLibBoilerEvent();
-      this.BindLibHeatPumpEvent();
+      this.BindLibHeatpumpEvent();
       this.BindLibPumpEvent();
-      this.BindLibValueThreeWayEvent();
-      this.BindLibValueTwoWayEvent();
+      this.BindLibValveThreeWayEvent();
+      this.BindLibValveTwoWayEvent();
       this.BindLibDuctEvent();
       this.BindLibFanEvent();
       this.BindLibCoolingCoilEvent();
@@ -117,12 +127,35 @@ class EvtOpt {
       this.BindLibIconWithTitleEvent();
       this.BindLibSetBackgroundColorEvent();
       this.BindLibSetBackgroundImageEvent();
-      this.BindLibImportSVGSymbolEvent();
+      this.BindLibImportSvgSymbolEvent();
       this.BindLibLockEvent();
+      this.BindLibUnLockEvent();
       this.BindLibAddNoteEvent();
       this.BindLibAddCommentEvent();
       this.BindLibHyperlinkEvent();
 
+      this.BindSetXEvent();
+      this.BindSetYEvent();
+      this.BindSetWidthEvent();
+      this.BindSetHeightEvent();
+
+      this.BindAddToLibraryEvent();
+
+      this.BindLoadLibraryEvent();
+      this.BindDuct1Event();
+      this.BindDuct2Event();
+      this.BindDuct3Event();
+      this.BindDuct4Event();
+      this.BindDuct5Event();
+      this.BindDuct6Event();
+      this.BindDuct7Event();
+      this.BindDuct8Event();
+      this.BindDuct9Event();
+      this.BindDuct10Event();
+      this.BindDuct11Event();
+      this.BindDuct12Event();
+
+      this.BindResetScaleEvent();
     });
   }
 
@@ -153,7 +186,7 @@ class EvtOpt {
    */
   BindLineEvent() {
     $("#btn_try_line").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.ToolLineAct(event);
+      EvtOpt.toolOpt.ToolLineAct("line", event);
     });
   }
 
@@ -163,7 +196,7 @@ class EvtOpt {
    */
   BindLine1Event() {
     $("#btn_try_line1").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.ToolLineAct(event);
+      EvtOpt.toolOpt.ToolLineAct("arcLine", event);
     });
   }
 
@@ -185,7 +218,7 @@ class EvtOpt {
    */
   BindRectEvent() {
     $("#btn_try_Rect").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "Rect");
     });
   }
 
@@ -195,7 +228,7 @@ class EvtOpt {
    */
   BindOvalEvent() {
     $("#btn_try_Oval").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4, "Oval");
     });
   }
 
@@ -205,7 +238,7 @@ class EvtOpt {
    */
   BindImageEvent() {
     $("#btn_try_Image").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 1);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 1, "Image");
     });
   }
 
@@ -215,7 +248,7 @@ class EvtOpt {
    */
   BindCircleEvent() {
     $("#btn_try_Circ").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9, "Circle");
     });
   }
 
@@ -225,7 +258,7 @@ class EvtOpt {
    */
   BindTextEvent() {
     $("#btn_try_Text").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel');
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel', "Text");
     });
   }
 
@@ -237,7 +270,7 @@ class EvtOpt {
    */
   BindArrREvent() {
     $("#btn_try_ArrR").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10, "ArrR");
     });
   }
 
@@ -247,7 +280,7 @@ class EvtOpt {
    */
   BindArrLEvent() {
     $("#btn_try_ArrL").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11, "ArrL");
     });
   }
 
@@ -257,7 +290,7 @@ class EvtOpt {
    */
   BindArrTEvent() {
     $("#btn_try_ArrT").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12, "ArrT");
     });
   }
 
@@ -267,7 +300,7 @@ class EvtOpt {
    */
   BindArrBEvent() {
     $("#btn_try_ArrB").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13, "ArrB");
     });
   }
 
@@ -525,7 +558,7 @@ class EvtOpt {
    */
   BindSaveEvent() {
     $("#btn_try_Save").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.CommitFilePickerSelectionAct(event);
+      EvtOpt.toolOpt.SaveAct();
     });
   }
 
@@ -545,29 +578,8 @@ class EvtOpt {
    */
   BindClearEvent() {
     $("#btn_try_Clear").on("pointerdown", (event) => {
-      localStorage.clear();
-    });
-  }
-
-  // Measurement tools
-
-  /**
-   * Binds the click event handler to the measure distance tool.
-   * When clicked, allows measuring distance between points.
-   */
-  BindMeasureEvent() {
-    $("#btn_try_Measure").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.MeasureDistanceAct(event);
-    });
-  }
-
-  /**
-   * Binds the click event handler to the measure area tool.
-   * When clicked, allows measuring the area of a region.
-   */
-  BindAreaMeasureEvent() {
-    $("#btn_try_AreaMeasure").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.MeasureAreaAct(event);
+      DataOpt.ClearT3LocalStorage();
+      // Hvac.UI.Reload();
     });
   }
 
@@ -631,9 +643,9 @@ class EvtOpt {
     });
   }
 
-  BindLibHeatPumpEvent() {
-    $("#btn_try_Lib_HeatPump").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+  BindLibHeatpumpEvent() {
+    $("#btn_try_Lib_Heatpump").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Heatpump", true);
     });
   }
 
@@ -643,15 +655,15 @@ class EvtOpt {
     });
   }
 
-  BindLibValueThreeWayEvent() {
-    $("#btn_try_Lib_ValueThreeWay").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+  BindLibValveThreeWayEvent() {
+    $("#btn_try_Lib_ValveThreeWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", true);
     });
   }
 
-  BindLibValueTwoWayEvent() {
-    $("#btn_try_Lib_ValueTwoWay").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+  BindLibValveTwoWayEvent() {
+    $("#btn_try_Lib_ValveTwoWay").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", true);
     });
   }
 
@@ -776,9 +788,9 @@ class EvtOpt {
     });
   }
 
-  BindLibImportSVGSymbolEvent() {
-    $("#btn_try_Lib_ImportSVGSymbol").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibImportSVGSymbolAct(event);
+  BindLibImportSvgSymbolEvent() {
+    $("#btn_try_Lib_ImportSvgSymbol").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibImportSvgSymbolAct(event);
     });
   }
 
@@ -788,26 +800,32 @@ class EvtOpt {
     });
   }
 
+  BindLibUnLockEvent() {
+    $("#btn_try_Lib_UnLock").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibUnlockAct(event);
+    });
+  }
+
   BindLibAddNoteEvent() {
     $("#btn_try_Lib_AddNote").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibAddNoteAct(event);
+      EvtOpt.toolOpt.LibAddNoteAct();
     });
   }
 
   BindLibAddCommentEvent() {
     $("#btn_try_Lib_AddComment").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibAddCommentAct(event);
+      EvtOpt.toolOpt.LibAddCommentAct();
     });
   }
 
   BindLibHyperlinkEvent() {
     $("#btn_try_Lib_Hyperlink").on("pointerdown", (event) => {
-      EvtOpt.toolOpt.LibHyperlinkAct(event);
+      EvtOpt.toolOpt.LibHyperlinkAct();
     });
   }
 
   HandleSidebarToolEvent(selectedTool: any) {
-    console.log("Selected tool: ", selectedTool);
+    LogUtil.Debug("Selected tool: ", selectedTool);
 
 
     if (selectedTool.value.name == "Temperature") {
@@ -819,7 +837,7 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Heatpump") {
-      EvtOpt.toolOpt.LibToolShape("HeatPump", true);
+      EvtOpt.toolOpt.LibToolShape("Heatpump", true);
     }
 
     if (selectedTool.value.name == "Pump") {
@@ -827,11 +845,11 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "ValveThreeWay") {
-      EvtOpt.toolOpt.LibToolShape("ValueThreeWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", true);
     }
 
     if (selectedTool.value.name == "ValveTwoWay") {
-      EvtOpt.toolOpt.LibToolShape("ValueTwoWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", true);
     }
 
     if (selectedTool.value.name == "Duct") {
@@ -890,8 +908,8 @@ class EvtOpt {
       EvtOpt.toolOpt.LibToolShape("RoomTemperature", true);
     }
 
-    if (selectedTool.value.name == "Guage") {
-      // EvtOpt.toolOpt.LibToolShape("Guage", true);
+    if (selectedTool.value.name == "Gauge") {
+      // EvtOpt.toolOpt.LibToolShape("Gauge", true);
     }
 
     if (selectedTool.value.name == "Dial") {
@@ -906,20 +924,65 @@ class EvtOpt {
       EvtOpt.toolOpt.DrawWall(event);
     }
 
+    // line
+    if (selectedTool.value.name == "Line") {
+      EvtOpt.toolOpt.ToolLineAct("line", event);
+    }
+
+    // if (selectedTool.value.name == "commline") {
+    //   EvtOpt.toolOpt.ToolLineAct("commline", event);
+    // }
+
+    // if (selectedTool.value.name == "digiline") {
+    //   EvtOpt.toolOpt.ToolLineAct("digiline", event);
+    // }
+
+    if (selectedTool.value.name == "ArcLine") {
+      EvtOpt.toolOpt.ToolLineAct("arcLine", event);
+    }
+
+    if (selectedTool.value.name == "SegLine") {
+      EvtOpt.toolOpt.ToolLineAct("segLine", event);
+    }
+
+    // if (selectedTool.value.name == "arcSegLine") {
+    //   EvtOpt.toolOpt.ToolLineAct("arcSegLine", event);
+    // }
+
+    if (selectedTool.value.name == "PolyLine") {
+      EvtOpt.toolOpt.ToolLineAct("polyLine", event);
+    }
+
+    // if (selectedTool.value.name == "polyLineContainer") {
+    //   EvtOpt.toolOpt.ToolLineAct("polyLineContainer", event);
+    // }
+
     if (selectedTool.value.name == "G_Circle") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 9, "G_Circle");
     }
 
     if (selectedTool.value.name == "G_Rectangle") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "G_Rectangle");
     }
 
-    if (selectedTool.value.name == "g_arr_right") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10);
+    if (selectedTool.value.name == "ArrowRight") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 10, "g_arr_right");
+    }
+
+    if (selectedTool.value.name == "ArrowLeft") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 11, "g_arr_left");
+    }
+
+    if (selectedTool.value.name == "ArrowTop") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 12, "g_arr_top");
+    }
+
+    if (selectedTool.value.name == "ArrowBottom") {
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 13, "g_arr_bottom");
     }
 
     if (selectedTool.value.name == "Oval") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 4, "Oval");
     }
 
     if (selectedTool.value.name == "Switch") {
@@ -931,16 +994,169 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Text") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel');
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel', "Text");
     }
 
     if (selectedTool.value.name == "Box") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2);
+      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "Box");
     }
 
     if (selectedTool.value.name == "Pointer") {
       EvtOpt.toolOpt.SelectAct(event);
     }
+
+    // New ducts
+    if (selectedTool.value.name == "Duct1") {
+      EvtOpt.toolOpt.LibToolShape("Duct1", true);
+    }
+    if (selectedTool.value.name == "Duct2") {
+      EvtOpt.toolOpt.LibToolShape("Duct2", true);
+    }
+    if (selectedTool.value.name == "Duct3") {
+      EvtOpt.toolOpt.LibToolShape("Duct3", true);
+    }
+    if (selectedTool.value.name == "Duct4") {
+      EvtOpt.toolOpt.LibToolShape("Duct4", true);
+    }
+    if (selectedTool.value.name == "Duct5") {
+      EvtOpt.toolOpt.LibToolShape("Duct5", true);
+    }
+    if (selectedTool.value.name == "Duct6") {
+      EvtOpt.toolOpt.LibToolShape("Duct6", true);
+    }
+    if (selectedTool.value.name == "Duct7") {
+      EvtOpt.toolOpt.LibToolShape("Duct7", true);
+    }
+    if (selectedTool.value.name == "Duct8") {
+      EvtOpt.toolOpt.LibToolShape("Duct8", true);
+    }
+    if (selectedTool.value.name == "Duct9") {
+      EvtOpt.toolOpt.LibToolShape("Duct9", true);
+    }
+  }
+
+  BindVueForeignObjectEvent() {
+    $("#btn_try_vue_foreignObject").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.VueForeignObjectAct(event, PolygonConstant.ShapeTypes.ForeignObject, "Boiler");
+    });
+  }
+
+  BindSetXEvent() {
+    $("#btn_try_x").on("pointerdown", (event) => {
+      var xVal = "1.5";
+      EvtOpt.toolOpt.SetX(xVal);
+    });
+  }
+
+  BindSetYEvent() {
+    $("#btn_try_y").on("pointerdown", (event) => {
+      var yVal = "2.3";
+      EvtOpt.toolOpt.SetY(yVal);
+    });
+  }
+
+  BindSetWidthEvent() {
+    $("#btn_try_w").on("pointerdown", (event) => {
+      var widthVal = "3.2";
+      EvtOpt.toolOpt.SetWidth(widthVal);
+    });
+  }
+
+  BindSetHeightEvent() {
+    $("#btn_try_h").on("pointerdown", (event) => {
+      var heightVal = "2.5";
+      EvtOpt.toolOpt.SetHeight(heightVal);
+    });
+  }
+
+  BindAddToLibraryEvent() {
+    $("#btn_try_Add_To_Library").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.AddToLibraryAct();
+    });
+  }
+
+  BindLoadLibraryEvent() {
+    $("#btn_try_Load_Library").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LoadLibraryAct();
+    });
+  }
+
+  BindDuct1Event() {
+    $("#btn_try_Duct_1").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct1", true);
+    });
+  }
+
+  BindDuct2Event() {
+    $("#btn_try_Duct_2").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct2", true);
+    });
+  }
+
+  BindDuct3Event() {
+    $("#btn_try_Duct_3").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct3", true);
+    });
+  }
+
+  BindDuct4Event() {
+    $("#btn_try_Duct_4").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct4", true);
+    });
+  }
+
+  BindDuct5Event() {
+    $("#btn_try_Duct_5").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct5", true);
+    });
+  }
+
+  BindDuct6Event() {
+    $("#btn_try_Duct_6").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct6", true);
+    });
+  }
+
+  BindDuct7Event() {
+    $("#btn_try_Duct_7").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct7", true);
+    });
+  }
+
+  BindDuct8Event() {
+    $("#btn_try_Duct_8").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct8", true);
+    });
+  }
+
+  BindDuct9Event() {
+    $("#btn_try_Duct_9").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct9", true);
+    });
+  }
+
+  BindDuct10Event() {
+    $("#btn_try_Duct_10").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct10", true);
+    });
+  }
+
+  BindDuct11Event() {
+    $("#btn_try_Duct_11").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct11", true);
+    });
+  }
+
+  BindDuct12Event() {
+    $("#btn_try_Duct_12").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.LibToolShape("Duct12", true);
+    });
+  }
+
+  BindResetScaleEvent() {
+    $("#btn_try_Reset_Scale").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.ResetScaleAct(event);
+    });
   }
 }
 

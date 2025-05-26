@@ -1,8 +1,6 @@
 
 
-class UserConstant {
-
-
+class UserConstant { 
 }
 
 export default UserConstant

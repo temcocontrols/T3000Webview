@@ -302,7 +302,7 @@ class Utils2 {
    * @param startIndex - Starting index in the points array (optional, defaults to 0)
    * @param endIndex - Ending index in the points array (optional, defaults to points.length)
    */
-  static GetPolyRect1(targetRect: { x: number; y: number; width: number; height: number },
+  static GetPolyRectExt(targetRect: { x: number; y: number; width: number; height: number },
     points: Array<{ x: number; y: number }>,
     startIndex?: number,
     endIndex?: number): void {
@@ -412,7 +412,7 @@ class Utils2 {
    */
   static InflatePoint(point, size) {
     const halfSize = size / 2;
-    const rect = {};
+    const rect = { x: 0, y: 0, width: 0, height: 0 };
     rect.x = point.x - halfSize;
     rect.width = 2 * halfSize;
     rect.y = point.y - halfSize;
@@ -425,26 +425,8 @@ class Utils2 {
    * @param value - The number to calculate square root of
    * @returns The square root of the value, or 0 if value is very small
    */
-  static sqrt(value) {
+  static Sqrt(value) {
     return value < 1e-9 ? 0 : Math.sqrt(value);
-  }
-
-  /**
-   * Safely parses a string to float, handling edge cases
-   * @param str - The string to parse
-   * @returns The parsed float value, or 0 if parsing fails
-   */
-  static parseFloat(str) {
-    if (str == null) return 0;
-    if (str.length === 0) return 0;
-
-    // Add leading zero to decimal values
-    if (str.charAt(0) === '.') {
-      str = '0' + str;
-    }
-
-    const result = parseFloat(str);
-    return isNaN(result) ? 0 : result;
   }
 
   /**
@@ -557,7 +539,7 @@ class Utils2 {
    * @param resultRect - The CRect rectangle where the result will be stored
    * @returns The resulting union CRect rectangle
    */
-  static CN_UnionRect(rect1, rect2, resultRect) {
+  static CNUnionRect(rect1, rect2, resultRect) {
     const union = {
       h: 0,
       v: 0,
@@ -638,7 +620,7 @@ class Utils2 {
       height = diagonalLength;
     } else {
       ratio = originalRect.height / originalRect.width;
-      width = this.sqrt(diagonalLength * diagonalLength / (1 + ratio * ratio));
+      width = this.Sqrt(diagonalLength * diagonalLength / (1 + ratio * ratio));
       height = ratio * width;
     }
 
@@ -886,7 +868,7 @@ class Utils2 {
       currentPoint.y = bounds.top + (halfHeight - currentDistance);
 
       ratio = halfHeight ? currentDistance / halfHeight : 0;
-      xPos = this.sqrt(1 - ratio * ratio) * totalWidth;
+      xPos = this.Sqrt(1 - ratio * ratio) * totalWidth;
 
       currentPoint.x = isRightToLeft ? bounds.right - xPos : bounds.left + xPos;
 
@@ -983,7 +965,7 @@ class Utils2 {
    * @param text - The UTF-8 string to encode
    * @returns The Base64 encoded string, or empty string if encoding fails
    */
-  static UTF8_to_B64(text: string): string {
+  static UTF8ToB64(text: string): string {
     let result;
     try {
       result = window.btoa(unescape(encodeURIComponent(text)));
@@ -999,7 +981,7 @@ class Utils2 {
    * @param base64String - The Base64 string to decode
    * @returns The decoded UTF-8 string, or empty string if decoding fails
    */
-  static B64_to_UTF8(base64String: string): string {
+  static B64ToUTF8(base64String: string): string {
     let result;
     try {
       result = decodeURIComponent(escape(window.atob(base64String)));
@@ -1015,7 +997,7 @@ class Utils2 {
    * @param buffer - The ArrayBuffer to convert
    * @returns String representation of the buffer content
    */
-  static arrayBufferToString(buffer: ArrayBuffer): string {
+  static ArrayBufferToString(buffer: ArrayBuffer): string {
     const uint8Array = new Uint8Array(buffer);
     const length = uint8Array.length;
     let result = '';
@@ -1228,7 +1210,7 @@ class Utils2 {
   static GetDistanceBetween2Points(point1: { x: number; y: number }, point2: { x: number; y: number }): number {
     const deltaX = point2.x - point1.x;
     const deltaY = point2.y - point1.y;
-    return this.sqrt(deltaX * deltaX + deltaY * deltaY);
+    return this.Sqrt(deltaX * deltaX + deltaY * deltaY);
   }
 
   /**
@@ -1318,17 +1300,15 @@ class Utils2 {
    * @param text - The text to encode
    * @returns HTML-encoded string with special characters converted to entities
    */
-  static HTMLEncode(text: string): string {
+  static HtmlEncode(text: string): string {
     return $('<div>').text(text).html();
   }
 
   static IsRectangleFullyEnclosed(outerRect: { x: number; y: number; width: number; height: number }, innerRect: { x: number; y: number; width: number; height: number }): boolean {
-    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Input:", { outerRect, innerRect });
     const isEnclosed = innerRect.x >= outerRect.x &&
       innerRect.x + innerRect.width <= outerRect.x + outerRect.width &&
       innerRect.y >= outerRect.y &&
       innerRect.y + innerRect.height <= outerRect.y + outerRect.height;
-    T3Util.Log("O.Opt IsRectangleFullyEnclosed - Output:", isEnclosed);
     return isEnclosed;
   }
 }

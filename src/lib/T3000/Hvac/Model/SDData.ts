@@ -5,7 +5,6 @@ import 'reflect-metadata'
 import RulerConfig from "./RulerConfig"
 import PageSetting from "./PageSetting"
 import NvConstant from "../Data/Constant/NvConstant"
-// import RecentSymbol from "./RecentSymbol"
 import FillData from "./FillData"
 import SDDefault from './SDDefault'
 import SDGraphDefault from './SDGraphDefault'
@@ -35,7 +34,7 @@ import OptConstant from '../Data/Constant/OptConstant'
  * session.EnableSpellCheck = false;
  *
  * // Log the session type to the console.
- * console.log("Session type:", session.Type);
+ * LogUtil.Debug("Session type:", session.Type);
  *
  * @property {any} Type - The type identifier of the session, generally defined by state constants.
  * @property {{ x: number, y: number }} dim - The dimensions of the session's display area.
@@ -85,8 +84,8 @@ import OptConstant from '../Data/Constant/OptConstant'
  * @property {RulerConfig} rulerConfig - Configuration settings for on-screen rulers.
  * @property {PageSetting} Page - Represents the page setting associated with the session.
  *
- * @property {number} CommentListID - Identifier for the comment list associated with the session.
- * @property {number} CommentID - Identifier for a specific comment within the session.
+ * @property {number} commentListId - Identifier for the comment list associated with the session.
+ * @property {number} commentId - Identifier for a specific comment within the session.
  */
 
 class SDData {
@@ -147,11 +146,8 @@ class SDData {
   @Type(() => PageSetting)
   public Page: PageSetting;
 
-  // @Type(() => RecentSymbol)
-  // public RecentSymbols: RecentSymbol[];
-
-  public CommentListID: number;
-  public CommentID: number;
+  public commentListId: number;
+  public commentId: number;
 
   //#endregion
 
@@ -160,12 +156,10 @@ class SDData {
     //#region Initialize Properties
 
     // Get current screen dimensions
-
     const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
     const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 
     // Set the default dim to screen width and height
-    // this.dim = { x: 1000, y: 750 };
     this.dim = { x: screenWidth, y: screenHeight };
 
     this.Type = StateConstant.StoredObjectType.SDDataObject;
@@ -185,7 +179,7 @@ class SDData {
     this.hopdim = { x: NvConstant.HopDimX[1], y: NvConstant.HopDimY[1] };
     this.hopstyle = NvConstant.HopStyle.Arc;
 
-    // Double change it to Select: 8 | Always: 16
+    // Change it to Select: 8 | Always: 16
     this.dimensions = NvConstant.DimensionFlags.Total;
     this.shapedimensions = 0;
     this.background = new FillData();
@@ -211,9 +205,8 @@ class SDData {
     this.EnableSpellCheck = true;
     this.rulerConfig = new RulerConfig();
     this.Page = new PageSetting();
-    // this.RecentSymbols = [];
-    this.CommentListID = -1;
-    this.CommentID = -1;
+    this.commentListId = -1;
+    this.commentId = -1;
 
     //#endregion
   }

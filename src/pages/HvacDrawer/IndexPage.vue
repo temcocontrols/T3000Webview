@@ -214,7 +214,7 @@
                 @click.left="viewportLeftClick" @dragover="($event) => {
                   $event.preventDefault();
                 }
-                  ">
+                ">
                 <!-- Cursor Icon -->
                 <q-icon class="cursor-icon" v-if="!locked && selectedTool.name !== 'Pointer'" :name="selectedTool.icon
                   ? selectedTool.icon
@@ -495,7 +495,7 @@
                             <q-list>
                               <q-item v-for="t in tools.filter(
                                 (i) =>
-                                  i.name !== item.type &&
+                                  i.name !== (item?.type ?? '') &&
                                   !['Duct', 'Pointer', 'Text'].includes(i.name)
                               )" :key="t.name" dense clickable v-close-popup @click="convertObjectType(item, t.name)">
                                 <q-item-section avatar>
@@ -542,22 +542,22 @@
 
                     </q-menu>
 
-                    <object-type ref="objectsRef" v-if="item.type !== 'Int_Ext_Wall'"
-                      :item="item" :key="item.id + item.type" :class="{ link: locked && item.t3Entry, }"
+                    <object-type ref="objectsRef" v-if="(item?.type ?? '') !== 'Int_Ext_Wall'" :item="item"
+                      :key="item.id + (item?.type ?? '')" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModel" @click.right="ObjectRightClicked(item, $event)" />
 
                     <CanvasShape v-if="
-                      item.type === 'Weld_General' ||
-                      item.type === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + item.type"
+                      (item?.type ?? '') === 'Weld_General' ||
+                      (item?.type ?? '') === 'Weld_Duct'" ref="objectsRef" :item="item" :key="item.id + (item?.type ?? '')"
                       :class="{ link: locked && item.t3Entry, }" :show-arrows="locked && !!item.t3Entry?.range"
                       @object-clicked="objectClicked(item)" @auto-manual-toggle="autoManualToggle(item)"
                       @change-value="changeEntryValue" @update-weld-model="updateWeldModelCanvas">
                     </CanvasShape>
 
-                    <WallExterior v-if="item.type === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
-                      :key="item.id + item.type + item.index" :class="{ link: locked && item.t3Entry, }"
+                    <WallExterior v-if="(item?.type ?? '') === 'Int_Ext_Wall'" ref="objectsRef" :item="item"
+                      :key="item.id + (item?.type ?? '') + item.index" :class="{ link: locked && item.t3Entry, }"
                       :show-arrows="locked && !!item.t3Entry?.range" @object-clicked="objectClicked(item)"
                       @auto-manual-toggle="autoManualToggle(item)" @change-value="changeEntryValue"
                       @update-weld-model="updateWeldModelCanvas">
@@ -747,7 +747,7 @@ import FileUpload from "../../components/FileUpload.vue";
 import TopToolbar from "../../components/TopToolbar.vue";
 import ToolsSidebar from "../../components/ToolsSidebar.vue";
 import ObjectConfig from "../../components/ObjectConfig.vue";
-import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../lib/common";
+import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data, user,*/ /*globalNav,*/ demoDeviceData } from "../../lib/common";
 import { liveApi } from "../../lib/api";
 import CanvasType from "src/components/CanvasType.vue";
 import CanvasShape from "src/components/CanvasShape.vue";
@@ -767,15 +767,16 @@ import NewTopToolBar from "src/components/NewTopToolBar.vue";
 import Data from "src/lib/T3000/Hvac/Data/Data";
 import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils"
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
 import {
-  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
+  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '../../lib/T3000/Hvac/Data/T3Data'
-import IdxPage from "src/lib/T3000/Hvac/Opt/IdxPage"
+import IdxPage from "src/lib/T3000/Hvac/Opt/Common/IdxPage";
 
+import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 // const isBuiltInEdge = ref(false);
 
 // Meta information for the application
@@ -1550,7 +1551,7 @@ function onSelectoSelectEnd(e) {
   IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection
 
   setTimeout(() => {
-    T3000.Hvac.App.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("select", isDrawing.value, appState, null);
   }, 100);
 }
 
@@ -1613,7 +1614,7 @@ function onResizeEnd(e) {
   appState.value.items[itemIndex].translate = e.lastEvent.drag.beforeTranslate;
 
   // T3000.Utils.Log('onResizeEnd', `current item:`, appState.value.items[itemIndex], `itemIndex:${itemIndex}`, `width:${e.lastEvent.width}`, `height:${e.lastEvent.height}`, `translate:${e.lastEvent.drag.beforeTranslate}`);
-  T3000.Hvac.App.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
+  T3000.Hvac.PageMain.UpdateExteriorWallStroke(appState, itemIndex, e.lastEvent.height);
 
   // Refresh objects after resizing
   refreshObjects();
@@ -1698,7 +1699,7 @@ function onRotateGroup(e) {
 // Adds a new object to the app state and updates guidelines
 function addObject(item, group = undefined, addToHistory = true) {
   if (addToHistory) {
-    addActionToHistory(`Add ${item.type}`);
+    addActionToHistory(`Add ${item?.type ?? ''}`);
   }
   appState.value.itemsCount++;
   item.id = appState.value.itemsCount;
@@ -1812,7 +1813,7 @@ function onSelectoDragEnd(e) {
   }
 
   const item = drawObject(size, pos);
-  if (item && continuesObjectTypes.includes(item.type)) {
+  if (item && continuesObjectTypes.includes(item?.type ?? '')) {
     setTimeout(() => {
       isDrawing.value = true;
       appState.value.selectedTargets = [];
@@ -2408,8 +2409,8 @@ keycon.keydown(["ctrl", "b"], (e) => {
 
 // Insert function
 keycon.keydown(["insert"], (e) => {
-  // T3000.Hvac.KeyCommand.InitKeyCommand(insertT3EntryDialog.value);
-  T3000.Hvac.KeyCommand.InsertT3EntryDialog();
+  // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
+  T3000.Hvac.KiOpt.InsertT3EntryDialog();
   // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
@@ -2419,6 +2420,7 @@ function linkT3EntryDialogAction() {
   linkT3EntryDialog.value.active = true;
   if (!appState.value.items[appState.value.activeItemIndex]?.t3Entry) return;
   linkT3EntryDialog.value.data = cloneDeep(appState.value.items[appState.value.activeItemIndex]?.t3Entry);
+  console.log('= Idx linkT3EntryDialogAction linkT3EntryDialog.value.data:', linkT3EntryDialog.value.data);
 }
 
 // Delete selected objects from the app state
@@ -2554,7 +2556,7 @@ function drawWeldObjectCanvas(selectedItems) {
     previous = item.zindex;
   });
 
-  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
 
   if (isAllDuct) {
     // Get the new pos for all ducts
@@ -2664,7 +2666,7 @@ function weldSelected() {
     )
   );
 
-  if (selectedItems1.some((item) => item.type === "Weld")) {
+  if (selectedItems1.some((item) => (item?.type ?? "") === "Weld")) {
     $q.notify({
       type: "warning",
       message: "Currently not supported!",
@@ -2682,7 +2684,7 @@ function weldSelected() {
 
   // Check whether the selected items's type are all General
   const isAllGeneral = selectedItems.every((item) => item.cat === "General");
-  const isAllDuct = selectedItems.every((item) => item.type === "Duct");
+  const isAllDuct = selectedItems.every((item) => (item?.type ?? "") === "Duct");
   // console.log('IndexPage.vue->weldSelected->isAllGeneral,isAllDuct', isAllGeneral, isAllDuct);
 
   if (isAllGeneral || isAllDuct) {
@@ -2745,7 +2747,7 @@ async function saveLibImage(file) {
   if (user.value) {
 
     console.log('= Idx saveLibImage file', file);
-    console.log('= Idx saveLibImage user',user.value);
+    console.log('= Idx saveLibImage user', user.value);
 
     liveApi
       .post("hvacTools", {
@@ -3127,7 +3129,7 @@ function reloadPanelsData() {
 
 // Create a label for an entry with optional prefix
 function entryLabel(option) {
-  // console.log('entryLabel - ', option);
+   console.log('entryLabel - ', option);
   let prefix =
     (option.description && option.id !== option.description) ||
       (!option.description && option.id !== option.label)
@@ -3436,8 +3438,6 @@ function objectSettingsUnchanged() {
 // Add selected items to the library
 async function addToLibrary() {
 
-  // TODO
-
   if (appState.value.selectedTargets.length < 1 || locked.value) return;
   const selectedItems = appState.value.items.filter((i) =>
     appState.value.selectedTargets.some(
@@ -3676,7 +3676,7 @@ function deleteLibImage(item) {
     if (!item.online) {
       // Delete the image from the webview
 
-      if(library.value.images.length<=0){
+      if (library.value.images.length <= 0) {
         return;
       }
 
@@ -3762,7 +3762,7 @@ function toolDropped(ev, tool) {
 
 const updateWeldModel = (weldModel, itemList) => {
   appState.value.items.map((item) => {
-    if (item.type === "Weld" && item.id === weldModel.id) {
+    if ((item?.type ?? "") === "Weld" && item.id === weldModel.id) {
       item.settings.weldItems = itemList;
     }
   });
@@ -3771,7 +3771,7 @@ const updateWeldModel = (weldModel, itemList) => {
 const updateWeldModelCanvas = (weldModel, pathItemList) => {
   appState.value.items.map((item) => {
     if (
-      (item.type === "Weld_General" || item.type === "Weld_Duct") &&
+      ((item?.type ?? "") === "Weld_General" || (item?.type ?? "") === "Weld_Duct") &&
       item.id === weldModel.id
     ) {
       // Update the weld items's new width, height, translate
@@ -3832,8 +3832,8 @@ function viewportRightClick(ev) {
     }, 10);
 
     //clear empty drawing object
-    T3000.Hvac.App.ClearItemsWithZeroWidth(appState);
-    T3000.Hvac.App.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
+    T3000.Hvac.PageMain.ClearItemsWithZeroWidth(appState);
+    T3000.Hvac.PageMain.SetWallDimensionsVisible("all", isDrawing.value, appState, false);
   }
 }
 

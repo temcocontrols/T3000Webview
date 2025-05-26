@@ -30,8 +30,8 @@
  * };
  *
  * // Accessing and using the HVAC instance data
- * console.log("Basic Parameters:", Instance.Basic);
- * console.log("Shape Parameters:", Instance.Shape);
+ * LogUtil.Debug("Basic Parameters:", Instance.Basic);
+ * LogUtil.Debug("Shape Parameters:", Instance.Shape);
  */
 /**
  * Represents a comprehensive HVAC instance holding both fundamental operating parameters and graphical representation settings.

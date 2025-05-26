@@ -24,8 +24,8 @@
  * arrowRecord.EndArrowDisp = false;
  * arrowRecord.ArrowSizeIndex = 2;
  *
- * console.log(`Start Arrow: ID=${arrowRecord.StartArrowID}, Display=${arrowRecord.StartArrowDisp}`);
- * console.log(`End Arrow: ID=${arrowRecord.EndArrowID}, Display=${arrowRecord.EndArrowDisp}`);
+ * LogUtil.Debug(`Start Arrow: ID=${arrowRecord.StartArrowID}, Display=${arrowRecord.StartArrowDisp}`);
+ * LogUtil.Debug(`End Arrow: ID=${arrowRecord.EndArrowID}, Display=${arrowRecord.EndArrowDisp}`);
  *
  * Use this class to simplify managing arrow configurations, which is especially helpful in scenarios involving the
  * dynamic rendering of HVAC control diagrams or simulations.

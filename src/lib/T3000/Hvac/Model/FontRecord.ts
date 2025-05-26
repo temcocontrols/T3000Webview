@@ -15,8 +15,8 @@
  * const fontRecord = new FontRecord();
  *
  * // Access default properties
- * console.log(fontRecord.fontName);  // Output: "Arial"
- * console.log(fontRecord.fontSize);  // Output: 10
+ * LogUtil.Debug(fontRecord.fontName);  // Output: "Arial"
+ * LogUtil.Debug(fontRecord.fontSize);  // Output: 10
  *
  * // Modify font properties as needed
  * fontRecord.fontName = "Courier New";

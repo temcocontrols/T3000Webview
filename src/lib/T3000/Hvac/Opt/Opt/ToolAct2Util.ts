@@ -4,7 +4,7 @@ import Instance from "../../Data/Instance/Instance";
 import T3Gv from "../../Data/T3Gv";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import DrawUtil from "./DrawUtil";
 import HookUtil from "./HookUtil";
@@ -28,7 +28,7 @@ class ToolAct2Util {
   GroupSelectedShapes(action, customSelectionList, useAllShapes, skipRender, enableCollaboration) {
     let index, currentObject;
     let hasNoRotateObject = false;
-    let commentIDs = [];
+    let commentIds = [];
 
     // Get either all visible shapes or just selected shapes based on parameters
     let visibleShapes = LayerUtil.ActiveVisibleZList();
@@ -52,26 +52,28 @@ class ToolAct2Util {
     const moveList = customSelectionList || SelectUtil.GetMoveList(-1, true, true, false, {}, false);
 
     // Check if grouping is allowed
+    /*
     if (!useAllShapes) {
       if (!DrawUtil.AllowGroup(moveList)) {
-        const msg = "Some of the objects you have selected to be grouped are locked, or hooked to other objects that must also be selected to become part of the same group.";
+        const msg = "== Grouping is not allowed for the selected objects.";
         return Utils1.Alert(msg, null, () => { });
       }
       if (T3Gv.opt.IsLinkedOutside(moveList)) {
-        const msg = "Some of the objects you have selected to be part of a group are linked to other objects that are not part of the group. \nEither deselect these objects or select the objects that they are linked to.";
+        const msg = "== You cannot group objects that are linked to other drawings.";
         return Utils1.Alert(msg, null, () => { });
       }
       if (T3Gv.opt.IsGroupNonDelete()) {
-        const msg = "You cannot group permanent objects like project charts and similar diagrams";
+        const msg = "== You cannot group objects that are part of a non-deletable group.";
         return Utils1.Alert(msg, null, () => { });
       }
     }
+    */
 
     // Handle dimensions of objects
     const preserveDimensions = function (objects) {
       const savedDimensions = [];
       for (let i = 0, len = objects.length; i < len; i++) {
-        const obj = DataUtil.GetObjectPtr(objects[i], true);
+        const obj = ObjectUtil.GetObjectPtr(objects[i], true);
         if ((obj.Dimensions & NvConstant.DimensionFlags.Always) ||
           (obj.Dimensions & NvConstant.DimensionFlags.Select)) {
           savedDimensions.push({
@@ -87,7 +89,7 @@ class ToolAct2Util {
 
     const restoreDimensions = function (objects, savedDimensions) {
       for (let i = 0, len = savedDimensions.length; i < len; i++) {
-        const obj = DataUtil.GetObjectPtr(objects[savedDimensions[i].index], true);
+        const obj = ObjectUtil.GetObjectPtr(objects[savedDimensions[i].index], true);
         obj.Dimensions = savedDimensions[i].dimensions;
         obj.UpdateFrame();
       }
@@ -107,17 +109,17 @@ class ToolAct2Util {
     }
 
     // Get links and prepare to adjust shape positions
-    const linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+    const linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
     let shape = null;
 
     // Adjust positions of all shapes relative to the group's bounding rectangle
     const shapeCount = shapesToGroup.length;
     for (index = 0; index < shapeCount; index++) {
-      shape = DataUtil.GetObjectPtr(shapesToGroup[index], true);
+      shape = ObjectUtil.GetObjectPtr(shapesToGroup[index], true);
 
       // Track comments
-      if (shape.CommentID >= 0) {
-        commentIDs.push(shape.CommentID);
+      if (shape.commentId >= 0) {
+        commentIds.push(shape.commentId);
       }
 
       // Adjust frame position
@@ -211,8 +213,8 @@ class ToolAct2Util {
     }
 
     // Handle comments
-    if (commentIDs.length) {
-      T3Gv.opt.Comment_Group(commentIDs);
+    if (commentIds.length) {
+      T3Gv.opt.CommentGroup(commentIds);
     }
 
     // Update visible shapes list
@@ -254,7 +256,7 @@ class ToolAct2Util {
     let flipVertFlag = OptConstant.ExtraFlags.FlipVert;
     let flipHorizFlag = OptConstant.ExtraFlags.FlipHoriz;
 
-    let groupShape = DataUtil.GetObjectPtr(groupShapeId, true);
+    let groupShape = ObjectUtil.GetObjectPtr(groupShapeId, true);
     let shapeContainerIds = [];
     let groupFrame = groupShape.Frame;
     let centerPoint = {
@@ -270,7 +272,7 @@ class ToolAct2Util {
     }
 
     let currentShape = null;
-    let linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+    let linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
 
     LayerUtil.ZListPreserve();
     let groupX = groupFrame.x;
@@ -287,10 +289,10 @@ class ToolAct2Util {
     }
 
     for (i = 0; i < shapeCount; ++i) {
-      currentShape = DataUtil.GetObjectPtr(shapesInGroup[i], true);
+      currentShape = ObjectUtil.GetObjectPtr(shapesInGroup[i], true);
 
-      if (currentShape.CommentID >= 0) {
-        commentIds.push(currentShape.CommentID);
+      if (currentShape.commentId >= 0) {
+        commentIds.push(currentShape.commentId);
       }
 
       if (currentShape instanceof Instance.Shape.ShapeContainer) {
@@ -349,7 +351,7 @@ class ToolAct2Util {
       }
 
       if (currentShape.DataID !== -1 && scaleFactorY !== 1) {
-        let textStyles = DataUtil.GetObjectPtr(currentShape.DataID, true).runtimeText.styles;
+        let textStyles = ObjectUtil.GetObjectPtr(currentShape.DataID, true).runtimeText.styles;
         let styleCount = textStyles.length;
 
         for (tableIndex = 0; tableIndex < styleCount; ++tableIndex) {
@@ -359,7 +361,7 @@ class ToolAct2Util {
 
       currentShape.bInGroup = false;
 
-      DataUtil.AddToDirtyList(shapesInGroup[i]);
+      ObjectUtil.AddToDirtyList(shapesInGroup[i]);
       T3Gv.opt.RebuildLinks(linksBlock, shapesInGroup[i]);
     }
 
@@ -367,7 +369,7 @@ class ToolAct2Util {
 
     for (i = 0; i < originalShapeList.length; i++) {
       T3Gv.opt.ob = originalShapeList[i];
-      targetShape = DataUtil.GetObjectPtr(originalShapeList[i].BlockID, false);
+      targetShape = ObjectUtil.GetObjectPtr(originalShapeList[i].BlockID, false);
 
       let linkMaintainMode = maintainLinkFlag ? 2 : false;
 
@@ -393,7 +395,7 @@ class ToolAct2Util {
     T3Gv.opt.UpdateLinks();
 
     groupShape.ShapesInGroup = [];
-    DataUtil.DeleteObjects([groupShapeId], false);
+    ObjectUtil.DeleteObjects([groupShapeId], false);
     SvgUtil.RenderDirtySVGObjects();
   }
 
@@ -429,7 +431,7 @@ class ToolAct2Util {
     let currentShape = null;
 
     for (index = 0; index < selectedCount; ++index) {
-      currentShape = DataUtil.GetObjectPtr(selectedShapes[index], false);
+      currentShape = ObjectUtil.GetObjectPtr(selectedShapes[index], false);
 
       if (currentShape instanceof Instance.Shape.GroupSymbol) {
         hasGroupShape = true;
@@ -445,12 +447,12 @@ class ToolAct2Util {
     if (hasGroupShape) {
 
       // Create a copy of the selected shapes
-      const shapesCopy = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true).slice(0);
+      const shapesCopy = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true).slice(0);
       let resultShapes = [];
 
       // Process each selected shape
       for (index = 0; index < selectedCount; ++index) {
-        currentShape = DataUtil.GetObjectPtr(shapesCopy[index], false);
+        currentShape = ObjectUtil.GetObjectPtr(shapesCopy[index], false);
         const shapeId = shapesCopy[index];
 
         if (currentShape instanceof Instance.Shape.GroupSymbol) {
@@ -461,7 +463,7 @@ class ToolAct2Util {
           nativeGroupResult = T3Gv.opt.UngroupNative(shapeId, false, true);
 
           if (nativeGroupResult) {
-            DataUtil.DeleteObjects([shapeId], false);
+            ObjectUtil.DeleteObjects([shapeId], false);
             resultShapes = resultShapes.concat(nativeGroupResult);
             hasGroupShape = true;
           }

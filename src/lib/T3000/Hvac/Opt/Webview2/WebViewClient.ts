@@ -6,13 +6,15 @@
 import MessageType from "../Socket/MessageType"
 import Hvac from "../../Hvac"
 import MessageModel from "../Socket/MessageModel"
-import Utils5 from "../../Util/Utils5"
-import IdxUtils from "../IdxUtils"
+import IdxUtils from "../Common/IdxUtils"
 import { useQuasar } from "quasar"
 import {
   T3_Types, T3000_Data, appState, rulersGridVisible, grpNav, library, selectPanelOptions, linkT3EntryDialog, savedNotify
 
 } from "../../Data/T3Data"
+import Utils1 from "../../Util/Utils1"
+import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 
 
 class WebViewClient {
@@ -49,24 +51,24 @@ class WebViewClient {
   // Send a message to the native code T3 application
   sendMessage(message: any) {
     if (!this.webview) {
-      console.log('= Wv2 window.chrome.webview is not available');
+      LogUtil.Debug('= Wv2 window.chrome.webview is not available');
       return;
     }
 
     this.webview.postMessage(message);
-    console.log('= Wv2 Sent message to T3:', message);
+    LogUtil.Debug('= Wv2 Sent message to T3:', message);
   }
 
   // Handle messages received from the native code T3 application
   handleMessage(event: any) {
     const data = event?.data ?? {};
-    console.log('= Wv2 Received message from T3:', data);
+    LogUtil.Debug('= Wv2 Received message from T3:', data);
 
     try {
       this.processMessageData(data);
-      console.log('= Wv2 ========================');
+      LogUtil.Debug('= Wv2 ========================');
     } catch (error) {
-      console.error('= Wv2 failed to parse | process data:', error);
+      T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
     }
   }
 
@@ -183,7 +185,7 @@ class WebViewClient {
     }
 
     // Add msg id
-    this.message.msgId = Utils5.generateUUID();
+    this.message.msgId = Utils1.GenerateUUID();
 
     const needAppedSerialNumber = panelId != null && serialNumber != null;
     if (needAppedSerialNumber) {
@@ -232,6 +234,11 @@ class WebViewClient {
 
   SaveLibraryData(panelId?: number, viewitem?: number, data?: any) {
     this.FormatMessageData(MessageType.SAVE_LIBRARY_DATA, panelId, viewitem, data);
+    this.sendMessage(this.messageData);
+  }
+
+  SaveNewLibraryData(panelId?: number, viewitem?: number, data?: any) {
+    this.FormatMessageData(MessageType.SAVE_NEW_LIBRARY_DATA, panelId, viewitem, data);
     this.sendMessage(this.messageData);
   }
 
@@ -346,6 +353,10 @@ class WebViewClient {
       this.HandleSaveLibraryDataRes(msgData);
     }
 
+    if(msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
+      this.HandleSaveNewLibraryDataRes(msgData);
+    }
+
     if (msgData.action === MessageType.DELETE_IMAGE_RES) {
       this.HandleDeleteImageRes(msgData);
     }
@@ -451,6 +462,7 @@ class WebViewClient {
       T3000_Data.value.panelsRanges = T3000_Data.value.panelsRanges.concat(msgData.ranges);
 
       IdxUtils.refreshLinkedEntries(msgData.data);
+      IdxUtils.refreshLinkedEntries2(msgData.data);
     }
   }
 
@@ -604,7 +616,9 @@ class WebViewClient {
     if (!linkT3EntryDialog.value.active) {
       selectPanelOptions.value = T3000_Data.value.panelsData;
     }
+
     IdxUtils.refreshLinkedEntries(msgData.data);
+    IdxUtils.refreshLinkedEntries2(msgData.data);
   }
 
   public HandleLoadGraphicEntryRes(msgData) {
@@ -688,6 +702,11 @@ class WebViewClient {
 
   public HandleSaveLibraryDataRes(msgData) {
     // action: 10, // SAVE_LIBRARY_DATA_RES
+  }
+
+  public HandleSaveNewLibraryDataRes(msgData) {
+    // action: 14, // SAVE_NEW_LIBRARY_DATA_RES
+    LogUtil.Debug('= Wv2 Handle SAVE_NEW_LIBRARY_DATA_RES:', msgData);
   }
 
   public HandleDeleteImageRes(msgData) {

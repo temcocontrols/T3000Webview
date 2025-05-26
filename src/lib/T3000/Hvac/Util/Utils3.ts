@@ -105,7 +105,7 @@ class Utils3 {
         else {
           deltaX = Math.abs(points[i].x - points[i + 1].x);
           deltaY = Math.abs(points[i].y - points[i + 1].y);
-          lineLength = Utils2.sqrt(deltaY * deltaY + deltaX * deltaX);
+          lineLength = Utils2.Sqrt(deltaY * deltaY + deltaX * deltaX);
           xDiff = testPoint.x - points[i].x;
 
           // Line is more horizontal than vertical (slope < 1)
@@ -232,7 +232,7 @@ class Utils3 {
    * @param xmlElement - The XML element to convert
    * @returns The string representation of the XML element
    */
-  static XML2Str(xmlElement) {
+  static XmlToStr(xmlElement) {
     try {
       return (new XMLSerializer()).serializeToString(xmlElement);
     } catch (error) {
@@ -351,6 +351,122 @@ class Utils3 {
       const randomValue = Math.floor(16 * Math.random());
       return randomValue.toString(16);
     });
+  }
+
+  /**
+   * Converts a string representation of feet and inches to decimal feet
+   * @param measurementString - String containing feet/inches measurement (e.g., "5' 6"", "5' 6 1/2"")
+   * @returns The measurement converted to decimal feet as a number
+   */
+  static ConvertToFeet(measurementString) {
+    let fractionStr = "";
+    let inchesStr = "";
+    let feetStr = "";
+    let feet = 0;
+    let inches = 0;
+    let parts = [];
+    let sign = 1;
+
+    // Parse the input string into components
+    parts = measurementString.trim().split(" ");
+
+    // Handle case with a fraction component
+    if (parts[parts.length - 1].indexOf("/") >= 0) {
+      fractionStr = parts[parts.length - 1];
+
+      // Check if we have inches with apostrophe
+      if (parts.length >= 2) {
+        let potentialInches = parts[parts.length - 2];
+        if (potentialInches.substr(potentialInches.length - 1, 1) === "'") {
+          feetStr = parts[parts.length - 2];
+          inchesStr = "";
+        }
+      }
+
+      // Check if we have explicit feet
+      if (parts.length >= 3) {
+        feetStr = parts[parts.length - 3];
+      }
+    }
+    // Handle case with just feet and inches
+    else if (parts.length === 2) {
+      feetStr = parts[0];
+      inchesStr = parts[1];
+    }
+    // Handle case with just inches or feet
+    else {
+      if (parts[0].charAt(parts[0].length - 1) === '"') {
+        inchesStr = parts[0];
+      } else {
+        feetStr = parts[0];
+      }
+    }
+
+    // Clean up the units symbols
+    if (feetStr.charAt(feetStr.length - 1) === "'") {
+      feetStr = feetStr.substring(0, feetStr.length - 1);
+    }
+
+    if (inchesStr.charAt(inchesStr.length - 1) === '"') {
+      inchesStr = inchesStr.substring(0, inchesStr.length - 1);
+    }
+
+    if (fractionStr.charAt(fractionStr.length - 1) === '"') {
+      fractionStr = fractionStr.substring(0, fractionStr.length - 1);
+    }
+
+    // Convert components to numbers
+    if (feetStr.length > 0) {
+      feet = parseFloat(feetStr);
+    }
+
+    if (inchesStr.length > 0) {
+      inches = parseFloat(inchesStr);
+    }
+
+    // Handle negative values
+    if (feet < 0) {
+      feet = -feet;
+      sign = -1;
+    }
+
+    // Add fractional inches if present
+    if (fractionStr.length > 0) {
+      let fractionParts = fractionStr.split("/");
+      inches += parseInt(fractionParts[0], 10) / parseInt(fractionParts[1], 10);
+    }
+
+    // Convert to decimal feet
+    return (feet + inches / 12) * sign;
+  }
+
+  /**
+   * Checks if a string represents a valid floating point number
+   * @param inputString - The string to check
+   * @param allowNegative - Whether to allow negative numbers
+   * @returns True if the string represents a valid float, false otherwise
+   */
+  static NumberIsFloat(inputString, allowNegative) {
+    const digitNine = '9'.charCodeAt(0);
+    const digitZero = '0'.charCodeAt(0);
+    const decimalPoint = '.'.charCodeAt(0);
+    const minusSign = '-'.charCodeAt(0);
+
+    inputString = inputString.trim();
+
+    for (let i = 0; i < inputString.length; i++) {
+      const charCode = inputString.charCodeAt(i);
+
+      const isDigit = charCode <= digitNine && charCode >= digitZero;
+      const isDecimalPoint = charCode === decimalPoint;
+      const isNegativeSign = allowNegative && charCode === minusSign;
+
+      if (!(isDigit || isDecimalPoint || isNegativeSign)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 

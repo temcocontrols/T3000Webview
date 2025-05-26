@@ -16,11 +16,11 @@ import Container from "./B.Container"
  *
  * // Enable standard scaling and check
  * layer.AllowScaling(true);
- * console.log(layer.IsScalingAllowed()); // Expected output: true
+ * LogUtil.Debug(layer.IsScalingAllowed()); // Expected output: true
  *
  * // Alternatively, enable DPI-only scaling
  * layer.AllowDpiScalingOnly(true);
- * console.log(layer.IsDpiScalingAllowed()); // Expected output: true
+ * LogUtil.Debug(layer.IsDpiScalingAllowed()); // Expected output: true
  *
  * // Create an SVG element with specified parameters
  * const svgElement = layer.CreateElement('g', { width: 200, height: 200 });

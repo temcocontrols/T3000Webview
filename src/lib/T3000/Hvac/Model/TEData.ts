@@ -26,12 +26,12 @@ import StateConstant from "../Data/State/StateConstant";
  *
  * // Checking if there is an active text edit object
  * if (teData.theActiveTextEditObjectID === -1) {
- *   console.log("No active text edit object is selected.");
+ *   LogUtil.Debug("No active text edit object is selected.");
  * }
  *
  * // Updating the editor ID upon user interaction
  * teData.EditorID = 42;
- * console.log(`Editor ID updated to: ${teData.EditorID}`);
+ * LogUtil.Debug(`Editor ID updated to: ${teData.EditorID}`);
  * ```
  */
 class TEData {

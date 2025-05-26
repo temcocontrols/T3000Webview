@@ -2503,7 +2503,7 @@ SVG.Text &&
  * @example
  * // Add a click handler to a rectangle
  * rect.click(function(event) {
- *   T3Util.Log('Rectangle was clicked!', event);
+ *   LogUtil.Debug('Rectangle was clicked!', event);
  * });
  */
 [
@@ -2547,17 +2547,87 @@ SVG.Text &&
   };
 });
 
+/**
+ * SVG ForeignObject constructor
+ * Creates a new foreignObject element that can contain HTML content within SVG
+ * @returns {SVG.ForeignObject} A new SVG foreignObject instance
+ */
+SVG.ForeignObject = function() {
+  this.constructor.call(this, SVG.create("foreignObject"));
+};
+
+/**
+ * Establishes prototype inheritance for SVG ForeignObject
+ */
+SVG.ForeignObject.prototype = new SVG.Container();
+
+SVG.extend(SVG.ForeignObject, {
+  /**
+   * Moves the foreignObject to a specific position
+   * @param {number} x - The x-coordinate to move to
+   * @param {number} y - The y-coordinate to move to
+   * @returns {SVG.ForeignObject} The foreignObject element for method chaining
+   */
+  move: function(x, y) {
+    return this.attr({
+      x: x,
+      y: y
+    });
+  },
+
+  /**
+   * Sets the size of the foreignObject
+   * @param {number} width - The width to set
+   * @param {number} height - The height to set
+   * @returns {SVG.ForeignObject} The foreignObject element for method chaining
+   */
+  size: function(width, height) {
+    return this.attr({
+      width: width,
+      height: height
+    });
+  },
+
+  /**
+   * Sets HTML content inside the foreignObject
+   * @param {HTMLElement|string} content - HTML element or HTML string to add
+   * @returns {SVG.ForeignObject} The foreignObject element for method chaining
+   */
+  html: function(content) {
+    if (typeof content === 'string') {
+      this.node.innerHTML = content;
+    } else if (content instanceof HTMLElement) {
+      this.node.innerHTML = '';
+      this.node.appendChild(content);
+    }
+    return this;
+  }
+});
+
+// Add foreignObject creation method to SVG.Container
+SVG.extend(SVG.Container, {
+  /**
+   * Creates and returns a new foreignObject element within this container
+   * @param {number} width - The width of the foreignObject
+   * @param {number} height - The height of the foreignObject
+   * @returns {SVG.ForeignObject} The new foreignObject element
+   */
+  foreignObject: function(width, height) {
+    return this.put(new SVG.ForeignObject().size(width, height));
+  }
+});
+
 /*
 extend(Element.prototype, {});
 extend(Element, {
   t1: function () {
-    T3Util.Log(
+    LogUtil.Debug(
       `Hvac.SVG.js extend svg.js Element ${this.type.toString()}---------------------------------------`,
       this
     );
   },
   // data: function () {
-  //   T3Util.Log("extend Element data", this);
+  //   LogUtil.Debug("extend Element data", this);
   // },
 });
 */

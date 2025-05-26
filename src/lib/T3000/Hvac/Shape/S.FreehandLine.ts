@@ -11,10 +11,12 @@ import Point from '../Model/Point';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
+import $ from 'jquery';
+import EvtUtil from '../Event/EvtUtil';
 
 /**
  * Represents a freehand line shape that consists of multiple connected points.
@@ -119,8 +121,8 @@ class FreehandLine extends BaseLine {
    * Calculates the bounding frame of the freehand line
    */
   CalcFrame() {
-    let rect = {},
-      points = [];
+    let rect = { width: 0, height: 0, x: 0, y: 0 };
+    let points = [];
 
     if (this.pointlist && this.pointlist.length) {
       points = this.GetFreehandPoints(false);
@@ -240,7 +242,7 @@ class FreehandLine extends BaseLine {
     styleRecord = this.SVGTokenizerHook(styleRecord);
 
     if (styleRecord == null) {
-      let sessionObject = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      let sessionObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
       if (sessionObject) {
         styleRecord = sessionObject.def.style;
       }
@@ -325,7 +327,7 @@ class FreehandLine extends BaseLine {
     let height = frame.height;
 
     // Get object pointer based on blockId
-    DataUtil.GetObjectPtr(blockId, false);
+    ObjectUtil.GetObjectPtr(blockId, false);
 
     // Adjust frame dimensions to account for knob size
     width += scaledKnobSize;
@@ -412,11 +414,13 @@ class FreehandLine extends BaseLine {
     };
 
     let newBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    let deltaX = 0;
+    let deltaY = 0;
 
     switch (T3Gv.opt.actionTriggerId) {
       case OptConstant.ActionTriggerType.TopLeft:
-        let deltaX = newBBox.x - mouseX;
-        let deltaY = newBBox.y - mouseY;
+        deltaX = newBBox.x - mouseX;
+        deltaY = newBBox.y - mouseY;
         newBBox.x = mouseX;
         newBBox.y = mouseY;
         newBBox.width += deltaX;
@@ -531,7 +535,7 @@ class FreehandLine extends BaseLine {
       T3Gv.opt.actionBBox = savedActionBBox;
       T3Gv.opt.actionNewBBox = savedActionNewBBox;
 
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
 
       // Update flags if necessary
       if (this.rflags) {
@@ -599,9 +603,8 @@ class FreehandLine extends BaseLine {
     }
 
     // Update display coordinates if this is the active object
-    if (T3Gv.opt.actionStoredObjectId === this.BlockID &&
-      cursorPoint &&
-      UIUtil.UpdateDisplayCoordinates(newFrame, cursorPoint, CursorConstant.CursorTypes.Grow, this)) {
+    if (T3Gv.opt.actionStoredObjectId === this.BlockID && cursorPoint) {
+      UIUtil.UpdateDisplayCoordinates(newFrame, cursorPoint, CursorConstant.CursorTypes.Grow, this);
       // Coordinates updated
     }
 
@@ -733,10 +736,8 @@ class FreehandLine extends BaseLine {
 
     LMEvtUtil.UnbindActionClickHammerEvents();
 
-    // if (!T3Gv.opt.isMobilePlatform) {
     $(window).unbind('mousemove');
-    T3Gv.opt.WorkAreaHammer.on('tap', Evt_WorkAreaHammerClick);
-    // }
+    T3Gv.opt.WorkAreaHammer.on('tap', EvtUtil.Evt_WorkAreaHammerClick);
 
     this.ResetAutoScrollTimer();
 
@@ -763,7 +764,7 @@ class FreehandLine extends BaseLine {
       shapeAttributes.attributes.pointlist = Utils1.DeepCopy(this.pointlist);
     }
 
-    shapeAttributes.LineTool = DSConstant.LineToolTypes.FreehandLine;
+    shapeAttributes.LineTool = "freehandLine";//DSConstant.LineToolTypes.FreehandLine;
 
     if (false) {
       shapeAttributes.CreateList = [T3Gv.opt.drawShape.BlockID];
@@ -782,7 +783,7 @@ class FreehandLine extends BaseLine {
    * @param mouseY - The Y coordinate where the drawing starts
    */
   LMDrawClick(mouseX, mouseY) {
-    T3Util.Log('ListManager.FreehandLine.prototype.LMDrawClick e, t=>', mouseX, mouseY);
+    LogUtil.Debug('ListManager.FreehandLine.prototype.LMDrawClick e, t=>', mouseX, mouseY);
 
     try {
       this.Frame.x = mouseX;
@@ -801,11 +802,8 @@ class FreehandLine extends BaseLine {
       };
 
       T3Gv.opt.WorkAreaHammer.off('dragstart');
-
-      // if (!T3Gv.opt.isMobilePlatform) {
-      T3Gv.opt.WorkAreaHammer.on('drag', Evt_DrawTrackHandlerFactory(this));
-      T3Gv.opt.WorkAreaHammer.on('dragend', Evt_DrawReleaseHandlerFactory(this));
-      // }
+      T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_DrawTrackHandlerFactory(this));
+      T3Gv.opt.WorkAreaHammer.on('dragend', EvtUtil.Evt_DrawReleaseHandlerFactory(this));
     } catch (error) {
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);

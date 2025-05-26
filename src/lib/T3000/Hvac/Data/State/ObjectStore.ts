@@ -18,7 +18,7 @@ import StoredObject from "./StoredObject"
  *
  * @remarks
  * The class is designed to work alongside an external state management system, which is used to track and handle state changes (for example, via T3Gv.state).
- * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.isObject) to be available in the environment.
+ * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.IsObject) to be available in the environment.
  *
  * @example
  * Here's an example of how to create an instance of ObjectStore and operate on stored objects:
@@ -33,11 +33,11 @@ import StoredObject from "./StoredObject"
  *
  * // Retrieve the block by its ID
  * const retrievedBlock = store.GetObject(newBlockId);
- * console.log(retrievedBlock);
+ * LogUtil.Debug(retrievedBlock);
  *
  * // Get all stored objects of type 'Sensor'
  * const sensorBlocks = store.GetObjects('Sensor');
- * console.log(sensorBlocks);
+ * LogUtil.Debug(sensorBlocks);
  *
  * // Delete the block and update current state
  * store.DeleteObject(newBlockId);
@@ -46,18 +46,10 @@ import StoredObject from "./StoredObject"
  */
 class ObjectStore {
 
-  /** Object ID */
-  public ID: number;
-
-  /** Type of stored object */
-  public Type: string;
-
-  /** State operation type identifier */
-  public StateOperationTypeID: number;
-
-  /** Collection of stored objects */
-  public StoredObjects: ObjectStore[];
-
+  public ID: number;//Object ID
+  public Type: string;//Type of stored object
+  public stateOptTypeId: number;//State operation type identifier
+  public StoredObjects: ObjectStore[];//Collection of stored objects
   public Data: any;
 
   /**
@@ -87,7 +79,7 @@ class ObjectStore {
           existingObject.Type = storedObject.Type;
           existingObject.Data = storedObject.Data;
           existingObject.Dirty = true;
-          existingObject.StateOperationTypeID = storedObject.StateOperationTypeID;
+          existingObject.stateOptTypeId = storedObject.stateOptTypeId;
           storedObject = existingObject;
         } else {
           storedObject.Dirty = true;
@@ -95,7 +87,7 @@ class ObjectStore {
         }
       } else {
         storedObject.ID = this.StoredObjects.length > 0 ? Utils1.GenerateObjectID() : 0;
-        if (storedObject.Data && Utils1.isObject(storedObject.Data)) {
+        if (storedObject.Data && Utils1.IsObject(storedObject.Data)) {
           storedObject.Data.BlockID = storedObject.ID;
         }
         this.StoredObjects.push(storedObject);
@@ -163,7 +155,7 @@ class ObjectStore {
 
       if (deleteIndex >= 0) {
         const deleteObject = this.GetObject(objectId);
-        deleteObject.StateOperationTypeID = StateConstant.StateOperationType.DELETE;
+        deleteObject.stateOptTypeId = StateConstant.StateOperationType.DELETE;
         if (needAddToCurrent) {
           T3Gv.state.AddToCurrentState(deleteObject);
         }

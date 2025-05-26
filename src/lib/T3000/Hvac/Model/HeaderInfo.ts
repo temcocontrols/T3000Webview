@@ -35,14 +35,14 @@ import OptConstant from '../Data/Constant/OptConstant';
  * const header = new HeaderInfo();
  *
  * // Access the page record
- * console.log(header.Page);
+ * LogUtil.Debug(header.Page);
  *
  * // Modify the presentation name
  * header.presentationName = "Main Presentation";
  *
  * // Check if the document is marked as dirty (modified)
  * if (header.DocIsDirty) {
- *   console.log("The document has unsaved changes.");
+ *   LogUtil.Debug("The document has unsaved changes.");
  * }
  * ```
  *
@@ -101,7 +101,7 @@ class HeaderInfo {
 
     this.DimensionFont = new FontRecord();
     this.DimensionFontStyle = new DefaultStyle();
-    this.flags = OptConstant.CntHeaderFlags.Pages;
+    this.flags = OptConstant.HeaderFlags.Pages;
     this.BusinessModule = '';
     this.dateformat = - 1;
     this.originaltemplate = '';

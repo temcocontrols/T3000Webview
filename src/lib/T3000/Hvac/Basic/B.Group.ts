@@ -32,7 +32,7 @@ import Utils1 from "../Util/Utils1"
  *
  * // Retrieve the bounding box geometry of the group
  * const bbox = group.GetGeometryBBox();
- * console.log('Bounding Box:', bbox);
+ * LogUtil.Debug('Bounding Box:', bbox);
  *
  * // Trigger an update of paint properties (fill, stroke) for the group and its children
  * group.RefreshPaint(event);
@@ -57,9 +57,7 @@ class Group extends Container {
   CreateElement(inputData: any, config: any) {
     this.svgObj = new T3Svg.Container(T3Svg.create("g"));
     this.clipElem = null;
-
     this.InitElement(inputData, config);
-
     return this.svgObj;
   }
 

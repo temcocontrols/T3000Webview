@@ -35,7 +35,7 @@ import NvConstant from '../Data/Constant/NvConstant'
  * textFormat.SetPaint(customPaint);
  *
  * // Output the configured text format data
- * console.log(textFormat);
+ * LogUtil.Debug(textFormat);
  */
 class TextFmtData {
 

@@ -33,7 +33,8 @@ import { onMounted, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import FileUpload from "../../components/FileUploadS3.vue";
-import { user, demoDeviceData, globalNav } from "../../lib/common";
+import { /*user,*/ demoDeviceData, globalNav } from "../../lib/common";
+import {user} from "../../lib/T3000/Hvac/Data/T3Data";
 import { liveApi } from "../../lib/api";
 
 const $q = useQuasar();

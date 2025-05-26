@@ -15,7 +15,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Timer from '../Util/T3Timer';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
@@ -23,6 +23,8 @@ import DrawUtil from '../Opt/Opt/DrawUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
+import LogUtil from '../Util/LogUtil';
+
 
 /**
  * Represents a polygon shape that can be rendered in SVG.
@@ -80,7 +82,7 @@ class Polygon extends BaseShape {
   public ArrowheadData: any;
 
   constructor(options) {
-    T3Util.Log('S.Polygon: Constructor input:', options);
+    LogUtil.Debug('S.Polygon: Constructor input:', options);
 
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Polygon;
@@ -95,11 +97,11 @@ class Polygon extends BaseShape {
 
     this.dataclass = PolygonConstant.ShapeTypes.POLYGON;
 
-    T3Util.Log('S.Polygon: Constructor output:', this);
+    LogUtil.Debug('S.Polygon: Constructor output:', this);
   }
 
   ScaleGeometries(svgDoc, points, width, height) {
-    T3Util.Log('S.Polygon: scaleGeometries input:', { svgDoc, points, width, height });
+    LogUtil.Debug('S.Polygon: scaleGeometries input:', { svgDoc, points, width, height });
 
     let currentShapeId = null;
     let pathCreator = null;
@@ -185,14 +187,14 @@ class Polygon extends BaseShape {
       pathCreator.Apply();
     }
 
-    T3Util.Log('S.Polygon: scaleGeometries output:', { svgDoc, points, width, height });
+    LogUtil.Debug('S.Polygon: scaleGeometries output:', { svgDoc, points, width, height });
   }
 
   CreateShape(svgDoc, isInteractive) {
-    T3Util.Log("S.Polygon: CreateShape input:", { svgDoc, isInteractive });
+    LogUtil.Debug("S.Polygon: CreateShape input:", { svgDoc, isInteractive });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("S.Polygon: CreateShape output: null (not visible)");
+      LogUtil.Debug("S.Polygon: CreateShape output: null (not visible)");
       return null;
     }
 
@@ -396,12 +398,12 @@ class Polygon extends BaseShape {
       this.LMAddSVGTextObject(svgDoc, containerShape);
     }
 
-    T3Util.Log("S.Polygon: CreateShape output:", containerShape);
+    LogUtil.Debug("S.Polygon: CreateShape output:", containerShape);
     return containerShape;
   }
 
   Resize(svgDoc, newSize, actionTriggerType, prevBBox) {
-    T3Util.Log('S.Polygon: Resize input:', { svgDoc, newSize, actionTriggerType, prevBBox });
+    LogUtil.Debug('S.Polygon: Resize input:', { svgDoc, newSize, actionTriggerType, prevBBox });
 
     if (svgDoc != null) {
       const rotation = svgDoc.GetRotation();
@@ -456,13 +458,13 @@ class Polygon extends BaseShape {
       this.UpdateDimensionLines(svgDoc);
       UIUtil.UpdateDisplayCoordinates(newSize, null, null, this);
 
-      T3Util.Log('S.Polygon: Resize output:', offset);
+      LogUtil.Debug('S.Polygon: Resize output:', offset);
       return offset;
     }
   }
 
   ResizeInTextEdit(svgDoc, newSize) {
-    T3Util.Log('S.Polygon: ResizeInTextEdit input:', { svgDoc, newSize });
+    LogUtil.Debug('S.Polygon: ResizeInTextEdit input:', { svgDoc, newSize });
 
     const rotation = svgDoc.GetRotation();
     this.SetDimensionLinesVisibility(svgDoc, false);
@@ -520,12 +522,12 @@ class Polygon extends BaseShape {
     this.UpdateDimensionLines(svgDoc);
     UIUtil.UpdateDisplayCoordinates(newSize, null, null, this);
 
-    T3Util.Log('S.Polygon: ResizeInTextEdit output:', offset);
+    LogUtil.Debug('S.Polygon: ResizeInTextEdit output:', offset);
     return offset;
   }
 
   GetTargetPoints(target, hookFlags, objectID) {
-    T3Util.Log('S.Polygon: GetTargetPoints input:', { target, hookFlags, objectID });
+    LogUtil.Debug('S.Polygon: GetTargetPoints input:', { target, hookFlags, objectID });
 
     const targetPoints = [];
     const defaultPoints = [
@@ -543,36 +545,36 @@ class Polygon extends BaseShape {
     const dimension = OptConstant.Common.DimMax;
 
     if (objectID >= 0) {
-      const object = DataUtil.GetObjectPtr(objectID, false);
+      const object = ObjectUtil.GetObjectPtr(objectID, false);
     }
 
     if (foundTableTarget) {
       targetPoints.push(tableTargetPoint);
-      T3Util.Log('S.Polygon: GetTargetPoints output:', targetPoints);
+      LogUtil.Debug('S.Polygon: GetTargetPoints output:', targetPoints);
       return targetPoints;
     }
 
     if (isContinuousConnection) {
       const continuousPoints = this.PolyGetTargets(target, hookFlags, this.Frame);
-      T3Util.Log('S.Polygon: GetTargetPoints output:', continuousPoints);
+      LogUtil.Debug('S.Polygon: GetTargetPoints output:', continuousPoints);
       return continuousPoints;
     }
 
     if (hasConnectPoints /*|| hasTableRows*/) {
-      const connectPoints = hasConnectPoints ? this.ConnectPoints : T3Gv.opt.Table_GetRowConnectPoints(this, table);
+      const connectPoints = hasConnectPoints ? this.ConnectPoints : T3Gv.opt.TableGetRowConnectPoints(this, table);
       const deepCopiedPoints = Utils1.DeepCopy(connectPoints);
-      T3Util.Log('S.Polygon: GetTargetPoints output:', deepCopiedPoints);
+      LogUtil.Debug('S.Polygon: GetTargetPoints output:', deepCopiedPoints);
       return deepCopiedPoints;
     }
 
-    T3Util.Log('S.Polygon: GetTargetPoints output:', defaultPoints);
+    LogUtil.Debug('S.Polygon: GetTargetPoints output:', defaultPoints);
     return defaultPoints;
   }
 
   ExtendLines() { }
 
   GetPerimeterPoints(event, pointsArray, hookType, rotateFlag, tableID, additionalParams) {
-    T3Util.Log('S.Polygon: GetPerimeterPoints input:', { event, pointsArray, hookType, rotateFlag, tableID, additionalParams });
+    LogUtil.Debug('S.Polygon: GetPerimeterPoints input:', { event, pointsArray, hookType, rotateFlag, tableID, additionalParams });
 
     let intersectionCount, rotatedPoints, perimeterPoints = [], tempPoints = [], intersectionPoints = {}, defaultPoint = [0, 0];
     const dimension = OptConstant.Common.DimMax;
@@ -582,13 +584,13 @@ class Polygon extends BaseShape {
       if (pointsArray[0].id != null) {
         perimeterPoints[0].id = pointsArray[0].id;
       }
-      T3Util.Log('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
+      LogUtil.Debug('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
       return perimeterPoints;
     }
 
     if (hookType === OptConstant.HookPts.KAT || hookType === OptConstant.HookPts.KATD) {
       perimeterPoints = this.BaseDrawingObject_GetPerimPts(event, pointsArray, hookType, false, tableID);
-      T3Util.Log('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
+      LogUtil.Debug('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
       return perimeterPoints;
     }
 
@@ -607,7 +609,7 @@ class Polygon extends BaseShape {
     } else {
       if (this.flags & NvConstant.ObjFlags.ContConn && !T3Gv.opt.fromOverlayLayer) {
         perimeterPoints = this.BaseDrawingObject_GetPerimPts(event, pointsArray, hookType, rotateFlag, tableID, additionalParams);
-        T3Util.Log('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
+        LogUtil.Debug('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
         return perimeterPoints;
       }
 
@@ -664,12 +666,12 @@ class Polygon extends BaseShape {
       Utils3.RotatePointsAboutCenter(this.Frame, rotatedPoints, perimeterPoints);
     }
 
-    T3Util.Log('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
+    LogUtil.Debug('S.Polygon: GetPerimeterPoints output:', perimeterPoints);
     return perimeterPoints;
   }
 
   BaseDrawingObject_GetPerimPts(event, pointsArray, hookType, rotateFlag, tableID, additionalParams) {
-    T3Util.Log('S.Polygon: BaseDrawingObject_GetPerimPts input:', { event, pointsArray, hookType, rotateFlag, tableID, additionalParams });
+    LogUtil.Debug('S.Polygon: BaseDrawingObject_GetPerimPts input:', { event, pointsArray, hookType, rotateFlag, tableID, additionalParams });
 
     const perimeterPoints = [];
     const pointsCount = pointsArray.length;
@@ -691,12 +693,12 @@ class Polygon extends BaseShape {
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, perimeterPoints);
     }
 
-    T3Util.Log('S.Polygon: BaseDrawingObject_GetPerimPts output:', perimeterPoints);
+    LogUtil.Debug('S.Polygon: BaseDrawingObject_GetPerimPts output:', perimeterPoints);
     return perimeterPoints;
   }
 
   GetPolyPoints(numPoints, includeFrameOffset, inflate, adjustForLineThickness, additionalParams) {
-    T3Util.Log('S.Polygon: GetPolyPoints input:', { numPoints, includeFrameOffset, inflate, adjustForLineThickness, additionalParams });
+    LogUtil.Debug('S.Polygon: GetPolyPoints input:', { numPoints, includeFrameOffset, inflate, adjustForLineThickness, additionalParams });
 
     let vertex, point, frame = {}, pointsArray = [];
     Utils2.CopyRect(frame, this.Frame);
@@ -722,12 +724,12 @@ class Polygon extends BaseShape {
       }
     }
 
-    T3Util.Log('S.Polygon: GetPolyPoints output:', pointsArray);
+    LogUtil.Debug('S.Polygon: GetPolyPoints output:', pointsArray);
     return pointsArray;
   }
 
   SetShapeIndent(isIndentNeeded) {
-    T3Util.Log('S.Polygon: SetShapeIndent input:', { isIndentNeeded });
+    LogUtil.Debug('S.Polygon: SetShapeIndent input:', { isIndentNeeded });
 
     let width, height, leftIndentRatio = 1, rightIndentRatio = 1, topIndentRatio = 1, bottomIndentRatio = 1;
     let polygonPoints = [], indentValues = {};
@@ -757,7 +759,7 @@ class Polygon extends BaseShape {
     this.tindent.right = this.right_sindent * width / rightIndentRatio;
     this.tindent.bottom = this.bottom_sindent * height / bottomIndentRatio;
 
-    T3Util.Log('S.Polygon: SetShapeIndent output:', {
+    LogUtil.Debug('S.Polygon: SetShapeIndent output:', {
       left: this.tindent.left,
       top: this.tindent.top,
       right: this.tindent.right,
@@ -766,7 +768,7 @@ class Polygon extends BaseShape {
   }
 
   Flip(flipType) {
-    T3Util.Log('S.Polygon: Flip input:', { flipType });
+    LogUtil.Debug('S.Polygon: Flip input:', { flipType });
 
     let shouldUpdate = true;
     const shapeTypes = PolygonConstant.ShapeTypes;
@@ -863,11 +865,11 @@ class Polygon extends BaseShape {
       this
     );
 
-    T3Util.Log('S.Polygon: Flip output:', { flipType });
+    LogUtil.Debug('S.Polygon: Flip output:', { flipType });
   }
 
   RegenerateVectors(width, height) {
-    T3Util.Log('S.Polygon: RegenerateVectors input:', { width, height });
+    LogUtil.Debug('S.Polygon: RegenerateVectors input:', { width, height });
 
     let radius, adjustedWidth, adjustedHeight, vectors = null;
     let shapeParam = this.shapeparam;
@@ -946,47 +948,47 @@ class Polygon extends BaseShape {
       vectors = ToolActUtil.FlipVertexArray(vectors, extraFlags);
     }
 
-    T3Util.Log('S.Polygon: RegenerateVectors output:', vectors);
+    LogUtil.Debug('S.Polygon: RegenerateVectors output:', vectors);
     return vectors;
   }
 
   GetParabolaAdjustmentPoint(point, adjustment) {
-    T3Util.Log('S.Polygon: GetParabolaAdjustmentPoint input:', { point, adjustment });
+    LogUtil.Debug('S.Polygon: GetParabolaAdjustmentPoint input:', { point, adjustment });
     const result = Instance.Shape.PolyLine.prototype.PrPolyLGetParabolaAdjPoint.call(this, point, adjustment);
-    T3Util.Log('S.Polygon: GetParabolaAdjustmentPoint output:', result);
+    LogUtil.Debug('S.Polygon: GetParabolaAdjustmentPoint output:', result);
     return result;
   }
 
   GetArcParameters(startPoint, endPoint) {
-    T3Util.Log('S.Polygon: GetArcParameters input:', { startPoint, endPoint });
+    LogUtil.Debug('S.Polygon: GetArcParameters input:', { startPoint, endPoint });
     const result = Instance.Shape.PolyLine.prototype.PrPolyLGetArc.call(this, startPoint, endPoint);
-    T3Util.Log('S.Polygon: GetArcParameters output:', result);
+    LogUtil.Debug('S.Polygon: GetArcParameters output:', result);
     return result;
   }
 
   GetParabolaParameters(event, target) {
-    T3Util.Log('S.Polygon: GetParabolaParameters input:', { event, target });
+    LogUtil.Debug('S.Polygon: GetParabolaParameters input:', { event, target });
     const result = Instance.Shape.PolyLine.prototype.PrPolyLGetParabolaParam.call(this, event, target);
-    T3Util.Log('S.Polygon: GetParabolaParameters output:', result);
+    LogUtil.Debug('S.Polygon: GetParabolaParameters output:', result);
     return result;
   }
 
   GetArcParameters(event, target, additionalParams) {
-    T3Util.Log('S.Polygon: GetArcParameters input:', { event, target, additionalParams });
+    LogUtil.Debug('S.Polygon: GetArcParameters input:', { event, target, additionalParams });
     const result = Instance.Shape.PolyLine.prototype.PrPolyLGetArcParam.call(this, event, target, additionalParams);
-    T3Util.Log('S.Polygon: GetArcParameters output:', result);
+    LogUtil.Debug('S.Polygon: GetArcParameters output:', result);
     return result;
   }
 
   GetArcQuadrant(event, target, additionalParams) {
-    T3Util.Log('S.Polygon: GetArcQuadrant input:', { event, target, additionalParams });
+    LogUtil.Debug('S.Polygon: GetArcQuadrant input:', { event, target, additionalParams });
     const result = Instance.Shape.PolyLine.prototype.PrPolyLGetArcQuadrant.call(this, event, target, additionalParams);
-    T3Util.Log('S.Polygon: GetArcQuadrant output:', result);
+    LogUtil.Debug('S.Polygon: GetArcQuadrant output:', result);
     return result;
   }
 
   ScaleObject(x, y, rotation, center, scaleX, scaleY, adjustLineThickness) {
-    T3Util.Log('S.Polygon: ScaleObject input:', { x, y, rotation, center, scaleX, scaleY, adjustLineThickness });
+    LogUtil.Debug('S.Polygon: ScaleObject input:', { x, y, rotation, center, scaleX, scaleY, adjustLineThickness });
 
     let frameCopy = Utils1.DeepCopy(this.Frame);
 
@@ -1041,11 +1043,11 @@ class Polygon extends BaseShape {
       this.sizedim.height = this.Frame.height;
     }
 
-    T3Util.Log('S.Polygon: ScaleObject output:', { frameCopy, regeneratedVectors });
+    LogUtil.Debug('S.Polygon: ScaleObject output:', { frameCopy, regeneratedVectors });
   }
 
   UpdateSecondaryDimensions(svgDoc, dimensions, polyPoints) {
-    T3Util.Log('S.Polygon: UpdateSecondaryDimensions input:', { svgDoc, dimensions, polyPoints });
+    LogUtil.Debug('S.Polygon: UpdateSecondaryDimensions input:', { svgDoc, dimensions, polyPoints });
 
     let pointsArray = [];
     let pointsCount = 0;
@@ -1064,57 +1066,57 @@ class Polygon extends BaseShape {
       }
     }
 
-    T3Util.Log('S.Polygon: UpdateSecondaryDimensions output:', { pointsArray, pointsCount });
+    LogUtil.Debug('S.Polygon: UpdateSecondaryDimensions output:', { pointsArray, pointsCount });
   }
 
   SetSegmentAngle(segmentIndex, angle, additionalParams) {
-    T3Util.Log('S.Polygon: SetSegmentAngle input:', { segmentIndex, angle, additionalParams });
+    LogUtil.Debug('S.Polygon: SetSegmentAngle input:', { segmentIndex, angle, additionalParams });
 
     T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-    const polygonObject = DataUtil.GetObjectPtr(this.BlockID, false);
+    const polygonObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
     polygonObject.SetSegmentAngle(segmentIndex, angle, additionalParams);
     T3Gv.opt.PolyLineToShape(this.BlockID);
 
-    T3Util.Log('S.Polygon: SetSegmentAngle output:', { segmentIndex, angle, additionalParams });
+    LogUtil.Debug('S.Polygon: SetSegmentAngle output:', { segmentIndex, angle, additionalParams });
   }
 
   DimensionLineDeflectionAdjust(event, target, angle, radius, index) {
-    T3Util.Log('S.Polygon: DimensionLineDeflectionAdjust input:', { event, target, angle, radius, index });
+    LogUtil.Debug('S.Polygon: DimensionLineDeflectionAdjust input:', { event, target, angle, radius, index });
 
     if (!this.polylist) {
       const result = Instance.Shape.BaseShape.prototype.DimensionLineDeflectionAdjust.call(this, event, target, angle, radius, index);
-      T3Util.Log('S.Polygon: DimensionLineDeflectionAdjust output:', result);
+      LogUtil.Debug('S.Polygon: DimensionLineDeflectionAdjust output:', result);
       return result;
     }
 
     T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-    const polygonObject = DataUtil.GetObjectPtr(this.BlockID, false);
+    const polygonObject = ObjectUtil.GetObjectPtr(this.BlockID, false);
     polygonObject.DimensionLineDeflectionAdjust(event, target, angle, radius, index);
     T3Gv.opt.PolyLineToShape(this.BlockID);
 
-    T3Util.Log('S.Polygon: DimensionLineDeflectionAdjust output: completed');
+    LogUtil.Debug('S.Polygon: DimensionLineDeflectionAdjust output: completed');
   }
 
   GetDimensionDeflectionValue(segmentIndex) {
-    T3Util.Log('S.Polygon: GetDimensionDeflectionValue input:', { segmentIndex });
+    LogUtil.Debug('S.Polygon: GetDimensionDeflectionValue input:', { segmentIndex });
 
     if (this.polylist) {
       if (!this.polylist.segs || this.polylist.segs.length === 0 || segmentIndex < 0 || segmentIndex >= this.polylist.segs.length) {
-        T3Util.Log('S.Polygon: GetDimensionDeflectionValue output: undefined');
+        LogUtil.Debug('S.Polygon: GetDimensionDeflectionValue output: undefined');
         return undefined;
       }
       const deflectionValue = this.polylist.segs[segmentIndex].dimDeflection;
-      T3Util.Log('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
+      LogUtil.Debug('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
       return deflectionValue;
     } else {
       const deflectionValue = Instance.Shape.BaseShape.prototype.GetDimensionDeflectionValue.call(this, segmentIndex);
-      T3Util.Log('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
+      LogUtil.Debug('S.Polygon: GetDimensionDeflectionValue output:', deflectionValue);
       return deflectionValue;
     }
   }
 
   UpdateDimensionFromTextObj(textObj, textData) {
-    T3Util.Log('S.Polygon: UpdateDimensionFromTextObj input:', { textObj, textData });
+    LogUtil.Debug('S.Polygon: UpdateDimensionFromTextObj input:', { textObj, textData });
 
     T3Gv.stdObj.PreserveBlock(this.BlockID);
 
@@ -1131,28 +1133,28 @@ class Polygon extends BaseShape {
 
     if (userData.angleChange) {
       this.UpdateLineAngleDimensionFromText(svgElement, text, userData);
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
       if (this.Frame.x < 0 || this.Frame.y < 0) {
         T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
       }
       DrawUtil.CompleteOperation(null);
-      T3Util.Log('S.Polygon: UpdateDimensionFromTextObj output: angleChange handled');
+      LogUtil.Debug('S.Polygon: UpdateDimensionFromTextObj output: angleChange handled');
       return;
     }
 
     if (this.polylist && (this.extraflags & OptConstant.ExtraFlags.SideKnobs) > 0) {
       T3Gv.opt.ShapeToPolyLine(this.BlockID, false, true);
-      DataUtil.GetObjectPtr(this.BlockID, false).UpdateDimensionFromText(svgElement, text, userData);
+      ObjectUtil.GetObjectPtr(this.BlockID, false).UpdateDimensionFromText(svgElement, text, userData);
       T3Gv.opt.PolyLineToShape(this.BlockID);
     } else {
       Instance.Shape.BaseShape.prototype.UpdateDimensionFromTextObj.call(this, textObj, textData);
     }
 
-    T3Util.Log('S.Polygon: UpdateDimensionFromTextObj output: dimension updated');
+    LogUtil.Debug('S.Polygon: UpdateDimensionFromTextObj output: dimension updated');
   }
 
   GetDimensionPoints() {
-    T3Util.Log('S.Polygon: GetDimensionPoints input');
+    LogUtil.Debug('S.Polygon: GetDimensionPoints input');
 
     let dimensionPoints;
     if (this.polylist && (this.extraflags & OptConstant.ExtraFlags.SideKnobs) > 0) {
@@ -1163,12 +1165,12 @@ class Polygon extends BaseShape {
       dimensionPoints = Instance.Shape.BaseShape.prototype.GetDimensionPoints.call(this);
     }
 
-    T3Util.Log('S.Polygon: GetDimensionPoints output:', dimensionPoints);
+    LogUtil.Debug('S.Polygon: GetDimensionPoints output:', dimensionPoints);
     return dimensionPoints;
   }
 
   GetPolyRectangularInfo() {
-    T3Util.Log('S.Polygon: GetPolyRectangularInfo input');
+    LogUtil.Debug('S.Polygon: GetPolyRectangularInfo input');
 
     let widthDimension, heightDimension, angle, points = [];
     if (!this.polylist) return null;
@@ -1204,28 +1206,28 @@ class Polygon extends BaseShape {
     }
 
     const result = { wdDim: widthDimension, htDim: heightDimension };
-    T3Util.Log('S.Polygon: GetPolyRectangularInfo output:', result);
+    LogUtil.Debug('S.Polygon: GetPolyRectangularInfo output:', result);
     return result;
   }
 
   GetDimensionFloatingPointValue(dimensionType) {
-    T3Util.Log('S.Polygon: GetDimensionFloatingPointValue input:', { dimensionType });
+    LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue input:', { dimensionType });
 
     let dimensionValue = 0;
 
     if (!this.polylist) {
-      T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output: null (no polylist)');
+      LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output: null (no polylist)');
       return null;
     }
 
     if (!(this.rflags & NvConstant.FloatingPointDim.Width || this.rflags & NvConstant.FloatingPointDim.Height)) {
-      T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output: null (no floating point dimensions)');
+      LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output: null (no floating point dimensions)');
       return null;
     }
 
     const polyRectInfo = this.GetPolyRectangularInfo();
     if (!polyRectInfo) {
-      T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output: null (no poly rectangular info)');
+      LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output: null (no poly rectangular info)');
       return null;
     }
 
@@ -1233,25 +1235,25 @@ class Polygon extends BaseShape {
       if (this.rflags & NvConstant.FloatingPointDim.Width) {
         dimensionValue = this.GetDimensionLengthFromValue(this.rwd);
         const result = RulerUtil.GetLengthInRulerUnits(dimensionValue);
-        T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output:', result);
+        LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output:', result);
         return result;
       }
     } else if ((polyRectInfo.htDim === dimensionType || polyRectInfo.htDim + 2 === dimensionType) && this.rflags & NvConstant.FloatingPointDim.Height) {
       dimensionValue = this.GetDimensionLengthFromValue(this.rht);
       const result = RulerUtil.GetLengthInRulerUnits(dimensionValue);
-      T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output:', result);
+      LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output:', result);
       return result;
     }
 
-    T3Util.Log('S.Polygon: GetDimensionFloatingPointValue output: null');
+    LogUtil.Debug('S.Polygon: GetDimensionFloatingPointValue output: null');
     return null;
   }
 
   IsTextFrameOverlap(textFrame, rotationAngle) {
-    T3Util.Log('S.Polygon: IsTextFrameOverlap input:', { textFrame, rotationAngle });
+    LogUtil.Debug('S.Polygon: IsTextFrameOverlap input:', { textFrame, rotationAngle });
 
     if (!this.polylist) {
-      T3Util.Log('S.Polygon: IsTextFrameOverlap output: false (no polylist)');
+      LogUtil.Debug('S.Polygon: IsTextFrameOverlap output: false (no polylist)');
       return false;
     }
 
@@ -1261,7 +1263,7 @@ class Polygon extends BaseShape {
     Utils3.RotatePointsAboutCenter(this.Frame, -radians, polygonPoints);
     const isOverlap = Utils2.IsFrameCornersInPoly(polygonPoints, textFrame);
 
-    T3Util.Log('S.Polygon: IsTextFrameOverlap output:', isOverlap);
+    LogUtil.Debug('S.Polygon: IsTextFrameOverlap output:', isOverlap);
     return isOverlap;
   }
 }

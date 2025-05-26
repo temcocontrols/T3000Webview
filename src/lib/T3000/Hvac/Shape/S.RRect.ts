@@ -13,6 +13,8 @@ import T3Util from '../Util/T3Util';
 import UIUtil from '../Opt/UI/UIUtil';
 import Instance from '../Data/Instance/Instance';
 import PolyUtil from '../Opt/Opt/PolyUtil';
+import LogUtil from '../Util/LogUtil';
+
 
 /**
  * Represents a rounded rectangle shape in the T3000 HVAC system.
@@ -38,16 +40,17 @@ import PolyUtil from '../Opt/Opt/PolyUtil';
 class RRect extends BaseShape {
 
   constructor(inputParams: any) {
-    T3Util.Log("= S.RRect: constructor input:", inputParams);
+    LogUtil.Debug("= S.RRect: constructor input:", inputParams);
     const params = inputParams || {};
     params.ShapeType = OptConstant.ShapeType.RRect;
+    params.uniType="RRect";
     super(params);
     this.dataclass = PolygonConstant.ShapeTypes.ROUNDED_RECTANGLE;
-    T3Util.Log("= S.RRect: constructor output:", this);
+    LogUtil.Debug("= S.RRect: constructor output:", this);
   }
 
   GetCornerSize(inputCornerSize?: number) {
-    T3Util.Log("= S.RRect: GetCornerSize input:", inputCornerSize);
+    LogUtil.Debug("= S.RRect: GetCornerSize input:", inputCornerSize);
 
     const shapeWidth = this.Frame.width;
     const shapeHeight = this.Frame.height;
@@ -67,20 +70,20 @@ class RRect extends BaseShape {
       if (fixedDimension > maxAllowed) {
         fixedDimension = maxAllowed;
       }
-      T3Util.Log("= S.RRect: GetCornerSize output:", fixedDimension);
+      LogUtil.Debug("= S.RRect: GetCornerSize output:", fixedDimension);
       return fixedDimension;
     }
 
     const resultDimension = minDimension * this.shapeparam;
-    T3Util.Log("= S.RRect: GetCornerSize output:", resultDimension);
+    LogUtil.Debug("= S.RRect: GetCornerSize output:", resultDimension);
     return resultDimension;
   }
 
   CreateShape(svgDoc: any, addEventSlop: boolean) {
-    T3Util.Log("= S.RRect: CreateShape input:", { svgDoc, addEventSlop });
+    LogUtil.Debug("= S.RRect: CreateShape input:", { svgDoc, addEventSlop });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("= S.RRect: CreateShape output:", null);
+      LogUtil.Debug("= S.RRect: CreateShape output:", null);
       return null;
     }
 
@@ -151,7 +154,7 @@ class RRect extends BaseShape {
       this.LMAddSVGTextObject(svgDoc, shapeContainer);
     }
 
-    T3Util.Log("= S.RRect: CreateShape output:", shapeContainer);
+    LogUtil.Debug("= S.RRect: CreateShape output:", shapeContainer);
     return shapeContainer;
   }
 
@@ -160,7 +163,7 @@ class RRect extends BaseShape {
     newDimensions: any,
     drawingContainer: any
   ) {
-    T3Util.Log("= S.RRect: Resize input:", {
+    LogUtil.Debug("= S.RRect: Resize input:", {
       svgElement,
       newDimensions,
       drawingContainer
@@ -246,12 +249,12 @@ class RRect extends BaseShape {
       this
     );
 
-    T3Util.Log("= S.RRect: Resize output:", offset);
+    LogUtil.Debug("= S.RRect: Resize output:", offset);
     return offset;
   }
 
   ResizeInTextEdit(svgElement: any, newDimensions: any) {
-    T3Util.Log("= S.RRect: ResizeInTextEdit input:", { svgElement, newDimensions });
+    LogUtil.Debug("= S.RRect: ResizeInTextEdit input:", { svgElement, newDimensions });
 
     const rotation = svgElement.GetRotation();
     this.SetDimensionLinesVisibility(svgElement, false);
@@ -336,7 +339,7 @@ class RRect extends BaseShape {
     this.UpdateDimensionLines(svgElement);
     UIUtil.UpdateDisplayCoordinates(newDimensions, null, null, this);
 
-    T3Util.Log("= S.RRect: ResizeInTextEdit output:", offset);
+    LogUtil.Debug("= S.RRect: ResizeInTextEdit output:", offset);
     return offset;
   }
 
@@ -347,7 +350,7 @@ class RRect extends BaseShape {
     shouldInflateFrame: boolean,
     unusedParamI: any
   ) {
-    T3Util.Log("= S.RRect: GetPolyPoints input:", {
+    LogUtil.Debug("= S.RRect: GetPolyPoints input:", {
       divisionCount,
       applyPositionOffset,
       unusedParamA,
@@ -448,7 +451,7 @@ class RRect extends BaseShape {
       }
     }
 
-    T3Util.Log("= S.RRect: GetPolyPoints output:", pointsArray);
+    LogUtil.Debug("= S.RRect: GetPolyPoints output:", pointsArray);
     return pointsArray;
   }
 
@@ -463,7 +466,7 @@ class RRect extends BaseShape {
     optionalParam: any,
     eventData: any
   ) {
-    T3Util.Log("= S.RRect: GetPerimPts input:", {
+    LogUtil.Debug("= S.RRect: GetPerimPts input:", {
       eventObj,
       hookPoints,
       anchorType,
@@ -489,14 +492,14 @@ class RRect extends BaseShape {
       if (hookPoints[0].id != null) {
         outputPoints[0].id = hookPoints[0].id;
       }
-      T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
+      LogUtil.Debug("= S.RRect: GetPerimPts output:", outputPoints);
       return outputPoints;
     }
 
     // If anchorType is KAT and optionalParam is null
     if (anchorType === OptConstant.HookPts.KAT && optionalParam == null) {
       // Double === todo
-      T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
+      LogUtil.Debug("= S.RRect: GetPerimPts output:", outputPoints);
       // Return from base
       return new Instance.Shape.BaseDrawObject(this).GetPerimPts(
         eventObj,
@@ -628,12 +631,12 @@ class RRect extends BaseShape {
       Utils3.RotatePointsAboutCenter(this.Frame, rotationAngle, outputPoints);
     }
 
-    T3Util.Log("= S.RRect: GetPerimPts output:", outputPoints);
+    LogUtil.Debug("= S.RRect: GetPerimPts output:", outputPoints);
     return outputPoints;
   }
 
   SetShapeIndent(applyAdjustment: boolean) {
-    T3Util.Log("= S.RRect: SetShapeIndent input:", applyAdjustment);
+    LogUtil.Debug("= S.RRect: SetShapeIndent input:", applyAdjustment);
 
     // Read the inside dimensions
     const insideWidth = this.inside.width;
@@ -678,7 +681,7 @@ class RRect extends BaseShape {
     this.tindent.right = this.right_sindent * insideWidth / divisorWidth;
     this.tindent.bottom = this.bottom_sindent * insideHeight / divisorHeight;
 
-    T3Util.Log("= S.RRect: SetShapeIndent output:", {
+    LogUtil.Debug("= S.RRect: SetShapeIndent output:", {
       left_sindent: this.left_sindent,
       top_sindent: this.top_sindent,
       right_sindent: this.right_sindent,
@@ -688,7 +691,7 @@ class RRect extends BaseShape {
   }
 
   SetShapeProperties(properties: any): boolean {
-    T3Util.Log("= S.RRect: SetShapeProperties input:", properties);
+    LogUtil.Debug("= S.RRect: SetShapeProperties input:", properties);
     let updated = false;
     const fixedRFlag = OptConstant.ObjMoreFlags.FixedRR;
 
@@ -712,7 +715,7 @@ class RRect extends BaseShape {
       updated = true;
     }
 
-    T3Util.Log("= S.RRect: SetShapeProperties output:", updated);
+    LogUtil.Debug("= S.RRect: SetShapeProperties output:", updated);
     return updated;
   }
 }

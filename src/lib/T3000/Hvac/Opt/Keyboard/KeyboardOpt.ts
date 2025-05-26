@@ -10,6 +10,9 @@ import DocUtil from "../../Doc/DocUtil"
 import KeyboardUtil from "./KeyboardUtil"
 import T3Util from "../../Util/T3Util"
 import SvgUtil from "../Opt/SvgUtil"
+import T3Clipboard from "../Clipboard/T3Clipboard"
+import ArrowKeyOpt from "../Tool/ArrowKeyOpt"
+import LogUtil from "../../Util/LogUtil"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -56,8 +59,8 @@ class KeyboardOpt {
    * @param context - The context for which to retrieve commands
    * @returns Array of keyboard commands for the specified context
    */
-  static GetCommandsInContext(context, kybUtil, toolUtil, docUtil) {
-    T3Util.Log('U.KeyboardUtil: Getting commands for context', context);
+  static GetCommandsInContext(context, kybUtil: KeyboardUtil, toolUtil: ToolUtil, docUtil: DocUtil, arrowKeyOpt: ArrowKeyOpt) {
+    LogUtil.Debug('U.KeyboardUtil: Getting commands for context', context);
 
     let commands = [];
 
@@ -79,6 +82,10 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Subtract, docUtil.ZoomOut, docUtil));
         commands.push(new KeyboardUtil().BuildCommand('ZoomIn', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Equal_Sign, docUtil.ZoomIn, docUtil));
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Dash, docUtil.ZoomOut, docUtil));
+        commands.push(new KeyboardUtil().BuildCommand('NavRight', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Right_Arrow, arrowKeyOpt.NavRight, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavLeft', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Left_Arrow, arrowKeyOpt.NavLeft, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavUp', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Up_Arrow, arrowKeyOpt.NavUp, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavDown', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Down_Arrow, arrowKeyOpt.NavDown, arrowKeyOpt));
         break;
       case KeyboardConstant.Contexts.ReadOnly:
         commands.push(new KeyboardUtil().BuildCommand('ZoomIn', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Add, docUtil.ZoomIn, docUtil));
@@ -87,6 +94,10 @@ class KeyboardOpt {
         commands.push(new KeyboardUtil().BuildCommand('ZoomOut', KeyboardConstant.Contexts.All, KeyboardConstant.ModifierKeys.Ctrl, KeyboardConstant.Keys.Dash, docUtil.ZoomOut, docUtil));
         break;
       case KeyboardConstant.Contexts.Automation:
+        commands.push(new KeyboardUtil().BuildCommand('NavRight', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Right_Arrow, arrowKeyOpt.NavRight, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavLeft', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Left_Arrow, arrowKeyOpt.NavLeft, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavUp', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Up_Arrow, arrowKeyOpt.NavUp, arrowKeyOpt));
+        commands.push(new KeyboardUtil().BuildCommand('NavDown', KeyboardConstant.Contexts.All, 0, KeyboardConstant.Keys.Down_Arrow, arrowKeyOpt.NavDown, arrowKeyOpt));
         break;
       case KeyboardConstant.Contexts.AutomationNoCtrl:
         break;
@@ -104,7 +115,7 @@ class KeyboardOpt {
         break;
     }
 
-    T3Util.Log('U.KeyboardUtil: Retrieved', commands?.length, 'commands for context', context);
+    LogUtil.Debug('U.KeyboardUtil: Retrieved', commands?.length, 'commands for context', context);
     return commands;
   }
 
@@ -113,10 +124,10 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyUp(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key up event', event.keyCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key up event', event.keyCode);
 
     if (event.keyCode === KeyboardConstant.Keys.Space) {
-      T3Util.Log('U.KeyboardUtil: Space key released, updating spacebar state');
+      LogUtil.Debug('U.KeyboardUtil: Space key released, updating spacebar state');
       T3Constant.DocContext.SpacebarDown = false;
     }
   }
@@ -126,14 +137,14 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyDown(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key down event', event.keyCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key down event', event.keyCode);
 
     const keyCode = event.keyCode;
     const modifierKeys = Utils3.GetModifierKeys(event);
 
     // Update spacebar state
     if (keyCode === KeyboardConstant.Keys.Space) {
-      T3Util.Log('U.KeyboardUtil: Space key pressed, updating spacebar state');
+      LogUtil.Debug('U.KeyboardUtil: Space key pressed, updating spacebar state');
       T3Constant.DocContext.SpacebarDown = true;
     }
 
@@ -145,14 +156,14 @@ class KeyboardOpt {
       !(targetElement.is('input,[contenteditable="true"],textarea') &&
         targetElement.attr("type") !== "radio" &&
         targetElement.attr("type") !== "checkbox")) {
-      T3Util.Log('U.KeyboardUtil: Preventing default backspace behavior');
+      LogUtil.Debug('U.KeyboardUtil: Preventing default backspace behavior');
       event.preventDefault();
     }
 
     try {
       KeyboardOpt.HandleKeyDown(event, keyCode, modifierKeys);
     } catch (error) {
-      console.error('U.KeyboardUtil: Error in key down handler', error);
+      T3Util.Error('= o.KeyboardOpt: OnKeyDown/ Error in key down handler', error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
@@ -165,15 +176,7 @@ class KeyboardOpt {
    * @param modifierKey - The modifier key that was pressed with the key
    */
   static HandleKeyDown(event, keyCode, modifierKey) {
-    T3Util.Log('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
-
-    // // Handle touch pan with space key
-    // if (T3Gv.opt.touchPanStarted && keyCode == KeyboardConstant.Keys.Space) {
-    //   event.stopPropagation();
-    //   event.preventDefault();
-    //   T3Util.Log('U.KeyboardUtil: Prevented default for space during touch pan');
-    //   return;
-    // }
+    LogUtil.Debug('U.KeyboardUtil: Processing key down event', { keyCode, modifierKey });
 
     let selectionObj;
     let isTextContext = false;
@@ -184,6 +187,7 @@ class KeyboardOpt {
     let toolUtil = new ToolUtil();
     let kybUtil = new KeyboardUtil();
     let docUtil = new DocUtil();
+    let arrowKeyOpt = new ArrowKeyOpt();
 
     // Check if arrows are used and shape insert should be disabled
     const disableArrowShapeInsert = (
@@ -200,9 +204,9 @@ class KeyboardOpt {
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
       keyCode == 86 || keyCode == 118    // 'V' or 'v'
     )) {
-      if (Clipboard.isFF) {
-        Clipboard.FocusOnIEclipboardDiv();
-        T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
+      if (T3Clipboard.isFirefox) {
+        T3Clipboard.FocusOnIEclipboardDiv();
+        LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
     } else {
       // Get the current selection context
@@ -244,7 +248,7 @@ class KeyboardOpt {
       // Process each context to find matching keyboard commands
       for (let contextIndex = 0; contextIndex < contextCount; contextIndex++) {
         const currentContext = contexts[contextIndex];
-        const contextCommands = KeyboardOpt.GetCommandsInContext(currentContext, kybUtil, toolUtil, docUtil);
+        const contextCommands = KeyboardOpt.GetCommandsInContext(currentContext, kybUtil, toolUtil, docUtil, arrowKeyOpt);
         const commandCount = contextCommands.length;
 
         // Try to find and execute a command matching the key combination
@@ -256,7 +260,7 @@ class KeyboardOpt {
             }
 
             if (!command.Execute()) {
-              T3Util.Log('U.KeyboardUtil: Command executed and prevented default', { command: command.Name });
+              LogUtil.Debug('U.KeyboardUtil: Command executed and prevented default', { command: command.Name });
               event.stopPropagation();
               event.preventDefault();
               return;
@@ -266,10 +270,6 @@ class KeyboardOpt {
 
         // Check if typing in work area is disabled
         if (T3Constant.DocContext.CanTypeInWorkArea === false) {
-          // if (keyCode === KeyboardConstant.Keys.Escape) {
-          //   T3Gv.opt.Comment_Cancel();
-          //   T3Util.Log('U.KeyboardUtil: Comment cancelled');
-          // }
           return;
         }
 
@@ -308,21 +308,20 @@ class KeyboardOpt {
         if (keyCode === KeyboardConstant.Keys.Escape) {
           T3Gv.opt.DeactivateAllTextEdit(false);
           if (T3Gv.opt.bInNoteEdit) {
-            // T3Gv.opt.Note_CloseEdit();
           }
           SvgUtil.RenderAllSVGSelectionStates();
           event.stopPropagation();
           event.preventDefault();
-          T3Util.Log('U.KeyboardUtil: Text edit closed with Escape key');
+          LogUtil.Debug('U.KeyboardUtil: Text edit closed with Escape key');
         } else if (toolUtil.HandleKeyDown(event, keyCode, modifierKey)) {
           event.stopPropagation();
           event.preventDefault();
-          T3Util.Log('U.KeyboardUtil: Key event handled by shapes controller');
+          LogUtil.Debug('U.KeyboardUtil: Key event handled by shapes controller');
         }
       }
     }
 
-    T3Util.Log('U.KeyboardUtil: Key down handling complete');
+    LogUtil.Debug('U.KeyboardUtil: Key down handling complete');
   }
 
   /**
@@ -330,15 +329,15 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyPress(event) {
-    T3Util.Log('U.KeyboardUtil: Processing key press event', event.charCode);
+    LogUtil.Debug('U.KeyboardUtil: Processing key press event', event.charCode);
 
     const charCode = event.charCode;
 
     try {
-      T3Util.Log('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
+      LogUtil.Debug('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
       KeyboardOpt.HandleKeyPress(event, charCode);
     } catch (error) {
-      console.error('U.KeyboardUtil: Error in key press handler', error);
+      T3Util.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
       throw error;
     }
   }
@@ -349,18 +348,10 @@ class KeyboardOpt {
    * @param charCode - The character code of the pressed key
    */
   static HandleKeyPress(event, charCode) {
-    T3Util.Log('U.KeyboardUtil: Handling key press event', { charCode });
+    LogUtil.Debug('U.KeyboardUtil: Handling key press event', { charCode });
 
     let isTextContext = false;
     let toolUtil = new ToolUtil();
-
-    // // Handle touch pan with space key
-    // if (T3Gv.opt.touchPanStarted && charCode == KeyboardConstant.Keys.Space) {
-    //   T3Util.Log('U.KeyboardUtil: Preventing default for space during touch pan');
-    //   event.stopPropagation();
-    //   event.preventDefault();
-    //   return;
-    // }
 
     // Check if modals are not visible (using true instead of the original modal check)
     if (true) {
@@ -369,9 +360,9 @@ class KeyboardOpt {
         (charCode == 67 || charCode == 99 || // 'C' or 'c'
           charCode == 88 || charCode == 120 || // 'X' or 'x'
           charCode == 86 || charCode == 118)) { // 'V' or 'v'
-        if (Clipboard.isFF) {
-          T3Util.Log('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
-          Clipboard.FocusOnIEclipboardDiv();
+        if (T3Clipboard.isFirefox) {
+          LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
+          T3Clipboard.FocusOnIEclipboardDiv();
         }
       } else if (T3Constant.DocContext.CanTypeInWorkArea !== false && !T3Gv.docUtil.IsReadOnly()) {
         // Check if we're in a text editing context
@@ -385,7 +376,7 @@ class KeyboardOpt {
           selectionContext === KeyboardConstant.Contexts.Text ||
           selectionContext === KeyboardConstant.Contexts.DimensionText) {
 
-          T3Util.Log('U.KeyboardUtil: Delegating key press to shape handler in text context');
+          LogUtil.Debug('U.KeyboardUtil: Delegating key press to shape handler in text context');
           if (toolUtil.HandleKeyPress(event, charCode)) {
             event.stopPropagation();
           }
@@ -393,7 +384,7 @@ class KeyboardOpt {
       }
     }
 
-    T3Util.Log('U.KeyboardUtil: Key press handling complete');
+    LogUtil.Debug('U.KeyboardUtil: Key press handling complete');
   }
 }
 

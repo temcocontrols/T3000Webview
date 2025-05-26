@@ -12,14 +12,26 @@ const routes = [
     ],
   },
   {
+    path: '/new',
+    component: () => import('layouts/MainLayout2.vue'),
+    children: [
+      { path: '', component: () => import('src/pages/Test/HvacIndex.vue') },
+      { path: 'hvac', component: () => import('src/pages/Test/HvacT2.vue') },
+      { path: 'test1', component: () => import('src/pages/Test/Test1.vue') },
+      { path: 'datasets', component: () => import('src/pages/Test/Test2.vue') },
+      { path: 'studios', component: () => import('src/pages/Test/Test2.vue') },
+      { path: 'docs', component: () => import('src/pages/Test/Test2.vue') }
+    ]
+  },
+  {
     path: "/hvac",
     component: () => import("layouts/MainLayout.vue"),
     children: [
       {
         path: "t2",
         name: "hvac2",
-        component: () => import("pages/HvacDrawer/IndexPage2.vue"),
-      }, 
+        component: () => import("src/components/NewUI/IndexPage2.vue"),
+      },
     ],
   },
   {

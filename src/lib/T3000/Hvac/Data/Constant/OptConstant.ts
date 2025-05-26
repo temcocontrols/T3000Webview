@@ -27,21 +27,21 @@
  *
  * // Retrieve a canvas shape type constant for a rectangle
  * const rectType = OptConstant.CSType.Rect;
- * console.log("Rectangle type identifier:", rectType);
+ * LogUtil.Debug("Rectangle type identifier:", rectType);
  *
  * // Determine the event behavior for a shape
  * const eventBehavior = OptConstant.EventBehavior.Normal;
- * console.log("Normal event behavior:", eventBehavior);
+ * LogUtil.Debug("Normal event behavior:", eventBehavior);
  *
  * // Use an export format constant
  * const exportFormat = OptConstant.ExportType.PNG;
  * if (exportFormat === OptConstant.ExportType.PNG) {
- *   console.log("Exporting drawing as PNG image.");
+ *   LogUtil.Debug("Exporting drawing as PNG image.");
  * }
  *
  * // Example: Using a system-wide measurement constant
  * const maxCanvasDimension = OptConstant.Common.DimMax;
- * console.log("Maximum canvas dimension allowed:", maxCanvasDimension);
+ * LogUtil.Debug("Maximum canvas dimension allowed:", maxCanvasDimension);
  *
  * @public
  */
@@ -67,7 +67,8 @@ class OptConstant {
     PolylineContainer: 13, // Container for polylines
     PolyPolyline: 14,      // Multiple polylines
     ShapeCopy: 15,         // Copy of another shape
-    ShapeContainer: 16     // Container for shapes
+    ShapeContainer: 16,    // Container for shapes
+    ForeignObject: 17,     // Foreign object (HTML / Vue inside SVG)
   }
 
   /**
@@ -82,8 +83,9 @@ class OptConstant {
     VectorSymbol: 'VectorSymbol',           // Vector-based symbol
     BitmapSymbol: 'BitmapSymbol',           // Bitmap/raster symbol
     GroupSymbol: 'GroupSymbol',             // Group of symbols
-    SVGFragmentSymbol: 'SVGFragmentSymbol', // SVG fragment as symbol
-    D3Symbol: 'D3Symbol'                    // 3D symbol
+    SvgSymbol: 'SvgSymbol',                 // SVG fragment as symbol
+    D3Symbol: 'D3Symbol',                   // 3D symbol
+    ForeignObject: 'ForeignObject',
   }
 
   /**
@@ -210,7 +212,7 @@ class OptConstant {
    */
   static Common = {
 
-    EdgeSlop:5,
+    EdgeSlop: 5,
 
     /**
      * Maximum canvas dimension in drawing units
@@ -497,7 +499,8 @@ class OptConstant {
     },
 
     MaxTotalLayers: 32,
-    MaxLongDim: 1e7
+    MaxLongDim: 1e7,
+    MinLineDrawGap: 20,
   }
 
   /**
@@ -660,7 +663,8 @@ class OptConstant {
     LineThickness: 33,        // Line thickness adjustment
     DimLineAdj: 34,           // Dimension line adjustment
     UpdateLinks: 35,          // Update links
-    ContainerAdj: 36          // Container adjustment
+    ContainerAdj: 36,         // Container adjustment
+    TableSelect: 27,
   }
 
   /**
@@ -756,15 +760,16 @@ class OptConstant {
    * Content header flags
    * Controls display and behavior of content headers
    */
-  static CntHeaderFlags = {
-    Pages: 1024,            // Pages with direct access
-    NoAuto: 4096,           // No auto direct access
-    ShowRulers: 65536,         // Show rulers
-    ShowGrid: 131072,          // Show grid
-    SnapToGridTL: 262144,      // Snap to grid top-left
-    SnapToGridC: 524288,       // Snap to grid center
-    SnapToShapesOff: 1048576, // Turn off snap to shapes
-    ShowPageDividers: 2097152  // Show page dividers
+  static HeaderFlags = {
+    Pages: 1024,                 // Pages with direct access
+    NoAuto: 4096,                // No auto direct access
+    ShowRulers: 65536,           // Show rulers
+    ShowGrid: 131072,            // Show grid
+    SnapToGridTL: 262144,        // Snap to grid top-left
+    SnapToGridC: 524288,         // Snap to grid center
+    SnapToShapesOff: 1048576,    // Turn off snap to shapes
+    ShowPageDividers: 2097152,  // Show page dividers
+    AutoGrowTopLeft: 4194304,
   }
 
   /**
@@ -837,13 +842,7 @@ class OptConstant {
     AddCorner: 5,        // Add corner
     DrawPolyline: 6,     // Draw polyline
     FormatPainter: 7,    // Format painter
-  }
-
-  static GuideDistanceTypes = {
-    Room: 1,
-    Horizontal_Wall: 2,
-    Vertical_Wall: 3,
-    PolyWall: 4
+    SplitWall: 8
   }
 }
 

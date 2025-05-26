@@ -13,11 +13,13 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
+import LogUtil from '../Util/LogUtil';
+
 
 /**
  * A shape container that manages collections of child shapes in various layout arrangements.
@@ -68,7 +70,7 @@ class ShapeContainer extends Rect {
    * @param containerOptions - Configuration options for the shape container
    */
   constructor(containerOptions: any) {
-    T3Util.Log("= S.ShapeContainer constructor - Input:", containerOptions);
+    LogUtil.Debug("= S.ShapeContainer constructor - Input:", containerOptions);
 
     // Initialize base container options
     containerOptions = containerOptions || {};
@@ -84,7 +86,7 @@ class ShapeContainer extends Rect {
     this.nativeDataArrayBuffer = containerOptions.nativeDataArrayBuffer || null;
     this.SymbolData = containerOptions.SymbolData || null;
 
-    T3Util.Log("= S.ShapeContainer constructor - Output:", {
+    LogUtil.Debug("= S.ShapeContainer constructor - Output:", {
       ShapeType: containerOptions.ShapeType,
       dataclass: this.dataclass,
       ContainerList: this.ContainerList,
@@ -104,34 +106,34 @@ class ShapeContainer extends Rect {
    * @returns Boolean indicating whether the shape can be added to this container
    */
   IsShapeContainer(shapeToCheck: any, hookPoint?: any): boolean {
-    T3Util.Log("= S.ShapeContainer IsShapeContainer - Input:", { shapeToCheck, hookPoint });
+    LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Input:", { shapeToCheck, hookPoint });
 
     const containerFlags = NvConstant.ContainerListFlags;
 
     // Reject null shapes
     if (shapeToCheck == null) {
-      T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
+      LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", false);
       return false;
     }
 
     // Reject shapes that already have a parent frame
     if (
       shapeToCheck.ParentFrameID >= 0 &&
-      DataUtil.GetObjectPtr(shapeToCheck.ParentFrameID, false)
+      ObjectUtil.GetObjectPtr(shapeToCheck.ParentFrameID, false)
     ) {
-      T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
+      LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", false);
       return false;
     }
 
     // // Reject swimlanes
     // if (shapeToCheck.IsSwimlane()) {
-    //   T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
+    //   LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", false);
     //   return false;
     // }
 
     // Reject text-only objects
     if (shapeToCheck.flags & NvConstant.ObjFlags.TextOnly) {
-      T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
+      LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", false);
       return false;
     }
 
@@ -171,11 +173,11 @@ class ShapeContainer extends Rect {
         isCompatible = true;
       }
 
-      T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", isCompatible);
+      LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", isCompatible);
       return isCompatible;
     }
 
-    T3Util.Log("= S.ShapeContainer IsShapeContainer - Output:", false);
+    LogUtil.Debug("= S.ShapeContainer IsShapeContainer - Output:", false);
     return false;
   }
 
@@ -200,7 +202,7 @@ class ShapeContainer extends Rect {
     connectionType: any,
     additionalContext: any
   ) {
-    T3Util.Log("= S.ShapeContainer CreateConnectHilites - Input:", {
+    LogUtil.Debug("= S.ShapeContainer CreateConnectHilites - Input:", {
       connectEvent,
       targetObject,
       highlightOptions,
@@ -221,7 +223,7 @@ class ShapeContainer extends Rect {
       }
     };
 
-    T3Util.Log("= S.ShapeContainer CreateConnectHilites - Output:", hiliteInfo);
+    LogUtil.Debug("= S.ShapeContainer CreateConnectHilites - Output:", hiliteInfo);
     return hiliteInfo;
   }
 
@@ -236,9 +238,9 @@ class ShapeContainer extends Rect {
    * @returns The best hook point for connection
    */
   GetBestHook(connectionEvent: any, proposedHook: any, contextData: any): any {
-    T3Util.Log("= S.ShapeContainer GetBestHook - Input:", { connectionEvent, proposedHook, contextData });
+    LogUtil.Debug("= S.ShapeContainer GetBestHook - Input:", { connectionEvent, proposedHook, contextData });
     const bestHook = proposedHook;
-    T3Util.Log("= S.ShapeContainer GetBestHook - Output:", bestHook);
+    LogUtil.Debug("= S.ShapeContainer GetBestHook - Output:", bestHook);
     return bestHook;
   }
 
@@ -253,7 +255,7 @@ class ShapeContainer extends Rect {
    * @returns Array of connection point coordinates
    */
   GetTargetPoints(options?: any, filterCriteria?: any, renderContext?: any): Point[] {
-    T3Util.Log("= S.ShapeContainer GetTargetPoints - Input:", { options, filterCriteria, renderContext });
+    LogUtil.Debug("= S.ShapeContainer GetTargetPoints - Input:", { options, filterCriteria, renderContext });
 
     const resultPoints: Point[] = [];
     const containerList = this.ContainerList;
@@ -263,7 +265,6 @@ class ShapeContainer extends Rect {
     let defaultPoint = { x: standardDimension / 2, y: 0 };
     const isSparse = containerList.flags & NvConstant.ContainerListFlags.Sparse;
     const containerFrame = this.PrGetContainerFrame().frame;
-    // const isContainerInCell = T3Gv.opt.ContainerIsInCell(this);
     const frameWidth = containerFrame.width;
     let numDown = containerList.ndown;
     let numAcross = containerList.nacross;
@@ -276,7 +277,7 @@ class ShapeContainer extends Rect {
           resultPoints.push(defaultPoint);
         }
       }
-      T3Util.Log("= S.ShapeContainer GetTargetPoints - Output:", resultPoints);
+      LogUtil.Debug("= S.ShapeContainer GetTargetPoints - Output:", resultPoints);
       return resultPoints;
     }
 
@@ -305,7 +306,7 @@ class ShapeContainer extends Rect {
       }
     }
 
-    T3Util.Log("= S.ShapeContainer GetTargetPoints - Output:", resultPoints);
+    LogUtil.Debug("= S.ShapeContainer GetTargetPoints - Output:", resultPoints);
     return resultPoints;
   }
 
@@ -317,11 +318,11 @@ class ShapeContainer extends Rect {
    * @returns Object containing the frame rectangle and starting Y position
    */
   PrGetContainerFrame(): { frame: any; StartY: number } {
-    T3Util.Log("= S.ShapeContainer PrGetContainerFrame - Input:", { trect: this.trect });
+    LogUtil.Debug("= S.ShapeContainer PrGetContainerFrame - Input:", { trect: this.trect });
     const frameRectangle = Utils1.DeepCopy(this.trect);
     const verticalStartPosition = 0;
     const result = { frame: frameRectangle, StartY: verticalStartPosition };
-    T3Util.Log("= S.ShapeContainer PrGetContainerFrame - Output:", result);
+    LogUtil.Debug("= S.ShapeContainer PrGetContainerFrame - Output:", result);
     return result;
   }
 
@@ -335,7 +336,7 @@ class ShapeContainer extends Rect {
    * @returns Rectangle defining the hit test area
    */
   GetHitTestFrame(targetShape: any) {
-    T3Util.Log("= S.ShapeContainer GetHitTestFrame - Input:", { target: targetShape });
+    LogUtil.Debug("= S.ShapeContainer GetHitTestFrame - Input:", { target: targetShape });
     const hitTestFrame: any = {};
     const containerList = this.ContainerList;
     const isSparseLayout = containerList.flags & NvConstant.ContainerListFlags.Sparse;
@@ -353,7 +354,7 @@ class ShapeContainer extends Rect {
       hitTestFrame.height += 2 * containerList.VerticalSpacing;
     }
 
-    T3Util.Log("= S.ShapeContainer GetHitTestFrame - Output:", hitTestFrame);
+    LogUtil.Debug("= S.ShapeContainer GetHitTestFrame - Output:", hitTestFrame);
     return hitTestFrame;
   }
 
@@ -365,15 +366,15 @@ class ShapeContainer extends Rect {
    * @returns Boolean indicating whether double-click is permitted
    */
   AllowDoubleClick(): boolean {
-    T3Util.Log("= S.ShapeContainer AllowDoubleClick - Input:", {});
+    LogUtil.Debug("= S.ShapeContainer AllowDoubleClick - Input:", {});
     const containerListFlags = this.ContainerList.flags;
     const isDoubleClickAllowed = !!(containerListFlags & NvConstant.ContainerListFlags.Sparse);
-    T3Util.Log("= S.ShapeContainer AllowDoubleClick - Output:", isDoubleClickAllowed);
+    LogUtil.Debug("= S.ShapeContainer AllowDoubleClick - Output:", isDoubleClickAllowed);
     return isDoubleClickAllowed;
   }
 
   DoubleClick(event: any, target: any) {
-    T3Util.Log("= S.ShapeContainer DoubleClick - Input:", { event, target });
+    LogUtil.Debug("= S.ShapeContainer DoubleClick - Input:", { event, target });
 
     const containerList = this.ContainerList;
     const list = containerList.List;
@@ -391,7 +392,7 @@ class ShapeContainer extends Rect {
         const index = row * containerList.nacross + col;
         let widthValue: number;
         if (list[index].id >= 0) {
-          const obj = DataUtil.GetObjectPtr(list[index].id, false);
+          const obj = ObjectUtil.GetObjectPtr(list[index].id, false);
           if (!obj) continue;
           widthValue = obj.Frame.width;
         } else {
@@ -428,7 +429,7 @@ class ShapeContainer extends Rect {
           (newPoint.y < 10 || newPoint.y > this.Frame.height - 10)
         ) {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(this.BlockID);
-          T3Util.Log("= S.ShapeContainer DoubleClick - Output: activating text edit.");
+          LogUtil.Debug("= S.ShapeContainer DoubleClick - Output: activating text edit.");
           TextUtil.ActivateTextEdit(svgElement.svgObj.SDGObj, event);
           return;
         }
@@ -530,7 +531,7 @@ class ShapeContainer extends Rect {
         if (closest < 0) {
           someVariable = target ? target.Data.SymbolID : "currentSymbolId";
           const newId = T3Gv.baseOpt.AddSymbol(someVariable);
-          const newObj = DataUtil.GetObjectPtr(newId, true);
+          const newObj = ObjectUtil.GetObjectPtr(newId, true);
           const childWidth = containerList.childwidth;
           const childHeight = containerList.childheight;
           const newFrame = {
@@ -542,10 +543,10 @@ class ShapeContainer extends Rect {
           newObj.UpdateFrame(newFrame);
           newObj.sizedim.width = childWidth;
           newObj.sizedim.height = childHeight;
-          DataUtil.AddToDirtyList(newId);
+          ObjectUtil.AddToDirtyList(newId);
         } else {
           const duplicatedId = T3Gv.baseOpt.DuplicateShape(closest, true, false);
-          DataUtil.AddToDirtyList(duplicatedId);
+          ObjectUtil.AddToDirtyList(duplicatedId);
         }
 
         const hookLocation = { x: colIndex, y: rowIndex };
@@ -558,7 +559,7 @@ class ShapeContainer extends Rect {
       }
     }
 
-    T3Util.Log("= S.ShapeContainer DoubleClick - Output:", { event, target });
+    LogUtil.Debug("= S.ShapeContainer DoubleClick - Output:", { event, target });
   }
 
   /**
@@ -569,9 +570,9 @@ class ShapeContainer extends Rect {
    * @returns Boolean value that is always true, indicating rotation is not allowed
    */
   NoRotate(): boolean {
-    T3Util.Log("= S.ShapeContainer NoRotate - Input:", {});
+    LogUtil.Debug("= S.ShapeContainer NoRotate - Input:", {});
     const isRotationDisabled = true;
-    T3Util.Log("= S.ShapeContainer NoRotate - Output:", isRotationDisabled);
+    LogUtil.Debug("= S.ShapeContainer NoRotate - Output:", isRotationDisabled);
     return isRotationDisabled;
   }
 
@@ -583,9 +584,9 @@ class ShapeContainer extends Rect {
    * @returns Boolean indicating whether field data can be attached to this container
    */
   FieldDataAllowed(): boolean {
-    T3Util.Log("= S.ShapeContainer FieldDataAllowed - Input:", { thisContext: this });
-    const isFieldDataAllowed = true;// !T3Gv.opt.ContainerIsInCell(this);
-    T3Util.Log("= S.ShapeContainer FieldDataAllowed - Output:", isFieldDataAllowed);
+    LogUtil.Debug("= S.ShapeContainer FieldDataAllowed - Input:", { thisContext: this });
+    const isFieldDataAllowed = true;
+    LogUtil.Debug("= S.ShapeContainer FieldDataAllowed - Output:", isFieldDataAllowed);
     return isFieldDataAllowed;
   }
 
@@ -611,7 +612,7 @@ class ShapeContainer extends Rect {
     additionalContext: any,
     pointIndex: number
   ): Point[] {
-    T3Util.Log("= S.ShapeContainer GetPerimPts - Input:", {
+    LogUtil.Debug("= S.ShapeContainer GetPerimPts - Input:", {
       hookPoint,
       targetPoints,
       hookType,
@@ -636,7 +637,6 @@ class ShapeContainer extends Rect {
     const containerFrameData = this.PrGetContainerFrame();
     const containerFrame = containerFrameData.frame;
     let verticalOffset = containerList.VerticalSpacing + containerFrameData.StartY;
-    // const isInCell = T3Gv.opt.ContainerIsInCell(this);
 
     // Case 1: Single point and negative index - handle simplified perimeter point
     if (targetPoints.length === 1 && pointIndex < 0) {
@@ -656,7 +656,7 @@ class ShapeContainer extends Rect {
         computedPoint.id = targetPoints[0].id;
       }
       resultPoints.push(computedPoint);
-      T3Util.Log("= S.ShapeContainer GetPerimPts - Output (single point):", resultPoints);
+      LogUtil.Debug("= S.ShapeContainer GetPerimPts - Output (single point):", resultPoints);
       return resultPoints;
     }
 
@@ -673,7 +673,7 @@ class ShapeContainer extends Rect {
             // Point is to the left of the grid
             listIndex = targetPoints[i].y * containerList.nacross;
             yCoordinate = containerItems[listIndex].pt.y;
-            xCoordinate = false/*isInCell*/
+            xCoordinate = false
               ? containerList.HorizontalSpacing / 2
               : -containerList.childwidth / 2;
           } else if (targetPoints[i].x < containerList.nacross) {
@@ -689,7 +689,7 @@ class ShapeContainer extends Rect {
               (targetPoints[i].x - containerList.nacross) * containerList.childwidth +
               containerList.childwidth / 2;
 
-            if (/*isInCell && */xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
+            if (xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
               xCoordinate = containerFrame.width - containerList.HorizontalSpacing / 2;
             }
           }
@@ -699,14 +699,14 @@ class ShapeContainer extends Rect {
             (targetPoints[i].y - containerList.ndown) * containerList.childheight +
             containerList.VerticalSpacing;
 
-          if (/*isInCell &&*/ yCoordinate > containerFrame.height - containerList.VerticalSpacing / 2) {
+          if ( yCoordinate > containerFrame.height - containerList.VerticalSpacing / 2) {
             yCoordinate = containerFrame.height - containerList.VerticalSpacing / 2;
           }
 
           if (targetPoints[i].x < 0) {
             // Point is to the left of the extended grid
             listIndex = targetPoints[i].y * containerList.nacross;
-            xCoordinate = false/* isInCell*/
+            xCoordinate = false
               ? containerList.HorizontalSpacing / 2
               : -containerList.childwidth / 2;
           } else if (targetPoints[i].x < containerList.nacross) {
@@ -721,7 +721,7 @@ class ShapeContainer extends Rect {
               (targetPoints[i].x - containerList.nacross) * containerList.childwidth +
               containerList.childwidth / 2;
 
-            if (/*isInCell && */xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
+            if (xCoordinate > containerFrame.width - containerList.HorizontalSpacing / 2) {
               xCoordinate = containerFrame.width - containerList.HorizontalSpacing / 2;
             }
           }
@@ -731,7 +731,7 @@ class ShapeContainer extends Rect {
         resultPoints.push(computedPoint);
       }
 
-      T3Util.Log("= S.ShapeContainer GetPerimPts - Output (sparse):", resultPoints);
+      LogUtil.Debug("= S.ShapeContainer GetPerimPts - Output (sparse):", resultPoints);
       return resultPoints;
     }
 
@@ -764,7 +764,7 @@ class ShapeContainer extends Rect {
       } else {
         // Point is beyond existing items, calculate extension position
         itemIndex = containerItemCount - 1;
-        const childObject = DataUtil.GetObjectPtr(containerItems[itemIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(containerItems[itemIndex].id, false);
 
         if (containerList.Arrangement === containerArrangement.Row) {
           // Row arrangement - extend horizontally
@@ -812,7 +812,7 @@ class ShapeContainer extends Rect {
       resultPoints.push(computedPoint);
     }
 
-    T3Util.Log("= S.ShapeContainer GetPerimPts - Output:", resultPoints);
+    LogUtil.Debug("= S.ShapeContainer GetPerimPts - Output:", resultPoints);
     return resultPoints;
   }
 
@@ -823,7 +823,7 @@ class ShapeContainer extends Rect {
    * @param skipSizeUpdate - If true, only calculates positions without updating container size
    */
   PrFormat(skipSizeUpdate?: any) {
-    T3Util.Log("= S.ShapeContainer PrFormat - Input:", { skipSizeUpdate });
+    LogUtil.Debug("= S.ShapeContainer PrFormat - Input:", { skipSizeUpdate });
 
     // Get references to container properties
     const containerList = this.ContainerList;
@@ -863,7 +863,7 @@ class ShapeContainer extends Rect {
       for (; currentIndex < totalItems; currentIndex++) {
         runningY += listItems[currentIndex].extra;
         listItems[currentIndex].pt = { x: startX, y: runningY };
-        const childObject = DataUtil.GetObjectPtr(listItems[currentIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(listItems[currentIndex].id, false);
 
         if (childObject) {
           // Update position if needed
@@ -903,7 +903,7 @@ class ShapeContainer extends Rect {
       let needsUpdate = false;
       for (let j = startIndex; j < currentIndex; j++) {
         listItems[j].pt.x += finalColumnWidth / 2;
-        const currentObject = DataUtil.GetObjectPtr(listItems[j].id, false);
+        const currentObject = ObjectUtil.GetObjectPtr(listItems[j].id, false);
         if (
           currentObject &&
           (currentObject.Frame.x + currentObject.Frame.width / 2) !== (containerInstance.Frame.x + listItems[j].pt.x)
@@ -940,7 +940,7 @@ class ShapeContainer extends Rect {
       for (; currentIndex < totalItems; currentIndex++) {
         runningX += listItems[currentIndex].extra;
         listItems[currentIndex].pt = { x: runningX, y: currentBaseY };
-        const childObject = DataUtil.GetObjectPtr(listItems[currentIndex].id, false);
+        const childObject = ObjectUtil.GetObjectPtr(listItems[currentIndex].id, false);
         let objectWidth: number, objectHeight: number;
 
         if (childObject) {
@@ -987,7 +987,7 @@ class ShapeContainer extends Rect {
       let needsUpdate = false;
       for (let j = startIndex; j < currentIndex; j++) {
         listItems[j].pt.y += finalRowHeight / 2;
-        const currentObject = DataUtil.GetObjectPtr(listItems[j].id, false);
+        const currentObject = ObjectUtil.GetObjectPtr(listItems[j].id, false);
         if (
           currentObject &&
           (currentObject.Frame.y + currentObject.Frame.height / 2) !== (basePoint.y + listItems[j].pt.y)
@@ -1034,7 +1034,7 @@ class ShapeContainer extends Rect {
             if (item.id == null) {
               item.id = -1;
             }
-            const childObject = DataUtil.GetObjectPtr(item.id, false);
+            const childObject = ObjectUtil.GetObjectPtr(item.id, false);
             const widthValue = childObject ? childObject.Frame.width : containerList.childwidth;
             const heightValue = childObject ? childObject.Frame.height : containerList.childheight;
 
@@ -1145,10 +1145,10 @@ class ShapeContainer extends Rect {
         }
 
         this.TRectToFrame(containerFrame, true);
-        DataUtil.AddToDirtyList(this.BlockID);
+        ObjectUtil.AddToDirtyList(this.BlockID);
 
         // Update connected container if present
-        const connectedObject = this.hooks.length ? DataUtil.GetObjectPtr(this.hooks[0].objid, false) : null;
+        const connectedObject = this.hooks.length ? ObjectUtil.GetObjectPtr(this.hooks[0].objid, false) : null;
         if (connectedObject && connectedObject instanceof ShapeContainer) {
           connectedObject.flags = Utils2.SetFlag(connectedObject.flags, NvConstant.ObjFlags.Obj1, true);
           OptCMUtil.SetLinkFlag(connectedObject.BlockID, DSConstant.LinkFlags.Move);
@@ -1164,7 +1164,7 @@ class ShapeContainer extends Rect {
       this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, false);
     }
 
-    T3Util.Log("= S.ShapeContainer PrFormat - Output:", { ContainerList: containerList });
+    LogUtil.Debug("= S.ShapeContainer PrFormat - Output:", { ContainerList: containerList });
   }
 
   /**
@@ -1179,7 +1179,7 @@ class ShapeContainer extends Rect {
    * @param additionalInfo - Additional connection information
    */
   OnConnect(connectionId: string, targetObject: any, connectionAnchor: any, connectionReference: any, additionalInfo: any): void {
-    T3Util.Log("= S.ShapeContainer OnConnect - Input:", {
+    LogUtil.Debug("= S.ShapeContainer OnConnect - Input:", {
       connectionId,
       targetObject,
       connectionAnchor,
@@ -1197,7 +1197,7 @@ class ShapeContainer extends Rect {
       }
     }
 
-    T3Util.Log("= S.ShapeContainer OnConnect - Output:", { zListIndex: this.zListIndex });
+    LogUtil.Debug("= S.ShapeContainer OnConnect - Output:", { zListIndex: this.zListIndex });
   }
 
   /**
@@ -1209,7 +1209,7 @@ class ShapeContainer extends Rect {
    * @returns Array of connector information objects or null if not applicable
    */
   PrGetShapeConnectorInfo(eventData: any) {
-    T3Util.Log("= S.ShapeContainer PrGetShapeConnectorInfo - Input:", { eventData });
+    LogUtil.Debug("= S.ShapeContainer PrGetShapeConnectorInfo - Input:", { eventData });
 
     const containerList = this.ContainerList;
     const isSparse = containerList.flags & NvConstant.ContainerListFlags.Sparse;
@@ -1219,7 +1219,7 @@ class ShapeContainer extends Rect {
 
     // Only provide connectors for non-sparse containers with the Adjust flag
     if (isSparse || !isAdjust) {
-      T3Util.Log("= S.ShapeContainer PrGetShapeConnectorInfo - Output:", null);
+      LogUtil.Debug("= S.ShapeContainer PrGetShapeConnectorInfo - Output:", null);
       return null;
     }
 
@@ -1241,7 +1241,7 @@ class ShapeContainer extends Rect {
       };
 
     result.push(connectorInfo);
-    T3Util.Log("= S.ShapeContainer PrGetShapeConnectorInfo - Output:", result);
+    LogUtil.Debug("= S.ShapeContainer PrGetShapeConnectorInfo - Output:", result);
     return result;
   }
 
@@ -1254,13 +1254,13 @@ class ShapeContainer extends Rect {
    * @returns Array of enclosed object references
    */
   GetListOfEnclosedObjects(searchOptions: any): any[] {
-    T3Util.Log("= S.ShapeContainer GetListOfEnclosedObjects - Input:", searchOptions);
+    LogUtil.Debug("= S.ShapeContainer GetListOfEnclosedObjects - Input:", searchOptions);
 
     const enclosedObjects: any[] = [];
     // Implementation would typically populate this array with enclosed objects
     // based on container layout and child elements
 
-    T3Util.Log("= S.ShapeContainer GetListOfEnclosedObjects - Output:", enclosedObjects);
+    LogUtil.Debug("= S.ShapeContainer GetListOfEnclosedObjects - Output:", enclosedObjects);
     return enclosedObjects;
   }
 
@@ -1285,7 +1285,7 @@ class ShapeContainer extends Rect {
     gridPosition: { x: number; y: number },
     shouldAttach: boolean
   ) {
-    T3Util.Log("= S.ShapeContainer ChangeTarget - Input:", {
+    LogUtil.Debug("= S.ShapeContainer ChangeTarget - Input:", {
       changeEvent,
       targetShapeId,
       connectionAnchor,
@@ -1295,7 +1295,6 @@ class ShapeContainer extends Rect {
     });
 
     const containerFlags = NvConstant.ContainerListFlags;
-    // const isContainerInCell = T3Gv.opt.ContainerIsInCell(this);
 
     /**
      * Inserts a new shape into the container list at a specified index
@@ -1418,7 +1417,7 @@ class ShapeContainer extends Rect {
       }
 
       // Remove empty rows before the first filled row (if not in a cell)
-      if (/*isContainerInCell == null*/true) {
+
         for (let row = firstFullRow - 1; row >= 0; row--) {
           if (container.ndown > 1) {
             list.splice(row * container.nacross, container.nacross);
@@ -1426,7 +1425,7 @@ class ShapeContainer extends Rect {
             deltaY--;
           }
         }
-      }
+
 
       // Remove empty columns after the last filled column
       for (let col = container.nacross - 1; col > lastFullCol; col--) {
@@ -1473,7 +1472,7 @@ class ShapeContainer extends Rect {
     }
 
     if (targetShapeId != null) {
-      const targetObject = DataUtil.GetObjectPtr(targetShapeId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetShapeId, false);
       targetObject.OnDisconnect(targetShapeId, this);
 
       let targetPosition, rowIndex, dummyData;
@@ -1723,12 +1722,12 @@ class ShapeContainer extends Rect {
             for (let row = 0; row < container.ndown; row++) {
               for (let col = 0; col < container.nacross; col++) {
                 const idx = row * container.nacross + col;
-                const obj = DataUtil.GetObjectPtr(listRef[idx].id, false);
+                const obj = ObjectUtil.GetObjectPtr(listRef[idx].id, false);
 
                 if (obj && obj.hooks.length) {
                   const hook = obj.hooks[0].connect;
                   if (hook.x !== col || hook.y !== row) {
-                    const objFront = DataUtil.GetObjectPtr(listRef[idx].id, true);
+                    const objFront = ObjectUtil.GetObjectPtr(listRef[idx].id, true);
                     objFront.hooks[0].connect.x = col;
                     objFront.hooks[0].connect.y = row;
                   }
@@ -1747,7 +1746,7 @@ class ShapeContainer extends Rect {
             const listRef = currentContainerList.List;
 
             for (let j = 0, len = listRef.length; j < len; j++) {
-              const obj = DataUtil.GetObjectPtr(listRef[j].id, true);
+              const obj = ObjectUtil.GetObjectPtr(listRef[j].id, true);
               if (obj && obj.hooks.length) {
                 obj.hooks[0].connect.y = j;
               }
@@ -1764,7 +1763,7 @@ class ShapeContainer extends Rect {
         this.flags = Utils2.SetFlag(this.flags, NvConstant.ObjFlags.Obj1, true);
       }
 
-      T3Util.Log("= S.ShapeContainer ChangeTarget - Output:", {
+      LogUtil.Debug("= S.ShapeContainer ChangeTarget - Output:", {
         containerList: this.ContainerList,
         targetShapeId,
         gridPosition,

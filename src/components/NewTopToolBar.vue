@@ -452,7 +452,7 @@
                     </q-item-label>
                     <q-item-label>
                       <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.fullLabel
-                        }}</span>
+                      }}</span>
                     </q-item-label>
                   </q-item-section>
 
@@ -471,7 +471,7 @@
                     </q-item-label>
                     <q-item-label>
                       <span class="text-weight-medium select-text">{{ currentDevice?.data?.graphicFull?.elementCount
-                        }}</span>
+                      }}</span>
                     </q-item-label>
                   </q-item-section>
 
@@ -503,7 +503,8 @@
 import { defineComponent, ref, watch, onMounted } from 'vue'
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
-import { tools, user } from "../lib/common"
+import { tools/*, user*/ } from "../lib/common";
+import { user } from "../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from '../lib/T3000/Hvac/Data/T3Data'
 
 export default defineComponent({
@@ -557,7 +558,7 @@ export default defineComponent({
     const deviceTabTitle = ref('Device (-)');
     const router = useRouter();
 
-    const navigateTo=(routeName)=> {
+    const navigateTo = (routeName) => {
 
       console.log(router);
       router.push({ path: routeName });

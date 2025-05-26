@@ -3,7 +3,7 @@ import T3Gv from '../Data/T3Gv';
 import DocUtil from './DocUtil';
 import OptUtil from '../Opt/Opt/OptUtil';
 import WallOpt from "../Opt/Wall/WallOpt";
-import Clipboard from '../Opt/Clipboard/Clipboard'
+import T3Clipboard from '../Opt/Clipboard/T3Clipboard'
 import DataOpt from '../Opt/Data/DataOpt';
 import EvtOpt from '../Event/EvtOpt';
 import KeyboardOpt from '../Opt/Keyboard/KeyboardOpt';
@@ -14,6 +14,13 @@ import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import Basic from '../Data/Instance/Basic';
 import Shape from '../Data/Instance/Shape';
 import Instance, { initializeInstance } from "../Data/Instance/Instance";
+import LayerUtil from '../Opt/Opt/LayerUtil';
+import UIUtil from '../Opt/UI/UIUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
+import StateOpt from '../Data/State/StateOpt';
+import DataStore from '../Data/State/DataStore';
+import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Extends the global Window interface to include T3000 HVAC application references
@@ -64,18 +71,10 @@ SVGElement.prototype.getTransformToElement = function (element: SVGElement): SVG
  */
 class T3Opt {
 
-  /**
-   * Event operations handler for managing UI event bindings
-   */
-  public evtOpt: EvtOpt;
-
-  // public keyBoardOpt: KeyboardOpt;
-
+  public evtOpt: EvtOpt;//Event operations handler for managing UI event bindings
   public userOpt: UserOpt;
 
-  /**
-   * Initializes a new instance of the DocOpt class
-   */
+  //Initializes a new instance of the DocOpt class
   constructor() {
     this.evtOpt = new EvtOpt();
     // this.keyBoardOpt = new KeyboardOpt();
@@ -90,12 +89,18 @@ class T3Opt {
     T3Gv.quasar = quasarInstance;
     QuasarUtil.quasar = quasarInstance;
 
+    // Initialize Instance with modules to avoid circular references
+    initializeInstance(Basic, Shape);
+
     // Initialize data state and store
     DataOpt.InitStateAndStore();
 
     // Set up document handler and option manager
     T3Gv.docUtil = new DocUtil();
     T3Gv.opt = new OptUtil();
+
+    T3Gv.opt.InitializeProperties();
+
     T3Gv.opt.Initialize();
 
     // Initialize wall operations
@@ -118,19 +123,42 @@ class T3Opt {
     // Bind element control events
     this.evtOpt.BindElemCtlEvent();
 
-    // Initialize Instance with modules to avoid circular references
-    initializeInstance(Basic, Shape);
-
     // Initialize clipboard
-    Clipboard.Init();
+    T3Clipboard.Init();
 
     // Load stored data
     DataOpt.InitStoredData();
+    DataOpt.LoadAppStateV2();
 
     // Render all SVG objects
     SvgUtil.RenderAllSVGObjects();
 
     this.userOpt.Initialize();
+
+    // Test for SDData object
+    LogUtil.Debug("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
+
+    // Set the document scale (0.25 to 4)
+    const docSetting = DataOpt.LoadDocSettingData();
+    const zoomPct = (docSetting?.docInfo?.docScale ?? 1) * 100;
+    T3Gv.docUtil.SetZoomLevel(zoomPct);
+
+    LogUtil.Debug(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
+  }
+
+  Reload() {
+    LayerUtil.ClearSVGHighlightLayer();
+    LayerUtil.ClearSVGOverlayLayer();
+    LayerUtil.ClearSVGObjectLayer();
+    UIUtil.SetBackgroundColor();
+    ObjectUtil.ClearDirtyList();
+    ObjectUtil.ClearFutureUndoStates();
+    ObjectUtil.ClearUndoRedo();
+
+    T3Gv.state = new StateOpt();
+    T3Gv.stdObj = new DataStore();
+    T3Gv.currentObjSeqId = -1;
+    T3Gv.opt.Initialize();
   }
 }
 

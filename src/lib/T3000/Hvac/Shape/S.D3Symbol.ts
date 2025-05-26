@@ -8,8 +8,9 @@ import ShapeUtil from '../Opt/Shape/ShapeUtil';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
-import DataUtil from '../Opt/Data/DataUtil';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * A specialized symbol class for rendering 3D symbols in T3000 applications.
@@ -63,7 +64,7 @@ class D3Symbol extends BaseSymbol {
 
   constructor(options) {
     options = options || {};
-    T3Util.Log("S.D3Symbol: Input options:", options);
+    LogUtil.Debug("S.D3Symbol: Input options:", options);
 
     options.ShapeType = OptConstant.ShapeType.D3Symbol;
     options.objecttype = NvConstant.FNObjectTypes.D3Symbol;
@@ -73,14 +74,14 @@ class D3Symbol extends BaseSymbol {
 
     this.SetD3Settings(options.d3Settings);
 
-    T3Util.Log("S.D3Symbol: Output options after initialization:", options);
+    LogUtil.Debug("S.D3Symbol: Output options after initialization:", options);
   }
 
   CreateShape(svgDocument, applyHiddenEventBehavior) {
-    T3Util.Log("S.D3Symbol: Enter CreateShape with parameters:", { svgDocument, applyHiddenEventBehavior });
+    LogUtil.Debug("S.D3Symbol: Enter CreateShape with parameters:", { svgDocument, applyHiddenEventBehavior });
 
     if (this.flags & NvConstant.ObjFlags.NotVisible) {
-      T3Util.Log("S.D3Symbol: Object not visible, exiting CreateShape.");
+      LogUtil.Debug("S.D3Symbol: Object not visible, exiting CreateShape.");
       return null;
     }
 
@@ -136,16 +137,16 @@ class D3Symbol extends BaseSymbol {
       this.SetEffects(groupShape, false, false);
     }
 
-    T3Util.Log("S.D3Symbol: Exit CreateShape with shapeContainer:", shapeContainer);
+    LogUtil.Debug("S.D3Symbol: Exit CreateShape with shapeContainer:", shapeContainer);
     return shapeContainer;
   }
 
   MapData(mappedData: any): void {
-    T3Util.Log("S.D3Symbol: MapData - Input:", mappedData);
+    LogUtil.Debug("S.D3Symbol: MapData - Input:", mappedData);
 
     const publicParams = this.GetPublicParams();
     if (!mappedData || publicParams.length === 0 || !this.HasFieldData()) {
-      T3Util.Log("S.D3Symbol: MapData - No mapping performed (missing data, public params or field data).");
+      LogUtil.Debug("S.D3Symbol: MapData - No mapping performed (missing data, public params or field data).");
       return;
     }
 
@@ -284,22 +285,22 @@ class D3Symbol extends BaseSymbol {
       }
     });
 
-    T3Util.Log("S.D3Symbol: MapData - Output (mapped data updated in object).");
+    LogUtil.Debug("S.D3Symbol: MapData - Output (mapped data updated in object).");
   }
 
   SetParamValue(paramName, paramValue) {
-    T3Util.Log("S.D3Symbol: SetParamValue - Input:", { paramName, paramValue });
+    LogUtil.Debug("S.D3Symbol: SetParamValue - Input:", { paramName, paramValue });
 
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
     if (renderSettings && renderSettings[paramName]) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       renderSettings[paramName].value = paramValue;
       renderSettings[paramName].dataMap = null;
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    T3Util.Log("S.D3Symbol: SetParamValue - Updated renderSettings:", renderSettings);
+    LogUtil.Debug("S.D3Symbol: SetParamValue - Updated renderSettings:", renderSettings);
   }
 
   UpdateSizeFromSettings() {
@@ -307,7 +308,7 @@ class D3Symbol extends BaseSymbol {
   }
 
   GetRenderParams() {
-    T3Util.Log("S.D3Symbol: GetRenderParams - Start");
+    LogUtil.Debug("S.D3Symbol: GetRenderParams - Start");
 
     const frame = this.Frame;
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
@@ -378,36 +379,36 @@ class D3Symbol extends BaseSymbol {
       applyFieldDataStyleOverride(params);
       this.MapData(params);
 
-      T3Util.Log("S.D3Symbol: GetRenderParams - Output:", params);
+      LogUtil.Debug("S.D3Symbol: GetRenderParams - Output:", params);
       return params;
     }
 
-    T3Util.Log("S.D3Symbol: GetRenderParams - No renderSettings found.");
+    LogUtil.Debug("S.D3Symbol: GetRenderParams - No renderSettings found.");
     return null;
   }
 
   SetDataMap(paramName, dataMap) {
-    T3Util.Log("S.D3Symbol: SetDataMap - Input:", { paramName, dataMap });
+    LogUtil.Debug("S.D3Symbol: SetDataMap - Input:", { paramName, dataMap });
 
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
     if (renderSettings && renderSettings[paramName]) {
-      DataUtil.GetObjectPtr(this.BlockID, true);
+      ObjectUtil.GetObjectPtr(this.BlockID, true);
       renderSettings[paramName].dataMap = dataMap;
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    T3Util.Log("S.D3Symbol: SetDataMap - Updated renderSettings:", renderSettings);
+    LogUtil.Debug("S.D3Symbol: SetDataMap - Updated renderSettings:", renderSettings);
   }
 
   GetPublicParams() {
-    T3Util.Log("S.D3Symbol: GetPublicParams - Start");
+    LogUtil.Debug("S.D3Symbol: GetPublicParams - Start");
 
     const publicAttributes = this.d3Settings ? this.d3Settings.publicAttributes : null;
     const result = [];
 
     if (!publicAttributes) {
-      T3Util.Log("S.D3Symbol: GetPublicParams - No public attributes found.");
+      LogUtil.Debug("S.D3Symbol: GetPublicParams - No public attributes found.");
       return result;
     }
 
@@ -417,30 +418,30 @@ class D3Symbol extends BaseSymbol {
       }
     });
 
-    T3Util.Log("S.D3Symbol: GetPublicParams - Output:", result);
+    LogUtil.Debug("S.D3Symbol: GetPublicParams - Output:", result);
     return result;
   }
 
   ExportD3Settings() {
-    T3Util.Log("S.D3Symbol: ExportD3Settings - Start");
+    LogUtil.Debug("S.D3Symbol: ExportD3Settings - Start");
 
     let settingsString = '';
     if (this.d3Settings) {
       settingsString = JSON.stringify(this.d3Settings);
     }
 
-    T3Util.Log("S.D3Symbol: ExportD3Settings - Output:", settingsString);
+    LogUtil.Debug("S.D3Symbol: ExportD3Settings - Output:", settingsString);
     return settingsString;
   }
 
   ImportD3Settings(settingsString) {
-    T3Util.Log("S.D3Symbol: ImportD3Settings - Input:", settingsString);
+    LogUtil.Debug("S.D3Symbol: ImportD3Settings - Input:", settingsString);
 
     let parsedSettings = null;
     try {
       parsedSettings = JSON.parse(settingsString);
     } catch (error) {
-      console.error("S.D3Symbol: ImportD3Settings - Error parsing settings:", error);
+      T3Util.Error("= s.D3Symbol: ImportD3Settings - Error parsing settings:", error);
       throw error;
     }
 
@@ -448,7 +449,7 @@ class D3Symbol extends BaseSymbol {
       this.SetD3Settings(parsedSettings);
     }
 
-    T3Util.Log("S.D3Symbol: ImportD3Settings - Output settings applied.");
+    LogUtil.Debug("S.D3Symbol: ImportD3Settings - Output settings applied.");
   }
 
   SetD3Settings(settings) {
@@ -460,7 +461,7 @@ class D3Symbol extends BaseSymbol {
   }
 
   ChangeTextAttributes(newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration) {
-    T3Util.Log("S.D3Symbol: ChangeTextAttributes - Input:", { newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration });
+    LogUtil.Debug("S.D3Symbol: ChangeTextAttributes - Input:", { newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration });
 
     if (TextUtil.GetActiveTextEdit() === this.BlockID) {
       newFont = null;
@@ -469,13 +470,13 @@ class D3Symbol extends BaseSymbol {
     }
 
     Instance.Shape.BaseDrawObject.prototype.ChangeTextAttributes.call(this, newText, newFont, newSize, newColor, newAlignment, newWeight, newStyle, newDecoration);
-    DataUtil.AddToDirtyList(this.BlockID);
+    ObjectUtil.AddToDirtyList(this.BlockID);
 
-    T3Util.Log("S.D3Symbol: ChangeTextAttributes - Completed");
+    LogUtil.Debug("S.D3Symbol: ChangeTextAttributes - Completed");
   }
 
   CreateActionTriggers(event, triggerType, action, response) {
-    T3Util.Log("S.D3Symbol: CreateActionTriggers - Input parameters:", { event, triggerType, action, response });
+    LogUtil.Debug("S.D3Symbol: CreateActionTriggers - Input parameters:", { event, triggerType, action, response });
 
     const result = Instance.Shape.BaseShape.prototype.CreateActionTriggers.apply(this, [
       event,
@@ -484,28 +485,28 @@ class D3Symbol extends BaseSymbol {
       response
     ]);
 
-    T3Util.Log("S.D3Symbol: CreateActionTriggers - Output result:", result);
+    LogUtil.Debug("S.D3Symbol: CreateActionTriggers - Output result:", result);
     return result;
   }
 
   RefreshFromFieldData(fieldDataTableID) {
-    T3Util.Log("S.D3Symbol: RefreshFromFieldData - Input:", fieldDataTableID);
+    LogUtil.Debug("S.D3Symbol: RefreshFromFieldData - Input:", fieldDataTableID);
 
     if (!fieldDataTableID || this.fieldDataTableID === fieldDataTableID) {
       Instance.Shape.BaseDrawObject.prototype.RefreshFromFieldData.call(this, fieldDataTableID);
       this.UpdateSizeFromSettings();
-      DataUtil.AddToDirtyList(this.BlockID);
+      ObjectUtil.AddToDirtyList(this.BlockID);
 
-      T3Util.Log("S.D3Symbol: RefreshFromFieldData - Output: true");
+      LogUtil.Debug("S.D3Symbol: RefreshFromFieldData - Output: true");
       return true;
     }
 
-    T3Util.Log("S.D3Symbol: RefreshFromFieldData - Output: false");
+    LogUtil.Debug("S.D3Symbol: RefreshFromFieldData - Output: false");
     return false;
   }
 
   static DefaultD3Settings(inputSettings) {
-    T3Util.Log("S.D3Symbol: Input settings:", inputSettings);
+    LogUtil.Debug("S.D3Symbol: Input settings:", inputSettings);
 
     let defaultSettings = {
       moduleID: null,
@@ -517,7 +518,7 @@ class D3Symbol extends BaseSymbol {
       defaultSettings = $.extend(true, defaultSettings, inputSettings);
     }
 
-    T3Util.Log("S.D3Symbol: Output settings:", defaultSettings);
+    LogUtil.Debug("S.D3Symbol: Output settings:", defaultSettings);
     return defaultSettings;
   }
 

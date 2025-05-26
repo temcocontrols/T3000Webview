@@ -24,9 +24,9 @@
  * // Use the identifier to check the type of an object in a drawing system
  * function handleShapeType(type: number): void {
  *   if (type === ShapeConstant.ObjectTypes.Freehand) {
- *     console.log('Processing a freehand drawing');
+ *     LogUtil.Debug('Processing a freehand drawing');
  *   } else {
- *     console.log('Processing a different type of shape');
+ *     LogUtil.Debug('Processing a different type of shape');
  *   }
  * }
  *
@@ -59,7 +59,10 @@ class ShapeConstant {
     SplineCon: 510,     // Spline connector
     MoveTo: 600,        // Move to operation
     MoveToNewPoly: 601, // Move to start new polygon
-    Freehand: 7         // Freehand drawing
+    Freehand: 7,        // Freehand drawing
+    NgEvent: 35,
+    NgEventLabel: 36,
+    NgTimeLine: 34,
   }
 }
 

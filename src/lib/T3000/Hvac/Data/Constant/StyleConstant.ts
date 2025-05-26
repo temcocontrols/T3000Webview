@@ -12,7 +12,7 @@
  * // Accessing color filter constants for ignoring certain style attributes:
  * const filters = StyleConstant.ColorFilters;
  * if (filters.NCFill & filters.NCAll) {
- *   console.log("Ignoring fill color as specified in the style settings.");
+ *   LogUtil.Debug("Ignoring fill color as specified in the style settings.");
  * }
  *
  * // Applying a fill effect for an element based on a predefined constant:

@@ -25,7 +25,7 @@ import CRect from './CRect'
  * const SDArray = new SDArray();
  *
  * // Output initial style flags (default is 0)
- * console.log(sdArray.styleflags); // 0
+ * LogUtil.Debug(sdArray.styleflags); // 0
  *
  * // Modify properties as needed
  * sdArray.tilt = 45;
@@ -34,7 +34,7 @@ import CRect from './CRect'
  * sdArray.wd = 200;
  *
  * // Display updated values
- * console.log(`Tilt: ${sdArray.tilt}, Angle: ${sdArray.angle}, Height: ${sdArray.ht}, Width: ${sdArray.wd}`);
+ * LogUtil.Debug(`Tilt: ${sdArray.tilt}, Angle: ${sdArray.angle}, Height: ${sdArray.ht}, Width: ${sdArray.wd}`);
  * ```
  *
  * @public

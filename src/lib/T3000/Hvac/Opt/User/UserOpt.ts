@@ -11,9 +11,7 @@ class UserOpt {
     this.userSetting = new UserSetting();
   }
 
-  /**
-   * Initializes the user settings
-   */
+  //Initializes the user settings
   Initialize() {
     T3Gv.userSetting = this.userSetting;
   }

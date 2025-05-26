@@ -18,7 +18,7 @@ import DataObj from "./DataObj"
  *
  * @remarks
  * The class is designed to work alongside an external state management system, which is used to track and handle state changes (for example, via T3Gv.state).
- * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.isObject) to be available in the environment.
+ * It also expects utility functions (such as Utils1.GenerateObjectID and Utils1.IsObject) to be available in the environment.
  *
  * @example
  * Here's an example of how to create an instance of DataStore and operate on stored objects:
@@ -33,11 +33,11 @@ import DataObj from "./DataObj"
  *
  * // Retrieve the block by its ID
  * const retrievedBlock = store.GetObject(newBlockId);
- * console.log(retrievedBlock);
+ * LogUtil.Debug(retrievedBlock);
  *
  * // Get all stored objects of type 'Sensor'
  * const sensorBlocks = store.GetObjects('Sensor');
- * console.log(sensorBlocks);
+ * LogUtil.Debug(sensorBlocks);
  *
  * // Delete the block and update current state
  * store.DeleteObject(newBlockId);
@@ -46,24 +46,13 @@ import DataObj from "./DataObj"
  */
 class DataStore {
 
-  /** Object ID */
-  public ID: number;
-
-  /** Type of stored object */
-  public Type: number;
-
-  /** State operation type identifier */
-  public stateOptTypeId: number;
-
-  /** Collection of stored objects */
-  public storedObjects: DataStore[];
-
+  public ID: number;//Object ID
+  public Type: number;//Type of stored object
+  public stateOptTypeId: number;//State operation type identifier
+  public storedObjects: DataStore[];//Collection of stored objects
   public Data: any;
-
   public Dirty: boolean;
-
   public IsPersisted: boolean;
-
   public Delete: any;
 
   /**
@@ -101,7 +90,7 @@ class DataStore {
         }
       } else {
         storedObject.ID = this.storedObjects.length > 0 ? Utils1.GenerateObjectID() : 0;
-        if (storedObject.Data && Utils1.isObject(storedObject.Data)) {
+        if (storedObject.Data && Utils1.IsObject(storedObject.Data)) {
           storedObject.Data.BlockID = storedObject.ID;
         }
         this.storedObjects.push(storedObject);

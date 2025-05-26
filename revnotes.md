@@ -99,3 +99,51 @@ use cmd "ipconfig" to find the IPV4 address (e.g. 192.168.1.8)
 ![1](./revnotes/2025-01-21/9.png)
 
 ![1](./revnotes/2025-01-21/10.png)
+
+## 2025-05-21
+#### 1. Added a drawing area with SVG as backend technology for drawing shapes, ducts, pipes, and walls. Open the T3000 application.
+Access the HVAC drawer via a web browser with URL http://localhost:9104 and switch to "New UI" by clicking the last tab on the top menu bar.
+
+![1](./revnotes/2025-05-21/1.png)
+
+#### 2. For the new drawing area, use Ctrl + Mouse wheel scroll to zoom in or zoom out.
+
+![1](./revnotes/2025-05-21/2_1.png)
+
+![1](./revnotes/2025-05-21/2_2.png)
+
+<!-- [video: Zoom in or out](./revnotes/2025-05-21/2_3.mp4) -->
+
+#### 3. New duct category includes new shapes for drawing.
+
+![1](./revnotes/2025-05-21/3_1.png)
+
+#### 4. Added new general shapes: Rectangle, Circle, Oval, Line, Segment Line, Arrow Right, Arrow Left, Arrow Top, and Arrow Bottom.
+
+![1](./revnotes/2025-05-21/4.png)
+
+#### 5. Added new top toolbar with functions to manage the shapes' state when drawing,
+including Align Left, Align Right, Align Middle, Align Bottom, Group, Ungroup, Flip Horizontal, Flip Vertical, Make Same Size, and Make Same Width.
+Mouse hovering displays the full function name.
+
+![1](./revnotes/2025-05-21/5_1.png)
+
+![1](./revnotes/2025-05-21/5_2.png)
+
+#### 6. Draw ducts, pipes, and walls with newly added shapes as shown in the demonstration below.
+
+(For text shapes, currently only supported by pasting text into them.)
+
+![1](./revnotes/2025-05-21/6_1.png)
+
+![1](./revnotes/2025-05-21/6_2.png)
+
+![1](./revnotes/2025-05-21/6_3.png)
+
+![1](./revnotes/2025-05-21/6_4.png)
+
+#### 7. Zoom in or out to view details for the mouse-selected area and scroll horizontally or vertically to adjust the shape with a better viewport.
+
+![1](./revnotes/2025-05-21/7_2.png)
+
+![1](./revnotes/2025-05-21/7_1.png)

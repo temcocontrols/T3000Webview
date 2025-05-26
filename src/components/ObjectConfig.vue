@@ -237,7 +237,7 @@
 import { defineComponent, computed, onMounted, onBeforeUnmount } from "vue";
 import { cloneDeep, isEqual } from "lodash";
 import { /*getEntryRange,*/ icons, switchIcons, tools } from "../lib/common";
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 import T3000 from "src/lib/T3000/T3000";
 
 export default defineComponent({
@@ -315,7 +315,7 @@ export default defineComponent({
 
     function refreshMoveable() {
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.settings.strokeWidth = T3000.Hvac.App.GetExteriorWallStrokeWidth(item.value.height);
+        item.value.settings.strokeWidth = T3000.Hvac.PageMain.GetExteriorWallStrokeWidth(item.value.height);
       }
 
       emit("refreshMoveable");
@@ -346,7 +346,7 @@ export default defineComponent({
 
     function updatePropsValue(key) {
       if (item.value.type === "Int_Ext_Wall") {
-        item.value.height = T3000.Hvac.App.GetExteriorWallHeight(item.value.settings.strokeWidth);
+        item.value.height = T3000.Hvac.PageMain.GetExteriorWallHeight(item.value.settings.strokeWidth);
         emit("refreshMoveable");
       }
     }

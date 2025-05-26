@@ -7,12 +7,13 @@ import T3Gv from '../../Data/T3Gv';
 import Point from '../../Model/Point';
 import PolyList from "../../Model/PolyList";
 import PolySeg from "../../Model/PolySeg";
+import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import PolygonConstant from "../Polygon/PolygonConstant";
 import DrawUtil from './DrawUtil';
@@ -37,7 +38,7 @@ class PolyUtil {
    * @returns Array of points representing the arc
    */
   static ArcToPoly(segments, center, radius, startY, endY, targetX, flipArc, isComplexArc) {
-    T3Util.Log("O.Opt: ArcToPoly inputs:", {
+    LogUtil.Debug("O.Opt: ArcToPoly inputs:", {
       segments,
       center: { x: center.x, y: center.y },
       radius,
@@ -79,7 +80,7 @@ class PolyUtil {
       this.ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide);
     }
 
-    T3Util.Log("O.Opt: ArcToPoly output points:", points.length);
+    LogUtil.Debug("O.Opt: ArcToPoly output points:", points.length);
     return points;
   }
 
@@ -97,7 +98,7 @@ class PolyUtil {
    * @returns Array of points representing the arc segment
    */
   static ArcToPolySeg(points, segments, center, radius, startY, endY, targetX, flipArc, isRightSide) {
-    T3Util.Log("O.Opt: ArcToPolySeg inputs:", {
+    LogUtil.Debug("O.Opt: ArcToPolySeg inputs:", {
       segments,
       center: { x: center.x, y: center.y },
       radius,
@@ -114,7 +115,7 @@ class PolyUtil {
     for (let i = 0; i < segments; i++) {
       const yOffset = yStep * i;
       const yDist = center.y - (startY + yOffset);
-      const xDist = Utils2.sqrt(radiusSquared - yDist * yDist);
+      const xDist = Utils2.Sqrt(radiusSquared - yDist * yDist);
 
       const point = new Point(0, 0);
       point.y = center.y - yDist;
@@ -136,7 +137,7 @@ class PolyUtil {
       points.push(point);
     }
 
-    T3Util.Log("O.Opt: ArcToPolySeg output points count:", points.length);
+    LogUtil.Debug("O.Opt: ArcToPolySeg output points count:", points.length);
     return points;
   }
 
@@ -156,7 +157,7 @@ class PolyUtil {
     resultIndices?: number[],
     isHorizontal?: boolean
   ): number {
-    T3Util.Log("O.Opt PolyGetIntersect - Input:", {
+    LogUtil.Debug("O.Opt PolyGetIntersect - Input:", {
       pointCount: polylinePoints.length,
       intersectValue,
       isHorizontal
@@ -245,7 +246,7 @@ class PolyUtil {
           if (foundIntersection) {
             // Stop if we've found too many intersections
             if (intersectionCount >= 2) {
-              T3Util.Log("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
+              LogUtil.Debug("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
               return intersectionCount + 1;
             }
 
@@ -298,7 +299,7 @@ class PolyUtil {
 
           if (foundIntersection) {
             if (intersectionCount >= 2) {
-              T3Util.Log("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
+              LogUtil.Debug("O.Opt PolyGetIntersect - Output: Too many intersections", intersectionCount + 1);
               return intersectionCount + 1;
             }
 
@@ -325,7 +326,7 @@ class PolyUtil {
       }
     }
 
-    T3Util.Log("O.Opt PolyGetIntersect - Output: Found", intersectionCount, "intersections");
+    LogUtil.Debug("O.Opt PolyGetIntersect - Output: Found", intersectionCount, "intersections");
     return intersectionCount;
   }
 
@@ -574,7 +575,7 @@ class PolyUtil {
     }
 
     // Calculate y component using Pythagorean theorem
-    const yComponent = Utils2.sqrt(radius * radius - relativeX * relativeX);
+    const yComponent = Utils2.Sqrt(radius * radius - relativeX * relativeX);
 
     // Set y position based on whether point is above or below center
     if (isAboveCenter) {
@@ -674,7 +675,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the two possible X coordinates
-      let xOffset = Utils2.sqrt(discriminant);
+      let xOffset = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let x1 = xOffset + arcCenter.x;
@@ -717,7 +718,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the two possible Y coordinates
-      let yOffset = Utils2.sqrt(discriminant);
+      let yOffset = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let y1 = yOffset + arcCenter.y;
@@ -764,7 +765,7 @@ class PolyUtil {
       if (discriminant < 0) return false;
 
       // Calculate the square root of discriminant
-      let sqrtDiscriminant = Utils2.sqrt(discriminant);
+      let sqrtDiscriminant = Utils2.Sqrt(discriminant);
 
       // First possible intersection point
       let x1 = (-b + sqrtDiscriminant) / (2 * a);
@@ -1085,11 +1086,11 @@ class PolyUtil {
     let visibleLayers = LayerUtil.ActiveVisibleZList();
 
     // Get source object
-    sourceObject = DataUtil.GetObjectPtr(sourceBlockId, true);
+    sourceObject = ObjectUtil.GetObjectPtr(sourceBlockId, true);
     if (sourceObject == null) return -1;
 
     // Get target object
-    targetObject = DataUtil.GetObjectPtr(targetBlockId, true);
+    targetObject = ObjectUtil.GetObjectPtr(targetBlockId, true);
     if (targetObject == null) return -1;
 
     // Preserve metadata from objects (use the valid ones)
@@ -1099,8 +1100,8 @@ class PolyUtil {
     noteId = sourceObject.NoteID;
     if (targetObject.NoteID >= 0) noteId = targetObject.NoteID;
 
-    commentId = sourceObject.CommentID;
-    if (targetObject.CommentID >= 0) commentId = targetObject.CommentID;
+    commentId = sourceObject.commentId;
+    if (targetObject.commentId >= 0) commentId = targetObject.commentId;
 
     hyperlinkText = sourceObject.HyperlinkText;
     if (targetObject.HyperlinkText) hyperlinkText = targetObject.HyperlinkText;
@@ -1136,7 +1137,7 @@ class PolyUtil {
 
       // Update frame and mark as dirty
       sourceObject.CalcFrame();
-      DataUtil.AddToDirtyList(sourceObject.BlockID);
+      ObjectUtil.AddToDirtyList(sourceObject.BlockID);
       OptCMUtil.SetLinkFlag(sourceBlockId, DSConstant.LinkFlags.Move);
       HookUtil.MaintainLink(sourceBlockId, sourceObject, null, hookTriggerType, false);
       return result;
@@ -1477,7 +1478,7 @@ class PolyUtil {
         }
 
         // Mark as dirty
-        DataUtil.AddToDirtyList(mainPolyline.BlockID);
+        ObjectUtil.AddToDirtyList(mainPolyline.BlockID);
       }
     } else {
       // Handle connection at the end of the main polyline
@@ -1630,7 +1631,7 @@ class PolyUtil {
         }
 
         // Mark as dirty
-        DataUtil.AddToDirtyList(mainPolyline.BlockID);
+        ObjectUtil.AddToDirtyList(mainPolyline.BlockID);
       }
     }
 
@@ -1641,7 +1642,7 @@ class PolyUtil {
     if (needsRender) {
       resultBlockId = DrawUtil.AddNewObject(mainPolyline, false, true);
       needsRender = true;
-      DataUtil.AddToDirtyList(resultBlockId);
+      ObjectUtil.AddToDirtyList(resultBlockId);
     } else {
       // Get current layer position
       let currentLayerIndex = LayerUtil.VisibleZList().indexOf(resultBlockId);
@@ -1651,7 +1652,7 @@ class PolyUtil {
     }
 
     // Transfer metadata to the resulting polyline
-    mainPolyline = DataUtil.GetObjectPtr(resultBlockId, false);
+    mainPolyline = ObjectUtil.GetObjectPtr(resultBlockId, false);
     if (mainPolyline) {
       // Transfer DataID
       if (mainPolyline.DataID < 0) {
@@ -1689,14 +1690,14 @@ class PolyUtil {
         );
       }
 
-      // Transfer CommentID
-      if (mainPolyline && mainPolyline.CommentID < 0) {
-        mainPolyline.CommentID = commentId;
+      // Transfer commentId
+      if (mainPolyline && mainPolyline.commentId < 0) {
+        mainPolyline.commentId = commentId;
 
-        if (sourceObject.CommentID === commentId) {
-          sourceObject.CommentID = -1;
-        } else if (targetObject.CommentID === commentId) {
-          targetObject.CommentID = -1;
+        if (sourceObject.commentId === commentId) {
+          sourceObject.commentId = -1;
+        } else if (targetObject.commentId === commentId) {
+          targetObject.commentId = -1;
         }
 
         mainPolyline.TextFlags = Utils2.SetFlag(
@@ -1718,7 +1719,7 @@ class PolyUtil {
     }
 
     // Delete the original objects
-    DataUtil.DeleteObjects(blocksToDelete, false);
+    ObjectUtil.DeleteObjects(blocksToDelete, false);
 
     // Update links
     OptCMUtil.SetLinkFlag(resultBlockId, DSConstant.LinkFlags.Move);
@@ -1735,7 +1736,7 @@ class PolyUtil {
       visibleLayers.splice(currentLayerIndex, 1);
       visibleLayers.splice(layerPosition, 0, resultBlockId);
       needsRender = true;
-      DataUtil.AddToDirtyList(resultBlockId);
+      ObjectUtil.AddToDirtyList(resultBlockId);
     }
 
     // Handle special cases for PolyLineContainer
@@ -1764,7 +1765,7 @@ class PolyUtil {
  * @returns Object containing quadrant parameters and reference
  */
   static PolyLinePrPolyLGetArcQuadrant(startPoint, endPoint, arcAngle) {
-    T3Util.Log("O.Opt PolyLinePrPolyLGetArcQuadrant - Input:", {
+    LogUtil.Debug("O.Opt PolyLinePrPolyLGetArcQuadrant - Input:", {
       startPoint,
       endPoint,
       arcAngle
@@ -1841,7 +1842,7 @@ class PolyUtil {
       }
     }
 
-    T3Util.Log("O.Opt PolyLinePrPolyLGetArcQuadrant - Output:", result);
+    LogUtil.Debug("O.Opt PolyLinePrPolyLGetArcQuadrant - Output:", result);
     return result;
   }
 
@@ -1859,7 +1860,7 @@ class PolyUtil {
      * @returns The input points array with new points added
      */
   static PolyYCurve(points, rect, segmentCount, minOffset, maxOffset, startOffset, endOffset, isRightSide) {
-    T3Util.Log("O.Opt PolyYCurve - Input:", {
+    LogUtil.Debug("O.Opt PolyYCurve - Input:", {
       pointCount: points.length,
       rect,
       segmentCount,
@@ -1927,14 +1928,14 @@ class PolyUtil {
       }
 
       // Calculate X using ellipse formula and place on correct side
-      const horizontalOffset = Utils2.sqrt(1 - ratio * ratio) * rectWidth;
+      const horizontalOffset = Utils2.Sqrt(1 - ratio * ratio) * rectWidth;
       point.x = isRightSide ? rect.x + rect.width - horizontalOffset : rect.x + horizontalOffset;
 
       // Add point to result array
       points.push(point);
     }
 
-    T3Util.Log("O.Opt PolyYCurve - Output: Generated points:", points.length);
+    LogUtil.Debug("O.Opt PolyYCurve - Output: Generated points:", points.length);
     return points;
   }
 
@@ -1945,7 +1946,7 @@ class PolyUtil {
    * @returns True if the point is inside the polygon, false otherwise
    */
   static PolyPtInPolygon(polygonPoints, testPoint) {
-    T3Util.Log("O.Opt PolyPtInPolygon - Input:", { polygonPointsCount: polygonPoints.length, testPoint });
+    LogUtil.Debug("O.Opt PolyPtInPolygon - Input:", { polygonPointsCount: polygonPoints.length, testPoint });
 
     // Initialize triangle points
     const trianglePoints = [
@@ -2027,7 +2028,7 @@ class PolyUtil {
 
     // Point is inside if number of intersections is odd
     const isInside = (intersectionCount % 2) !== 0;
-    T3Util.Log("O.Opt PolyPtInPolygon - Output:", isInside);
+    LogUtil.Debug("O.Opt PolyPtInPolygon - Output:", isInside);
     return isInside;
   }
 
@@ -2275,6 +2276,154 @@ class PolyUtil {
       ipt: resultIntersection,
       lpseg: intersectedSegment
     };
+  }
+
+  /**
+   * Generates points along an ellipse arc and adds them to an array
+   * This function calculates a series of points along an elliptical arc between two points
+   * and adds them to the provided points array
+   *
+   * @param pointsArray - The array where generated points will be added
+   * @param segmentCount - Number of points to generate along the ellipse (defaults to 100 if less than 2)
+   * @param startX - Starting X coordinate of the ellipse arc
+   * @param endX - Ending X coordinate of the ellipse arc
+   * @param startY - Starting Y coordinate of the ellipse arc
+   * @param endY - Ending Y coordinate of the ellipse arc
+   * @param isClockwise - Direction flag for arc generation (true for clockwise)
+   * @returns The points array with added ellipse points
+   */
+  static EllipseToPoints(
+    pointsArray,
+    segmentCount,
+    startX,
+    endX,
+    startY,
+    endY,
+    isClockwise
+  ) {
+    // Calculate the horizontal radius
+    const horizontalRadius = Math.abs(endX - startX);
+
+    // Calculate vertical parameters
+    const verticalDelta = Math.abs(endY - startY);
+    const verticalRadiusSquared = verticalDelta * verticalDelta;
+
+    // Ensure minimum segment count
+    if (segmentCount < 2) {
+      segmentCount = 100;
+    }
+
+    // Determine starting point and direction based on coordinates and direction flag
+    let referenceX, referenceY;
+    let directionMultiplier = 1;
+
+    if (endY > startY) {
+      if (endX > startX) {
+        if (isClockwise) {
+          referenceX = startX;
+          referenceY = endY;
+        } else {
+          referenceX = endX;
+          referenceY = startY;
+          directionMultiplier = -1;
+        }
+      } else {
+        if (isClockwise) {
+          referenceX = endX;
+          referenceY = startY;
+        } else {
+          referenceX = startX;
+          referenceY = endY;
+          directionMultiplier = -1;
+        }
+      }
+    } else {
+      if (endX > startX) {
+        if (isClockwise) {
+          referenceX = endX;
+          referenceY = startY;
+          directionMultiplier = -1;
+        } else {
+          referenceX = startX;
+          referenceY = endY;
+        }
+      } else {
+        if (isClockwise) {
+          referenceX = startX;
+          referenceY = endY;
+          directionMultiplier = -1;
+        } else {
+          referenceX = endX;
+          referenceY = startY;
+        }
+      }
+    }
+
+    // Calculate vertical step between points
+    const yStep = (endY - startY) / (segmentCount - 1);
+
+    // Generate the points along the ellipse
+    for (let i = 0; i < segmentCount; i++) {
+      // Calculate current y value
+      const currentY = startY + yStep * i;
+
+      // Calculate vertical distance from reference point
+      const verticalDistance = currentY - referenceY;
+
+      // Calculate horizontal offset using ellipse formula
+      const horizontalOffset = Utils2.Sqrt(1 - (verticalDistance * verticalDistance) / verticalRadiusSquared) * horizontalRadius;
+
+      // Create new point with calculated coordinates
+      const point = new Point(
+        referenceX + horizontalOffset * directionMultiplier,
+        currentY
+      );
+
+      // Add the point to the output array
+      pointsArray.push(point);
+    }
+
+    return pointsArray;
+  }
+
+  /**
+   * Calculates the clockwise angle in radians between two points
+   * This function determines the angle formed by a line from the start point
+   * to the end point, measured clockwise from the positive x-axis.
+   *
+   * @param startPoint - The origin point from which the angle is measured
+   * @param endPoint - The target point to which the angle is measured
+   * @returns The clockwise angle in radians (0 to 2π)
+   */
+  static GetClockwiseAngleBetween2PointsInRadians(startPoint, endPoint) {
+    // Constants
+    const PI = NvConstant.Geometry.PI;
+
+    // Calculate the delta coordinates
+    const deltaX = endPoint.x - startPoint.x;
+    const deltaY = endPoint.y - startPoint.y;
+
+    // Calculate the angle using arctangent
+    let angle;
+
+    // Handle special cases to avoid division by zero
+    if (deltaX === 0) {
+      // Vertical line
+      angle = deltaY >= 0 ? PI / 2 : -PI / 2;
+    } else if (deltaY === 0) {
+      // Horizontal line
+      angle = deltaX >= 0 ? 0 : PI;
+    } else {
+      // General case: use arctangent
+      angle = Math.atan2(deltaY, deltaX);
+    }
+
+    // Ensure angle is positive (0 to 2π range)
+    if (angle < 0) {
+      angle += 2 * PI;
+    }
+
+    return angle;
   }
 }
 

@@ -29,8 +29,8 @@ import OptConstant from "../Data/Constant/OptConstant";
  * const segment = new PolySeg(lineType, 100, 200);
  *
  * // Accessing properties of the segment
- * console.log(segment.pt.x); // Output: 100
- * console.log(segment.pt.y); // Output: 200
+ * LogUtil.Debug(segment.pt.x); // Output: 100
+ * LogUtil.Debug(segment.pt.y); // Output: 200
  *
  * // Modifying a property, for example, enabling alternate text positioning
  * segment.dimTextAltPositioning = true;

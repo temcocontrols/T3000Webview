@@ -23,6 +23,9 @@ import Utils1 from "../Util/Utils1"
 import NvConstant from "../Data/Constant/NvConstant"
 import OptConstant from "../Data/Constant/OptConstant"
 import DocInfo from "../Model/DocInfo"
+import ForeignObject from './B.ForeignObject';
+import T3Util from "../Util/T3Util"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents the main drawing canvas for HVAC elements in T3000.
@@ -74,8 +77,9 @@ import DocInfo from "../Model/DocInfo"
  * doc.ApplyDocumentTransform();
  */
 class Document extends Container {
+
   GetSpellCheck() {
-      throw new Error('Method not implemented.')
+    LogUtil.Debug('= B.Document', 'GetSpellCheck', 'Not implemented');
   }
 
   /**
@@ -99,9 +103,7 @@ class Document extends Container {
     super();
 
     this.parentElem = parentElementSelector;
-    if (this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.') {
-      this.parentElem = '#' + this.parentElem;
-    }
+    this.parentElem = this.parentElem.charAt(0) !== '#' && this.parentElem.charAt(0) !== '.' ? '#' + this.parentElem : this.parentElem;
 
     this.svgObj = T3Svg.svg($(this.parentElem)[0]);
     this.docInfo = new DocInfo();
@@ -174,6 +176,9 @@ class Document extends Container {
         break;
       case OptConstant.CSType.ShapeContainer:
         shape = new ShapeContainer();
+        break;
+      case OptConstant.CSType.ForeignObject:
+        shape = new ForeignObject();
         break;
       default:
         return null;
@@ -265,7 +270,18 @@ class Document extends Container {
    */
   CalcWorkArea() {
     // Get the offset position of the parent element relative to the document
+    LogUtil.Debug("= B.Document CalcWorkArea ", $(this.parentElem));
+
+    if ($(this.parentElem) === null || $(this.parentElem) === undefined) {
+      return;
+    }
+
     const parentOffset = $(this.parentElem).offset();
+
+    // Temporary check of parent offset for draw area initialization bug in v1.0
+    if (parentOffset === null || parentOffset === undefined) {
+      return;
+    }
 
     // Set the display X and Y coordinates from the parent's offset
     this.docInfo.dispX = parentOffset.left;
@@ -433,9 +449,7 @@ class Document extends Container {
    * @param scale - New scale factor
    */
   SetDocumentScale(scale: number) {
-    this.SetDocumentMetrics({
-      scale: scale
-    });
+    this.SetDocumentMetrics({ scale: scale });
   }
 
   /**
@@ -658,11 +672,26 @@ class Document extends Container {
    * @returns The rotated point coordinates {x, y}
    */
   RotateAroundCenterPt(point, center, angle) {
+
+    /*
+    // Check if point and center are valid and their x,y properties are finite numbers
+    if (!point || !center ||
+        !isFinite(point.x) || isNaN(point.x) ||
+        !isFinite(point.y) || isNaN(point.y) ||
+        !isFinite(center.x) || isNaN(center.x) ||
+        !isFinite(center.y) || isNaN(center.y)) {
+      return { x: 0, y: 0 };
+    }
+    */
+
     const svgPoint = this.DOMElement().createSVGPoint();
     const svgMatrix = this.DOMElement().createSVGMatrix();
 
-    svgPoint.x = point.x - center.x;
-    svgPoint.y = point.y - center.y;
+    const pcx = (!isNaN(point.x) ? point.x : 0) - (!isNaN(center.x) ? center.x : 0);
+    const pcy = (!isNaN(point.y) ? point.y : 0) - (!isNaN(center.y) ? center.y : 0);
+
+    svgPoint.x = pcx;// (point?.x ?? 0) - (center?.x ?? 0);
+    svgPoint.y = pcy;// (point?.y ?? 0) - (center?.y ?? 0);
 
     const rotatedPoint = svgPoint.matrixTransform(svgMatrix.rotate(angle));
 
@@ -814,16 +843,16 @@ class Document extends Container {
    * @returns The formatting layer object
    */
   GetFormattingLayer() {
-    let formattingLayer = this.GetLayer('__FORMATTING__');
+    let formattingLayer = this.GetLayer('_formatting_');
     if (formattingLayer && !formattingLayer.IsDpiScalingAllowed()) {
       formattingLayer = null;
     }
 
     if (!formattingLayer) {
-      formattingLayer = this.AddLayer('__FORMATTING__');
+      formattingLayer = this.AddLayer('_formatting_');
       formattingLayer.AllowDpiScalingOnly(true);
       formattingLayer.ExcludeFromExport(true);
-      this.MoveLayer('__FORMATTING__', NvConstant.LayerMoveType.Bottom);
+      this.MoveLayer('_formatting_', NvConstant.LayerMoveType.Bottom);
       formattingLayer.SetOpacity(0);
       this.ApplyDocumentTransform();
     }
@@ -1107,8 +1136,52 @@ class Document extends Container {
   }
 
   ConverWindowToDocLength(e) {
-    "use strict";
     return e / this.docInfo.docToScreenScale
+  }
+
+  /**
+  * Creates a foreignObject with a Vue component mounted inside it
+  *
+  * This is a convenience method that creates a foreignObject element and mounts
+  * the specified Vue component within it. The foreignObject is properly sized and
+  * can be positioned and further customized after creation.
+  *
+  * @param width - Width of the foreignObject
+  * @param height - Height of the foreignObject
+  * @param vueComponent - Vue component constructor to mount
+  * @param props - Optional props to pass to the Vue component
+  * @returns The created foreignObject element with the Vue component
+  */
+
+  /* Example usage:
+   // Create a foreignObject with a Vue component
+   import MyVueComponent from '@/components/MyVueComponent.vue';
+
+   // Get your document instance
+   const doc = your document instance;
+   const layer = doc.GetDocumentLayer();
+
+   // Create a foreignObject with Vue component
+   const foreignObj = doc.CreateVueComponent(200, 150, MyVueComponent, {
+     message: 'Hello from SVG!',
+     color: 'blue'
+   });
+
+   // Position the foreign object
+   foreignObj.SetPosition(100, 100);
+
+   // Add it to a layer
+   layer.AddElement(foreignObj);
+   */
+  CreateVueComponent(width: number, height: number, vueComponent: any, props: any = {}) {
+    const foreignObject = this.CreateShape(OptConstant.CSType.ForeignObject) as ForeignObject;
+
+    if (foreignObject) {
+      foreignObject.SetSize(width, height);
+      foreignObject.MountVueComponent(vueComponent, props);
+    }
+
+    return foreignObject;
   }
 }
 

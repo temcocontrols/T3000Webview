@@ -25,9 +25,9 @@ import StateConstant from "../Data/State/StateConstant";
  * };
  * const textObj = new TextObject(sampleData);
  *
- * console.log(textObj.Type);         // Outputs the constant for TextObject type
- * console.log(textObj.runtimeText);  // "Sample HVAC Text"
- * console.log(textObj.selrange);     // { start: 0, end: 16, line: 1 }
+ * LogUtil.Debug(textObj.Type);         // Outputs the constant for TextObject type
+ * LogUtil.Debug(textObj.runtimeText);  // "Sample HVAC Text"
+ * LogUtil.Debug(textObj.selrange);     // { start: 0, end: 16, line: 1 }
  * ```
  *
  * @public

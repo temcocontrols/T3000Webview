@@ -37,7 +37,7 @@ import StateConstant from '../Data/State/StateConstant';
  * // Optionally work with the swimlanelist for additional configurations
  * manager.swimlanelist.push({ id: 1, description: 'Main Swimming Lane' });
  *
- * console.log(manager);
+ * LogUtil.Debug(manager);
  * ```
  *
  * @public

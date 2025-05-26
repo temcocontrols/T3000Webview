@@ -39,7 +39,6 @@ class ShapeCopy extends Element {
   CreateElement(sourceElement, elementType) {
     this.svgObj = new T3Svg.Container(T3Svg.create('use'));
     this.InitElement(sourceElement, elementType);
-
     return this.svgObj;
   }
 

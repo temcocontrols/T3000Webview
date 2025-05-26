@@ -5,9 +5,11 @@ import MockData from "../../Data/MockData"
 import PanelInfo from "./PanelInfo"
 import DeviceItem from "./DeviceItem"
 
-import T3Data from '../../Data/T3Data'
+import { T3Data } from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 import Hvac from "../../Hvac"
+import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 
 class DeviceOpt {
 
@@ -106,7 +108,7 @@ class DeviceOpt {
   // init graphic list for ui rendering
   initGraphicList(gphList) {
 
-    console.log('= Dvopt t3 graphic data', gphList);
+    LogUtil.Debug('= Dvopt t3 graphic data', gphList);
 
     // load graphic list from GET_PANEL_DATA_RES
     // { command: "1GRP2", description: "Test2", id: "GRP2", index: 1, label: "TEST2", pid: 1 }
@@ -120,12 +122,12 @@ class DeviceOpt {
       elementCount: Number(graphic.count) || 0// this.calculateElementCount(graphic.id) || 0
     }));
 
-    console.log('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
+    LogUtil.Debug('= Dvopt t3 transformedGraphicItems', transformedGraphicItems);
 
     this.graphicList = transformedGraphicItems;
     T3Data.graphicList.value = transformedGraphicItems;
 
-    console.log('= Dvopt t3 graphicList', T3Data.graphicList.value);
+    LogUtil.Debug('= Dvopt t3 graphicList', T3Data.graphicList.value);
   }
 
   calculateElementCount(graphicId) {
@@ -135,7 +137,7 @@ class DeviceOpt {
       return 0;
     }
 
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS) {
       const device = deviceAppStateLS.find(
@@ -160,7 +162,7 @@ class DeviceOpt {
     if (!tempAppState || !currentDevice) return;
 
     const parsedTempAppState = JSON.parse(tempAppState);
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS() || [];
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS() || [];
 
     const deviceIndex = deviceAppStateLS.findIndex(
       opt =>
@@ -234,7 +236,7 @@ class DeviceOpt {
     }
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -262,7 +264,7 @@ class DeviceOpt {
     }
 
     // localStorage.setItem('deviceAppState', JSON.stringify(deviceAppState.value));
-    Hvac.LSUtils.saveDeviceAppState(deviceAppState.value);
+    Hvac.LsOpt.saveDeviceAppState(deviceAppState.value);
 
     // load the element count
     this.refreshCurrentDeviceCount(deviceModel);
@@ -271,7 +273,7 @@ class DeviceOpt {
   loadDeviceAppState(deviceAppState, currentDevice, appState) {
 
     // check whether the deviceAppState exists in local storage
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (deviceAppStateLS !== null) {
       deviceAppState.value = deviceAppStateLS;
@@ -295,7 +297,7 @@ class DeviceOpt {
   refreshCurrentDeviceCount(deviceModel) {
 
     // current device's element count
-    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
     const currentDevice = this.getCurrentDevice();
 
     if (appStateLs) {
@@ -317,7 +319,7 @@ class DeviceOpt {
   // Refresh the graphic panel element count
   refreshGraphicPanelElementCount(currentDevice) {
 
-    const appStateLs = Hvac.LSUtils.loadDeviceAppStateLS();
+    const appStateLs = Hvac.LsOpt.loadDeviceAppStateLS();
     if (!appStateLs) return;
 
     /*
@@ -343,7 +345,7 @@ class DeviceOpt {
       }
     })
 
-    console.log('= Dvopt refresh element count', T3Data.graphicList.value);
+    LogUtil.Debug('= Dvopt refresh element count', T3Data.graphicList.value);
   }
 
   clearGraphicPanelElementCount() {
@@ -468,7 +470,7 @@ class DeviceOpt {
     this.saveAppState(appState.value);
 
     // set the ls deviceAppState related value
-    const deviceAppStateLS = Hvac.LSUtils.loadDeviceAppStateLS();
+    const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
     if (!deviceAppStateLS) return;
 
@@ -537,7 +539,7 @@ class DeviceOpt {
 
     this.saveAppState(appState.value);
 
-    console.log('= Dvopt mergeAppState', appState.value);
+    LogUtil.Debug('= Dvopt mergeAppState', appState.value);
   }
 }
 

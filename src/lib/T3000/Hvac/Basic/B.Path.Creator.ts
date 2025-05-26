@@ -20,7 +20,7 @@ import Utils1 from "../Util/Utils1"
  * creator.CurveTo(25, 25, 40, 40, false);
  * creator.ClosePath();
  * const svgPathString = creator.ToString();
- * console.log(svgPathString); // Outputs the SVG path commands as a string.
+ * LogUtil.Debug(svgPathString); // Outputs the SVG path commands as a string.
  *
  * @remarks
  * - Use MoveTo to set an absolute or relative starting point.

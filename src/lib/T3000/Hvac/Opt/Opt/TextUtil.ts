@@ -16,7 +16,7 @@ import '../../Util/T3Hammer';
 import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import ShapeUtil from '../Shape/ShapeUtil';
 import DrawUtil from "./DrawUtil";
@@ -27,6 +27,7 @@ import PolyUtil from './PolyUtil';
 import UIUtil from '../UI/UIUtil';
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
+import LogUtil from '../../Util/LogUtil';
 
 class TextUtil {
 
@@ -39,12 +40,11 @@ class TextUtil {
    * @param shouldCloseTable - If true, closes the associated table after deactivation
    */
   static DeactivateTextEdit(preventCompleteOperation?, shouldCloseTable?) {
-    T3Util.Log("O.Opt DeactivateTextEdit - Input:", { preventCompleteOperation, shouldCloseTable });
+    LogUtil.Debug("O.Opt DeactivateTextEdit - Input:", { preventCompleteOperation, shouldCloseTable });
 
     let textDataId, objectIndex, cellCount;
-    let session = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    let session = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     let operationRequired = false;
-    // let tableSelectedIndex = null;
     let messageData = { theTEWasResized: false };
 
     // Clear text entry timer if active
@@ -56,7 +56,7 @@ class TextUtil {
 
     // Process only if there's an active text editing object
     if (session.theActiveTextEditObjectID != -1) {
-      session = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
+      session = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
 
       let selectedRange;
       let isTextEmpty = false;
@@ -64,7 +64,7 @@ class TextUtil {
       let textEditor = T3Gv.opt.svgDoc.GetActiveEdit();
       let runtimeText = null;
       let isNotInTable = session.theActiveTableObjectID < 0;
-      let drawingObject = DataUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
+      let drawingObject = ObjectUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
 
       if (drawingObject) {
         drawingObject.TableID < 0 && (isNotInTable = true);
@@ -87,7 +87,7 @@ class TextUtil {
           session.theTEWasEdited = true;
 
           if (session.theActiveTableObjectID < 0) {
-            DataUtil.AddToDirtyList(session.theActiveTextEditObjectID);
+            ObjectUtil.AddToDirtyList(session.theActiveTextEditObjectID);
           }
         }
 
@@ -112,22 +112,22 @@ class TextUtil {
         // Apply style to the drawing object or table
         if (isNotInTable) {
           // Apply style directly to the object
-          this.TextStyleToSDText(drawingObject.StyleRecord.Text, formatStyle.style);
+          this.TextStyleToText(drawingObject.StyleRecord.Text, formatStyle.style);
         }
 
         isTextOnlyObject = !!(drawingObject.flags & NvConstant.ObjFlags.TextOnly);
 
         // Save text to the data object
         if (textDataId != -1) {
-          let textDataObject = DataUtil.GetObjectPtr(textDataId, false);
+          let textDataObject = ObjectUtil.GetObjectPtr(textDataId, false);
           if (textDataObject) {
             textDataObject.runtimeText = runtimeText;
             textDataObject.selrange = selectedRange;
-            textDataObject = DataUtil.GetObjectPtr(textDataId, true);
+            textDataObject = ObjectUtil.GetObjectPtr(textDataId, true);
 
             // Mark the object as dirty if not in a table
             if (session.theActiveTableObjectID < 0) {
-              DataUtil.AddToDirtyList(session.theActiveTextEditObjectID);
+              ObjectUtil.AddToDirtyList(session.theActiveTextEditObjectID);
             }
           }
         }
@@ -140,11 +140,11 @@ class TextUtil {
       if (isTextEmpty) {
         if (isTextOnlyObject) {
           // Delete text-only objects that are empty
-          DataUtil.DeleteObjects([session.theActiveTextEditObjectID], false);
+          ObjectUtil.DeleteObjects([session.theActiveTextEditObjectID], false);
           drawingObject = null;
 
           // Remove from selection list
-          const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
+          const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, true);
           const indexInSelection = selectedList.indexOf(session.theActiveTextEditObjectID);
 
           if (indexInSelection >= 0) {
@@ -161,7 +161,7 @@ class TextUtil {
           // Remove text data from non-text-only objects
           const textDataBlock = T3Gv.stdObj.GetObject(textDataId);
 
-          drawingObject = DataUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
+          drawingObject = ObjectUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
           if (drawingObject) {
             drawingObject.SetTextObject(-1);
           }
@@ -171,7 +171,7 @@ class TextUtil {
           }
 
           if (session.theActiveTableObjectID < 0) {
-            DataUtil.AddToDirtyList(session.theActiveTextEditObjectID);
+            ObjectUtil.AddToDirtyList(session.theActiveTextEditObjectID);
           }
 
           session.theTEWasEdited = true;
@@ -195,56 +195,54 @@ class TextUtil {
       if (operationRequired && !preventCompleteOperation) {
         DrawUtil.CompleteOperation(null);
       } else {
-        DataUtil.PreserveUndoState(false);
+        ObjectUtil.PreserveUndoState(false);
         SvgUtil.RenderDirtySVGObjects();
       }
     }
 
-    T3Util.Log("O.Opt DeactivateTextEdit - Output: Text edit deactivated");
+    LogUtil.Debug("O.Opt DeactivateTextEdit - Output: Text edit deactivated");
   }
 
   /**
    * Registers the last text editor operation.
    * This function updates the internal state of the text editor session based on the given operation.
-   * It preserves the undo state if necessary, sends out collaboration messages in case of a timeout,
-   * and triggers a typing pause timer in case the operation is a character input.
+   * It preserves the undo state if necessary, manages collaboration messaging, and
+   * controls the typing pause timer for handling text entry events.
    *
-   * @param lastOp - The current text editor operation (e.g. CHAR, INIT, SELECT, TIMEOUT)
+   * @param lastOp - The operation code representing the last text editor operation (CHAR, INIT, SELECT, TIMEOUT)
    */
-  static RegisterLastTEOp(lastOp: number) {
-    T3Util.Log("O.Opt RegisterLastTEOp - Input:", { lastOp });
-    const opConstants = NvConstant.TextElemLastOpt;
+  static RegisterLastTEOp(lastOp) {
+    LogUtil.Debug("O.Opt RegisterLastTEOp - Input:", { lastOp });
 
-    // Only proceed if not in note edit mode.
+    // Only proceed if not in note edit mode
     if (!T3Gv.opt.bInNoteEdit) {
-      const session = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-      const previousOp = session.theTELastOp;
+      // Get the current text edit session
+      const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const previousOp = textEditSession.theTELastOp;
 
-      // If there is an active text entry timer and the current operation is not a character,
-      // clear the timer and register a TIMEOUT operation.
-      if (
-        T3Gv.opt.textEntryTimer != null &&
-        lastOp !== opConstants.Char
-      ) {
+      // If there's an active text entry timer and the current operation is not a character input,
+      // clear the timer and register a timeout operation
+      if (T3Gv.opt.textEntryTimer != null &&
+        lastOp !== NvConstant.TextElemLastOpt.Char) {
         clearTimeout(T3Gv.opt.textEntryTimer);
         T3Gv.opt.textEntryTimer = null;
-        this.RegisterLastTEOp(opConstants.Timeout);
+        this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
       }
 
-      // Update the session with the current operation.
-      session.theTELastOp = lastOp;
-      if (lastOp !== opConstants.Init) {
-        session.theTEWasEdited = true;
+      // Update the session with the current operation
+      textEditSession.theTELastOp = lastOp;
+      if (lastOp !== NvConstant.TextElemLastOpt.Init) {
+        textEditSession.theTEWasEdited = true;
       }
 
-      // Decide whether to process the operation based on the previous operation.
-      const shouldProcess = (prevOp: number): boolean => {
-        if (lastOp !== opConstants.Init) {
+      // Determine if we should process this operation based on the operation type and previous operation
+      const shouldProcess = (prevOp) => {
+        if (lastOp !== NvConstant.TextElemLastOpt.Init) {
           switch (lastOp) {
-            case opConstants.Char:
+            case NvConstant.TextElemLastOpt.Char:
               if (prevOp !== lastOp) return true;
               break;
-            case opConstants.Select:
+            case NvConstant.TextElemLastOpt.Select:
               return false;
             default:
               return true;
@@ -253,44 +251,47 @@ class TextUtil {
         return false;
       };
 
+      // Process the operation if needed
       if (shouldProcess(previousOp)) {
         const activeEditor = T3Gv.opt.svgDoc.GetActiveEdit();
-        let runtimeText: string | null = null;
-        let selectedRange: any = null;
-        const activeTextEditObj = DataUtil.GetObjectPtr(session.theActiveTextEditObjectID, false);
+        let runtimeText = null;
+        let selectedRange = null;
+        const activeTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, false);
 
-        // Proceed only if there is a valid active text edit object
-        if (activeTextEditObj && activeTextEditObj.DataID >= 0 && activeEditor) {
-          const textDataId = activeTextEditObj.DataID;
+        if (activeTextObject && activeTextObject.DataID >= 0 && activeEditor) {
+          const textDataId = activeTextObject.DataID;
           runtimeText = activeEditor.GetRuntimeText();
           selectedRange = activeEditor.GetSelectedRange();
 
           if (runtimeText) {
-            DataUtil.PreserveUndoState(false);
-            let textObject = DataUtil.GetObjectPtr(textDataId, false);
+            // Preserve undo state before modifying objects
+            ObjectUtil.PreserveUndoState(false);
+
+            let textObject = ObjectUtil.GetObjectPtr(textDataId, false);
             if (textObject) {
-              // Update text object with the current content and selection range.
+              // Update runtime text and selection range
               textObject.runtimeText = runtimeText;
               textObject.selrange = selectedRange;
 
-              if (lastOp !== opConstants.Timeout) {
-                // Set text parameters based on the editor's formatter and minimum height.
+              // For non-timeout operations, update text parameters
+              if (lastOp !== NvConstant.TextElemLastOpt.Timeout) {
                 TextParams.minWidth = activeEditor.formatter.limits.minWidth;
                 TextParams.maxWidth = activeEditor.formatter.limits.maxWidth;
                 TextParams.minHeight = activeEditor.minHeight;
 
-                // Retrieve updated objects
-                const activeTextEditObjUpdated = DataUtil.GetObjectPtr(session.theActiveTextEditObjectID, true);
-                textObject = DataUtil.GetObjectPtr(textDataId, true);
+                // Get updated objects with changes preserved
+                const updatedTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, true);
+                textObject = ObjectUtil.GetObjectPtr(textDataId, true);
               }
 
-              if (lastOp === opConstants.Timeout) {
-                const messageData: any = {};
-                messageData.BlockID = session.theActiveTextEditObjectID;
-                const messageTarget = DataUtil.GetObjectPtr(messageData.BlockID, false);
+              // Handle timeout operations - prepare message data
+              if (lastOp === NvConstant.TextElemLastOpt.Timeout) {
+                const messageData = {};
+                messageData.BlockID = textEditSession.theActiveTextEditObjectID;
 
-                if (messageTarget && messageTarget instanceof Instance.Shape.Connector) {
-                  messageData.DataID = messageTarget.DataID;
+                const targetObject = ObjectUtil.GetObjectPtr(messageData.BlockID, false);
+                if (targetObject && targetObject instanceof Instance.Shape.Connector) {
+                  messageData.DataID = targetObject.DataID;
                 }
 
                 messageData.runtimeText = Utils1.DeepCopy(runtimeText);
@@ -299,24 +300,23 @@ class TextUtil {
                 messageData.maxWidth = TextParams.maxWidth;
                 messageData.minHeight = TextParams.minHeight;
 
+                // Reset parameter values
                 TextParams.minWidth = null;
               }
             }
           }
         }
-      } else {
-        // If processing is not needed, flag for unblocking messages.
-        var shouldUnblock = true;
       }
 
-      // If the current operation is a character input, reset the typing pause timeout.
-      if (lastOp === opConstants.Char) {
+      // Set up a timer for character input operations
+      if (lastOp === NvConstant.TextElemLastOpt.Char) {
         clearTimeout(T3Gv.opt.textEntryTimer);
         T3Gv.opt.textEntryTimer = null;
         T3Gv.opt.textEntryTimer = setTimeout(T3Gv.opt.TextEdit_PauseTyping, 1000);
       }
     }
-    T3Util.Log("O.Opt RegisterLastTEOp - Output: Completed");
+
+    LogUtil.Debug("O.Opt RegisterLastTEOp - Output: Completed");
   }
 
   /**
@@ -324,8 +324,8 @@ class TextUtil {
    * @param sdText - The SD text object whose style will be updated.
    * @param textStyle - The text style parameters containing font, size, weight, style, baseOffset, decoration, color, and color transparency.
    */
-  static TextStyleToSDText(sdText, textStyle) {
-    T3Util.Log("O.Opt TextStyleToSDText - Input:", { sdText, textStyle });
+  static TextStyleToText(sdText, textStyle) {
+    LogUtil.Debug("O.Opt TextStyleToText - Input:", { sdText, textStyle });
 
     // Convert the font size from percentage to points (72 points per inch conversion)
     sdText.FontSize = Math.round(72 * textStyle.size / 100);
@@ -363,11 +363,11 @@ class TextUtil {
     sdText.Paint.Color = textStyle.color;
     sdText.Paint.Opacity = textStyle.colorTrans;
 
-    T3Util.Log("O.Opt TextStyleToSDText - Output:", sdText);
+    LogUtil.Debug("O.Opt TextStyleToText - Output:", sdText);
   }
 
   static TEUnregisterEvents(event?) {
-    T3Util.Log('O.Opt TEUnregisterEvents - Input:', event);
+    LogUtil.Debug('O.Opt TEUnregisterEvents - Input:', event);
 
     T3Gv.opt.svgDoc.ClearActiveEdit(event);
 
@@ -401,7 +401,7 @@ class TextUtil {
       T3Gv.opt.TEWorkAreaHammer = null;
     }
 
-    T3Util.Log('O.Opt TEUnregisterEvents - Output: done');
+    LogUtil.Debug('O.Opt TEUnregisterEvents - Output: done');
   }
 
   /**
@@ -411,7 +411,7 @@ class TextUtil {
    * @returns A DefaultStyle object with computed style properties.
    */
   static CalcDefaultInitialTextStyle(inputStyle) {
-    T3Util.Log("O.Opt CalcDefaultInitialTextStyle - Input:", inputStyle);
+    LogUtil.Debug("O.Opt CalcDefaultInitialTextStyle - Input:", inputStyle);
 
     const defaultStyle = new DefaultStyle();
     const textFace = TextConstant.TextFace;
@@ -425,7 +425,7 @@ class TextUtil {
     defaultStyle.style = (inputStyle.Face & textFace.Italic) ? 'italic' : 'normal';
     defaultStyle.decoration = (inputStyle.Face & textFace.Underline) ? 'underline' : 'none';
 
-    T3Util.Log("O.Opt CalcDefaultInitialTextStyle - Output:", defaultStyle);
+    LogUtil.Debug("O.Opt CalcDefaultInitialTextStyle - Output:", defaultStyle);
     return defaultStyle;
   }
 
@@ -438,7 +438,7 @@ class TextUtil {
   * @param skipLinkFlagUpdate - Whether to skip updating link flags
   */
   static TextResizeCommon(shapeId, constrainWidth, allowResize, svgElement, skipLinkFlagUpdate) {
-    T3Util.Log("O.Opt: TextResizeCommon inputs:", {
+    LogUtil.Debug("O.Opt: TextResizeCommon inputs:", {
       shapeId,
       constrainWidth,
       allowResize,
@@ -446,8 +446,8 @@ class TextUtil {
       skipLinkFlagUpdate
     });
 
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-    const shape = DataUtil.GetObjectPtr(shapeId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const shape = ObjectUtil.GetObjectPtr(shapeId, false);
 
     // Handle BaseShape objects
     if (shape instanceof Instance.Shape.BaseShape) {
@@ -693,7 +693,7 @@ class TextUtil {
       shape.AdjustTextEditBackground(shapeId, svgElement);
     }
 
-    T3Util.Log("O.Opt: TextResizeCommon completed for shape:", shapeId);
+    LogUtil.Debug("O.Opt: TextResizeCommon completed for shape:", shapeId);
   }
 
   /**
@@ -701,23 +701,23 @@ class TextUtil {
    * @param runtimeTextOverride - Optional runtime text to use instead of the object's current text
    */
   static ResetActiveTextEditAfterUndo(runtimeTextOverride) {
-    T3Util.Log("O.Opt: ResetActiveTextEditAfterUndo called with text override:",
+    LogUtil.Debug("O.Opt: ResetActiveTextEditAfterUndo called with text override:",
       runtimeTextOverride ? "provided" : "none");
 
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     if (textEditSession.theActiveTextEditObjectID !== -1) {
-      const activeTextObject = DataUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, false);
+      const activeTextObject = ObjectUtil.GetObjectPtr(textEditSession.theActiveTextEditObjectID, false);
 
       if (!activeTextObject) {
-        T3Util.Log("O.Opt: ActiveTextObject not found, aborting");
+        LogUtil.Debug("O.Opt: ActiveTextObject not found, aborting");
         return;
       }
 
       const dataId = activeTextObject.DataID;
 
       if (dataId !== -1) {
-        const textDataObject = DataUtil.GetObjectPtr(dataId, false);
+        const textDataObject = ObjectUtil.GetObjectPtr(dataId, false);
 
         if (textDataObject) {
           let runtimeText = textDataObject.runtimeText;
@@ -730,7 +730,7 @@ class TextUtil {
 
           // Refresh the rendering if no override was provided
           if (!runtimeTextOverride) {
-            DataUtil.AddToDirtyList(textEditSession.theActiveTextEditObjectID);
+            ObjectUtil.AddToDirtyList(textEditSession.theActiveTextEditObjectID);
             SvgUtil.RenderDirtySVGObjects();
           }
 
@@ -738,7 +738,7 @@ class TextUtil {
           const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(textEditSession.theActiveTextEditObjectID);
 
           if (svgElement && svgElement.textElem) {
-            this.TERegisterEvents(svgElement.textElem);
+            this.TextRegisterEvents(svgElement.textElem);
 
             const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
             if (activeEdit) {
@@ -753,7 +753,7 @@ class TextUtil {
 
             // Initialize empty text formatting if needed
             if (runtimeText.text === '') {
-              T3Util.Log("O.Opt: Initializing empty text formatting");
+              LogUtil.Debug("O.Opt: Initializing empty text formatting");
               this.InitEmptyText(activeTextObject, svgElement);
             }
           }
@@ -765,7 +765,7 @@ class TextUtil {
       SvgUtil.ShowSVGSelectionState(textEditSession.theActiveTextEditObjectID, false);
     }
 
-    T3Util.Log("O.Opt: ResetActiveTextEditAfterUndo complete");
+    LogUtil.Debug("O.Opt: ResetActiveTextEditAfterUndo complete");
   }
 
   /**
@@ -778,7 +778,7 @@ class TextUtil {
    * @returns Object containing indentation values for each side of the text (left, right, top, bottom)
    */
   static GuessTextIndents(polygonPoints, shapeFrame) {
-    T3Util.Log("O.Opt GuessTextIndents - Input:", { polygonPoints, shapeFrame });
+    LogUtil.Debug("O.Opt GuessTextIndents - Input:", { polygonPoints, shapeFrame });
 
     // Initialize variables with descriptive names
     let shapeWidth, shapeHeight, frameWidth, frameHeight;
@@ -1036,7 +1036,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log("O.Opt GuessTextIndents - Output:", indentationValues);
+    LogUtil.Debug("O.Opt GuessTextIndents - Output:", indentationValues);
     return indentationValues;
   }
 
@@ -1048,10 +1048,10 @@ class TextUtil {
    * @returns The font size in points, or -1 if the input is invalid.
    */
   static FontSizeToPoints(fontSizeValue: number): number {
-    T3Util.Log("O.Opt FontSizeToPoints - Input:", fontSizeValue);
+    LogUtil.Debug("O.Opt FontSizeToPoints - Input:", fontSizeValue);
 
     if (!fontSizeValue) {
-      T3Util.Log("O.Opt FontSizeToPoints - Output:", -1);
+      LogUtil.Debug("O.Opt FontSizeToPoints - Output:", -1);
       return -1;
     }
 
@@ -1061,12 +1061,12 @@ class TextUtil {
       ? (72 * fontSizeValue) / docDpi
       : Math.round((72 * fontSizeValue) / docDpi);
 
-    T3Util.Log("O.Opt FontSizeToPoints - Output:", points);
+    LogUtil.Debug("O.Opt FontSizeToPoints - Output:", points);
     return points;
   }
 
-  static TERegisterEvents(textEditorWrapper, activationEvent, additionalOptions?) {
-    T3Util.Log("O.Opt TERegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
+  static TextRegisterEvents(textEditorWrapper, activationEvent?, additionalOptions?) {
+    LogUtil.Debug("O.Opt TextRegisterEvents - Input:", { textEditorWrapper, activationEvent, additionalOptions });
     if (textEditorWrapper != null) {
       // Set up virtual keyboard for the text editor
       T3Gv.opt.SetVirtualKeyboardLifter(textEditorWrapper);
@@ -1086,26 +1086,26 @@ class TextUtil {
       T3Gv.opt.TEWorkAreaHammer.on("drag", this.TEDragFactory(textEditorWrapper.editor));
       T3Gv.opt.TEWorkAreaHammer.on("dragend", this.TEDragEndFactory(textEditorWrapper.editor));
     }
-    T3Util.Log("O.Opt TERegisterEvents - Output: Registered events");
+    LogUtil.Debug("O.Opt TextRegisterEvents - Output: Registered events");
   }
 
   static TargetPasteText(): boolean {
-    T3Util.Log("O.Opt TargetPasteText - Input: no parameters");
+    LogUtil.Debug("O.Opt TargetPasteText - Input: no parameters");
 
     // Check if text clipboard exists and has text content
     if (!T3Gv.opt.textClipboard) {
-      T3Util.Log("O.Opt TargetPasteText - Output: false (text clipboard does not exist)");
+      LogUtil.Debug("O.Opt TargetPasteText - Output: false (text clipboard does not exist)");
       return false;
     }
     if (T3Gv.opt.textClipboard.text == null) {
-      T3Util.Log("O.Opt TargetPasteText - Output: false (text clipboard text is null)");
+      LogUtil.Debug("O.Opt TargetPasteText - Output: false (text clipboard text is null)");
       return false;
     }
 
     // Get the target selection ID
     const targetId = SelectUtil.GetTargetSelect();
     if (targetId !== -1) {
-      const targetObject = DataUtil.GetObjectPtr(targetId, false);
+      const targetObject = ObjectUtil.GetObjectPtr(targetId, false);
       if (targetObject && targetObject.AllowTextEdit()) {
 
         // Get the DOM element for the target text object and activate text edit mode
@@ -1122,11 +1122,11 @@ class TextUtil {
         activeEditor.Paste(T3Gv.opt.textClipboard, true);
         this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
 
-        T3Util.Log("O.Opt TargetPasteText - Output: true (text pasted successfully)");
+        LogUtil.Debug("O.Opt TargetPasteText - Output: true (text pasted successfully)");
         return true;
       }
     }
-    T3Util.Log("O.Opt TargetPasteText - Output: false (invalid target or text editing not allowed)");
+    LogUtil.Debug("O.Opt TargetPasteText - Output: false (invalid target or text editing not allowed)");
     return false;
   }
 
@@ -1135,28 +1135,31 @@ class TextUtil {
   * @returns The ID of the active text edit object, or null if none
   */
   static GetActiveTextEdit() {
-    T3Util.Log("O.Opt GetActiveTextEdit - Input: No parameters");
+    LogUtil.Debug("O.Opt GetActiveTextEdit - Input: No parameters");
 
     let activeTextEditObjectId = null;
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     if (textEditSession.theActiveTextEditObjectID != -1) {
       activeTextEditObjectId = textEditSession.theActiveTextEditObjectID;
     }
 
-    T3Util.Log("O.Opt GetActiveTextEdit - Output:", activeTextEditObjectId);
+    LogUtil.Debug("O.Opt GetActiveTextEdit - Output:", activeTextEditObjectId);
     return activeTextEditObjectId;
   }
 
   /**
-   * Activates text editing for the specified drawing object
-   * @param drawingElement - The SVG drawing element
-   * @param event - The event that triggered activation (can be null)
-   * @param preventSelectionChange - Flag to prevent selection change
+   * Activates text editing for the specified drawing object.
+   * This function handles the setup and initialization of text editing mode for a drawing object,
+   * including creating text objects if needed, setting up editor events, and managing collaboration.
+   *
+   * @param drawingElement - The SVG drawing element to edit text for
+   * @param event - The event that triggered text editing (can be null for programmatic activation)
+   * @param preventSelectionChange - If true, prevents changing the current selection state
    * @param textData - Optional data for collaborative text editing
    */
   static ActivateTextEdit(drawingElement, event?, preventSelectionChange?, textData?) {
-    T3Util.Log('O.Opt ActivateTextEdit - Input:', {
+    LogUtil.Debug('O.Opt ActivateTextEdit - Input:', {
       drawingElementId: drawingElement?.ID,
       hasEvent: !!event,
       preventSelectionChange,
@@ -1170,25 +1173,23 @@ class TextUtil {
     let selectedRange;
 
     const objectId = drawingElement.ID;
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    let textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
     const objectsToSelect = [];
-    let eventData = {};
+    let messageData = {};
 
     // Check if the object exists and is not locked
-    drawingObject = DataUtil.GetObjectPtr(objectId, false);
-    if (!drawingObject || !(drawingObject instanceof Instance.Shape.BaseDrawObject) ||
+    if (!(drawingObject = ObjectUtil.GetObjectPtr(objectId, false)) ||
+      !(drawingObject instanceof Instance.Shape.BaseDrawObject) ||
       (drawingObject.flags & NvConstant.ObjFlags.Lock)) {
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Object invalid or locked');
+      LogUtil.Debug('O.Opt ActivateTextEdit - Output: Object invalid or locked');
       return;
     }
 
-    eventData.BlockID = objectId;
+    messageData.BlockID = objectId;
 
-    // Handle case when no text data is provided
-    if (!textData) {
-      // If the object is already being edited, just return
+    if (textData == null) {
+      // If already editing this object, return
       if (objectId == textEditSession.theActiveTextEditObjectID) {
-        T3Util.Log('O.Opt ActivateTextEdit - Output: Object already being edited');
         return;
       }
 
@@ -1198,7 +1199,7 @@ class TextUtil {
       }
 
       // Handle selection state
-      const selectedList = DataUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
       if (selectedList.indexOf(objectId) === -1 || selectedList.length > 1) {
         objectsToSelect.push(objectId);
         SelectUtil.SelectObjects(objectsToSelect, false, true);
@@ -1207,35 +1208,26 @@ class TextUtil {
         targetSelectionId = objectId;
       }
     } else {
-      eventData = textData.Data;
+      messageData = textData.Data;
     }
 
     // Get a preserved copy of the object
-    const preservedObject = DataUtil.GetObjectPtr(objectId, true);
-    const textObjectId = preservedObject.GetTextObject(event, false, eventData);
-    let preservedTextEditSession;
+    let preservedObject = ObjectUtil.GetObjectPtr(objectId, true);
+    const textObjectId = preservedObject.GetTextObject(event, false, messageData);
 
+    // Continue only if we got a valid text object
     if (textObjectId != null) {
-      // Prepare the text edit session
-      if (!textData) {
-        preservedTextEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-      } else if (textData.EditorID === Collab.EditorID) {
-        const tempSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
-        tempSession.theActiveTextEditObjectID = -1;
-
-        const activeTableId = tempSession.theActiveTableObjectID;
-        tempSession.theTEWasResized = false;
-        tempSession.theTEWasEdited = false;
-
-        preservedTextEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-        preservedTextEditSession.theActiveTextEditObjectID = objectId;
-        preservedTextEditSession.theActiveTableObjectID = activeTableId;
-      } else {
-        const tempSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      // Handle collaboration and session management
+      if (textData == null) {
+        // Local edit - create new preserved session
+        textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
+      }
+      else {
+        // External collaboration message - update editor ID
+        const tempSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
         tempSession.EditorID = textData.EditorID;
 
-        preservedTextEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
-        preservedTextEditSession.EditorID = Collab.EditorID;
+        textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, true);
       }
 
       // Get the SVG element for the object
@@ -1243,111 +1235,138 @@ class TextUtil {
 
       // Create a new text object if needed
       if (textObjectId == -1) {
-        const updatedObject = DataUtil.GetObjectPtr(objectId, true);
+        // Get updated object
+        preservedObject = ObjectUtil.GetObjectPtr(objectId, true);
 
         // Create a new text object
-        const newTextObject = new TextObject({});
-        const newTextBlock = T3Gv.stdObj.CreateBlock(
-          StateConstant.StoredObjectType.TextObject,
-          newTextObject
-        );
+        textObject = new TextObject({});
+        textBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.TextObject, textObject);
 
-        if (newTextBlock === null) {
-          T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to create text block');
-          throw new Error('ActivateTextEdit got a null new text block allocation');
-        }
-
-        if (!updatedObject.SetTextObject(newTextBlock.ID)) {
-          T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to set text object');
+        if (textBlock === null) {
+          LogUtil.Debug('O.Opt ActivateTextEdit - Output: Failed to create text block');
           return;
         }
 
-        updatedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
-        textObject = newTextBlock.Data;
+        // Set the text object on the drawing object
+        if (!preservedObject.SetTextObject(textBlock.ID)) {
+          return;
+        }
+
+        // Add SVG text object to the drawing
+        preservedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
+        textObject = textBlock.Data;
       } else {
-        textObject = DataUtil.GetObjectPtr(textObjectId, true);
-        if (!svgElement.textElem) {
+        // Use existing text object
+        textObject = ObjectUtil.GetObjectPtr(textObjectId, true);
+
+        // Create SVG text element if needed
+        if (svgElement.textElem == null) {
           preservedObject.LMAddSVGTextObject(T3Gv.opt.svgDoc, svgElement);
         }
       }
 
-      // Set up text editing session
-      if (!textData) {
-        preservedTextEditSession.theActiveTextEditObjectID = objectId;
-        preservedTextEditSession.theTEWasResized = false;
-        preservedTextEditSession.theTEWasEdited = false;
+      // Set up active text edit session if not a collab message
+      if (textData == null) {
+        textEditSession.theActiveTextEditObjectID = objectId;
+        textEditSession.theTEWasResized = false;
+        textEditSession.theTEWasEdited = false;
       }
 
-      // Register events and handle text selection
-      if (!textData) {
+      // Handle tables for local editing
+      if (textData == null) {
+        // Move element to front if not attached
+        if (!(drawingObject.TextFlags & NvConstant.TextFlags.AttachA) &&
+          !(drawingObject.TextFlags & NvConstant.TextFlags.AttachB)) {
+          T3Gv.opt.svgObjectLayer.MoveElementToFront(svgElement);
+        }
+        // }
+      }
+
+      // Register events for local editing
+      if (textData == null) {
         if (event && event.gesture) {
-          this.TERegisterEvents(svgElement.textElem, event.gesture.srcEvent, preventSelectionChange);
+          this.TextRegisterEvents(svgElement.textElem, event.gesture.srcEvent, preventSelectionChange);
         } else {
-          this.TERegisterEvents(svgElement.textElem, event);
+          this.TextRegisterEvents(svgElement.textElem, event);
         }
 
+        // Get selected range from active editor
         const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
         selectedRange = activeEdit.GetSelectedRange();
-        eventData.theSelectedRange = Utils1.DeepCopy(selectedRange);
+        messageData.theSelectedRange = Utils1.DeepCopy(selectedRange);
 
         // If no event, select all text
         if (event == null) {
           const textLength = activeEdit.GetText().length;
-          eventData.theSelectedRange.start = 0;
-          eventData.theSelectedRange.anchor = 0;
-          eventData.theSelectedRange.end = textLength;
+          messageData.theSelectedRange.start = 0;
+          messageData.theSelectedRange.anchor = 0;
+          messageData.theSelectedRange.end = textLength;
         }
-      } else if (textData && textData.EditorID === Collab.EditorID) {
+      } else if (textData && textData.EditorID === SDJS.Collab.EditorID) {
+        // Use selected range from collab message data
         selectedRange = textData.Data.theSelectedRange;
       }
 
-      // Handle empty text
+      // Get current text content
       const currentText = svgElement.textElem.GetText();
+
+      // Handle empty text
       if (currentText === '') {
+        // For new text objects, set up default styling
         if (textObjectId < 0) {
-          // Set up default text styles
-          const textStyleParams = {};
-          const defaultTextStyle = preservedObject.GetTextDefault(textStyleParams);
-          eventData.TextStyle = Utils1.DeepCopy(defaultTextStyle);
+          // Create style parameters
+          const paragraphStyle = {};
+          const textDefault = preservedObject.GetTextDefault(paragraphStyle);
 
-          const initialTextStyle = TextUtil.CalcDefaultInitialTextStyle(defaultTextStyle);
-          eventData.theDefaultStyle = Utils1.DeepCopy(initialTextStyle);
+          // Store text style in message data
+          messageData.TextStyle = Utils1.DeepCopy(textDefault);
 
-          const verticalAlignment = textStyleParams.vjust;
-          eventData.vjust = verticalAlignment;
+          // Calculate default initial style
+          const initialTextStyle = this.CalcDefaultInitialTextStyle(textDefault);
+          messageData.theDefaultStyle = Utils1.DeepCopy(initialTextStyle);
 
-          // Apply styles to the text element
+          // Store vertical justification
+          const verticalJustification = paragraphStyle.vjust;
+          messageData.vjust = verticalJustification;
+
+          // Get active editor and update selection range
           const activeEdit = T3Gv.opt.svgDoc.GetActiveEdit();
-          eventData.theSelectedRange = selectedRange;
+          messageData.theSelectedRange = selectedRange;
 
-          // Initialize the text element with a space, apply styles, then clear it
+          // Set temporary space to apply formatting, then clear
           svgElement.textElem.SetText(' ');
           svgElement.textElem.SetFormat(initialTextStyle);
-          svgElement.textElem.SetParagraphStyle(textStyleParams);
+          svgElement.textElem.SetParagraphStyle(paragraphStyle);
 
+          // Set vertical alignment for shapes
           if (preservedObject instanceof Instance.Shape.BaseShape) {
-            svgElement.textElem.SetVerticalAlignment(verticalAlignment);
+            svgElement.textElem.SetVerticalAlignment(verticalJustification);
           }
 
+          // Clear text and save runtime state
           svgElement.textElem.SetText('');
           textObject.runtimeText = svgElement.textElem.GetRuntimeText();
         }
 
-        // Clear the click-here flag
+        // Remove "click here" flag
         preservedObject.TextFlags = Utils2.SetFlag(
           preservedObject.TextFlags,
           NvConstant.TextFlags.Clickhere,
           false
         );
+      } else {
+        // Replace standard text if needed
+        const isLocalEdit = (textData == null );
+        const isSelfCollabMessage = (textData != null);
       }
 
-      // Update selection range
+      // Update selection range in text object
       if (selectedRange) {
         textObject.selrange = selectedRange;
       }
 
-      // Finalize UI setup
-      if (!textData) {
+      // Finalize local editing UI setup
+      if (textData == null) {
         svgElement.SetCursor(CursorConstant.CursorType.Text);
 
         if (targetSelectionId) {
@@ -1357,13 +1376,11 @@ class TextUtil {
         this.RegisterLastTEOp(NvConstant.TextElemLastOpt.Init);
       }
 
-      // Preserve undo state and send collaboration message
-      DataUtil.PreserveUndoState(false);
-
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
-    } else {
-      T3Util.Log('O.Opt ActivateTextEdit - Output: Failed to get text object');
+      // Preserve undo state and send collaboration messages
+      ObjectUtil.PreserveUndoState(false);
     }
+
+    LogUtil.Debug('O.Opt ActivateTextEdit - Output: Text editing activated for object', objectId);
   }
 
   /**
@@ -1373,25 +1390,25 @@ class TextUtil {
    * @returns True if a hyperlink was clicked, false otherwise
    */
   static CheckTextHyperlinkHit(drawingObject, eventPosition) {
-    T3Util.Log("O.Opt CheckTextHyperlinkHit - Input:", {
+    LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Input:", {
       drawingObject: drawingObject.BlockID,
       eventPosition
     });
 
     // Return false if object has no text data or is locked
     if (drawingObject.DataID === -1 && drawingObject.TableID === -1) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no text data)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no text data)");
       return false;
     }
 
     if (drawingObject.flags & NvConstant.ObjFlags.Lock) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (object locked)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (object locked)");
       return false;
     }
 
     // Return false if not in default edit mode
     if (OptCMUtil.GetEditMode() !== NvConstant.EditState.Default) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (not in default edit mode)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (not in default edit mode)");
       return false;
     }
 
@@ -1402,7 +1419,7 @@ class TextUtil {
     const textElement = svgElement ? svgElement.textElem : null;
 
     if (!textElement) {
-      T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no text element)");
+      LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no text element)");
       return false;
     }
 
@@ -1413,16 +1430,16 @@ class TextUtil {
       return true;
     }
 
-    T3Util.Log("O.Opt CheckTextHyperlinkHit - Output: false (no hyperlink found)");
+    LogUtil.Debug("O.Opt CheckTextHyperlinkHit - Output: false (no hyperlink found)");
     return false;
   }
 
   static NoteIsShowing(noteShapeId, noteTableCell) {
-    T3Util.Log('O.Opt NoteIsShowing - Input:', { noteShapeId, noteTableCell });
+    LogUtil.Debug('O.Opt NoteIsShowing - Input:', { noteShapeId, noteTableCell });
 
     let isShowing = false;
 
-    T3Util.Log('O.Opt NoteIsShowing - Output:', isShowing);
+    LogUtil.Debug('O.Opt NoteIsShowing - Output:', isShowing);
     return isShowing;
   }
 
@@ -1489,7 +1506,7 @@ class TextUtil {
   static ClearFieldDataDatePicker() { }
 
   static HandleTextFormatAttributes(textObject, objectIndex) {
-    T3Util.Log('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
+    LogUtil.Debug('O.Opt HandleTextFormatAttributes - Input:', { textObject, objectIndex });
 
     const TEXT_FACE = TextConstant.TextFace;
     const textData = { hasText: false };
@@ -1533,7 +1550,7 @@ class TextUtil {
       }
     }
 
-    T3Util.Log('O.Opt HandleTextFormatAttributes - Output: Text format attributes processed');
+    LogUtil.Debug('O.Opt HandleTextFormatAttributes - Output: Text format attributes processed');
   }
 
   /**
@@ -1543,16 +1560,16 @@ class TextUtil {
    * @returns A function to handle the mouse down event.
    */
   static TEDragStartFactory(mouseDragHandler: any) {
-    T3Util.Log("O.Opt TEDragStartFactory - Input:", { mouseDragHandler });
+    LogUtil.Debug("O.Opt TEDragStartFactory - Input:", { mouseDragHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragStartHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragStartHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse down method.
       mouseDragHandler.HandleMouseDown(pointerEvent);
-      T3Util.Log("O.Opt TEDragStartHandler - Output: Mouse down handled");
+      LogUtil.Debug("O.Opt TEDragStartHandler - Output: Mouse down handled");
       return false;
     };
   }
@@ -1564,16 +1581,16 @@ class TextUtil {
    * @returns A function to handle the mouse down event for the click area.
    */
   static TEClickAreaDragStartFactory(clickAreaHandler: any) {
-    T3Util.Log("O.Opt TEClickAreaDragStartFactory - Input:", { clickAreaHandler });
+    LogUtil.Debug("O.Opt TEClickAreaDragStartFactory - Input:", { clickAreaHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEClickAreaDragStartHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEClickAreaDragStartHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse down method.
       clickAreaHandler.HandleMouseDown(pointerEvent);
-      T3Util.Log("O.Opt TEClickAreaDragStartHandler - Output: Mouse down handled");
+      LogUtil.Debug("O.Opt TEClickAreaDragStartHandler - Output: Mouse down handled");
       return false;
     };
   }
@@ -1585,16 +1602,16 @@ class TextUtil {
    * @returns A function to handle the mouse move event.
    */
   static TEDragFactory(dragMoveHandler: any) {
-    T3Util.Log("O.Opt TEDragFactory - Input:", { dragMoveHandler });
+    LogUtil.Debug("O.Opt TEDragFactory - Input:", { dragMoveHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse move method.
       dragMoveHandler.HandleMouseMove(pointerEvent);
-      T3Util.Log("O.Opt TEDragHandler - Output: Mouse move handled");
+      LogUtil.Debug("O.Opt TEDragHandler - Output: Mouse move handled");
       return false;
     };
   }
@@ -1607,16 +1624,16 @@ class TextUtil {
    * @returns A function to handle the mouse up event.
    */
   static TEDragEndFactory(dragEndHandler: any) {
-    T3Util.Log("O.Opt TEDragEndFactory - Input:", { dragEndHandler });
+    LogUtil.Debug("O.Opt TEDragEndFactory - Input:", { dragEndHandler });
     return function (pointerEvent: any) {
-      T3Util.Log("O.Opt TEDragEndHandler - Input:", { pointerEvent });
+      LogUtil.Debug("O.Opt TEDragEndHandler - Input:", { pointerEvent });
       pointerEvent.preventDefault();
       pointerEvent.stopPropagation();
       pointerEvent.gesture.preventDefault();
       pointerEvent.gesture.stopPropagation();
       // Call the handler's mouse up method.
       dragEndHandler.HandleMouseUp(pointerEvent);
-      T3Util.Log("O.Opt TEDragEndHandler - Output: Mouse up handled and messages unblocked");
+      LogUtil.Debug("O.Opt TEDragEndHandler - Output: Mouse up handled and messages unblocked");
       return false;
     };
   }
@@ -1637,7 +1654,7 @@ class TextUtil {
     // Only proceed if we have a valid target ID
     if (targetId >= 0) {
       // Get a modifiable reference to the target object
-      const targetObject = DataUtil.GetObjectPtr(targetId, true);
+      const targetObject = ObjectUtil.GetObjectPtr(targetId, true);
       const textDataId = targetObject.DataID;
 
       // If the object has associated text data
@@ -1665,7 +1682,7 @@ class TextUtil {
    */
   static TextAutoScroll(objectId) {
     // Check if there's an active text edit session
-    const textEditSession = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+    const textEditSession = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
     if (textEditSession.theActiveTextEditObjectID !== -1) {
       // Get the SVG element for the object
@@ -1711,8 +1728,8 @@ class TextUtil {
     }
 
     // Only check right/bottom boundaries if NoAuto flag is set
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
-      const documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
+      const documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
       // Check if frame extends beyond right edge
       let overflow = frame.x + frame.width - documentData.dim.x + edgeSlop;
@@ -1725,7 +1742,7 @@ class TextUtil {
       if (overflow > 0) {
         // If we can't move the frame up due to minimum height constraints, throw an error
         if (!(frame.y - minimumHeight >= overflow)) {
-          T3Util.Log("O.Opt TextPinFrame - Error: Frame cannot be pinned within bounds");
+          LogUtil.Debug("O.Opt TextPinFrame - Error: Frame cannot be pinned within bounds");
         }
 
         // Move the frame up to stay in bounds
@@ -1747,14 +1764,14 @@ class TextUtil {
    */
   static TextResizeNeedPageResize(drawingObject, newWidth, newHeight) {
     // Only resize if auto-resize is allowed (NoAuto flag is not set)
-    if (!(T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto)) {
+    if (!(T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto)) {
       let newDimensions;
-      let documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+      let documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
       // Check if the width extends beyond current document width
       if (newWidth > documentData.dim.x) {
         // Calculate new document dimensions by adding a page width
-        documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+        documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
         newDimensions = {
           x: documentData.dim.x + T3Gv.opt.header.Page.papersize.x -
             (T3Gv.opt.header.Page.margins.left + T3Gv.opt.header.Page.margins.right),
@@ -1771,7 +1788,7 @@ class TextUtil {
       // Check if the height extends beyond current document height
       if (newHeight > documentData.dim.y) {
         // Calculate new document dimensions by adding a page height
-        documentData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+        documentData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
         newDimensions = {
           x: documentData.dim.x,
           y: documentData.dim.y + T3Gv.opt.header.Page.papersize.y -

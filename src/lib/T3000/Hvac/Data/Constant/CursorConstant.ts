@@ -84,7 +84,7 @@ class CursorConstant {
    * Used for displaying different directional knob controls
    */
   static Knob = {
-    Path: '../../../src/assets/img/knob/',
+    Path: 'assets/img/knob/',
     DiagonLeft: 'diagon_left.svg',
     DiagonRight: 'diagon_right.svg',
     ExpandHoriz: 'expand_horiz.svg',

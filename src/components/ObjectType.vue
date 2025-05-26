@@ -19,22 +19,22 @@
 -->
 <template>
   <div class="moveable-item" :class="{
-    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes(item.type),
-    'overflow-hidden': item.type === 'Text',
-    [item.type]: item.type,
+    'flex flex-col flex-nowrap': !['Dial', 'Gauge', 'Value'].includes((item?.type ?? '')),
+    'overflow-hidden': (item?.type ?? '') === 'Text',
+    [item.type]: (item?.type ?? ''),
     'with-bg': item.settings.bgColor,
     'with-title': item.settings.title || (item.t3Entry && item.settings.t3EntryDisplayField !== 'none'),
   }">
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }" v-if="item.settings.title"
-      @click="$emit('objectClicked')">
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
+      v-if="item.settings.title" @click="$emit('objectClicked')">
       {{ item.settings.title }}
     </div>
-    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes(item.type) }"
+    <div class="object-title" :class="{ grow: ['Icon', 'Switch'].includes((item?.type ?? '')) }"
       v-else-if="item.t3Entry && item.settings.t3EntryDisplayField !== 'none'">
       <div class="relative">
         <q-btn v-if="
           showArrows &&
-          item.type !== 'Switch' &&
+          (item?.type ?? '') !== 'Switch' &&
           ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="up-btn absolute" size="sm"
           icon="keyboard_arrow_up" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
           @click="changeValue('increase')" />
@@ -69,45 +69,47 @@
         </div>
         <q-btn v-if="
           showArrows &&
-          item.type !== 'Switch' &&
+          (item?.type ?? '') !== 'Switch' &&
           ['value', 'control'].includes(item.settings.t3EntryDisplayField)" class="down-btn absolute" size="sm"
           icon="keyboard_arrow_down" color="grey-4" text-color="black" dense :disable="item.t3Entry?.auto_manual === 0"
           @click="changeValue('decrease')" />
       </div>
     </div>
     <div class="flex justify-center object-container relative"
-      :class="{ grow: !['Icon', 'Switch'].includes(item.type) }" @click="$emit('objectClicked')">
-      <fan v-if="item.type === 'Fan'" class="fan" v-bind="item.settings" />
-      <duct v-else-if="item.type === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
-      <cooling-coil v-else-if="item.type === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
-      <heating-coil v-else-if="item.type === 'HeatingCoil'" class="heating-coil" v-bind="item.settings" />
-      <filter-el v-else-if="item.type === 'Filter'" class="filter" v-bind="item.settings" />
-      <humidifier v-else-if="item.type === 'Humidifier'" class="humidifier" v-bind="item.settings" />
-      <humidity v-else-if="item.type === 'Humidity'" class="humidity" v-bind="item.settings" />
-      <Pressure v-else-if="item.type === 'Pressure'" class="pressure" v-bind="item.settings" />
-      <ThermalWheel v-else-if="item.type === 'ThermalWheel'" class="thermal-wheel" v-bind="item.settings" />
-      <damper v-else-if="item.type === 'Damper'" class="damper" :item="item" v-bind="item.settings" />
-      <boiler v-else-if="item.type === 'Boiler'" class="boiler" v-bind="item.settings" />
-      <heatpump v-else-if="item.type === 'Heatpump'" class="heatpump" v-bind="item.settings" />
-      <pump v-else-if="item.type === 'Pump'" class="heatpump" v-bind="item.settings" />
-      <ValveThreeWay v-else-if="item.type === 'ValveThreeWay'" class="valve-threeway" v-bind="item.settings" />
-      <ValveTwoWay v-else-if="item.type === 'ValveTwoWay'" class="valve-threeway" v-bind="item.settings" />
-      <enthalpy v-else-if="item.type === 'Enthalpy'" class="enthalpy" v-bind="item.settings" />
-      <flow v-else-if="item.type === 'Flow'" class="flow" v-bind="item.settings" />
-      <text-el v-else-if="item.type === 'Text'" class="text" v-bind="item.settings" />
-      <box-el v-else-if="item.type === 'Box'" class="box" v-bind="item.settings" />
-      <icon-value v-else-if="item.type === 'Icon'" class="icon-value" :item="item" :show-arrows="showArrows"
+      :class="{ grow: !['Icon', 'Switch'].includes((item?.type ?? '')) }" @click="$emit('objectClicked')">
+      <fan v-if="(item?.type ?? '') === 'Fan'" class="fan" v-bind="item.settings" />
+      <duct v-else-if="(item?.type ?? '') === 'Duct'" class="duct" v-bind="item.settings" ref="objectRef" />
+      <cooling-coil v-else-if="(item?.type ?? '') === 'CoolingCoil'" class="cooling-coil" v-bind="item.settings" />
+      <heating-coil v-else-if="(item?.type ?? '') === 'HeatingCoil'" class="heating-coil" v-bind="item.settings" />
+      <filter-el v-else-if="(item?.type ?? '') === 'Filter'" class="filter" v-bind="item.settings" />
+      <humidifier v-else-if="(item?.type ?? '') === 'Humidifier'" class="humidifier" v-bind="item.settings" />
+      <humidity v-else-if="(item?.type ?? '') === 'Humidity'" class="humidity" v-bind="item.settings" />
+      <Pressure v-else-if="(item?.type ?? '') === 'Pressure'" class="pressure" v-bind="item.settings" />
+      <ThermalWheel v-else-if="(item?.type ?? '') === 'ThermalWheel'" class="thermal-wheel" v-bind="item.settings" />
+      <damper v-else-if="(item?.type ?? '') === 'Damper'" class="damper" :item="item" v-bind="item.settings" />
+      <boiler v-else-if="(item?.type ?? '') === 'Boiler'" class="boiler" v-bind="item.settings" />
+      <heatpump v-else-if="(item?.type ?? '') === 'Heatpump'" class="heatpump" v-bind="item.settings" />
+      <pump v-else-if="(item?.type ?? '') === 'Pump'" class="heatpump" v-bind="item.settings" />
+      <ValveThreeWay v-else-if="(item?.type ?? '') === 'ValveThreeWay'" class="valve-threeway"
+        v-bind="item.settings" />
+      <ValveTwoWay v-else-if="(item?.type ?? '') === 'ValveTwoWay'" class="valve-threeway" v-bind="item.settings" />
+      <enthalpy v-else-if="(item?.type ?? '') === 'Enthalpy'" class="enthalpy" v-bind="item.settings" />
+      <flow v-else-if="(item?.type ?? '') === 'Flow'" class="flow" v-bind="item.settings" />
+      <text-el v-else-if="(item?.type ?? '') === 'Text'" class="text" v-bind="item.settings" />
+      <box-el v-else-if="(item?.type ?? '') === 'Box'" class="box" v-bind="item.settings" />
+      <icon-value v-else-if="(item?.type ?? '') === 'Icon'" class="icon-value" :item="item" :show-arrows="showArrows"
         v-bind="item.settings" @change-value="changeValue" />
-      <icon-basic v-else-if="item.type === 'IconBasic'" class="icon-basic" :item="item" v-bind="item.settings" />
-      <icon-switch v-else-if="item.type === 'Switch'" class="icon-switch" :item="item" :show-arrows="showArrows"
+      <icon-basic v-else-if="(item?.type ?? '') === 'IconBasic'" class="icon-basic" :item="item"
+        v-bind="item.settings" />
+      <icon-switch v-else-if="(item?.type ?? '') === 'Switch'" class="icon-switch" :item="item"
+        :show-arrows="showArrows" v-bind="item.settings" @change-value="changeValue" />
+      <led-el v-else-if="(item?.type ?? '') === 'LED'" class="led-el" :item="item" v-bind="item.settings" />
+      <value-el v-else-if="(item?.type ?? '') === 'Value'" class="value" :item="item" :show-arrows="showArrows"
         v-bind="item.settings" @change-value="changeValue" />
-      <led-el v-else-if="item.type === 'LED'" class="led-el" :item="item" v-bind="item.settings" />
-      <value-el v-else-if="item.type === 'Value'" class="value" :item="item" :show-arrows="showArrows"
-        v-bind="item.settings" @change-value="changeValue" />
-      <temperature v-else-if="item.type === 'Temperature'" class="temperature" v-bind="item.settings" />
-      <gauge-chart v-else-if="item.type === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
+      <temperature v-else-if="(item?.type ?? '') === 'Temperature'" class="temperature" v-bind="item.settings" />
+      <gauge-chart v-else-if="(item?.type ?? '') === 'Gauge'" class="gauge-object gauge" v-bind="item.settings"
         :unit="range.unit" :colors="processedColors" :value="item.t3Entry?.value || 0" />
-      <div v-else-if="item.type === 'Dial'" class="flex flex-col flex-nowrap justify-center">
+      <div v-else-if="(item?.type ?? '') === 'Dial'" class="flex flex-col flex-nowrap justify-center">
         <dial-chart class="gauge-object dial" :options="{
           value: item.t3Entry?.value || 0,
           unit: range.unit,
@@ -118,17 +120,18 @@
           {{ item.t3Entry?.value || 0 }} {{ range.unit }}
         </div>
       </div>
-      <RoomHumidity v-else-if="item.type === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
-      <RoomTemperature v-else-if="item.type === 'RoomTemperature'" class="room-temperature" v-bind="item.settings" />
-      <Wall v-else-if="item.type === 'Wall'" class="room-temperature" v-bind="item.settings" />
-      <Weld v-else-if="item.type === 'Weld'" class="weld" v-bind:weldModel="item"
+      <RoomHumidity v-else-if="(item?.type ?? '') === 'RoomHumidity'" class="room-humidity" v-bind="item.settings" />
+      <RoomTemperature v-else-if="(item?.type ?? '') === 'RoomTemperature'" class="room-temperature"
+        v-bind="item.settings" />
+      <Wall v-else-if="(item?.type ?? '') === 'Wall'" class="room-temperature" v-bind="item.settings" />
+      <Weld v-else-if="(item?.type ?? '') === 'Weld'" class="weld" v-bind:weldModel="item"
         @update-weld-model="updateWeldModel" />
-      <img class="img-object" v-else-if="item.type.startsWith('IMG-')" :src="item.image.path" />
+      <img class="img-object" v-else-if="(item?.type ?? '').startsWith('IMG-')" :src="item.image.path" />
 
-      <CircleEl v-else-if="item.type === 'G_Circle'" class="circle" v-bind="item.settings" />
-      <RectangleEl v-else-if="item.type === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
-      <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" />
-      <StepEl v-else-if="item.type === 'G_Step'" class="step" v-bind="item.settings" />
+      <CircleEl v-else-if="(item?.type ?? '') === 'G_Circle'" class="circle" v-bind="item.settings" />
+      <RectangleEl v-else-if="(item?.type ?? '') === 'G_Rectangle'" class="rectangle" v-bind="item.settings" />
+      <!-- <HexagonEl v-else-if="item.type === 'G_Hexagon'" class="hexagon" v-bind="item.settings" /> -->
+      <StepEl v-else-if="(item?.type ?? '') === 'G_Step'" class="step" v-bind="item.settings" />
     </div>
   </div>
 </template>
@@ -136,7 +139,7 @@
 <script>
 import { defineComponent, computed, ref } from "vue";
 // import { getEntryRange } from "src/lib/common";
-import IdxUtils from "src/lib/T3000/Hvac/Opt/IdxUtils";
+import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
 import DuctEl from "./ObjectTypes/Duct.vue";
 import FanEl from "./ObjectTypes/Fan.vue";
@@ -172,7 +175,7 @@ import Weld from "./ObjectTypes/Weld.vue";
 
 import CircleEl from "./Basic/Circle.vue";
 import RectangleEl from "./Basic/Rectangle.vue";
-import HexagonEl from "./Basic/Hexagon.vue";
+// import HexagonEl from "./Basic/Hexagon.vue";
 import StepEl from "./Basic/Step.vue";
 
 export default defineComponent({
@@ -211,7 +214,7 @@ export default defineComponent({
     Weld,
     CircleEl,
     RectangleEl,
-    HexagonEl,
+    // HexagonEl,
     StepEl
   },
   props: {
@@ -232,7 +235,7 @@ export default defineComponent({
   ],
   setup(props, { emit }) {
 
-    console.log('= Object Type', props.item);
+    // console.log('= v.ObjectType setup', props.item);
 
     const range = computed(() => {
       return IdxUtils.getEntryRange(props.item?.t3Entry);
@@ -248,7 +251,7 @@ export default defineComponent({
       }
 
       const range = IdxUtils.getEntryRange(props.item.t3Entry);
-      console.log('= Ot range,t3e', range, props.item.t3Entry);
+      // console.log('= Ot range,t3e', range, props.item.t3Entry);
 
       if (props.item.settings.t3EntryDisplayField === "description") {
         const description = props.item.t3Entry.description || "";

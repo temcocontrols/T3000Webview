@@ -13,6 +13,13 @@ import LayersManager from '../../Model/LayersManager'
 import TEData from '../../Model/TEData'
 import Instance from '../../Data/Instance/Instance'
 import LayerUtil from '../Opt/LayerUtil'
+import { appStateV2, globalMsg, isBuiltInEdge, rulersGridVisible } from '../../Data/T3Data'
+import { cloneDeep } from 'lodash'
+import { toRaw } from 'vue'
+import Hvac from '../../Hvac'
+import Utils1 from '../../Util/Utils1'
+import T3Util from '../../Util/T3Util'
+import OptConstant from '../../Data/Constant/OptConstant'
 
 /**
  * Class for managing data operations in T3000 HVAC system.
@@ -41,25 +48,27 @@ import LayerUtil from '../Opt/LayerUtil'
  */
 class DataOpt {
 
-  /**
-   * Constant key for storing clipboard data in localStorage
-   */
-  static readonly CLIPBOARD_KEY: string = "T3.clipboard";
+  //Constant key for storing clipboard data in localStorage
+  static readonly CLIPBOARD_KEY: string = "t3.clipboard";
 
-  /**
-   * Constant key for storing state data in localStorage
-   */
-  static readonly STATE_KEY: string = "T3.state";
+  //Constant key for storing state data in localStorage
+  static readonly STATE_KEY: string = "t3.state";
 
-  /**
-   * Constant key for storing object store data in localStorage
-   */
-  static readonly OBJECT_STORE_KEY: string = "T3.dataStore";
+  //Constant key for storing object store data in localStorage
+  static readonly OBJECT_STORE_KEY: string = "t3.dataStore";
 
-  /**
-   * Constant key for storing current object sequence ID in localStorage
-   */
-  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "T3.currentObjSeqId";
+  //Constant key for storing current object sequence ID in localStorage
+  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "t3.currentObjSeqId";
+
+  //Constant key for storing application state V2 data in localStorage vs appState used in v1
+  static readonly APP_STATE_V2: string = "t3.stateV2";
+
+  //Constant key for storing drawing data in localStorage
+  static readonly DRAW_KEY: string = "t3.draw";
+
+  static readonly DOC_INFO_KEY: string = "t3.doc";
+
+  static readonly GLOBAL_CONFIG_KEY: string = "t3.config";
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -150,10 +159,14 @@ class DataOpt {
     const storedObject = plainToInstance(DataObj, storedObjectJson);
     const objectData = storedObject.Data;
 
+    //SelectedList / Links
+
     if (objectData.Type === 'SDData') {
       const sdDataData = plainToInstance(SDData, objectData);
       storedObject.Data = sdDataData;
-      storedObject.Data.dimensions = 146;
+
+      // Do not show the dimensions
+      // storedObject.Data.dimensions = 146;
     }
 
     if (objectData.Type === 'LayersManager') {
@@ -173,8 +186,42 @@ class DataOpt {
           const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, objectData);
           storedObject.Data = polyLineContainerData;
         } else {
-          const lineData = plainToInstance(Instance.Shape.Line, objectData);
-          storedObject.Data = lineData;
+          const lineType = objectData.LineType;
+
+          if (lineType == OptConstant.LineType.LINE) {
+            //1
+            const lineData = plainToInstance(Instance.Shape.Line, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCLINE) {
+            //2
+            const lineData = plainToInstance(Instance.Shape.ArcLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.SEGLINE) {
+            //3
+            const lineData = plainToInstance(Instance.Shape.SegmentedLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCSEGLINE) {
+            //4
+            const lineData = plainToInstance(Instance.Shape.ArcSegmentedLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.POLYLINE) {
+            //5
+            const lineData = plainToInstance(Instance.Shape.PolyLine, objectData);
+            storedObject.Data = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.FREEHAND) {
+            const lineData = plainToInstance(Instance.Shape.FreehandLine, objectData);
+            storedObject.Data = lineData;
+          }
         }
       }
 
@@ -199,9 +246,14 @@ class DataOpt {
           storedObject.Data = groupSymbolData;
         }
 
-        if (objectData.ShapeType === "SVGFragmentSymbol") {
-          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, objectData);
-          storedObject.Data = svgFragmentSymbolData;
+        if (objectData.ShapeType === "SvgSymbol") {
+          const svgSymbolData = plainToInstance(Instance.Shape.SvgSymbol, objectData);
+          storedObject.Data = svgSymbolData;
+        }
+
+        if (objectData.ShapeType === "ForeignObject") {
+          const svgForeignObjectData = plainToInstance(Instance.Shape.ForeignObject, objectData);
+          storedObject.Data = svgForeignObjectData;
         }
       }
 
@@ -225,8 +277,43 @@ class DataOpt {
           const polyLineContainerData = plainToInstance(Instance.Shape.PolyLineContainer, dataObj);
           shapeData = polyLineContainerData;
         } else {
-          const lineData = plainToInstance(Instance.Shape.Line, dataObj);
-          shapeData = lineData;
+
+          const lineType = dataObj.LineType;
+
+          if (lineType == OptConstant.LineType.LINE) {
+            //1
+            const lineData = plainToInstance(Instance.Shape.Line, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCLINE) {
+            //2
+            const lineData = plainToInstance(Instance.Shape.ArcLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.SEGLINE) {
+            //3
+            const lineData = plainToInstance(Instance.Shape.SegmentedLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.ARCSEGLINE) {
+            //4
+            const lineData = plainToInstance(Instance.Shape.ArcSegmentedLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.POLYLINE) {
+            //5
+            const lineData = plainToInstance(Instance.Shape.PolyLine, dataObj);
+            shapeData = lineData;
+          }
+
+          if (lineType == OptConstant.LineType.FREEHAND) {
+            const lineData = plainToInstance(Instance.Shape.FreehandLine, dataObj);
+            shapeData = lineData;
+          }
         }
       }
 
@@ -251,9 +338,14 @@ class DataOpt {
           shapeData = groupSymbolData;
         }
 
-        if (dataObj.ShapeType === "SVGFragmentSymbol") {
-          const svgFragmentSymbolData = plainToInstance(Instance.Shape.SVGFragmentSymbol, dataObj);
-          shapeData = svgFragmentSymbolData;
+        if (dataObj.ShapeType === "SvgSymbol") {
+          const svgSymbolData = plainToInstance(Instance.Shape.SvgSymbol, dataObj);
+          shapeData = svgSymbolData;
+        }
+
+        if (dataObj.ShapeType === "ForeignObject") {
+          const svgForeignObjectData = plainToInstance(Instance.Shape.ForeignObject, dataObj);
+          shapeData = svgForeignObjectData;
         }
       }
 
@@ -284,6 +376,38 @@ class DataOpt {
 
     // Save current object sequence ID
     this.SaveData(this.CURRENT_OBJECT_SEQ_ID_KEY, T3Gv.currentObjSeqId);
+
+    // Save document settings
+    this.SaveDocSettingData();
+
+    this.SaveAppStateV2();
+  }
+
+  static SaveDocSettingData(): void {
+    const docSetting = {
+      docConfig: T3Gv.docUtil.docConfig,
+      rulerConfig: T3Gv.docUtil.rulerConfig,
+      docInfo: T3Gv.docUtil.svgDoc.docInfo,
+    };
+    this.SaveData(this.DOC_INFO_KEY, docSetting);
+  }
+
+  static LoadDocSettingData(): any {
+    const docSetting = this.LoadData(this.DOC_INFO_KEY);
+    return docSetting;
+  }
+
+  static PrepareSaveData() {
+    const data = cloneDeep(toRaw(appStateV2.value));
+
+    // Recalculate the items count
+    data.itemsCount = data.items.filter(item => item.width !== 0).length;
+
+    data.selectedTargets = [];
+    data.elementGuidelines = [];
+    data.rulersGridVisible = rulersGridVisible.value;
+
+    return data;
   }
 
   /**
@@ -291,7 +415,29 @@ class DataOpt {
    * Currently empty implementation placeholder
    */
   static SaveToT3000(): void {
-    // Implementation not yet provided
+    // Prepare data
+    const data = this.PrepareSaveData();
+
+    if (isBuiltInEdge.value) {
+      Hvac.WebClient.SaveGraphicData(null, null, data);
+    }
+    else {
+      const msgType = globalMsg.value.find((msg) => msg.msgType === "get_initial_data");
+      if (msgType) {
+        return;
+      }
+
+      // Post a save action to T3
+      const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
+      const panelId = currentDevice?.deviceId;
+      const graphicId = currentDevice?.graphic;
+
+      if (panelId && graphicId) {
+        Hvac.WsClient.SaveGraphic(panelId, graphicId, data);
+      }
+      else {
+      }
+    }
   }
 
   /**
@@ -324,6 +470,83 @@ class DataOpt {
     T3Gv.stdObj = new DataStore();
     T3Gv.currentObjSeqId = 0;
     T3Gv.clipboard = new DataStoreFactory().Create();
+  }
+
+  static SaveAppStateV2(): void {
+    const stateV2 = appStateV2.value;
+    this.SaveData(this.APP_STATE_V2, stateV2);
+  }
+
+  static LoadAppStateV2(): void {
+    const stateV2 = this.LoadData(this.APP_STATE_V2);
+    if (stateV2) {
+      appStateV2.value = stateV2;
+    }
+  }
+
+  static ClearT3LocalStorage(): void {
+    localStorage.removeItem(this.CLIPBOARD_KEY);
+    localStorage.removeItem(this.STATE_KEY);
+    localStorage.removeItem(this.OBJECT_STORE_KEY);
+    localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
+    localStorage.removeItem(this.APP_STATE_V2);
+    localStorage.removeItem(this.DRAW_KEY);
+  }
+
+  static LoadT3Config(): any {
+    return this.LoadData(this.GLOBAL_CONFIG_KEY) || {};
+  }
+
+  static SaveT3Config(config: any): void {
+    this.SaveData(this.GLOBAL_CONFIG_KEY, config);
+  }
+
+  /**
+   * Loads SDData objects from the data store and extracts their dimensions
+   * @returns An array of dimension objects with x and y values
+   */
+  static GetSDDataDimensions(): { x: number, y: number } {
+    // Load data store from localStorage
+    const dataStoreJson = this.LoadData(this.OBJECT_STORE_KEY);
+
+    if (dataStoreJson === null) {
+      return { x: 0, y: 0 };
+    }
+
+    // dataStoreJson is already parsed JSON object
+    const dimensions: { x: number, y: number }[] = [];
+
+    // Check if storedObjects exists and is an array
+    if (dataStoreJson.storedObjects && Array.isArray(dataStoreJson.storedObjects)) {
+      // Iterate through stored objects
+      for (let i = 0; i < dataStoreJson.storedObjects.length; i++) {
+        const storedObject = dataStoreJson.storedObjects[i];
+
+        // Check if this is an SDData object
+        if (storedObject.Data && storedObject.Data.Type === 'SDData') {
+          // Extract dimensions if available
+          if (storedObject.Data.dim &&
+            typeof storedObject.Data.dim.x === 'number' &&
+            typeof storedObject.Data.dim.y === 'number') {
+            dimensions.push({
+              x: storedObject.Data.dim.x,
+              y: storedObject.Data.dim.y
+            });
+          }
+        }
+      }
+    }
+
+    // Find the maximum x and y values
+    const maxDimensions = dimensions.reduce((max, dim) => {
+      return {
+        x: Math.max(max.x, dim.x),
+        y: Math.max(max.y, dim.y)
+      };
+    }, { x: 0, y: 0 });
+
+    // Add the maximum dimensions to the result
+    return maxDimensions;
   }
 }
 

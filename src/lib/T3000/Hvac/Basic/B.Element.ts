@@ -9,6 +9,7 @@ import BConstant from "./B.Constant"
 import BBoxModel from "../Model/BBoxModel"
 import TextConstant from "../Data/Constant/TextConstant"
 import T3Util from "../Util/T3Util"
+import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents a comprehensive SVG element with properties and methods for managing its position, size,
@@ -367,7 +368,8 @@ class Element {
    * @returns The rotation angle in degrees
    */
   GetRotation() {
-    return this.svgObj.trans.rotation;
+    const rotation = this.svgObj.trans.rotation;
+    return typeof rotation === 'number' ? rotation : 0;
   }
 
   /**
@@ -508,13 +510,13 @@ class Element {
    * This method recalculates and applies all transformations to ensure proper rendering
    */
   UpdateTransform() {
-    T3Util.Log("= B.Element: UpdateTransform - Starting transformation update for element", this.ID);
+    LogUtil.Debug("= B.Element: UpdateTransform - Starting transformation update for element", this.ID);
 
     let temporaryFormattingLayer = null;
 
     // If element has no parent, temporarily add it to formatting layer for calculations
     if (!this.parent) {
-      T3Util.Log("= B.Element: UpdateTransform - No parent found, using formatting layer");
+      LogUtil.Debug("= B.Element: UpdateTransform - No parent found, using formatting layer");
       temporaryFormattingLayer = this.doc.GetFormattingLayer();
       temporaryFormattingLayer.AddElement(this);
     }
@@ -530,7 +532,7 @@ class Element {
       const horizontalScale = scaleableElement.trans.scaleX || 1;
       const verticalScale = scaleableElement.trans.scaleY || 1;
 
-      T3Util.Log("= B.Element: UpdateTransform - Processing mirror/flip with scales",
+      LogUtil.Debug("= B.Element: UpdateTransform - Processing mirror/flip with scales",
         { horizontalScale, verticalScale });
 
       // Get the current transformation matrix
@@ -542,13 +544,13 @@ class Element {
 
       // Apply horizontal mirroring if needed
       if (this.mirrored) {
-        T3Util.Log("= B.Element: UpdateTransform - Applying horizontal mirroring");
+        LogUtil.Debug("= B.Element: UpdateTransform - Applying horizontal mirroring");
         transformationMatrix = transformationMatrix.flipX().translate(-elementBoundingBox.width, 0);
       }
 
       // Apply vertical flipping if needed
       if (this.flipped) {
-        T3Util.Log("= B.Element: UpdateTransform - Applying vertical flipping");
+        LogUtil.Debug("= B.Element: UpdateTransform - Applying vertical flipping");
         transformationMatrix = transformationMatrix.flipY().translate(0, -elementBoundingBox.height);
       }
 
@@ -558,19 +560,19 @@ class Element {
       // Apply the transformation string to the element
       scaleableElement.attr('transform', transformationString);
 
-      T3Util.Log("= B.Element: UpdateTransform - Applied transformation matrix", transformationString);
+      LogUtil.Debug("= B.Element: UpdateTransform - Applied transformation matrix", transformationString);
     }
 
     // Remove the element from the temporary formatting layer if it was added
     if (temporaryFormattingLayer) {
       temporaryFormattingLayer.RemoveElement(this);
-      T3Util.Log("= B.Element: UpdateTransform - Removed from temporary formatting layer");
+      LogUtil.Debug("= B.Element: UpdateTransform - Removed from temporary formatting layer");
     }
 
     // Clean up any unused graphics resources
     Utils1.CleanGraphics();
 
-    T3Util.Log("= B.Element: UpdateTransform - Completed transformation update");
+    LogUtil.Debug("= B.Element: UpdateTransform - Completed transformation update");
   }
 
   /**
@@ -1348,6 +1350,7 @@ class Element {
     this.svgObj.attr('stroke', color);
     this.ClearColorData(false);
   }
+
   /**
    * Sets a texture stroke for the element
    * @param textureSettings - The texture settings including URL, scale, alignment, and dimensions

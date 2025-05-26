@@ -15,7 +15,8 @@
 import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
-import { user, globalNav, isAdmin } from "../lib/common";
+import { /*user,*/ globalNav, isAdmin } from "../lib/common";
+import { user } from "../lib/T3000/Hvac/Data/T3Data";
 import { liveApi, localApi } from "../lib/api";
 
 export default {

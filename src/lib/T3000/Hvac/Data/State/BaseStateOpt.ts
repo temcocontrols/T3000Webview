@@ -43,7 +43,7 @@ import State from "./State"
  *
  * // Retrieve the current state (if any)
  * const currentState = baseState.GetCurrentState();
- * console.log('Current State:', currentState);
+ * LogUtil.Debug('Current State:', currentState);
  *
  * // Reset all undo states to initial values
  * baseState.ResetUndoStates();
@@ -53,29 +53,12 @@ import State from "./State"
  */
 class BaseStateOpt {
 
-  /**
-   * The ID of the current state
-   */
-  public currentStateId: number;
+  public currentStateId: number;//The ID of the current state
+  public historyState: number;//The count of history states
+  public droppedStates: number;//The count of dropped states
+  public states: State[];//Collection of all states
 
-  /**
-   * The count of history states
-   */
-  public historyState: number;
-
-  /**
-   * The count of dropped states
-   */
-  public droppedStates: number;
-
-  /**
-   * Collection of all states
-   */
-  public states: State[];
-
-  /**
-   * Initializes a new instance of BaseStateOpt
-   */
+  //Initializes a new instance of BaseStateOpt
   constructor() {
     this.currentStateId = -1;
     this.historyState = 0;

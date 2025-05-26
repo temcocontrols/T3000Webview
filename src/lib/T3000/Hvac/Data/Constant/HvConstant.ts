@@ -1,5 +1,4 @@
 
-
 /**
  * Represents a collection of application constants for the HVAC module.
  *
@@ -37,6 +36,33 @@ class HvConstant {
     LEFT_PANEL_WIDTH: 105,
     WORK_AREA_ID: "work-area",
     WORK_AREA_PADDING_LEFT: 105,
+  }
+
+  /**
+   * Configuration object for controlling log output levels in the HVAC system.
+   *
+   * @property {boolean} Debug - When true, debug-level messages will be logged. Default: true
+   * @property {boolean} Info - When true, informational messages will be logged. Default: true
+   * @property {boolean} Error - When true, error messages will be logged. Default: true
+   *
+   * @example
+   * // Disable debug logs but keep info and error logs
+   * HvConstant.LogConfig.Debug = false;
+   */
+  static LogConfig = {
+    Debug: false,
+    Info: false,
+    Error: true,
+  }
+
+  static T3Config = {
+    log: {},
+    Zoom: {
+      Step: 0.25,
+      Min: 0.25,
+      Max: 4.0,
+      Default: 1.0
+    }
   }
 }
 

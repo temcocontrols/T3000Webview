@@ -43,6 +43,7 @@
           <q-btn flat caption color="white" label="Reload data" @click="reloadPanelsData" />
         </template>
       </q-banner>
+      <!-- <a-alert message="Warning" type="warning" show-icon /> -->
     </div>
 
     <div class="q-pa-sm row ">
@@ -201,13 +202,13 @@ import { defineComponent, ref, onMounted, watch, reactive, toRefs, computed } fr
 import MockData from 'src/lib/T3000/Hvac/Data/MockData'
 import Hvac from 'src/lib/T3000/Hvac/Hvac'
 import { useQuasar, useMeta } from "quasar"
-import T3Data from '../lib/T3000/Hvac/Data/T3Data'
+import { T3Data } from '../lib/T3000/Hvac/Data/T3Data'
 import { globalMsg } from '../lib/T3000/Hvac/Data/T3Data'
 import MessageType from 'src/lib/T3000/Hvac/Opt/Socket/MessageType'
 import GlobalMsgModel from 'src/lib/T3000/Hvac/Model/GlobalMsgModel'
 
 export default defineComponent({
-  name: 'NewTopBar',
+  name: 'DeviceInfo',
 
   props: {
     // locked: {
@@ -285,7 +286,7 @@ export default defineComponent({
     const clearGraphicSelection = () => {
       currentDevice.value.graphic = -1;
       currentDevice.value.graphicFull = { id: -1, fullLabel: '', label: '', elementCount: '' };
-      console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      // console.log('= Dvi graphic-clear 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
     }
 
     // graphic panel change event
@@ -301,8 +302,8 @@ export default defineComponent({
         currentDevice.value.graphicFull.elementCount = found.elementCount;
       }
 
-      console.log('= Dvi graphic-selected 1 val:', val);
-      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      // console.log('= Dvi graphic-selected 1 val:', val);
+      // console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       const deviceId = currentDevice.value.deviceId;
 
@@ -313,7 +314,7 @@ export default defineComponent({
 
     // device tree selection event
     const treeSelected = (target) => {
-      console.log('= Dvi tree-selected 1 target:', target)
+      // console.log('= Dvi tree-selected 1 target:', target)
 
       // Clear the icon for all nodes
       const clearIcons = (nodes) => {
@@ -368,7 +369,7 @@ export default defineComponent({
 
       clearGraphicSelection();
 
-      console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      // console.log('= Dvi graphic-selected 2 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       // load hardware data from T3000
       // Hvac.DeviceOpt.loadGraphicPanelData(currentDevice.value);
@@ -409,7 +410,7 @@ export default defineComponent({
     };
 
     const saveCurrentSelection = () => {
-      console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      // console.log('= Dvi saveCurrentSelection 1 currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
         $q.notify({
@@ -464,11 +465,11 @@ export default defineComponent({
       const hasNoData = dvList.value.length === 0 || graphicList.value.length === 0;
       if (hasNoData) {
         const errorMsg = 'Can not load the device data. Please check whether the T3000 is running or not.';
-        Hvac.T3Utils.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
-        console.log('= Dvi onMounted 3 dvList:', dvList);
+        Hvac.QuasarUtil.setGlobalMsg('error', errorMsg, true, "get_panel_list_data", null);
+        // console.log('= Dvi onMounted 3 dvList:', dvList);
       }
       else {
-        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
+        Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");
       }
     });
 
@@ -484,7 +485,7 @@ export default defineComponent({
 
     watch([dvList, graphicList], ([newDvList, newGraphicList]) => {
       if (newDvList.length > 0 && newGraphicList.length > 0) {
-        Hvac.T3Utils.clearGlobalMsg("get_panel_list_data");
+        Hvac.QuasarUtil.clearGlobalMsg("get_panel_list_data");
       }
     }, { deep: true });
 

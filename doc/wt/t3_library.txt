@@ -1,0 +1,28 @@
+
+Add new message type for NEW_LIBRARY_DATA
+
+NEW_LIBRARY_DATA = 14,
+t3_hvac_library.json
+
+	case NEW_LIBRARY_DATA:
+	{
+		CString temp_lib_file;
+		temp_lib_file = _T("t3_hvac_library.json");
+		des_lib_file = image_fordor + _T("\\") + temp_lib_file;
+		const std::string file_output = Json::writeString(builder, json["data"]);
+
+		CFile file;
+
+		CString file_temp_cs(file_output.c_str());
+		file.Open(des_lib_file, CFile::modeCreate | CFile::modeWrite | CFile::modeCreate, NULL);
+		file.Write(file_temp_cs, file_temp_cs.GetLength() * 2);
+		file.Close();
+		Json::Value tempjson;
+		tempjson["action"] = "NEW_LIBRARY_DATA_RES";
+		tempjson["status"] = true;
+		const std::string output = Json::writeString(builder, tempjson);
+		CString temp_cs(output.c_str());
+		outmsg = temp_cs;
+		//m_webView->PostWebMessageAsJson(temp_cs);
+	}
+	break;

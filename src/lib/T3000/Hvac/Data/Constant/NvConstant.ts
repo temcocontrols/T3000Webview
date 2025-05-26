@@ -32,7 +32,7 @@
  *
  * // Applying an object flag during a hit test:
  * if (hitCode === NvConstant.HitCodes.Inside) {
- *   console.log("User clicked inside the object");
+ *   LogUtil.Debug("User clicked inside the object");
  * }
  *
  * @public
@@ -354,7 +354,8 @@ class NvConstant {
     LcForceEnd: 16384,       // Force to end point
     LcHookNoExtra: 131072,   // No extra hooks
     LcHookReverse: 262144,   // Reverse hook direction
-    LcNoContinuous: 524288   // Disable continuous connection
+    LcNoContinuous: 524288,   // Disable continuous connection
+    LcTableRows: 1048576
   }
 
   /**
@@ -393,10 +394,10 @@ class NvConstant {
   }
 
   /**
-   * Guide distance types
-   * Defines measurement types for guides
-   */
-  static Guide_DistanceTypes = {
+  * Guide distance types
+  * Defines measurement types for guides
+  */
+  static GuideDistanceTypes = {
     Room: 1,                // Room distance
     Horizontal_Wall: 2,     // Horizontal wall distance
     Vertical_Wall: 3,       // Vertical wall distance
@@ -432,7 +433,8 @@ class NvConstant {
     Multiplicity: 39,         // Multiplicity indicator
     ShapeContainer: 55,       // Shape container
     FrameContainer: 75,       // Frame container
-    ExtraTextLable: 80        // Extra text label
+    ExtraTextLable: 80,       // Extra text label
+    GanttBar: 10,              // Gantt bar
   }
 
   /**
@@ -451,18 +453,6 @@ class NvConstant {
     AlwaysFit: 0,     // Always fit image to container
     CropToFit: 1,     // Crop image to fit container
     PropFit: 2        // Maintain proportions when fitting
-  }
-
-  /**
-   * Shape class definitions
-   * Categorizes shapes by their implementation type
-   */
-  static ShapeClass = {
-    Plain: 1,               // Basic shape
-    GroupSymbol: 2,         // Group of symbols
-    SvgSymbol: 3,           // SVG symbol
-    SvgFragmentSymbol: 4,   // SVG fragment
-    MissingMf: 5            // Missing metadata format
   }
 }
 

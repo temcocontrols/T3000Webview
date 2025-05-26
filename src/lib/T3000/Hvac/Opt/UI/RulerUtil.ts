@@ -5,7 +5,8 @@ import '../../Util/T3Hammer';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import T3Util from "../../Util/T3Util";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
+import LogUtil from '../../Util/LogUtil';
 
 class RulerUtil {
 
@@ -23,9 +24,9 @@ class RulerUtil {
     offset: number,
     displayFlags: number
   ): string {
-    T3Util.Log("O.Opt GetLengthInRulerUnits - Input:", { lengthInUnits, skipFeetConversion, offset, displayFlags });
+    LogUtil.Debug("O.Opt GetLengthInRulerUnits - Input:", { lengthInUnits, skipFeetConversion, offset, displayFlags });
 
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     let resultString = "";
     let feetPart = 0;
     let inchPart = 0;
@@ -52,7 +53,7 @@ class RulerUtil {
     // Handle pixel display mode
     if (T3Gv.docUtil.rulerConfig.showpixels) {
       resultString = String(Math.round(lengthInUnits));
-      T3Util.Log("O.Opt GetLengthInRulerUnits - Output:", resultString);
+      LogUtil.Debug("O.Opt GetLengthInRulerUnits - Output:", resultString);
       return resultString;
     }
 
@@ -147,7 +148,7 @@ class RulerUtil {
       resultString = totalUnits.toFixed(T3Gv.docUtil.rulerConfig.dp);
     }
 
-    T3Util.Log("O.Opt GetLengthInRulerUnits - Output:", resultString);
+    LogUtil.Debug("O.Opt GetLengthInRulerUnits - Output:", resultString);
     return resultString;
   }
 
@@ -157,9 +158,9 @@ class RulerUtil {
    * @returns The length in the current ruler units
    */
   static GetLengthInUnits(length: number): number {
-    T3Util.Log("O.Opt GetLengthInUnits - Input:", { length });
+    LogUtil.Debug("O.Opt GetLengthInUnits - Input:", { length });
     const result = length * this.GetToUnits();
-    T3Util.Log("O.Opt GetLengthInUnits - Output:", result);
+    LogUtil.Debug("O.Opt GetLengthInUnits - Output:", result);
     return result;
   }
 
@@ -168,7 +169,7 @@ class RulerUtil {
    * @returns The conversion factor from raw units to display units
    */
   static GetToUnits(): number {
-    T3Util.Log("O.Opt GetToUnits - Input");
+    LogUtil.Debug("O.Opt GetToUnits - Input");
     const dpi = T3Gv.docUtil.rulerConfig.major;
     let conversionFactor = T3Gv.docUtil.rulerConfig.majorScale / dpi;
 
@@ -176,7 +177,7 @@ class RulerUtil {
       conversionFactor *= T3Gv.docUtil.rulerConfig.metricConv;
     }
 
-    T3Util.Log("O.Opt GetToUnits - Output:", conversionFactor);
+    LogUtil.Debug("O.Opt GetToUnits - Output:", conversionFactor);
     return conversionFactor;
   }
 
@@ -186,8 +187,8 @@ class RulerUtil {
    * @returns The denominator value for fractional display
    */
   static GetFractionStringGranularity(sessionData: any): number {
-    if (T3Gv.docUtil.rulerConfig.fractionaldenominator >= 1) {
-      return 1 / T3Gv.docUtil.rulerConfig.fractionaldenominator;
+    if (T3Gv.docUtil.rulerConfig.denom >= 1) {
+      return 1 / T3Gv.docUtil.rulerConfig.denom;
     } else if (T3Gv.docUtil.rulerConfig.majorScale <= 1) {
       return 1 / 16;
     } else if (T3Gv.docUtil.rulerConfig.majorScale <= 2) {
@@ -228,7 +229,6 @@ class RulerUtil {
 
     return denominator;
   }
-
 }
 
 export default RulerUtil

@@ -86,7 +86,7 @@ class DataObj {
     this.IsPersisted = false !== isPersisted;
     this.stateOptTypeId = null;
 
-    if (this.Data && Utils1.isObject(this.Data)) {
+    if (this.Data && Utils1.IsObject(this.Data)) {
       this.Data.BlockID = objectId;
     }
 

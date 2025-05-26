@@ -29,7 +29,7 @@ import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
-import DataUtil from "../Data/DataUtil";
+import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";
 import PolygonConstant from "../Polygon/PolygonConstant";
 import PolygonUtil from "../Polygon/PolygonUtil";
@@ -53,7 +53,9 @@ import DSUtil from '../DS/DSUtil';
 import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import KeyboardConstant from '../Keyboard/KeyboardConstant';
-// import ConstantData from '../../Data/ConstantData';
+import IdxPage2 from '../Common/IdxPage2';
+import Hvac from '../../Hvac';
+import LogUtil from '../../Util/LogUtil';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -97,10 +99,10 @@ class OptUtil {
    */
   public svgDocId: string;           // Selector for the SVG container element
   public svgDoc: Document;           // Reference to the SVG document
-  public svgObjectLayer: Document;        // Main layer for drawing content
-  public svgOverlayLayer: Document;       // Layer for UI elements (not exported)
-  public svgHighlightLayer: Document;     // Layer for selection highlighting
-  public svgCollabLayer: Document;        // Layer for collaboration indicators
+  public svgObjectLayer: any;        // Main layer for drawing content
+  public svgOverlayLayer: any;       // Layer for UI elements (not exported)
+  public svgHighlightLayer: any;     // Layer for selection highlighting
+  public svgCollabLayer: any;        // Layer for collaboration indicators
   public sVGroot: any;               // Root SVG DOM element
 
   /**
@@ -116,23 +118,27 @@ class OptUtil {
    * Drag operation state variables
    * Track the state of objects being moved by drag operations
    */
-  public dragElementList: any[];     // List of elements being dragged
-  public dragBBoxList: any[];        // List of bounding boxes for dragged elements
-  public dragEnclosingRect: any;     // Rectangle enclosing all dragged elements
-  public dragStartX: number;         // Starting X coordinate for drag
-  public dragStartY: number;         // Starting Y coordinate for drag
-  public dragDeltaX: number;         // X distance moved during drag
-  public dragDeltaY: number;         // Y distance moved during drag
-  public dragTargetId: any;          // ID of the primary drag target
-  public dragTargetBBox: any;        // Bounding box of the target element
-  public dragGotMove: boolean;       // Flag indicating movement has occurred
+  public dragElementList: any[];             // List of elements being dragged
+  public dragBBoxList: any[];                // List of bounding boxes for dragged elements
+  public dragEnclosingRect: any;             // Rectangle enclosing all dragged elements
+  public dragStartX: number;                 // Starting X coordinate for drag
+  public dragStartY: number;                 // Starting Y coordinate for drag
+  public dragDeltaX: number;                 // X distance moved during drag
+  public dragDeltaY: number;                 // Y distance moved during drag
+  public dragTargetId: any;                  // ID of the primary drag target
+  public dragTargetBBox: any;                // Bounding box of the target element
+  public dragGotMove: boolean;               // Flag indicating movement has occurred
   public dragGotAutoResizeRight: boolean;    // Flag for auto-resize right during drag
   public dragGotAutoResizeBottom: boolean;   // Flag for auto-resize bottom during drag
   public dragGotAutoResizeOldX: any[];       // Previous X dimensions during auto-resize
   public dragGotAutoResizeOldY: any[];       // Previous Y dimensions during auto-resize
-  public moveList: any[];            // List of objects to move together
-  public moveBounds: any;            // Bounds of the move operation
-  public pinRect: any;               // Constraining rectangle for movement
+  public theDragGotAutoResizeOldLeft: any[]; // Previous X dimensions during auto-resize
+  public theDragGotAutoResizeOldTop: any[];  // Previous Y dimensions during auto-resize
+  public moveList: any[];                    // List of objects to move together
+  public moveBounds: any;                    // Bounds of the move operation
+  public pinRect: any;                       // Constraining rectangle for movement
+  public theDragGotAutoResizeLeft: boolean;  // Flag for auto-resize left during drag
+  public theDragGotAutoResizeTop: boolean;    // Flag for auto-resize top during drag
 
   /**
    * Action state tracking
@@ -195,17 +201,6 @@ class OptUtil {
   public inAutoScroll: boolean;          // Whether auto-scroll is active
 
   /**
-   * Touch and gesture variables
-   * Support for touch interaction
-   */
-  // public isGestureCapable: boolean;      // Whether device supports touch/gestures
-  // public touchInitiated: boolean;        // Whether touch interaction started
-  // public touchPanStarted: boolean;       // Whether panning via touch started
-  // public touchPanX: number;              // X position for touch panning
-  // public touchPanY: number;              // Y position for touch panning
-  // public bIsFullScreen: boolean;         // Whether in fullscreen mode
-
-  /**
    * UI elements and event handlers
    * References to DOM elements and their event handlers
    */
@@ -216,7 +211,6 @@ class OptUtil {
   public documentElement: any;           // Document area DOM element
   public documentElementHammer: any;     // Hammer manager for document element
   public workAreaTextInputProxy: any;    // Proxy for text input in work area
-  public virtualKeyboardLifterElementFrame: any;  // Frame for virtual keyboard
   public TEHammer: any;                  // Hammer manager for text editing
   public TEWorkAreaHammer: any;          // Hammer manager for text edit work area
   public clickAreaHammer: any;           // Hammer manager for click areas
@@ -312,7 +306,6 @@ class OptUtil {
    * Variables for note editing functionality
    */
   public curNoteShape: number;           // Current shape with note being edited
-  // public curNoteTableCell: any;          // Current table cell with note
   public curNoteGraphPint: any;          // Current graph point with note
   public bInNoteEdit: boolean;           // Whether in note edit mode
   public bNoteChanged: boolean;          // Whether note content changed
@@ -371,7 +364,7 @@ class OptUtil {
    * Collaboration state variables
    * Variables for multi-user editing
    */
-  public commentUserIDs: any[];          // User IDs for comments
+  public commentUserIds: any[];          // User IDs for comments
   public activeExpandedView: any;        // Currently expanded view
   public alternateStateManagerVars: any; // Alternate state variables
   public socketAction: any[];            // Actions for socket transmission
@@ -391,14 +384,11 @@ class OptUtil {
   ConnectorList: any;
   ConnectorWidthList: any;
 
+  flowchartShift: any;
+
   //#endregion
 
-  /**
-   * Initializes the OptUtil instance by setting up all required properties and resources
-   * This is the main setup method that prepares the SVG document, UI elements, and system state
-   * It creates necessary data structures for managing shapes, selections, and user interactions
-   */
-  Initialize() {
+  InitializeProperties() {
     // #region SVG Document Elements
     /**
      * Configure main SVG document references and layers
@@ -445,6 +435,10 @@ class OptUtil {
     this.dragGotAutoResizeBottom = false;       // Whether bottom edge was auto-resized
     this.dragGotAutoResizeOldX = [];            // Previous X dimensions during resize
     this.dragGotAutoResizeOldY = [];            // Previous Y dimensions during resize
+    this.theDragGotAutoResizeOldLeft = [];      // Previous X dimensions during auto-resize
+    this.theDragGotAutoResizeOldTop = [];       // Previous Y dimensions during auto-resize
+    this.theDragGotAutoResizeLeft = false;      // Flag for auto-resize left during drag
+    this.theDragGotAutoResizeTop = false;       // Flag for auto-resize top during drag
 
     // Move lists
     this.moveList = [];                         // Objects to move together
@@ -527,18 +521,6 @@ class OptUtil {
     this.autoScrollYPos = 0;                    // Y position for auto-scrolling
     this.inAutoScroll = false;                  // Whether auto-scroll is active
 
-    // Touch gesture properties
-    // this.isGestureCapable = 'ontouchstart' in window ||
-    //   ('onpointerdown' in window &&
-    //     navigator.maxTouchPoints &&
-    //     navigator.maxTouchPoints > 1);  // Device supports touch
-    // this.touchInitiated = false;                // Whether touch interaction started
-    // this.touchPanStarted = false;               // Whether panning via touch started
-    // this.touchPanX = 0;                         // X position for touch panning
-    // this.touchPanY = 0;                         // Y position for touch panning
-    // this.bIsFullScreen = false;                 // Whether in fullscreen mode
-    // #endregion
-
     // #region UI Elements & Event Handlers
     /**
      * Initialize properties for UI elements and event handlers
@@ -549,7 +531,6 @@ class OptUtil {
     this.workAreaElement = null;                // Work area DOM element
     this.WorkAreaHammer = null;                 // Hammer manager for work area
     this.workAreaTextInputProxy = null;         // Proxy for text input in work area
-    this.virtualKeyboardLifterElementFrame = null; // Frame for virtual keyboard
 
     // Text editing and interaction handlers
     this.TEHammer = null;                       // Hammer manager for text editing
@@ -629,7 +610,6 @@ class OptUtil {
     this.FileVersion = 41;                       // File format version
     this.bDrawEffects = true;                    // Whether to draw effects
     this.hasBlockDirectory = false;              // Whether block directory exists
-    // this.initialStateID = T3Gv.state.currentStateId;  // Initial state ID
     this.nDataStoreStart = T3Gv.stdObj.storedObjects.length;  // Initial object count
     // #endregion
 
@@ -662,9 +642,6 @@ class OptUtil {
      * Initialize properties for note editing functionality
      * These track state during note editing
      */
-    // this.curNoteShape = -1;                      // Shape with note being edited
-    // this.curNoteTableCell = null;                // Table cell with note being edited
-    // this.curNoteGraphPint = null;                // Graph point with note
     this.bInNoteEdit = false;                    // Whether in note edit mode
     this.bNoteChanged = false;                   // Whether note content changed
     // #endregion
@@ -728,11 +705,9 @@ class OptUtil {
      * Initialize properties for multi-user collaboration
      * These track state during collaborative editing
      */
-    this.commentUserIDs = [];                    // User IDs for comments
+    this.commentUserIds = [];                    // User IDs for comments
     this.activeExpandedView = null;              // Currently expanded view
-    this.alternateStateManagerVars = {           // Alternate state variables
-      bHasBeenSaved: false
-    };
+    this.alternateStateManagerVars = { bHasBeenSaved: false };// Alternate state variables
     this.socketAction = [];                      // Actions for socket transmission
     this.pageAction = [];                        // Actions for page changes
     this.pagesToDelete = [];                     // Pages marked for deletion
@@ -799,10 +774,17 @@ class OptUtil {
     );
     this.linksBlockId = linksBlock.ID;
     // #endregion
+  }
 
-    // Initialize the system
-    DataUtil.PreserveUndoState(true);
-    UIUtil.InitSVGDocument();
+  /**
+   * Initializes the OptUtil instance by setting up all required properties and resources
+   * This is the main setup method that prepares the SVG document, UI elements, and system state
+   * It creates necessary data structures for managing shapes, selections, and user interactions
+   */
+  Initialize() {
+    ObjectUtil.PreserveUndoState(true);
+    UIUtil.InitSvgDocument();
+    UIUtil.InitT3GvOpt();
     this.sVGroot = this.svgDoc.svgObj.node;
     SelectUtil.UpdateSelectionAttributes(null);
     this.BuildarrowHlkTables();
@@ -810,7 +792,7 @@ class OptUtil {
   }
 
   HandleDimensionEditMode(sessionData) {
-    T3Util.Log('O.Opt HandleDimensionEditMode - Input:', sessionData);
+    LogUtil.Debug('= O.OptUtil  HandleDimensionEditMode - Input:', sessionData);
 
     const TEXT_FACE = TextConstant.TextFace;
 
@@ -823,11 +805,11 @@ class OptUtil {
     this.selectionState.subscript = (T3Gv.opt.header.DimensionFont.face & TEXT_FACE.Subscript) > 0;
     this.selectionState.csOptMng = null;
 
-    T3Util.Log('O.Opt HandleDimensionEditMode - Output: Dimension edit mode processed');
+    LogUtil.Debug('= O.OptUtil  HandleDimensionEditMode - Output: Dimension edit mode processed');
   }
 
   HandleEmptySelectionOrNoteEditMode(sessionData) {
-    T3Util.Log('O.Opt HandleEmptySelectionOrNoteEditMode - Input:', sessionData);
+    LogUtil.Debug('= O.OptUtil  HandleEmptySelectionOrNoteEditMode - Input:', sessionData);
 
     const TEXT_FACE = TextConstant.TextFace;
 
@@ -851,11 +833,11 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt HandleEmptySelectionOrNoteEditMode - Output: Empty selection or note edit mode processed');
+    LogUtil.Debug('= O.OptUtil  HandleEmptySelectionOrNoteEditMode - Output: Empty selection or note edit mode processed');
   }
 
   ProcessTargetObject(targetId, targetObject) {
-    T3Util.Log('O.Opt ProcessTargetObject - Input:', { targetId, targetObject });
+    LogUtil.Debug('= O.OptUtil  ProcessTargetObject - Input:', { targetId, targetObject });
 
     // Get the operation mng for the target object
     const optMng = OptAhUtil.GetGvSviOpt(targetId);
@@ -905,11 +887,11 @@ class OptUtil {
       this.selectionState.selectionhastext = targetObject.DataID >= 0;
     }
 
-    T3Util.Log('O.Opt ProcessTargetObject - Output: Target object processed');
+    LogUtil.Debug('= O.OptUtil  ProcessTargetObject - Output: Target object processed');
   }
 
   ProcessSelectedObject(object, textObject, objectIndex) {
-    T3Util.Log('O.Opt ProcessSelectedObject - Input:', { object, textObject, objectIndex });
+    LogUtil.Debug('= O.OptUtil  ProcessSelectedObject - Input:', { object, textObject, objectIndex });
 
     const TEXT_FACE = TextConstant.TextFace;
     const DRAWING_OBJECT_CLASS = OptConstant.DrawObjectBaseClass;
@@ -978,7 +960,7 @@ class OptUtil {
       NvConstant.DimensionFlags.Always | NvConstant.DimensionFlags.Select
     );
 
-    T3Util.Log('O.Opt ProcessSelectedObject - Output: Object processed');
+    LogUtil.Debug('= O.OptUtil  ProcessSelectedObject - Output: Object processed');
   }
 
   ProcessShapeObject(shape, table) {
@@ -1000,11 +982,11 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt ProcessShapeObject - Output: Shape object processed');
+    LogUtil.Debug('= O.OptUtil  ProcessShapeObject - Output: Shape object processed');
   }
 
   ProcessConnectorObject(connector) {
-    T3Util.Log('O.Opt ProcessConnectorObject - Input:', connector);
+    LogUtil.Debug('= O.OptUtil  ProcessConnectorObject - Input:', connector);
 
     this.selectionState.nconnectorselected++;
 
@@ -1018,11 +1000,11 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt ProcessConnectorObject - Output: Connector object processed');
+    LogUtil.Debug('= O.OptUtil  ProcessConnectorObject - Output: Connector object processed');
   }
 
   ProcessLineObject(lineObject) {
-    T3Util.Log('O.Opt ProcessLineObject - Input:', lineObject);
+    LogUtil.Debug('= O.OptUtil  ProcessLineObject - Input:', lineObject);
 
     // Increment count of selected line objects
     this.selectionState.nlineselected++;
@@ -1048,7 +1030,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt ProcessLineObject - Output: Line processed', {
+    LogUtil.Debug('= O.OptUtil  ProcessLineObject - Output: Line processed', {
       lineCount: this.selectionState.nlineselected,
       textDirection: this.selectionState.TextDirection,
       cornerRadius: this.selectionState.lineCornerRadius
@@ -1056,7 +1038,7 @@ class OptUtil {
   }
 
   BuildarrowHlkTables() {
-    T3Util.Log("O.Opt BuildarrowHlkTables - Input: No parameters");
+    LogUtil.Debug("= O.OptUtil  BuildarrowHlkTables - Input: No parameters");
 
     const arrowDefs = new ArrowDefs().uiArrowDefs;
     const arrowSizes = new ArrowSizes().uiarrowSizes;
@@ -1073,25 +1055,26 @@ class OptUtil {
       T3Gv.arrowHsTable[index] = arrowSizes[index];
     }
 
-    T3Util.Log("O.Opt BuildarrowHlkTables - Output: Arrowhead lookup tables built");
+    LogUtil.Debug("= O.OptUtil  BuildarrowHlkTables - Output: Arrowhead lookup tables built");
   }
 
   SetDimensionVisibility(objects, isVisible) {
-    T3Util.Log('O.Opt SetDimensionVisibility: input', { objects, isVisible });
+    return;
+    LogUtil.Debug('= O.OptUtil  SetDimensionVisibility: input', { objects, isVisible });
 
     let objectCount = objects.length;
     for (let i = 0; i < objectCount; i++) {
-      let object = DataUtil.GetObjectPtr(objects[i], false);
+      let object = ObjectUtil.GetObjectPtr(objects[i], false);
       if (object && object.ShowOrHideDimensions) {
         object.ShowOrHideDimensions(isVisible);
       }
     }
 
-    T3Util.Log('O.Opt SetDimensionVisibility: output');
+    LogUtil.Debug('= O.OptUtil  SetDimensionVisibility: output');
   }
 
   CloseEdit(skipShapeClose?: boolean, closeOption?: any, skipTooltipProcessing?: boolean) {
-    T3Util.Log("O.Opt CloseEdit - Input:", { skipShapeClose, closeOption, skipTooltipProcessing });
+    LogUtil.Debug("= O.OptUtil  CloseEdit - Input:", { skipShapeClose, closeOption, skipTooltipProcessing });
 
     const isProcessingMessage = false;
 
@@ -1111,13 +1094,13 @@ class OptUtil {
         this.CloseShapeEdit(closeOption);
       }
     }
-    T3Util.Log("O.Opt CloseEdit - Output: done");
+    LogUtil.Debug("= O.OptUtil  CloseEdit - Output: done");
   }
 
   DeactivateAllTextEdit(skipShapeClose: boolean, closeOption?: any) {
-    T3Util.Log('O.Opt DeactivateAllTextEdit - Input:', { skipShapeClose, closeOption });
+    LogUtil.Debug('= O.OptUtil  DeactivateAllTextEdit - Input:', { skipShapeClose, closeOption });
 
-    const teData = DataUtil.GetObjectPtr(this.teDataBlockId, false);
+    const teData = ObjectUtil.GetObjectPtr(this.teDataBlockId, false);
     if (teData.theActiveTextEditObjectID !== -1) {
       TextUtil.DeactivateTextEdit(skipShapeClose, closeOption);
     } else {
@@ -1127,13 +1110,13 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt DeactivateAllTextEdit - Output: done');
+    LogUtil.Debug('= O.OptUtil  DeactivateAllTextEdit - Output: done');
   }
 
   CloseShapeEdit(providedOutlineId, useAlternate?, alternateOutlineId?) {
-    T3Util.Log("O.Opt CloseShapeEdit - Input:", { providedOutlineId, useAlternate, alternateOutlineId });
+    LogUtil.Debug("= O.OptUtil  CloseShapeEdit - Input:", { providedOutlineId, useAlternate, alternateOutlineId });
 
-    let sessionData = DataUtil.GetObjectPtr(this.teDataBlockId, false);
+    let sessionData = ObjectUtil.GetObjectPtr(this.teDataBlockId, false);
     let activeOutlineId = sessionData.theActiveOutlineObjectID;
 
     // If using the alternate outline id then override activeOutlineId.
@@ -1144,21 +1127,21 @@ class OptUtil {
     if (activeOutlineId >= 0) {
       // If the provided outline id is boolean true or already the active id, do nothing.
       if (providedOutlineId === true) {
-        T3Util.Log("O.Opt CloseShapeEdit - Output: Skipping close because providedOutlineId is true");
+        LogUtil.Debug("= O.OptUtil  CloseShapeEdit - Output: Skipping close because providedOutlineId is true");
         return;
       }
       if (providedOutlineId === activeOutlineId) {
-        T3Util.Log("O.Opt CloseShapeEdit - Output: Provided outline id equals active outline id, no action taken");
+        LogUtil.Debug("= O.OptUtil  CloseShapeEdit - Output: Provided outline id equals active outline id, no action taken");
         return;
       }
-      let shapeObject = DataUtil.GetObjectPtr(activeOutlineId, false);
+      let shapeObject = ObjectUtil.GetObjectPtr(activeOutlineId, false);
       if (shapeObject) {
         if (shapeObject.objecttype === NvConstant.FNObjectTypes.FlWall) {
-          T3Util.Log("O.Opt CloseShapeEdit - Output: Active outline is a wall opt wall, skipping close");
+          LogUtil.Debug("= O.OptUtil  CloseShapeEdit - Output: Active outline is a wall opt wall, skipping close");
           return;
         }
 
-        shapeObject = DataUtil.GetObjectPtr(activeOutlineId, false);
+        shapeObject = ObjectUtil.GetObjectPtr(activeOutlineId, false);
         if (
           shapeObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Line &&
           shapeObject.LineType === OptConstant.LineType.POLYLINE &&
@@ -1170,12 +1153,12 @@ class OptUtil {
       }
       if (!useAlternate) {
         // Reset the active outline id.
-        sessionData = DataUtil.GetObjectPtr(this.teDataBlockId, true);
+        sessionData = ObjectUtil.GetObjectPtr(this.teDataBlockId, true);
         sessionData.theActiveOutlineObjectID = -1;
       }
       DrawUtil.CompleteOperation();
     }
-    T3Util.Log("O.Opt CloseShapeEdit - Output: Operation complete");
+    LogUtil.Debug("= O.OptUtil  CloseShapeEdit - Output: Operation complete");
   }
 
   /**
@@ -1276,7 +1259,7 @@ class OptUtil {
 
       // Render the changes if not skipped
       if (!skipRendering) {
-        DataUtil.AddToDirtyList(polyLineId);
+        ObjectUtil.AddToDirtyList(polyLineId);
         SvgUtil.RenderDirtySVGObjects();
       }
 
@@ -1287,7 +1270,7 @@ class OptUtil {
   }
 
   EndStampSession() {
-    T3Util.Log('O.Opt EndStampSession - Input');
+    LogUtil.Debug('= O.OptUtil  EndStampSession - Input');
 
     const editMode = OptCMUtil.GetEditMode();
     if (editMode === NvConstant.EditState.Stamp) {
@@ -1299,7 +1282,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log('O.Opt EndStampSession - Output: done');
+    LogUtil.Debug('= O.OptUtil  EndStampSession - Output: done');
   }
 
   /**
@@ -1308,11 +1291,11 @@ class OptUtil {
    * @returns True if snapping should be overridden, false otherwise
    */
   OverrideSnaps(inputEvent) {
-    T3Util.Log('O.Opt OverrideSnaps - Input:', inputEvent);
+    LogUtil.Debug('= O.OptUtil  OverrideSnaps - Input:', inputEvent);
 
     // Early return if no event provided
     if (inputEvent == null) {
-      T3Util.Log('O.Opt OverrideSnaps - Output: false (no event)');
+      LogUtil.Debug('= O.OptUtil  OverrideSnaps - Output: false (no event)');
       return false;
     }
 
@@ -1323,13 +1306,12 @@ class OptUtil {
       altKeyIsPressed = inputEvent.gesture.srcEvent.altKey;
     }
 
-    T3Util.Log('O.Opt OverrideSnaps - Output:', altKeyIsPressed);
+    LogUtil.Debug('= O.OptUtil  OverrideSnaps - Output:', altKeyIsPressed);
     return altKeyIsPressed === true;
   }
 
-
   ExceptionCleanup(error) {
-    T3Util.Log('O.Opt ExceptionCleanup - Input:', error);
+    LogUtil.Debug('= O.OptUtil  ExceptionCleanup - Input:', error);
 
     try {
       TextUtil.TEUnregisterEvents();
@@ -1339,60 +1321,56 @@ class OptUtil {
       UIUtil.ResizeSVGDocument();
       SvgUtil.RenderAllSVGObjects();
 
-      const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
-      const selectedList = DataUtil.GetObjectPtr(this.selectObjsBlockId, false);
+      const sessionData = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
+      const selectedList = ObjectUtil.GetObjectPtr(this.selectObjsBlockId, false);
       SelectUtil.UpdateSelectionAttributes(selectedList);
 
-      T3Util.Log('O.Opt ExceptionCleanup - Output: done');
+      LogUtil.Debug('= O.OptUtil  ExceptionCleanup - Output: done');
     } catch (cleanupError) {
-      console.error('O.Opt ExceptionCleanup - Cleanup Error:', cleanupError);
       throw cleanupError;
     }
-
-    throw error;
   }
 
   RemoveNotVisible(objects) {
-    T3Util.Log('O.Opt RemoveNotVisible - Input:', objects);
+    LogUtil.Debug('= O.OptUtil  RemoveNotVisible - Input:', objects);
 
     const notVisibleFlag = NvConstant.ObjFlags.NotVisible;
     const visibleObjects = [];
 
     for (let i = 0; i < objects.length; i++) {
       const objectId = objects[i];
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
 
       if (object && !(object.flags & notVisibleFlag)) {
         visibleObjects.push(objectId);
       }
     }
 
-    T3Util.Log('O.Opt RemoveNotVisible - Output:', visibleObjects);
+    LogUtil.Debug('= O.OptUtil  RemoveNotVisible - Output:', visibleObjects);
     return visibleObjects;
   }
 
-
   AllowAddToRecent(item) {
-    T3Util.Log('O.Opt allowAddToRecent - Input:', item);
+    LogUtil.Debug('= O.OptUtil  allowAddToRecent - Input:', item);
     if (item) {
       if (item.flags & NvConstant.ObjFlags.TextOnly) {
-        T3Util.Log('O.Opt allowAddToRecent - Output:', false);
+        LogUtil.Debug('= O.OptUtil  allowAddToRecent - Output:', false);
         return false;
       }
     }
-    T3Util.Log('O.Opt allowAddToRecent - Output:', true);
+    LogUtil.Debug('= O.OptUtil  allowAddToRecent - Output:', true);
     return true;
   }
 
   UnbindDragDropOrStamp() {
-    T3Util.Log('O.Opt UnbindDragDropOrStamp - Input: No parameters');
+    LogUtil.Debug('= O.OptUtil  UnbindDragDropOrStamp - Input: No parameters');
 
     if (T3Gv.opt.mainAppHammer) {
       T3Gv.opt.mainAppHammer.dispose();
       T3Gv.opt.mainAppHammer = null;
     }
 
-    T3Util.Log('O.Opt UnbindDragDropOrStamp - Output: DragDrop or Stamp unbound');
+    LogUtil.Debug('= O.OptUtil  UnbindDragDropOrStamp - Output: DragDrop or Stamp unbound');
   }
 
   /**
@@ -1406,7 +1384,7 @@ class OptUtil {
    */
   GetTargetNode(objectId) {
     // Get the object from the object store
-    const object = DataUtil.GetObjectPtr(objectId, false);
+    const object = ObjectUtil.GetObjectPtr(objectId, false);
 
     // If the object exists and has hooks, recursively follow the first hook
     if (object && object.hooks.length) {
@@ -1419,7 +1397,7 @@ class OptUtil {
   }
 
   UpdateLinks() {
-    T3Util.Log("O.Opt UpdateLinks - Input: No parameters");
+    LogUtil.Debug("= O.OptUtil  UpdateLinks - Input: No parameters");
 
     let objectFrame;
     let linkCount;
@@ -1457,13 +1435,13 @@ class OptUtil {
     ];
     let moveBounds = { x: 0, y: 0, width: 0, height: 0 };
     const constantData = OptConstant;
-    let links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    let links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
     let isLinksModified = false;
 
     // Early return if no links exist
     if (links == null) {
       HookUtil.UpdateLineHops(true);
-      T3Util.Log("O.Opt UpdateLinks - Output: 1 (No links found)");
+      LogUtil.Debug("= O.OptUtil  UpdateLinks - Output: 1 (No links found)");
       return 1;
     }
 
@@ -1471,7 +1449,7 @@ class OptUtil {
     HookUtil.FixAnyCircularHooks();
 
     // Get session data and save original snap setting
-    const sessionData = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
     const originalSnapEnabled = T3Gv.docUtil.docConfig.enableSnap;
 
     // Disable snapping during link updates
@@ -1483,7 +1461,7 @@ class OptUtil {
       if (links[linkIndex].flags & DSConstant.LinkFlags.DeleteTarget) {
         // Ensure we're working with a modifiable copy of links
         if (!isLinksModified) {
-          links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+          links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
           isLinksModified = true;
         }
 
@@ -1494,10 +1472,10 @@ class OptUtil {
       else if (
         links[linkIndex].flags & DSConstant.LinkFlags.DeleteLink ||
         links[linkIndex].flagss & DSConstant.LinkFlags.Break ||
-        (hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
+        (hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
       ) {
         if (!isLinksModified) {
-          links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+          links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
           isLinksModified = true;
         }
 
@@ -1532,7 +1510,7 @@ class OptUtil {
         linkHasMoveFlag = links[linkIndex].flags & DSConstant.LinkFlags.Move;
 
         if (linkHasMoveFlag) {
-          targetObject = DataUtil.GetObjectPtr(links[linkIndex].targetid, false);
+          targetObject = ObjectUtil.GetObjectPtr(links[linkIndex].targetid, false);
 
           // If tree top is found, mark it for movement
           if (/*OptAhUtil.FindTreeTop(targetObject, linkHasMoveFlag, treeTopInfo)*/ 1 &&
@@ -1558,11 +1536,11 @@ class OptUtil {
         if (links[linkIndex].flags & DSConstant.LinkFlags.Move) {
           // Ensure we're working with a modifiable copy of links
           if (!isLinksModified) {
-            links = DataUtil.GetObjectPtr(this.linksBlockId, true);
+            links = ObjectUtil.GetObjectPtr(this.linksBlockId, true);
             isLinksModified = true;
           }
 
-          hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, true);
+          hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, true);
 
           // If hook object is missing, mark link for deletion
           if (hookObject == null) {
@@ -1586,7 +1564,7 @@ class OptUtil {
             // Set hook object to not be visible when linked
             hookObject.LinkNotVisible();
 
-            hookTargetObject = DataUtil.GetObjectPtr(links[linkIndex].targetid, false);
+            hookTargetObject = ObjectUtil.GetObjectPtr(links[linkIndex].targetid, false);
 
             // Special handling for multiplicity objects
             if (hookObject.objecttype === NvConstant.FNObjectTypes.Multiplicity) {
@@ -1705,7 +1683,7 @@ class OptUtil {
                     needsBoundsCheck = true;
                     targetNodeId = this.GetTargetNode(links[linkIndex].hookid);
 
-                    targetObject = DataUtil.GetObjectPtr(targetNodeId, false);
+                    targetObject = ObjectUtil.GetObjectPtr(targetNodeId, false);
                     if (targetObject) {
                       targetObject.flags = Utils2.SetFlag(
                         targetObject.flags,
@@ -1750,7 +1728,7 @@ class OptUtil {
         else if (
           links[linkIndex].flags & DSConstant.LinkFlags.DeleteLink ||
           links[linkIndex].flagss & DSConstant.LinkFlags.Break ||
-          (hookObject = DataUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
+          (hookObject = ObjectUtil.GetObjectPtr(links[linkIndex].hookid, false)) == null
         ) {
           HookUtil.DeleteLink(
             links,
@@ -1773,7 +1751,7 @@ class OptUtil {
       linkCount = zList.length;
 
       for (linkIndex = 0; linkIndex < linkCount; linkIndex++) {
-        currentObject = DataUtil.GetObjectPtr(zList[linkIndex], false);
+        currentObject = ObjectUtil.GetObjectPtr(zList[linkIndex], false);
 
         if (currentObject &&
           currentObject.flags & NvConstant.ObjFlags.Bounds) {
@@ -1833,12 +1811,12 @@ class OptUtil {
     // Restore original snap setting
     T3Gv.docUtil.docConfig.enableSnap = originalSnapEnabled;
 
-    T3Util.Log("O.Opt UpdateLinks - Output: 0 (Success)");
+    LogUtil.Debug("= O.OptUtil  UpdateLinks - Output: 0 (Success)");
     return 0;
   }
 
   CalcAllObjectEnclosingRect(shouldUseEdges, fitOptions?) {
-    T3Util.Log("O.Opt CalcAllObjectEnclosingRect - Input:", { shouldUseEdges, fitOptions });
+    LogUtil.Debug("= O.OptUtil  CalcAllObjectEnclosingRect - Input:", { shouldUseEdges, fitOptions });
 
     // Get all visible objects and their count
     const visibleObjects = LayerUtil.VisibleZList();
@@ -1849,7 +1827,7 @@ class OptUtil {
     let heightPadding = 0;
 
     // Get layers manager to check layer settings
-    const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
 
     // Initialize empty enclosing rectangle
     let enclosingRect = {
@@ -1861,7 +1839,7 @@ class OptUtil {
 
     // If no visible objects, return empty rect
     if (visibleObjectCount === 0) {
-      T3Util.Log("O.Opt CalcAllObjectEnclosingRect - Output:", enclosingRect);
+      LogUtil.Debug("= O.OptUtil  CalcAllObjectEnclosingRect - Output:", enclosingRect);
       return enclosingRect;
     }
 
@@ -1885,11 +1863,11 @@ class OptUtil {
           heightPadding = 25;
 
           const objectsInEdgeLayer = objectsFromEdgeLayers.length;
-          const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+          const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
           // Check for annotations near the bottom of the document
           for (let i = 0; i < objectsInEdgeLayer; i++) {
-            objectData = DataUtil.GetObjectPtr(objectsFromEdgeLayers[i], false);
+            objectData = ObjectUtil.GetObjectPtr(objectsFromEdgeLayers[i], false);
             if (objectData &&
               objectData.objecttype === NvConstant.FNObjectTypes.Annotation &&
               objectData.Frame.y + objectData.Frame.height >= sessionData.dim.y - OptConstant.Common.AnnoHotDist) {
@@ -1946,12 +1924,12 @@ class OptUtil {
       enclosingRect.height += heightPadding;
     }
 
-    T3Util.Log("O.Opt CalcAllObjectEnclosingRect - Output:", enclosingRect);
+    LogUtil.Debug("= O.OptUtil  CalcAllObjectEnclosingRect - Output:", enclosingRect);
     return enclosingRect;
   }
 
   ScrollObjectIntoView(objectId, shouldCenterObject, customRect?) {
-    T3Util.Log("O.Opt ScrollObjectIntoView - Input:", { objectId, shouldCenterObject, customRect });
+    LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Input:", { objectId, shouldCenterObject, customRect });
 
     let objectRect;
 
@@ -1962,7 +1940,7 @@ class OptUtil {
 
     // Exit if no valid object ID
     if (objectId == -1) {
-      T3Util.Log("O.Opt ScrollObjectIntoView - Output: No valid object ID");
+      LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: No valid object ID");
       return;
     }
 
@@ -1970,9 +1948,9 @@ class OptUtil {
     if (customRect) {
       objectRect = customRect;
     } else {
-      const object = DataUtil.GetObjectPtr(objectId, false);
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
       if (object == null) {
-        T3Util.Log("O.Opt ScrollObjectIntoView - Output: Object not found");
+        LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: Object not found");
         return;
       }
       objectRect = object.r;
@@ -1989,7 +1967,7 @@ class OptUtil {
 
     // Check if object is already fully visible and we don't need to center it
     if (Utils2.IsRectangleFullyEnclosed(visibleRect, objectRect) && !shouldCenterObject) {
-      T3Util.Log("O.Opt ScrollObjectIntoView - Output: Object already visible");
+      LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: Object already visible");
       return;
     }
 
@@ -1998,7 +1976,7 @@ class OptUtil {
     // Handle oversized objects
     if (objectRect.width >= visibleRect.width || objectRect.height >= visibleRect.height) {
       if (Utils2.UnionRect(visibleRect, objectRect, visibleRect) && !shouldCenterObject) {
-        T3Util.Log("O.Opt ScrollObjectIntoView - Output: Oversized object, no scroll needed");
+        LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: Oversized object, no scroll needed");
         return;
       }
     }
@@ -2016,7 +1994,7 @@ class OptUtil {
       scrollY = (visibleRect.y - offsetY) * docInfo.docToScreenScale;
 
       T3Gv.docUtil.SetScroll(scrollX, scrollY);
-      T3Util.Log("O.Opt ScrollObjectIntoView - Output: Centered object", { scrollX, scrollY });
+      LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: Centered object", { scrollX, scrollY });
       return;
     }
 
@@ -2059,11 +2037,11 @@ class OptUtil {
     scrollY *= docInfo.docToScreenScale;
 
     T3Gv.docUtil.SetScroll(scrollX, scrollY);
-    T3Util.Log("O.Opt ScrollObjectIntoView - Output: Scrolled to make object visible", { scrollX, scrollY });
+    LogUtil.Debug("= O.OptUtil  ScrollObjectIntoView - Output: Scrolled to make object visible", { scrollX, scrollY });
   }
 
   SetControlDragMode(controlElement) {
-    T3Util.Log("O.Opt SetControlDragMode - Input:", controlElement);
+    LogUtil.Debug("= O.OptUtil  SetControlDragMode - Input:", controlElement);
 
     // Get the appropriate cursor type from the element
     const cursorType = controlElement.GetCursor();
@@ -2071,11 +2049,11 @@ class OptUtil {
     // Set the edit mode to DRAGCONTROL with the element's cursor type
     OptCMUtil.SetEditMode(NvConstant.EditState.DragControl, cursorType);
 
-    T3Util.Log("O.Opt SetControlDragMode - Output: Mode set to DRAGCONTROL with cursor type:", cursorType);
+    LogUtil.Debug("= O.OptUtil  SetControlDragMode - Output: Mode set to DRAGCONTROL with cursor type:", cursorType);
   }
 
   UnbindShapeMoveHammerEvents() {
-    T3Util.Log('O.Opt UnbindShapeMoveHammerEvents - Input: No parameters');
+    LogUtil.Debug('= O.OptUtil  UnbindShapeMoveHammerEvents - Input: No parameters');
 
     if (T3Gv.opt.WorkAreaHammer) {
       T3Gv.opt.WorkAreaHammer.off('drag');
@@ -2083,11 +2061,11 @@ class OptUtil {
       T3Gv.opt.WorkAreaHammer.off('mousemove');
     }
 
-    T3Util.Log('O.Opt UnbindShapeMoveHammerEvents - Output: Events unbound');
+    LogUtil.Debug('= O.OptUtil  UnbindShapeMoveHammerEvents - Output: Events unbound');
   }
 
   IsConnectorEndShape(objectData, connectorObject, resultContainer) {
-    T3Util.Log("O.Opt IsConnectorEndShape - Input:", { objectData, connectorObject, resultContainer });
+    LogUtil.Debug("= O.OptUtil  IsConnectorEndShape - Input:", { objectData, connectorObject, resultContainer });
 
     let parentConnector;
 
@@ -2100,13 +2078,13 @@ class OptUtil {
       (
         // Get connector object if not provided
         (connectorObject === null &&
-          (connectorObject = DataUtil.GetObjectPtr(objectData.hooks[0].objid, false))),
+          (connectorObject = ObjectUtil.GetObjectPtr(objectData.hooks[0].objid, false))),
 
         // Check if resultContainer exists and if connector object has valid hooks and parent
         resultContainer &&
         connectorObject &&
         connectorObject.hooks.length &&
-        (parentConnector = DataUtil.GetObjectPtr(connectorObject.hooks[0].objid, false)) &&
+        (parentConnector = ObjectUtil.GetObjectPtr(connectorObject.hooks[0].objid, false)) &&
         parentConnector.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector
       )
     );
@@ -2126,19 +2104,19 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt IsConnectorEndShape - Output:", isConnectorEnd);
+    LogUtil.Debug("= O.OptUtil  IsConnectorEndShape - Output:", isConnectorEnd);
     return isConnectorEnd;
   }
 
   IsGenogramPartner(objectData, resultContainer) {
-    T3Util.Log("O.Opt IsGenogramPartner - Input:", { objectData, resultContainer });
+    LogUtil.Debug("= O.OptUtil  IsGenogramPartner - Input:", { objectData, resultContainer });
 
     let connectedObject;
     let childArrayID;
 
     // Case 1: Check if object has hooks connecting to a genogram connector
     if (objectData && objectData.hooks.length) {
-      connectedObject = DataUtil.GetObjectPtr(objectData.hooks[0].objid, false);
+      connectedObject = ObjectUtil.GetObjectPtr(objectData.hooks[0].objid, false);
 
       if (connectedObject &&
         connectedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
@@ -2146,28 +2124,28 @@ class OptUtil {
         // Check if it's a genogram connector
         if (connectedObject.IsGenoConnector()) {
           resultContainer.id = objectData.hooks[0].objid;
-          T3Util.Log("O.Opt IsGenogramPartner - Output: true (genogram connector found)");
+          LogUtil.Debug("= O.OptUtil  IsGenogramPartner - Output: true (genogram connector found)");
           return true;
         }
       }
     }
     // Case 2: Check if object has a child array with a genogram connector
     else if ((childArrayID = this.FindChildArray(objectData.BlockID, -1)) >= 0 &&
-      (connectedObject = DataUtil.GetObjectPtr(childArrayID, false)).IsGenoConnector()) {
+      (connectedObject = ObjectUtil.GetObjectPtr(childArrayID, false)).IsGenoConnector()) {
       resultContainer.id = childArrayID;
-      T3Util.Log("O.Opt IsGenogramPartner - Output: true (child genogram connector found)");
+      LogUtil.Debug("= O.OptUtil  IsGenogramPartner - Output: true (child genogram connector found)");
       return true;
     }
 
-    T3Util.Log("O.Opt IsGenogramPartner - Output: false");
+    LogUtil.Debug("= O.OptUtil  IsGenogramPartner - Output: false");
     return false;
   }
 
   FindChildArray(objectId: number, excludeConnectorId?: number): number {
-    T3Util.Log("O.Opt FindChildArray - Input:", { objectId, excludeConnectorId });
+    LogUtil.Debug("= O.OptUtil  FindChildArray - Input:", { objectId, excludeConnectorId });
 
     // Get the links block
-    const links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
 
     // Find the starting link index for this object
     const linkIndex = OptCMUtil.FindLink(links, objectId, true);
@@ -2184,11 +2162,11 @@ class OptUtil {
 
         // Check if this is not the excluded connector and is a connector
         if (hookId !== excludeConnectorId) {
-          const hookObject = DataUtil.GetObjectPtr(hookId, false);
+          const hookObject = ObjectUtil.GetObjectPtr(hookId, false);
 
           if (hookObject &&
             hookObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
-            T3Util.Log("O.Opt FindChildArray - Output: Found connector:", hookId);
+            LogUtil.Debug("= O.OptUtil  FindChildArray - Output: Found connector:", hookId);
             return hookId;
           }
         }
@@ -2197,10 +2175,9 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt FindChildArray - Output: No connector found (-1)");
+    LogUtil.Debug("= O.OptUtil  FindChildArray - Output: No connector found (-1)");
     return -1;
   }
-
 
   /**
      * Checks if enhanced snapping should be enabled (shift key pressed)
@@ -2208,10 +2185,10 @@ class OptUtil {
      * @returns True if shift key is pressed, false otherwise
      */
   EnhanceSnaps(event) {
-    T3Util.Log("O.Opt EnhanceSnaps - Input:", event);
+    LogUtil.Debug("= O.OptUtil  EnhanceSnaps - Input:", event);
 
     if (event == null) {
-      T3Util.Log("O.Opt EnhanceSnaps - Output: false (null event)");
+      LogUtil.Debug("= O.OptUtil  EnhanceSnaps - Output: false (null event)");
       return false;
     }
 
@@ -2221,7 +2198,7 @@ class OptUtil {
       isShiftKeyPressed = event.gesture.srcEvent.shiftKey;
     }
 
-    T3Util.Log("O.Opt EnhanceSnaps - Output:", isShiftKeyPressed);
+    LogUtil.Debug("= O.OptUtil  EnhanceSnaps - Output:", isShiftKeyPressed);
     return isShiftKeyPressed === true;
   }
 
@@ -2232,7 +2209,7 @@ class OptUtil {
      * @param newY - New Y coordinate
      */
   SetShapeOriginNoDirty(objectId, newX, newY) {
-    T3Util.Log("O.Opt SetShapeOriginNoDirty - Input:", { objectId, newX, newY });
+    LogUtil.Debug("= O.OptUtil  SetShapeOriginNoDirty - Input:", { objectId, newX, newY });
 
     let originalPosition = { x: 0, y: 0 };
     let objectData = T3Gv.stdObj.PreserveBlock(objectId).Data;
@@ -2247,7 +2224,7 @@ class OptUtil {
       OptCMUtil.SetLinkFlag(objectId, DSConstant.LinkFlags.Move);
     }
 
-    T3Util.Log("O.Opt SetShapeOriginNoDirty - Output: Shape origin updated");
+    LogUtil.Debug("= O.OptUtil  SetShapeOriginNoDirty - Output: Shape origin updated");
   }
 
   /**
@@ -2258,7 +2235,7 @@ class OptUtil {
      * @returns The rotated point
      */
   RotatePointAroundPoint(centerPoint, targetPoint, angleRadians) {
-    T3Util.Log("O.Opt RotatePointAroundPoint - Input:", { centerPoint, targetPoint, angleRadians });
+    LogUtil.Debug("= O.OptUtil  RotatePointAroundPoint - Input:", { centerPoint, targetPoint, angleRadians });
 
     // Create a new point to avoid modifying original
     const rotatedPoint = {
@@ -2282,7 +2259,7 @@ class OptUtil {
     rotatedPoint.x = newX + centerPoint.x;
     rotatedPoint.y = newY + centerPoint.y;
 
-    T3Util.Log("O.Opt RotatePointAroundPoint - Output:", rotatedPoint);
+    LogUtil.Debug("= O.OptUtil  RotatePointAroundPoint - Output:", rotatedPoint);
     return rotatedPoint;
   }
 
@@ -2293,7 +2270,7 @@ class OptUtil {
    * @param newDimensions - New document dimensions
    */
   UpdateEdgeLayers(objectsToExclude, originalDimensions, newDimensions) {
-    T3Util.Log("O.Opt UpdateEdgeLayers - Input:", { objectsToExclude, originalDimensions, newDimensions });
+    LogUtil.Debug("= O.OptUtil  UpdateEdgeLayers - Input:", { objectsToExclude, originalDimensions, newDimensions });
 
     let layerIndex, objectList, objectCount, objectIndex, objectId, currentObject;
     let needsLeftEdge, needsTopEdge, needsRightEdge, needsBottomEdge;
@@ -2307,7 +2284,7 @@ class OptUtil {
     const usableHeight = originalDimensions.y - 2 * edgeAnnotationDistance;
 
     // Get layers manager from the object store
-    const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
     const layers = layersManager.layers;
     const numberOfLayers = layersManager.nlayers;
 
@@ -2334,7 +2311,7 @@ class OptUtil {
           }
 
           // Get the object and check if it needs edge updates
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
           if (currentObject) {
             // Determine which edges the object needs
             needsLeftEdge = currentObject.Frame.x < leftEdgeOffset;
@@ -2360,22 +2337,22 @@ class OptUtil {
     // Restore the original dirty list
     this.dirtyList = savedDirtyList;
 
-    T3Util.Log("O.Opt UpdateEdgeLayers - Output: Edge layers updated, needsRedraw:", needsRedraw);
+    LogUtil.Debug("= O.OptUtil  UpdateEdgeLayers - Output: Edge layers updated, needsRedraw:", needsRedraw);
   }
 
   /**
      * Sets link flags on filled closed polylines
      * @param objectId - Optional ID of the object to process
      */
-  SetLinkFlagsOnFilledClosedPolylines(objectId) {
-    T3Util.Log("O.Opt SetLinkFlagsOnFilledClosedPolylines - Input:", objectId);
+  SetLinkFlagsOnFilledClosedPolylines(objectId?) {
+    LogUtil.Debug("= O.OptUtil  SetLinkFlagsOnFilledClosedPolylines - Input:", objectId);
 
     let object = null;
     let moveObject = null;
 
     // Handle the specific object if provided
     if (objectId) {
-      object = DataUtil.GetObjectPtr(objectId, false);
+      object = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Set flags if it's a closed polyline
       if (object &&
@@ -2393,13 +2370,13 @@ class OptUtil {
     // Process objects in the move list
     if (this.moveList && this.moveList.length) {
       for (let index = 0; index < this.moveList.length; index++) {
-        moveObject = DataUtil.GetObjectPtr(this.moveList[index], true);
+        moveObject = ObjectUtil.GetObjectPtr(this.moveList[index], true);
 
         // Check if the object has hooks
         if (moveObject && moveObject.hooks.length > 0) {
           // Process each hook
           for (let hookIndex = 0; hookIndex < moveObject.hooks.length; hookIndex++) {
-            const hookedObject = DataUtil.GetObjectPtr(moveObject.hooks[hookIndex].objid, false);
+            const hookedObject = ObjectUtil.GetObjectPtr(moveObject.hooks[hookIndex].objid, false);
 
             // Set flags if the hooked object is a filled closed polyline
             if (hookedObject &&
@@ -2419,7 +2396,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt SetLinkFlagsOnFilledClosedPolylines - Output: Link flags updated");
+    LogUtil.Debug("= O.OptUtil  SetLinkFlagsOnFilledClosedPolylines - Output: Link flags updated");
   }
 
   /**
@@ -2428,7 +2405,7 @@ class OptUtil {
    * @returns 0 on successful completion
    */
   SetShapeR(shapeObject) {
-    T3Util.Log("O.Opt SetShapeR - Input:", { shapeObjectId: shapeObject.BlockID });
+    LogUtil.Debug("= O.OptUtil  SetShapeR - Input:", { shapeObjectId: shapeObject.BlockID });
 
     let effectSettings;
     let outlineThickness;
@@ -2526,7 +2503,7 @@ class OptUtil {
       Utils2.CopyRect(shapeObject.Frame, shapeObject.r);
 
       // Get polygon points for rotation calculation
-      T3Util.Log("O.Opt SetShapeR - Getting poly points for rotation");
+      LogUtil.Debug("= O.OptUtil  SetShapeR - Getting poly points for rotation");
       points = new Instance.Shape.BaseDrawObject(shapeObject).GetPolyPoints(
         OptConstant.Common.MaxPolyPoints,
         false,
@@ -2548,7 +2525,7 @@ class OptUtil {
       Utils2.CopyRect(shapeObject.Frame, originalFrame);
     }
 
-    T3Util.Log("O.Opt SetShapeR - Output: Bounding rectangle calculated", shapeObject.r);
+    LogUtil.Debug("= O.OptUtil  SetShapeR - Output: Bounding rectangle calculated", shapeObject.r);
     return 0;
   }
 
@@ -2561,7 +2538,7 @@ class OptUtil {
      * @returns The ID of the found child or -1
      */
   FindChildArrayByIndex(parentId, resultInfo, linksList, baseClass?) {
-    T3Util.Log("O.Opt FindChildArrayByIndex - Input:", {
+    LogUtil.Debug("= O.OptUtil  FindChildArrayByIndex - Input:", {
       parentId,
       resultInfo,
       hasLinksList: !!linksList,
@@ -2571,7 +2548,7 @@ class OptUtil {
     let linkIndex, hookId, hookObject;
 
     // Use provided links list or get the default one
-    const links = linksList || DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = linksList || ObjectUtil.GetObjectPtr(this.linksBlockId, false);
 
     // Use provided base class or default to connector
     baseClass = baseClass || OptConstant.DrawObjectBaseClass.Connector;
@@ -2585,7 +2562,7 @@ class OptUtil {
         // Check if this link is after the last found index and has the correct base class
         if (linkIndex > resultInfo.lindex &&
           (hookId = links[linkIndex].hookid,
-            (hookObject = DataUtil.GetObjectPtr(hookId, false)) &&
+            (hookObject = ObjectUtil.GetObjectPtr(hookId, false)) &&
             hookObject.DrawingObjectBaseClass === baseClass)) {
 
           // Update result information
@@ -2593,13 +2570,13 @@ class OptUtil {
           resultInfo.id = hookId;
           resultInfo.hookpt = hookObject.hooks[0].hookpt;
 
-          T3Util.Log("O.Opt FindChildArrayByIndex - Output: Found child", hookId);
+          LogUtil.Debug("= O.OptUtil  FindChildArrayByIndex - Output: Found child", hookId);
           return hookId;
         }
       }
     }
 
-    T3Util.Log("O.Opt FindChildArrayByIndex - Output: No child found (-1)");
+    LogUtil.Debug("= O.OptUtil  FindChildArrayByIndex - Output: No child found (-1)");
     return -1;
   }
 
@@ -2610,13 +2587,13 @@ class OptUtil {
    * @returns 0 on success, 1 on failure
    */
   SetObjectFrame(objectId, newFrame) {
-    T3Util.Log("O.Opt SetObjectFrame - Input:", { objectId, newFrame });
+    LogUtil.Debug("= O.OptUtil  SetObjectFrame - Input:", { objectId, newFrame });
 
     // Get a preserved copy of the object for modification
-    const targetObject = DataUtil.GetObjectPtr(objectId, true);
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, true);
 
     if (targetObject == null) {
-      T3Util.Log("O.Opt SetObjectFrame - Output: Failed to get object (1)");
+      LogUtil.Debug("= O.OptUtil  SetObjectFrame - Output: Failed to get object (1)");
       return 1;
     }
 
@@ -2630,7 +2607,7 @@ class OptUtil {
     // Update the object's frame
     targetObject.UpdateFrame(newFrame);
 
-    T3Util.Log("O.Opt SetObjectFrame - Output: Frame updated successfully (0)");
+    LogUtil.Debug("= O.OptUtil  SetObjectFrame - Output: Frame updated successfully (0)");
     return 0;
   }
 
@@ -2640,7 +2617,7 @@ class OptUtil {
     * @param attributes - Object containing attributes to set
     */
   SetObjectAttributes(objectId, attributes) {
-    T3Util.Log("O.Opt SetObjectAttributes - Input:", { objectId, attributes });
+    LogUtil.Debug("= O.OptUtil  SetObjectAttributes - Input:", { objectId, attributes });
 
     // Get a preserved copy of the object for modification
     const objectBlock = T3Gv.stdObj.PreserveBlock(objectId);
@@ -2648,16 +2625,16 @@ class OptUtil {
     // Apply the properties to the object
     this.ApplyProperties(attributes, objectBlock.Data);
 
-    T3Util.Log("O.Opt SetObjectAttributes - Output: Attributes applied");
+    LogUtil.Debug("= O.OptUtil  SetObjectAttributes - Output: Attributes applied");
   }
 
   /**
- * Recursively applies properties from one object to another
- * @param sourceProperties - Source object containing properties to copy
- * @param targetObject - Target object to receive the properties
- */
+  * Recursively applies properties from one object to another
+  * @param sourceProperties - Source object containing properties to copy
+  * @param targetObject - Target object to receive the properties
+  */
   ApplyProperties(sourceProperties, targetObject) {
-    T3Util.Log("O.Opt ApplyProperties - Input:", {
+    LogUtil.Debug("= O.OptUtil  ApplyProperties - Input:", {
       sourceProperties: Object.keys(sourceProperties),
       targetObject: targetObject ? targetObject.constructor.name : null
     });
@@ -2719,7 +2696,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt ApplyProperties - Output: Properties applied");
+    LogUtil.Debug("= O.OptUtil  ApplyProperties - Output: Properties applied");
   }
 
   /**
@@ -2728,7 +2705,7 @@ class OptUtil {
      * @returns The calculated drawing scale value
      */
   GetDrawingScale(drawingScale) {
-    T3Util.Log("O.Opt GetDrawingScale - Input:", drawingScale);
+    LogUtil.Debug("= O.OptUtil  GetDrawingScale - Input:", drawingScale);
 
     const units = NvConstant.RulerUnit;
     let majorScale = drawingScale.majorScale;
@@ -2754,7 +2731,7 @@ class OptUtil {
     // Calculate final scale
     const finalScale = majorScale * (OptConstant.Common.DefaultRulerMajor / majorUnit);
 
-    T3Util.Log("O.Opt GetDrawingScale - Output:", finalScale);
+    LogUtil.Debug("= O.OptUtil  GetDrawingScale - Output:", finalScale);
     return finalScale;
   }
 
@@ -2765,7 +2742,7 @@ class OptUtil {
    * @returns The counter-clockwise angle in radians
    */
   GetCounterClockwiseAngleBetween2Points(startPoint, endPoint) {
-    T3Util.Log("O.Opt GetCounterClockwiseAngleBetween2Points - Input:", { startPoint, endPoint });
+    LogUtil.Debug("= O.OptUtil  GetCounterClockwiseAngleBetween2Points - Input:", { startPoint, endPoint });
 
     const PI = NvConstant.Geometry.PI;
 
@@ -2791,7 +2768,7 @@ class OptUtil {
       angle += 2 * PI;
     }
 
-    T3Util.Log("O.Opt GetCounterClockwiseAngleBetween2Points - Output:", angle);
+    LogUtil.Debug("= O.OptUtil  GetCounterClockwiseAngleBetween2Points - Output:", angle);
     return angle;
   }
 
@@ -2799,7 +2776,7 @@ class OptUtil {
    * Reverts to the previous edit mode from the edit mode history stack
    */
   UndoEditMode() {
-    T3Util.Log("O.Opt UndoEditMode - Input: No parameters");
+    LogUtil.Debug("= O.OptUtil  UndoEditMode - Input: No parameters");
 
     // Get the edit mode history list or initialize empty array if it doesn't exist
     const editModeHistory = this.editModeList || [];
@@ -2816,7 +2793,7 @@ class OptUtil {
       OptCMUtil.SetEditMode(previousMode.mode, previousMode.cursor, false, true);
     }
 
-    T3Util.Log("O.Opt UndoEditMode - Output: Previous edit mode restored");
+    LogUtil.Debug("= O.OptUtil  UndoEditMode - Output: Previous edit mode restored");
   }
 
   /**
@@ -2826,7 +2803,7 @@ class OptUtil {
      * @returns True if the point intersects with the line, false otherwise
      */
   LineCheckPoint(lineObject, point) {
-    T3Util.Log("O.Opt LineCheckPoint - Input:", { lineObject: lineObject.BlockID, point });
+    LogUtil.Debug("= O.OptUtil  LineCheckPoint - Input:", { lineObject: lineObject.BlockID, point });
 
     // Create a copy of the point to avoid modifying the original
     const testPoint = Utils1.DeepCopy(point);
@@ -2839,7 +2816,7 @@ class OptUtil {
     // Test if the point intersects with the line, considering line thickness
     const result = Utils3.LineDStyleHit(linePoints, testPoint, lineObject.StyleRecord.Line.Thickness, 0, 0) !== 0;
 
-    T3Util.Log("O.Opt LineCheckPoint - Output:", result);
+    LogUtil.Debug("= O.OptUtil  LineCheckPoint - Output:", result);
     return result;
   }
 
@@ -2976,7 +2953,7 @@ class OptUtil {
    * @returns True if the point intersects with the arc, false otherwise
    */
   ArcCheckPoint(drawingObject, testPoint) {
-    T3Util.Log("O.Opt ArcCheckPoint - Input:", { drawingObject: drawingObject.BlockID, testPoint });
+    LogUtil.Debug("= O.OptUtil  ArcCheckPoint - Input:", { drawingObject: drawingObject.BlockID, testPoint });
 
     // Get the polygon points that represent the arc
     const polyPoints = drawingObject.GetPolyPoints(
@@ -2996,7 +2973,7 @@ class OptUtil {
       null
     ) !== 0;
 
-    T3Util.Log("O.Opt ArcCheckPoint - Output:", isIntersecting);
+    LogUtil.Debug("= O.OptUtil  ArcCheckPoint - Output:", isIntersecting);
     return isIntersecting;
   }
 
@@ -3008,7 +2985,7 @@ class OptUtil {
      * @returns True if the lines intersect, false otherwise
      */
   LinesIntersect(line1, line2, resultPoint) {
-    T3Util.Log("O.Opt LinesIntersect - Input:", {
+    LogUtil.Debug("= O.OptUtil  LinesIntersect - Input:", {
       line1: { start: line1.StartPoint, end: line1.EndPoint },
       line2: { start: line2.StartPoint, end: line2.EndPoint }
     });
@@ -3040,11 +3017,11 @@ class OptUtil {
       resultPoint.x = tempPoint.x;
       resultPoint.y = tempPoint.y;
 
-      T3Util.Log("O.Opt LinesIntersect - Output: Lines intersect at", resultPoint);
+      LogUtil.Debug("= O.OptUtil  LinesIntersect - Output: Lines intersect at", resultPoint);
       return true;
     }
 
-    T3Util.Log("O.Opt LinesIntersect - Output: Lines do not intersect");
+    LogUtil.Debug("= O.OptUtil  LinesIntersect - Output: Lines do not intersect");
     return false;
   }
 
@@ -3057,7 +3034,7 @@ class OptUtil {
     * @returns The inflated polyline points
     */
   InflateLine(points, thickness, isClosed, isOutward) {
-    T3Util.Log("O.Opt InflateLine - Input:", {
+    LogUtil.Debug("= O.OptUtil  InflateLine - Input:", {
       pointCount: points.length,
       thickness,
       isClosed,
@@ -3080,7 +3057,7 @@ class OptUtil {
     function getDistance(point1, point2) {
       const deltaX = point2.x - point1.x;
       const deltaY = point2.y - point1.y;
-      return Utils2.sqrt(deltaX * deltaX + deltaY * deltaY);
+      return Utils2.Sqrt(deltaX * deltaX + deltaY * deltaY);
     }
 
     // Helper function to check if angles are close enough (within threshold)
@@ -3186,7 +3163,7 @@ class OptUtil {
     // If outline calculation failed or had to insert segments, fall back to scaling
     if (outlinePoints === null || segmentInfo.segmentsInserted) {
       const fallbackResult = scalePolygon(points, isOutward ? thickness : -thickness);
-      T3Util.Log("O.Opt InflateLine - Output (fallback to scaling):", fallbackResult.length);
+      LogUtil.Debug("= O.OptUtil  InflateLine - Output (fallback to scaling):", fallbackResult.length);
       return fallbackResult;
     }
 
@@ -3207,7 +3184,7 @@ class OptUtil {
     if (this.CalcPolyOutline(outlinePoints, thickness, isClosed, !isOutward, segmentOffset, segmentInfo) === null ||
       segmentInfo.segmentsInserted) {
       const fallbackResult = scalePolygon(points, isOutward ? thickness : -thickness);
-      T3Util.Log("O.Opt InflateLine - Output (fallback after verification):", fallbackResult.length);
+      LogUtil.Debug("= O.OptUtil  InflateLine - Output (fallback after verification):", fallbackResult.length);
       return fallbackResult;
     }
 
@@ -3273,7 +3250,7 @@ class OptUtil {
       outlinePoints = scalePolygon(points, isOutward ? thickness : -thickness);
     }
 
-    T3Util.Log("O.Opt InflateLine - Output:", outlinePoints.length);
+    LogUtil.Debug("= O.OptUtil  InflateLine - Output:", outlinePoints.length);
     return outlinePoints;
   }
 
@@ -3288,7 +3265,7 @@ class OptUtil {
      * @returns Array of points defining the outline or null if calculation failed
      */
   CalcPolyOutline(points, thickness, isClosed, isOutward, segmentStep, resultInfo) {
-    T3Util.Log("O.Opt CalcPolyOutline - Input:", {
+    LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Input:", {
       pointCount: points.length,
       thickness,
       isClosed,
@@ -3314,7 +3291,7 @@ class OptUtil {
 
     // Need at least two points to create an outline
     if (points.length < 2) {
-      T3Util.Log("O.Opt CalcPolyOutline - Output: Insufficient points (null)");
+      LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: Insufficient points (null)");
       return null;
     }
 
@@ -3344,7 +3321,7 @@ class OptUtil {
 
     // For zero thickness, just return a copy of the original points
     if (!thickness) {
-      T3Util.Log("O.Opt CalcPolyOutline - Output: No thickness, returning copy of input points");
+      LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: No thickness, returning copy of input points");
       return Utils1.DeepCopy(points);
     }
 
@@ -3410,7 +3387,7 @@ class OptUtil {
 
     // If no segments were created, return null
     if (!segmentCounter) {
-      T3Util.Log("O.Opt CalcPolyOutline - Output: No segments created (null)");
+      LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: No segments created (null)");
       return null;
     }
 
@@ -3418,7 +3395,7 @@ class OptUtil {
     if (segmentCounter == 1) {
       resultPoints.push(segments[0].clipSeg.start);
       resultPoints.push(segments[0].clipSeg.end);
-      T3Util.Log("O.Opt CalcPolyOutline - Output: Single segment outline created", resultPoints);
+      LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: Single segment outline created", resultPoints);
       return resultPoints;
     }
 
@@ -3433,7 +3410,7 @@ class OptUtil {
       }
 
       // Process segment intersection with previous segment
-      if (Utils1.compareAngle(segments[segmentIndex].angle, segments[lastSegmentIndex].angle) > 0) {
+      if (Utils1.CompareAngle(segments[segmentIndex].angle, segments[lastSegmentIndex].angle) > 0) {
         if (Utils1.CalcSegmentIntersect(
           segments[lastSegmentIndex].clipSeg.start,
           segments[lastSegmentIndex].extSeg.endExt,
@@ -3494,7 +3471,7 @@ class OptUtil {
       // Check for intersections with earlier segments
       else if (lastSegmentIndex > 0) {
         for (searchIndex = lastSegmentIndex - 1; searchIndex >= 0 && !foundIntersection && !(searchIndex < 0);) {
-          if (Utils1.isEmptySeg(segments[searchIndex].clipSeg)) {
+          if (Utils1.IsEmptySeg(segments[searchIndex].clipSeg)) {
             searchIndex--;
           } else {
             // If we're not at the last segment and segments are obtuse, break
@@ -3519,7 +3496,7 @@ class OptUtil {
             }
 
             // Special handling for last segment
-            if (Utils1.isEnd(segmentIndex, segments.length, isClosed) &&
+            if (Utils1.IsEnd(segmentIndex, segments.length, isClosed) &&
               Utils1.DeltaAngle(segments[segmentIndex].angle, segments[searchIndex].angle) > 0 &&
               Utils1.CalcSegmentIntersect(
                 segments[searchIndex].clipSeg.start,
@@ -3550,7 +3527,7 @@ class OptUtil {
         lastSegmentIndex = segmentIndex;
       }
       // Handle end segments
-      else if (Utils1.isEnd(segmentIndex, segments.length, isClosed)) {
+      else if (Utils1.IsEnd(segmentIndex, segments.length, isClosed)) {
         segments[lastSegmentIndex].clipSeg.end = Utils1.DeepCopy(segments[segmentIndex].extSeg.end);
         // Mark remaining segments as empty
         for (searchIndex = lastSegmentIndex + 1; searchIndex < segmentCounter;) {
@@ -3569,7 +3546,7 @@ class OptUtil {
 
       // Find first valid segment
       for (segmentIndex = 0; segmentIndex < segmentCounter; segmentIndex++) {
-        if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+        if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
           firstValidIndex = segmentIndex;
           break;
         }
@@ -3577,7 +3554,7 @@ class OptUtil {
 
       // Find last valid segment
       for (segmentIndex = segmentCounter - 1; segmentIndex >= 0; segmentIndex--) {
-        if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+        if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
           lastValidIndex = segmentIndex;
           break;
         }
@@ -3614,7 +3591,7 @@ class OptUtil {
           // Check for intersections with earlier segments
           else {
             for (searchIndex = lastSegmentIndex - 1; searchIndex > segmentIndex && !foundIntersection;) {
-              if (Utils1.isEmptySeg(segments[searchIndex].clipSeg)) {
+              if (Utils1.IsEmptySeg(segments[searchIndex].clipSeg)) {
                 searchIndex--;
               } else {
                 if (Utils1.AreSegmentsObtuse(segments, segmentCounter, segmentIndex, searchIndex)) {
@@ -3655,7 +3632,7 @@ class OptUtil {
 
     // Build final outline from valid segments
     for (segmentIndex = 0; segmentIndex < segmentCounter; segmentIndex++) {
-      if (!Utils1.isEmptySeg(segments[segmentIndex].clipSeg)) {
+      if (!Utils1.IsEmptySeg(segments[segmentIndex].clipSeg)) {
         // Add start point if it's not already the last point in our result
         if (resultPoints.length === 0 ||
           segments[segmentIndex].clipSeg.start.x != resultPoints[resultPoints.length - 1].x ||
@@ -3675,11 +3652,11 @@ class OptUtil {
 
     // Validate result
     if ((resultPoints.length < 2 && !isClosed) || (resultPoints.length < 3 && isClosed)) {
-      T3Util.Log("O.Opt CalcPolyOutline - Output: Insufficient output points (null)");
+      LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: Insufficient output points (null)");
       return null;
     }
 
-    T3Util.Log("O.Opt CalcPolyOutline - Output: Outline created with", resultPoints.length, "points");
+    LogUtil.Debug("= O.OptUtil  CalcPolyOutline - Output: Outline created with", resultPoints.length, "points");
     return resultPoints;
   }
 
@@ -3689,7 +3666,7 @@ class OptUtil {
      * @returns 1 for clockwise, -1 for counter-clockwise
      */
   GetPolygonWindingDirection(points) {
-    T3Util.Log("O.Opt GetPolygonWindingDirection - Input:", { pointCount: points.length });
+    LogUtil.Debug("= O.OptUtil  GetPolygonWindingDirection - Input:", { pointCount: points.length });
 
     let sum = 0;
 
@@ -3701,7 +3678,7 @@ class OptUtil {
     // Determine winding direction based on sum
     const direction = sum > 0 ? -1 : 1;
 
-    T3Util.Log("O.Opt GetPolygonWindingDirection - Output:", direction);
+    LogUtil.Debug("= O.OptUtil  GetPolygonWindingDirection - Output:", direction);
     return direction;
   }
 
@@ -3715,7 +3692,7 @@ class OptUtil {
      * @returns The updated list of target objects
      */
   GetTargetList(objectId, linksList, targetList, boundingRect, listCode) {
-    T3Util.Log("O.Opt GetTargetList - Input:", {
+    LogUtil.Debug("= O.OptUtil  GetTargetList - Input:", {
       objectId,
       linksListLength: linksList?.length,
       targetListLength: targetList?.length,
@@ -3737,9 +3714,9 @@ class OptUtil {
     }
 
     // Get the source object
-    sourceObject = DataUtil.GetObjectPtr(objectId, false);
+    sourceObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (sourceObject == null) {
-      T3Util.Log("O.Opt GetTargetList - Output: Source object not found, returning original list");
+      LogUtil.Debug("= O.OptUtil  GetTargetList - Output: Source object not found, returning original list");
       return targetList;
     }
 
@@ -3757,7 +3734,7 @@ class OptUtil {
 
         // Update bounding rectangle if provided
         if (boundingRect) {
-          targetObject = DataUtil.GetObjectPtr(hookObjectId, false);
+          targetObject = ObjectUtil.GetObjectPtr(hookObjectId, false);
 
           // Only include visible objects in bounding rectangle calculation
           if (!(targetObject.flags & NvConstant.ObjFlags.NotVisible)) {
@@ -3791,7 +3768,7 @@ class OptUtil {
       );
     }
 
-    T3Util.Log("O.Opt GetTargetList - Output: Returning list with", targetList.length, "targets");
+    LogUtil.Debug("= O.OptUtil  GetTargetList - Output: Returning list with", targetList.length, "targets");
     return targetList;
   }
 
@@ -3802,7 +3779,7 @@ class OptUtil {
      * @returns The clockwise angle in degrees
      */
   GetClockwiseAngleBetween2PointsInDegrees(startPoint, endPoint) {
-    T3Util.Log("O.Opt GetClockwiseAngleBetween2PointsInDegrees - Input:", { startPoint, endPoint });
+    LogUtil.Debug("= O.OptUtil  GetClockwiseAngleBetween2PointsInDegrees - Input:", { startPoint, endPoint });
 
     const PI = NvConstant.Geometry.PI;
     let deltaX, deltaY, angleRadians;
@@ -3830,7 +3807,7 @@ class OptUtil {
     // Convert radians to degrees
     const angleDegrees = angleRadians * (180 / PI);
 
-    T3Util.Log("O.Opt GetClockwiseAngleBetween2PointsInDegrees - Output:", angleDegrees);
+    LogUtil.Debug("= O.OptUtil  GetClockwiseAngleBetween2PointsInDegrees - Output:", angleDegrees);
     return angleDegrees;
   }
 
@@ -3841,7 +3818,7 @@ class OptUtil {
      * @returns The normalized angle value
      */
   NormalizeAngle(angle, adjustment) {
-    T3Util.Log("O.Opt NormalizeAngle - Input:", { angle, adjustment });
+    LogUtil.Debug("= O.OptUtil  NormalizeAngle - Input:", { angle, adjustment });
 
     // Add the adjustment to the angle
     angle += adjustment;
@@ -3855,7 +3832,7 @@ class OptUtil {
       angle += 2 * NvConstant.Geometry.PI;
     }
 
-    T3Util.Log("O.Opt NormalizeAngle - Output:", angle);
+    LogUtil.Debug("= O.OptUtil  NormalizeAngle - Output:", angle);
     return angle;
   }
 
@@ -3866,7 +3843,7 @@ class OptUtil {
      * @returns Object containing shape parameters
      */
   GetShapeParams(shapeType: number, shapeDimensions: { width: number, height: number }) {
-    T3Util.Log("O.Opt GetShapeParams - Input:", { shapeType, shapeDimensions });
+    LogUtil.Debug("= O.OptUtil  GetShapeParams - Input:", { shapeType, shapeDimensions });
 
     let polyVectorMethod;
     let shouldCircularize = false;
@@ -3988,12 +3965,12 @@ class OptUtil {
       bCircularize: shouldCircularize
     };
 
-    T3Util.Log("O.Opt GetShapeParams - Output:", result);
+    LogUtil.Debug("= O.OptUtil  GetShapeParams - Output:", result);
     return result;
   }
 
   AddtoDelete(objectIds: number[], isForced: boolean, additionalData: any) {
-    T3Util.Log("O.Opt AddtoDelete - Input:", { objectIds, isForced, additionalData });
+    LogUtil.Debug("= O.OptUtil  AddtoDelete - Input:", { objectIds, isForced, additionalData });
 
     let currentIndex: number;
     let objectCount: number = objectIds.length;
@@ -4011,7 +3988,7 @@ class OptUtil {
     let helperValue: number = -1;
 
     for (currentIndex = 0; currentIndex < objectCount; currentIndex++) {
-      currentObj = DataUtil.GetObjectPtr(objectIds[currentIndex], false);
+      currentObj = ObjectUtil.GetObjectPtr(objectIds[currentIndex], false);
       if (currentObj != null) {
         // Save the current object's id
         tempId = objectIds[currentIndex];
@@ -4034,7 +4011,7 @@ class OptUtil {
             OptAhUtil.GetConnectorTree(objectIds[currentIndex], objectIds);
             objectCount = objectIds.length;
             if (isForced && currentObj.hooks.length) {
-              tempObj = DataUtil.GetObjectPtr(currentObj.hooks[0].objid, false);
+              tempObj = ObjectUtil.GetObjectPtr(currentObj.hooks[0].objid, false);
               if (tempObj && tempObj.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape && objectIds.indexOf(currentObj.hooks[0].objid) < 0) {
                 objectIds.push(currentObj.hooks[0].objid);
               }
@@ -4046,7 +4023,7 @@ class OptUtil {
           parentConnector = OptAhUtil.GetParentConnector(objectIds[currentIndex], null);
           if (parentConnector >= 0) {
             hasContainerConnector = true;
-            tempObj = DataUtil.GetObjectPtr(parentConnector, false);
+            tempObj = ObjectUtil.GetObjectPtr(parentConnector, false);
             if (tempObj) {
               let connectorEndInfo: any = {};
               if (this.IsConnectorEndShape(currentObj, tempObj, connectorEndInfo)) {
@@ -4077,7 +4054,7 @@ class OptUtil {
                 if (tempObj.IsFlowChartConnector && tempObj.IsFlowChartConnector()) {
                   childIds = [];
                   let childArray = T3Gv.opt.FindChildArray(objectIds[currentIndex], -1);
-                  let childObj = DataUtil.GetObjectPtr(childArray, false);
+                  let childObj = ObjectUtil.GetObjectPtr(childArray, false);
                   if (childObj == null) {
                     childObj = tempObj;
                   }
@@ -4124,7 +4101,7 @@ class OptUtil {
             for (let j = 0; j < repeatCount; j++) {
               let childId = T3Gv.opt.FindChildArray(objectIds[currentIndex], childSearchIndex);
               if (childId >= 0) {
-                let childObj = DataUtil.GetObjectPtr(childId, true);
+                let childObj = ObjectUtil.GetObjectPtr(childId, true);
                 if (childObj && childObj.arraylist && (childObj.arraylist.hook.length <= connectorDefines.SEDA_NSkip || (childObj.flags & NvConstant.ObjFlags.NotVisible))) {
                   flagSkip = false;
                 }
@@ -4135,11 +4112,11 @@ class OptUtil {
                   for (let hookIndex = connectorDefines.SEDA_NSkip; hookIndex < hookCount; hookIndex++) {
                     let hookId = childObj.arraylist.hook[hookIndex].id;
                     if (objectIds.indexOf(hookId) < 0) {
-                      if (DataUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
+                      if (ObjectUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape) {
                         flagSkip = true;
                         break;
                       }
-                      if (DataUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
+                      if (ObjectUtil.GetObjectPtr(hookId, false).DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Connector) {
                         alternateId = hookId;
                       }
                     }
@@ -4165,7 +4142,7 @@ class OptUtil {
             let allChildConnectors = HookUtil.FindAllChildConnectors(tempId);
             for (let idx = 0; idx < childConnectorCount; idx++) {
               hasContainerConnector = true;
-              let childConnectorObj = DataUtil.GetObjectPtr(allChildConnectors[idx], false);
+              let childConnectorObj = ObjectUtil.GetObjectPtr(allChildConnectors[idx], false);
               if (!(childConnectorObj && childConnectorObj.IsFlowChartConnector && childConnectorObj.IsFlowChartConnector())) {
                 OptAhUtil.GetConnectorTree(allChildConnectors[idx], objectIds);
               }
@@ -4187,7 +4164,7 @@ class OptUtil {
             }
             if (currentObj.associd >= 0) {
               let assocFlag: boolean = false;
-              let assocObj = DataUtil.GetObjectPtr(currentObj.associd, false);
+              let assocObj = ObjectUtil.GetObjectPtr(currentObj.associd, false);
               if (assocObj) {
                 if (assocObj.hooks.length && assocObj.hooks[0].hookpt === OptConstant.HookPts.KATD) {
                   assocFlag = true;
@@ -4231,7 +4208,7 @@ class OptUtil {
     if (deleteInfo) {
       deleteInfo.connectors = hasContainerConnector;
     }
-    T3Util.Log("O.Opt AddtoDelete - Output:", { objectIds, helperValue });
+    LogUtil.Debug("= O.OptUtil  AddtoDelete - Output:", { objectIds, helperValue });
     return helperValue;
   }
 
@@ -4276,7 +4253,7 @@ class OptUtil {
     let directionTypes = [];
 
     // Get links data
-    const links = DataUtil.GetObjectPtr(this.linksBlockId, false);
+    const links = ObjectUtil.GetObjectPtr(this.linksBlockId, false);
     let firstConnectedObjectId = -1;
     let secondConnectedObjectId = -1;
     let foundMatchingDirection = false;
@@ -4407,7 +4384,7 @@ class OptUtil {
 
     // Process each connected object
     for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
-      currentObject = DataUtil.GetObjectPtr(connectedObjects[objectIndex], false);
+      currentObject = ObjectUtil.GetObjectPtr(connectedObjects[objectIndex], false);
 
       // Check if object allows healing
       if (currentObject.AllowHeal()) {
@@ -4491,16 +4468,16 @@ class OptUtil {
     // If we found matching directions, process the healing
     if (foundMatchingDirection) {
       // Get writable copies of both objects
-      currentObject = DataUtil.GetObjectPtr(lineObjectIds[0], true);
-      secondObject = DataUtil.GetObjectPtr(lineObjectIds[1], true);
+      currentObject = ObjectUtil.GetObjectPtr(lineObjectIds[0], true);
+      secondObject = ObjectUtil.GetObjectPtr(lineObjectIds[1], true);
 
       // If first object has one hook and second has two, swap them
       if (currentObject.hooks.length === 1 && secondObject.hooks.length === 2) {
         let tempId = lineObjectIds[0];
         lineObjectIds[0] = lineObjectIds[1];
         lineObjectIds[1] = tempId;
-        currentObject = DataUtil.GetObjectPtr(lineObjectIds[0], true);
-        secondObject = DataUtil.GetObjectPtr(lineObjectIds[1], true);
+        currentObject = ObjectUtil.GetObjectPtr(lineObjectIds[0], true);
+        secondObject = ObjectUtil.GetObjectPtr(lineObjectIds[1], true);
       }
 
       // Get bounding rectangles for both objects
@@ -4654,7 +4631,7 @@ class OptUtil {
         // Clear hops and update
         currentObject.hoplist.hops = [];
         currentObject.hoplist.nhops = 0;
-        DataUtil.AddToDirtyList(lineObjectIds[0]);
+        ObjectUtil.AddToDirtyList(lineObjectIds[0]);
 
         // Update hook connections
         HookUtil.UpdateHook(
@@ -4790,7 +4767,7 @@ class OptUtil {
           currentObject.hooks[firstHookIndex].cellid
         );
 
-        DataUtil.AddToDirtyList(lineObjectIds[0]);
+        ObjectUtil.AddToDirtyList(lineObjectIds[0]);
         return lineObjectIds[1];
       }
 
@@ -4931,7 +4908,7 @@ class OptUtil {
         secondObject.hooks[secondHookIndex].cellid
       );
 
-      DataUtil.AddToDirtyList(lineObjectIds[1]);
+      ObjectUtil.AddToDirtyList(lineObjectIds[1]);
       return lineObjectIds[0];
     }
 
@@ -4944,24 +4921,13 @@ class OptUtil {
   }
 
   VirtualKeyboardLifter(element: any, isActive: boolean) {
-    T3Util.Log("O.Opt VirtualKeyboardLifter - Input:", { element, isActive });
+    LogUtil.Debug("= O.OptUtil  VirtualKeyboardLifter - Input:", { element, isActive });
 
     if (isActive) {
       // Calculate the element's frame in document coordinates.
       const elementFrame = element.CalcElementFrame();
       let frameChanged = false;
-      let forceUpdate = false;
-
-      // Check if the previously stored frame exists and is different.
-      if (T3Gv.opt.virtualKeyboardLifterElementFrame) {
-        frameChanged =
-          elementFrame.x !== T3Gv.opt.virtualKeyboardLifterElementFrame.x ||
-          elementFrame.y !== T3Gv.opt.virtualKeyboardLifterElementFrame.y ||
-          elementFrame.width !== T3Gv.opt.virtualKeyboardLifterElementFrame.width ||
-          elementFrame.height !== T3Gv.opt.virtualKeyboardLifterElementFrame.height;
-      } else {
-        forceUpdate = true;
-      }
+      let forceUpdate = true;
 
       // If the frame has changed or there's no previous frame.
       if (frameChanged || forceUpdate) {
@@ -4977,9 +4943,6 @@ class OptUtil {
         if (windowHeight === 0) {
           windowHeight = 1;
         }
-
-        // Store the updated frame.
-        T3Gv.opt.virtualKeyboardLifterElementFrame = $.extend(true, {}, elementFrame);
 
         // Make the text input proxy visible.
         T3Gv.opt.workAreaTextInputProxy.css('visibility', 'visible');
@@ -5022,15 +4985,13 @@ class OptUtil {
         T3Gv.opt.workAreaTextInputProxy.focus();
       }
     } else {
-      // When deactivating the virtual keyboard lifter.
-      T3Gv.opt.virtualKeyboardLifterElementFrame = null;
       T3Gv.opt.workAreaTextInputProxy.css('visibility', 'visible');
       T3Gv.opt.workAreaTextInputProxy.blur();
       T3Gv.opt.workAreaTextInputProxy.val('');
       T3Gv.opt.workAreaTextInputProxy.css('visibility', 'hidden');
     }
 
-    T3Util.Log("O.Opt VirtualKeyboardLifter - Output: completed");
+    LogUtil.Debug("= O.OptUtil  VirtualKeyboardLifter - Output: completed");
   }
 
   /**
@@ -5042,10 +5003,10 @@ class OptUtil {
    * @param skipContainerParents - If true, objects that have a container parent are excluded.
    * @returns Array of unique associated object IDs.
    *
-   * Logs input and output with prefix "O.Opt".
+   * Logs input and output with prefix "= O.OptUtil ".
    */
   AddAssoctoList(listOfObjectIds: number[], skipContainerParents?: boolean): number[] {
-    T3Util.Log("O.Opt AddAssoctoList - Input:", { listOfObjectIds, skipContainerParents });
+    LogUtil.Debug("= O.OptUtil  AddAssoctoList - Input:", { listOfObjectIds, skipContainerParents });
 
     let associatedIds: number[] = [];
     const totalIds = listOfObjectIds.length;
@@ -5053,7 +5014,7 @@ class OptUtil {
 
     for (let index = 0; index < totalIds; index++) {
       const objectId = listOfObjectIds[index];
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Process only if skipContainerParents is not enabled
       // or if the current object does not have a container parent.
@@ -5067,7 +5028,7 @@ class OptUtil {
         }
 
         // If the object has an association (associd) and exists, add its associd.
-        if (currentObject && currentObject.associd >= 0 && DataUtil.GetObjectPtr(currentObject.associd, false)) {
+        if (currentObject && currentObject.associd >= 0 && ObjectUtil.GetObjectPtr(currentObject.associd, false)) {
           if (associatedIds.indexOf(currentObject.associd) < 0) {
             associatedIds.push(currentObject.associd);
           }
@@ -5082,7 +5043,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt AddAssoctoList - Output:", associatedIds);
+    LogUtil.Debug("= O.OptUtil  AddAssoctoList - Output:", associatedIds);
     return associatedIds;
   }
 
@@ -5095,20 +5056,20 @@ class OptUtil {
    * @returns True if at least one linked object refers to an object not in the list, false otherwise.
    */
   IsLinkedOutside(linkedObjectIds: number[]): boolean {
-    T3Util.Log("O.Opt IsLinkedOutside - Input:", { linkedObjectIds });
+    LogUtil.Debug("= O.OptUtil  IsLinkedOutside - Input:", { linkedObjectIds });
 
     const allLinkedObjects = LayerUtil.ZList();
     for (let outerIndex = 0; outerIndex < linkedObjectIds.length; outerIndex++) {
-      const currentObject = DataUtil.GetObjectPtr(linkedObjectIds[outerIndex], false);
+      const currentObject = ObjectUtil.GetObjectPtr(linkedObjectIds[outerIndex], false);
       for (let innerIndex = 0; innerIndex < allLinkedObjects.length; innerIndex++) {
-        const comparedObject = DataUtil.GetObjectPtr(allLinkedObjects[innerIndex], false);
+        const comparedObject = ObjectUtil.GetObjectPtr(allLinkedObjects[innerIndex], false);
         if (comparedObject.associd === currentObject.BlockID && linkedObjectIds.indexOf(comparedObject.BlockID) === -1) {
-          T3Util.Log("O.Opt IsLinkedOutside - Output:", true);
+          LogUtil.Debug("= O.OptUtil  IsLinkedOutside - Output:", true);
           return true;
         }
       }
     }
-    T3Util.Log("O.Opt IsLinkedOutside - Output:", false);
+    LogUtil.Debug("= O.OptUtil  IsLinkedOutside - Output:", false);
     return false;
   }
 
@@ -5121,24 +5082,24 @@ class OptUtil {
    * @returns True if any object is non-deletable, otherwise false.
    */
   IsGroupNonDelete(): boolean {
-    T3Util.Log("O.Opt IsGroupNonDelete - Input: no parameters");
+    LogUtil.Debug("= O.OptUtil  IsGroupNonDelete - Input: no parameters");
 
-    const selectedObjects = DataUtil.GetObjectPtr(
+    const selectedObjects = ObjectUtil.GetObjectPtr(
       T3Gv.opt.selectObjsBlockId,
       false
     );
     let currentObject = null;
 
     for (let index = 0; index < selectedObjects.length; index++) {
-      currentObject = DataUtil.GetObjectPtr(selectedObjects[index], false);
+      currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], false);
 
       if (currentObject.extraflags & OptConstant.ExtraFlags.NoDelete) {
-        T3Util.Log("O.Opt IsGroupNonDelete - Output: true");
+        LogUtil.Debug("= O.OptUtil  IsGroupNonDelete - Output: true");
         return true;
       }
     }
 
-    T3Util.Log("O.Opt IsGroupNonDelete - Output: false");
+    LogUtil.Debug("= O.OptUtil  IsGroupNonDelete - Output: false");
     return false;
   }
 
@@ -5150,14 +5111,14 @@ class OptUtil {
    * @returns The union rectangle of all visible objects, or undefined if no valid object is processed.
    */
   GetListSRect(objectIdList, useFrame?, useDragRectangle?) {
-    T3Util.Log("O.Opt GetListSRect - Input:", { objectIdList, useFrame, useDragRectangle });
+    LogUtil.Debug("= O.OptUtil  GetListSRect - Input:", { objectIdList, useFrame, useDragRectangle });
 
     let unionRect;
     const notVisibleFlag = NvConstant.ObjFlags.NotVisible;
 
     for (let i = 0; i < objectIdList.length; i++) {
       const objectId = objectIdList[i];
-      const currentObject = DataUtil.GetObjectPtr(objectId, false);
+      const currentObject = ObjectUtil.GetObjectPtr(objectId, false);
       if (currentObject != null) {
         const currentRect = useFrame
           ? currentObject.Frame
@@ -5173,7 +5134,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt GetListSRect - Output:", unionRect);
+    LogUtil.Debug("= O.OptUtil  GetListSRect - Output:", unionRect);
     return unionRect;
   }
 
@@ -5184,7 +5145,7 @@ class OptUtil {
      * @returns The group object that is a parent of the target object, or null if not found.
      */
   FindParentGroup(targetId: number, currentGroup?: any): any {
-    T3Util.Log("O.Opt FindParentGroup - Input:", { targetId, currentGroup });
+    LogUtil.Debug("= O.OptUtil  FindParentGroup - Input:", { targetId, currentGroup });
     let child: any;
     let index: number;
     // Use current group's ShapesInGroup if provided, otherwise use the global ZList.
@@ -5192,19 +5153,19 @@ class OptUtil {
 
     for (index = 0; index < groupArray.length; index++) {
       if (groupArray[index] === targetId) {
-        T3Util.Log("O.Opt FindParentGroup - Output:", currentGroup);
+        LogUtil.Debug("= O.OptUtil  FindParentGroup - Output:", currentGroup);
         return currentGroup;
       }
-      child = DataUtil.GetObjectPtr(groupArray[index], false);
+      child = ObjectUtil.GetObjectPtr(groupArray[index], false);
       if (child instanceof Instance.Shape.GroupSymbol && child.ShapesInGroup) {
         const parentGroup = T3Gv.opt.FindParentGroup(targetId, child);
         if (parentGroup) {
-          T3Util.Log("O.Opt FindParentGroup - Output:", parentGroup);
+          LogUtil.Debug("= O.OptUtil  FindParentGroup - Output:", parentGroup);
           return parentGroup;
         }
       }
     }
-    T3Util.Log("O.Opt FindParentGroup - Output: null");
+    LogUtil.Debug("= O.OptUtil  FindParentGroup - Output: null");
     return null;
   }
 
@@ -5215,15 +5176,15 @@ class OptUtil {
      * @param objectId - The ID of the object whose links need to be rebuilt.
      */
   RebuildLinks(linkList, objectId) {
-    T3Util.Log("O.Opt RebuildLinks - Input:", { linkList, objectId });
-    const targetObject = DataUtil.GetObjectPtr(objectId, false);
+    LogUtil.Debug("= O.OptUtil  RebuildLinks - Input:", { linkList, objectId });
+    const targetObject = ObjectUtil.GetObjectPtr(objectId, false);
     if (targetObject && targetObject.hooks) {
       const hookCount = targetObject.hooks.length;
       for (let hookIndex = 0; hookIndex < hookCount; hookIndex++) {
         T3Gv.opt.InsertLink(linkList, objectId, hookIndex, DSConstant.LinkFlags.Move);
       }
     }
-    T3Util.Log("O.Opt RebuildLinks - Output: Completed");
+    LogUtil.Debug("= O.OptUtil  RebuildLinks - Output: Completed");
   }
 
   /**
@@ -5235,7 +5196,7 @@ class OptUtil {
      * @param blobMap - Map to store blob data by URL
      */
   GetBlobImages(objectIds, blobMap) {
-    T3Util.Log("O.Opt GetBlobImages - Input:", {
+    LogUtil.Debug("= O.OptUtil  GetBlobImages - Input:", {
       objectIdsCount: objectIds.length,
       blobMapSize: Object.keys(blobMap).length
     });
@@ -5250,7 +5211,7 @@ class OptUtil {
     let objectCount = objectIds.length;
 
     for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-      currentObject = DataUtil.GetObjectPtr(objectIds[objectIndex], false);
+      currentObject = ObjectUtil.GetObjectPtr(objectIds[objectIndex], false);
 
       if (currentObject.ShapeType == OptConstant.ShapeType.GroupSymbol) {
         // For group symbols, recursively process their contained shapes
@@ -5275,7 +5236,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt GetBlobImages - Output:", {
+    LogUtil.Debug("= O.OptUtil  GetBlobImages - Output:", {
       processedObjects: objectCount,
       blobMapSize: Object.keys(blobMap).length
     });
@@ -5291,7 +5252,7 @@ class OptUtil {
     * @returns The union rectangle of all visible objects, or undefined if no visible objects
     */
   GetSRect(excludeTitleBlocks, frameDetails, objectList) {
-    T3Util.Log("O.Opt GetSRect - Input:", {
+    LogUtil.Debug("= O.OptUtil  GetSRect - Input:", {
       excludeTitleBlocks,
       hasFrameDetails: !!frameDetails,
       objectList: objectList ? objectList.length : "undefined"
@@ -5312,7 +5273,7 @@ class OptUtil {
 
     // Process each object
     for (let i = 0; i < objectCount; i++) {
-      currentObject = DataUtil.GetObjectPtr(visibleObjects[i], false);
+      currentObject = ObjectUtil.GetObjectPtr(visibleObjects[i], false);
 
       if (currentObject != null) {
         isTitleBlock = false;
@@ -5346,7 +5307,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt GetSRect - Output:", unionRect);
+    LogUtil.Debug("= O.OptUtil  GetSRect - Output:", unionRect);
     return unionRect;
   }
 
@@ -5359,9 +5320,9 @@ class OptUtil {
     * @returns The appropriate automation context string
     */
   GetAutomationContext(optMng) {
-    T3Util.Log("O.Opt GetAutomationContext - Input:", optMng);
+    LogUtil.Debug("= O.OptUtil  GetAutomationContext - Input:", optMng);
 
-    const sessionObject = DataUtil.GetObjectPtr(this.sdDataBlockId, false);
+    const sessionObject = ObjectUtil.GetObjectPtr(this.sdDataBlockId, false);
     let automationContext = DSConstant.Contexts.Automation;
 
     if (optMng) {
@@ -5378,7 +5339,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt GetAutomationContext - Output:", automationContext);
+    LogUtil.Debug("= O.OptUtil  GetAutomationContext - Output:", automationContext);
     return automationContext;
   }
 
@@ -5388,14 +5349,14 @@ class OptUtil {
      * ensuring any LM methods are restored and the SVG objects are re-rendered.
      */
   RestorePrimaryStateManager(): void {
-    T3Util.Log("O.Opt RestorePrimaryStateManager - Input: no parameters");
+    LogUtil.Debug("= O.OptUtil  RestorePrimaryStateManager - Input: no parameters");
 
     // Only take action if we're not already using the primary state manager
     if (!T3Gv.bIsPrimaryStateManager) {
       SvgUtil.RenderAllSVGObjects();
     }
 
-    T3Util.Log("O.Opt RestorePrimaryStateManager - Output: Primary state manager restored");
+    LogUtil.Debug("= O.OptUtil  RestorePrimaryStateManager - Output: Primary state manager restored");
   }
 
   /**
@@ -5407,7 +5368,7 @@ class OptUtil {
    * @returns The adjusted point position
    */
   LinesMaintainDistWithinSegment(targetLine, sourceLine, segmentIndex, point) {
-    T3Util.Log("O.Opt: LinesMaintainDistWithinSegment inputs:", {
+    LogUtil.Debug("= O.OptUtil : LinesMaintainDistWithinSegment inputs:", {
       targetLine: targetLine.BlockID || "unknown",
       sourceLine: sourceLine.BlockID || "unknown",
       segmentIndex,
@@ -5469,19 +5430,18 @@ class OptUtil {
     // Update the point
     point = rotatedPoints[0];
 
-    T3Util.Log("O.Opt: LinesMaintainDistWithinSegment output:", {
+    LogUtil.Debug("= O.OptUtil : LinesMaintainDistWithinSegment output:", {
       point: { x: point.x, y: point.y }
     });
 
     return point;
   }
 
-
   /**
    * Handles auto-scrolling during drag operations
    */
   HandleObjectDragDoAutoScroll() {
-    T3Util.Log("O.Opt HandleObjectDragDoAutoScroll - Input: Starting auto-scroll");
+    LogUtil.Debug("= O.OptUtil  HandleObjectDragDoAutoScroll - Input: Starting auto-scroll");
 
     // Schedule next auto-scroll
     T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("HandleObjectDragDoAutoScroll", 100);
@@ -5498,11 +5458,11 @@ class OptUtil {
     // Continue object dragging at the new position
     this.HandleObjectDragMoveCommon(documentCoords.x, documentCoords.y);
 
-    T3Util.Log("O.Opt HandleObjectDragDoAutoScroll - Output: Position updated", documentCoords);
+    LogUtil.Debug("= O.OptUtil  HandleObjectDragDoAutoScroll - Output: Position updated", documentCoords);
   }
 
   HandleObjectDragMoveCommon(mouseX, mouseY, skipScrolling?, event?) {
-    T3Util.Log("O.Opt HandleObjectDragMoveCommon - Input:", { mouseX, mouseY, skipScrolling, event });
+    LogUtil.Debug("= O.OptUtil  HandleObjectDragMoveCommon - Input:", { mouseX, mouseY, skipScrolling, event });
 
     // Helper function to constrain movement within bounds
     const constrainMovementToBounds = () => {
@@ -5545,7 +5505,7 @@ class OptUtil {
 
     // Early exit if no objects to move
     if (objectCount === 0) {
-      T3Util.Log("O.Opt HandleObjectDragMoveCommon - Output: No objects to move");
+      LogUtil.Debug("= O.OptUtil  HandleObjectDragMoveCommon - Output: No objects to move");
       return;
     }
 
@@ -5570,7 +5530,7 @@ class OptUtil {
     }
 
     // Get the target object being dragged
-    let targetObject = DataUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
+    let targetObject = ObjectUtil.GetObjectPtr(T3Gv.opt.dragTargetId, false);
     let snapOffset = { x: null, y: null };
     const currentPosition = { x: mouseX, y: mouseY };
 
@@ -5601,7 +5561,7 @@ class OptUtil {
 
       if (snapTargetId >= 0) {
         // Get snap target rectangle
-        objectRect = DataUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
+        objectRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
         adjustedTargetRect = $.extend(true, {}, objectRect);
         adjustedTargetRect.x += T3Gv.opt.dragDeltaX;
         adjustedTargetRect.y += T3Gv.opt.dragDeltaY;
@@ -5703,9 +5663,9 @@ class OptUtil {
     }
 
     // Get session data and check if auto-grow is disabled
-    const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
 
-    if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+    if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
       // Constrain to document dimensions
       const rightEdge = T3Gv.opt.moveBounds.x +
         T3Gv.opt.moveBounds.width +
@@ -5742,7 +5702,7 @@ class OptUtil {
 
       // Special handling for the target selection
       if (objectsToMove[index] === targetSelectionId) {
-        targetObject = DataUtil.GetObjectPtr(targetSelectionId, false);
+        targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
 
         let displayDimensions = {
           x: objectRect.x + T3Gv.opt.dragDeltaX,
@@ -5820,7 +5780,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt HandleObjectDragMoveCommon - Output:", {
+    LogUtil.Debug("= O.OptUtil  HandleObjectDragMoveCommon - Output:", {
       deltaX: T3Gv.opt.dragDeltaX,
       deltaY: T3Gv.opt.dragDeltaY,
       objectsProcessed: objectCount
@@ -5831,7 +5791,7 @@ class OptUtil {
    * Handles auto-scrolling during stamp drag operations
    */
   HandleStampDragDoAutoScroll() {
-    T3Util.Log("O.Opt HandleStampDragDoAutoScroll - Input: Starting auto-scroll");
+    LogUtil.Debug("= O.OptUtil  HandleStampDragDoAutoScroll - Input: Starting auto-scroll");
 
     // Schedule next auto-scroll
     T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout(
@@ -5849,11 +5809,11 @@ class OptUtil {
     T3Gv.docUtil.ScrollToPosition(documentCoords.x, documentCoords.y);
     DrawUtil.StampObjectMoveCommon(documentCoords.x, documentCoords.y);
 
-    T3Util.Log("O.Opt HandleStampDragDoAutoScroll - Output: Position updated", documentCoords);
+    LogUtil.Debug("= O.OptUtil  HandleStampDragDoAutoScroll - Output: Position updated", documentCoords);
   }
 
   OptSltSelectDoAutoScroll() {
-    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Input: starting auto scroll");
+    LogUtil.Debug("= O.OptUtil  OptSltSelectDoAutoScroll - Input: starting auto scroll");
 
     // Schedule auto-scroll callback to run every 100ms
     T3Gv.opt.autoScrollTimerId = T3Gv.opt.autoScrollTimer.setTimeout("OptSltSelectDoAutoScroll", 100);
@@ -5863,15 +5823,15 @@ class OptUtil {
       T3Gv.opt.autoScrollXPos,
       T3Gv.opt.autoScrollYPos
     );
-    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
+    LogUtil.Debug(`= O.OptUtil  OptSltSelectDoAutoScroll - Converted Coordinates: x=${documentCoords.x}, y=${documentCoords.y}`);
 
     // Scroll the document to the computed position
     T3Gv.docUtil.ScrollToPosition(documentCoords.x, documentCoords.y);
-    T3Util.Log(`O.Opt OptSltSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
+    LogUtil.Debug(`= O.OptUtil  OptSltSelectDoAutoScroll - Scrolled to position: x=${documentCoords.x}, y=${documentCoords.y}`);
 
     // Move the rectangle selection rectangle based on the new coordinates
     SelectUtil.OptSltSelectMoveCommon(documentCoords.x, documentCoords.y);
-    T3Util.Log("O.Opt OptSltSelectDoAutoScroll - Output: Rectangle selection moved");
+    LogUtil.Debug("= O.OptUtil  OptSltSelectDoAutoScroll - Output: Rectangle selection moved");
   }
 
   /**
@@ -5884,7 +5844,7 @@ class OptUtil {
    * @returns void
    */
   ImportBackgroundLayerImage(imageUrl, importOptions) {
-    T3Util.Log("O.Opt ImportBackgroundLayerImage - Input:", { imageUrl, importOptions });
+    LogUtil.Debug("= O.OptUtil  ImportBackgroundLayerImage - Input:", { imageUrl, importOptions });
 
     let layerIndex;
     let existingObjects;
@@ -5907,7 +5867,7 @@ class OptUtil {
     };
 
     // Get the layers manager
-    let layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+    let layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
 
     if (layersManager) {
       // Find if a background layer already exists
@@ -5941,7 +5901,7 @@ class OptUtil {
       setBackgroundImage();
     }
 
-    T3Util.Log("O.Opt ImportBackgroundLayerImage - Output: Background layer updated");
+    LogUtil.Debug("= O.OptUtil  ImportBackgroundLayerImage - Output: Background layer updated");
   }
 
   /**
@@ -5959,7 +5919,7 @@ class OptUtil {
    * @param callback - Optional callback function
    */
   SetBackgroundImage(imageUrl, replaceExisting, importData, isBackground, callback) {
-    T3Util.Log("O.Opt SetBackgroundImage - Input:", {
+    LogUtil.Debug("= O.OptUtil  SetBackgroundImage - Input:", {
       imageUrl,
       replaceExisting,
       hasImportData: !!importData,
@@ -6036,7 +5996,7 @@ class OptUtil {
         newObjectId = DrawUtil.AddNewObject(rectangleObject, false, true);
 
         // Update object properties
-        const newObject = DataUtil.GetObjectPtr(newObjectId, false);
+        const newObject = ObjectUtil.GetObjectPtr(newObjectId, false);
         if (newObject) {
           newObject.TextFlags = NvConstant.TextFlags.AttachB;
           newObject.ImageHeader = new ImageRecord();
@@ -6044,12 +6004,12 @@ class OptUtil {
         }
 
         // Handle background layer flags
-        const layersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, false);
+        const layersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, false);
         if (layersManager &&
           layersManager.layers[layersManager.activelayer].layertype === NvConstant.LayerTypes.Background) {
 
           // Get writable copy of layers manager
-          const writableLayersManager = DataUtil.GetObjectPtr(this.layersManagerBlockId, true);
+          const writableLayersManager = ObjectUtil.GetObjectPtr(this.layersManagerBlockId, true);
           // Set NoAdd flag on background layer
           writableLayersManager.layers[writableLayersManager.activelayer].flags =
             Utils2.SetFlag(
@@ -6110,7 +6070,7 @@ class OptUtil {
 
           // Check if selected object can have its image replaced
           if (targetObjectId >= 0) {
-            selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+            selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
             // Check if object is of compatible type
             if (excludedObjectTypes?.indexOf(selectedObject.objecttype) < 0 &&
@@ -6133,7 +6093,7 @@ class OptUtil {
 
         // Process based on target object and replace flag
         if (canReplaceImage || messageData) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           // Handle table objects differently
           if (selectedObject.GetTable(false)) {
@@ -6141,7 +6101,7 @@ class OptUtil {
           } else {
 
             // Get writable copy of the object
-            selectedObject = DataUtil.GetObjectPtr(targetObjectId, true);
+            selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, true);
 
             // Set SVG dimensions if needed
             if (isSvgImage) {
@@ -6174,7 +6134,7 @@ class OptUtil {
             );
 
             // Mark object as dirty for rendering
-            DataUtil.AddToDirtyList(targetObjectId);
+            ObjectUtil.AddToDirtyList(targetObjectId);
 
             // Complete the operation
             DrawUtil.CompleteOperation(null);
@@ -6210,7 +6170,7 @@ class OptUtil {
         targetReplaceExisting = true;
 
         if (targetObjectId >= 0) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           // Check if object can receive an image
           if (excludedObjectTypes?.indexOf(selectedObject.objecttype) < 0 &&
@@ -6233,7 +6193,7 @@ class OptUtil {
 
       // Calculate target dimensions based on selected object
       if (targetObjectId >= 0) {
-        selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+        selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
         if (selectedObject.DrawingObjectBaseClass === OptConstant.DrawObjectBaseClass.Shape &&
           !(selectedObject instanceof Instance.Shape.BaseSymbol) &&
@@ -6244,7 +6204,7 @@ class OptUtil {
 
         // Get dimensions from object or table
         if (shouldReplaceExistingImage) {
-          selectedObject = DataUtil.GetObjectPtr(targetObjectId, false);
+          selectedObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
 
           targetWidth = selectedObject.Frame.width;
           targetHeight = selectedObject.Frame.height;
@@ -6264,7 +6224,7 @@ class OptUtil {
       }
     }
 
-    T3Util.Log("O.Opt SetBackgroundImage - Output: Background image set");
+    LogUtil.Debug("= O.OptUtil  SetBackgroundImage - Output: Background image set");
   }
 
   /**
@@ -6333,22 +6293,22 @@ class OptUtil {
       const lockFlag = NvConstant.ObjFlags.Lock;
 
       // Determine whether to lock or unlock by checking the specified object
-      if ((currentObject = DataUtil.GetObjectPtr(objectId, false))) {
+      if ((currentObject = ObjectUtil.GetObjectPtr(objectId, false))) {
         shouldLock = (currentObject.flags & lockFlag) === 0;
       }
 
       // Apply lock/unlock to all selected objects
       for (objectIndex = 0; objectIndex < objectCount; ++objectIndex) {
-        currentObject = DataUtil.GetObjectPtr(selectedObjects[objectIndex], true);
+        currentObject = ObjectUtil.GetObjectPtr(selectedObjects[objectIndex], true);
         currentObject.flags = Utils2.SetFlag(currentObject.flags, lockFlag, shouldLock);
-        DataUtil.AddToDirtyList(selectedObjects[objectIndex]);
+        ObjectUtil.AddToDirtyList(selectedObjects[objectIndex]);
       }
 
       // Complete the operation
       DrawUtil.CompleteOperation(null);
     } else {
       // Show error if no objects are selected and forceToggle is false
-      T3Util.Log("O.Opt Lock - Error: No objects selected");
+      LogUtil.Debug("= O.OptUtil  Lock - Error: No objects selected");
     }
   }
 
@@ -6367,7 +6327,7 @@ class OptUtil {
    * @param svgSource - The source of the SVG (file path, URL, or raw SVG content)
    * @returns void
    */
-  ImportSVGSymbol(svgSource) {
+  ImportSvgSymbol(svgSource) {
     // Initialize variables to store SVG data
     let imageUrl = "";
     let imageBlob = null;
@@ -6428,7 +6388,7 @@ class OptUtil {
         newObjectId = DrawUtil.AddNewObject(rectangleObject, false, true);
 
         // Set the SVG blob data in the object
-        const newObject = DataUtil.GetObjectPtr(newObjectId, false);
+        const newObject = ObjectUtil.GetObjectPtr(newObjectId, false);
         if (newObject) {
           const imageDir = DSUtil.GetImageDir(imageBlob);
           newObject.SetBlobBytes(imageBytes, imageDir);
@@ -6443,9 +6403,9 @@ class OptUtil {
     };
 
     // Create an SVG importer and load the SVG
-    const svgImporter = new Instance.Shape.SVGImporter();
+    const svgImporter = new Instance.Shape.SvgImporter();
     if (svgImporter) {
-      svgImporter.ImportSVG(svgSource, (url, blob, bytes) => {
+      svgImporter.ImportSvg(svgSource, (url, blob, bytes) => {
         // Store SVG data
         imageUrl = url;
         imageBlob = blob;
@@ -6576,7 +6536,7 @@ class OptUtil {
       hasPolyList = true;
       originalFrame = $.extend(true, {}, shapeObject.Frame);
     } else {
-      shapeObject = DataUtil.GetObjectPtr(objectId, false);
+      shapeObject = ObjectUtil.GetObjectPtr(objectId, false);
 
       // Initialize polylist if needed
       if (shapeObject.polylist == null) {
@@ -6738,11 +6698,11 @@ class OptUtil {
 
     try {
       // Get the text editing session data
-      const sessionData = DataUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+      const sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
 
       // Handle spellcheck event
       if (eventType === "spellcheck") {
-        currentObject = DataUtil.GetObjectPtr(objectId, false);
+        currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (currentObject) {
           tableObject = currentObject.GetTable(false);
@@ -6763,7 +6723,7 @@ class OptUtil {
       // Exit early if not the active text edit object or invalid spellcheck
       if (sessionData.theActiveTextEditObjectID != objectId || isInvalidSpellCheck) {
         if (eventType === "spellcheck") {
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
           if (currentObject) {
             tableObject = currentObject.GetTable(false);
@@ -6772,7 +6732,7 @@ class OptUtil {
             // Save spellcheck changes if needed
             if (dataId > 0 && editorComponent) {
               runtimeText = editorComponent.GetRuntimeText();
-              objectData = DataUtil.GetObjectPtr(dataId, Utils1.IsStateOpen());
+              objectData = ObjectUtil.GetObjectPtr(dataId, Utils1.IsStateOpen());
 
               if (objectData) {
                 objectData.runtimeText = runtimeText;
@@ -6793,7 +6753,7 @@ class OptUtil {
       switch (eventType) {
         case "dragoutside":
           // Handle drag events outside the text area
-          if ((currentObject = DataUtil.GetObjectPtr(objectId, false)) &&
+          if ((currentObject = ObjectUtil.GetObjectPtr(objectId, false)) &&
             (tableObject = currentObject.GetTable(false)) &&
             tableObject.select >= 0) {
 
@@ -6857,7 +6817,7 @@ class OptUtil {
 
         case "charfilter":
           // Handle character filtering
-          currentObject = DataUtil.GetObjectPtr(objectId, false);
+          currentObject = ObjectUtil.GetObjectPtr(objectId, false);
           if (!currentObject) {
             return true;
           }
@@ -6903,6 +6863,1147 @@ class OptUtil {
     T3Gv.opt.textEntryTimer = null;
     TextUtil.RegisterLastTEOp(NvConstant.TextElemLastOpt.Timeout);
   }
+
+  /**
+   * Sets the top or left position of a selected object
+   * This function updates the position of the target selected object based on the provided coordinate string.
+   * It handles ruler origin offsets, unit conversions, and ensures proper propagation of changes.
+   *
+   * @param positionValue - The new position value as a string (in current ruler units)
+   * @param isLeftPosition - True if setting left position, false if setting top position
+   */
+  SetTopLeft(positionValue, isLeftPosition) {
+    // Get the currently selected object
+    const targetObjectId = SelectUtil.GetTargetSelect();
+
+    if (targetObjectId < 0) {
+      return; // No object selected
+    }
+
+    // Get a writable copy of the target object
+    const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, true);
+
+    if (targetObject !== null) {
+      let numericValue;
+      let originOffset;
+
+      // Convert string to appropriate numeric value based on ruler settings
+      numericValue = T3Gv.docUtil.rulerConfig.useInches &&
+        T3Gv.docUtil.rulerConfig.units == NvConstant.RulerUnit.Feet
+        ? Utils3.ConvertToFeet(positionValue)
+        : Utils3.NumberIsFloat(positionValue, true)
+          ? parseFloat(positionValue)
+          : 0;
+
+      // Handle ruler origin offsets
+      if (isLeftPosition) {
+        if (T3Gv.docUtil.rulerConfig.originx) {
+          originOffset = 100 * T3Gv.docUtil.rulerConfig.originx;
+
+          if (!T3Gv.docUtil.rulerConfig.useInches) {
+            originOffset /= OptConstant.Common.MetricConv;
+          }
+
+          numericValue += RulerUtil.GetLengthInUnits(originOffset);
+          positionValue = numericValue.toFixed(2);
+        }
+      } else {
+        if (T3Gv.docUtil.rulerConfig.originy) {
+          originOffset = 100 * T3Gv.docUtil.rulerConfig.originy;
+
+          if (!T3Gv.docUtil.rulerConfig.useInches) {
+            originOffset /= OptConstant.Common.MetricConv;
+          }
+
+          numericValue += RulerUtil.GetLengthInUnits(originOffset);
+          positionValue = numericValue.toFixed(2);
+        }
+      }
+
+      let positionX;
+      let positionY;
+      const actualLength = this.GetDimensionLengthFromString(positionValue, false, false);
+
+      // Set either X or Y position based on isLeftPosition flag
+      if (isLeftPosition) {
+        positionX = actualLength;
+        positionY = null;
+      } else {
+        positionY = actualLength;
+        positionX = null;
+      }
+
+      // Update the shape's origin
+      targetObject.SetShapeOrigin(positionX, positionY, null, true);
+
+      // Mark object as needing move link updates
+      OptCMUtil.SetLinkFlag(targetObjectId, DSConstant.LinkFlags.Move);
+
+      // Add to dirty list for rendering
+      ObjectUtil.AddToDirtyList(targetObjectId, true);
+      DrawUtil.CompleteOperation(null);
+
+      // Update displayed coordinates
+      const dimensions = targetObject.GetDimensionsForDisplay();
+      UIUtil.UpdateDisplayCoordinates(dimensions, null, null, targetObject);
+    }
+  }
+
+  /**
+   * Changes the width of selected objects
+   * This function applies a new width to all selected objects in the document.
+   * It handles dimension calculations, aspect ratio maintenance, and sends
+   * collaboration messages if enabled.
+   *
+   * @param widthString - The new width value as a string (in current ruler units)
+   */
+  ChangeWidth(widthString) {
+    let dimensionValue = -1;
+    let newWidth = -1;
+    let newHeight = null;
+
+    // Clear cached width value
+    this.cachedWidth = null;
+
+    // Get the list of selected objects
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
+    const objectCount = selectedObjects.length;
+
+    if (objectCount === 0) {
+      return; // No objects selected
+    }
+
+    // Process each selected object
+    for (let index = 0; index < objectCount; ++index) {
+      // Get a writable copy of the current object
+      const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], true);
+
+      // Get dimension value from string and calculate actual length
+      dimensionValue = currentObject.GetDimensionValueFromString(widthString, 1);
+
+      if (dimensionValue >= 0) {
+        newWidth = currentObject.GetDimensionLengthFromValue(dimensionValue);
+        newWidth = currentObject.AdjustDimensionLength(newWidth);
+        newHeight = currentObject.MaintainProportions(newWidth, null);
+      }
+
+      if (newWidth >= 0) {
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Get updated dimensions
+        const dimensions = currentObject.GetDimensionsForDisplay();
+
+        // Set floating point flags if exact width was applied
+        if (currentObject.CanUseRFlags() && dimensions.width === newWidth) {
+          currentObject.rflags = Utils2.SetFlag(
+            currentObject.rflags,
+            NvConstant.FloatingPointDim.Width,
+            true
+          );
+          currentObject.rwd = dimensionValue;
+        }
+
+        // Mark object for link updates
+        OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
+      }
+
+      // Add to dirty list for rendering
+      ObjectUtil.AddToDirtyList(selectedObjects[index]);
+    }
+
+    DrawUtil.CompleteOperation(null);
+  }
+
+  /**
+   * Changes the height of selected objects
+   * This function applies a new height to all selected objects in the document.
+   * It handles dimension calculations, aspect ratio maintenance, and sends
+   * collaboration messages if enabled.
+   *
+   * @param heightString - The new height value as a string (in current ruler units)
+   */
+  ChangeHeight(heightString) {
+    let dimensionValue = -1;
+    let newHeight = -1;
+    let newWidth = null;
+
+    // Clear cached height value
+    this.cachedHeight = null;
+
+    // Get the list of selected objects
+    const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
+    const objectCount = selectedObjects.length;
+
+    if (objectCount === 0) {
+      return; // No objects selected
+    }
+
+    // Process each selected object
+    for (let index = 0; index < objectCount; ++index) {
+      // Get a writable copy of the current object
+      const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[index], true);
+
+      // Get dimension value from string and calculate actual length
+      dimensionValue = currentObject.GetDimensionValueFromString(heightString, 2);
+
+      if (dimensionValue >= 0) {
+        newHeight = currentObject.GetDimensionLengthFromValue(dimensionValue);
+        newHeight = currentObject.AdjustDimensionLength(newHeight);
+        newWidth = currentObject.MaintainProportions(null, newHeight);
+      }
+
+      if (newHeight >= 0) {
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Get updated dimensions
+        const dimensions = currentObject.GetDimensionsForDisplay();
+
+        // Set floating point flags if exact height was applied
+        if (currentObject.CanUseRFlags() && dimensions.height === newHeight) {
+          currentObject.rflags = Utils2.SetFlag(
+            currentObject.rflags,
+            NvConstant.FloatingPointDim.Height,
+            true
+          );
+          currentObject.rht = dimensionValue;
+        }
+
+        // Mark object for link updates
+        OptCMUtil.SetLinkFlag(selectedObjects[index], DSConstant.LinkFlags.Move);
+      }
+
+      // Add to dirty list for rendering
+      ObjectUtil.AddToDirtyList(selectedObjects[index]);
+    }
+    DrawUtil.CompleteOperation(null);
+  }
+
+  /**
+   * Converts a dimension string to its corresponding length value in document coordinates
+   * This function handles unit conversion based on current ruler settings, supporting feet/inches
+   * and pixel units. It validates the string input and returns the calculated length.
+   *
+   * @param dimensionString - The dimension string to convert (e.g. "1.5", "1'6\"")
+   * @param ignoreRulerUnits - If true, ignores feet/inches conversion
+   * @param allowNegative - If true, allows negative dimension values
+   * @returns The calculated length in document coordinates, or false/1 if invalid input
+   */
+  GetDimensionLengthFromString(
+    dimensionString,
+    ignoreRulerUnits,
+    allowNegative
+  ) {
+    let dimensionValue = 0;
+    let coordinateLength = 0;
+
+    if (dimensionString.length === 0) return 0;
+
+    // Handle feet/inches conversion if using imperial units
+    if (
+      T3Gv.docUtil.rulerConfig.useInches &&
+      T3Gv.docUtil.rulerConfig.units == NvConstant.RulerUnit.Feet &&
+      !ignoreRulerUnits
+    ) {
+      dimensionValue = Utils3.ConvertToFeet(dimensionString);
+      if (dimensionValue < 0 && !allowNegative) return false;
+    } else {
+      // Handle decimal number conversion
+      if (!Utils3.NumberIsFloat(dimensionString, allowNegative)) return 1;
+      dimensionValue = parseFloat(dimensionString);
+    }
+
+    // Convert to actual coordinate length
+    coordinateLength = T3Gv.docUtil.rulerConfig.showpixels
+      ? dimensionValue
+      : this.UnitsToCoord(dimensionValue, 0);
+
+    // Cap extremely large values
+    if (coordinateLength > 400000) {
+      coordinateLength = -1;
+    }
+
+    return coordinateLength;
+  }
+
+  /**
+   * Converts a value from ruler units to document coordinates
+   * This function translates measurements from the current ruler units (inches, feet,
+   * millimeters, etc.) into the internal document coordinate system used for rendering.
+   *
+   * @param unitValue - The value in ruler units to convert
+   * @param offset - Optional offset to apply to the value before conversion
+   * @returns The converted value in document coordinates
+   */
+  UnitsToCoord(unitValue, offset) {
+    ObjectUtil.GetObjectPtr(T3Gv.opt.teDataBlockId, false);
+
+    // Get the current unit conversion factor
+    const conversionFactor = RulerUtil.GetToUnits();
+
+    // Apply offset adjusted by major scale
+    unitValue += offset * T3Gv.docUtil.rulerConfig.majorScale;
+
+    // Divide by conversion factor to get coordinates
+    return unitValue / conversionFactor;
+  }
+
+  /**
+   * Sets the background color for shapes in the document
+   * This function updates the document's background color settings, handling transparency
+   * and making necessary adjustments to ensure proper display. It also manages collaboration
+   * messaging to synchronize changes across multiple users.
+   *
+   * The function:
+   * 1. Closes any active edits
+   * 2. Gets the current background color from session data
+   * 3. Adjusts color values for transparency handling
+   * 4. Updates background paint properties
+   * 5. Sends collaboration messages if enabled
+   *
+   * @param colorValue - The color value to set as background
+   */
+  SetBackgroundColor(colorValue) {
+    try {
+      let sessionData;
+
+      // Close any active edits and prepare for collaboration if enabled
+      T3Gv.opt.CloseEdit(true, true);
+
+      // Get session data and original background color
+      sessionData = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+      let originalColor = sessionData.background.Paint.Color;
+
+      // If current fill is transparent, use white as the original color
+      if (sessionData.background.Paint.FillType === NvConstant.FillTypes.Transparent) {
+        originalColor = NvConstant.Colors.White;
+      }
+
+      // Handle transparent color special case
+      let adjustedColor = colorValue;
+      if (colorValue === NvConstant.Colors.Trans) {
+        adjustedColor = NvConstant.Colors.White;
+      }
+
+      // Update background text color
+      UIUtil.ChangeBackgroundTextColor(adjustedColor, originalColor);
+
+      // Set appropriate fill type based on color value
+      if (colorValue === NvConstant.Colors.Trans) {
+        sessionData.background.Paint.FillType = NvConstant.FillTypes.Transparent;
+        sessionData.background.Paint.Color = NvConstant.Colors.White;
+      } else {
+        sessionData.background.Paint.FillType = NvConstant.FillTypes.Solid;
+        sessionData.background.Paint.Color = colorValue;
+      }
+
+      // Set opacity and update background color
+      sessionData.background.Paint.Opacity = 1;
+      UIUtil.SetBackgroundColor();
+
+      // Complete the operation
+      DrawUtil.CompleteOperation();
+    } catch (error) {
+      T3Gv.opt.ExceptionCleanup(error);
+    }
+  }
+
+  SetShapeBackgroundColor(colorValue) {
+
+  }
+
+  AddToLibrary() {
+    // Get currently selected objects from selection manager
+    const selectObjs = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
+    LogUtil.Debug("= U.OptUtil AddToLibrary - selectObjs:", selectObjs);
+    const selectedObjects = selectObjs.Data;
+    LogUtil.Debug("= U.OptUtil AddToLibrary - selectedObjects:", selectedObjects);
+    const objectCount = selectedObjects.length;
+
+    LogUtil.Debug("= U.OptUtil AddToLibrary - T3Gv.stdObj:", T3Gv.stdObj);
+
+    // Check if any objects are selected
+    if (objectCount === 0) {
+      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error: No objects selected");
+      return false;
+    }
+
+    // Process each selected object
+    const libraryItems = [];
+    for (let i = 0; i < objectCount; i++) {
+      // const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], false);
+      const currentObject = T3Gv.stdObj.GetObject(selectedObjects[i]);
+      LogUtil.Debug("= U.OptUtil AddToLibrary - currentObject:", currentObject);
+      if (currentObject) {
+        // Create a deep copy of the object for the library
+        const libraryItem = Utils1.DeepCopy(currentObject);
+        libraryItems.push(libraryItem);
+      }
+    }
+
+    LogUtil.Debug("= O.OptUtil  AddToLibrary - Added objects to library:", libraryItems.length);
+
+    // Convert library items to JSON string to store in local storage
+    try {
+      // Serialize the library items - handle circular references by custom serialization
+      const serializedItems = JSON.stringify(libraryItems, (key, value) => {
+        // Skip functions and handle special object types
+        if (typeof value === 'function') {
+          return undefined;
+        }
+        return value;
+      });
+
+      // Save to local storage with the key "t3.library"
+      localStorage.setItem('t3.library', serializedItems);
+
+      LogUtil.Debug("= O.OptUtil  AddToLibrary - Successfully saved to local storage", {
+        itemCount: libraryItems.length,
+        storageKey: 't3.library',
+        sizeInBytes: serializedItems.length
+      });
+    } catch (error) {
+      // Handle storage errors (quota exceeded, etc.)
+      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error saving to local storage:", error);
+      return false;
+    }
+
+    // save new library to t3
+    Hvac.IdxPage2.addToNewLibrary();
+
+    return libraryItems;
+  }
+
+  LoadLibrary() {
+    LogUtil.Debug("= O.OptUtil  LoadLibrary - Input: No parameters");
+
+    try {
+      // Retrieve stored library items from local storage
+      const serializedItems = localStorage.getItem('t3.library');
+
+      if (!serializedItems) {
+        LogUtil.Debug("= O.OptUtil  LoadLibrary - No library items found in storage");
+        return false;
+      }
+
+      // Parse the JSON string back to objects
+      const libraryItems = JSON.parse(serializedItems);
+
+      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
+        LogUtil.Debug("= O.OptUtil  LoadLibrary - Invalid or empty library data");
+        return false;
+      }
+
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
+
+      // Clear any current selection
+      this.CloseEdit(true);
+
+      // Calculate position for placing the shapes
+      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
+      let offsetX = 0;
+      let offsetY = 0;
+      const padding = 20; // Space between objects
+
+      // Track newly created objects for selection
+      const newObjectIds = [];
+
+      // Process each library item
+      for (let i = 0; i < libraryItems.length; i++) {
+        const libraryItem = libraryItems[i];
+
+        if (!libraryItem.Data) {
+          continue;
+        }
+
+        // Create a new object based on stored data
+        try {
+          const originalObject = libraryItem.Data;
+
+          // Clone the object data but create a proper instance based on type
+          let newObject;
+
+          // Determine the object type and create appropriate instance
+          switch (originalObject.objecttype) {
+            case PolygonConstant.ShapeTypes.RECTANGLE:
+              newObject = new Instance.Shape.Rect(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.OVAL:
+              newObject = new Instance.Shape.Oval(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.LINE:
+              newObject = new Instance.Shape.BaseLine(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.POLYGON:
+              newObject = new Instance.Shape.PolyLine(originalObject);
+              break;
+            // Add additional types as needed
+            default:
+              // Default to base shape for unknown types
+              newObject = new Instance.Shape.BaseDrawObject(originalObject);
+          }
+
+          if (newObject) {
+            // Position the object relative to center position with offset
+            newObject.SetShapeOrigin(
+              centerPosition.x + offsetX,
+              centerPosition.y + offsetY,
+              null,
+              false
+            );
+
+            // Add the new object to document
+            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
+            if (newObjectId >= 0) {
+              newObjectIds.push(newObjectId);
+
+              // Update offset for next object
+              offsetX += newObject.Frame.width + padding;
+
+              // Wrap to next row if needed
+              if (offsetX > 800) {
+                offsetX = 0;
+                offsetY += 200 + padding;
+              }
+            }
+          }
+        } catch (objError) {
+          LogUtil.Debug("= O.OptUtil  LoadLibrary - Error creating object:", objError);
+        }
+      }
+
+      // Select all newly created objects
+      if (newObjectIds.length > 0) {
+        this.SelectObjects(newObjectIds, false, true);
+        SvgUtil.RenderAllSVGObjects();
+        DrawUtil.CompleteOperation(newObjectIds);
+      }
+
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+      return true;
+    } catch (error) {
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Error:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Moves or resizes selected objects by a specified amount using the nudge operation
+   * This function handles both moving objects (translation) and growing/shrinking objects (resize)
+   * based on the provided parameters.
+   *
+   * It processes all selected objects, filters those that shouldn't be modified (locked objects,
+   * objects with special constraints), and applies the appropriate transformations. After
+   * modification, it updates links, renders changes, and ensures the objects remain visible.
+   *
+   * @param horizontalDelta - Amount to move or resize horizontally (positive = right, negative = left)
+   * @param verticalDelta - Amount to move or resize vertically (positive = down, negative = up)
+   * @param isResizeMode - When true, objects are resized; when false, objects are moved
+   */
+  NudgeSelectedObjects(horizontalDelta, verticalDelta, isResizeMode) {
+    LogUtil.Debug("= O.OptUtil  NudgeSelectedObjects - Input:", { horizontalDelta, verticalDelta, isResizeMode });
+
+    let originalObject;
+    let currentObject;
+
+    // Get the list of selected objects
+    let selectedObjects = T3Gv.stdObj.GetObject(this.selectObjsBlockId).Data;
+    let objectCount = selectedObjects.length;
+
+    // Check if auto-grow from top-left is disabled
+    const isAutoGrowTopLeftDisabled = (T3Gv.opt.header.flags & OptConstant.HeaderFlags.AutoGrowTopLeft) === 0;
+
+    // Get the target selection ID
+    const targetSelectionId = SelectUtil.GetTargetSelect();
+
+    // Early exit if no objects are selected
+    if (objectCount === 0) {
+      LogUtil.Debug("= O.OptUtil  NudgeSelectedObjects - Output: No objects selected");
+      return;
+    }
+
+    // Remove any existing dynamic guides
+    if (T3Gv.opt.dynamicGuides) {
+      DynamicUtil.DynamicSnapsRemoveGuides(T3Gv.opt.dynamicGuides);
+      T3Gv.opt.dynamicGuides = null;
+    }
+
+    let objectIndex;
+    let hookIndex;
+    let hookObject;
+
+    // Bounds for the move operation
+    const moveBounds = {};
+
+    // Get all objects that should move together
+    let objectsToModify = SelectUtil.GetMoveList(selectedObjects[0], true, true, false, moveBounds, false);
+
+    // Filter out objects that shouldn't be modified
+    for (objectIndex = objectsToModify.length - 1; objectIndex >= 0; objectIndex--) {
+      currentObject = ObjectUtil.GetObjectPtr(objectsToModify[objectIndex], false);
+
+      // For resize mode, filter out objects that don't allow growth
+      if (isResizeMode && currentObject.NoGrow()) {
+        objectsToModify.splice(objectIndex, 1);
+      }
+      // For the first selected object, handle special cases
+      else if (objectsToModify[objectIndex] !== selectedObjects[0] ||
+        (currentObject.objecttype === NvConstant.FNObjectTypes.GanttBar &&
+          objectsToModify.splice(objectIndex, 1),
+          (currentObject.flags & NvConstant.ObjFlags.Lock) !== 0)) {
+
+        // Filter out locked objects
+        if (currentObject.flags & NvConstant.ObjFlags.Lock) {
+          objectsToModify.splice(objectIndex, 1);
+        }
+        // For move mode, filter out objects not connected through hooks
+        else if (!isResizeMode) {
+          for (hookIndex = 0; hookIndex < currentObject.hooks.length; hookIndex++) {
+            if (objectsToModify.indexOf(currentObject.hooks[hookIndex].objid) === -1) {
+              objectsToModify.splice(objectIndex, 1);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Update the list of objects to modify and count
+    selectedObjects = objectsToModify;
+    objectCount = selectedObjects.length;
+
+    // Skip if we can't move past document bounds and this would go negative
+    if ((!isResizeMode && isAutoGrowTopLeftDisabled &&
+      (moveBounds.x + horizontalDelta < 0 || moveBounds.y + verticalDelta < 0))) {
+      LogUtil.Debug("= O.OptUtil  NudgeSelectedObjects - Output: Operation would move objects out of bounds");
+      return;
+    }
+
+    // Update bounds with deltas
+    moveBounds.x += horizontalDelta;
+    moveBounds.y += verticalDelta;
+
+    // Exit if no objects to modify
+    if (objectCount === 0) {
+      LogUtil.Debug("= O.OptUtil  NudgeSelectedObjects - Output: No modifiable objects found");
+      return;
+    }
+
+    // Hide selection indicators during modification
+    SvgUtil.HideAllSVGSelectionStates();
+
+    let objectId;
+    let objectSize;
+    let newWidth;
+    let newHeight;
+    let maintainProportions;
+    let processedObjectCount = 0;
+
+    // Prepare for drag operation
+    this.dragBBoxList = [];
+
+    // Process each object
+    for (processedObjectCount = 0; processedObjectCount < objectCount; ++processedObjectCount) {
+      objectId = selectedObjects[processedObjectCount];
+      currentObject = ObjectUtil.GetObjectPtr(objectId, false);
+
+      // Handle resize mode
+      if (isResizeMode) {
+        // Create a deep copy of the current object for reference
+        originalObject = Utils1.DeepCopy(currentObject);
+
+        // Get current dimensions
+        objectSize = currentObject.GetDimensions();
+
+        newWidth = null;
+        newHeight = null;
+        maintainProportions = false;
+
+        // Calculate new width if horizontal delta exists
+        if (horizontalDelta) {
+          if (
+            currentObject.ObjGrow === OptConstant.GrowBehavior.All ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.Horiz
+          ) {
+            newWidth = objectSize.x + horizontalDelta;
+
+            // Skip if resulting width would be too small
+            if (newWidth <= 10) {
+              continue;
+            }
+          }
+
+          // For proportional growth, also adjust height
+          if (objectSize.y > 0 && currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional) {
+            newHeight = objectSize.y + horizontalDelta;
+            maintainProportions = true;
+          }
+        }
+
+        // Calculate new height if vertical delta exists and not already maintaining proportions
+        if (verticalDelta && !maintainProportions) {
+          if (
+            currentObject.ObjGrow === OptConstant.GrowBehavior.All ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional ||
+            currentObject.ObjGrow === OptConstant.GrowBehavior.Vertical
+          ) {
+            newHeight = objectSize.y + verticalDelta;
+
+            // Skip if resulting height would be too small
+            if (newHeight <= 10) {
+              continue;
+            }
+          }
+
+          // For proportional growth, also adjust width
+          if (objectSize.x > 0 && currentObject.ObjGrow === OptConstant.GrowBehavior.ProPortional) {
+            newWidth = objectSize.x + verticalDelta;
+          }
+        }
+
+        // Get writable copy of the object
+        currentObject = ObjectUtil.GetObjectPtr(objectId, true);
+
+        // Convert TextOnly objects to normal shapes if necessary
+        if (currentObject.flags & NvConstant.ObjFlags.TextOnly &&
+          currentObject.StyleRecord.Fill.Paint.FillType === NvConstant.FillTypes.Transparent) {
+          currentObject.flags = Utils2.SetFlag(currentObject.flags, NvConstant.ObjFlags.TextOnly, false);
+          currentObject.SetTextGrow(NvConstant.TextGrowBehavior.Vertical);
+        }
+
+        // Apply the new size
+        currentObject.SetSize(newWidth, newHeight, OptConstant.ActionTriggerType.LineLength);
+
+        // Maintain links between objects
+        HookUtil.MaintainLink(currentObject.BlockID, currentObject, originalObject, OptConstant.ActionTriggerType.LineEnd);
+      }
+      // Handle move mode
+      else {
+        // Calculate new positions
+        if (horizontalDelta) {
+          // New x position calculation happens here
+        }
+
+        if (verticalDelta) {
+          // New y position calculation happens here
+        }
+
+        // Move the shape
+        ToolActUtil.OffsetShape(objectId, horizontalDelta, verticalDelta, OptConstant.ActionTriggerType.TableSelect);
+      }
+
+      // Add to dirty list to be re-rendered
+      ObjectUtil.AddToDirtyList(objectId, !isResizeMode);
+
+      // Update display coordinates if this is the target object
+      if (objectId === targetSelectionId) {
+        const displayDimensions = currentObject.GetDimensionsForDisplay();
+        UIUtil.UpdateDisplayCoordinates(displayDimensions, null, null, currentObject);
+      }
+
+      // Handle objects with a single hook in move mode
+      if (currentObject && currentObject.hooks.length === 1 && !isResizeMode) {
+        hookObject = ObjectUtil.GetObjectPtr(currentObject.hooks[0].objid, false);
+        this.HookedObjectMovingDebounced(currentObject, hookObject);
+      }
+    }
+
+    // Update nudge state
+    if (this.nudgeOpen) {
+      if (isResizeMode) {
+        this.nudgeGrowX += horizontalDelta;
+        this.nudgeGrowY += verticalDelta;
+      } else {
+        this.nudgeX += horizontalDelta;
+        this.nudgeY += verticalDelta;
+      }
+    } else {
+      if (isResizeMode) {
+        this.nudgeGrowX = horizontalDelta;
+        this.nudgeGrowY = verticalDelta;
+        this.nudgeX = 0;
+        this.nudgeY = 0;
+      } else {
+        this.nudgeGrowX = 0;
+        this.nudgeGrowY = 0;
+        this.nudgeX = horizontalDelta;
+        this.nudgeY = verticalDelta;
+      }
+    }
+
+    // Reset origin if needed
+    if (this.theDragGotAutoResizeLeft || this.theDragGotAutoResizeTop) {
+      this.ResetOrigin();
+    }
+
+    // Update state for next operation
+    this.nudgeOpen = false;
+
+    // Update links, line hops, and swimlanes
+    this.UpdateLinks();
+    HookUtil.UpdateLineHops(true);
+    // OptCMUtil.UpdateSwimlanes();
+
+    // Adjust document area if needed
+    UIUtil.FitDocumentWorkArea(false, false);
+
+    // Render updated objects
+    SvgUtil.RenderDirtySVGObjects();
+    SvgUtil.RenderAllSVGSelectionStates();
+
+    // Ensure objects remain visible
+    this.ScrollObjectIntoView(-1, false, moveBounds);
+
+    // Set nudge state to open for subsequent operations
+    this.nudgeOpen = true;
+
+    DrawUtil.UpdateAppStateV2Frame();
+
+    LogUtil.Debug("= O.OptUtil  NudgeSelectedObjects - Output: Objects modified", { objectCount });
+  }
+
+  /**
+   * Resets the origin for all objects in the document when auto-resize has occurred from left or top edge
+   * This function applies a correction offset to all objects in the document to maintain
+   * relative positioning after auto-resize operations. It shifts objects to compensate for
+   * changes in the document origin.
+   */
+  ResetOrigin() {
+    LogUtil.Debug("= O.OptUtil  ResetOrigin - Input: Starting reset");
+
+    // Calculate offsets needed to reset the origin
+    const horizontalOffset = this.theDragGotAutoResizeLeft ? -this.theDragGotAutoResizeOldLeft.at(-1) : 0;
+    const verticalOffset = this.theDragGotAutoResizeTop ? -this.theDragGotAutoResizeOldTop.at(-1) : 0;
+
+    // Apply the offset to all objects in the document
+    LayerUtil.ZList().forEach(objectId => {
+      const objectData = T3Gv.stdObj.PreserveBlock(objectId).Data;
+      if (objectData != null) {
+        objectData.OffsetShape(horizontalOffset, verticalOffset);
+        ObjectUtil.AddToDirtyList(objectId);
+      }
+    });
+
+    // Reset the SVG render offset and clear tracking state
+    this.ResetSVGRenderOffset();
+    this.theDragGotAutoResizeLeft = false;
+    this.theDragGotAutoResizeTop = false;
+    this.theDragGotAutoResizeOldLeft = [];
+    this.theDragGotAutoResizeOldTop = [];
+
+    LogUtil.Debug("= O.OptUtil  ResetOrigin - Output: Origin reset completed", {
+      horizontalOffset,
+      verticalOffset
+    });
+  }
+
+  /**
+   * Resets the SVG render offset to zero
+   * This function resets the positioning offsets of all SVG layers to their default values,
+   * effectively moving them back to their original positions.
+   */
+  ResetSVGRenderOffset() {
+    LogUtil.Debug("= O.OptUtil  ResetSVGRenderOffset - Input: Resetting offsets to zero");
+    this.SetSVGRenderOffset(0, 0);
+    LogUtil.Debug("= O.OptUtil  ResetSVGRenderOffset - Output: Offsets reset");
+  }
+
+  /**
+   * Sets the position offset for all SVG layers
+   * This function repositions all SVG layers (object, overlay, highlight, and collaboration)
+   * by applying the specified horizontal and vertical offsets. This is used for implementing
+   * visual effects like panning or temporary transformations.
+   *
+   * @param horizontalOffset - The horizontal offset to apply
+   * @param verticalOffset - The vertical offset to apply
+   */
+  SetSVGRenderOffset(horizontalOffset, verticalOffset) {
+    LogUtil.Debug("= O.OptUtil  SetSVGRenderOffset - Input:", { horizontalOffset, verticalOffset });
+
+    // Apply the offset to each SVG layer if it exists
+    if (this.svgObjectLayer) {
+      this.svgObjectLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgOverlayLayer) {
+      this.svgOverlayLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgHighlightLayer) {
+      this.svgHighlightLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    if (this.svgCollabLayer) {
+      this.svgCollabLayer.SetPos(horizontalOffset, verticalOffset);
+    }
+
+    LogUtil.Debug("= O.OptUtil  SetSVGRenderOffset - Output: Positions updated for all layers");
+  }
+
+  HookedObjectMovingTimer;
+  HookedObjectMovingLastExecutionTime;
+
+  /**
+   * Debounces calls to HookedObjectMoving when a hooked object is being moved
+   * This function ensures that HookedObjectMoving isn't called too frequently during
+   * continuous movement operations. It implements a debounce pattern with a 100ms
+   * threshold, which prevents performance issues during rapid updates.
+   *
+   * @param movingObject - The object that's being moved
+   * @param hookedObject - The object that's hooked to the moving object
+   */
+  HookedObjectMovingDebounced(movingObject, hookedObject) {
+    LogUtil.Debug("= O.OptUtil  HookedObjectMovingDebounced - Input:", {
+      movingObjectId: movingObject.BlockID,
+      hookedObjectId: hookedObject?.BlockID
+    });
+
+    // Only proceed if the hooked object exists and has the right dimensions flag
+    if (
+      hookedObject &&
+      hookedObject.HookedObjectMoving &&
+      hookedObject.Dimensions & (
+        NvConstant.DimensionFlags.Always | NvConstant.DimensionFlags.Select
+      )
+    ) {
+      // Clear any existing timer to prevent multiple executions
+      clearTimeout(this.HookedObjectMovingTimer);
+
+      // Determine delay: 0ms if first execution or >100ms since last execution, otherwise 100ms
+      const delay = !this.HookedObjectMovingLastExecutionTime ||
+        Date.now() - this.HookedObjectMovingLastExecutionTime >= 100 ? 0 : 100;
+
+      // Create reference to this for use in the timeout
+      const self = this;
+
+      // Set the timer to execute after the delay
+      this.HookedObjectMovingTimer = setTimeout(
+        function () {
+          // Call the HookedObjectMoving method with movement details
+          hookedObject.HookedObjectMoving({
+            linkParams: null,
+            movingShapeID: movingObject.BlockID,
+            movingShapeBBox: movingObject.GetDimensionsForDisplay()
+          });
+
+          // Update the last execution timestamp
+          self.HookedObjectMovingLastExecutionTime = Date.now();
+
+          LogUtil.Debug("= O.OptUtil  HookedObjectMovingDebounced - Output: HookedObjectMoving called");
+        },
+        delay
+      );
+    } else {
+      LogUtil.Debug("= O.OptUtil  HookedObjectMovingDebounced - Output: No action (hookedObject not eligible)");
+    }
+  }
+
+  /**
+   * Closes any open nudge operation and completes the current operation
+   * This function sets the nudge state to closed and finalizes the current
+   * operation, ensuring any pending changes are applied and the system
+   * returns to its normal state.
+   */
+  CloseOpenNudge() {
+    // Set the nudge state to closed
+    this.nudgeOpen = false;
+
+    // Complete the current operation with null parameter
+    DrawUtil.CompleteOperation(null);
+
+    LogUtil.Debug("= O.OptUtil  CloseOpenNudge - Input/Output: Nudge closed and operation completed");
+  }
+
+  /**
+   * Flips an array of points horizontally and/or vertically around a reference frame
+   * This function mirrors points relative to the edges of a bounding rectangle,
+   * allowing for horizontal flips (left-to-right), vertical flips (top-to-bottom),
+   * or both simultaneously.
+   *
+   * @param frame - The reference rectangle frame for flipping (with x, y, width, height)
+   * @param flipFlags - Bit flags determining flip direction (FlipHoriz, FlipVert, or both)
+   * @param points - Array of points to be flipped
+   */
+  FlipPoints(frame, flipFlags, points) {
+    LogUtil.Debug("= O.OptUtil  FlipPoints - Input:", { frame, flipFlags, pointCount: points.length });
+
+    let distance;
+    let pointIndex;
+    let pointCount;
+    const extraFlags = OptConstant.ExtraFlags;
+
+    pointCount = points.length;
+    for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
+      // Horizontal flip - mirrors points across the vertical center line
+      if (flipFlags & extraFlags.FlipHoriz) {
+        distance = points[pointIndex].x - frame.x;
+        points[pointIndex].x = frame.x + frame.width - distance;
+      }
+
+      // Vertical flip - mirrors points across the horizontal center line
+      if (flipFlags & extraFlags.FlipVert) {
+        distance = points[pointIndex].y - frame.y;
+        points[pointIndex].y = frame.y + frame.height - distance;
+      }
+    }
+
+    LogUtil.Debug("= O.OptUtil  FlipPoints - Output: Points flipped", { pointCount });
+  }
+
+  /**
+   * Calculates the connection points for rows in a table
+   * This function computes connection points around a table's rows that can be used
+   * for connecting lines or other elements. It returns points for:
+   * - Top center and bottom center of the table
+   * - Left side of each row at the row's midpoint
+   * - Right side of each row at the row's midpoint
+   *
+   * The points are normalized to a standard coordinate system (0-1000 range)
+   *
+   * @param tableElement - The table element containing frame information
+   * @param tableData - Data structure containing table rows and cells
+   * @returns Array of connection point coordinates
+   */
+  TableGetRowConnectPoints(tableElement, tableData) {
+    LogUtil.Debug("= O.OptUtil  TableGetRowConnectPoints - Input:", {
+      tableElement: tableElement?.BlockID,
+      tableData: {
+        rowCount: tableData?.rows?.length,
+        cellCount: tableData?.cells?.length
+      }
+    });
+
+    let rowIndex, extraRowIndex, rowHeight, cellData, rowY, connectPoint, rowData, extraRowCount;
+    const rowCount = tableData.rows.length;
+    const connectPoints = [];
+    const tableHeight = tableElement.Frame.height;
+    const maxDimension = OptConstant.Common.DimMax;
+
+    // Add top center connection point
+    connectPoint = {
+      x: maxDimension / 2,
+      y: 0
+    };
+    connectPoints.push(connectPoint);
+
+    // Add bottom center connection point
+    connectPoint = {
+      x: maxDimension / 2,
+      y: maxDimension
+    };
+    connectPoints.push(connectPoint);
+
+    // Calculate vertical offset between text rectangle and frame
+    const textRectOffset = tableElement.trect.y - tableElement.Frame.y;
+
+    // Create connection points for left side of each row
+    for (rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      rowData = tableData.rows[rowIndex];
+      cellData = tableData.cells[rowData.start];
+
+      // Calculate row position and height
+      rowY = cellData.frame.y + textRectOffset;
+      rowHeight = cellData.frame.height;
+      extraRowCount = cellData.nextra;
+
+      // Add heights of any extra rows
+      for (extraRowIndex = 1; extraRowIndex <= extraRowCount; extraRowIndex++) {
+        cellData = tableData.cells[tableData.rows[rowIndex + extraRowIndex].start];
+        rowHeight += cellData.frame.height;
+      }
+
+      // Skip extra rows in next iterations since we already processed them
+      rowIndex += extraRowCount;
+
+      // Calculate vertical center of the row
+      rowY += rowHeight / 2;
+
+      // Create connection point at the left side of the row
+      connectPoint = {
+        x: 0,
+        y: (rowY / tableHeight) * maxDimension
+      };
+      connectPoints.push(connectPoint);
+    }
+
+    // Create connection points for right side of each row
+    for (rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      rowData = tableData.rows[rowIndex];
+      cellData = tableData.cells[rowData.start + rowData.ncells - 1]; // Last cell in the row
+
+      // Calculate row position and height
+      rowY = cellData.frame.y + textRectOffset;
+      rowHeight = cellData.frame.height;
+      extraRowCount = cellData.nextra;
+
+      // Add heights of any extra rows (using the last cell of each row)
+      for (extraRowIndex = 1; extraRowIndex <= extraRowCount; extraRowIndex++) {
+        const extraRowData = tableData.rows[rowIndex + extraRowIndex];
+        cellData = tableData.cells[extraRowData.start + extraRowData.ncells - 1];
+        rowHeight += cellData.frame.height;
+      }
+
+      // Skip extra rows in next iterations since we already processed them
+      rowIndex += extraRowCount;
+
+      // Calculate vertical center of the row
+      rowY += rowHeight / 2;
+
+      // Create connection point at the right side of the row
+      connectPoint = {
+        x: maxDimension,
+        y: (rowY / tableHeight) * maxDimension
+      };
+      connectPoints.push(connectPoint);
+    }
+
+    LogUtil.Debug("= O.OptUtil  TableGetRowConnectPoints - Output:", {
+      pointCount: connectPoints.length
+    });
+
+    return connectPoints;
+  }
+
+  /**
+   * Finds all child line objects connected to a parent object
+   * This function repeatedly searches for child lines of the specified parent,
+   * collecting their IDs into an array. It uses FindChildArrayByIndex to
+   * locate each child line in sequence.
+   *
+   * @param parentId - ID of the parent object to find child lines for
+   * @param linksList - Optional list of links to search through
+   * @returns Array of line object IDs that are children of the parent
+   */
+  FindAllChildLines(parentId, linksList?) {
+    // Initialize result tracker for FindChildArrayByIndex calls
+    const resultInfo = {
+      lindex: -1,
+      id: -1,
+      hookpt: 0
+    };
+
+    // Array to collect child line IDs
+    const childLineIds = [];
+
+    // Find all child lines by repeatedly calling FindChildArrayByIndex
+    // and collecting each found ID until no more are found
+    while (this.FindChildArrayByIndex(
+      parentId,
+      resultInfo,
+      linksList,
+      OptConstant.DrawObjectBaseClass.Line
+    ) > 0) {
+      childLineIds.push(resultInfo.id);
+    }
+
+    return childLineIds;
+  }
+
+  CommentUngroup(commentThreadIds) { }
+
+  CommentGroup(commentThreadIds) { }
 }
 
 export default OptUtil

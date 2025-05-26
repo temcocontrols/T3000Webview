@@ -28,7 +28,7 @@
  *   5      // numPoints: The polygon consists of 5 points.
  * );
  *
- * console.log(polygon);
+ * LogUtil.Debug(polygon);
  *
  * @public
  */

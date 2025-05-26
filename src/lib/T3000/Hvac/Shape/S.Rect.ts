@@ -11,6 +11,8 @@ import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Util from '../Util/T3Util';
 import PolyUtil from '../Opt/Opt/PolyUtil';
+import LogUtil from '../Util/LogUtil';
+
 
 /**
  * Represents a rectangle shape that can be rendered with various styles and properties.
@@ -35,10 +37,12 @@ class Rect extends BaseShape {
    * @param options - Configuration options for the rectangle
    */
   constructor(options: any) {
-    T3Util.Log("= S.Rect Input:", options);
+    LogUtil.Debug("= S.Rect constructor Input:", options);
+
     options = options || {};
     options.ShapeType = OptConstant.ShapeType.Rect;
     options.moreflags |= OptConstant.ObjMoreFlags.FixedRR;
+    options.uniType = "Rect";
 
     super(options);
 
@@ -46,7 +50,7 @@ class Rect extends BaseShape {
     this.nativeDataArrayBuffer = options.nativeDataArrayBuffer || null;
     this.SymbolData = options.SymbolData || null;
 
-    T3Util.Log("= S.Rect Created instance:", this);
+    LogUtil.Debug("= S.Rect constructor Output:", this);
   }
 
   /**
@@ -63,7 +67,8 @@ class Rect extends BaseShape {
     const shapeContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
 
     // Clone the frame and apply necessary adjustments
-    const adjustedFrame = $.extend(true, {}, this.Frame);
+    // const adjustedFrame = $.extend(true, {}, this.Frame);
+    const adjustedFrame = { ...this.Frame };
     const styleRecord = this.StyleRecord;
 
     // Inflate the rectangle if border thickness is set
@@ -206,14 +211,14 @@ class Rect extends BaseShape {
   }
 
   GetCornerSize(inputSize?) {
-    T3Util.Log("= S.Rect GetCornerSize Input:", inputSize);
+    LogUtil.Debug("= S.Rect GetCornerSize Input:", inputSize);
     const cornerSize = this.RRectGetCornerSize(inputSize);
-    T3Util.Log("= S.Rect GetCornerSize Output:", cornerSize);
+    LogUtil.Debug("= S.Rect GetCornerSize Output:", cornerSize);
     return cornerSize;
   }
 
   RRectGetCornerSize(inputSize?) {
-    T3Util.Log("= S.Rect RRectGetCornerSize Input:", inputSize);
+    LogUtil.Debug("= S.Rect RRectGetCornerSize Input:", inputSize);
 
     let width = this.Frame.width;
     let height = this.Frame.height;
@@ -229,17 +234,17 @@ class Rect extends BaseShape {
       if (fixedSize > maxSize) {
         fixedSize = maxSize;
       }
-      T3Util.Log("= S.Rect RRectGetCornerSize Output:", fixedSize);
+      LogUtil.Debug("= S.Rect RRectGetCornerSize Output:", fixedSize);
       return fixedSize;
     }
 
     let cornerSize = minDimension * this.shapeparam;
-    T3Util.Log("= S.Rect RRectGetCornerSize Output:", cornerSize);
+    LogUtil.Debug("= S.Rect RRectGetCornerSize Output:", cornerSize);
     return cornerSize;
   }
 
   GetPolyPoints(event, type, arg, rect, index) {
-    T3Util.Log("= S.Rect GetPolyPoints Input:", { event, type, arg, rect, index });
+    LogUtil.Debug("= S.Rect GetPolyPoints Input:", { event, type, arg, rect, index });
     const cornerSize = this.RRectGetCornerSize();
     let polyPoints;
     if (cornerSize > 0) {
@@ -247,12 +252,12 @@ class Rect extends BaseShape {
     } else {
       polyPoints = this.BaseDrawingObjectGetPolyPoints(event, type, arg, rect, index);
     }
-    T3Util.Log("= S.Rect GetPolyPoints Output:", polyPoints);
+    LogUtil.Debug("= S.Rect GetPolyPoints Output:", polyPoints);
     return polyPoints;
   }
 
   RRectGetPolyPoints(event, type, arg, rect, index) {
-    T3Util.Log("= S.Rect RRectGetPolyPoints Input:", { event, type, arg, rect, index });
+    LogUtil.Debug("= S.Rect RRectGetPolyPoints Input:", { event, type, arg, rect, index });
 
     let points = [];
     let frameCopy = {};
@@ -299,12 +304,12 @@ class Rect extends BaseShape {
       }
     }
 
-    T3Util.Log("= S.Rect RRectGetPolyPoints Output:", points);
+    LogUtil.Debug("= S.Rect RRectGetPolyPoints Output:", points);
     return points;
   }
 
   BaseDrawingObjectGetPolyPoints(event, type, arg, rect, index) {
-    T3Util.Log("= S.Rect BaseDrawingObjectGetPolyPoints Input:", { event, type, arg, rect, index });
+    LogUtil.Debug("= S.Rect BaseDrawingObjectGetPolyPoints Input:", { event, type, arg, rect, index });
 
     let points = [];
     let frameCopy = {};
@@ -329,18 +334,18 @@ class Rect extends BaseShape {
       }
     }
 
-    T3Util.Log("= S.Rect BaseDrawingObjectGetPolyPoints Output:", points);
+    LogUtil.Debug("= S.Rect BaseDrawingObjectGetPolyPoints Output:", points);
     return points;
   }
 
   ExtendLines(extend) {
-    T3Util.Log("= S.Rect ExtendLines Input:", extend);
+    LogUtil.Debug("= S.Rect ExtendLines Input:", extend);
     const cornerSize = this.RRectGetCornerSize();
-    T3Util.Log("= S.Rect ExtendLines Output");
+    LogUtil.Debug("= S.Rect ExtendLines Output");
   }
 
   SetShapeIndent(indentOptions) {
-    T3Util.Log("= S.Rect SetShapeIndent Input:", indentOptions);
+    LogUtil.Debug("= S.Rect SetShapeIndent Input:", indentOptions);
     const cornerSize = this.RRectGetCornerSize();
     let result;
     if (cornerSize > 0) {
@@ -352,12 +357,12 @@ class Rect extends BaseShape {
       this.bottom_sindent = 0;
       result = super.SetShapeIndent(indentOptions);
     }
-    T3Util.Log("= S.Rect SetShapeIndent Output:", result);
+    LogUtil.Debug("= S.Rect SetShapeIndent Output:", result);
     return result;
   }
 
   RRectSetShapeIndent(indentOptions) {
-    T3Util.Log("= S.Rect RRectSetShapeIndent Input:", indentOptions);
+    LogUtil.Debug("= S.Rect RRectSetShapeIndent Input:", indentOptions);
 
     let width = this.inside.width;
     let height = this.inside.height;
@@ -388,7 +393,7 @@ class Rect extends BaseShape {
     this.tindent.right = this.right_sindent * width / scaleRight;
     this.tindent.bottom = this.bottom_sindent * height / scaleBottom;
 
-    T3Util.Log("= S.Rect RRectSetShapeIndent Output:", {
+    LogUtil.Debug("= S.Rect RRectSetShapeIndent Output:", {
       left_sindent: this.left_sindent,
       top_sindent: this.top_sindent,
       right_sindent: this.right_sindent,
@@ -398,7 +403,7 @@ class Rect extends BaseShape {
   }
 
   SetShapeProperties(properties) {
-    T3Util.Log("= S.Rect SetShapeProperties Input:", properties);
+    LogUtil.Debug("= S.Rect SetShapeProperties Input:", properties);
     let updated = false;
     const fixedRRectFlag = OptConstant.ObjMoreFlags.FixedRR;
 
@@ -435,12 +440,12 @@ class Rect extends BaseShape {
       updated = true;
     }
 
-    T3Util.Log("= S.Rect SetShapeProperties Output:", updated);
+    LogUtil.Debug("= S.Rect SetShapeProperties Output:", updated);
     return updated;
   }
 
   ApplyCurvature(curvatureParam) {
-    T3Util.Log("= S.Rect ApplyCurvature Input:", curvatureParam);
+    LogUtil.Debug("= S.Rect ApplyCurvature Input:", curvatureParam);
 
     var shapeProperties = {
       hasrrectselected: true,
@@ -449,7 +454,7 @@ class Rect extends BaseShape {
     };
 
     this.SetShapeProperties(shapeProperties);
-    T3Util.Log("= S.Rect ApplyCurvature Output: Shape properties updated");
+    LogUtil.Debug("= S.Rect ApplyCurvature Output: Shape properties updated");
   }
 }
 

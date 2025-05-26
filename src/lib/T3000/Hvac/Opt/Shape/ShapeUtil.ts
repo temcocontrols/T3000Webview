@@ -1,53 +1,32 @@
 
 
-import $ from 'jquery'
 import NvConstant from '../../Data/Constant/NvConstant'
 import OptConstant from '../../Data/Constant/OptConstant'
-import ShapeConstant from '../../Data/Constant/ShapeConstant'
-import StyleConstant from '../../Data/Constant/StyleConstant'
 import TextConstant from '../../Data/Constant/TextConstant'
 import Instance from '../../Data/Instance/Instance'
 import StateConstant from '../../Data/State/StateConstant'
 import T3Gv from '../../Data/T3Gv'
-import BlockHeader from '../../Model/BlockHeader'
-import FontRecord from '../../Model/FontRecord'
-import Hook from '../../Model/Hook'
-import Layer from '../../Model/Layer'
 import LayersManager from '../../Model/LayersManager'
 import Link from '../../Model/Link'
-import OutsideEffectData from '../../Model/OutsideEffectData'
-import PaintData from '../../Model/PaintData'
 import Point from '../../Model/Point'
-import PolyGeomMd from '../../Model/PolyGeomMd'
 import PolySeg from '../../Model/PolySeg'
 import QuickStyle from '../../Model/QuickStyle'
 import Rectangle from '../../Model/Rectangle'
-import RulerConfig from '../../Model/RulerConfig'
 import SDData from '../../Model/SDData'
-import SDGraphDefault from '../../Model/SDGraphDefault'
-import TextObject from '../../Model/TextObject'
 import TextureList from '../../Model/TextureList'
-import TextureScale from '../../Model/TextureScale'
 import WinSetting from '../../Model/WinSetting'
 import WResult from '../../Model/WResult'
-import T3DataStream from '../../Util/T3DataStream'
 import Utils1 from '../../Util/Utils1'
 import Utils2 from '../../Util/Utils2'
-import Utils3 from '../../Util/Utils3'
-import DataUtil from '../Data/DataUtil'
+import ObjectUtil from '../Data/ObjectUtil'
 import DSConstant from '../DS/DSConstant'
-import DSStruct from '../DS/DSStruct'
-import DSUtil from '../DS/DSUtil'
 import SvgUtil from '../Opt/SvgUtil'
-import PolygonConstant from '../Polygon/PolygonConstant'
-import PolygonShapeGenerator from "../Polygon/PolygonUtil"
 import LayerUtil from '../Opt/LayerUtil'
 import UIUtil from '../UI/UIUtil'
-import ToolActUtil from '../Opt/ToolActUtil'
-import ExportUtil from '../Opt/ExportUtil'
-import ImageRecord from '../../Model/ImageRecord'
 import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
+import T3Util from '../../Util/T3Util'
+import LogUtil from '../../Util/LogUtil'
 
 class ShapeUtil {
 
@@ -330,7 +309,7 @@ class ShapeUtil {
     let result = new ShapeUtil.Result();
 
     let formattedTextObject = null;
-    let sessionBlock = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
+    let sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, true);
     let objectsToRemove = [];
 
     result.isTemplate = false;
@@ -370,7 +349,7 @@ class ShapeUtil {
 
     if (result.WarnMeta) {
       if (ignoreErrors) return ShapeUtil.Errors.WarnMeta;
-      alert('Metafile not read');
+      LogUtil.Debug('Metafile not read');
     }
 
     if (outputDimensions && errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
@@ -380,11 +359,11 @@ class ShapeUtil {
 
     if (errorCode !== ShapeUtil.Errors.WaitingForCallBack) {
       const isPlanningDocument = UIUtil.IsPlanningDocument();
-      const layersManager = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
+      const layersManager = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, true);
 
       objectCount = result.zList.length;
       for (index = 0; index < objectCount; index++) {
-        object = DataUtil.GetObjectPtr(result.zList[index], false);
+        object = ObjectUtil.GetObjectPtr(result.zList[index], false);
 
         let targetLayer;
 
@@ -393,7 +372,7 @@ class ShapeUtil {
 
         targetLayer.push(result.zList[index]);
 
-        DataUtil.AddToDirtyList(result.zList[index]);
+        ObjectUtil.AddToDirtyList(result.zList[index]);
 
         if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
           selectedObjects.selectedList.push(result.zList[index]);
@@ -409,7 +388,7 @@ class ShapeUtil {
       }
 
       if (objectsToRemove.length) {
-        DataUtil.DeleteObjects(objectsToRemove);
+        ObjectUtil.DeleteObjects(objectsToRemove);
       }
 
       // FROM SDData_Transfer
@@ -419,7 +398,7 @@ class ShapeUtil {
 
       linksCount = result.links.length;
       if (!skipLinks && linksCount > 0) {
-        let linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+        let linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
         for (index = 0; index < linksCount; index++) {
           linksBlock.push(result.links[index]);
         }
@@ -432,7 +411,7 @@ class ShapeUtil {
       // Calculate bounding rectangle for all objects
       let objectWithBoundsCount = 0;
       for (index = 0; index < objectCount; index++) {
-        object = DataUtil.GetObjectPtr(result.zList[index], false);
+        object = ObjectUtil.GetObjectPtr(result.zList[index], false);
         if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
           if (objectWithBoundsCount === 0) {
             boundingRect = new Rectangle(object.r.x, object.r.y, object.r.width, object.r.height);
@@ -452,10 +431,15 @@ class ShapeUtil {
           offsetY = 0;
         }
 
+        offsetX += 20;
+        offsetY += 20;
+
+        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY);
+
         // Apply offset if needed
         if (offsetX || offsetY) {
           for (index = 0; index < objectCount; index++) {
-            object = DataUtil.GetObjectPtr(result.zList[index], false);
+            object = ObjectUtil.GetObjectPtr(result.zList[index], false);
             if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
               object.OffsetShape(offsetX, offsetY);
             }
@@ -477,7 +461,7 @@ class ShapeUtil {
 
           // Check if we need to adjust document size
           if (boundingRect.x + boundingRect.width > sessionBlock.dim.x) {
-            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
               offsetX = boundingRect.x + boundingRect.width - sessionBlock.dim.x;
               newWidth = 0;
             } else {
@@ -487,7 +471,7 @@ class ShapeUtil {
           }
 
           if (boundingRect.y + boundingRect.height > sessionBlock.dim.y) {
-            if (T3Gv.opt.header.flags & OptConstant.CntHeaderFlags.NoAuto) {
+            if (T3Gv.opt.header.flags & OptConstant.HeaderFlags.NoAuto) {
               offsetY = boundingRect.y + boundingRect.height - sessionBlock.dim.y;
             } else {
               newHeight = boundingRect.y + boundingRect.height;
@@ -496,7 +480,7 @@ class ShapeUtil {
           }
 
           if (newWidth || newHeight) {
-            const layersManagerBlock = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+            const layersManagerBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
             const layerCount = layersManagerBlock.nlayers;
             let activeLayerUsesEdges = false;
             let anyVisibleLayerUsesEdges = false;
@@ -522,7 +506,7 @@ class ShapeUtil {
           } else if (offsetX || offsetY) {
             // If we need to shift objects to stay within bounds
             for (index = 0; index < objectCount; index++) {
-              object = DataUtil.GetObjectPtr(result.zList[index], false);
+              object = ObjectUtil.GetObjectPtr(result.zList[index], false);
               if (object && (object.flags & NvConstant.ObjFlags.NotVisible) === 0) {
                 object.OffsetShape(-offsetX, -offsetY);
               }
@@ -563,7 +547,7 @@ class ShapeUtil {
     try {
       if (typeof storageKeyOrData === 'string') {
         // Check if it's a storage key
-        if (storageKeyOrData.startsWith('T3.draw')) {
+        if (storageKeyOrData.startsWith('t3.draw')) {
           // Retrieve data from localStorage
           const storedData = localStorage.getItem(storageKeyOrData);
           if (storedData) {
@@ -578,7 +562,7 @@ class ShapeUtil {
         jsonData = storageKeyOrData;
       }
     } catch (error) {
-      console.error("Error parsing JSON data:", error);
+      T3Util.Error("= u.ShapeUtil: ReadBuffer/ Error parsing JSON data:", error);
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
@@ -590,8 +574,8 @@ class ShapeUtil {
     }
 
     // Set up result object properties based on JSON metadata
-    result.PVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
-    result.FVersion = jsonData.version || DSConstant.SDF_FVERSION2022;
+    result.PVersion = jsonData.version;
+    result.FVersion = jsonData.version;
     result.coordScaleFactor = 1; // Modern JSON format uses 1:1 coordinates
     result.updatetext = true;
 
@@ -696,7 +680,7 @@ class ShapeUtil {
       objectCount = result.zList.length;
       for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
         objectId = result.zList[objectIndex];
-        object = DataUtil.GetObjectPtr(objectId, false);
+        object = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (!object) continue;
 
@@ -895,7 +879,7 @@ class ShapeUtil {
 
       return result.error;
     } catch (error) {
-      console.error("Error processing JSON data:", error);
+      T3Util.Error("= u.ShapeUtil: ReadSymbolFromBufferComplete/ Error processing JSON data:", error);
       result.error = ShapeUtil.Errors.BadFormat;
       return result.error;
     }
@@ -945,7 +929,7 @@ class ShapeUtil {
     for (let idIndex = 0; idIndex < idMapLength; idIndex++) {
       if (idMap[idIndex]) {
         objectId = idMap[idIndex];
-        currentObject = DataUtil.GetObjectPtr(objectId, false);
+        currentObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         // Process hooks for each object
         if (currentObject && currentObject.hooks) {
@@ -962,7 +946,7 @@ class ShapeUtil {
               // Insert link if needed
               if (links.length === 0 && !ignoreErrors) {
                 if (linksBlock == null) {
-                  linksBlock = DataUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
+                  linksBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.linksBlockId, true);
                 }
                 T3Gv.opt.InsertLink(linksBlock, objectId, currentHook, DSConstant.LinkFlags.Move);
               }
@@ -1136,13 +1120,13 @@ class ShapeUtil {
    * @param ignoreDataCheck - Flag to ignore data validation checks
    * @returns Buffer containing the serialized objects in
    */
-  static WriteSelect(selectedObjects, skipTables, unused, preserveSegmentDirection, ignoreDataCheck) {
+  static WriteSelect(selectedObjects, skipTables, unused, preserveSegmentDirection, ignoreDataCheck?) {
     // Create a new write result object to hold serialization state
     const result = new WResult();
 
     // Get current session, layer manager and content header
-    result.sdp = DataUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-    result.tLMB = DataUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
+    result.sdp = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
+    result.tLMB = ObjectUtil.GetObjectPtr(T3Gv.opt.layersManagerBlockId, false);
     result.ctp = T3Gv.opt.header;
 
     // Mark as selection-only operation
@@ -1165,7 +1149,7 @@ class ShapeUtil {
     // Update layer information for selected objects
     LayerUtil.UpdateObjectLayerIndices(result);
 
-    console.log("=U.ShapeUtil WriteSelect result=", result);
+    LogUtil.Debug("= U.ShapeUtil WriteSelect result=", result);
 
     // Write objects to localStorage with selection-only flag
     return ShapeUtil.WriteBuffer(result, true, true, ignoreDataCheck);
@@ -1223,11 +1207,13 @@ class ShapeUtil {
         };
       }
 
+      /*
       // Add structured data if available and not ignored
       if (T3Gv.opt.header.STDataID >= 0 && !ignoreDataCheck) {
-        const stData = DataUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
+        const stData = ObjectUtil.GetObjectPtr(T3Gv.opt.header.STDataID, false);
         jsonData.data.structuredData = stData ? JSON.parse(JSON.stringify(stData)) : null;
       }
+      */
 
       // Process and add drawing content
       const drawingData = {
@@ -1255,14 +1241,14 @@ class ShapeUtil {
       const objectCount = resultObject.zList.length;
       for (let i = 0; i < objectCount; i++) {
         const objectId = resultObject.zList[i];
-        const drawingObject = DataUtil.GetObjectPtr(objectId, false);
+        const drawingObject = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (drawingObject) {
           const serializedObject = JSON.parse(JSON.stringify(drawingObject));
 
           // Handle special properties that need custom serialization
           if (drawingObject.DataID > 0) {
-            const textObject = DataUtil.GetObjectPtr(drawingObject.DataID, false);
+            const textObject = ObjectUtil.GetObjectPtr(drawingObject.DataID, false);
             if (textObject) {
               serializedObject.textContent = textObject.runtimeText || "";
             }
@@ -1279,7 +1265,6 @@ class ShapeUtil {
       const jsonString = JSON.stringify(jsonData);
 
       // Generate a unique storage key
-      // const storageKey = `T3000_Drawing_${new Date().getTime()}`;
       const storageKey = "t3.draw";
 
       // Store in localStorage
@@ -1289,7 +1274,7 @@ class ShapeUtil {
       return (isSelectOnly || returnRawData) ? jsonString : storageKey;
 
     } catch (error) {
-      console.error("Error serializing drawing to JSON:", error);
+      T3Util.Error("= u.ShapeUtil: WriteBuffer/ Error serializing drawing to JSON:", error);
       return null;
     }
   }
@@ -1366,7 +1351,7 @@ class ShapeUtil {
     objectsProcessed = 0;
     for (index = 0; index < objectCount; index++) {
       // Get object and add its style to the style list
-      currentObject = DataUtil.GetObjectPtr(resultObject.zList[index], false);
+      currentObject = ObjectUtil.GetObjectPtr(resultObject.zList[index], false);
       currentObject.tstyleindex = addUniqueStyle(currentObject.StyleRecord);
 
       // Add object to the unique map and increment counter

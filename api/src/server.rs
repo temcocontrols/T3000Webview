@@ -509,9 +509,11 @@ fn log_message(message: &str, log_to_file: bool) {
     let print_to_console = true;
 
     if log_to_file {
+        /* Temporary remove log to file
         if let Err(e) = log_message_to_file(formatted_message.as_str()) {
             println!("Failed to log message: {:?}", e);
         }
+        */
     }
 
     if print_to_console {
