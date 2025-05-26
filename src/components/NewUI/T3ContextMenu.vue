@@ -1,34 +1,186 @@
 <template>
   <div class="t3-context-menu">
     <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" @click="handleMenuClick">
+      <a-menu-divider />
+
+      <a-sub-menu key="bgColorSub">
+        <template #icon>
+          <BgColorsOutlined />
+        </template>
+        <template #title>Background Color</template>
+        <template #expandIcon>
+          <right-outlined class="sub-menu-icon" />
+        </template>
+        <a-menu-item key="bg-color-red" @click="handleSubMenuClick('bg-color-red')">
+          <span class="color-idic-20b2aa"></span>
+          <span>#20B2AA</span>
+          <span class="menu-shortcut">Alt+1</span>
+        </a-menu-item>
+        <a-menu-item key="bg-color-green" @click="handleSubMenuClick('bg-color-green')">
+          <span class="color-idic-ffffff"></span>
+          <span>#FFFFFF</span>
+          <span class="menu-shortcut">Alt+2</span>
+        </a-menu-item>
+        <a-menu-item key="bg-color-blue" @click="handleSubMenuClick('bg-color-blue')">
+          <span class="color-idic-0aacb4"></span>
+          <span>#0AACB4</span>
+          <span class="menu-shortcut">Alt+3</span>
+        </a-menu-item>
+        <a-menu-item key="bg-color-custom" @click="handleSubMenuClick('bg-color-custom')">
+          <span>Custom Color...</span>
+          <span class="menu-shortcut">Alt+C</span>
+        </a-menu-item>
+      </a-sub-menu>
+      <a-menu-divider />
+
       <a-menu-item key="item1">
         <template #icon>
-          <file-outlined />
+          <ScissorOutlined />
         </template>
         <span>Cut</span>
-        <span class="menu-shortcut">Ctrl+x</span>
+        <span class="menu-shortcut">Ctrl+X</span>
       </a-menu-item>
 
       <a-menu-item key="item2">
         <template #icon>
-          <edit-outlined />
+          <CopyOutlined />
         </template>
         <span>Copy</span>
-        <span class="menu-shortcut">Ctrl+c</span>
+        <span class="menu-shortcut">Ctrl+C</span>
       </a-menu-item>
 
       <a-menu-item key="item2">
         <template #icon>
-          <edit-outlined />
+          <FileAddOutlined />
         </template>
         <span>Paste</span>
-        <span class="menu-shortcut">Ctrl+v</span>
+        <span class="menu-shortcut">Ctrl+V</span>
       </a-menu-item>
+
+      <a-menu-item key="delete" @click="handleSubMenuClick('delete')">
+        <template #icon>
+          <delete-outlined />
+        </template>
+        <span>Delete</span>
+        <span class="menu-shortcut">Del</span>
+      </a-menu-item>
+
+      <a-menu-divider />
+
+      <a-menu-item key="undo" @click="handleSubMenuClick('undo')">
+        <template #icon>
+          <UndoOutlined />
+        </template>
+        <span>Undo</span>
+        <span class="menu-shortcut">Ctrl+Z</span>
+      </a-menu-item>
+
+      <a-menu-item key="redo" @click="handleSubMenuClick('redo')">
+        <template #icon>
+          <RedoOutlined />
+        </template>
+        <span>Redo</span>
+        <span class="menu-shortcut">Ctrl+Y</span>
+      </a-menu-item>
+
+      <a-menu-item key="duplicate" @click="handleSubMenuClick('duplicate')">
+        <template #icon>
+          <BlockOutlined />
+        </template>
+        <span>Duplicate</span>
+        <span class="menu-shortcut">Ctrl+D</span>
+      </a-menu-item>
+
+      <a-menu-item key="save" @click="handleSubMenuClick('save')">
+        <template #icon>
+          <SaveOutlined />
+        </template>
+        <span>Save</span>
+        <span class="menu-shortcut">Ctrl+S</span>
+      </a-menu-item>
+
+      <a-menu-item key="clear" @click="handleSubMenuClick('clear')">
+        <template #icon>
+          <ClearOutlined />
+        </template>
+        <span>Clear</span>
+        <span class="menu-shortcut">Ctrl+Del</span>
+      </a-menu-item>
+
+      <a-menu-divider />
+
+
+      <a-menu-divider />
+
+      <a-menu-item key="lock" @click="handleSubMenuClick('lock')">
+        <template #icon>
+          <LockOutlined />
+        </template>
+        <span>Lock</span>
+        <span class="menu-shortcut">Ctrl+L</span>
+      </a-menu-item>
+
+      <a-menu-item key="lock-all" @click="handleSubMenuClick('lock-all')">
+        <template #icon>
+          <LockOutlined />
+        </template>
+        <span>Lock All</span>
+        <span class="menu-shortcut">Ctrl+Shift+L</span>
+      </a-menu-item>
+
+      <a-menu-item key="unlock" @click="handleSubMenuClick('unlock')">
+        <template #icon>
+          <UnlockOutlined />
+        </template>
+        <span>Unlock</span>
+        <span class="menu-shortcut">Ctrl+U</span>
+      </a-menu-item>
+
+      <a-menu-divider />
+
+      <a-menu-item key="select-all" @click="handleSubMenuClick('select-all')">
+        <template #icon>
+          <CheckOutlined />
+        </template>
+        <span>Select All</span>
+        <span class="menu-shortcut">Ctrl+A</span>
+      </a-menu-item>
+
+      <a-menu-item key="select-shape" @click="handleSubMenuClick('select-shape')">
+        <template #icon>
+          <GatewayOutlined />
+        </template>
+        <span>Select Shape</span>
+        <span class="menu-shortcut">Alt+S</span>
+      </a-menu-item>
+
+
+
+
+      <a-menu-divider />
+
+      <a-menu-item key="add-to-library" @click="handleSubMenuClick('add-to-library')">
+        <template #icon>
+          <FileAddOutlined />
+        </template>
+        <span>Add to Library</span>
+        <span class="menu-shortcut">Ctrl+Shift+A</span>
+      </a-menu-item>
+
+      <a-menu-item key="load-from-library" @click="handleSubMenuClick('load-from-library')">
+        <template #icon>
+          <CopyOutlined />
+        </template>
+        <span>Load from Library</span>
+        <span class="menu-shortcut">Ctrl+Shift+L</span>
+      </a-menu-item>
+
+      <a-menu-divider />
 
 
       <a-sub-menu key="sub1">
         <template #icon>
-          <setting-outlined />
+          <SwapOutlined />
         </template>
         <template #title>Flip</template>
         <template #expandIcon>
@@ -46,22 +198,22 @@
 
       <a-sub-menu key="sub3">
         <template #icon>
-          <align-center-outlined />
+          <CompressOutlined />
         </template>
         <template #title>Make Same</template>
         <template #expandIcon>
           <right-outlined class="sub-menu-icon" />
         </template>
         <a-menu-item key="sub3-1" @click="handleSubMenuClick('make-same-width')">
-          <span>Make Same Width</span>
+          <span>Same Width</span>
           <span class="menu-shortcut">Alt+W</span>
         </a-menu-item>
         <a-menu-item key="sub3-2" @click="handleSubMenuClick('make-same-height')">
-          <span>Make Same Height</span>
+          <span>Same Height</span>
           <span class="menu-shortcut">Alt+H</span>
         </a-menu-item>
         <a-menu-item key="sub3-3" @click="handleSubMenuClick('make-both-same')">
-          <span>Make Both Same</span>
+          <span>Same Both</span>
           <span class="menu-shortcut">Alt+B</span>
         </a-menu-item>
       </a-sub-menu>
@@ -114,6 +266,83 @@
         </a-menu-item> -->
       </a-sub-menu>
 
+
+      <a-sub-menu key="alignmentSub">
+        <template #icon>
+          <AlignLeftOutlined />
+        </template>
+        <template #title>Alignment</template>
+        <template #expandIcon>
+          <right-outlined class="sub-menu-icon" />
+        </template>
+        <a-menu-item key="align-left" @click="handleSubMenuClick('align-left')">
+          <span>Align Left</span>
+          <span class="menu-shortcut">Alt+L</span>
+        </a-menu-item>
+        <a-menu-item key="align-center" @click="handleSubMenuClick('align-center')">
+          <span>Align Center</span>
+          <span class="menu-shortcut">Alt+C</span>
+        </a-menu-item>
+        <a-menu-item key="align-right" @click="handleSubMenuClick('align-right')">
+          <span>Align Right</span>
+          <span class="menu-shortcut">Alt+R</span>
+        </a-menu-item>
+        <a-menu-item key="align-top" @click="handleSubMenuClick('align-top')">
+          <span>Align Top</span>
+          <span class="menu-shortcut">Alt+T</span>
+        </a-menu-item>
+        <a-menu-item key="align-middle" @click="handleSubMenuClick('align-middle')">
+          <span>Align Middle</span>
+          <span class="menu-shortcut">Alt+M</span>
+        </a-menu-item>
+        <a-menu-item key="align-bottom" @click="handleSubMenuClick('align-bottom')">
+          <span>Align Bottom</span>
+          <span class="menu-shortcut">Alt+B</span>
+        </a-menu-item>
+      </a-sub-menu>
+
+
+      <a-menu-divider />
+
+      <a-menu-item key="group" @click="handleSubMenuClick('group')">
+        <template #icon>
+          <ApartmentOutlined />
+        </template>
+        <span>Group</span>
+        <span class="menu-shortcut">Ctrl+G</span>
+      </a-menu-item>
+
+      <a-menu-item key="ungroup" @click="handleSubMenuClick('ungroup')">
+        <template #icon>
+          <NodeIndexOutlined />
+        </template>
+        <span>Ungroup</span>
+        <span class="menu-shortcut">Ctrl+Shift+G</span>
+      </a-menu-item>
+
+
+      <a-menu-divider />
+
+      <a-menu-item key="bring-to-front" @click="handleSubMenuClick('bring-to-front')">
+        <template #icon>
+          <VerticalAlignTopOutlined />
+        </template>
+        <span>Bring to Front</span>
+        <span class="menu-shortcut">Shift+PgUp</span>
+      </a-menu-item>
+
+      <a-menu-item key="send-to-back" @click="handleSubMenuClick('send-to-back')">
+        <template #icon>
+          <VerticalAlignBottomOutlined />
+        </template>
+        <span>Send to Back</span>
+        <span class="menu-shortcut">Shift+PgDn</span>
+      </a-menu-item>
+
+
+
+
+
     </a-menu>
 
   </div>
@@ -122,12 +351,32 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import {
-  FileOutlined,
+  CloseOutlined,
   EditOutlined,
+  CopyOutlined,
+  ScissorOutlined,
+  FileAddOutlined,
   SettingOutlined,
   DeleteOutlined,
+  ClearOutlined,
   RightOutlined,
   RotateRightOutlined,
+  CompressOutlined,
+  AlignLeftOutlined,
+  ApartmentOutlined,
+  NodeIndexOutlined,
+  SwapOutlined,
+  VerticalAlignTopOutlined,
+  VerticalAlignBottomOutlined,
+  UndoOutlined,
+  RedoOutlined,
+  BlockOutlined,
+  SaveOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  BgColorsOutlined,
+  CheckOutlined,
+  GatewayOutlined
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 
@@ -182,6 +431,32 @@ const handleSubMenuClick = (key: string) => {
 .sub-menu-icon {
   float: right;
   margin-top: 5px;
+}
+
+.color-idic-20b2aa {
+  background-color: #20B2AA;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+
+.color-idic-ffffff {
+  background-color: #FFFFFF;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+
+.color-idic-0aacb4 {
+  background-color: #0AACB4;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
 }
 
 :deep(.ant-menu-submenu-title) {
