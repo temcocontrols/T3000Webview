@@ -6,7 +6,7 @@
           <file-outlined />
         </template>
         <span>Cut</span>
-        <span class="menu-shortcut">Ctrl+1</span>
+        <span class="menu-shortcut">Ctrl+x</span>
       </a-menu-item>
 
       <a-menu-item key="item2">
@@ -14,8 +14,17 @@
           <edit-outlined />
         </template>
         <span>Copy</span>
-        <span class="menu-shortcut">Ctrl+2</span>
+        <span class="menu-shortcut">Ctrl+c</span>
       </a-menu-item>
+
+      <a-menu-item key="item2">
+        <template #icon>
+          <edit-outlined />
+        </template>
+        <span>Paste</span>
+        <span class="menu-shortcut">Ctrl+v</span>
+      </a-menu-item>
+
 
       <a-sub-menu key="sub1">
         <template #icon>
@@ -35,14 +44,78 @@
         </a-menu-item>
       </a-sub-menu>
 
-      <a-menu-item key="item4">
+      <a-sub-menu key="sub3">
         <template #icon>
-          <delete-outlined />
+          <align-center-outlined />
         </template>
-        <span>Make Same</span>
-        <span class="menu-shortcut">Ctrl+4</span>
-      </a-menu-item>
+        <template #title>Make Same</template>
+        <template #expandIcon>
+          <right-outlined class="sub-menu-icon" />
+        </template>
+        <a-menu-item key="sub3-1" @click="handleSubMenuClick('make-same-width')">
+          <span>Make Same Width</span>
+          <span class="menu-shortcut">Alt+W</span>
+        </a-menu-item>
+        <a-menu-item key="sub3-2" @click="handleSubMenuClick('make-same-height')">
+          <span>Make Same Height</span>
+          <span class="menu-shortcut">Alt+H</span>
+        </a-menu-item>
+        <a-menu-item key="sub3-3" @click="handleSubMenuClick('make-both-same')">
+          <span>Make Both Same</span>
+          <span class="menu-shortcut">Alt+B</span>
+        </a-menu-item>
+      </a-sub-menu>
+
+
+
+      <a-sub-menu key="sub2">
+        <template #icon>
+          <rotate-right-outlined />
+        </template>
+        <template #title>Rotate</template>
+        <template #expandIcon>
+          <right-outlined class="sub-menu-icon" />
+        </template>
+        <a-menu-item key="sub2-1" @click="handleSubMenuClick('rotate-0')">
+          <span>0°</span>
+          <span class="menu-shortcut">Alt+R,0</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-2" @click="handleSubMenuClick('rotate-45')">
+          <span>45°</span>
+          <span class="menu-shortcut">Alt+R,1</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-3" @click="handleSubMenuClick('rotate-90')">
+          <span>90°</span>
+          <span class="menu-shortcut">Alt+R,2</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-4" @click="handleSubMenuClick('rotate-135')">
+          <span>135°</span>
+          <span class="menu-shortcut">Alt+R,3</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-5" @click="handleSubMenuClick('rotate-180')">
+          <span>180°</span>
+          <span class="menu-shortcut">Alt+R,4</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-6" @click="handleSubMenuClick('rotate-225')">
+          <span>225°</span>
+          <span class="menu-shortcut">Alt+R,5</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-7" @click="handleSubMenuClick('rotate-270')">
+          <span>270°</span>
+          <span class="menu-shortcut">Alt+R,6</span>
+        </a-menu-item>
+        <a-menu-item key="sub2-8" @click="handleSubMenuClick('rotate-360')">
+          <span>360°</span>
+          <span class="menu-shortcut">Alt+R,7</span>
+        </a-menu-item>
+        <!-- <a-menu-item key="sub2-9" @click="handleSubMenuClick('rotate-custom')">
+          <span>Custom rotate</span>
+          <span class="menu-shortcut">Alt+R,C</span>
+        </a-menu-item> -->
+      </a-sub-menu>
+
     </a-menu>
+
   </div>
 </template>
 
@@ -53,7 +126,8 @@ import {
   EditOutlined,
   SettingOutlined,
   DeleteOutlined,
-  RightOutlined
+  RightOutlined,
+  RotateRightOutlined,
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 
