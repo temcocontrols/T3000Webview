@@ -5,7 +5,7 @@
         <template #icon>
           <file-outlined />
         </template>
-        <span>Item 1</span>
+        <span>Cut</span>
         <span class="menu-shortcut">Ctrl+1</span>
       </a-menu-item>
 
@@ -13,7 +13,7 @@
         <template #icon>
           <edit-outlined />
         </template>
-        <span>Item 2</span>
+        <span>Copy</span>
         <span class="menu-shortcut">Ctrl+2</span>
       </a-menu-item>
 
@@ -21,16 +21,16 @@
         <template #icon>
           <setting-outlined />
         </template>
-        <template #title>Item 3</template>
+        <template #title>Flip</template>
         <template #expandIcon>
-          <right-outlined />
+          <right-outlined class="sub-menu-icon" />
         </template>
         <a-menu-item key="sub1-1" @click="handleSubMenuClick('sub1-1')">
-          <span>Submenu 1</span>
+          <span>Flip Horization</span>
           <span class="menu-shortcut">Alt+1</span>
         </a-menu-item>
         <a-menu-item key="sub1-2" @click="handleSubMenuClick('sub1-2')">
-          <span>Submenu 2</span>
+          <span>Flip Vertical</span>
           <span class="menu-shortcut">Alt+2</span>
         </a-menu-item>
       </a-sub-menu>
@@ -39,7 +39,7 @@
         <template #icon>
           <delete-outlined />
         </template>
-        <span>Item 4</span>
+        <span>Make Same</span>
         <span class="menu-shortcut">Ctrl+4</span>
       </a-menu-item>
     </a-menu>
@@ -96,8 +96,18 @@ const handleSubMenuClick = (key: string) => {
 .menu-shortcut {
   float: right;
   color: #999;
-  font-size: 12px;
+  font-size: 10px;
   margin-left: 10px;
+  margin-top: 5px;
+}
+
+/* .has-sub-menu {
+  padding-inline-end: 0px;
+} */
+
+.sub-menu-icon {
+  float: right;
+  margin-top: 5px;
 }
 
 :deep(.ant-menu-submenu-title) {
