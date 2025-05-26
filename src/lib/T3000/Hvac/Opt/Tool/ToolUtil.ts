@@ -1003,7 +1003,7 @@ class ToolUtil {
    * @returns void
    */
   Paste(eventData) {
-    LogUtil.Debug("O.ToolOpt Paste input:", eventData);
+    LogUtil.Debug("= u.ToolUtil: Paste/ input:", eventData);
 
     try {
       T3Gv.opt.PastePoint = null;
@@ -1017,9 +1017,7 @@ class ToolUtil {
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
-
-    LogUtil.Debug("O.ToolOpt Paste output: void");
-  }
+   }
 
   /**
    * Sends the selected objects to the back of the drawing order

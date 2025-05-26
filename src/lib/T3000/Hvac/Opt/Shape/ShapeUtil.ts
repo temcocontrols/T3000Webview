@@ -431,6 +431,11 @@ class ShapeUtil {
           offsetY = 0;
         }
 
+        offsetX += 20;
+        offsetY += 20;
+
+        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY);
+
         // Apply offset if needed
         if (offsetX || offsetY) {
           for (index = 0; index < objectCount; index++) {
@@ -1115,7 +1120,7 @@ class ShapeUtil {
    * @param ignoreDataCheck - Flag to ignore data validation checks
    * @returns Buffer containing the serialized objects in
    */
-  static WriteSelect(selectedObjects, skipTables, unused, preserveSegmentDirection, ignoreDataCheck) {
+  static WriteSelect(selectedObjects, skipTables, unused, preserveSegmentDirection, ignoreDataCheck?) {
     // Create a new write result object to hold serialization state
     const result = new WResult();
 

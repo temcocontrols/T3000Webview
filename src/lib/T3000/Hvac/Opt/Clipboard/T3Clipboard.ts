@@ -321,7 +321,7 @@ class T3Clipboard {
       systemClipboardData.setData("text/html", this.GetCutCopyHTML());
       clipboardEvent.preventDefault();
 
-      LogUtil.Debug("=== Clipboard data copied to system clipboard and the data is: ", systemClipboardData);
+      LogUtil.Debug("= T3Clipboard: DoCutCopy/ data copied to system clipboard and the data is: ", systemClipboardData);
     }
   }
 
@@ -372,36 +372,67 @@ class T3Clipboard {
     }
   }
 
+  /**
+   * Generates image information for the currently selected objects
+   * Creates a PNG representation of selected objects for clipboard operations.
+   * This method captures the visual representation of selected objects and
+   * converts it to both a Blob format and a base64-encoded data URL.
+   *
+   * @returns {Promise<{imageBlob: Blob, base64ImageData: string} | null>} Promise resolving to image info object or null if no selection
+   */
   static GenerateImageInfo() {
-    const e = {},
-      t = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, !1);
-    return t &&
-      0 !== t.length ? function (e) {
-        return new Promise(
-          (
-            t => (
-              (e, t) => T3Gv.opt.GeneratePreviewPNG(e, 1 / 0, 1 / 0, {
-                zList: t,
-                fillBackground: !0
-              })
-            )(t, e)
-          )
-        )
-      }(t).then(
-        (
-          t => (
-            e.imageBlob = t,
-            function (e) {
-              const t = new FileReader;
-              return t.readAsDataURL(e),
-                new Promise((e => {
-                  t.onloadend = () => e(t.result)
-                }))
-            }(t)
-          )
-        )
-      ).then((t => (e.base64ImageData = t, e))).catch((e => {
-      })) : Promise.resolve(null)
+    const imageInfo = {};
+    const selectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+
+    if (!selectedObjects || selectedObjects.length === 0) {
+      return Promise.resolve(null);
+    }
+
+    return generatePreview(selectedObjects)
+      .then(imageBlob => {
+        imageInfo.imageBlob = imageBlob;
+        return convertBlobToBase64(imageBlob);
+      })
+      .then(base64Data => {
+        imageInfo.base64ImageData = base64Data;
+        return imageInfo;
+      })
+      .catch(error => {
+        // Handle any errors that occur during image generation
+      });
+
+    /**
+     * Generates a preview PNG image of the selected objects
+     * Uses the application's built-in preview generator to create
+     * a visual representation of the selected objects
+     *
+     * @param objectsList - List of objects to include in the preview
+     * @returns {Promise<Blob>} Promise resolving to the image blob
+     */
+    function generatePreview(objectsList) {
+      return new Promise(resolve =>
+        T3Gv.opt.GeneratePreviewPNG(objectsList, Infinity, Infinity, {
+          zList: objectsList,
+          fillBackground: true
+        })
+      );
+    }
+
+    /**
+     * Converts a Blob to base64 encoded string
+     * Uses FileReader to transform the binary blob data into a base64 data URL
+     * that can be used in clipboard operations
+     *
+     * @param blob - The image blob to convert
+     * @returns {Promise<string>} Promise resolving to base64 data URL
+     */
+    function convertBlobToBase64(blob) {
+      const fileReader = new FileReader();
+      fileReader.readAsDataURL(blob);
+      return new Promise(resolve => {
+        fileReader.onloadend = () => resolve(fileReader.result);
+      });
+    }
   }
 
   /**
@@ -442,7 +473,7 @@ class T3Clipboard {
    * @param {ClipboardEvent} clipboardEvent - The system clipboard event object
    */
   static PasteFromSystemEvent(clipboardEvent) {
-    LogUtil.Debug("Pasting from system event: ", clipboardEvent);
+    LogUtil.Debug("= T3Clipboard: PasteFromSystemEvent/ Pasting from system event: ", clipboardEvent);
 
     // Define browser-specific handlers
     const browserHandlers = [
@@ -589,8 +620,7 @@ class T3Clipboard {
     }
 
     // Trigger paste operation after a short delay
-    // macOS requires a longer delay (500ms) compared to other platforms (10ms)
-    setTimeout(T3Clipboard.Paste, T3Gv.opt.isMac ? 500 : 10);
+    setTimeout(T3Clipboard.Paste, 10);
   }
 
   /**
@@ -639,9 +669,7 @@ class T3Clipboard {
   static PasteUsingAsynchClipboardAPI(successCallback, errorCallback) {
     // Firefox and Safari don't support the async clipboard API
     if (this.isFirefox || this.isSafariBrowser) {
-      const message = T3Gv.opt.isMac
-        ? "Use Command-V to paste this information"
-        : "Use ctrl+v to paste this information";
+      const message = "Use ctrl+v to paste this information";
       LogUtil.Debug(message);
       return false;
     }
@@ -735,7 +763,7 @@ class T3Clipboard {
 
     // Focus on clipboard input only if no other input elements are focused
     // or if we're on a mobile platform
-    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused) ) {
+    if ((!isAnyInputFocused && !isAnySelectFocused && !isAnyTextareaFocused)) {
       T3Clipboard.clipboardInputElement.val(" ");
       T3Clipboard.clipboardInputElement.focus().select();
     }

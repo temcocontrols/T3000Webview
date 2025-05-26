@@ -999,7 +999,7 @@ class ToolActUtil {
       );
 
       // Prepare collaboration message if needed
-      if (!editOverride /*&& Collab.AllowMessage()*/) {
+      if (!editOverride) {
         const messageData = {
           fromMove: fromMove,
           dupdisp: Utils1.DeepCopy(sessionObject.dupdisp),
@@ -1141,7 +1141,7 @@ class ToolActUtil {
    * @returns An object containing the computed x and y coordinates for the paste position.
    */
   static GetPastePosition(): { x: number; y: number } {
-    LogUtil.Debug("O.Opt GetPastePosition - Input: no parameters");
+    LogUtil.Debug("= u.ToolActUtil: GetPastePosition/ - Input: no parameters");
 
     const offset = 100;
     const workArea = T3Gv.docUtil.svgDoc.GetWorkArea();
@@ -1261,7 +1261,7 @@ class ToolActUtil {
    * @returns An object with zList and buffer if returnBuffer is true; otherwise, no explicit return.
    */
   static CopyObjectsCommon(returnBuffer: boolean): { zList: any[]; buffer: string } | void {
-    LogUtil.Debug("O.Opt CopyObjectsCommon - Input:", { returnBuffer });
+    LogUtil.Debug("= u.ToolActUtil: CopyObjectsCommon/ - Input:", { returnBuffer });
 
     // Retrieve the currently selected objects.
     const selectedObjects = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
@@ -1270,15 +1270,12 @@ class ToolActUtil {
     const options = { connectors: false };
     T3Gv.opt.AddtoDelete(selectedObjects, true, options);
 
+    // Retrieve the global z-order list and prepare an index array.
+    const zOrderList = LayerUtil.ZList();
+
     const selectedCount = selectedObjects.length;
     if (selectedCount !== 0) {
-      // If connectors are flagged and returnBuffer is false, close the secondary edit and filter for clipboard.
-      if (options.connectors && !returnBuffer) {
-        return this.FilterFiletoClipboard(selectedObjects, returnBuffer);
-      }
 
-      // Retrieve the global z-order list and prepare an index array.
-      const zOrderList = LayerUtil.ZList();
       const indexArray: number[] = [];
       for (let i = 0; i < selectedCount; i++) {
         const objectId = selectedObjects[i];
@@ -1299,7 +1296,6 @@ class ToolActUtil {
 
       // Otherwise update the clipboard buffer and clipboard type.
       T3Gv.opt.header.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
-
       T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
 
       // Refresh the selected objects list by removing any objects that are not visible.
@@ -1310,10 +1306,12 @@ class ToolActUtil {
           updatedSelectedObjects.splice(i, 1);
         }
       }
-      LogUtil.Debug("O.Opt CopyObjectsCommon - Output: Clipboard updated");
+      LogUtil.Debug("= u.ToolActUtil: CopyObjectsCommon/ - Output: Clipboard updated");
     } else {
-      LogUtil.Debug("O.Opt CopyObjectsCommon - Output: No objects selected");
+      LogUtil.Debug("= u.ToolActUtil: CopyObjectsCommon/ - Output: No objects selected");
     }
+
+    return { buffer: T3Gv.opt.header.ClipboardBuffer, zList: zOrderList };
   }
 
   /**

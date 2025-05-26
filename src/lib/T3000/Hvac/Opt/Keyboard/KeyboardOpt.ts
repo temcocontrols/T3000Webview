@@ -59,7 +59,7 @@ class KeyboardOpt {
    * @param context - The context for which to retrieve commands
    * @returns Array of keyboard commands for the specified context
    */
-  static GetCommandsInContext(context, kybUtil, toolUtil, docUtil, arrowKeyOpt) {
+  static GetCommandsInContext(context, kybUtil: KeyboardUtil, toolUtil: ToolUtil, docUtil: DocUtil, arrowKeyOpt: ArrowKeyOpt) {
     LogUtil.Debug('U.KeyboardUtil: Getting commands for context', context);
 
     let commands = [];
