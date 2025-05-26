@@ -34,8 +34,13 @@
               </div>
               <div id="v-ruler" class="document-ruler-left">
               </div>
+              <!-- <a-dropdown :trigger="['contextmenu']"> -->
               <div id="svg-area" class="svg-area">
               </div>
+              <!-- <template #overlay>
+                  <T3ContextMenu v-if="contextMenuShow"></T3ContextMenu>
+                </template>
+</a-dropdown> -->
             </div>
             <div id="doc-toolbar" class="doc-toolbar">
             </div>
@@ -44,10 +49,8 @@
       </div>
     </div>
 
-
     <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
       <q-list>
-        <!-- Copy Option -->
         <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
           <q-item-section avatar>
             <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
@@ -60,7 +63,6 @@
           </q-item-section>
         </q-item>
         <q-separator />
-        <!-- Duplicate Option -->
         <q-item dense clickable v-close-popup @click="duplicateSelected">
           <q-item-section avatar>
             <q-avatar size="sm" icon="content_copy" color="grey-7" text-color="white" />
@@ -73,7 +75,6 @@
           </q-item-section>
         </q-item>
         <q-separator />
-        <!-- Group Option -->
         <q-item dense clickable v-close-popup @click="groupSelected">
           <q-item-section avatar>
             <q-avatar size="sm" icon="join_full" color="grey-7" text-color="white" />
@@ -97,7 +98,6 @@
           </q-item-section>
         </q-item>
         <q-separator />
-        <!-- Add to Library Option -->
         <q-item dense clickable v-close-popup @click="addToLibrary">
           <q-item-section avatar>
             <q-avatar size="sm" icon="library_books" color="grey-7" text-color="white" />
@@ -110,14 +110,12 @@
           </q-item-section>
         </q-item>
         <q-separator />
-        <!-- Bring to Front Option -->
         <q-item dense clickable v-close-popup @click="bringSelectedToFront()">
           <q-item-section avatar>
             <q-avatar size="sm" icon="flip_to_front" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section class="py-2">Bring to front</q-item-section>
         </q-item>
-        <!-- Send to Back Option -->
         <q-item dense clickable v-close-popup @click="sendSelectedToBack()">
           <q-item-section avatar>
             <q-avatar size="sm" icon="flip_to_back" color="grey-7" text-color="white" />
@@ -125,14 +123,12 @@
           <q-item-section class="py-2">Send to Back</q-item-section>
         </q-item>
         <q-separator />
-        <!-- Rotate 90 Degrees Option -->
         <q-item dense clickable v-close-popup @click="rotate90Selected()">
           <q-item-section avatar>
             <q-avatar size="sm" icon="autorenew" color="grey-7" text-color="white" />
           </q-item-section>
           <q-item-section>Rotate 90°</q-item-section>
         </q-item>
-        <!-- Rotate -90 Degrees Option -->
         <q-item dense clickable v-close-popup @click="rotate90Selected(true)">
           <q-item-section avatar>
             <q-avatar size="sm" icon="sync" color="grey-7" text-color="white" />
@@ -140,7 +136,6 @@
           <q-item-section>Rotate -90°</q-item-section>
         </q-item>
         <q-separator />
-        <!-- Delete Option -->
         <q-item dense clickable v-close-popup @click="deleteSelected">
           <q-item-section avatar>
             <q-avatar size="sm" icon="delete" color="grey-7" text-color="white" />
@@ -152,7 +147,6 @@
             <q-chip>Delete</q-chip>
           </q-item-section>
         </q-item>
-        <!-- Weld Option -->
         <q-item dense clickable v-close-popup @click="weldSelected">
           <q-item-section avatar>
             <q-avatar size="sm" icon="splitscreen" color="grey-7" text-color="white" />
@@ -164,7 +158,6 @@
         </q-item>
       </q-list>
     </q-menu>
-
 
     <ObjectConfigNew v-if="objectConfigShow" :current="appStateV2.items[appStateV2.activeItemIndex]"
       @linkT3Entry="linkT3EntryDialogActionV2" @DisplayFieldValueChanged="DisplayFieldValueChanged">
@@ -372,6 +365,7 @@ import {
   gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
 } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import LogUtil from "src/lib/T3000/Hvac/Util/LogUtil";
+import T3ContextMenu from "src/components/NewUI/T3ContextMenu.vue";
 
 // Meta information for the application
 const metaData = { title: "HVAC Drawer" };

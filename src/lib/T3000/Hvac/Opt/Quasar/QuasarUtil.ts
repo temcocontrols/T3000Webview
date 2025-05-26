@@ -135,6 +135,7 @@ class QuasarUtil {
   }
 
   static ShowContextMenu(show: boolean) {
+    LogUtil.Debug("= u.QuasarUtil ShowContextMenu/", "show,rClickParam=>", show, T3Gv.opt.rClickParam);
     contextMenuShow.value = show;
     // globalMsgShow.value=true;
   }
