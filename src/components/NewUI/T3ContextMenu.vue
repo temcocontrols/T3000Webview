@@ -1,7 +1,7 @@
 <template>
   <div class="t3-context-menu">
-    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme">
-      <template v-for="item in contextMenu" :key="item.key">
+    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" :ctxMenuConfig="ctxMenuConfig">
+      <template v-for="item in contextMenuItems" :key="item.key">
         <!-- Render divider -->
         <a-menu-divider v-if="item.type === 'divider'" :key="'divider-' + item.key" />
 
@@ -78,9 +78,15 @@ import {
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import CtxMenuUtil from 'src/lib/T3000/Hvac/Doc/CtxMenuUtil'; // Adjust the import path if needed
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
+import { ICtxMenuConfig } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+
+// Define props with TypeScript
+const props = defineProps<{
+  ctxMenuConfig?: ICtxMenuConfig;
+}>();
 
 // import { ColorPicker } from 'ant-design-vue';
 
@@ -572,24 +578,24 @@ const renderMenuItem = (item: MenuConfigItem) => {
 };
 
 // Context menu state
-const contextMenu = ref(null);
+const contextMenuItems = ref(null);
 
 // Lifecycle hooks
 onMounted(() => {
   // Get the context menu when component is mounted
-  contextMenu.value = new CtxMenuUtil().GetContextMenu();
-  LogUtil.Debug('Context menu initialized');
+  contextMenuItems.value = new CtxMenuUtil(props.ctxMenuConfig).GetContextMenu();
+  LogUtil.Debug('= v.T3ContextMenu.vue: onMounted/ Context menu initialized ,props.ctxMenuConfig', props.ctxMenuConfig);
 });
 
 onUnmounted(() => {
   // Dispose of the context menu when component is unmounted
-  if (contextMenu.value) {
+  if (contextMenuItems.value) {
     // Check if the contextMenu has a dispose method
-    if (typeof contextMenu.value.dispose === 'function') {
-      contextMenu.value.dispose();
+    if (typeof contextMenuItems.value.dispose === 'function') {
+      contextMenuItems.value.dispose();
     }
     // Set to null to help with garbage collection
-    contextMenu.value = null;
+    contextMenuItems.value = null;
     LogUtil.Debug('Context menu disposed');
   }
 });

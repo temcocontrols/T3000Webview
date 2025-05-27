@@ -38,7 +38,7 @@
                 <div id="svg-area" class="svg-area">
                 </div>
                 <template #overlay>
-                  <T3ContextMenu v-if="ctxMenuConfig.isShow"></T3ContextMenu>
+                  <T3ContextMenu v-if="ctxMenuConfig.isShow" :ctxMenuConfig="ctxMenuConfig"></T3ContextMenu>
                 </template>
               </a-dropdown>
             </div>
