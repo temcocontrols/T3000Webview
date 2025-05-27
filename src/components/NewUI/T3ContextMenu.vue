@@ -1,7 +1,7 @@
 <template>
   <div class="t3-context-menu">
     <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme">
-      <template v-for="item in menuConfig" :key="item.key">
+      <template v-for="item in contextMenuConfig" :key="item.key">
         <!-- Render divider -->
         <a-menu-divider v-if="item.type === 'divider'" :key="'divider-' + item.key" />
 
@@ -44,7 +44,6 @@
       </template>
     </a-menu>
   </div>
-
 </template>
 
 <script lang="ts" setup>
@@ -206,6 +205,335 @@ const menuConfig = ref<MenuConfigItem[]>([
   },
   // Add the rest of your menu items following the same pattern...
 ]);
+
+// Add to existing script section
+// Define a new contexMenuConfig array to match the selected menu items
+const contextMenuConfig = ref<MenuConfigItem[]>([
+  {
+    key: 'cut',
+    title: 'Cut',
+    icon: ScissorOutlined,
+    shortcut: 'Ctrl+X',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'copy',
+    title: 'Copy',
+    icon: CopyOutlined,
+    shortcut: 'Ctrl+C',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'paste',
+    title: 'Paste',
+    icon: FileAddOutlined,
+    shortcut: 'Ctrl+V',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'delete',
+    title: 'Delete',
+    icon: DeleteOutlined,
+    shortcut: 'Del',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  { type: 'divider', key: 'divider-edit-1' },
+  {
+    key: 'undo',
+    title: 'Undo',
+    icon: UndoOutlined,
+    shortcut: 'Ctrl+Z',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'redo',
+    title: 'Redo',
+    icon: RedoOutlined,
+    shortcut: 'Ctrl+Y',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'duplicate',
+    title: 'Duplicate',
+    icon: BlockOutlined,
+    shortcut: 'Ctrl+D',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'save',
+    title: 'Save',
+    icon: SaveOutlined,
+    shortcut: 'Ctrl+S',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'clear',
+    title: 'Clear',
+    icon: ClearOutlined,
+    shortcut: 'Ctrl+Del',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  { type: 'divider', key: 'divider-edit-2' },
+  { type: 'divider', key: 'divider-edit-3' },
+  {
+    key: 'lock',
+    title: 'Lock',
+    icon: LockOutlined,
+    shortcut: 'Ctrl+L',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'lock-all',
+    title: 'Lock All',
+    icon: LockOutlined,
+    shortcut: 'Ctrl+Shift+L',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'unlock',
+    title: 'Unlock',
+    icon: UnlockOutlined,
+    shortcut: 'Ctrl+U',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  { type: 'divider', key: 'divider-edit-4' },
+  {
+    key: 'select-all',
+    title: 'Select All',
+    icon: CheckOutlined,
+    shortcut: 'Ctrl+A',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'select-shape',
+    title: 'Select Shape',
+    icon: GatewayOutlined,
+    shortcut: 'Alt+S',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  { type: 'divider', key: 'divider-edit-5' },
+  {
+    key: 'flip',
+    title: 'Flip',
+    icon: SwapOutlined,
+    type: 'submenu',
+    expandIcon: RightOutlined,
+    children: [
+      {
+        key: 'flip-horizontal',
+        title: 'Flip Horization',
+        shortcut: 'Alt+1',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'flip-vertical',
+        title: 'Flip Vertical',
+        shortcut: 'Alt+2',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      }
+    ]
+  },
+  {
+    key: 'make-same',
+    title: 'Make Same',
+    icon: CompressOutlined,
+    type: 'submenu',
+    expandIcon: RightOutlined,
+    children: [
+      {
+        key: 'make-same-width',
+        title: 'Same Width',
+        shortcut: 'Alt+W',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'make-same-height',
+        title: 'Same Height',
+        shortcut: 'Alt+H',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'make-both-same',
+        title: 'Same Both',
+        shortcut: 'Alt+B',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      }
+    ]
+  },
+  {
+    key: 'rotate',
+    title: 'Rotate',
+    icon: RotateRightOutlined,
+    type: 'submenu',
+    expandIcon: RightOutlined,
+    children: [
+      {
+        key: 'rotate-0',
+        title: '0°',
+        shortcut: 'Alt+R,0',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-45',
+        title: '45°',
+        shortcut: 'Alt+R,1',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-90',
+        title: '90°',
+        shortcut: 'Alt+R,2',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-135',
+        title: '135°',
+        shortcut: 'Alt+R,3',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-180',
+        title: '180°',
+        shortcut: 'Alt+R,4',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-225',
+        title: '225°',
+        shortcut: 'Alt+R,5',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-270',
+        title: '270°',
+        shortcut: 'Alt+R,6',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'rotate-360',
+        title: '360°',
+        shortcut: 'Alt+R,7',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      }
+    ]
+  },
+  {
+    key: 'alignment',
+    title: 'Alignment',
+    icon: AlignLeftOutlined,
+    type: 'submenu',
+    expandIcon: RightOutlined,
+    children: [
+      {
+        key: 'align-left',
+        title: 'Align Left',
+        shortcut: 'Alt+L',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'align-center',
+        title: 'Align Center',
+        shortcut: 'Alt+C',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'align-right',
+        title: 'Align Right',
+        shortcut: 'Alt+R',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'align-top',
+        title: 'Align Top',
+        shortcut: 'Alt+T',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'align-middle',
+        title: 'Align Middle',
+        shortcut: 'Alt+M',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      },
+      {
+        key: 'align-bottom',
+        title: 'Align Bottom',
+        shortcut: 'Alt+B',
+        type: 'item',
+        onClick: (key) => handleSubMenuClick(key)
+      }
+    ]
+  },
+  { type: 'divider', key: 'divider-edit-6' },
+  {
+    key: 'group',
+    title: 'Group',
+    icon: ApartmentOutlined,
+    shortcut: 'Ctrl+G',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'ungroup',
+    title: 'Ungroup',
+    icon: NodeIndexOutlined,
+    shortcut: 'Ctrl+Shift+G',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  { type: 'divider', key: 'divider-edit-7' },
+  {
+    key: 'bring-to-front',
+    title: 'Bring to Front',
+    icon: VerticalAlignTopOutlined,
+    shortcut: 'Shift+PgUp',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  },
+  {
+    key: 'send-to-back',
+    title: 'Send to Back',
+    icon: VerticalAlignBottomOutlined,
+    shortcut: 'Shift+PgDn',
+    type: 'item',
+    onClick: (key) => handleSubMenuClick(key)
+  }
+]);
+
+// You can merge this with your existing menuConfig or replace it
+// Example:
+// const fullMenuConfig = ref<MenuConfigItem[]>([...menuConfig.value, ...contextMenuConfig.value]);
 
 // Function to render menu items based on configuration
 const renderMenuItem = (item: MenuConfigItem) => {
