@@ -1,18 +1,13 @@
 <template>
-
-
   <div class="t3-context-menu">
-    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" @click="handleMenuClick">
+    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme">
       <template v-for="item in menuConfig" :key="item.key">
         <!-- Render divider -->
-        <a-menu-divider v-if="item.type === 'divider'" />
+        <a-menu-divider v-if="item.type === 'divider'" :key="'divider-' + item.key" />
 
         <!-- Render regular menu item -->
-        <a-menu-item
-          v-else-if="item.type === 'item'"
-          :key="item.key"
-          @click="() => item.onClick && item.onClick(item.key)"
-        >
+        <a-menu-item v-else-if="item.type === 'item'" :key="'item-' + item.key"
+          @click="() => item.onClick && item.onClick(item.key)">
           <template #icon v-if="item.icon">
             <component :is="item.icon" />
           </template>
@@ -20,19 +15,12 @@
           <span class="menu-shortcut" v-if="item.shortcut">{{ item.shortcut }}</span>
 
           <!-- Special handling for color picker item -->
-          <a-color-picker
-            v-if="item.key === 'bg-color-custom'"
-            v-model:value="selectedColor"
-            @change="handleColorChange"
-            style="width: 100%"
-          />
+          <a-color-picker v-if="item.key === 'bg-color-custom'" v-model:value="selectedColor"
+            @change="handleColorChange" style="width: 100%" />
         </a-menu-item>
 
         <!-- Render submenu -->
-        <a-sub-menu
-          v-else-if="item.type === 'submenu'"
-          :key="item.key"
-        >
+        <a-sub-menu v-else-if="item.type === 'submenu'" :key="'submenu-' + item.key">
           <template #icon v-if="item.icon">
             <component :is="item.icon" />
           </template>
@@ -43,15 +31,11 @@
 
           <!-- Render submenu children -->
           <template v-for="child in item.children" :key="child.key">
-            <a-menu-divider v-if="child.type === 'divider'" />
-            <a-menu-item
-              v-else
-              :key="child.key"
-              @click="() => child.onClick && child.onClick(child.key)"
-            >
+            <a-menu-divider v-if="child.type === 'divider'" :key="'divider-' + child.key" />
+            <a-menu-item v-else :key="'item-' + child.key" @click="() => child.onClick && child.onClick(child.key)">
               <!-- Special handling for color indicators -->
               <span :class="`color-idic-${child.key.includes('color') ? child.title.substring(1).toLowerCase() : ''}`"
-                   v-if="child.key.includes('color') && !child.key.includes('custom')"></span>
+                v-if="child.key.includes('color') && !child.key.includes('custom')"></span>
               <span>{{ child.title }}</span>
               <span class="menu-shortcut" v-if="child.shortcut">{{ child.shortcut }}</span>
             </a-menu-item>
