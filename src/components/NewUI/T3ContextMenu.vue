@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts" setup>
-import { h, ref } from 'vue';
+import { h, ref, watch } from 'vue';
 import {
   CloseOutlined,
   EditOutlined,
@@ -583,9 +583,22 @@ const contextMenuItems = ref(null);
 // Lifecycle hooks
 onMounted(() => {
   // Get the context menu when component is mounted
-  contextMenuItems.value = new CtxMenuUtil(props.ctxMenuConfig).GetContextMenu();
+  contextMenuItems.value = new CtxMenuUtil().GetContextMenu(props.ctxMenuConfig);
   LogUtil.Debug('= v.T3ContextMenu.vue: onMounted/ Context menu initialized ,props.ctxMenuConfig', props.ctxMenuConfig);
 });
+
+// Watch for changes to ctxMenuConfig prop
+watch(
+  () => props.ctxMenuConfig,
+  (newConfig) => {
+    if (newConfig) {
+      // Update the context menu items when config changes
+      contextMenuItems.value = new CtxMenuUtil().GetContextMenu(newConfig);
+      LogUtil.Debug('= v.T3ContextMenu.vue: watch/ Context menu updated with new config', newConfig);
+    }
+  },
+  { deep: true } // Watch deeply to detect changes in nested properties
+);
 
 onUnmounted(() => {
   // Dispose of the context menu when component is unmounted

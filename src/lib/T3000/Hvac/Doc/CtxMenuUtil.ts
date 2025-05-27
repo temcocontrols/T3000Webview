@@ -60,26 +60,136 @@ import { ICtxMenuConfig } from '../Data/Constant/RefConstant';
 import LogUtil from '../Util/LogUtil';
 import T3Gv from '../Data/T3Gv';
 import DataOpt from '../Opt/Data/DataOpt';
+import ObjectUtil from '../Opt/Data/ObjectUtil';
+import SelectUtil from '../Opt/Opt/SelectUtil';
 
 class CtxMenuUtil {
 
   private ctxConfig: ICtxMenuConfig;
 
+  /*
   constructor(ctxConfig: ICtxMenuConfig) {
     LogUtil.Debug('= u.CtxMenuUtil: constructor/ ctxConfig=', { isShow: ctxConfig.isShow, from: ctxConfig.from, type: ctxConfig.type });
     this.ctxConfig = ctxConfig;
   }
+  */
 
-  GetContextMenu(): MenuConfigItem[] {
+  GetContextMenu(ctxConfig: ICtxMenuConfig): MenuConfigItem[] {
+    LogUtil.Debug('= u.CtxMenuUtil: GetContextMenu/ ctxConfig=', { isShow: ctxConfig.isShow, from: ctxConfig.from, type: ctxConfig.type });
+    this.ctxConfig = ctxConfig;
+
+    const ctxMenuType = this.GetContextMenuType();
+
     var ctxMenu: MenuConfigItem[] = [];
 
-    ctxMenu.push(...this.Cut());
+    if (ctxMenuType == "WorkArea-Default") {
+      ctxMenu = this.GetWorkAreaDefaultMenu();
+    }
+    else if (ctxMenuType == "Multi-Select") {
+      ctxMenu = this.GetMultiSelectMenu();
+    }
+    else if (ctxMenuType == "Single-Select") {
+      ctxMenu = this.GetSingleSelectMenu();
+    }
+    else {
+      LogUtil.Error('= u.CtxMenuUtil: GetContextMenu/ Unknown context menu type:', ctxMenuType);
+      return [];
+    }
 
     return ctxMenu;
   }
 
-  GetContextMenuType(type: string) {
-    return "cut";
+  GetContextMenuType() {
+    if (this.ctxConfig.from == "WorkArea") {
+      return "WorkArea-Default";
+    }
+    else {
+      const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      const selectObjs = SelectUtil.GetSelectedObject();
+      LogUtil.Debug('= u.CtxMenuUtil: GetContextMenuType/ selectObjs=', selectObjs, "selectedList=", selectedList);
+
+      if (selectedList.length > 1) {
+        return "Multi-Select";
+      }
+      else {
+        return "Single-Select";
+      }
+    }
+  }
+
+  GetWorkAreaDefaultMenu() {
+    const ctxMenu: MenuConfigItem[] = [
+      ...this.Cut(),
+      ...this.Copy(),
+      ...this.Paste(),
+      ...this.Delete(),
+      ...this.Undo(),
+      ...this.Redo(),
+      ...this.Duplicate(),
+      ...this.Divider(),
+      ...this.Save(),
+      ...this.Divider(),
+      ...this.LockAll(),
+      ...this.Unlock(),
+      ...this.Divider(),
+      ...this.SelectAll()
+    ];
+
+    return ctxMenu;
+  }
+
+  GetMultiSelectMenu() {
+    const ctxMenu: MenuConfigItem[] = [
+      ...this.Cut(),
+      ...this.Copy(),
+      ...this.Paste(),
+      ...this.Delete(),
+      ...this.Undo(),
+      ...this.Redo(),
+      ...this.Duplicate(),
+      ...this.Divider(),
+      ...this.Save(),
+      ...this.Divider(),
+      ...this.LockAll(),
+      ...this.Unlock(),
+      ...this.Divider(),
+      ...this.SelectAll()
+    ];
+
+    return ctxMenu;
+  }
+
+  GetSingleSelectMenu() {
+    const ctxMenu: MenuConfigItem[] = [
+      ...this.Cut(),
+      ...this.Copy(),
+      ...this.Paste(),
+      ...this.Delete(),
+      ...this.Undo(),
+      ...this.Redo(),
+      ...this.Duplicate(),
+      ...this.Divider(),
+      ...this.Save(),
+      ...this.Divider(),
+      ...this.Lock(),
+      ...this.Unlock(),
+      ...this.Divider(),
+      ...this.SelectShape(),
+      ...this.Divider(),
+      ...this.Flip(),
+      ...this.MakeSame(),
+      ...this.Divider(),
+      ...this.Rotate(),
+      ...this.Divider(),
+      ...this.Alignment(),
+      ...this.Divider(),
+      ...this.Group(),
+      ...this.Ungroup(),
+      ...this.Divider(),
+      ...this.BringToFront(),
+      ...this.SendToBack()
+    ];
+    return ctxMenu;
   }
 
   Divider() {
@@ -644,6 +754,9 @@ class CtxMenuUtil {
         // This is a placeholder for future implementation
         // Note: The custom color picker is not implemented separately
         EvtOpt.toolOpt.LibSetBackgroundColorAct('#FFFFFF');
+        break;
+      case 'cut':
+        EvtOpt.toolOpt.CutAct(event);
         break;
       case 'copy':
         EvtOpt.toolOpt.CopyAct(event);
