@@ -424,6 +424,10 @@ const handleSubMenuClick = (key: string) => {
   message.info(`Submenu ${key} clicked`);
   console.log(`Submenu ${key} action executed`);
 };
+
+
+
+
 </script>
 
 <style scoped>
