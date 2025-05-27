@@ -31,8 +31,9 @@ class UIUtil {
    * @param positionY - The Y position where to show the dropdown
    * @returns void
    */
-  static ShowContextMenu(isShow, element, positionX, positionY) {
-    QuasarUtil.ShowContextMenu(isShow);
+  static ShowContextMenu(isShow: boolean, from: string, type: string) {
+    LogUtil.Debug('= u.UIUtil: ShowContextMenu - Input:', { isShow, from, type });
+    QuasarUtil.ShowContextMenu(isShow, from, type);
   }
 
   static ShowObjectConfig(isShow) {

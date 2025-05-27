@@ -1376,10 +1376,10 @@ class BaseDrawObject {
     // Show the appropriate contextual menu based on read-only status
     if (T3Gv.docUtil.IsReadOnly()) {
       // Show read-only context menu
-      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "DrawObject", "ReadOnly");
     } else {
       // Show editable context menu
-      UIUtil.ShowContextMenu(true, "", clickEvent.gesture.center.clientX, clickEvent.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "DrawObject", "Editable");
     }
 
     LogUtil.Debug("= S.BaseDrawObject: RightClick output: Contextual menu shown");
@@ -1387,11 +1387,7 @@ class BaseDrawObject {
   }
 
   AdjustTextEditBackground(e: any, t: any): void {
-    LogUtil.Debug("= S.BaseDrawObject: AdjustTextEditBackground input:", { e, t });
-
-    // TODO: Implement the logic to adjust the text edit background as needed.
-
-    LogUtil.Debug("= S.BaseDrawObject: AdjustTextEditBackground output: completed");
+    LogUtil.Debug("= s.BaseDrawObject: AdjustTextEditBackground input:", { e, t });
   }
 
   SetTextContent(text: string): void {

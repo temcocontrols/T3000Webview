@@ -38,7 +38,7 @@
                 <div id="svg-area" class="svg-area">
                 </div>
                 <template #overlay>
-                  <T3ContextMenu v-if="contextMenuShow"></T3ContextMenu>
+                  <T3ContextMenu v-if="ctxMenuConfig.isShow"></T3ContextMenu>
                 </template>
               </a-dropdown>
             </div>
@@ -344,7 +344,7 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac";
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils";
 
-import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
+import { ctxMenuConfig, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant";
 import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {

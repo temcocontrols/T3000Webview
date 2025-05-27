@@ -1166,7 +1166,7 @@ class LMEvtUtil {
       //clear context menu
       const isRightClick = MouseUtil.IsRightClick(event);
       if (!isRightClick) {
-        UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(false, "WorkArea", "Default");
         // UIUtil.ShowObjectConfig(false);
       }
 

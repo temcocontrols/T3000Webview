@@ -4812,11 +4812,11 @@ class BaseLine extends BaseDrawObject {
         );
       } else {
         // Show the context menu
-        UIUtil.ShowContextMenu(true, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(true, "Line", "Default");
       }
     } else {
       // Show the context menu when no text is being edited
-      UIUtil.ShowContextMenu(true, "", event.gesture.center.clientX, event.gesture.center.clientY);
+      UIUtil.ShowContextMenu(true, "Line", "Default");
     }
 
     LogUtil.Debug("= S.BaseLine: RightClick completed");

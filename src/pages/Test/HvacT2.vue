@@ -250,7 +250,7 @@
     </div>
 
 
-    <q-menu v-if="contextMenuShow" touch-position target="#svg-area" context-menu>
+    <q-menu v-if="ctxMenuConfig.isShow" touch-position target="#svg-area" context-menu>
       <q-list>
         <!-- Copy Option -->
         <q-item dense clickable v-close-popup @click="saveSelectedToClipboard">
@@ -579,7 +579,7 @@ import { insertT3EntryDialog } from "src/lib/T3000/Hvac/Data/Data";
 import Hvac from "src/lib/T3000/Hvac/Hvac"
 import IdxUtils from "src/lib/T3000/Hvac/Opt/Common/IdxUtils"
 
-import { contextMenuShow, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
+import { ctxMenuConfig, objectConfigShow, globalMsgShow } from "src/lib/T3000/Hvac/Data/Constant/RefConstant"
 import ObjectConfigNew from "src/components/NewUI/ObjectConfigNew.vue";
 
 import {
@@ -1357,10 +1357,10 @@ function onSelectoSelectEnd(e) {
 
   if (appState.value.selectedTargets.length > 1 && !locked.value) {
     setTimeout(() => {
-      contextMenuShow.value = true;
+      ctxMenuConfig.value.isShow = true;
     }, 100);
   } else {
-    contextMenuShow.value = false;
+    ctxMenuConfig.value.isShow = false;
   }
 
   IdxUtils.refreshMoveableGuides(); // Refresh the moveable guidelines after selection

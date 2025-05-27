@@ -69,7 +69,7 @@ class EvtUtil {
 
     const svgDoc = T3Gv.opt.svgDoc;
 
-    if(svgDoc===null){
+    if (svgDoc === null) {
       return;
     }
 
@@ -124,7 +124,7 @@ class EvtUtil {
       SelectUtil.ClearSelectionClick();
 
       //Clear the context menu
-      UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+      UIUtil.ShowContextMenu(false, "WorkArea", "Default");
       UIUtil.ShowObjectConfig(false);
     }
 
@@ -140,9 +140,12 @@ class EvtUtil {
         event.gesture.center.clientX,
         event.gesture.center.clientY
       );
+
+      SelectUtil.ClearSelectionClick();
+      UIUtil.ShowContextMenu(true, "WorkArea", "Default");
     }
 
-    LogUtil.Debug("E.Evt WorkAreaHammerClick output:", isRightClick ? "right-click menu shown" : "selection cleared");
+    LogUtil.Debug("E.Evt WorkAreaHammerClick output:", isRightClick ? "right-click menu shown" : "selection cleared", "rClickParam:", T3Gv.opt.rClickParam);
     return false;
   }
 
@@ -273,7 +276,7 @@ class EvtUtil {
         event.preventDefault();
         event.stopPropagation();
 
-        UIUtil.ShowContextMenu(false, "", event.gesture.center.clientX, event.gesture.center.clientY);
+        UIUtil.ShowContextMenu(false, "WorkArea", "Default");
         // UIUtil.ShowObjectConfig(false);
 
         LogUtil.Debug("E.Evt WorkAreaHammerDragStart output: right-click handled");

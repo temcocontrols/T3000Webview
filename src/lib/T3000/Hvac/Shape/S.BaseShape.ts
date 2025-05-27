@@ -6667,7 +6667,7 @@ class BaseShape extends BaseDrawObject {
         T3Gv.opt.rClickParam.hitPoint.y = documentCoords.y;
         T3Gv.opt.rClickParam.locked = (this.flags & NvConstant.ObjFlags.Lock) > 0;
 
-        QuasarUtil.ShowContextMenu(true);
+        UIUtil.ShowContextMenu(true, "Shape", "ReadOnly");
         return false;
       }
 
@@ -6737,26 +6737,25 @@ class BaseShape extends BaseDrawObject {
         // Show appropriate context menu based on object type
         switch (clickedObject.objecttype) {
           case NvConstant.FNObjectTypes.FrameContainer:
-            QuasarUtil.ShowContextMenu(true);
+            UIUtil.ShowContextMenu(true, "FrameContainer", "Default");
             break;
           case NvConstant.FNObjectTypes.Multiplicity:
-            QuasarUtil.ShowContextMenu(true);
+            UIUtil.ShowContextMenu(true, "Multiplicity", "Default");
             break;
           case NvConstant.FNObjectTypes.ShapeContainer:
-            QuasarUtil.ShowContextMenu(true);
+            UIUtil.ShowContextMenu(true, "ShapeContainer", "Default");
           default:
             // Handle specific shape types
             switch (clickedObject.ShapeType) {
               case shapeTypes.RRect:
-                if (clickedObject.ImageURL && clickedObject.ImageURL.length ||
-                  clickedObject.EMFHash && clickedObject.EMFHash.length) {
-                  QuasarUtil.ShowContextMenu(true);
+                if (clickedObject.ImageURL && clickedObject.ImageURL.length || clickedObject.EMFHash && clickedObject.EMFHash.length) {
+                  QuasarUtil.ShowContextMenu(true, "Image", "Default");
                 } else {
-                  QuasarUtil.ShowContextMenu(true);
+                  QuasarUtil.ShowContextMenu(true, "RRect", "Default");
                 }
                 break;
               default:
-                UIUtil.ShowContextMenu(true, "default", event.gesture.center.clientX, event.gesture.center.clientY);
+                UIUtil.ShowContextMenu(true, "Shape", "Default");
 
                 // Log context menu display
                 LogUtil.Debug("S.BaseShape - RightClick: Displayed Quasar context menu");

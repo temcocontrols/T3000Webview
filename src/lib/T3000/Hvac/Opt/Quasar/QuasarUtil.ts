@@ -1,7 +1,7 @@
 
 
 import { cloneDeep, fill } from "lodash";
-import { contextMenuShow, globalMsgShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
+import { ctxMenuConfig, globalMsgShow, /*currentObject,*/ objectConfigShow } from "../../Data/Constant/RefConstant";
 import { NewTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
@@ -134,9 +134,9 @@ class QuasarUtil {
     }
   }
 
-  static ShowContextMenu(show: boolean) {
-    LogUtil.Debug("= u.QuasarUtil ShowContextMenu/", "show,rClickParam=>", show, T3Gv.opt.rClickParam);
-    contextMenuShow.value = show;
+  static ShowContextMenu(isShow: boolean, from: string, type: string) {
+    LogUtil.Debug("= u.QuasarUtil ShowContextMenu/", "isShow,from,type,rClickParam=>", isShow, from, type, T3Gv.opt.rClickParam);
+    ctxMenuConfig.value = { isShow, from, type };
     // globalMsgShow.value=true;
   }
 

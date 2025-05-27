@@ -55,12 +55,12 @@ import {
   GatewayOutlined,
   RetweetOutlined
 } from '@ant-design/icons-vue';
+import EvtOpt from '../Event/EvtOpt';
 
 class CtxMenuUtil {
 
   GetContextMenu() {
-    var ctxMenu: MenuConfigItem[] = [
-    ];
+    var ctxMenu: MenuConfigItem[] = [];
 
     ctxMenu.push(...this.Cut());
 
@@ -89,7 +89,8 @@ class CtxMenuUtil {
     switch (key) {
       case 'cut':
         // Handle cut action
-        console.log('Cut action triggered');
+        // console.log('Cut action triggered');
+        EvtOpt.toolOpt.CutAct(event);
         break;
       case 'copy':
         // Handle copy action

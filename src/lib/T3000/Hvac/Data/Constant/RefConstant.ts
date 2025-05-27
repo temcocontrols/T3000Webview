@@ -3,7 +3,10 @@ import { ref } from "vue";
 import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, globalNav,*/ demoDeviceData } from "../../../../common";
 
 
-export const contextMenuShow = ref<boolean>(false);
+// Interface definition for context menu configuration
+export interface ICtxMenuConfig { isShow: boolean; from: string; type: string; }
+export const ctxMenuConfig = ref<ICtxMenuConfig>({ isShow: false, from: "", type: "" });
+
 export const objectConfigShow = ref<boolean>(false);
 export const globalMsgShow = ref<boolean>(false);
 export const commonMsg = ref<string>("");
