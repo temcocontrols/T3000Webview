@@ -6,6 +6,7 @@ import OptUtil from "../Opt/Opt/OptUtil";
 import WallOpt from "../Opt/Wall/WallOpt";
 import DataStore from "./State/DataStore";
 import StateOpt from "./State/StateOpt";
+import { IOptAction } from "./T3Type";
 
 class T3Gv {
 
@@ -37,6 +38,14 @@ class T3Gv {
   static quasar: any;                      // Quasar framework instance
 
   // static refreshPosition: boolean = true;
+
+  static optAction: IOptAction = {
+    selectedList: [],
+    selectedShapeType: "",
+    groupId: "",
+    clipboardData: "",
+    lockedType: ""
+  };
 }
 
 export default T3Gv

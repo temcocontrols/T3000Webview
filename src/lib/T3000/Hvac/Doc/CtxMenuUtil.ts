@@ -80,12 +80,15 @@ class CtxMenuUtil {
     LogUtil.Debug('= u.CtxMenuUtil: GetContextMenu/ ctxConfig=', { isShow: ctxConfig.isShow, from: ctxConfig.from, type: ctxConfig.type });
     this.ctxConfig = ctxConfig;
 
-    const ctxMenuType = this.GetContextMenuType();
+    // const ctxMenuType = this.GetContextMenuType();
+    const ctxMenuType = this.ctxConfig.from;
 
     var ctxMenu: MenuConfigItem[] = [];
 
-    if (ctxMenuType == "WorkArea-Default") {
-      ctxMenu = this.GetWorkAreaDefaultMenu();
+    /*
+    if (ctxMenuType == "WorkArea") {
+      // ctxMenu = this.GetWorkAreaDefaultMenu();
+      ctxMenu = this.GetFullContextMenu();
     }
     else if (ctxMenuType == "Multi-Select") {
       ctxMenu = this.GetMultiSelectMenu();
@@ -97,26 +100,231 @@ class CtxMenuUtil {
       LogUtil.Error('= u.CtxMenuUtil: GetContextMenu/ Unknown context menu type:', ctxMenuType);
       return [];
     }
+    */
+
+    ctxMenu = this.GetFullContextMenu();
+    LogUtil.Debug('= u.CtxMenuUtil: GetContextMenu/ ctxMenu=', ctxMenu);
 
     return ctxMenu;
   }
 
+  /*
   GetContextMenuType() {
     if (this.ctxConfig.from == "WorkArea") {
-      return "WorkArea-Default";
+      return "WorkArea";
     }
     else {
-      const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
-      const selectObjs = SelectUtil.GetSelectedObject();
-      LogUtil.Debug('= u.CtxMenuUtil: GetContextMenuType/ selectObjs=', selectObjs, "selectedList=", selectedList);
+      // const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+      // const selectObjs = SelectUtil.GetSelectedObject();
+      // LogUtil.Debug('= u.CtxMenuUtil: GetContextMenuType/ selectObjs=', selectObjs, "selectedList=", selectedList);
+      return "Shape";
+    }
+  }
+  */
 
-      if (selectedList.length > 1) {
-        return "Multi-Select";
+  GetFullContextMenu() {
+    const ctxMenu: MenuConfigItem[] = [
+
+      /*
+      ...this.Select(),
+      ...this.SelectAll(),
+      ...this.SelectShape(),
+      ...this.BackgroundColor(),
+      ...this.Divider(),
+      */
+      ...this.SelectSection(),
+
+      /*
+      ...this.Rotate(),
+      ...this.Alignment(),
+      ...this.Flip(),
+      ...this.MakeSame(),
+      ...this.BringToFront(),
+      ...this.SendToBack(),
+      ...this.Divider(),
+      */
+      ...this.ShapeCommonOptSection(),
+
+      /*
+      ...this.Group(),
+      ...this.Ungroup(),
+      ...this.Divider(),
+      */
+      ...this.GroupSection(),
+
+      /*
+      ...this.Cut(),
+      ...this.Copy(),
+      ...this.Paste(),
+      ...this.Duplicate(),
+      ...this.Divider(),
+      */
+      ...this.CutCopySection(),
+
+      /*
+      ...this.Delete(),
+      ...this.Reset(),
+      ...this.Save(),
+      ...this.Divider(),
+      */
+      ...this.SaveSection(),
+
+      /*
+      ...this.AddToLibrary(),
+      ...this.LoadFromLibrary(),
+      ...this.Divider(),
+      */
+      ...this.LibrarySection(),
+
+      /*
+      ...this.LockAll(),
+      ...this.Unlock(),
+      */
+      ...this.LockSection(),
+    ];
+
+    return ctxMenu;
+  }
+
+  SelectSection() {
+    const ctxItems: MenuConfigItem[] = [];
+
+    ctxItems.push(...this.Select());
+    ctxItems.push(...this.SelectAll());
+    ctxItems.push(...this.SelectShape());
+    ctxItems.push(...this.BackgroundColor());
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+  ShapeCommonOptSection() {
+    const selected = this.HasSelection();
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (selected) {
+      ctxItems.push(...this.Rotate());
+      ctxItems.push(...this.Alignment());
+      ctxItems.push(...this.Flip());
+      ctxItems.push(...this.MakeSame());
+      ctxItems.push(...this.BringToFront());
+      ctxItems.push(...this.SendToBack());
+    }
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+  GroupSection() {
+    const canGroup = this.CanGroup();
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (canGroup) {
+      ctxItems.push(...this.Group());
+    }
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+
+  CutCopySection() {
+    const selected = this.HasSelection();
+    const hasClipboard = this.HasClipboardData();
+
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (selected) {
+      ctxItems.push(...this.Cut());
+      ctxItems.push(...this.Copy());
+      ctxItems.push(...this.Duplicate());
+    }
+
+    if (hasClipboard) {
+      ctxItems.push(...this.Paste());
+    }
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+  SaveSection() {
+    const selected = this.HasSelection();
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (selected) {
+      ctxItems.push(...this.Delete());
+    }
+
+    ctxItems.push(...this.Save());
+    ctxItems.push(...this.Reset());
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+  LibrarySection() {
+    const selected = this.HasSelection();
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (selected) {
+      ctxItems.push(...this.AddToLibrary());
+    }
+
+    ctxItems.push(...this.LoadFromLibrary());
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
+  }
+
+  LockSection() {
+    const selected = this.HasSelection();
+    const canLock = this.CanLock();
+    const canUnlock = this.CanUnlock();
+    const canAllUnlock = this.CanAllUnlock();
+
+    const ctxItems: MenuConfigItem[] = [];
+
+    if (selected) {
+      if (canLock) {
+        ctxItems.push(...this.Lock());
       }
-      else {
-        return "Single-Select";
+
+      if (canUnlock) {
+        ctxItems.push(...this.Unlock());
       }
     }
+
+    // For draw area context menu, always show Lock All option
+    if (!selected) {
+      if (canAllUnlock) {
+        ctxItems.push(...this.LockAll());
+      }
+    }
+
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
+
+    return ctxItems;
   }
 
   GetWorkAreaDefaultMenu() {
@@ -303,7 +511,7 @@ class CtxMenuUtil {
         onClick: (key) => this.HandleMenuClick(key)
       }];
 
-    return this.CanCut() ? ctxMenu : [];
+    return ctxMenu;
   }
 
   Copy() {
@@ -317,7 +525,7 @@ class CtxMenuUtil {
         onClick: (key) => this.HandleMenuClick(key)
       }];
 
-    return this.CanCopy() ? ctxMenu : [];
+    return ctxMenu;
   }
 
   Paste() {
@@ -908,15 +1116,86 @@ class CtxMenuUtil {
     }
   }
 
-  CanCut() {
-    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
-    return selectedList.length > 0;
+  CanGroup() {
+    return T3Gv.optAction.selectedList &&
+      T3Gv.optAction.selectedList.length > 1 &&
+      T3Gv.optAction.selectedList.every(item => item && item !== "");
   }
 
-  CanCopy() {
-    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
-    return selectedList.length > 0;
+  HasSelection() {
+    return T3Gv.optAction.selectedList && T3Gv.optAction.selectedList.length > 0 &&
+      T3Gv.optAction.selectedList.every(item => item && item !== "");
   }
+
+  HasClipboardData() {
+    return !!T3Gv.optAction.clipboardData;
+  }
+
+  CanLock() {
+    // First check if there are any selected objects
+    if (!T3Gv.optAction.selectedList || T3Gv.optAction.selectedList.length === 0) {
+      return false;
+    }
+
+    // If there's no locked list, everything can be locked
+    if (!T3Gv.optAction.lockedList) {
+      return true;
+    }
+
+    // Check if any selected item is not in the locked list
+    return T3Gv.optAction.selectedList.some(selectedItem =>
+      !T3Gv.optAction.lockedList.includes(selectedItem)
+    );
+  }
+
+  CanUnlock() {
+    // First check if there are any selected objects
+    if (!T3Gv.optAction.selectedList || T3Gv.optAction.selectedList.length === 0) {
+      return false;
+    }
+
+    // If there's no locked list, nothing can be unlocked
+    if (!T3Gv.optAction.lockedList || T3Gv.optAction.lockedList.length === 0) {
+      return false;
+    }
+
+    // Check if any selected item is in the locked list (can be unlocked)
+    return T3Gv.optAction.selectedList.some(selectedItem =>
+      T3Gv.optAction.lockedList.includes(selectedItem)
+    );
+  }
+
+  CanAllUnlock() {
+    // Check if locked list exists and has items
+    if (!T3Gv.optAction.lockedList || T3Gv.optAction.lockedList.length === 0) {
+      return false;
+    }
+
+    // Check that all items in the locked list are valid (not empty strings, null or undefined)
+    return T3Gv.optAction.lockedList.every(item => item && item !== "");
+  }
+
+  // CanCut() {
+  //   return T3Gv.optAction.selectedList &&
+  //     T3Gv.optAction.selectedList.length > 0 &&
+  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
+  // }
+
+  // CanCopy() {
+  //   return T3Gv.optAction.selectedList &&
+  //     T3Gv.optAction.selectedList.length > 0 &&
+  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
+  // }
+
+  // CanPaste() {
+  //   return !!T3Gv.optAction.clipboardData;
+  // }
+
+  // CanDuplicate() {
+  //   return T3Gv.optAction.selectedList &&
+  //     T3Gv.optAction.selectedList.length > 0 &&
+  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
+  // }
 }
 
 export default CtxMenuUtil
