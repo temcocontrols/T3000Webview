@@ -38,14 +38,6 @@ class T3Gv {
   static quasar: any;                      // Quasar framework instance
 
   // static refreshPosition: boolean = true;
-
-  static optAction: IOptAction = {
-    selectedList: [],
-    selectedShapeType: "",
-    groupId: "",
-    clipboardData: "",
-    lockedType: ""
-  };
 }
 
 export default T3Gv

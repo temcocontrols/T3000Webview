@@ -64,10 +64,13 @@ import T3Gv from '../Data/T3Gv';
 import DataOpt from '../Opt/Data/DataOpt';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
+import { IOptData } from '../Data/T3Type';
+import NvConstant from '../Data/Constant/NvConstant';
 
 class CtxMenuUtil {
 
   private ctxConfig: ICtxMenuConfig;
+  private checkData: IOptData;
 
   /*
   constructor(ctxConfig: ICtxMenuConfig) {
@@ -82,6 +85,8 @@ class CtxMenuUtil {
 
     // const ctxMenuType = this.GetContextMenuType();
     const ctxMenuType = this.ctxConfig.from;
+    const checkData = this.PrepareOptCheckData();
+    this.checkData = checkData;
 
     var ctxMenu: MenuConfigItem[] = [];
 
@@ -235,7 +240,6 @@ class CtxMenuUtil {
 
     return ctxItems;
   }
-
 
   CutCopySection() {
     const selected = this.HasSelection();
@@ -1117,85 +1121,82 @@ class CtxMenuUtil {
   }
 
   CanGroup() {
-    return T3Gv.optAction.selectedList &&
-      T3Gv.optAction.selectedList.length > 1 &&
-      T3Gv.optAction.selectedList.every(item => item && item !== "");
+    return this.checkData.selectedList &&
+      this.checkData.selectedList.length > 1 &&
+      this.checkData.selectedList.every(item => item && item !== -1);
   }
 
   HasSelection() {
-    return T3Gv.optAction.selectedList && T3Gv.optAction.selectedList.length > 0 &&
-      T3Gv.optAction.selectedList.every(item => item && item !== "");
+    return this.checkData.selectedList && this.checkData.selectedList.length > 0 &&
+      this.checkData.selectedList.every(item => item && item !== -1);
   }
 
   HasClipboardData() {
-    return !!T3Gv.optAction.clipboardData;
+    return !!this.checkData.clipboardData;
   }
 
   CanLock() {
     // First check if there are any selected objects
-    if (!T3Gv.optAction.selectedList || T3Gv.optAction.selectedList.length === 0) {
+    if (!this.checkData.selectedList || this.checkData.selectedList.length === 0) {
       return false;
     }
 
-    // If there's no locked list, everything can be locked
-    if (!T3Gv.optAction.lockedList) {
-      return true;
-    }
+    // Check if at least one selected object doesn't have the lock flag
+    const lockFlag = NvConstant.ObjFlags.Lock;
 
-    // Check if any selected item is not in the locked list
-    return T3Gv.optAction.selectedList.some(selectedItem =>
-      !T3Gv.optAction.lockedList.includes(selectedItem)
-    );
+    // Return true if at least one object doesn't have the lock flag (can be locked)
+    return this.checkData.selectObjs.some(obj => {
+      return obj && (obj.flags & lockFlag) === 0;
+    });
   }
 
   CanUnlock() {
     // First check if there are any selected objects
-    if (!T3Gv.optAction.selectedList || T3Gv.optAction.selectedList.length === 0) {
+    if (!this.checkData.selectedList || this.checkData.selectedList.length === 0) {
       return false;
     }
 
-    // If there's no locked list, nothing can be unlocked
-    if (!T3Gv.optAction.lockedList || T3Gv.optAction.lockedList.length === 0) {
-      return false;
-    }
+    // Check if at least one selected object has the lock flag
+    const lockFlag = NvConstant.ObjFlags.Lock;
 
-    // Check if any selected item is in the locked list (can be unlocked)
-    return T3Gv.optAction.selectedList.some(selectedItem =>
-      T3Gv.optAction.lockedList.includes(selectedItem)
-    );
+    // Return true if at least one object has the lock flag (can be unlocked)
+   return this.checkData.selectObjs.some(obj => {
+      return obj && (obj.flags & lockFlag) !== 0;
+    });
   }
 
   CanAllUnlock() {
-    // Check if locked list exists and has items
-    if (!T3Gv.optAction.lockedList || T3Gv.optAction.lockedList.length === 0) {
+    // Check if there are any objects with lock flag in T3Gv.stdObj
+    const lockFlag = NvConstant.ObjFlags.Lock;
+
+    // If T3Gv.stdObj doesn't exist or is empty, return false
+    if (!T3Gv.stdObj || Object.keys(T3Gv.stdObj).length === 0) {
       return false;
     }
 
-    // Check that all items in the locked list are valid (not empty strings, null or undefined)
-    return T3Gv.optAction.lockedList.every(item => item && item !== "");
+    // Return true if at least one object has the lock flag
+    // Return true if at least one object in T3Gv.stdObj has the lock flag
+    return Object.values(T3Gv.stdObj).some(obj => {
+      return obj && (obj.flags & lockFlag) !== 0;
+    });
   }
 
-  // CanCut() {
-  //   return T3Gv.optAction.selectedList &&
-  //     T3Gv.optAction.selectedList.length > 0 &&
-  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
-  // }
+  PrepareOptCheckData(): IOptData {
+    const selected = SelectUtil.GetSelectedObjectList();
+    const clipboardData = T3Gv.opt.header.ClipboardBuffer;
 
-  // CanCopy() {
-  //   return T3Gv.optAction.selectedList &&
-  //     T3Gv.optAction.selectedList.length > 0 &&
-  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
-  // }
+    const clipboardPreview = clipboardData ? (typeof clipboardData === 'string' ? clipboardData.substring(0, 30) : clipboardData) : null;
 
-  // CanPaste() {
-  //   return !!T3Gv.optAction.clipboardData;
-  // }
+    const checkData: IOptData = {
+      selectedList: selected.selectedList || [],
+      selectObjs: selected?.selectedObjects || [],
+      clipboardData: clipboardData
+    };
 
-  // CanDuplicate() {
-  //   return T3Gv.optAction.selectedList &&
-  //     T3Gv.optAction.selectedList.length > 0 &&
-  //     T3Gv.optAction.selectedList.every(item => item && item !== "");
-  // }
+    LogUtil.Debug('= u.CtxMenuUtil: PrepareOptCheckData/ selected=', selected, "checkData=", checkData);
+
+    return checkData;
+  }
 }
 
 export default CtxMenuUtil

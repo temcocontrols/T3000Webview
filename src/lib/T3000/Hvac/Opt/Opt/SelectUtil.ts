@@ -1824,7 +1824,38 @@ class SelectUtil {
   static GetSelectedObject() {
     let targetSelectionId = SelectUtil.GetTargetSelect();
     var targetObject = ObjectUtil.GetObjectPtr(targetSelectionId, false);
-    return {selectedId: targetSelectionId, selectedObject: targetObject};
+    return { selectedId: targetSelectionId, selectedObject: targetObject };
+  }
+
+  static GetSelectedObjectList() {
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+
+    LogUtil.Debug("O.Opt GetSelectedObjectList - Input: No parameters");
+
+    // Array to hold actual object instances
+    const selectedObjects = [];
+
+    // Loop through selected object IDs
+    for (let i = 0; i < selectedList.length; i++) {
+      const objectId = selectedList[i];
+      const object = ObjectUtil.GetObjectPtr(objectId, false);
+
+      // Only add valid objects
+      if (object) {
+        selectedObjects.push(object);
+      }
+    }
+
+    LogUtil.Debug("O.Opt GetSelectedObjectList - Output:", {
+      selectedCount: selectedList.length,
+      objectCount: selectedObjects.length
+    });
+
+    // Return both the IDs list and the objects list
+    return {
+      selectedList: selectedList,
+      selectedObjects: selectedObjects
+    };
   }
 }
 
