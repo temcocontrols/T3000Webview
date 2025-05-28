@@ -53,7 +53,9 @@ import {
   BgColorsOutlined,
   CheckOutlined,
   GatewayOutlined,
-  RetweetOutlined
+  RetweetOutlined,
+  SelectOutlined,
+  BorderOutlined
 } from '@ant-design/icons-vue';
 import EvtOpt from '../Event/EvtOpt';
 import { ICtxMenuConfig } from '../Data/Constant/RefConstant';
@@ -119,20 +121,36 @@ class CtxMenuUtil {
 
   GetWorkAreaDefaultMenu() {
     const ctxMenu: MenuConfigItem[] = [
+      ...this.Select(),
+      ...this.SelectAll(),
+      ...this.SelectShape(),
+      ...this.Divider(),
+
       ...this.Cut(),
       ...this.Copy(),
       ...this.Paste(),
-      ...this.Delete(),
+      ...this.Divider(),
+
       ...this.Undo(),
       ...this.Redo(),
+      ...this.Divider(),
+
+      ...this.Delete(),
+      ...this.Save(),
+      ...this.Reset(),
+      ...this.Divider(),
+
+      ...this.BackgroundColor(),
+      ...this.AddToLibrary(),
+      ...this.LoadFromLibrary(),
+      ...this.Divider(),
+
       ...this.Duplicate(),
       ...this.Divider(),
-      ...this.Save(),
-      ...this.Divider(),
+
       ...this.LockAll(),
       ...this.Unlock(),
-      ...this.Divider(),
-      ...this.SelectAll()
+      ...this.Divider()
     ];
 
     return ctxMenu;
@@ -144,6 +162,7 @@ class CtxMenuUtil {
       ...this.Copy(),
       ...this.Paste(),
       ...this.Delete(),
+      ...this.Divider(),
       ...this.Undo(),
       ...this.Redo(),
       ...this.Duplicate(),
@@ -165,6 +184,7 @@ class CtxMenuUtil {
       ...this.Copy(),
       ...this.Paste(),
       ...this.Delete(),
+      ...this.Divider(),
       ...this.Undo(),
       ...this.Redo(),
       ...this.Duplicate(),
@@ -283,7 +303,7 @@ class CtxMenuUtil {
         onClick: (key) => this.HandleMenuClick(key)
       }];
 
-    return ctxMenu;
+    return this.CanCut() ? ctxMenu : [];
   }
 
   Copy() {
@@ -297,7 +317,7 @@ class CtxMenuUtil {
         onClick: (key) => this.HandleMenuClick(key)
       }];
 
-    return ctxMenu;
+    return this.CanCopy() ? ctxMenu : [];
   }
 
   Paste() {
@@ -445,7 +465,7 @@ class CtxMenuUtil {
       [{
         key: 'select',
         title: 'Select',
-        icon: CheckOutlined,
+        icon: SelectOutlined,
         shortcut: 'Ctrl+A',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
@@ -473,7 +493,7 @@ class CtxMenuUtil {
       [{
         key: 'select-shape',
         title: 'Select Shape',
-        icon: GatewayOutlined,
+        icon: BorderOutlined,
         shortcut: 'Alt+S',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
@@ -886,6 +906,16 @@ class CtxMenuUtil {
         T3Gv.docUtil.ZoomOut();
         break;
     }
+  }
+
+  CanCut() {
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    return selectedList.length > 0;
+  }
+
+  CanCopy() {
+    const selectedList = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);
+    return selectedList.length > 0;
   }
 }
 
