@@ -6,6 +6,7 @@ interface MenuItemBase {
   title: string;
   icon?: any;
   shortcut?: string;
+  disabled?: boolean;
 }
 
 interface MenuItem extends MenuItemBase {
@@ -516,6 +517,7 @@ class CtxMenuUtil {
             // shortcut: 'Alt+C',
             shortcut: '',
             type: 'item',
+            disabled: true,
             onClick: (key) => this.HandleMenuClick(key)
           }
         ]
@@ -727,9 +729,53 @@ class CtxMenuUtil {
         key: 'select-shape',
         title: 'Select Shape',
         icon: BorderOutlined,
-        shortcut: 'Alt+S',
-        type: 'item',
-        onClick: (key) => this.HandleMenuClick(key)
+        // shortcut: 'Alt+S',
+        type: 'submenu',
+        expandIcon: RightOutlined,
+        children: [
+          {
+            key: 'sl-rectangle',
+            title: 'Rectangle',
+            // shortcut: 'Alt+1',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          },
+          {
+            key: 'sl-circle',
+            title: 'Circle',
+            // shortcut: 'Alt+2',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          },
+          {
+            key: 'sl-duct-1',
+            title: 'Duct 1',
+            // shortcut: 'Alt+1',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          },
+          {
+            key: 'sl-duct-2',
+            title: 'Duct 2',
+            // shortcut: 'Alt+1',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          },
+          {
+            key: 'sl-duct-3',
+            title: 'Duct 3',
+            // shortcut: 'Alt+1',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          },
+          {
+            key: 'sl-pipe-1',
+            title: 'Pipe 1',
+            // shortcut: 'Alt+2',
+            type: 'item',
+            onClick: (key) => this.HandleMenuClick(key)
+          }
+        ]
       }];
 
     return ctxMenu;
