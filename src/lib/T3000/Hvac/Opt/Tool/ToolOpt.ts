@@ -557,6 +557,16 @@ class ToolOpt {
       T3Gv.opt.ExceptionCleanup(ex);
     }
   }
+
+  ClearAct() {
+    try {
+      T3Gv.opt.CloseEdit();
+      this.tul.ClearAndRest();
+      LogUtil.Debug('= O.ToolOpt ClearAct - Output: Cleared all shapes and data');
+    } catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
 }
 
 export default ToolOpt

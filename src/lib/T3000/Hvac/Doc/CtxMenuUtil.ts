@@ -68,6 +68,7 @@ import { IOptData } from '../Data/T3Type';
 import NvConstant from '../Data/Constant/NvConstant';
 import T3Opt from './T3Opt';
 import Hvac from '../Hvac';
+import ToolOpt from '../Opt/Tool/ToolOpt';
 
 class CtxMenuUtil {
 
@@ -488,28 +489,32 @@ class CtxMenuUtil {
           {
             key: 'bg-color-20B2AA',
             title: '#20B2AA',
-            shortcut: 'Alt+1',
+            // shortcut: 'Alt+1',
+            shortcut: '',
             type: 'item',
             onClick: (key) => this.HandleMenuClick(key)
           },
           {
             key: 'bg-color-FFFFFF',
             title: '#FFFFFF',
-            shortcut: 'Alt+2',
+            // shortcut: 'Alt+2',
+            shortcut: '',
             type: 'item',
             onClick: (key) => this.HandleMenuClick(key)
           },
           {
             key: 'bg-color-0AACB4',
             title: '#0AACB4',
-            shortcut: 'Alt+3',
+            // shortcut: 'Alt+3',
+            shortcut: '',
             type: 'item',
             onClick: (key) => this.HandleMenuClick(key)
           },
           {
             key: 'bg-color-custom',
             title: 'Custom Color...',
-            shortcut: 'Alt+C',
+            // shortcut: 'Alt+C',
+            shortcut: '',
             type: 'item',
             onClick: (key) => this.HandleMenuClick(key)
           }
@@ -594,7 +599,7 @@ class CtxMenuUtil {
         key: 'redo',
         title: 'Redo',
         icon: RedoOutlined,
-        shortcut: 'Ctrl+Y',
+        shortcut: 'Ctrl+B',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
       }];
@@ -636,7 +641,8 @@ class CtxMenuUtil {
         key: 'reset',
         title: 'Reset',
         icon: ClearOutlined,
-        shortcut: 'Ctrl+Del',
+        // shortcut: 'Ctrl+R',
+        shortcut: '',//Todo: conflict with old version, pending on new ui online
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
       }];
@@ -692,7 +698,8 @@ class CtxMenuUtil {
         key: 'select',
         title: 'Select',
         icon: SelectOutlined,
-        shortcut: 'Ctrl+A',
+        // shortcut: 'Ctrl+A',
+        shortcut: '',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
       }];
@@ -1046,10 +1053,7 @@ class CtxMenuUtil {
         EvtOpt.toolOpt.SelectAct(event);
         break;
       case 'select-all':
-        // This case is redundant with 'select', but kept for consistency
-        // Currently, it will call the same select action
-        // This is a placeholder for future implementation
-        EvtOpt.toolOpt.SelectAct(event);
+        EvtOpt.toolOpt.tul.SelectAllObjects();
         break;
       case 'select-shape':
         // This action is intended to select a specific shape

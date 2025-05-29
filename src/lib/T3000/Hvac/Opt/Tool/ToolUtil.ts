@@ -1017,7 +1017,7 @@ class ToolUtil {
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
-   }
+  }
 
   /**
    * Sends the selected objects to the back of the drawing order
@@ -1985,6 +1985,11 @@ class ToolUtil {
 
   VueForeignObject() {
     this.tul.StampOrDragDropNewShape(event, shapeType);
+  }
+
+  ClearAndRest() {
+    DataOpt.ClearT3LocalStorage();
+    // Hvac.UI.Reload();
   }
 }
 
