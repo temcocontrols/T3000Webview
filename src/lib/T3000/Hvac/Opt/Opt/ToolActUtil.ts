@@ -1523,7 +1523,7 @@ class ToolActUtil {
    * @returns The ID of the new group or false if grouping failed
    */
   static GroupSelected(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration) {
-    new ToolAct2Util().GroupSelectedShapes(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration);
+    ToolAct2Util.GroupSelectedShapes(returnValueFlag, customSelectionList, skipValidation, preventRedraw, enableCollaboration);
   }
 
   /**
@@ -1531,7 +1531,7 @@ class ToolActUtil {
   * @returns {boolean} True if the ungroup operation was performed, false otherwise.
   */
   static UnGroupSelected() {
-    new ToolAct2Util().UngroupSelectedShapes();
+    ToolAct2Util.UngroupSelectedShapes();
   }
 
   /**

@@ -150,7 +150,7 @@ class T3Opt {
     LayerUtil.ClearSVGHighlightLayer();
     LayerUtil.ClearSVGOverlayLayer();
     LayerUtil.ClearSVGObjectLayer();
-     UIUtil.SetBackgroundColor();
+    UIUtil.SetBackgroundColor();
     ObjectUtil.ClearDirtyList();
     ObjectUtil.ClearFutureUndoStates();
     ObjectUtil.ClearUndoRedo();

@@ -143,8 +143,6 @@ class CtxMenuUtil {
       */
       ...this.SelectSection(),
 
-      ...this.UndoRedoSection(),
-
       /*
       ...this.Rotate(),
       ...this.Alignment(),
@@ -155,6 +153,8 @@ class CtxMenuUtil {
       ...this.Divider(),
       */
       ...this.ShapeCommonOptSection(),
+
+      ...this.UndoRedoSection(),
 
       /*
       ...this.Group(),
@@ -199,14 +199,17 @@ class CtxMenuUtil {
 
   SelectSection() {
     const ctxItems: MenuConfigItem[] = [];
+    const selected = this.HasSelection();
 
-    ctxItems.push(...this.Select());
-    ctxItems.push(...this.SelectAll());
-    ctxItems.push(...this.SelectShape());
-    ctxItems.push(...this.BackgroundColor());
+    if (!selected) {
+      ctxItems.push(...this.Select());
+      ctxItems.push(...this.SelectAll());
+      ctxItems.push(...this.SelectShape());
+      ctxItems.push(...this.BackgroundColor());
 
-    if (ctxItems.length > 0) {
-      ctxItems.push(...this.Divider());
+      if (ctxItems.length > 0) {
+        ctxItems.push(...this.Divider());
+      }
     }
 
     return ctxItems;
@@ -244,10 +247,15 @@ class CtxMenuUtil {
 
   GroupSection() {
     const canGroup = this.CanGroup();
+    const canUngroup = this.CanUngroup();
     const ctxItems: MenuConfigItem[] = [];
 
     if (canGroup) {
       ctxItems.push(...this.Group());
+    }
+
+    if (canUngroup) {
+      ctxItems.push(...this.Ungroup());
     }
 
     if (ctxItems.length > 0) {
@@ -1009,7 +1017,7 @@ class CtxMenuUtil {
         key: 'bring-to-front',
         title: 'Bring to Front',
         icon: VerticalAlignTopOutlined,
-        shortcut: 'Shift+PgUp',
+        // shortcut: 'Shift+PgUp',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
       }];
@@ -1023,7 +1031,7 @@ class CtxMenuUtil {
         key: 'send-to-back',
         title: 'Send to Back',
         icon: VerticalAlignBottomOutlined,
-        shortcut: 'Shift+PgDn',
+        // shortcut: 'Shift+PgDn',
         type: 'item',
         onClick: (key) => this.HandleMenuClick(key)
       }];
@@ -1192,6 +1200,31 @@ class CtxMenuUtil {
     return this.checkData.selectedList &&
       this.checkData.selectedList.length > 1 &&
       this.checkData.selectedList.every(item => item && item !== -1);
+  }
+
+  CanUngroup() {
+
+    // First check if there are any selected objects
+    if (!this.checkData.selectedList || this.checkData.selectedList.length === 0) {
+      return false;
+    }
+
+    // Check if any of the selected objects is a group
+    // A group object typically has children or a specific group flag
+    return this.checkData.selectObjs.some(obj => {
+      // Check if the object exists and has the Group flag
+      if (!obj) return false;
+
+      // Check if object has group flag
+      const groupFlag = NvConstant.ObjFlags.Group;
+      const hasGroupFlag = (obj.flags & groupFlag) !== 0;
+
+      // Check if object has children
+      const hasChildren = obj.children && obj.children.length > 0;
+
+      // An object can be ungrouped if it's a group (has group flag or children)
+      return hasGroupFlag || hasChildren;
+    });
   }
 
   HasSelection() {
