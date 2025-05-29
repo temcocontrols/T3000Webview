@@ -1,6 +1,6 @@
 <template>
   <div class="t3-context-menu">
-    <a-menu v-model:selectedKeys="selectedKeys" mode="vertical" :theme="theme" :ctxMenuConfig="ctxMenuConfig">
+    <a-menu mode="vertical" :theme="theme" :ctxMenuConfig="ctxMenuConfig">
       <template v-for="item in contextMenuItems" :key="item.key">
         <!-- Render divider -->
         <a-menu-divider v-if="item.type === 'divider'" :key="'divider-' + item.key" />

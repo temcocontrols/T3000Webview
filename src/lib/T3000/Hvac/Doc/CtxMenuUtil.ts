@@ -58,7 +58,7 @@ import {
   BorderOutlined
 } from '@ant-design/icons-vue';
 import EvtOpt from '../Event/EvtOpt';
-import { ICtxMenuConfig } from '../Data/Constant/RefConstant';
+import { ctxMenuConfig, ICtxMenuConfig } from '../Data/Constant/RefConstant';
 import LogUtil from '../Util/LogUtil';
 import T3Gv from '../Data/T3Gv';
 import DataOpt from '../Opt/Data/DataOpt';
@@ -66,6 +66,8 @@ import ObjectUtil from '../Opt/Data/ObjectUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
 import { IOptData } from '../Data/T3Type';
 import NvConstant from '../Data/Constant/NvConstant';
+import T3Opt from './T3Opt';
+import Hvac from '../Hvac';
 
 class CtxMenuUtil {
 
@@ -139,6 +141,8 @@ class CtxMenuUtil {
       */
       ...this.SelectSection(),
 
+      ...this.UndoRedoSection(),
+
       /*
       ...this.Rotate(),
       ...this.Alignment(),
@@ -203,6 +207,16 @@ class CtxMenuUtil {
       ctxItems.push(...this.Divider());
     }
 
+    return ctxItems;
+  }
+
+  UndoRedoSection() {
+    const ctxItems: MenuConfigItem[] = [];
+    ctxItems.push(...this.Undo());
+    ctxItems.push(...this.Redo());
+    if (ctxItems.length > 0) {
+      ctxItems.push(...this.Divider());
+    }
     return ctxItems;
   }
 
@@ -1013,6 +1027,7 @@ class CtxMenuUtil {
         break;
       case 'reset':
         DataOpt.ClearT3LocalStorage();
+        Hvac.UI.Reload();
         break;
       case 'lock':
         EvtOpt.toolOpt.LibLockAct(event);
@@ -1118,6 +1133,8 @@ class CtxMenuUtil {
         T3Gv.docUtil.ZoomOut();
         break;
     }
+
+    ctxMenuConfig.value.isShow = false;
   }
 
   CanGroup() {
@@ -1160,7 +1177,7 @@ class CtxMenuUtil {
     const lockFlag = NvConstant.ObjFlags.Lock;
 
     // Return true if at least one object has the lock flag (can be unlocked)
-   return this.checkData.selectObjs.some(obj => {
+    return this.checkData.selectObjs.some(obj => {
       return obj && (obj.flags & lockFlag) !== 0;
     });
   }
