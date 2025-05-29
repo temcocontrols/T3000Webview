@@ -470,8 +470,9 @@ class CtxMenuUtil {
         key: 'load-from-library',
         title: 'Load from Library',
         icon: CopyOutlined,
-        shortcut: 'Ctrl+Shift+L',
+        // shortcut: 'Ctrl+Shift+L',
         type: 'item',
+        disabled: true,
         onClick: (key) => this.HandleMenuClick(key)
       }];
 

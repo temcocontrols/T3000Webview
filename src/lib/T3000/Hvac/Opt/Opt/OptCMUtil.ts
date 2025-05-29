@@ -19,6 +19,7 @@ import SvgUtil from "./SvgUtil";
 import DSUtil from '../DS/DSUtil';
 import Instance from '../../Data/Instance/Instance';
 import LogUtil from '../../Util/LogUtil';
+import LayerUtil from './LayerUtil';
 
 class OptCMUtil {
 
@@ -235,7 +236,7 @@ class OptCMUtil {
     LogUtil.Debug("O.Opt SetEditMode - Output:", { mode: stateMode, cursor: actualCursorType });
   }
 
-  static CancelOperation(type: any): void {
+  static CancelOperation(type?: any): void {
     LogUtil.Debug("O.Opt CancelOperation - Input: crtOpt =", T3Gv.opt.crtOpt);
     switch (T3Gv.opt.crtOpt) {
       case OptConstant.OptTypes.None:
@@ -262,6 +263,44 @@ class OptCMUtil {
         break;
     }
     LogUtil.Debug("O.Opt CancelOperation - Output: completed");
+  }
+
+  /**
+   * Resets Hammer.js gesture events for objects in the active visible Z-list
+   * This function iterates through all visible objects in the active layer and
+   * resets the specified Hammer gesture event by replacing the handler with a new one.
+   * This is useful when changing interaction modes or canceling operations.
+   *
+   * @param eventType - The Hammer gesture event type to reset (e.g., 'dragstart', 'tap')
+   * @param currentHandler - The current handler function to be replaced
+   * @param newHandler - The new handler function to assign to the event
+   * @returns void
+   */
+  static ResetHammerGesture(eventType: string, currentHandler: Function, newHandler: Function): void {
+    LogUtil.Debug("O.Opt ResetHammerGesture - Input:", { eventType, currentHandler, newHandler });
+
+    const visibleObjects = LayerUtil.ActiveVisibleZList();
+
+    for (let objectIndex = 0; objectIndex < visibleObjects.length; objectIndex++) {
+      const svgObject = T3Gv.opt.svgObjectLayer.GetElementByID(visibleObjects[objectIndex]);
+      const eventProxy = svgObject.svgObj.SDGObj.GetEventProxy();
+      let handlerExists = false;
+
+      // Check if the current handler exists on this object
+      for (let handlerIndex = 0; handlerIndex < eventProxy.eventHandlers.length; handlerIndex++) {
+        if (eventProxy.eventHandlers[handlerIndex].handler === currentHandler) {
+          handlerExists = true;
+          break;
+        }
+      }
+
+      // If the handler exists, reset the event with the new handler
+      if (handlerExists) {
+        eventProxy.on(eventType, newHandler);
+      }
+    }
+
+    LogUtil.Debug("O.Opt ResetHammerGesture - Output: Hammer gestures reset");
   }
 
   /**

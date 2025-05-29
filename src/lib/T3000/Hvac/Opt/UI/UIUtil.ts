@@ -21,6 +21,9 @@ import QuasarUtil from '../Quasar/QuasarUtil';
 import '../../Util/T3Hammer';
 import DataOpt from '../Data/DataOpt';
 import LogUtil from '../../Util/LogUtil';
+import ToolUtil from '../Tool/ToolUtil';
+import ToolOpt from '../Tool/ToolOpt';
+import EvtOpt from '../../Event/EvtOpt';
 
 class UIUtil {
 
@@ -33,6 +36,8 @@ class UIUtil {
    */
   static ShowContextMenu(isShow: boolean, from: string, type: string) {
     LogUtil.Debug('= u.UIUtil: ShowContextMenu - Input:', { isShow, from, type });
+    T3Gv.opt.CloseEdit();
+    EvtOpt.toolOpt.tul.CancelOperation();
     QuasarUtil.ShowContextMenu(isShow, from, type);
   }
 
