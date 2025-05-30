@@ -36,7 +36,6 @@ class UIUtil {
    */
   static ShowContextMenu(isShow: boolean, from: string, type: string) {
     LogUtil.Debug('= u.UIUtil: ShowContextMenu - Input:', { isShow, from, type });
-    T3Gv.opt.CloseEdit();
     EvtOpt.toolOpt.tul.CancelOperation();
     QuasarUtil.ShowContextMenu(isShow, from, type);
   }

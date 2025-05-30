@@ -42,7 +42,6 @@ class SelectUtil {
   static SelectObjectFromClick(event, svgElement, preserveSelection?) {
     LogUtil.Debug('O.Opt SelectObjectFromClick - Input:', { event, svgElement, preserveSelection });
 
-    T3Gv.opt.CloseEdit();
     OptCMUtil.CancelOperation();
 
     const visibleObjectCount = LayerUtil.ActiveVisibleZList().length;
