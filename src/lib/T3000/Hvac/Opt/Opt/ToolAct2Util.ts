@@ -25,7 +25,7 @@ class ToolAct2Util {
    * @param enableCollaboration - If true, enables collaboration features
    * @returns The ID of the newly created group or false if grouping cannot be performed
    */
-  GroupSelectedShapes(action, customSelectionList, useAllShapes, skipRender, enableCollaboration) {
+  static GroupSelectedShapes(action, customSelectionList, useAllShapes, skipRender, enableCollaboration) {
     let index, currentObject;
     let hasNoRotateObject = false;
     let commentIds = [];
@@ -247,7 +247,7 @@ class ToolAct2Util {
    * @param groupShapeId - The ID of the group shape to ungroup
    * @param maintainLinkFlag - Controls whether and how links between shapes are maintained during ungrouping
    */
-  UngroupShape(groupShapeId, maintainLinkFlag) {
+  static UngroupShape(groupShapeId, maintainLinkFlag) {
     let i, tableData, offsetX, tableIndex;
     let commentIds = [];
     let originalShape = null;
@@ -409,7 +409,7 @@ class ToolAct2Util {
    *
    * @returns {boolean|undefined} False if there are no shapes to ungroup, undefined otherwise
    */
-  UngroupSelectedShapes() {
+  static UngroupSelectedShapes() {
     let index, nativeGroupResult;
 
     // Check if there are any visible shapes

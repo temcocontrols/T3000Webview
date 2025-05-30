@@ -56,6 +56,8 @@ import KeyboardConstant from '../Keyboard/KeyboardConstant';
 import IdxPage2 from '../Common/IdxPage2';
 import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
+import ToolAct2Util from './ToolAct2Util';
+import ShapeUtil from '../Shape/ShapeUtil';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -8004,6 +8006,124 @@ class OptUtil {
   CommentUngroup(commentThreadIds) { }
 
   CommentGroup(commentThreadIds) { }
+
+  /**
+   * Ungroups a native symbol/group into its component parts
+   * This function extracts the shapes from a native symbol, scales and positions them
+   * to match the original group's dimensions, and optionally regroups them.
+   *
+   * The process involves:
+   * 1. Reading the symbol data from the buffer
+   * 2. Calculating appropriate scaling factors
+   * 3. Positioning the extracted shapes to match the original group
+   * 4. Optionally creating a new group to contain the shapes
+   *
+   * @param nativeGroupId - ID of the native group/symbol to ungroup
+   * @param unusedParam - Unused parameter (kept for interface compatibility)
+   * @param skipRegrouping - When true, doesn't regroup extracted shapes
+   * @returns Array of object IDs (either the new group ID or individual shape IDs)
+   */
+  UngroupNative(nativeGroupId, unusedParam, skipRegrouping) {
+    let nativeGroupObject, symbolObject, newGroupObject;
+    let scaleFactorX, scaleFactorY, shapeCount;
+    let shapeIndex, offsetX, offsetY;
+    let resultObjects = [];
+    let ungroupData = {
+      selectedList: []
+    };
+
+    // Get the native group object and its associated symbol
+    nativeGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
+
+    // Proceed only if it's a native group with valid symbol ID
+    if (nativeGroupObject.NativeID >= 0 &&
+        (symbolObject = ObjectUtil.GetObjectPtr(nativeGroupObject.NativeID, false))) {
+
+      // Extract shapes from the symbol
+      ShapeUtil.ReadSymbolFromBuffer(
+        symbolObject, 0, 0, 0, false, false, ungroupData,
+        false, false, false, false, false
+      );
+
+      // Process extracted shapes if any were found
+      if (ungroupData.selectedList.length) {
+        shapeCount = ungroupData.selectedList.length;
+
+        // Calculate bounding rectangle of all shapes
+        let shapesRect = this.GetListSRect(ungroupData.selectedList);
+
+        // Calculate scaling factors to match original group dimensions
+        scaleFactorX = nativeGroupObject.Frame.width / shapesRect.width;
+        scaleFactorY = nativeGroupObject.Frame.height / shapesRect.height;
+
+        // Calculate center point for scaling
+        let centerPoint = {
+          x: nativeGroupObject.Frame.x + nativeGroupObject.Frame.width / 2,
+          y: nativeGroupObject.Frame.y + nativeGroupObject.Frame.height / 2
+        };
+
+        // Set offset to match original group position
+        offsetX = nativeGroupObject.Frame.x;
+        offsetY = nativeGroupObject.Frame.y;
+
+        // If scaling is approximately 1:1 or we have only one shape, just offset shapes
+        if ((Utils2.IsEqual(100 * scaleFactorX, 100) &&
+             Utils2.IsEqual(100 * scaleFactorY, 100)) ||
+            !(shapeCount > 1)) {
+
+          for (shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++) {
+            nativeGroupId = ungroupData.selectedList[shapeIndex];
+            ObjectUtil.GetObjectPtr(nativeGroupId, false).OffsetShape(offsetX, offsetY);
+          }
+        }
+        // Otherwise, scale and position each shape
+        else {
+          for (shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++) {
+            nativeGroupId = ungroupData.selectedList[shapeIndex];
+            ObjectUtil.GetObjectPtr(nativeGroupId, false).ScaleObject(
+              offsetX, offsetY, centerPoint, 0,
+              scaleFactorX, scaleFactorY, true
+            );
+          }
+        }
+
+        // Create a new group for the shapes if there are multiple shapes and we're not skipping regrouping
+        if (shapeCount > 1 && !skipRegrouping) {
+          nativeGroupId = ToolAct2Util.GroupSelectedShapes(true, ungroupData.selectedList, false);
+          newGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
+
+          resultObjects.push(nativeGroupId);
+
+          // Set group properties to match the original native group
+          newGroupObject.InitialGroupBounds.x = 0;
+          newGroupObject.InitialGroupBounds.y = 0;
+          newGroupObject.Frame = Utils1.DeepCopy(nativeGroupObject.Frame);
+          newGroupObject.RotationAngle = nativeGroupObject.RotationAngle;
+
+          // Copy flip states from the original group
+          newGroupObject.extraflags = Utils2.SetFlag(
+            newGroupObject.extraflags,
+            OptConstant.ExtraFlags.FlipHoriz,
+            (nativeGroupObject.extraflags & OptConstant.ExtraFlags.FlipHoriz) > 0
+          );
+
+          newGroupObject.extraflags = Utils2.SetFlag(
+            newGroupObject.extraflags,
+            OptConstant.ExtraFlags.FlipVert,
+            (nativeGroupObject.extraflags & OptConstant.ExtraFlags.FlipVert) > 0
+          );
+
+          newGroupObject.UpdateFrame(newGroupObject.Frame);
+        }
+        // Otherwise just return the first shape
+        else {
+          resultObjects.push(ungroupData.selectedList[0]);
+        }
+      }
+    }
+
+    return resultObjects;
+  }
 }
 
 export default OptUtil

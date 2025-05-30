@@ -9,7 +9,6 @@ import NvConstant from '../../Data/Constant/NvConstant';
 import TextFmtData from "../../Model/TextFmtData";
 import OptConstant from "../../Data/Constant/OptConstant";
 import StyleConstant from "../../Data/Constant/StyleConstant";
-import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
 import RulerUtil from "../UI/RulerUtil";
 import OptCMUtil from "../Opt/OptCMUtil";
