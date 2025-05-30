@@ -1002,13 +1002,13 @@ class ToolUtil {
    * @param eventData - Optional event data containing paste position information
    * @returns void
    */
-  Paste(eventData) {
-    LogUtil.Debug("= u.ToolUtil: Paste/ input:", eventData);
+  Paste(isRightClick) {
+    LogUtil.Debug("= u.ToolUtil: Paste/ input isRightClick:", isRightClick);
 
     try {
       T3Gv.opt.PastePoint = null;
 
-      if (eventData && T3Gv.opt.rClickParam) {
+      if (isRightClick && T3Gv.opt.rClickParam) {
         T3Gv.opt.PastePoint = T3Gv.opt.rClickParam.hitPoint;
       }
 

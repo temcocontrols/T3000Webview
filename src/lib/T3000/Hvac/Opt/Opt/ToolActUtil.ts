@@ -1296,7 +1296,10 @@ class ToolActUtil {
 
       // Otherwise update the clipboard buffer and clipboard type.
       T3Gv.opt.header.ClipboardBuffer = ShapeUtil.WriteSelect(sortedObjects, false, true, false);
-      T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
+      // T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
+      // T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.None;
+
+      LogUtil.Debug("= u.ToolActUtil: CopyObjectsCommon/ - ClipboardType: ", T3Gv.opt.header.ClipboardType);
 
       // Refresh the selected objects list by removing any objects that are not visible.
       const updatedSelectedObjects = ObjectUtil.GetObjectPtr(T3Gv.opt.selectObjsBlockId, false);

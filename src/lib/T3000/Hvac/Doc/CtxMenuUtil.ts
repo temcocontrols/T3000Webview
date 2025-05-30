@@ -70,6 +70,7 @@ import NvConstant from '../Data/Constant/NvConstant';
 import T3Opt from './T3Opt';
 import Hvac from '../Hvac';
 import ToolOpt from '../Opt/Tool/ToolOpt';
+import T3Constant from '../Data/Constant/T3Constant';
 
 class CtxMenuUtil {
 
@@ -1064,13 +1065,14 @@ class CtxMenuUtil {
         EvtOpt.toolOpt.LibSetBackgroundColorAct('#FFFFFF');
         break;
       case 'cut':
+        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
         EvtOpt.toolOpt.CutAct(event);
         break;
       case 'copy':
         EvtOpt.toolOpt.CopyAct(event);
         break;
       case 'paste':
-        EvtOpt.toolOpt.PasteAct(event);
+        EvtOpt.toolOpt.PasteActRightClickAct(event);
         break;
       case 'delete':
         EvtOpt.toolOpt.DeleteAct(event);

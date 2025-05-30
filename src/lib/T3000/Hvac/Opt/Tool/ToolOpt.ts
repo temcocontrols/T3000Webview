@@ -14,6 +14,7 @@ import QuasarUtil from "../Quasar/QuasarUtil";
 import HvConstant from "../../Data/Constant/HvConstant";
 import DataOpt from "../Data/DataOpt";
 import LogUtil from "../../Util/LogUtil";
+import T3Constant from "../../Data/Constant/T3Constant";
 
 class ToolOpt {
 
@@ -178,7 +179,7 @@ class ToolOpt {
    */
   PasteActRightClickAct(event) {
     const isRightClick = true;
-    this.tul.Paste(true);
+    this.tul.Paste(isRightClick);
     LogUtil.Debug('= O.ToolOpt PasteActRightClickAct - Output: Pasted objects with right click context menu', isRightClick);
   }
 
