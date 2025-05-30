@@ -1065,13 +1065,13 @@ class CtxMenuUtil {
         EvtOpt.toolOpt.LibSetBackgroundColorAct('#FFFFFF');
         break;
       case 'cut':
-        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
         EvtOpt.toolOpt.CutAct(event);
         break;
       case 'copy':
         EvtOpt.toolOpt.CopyAct(event);
         break;
       case 'paste':
+        T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
         EvtOpt.toolOpt.PasteActRightClickAct(event);
         break;
       case 'delete':

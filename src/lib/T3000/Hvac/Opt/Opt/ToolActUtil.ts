@@ -647,6 +647,7 @@ class ToolActUtil {
         this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         LogUtil.Debug("O.Opt PasteObjects - Output: LM content pasted");
       } else {
+        this.PasteLM(T3Gv.opt.header.ClipboardBuffer, T3Gv.opt.header.clipboardJson);
         LogUtil.Debug("O.Opt PasteObjects - Output: No pasteable content found");
       }
     } catch (error) {

@@ -441,8 +441,12 @@ class ShapeUtil {
         if (adjustPosition) {
           if (T3Gv.opt.header.ClipboardType !== T3Constant.ClipboardType.LM) {
             // For Library Manager, we adjust the position to avoid negative coordinates
-            offsetX = boundingRect.x < 0 ? -boundingRect.x + 20 : 20;
-            offsetY = boundingRect.y < 0 ? -boundingRect.y + 20 : 20;
+            offsetX = boundingRect.x < 0 ? -boundingRect.x : 0;
+            offsetY = boundingRect.y < 0 ? -boundingRect.y : 0;
+
+            // Set the padding to 20 temporarily
+            offsetX += 20;
+            offsetY += 20;
           }
           else {
             offsetX = positionX - boundingRect.x;
@@ -453,7 +457,7 @@ class ShapeUtil {
           offsetY = 0;
         }
 
-        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY, "PositionX:", positionX, "PositionY:", positionY);
+        LogUtil.Debug('= u.ShapeUtil: ReadSymbolFromBuffer/ offsetX:', offsetX, 'offsetY:', offsetY, "PositionX:", positionX, "PositionY:", positionY, "clipboardType:", T3Gv.opt.header.ClipboardType);
 
         // Apply offset if needed
         if (offsetX || offsetY) {
