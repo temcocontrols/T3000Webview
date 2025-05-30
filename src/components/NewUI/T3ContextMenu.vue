@@ -7,7 +7,7 @@
 
         <!-- Render regular menu item -->
         <a-menu-item v-else-if="item.type === 'item'" :key="'item-' + item.key"
-          @click="() => item.onClick && item.onClick(item.key)">
+          @click="() => item.onClick && item.onClick(item.key)" :disabled="item.disabled">
           <template #icon v-if="item.icon">
             <component :is="item.icon" />
           </template>
@@ -32,7 +32,8 @@
           <!-- Render submenu children -->
           <template v-for="child in item.children" :key="child.key">
             <a-menu-divider v-if="child.type === 'divider'" :key="'divider-' + child.key" />
-            <a-menu-item v-else :key="'item-' + child.key" @click="() => child.onClick && child.onClick(child.key)">
+            <a-menu-item v-else :key="'item-' + child.key" @click="() => child.onClick && child.onClick(child.key)"
+              :disabled="child.disabled">
               <!-- Special handling for color indicators -->
               <span :class="`color-idic-${child.key.includes('color') ? child.title.substring(1).toLowerCase() : ''}`"
                 v-if="child.key.includes('color') && !child.key.includes('custom')"></span>
