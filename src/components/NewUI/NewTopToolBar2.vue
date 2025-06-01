@@ -196,236 +196,130 @@
 
           </q-tab-panel>
           <q-tab-panel name="newui" class="newui-panel">
-            <div style="display: block; margin-left: 10px; padding-top: 5px;">
-              <button id="btn_try_select">Select</button>
+            <div class="q-px-md">
+              <q-toolbar class="bg-transparent">
+                <!-- Transform Group -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="rotate_right" label="45°" id="btn_try_Roate45">
+                    <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="rotate_90_degrees_cw" label="90°" id="btn_try_Roate90">
+                    <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="flip" label="H" id="btn_try_Flip_Horizontal">
+                    <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="flip" class="rotate-90" label="V" id="btn_try_Flip_Vertical">
+                    <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
+                  </q-btn>
+                </div>
 
-              <!-- &nbsp;
-              <button id="btn_try_library">Library</button> -->
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_line">Line</button>
+                <!-- Alignment Group -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="format_align_left" id="btn_try_Align_lefts">
+                    <q-tooltip>Align selected shapes to the left</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="format_align_center" id="btn_try_Align_centers">
+                    <q-tooltip>Align selected shapes to the center</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="format_align_right" id="btn_try_Align_rights">
+                    <q-tooltip>Align selected shapes to the right</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_top" id="btn_try_Align_tops">
+                    <q-tooltip>Align selected shapes to the top</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_center" id="btn_try_Align_middles">
+                    <q-tooltip>Align selected shapes to the middle</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_bottom" id="btn_try_Align_bottoms">
+                    <q-tooltip>Align selected shapes to the bottom</q-tooltip>
+                  </q-btn>
+                </div>
 
-              <!-- &nbsp;
-              <button id="btn_try_line1">Line1</button> -->
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_wall">Wall</button>
+                <!-- Size Group -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="height" label="Same" id="btn_try_Same_Height">
+                    <q-tooltip>Make selected shapes same height</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="width_normal" label="Same" id="btn_try_Same_Width">
+                    <q-tooltip>Make selected shapes same width</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="aspect_ratio" label="Same" id="btn_try_Same_Both">
+                    <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
+                  </q-btn>
+                </div>
 
-              &nbsp;
-              <button id="btn_try_Rect">Rect </button>
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_Oval">Oval</button>
+                <!-- Z-order and Group -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="vertical_align_top" label="Front" id="btn_try_BringToFront">
+                    <q-tooltip>Bring selected shape(s) to front</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_bottom" label="Back" id="btn_try_SendToBack">
+                    <q-tooltip>Send selected shape(s) to back</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="group_work" label="Group" id="btn_try_Group"></q-btn>
+                  <q-btn flat dense size="sm" icon="layers_clear" label="Ungroup" id="btn_try_UnGroup"></q-btn>
+                </div>
 
-              <!-- &nbsp;
-              <button id="btn_try_Image">Image</button> -->
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_Circ">Circ</button>
+                <!-- Clipboard Operations -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="content_paste" id="btn_try_Paste"></q-btn>
+                  <q-btn flat dense size="sm" icon="content_copy" id="btn_try_Copy"></q-btn>
+                  <q-btn flat dense size="sm" icon="content_cut" id="btn_try_Cut"></q-btn>
+                  <q-btn flat dense size="sm" icon="delete" id="btn_try_Delete"></q-btn>
+                  <q-btn flat dense size="sm" icon="content_copy" label="Duplicate" id="btn_try_Duplicate">
+                    <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+                  </q-btn>
+                </div>
 
-              &nbsp;
-              <button id="btn_try_Text">Text</button>
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_ArrR">Arr R</button>
+                <!-- History Operations -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="undo" id="btn_try_Undo"></q-btn>
+                  <q-btn flat dense size="sm" icon="redo" id="btn_try_Redo"></q-btn>
+                </div>
 
-              &nbsp;
-              <button id="btn_try_ArrL">Arr L</button>
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_ArrT">Arr T</button>
+                <!-- File and Settings -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="save" id="btn_try_Save"></q-btn>
+                  <q-btn flat dense size="sm" icon="clear_all" id="btn_try_Clear">
+                    <q-tooltip>Clear data</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="format_color_fill" id="btn_try_Lib_SetBackgroundColor">
+                    <q-tooltip>Set background color</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="zoom_out_map" label="Reset" id="btn_try_Reset_Scale"></q-btn>
+                </div>
 
-              &nbsp;
-              <button id="btn_try_ArrB">Arr B</button>
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_Roate45">R 45
-                <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
-              </button>
+                <!-- Locking -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="lock" id="btn_try_Lib_Lock"></q-btn>
+                  <q-btn flat dense size="sm" icon="lock_open" id="btn_try_Lib_UnLock"></q-btn>
+                </div>
 
-              &nbsp;
-              <button id="btn_try_Roate90">R 90
-                <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
-              </button>
+                <q-separator vertical inset />
 
-              &nbsp;
-              <button id="btn_try_Align_lefts">Align L
-                <q-tooltip>Align selected shapes to the left</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Align_centers">Align C
-                <q-tooltip>Align selected shapes to the center</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Align_rights">Align R
-                <q-tooltip>Align selected shapes to the right</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Align_tops">Align T
-                <q-tooltip>Align selected shapes to the top</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Align_middles">Align M
-                <q-tooltip>Align selected shapes to the middle</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Align_bottoms">Align B
-                <q-tooltip>Align selected shapes to the bottom</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Group">Group</button>
-
-              &nbsp;
-              <button id="btn_try_UnGroup">Un-group</button>
-
-              &nbsp;
-              <button id="btn_try_Flip_Horizontal">Flip H
-                <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Flip_Vertical">Flip V
-                <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Same_Height">Same H
-                <q-tooltip>Make selected shapes same height</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Same_Width">Same W
-                <q-tooltip>Make selected shapes same width</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Same_Both">Same B
-                <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_BringToFront">B To Front
-                <q-tooltip>Bring selected shape(s) to front</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_SendToBack">S To Back
-                <q-tooltip>Send selected shape(s) to back</q-tooltip>
-              </button>
-
+                <!-- Library -->
+                <div class="row q-gutter-sm">
+                  <q-btn flat dense size="sm" icon="library_add" label="Add" id="btn_try_Add_To_Library"></q-btn>
+                  <q-btn flat dense size="sm" icon="library_books" label="Load" id="btn_try_Load_Library"></q-btn>
+                </div>
+              </q-toolbar>
             </div>
-            <div style="margin-left: 8px; margin-top: 5px;">
 
-              <button id="btn_try_Paste">Paste</button>
-
-              &nbsp;
-              <button id="btn_try_Copy">Copy</button>
-
-              &nbsp;
-              <button id="btn_try_Cut">Cut</button>
-
-              &nbsp;
-              <button id="btn_try_Delete">Delete</button>
-
-              &nbsp;
-              <button id="btn_try_Undo">Undo</button>
-
-              &nbsp;
-              <button id="btn_try_Redo">Redo</button>
-
-              &nbsp;
-              <button id="btn_try_Save">Save</button>
-
-              &nbsp;
-              <button id="btn_try_Duplicate">Duplicate
-                <q-tooltip>Duplicate selected shape(s)</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Clear">Clear
-                <q-tooltip>Clear data</q-tooltip>
-              </button>
-
-              &nbsp;
-              <button id="btn_try_Lib_SetBackgroundColor">Bk Color
-                <q-tooltip>Set background color</q-tooltip>
-              </button>
-
-              <!-- &nbsp;
-              <button id="btn_try_Lib_SetBackgroundImage">Image</button> -->
-
-              <!-- &nbsp;
-              <button id="btn_try_vue_foreignObject">Vue Cpt</button> -->
-
-              <!-- &nbsp;
-              <button id="btn_try_x">X</button>
-
-              &nbsp;
-              <button id="btn_try_y">Y</button>
-
-              &nbsp;
-              <button id="btn_try_w">W</button>
-
-              &nbsp;
-              <button id="btn_try_h">H</button> -->
-
-              &nbsp;
-              <button id="btn_try_Lib_Lock">Lock</button>
-
-              &nbsp;
-              <button id="btn_try_Lib_UnLock">Un-Lock</button>
-
-              &nbsp;
-              <button id="btn_try_Add_To_Library">Add Lib</button>
-
-              &nbsp;
-              <button id="btn_try_Load_Library">Load Lib</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_1">Duct1</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_2">Duct2</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_3">Duct3</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_4">Duct4</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_5">Duct5</button>
-
-              <!-- &nbsp;
-              <button id="btn_try_Duct_6">D6</button> -->
-
-              &nbsp;
-              <button id="btn_try_Duct_7">Duct6</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_8">Duct7</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_9">Duct8</button>
-
-              <!-- &nbsp;
-              <button id="btn_try_Duct_10">D10</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_11">D11</button>
-
-              &nbsp;
-              <button id="btn_try_Duct_12">D12</button> -->
-
-              &nbsp;
-              <button id="btn_try_Reset_Scale">Reset Zoom</button>
-            </div>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
