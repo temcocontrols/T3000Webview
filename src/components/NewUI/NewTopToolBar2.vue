@@ -327,126 +327,77 @@
   </div>
 </template>
 
-<script lang="ts">
-
-import { defineComponent, ref, watch, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
-import { tools/*, user*/ } from "../../lib/common";
+import { tools } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
-import T3Util from 'src/lib/T3000/Hvac/Util/T3Util';
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 
-export default defineComponent({
-  name: 'NewTopToolBar2',
-  props: {
-    locked: {
-      type: Boolean,
-      default: false
-    },
-    grpNav: {
-      type: Array,
-      default: () => []
-    },
-    object: {
-      type: Object,
-      required: false,
-    },
-    selectedCount: {
-      type: Number,
-      required: true,
-    },
-    disableUndo: {
-      type: Boolean,
-      required: false,
-    },
-    disableRedo: {
-      type: Boolean,
-      required: false,
-    },
-    disablePaste: {
-      type: Boolean,
-      required: false,
-    },
-    zoom: {
-      type: Number,
-      required: true,
-    },
-    rulersGridVisible: {
-      type: Boolean,
-      required: false,
-    },
-    deviceModel: {
-      type: Object,
-      required: false,
-    },
-  },
-  emits: ["navGoBack", "lockToggle", "menuAction", "showMoreDevices"],
-  setup(props, { emit }) {
+// Define props using defineProps with TypeScript interface
+const props = defineProps<{
+  locked: boolean
+  grpNav: any[]
+  object?: object
+  selectedCount: number
+  disableUndo?: boolean
+  disableRedo?: boolean
+  disablePaste?: boolean
+  zoom: number
+  rulersGridVisible?: boolean
+  deviceModel?: any
+}>()
 
-    const currentDevice = ref(null);
-    const deviceTabTitle = ref('Device (-)');
-    const router = useRouter();
+// Define emits
+const emit = defineEmits<{
+  (e: 'navGoBack'): void
+  (e: 'lockToggle'): void
+  (e: 'menuAction', action: string, val?: any): void
+  (e: 'showMoreDevices'): void
+}>()
 
-    const navigateTo = (routeName) => {
+const tab = ref('newui')
+const currentDevice = ref(null);
+const deviceTabTitle = ref('Device (-)');
+const router = useRouter();
+const $q = useQuasar();
+const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
 
-      LogUtil.Debug(router);
-      router.push({ path: routeName });
-    }
+const navigateTo = (routeName: string) => {
+  LogUtil.Debug(router);
+  router.push({ path: routeName });
+}
 
-    const $q = useQuasar();
-    function menuActionEmit(action, val = null) {
-      emit("menuAction", action, val);
-    }
+function menuActionEmit(action: string, val: any = null) {
+  emit("menuAction", action, val);
+}
 
-    function logout() {
-      $q.cookies.remove("token");
-      user.value = null;
-      localStorage.removeItem("user");
-    }
+function logout() {
+  $q.cookies.remove("token");
+  user.value = null;
+  localStorage.removeItem("user");
+}
 
-    const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
-    watch(() => props.rulersGridVisible, (newVal) => {
-      showRulersGrid.value = newVal ? "Enable" : "Disable";
-    })
+watch(() => props.rulersGridVisible, (newVal) => {
+  showRulersGrid.value = newVal ? "Enable" : "Disable";
+})
 
-    const navGoBack = () => {
-      // Emit event to parent to navigate back
-      emit('navGoBack');
-    };
+const navGoBack = () => {
+  emit('navGoBack');
+};
 
-    const lockToggle = () => {
-      // Emit event to parent to toggle lock
-      emit('lockToggle');
-    };
+const lockToggle = () => {
+  emit('lockToggle');
+};
 
-    const showMoreDevices = () => {
-      emit('showMoreDevices');
-    }
+const showMoreDevices = () => {
+  emit('showMoreDevices');
+}
 
-    onMounted(() => {
-      currentDevice.value = props.deviceModel;
-      deviceTabTitle.value = `Device (${props.deviceModel.data.device})`;
-    });
-
-
-
-    return {
-      tab: ref('newui'),
-      navGoBack,
-      lockToggle,
-      menuActionEmit,
-      logout,
-      tools,
-      user,
-      showRulersGrid: showRulersGrid,
-      showMoreDevices,
-      currentDevice,
-      deviceTabTitle,
-      devVersion,
-      navigateTo
-    };
-  },
+onMounted(() => {
+  currentDevice.value = props.deviceModel;
+  deviceTabTitle.value = `Device (${props.deviceModel?.data.device})`;
 });
 </script>
