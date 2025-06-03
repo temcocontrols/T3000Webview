@@ -428,6 +428,43 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
+              <a-col :span="3" style="max-width: 190px;">
+                <a-flex wrap="wrap">
+                  <a-button type="text" size="small" id="btn_try_Redo" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <ApartmentOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Group
+                    <q-tooltip>Redo last undone action</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <VerticalAlignTopOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Bring to Front
+                    <q-tooltip>Undo last action</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Clear" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <NodeIndexOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Ungroup
+                    <q-tooltip>Clear data</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Save" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <VerticalAlignBottomOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Send to Back
+                    <q-tooltip>Save data</q-tooltip>
+                  </a-button>
+                </a-flex>
+              </a-col>
+
+              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
+
               <!-- Alignment Group -->
               <a-col :span="4">
                 <div class="q-gutter-sm d-flex">
