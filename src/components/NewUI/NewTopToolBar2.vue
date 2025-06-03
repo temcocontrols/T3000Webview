@@ -140,7 +140,7 @@
 }
 
 .tool-bar-icon-prefix {
-  vertical-align: 0em;
+  vertical-align: 2px;
 }
 
 .tool-bar-button {
@@ -213,7 +213,7 @@
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Paste" class="tool-bar-button" style="color: white;">
                     <template #icon>
-                      <CopyOutlined class="tool-bar-icon-prefix" />
+                      <FileAddOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Paste
                     <q-tooltip>Paste copied shape(s)</q-tooltip>
@@ -242,12 +242,13 @@
                   <a-button type="text" size="small" id="btn_try_Duplicate" class="tool-bar-button"
                     style="color: white;">
                     <template #icon>
-                      <CopyOutlined class="tool-bar-icon-prefix" />
+                      <BlockOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Duplicate
                     <q-tooltip>Duplicate selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Insert" class="tool-bar-button" style="color: white;" disabled>
+                  <a-button type="text" size="small" id="btn_try_Insert" class="tool-bar-button" style="color: white;"
+                    disabled>
                     <template #icon>
                       <PlusOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -259,6 +260,25 @@
 
               <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
+
+              <a-col :span="1">
+                <a-flex wrap="wrap" class="tool-bar-icon-prefix">
+                  <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <UndoOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Undo
+                    <q-tooltip>Undo last action</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Redo" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <RedoOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Redo
+                    <q-tooltip>Redo last undone action</q-tooltip>
+                  </a-button>
+                </a-flex>
               </a-col>
 
               <!-- Transform Group -->
