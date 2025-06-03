@@ -930,8 +930,8 @@ class CtxMenuUtil {
   Alignment() {
     const ctxMenu: MenuConfigItem[] =
       [{
-        key: 'alignment',
-        title: 'Alignment',
+        key: 'align',
+        title: 'Align',
         icon: AlignLeftOutlined,
         type: 'submenu',
         expandIcon: RightOutlined,

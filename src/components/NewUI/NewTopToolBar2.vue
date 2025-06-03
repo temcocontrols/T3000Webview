@@ -147,6 +147,16 @@
   color: white;
   font-size: 12px;
 }
+
+.tool-bar-dropdown {
+  color: white;
+  font-size: 12px;
+  padding: 0 7px;
+}
+
+.tool-bar-menu-item {
+  font-size: 10px !important;
+}
 </style>
 
 <template>
@@ -209,7 +219,7 @@
             <a-row class="bg-transparent">
 
               <!-- Clipboard Operations -->
-              <a-col :span="4">
+              <a-col :span="4" style="max-width: 225px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Paste" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -262,14 +272,21 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col :span="1">
-                <a-flex wrap="wrap" class="tool-bar-icon-prefix">
+              <a-col :span="3" style="max-width: 128px;">
+                <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
                     <template #icon>
                       <UndoOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Undo
                     <q-tooltip>Undo last action</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Save" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <SaveOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Save
+                    <q-tooltip>Save data</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_Redo" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -278,29 +295,138 @@
                     Redo
                     <q-tooltip>Redo last undone action</q-tooltip>
                   </a-button>
+                  <a-button type="text" size="small" id="btn_try_Clear" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <ClearOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Reset
+                    <q-tooltip>Clear data</q-tooltip>
+                  </a-button>
                 </a-flex>
               </a-col>
 
-              <!-- Transform Group -->
-              <a-col :span="4">
-                <div class="q-gutter-sm d-flex">
-                  <q-btn flat dense size="sm" icon="rotate_right" label="45°" id="btn_try_Roate45">
-                    <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="rotate_90_degrees_cw" label="90°" id="btn_try_Roate90">
-                    <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="flip" label="H" id="btn_try_Flip_Horizontal">
-                    <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="flip" class="rotate-90" label="V" id="btn_try_Flip_Vertical">
-                    <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
-                  </q-btn>
-                </div>
-
+              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
+              <!-- Transform Group -->
+              <a-col :span="4" style="max-width: 170px;">
+                <a-flex wrap="wrap" style="height: 50px;margin-top: 5px;">
 
+                  <a-dropdown class="tool-bar-dropdown">
+                    <a class="ant-dropdown-link" @click.prevent>
+                      <RotateRightOutlined />
+                      Rotate
+                      <DownOutlined />
+                    </a>
+                    <template #overlay>
+                      <a-menu @click="onClick">
+                        <a-menu-item key="r0" style="font-size: 12px;"> 0° </a-menu-item>
+                        <a-menu-item key="r45" style="font-size: 12px;"> 45° </a-menu-item>
+                        <a-menu-item key="r90" style="font-size: 12px;"> 90° </a-menu-item>
+                        <a-menu-item key="r135" style="font-size: 12px;"> 135° </a-menu-item>
+                        <a-menu-item key="r180" style="font-size: 12px;"> 180° </a-menu-item>
+                        <a-menu-item key="r225" style="font-size: 12px;"> 225° </a-menu-item>
+                        <a-menu-item key="r270" style="font-size: 12px;"> 270° </a-menu-item>
+                        <a-menu-item key="r360" style="font-size: 12px;"> 360° </a-menu-item>
+                        <a-menu-item key="r360" style="font-size: 12px;" disabled> Custom </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                  <a-dropdown class="tool-bar-dropdown">
+                    <a class="ant-dropdown-link" @click.prevent>
+                      <AlignLeftOutlined />
+                      Align
+                      <DownOutlined />
+                    </a>
+                    <template #overlay>
+                      <a-menu @click="onClick">
+                        <a-menu-item style="font-size: 12px;" key="align-left">
+                          <template #icon>
+                            <AlignLeftOutlined />
+                          </template>
+                          Align Left
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="align-center">
+                          <template #icon>
+                            <AlignCenterOutlined />
+                          </template>
+                          Align Center
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="align-right">
+                          <template #icon>
+                            <AlignRightOutlined />
+                          </template>
+                          Align Right
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="align-top">
+                          <template #icon>
+                            <VerticalAlignTopOutlined />
+                          </template>
+                          Align Top
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="align-middle">
+                          <template #icon>
+                            <VerticalAlignMiddleOutlined />
+                          </template>
+                          Align Middle
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="align-bottom">
+                          <template #icon>
+                            <VerticalAlignBottomOutlined />
+                          </template>
+                          Align Bottom
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                  <a-dropdown class="tool-bar-dropdown">
+                    <a class="ant-dropdown-link" @click.prevent>
+                      <SwapOutlined />
+                      Flip
+                      <DownOutlined />
+                    </a>
+                    <template #overlay>
+                      <a-menu @click="onClick">
+                        <a-menu-item style="font-size: 12px;" key="flip-horizontal">
+                          <template #icon>
+                            <BorderHorizontalOutlined />
+                          </template>
+                          Flip Horization
+                        </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="flip-vertical">
+                          <template #icon>
+                            <BorderVerticleOutlined />
+                          </template>
+                          Flip Vertical
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                  <a-dropdown class="tool-bar-dropdown">
+                    <a class="ant-dropdown-link" @click.prevent>
+                      <CompressOutlined />
+                      Make same
+                      <DownOutlined />
+                    </a>
+                    <template #overlay>
+                      <a-menu @click="onClick">
+                        <a-menu-item style="font-size: 12px;" key="make-same-width"> Same Width </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="make-same-height"> Same Height </a-menu-item>
+                        <a-menu-item style="font-size: 12px;" key="make-both-same"> Same Both </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                </a-flex>
+              </a-col>
+
+              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
 
               <!-- Alignment Group -->
               <a-col :span="4">
@@ -414,6 +540,7 @@ import { tools } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
+import type { MenuProps } from 'ant-design-vue';
 import {
   CloseOutlined,
   EditOutlined,
@@ -426,12 +553,9 @@ import {
   RightOutlined,
   RotateRightOutlined,
   CompressOutlined,
-  AlignLeftOutlined,
   ApartmentOutlined,
   NodeIndexOutlined,
   SwapOutlined,
-  VerticalAlignTopOutlined,
-  VerticalAlignBottomOutlined,
   UndoOutlined,
   RedoOutlined,
   BlockOutlined,
@@ -441,7 +565,16 @@ import {
   BgColorsOutlined,
   CheckOutlined,
   GatewayOutlined,
-  PlusOutlined
+  PlusOutlined,
+  DownOutlined,
+  AlignCenterOutlined,
+  AlignLeftOutlined,
+  AlignRightOutlined,
+  VerticalAlignTopOutlined,
+  VerticalAlignMiddleOutlined,
+  VerticalAlignBottomOutlined,
+  BorderHorizontalOutlined,
+  BorderVerticleOutlined
 } from '@ant-design/icons-vue';
 
 // Define props using defineProps with TypeScript interface
@@ -503,6 +636,10 @@ const lockToggle = () => {
 const showMoreDevices = () => {
   emit('showMoreDevices');
 }
+
+const onClick: MenuProps['onClick'] = ({ key }) => {
+  console.log(`Click on item ${key}`);
+};
 
 onMounted(() => {
   currentDevice.value = props.deviceModel;
