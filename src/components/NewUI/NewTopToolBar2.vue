@@ -157,6 +157,17 @@
 .tool-bar-menu-item {
   font-size: 10px !important;
 }
+
+.custom-slider .ant-slider-rail {
+  background-color: red; /* 滑块轨道颜色 */
+}
+.custom-slider .ant-slider-handle {
+  border-color: blue; /* 滑块手柄边框颜色 */
+  background-color: blue; /* 滑块手柄背景颜色 */
+}
+.custom-slider .ant-slider-dot {
+  border-color: green; /* 滑块点（可选） */
+}
 </style>
 
 <template>
@@ -225,7 +236,7 @@
                       <SelectOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Select
-                    <q-tooltip>Paste copied shape(s)</q-tooltip>
+                    <q-tooltip>Select shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_Lib_Lock" class="tool-bar-button"
                     style="color: white;">
@@ -233,7 +244,7 @@
                       <LockOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Lock
-                    <q-tooltip>Delete selected shape(s)</q-tooltip>
+                    <q-tooltip>Lock selected shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_select_all" class="tool-bar-button"
                     style="color: white;">
@@ -241,7 +252,7 @@
                       <CheckOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Select All
-                    <q-tooltip>Copy selected shape(s)</q-tooltip>
+                    <q-tooltip>Select all shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_Lib_UnLock" class="tool-bar-button"
                     style="color: white;">
@@ -249,7 +260,7 @@
                       <UnlockOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Unlock
-                    <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+                    <q-tooltip>Unlock selected shape(s)</q-tooltip>
                   </a-button>
                 </a-flex>
               </a-col>
@@ -312,7 +323,7 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col  style="max-width: 128px;">
+              <a-col style="max-width: 128px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -351,7 +362,7 @@
 
               <!-- Transform Group -->
               <a-col style="max-width: 170px;">
-                <a-flex wrap="wrap" style="height: 50px;margin-top: 5px;">
+                <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
 
                   <a-dropdown class="tool-bar-dropdown">
                     <a class="ant-dropdown-link" @click.prevent>
@@ -464,18 +475,18 @@
                 </a-flex>
               </a-col>
 
-              <a-col  class="d-flex justify-center" style="max-width: 1%;">
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col  style="max-width: 190px;">
+              <a-col style="max-width: 190px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Group" class="tool-bar-button" style="color: white;">
                     <template #icon>
                       <ApartmentOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Group
-                    <q-tooltip>Redo last undone action</q-tooltip>
+                    <q-tooltip>Group selected shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_BringToFront" class="tool-bar-button"
                     style="color: white;">
@@ -483,14 +494,14 @@
                       <VerticalAlignTopOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Bring to Front
-                    <q-tooltip>Undo last action</q-tooltip>
+                    <q-tooltip>Bring to front</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_UnGroup" class="tool-bar-button" style="color: white;">
                     <template #icon>
                       <NodeIndexOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Ungroup
-                    <q-tooltip>Clear data</q-tooltip>
+                    <q-tooltip>Ungroup selected shapes(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_SendToBack" class="tool-bar-button"
                     style="color: white;">
@@ -498,13 +509,28 @@
                       <VerticalAlignBottomOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Send to Back
-                    <q-tooltip>Save data</q-tooltip>
+                    <q-tooltip>Send to back</q-tooltip>
                   </a-button>
                 </a-flex>
               </a-col>
 
-              <a-col  class="d-flex justify-center" style="max-width: 1%;">
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
+
+              <a-col style="max-width: 190px;">
+                <a-col :span="24" style="text-align: left;">
+                  <a-button type="text" size="small" id="btn_try_Reset_Scale" style="color: white;">Reset Zoom</a-button>
+                </a-col>
+                <a-row>
+                  <a-col :span="12">
+                    <a-slider v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01" class="custom-slider" />
+                  </a-col>
+                  <a-col :span="4">
+                    <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
+                      style="margin-left: 10px;font-size: 10px; width: 60px;" />
+                  </a-col>
+                </a-row>
               </a-col>
 
               <!-- Alignment Group -->
@@ -685,6 +711,7 @@ const deviceTabTitle = ref('Device (-)');
 const router = useRouter();
 const $q = useQuasar();
 const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
+const inputValue = ref<number>(1.00);
 
 const navigateTo = (routeName: string) => {
   LogUtil.Debug(router);
