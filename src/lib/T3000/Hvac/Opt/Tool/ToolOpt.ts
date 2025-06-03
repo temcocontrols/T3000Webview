@@ -34,6 +34,11 @@ class ToolOpt {
     this.tul.CancelOperation();
   }
 
+  SelectAllObjects() {
+    LogUtil.Debug('= O.ToolOpt SelectAllObjects - Input:', { event });
+    this.tul.SelectAllObjects();
+  }
+
   /**
     * Sets default wall thickness and initiates wall drawing
     * @param event - The DOM event that triggered the action

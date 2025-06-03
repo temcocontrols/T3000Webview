@@ -218,6 +218,46 @@
             <!-- <div id="tool-bar-container"> -->
             <a-row class="bg-transparent">
 
+              <a-col :span="4" style="max-width: 158px;">
+                <a-flex wrap="wrap">
+                  <a-button type="text" size="small" id="btn_try_select" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <SelectOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Select
+                    <q-tooltip>Paste copied shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Lib_Lock" class="tool-bar-button"
+                    style="color: white;">
+                    <template #icon>
+                      <LockOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Lock
+                    <q-tooltip>Delete selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_select_all" class="tool-bar-button"
+                    style="color: white;">
+                    <template #icon>
+                      <CheckOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Select All
+                    <q-tooltip>Copy selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Lib_UnLock" class="tool-bar-button"
+                    style="color: white;">
+                    <template #icon>
+                      <UnlockOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Unlock
+                    <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+                  </a-button>
+                </a-flex>
+              </a-col>
+
+              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
+
               <!-- Clipboard Operations -->
               <a-col :span="4" style="max-width: 225px;">
                 <a-flex wrap="wrap">
@@ -611,7 +651,8 @@ import {
   VerticalAlignMiddleOutlined,
   VerticalAlignBottomOutlined,
   BorderHorizontalOutlined,
-  BorderVerticleOutlined
+  BorderVerticleOutlined,
+  SelectOutlined
 } from '@ant-design/icons-vue';
 
 // Define props using defineProps with TypeScript interface

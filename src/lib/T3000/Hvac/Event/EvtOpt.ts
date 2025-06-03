@@ -30,6 +30,7 @@ class EvtOpt {
 
       // Selection and basic tools
       this.BindSelectEvent();
+      this.BindSelectAllEvent();
       this.BindLibraryEvent();
 
       // Drawing tools
@@ -166,6 +167,12 @@ class EvtOpt {
   BindSelectEvent() {
     $("#btn_try_select").on("click", (event) => {
       EvtOpt.toolOpt.SelectAct(event);
+    });
+  }
+
+  BindSelectAllEvent() {
+    $("#btn_try_select_all").on("click", (event) => {
+      EvtOpt.toolOpt.SelectAllObjects();
     });
   }
 
