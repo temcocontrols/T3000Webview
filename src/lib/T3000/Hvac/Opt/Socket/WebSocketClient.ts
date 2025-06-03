@@ -523,7 +523,7 @@ class WebSocketClient {
       this.HandleSaveLibraryDataRes(msgData);
     }
 
-    if(msgData.action===MessageType.SAVE_NEW_LIBRARY_DATA_RES){
+    if (msgData.action === MessageType.SAVE_NEW_LIBRARY_DATA_RES) {
       this.HandleSaveNewLibraryDataRes(msgData);
     }
 
@@ -661,7 +661,7 @@ class WebSocketClient {
     }
 
     const currentDevice = JSON.parse(localStorage.getItem('currentDevice') || '{}');
-    if (!currentDevice.deviceId) {
+    if (currentDevice && !currentDevice.deviceId) {
       const panelName = currentDevice.device;
       const panel = data.find((panel) => panel.panel_name === panelName);
       if (panel) {
