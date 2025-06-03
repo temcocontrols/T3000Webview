@@ -138,6 +138,10 @@
   height: 53px;
   padding: 0px;
 }
+
+.tool-bar-icon-prefix{
+  vertical-align: 0em;
+}
 </style>
 
 <template>
@@ -196,32 +200,53 @@
 
           </q-tab-panel>
           <q-tab-panel name="newui" class="newui-panel">
-            <div >
+            <div id="tool-bar-container">
               <a-row class="bg-transparent">
 
                 <!-- Clipboard Operations -->
                 <a-col :span="3">
-                  <div class="q-gutter-sm d-flex">
-                    <q-btn flat dense size="sm" icon="content_paste" label="Paste" id="btn_try_Paste" no-caps>
-                      <q-tooltip>Paste copied shape(s)</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="content_copy" label="Copy" id="btn_try_Copy" no-caps>
-                      <q-tooltip>Copy selected shape(s)</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="content_cut" label="Cut" id="btn_try_Cut" no-caps>
-                      <q-tooltip>Cut selected shape(s)</q-tooltip>
-                    </q-btn>
-
-                    <q-btn flat dense size="sm" icon="delete" label="Delete" id="btn_try_Delete" no-caps>
-                      <q-tooltip>Delete selected shape(s)</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="content_copy" label="Duplicate" id="btn_try_Duplicate" no-caps>
-                      <q-tooltip>Duplicate selected shape(s)</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="content_copy" label="Insert" id="btn_try_Insert" no-caps>
-                      <q-tooltip>Insert shape</q-tooltip>
-                    </q-btn>
-                  </div>
+                  <a-button type="text" size="small" id="btn_try_Paste" style="color: white">
+                    <template #icon>
+                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Paste
+                    <q-tooltip>Paste copied shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Copy" style="color: white">
+                    <template #icon>
+                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Copy
+                    <q-tooltip>Copy selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Cut" style="color: white">
+                    <template #icon>
+                      <ScissorOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Cut
+                    <q-tooltip>Cut selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Delete" style="color: white">
+                    <template #icon>
+                      <DeleteOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Delete
+                    <q-tooltip>Delete selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Duplicate" style="color: white">
+                    <template #icon>
+                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Duplicate
+                    <q-tooltip>Duplicate selected shape(s)</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Insert" style="color: white">
+                    <template #icon>
+                      <PlusOutlined class="tool-bar-icon-prefix"/>
+                    </template>
+                    Insert
+                    <q-tooltip>Align shape</q-tooltip>
+                  </a-button>
                 </a-col>
 
                 <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
@@ -361,7 +386,34 @@ import { tools } from "../../lib/common";
 import { user } from "../../lib/T3000/Hvac/Data/T3Data";
 import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
-import { EditOutlined, LockOutlined } from '@ant-design/icons-vue';
+import {
+  CloseOutlined,
+  EditOutlined,
+  CopyOutlined,
+  ScissorOutlined,
+  FileAddOutlined,
+  SettingOutlined,
+  DeleteOutlined,
+  ClearOutlined,
+  RightOutlined,
+  RotateRightOutlined,
+  CompressOutlined,
+  AlignLeftOutlined,
+  ApartmentOutlined,
+  NodeIndexOutlined,
+  SwapOutlined,
+  VerticalAlignTopOutlined,
+  VerticalAlignBottomOutlined,
+  UndoOutlined,
+  RedoOutlined,
+  BlockOutlined,
+  SaveOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  BgColorsOutlined,
+  CheckOutlined,
+  GatewayOutlined
+} from '@ant-design/icons-vue';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{
