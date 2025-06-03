@@ -139,8 +139,13 @@
   padding: 0px;
 }
 
-.tool-bar-icon-prefix{
+.tool-bar-icon-prefix {
   vertical-align: 0em;
+}
+
+.tool-bar-button {
+  color: white;
+  font-size: 12px;
 }
 </style>
 
@@ -200,176 +205,179 @@
 
           </q-tab-panel>
           <q-tab-panel name="newui" class="newui-panel">
-            <div id="tool-bar-container">
-              <a-row class="bg-transparent">
+            <!-- <div id="tool-bar-container"> -->
+            <a-row class="bg-transparent">
 
-                <!-- Clipboard Operations -->
-                <a-col :span="3">
-                  <a-button type="text" size="small" id="btn_try_Paste" style="color: white">
+              <!-- Clipboard Operations -->
+              <a-col :span="4">
+                <a-flex wrap="wrap">
+                  <a-button type="text" size="small" id="btn_try_Paste" class="tool-bar-button" style="color: white;">
                     <template #icon>
-                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                      <CopyOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Paste
                     <q-tooltip>Paste copied shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Copy" style="color: white">
+                  <a-button type="text" size="small" id="btn_try_Copy" class="tool-bar-button" style="color: white;">
                     <template #icon>
-                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                      <CopyOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Copy
                     <q-tooltip>Copy selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Cut" style="color: white">
+                  <a-button type="text" size="small" id="btn_try_Cut" class="tool-bar-button" style="color: white;">
                     <template #icon>
-                      <ScissorOutlined class="tool-bar-icon-prefix"/>
+                      <ScissorOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Cut
                     <q-tooltip>Cut selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Delete" style="color: white">
+                  <a-button type="text" size="small" id="btn_try_Delete" class="tool-bar-button" style="color: white;">
                     <template #icon>
-                      <DeleteOutlined class="tool-bar-icon-prefix"/>
+                      <DeleteOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Delete
                     <q-tooltip>Delete selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Duplicate" style="color: white">
+                  <a-button type="text" size="small" id="btn_try_Duplicate" class="tool-bar-button"
+                    style="color: white;">
                     <template #icon>
-                      <CopyOutlined class="tool-bar-icon-prefix"/>
+                      <CopyOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Duplicate
                     <q-tooltip>Duplicate selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Insert" style="color: white">
+                  <a-button type="text" size="small" id="btn_try_Insert" class="tool-bar-button" style="color: white;" disabled>
                     <template #icon>
-                      <PlusOutlined class="tool-bar-icon-prefix"/>
+                      <PlusOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Insert
-                    <q-tooltip>Align shape</q-tooltip>
+                    <q-tooltip>Insert shape</q-tooltip>
                   </a-button>
-                </a-col>
+                </a-flex>
+              </a-col>
 
-                <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
-                  <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
-                </a-col>
+              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
 
-                <!-- Transform Group -->
-                <a-col :span="4">
-                  <div class="q-gutter-sm d-flex">
-                    <q-btn flat dense size="sm" icon="rotate_right" label="45°" id="btn_try_Roate45">
-                      <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="rotate_90_degrees_cw" label="90°" id="btn_try_Roate90">
-                      <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="flip" label="H" id="btn_try_Flip_Horizontal">
-                      <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="flip" class="rotate-90" label="V" id="btn_try_Flip_Vertical">
-                      <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
-                    </q-btn>
-                  </div>
+              <!-- Transform Group -->
+              <a-col :span="4">
+                <div class="q-gutter-sm d-flex">
+                  <q-btn flat dense size="sm" icon="rotate_right" label="45°" id="btn_try_Roate45">
+                    <q-tooltip>Rotate selected shape(s) 45 degrees</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="rotate_90_degrees_cw" label="90°" id="btn_try_Roate90">
+                    <q-tooltip>Rotate selected shape(s) 90 degrees</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="flip" label="H" id="btn_try_Flip_Horizontal">
+                    <q-tooltip>Flip selected shape(s) horizontally</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="flip" class="rotate-90" label="V" id="btn_try_Flip_Vertical">
+                    <q-tooltip>Flip selected shape(s) vertically</q-tooltip>
+                  </q-btn>
+                </div>
 
-                </a-col>
+              </a-col>
 
 
 
-                <!-- Alignment Group -->
-                <a-col :span="4">
-                  <div class="q-gutter-sm d-flex">
-                    <q-btn flat dense size="sm" icon="format_align_left" id="btn_try_Align_lefts">
-                      <q-tooltip>Align selected shapes to the left</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="format_align_center" id="btn_try_Align_centers">
-                      <q-tooltip>Align selected shapes to the center</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="format_align_right" id="btn_try_Align_rights">
-                      <q-tooltip>Align selected shapes to the right</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="vertical_align_top" id="btn_try_Align_tops">
-                      <q-tooltip>Align selected shapes to the top</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="vertical_align_center" id="btn_try_Align_middles">
-                      <q-tooltip>Align selected shapes to the middle</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="vertical_align_bottom" id="btn_try_Align_bottoms">
-                      <q-tooltip>Align selected shapes to the bottom</q-tooltip>
-                    </q-btn>
-                  </div>
-                </a-col>
-                <!--
+              <!-- Alignment Group -->
+              <a-col :span="4">
+                <div class="q-gutter-sm d-flex">
+                  <q-btn flat dense size="sm" icon="format_align_left" id="btn_try_Align_lefts">
+                    <q-tooltip>Align selected shapes to the left</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="format_align_center" id="btn_try_Align_centers">
+                    <q-tooltip>Align selected shapes to the center</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="format_align_right" id="btn_try_Align_rights">
+                    <q-tooltip>Align selected shapes to the right</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_top" id="btn_try_Align_tops">
+                    <q-tooltip>Align selected shapes to the top</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_center" id="btn_try_Align_middles">
+                    <q-tooltip>Align selected shapes to the middle</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_bottom" id="btn_try_Align_bottoms">
+                    <q-tooltip>Align selected shapes to the bottom</q-tooltip>
+                  </q-btn>
+                </div>
+              </a-col>
+              <!--
                 <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
-                <!-- Size Group -->
-                <a-col :span="3">
-                  <div class="q-gutter-sm d-flex">
-                    <q-btn flat dense size="sm" icon="height" label="Same" id="btn_try_Same_Height">
-                      <q-tooltip>Make selected shapes same height</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="width_normal" label="Same" id="btn_try_Same_Width">
-                      <q-tooltip>Make selected shapes same width</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="aspect_ratio" label="Same" id="btn_try_Same_Both">
-                      <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
-                    </q-btn>
-                  </div>
-                </a-col>
+              <!-- Size Group -->
+              <a-col :span="3">
+                <div class="q-gutter-sm d-flex">
+                  <q-btn flat dense size="sm" icon="height" label="Same" id="btn_try_Same_Height">
+                    <q-tooltip>Make selected shapes same height</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="width_normal" label="Same" id="btn_try_Same_Width">
+                    <q-tooltip>Make selected shapes same width</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="aspect_ratio" label="Same" id="btn_try_Same_Both">
+                    <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
+                  </q-btn>
+                </div>
+              </a-col>
 
-                <!-- <a-col :span="1" class="d-flex justify-center">
+              <!-- <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
-                <!-- Z-order and Group -->
-                <a-col :span="4">
-                  <div class="q-gutter-sm d-flex">
-                    <q-btn flat dense size="sm" icon="vertical_align_top" label="Front" id="btn_try_BringToFront">
-                      <q-tooltip>Bring selected shape(s) to front</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="vertical_align_bottom" label="Back" id="btn_try_SendToBack">
-                      <q-tooltip>Send selected shape(s) to back</q-tooltip>
-                    </q-btn>
-                    <q-btn flat dense size="sm" icon="group_work" label="Group" id="btn_try_Group"></q-btn>
-                    <q-btn flat dense size="sm" icon="layers_clear" label="Ungroup" id="btn_try_UnGroup"></q-btn>
-                  </div>
-                </a-col>
+              <!-- Z-order and Group -->
+              <a-col :span="4">
+                <div class="q-gutter-sm d-flex">
+                  <q-btn flat dense size="sm" icon="vertical_align_top" label="Front" id="btn_try_BringToFront">
+                    <q-tooltip>Bring selected shape(s) to front</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="vertical_align_bottom" label="Back" id="btn_try_SendToBack">
+                    <q-tooltip>Send selected shape(s) to back</q-tooltip>
+                  </q-btn>
+                  <q-btn flat dense size="sm" icon="group_work" label="Group" id="btn_try_Group"></q-btn>
+                  <q-btn flat dense size="sm" icon="layers_clear" label="Ungroup" id="btn_try_UnGroup"></q-btn>
+                </div>
+              </a-col>
 
-                <!-- <a-col :span="1" class="d-flex justify-center">
+              <!-- <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
 
 
-                <!-- <a-col :span="1" class="d-flex justify-center">
+              <!-- <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
-                <!-- History and File Operations -->
-                <a-col :span="6">
-                  <a-row>
-                    <a-col :span="8">
-                      <div class="q-gutter-sm d-flex">
-                        <q-btn flat dense size="sm" icon="undo" id="btn_try_Undo"></q-btn>
-                        <q-btn flat dense size="sm" icon="redo" id="btn_try_Redo"></q-btn>
-                      </div>
-                    </a-col>
-                    <a-col :span="16">
-                      <div class="q-gutter-sm d-flex">
-                        <q-btn flat dense size="sm" icon="save" id="btn_try_Save"></q-btn>
-                        <q-btn flat dense size="sm" icon="clear_all" id="btn_try_Clear">
-                          <q-tooltip>Clear data</q-tooltip>
-                        </q-btn>
-                        <q-btn flat dense size="sm" icon="format_color_fill" id="btn_try_Lib_SetBackgroundColor">
-                          <q-tooltip>Set background color</q-tooltip>
-                        </q-btn>
-                        <q-btn flat dense size="sm" icon="zoom_out_map" label="Reset" id="btn_try_Reset_Scale"></q-btn>
-                      </div>
-                    </a-col>
-                  </a-row>
-                </a-col>
-              </a-row>
-            </div>
+              <!-- History and File Operations -->
+              <a-col :span="6">
+                <a-row>
+                  <a-col :span="8">
+                    <div class="q-gutter-sm d-flex">
+                      <q-btn flat dense size="sm" icon="undo" id="btn_try_Undo"></q-btn>
+                      <q-btn flat dense size="sm" icon="redo" id="btn_try_Redo"></q-btn>
+                    </div>
+                  </a-col>
+                  <a-col :span="16">
+                    <div class="q-gutter-sm d-flex">
+                      <q-btn flat dense size="sm" icon="save" id="btn_try_Save"></q-btn>
+                      <q-btn flat dense size="sm" icon="clear_all" id="btn_try_Clear">
+                        <q-tooltip>Clear data</q-tooltip>
+                      </q-btn>
+                      <q-btn flat dense size="sm" icon="format_color_fill" id="btn_try_Lib_SetBackgroundColor">
+                        <q-tooltip>Set background color</q-tooltip>
+                      </q-btn>
+                      <q-btn flat dense size="sm" icon="zoom_out_map" label="Reset" id="btn_try_Reset_Scale"></q-btn>
+                    </div>
+                  </a-col>
+                </a-row>
+              </a-col>
+            </a-row>
+            <!-- </div> -->
 
           </q-tab-panel>
         </q-tab-panels>
@@ -412,7 +420,8 @@ import {
   UnlockOutlined,
   BgColorsOutlined,
   CheckOutlined,
-  GatewayOutlined
+  GatewayOutlined,
+  PlusOutlined
 } from '@ant-design/icons-vue';
 
 // Define props using defineProps with TypeScript interface
