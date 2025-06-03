@@ -29,7 +29,7 @@
   display: flex;
   justify-content: space-evenly;
   align-items: center;
-  height: 54px;
+  height: 53px;
   width: 105px;
   color: #fff;
   /* background-color: aqua; */
@@ -218,7 +218,7 @@
             <!-- <div id="tool-bar-container"> -->
             <a-row class="bg-transparent">
 
-              <a-col :span="4" style="max-width: 158px;">
+              <a-col style="max-width: 158px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_select" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -254,12 +254,12 @@
                 </a-flex>
               </a-col>
 
-              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
               <!-- Clipboard Operations -->
-              <a-col :span="4" style="max-width: 225px;">
+              <a-col style="max-width: 225px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Paste" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -308,11 +308,11 @@
                 </a-flex>
               </a-col>
 
-              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col :span="3" style="max-width: 128px;">
+              <a-col  style="max-width: 128px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -345,12 +345,12 @@
                 </a-flex>
               </a-col>
 
-              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
               <!-- Transform Group -->
-              <a-col :span="4" style="max-width: 170px;">
+              <a-col style="max-width: 170px;">
                 <a-flex wrap="wrap" style="height: 50px;margin-top: 5px;">
 
                   <a-dropdown class="tool-bar-dropdown">
@@ -464,34 +464,36 @@
                 </a-flex>
               </a-col>
 
-              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+              <a-col  class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col :span="3" style="max-width: 190px;">
+              <a-col  style="max-width: 190px;">
                 <a-flex wrap="wrap">
-                  <a-button type="text" size="small" id="btn_try_Redo" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_Group" class="tool-bar-button" style="color: white;">
                     <template #icon>
                       <ApartmentOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Group
                     <q-tooltip>Redo last undone action</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_BringToFront" class="tool-bar-button"
+                    style="color: white;">
                     <template #icon>
                       <VerticalAlignTopOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Bring to Front
                     <q-tooltip>Undo last action</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Clear" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_UnGroup" class="tool-bar-button" style="color: white;">
                     <template #icon>
                       <NodeIndexOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Ungroup
                     <q-tooltip>Clear data</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Save" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_SendToBack" class="tool-bar-button"
+                    style="color: white;">
                     <template #icon>
                       <VerticalAlignBottomOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -501,12 +503,12 @@
                 </a-flex>
               </a-col>
 
-              <a-col :span="1" class="d-flex justify-center" style="max-width: 1%;">
+              <a-col  class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
               <!-- Alignment Group -->
-              <a-col :span="4">
+              <!-- <a-col :span="4">
                 <div class="q-gutter-sm d-flex">
                   <q-btn flat dense size="sm" icon="format_align_left" id="btn_try_Align_lefts">
                     <q-tooltip>Align selected shapes to the left</q-tooltip>
@@ -527,14 +529,14 @@
                     <q-tooltip>Align selected shapes to the bottom</q-tooltip>
                   </q-btn>
                 </div>
-              </a-col>
+              </a-col> -->
               <!--
                 <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
               <!-- Size Group -->
-              <a-col :span="3">
+              <!-- <a-col :span="3">
                 <div class="q-gutter-sm d-flex">
                   <q-btn flat dense size="sm" icon="height" label="Same" id="btn_try_Same_Height">
                     <q-tooltip>Make selected shapes same height</q-tooltip>
@@ -546,14 +548,14 @@
                     <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
                   </q-btn>
                 </div>
-              </a-col>
+              </a-col> -->
 
               <!-- <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
                 </a-col> -->
 
               <!-- Z-order and Group -->
-              <a-col :span="4">
+              <!-- <a-col :span="4">
                 <div class="q-gutter-sm d-flex">
                   <q-btn flat dense size="sm" icon="vertical_align_top" label="Front" id="btn_try_BringToFront">
                     <q-tooltip>Bring selected shape(s) to front</q-tooltip>
@@ -564,7 +566,7 @@
                   <q-btn flat dense size="sm" icon="group_work" label="Group" id="btn_try_Group"></q-btn>
                   <q-btn flat dense size="sm" icon="layers_clear" label="Ungroup" id="btn_try_UnGroup"></q-btn>
                 </div>
-              </a-col>
+              </a-col> -->
 
               <!-- <a-col :span="1" class="d-flex justify-center">
                   <q-separator vertical inset />
@@ -577,7 +579,7 @@
                 </a-col> -->
 
               <!-- History and File Operations -->
-              <a-col :span="6">
+              <!-- <a-col :span="6">
                 <a-row>
                   <a-col :span="8">
                     <div class="q-gutter-sm d-flex">
@@ -598,7 +600,7 @@
                     </div>
                   </a-col>
                 </a-row>
-              </a-col>
+              </a-col> -->
             </a-row>
             <!-- </div> -->
 
