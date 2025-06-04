@@ -719,7 +719,7 @@
   </q-dialog>
 
   <q-dialog v-model="deviceModel.active">
-    <q-card style="min-width: 900px">
+    <q-card style="min-width: 300px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />

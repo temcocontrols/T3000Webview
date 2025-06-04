@@ -157,6 +157,32 @@
 .tool-bar-menu-item {
   font-size: 10px !important;
 }
+
+.color-idic-20b2aa {
+  background-color: #20B2AA;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+
+.color-idic-ffffff {
+  background-color: #FFFFFF;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+
+.color-idic-0aacb4 {
+  background-color: #0AACB4;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+}
 </style>
 
 <template>
@@ -341,7 +367,7 @@
                     <template #icon>
                       <ClearOutlined class="tool-bar-icon-prefix" />
                     </template>
-                    Reset
+                    Clear
                     <q-tooltip>Clear data</q-tooltip>
                   </a-button>
                 </a-flex>
@@ -509,140 +535,100 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col style="max-width: 190px; width: 300px;">
-                <a-col :span="24" style="text-align: left;">
-                  <a-button type="text" size="small" id="btn_try_Reset_Scale" style="color: white;">Background
-                    Color</a-button>
-                </a-col>
-                <!-- <a-row>
-                  <a-col :span="12">
-                    <a-slider v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01" class="custom-slider" />
+
+              <a-col style="max-width: 111px;">
+                <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
+                  <a-dropdown class="tool-bar-dropdown">
+                    <a class="ant-dropdown-link" @click.prevent>
+                      <BgColorsOutlined />
+                      Background
+                      <DownOutlined />
+                    </a>
+                    <template #overlay>
+                      <a-menu @click="onClick">
+                        <a-menu-item key="bg-color-20B2AA" style="font-size: 12px;">
+                          <span class="color-idic-20b2aa"></span> #20B2AA
+                        </a-menu-item>
+                        <a-menu-item key="bg-color-FFFFFF" style="font-size: 12px;">
+                          <span class="color-idic-ffffff"></span> #FFFFFF
+                        </a-menu-item>
+                        <a-menu-item key="bg-color-0AACB4" style="font-size: 12px;">
+                          <span class="color-idic-0aacb4"></span> #0AACB4
+                        </a-menu-item>
+                        <a-menu-item key="bg-color-custom" style="font-size: 12px;" disabled> Custom Color...
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                  <a-col :span="24">
+                    <a-button type="text" size="small" id="btn_try_ZoomOut" class="tool-bar-button"
+                      :disabled="zoom <= 10" style="color: white;margin-top: 5px;">
+                      <template #icon>
+                        <ZoomOutOutlined class="tool-bar-icon-prefix" />
+                      </template>
+                      <q-tooltip anchor="top middle" self="center right">
+                        Zoom out
+                      </q-tooltip>
+                    </a-button>
+
+                    <div style="display: inline-flex; align-items: center; ">
+                      <!-- <a-input-number size="small" :min="10" :max="400" :value="zoom" style="width: 60px;"
+                      @pressEnter="(e) => zoomChange(e.target.value)" @change="(value) => zoomChange(value)" /> -->
+                      <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
+                        style="font-size: 10px; width: 54px; height: 20px;line-height: 22px;border-radius: 0px;" />
+                      <!-- <span style="color: white; margin-left: 2px;">%</span> -->
+                    </div>
+
+                    <a-button type="text" size="small" id="btn_try_ZoomIn" class="tool-bar-button"
+                      :disabled="zoom >= 400" style="color: white;margin-top: 5px;">
+                      <template #icon>
+                        <ZoomInOutlined class="tool-bar-icon-prefix" />
+                      </template>
+                      <q-tooltip anchor="top middle" self="center right">
+                        Zoom in
+                      </q-tooltip>
+                    </a-button>
+
 
                   </a-col>
-                  <a-col :span="4">
-                    <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
-                      style="margin-left: 10px;font-size: 10px; width: 60px;" />
-                  </a-col>
-                </a-row> -->
-                <a-col :span="24">
-                  <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out"
-                    style="float: left;">
-                    <q-tooltip anchor="top middle" self="center right">
-                      Zoom out
-                      <ZoomInOutlined />
-                      <ZoomOutOutlined />
-                      <Loading3QuartersOutlined />
-                    </q-tooltip>
-                  </q-btn>
-                  <div class="flex items-center px-1" style="font-size: 12px;float: left;">
-                    <input class="zoom-input" @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
-                      :value="zoom" type="number" />%
-                  </div>
-                  <q-btn @click="menuActionEmit('zoomIn')" :disable="zoom >= 400" dense flat size="sm" icon="zoom_in">
-                    <q-tooltip anchor="top middle" self="center right">
-                      Zoom in
-                    </q-tooltip>
-                  </q-btn>
-                </a-col>
+
+
+
+                </a-flex>
+
               </a-col>
 
-              <!-- Alignment Group -->
-              <!-- <a-col :span="4">
-                <div class="q-gutter-sm d-flex">
-                  <q-btn flat dense size="sm" icon="format_align_left" id="btn_try_Align_lefts">
-                    <q-tooltip>Align selected shapes to the left</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="format_align_center" id="btn_try_Align_centers">
-                    <q-tooltip>Align selected shapes to the center</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="format_align_right" id="btn_try_Align_rights">
-                    <q-tooltip>Align selected shapes to the right</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="vertical_align_top" id="btn_try_Align_tops">
-                    <q-tooltip>Align selected shapes to the top</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="vertical_align_center" id="btn_try_Align_middles">
-                    <q-tooltip>Align selected shapes to the middle</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="vertical_align_bottom" id="btn_try_Align_bottoms">
-                    <q-tooltip>Align selected shapes to the bottom</q-tooltip>
-                  </q-btn>
-                </div>
-              </a-col> -->
-              <!--
-                <a-col :span="1" class="d-flex justify-center">
-                  <q-separator vertical inset />
-                </a-col> -->
-
-              <!-- Size Group -->
-              <!-- <a-col :span="3">
-                <div class="q-gutter-sm d-flex">
-                  <q-btn flat dense size="sm" icon="height" label="Same" id="btn_try_Same_Height">
-                    <q-tooltip>Make selected shapes same height</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="width_normal" label="Same" id="btn_try_Same_Width">
-                    <q-tooltip>Make selected shapes same width</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="aspect_ratio" label="Same" id="btn_try_Same_Both">
-                    <q-tooltip>Make selected shapes same size in both dimensions</q-tooltip>
-                  </q-btn>
-                </div>
+              <!-- <a-col class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col> -->
 
-              <!-- <a-col :span="1" class="d-flex justify-center">
-                  <q-separator vertical inset />
-                </a-col> -->
+              <a-col style="max-width: 166px;">
+                <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
+                  <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
+                    Rulers
+                    <q-tooltip>Toggle rulers visibility</q-tooltip>
+                  </a-checkbox>
+                  <a-button type="text" size="small" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <GatewayOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Reset Zoom
+                    <q-tooltip>Reset view to default</q-tooltip>
+                  </a-button>
 
-              <!-- Z-order and Group -->
-              <!-- <a-col :span="4">
-                <div class="q-gutter-sm d-flex">
-                  <q-btn flat dense size="sm" icon="vertical_align_top" label="Front" id="btn_try_BringToFront">
-                    <q-tooltip>Bring selected shape(s) to front</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="vertical_align_bottom" label="Back" id="btn_try_SendToBack">
-                    <q-tooltip>Send selected shape(s) to back</q-tooltip>
-                  </q-btn>
-                  <q-btn flat dense size="sm" icon="group_work" label="Group" id="btn_try_Group"></q-btn>
-                  <q-btn flat dense size="sm" icon="layers_clear" label="Ungroup" id="btn_try_UnGroup"></q-btn>
-                </div>
-              </a-col> -->
-
-              <!-- <a-col :span="1" class="d-flex justify-center">
-                  <q-separator vertical inset />
-                </a-col> -->
+                  <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
+                    Grid
+                    <q-tooltip>Toggle grid visibility</q-tooltip>
+                  </a-checkbox>
+                </a-flex>
+              </a-col>
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
 
 
-
-              <!-- <a-col :span="1" class="d-flex justify-center">
-                  <q-separator vertical inset />
-                </a-col> -->
-
-              <!-- History and File Operations -->
-              <!-- <a-col :span="6">
-                <a-row>
-                  <a-col :span="8">
-                    <div class="q-gutter-sm d-flex">
-                      <q-btn flat dense size="sm" icon="undo" id="btn_try_Undo"></q-btn>
-                      <q-btn flat dense size="sm" icon="redo" id="btn_try_Redo"></q-btn>
-                    </div>
-                  </a-col>
-                  <a-col :span="16">
-                    <div class="q-gutter-sm d-flex">
-                      <q-btn flat dense size="sm" icon="save" id="btn_try_Save"></q-btn>
-                      <q-btn flat dense size="sm" icon="clear_all" id="btn_try_Clear">
-                        <q-tooltip>Clear data</q-tooltip>
-                      </q-btn>
-                      <q-btn flat dense size="sm" icon="format_color_fill" id="btn_try_Lib_SetBackgroundColor">
-                        <q-tooltip>Set background color</q-tooltip>
-                      </q-btn>
-                      <q-btn flat dense size="sm" icon="zoom_out_map" label="Reset" id="btn_try_Reset_Scale"></q-btn>
-                    </div>
-                  </a-col>
-                </a-row>
-              </a-col> -->
             </a-row>
-            <!-- </div> -->
-
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
@@ -693,7 +679,9 @@ import {
   VerticalAlignBottomOutlined,
   BorderHorizontalOutlined,
   BorderVerticleOutlined,
-  SelectOutlined
+  SelectOutlined,
+  ZoomOutOutlined,
+  ZoomInOutlined
 } from '@ant-design/icons-vue';
 
 // Define props using defineProps with TypeScript interface
@@ -759,6 +747,18 @@ const showMoreDevices = () => {
 
 const onClick: MenuProps['onClick'] = ({ key }) => {
   console.log(`Click on item ${key}`);
+};
+
+const zoomChange = (value: number) => {
+  if (value < 10 || value > 400) {
+    $q.notify({
+      type: 'negative',
+      message: 'Zoom value must be between 10% and 400%',
+    });
+    return;
+  }
+  inputValue.value = value;
+  // menuActionEmit('zoomSet', value);
 };
 
 onMounted(() => {
