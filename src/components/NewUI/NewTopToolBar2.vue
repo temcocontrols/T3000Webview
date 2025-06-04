@@ -157,7 +157,6 @@
 .tool-bar-menu-item {
   font-size: 10px !important;
 }
-
 </style>
 
 <template>
@@ -229,7 +228,7 @@
                     <q-tooltip>Select shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_Lib_Lock" class="tool-bar-button"
-                    style="color: white;">
+                    style="color: white;margin-left: 18px;">
                     <template #icon>
                       <LockOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -269,14 +268,16 @@
                     Paste
                     <q-tooltip>Paste copied shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Copy" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_Copy" class="tool-bar-button"
+                    style="color: white;margin-left: 6px;">
                     <template #icon>
                       <CopyOutlined class="tool-bar-icon-prefix" />
                     </template>
                     Copy
                     <q-tooltip>Copy selected shape(s)</q-tooltip>
                   </a-button>
-                  <a-button type="text" size="small" id="btn_try_Cut" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_Cut" class="tool-bar-button"
+                    style="color: white;margin-left: 25px;">
                     <template #icon>
                       <ScissorOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -351,7 +352,7 @@
               </a-col>
 
               <!-- Transform Group -->
-              <a-col style="max-width: 170px;">
+              <a-col style="max-width: 186px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
 
                   <a-dropdown class="tool-bar-dropdown">
@@ -448,7 +449,7 @@
                   </a-dropdown>
 
                   <a-dropdown class="tool-bar-dropdown">
-                    <a class="ant-dropdown-link" @click.prevent>
+                    <a class="ant-dropdown-link" @click.prevent style="margin-left: 16px;">
                       <CompressOutlined />
                       Make same
                       <DownOutlined />
@@ -469,7 +470,7 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col style="max-width: 190px;">
+              <a-col style="max-width: 192px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Group" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -479,7 +480,7 @@
                     <q-tooltip>Group selected shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_BringToFront" class="tool-bar-button"
-                    style="color: white;">
+                    style="color: white;margin-left: 13px;">
                     <template #icon>
                       <VerticalAlignTopOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -508,19 +509,41 @@
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
 
-              <a-col style="max-width: 190px;">
+              <a-col style="max-width: 190px; width: 300px;">
                 <a-col :span="24" style="text-align: left;">
-                  <a-button type="text" size="small" id="btn_try_Reset_Scale" style="color: white;">Reset Zoom</a-button>
+                  <a-button type="text" size="small" id="btn_try_Reset_Scale" style="color: white;">Background
+                    Color</a-button>
                 </a-col>
                 <!-- <a-row>
                   <a-col :span="12">
                     <a-slider v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01" class="custom-slider" />
+
                   </a-col>
                   <a-col :span="4">
                     <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
                       style="margin-left: 10px;font-size: 10px; width: 60px;" />
                   </a-col>
                 </a-row> -->
+                <a-col :span="24">
+                  <q-btn @click="menuActionEmit('zoomOut')" :disable="zoom <= 10" dense flat size="sm" icon="zoom_out"
+                    style="float: left;">
+                    <q-tooltip anchor="top middle" self="center right">
+                      Zoom out
+                      <ZoomInOutlined />
+                      <ZoomOutOutlined />
+                      <Loading3QuartersOutlined />
+                    </q-tooltip>
+                  </q-btn>
+                  <div class="flex items-center px-1" style="font-size: 12px;float: left;">
+                    <input class="zoom-input" @keydown.enter="menuActionEmit('zoomSet', $event.target.value)"
+                      :value="zoom" type="number" />%
+                  </div>
+                  <q-btn @click="menuActionEmit('zoomIn')" :disable="zoom >= 400" dense flat size="sm" icon="zoom_in">
+                    <q-tooltip anchor="top middle" self="center right">
+                      Zoom in
+                    </q-tooltip>
+                  </q-btn>
+                </a-col>
               </a-col>
 
               <!-- Alignment Group -->
