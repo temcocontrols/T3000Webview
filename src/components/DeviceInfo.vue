@@ -94,7 +94,7 @@
 
           <q-item-section top>
             <q-item-label caption class="select-title">
-              Element Count
+              Element
             </q-item-label>
             <q-item-label>
               <span class="text-weight-medium select-text">{{ currentDevice.graphicFull.elementCount }}</span>
@@ -164,7 +164,7 @@
               <q-item-label class="q-mt-sm header-title">Label</q-item-label>
             </q-item-section>
             <q-item-section top class="col-2">
-              <q-item-label class="q-mt-sm header-title">Element Count</q-item-label>
+              <q-item-label class="q-mt-sm header-title">Element</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>

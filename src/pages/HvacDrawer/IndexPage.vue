@@ -719,7 +719,7 @@
   </q-dialog>
 
   <q-dialog v-model="deviceModel.active">
-    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '900px' }">
+    <q-card :style="{ minWidth: $q.platform.is.mobile ? '700px' : '900px' }">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />

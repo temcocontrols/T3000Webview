@@ -431,7 +431,7 @@
           <q-tab-panel name="device" class="device-panel">
             <div class="row device-row">
 
-              <q-list class="col-8" style="height: 50px;">
+              <q-list class="col-12" style="height: 50px;">
                 <q-item>
                   <q-item-section top class="col-3">
                     <q-item-label class="q-mt-sm">Current: {{ currentDevice?.data?.device }}</q-item-label>
@@ -446,7 +446,7 @@
                     </q-item-label>
                   </q-item-section>
 
-                  <q-item-section top class="col-3">
+                  <q-item-section top class="col-2">
                     <q-item-label caption class="select-title">
                       Full label
                     </q-item-label>
