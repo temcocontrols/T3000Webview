@@ -583,7 +583,7 @@
   </q-page>
   <!-- Link entry dialog -->
   <q-dialog v-model="linkT3EntryDialog.active">
-    <q-card style="min-width: 650px">
+    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '650px' }">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Link Entry</div>
         <q-space />
@@ -641,7 +641,7 @@
 
   <q-dialog v-model="insertT3EntryDialog.active">
     <!-- <a>This is a test q-dialog></a> -->
-    <q-card style="min-width: 650px">
+    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '650px' }">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Insert Entry</div>
         <q-space />
@@ -719,7 +719,7 @@
   </q-dialog>
 
   <q-dialog v-model="deviceModel.active">
-    <q-card style="min-width: 300px">
+    <q-card :style="{ minWidth: $q.platform.is.mobile ? '400px' : '900px' }">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Devices List</div>
         <q-space />
