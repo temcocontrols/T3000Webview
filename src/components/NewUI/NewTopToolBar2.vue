@@ -158,16 +158,6 @@
   font-size: 10px !important;
 }
 
-.custom-slider .ant-slider-rail {
-  background-color: red; /* 滑块轨道颜色 */
-}
-.custom-slider .ant-slider-handle {
-  border-color: blue; /* 滑块手柄边框颜色 */
-  background-color: blue; /* 滑块手柄背景颜色 */
-}
-.custom-slider .ant-slider-dot {
-  border-color: green; /* 滑块点（可选） */
-}
 </style>
 
 <template>
@@ -522,7 +512,7 @@
                 <a-col :span="24" style="text-align: left;">
                   <a-button type="text" size="small" id="btn_try_Reset_Scale" style="color: white;">Reset Zoom</a-button>
                 </a-col>
-                <a-row>
+                <!-- <a-row>
                   <a-col :span="12">
                     <a-slider v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01" class="custom-slider" />
                   </a-col>
@@ -530,7 +520,7 @@
                     <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
                       style="margin-left: 10px;font-size: 10px; width: 60px;" />
                   </a-col>
-                </a-row>
+                </a-row> -->
               </a-col>
 
               <!-- Alignment Group -->
