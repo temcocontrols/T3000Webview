@@ -17,6 +17,7 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import $ from 'jquery';
 import EvtUtil from '../Event/EvtUtil';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a freehand line shape that consists of multiple connected points.
@@ -783,7 +784,7 @@ class FreehandLine extends BaseLine {
    * @param mouseY - The Y coordinate where the drawing starts
    */
   LMDrawClick(mouseX, mouseY) {
-    LogUtil.Debug('ListManager.FreehandLine.prototype.LMDrawClick e, t=>', mouseX, mouseY);
+    LogUtil.Debug('= s.FreehandLine LMDrawClick mouseX, mouseY=>', mouseX, mouseY);
 
     try {
       this.Frame.x = mouseX;

@@ -1302,7 +1302,7 @@ class TextUtil {
           messageData.theSelectedRange.anchor = 0;
           messageData.theSelectedRange.end = textLength;
         }
-      } else if (textData && textData.EditorID === SDJS.Collab.EditorID) {
+      } else if (textData && textData.EditorID === cl.EditorID) {
         // Use selected range from collab message data
         selectedRange = textData.Data.theSelectedRange;
       }
@@ -1356,7 +1356,7 @@ class TextUtil {
         );
       } else {
         // Replace standard text if needed
-        const isLocalEdit = (textData == null );
+        const isLocalEdit = (textData == null);
         const isSelfCollabMessage = (textData != null);
       }
 
