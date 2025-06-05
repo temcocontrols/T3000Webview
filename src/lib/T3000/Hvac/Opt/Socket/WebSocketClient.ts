@@ -594,6 +594,16 @@ class WebSocketClient {
   }
 
   public HandleGetInitialDataRes(msgData) {
+
+    LogUtil.Info('= ws: HandleGetInitialDataRes / msgData:', msgData);
+
+    const isCrtDevice = Hvac.DeviceOpt.isCurrentDeviceMessage(msgData);
+
+    if (!isCrtDevice) {
+      LogUtil.Info('= ws: HandleGetInitialDataRes / not current device message, return');
+      return;
+    }
+
     // action: 1, // GET_INITIAL_DATA_RES
     const appStateData = msgData.data;
 

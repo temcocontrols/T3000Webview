@@ -560,6 +560,50 @@ class DeviceOpt {
 
     LogUtil.Debug('= Dvopt mergeAppState', appState.value);
   }
+
+  // check for boardcast message whether the current device is the same as the one in the message data
+  // cause we do boardcast all messages to all clients, so we need to check the current device
+  isCurrentDeviceMessage(msgData) {
+
+    const panelId = msgData?.panelId ?? -1;
+    const viewitem = msgData?.viewitem ?? -1;
+    const serialNumber = msgData?.serialNumber ?? -1;
+
+    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / msgData', msgData);
+    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / panelId,viewitem,serialNumber', panelId, viewitem, serialNumber);
+
+    if (!panelId || !viewitem || !serialNumber) {
+      LogUtil.Error('= Dvopt: isCurrentDeviceMessage / Invalid message data');
+      return false;
+    }
+
+    const currentDevice = this.getCurrentDevice();
+    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / currentDevice', currentDevice);
+
+    if (!currentDevice) {
+      LogUtil.Error('= Dvopt: isCurrentDeviceMessage / No current device found');
+      return false;
+    }
+
+    // msgData=> panelId:3 , serialNumber:237451 , viewitem:1
+    // currentDeviceData=> deviceId:3 , serialNumber:237451 , graphic:2
+
+    const crtDeviceName = currentDevice?.device ?? "-";
+    const crtPanelId = currentDevice?.deviceId ?? -1;
+    const crtGraphicId = currentDevice?.graphic ?? -1;
+    const crtSerialNumber = currentDevice?.serialNumber ?? -1;
+
+    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / crtPanelId,crtGraphicId,crtSerialNumber', crtPanelId, crtGraphicId, crtSerialNumber);
+
+    const isSamePanel = crtPanelId === panelId;
+    const isSameSerial = crtSerialNumber === serialNumber;
+
+    // viewitem is 0-based index in T3000, so we need to add 1 to match the graphic id
+    const isSameViewItem = crtGraphicId === viewitem+1;
+
+    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / isSamePanel', isSamePanel, 'isSameSerial', isSameSerial, 'isSameViewItem', isSameViewItem);
+    return isSamePanel && isSameSerial && isSameViewItem;
+  }
 }
 
 export default DeviceOpt
