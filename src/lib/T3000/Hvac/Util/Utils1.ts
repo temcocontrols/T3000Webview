@@ -479,13 +479,13 @@ class Utils1 {
     if (Math.abs(cosAngle) < 0.0001) cosAngle = 0;
 
     // Translate point to origin (relative to center)
-    const relativeX = pointToRotate.x - centerPoint.x;
-    const relativeY = pointToRotate.y - centerPoint.y;
+    const relativeX = pointToRotate.x - (centerPoint?.x ?? 0);
+    const relativeY = pointToRotate.y - (centerPoint?.y ?? 0);
 
     // Apply rotation matrix
     const rotatedPoint = {
-      x: relativeX * cosAngle + relativeY * sinAngle + centerPoint.x,
-      y: -relativeX * sinAngle + relativeY * cosAngle + centerPoint.y
+      x: relativeX * cosAngle + relativeY * sinAngle + (centerPoint?.x ?? 0),
+      y: -relativeX * sinAngle + relativeY * cosAngle + (centerPoint?.y ?? 0)
     };
 
     return rotatedPoint;
