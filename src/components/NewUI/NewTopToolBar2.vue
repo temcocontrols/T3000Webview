@@ -389,15 +389,15 @@
                     </a>
                     <template #overlay>
                       <a-menu @click="onClick">
-                        <a-menu-item key="r0" style="font-size: 12px;"> 0° </a-menu-item>
-                        <a-menu-item key="r45" style="font-size: 12px;"> 45° </a-menu-item>
-                        <a-menu-item key="r90" style="font-size: 12px;"> 90° </a-menu-item>
-                        <a-menu-item key="r135" style="font-size: 12px;"> 135° </a-menu-item>
-                        <a-menu-item key="r180" style="font-size: 12px;"> 180° </a-menu-item>
-                        <a-menu-item key="r225" style="font-size: 12px;"> 225° </a-menu-item>
-                        <a-menu-item key="r270" style="font-size: 12px;"> 270° </a-menu-item>
-                        <a-menu-item key="r360" style="font-size: 12px;"> 360° </a-menu-item>
-                        <a-menu-item key="r360" style="font-size: 12px;" disabled> Custom </a-menu-item>
+                        <a-menu-item key="rotate-0" style="font-size: 12px;"> 0° </a-menu-item>
+                        <a-menu-item key="rotate-45" style="font-size: 12px;"> 45° </a-menu-item>
+                        <a-menu-item key="rotate-90" style="font-size: 12px;"> 90° </a-menu-item>
+                        <a-menu-item key="rotate-135" style="font-size: 12px;"> 135° </a-menu-item>
+                        <a-menu-item key="rotate-180" style="font-size: 12px;"> 180° </a-menu-item>
+                        <a-menu-item key="rotate-225" style="font-size: 12px;"> 225° </a-menu-item>
+                        <a-menu-item key="rotate-270" style="font-size: 12px;"> 270° </a-menu-item>
+                        <a-menu-item key="rotate-360" style="font-size: 12px;"> 360° </a-menu-item>
+                        <a-menu-item key="rotate-cus" style="font-size: 12px;" disabled> Custom </a-menu-item>
                       </a-menu>
                     </template>
                   </a-dropdown>
@@ -683,6 +683,7 @@ import {
   ZoomOutOutlined,
   ZoomInOutlined
 } from '@ant-design/icons-vue';
+import CtxMenuUtil from 'src/lib/T3000/Hvac/Doc/CtxMenuUtil';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{
@@ -747,6 +748,7 @@ const showMoreDevices = () => {
 
 const onClick: MenuProps['onClick'] = ({ key }) => {
   console.log(`Click on item ${key}`);
+  new CtxMenuUtil().HandleMenuClick(`${key}`,{});
 };
 
 const zoomChange = (value: number) => {
