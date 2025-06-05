@@ -1084,7 +1084,7 @@ onMounted(() => {
 // }
 
 function updateDeviceModel(isActive, data) {
-  console.log('= Idx updateDeviceModel ===', isActive, data)
+  console.log('= Idx: updateDeviceModel / isActive, data', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 

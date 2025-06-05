@@ -115,9 +115,9 @@ class WebSocketClient {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
       const currentDateTime = new Date().toLocaleString();
-      LogUtil.Debug('= Ws send message to T3 at', currentDateTime, message);
+      LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
     } else {
-      LogUtil.Debug('= Ws send message | socket is not open | ready state:', this.socket.readyState);
+      LogUtil.Info('= ws: sendMessage / socket is not open | ready state:', this.socket.readyState);
 
       // Store the message to send after reconnection
       const pendingMessage = message;
@@ -127,29 +127,29 @@ class WebSocketClient {
 
       // If socket is closed or closing, reconnect
       if (this.socket.readyState === WebSocket.CLOSED || this.socket.readyState === WebSocket.CLOSING) {
-        LogUtil.Debug('= Ws reconnecting before sending message...');
+        LogUtil.Info('= ws: sendMessage / reconnecting before sending message...');
 
         // Create new socket connection
         this.connect();
 
         // Set up onopen handler for the new connection
         this.socket.onopen = (event: Event) => {
-          LogUtil.Debug('= Ws reconnected successfully, sending pending message');
+          LogUtil.Info('= ws: sendMessage / reconnected successfully, sending pending message');
           // Call the original onOpen handler
           this.onOpen(event);
 
           // Send the pending message
           if (this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(pendingMessage);
-            LogUtil.Debug('= Ws pending message sent after reconnection');
+            LogUtil.Info('= ws: sendMessage / pending message sent after reconnection');
           } else {
-            T3Util.Error('= ws: sendMessage/ failed to send message after reconnection attempt');
+            T3Util.Error('= ws: sendMessage / failed to send message after reconnection attempt');
           }
         };
       } else {
         // Socket is connecting, wait for it to open
         this.socket.onopen = () => {
-          LogUtil.Debug('= Ws connection established, sending pending message');
+          LogUtil.Info('= ws: sendMessage / connection established, sending pending message');
           this.socket.send(pendingMessage);
         };
       }
@@ -446,20 +446,20 @@ class WebSocketClient {
         const data = JSON.parse(parsedData.data);
         const entry = parsedData.entry;
         const library = parsedData.library != undefined && parsedData.library !== "" ? JSON.parse(parsedData.library) : {};
-        LogUtil.Debug('= Ws Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
+        LogUtil.Debug('= ws: printLog / Received data:', true, { action: "GET_INITIAL_DATA_RES", data, entry, library });
       }
       else {
-        LogUtil.Debug('= Ws Received data:', parsedData);
+        LogUtil.Debug('= ws: printLog / Received data:', parsedData);
       }
     }
     catch (error) {
-      LogUtil.Debug('= Ws Received data error', error);
+      LogUtil.Debug('= ws: printLog / Received data error', error);
     }
   }
 
   private processMessage(data: any) {
 
-    LogUtil.Debug('= Ws received origin data', data);
+    LogUtil.Debug('= ws: printLog / received origin data', data);
 
     try {
       const parsedData = JSON.parse(data);
@@ -603,7 +603,7 @@ class WebSocketClient {
     }
 
     const parsedAppStateData = JSON.parse(appStateData);
-    LogUtil.Debug('= Ws GET_INITIAL_DATA_RES -appState | needRefresh:', parsedAppStateData, this.needRefresh);
+    LogUtil.Info('= ws: HandleGetInitialDataRes / GET_INITIAL_DATA_RES msgData-appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (!this.needRefresh) return;
 
@@ -882,7 +882,7 @@ class WebSocketClient {
     }
 
     this.reloadInitialDataInterval = null;
-    LogUtil.Debug('= Ws reload-initial-interval clear', this.reloadInitialDataInterval);
+    LogUtil.Info('= Ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
   }
 }
 

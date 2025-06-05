@@ -406,7 +406,12 @@ class DeviceOpt {
 
   // reset the ls deviceAppState related value
   refreshDeviceAppState() {
+
+    LogUtil.Info('= Dvopt: refreshDeviceAppState / start to refresh deviceAppState');
+
     const existAppState = this.loadDeviceAppState(deviceAppState, deviceModel.value.data, null);
+
+    LogUtil.Info('= Dvopt: refreshDeviceAppState / existAppState', existAppState);
 
     if (existAppState) {
       // appState.value = cloneDeep(existAppState);
@@ -416,6 +421,8 @@ class DeviceOpt {
       appState.value = cloneDeep(emptyProject);
       appState.value.rulersGridVisible = rulersGridVisible.value;
     }
+
+    LogUtil.Info('= Dvopt: refreshDeviceAppState / appState.value', appState.value);
 
     // save or update the latest appState to local storage
     this.saveAppState(appState.value);
@@ -452,11 +459,15 @@ class DeviceOpt {
     const emptyAppState = cloneDeep(emptyProject);
     localStorage.setItem('tempAppState', JSON.stringify(emptyAppState));
 
+    LogUtil.Info('= Dvopt: addPresetsData / set the tempAppState to empty project', emptyAppState);
+
     // get the current device info
     const currentDevice = this.getCurrentDevice();
     const crtDeviceName = currentDevice?.device ?? "-";
     const crtDeviceId = currentDevice?.deviceId ?? -1;
     const crtGraphicId = currentDevice?.graphic ?? -1;
+
+    LogUtil.Info('= Dvopt: addPresetsData / currentDevice', currentDevice);
 
     // reset the element count
     currentDevice.graphicFull.elementCount = 0;
@@ -466,11 +477,17 @@ class DeviceOpt {
     appState.value = cloneDeep(emptyProject);
     rulersGridVisible.value = false;
 
-    // save the appState value to local storage
+    LogUtil.Info('= Dvopt: addPresetsData / set the appState value to empty project', appState.value);
+
+    // when user changed the device, we should reset the appState value to empty project, the value should be import from T3000 via ws socket.
     this.saveAppState(appState.value);
+
+    LogUtil.Info('= Dvopt: addPresetsData / save the appState value to local storage', appState.value);
 
     // set the ls deviceAppState related value
     const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
+
+    LogUtil.Info('= Dvopt: addPresetsData / load deviceAppStateLS', deviceAppStateLS);
 
     if (!deviceAppStateLS) return;
 
@@ -485,6 +502,8 @@ class DeviceOpt {
     }
 
     localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+
+    LogUtil.Info('= Dvopt: addPresetsData / save the deviceAppState to local storage', deviceAppStateLS);
   }
 
   // Merge the responsed AppState to current AppState
