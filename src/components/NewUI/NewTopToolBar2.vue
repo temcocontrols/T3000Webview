@@ -22,7 +22,6 @@
   padding-left: 10px;
   padding-top: 10px;
   color: #fff;
-  /* background: red; */
 }
 
 .tool-btns {
@@ -32,7 +31,6 @@
   height: 53px;
   width: 105px;
   color: #fff;
-  /* background-color: aqua; */
 }
 
 .tab-panel {
@@ -43,21 +41,16 @@
 .home-panel {
   .container {
     display: flex;
-    /* flex-wrap: wrap; */
-    /* gap: 10px; */
   }
 
   .sub-div {
     display: flex;
     flex-direction: column;
-    /* gap: 10px; */
-    /* border: 1px solid #ccc; */
     padding-top: 2px;
   }
 
   .button-row {
     display: flex;
-    /* gap: 5px; */
   }
 
   .q-btn {
@@ -68,8 +61,6 @@
 .file-panel {
   .container {
     display: flex;
-    /* flex-wrap: wrap; */
-    /* gap: 10px; */
     height: 53px;
   }
 
@@ -77,7 +68,6 @@
     display: flex;
     flex-direction: row;
     gap: 10px;
-    /* border: 1px solid #ccc; */
     padding: 10px;
   }
 
@@ -89,7 +79,6 @@
 
 .right-panel-card {
   box-shadow: none;
-  /* border: 1px solid #ccc; */
   border-radius: 0px;
 }
 
@@ -166,7 +155,6 @@
   margin-right: 8px;
 }
 
-
 .color-idic-ffffff {
   background-color: #FFFFFF;
   width: 16px;
@@ -174,7 +162,6 @@
   display: inline-block;
   margin-right: 8px;
 }
-
 
 .color-idic-0aacb4 {
   background-color: #0AACB4;
@@ -222,28 +209,19 @@
             @click="navigateTo('/')" />
           <q-tab name="newui" no-caps label="New UI">
           </q-tab>
-          <!-- <q-tab name="edit" label="Edit" />
-          <q-tab name="object" label="Object" /> -->
           <div style="margin-left: auto;"><q-btn flat color="primary" label="Login" to="/login" /></div>
         </q-tabs>
         <q-separator />
         <q-tab-panels v-model="tab" class="tab-panel">
-
           <q-tab-panel name="home" class="home-panel">
-
           </q-tab-panel>
-
           <q-tab-panel name="file" class="file-panel">
-
           </q-tab-panel>
-
           <q-tab-panel name="device" class="device-panel">
-
           </q-tab-panel>
           <q-tab-panel name="newui" class="newui-panel">
             <!-- <div id="tool-bar-container"> -->
             <a-row class="bg-transparent">
-
               <a-col style="max-width: 158px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_select" class="tool-bar-button" style="color: white;">
@@ -279,11 +257,9 @@
                   </a-button>
                 </a-flex>
               </a-col>
-
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
               <!-- Clipboard Operations -->
               <a-col style="max-width: 225px;">
                 <a-flex wrap="wrap">
@@ -335,11 +311,9 @@
                   </a-button>
                 </a-flex>
               </a-col>
-
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
               <a-col style="max-width: 128px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Undo" class="tool-bar-button" style="color: white;">
@@ -372,15 +346,12 @@
                   </a-button>
                 </a-flex>
               </a-col>
-
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
               <!-- Transform Group -->
               <a-col style="max-width: 186px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
-
                   <a-dropdown class="tool-bar-dropdown">
                     <a class="ant-dropdown-link" @click.prevent>
                       <RotateRightOutlined />
@@ -401,7 +372,6 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-
                   <a-dropdown class="tool-bar-dropdown">
                     <a class="ant-dropdown-link" @click.prevent>
                       <AlignLeftOutlined />
@@ -449,7 +419,6 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-
                   <a-dropdown class="tool-bar-dropdown">
                     <a class="ant-dropdown-link" @click.prevent>
                       <SwapOutlined />
@@ -473,7 +442,6 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-
                   <a-dropdown class="tool-bar-dropdown">
                     <a class="ant-dropdown-link" @click.prevent style="margin-left: 16px;">
                       <CompressOutlined />
@@ -488,14 +456,11 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-
                 </a-flex>
               </a-col>
-
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
               <a-col style="max-width: 192px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Group" class="tool-bar-button" style="color: white;">
@@ -530,12 +495,9 @@
                   </a-button>
                 </a-flex>
               </a-col>
-
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
-
               <a-col style="max-width: 111px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
                   <a-dropdown class="tool-bar-dropdown">
@@ -560,7 +522,6 @@
                       </a-menu>
                     </template>
                   </a-dropdown>
-
                   <a-col :span="24">
                     <a-button type="text" size="small" id="btn_try_ZoomOut" class="tool-bar-button"
                       :disabled="zoom <= 10" style="color: white;margin-top: 5px;"
@@ -568,43 +529,28 @@
                       <template #icon>
                         <ZoomOutOutlined class="tool-bar-icon-prefix" />
                       </template>
-                      <q-tooltip anchor="top middle" self="center right">
+                      <q-tooltip>
                         Zoom out
                       </q-tooltip>
                     </a-button>
-
                     <div style="display: inline-flex; align-items: center; ">
-                      <!-- <a-input-number size="small" :min="10" :max="400" :value="zoom" style="width: 60px;"
-                      @pressEnter="(e) => zoomChange(e.target.value)" @change="(value) => zoomChange(value)" /> -->
                       <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
-                        style="font-size: 10px; width: 54px; height: 20px;line-height: 22px;border-radius: 0px;" />
-                      <!-- <span style="color: white; margin-left: 2px;">%</span> -->
+                        style="font-size: 10px; width: 54px; height: 20px;line-height: 22px;border-radius: 0px;"
+                        @pressEnter="(e) => zoomChange(e.target.value)" @change="(value) => zoomChange(value)" />
                     </div>
-
                     <a-button type="text" size="small" id="btn_try_ZoomIn" class="tool-bar-button"
                       :disabled="zoom >= 400" style="color: white;margin-top: 5px;"
                       :onClick="() => zoomChange(inputValue + 0.01)">
                       <template #icon>
                         <ZoomInOutlined class="tool-bar-icon-prefix" />
                       </template>
-                      <q-tooltip anchor="top middle" self="center right">
+                      <q-tooltip>
                         Zoom in
                       </q-tooltip>
                     </a-button>
-
-
                   </a-col>
-
-
-
                 </a-flex>
-
               </a-col>
-
-              <!-- <a-col class="d-flex justify-center" style="max-width: 1%;">
-                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
-              </a-col> -->
-
               <a-col style="max-width: 166px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
                   <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
@@ -619,7 +565,6 @@
                     Reset Zoom
                     <q-tooltip>Reset view to default</q-tooltip>
                   </a-button>
-
                   <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
                     Grid
                     <q-tooltip>Toggle grid visibility</q-tooltip>
@@ -629,8 +574,6 @@
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-
-
             </a-row>
           </q-tab-panel>
         </q-tab-panels>
@@ -643,11 +586,11 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar"
-import { tools } from "../../lib/common";
-import { user } from "../../lib/T3000/Hvac/Data/T3Data";
-import { devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
+import { user, devVersion } from '../../lib/T3000/Hvac/Data/T3Data'
 import LogUtil from 'src/lib/T3000/Hvac/Util/LogUtil';
 import type { MenuProps } from 'ant-design-vue';
+import CtxMenuUtil from 'src/lib/T3000/Hvac/Doc/CtxMenuUtil';
+import T3UIUtil from 'src/lib/T3000/Hvac/Opt/UI/T3UIUtil';
 import {
   CloseOutlined,
   EditOutlined,
@@ -686,7 +629,6 @@ import {
   ZoomOutOutlined,
   ZoomInOutlined
 } from '@ant-design/icons-vue';
-import CtxMenuUtil from 'src/lib/T3000/Hvac/Doc/CtxMenuUtil';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{
@@ -755,17 +697,17 @@ const onClick: MenuProps['onClick'] = ({ key }) => {
 };
 
 const zoomChange = (value: number) => {
+
+  // Round the value to two decimal places
+  value = Number(value.toFixed(2));
+
   if (value < 0.25 || value > 4.00) {
-    $q.notify({
-      type: 'negative',
-      message: 'Zoom value must be between 10% and 400%',
-    });
+    T3UIUtil.ShowZoomInOutError("Zoom value must be between 0.25 and 4.00");
     return;
   }
 
   LogUtil.Info(`Zoom changed to: ${value}`);
   inputValue.value = value;
-  // menuActionEmit('zoomSet', value);
 };
 
 onMounted(() => {
