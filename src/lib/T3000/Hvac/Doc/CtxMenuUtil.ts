@@ -650,8 +650,8 @@ class CtxMenuUtil {
   Reset() {
     const ctxMenu: MenuConfigItem[] =
       [{
-        key: 'reset',
-        title: 'Reset',
+        key: 'clear',
+        title: 'Clear',
         icon: ClearOutlined,
         // shortcut: 'Ctrl+R',
         shortcut: '',//Todo: conflict with old version, pending on new ui online
@@ -1089,7 +1089,7 @@ class CtxMenuUtil {
       case 'save':
         EvtOpt.toolOpt.SaveAct();
         break;
-      case 'reset':
+      case 'clear':
         DataOpt.ClearT3LocalStorage();
         Hvac.UI.Reload();
         break;

@@ -563,7 +563,8 @@
 
                   <a-col :span="24">
                     <a-button type="text" size="small" id="btn_try_ZoomOut" class="tool-bar-button"
-                      :disabled="zoom <= 10" style="color: white;margin-top: 5px;">
+                      :disabled="zoom <= 10" style="color: white;margin-top: 5px;"
+                      :onClick="() => zoomChange(inputValue - 0.01)">
                       <template #icon>
                         <ZoomOutOutlined class="tool-bar-icon-prefix" />
                       </template>
@@ -581,7 +582,8 @@
                     </div>
 
                     <a-button type="text" size="small" id="btn_try_ZoomIn" class="tool-bar-button"
-                      :disabled="zoom >= 400" style="color: white;margin-top: 5px;">
+                      :disabled="zoom >= 400" style="color: white;margin-top: 5px;"
+                      :onClick="() => zoomChange(inputValue + 0.01)">
                       <template #icon>
                         <ZoomInOutlined class="tool-bar-icon-prefix" />
                       </template>
@@ -609,7 +611,8 @@
                     Rulers
                     <q-tooltip>Toggle rulers visibility</q-tooltip>
                   </a-checkbox>
-                  <a-button type="text" size="small" class="tool-bar-button" style="color: white;">
+                  <a-button type="text" size="small" id="btn_try_Reset_Scale" class="tool-bar-button"
+                    style="color: white;">
                     <template #icon>
                       <GatewayOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -748,17 +751,19 @@ const showMoreDevices = () => {
 
 const onClick: MenuProps['onClick'] = ({ key }) => {
   console.log(`Click on item ${key}`);
-  new CtxMenuUtil().HandleMenuClick(`${key}`,{});
+  new CtxMenuUtil().HandleMenuClick(`${key}`, {});
 };
 
 const zoomChange = (value: number) => {
-  if (value < 10 || value > 400) {
+  if (value < 0.25 || value > 4.00) {
     $q.notify({
       type: 'negative',
       message: 'Zoom value must be between 10% and 400%',
     });
     return;
   }
+
+  LogUtil.Info(`Zoom changed to: ${value}`);
   inputValue.value = value;
   // menuActionEmit('zoomSet', value);
 };
