@@ -21,6 +21,7 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 import DataOpt from '../Opt/Data/DataOpt'
 import LogUtil from '../Util/LogUtil'
 import HvConstant from '../Data/Constant/HvConstant'
+import { zoomScale } from '../Data/Constant/RefConstant'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -2319,20 +2320,50 @@ class DocUtil {
     return readOnlyState;
   }
 
+  ZoomChange(newZoomScale, newZoomStep) {
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Input:", { newZoomScale, newZoomStep });
+
+    const currentZoomFactor = T3Gv.docUtil.GetZoomFactor();
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Current Zoom Factor:", currentZoomFactor);
+
+    const isZoomIn = newZoomScale > currentZoomFactor;
+
+    // Check if the new zoom scale is valid
+    if (newZoomScale && newZoomScale > 0) {
+      // Call ZoomInAndOut with the new zoom scale and step
+      this.ZoomInAndOut(isZoomIn, false, newZoomScale, newZoomStep);
+    }
+
+    LogUtil.Debug("= u.DocUtil: ZoomChange/ - Output: Zoom changed to", newZoomScale);
+  }
+
+  ZoomSpecify(zoomScale, skipCentering?) {
+    // Convert zoom factor to percentage and apply it
+    this.SetZoomLevel(100 * zoomScale, skipCentering);
+    DataOpt.SaveToLocalStorage();
+
+    // Update ref value zoom scale
+    T3Gv.docUtil.UpdateRefZoomScale(Number(zoomScale.toFixed(2)));
+
+    LogUtil.Info("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(zoomScale.toFixed(2)));
+  }
+
   /**
    * Zooms in or out on the document by a factor of 0.25
    * @param isZoomIn - True to zoom in, false to zoom out
-   * @param eventSource - The source of the event triggering the zoom
+   * @param skipCentering - If true, prevents the view from automatically centering on content after zoom
    * @returns void
    */
-  ZoomInAndOut(isZoomIn, eventSource?) {
-    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Input:", { isZoomIn, eventSource });
+  ZoomInAndOut(isZoomIn, skipCentering?, newZoomScale?: number, newZoomStep?: number) {
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - Input:", { isZoomIn, skipCentering });
 
-    const zoomStep = HvConstant.T3Config.Zoom.Step;
+    // Use the provided newZoomStep parameter when specified (from toolbar settings),  otherwise default to the standard zoom increment defined in T3Config.Zoom.Step
+    const zoomStep = newZoomStep ? newZoomStep : HvConstant.T3Config.Zoom.Step;
     const zoomMax = HvConstant.T3Config.Zoom.Max;
     const zoomMin = HvConstant.T3Config.Zoom.Min;
     const currentZoomFactor = T3Gv.docUtil.GetZoomFactor();
-    let newZoomFactor = 1;
+
+    let newZoomFactor = newZoomScale ? newZoomScale : 1;
 
     if (isZoomIn) {
       if (currentZoomFactor >= zoomMax) {
@@ -2341,7 +2372,12 @@ class DocUtil {
       }
 
       // Calculate new zoom factor
-      newZoomFactor = Math.ceil(currentZoomFactor / zoomStep) * zoomStep;
+      // newZoomFactor = Math.ceil(currentZoomFactor / zoomStep) * zoomStep;
+
+      // Fix floating-point precision issues
+      newZoomFactor = Math.round(currentZoomFactor / zoomStep) * zoomStep;
+      // Ensure we get a clean value with exactly 2 decimal places
+      newZoomFactor = parseFloat(newZoomFactor.toFixed(2));
 
       // If current zoom is already at a multiple of zoomStep, increase by one step
       if (newZoomFactor === currentZoomFactor) {
@@ -2359,7 +2395,12 @@ class DocUtil {
       }
 
       // Calculate new zoom factor
-      newZoomFactor = Math.floor(currentZoomFactor / zoomStep) * zoomStep;
+      //newZoomFactor = Math.floor(currentZoomFactor / zoomStep) * zoomStep;
+
+      // Fix floating-point precision issues
+      newZoomFactor = Math.round(currentZoomFactor / zoomStep) * zoomStep;
+      // Ensure we get a clean value with exactly 2 decimal places
+      newZoomFactor = parseFloat(newZoomFactor.toFixed(2));
 
       // If current zoom is already at a multiple of zoomStep, decrease by one step
       if (newZoomFactor === currentZoomFactor) {
@@ -2373,25 +2414,28 @@ class DocUtil {
     }
 
     // Convert zoom factor to percentage and apply it
-    this.SetZoomLevel(100 * newZoomFactor, eventSource);
+    this.SetZoomLevel(100 * newZoomFactor, skipCentering);
     DataOpt.SaveToLocalStorage();
 
-    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", newZoomFactor);
+    // Update ref value zoom scale
+    T3Gv.docUtil.UpdateRefZoomScale(Number(newZoomFactor.toFixed(2)));
+
+    LogUtil.Info("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(newZoomFactor.toFixed(2)));
   }
 
   /**
    * Sets the zoom level of the document
    * @param zoomPct - The zoom level as a percentage (e.g., 100 for 100%)
-   * @param eventSource - The source of the event triggering the zoom change
+   * @param skipCentering - If true, prevents the view from automatically centering on content after zoom
    * @returns void
    */
-  SetZoomLevel(zoomPct, event?) {
-    LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Input: zoomPct, event?", { zoomPct, event });
+  SetZoomLevel(zoomPct, skipCentering?) {
+    LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Input: zoomPct, skipCentering?", { zoomPct, skipCentering });
 
     // Only proceed if zoom percentage is positive and we're not in idle state
     if (zoomPct > 0 && !this.inZoomIdle && T3Gv.opt) {
       // Convert percentage to factor (e.g., 100% -> 1.0)
-      UIUtil.SetDocumentScale(zoomPct / 100, event);
+      UIUtil.SetDocumentScale(zoomPct / 100, skipCentering);
       LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Applied zoom factor:", zoomPct / 100);
     } else {
       LogUtil.Debug("= u.DocUtil: SetZoomLevel/ - Zoom not applied. Conditions not met:", { validZoom: zoomPct > 0, notIdle: !this.inZoomIdle, optManagerExists: !!T3Gv.opt });
@@ -2457,6 +2501,10 @@ class DocUtil {
 
   ZoomOut() {
     this.ZoomInAndOut(false)
+  }
+
+  UpdateRefZoomScale(scale: number) {
+    zoomScale.value = scale;
   }
 }
 

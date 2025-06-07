@@ -536,7 +536,7 @@
                     <div style="display: inline-flex; align-items: center; ">
                       <a-input-number size="small" v-model:value="inputValue" :min="0.25" :max="4.00" :step="0.01"
                         style="font-size: 10px; width: 54px; height: 20px;line-height: 22px;border-radius: 0px;"
-                        @pressEnter="(e) => zoomChange(e.target.value)" @change="(value) => zoomChange(value)" />
+                        @pressEnter="(e) => zoomSpecify(e.target.value)" @step="(value) => zoomChange(value)" />
                     </div>
                     <a-button type="text" size="small" id="btn_try_ZoomIn" class="tool-bar-button"
                       :disabled="zoom >= 400" style="color: white;margin-top: 5px;"
@@ -629,6 +629,8 @@ import {
   ZoomOutOutlined,
   ZoomInOutlined
 } from '@ant-design/icons-vue';
+import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
+import { zoomScale } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{
@@ -658,7 +660,8 @@ const deviceTabTitle = ref('Device (-)');
 const router = useRouter();
 const $q = useQuasar();
 const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
-const inputValue = ref<number>(1.00);
+
+const inputValue = zoomScale;
 
 const navigateTo = (routeName: string) => {
   LogUtil.Debug(router);
@@ -708,10 +711,40 @@ const zoomChange = (value: number) => {
 
   LogUtil.Info(`Zoom changed to: ${value}`);
   inputValue.value = value;
+
+  T3Gv.docUtil.ZoomChange(inputValue.value, 0.01);
 };
+
+const zoomSpecify = (value: string) => {
+  // Convert string to number
+  let numValue = parseFloat(value);
+
+  // Check if it's a valid number
+  if (isNaN(numValue)) {
+    T3UIUtil.ShowZoomInOutError("Please enter a valid number");
+    return;
+  }
+
+  // Round the value to two decimal places
+  numValue = Number(numValue.toFixed(2));
+
+  if (numValue < 0.25 || numValue > 4.00) {
+    T3UIUtil.ShowZoomInOutError("Zoom value must be between 0.25 and 4.00");
+    return;
+  }
+
+  LogUtil.Info(`Zoom specify to: ${numValue}`);
+  inputValue.value = numValue;
+
+  T3Gv.docUtil.ZoomSpecify(inputValue.value, false);
+}
 
 onMounted(() => {
   currentDevice.value = props.deviceModel;
   deviceTabTitle.value = `Device (${props.deviceModel?.data.device})`;
+
+  const docInfo = T3Gv?.docUtil?.svgDoc?.docInfo || {};
+  const docConfig = T3Gv?.docUtil?.docConfig || {};
+  LogUtil.Info('= v.NewTopBar: onMounted / docInfo, docConfig, zoomScale', docInfo, docConfig, zoomScale.value);
 });
 </script>

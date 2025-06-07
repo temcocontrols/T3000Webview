@@ -559,6 +559,7 @@ class ToolOpt {
     try {
       T3Gv.opt.CloseEdit();
       T3Gv.docUtil.SetZoomLevel(HvConstant.T3Config.Zoom.Default * 100);
+      T3Gv.docUtil.UpdateRefZoomScale(HvConstant.T3Config.Zoom.Default);
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

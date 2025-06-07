@@ -63,6 +63,9 @@ export const importJsonDialog = ref<ImportJsonDialog>({ addedCount: 0, active: f
 
 export const clipboardFull = ref<boolean>(false); // State of the clipboard
 
+export const zoomScale = ref<number>(1); // Current zoom scale
+export const zoomStep = ref<number>(0.25); // Zoom step value
+
 
 
 
