@@ -115,9 +115,9 @@ class WebSocketClient {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket?.send(message);
       const currentDateTime = new Date().toLocaleString();
-      LogUtil.Info('= ws: sendMessage / send to T3', currentDateTime, message);
+      LogUtil.Debug('= ws: sendMessage / send to T3', currentDateTime, message);
     } else {
-      LogUtil.Info('= ws: sendMessage / socket is not open | ready state:', this.socket.readyState);
+      LogUtil.Debug('= ws: sendMessage / socket is not open | ready state:', this.socket.readyState);
 
       // Store the message to send after reconnection
       const pendingMessage = message;
@@ -127,21 +127,21 @@ class WebSocketClient {
 
       // If socket is closed or closing, reconnect
       if (this.socket.readyState === WebSocket.CLOSED || this.socket.readyState === WebSocket.CLOSING) {
-        LogUtil.Info('= ws: sendMessage / reconnecting before sending message...');
+        LogUtil.Debug('= ws: sendMessage / reconnecting before sending message...');
 
         // Create new socket connection
         this.connect();
 
         // Set up onopen handler for the new connection
         this.socket.onopen = (event: Event) => {
-          LogUtil.Info('= ws: sendMessage / reconnected successfully, sending pending message');
+          LogUtil.Debug('= ws: sendMessage / reconnected successfully, sending pending message');
           // Call the original onOpen handler
           this.onOpen(event);
 
           // Send the pending message
           if (this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(pendingMessage);
-            LogUtil.Info('= ws: sendMessage / pending message sent after reconnection');
+            LogUtil.Debug('= ws: sendMessage / pending message sent after reconnection');
           } else {
             T3Util.Error('= ws: sendMessage / failed to send message after reconnection attempt');
           }
@@ -149,7 +149,7 @@ class WebSocketClient {
       } else {
         // Socket is connecting, wait for it to open
         this.socket.onopen = () => {
-          LogUtil.Info('= ws: sendMessage / connection established, sending pending message');
+          LogUtil.Debug('= ws: sendMessage / connection established, sending pending message');
           this.socket.send(pendingMessage);
         };
       }
@@ -595,12 +595,12 @@ class WebSocketClient {
 
   public HandleGetInitialDataRes(msgData) {
 
-    LogUtil.Info('= ws: HandleGetInitialDataRes / msgData:', msgData);
+    LogUtil.Debug('= ws: HandleGetInitialDataRes / msgData:', msgData);
 
     const isCrtDevice = Hvac.DeviceOpt.isCurrentDeviceMessage(msgData);
 
     if (!isCrtDevice) {
-      LogUtil.Info('= ws: HandleGetInitialDataRes / not current device message, return');
+      LogUtil.Debug('= ws: HandleGetInitialDataRes / not current device message, return');
       return;
     }
 
@@ -613,7 +613,7 @@ class WebSocketClient {
     }
 
     const parsedAppStateData = JSON.parse(appStateData);
-    LogUtil.Info('= ws: HandleGetInitialDataRes / GET_INITIAL_DATA_RES msgData-appState | needRefresh:', parsedAppStateData, this.needRefresh);
+    LogUtil.Debug('= ws: HandleGetInitialDataRes / GET_INITIAL_DATA_RES msgData-appState | needRefresh:', parsedAppStateData, this.needRefresh);
 
     if (!this.needRefresh) return;
 
@@ -892,7 +892,7 @@ class WebSocketClient {
     }
 
     this.reloadInitialDataInterval = null;
-    LogUtil.Info('= Ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
+    LogUtil.Debug('= Ws: clearInitialDataInterval / this.reloadInitialDataInterval ', this.reloadInitialDataInterval);
   }
 }
 

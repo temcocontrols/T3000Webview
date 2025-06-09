@@ -411,7 +411,7 @@ export default defineComponent({
     };
 
     const saveCurrentSelection = () => {
-      LogUtil.Info('= Dvi: saveCurrentSelection / currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
+      LogUtil.Debug('= Dvi: saveCurrentSelection / currentDevice:', [currentDevice.value.device, currentDevice.value.graphic]);
 
       if (currentDevice.value.device === '' || currentDevice.value.graphic === -1) {
         $q.notify({
@@ -428,12 +428,12 @@ export default defineComponent({
 
           Hvac.DeviceOpt.saveCurrentDevice(currentDevice.value);
 
-          LogUtil.Info('= Dvi: saveCurrentSelection / currentDevice saved:', [currentDevice.value.device, currentDevice.value.graphic]);
+          LogUtil.Debug('= Dvi: saveCurrentSelection / currentDevice saved:', [currentDevice.value.device, currentDevice.value.graphic]);
 
           Hvac.DeviceOpt.addPresetsData();
           Hvac.WsClient.GetInitialData(currentDevice.value.deviceId, currentDevice.value.graphic, true);
 
-          LogUtil.Info('= Dvi: saveCurrentSelection / GetInitialData called:', [currentDevice.value.device, currentDevice.value.graphic]);
+          LogUtil.Debug('= Dvi: saveCurrentSelection / GetInitialData called:', [currentDevice.value.device, currentDevice.value.graphic]);
 
           // sync t3 appState data to ls [deviceAppState]
           // Hvac.DeviceOpt.syncTempAppStateToDeviceAppState();

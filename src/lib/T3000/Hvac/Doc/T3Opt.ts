@@ -148,7 +148,7 @@ class T3Opt {
     T3Gv.docUtil.SetZoomLevel(zoomPct);
     T3Gv.docUtil.UpdateRefZoomScale(docSetting?.docInfo?.docScale ?? 1);
 
-    LogUtil.Info(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
+    LogUtil.Debug(`= o.T3Opt: Initialize/ - After initialize all and set SetZoomLevel for resizing the work area:${zoomPct}`);
   }
 
   Reload() {

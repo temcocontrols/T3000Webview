@@ -733,7 +733,7 @@ const zoomChange = (value: number) => {
     return;
   }
 
-  LogUtil.Info(`Zoom changed to: ${value}`);
+  LogUtil.Debug(`Zoom changed to: ${value}`);
   inputValue.value = value;
 
   T3Gv.docUtil.ZoomChange(inputValue.value, 0.01);
@@ -757,7 +757,7 @@ const zoomSpecify = (value: string) => {
     return;
   }
 
-  LogUtil.Info(`Zoom specify to: ${numValue}`);
+  LogUtil.Debug(`Zoom specify to: ${numValue}`);
   inputValue.value = numValue;
 
   T3Gv.docUtil.ZoomSpecify(inputValue.value, false);
@@ -767,14 +767,14 @@ const toggleRulers = () => {
   T3Gv.docUtil.docConfig.showRulers = showRulers.value;
   T3Gv.docUtil.UpdateRulerVisibility();
   DataOpt.SaveToLocalStorage();
-  LogUtil.Info('= v.NewTopBar: toggleRulers / showRulers', T3Gv.docUtil.docConfig.showRulers);
+  LogUtil.Debug('= v.NewTopBar: toggleRulers / showRulers', T3Gv.docUtil.docConfig.showRulers);
 };
 
 const toggleGrid = () => {
   T3Gv.docUtil.docConfig.showGrid = showGrid.value;
   T3Gv.docUtil.UpdateGridVisibility();
   DataOpt.SaveToLocalStorage();
-  LogUtil.Info('= v.NewTopBar: toggleGrid / showGrid', T3Gv.docUtil.docConfig.showGrid);
+  LogUtil.Debug('= v.NewTopBar: toggleGrid / showGrid', T3Gv.docUtil.docConfig.showGrid);
 };
 
 onMounted(() => {
@@ -783,6 +783,6 @@ onMounted(() => {
 
   const docInfo = T3Gv?.docUtil?.svgDoc?.docInfo || {};
   const docConfig = T3Gv?.docUtil?.docConfig || {};
-  LogUtil.Info('= v.NewTopBar: onMounted / docInfo, docConfig, zoomScale', docInfo, docConfig, zoomScale.value);
+  LogUtil.Debug('= v.NewTopBar: onMounted / docInfo, docConfig, zoomScale', docInfo, docConfig, zoomScale.value);
 });
 </script>

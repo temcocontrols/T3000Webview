@@ -407,11 +407,11 @@ class DeviceOpt {
   // reset the ls deviceAppState related value
   refreshDeviceAppState() {
 
-    LogUtil.Info('= Dvopt: refreshDeviceAppState / start to refresh deviceAppState');
+    LogUtil.Debug('= Dvopt: refreshDeviceAppState / start to refresh deviceAppState');
 
     const existAppState = this.loadDeviceAppState(deviceAppState, deviceModel.value.data, null);
 
-    LogUtil.Info('= Dvopt: refreshDeviceAppState / existAppState', existAppState);
+    LogUtil.Debug('= Dvopt: refreshDeviceAppState / existAppState', existAppState);
 
     if (existAppState) {
       // appState.value = cloneDeep(existAppState);
@@ -422,7 +422,7 @@ class DeviceOpt {
       appState.value.rulersGridVisible = rulersGridVisible.value;
     }
 
-    LogUtil.Info('= Dvopt: refreshDeviceAppState / appState.value', appState.value);
+    LogUtil.Debug('= Dvopt: refreshDeviceAppState / appState.value', appState.value);
 
     // save or update the latest appState to local storage
     this.saveAppState(appState.value);
@@ -459,7 +459,7 @@ class DeviceOpt {
     const emptyAppState = cloneDeep(emptyProject);
     localStorage.setItem('tempAppState', JSON.stringify(emptyAppState));
 
-    LogUtil.Info('= Dvopt: addPresetsData / set the tempAppState to empty project', emptyAppState);
+    LogUtil.Debug('= Dvopt: addPresetsData / set the tempAppState to empty project', emptyAppState);
 
     // get the current device info
     const currentDevice = this.getCurrentDevice();
@@ -467,7 +467,7 @@ class DeviceOpt {
     const crtDeviceId = currentDevice?.deviceId ?? -1;
     const crtGraphicId = currentDevice?.graphic ?? -1;
 
-    LogUtil.Info('= Dvopt: addPresetsData / currentDevice', currentDevice);
+    LogUtil.Debug('= Dvopt: addPresetsData / currentDevice', currentDevice);
 
     // reset the element count
     currentDevice.graphicFull.elementCount = 0;
@@ -477,17 +477,17 @@ class DeviceOpt {
     appState.value = cloneDeep(emptyProject);
     rulersGridVisible.value = false;
 
-    LogUtil.Info('= Dvopt: addPresetsData / set the appState value to empty project', appState.value);
+    LogUtil.Debug('= Dvopt: addPresetsData / set the appState value to empty project', appState.value);
 
     // when user changed the device, we should reset the appState value to empty project, the value should be import from T3000 via ws socket.
     this.saveAppState(appState.value);
 
-    LogUtil.Info('= Dvopt: addPresetsData / save the appState value to local storage', appState.value);
+    LogUtil.Debug('= Dvopt: addPresetsData / save the appState value to local storage', appState.value);
 
     // set the ls deviceAppState related value
     const deviceAppStateLS = Hvac.LsOpt.loadDeviceAppStateLS();
 
-    LogUtil.Info('= Dvopt: addPresetsData / load deviceAppStateLS', deviceAppStateLS);
+    LogUtil.Debug('= Dvopt: addPresetsData / load deviceAppStateLS', deviceAppStateLS);
 
     if (!deviceAppStateLS) return;
 
@@ -503,7 +503,7 @@ class DeviceOpt {
 
     localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
 
-    LogUtil.Info('= Dvopt: addPresetsData / save the deviceAppState to local storage', deviceAppStateLS);
+    LogUtil.Debug('= Dvopt: addPresetsData / save the deviceAppState to local storage', deviceAppStateLS);
   }
 
   // Merge the responsed AppState to current AppState
@@ -569,8 +569,8 @@ class DeviceOpt {
     const viewitem = msgData?.viewitem ?? -1;
     const serialNumber = msgData?.serialNumber ?? -1;
 
-    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / msgData', msgData);
-    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / panelId,viewitem,serialNumber', panelId, viewitem, serialNumber);
+    LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / msgData', msgData);
+    LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / panelId,viewitem,serialNumber', panelId, viewitem, serialNumber);
 
     if (!panelId || !viewitem || !serialNumber) {
       LogUtil.Error('= Dvopt: isCurrentDeviceMessage / Invalid message data');
@@ -578,7 +578,7 @@ class DeviceOpt {
     }
 
     const currentDevice = this.getCurrentDevice();
-    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / currentDevice', currentDevice);
+    LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / currentDevice', currentDevice);
 
     if (!currentDevice) {
       LogUtil.Error('= Dvopt: isCurrentDeviceMessage / No current device found');
@@ -593,7 +593,7 @@ class DeviceOpt {
     const crtGraphicId = currentDevice?.graphic ?? -1;
     const crtSerialNumber = currentDevice?.serialNumber ?? -1;
 
-    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / crtPanelId,crtGraphicId,crtSerialNumber', crtPanelId, crtGraphicId, crtSerialNumber);
+    LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / crtPanelId,crtGraphicId,crtSerialNumber', crtPanelId, crtGraphicId, crtSerialNumber);
 
     const isSamePanel = crtPanelId === panelId;
     const isSameSerial = crtSerialNumber === serialNumber;
@@ -601,7 +601,7 @@ class DeviceOpt {
     // viewitem is 0-based index in T3000, so we need to add 1 to match the graphic id
     const isSameViewItem = crtGraphicId === viewitem+1;
 
-    LogUtil.Info('= Dvopt: isCurrentDeviceMessage / isSamePanel', isSamePanel, 'isSameSerial', isSameSerial, 'isSameViewItem', isSameViewItem);
+    LogUtil.Debug('= Dvopt: isCurrentDeviceMessage / isSamePanel', isSamePanel, 'isSameSerial', isSameSerial, 'isSameViewItem', isSameViewItem);
     return isSamePanel && isSameSerial && isSameViewItem;
   }
 }

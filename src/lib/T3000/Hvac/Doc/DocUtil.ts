@@ -127,7 +127,7 @@ class DocUtil {
    * @returns void
    */
   InitDocConfig(): void {
-    LogUtil.Info("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
+    LogUtil.Debug("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
 
     // Create new document configuration
     this.docConfig = new DocConfig();
@@ -1660,7 +1660,7 @@ class DocUtil {
    * @returns void
    */
   UpdatePageDivider(): void {
-    LogUtil.Info("= u.DocUtil: UpdatePageDivider - T3Gv.docUtil", T3Gv);
+    LogUtil.Debug("= u.DocUtil: UpdatePageDivider - T3Gv.docUtil", T3Gv);
 
     const showPageDivider = T3Gv.docUtil.docConfig.showPageDivider;
 
@@ -2351,7 +2351,7 @@ class DocUtil {
     // Update ref value zoom scale
     T3Gv.docUtil.UpdateRefZoomScale(Number(zoomScale.toFixed(2)));
 
-    LogUtil.Info("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(zoomScale.toFixed(2)));
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(zoomScale.toFixed(2)));
   }
 
   /**
@@ -2426,7 +2426,7 @@ class DocUtil {
     // Update ref value zoom scale
     T3Gv.docUtil.UpdateRefZoomScale(Number(newZoomFactor.toFixed(2)));
 
-    LogUtil.Info("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(newZoomFactor.toFixed(2)));
+    LogUtil.Debug("= u.DocUtil: ZoomInAndOut/ - New zoom factor set:", Number(newZoomFactor.toFixed(2)));
   }
 
   /**
