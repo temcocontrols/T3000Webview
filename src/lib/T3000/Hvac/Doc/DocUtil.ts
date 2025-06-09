@@ -2511,6 +2511,24 @@ class DocUtil {
   UpdateRefZoomScale(scale: number) {
     zoomScale.value = scale;
   }
+
+  LoadRulersSetting() {
+    const docSetting = DataOpt.LoadDocSettingData();
+    const showRulers = docSetting.docConfig.showRulers;
+    this.docConfig.showRulers = showRulers;
+    // DataOpt.SaveToLocalStorage();
+    this.UpdateRulerVisibility();
+    LogUtil.Debug("= U.DocUtil: LoadRulersSetting - Output:", { showRulers });
+  }
+
+  LoadGridSetting() {
+    const docSetting = DataOpt.LoadDocSettingData();
+    const showGrid = docSetting.docConfig.showGrid;
+    this.docConfig.showGrid = showGrid;
+    // DataOpt.SaveToLocalStorage();
+    this.UpdateGridVisibility();
+    LogUtil.Debug("= U.DocUtil: LoadGridSetting - Output:", { showGrid });
+  }
 }
 
 export default DocUtil

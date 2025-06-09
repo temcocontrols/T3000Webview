@@ -65,6 +65,8 @@ export const clipboardFull = ref<boolean>(false); // State of the clipboard
 
 export const zoomScale = ref<number>(1); // Current zoom scale
 export const zoomStep = ref<number>(0.25); // Zoom step value
+export const showRulers = ref<boolean>(false); // Show rulers on the canvas
+export const showGrid = ref<boolean>(false); // Show grid on the canvas
 
 
 

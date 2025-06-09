@@ -138,6 +138,10 @@ class T3Opt {
     // Test for SDData object
     LogUtil.Debug("= o.T3Opt: Initialize/ - After initialize all and the T3Gv.stdObj loaded from storage data:", T3Gv.opt.sdDataBlockId, T3Gv.stdObj);
 
+    // Load rulers and grid settings from local storage
+    T3Gv.docUtil.LoadRulersSetting();
+    T3Gv.docUtil.LoadGridSetting();
+
     // Set the document scale (0.25 to 4)
     const docSetting = DataOpt.LoadDocSettingData();
     const zoomPct = (docSetting?.docInfo?.docScale ?? 1) * 100;

@@ -553,7 +553,7 @@
               </a-col>
               <a-col style="max-width: 166px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
-                  <a-checkbox v-model:checked="rulersVisible" style="color: white; font-size: 12px; margin-bottom: 2px;"
+                  <a-checkbox v-model:checked="showRulers" style="color: white; font-size: 12px; margin-bottom: 2px;"
                     @change="toggleRulers">
                     Rulers
                     <q-tooltip>Toggle rulers visibility</q-tooltip>
@@ -566,7 +566,7 @@
                     Reset Zoom
                     <q-tooltip>Reset view to default</q-tooltip>
                   </a-button>
-                  <a-checkbox v-model:checked="gridVisible" style="color: white; font-size: 12px; margin-bottom: 2px;"
+                  <a-checkbox v-model:checked="showGrid" style="color: white; font-size: 12px; margin-bottom: 2px;"
                     @change="toggleGrid">
                     Grid
                     <q-tooltip>Toggle grid visibility</q-tooltip>
@@ -632,7 +632,8 @@ import {
   ZoomInOutlined
 } from '@ant-design/icons-vue';
 import T3Gv from 'src/lib/T3000/Hvac/Data/T3Gv';
-import { zoomScale } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import { zoomScale, showRulers, showGrid } from 'src/lib/T3000/Hvac/Data/Constant/RefConstant';
+import DataOpt from 'src/lib/T3000/Hvac/Opt/Data/DataOpt';
 
 // Define props using defineProps with TypeScript interface
 const props = defineProps<{
@@ -661,7 +662,7 @@ const currentDevice = ref(null);
 const deviceTabTitle = ref('Device (-)');
 const router = useRouter();
 const $q = useQuasar();
-const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
+// const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
 
 const inputValue = zoomScale;
 
@@ -680,9 +681,9 @@ function logout() {
   localStorage.removeItem("user");
 }
 
-watch(() => props.rulersGridVisible, (newVal) => {
-  showRulersGrid.value = newVal ? "Enable" : "Disable";
-})
+// watch(() => props.rulersGridVisible, (newVal) => {
+//   showRulersGrid.value = newVal ? "Enable" : "Disable";
+// })
 
 const navGoBack = () => {
   emit('navGoBack');
@@ -702,7 +703,6 @@ const onClick: MenuProps['onClick'] = ({ key }) => {
 };
 
 const zoomChange = (value: number) => {
-
   // Round the value to two decimal places
   value = Number(value.toFixed(2));
 
@@ -741,16 +741,18 @@ const zoomSpecify = (value: string) => {
   T3Gv.docUtil.ZoomSpecify(inputValue.value, false);
 }
 
-const rulersVisible = ref(false);
 const toggleRulers = () => {
-  rulersVisible.value = !rulersVisible.value;
-  T3Gv.docUtil.ToggleRulers(rulersVisible.value);
+  T3Gv.docUtil.docConfig.showRulers = showRulers.value;
+  T3Gv.docUtil.UpdateRulerVisibility();
+  DataOpt.SaveToLocalStorage();
+  LogUtil.Info('= v.NewTopBar: toggleRulers / showRulers', T3Gv.docUtil.docConfig.showRulers);
 };
 
-const gridVisible = ref(false);
 const toggleGrid = () => {
-  gridVisible.value = !gridVisible.value;
-  T3Gv.docUtil.ToggleGrid(gridVisible.value);
+  T3Gv.docUtil.docConfig.showGrid = showGrid.value;
+  T3Gv.docUtil.UpdateGridVisibility();
+  DataOpt.SaveToLocalStorage();
+  LogUtil.Info('= v.NewTopBar: toggleGrid / showGrid', T3Gv.docUtil.docConfig.showGrid);
 };
 
 onMounted(() => {
