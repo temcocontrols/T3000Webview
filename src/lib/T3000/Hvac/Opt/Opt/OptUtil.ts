@@ -54,6 +54,7 @@ import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
 import ToolAct2Util from './ToolAct2Util';
 import ShapeUtil from '../Shape/ShapeUtil';
+import DataOpt from '../Data/DataOpt';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -7274,14 +7275,14 @@ class OptUtil {
   }
 
   LoadLibrary() {
-    LogUtil.Debug("= O.OptUtil  LoadLibrary - Input: No parameters");
+    LogUtil.Info("= O.OptUtil  LoadLibrary - Input: No parameters");
 
     try {
       // Retrieve stored library items from local storage
       const serializedItems = localStorage.getItem('t3.library');
 
       if (!serializedItems) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - No library items found in storage");
+        LogUtil.Info("= O.OptUtil  LoadLibrary - No library items found in storage");
         return false;
       }
 
@@ -7289,11 +7290,11 @@ class OptUtil {
       const libraryItems = JSON.parse(serializedItems);
 
       if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
-        LogUtil.Debug("= O.OptUtil  LoadLibrary - Invalid or empty library data");
+        LogUtil.Info("= O.OptUtil  LoadLibrary - Invalid or empty library data");
         return false;
       }
 
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
+      LogUtil.Info("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
 
       // Clear any current selection
       this.CloseEdit(true);
@@ -7317,6 +7318,8 @@ class OptUtil {
 
         // Create a new object based on stored data
         try {
+          const planData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
+
           const originalObject = libraryItem.Data;
 
           // Clone the object data but create a proper instance based on type
@@ -7367,7 +7370,7 @@ class OptUtil {
             }
           }
         } catch (objError) {
-          LogUtil.Debug("= O.OptUtil  LoadLibrary - Error creating object:", objError);
+          LogUtil.Info("= O.OptUtil  LoadLibrary - Error creating object:", objError);
         }
       }
 
@@ -7378,10 +7381,10 @@ class OptUtil {
         DrawUtil.CompleteOperation(newObjectIds);
       }
 
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+      LogUtil.Info("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
       return true;
     } catch (error) {
-      LogUtil.Debug("= O.OptUtil  LoadLibrary - Error:", error);
+      LogUtil.Info("= O.OptUtil  LoadLibrary - Error:", error);
       return false;
     }
   }
@@ -8033,7 +8036,7 @@ class OptUtil {
 
     // Proceed only if it's a native group with valid symbol ID
     if (nativeGroupObject.NativeID >= 0 &&
-        (symbolObject = ObjectUtil.GetObjectPtr(nativeGroupObject.NativeID, false))) {
+      (symbolObject = ObjectUtil.GetObjectPtr(nativeGroupObject.NativeID, false))) {
 
       // Extract shapes from the symbol
       ShapeUtil.ReadSymbolFromBuffer(
@@ -8064,8 +8067,8 @@ class OptUtil {
 
         // If scaling is approximately 1:1 or we have only one shape, just offset shapes
         if ((Utils2.IsEqual(100 * scaleFactorX, 100) &&
-             Utils2.IsEqual(100 * scaleFactorY, 100)) ||
-            !(shapeCount > 1)) {
+          Utils2.IsEqual(100 * scaleFactorY, 100)) ||
+          !(shapeCount > 1)) {
 
           for (shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++) {
             nativeGroupId = ungroupData.selectedList[shapeIndex];
