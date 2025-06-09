@@ -187,7 +187,8 @@ class KeyboardOpt {
     let index = 0;
     let toolUtil = new ToolUtil();
     let kybUtil = new KeyboardUtil();
-    let docUtil = new DocUtil();
+    // let docUtil = new DocUtil();
+    let docUtil = T3Gv.docUtil;
     let arrowKeyOpt = new ArrowKeyOpt();
 
     // Check if arrows are used and shape insert should be disabled

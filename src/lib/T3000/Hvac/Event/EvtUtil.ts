@@ -158,7 +158,8 @@ class EvtUtil {
   static Evt_WorkAreaMouseWheel(event) {
     LogUtil.Debug("E.Evt WorkAreaMouseWheel input:", event);
 
-    let docUtil = new DocUtil();
+    // let docUtil = new DocUtil();
+    let docUtil = T3Gv.docUtil;
 
     if (event.ctrlKey) {
       // Get current cursor position

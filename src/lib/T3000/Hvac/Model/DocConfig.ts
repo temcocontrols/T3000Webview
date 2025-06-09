@@ -60,7 +60,7 @@ class DocConfig {
   public zoom: boolean = true;
   public zoomLevels: any = 1;
   public scale: boolean = true;
-  public showPageDivider: boolean = true;
+  public showPageDivider: boolean = false;
   public spellCheck: boolean = true;
   public spellDict: boolean = true;
   public spellFlags: boolean = true;

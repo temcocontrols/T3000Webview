@@ -126,15 +126,15 @@ class DocUtil {
    * @returns void
    */
   InitDocConfig(): void {
-    LogUtil.Debug("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
+    LogUtil.Info("= U.DocUtil: InitDocConfig - Input: Initializing document configuration");
 
     // Create new document configuration
     this.docConfig = new DocConfig();
 
     // UI display settings
-    this.docConfig.showRulers = true;
-    this.docConfig.showGrid = true;
-    this.docConfig.showPageDivider = true;
+    this.docConfig.showRulers = false;
+    this.docConfig.showGrid = false;
+    this.docConfig.showPageDivider = false;
 
     // Snap settings
     this.docConfig.enableSnap = true;
@@ -147,9 +147,9 @@ class DocUtil {
     this.docConfig.scale = true;
 
     // Spell check settings
-    this.docConfig.spellCheck = true;
-    this.docConfig.spellDict = true;
-    this.docConfig.spellFlags = true;
+    this.docConfig.spellCheck = false;
+    this.docConfig.spellDict = false;
+    this.docConfig.spellFlags = false;
 
     LogUtil.Debug("= U.DocUtil: InitDocConfig - Output:", this.docConfig);
   }
@@ -211,7 +211,6 @@ class DocUtil {
 
     // Initialize UI components visibility and content
     this.UpdateGridVisibility();
-    // this.UpdatePageDividerVisibility();
     this.SetUpRulers();
     this.UpdateGrid();
     this.UpdatePageDivider();
@@ -1660,7 +1659,13 @@ class DocUtil {
    * @returns void
    */
   UpdatePageDivider(): void {
-    LogUtil.Debug("= U.DocUtil: UpdatePageDivider - Input: Updating page dividers");
+    LogUtil.Info("= u.DocUtil: UpdatePageDivider - T3Gv.docUtil", T3Gv);
+
+    const showPageDivider = T3Gv.docUtil.docConfig.showPageDivider;
+
+    if (!showPageDivider) {
+      return;
+    }
 
     // Retrieve current work area and page divider layer
     const workArea = this.svgDoc.GetWorkArea();

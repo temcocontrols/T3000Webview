@@ -553,7 +553,8 @@
               </a-col>
               <a-col style="max-width: 166px;">
                 <a-flex wrap="wrap" style="height: 50px;padding-top: 5px;">
-                  <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
+                  <a-checkbox v-model:checked="rulersVisible" style="color: white; font-size: 12px; margin-bottom: 2px;"
+                    @change="toggleRulers">
                     Rulers
                     <q-tooltip>Toggle rulers visibility</q-tooltip>
                   </a-checkbox>
@@ -565,7 +566,8 @@
                     Reset Zoom
                     <q-tooltip>Reset view to default</q-tooltip>
                   </a-button>
-                  <a-checkbox style="color: white; font-size: 12px; margin-bottom: 2px;">
+                  <a-checkbox v-model:checked="gridVisible" style="color: white; font-size: 12px; margin-bottom: 2px;"
+                    @change="toggleGrid">
                     Grid
                     <q-tooltip>Toggle grid visibility</q-tooltip>
                   </a-checkbox>
@@ -738,6 +740,18 @@ const zoomSpecify = (value: string) => {
 
   T3Gv.docUtil.ZoomSpecify(inputValue.value, false);
 }
+
+const rulersVisible = ref(false);
+const toggleRulers = () => {
+  rulersVisible.value = !rulersVisible.value;
+  T3Gv.docUtil.ToggleRulers(rulersVisible.value);
+};
+
+const gridVisible = ref(false);
+const toggleGrid = () => {
+  gridVisible.value = !gridVisible.value;
+  T3Gv.docUtil.ToggleGrid(gridVisible.value);
+};
 
 onMounted(() => {
   currentDevice.value = props.deviceModel;

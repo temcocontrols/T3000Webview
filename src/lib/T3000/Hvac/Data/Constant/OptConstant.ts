@@ -768,7 +768,7 @@ class OptConstant {
     SnapToGridTL: 262144,        // Snap to grid top-left
     SnapToGridC: 524288,         // Snap to grid center
     SnapToShapesOff: 1048576,    // Turn off snap to shapes
-    ShowPageDividers: 2097152,  // Show page dividers
+    ShowPageDividers: 2097152,   // Show page dividers
     AutoGrowTopLeft: 4194304,
   }
 

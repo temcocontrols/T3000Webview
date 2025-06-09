@@ -6,7 +6,6 @@ import OptUtil from "../Opt/Opt/OptUtil";
 import WallOpt from "../Opt/Wall/WallOpt";
 import DataStore from "./State/DataStore";
 import StateOpt from "./State/StateOpt";
-import { IOptAction } from "./T3Type";
 
 class T3Gv {
 
