@@ -22,6 +22,7 @@ import DataOpt from '../Opt/Data/DataOpt'
 import LogUtil from '../Util/LogUtil'
 import HvConstant from '../Data/Constant/HvConstant'
 import { zoomScale } from '../Data/Constant/RefConstant'
+import RefUtil from '../Opt/Tool/RefUtil'
 
 /**
  * Represents a utility class for managing and configuring an SVG-based document.
@@ -2516,7 +2517,7 @@ class DocUtil {
     const docSetting = DataOpt.LoadDocSettingData();
     const showRulers = docSetting.docConfig.showRulers;
     this.docConfig.showRulers = showRulers;
-    // DataOpt.SaveToLocalStorage();
+    RefUtil.SetShowRulers(showRulers);
     this.UpdateRulerVisibility();
     LogUtil.Debug("= U.DocUtil: LoadRulersSetting - Output:", { showRulers });
   }
@@ -2525,7 +2526,7 @@ class DocUtil {
     const docSetting = DataOpt.LoadDocSettingData();
     const showGrid = docSetting.docConfig.showGrid;
     this.docConfig.showGrid = showGrid;
-    // DataOpt.SaveToLocalStorage();
+    RefUtil.SetShowGrid(showGrid);
     this.UpdateGridVisibility();
     LogUtil.Debug("= U.DocUtil: LoadGridSetting - Output:", { showGrid });
   }
