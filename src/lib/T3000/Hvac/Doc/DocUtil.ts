@@ -2515,7 +2515,7 @@ class DocUtil {
 
   LoadRulersSetting() {
     const docSetting = DataOpt.LoadDocSettingData();
-    const showRulers = docSetting.docConfig.showRulers;
+    const showRulers = docSetting?.docConfig?.showRulers ?? true;
     this.docConfig.showRulers = showRulers;
     RefUtil.SetShowRulers(showRulers);
     this.UpdateRulerVisibility();
@@ -2524,7 +2524,7 @@ class DocUtil {
 
   LoadGridSetting() {
     const docSetting = DataOpt.LoadDocSettingData();
-    const showGrid = docSetting.docConfig.showGrid;
+    const showGrid = docSetting?.docConfig?.showGrid ?? true;
     this.docConfig.showGrid = showGrid;
     RefUtil.SetShowGrid(showGrid);
     this.UpdateGridVisibility();

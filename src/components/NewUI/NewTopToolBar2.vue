@@ -461,7 +461,7 @@
               <a-col class="d-flex justify-center" style="max-width: 1%;">
                 <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
               </a-col>
-              <a-col style="max-width: 192px;">
+              <a-col style="max-width: 193px;">
                 <a-flex wrap="wrap">
                   <a-button type="text" size="small" id="btn_try_Group" class="tool-bar-button" style="color: white;">
                     <template #icon>
@@ -471,7 +471,7 @@
                     <q-tooltip>Group selected shape(s)</q-tooltip>
                   </a-button>
                   <a-button type="text" size="small" id="btn_try_BringToFront" class="tool-bar-button"
-                    style="color: white;margin-left: 13px;">
+                    style="color: white; margin-left: 13px;">
                     <template #icon>
                       <VerticalAlignTopOutlined class="tool-bar-icon-prefix" />
                     </template>
@@ -492,6 +492,28 @@
                     </template>
                     Send to Back
                     <q-tooltip>Send to back</q-tooltip>
+                  </a-button>
+                </a-flex>
+              </a-col>
+              <a-col class="d-flex justify-center" style="max-width: 1%;">
+                <a-divider type="vertical" style="border-color: #FFFFFF;height: 30px;margin-top: 10px;" />
+              </a-col>
+              <a-col style="max-width: 108px;">
+                <a-flex wrap="wrap">
+                  <a-button type="text" size="small" id="btn_try_Add_To_Library" class="tool-bar-button"
+                    style="color: white;">
+                    <template #icon>
+                      <FileAddOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Add to Library
+                    <q-tooltip>Add selected shape(s) to library</q-tooltip>
+                  </a-button>
+                  <a-button type="text" size="small" id="btn_try_Load_Library" class="tool-bar-button" style="color: white;">
+                    <template #icon>
+                      <CopyOutlined class="tool-bar-icon-prefix" />
+                    </template>
+                    Load library
+                    <q-tooltip>Load library</q-tooltip>
                   </a-button>
                 </a-flex>
               </a-col>
