@@ -227,15 +227,15 @@ class SvgUtil {
   }
 
   static AddSVGObject(containerElement, objectId, removeExisting, renderCallback) {
-    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Input:", { containerElement, objectId, removeExisting, renderCallback });
+    LogUtil.Info("= U.SvgUtil: AddSVGObject - Input:", { containerElement, objectId, removeExisting, renderCallback });
 
     let svgDocument = T3Gv.opt.svgDoc;
     let drawingObject = T3Gv.stdObj.GetObject(objectId);
 
-    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Drawing object:", drawingObject);
+    LogUtil.Info("= U.SvgUtil: AddSVGObject - Drawing object:", drawingObject);
 
     if (!drawingObject) {
-      LogUtil.Debug("= U.SvgUtil: AddSVGObject - Output: No drawing object found.");
+      LogUtil.Info("= U.SvgUtil: AddSVGObject - Output: No drawing object found.");
       return;
     }
 
@@ -270,7 +270,7 @@ class SvgUtil {
           drawingData.Frame.y + drawingData.Frame.height / 2
         );
       } catch (error) {
-        LogUtil.Debug("= U.SvgUtil: AddSVGObject - SetRotation error:", error);
+        LogUtil.Info("= U.SvgUtil: AddSVGObject - SetRotation error:", error);
         throw error;
       }
 
@@ -311,7 +311,7 @@ class SvgUtil {
       }
     }
 
-    LogUtil.Debug("= U.SvgUtil: AddSVGObject - Output: Completed adding SVG object for objectId", objectId);
+    LogUtil.Info("= U.SvgUtil: AddSVGObject - Output: Completed adding SVG object for objectId", objectId);
   }
 
   /**

@@ -7318,9 +7318,9 @@ class OptUtil {
 
         // Create a new object based on stored data
         try {
-          const planData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
+          const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
 
-          const originalObject = libraryItem.Data;
+          const originalObject = shapeData;
 
           // Clone the object data but create a proper instance based on type
           let newObject;
