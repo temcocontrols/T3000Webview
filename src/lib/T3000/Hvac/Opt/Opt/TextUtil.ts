@@ -543,7 +543,8 @@ class TextUtil {
           } else {
             // Variables for positioning and sizing
             let centerX, centerY, growResult, targetShape;
-            let originalFrame = $.extend(true, {}, shape.Frame);
+            // let originalFrame = $.extend(true, {}, shape.Frame);
+            let originalFrame = Utils1.DeepCopy(shape.Frame);
             let newFrame = null;
 
             // Check if shape is in a group
@@ -560,7 +561,8 @@ class TextUtil {
                 if (!Utils2.IsEqual(minTextWidth, textRect.width) ||
                   !Utils2.IsEqual(minTextHeight, textRect.height)) {
 
-                  newFrame = $.extend(true, {}, shape.Frame);
+                  // newFrame = $.extend(true, {}, shape.Frame);
+                  newFrame = Utils1.DeepCopy(shape.Frame);
 
                   // Standard text growth
                   shape.TRectToFrame(minTextRect, false);

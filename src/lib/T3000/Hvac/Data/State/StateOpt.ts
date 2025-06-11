@@ -391,7 +391,8 @@ class StateOpt extends BaseStateOpt {
 
     for (let index = 0; index < totalObjects; index++) {
       if (currentState.storedObjects[index].ID === objectId) {
-        $.extend(currentState.storedObjects[index].Data, updatedObject.Data, true);
+        // $.extend(currentState.storedObjects[index].Data, updatedObject.Data, true);
+         currentState.storedObjects[index].Data = Utils1.DeepCopy(updatedObject.Data);
         break;
       }
     }

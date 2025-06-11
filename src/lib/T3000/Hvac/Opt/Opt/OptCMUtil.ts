@@ -20,6 +20,7 @@ import DSUtil from '../DS/DSUtil';
 import Instance from '../../Data/Instance/Instance';
 import LogUtil from '../../Util/LogUtil';
 import LayerUtil from './LayerUtil';
+import Utils1 from '../../Util/Utils1';
 
 class OptCMUtil {
 
@@ -463,7 +464,8 @@ class OptCMUtil {
     if (existingShape) {
       shapeObject = existingShape;
       dataPreserved = true;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     } else {
       shapeObject = ObjectUtil.GetObjectPtr(shapeId, false);
 
@@ -481,7 +483,8 @@ class OptCMUtil {
       }
 
       shapeObject = preservedBlock.Data;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     }
 
     if (dataPreserved) {
@@ -493,7 +496,8 @@ class OptCMUtil {
 
       if (!Utils2.IsEqual(shapeObject.polylist.dim.x, originalFrame.width)) {
         const tempObject = Utils2.DeepCopy(shapeObject);
-        tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        // tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        tempObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
         Instance.Shape.PolyLine.prototype.ScaleObject.call(
           tempObject,
@@ -542,7 +546,8 @@ class OptCMUtil {
       SelectUtil.SelectObjects(selectedObjects, false, true);
     }
 
-    polylineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    // polylineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    polylineObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
     return polylineObject;
   }

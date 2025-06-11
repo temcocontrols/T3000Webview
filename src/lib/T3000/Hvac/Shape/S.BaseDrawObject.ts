@@ -454,7 +454,8 @@ class BaseDrawObject {
     LogUtil.Debug("= S.BaseDrawObject: CreateDimensionAdjustmentKnobs input:", container, triggerElement, knobParams);
 
     // Create a deep copy of the knob parameters and calculate half knob size
-    let baseParams: any = $.extend(true, {}, knobParams);
+    // let baseParams: any = $.extend(true, {}, knobParams);
+    let baseParams: any = Utils1.DeepCopy(knobParams);
     const knobSizeHalf = baseParams.knobSize / 2;
 
     // Set additional parameters for the knob

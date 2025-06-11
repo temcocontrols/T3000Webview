@@ -1340,7 +1340,8 @@ class SelectUtil {
         // Handle auto-insert for lines
         if (isAttachMode && T3Gv.opt.linkParams.AutoInsert) {
           T3Gv.opt.linkParams.AutoPoints = [];
-          let frameRect = $.extend(true, {}, drawingObject.Frame);
+          // let frameRect = $.extend(true, {}, drawingObject.Frame);
+          let frameRect = Utils1.DeepCopy(drawingObject.Frame);
 
           // Adjust frame for rotation
           const rotationQuadrant = Math.floor((drawingObject.RotationAngle + 45) / 90);

@@ -361,7 +361,8 @@ class ToolActUtil {
     }
     // Get target object's frame (deep-copy using jQuery.extend)
     const targetObject = ObjectUtil.GetObjectPtr(targetObjectId, false);
-    const targetFrame = $.extend(true, {}, targetObject.Frame);
+    // const targetFrame = $.extend(true, {}, targetObject.Frame);
+    const targetFrame = Utils1.DeepCopy(targetObject.Frame);
     const targetHeight = targetFrame.height;
     const targetWidth = targetFrame.width;
 

@@ -5285,7 +5285,8 @@ class OptUtil {
         // Only include visible, non-title block objects
         if (currentObject && (currentObject.flags & FLAG_NOT_VISIBLE) === 0 && !isTitleBlock) {
           // Create a deep copy of the object's rectangle
-          objectRect = $.extend(true, {}, currentObject.r);
+          // objectRect = $.extend(true, {}, currentObject.r);
+          objectRect = Utils1.DeepCopy(currentObject.r);
 
           // Initialize union rectangle with first object
           if (unionRect === undefined) {
@@ -5551,7 +5552,8 @@ class OptUtil {
     // Handle snap-to-shapes if enabled
     if (!isSnapDisabled && DrawUtil.AllowSnapToShapes()) {
       objectRect = targetObject.GetSnapRect();
-      targetRect = $.extend(true, {}, objectRect);
+      // targetRect = $.extend(true, {}, objectRect);
+      targetRect = Utils1.DeepCopy(objectRect);
       targetRect.x += T3Gv.opt.dragDeltaX;
       targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5561,7 +5563,8 @@ class OptUtil {
       if (snapTargetId >= 0) {
         // Get snap target rectangle
         objectRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
-        adjustedTargetRect = $.extend(true, {}, objectRect);
+        // adjustedTargetRect = $.extend(true, {}, objectRect);
+        adjustedTargetRect = Utils1.DeepCopy(objectRect);
         adjustedTargetRect.x += T3Gv.opt.dragDeltaX;
         adjustedTargetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5596,7 +5599,8 @@ class OptUtil {
     // Handle grid snapping if enabled
     if (T3Gv.docUtil.docConfig.enableSnap && !isSnapDisabled) {
       objectRect = targetObject.GetSnapRect();
-      targetRect = $.extend(true, {}, objectRect);
+      // targetRect = $.extend(true, {}, objectRect);
+      targetRect = Utils1.DeepCopy(objectRect);
       targetRect.x += T3Gv.opt.dragDeltaX;
       targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -5636,7 +5640,8 @@ class OptUtil {
       }
       // Use regular rect snapping
       else {
-        targetRect = $.extend(true, {}, objectRect);
+        // targetRect = $.extend(true, {}, objectRect);
+        targetRect = Utils1.DeepCopy(objectRect);
         targetRect.x += T3Gv.opt.dragDeltaX;
         targetRect.y += T3Gv.opt.dragDeltaY;
 
@@ -6533,7 +6538,8 @@ class OptUtil {
     if (existingObject) {
       shapeObject = existingObject;
       hasPolyList = true;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     } else {
       shapeObject = ObjectUtil.GetObjectPtr(objectId, false);
 
@@ -6551,7 +6557,8 @@ class OptUtil {
       if (objectBlock == null) return;
 
       shapeObject = objectBlock.Data;
-      originalFrame = $.extend(true, {}, shapeObject.Frame);
+      // originalFrame = $.extend(true, {}, shapeObject.Frame);
+      originalFrame = Utils1.DeepCopy(shapeObject.Frame);
     }
 
     // Handle existing polylist
@@ -6562,7 +6569,8 @@ class OptUtil {
       T3Gv.opt.GetClosedPolyDim(shapeObject);
       if (!Utils2.IsEqual(shapeObject.polylist.dim.x, originalFrame.width)) {
         const tempObject = Utils1.DeepCopy(shapeObject);
-        tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        // tempObject.inside = $.extend(true, {}, shapeObject.Frame);
+        tempObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
         // Scale the object
         Instance.Shape.PolyLine.prototype.ScaleObject.call(
@@ -6610,7 +6618,8 @@ class OptUtil {
     }
 
     // Set inside property before returning
-    polyLineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    // polyLineObject.inside = $.extend(true, {}, shapeObject.Frame);
+    polyLineObject.inside = Utils1.DeepCopy(shapeObject.Frame);
 
     return polyLineObject;
   }
@@ -6633,7 +6642,8 @@ class OptUtil {
       const polyLine = new Instance.Shape.PolyLine(tempShape);
 
       // Initialize dimensions
-      polyLine.inside = $.extend(true, {}, shapeObject.Frame);
+      // polyLine.inside = $.extend(true, {}, shapeObject.Frame);
+      polyLine.inside = Utils1.DeepCopy(shapeObject.Frame);
       polyLine.polylist.dim.x = 0;
       polyLine.polylist.dim.y = 0;
 
@@ -7274,7 +7284,136 @@ class OptUtil {
     return libraryItems;
   }
 
+  /**
+   * Loads objects from the library stored in local storage and renders them to the document
+   * This function retrieves serialized objects from local storage, recreates them in the document,
+   * and positions them appropriately in the current view.
+   *
+   * @returns Boolean indicating whether library objects were successfully loaded
+   */
   LoadLibrary() {
+    LogUtil.Debug("= O.OptUtil  LoadLibrary - Input: No parameters");
+
+    try {
+      // Retrieve stored library items from local storage
+      const serializedItems = localStorage.getItem('t3.library');
+
+      if (!serializedItems) {
+        LogUtil.Debug("= O.OptUtil  LoadLibrary - No library items found in storage");
+        return false;
+      }
+
+      // Parse the JSON string back to objects
+      const libraryItems = JSON.parse(serializedItems);
+
+      if (!Array.isArray(libraryItems) || libraryItems.length === 0) {
+        LogUtil.Debug("= O.OptUtil  LoadLibrary - Invalid or empty library data");
+        return false;
+      }
+
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Loaded items:", libraryItems.length);
+
+      // Clear any current selection
+      this.CloseEdit(true);
+
+      // Calculate position for placing the shapes
+      const centerPosition = this.CalcWorkAreaCenterUL(500, 500);
+      let offsetX = 0;
+      let offsetY = 0;
+      const padding = 20; // Space between objects
+
+      // Track newly created objects for selection
+      const newObjectIds = [];
+
+      // Process each library item
+      for (let i = 0; i < libraryItems.length; i++) {
+        const libraryItem = libraryItems[i];
+
+        if (!libraryItem.Data) {
+          continue;
+        }
+
+        // Create a new object based on stored data
+        try {
+          const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
+
+          const originalObject = shapeData;
+
+          LogUtil.Info("= O.OptUtil  LoadLibrary - Original object data:", originalObject);
+
+          // Clone the object data but create a proper instance based on type
+          let newObject;
+
+          // Determine the object type and create appropriate instance
+          switch (originalObject.objecttype) {
+            case PolygonConstant.ShapeTypes.RECTANGLE:
+              newObject = new Instance.Shape.Rect(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.OVAL:
+              newObject = new Instance.Shape.Oval(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.LINE:
+              newObject = new Instance.Shape.BaseLine(originalObject);
+              break;
+            case PolygonConstant.ShapeTypes.POLYGON:
+              newObject = new Instance.Shape.PolyLine(originalObject);
+              break;
+            // Add additional types as needed
+            default:
+              // Default to base shape for unknown types
+              newObject = new Instance.Shape.BaseDrawObject(originalObject);
+          }
+
+          if (newObject) {
+            // Position the object relative to center position with offset
+            newObject.SetShapeOrigin(
+              centerPosition.x + offsetX,
+              centerPosition.y + offsetY,
+              null,
+              false
+            );
+
+            LogUtil.Debug("= O.OptUtil  LoadLibrary - Creating object:", newObject);
+
+            // Add the new object to document
+            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
+            if (newObjectId >= 0) {
+              newObjectIds.push(newObjectId);
+
+              // Draw the shape using SvgUtil.AddSVGObject as requested
+              SvgUtil.AddSVGObject(i, newObjectId, false, true);
+
+              // Update offset for next object
+              offsetX += newObject.Frame.width + padding;
+
+              // Wrap to next row if needed
+              if (offsetX > 800) {
+                offsetX = 0;
+                offsetY += 200 + padding;
+              }
+            }
+          }
+        } catch (objError) {
+          LogUtil.Debug("= O.OptUtil  LoadLibrary - Error creating object:", objError);
+        }
+      }
+
+      // Select all newly created objects
+      if (newObjectIds.length > 0) {
+        this.SelectObjects(newObjectIds, false, true);
+        SvgUtil.RenderAllSVGObjects();
+        DrawUtil.CompleteOperation(newObjectIds);
+      }
+
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+      return true;
+    } catch (error) {
+      LogUtil.Debug("= O.OptUtil  LoadLibrary - Error:", error);
+      return false;
+    }
+  }
+
+  LoadLibraryB() {
     LogUtil.Info("= O.OptUtil  LoadLibrary - Input: No parameters");
 
     try {
@@ -7353,6 +7492,8 @@ class OptUtil {
               null,
               false
             );
+
+            LogUtil.Info("= O.OptUtil  LoadLibrary - Creating object:", newObject);
 
             // Add the new object to document
             const newObjectId = DrawUtil.AddNewObject(newObject, false, true);

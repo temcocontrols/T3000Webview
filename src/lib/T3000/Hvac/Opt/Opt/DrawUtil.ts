@@ -616,7 +616,8 @@ class DrawUtil {
             // Set up snap target if enabled
             if (T3Gv.docUtil.docConfig.enableSnap &&
               moveObjectID === T3Gv.opt.actionStoredObjectId) {
-              T3Gv.opt.dragTargetBBox = $.extend(true, {}, svgFrame);
+              // T3Gv.opt.dragTargetBBox = $.extend(true, {}, svgFrame);
+              T3Gv.opt.dragTargetBBox = Utils1.DeepCopy(svgFrame);
             }
 
             // Calculate enclosing rectangle
@@ -798,7 +799,8 @@ class DrawUtil {
         const targetRect = ObjectUtil.GetObjectPtr(snapTargetId, false).GetSnapRect();
 
         // Create a copy of the target rectangle centered at the current position
-        positionedRect = $.extend(true, {}, targetRect);
+        // positionedRect = $.extend(true, {}, targetRect);
+        positionedRect = Utils1.DeepCopy(targetRect);
         positionedRect.x = currentPosition.x - targetRect.width / 2;
         positionedRect.y = currentPosition.y - targetRect.height / 2;
 
@@ -859,7 +861,8 @@ class DrawUtil {
         };
 
         // Create a rectangle for snapping
-        const snapRect = $.extend(true, {}, objectRect);
+        // const snapRect = $.extend(true, {}, objectRect);
+        const snapRect = Utils1.DeepCopy(objectRect);
         snapRect.x = currentPosition.x - objectRect.width / 2;
         snapRect.y = currentPosition.y - objectRect.height / 2;
 
@@ -1565,7 +1568,8 @@ class DrawUtil {
           docCoords.x = snapPoint.x;
           docCoords.y = snapPoint.y;
         } else {
-          let tempSnapRect = $.extend(true, {}, snapRect);
+          // let tempSnapRect = $.extend(true, {}, snapRect);
+          let tempSnapRect = Utils1.DeepCopy(snapRect);
           tempSnapRect.x = docCoords.x - snapRect.width / 2;
           tempSnapRect.y = docCoords.y - snapRect.height / 2;
           let snapAdjustment = T3Gv.docUtil.SnapRect(tempSnapRect);
@@ -2020,7 +2024,8 @@ class DrawUtil {
       SvgUtil.RenderDirtySVGObjectsNoSetMouse();
     }
 
-    T3Gv.opt.actionBBox = $.extend(true, {}, drawingObject.Frame);
+    // T3Gv.opt.actionBBox = $.extend(true, {}, drawingObject.Frame);
+    T3Gv.opt.actionBBox = Utils1.DeepCopy(drawingObject.Frame);
     T3Gv.opt.dragEnclosingRect = drawingObject.GetDragR();
 
     LogUtil.Debug("O.Opt AddNewObject - Output:", newBlock.ID);

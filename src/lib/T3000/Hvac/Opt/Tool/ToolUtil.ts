@@ -715,7 +715,8 @@ class ToolUtil {
 
     // Create text shape attributes
     const textAttributes = {
-      StyleRecord: $.extend(true, {}, defaultTextStyle),
+      // StyleRecord: $.extend(true, {}, defaultTextStyle),
+      StyleRecord: Utils1.DeepCopy(defaultTextStyle),
       Frame: {
         x: 0,
         y: 0,
