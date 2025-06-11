@@ -1,5 +1,4 @@
 
-
 import $ from 'jquery';
 import CursorConstant from "../../Data/Constant/CursorConstant";
 import NvConstant from '../../Data/Constant/NvConstant';
@@ -1801,7 +1800,9 @@ class DrawUtil {
         let indexArray: number[] = [];
         for (let i = 0; i < associatedCount; i++) {
           const objectId = associatedList[i];
-          const indexInVisible = $.inArray(objectId, visibleZList);
+          // const indexInVisible = $.inArray(objectId, visibleZList);
+          const indexInVisible = visibleZList.indexOf(objectId);
+
           indexArray.push(indexInVisible);
         }
 

@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import StyleConstant from "../../Data/Constant/StyleConstant";
@@ -12,7 +10,6 @@ import MouseUtil from "../../Event/MouseUtil";
 import DynamicGuides from "../../Model/DynamicGuides";
 import LinkParameters from "../../Model/LinkParameters";
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -28,7 +25,6 @@ import HookUtil from './HookUtil';
 import PolyUtil from './PolyUtil';
 import DynamicUtil from './DynamicUtil';
 import TextUtil from './TextUtil';
-import QuasarUtil from '../Quasar/QuasarUtil';
 import UIUtil from '../UI/UIUtil';
 import ToolActUtil from './ToolActUtil';
 import LogUtil from '../../Util/LogUtil';

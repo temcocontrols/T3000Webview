@@ -1,10 +1,8 @@
 
 
-import HvConstant from '../Data/Constant/HvConstant'
 import DataObj from '../Data/State/DataObj'
 import T3Gv from '../Data/T3Gv'
 import SegmentData from '../Model/SegmentData'
-import $ from 'jquery'
 import StateConstant from '../Data/State/StateConstant'
 import { Dialog } from 'quasar'
 
@@ -98,6 +96,7 @@ class Utils1 {
     } else {
       result = undefined;
 
+      /*
       $.each(StateConstant.StoredObjectType, function (key, type) {
         try {
           if (storedObject.Type === type) {
@@ -108,6 +107,18 @@ class Utils1 {
           throw error;
         }
       });
+      */
+
+      for (const [key, type] of Object.entries(StateConstant.StoredObjectType)) {
+        try {
+          if (storedObject.Type === type) {
+            result = new storedObject.constructor({});
+            break; // Exit the loop when a match is found
+          }
+        } catch (error) {
+          throw error;
+        }
+      }
     }
 
     return result;

@@ -1,7 +1,7 @@
+
 import BaseShape from './S.BaseShape'
 import Utils2 from "../Util/Utils2";
 import T3Gv from '../Data/T3Gv'
-import $ from 'jquery';
 import Point from '../Model/Point'
 import Instance from '../Data/Instance/Instance';
 import NvConstant from '../Data/Constant/NvConstant'

@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import CursorConstant from "../../Data/Constant/CursorConstant";
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
@@ -9,7 +7,6 @@ import StateConstant from "../../Data/State/StateConstant";
 import T3Gv from '../../Data/T3Gv';
 import Point from '../../Model/Point';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
 import UIUtil from "../UI/UIUtil";

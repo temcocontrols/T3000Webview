@@ -1,10 +1,7 @@
 
-
-import $ from 'jquery';
 import NvConstant from '../../Data/Constant/NvConstant';
 import T3Gv from '../../Data/T3Gv';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
 import SvgUtil from "./SvgUtil";
 import Utils2 from '../../Util/Utils2';
@@ -86,7 +83,8 @@ class LayerUtil {
     // Search through all layers for the object
     for (let layerIndex = 0; layerIndex < numberOfLayers; ++layerIndex) {
       const zList = layersManager.layers[layerIndex].zList;
-      const indexInList = $.inArray(objectId, zList);
+      // const indexInList = $.inArray(objectId, zList);
+      const indexInList = zList.indexOf(objectId);
 
       if (indexInList != -1) {
         // Remove the object from the list when found
@@ -224,11 +222,18 @@ class LayerUtil {
 
     for (let layerIndex = 0; layerIndex < layerCount; layerIndex++) {
       const zList = layers[layerIndex].zList;
+
+      /*
       if ($.inArray(shapeId, zList) !== -1) {
         LogUtil.Debug("O.Opt FindLayerForShapeID - Output:", { result: layerIndex });
         return layerIndex;
       }
-    }
+      */
+
+      if (zList.indexOf(shapeId) !== -1) {
+        LogUtil.Debug("O.Opt FindLayerForShapeID - Output:", { result: layerIndex });
+        return layerIndex;
+      }  }
 
     LogUtil.Debug("O.Opt FindLayerForShapeID - Output:", { result: -1 });
     return -1;

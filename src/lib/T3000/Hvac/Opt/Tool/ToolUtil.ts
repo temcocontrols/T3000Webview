@@ -717,18 +717,8 @@ class ToolUtil {
     const textAttributes = {
       // StyleRecord: $.extend(true, {}, defaultTextStyle),
       StyleRecord: Utils1.DeepCopy(defaultTextStyle),
-      Frame: {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0
-      },
-      TMargins: {
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0
-      },
+      Frame: { x: 0, y: 0, width: 0, height: 0 },
+      TMargins: { top: 0, left: 0, bottom: 0, right: 0 },
       TextGrow: NvConstant.TextGrowBehavior.Horizontal,
       TextAlign: TextConstant.TextAlign.Left,
       flags: NvConstant.ObjFlags.TextOnly

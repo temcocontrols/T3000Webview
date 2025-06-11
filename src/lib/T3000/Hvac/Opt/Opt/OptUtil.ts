@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import Document from '../../Basic/B.Document';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
@@ -2664,7 +2662,8 @@ class OptUtil {
         }
         // Avoid copying functions
         else if (sourceType !== 'function') {
-          targetObject[propertyName] = $.extend(true, new sourceValue.constructor(), sourceValue);
+          // targetObject[propertyName] = $.extend(true, new sourceValue.constructor(), sourceValue);
+          targetObject[propertyName] = Object.assign(new sourceValue.constructor(), Utils1.DeepCopy(sourceValue));
         }
       }
       // Handle existing target properties
@@ -2686,7 +2685,8 @@ class OptUtil {
         // Avoid copying functions
         else if (targetType !== 'function') {
           // Create a copy of the existing object to preserve its type
-          const targetCopy = $.extend(true, new targetValue.constructor(), targetValue);
+          // const targetCopy = $.extend(true, new targetValue.constructor(), targetValue);
+          const targetCopy = Object.assign(new targetValue.constructor(), Utils1.DeepCopy(targetValue));
           targetObject[propertyName] = targetCopy;
 
           // Recursively apply properties

@@ -1,16 +1,12 @@
 
-
 import BaseLine from './S.BaseLine'
 import Utils1 from '../Util/Utils1';
 import Utils2 from "../Util/Utils2";
 import T3Gv from '../Data/T3Gv'
 import NvConstant from '../Data/Constant/NvConstant'
-import ShapeUtil from '../Opt/Shape/ShapeUtil';
-import DSConstant from '../Opt/DS/DSConstant';
 import Point from '../Model/Point';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
-import T3Util from '../Util/T3Util';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';

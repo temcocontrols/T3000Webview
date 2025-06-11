@@ -1,6 +1,4 @@
 
-
-import $ from 'jquery';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
 import ShapeConstant from "../../Data/Constant/ShapeConstant";
@@ -80,7 +78,8 @@ class SelectUtil {
 
     // Get the selected list and check if object is already selected
     const selectedList = T3Gv.stdObj.GetObject(T3Gv.opt.selectObjsBlockId).Data;
-    var indexInSelectedList = $.inArray(objectId, selectedList);
+    // var indexInSelectedList = $.inArray(objectId, selectedList);
+    const indexInSelectedList = selectedList.indexOf(objectId);
 
     // Prepare array with object to select
     let objectsToSelect = [];
@@ -141,7 +140,8 @@ class SelectUtil {
 
       // Handle existing target selection state
       if (selectedIndex >= 0) {
-        const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        // const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        const indexInSelectedList = selectedList.indexOf(selectedIndex);
         if (isMultipleSelection) {
           if (indexInSelectedList >= 0) {
             selectedIndex = -1;
@@ -159,7 +159,8 @@ class SelectUtil {
         const object = ObjectUtil.GetObjectPtr(objectId, false);
 
         if (object) {
-          const indexInSelectedList = $.inArray(objectId, selectedList);
+          // const indexInSelectedList = $.inArray(objectId, selectedList);
+          const indexInSelectedList = selectedList.indexOf(objectId);
 
           // If object not in selection list, add it
           if (indexInSelectedList === -1) {
@@ -181,7 +182,9 @@ class SelectUtil {
 
       // Ensure selectedIndex is valid
       if (selectedIndex >= 0) {
-        const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        // const indexInSelectedList = $.inArray(selectedIndex, selectedList);
+        const indexInSelectedList = selectedList.indexOf(selectedIndex);
+
         if (indexInSelectedList < 0) {
           selectedIndex = -1;
         }
@@ -379,8 +382,16 @@ class SelectUtil {
     selectState.allowcopy = selectState.nselect > 0;
 
     // Create copy of selection attributes for UI
+
+    /*
     const selectionAttributes = new SelectionAttr();
     $.extend(true, selectionAttributes, selectState);
+    */
+
+    const selectionAttributes = Object.assign(
+      new SelectionAttr(),
+      Utils1.DeepCopy(selectState)
+    );
 
     // Handle pixel to point conversion for font size if needed
     if (T3Gv.docUtil.rulerConfig.showpixels && selectionAttributes.fontsize >= 0) {

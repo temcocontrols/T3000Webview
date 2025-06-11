@@ -1,7 +1,7 @@
+
 import T3Gv from '../../Data/T3Gv';
 import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
 import LayerUtil from "./LayerUtil";
 import SvgUtil from "./SvgUtil";
