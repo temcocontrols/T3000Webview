@@ -1,12 +1,10 @@
 
-
 import T3Gv from "../../Data/T3Gv"
 import Utils1 from "../../Util/Utils1"
 import Utils2 from "../../Util/Utils2"
 import Utils3 from "../../Util/Utils3"
 import Line from "../../Shape/S.Line"
 import Rect from "../../Shape/S.Rect"
-import $ from "jquery"
 import Polygon from "../../Shape/S.Polygon"
 import RRect from "../../Shape/S.RRect"
 import Oval from "../../Shape/S.Oval"
@@ -33,14 +31,12 @@ import DrawUtil from "../Opt/DrawUtil"
 import ToolActUtil from "../Opt/ToolActUtil"
 import LMEvtUtil from "../Opt/LMEvtUtil"
 import ToolSvgData from "./ToolSvgData"
-
 import VueCircle from "src/components/Basic/Circle.vue";
 import ObjectType2 from "src/components/NewUI/ObjectType2.vue";
 import AntdTest from "src/components/NewUI/AntdTest.vue";
 import ObjectType from "src/components/ObjectType.vue"
 import QuasarUtil from "../Quasar/QuasarUtil"
 import LogUtil from "../../Util/LogUtil"
-
 
 class ToolUtil {
 
@@ -500,12 +496,7 @@ class ToolUtil {
     // Configure shape attributes
     if (isCircle) {
       shapeAttributes = {
-        Frame: {
-          x: initialX,
-          y: initialY,
-          width: 100,
-          height: 100
-        },
+        Frame: { x: initialX, y: initialY, width: 100, height: 100 },
         TextGrow: NvConstant.TextGrowBehavior.ProPortional,
         // ObjGrow: OptConstant.GrowBehavior.ProPortional
         ObjGrow: OptConstant.GrowBehavior.All
@@ -513,18 +504,15 @@ class ToolUtil {
       };
     } else {
       shapeAttributes = {
-        Frame: {
-          x: initialX,
-          y: initialY,
-          width: width,
-          height: height
-        },
+        Frame: { x: initialX, y: initialY, width: width, height: height },
         TextGrow: NvConstant.TextGrowBehavior.ProPortional
       };
     }
 
     // Create the oval shape
     const ovalShape = new Oval(shapeAttributes);
+
+    LogUtil.Info("= u.ToolUtil StampCircle / Oval data", ovalShape);
 
     // Use mouse stamp method to place the shape
     DrawUtil.MouseStampNewShape(ovalShape, true, true, true, null, null);

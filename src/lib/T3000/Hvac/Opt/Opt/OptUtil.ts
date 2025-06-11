@@ -7339,11 +7339,12 @@ class OptUtil {
 
           const originalObject = shapeData;
 
-          LogUtil.Info("= O.OptUtil  LoadLibrary - Original object data:", originalObject);
+          LogUtil.Info("= o.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", originalObject);
 
           // Clone the object data but create a proper instance based on type
-          let newObject;
+          let newObject=shapeData;
 
+          /*
           // Determine the object type and create appropriate instance
           switch (originalObject.objecttype) {
             case PolygonConstant.ShapeTypes.RECTANGLE:
@@ -7363,6 +7364,7 @@ class OptUtil {
               // Default to base shape for unknown types
               newObject = new Instance.Shape.BaseDrawObject(originalObject);
           }
+          */
 
           if (newObject) {
             // Position the object relative to center position with offset
@@ -7373,10 +7375,11 @@ class OptUtil {
               false
             );
 
-            LogUtil.Debug("= O.OptUtil  LoadLibrary - Creating object:", newObject);
-
             // Add the new object to document
-            const newObjectId = DrawUtil.AddNewObject(newObject, false, true);
+            const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
+
+            LogUtil.Info("= o.OptUtil: LoadLibrary - newObject,newObjectId:", newObject,newObjectId);
+
             if (newObjectId >= 0) {
               newObjectIds.push(newObjectId);
 
@@ -7400,7 +7403,7 @@ class OptUtil {
 
       // Select all newly created objects
       if (newObjectIds.length > 0) {
-        this.SelectObjects(newObjectIds, false, true);
+        // this.SelectObjects(newObjectIds, false, true);
         SvgUtil.RenderAllSVGObjects();
         DrawUtil.CompleteOperation(newObjectIds);
       }

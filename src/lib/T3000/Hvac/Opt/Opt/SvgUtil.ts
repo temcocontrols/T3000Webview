@@ -232,7 +232,7 @@ class SvgUtil {
     let svgDocument = T3Gv.opt.svgDoc;
     let drawingObject = T3Gv.stdObj.GetObject(objectId);
 
-    LogUtil.Info("= U.SvgUtil: AddSVGObject - Drawing object:", drawingObject);
+    LogUtil.Info("= u.SvgUtil: AddSVGObject / stdObj's object: objectId,stdObj,drawingObj", objectId, T3Gv.stdObj, drawingObject);
 
     if (!drawingObject) {
       LogUtil.Info("= U.SvgUtil: AddSVGObject - Output: No drawing object found.");
