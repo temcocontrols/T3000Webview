@@ -10,6 +10,7 @@ import CursorConstant from '../Data/Constant/CursorConstant';
 import T3Util from '../Util/T3Util';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import LogUtil from '../Util/LogUtil';
+import Utils1 from '../Util/Utils1';
 
 /**
  * Represents a base symbol shape in the T3000 HVAC visualization system.
@@ -112,7 +113,9 @@ class BaseSymbol extends BaseShape {
     frameHeight += scaleKnobSize;
 
     // Adjust the frame boundaries
-    const adjustedFrame = $.extend(true, {}, frame);
+    // const adjustedFrame = $.extend(true, {}, frame);
+    const adjustedFrame=Utils1.DeepCopy(frame);
+
     adjustedFrame.x -= scaleKnobSize / 2;
     adjustedFrame.y -= scaleKnobSize / 2;
     adjustedFrame.width += scaleKnobSize;

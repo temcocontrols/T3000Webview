@@ -137,7 +137,8 @@ class FreehandLine extends BaseLine {
         rect.height = 1;
       }
 
-      this.Frame = $.extend(true, {}, rect);
+      // this.Frame = $.extend(true, {}, rect);
+      this.Frame = Utils1.DeepCopy(rect);
     }
 
     this.UpdateFrame(this.Frame);
@@ -334,7 +335,8 @@ class FreehandLine extends BaseLine {
     width += scaledKnobSize;
     height += scaledKnobSize;
 
-    let extendedFrame = $.extend(true, {}, frame);
+    // let extendedFrame = $.extend(true, {}, frame);
+    let extendedFrame = Utils1.DeepCopy(frame);
     extendedFrame.x -= scaledKnobSize / 2;
     extendedFrame.y -= scaledKnobSize / 2;
     extendedFrame.width += scaledKnobSize;
@@ -414,7 +416,8 @@ class FreehandLine extends BaseLine {
       y: mouseY
     };
 
-    let newBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    // let newBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    let newBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);
     let deltaX = 0;
     let deltaY = 0;
 
@@ -437,7 +440,8 @@ class FreehandLine extends BaseLine {
           newBBox.height = -newBBox.height;
         }
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        // T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(newBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, currentPoint);
         break;
 
@@ -457,7 +461,8 @@ class FreehandLine extends BaseLine {
           newBBox.height = -newBBox.height;
         }
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        // T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(newBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, currentPoint);
         break;
 
@@ -475,7 +480,8 @@ class FreehandLine extends BaseLine {
           newBBox.height = -newBBox.height;
         }
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        // T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(newBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, currentPoint);
         break;
 
@@ -495,7 +501,8 @@ class FreehandLine extends BaseLine {
           newBBox.height = -newBBox.height;
         }
 
-        T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        // T3Gv.opt.actionNewBBox = $.extend(true, {}, newBBox);
+        T3Gv.opt.actionNewBBox = Utils1.DeepCopy(newBBox);
         this.HandleActionTriggerCallResize(T3Gv.opt.actionNewBBox, true, currentPoint);
         break;
     }
@@ -558,8 +565,11 @@ class FreehandLine extends BaseLine {
    * @param cursorPoint - The current cursor position
    */
   HandleActionTriggerCallResize(newFrame, updateFlag, cursorPoint) {
-    this.prevBBox = $.extend(true, {}, this.Frame);
-    let originalFrame = $.extend(false, {}, this.Frame);
+    // this.prevBBox = $.extend(true, {}, this.Frame);
+    // let originalFrame = $.extend(false, {}, this.Frame);
+
+    this.prevBBox = Utils1.DeepCopy(this.Frame);
+    let originalFrame = Utils1.DeepCopy(this.Frame);
 
     // Enforce minimum dimensions
     if (newFrame.width < OptConstant.Common.MinDim) {
@@ -618,7 +628,8 @@ class FreehandLine extends BaseLine {
       let triggerData = {
         action: updateFlag,
         prevBBox: this.prevBBox,
-        trect: $.extend(true, {}, this.trect)
+        // trect: $.extend(true, {}, this.trect)
+        trect: Utils1.DeepCopy(this.trect),
       };
 
       this.UpdateDrawing(T3Gv.opt.actionSvgObject);

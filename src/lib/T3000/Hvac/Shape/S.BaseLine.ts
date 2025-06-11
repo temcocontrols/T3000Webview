@@ -603,7 +603,8 @@ class BaseLine extends BaseDrawObject {
     let arrowheadBounds;
     let shapeElement;
     let frame = inputFrame || this.Frame;
-    let lineTextRect = this.LineTextX ? $.extend(true, {}, this.trect) : null;
+    // let lineTextRect = this.LineTextX ? $.extend(true, {}, this.trect) : null;
+    let lineTextRect = this.LineTextX ? Utils1.DeepCopy(this.trect) : null;
     let lineThickness = this.StyleRecord?.Line?.Thickness || 0;
     let minLineThickness = Math.max(lineThickness, OptConstant.Common.MinWidth);
 
@@ -611,7 +612,8 @@ class BaseLine extends BaseDrawObject {
     super.UpdateFrame(frame);
 
     // Copy the line rectangle and adjust its position
-    let adjustedLineRect = $.extend(true, {}, this.linetrect);
+    // let adjustedLineRect = $.extend(true, {}, this.linetrect);
+    let adjustedLineRect = Utils1.DeepCopy(this.linetrect);
     adjustedLineRect.x += this.Frame.x;
     adjustedLineRect.y += this.Frame.y;
 
@@ -924,7 +926,8 @@ class BaseLine extends BaseDrawObject {
 
     const actionStartX = T3Gv.opt.actionStartX;
     const actionStartY = T3Gv.opt.actionStartY;
-    const actionBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    // const actionBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    const actionBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);
     let adjustedPoint = {};
 
     function adjustPoint(x: number, y: number, rect: any): { x: number; y: number } {
@@ -1764,8 +1767,11 @@ class BaseLine extends BaseDrawObject {
       }
     }
 
-    T3Gv.opt.actionBBox = $.extend(true, {}, svgFrame);
-    T3Gv.opt.actionNewBBox = $.extend(true, {}, svgFrame);
+    // T3Gv.opt.actionBBox = $.extend(true, {}, svgFrame);
+    // T3Gv.opt.actionNewBBox = $.extend(true, {}, svgFrame);
+    T3Gv.opt.actionBBox = Utils1.DeepCopy(svgFrame);
+    T3Gv.opt.actionNewBBox = Utils1.DeepCopy(svgFrame);
+
     LayerUtil.HideOverlayLayer();
     T3Gv.opt.actionStartX = startX;
     T3Gv.opt.actionStartY = startY;
@@ -1797,8 +1803,10 @@ class BaseLine extends BaseDrawObject {
     T3Gv.opt.rotatePivotY = frame.y + frame.height / T3Gv.opt.rotateKnobCenterDivisor.y;
 
     // Store the start and end points
-    T3Gv.opt.rotateStartPoint = $.extend(true, {}, this.StartPoint);
-    T3Gv.opt.rotateEndPoint = $.extend(true, {}, this.EndPoint);
+    // T3Gv.opt.rotateStartPoint = $.extend(true, {}, this.StartPoint);
+    // T3Gv.opt.rotateEndPoint = $.extend(true, {}, this.EndPoint);
+    T3Gv.opt.rotateStartPoint = Utils1.DeepCopy(this.StartPoint);
+    T3Gv.opt.rotateEndPoint = Utils1.DeepCopy(this.EndPoint);
 
     LogUtil.Debug("= S.BaseLine: BeforeRotate output:", {
       rotateStartRotation: T3Gv.opt.rotateStartRotation,
@@ -2869,7 +2877,8 @@ class BaseLine extends BaseDrawObject {
     LogUtil.Debug("= S.BaseLine: Computed deltaX:", deltaX, "deltaY:", deltaY, "distance:", distance);
 
     // Make a deep copy of the action bounding box
-    const actionBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    // const actionBBox = $.extend(true, {}, T3Gv.opt.actionBBox);
+    const actionBBox = Utils1.DeepCopy(T3Gv.opt.actionBBox);
     LogUtil.Debug("= S.BaseLine: actionBBox:", actionBBox);
 
     // Adjust the line end point
@@ -3570,7 +3579,8 @@ class BaseLine extends BaseDrawObject {
 
     // If LineTextX is valid, copy the text rectangle from the input parameters
     if (this.LineTextX) {
-      this.trect = $.extend(true, {}, params.trect);
+      // this.trect = $.extend(true, {}, params.trect);
+      this.trect = Utils1.DeepCopy(params.trect);
     }
 
     LogUtil.Debug("= S.BaseLine: CalcTextPosition output:", {
@@ -3666,7 +3676,8 @@ class BaseLine extends BaseDrawObject {
 
     // Update vertical alignment of the text object
     textObj.SetVerticalAlignment('top');
-    this.linetrect = $.extend(true, {}, this.Frame);
+    // this.linetrect = $.extend(true, {}, this.Frame);
+    this.linetrect = Utils1.DeepCopy(this.Frame);
 
     // Calculate offsets if LineTextY is provided
     if (this.LineTextY) {
@@ -3858,7 +3869,8 @@ class BaseLine extends BaseDrawObject {
       centerPoint.x += this.Frame.x;
       centerPoint.y += this.Frame.y;
       this.linetrect = ToolActUtil.RotateRect(this.linetrect, centerPoint, angleDegrees);
-      let tempRect = $.extend(true, {}, this.linetrect);
+      // let tempRect = $.extend(true, {}, this.linetrect);
+      let tempRect = Utils1.DeepCopy(this.linetrect);
       TextUtil.TextPinFrame(this.linetrect, textHeight);
       this.linetrect.x = this.linetrect.x - this.Frame.x;
       this.linetrect.y = this.linetrect.y - this.Frame.y;
@@ -4168,7 +4180,8 @@ class BaseLine extends BaseDrawObject {
       let height = frameRect.height + scaledKnobSize;
 
       // Expand the frame rectangle for proper knob placement
-      const expandedFrame = $.extend(true, {}, frameRect);
+      // const expandedFrame = $.extend(true, {}, frameRect);
+      let expandedFrame = Utils1.DeepCopy(frameRect);
       expandedFrame.x -= scaledKnobSize / 2;
       expandedFrame.y -= scaledKnobSize / 2;
       expandedFrame.width += scaledKnobSize;

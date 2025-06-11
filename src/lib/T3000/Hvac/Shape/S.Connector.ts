@@ -1001,7 +1001,8 @@ class Connector extends BaseDrawObject {
     const frame = this.Frame;
     let frameWidth = frame.width + scaledKnobSize;
     let frameHeight = frame.height + scaledKnobSize;
-    const adjustedFrame = $.extend(true, {}, frame);
+    // const adjustedFrame = $.extend(true, {}, frame);
+    const adjustedFrame = Utils1.DeepCopy(frame);
     adjustedFrame.x -= scaledKnobSize / 2;
     adjustedFrame.y -= scaledKnobSize / 2;
     adjustedFrame.width += scaledKnobSize;
@@ -1088,7 +1089,8 @@ class Connector extends BaseDrawObject {
       targetObject.objecttype !== NvConstant.FNObjectTypes.SD_OBJT_CAUSEEFFECT_BRANCH*/) {
       for (let hookIndex = 0; hookIndex < targetObject.hooks.length; hookIndex++) {
         // Make a copy of current knob settings for restoration after modifications
-        const knobSettingsCopy = $.extend(true, {}, knobSettings);
+        // const knobSettingsCopy = $.extend(true, {}, knobSettings);
+        const knobSettingsCopy = Utils1.DeepCopy(knobSettings);
         let triggerIndex: number;
         if (bothSides) {
           // Depending on hook point type, set trigger index and remove previously added knob.
@@ -1133,7 +1135,8 @@ class Connector extends BaseDrawObject {
           hookKnob.SetUserData(triggerIndex);
           actionGroup.AddElement(hookKnob);
           // Restore knob settings from copy for next iteration.
-          knobSettings = $.extend(true, {}, knobSettingsCopy);
+          // knobSettings = $.extend(true, {}, knobSettingsCopy);
+          knobSettings = Utils1.DeepCopy(knobSettingsCopy);
         }
       }
     }
@@ -1251,7 +1254,8 @@ class Connector extends BaseDrawObject {
       let frameWidth = frameRect.width;
       let frameHeight = frameRect.height;
       // Extend the frame rectangle to include connection points
-      const extendedFrame = $.extend(true, {}, frameRect);
+      // const extendedFrame = $.extend(true, {}, frameRect);
+      const extendedFrame = Utils1.DeepCopy(frameRect);
       extendedFrame.x -= connectPtSize / 2;
       extendedFrame.y -= connectPtSize / 2;
       extendedFrame.width += connectPtSize;
@@ -2609,7 +2613,8 @@ class Connector extends BaseDrawObject {
     const svgContainer = T3Gv.opt.actionSvgObject;
     const shapeElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Shape);
     const slopElement = svgContainer.GetElementById(OptConstant.SVGElementClass.Slop);
-    const frameRect = $.extend(true, {}, this.Frame);
+    // const frameRect = $.extend(true, {}, this.Frame);
+    const frameRect = Utils1.DeepCopy(this.Frame);
     const styleFlags = OptConstant.AStyles;
     const connectorDefines = OptConstant.ConnectorDefines;
 

@@ -11,6 +11,7 @@ import T3Util from '../Util/T3Util';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
 import LogUtil from '../Util/LogUtil';
+import Utils1 from '../Util/Utils1';
 
 /**
  * A specialized symbol class for rendering 3D symbols in T3000 applications.
@@ -314,7 +315,8 @@ class D3Symbol extends BaseSymbol {
     const renderSettings = this.d3Settings ? this.d3Settings.renderSettings : null;
 
     if (renderSettings) {
-      const params = $.extend(true, {}, renderSettings);
+      // const params = $.extend(true, {}, renderSettings);
+      const params = Utils1.DeepCopy(renderSettings);
       params.width = params.width || {};
       params.height = params.height || {};
       params.width.value = frame.width;
