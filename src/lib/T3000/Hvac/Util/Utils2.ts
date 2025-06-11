@@ -3,7 +3,7 @@ import $ from 'jquery'
 import Point from '../Model/Point'
 import Style from '../Basic/B.Element.Style';
 import T3Gv from '../Data/T3Gv';
-import T3Util from './T3Util';
+import Utils1 from './Utils1';
 
 class Utils2 {
 
@@ -873,7 +873,8 @@ class Utils2 {
       currentPoint.x = isRightToLeft ? bounds.right - xPos : bounds.left + xPos;
 
       // Create a copy of the point to avoid reference issues
-      const newPoint = $.extend(true, {}, currentPoint);
+      // const newPoint = $.extend(true, {}, currentPoint);
+      const newPoint = Utils1.DeepCopy(currentPoint);
 
       if (scaleX) {
         newPoint.x /= scaleX;

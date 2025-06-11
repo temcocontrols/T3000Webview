@@ -230,8 +230,11 @@ class SvgSymbol extends BaseSymbol {
 
     // Get the current rotation, previous bounding box and calculate offset for rotation.
     const rotation = shapeElement.GetRotation();
-    const previousBoundingBox = $.extend(true, {}, this.prevBBox);
-    const updatedBoundingBox = $.extend(true, {}, newBoundingBox);
+    // const previousBoundingBox = $.extend(true, {}, this.prevBBox);
+    // const updatedBoundingBox = $.extend(true, {}, newBoundingBox);
+    const previousBoundingBox = Utils1.DeepCopy(this.prevBBox);
+    const updatedBoundingBox = Utils1.DeepCopy(newBoundingBox);
+
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(previousBoundingBox, updatedBoundingBox, rotation);
 
     // Update the main shape size and position.
@@ -279,7 +282,9 @@ class SvgSymbol extends BaseSymbol {
       const shapeID = shapeElement.GetID();
       if (shapeID >= 0) {
         const shapeObject = ObjectUtil.GetObjectPtr(shapeID, false);
-        this.prevBBox = $.extend(true, {}, this.Frame);
+        // this.prevBBox = $.extend(true, {}, this.Frame);
+        this.prevBBox = Utils1.DeepCopy(this.Frame);
+
         const offset = this.Resize(shapeElement, newBoundingBox, shapeObject);
         LogUtil.Debug("= S.SvgSymbol | ResizeInTextEdit Output:", { offset });
         return offset;
@@ -355,7 +360,9 @@ class SvgSymbol extends BaseSymbol {
     width += adjustedKnobSize;
     height += adjustedKnobSize;
 
-    const position = $.extend(true, {}, this.Frame);
+    // const position = $.extend(true, {}, this.Frame);
+    const position = Utils1.DeepCopy(this.Frame);
+
     position.x -= adjustedKnobSize / 2;
     position.y -= adjustedKnobSize / 2;
     position.width += adjustedKnobSize;
@@ -544,7 +551,9 @@ class SvgSymbol extends BaseSymbol {
     // Create side knobs for polygon shapes
     if (hasSideKnobs) {
       const sideObj = Utils1.DeepCopy(this);
-      sideObj.inside = $.extend(true, {}, sideObj.Frame);
+      // sideObj.inside = $.extend(true, {}, sideObj.Frame);
+      sideObj.inside = Utils1.DeepCopy(sideObj.Frame);
+
       const polyPoints = T3Gv.opt
         .ShapeToPolyLine(this.BlockID, false, true, sideObj)
         .GetPolyPoints(OptConstant.Common.MaxPolyPoints, true, true, false, []);

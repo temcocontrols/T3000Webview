@@ -69,7 +69,8 @@ class Utils1 {
     }
 
     const objectInstance = getInstance(sourceObject);
-    const clonedObject = $.extend(true, objectInstance, sourceObject);
+    // const clonedObject = $.extend(true, objectInstance, sourceObject);
+    const clonedObject = Utils1.DeepCopy({ ...objectInstance, ...sourceObject });
 
     if (sourceObject.Data !== null && sourceObject.Data instanceof Object) {
       clonedObject.Data = Utils1.DeepCopy(sourceObject.Data);

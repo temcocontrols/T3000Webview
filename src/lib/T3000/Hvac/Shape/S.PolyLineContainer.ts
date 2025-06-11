@@ -361,8 +361,11 @@ class PolyLineContainer extends PolyLine {
     const startY = docCoords.y;
     const svgFrame = this.GetSVGFrame();
 
-    T3Gv.opt.actionBBox = $.extend(true, {}, svgFrame);
-    T3Gv.opt.actionNewBBox = $.extend(true, {}, svgFrame);
+    // T3Gv.opt.actionBBox = $.extend(true, {}, svgFrame);
+    // T3Gv.opt.actionNewBBox = $.extend(true, {}, svgFrame);
+    T3Gv.opt.actionBBox = Utils1.DeepCopy(svgFrame);
+    T3Gv.opt.actionNewBBox = Utils1.DeepCopy(svgFrame);
+
     SvgUtil.HideAllSVGSelectionStates();
     T3Gv.opt.actionStartX = startX;
     T3Gv.opt.actionStartY = startY;

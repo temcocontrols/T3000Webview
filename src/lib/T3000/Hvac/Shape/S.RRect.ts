@@ -14,6 +14,7 @@ import UIUtil from '../Opt/UI/UIUtil';
 import Instance from '../Data/Instance/Instance';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import LogUtil from '../Util/LogUtil';
+import Utils1 from '../Util/Utils1';
 
 
 /**
@@ -43,7 +44,7 @@ class RRect extends BaseShape {
     LogUtil.Debug("= S.RRect: constructor input:", inputParams);
     const params = inputParams || {};
     params.ShapeType = OptConstant.ShapeType.RRect;
-    params.uniType="RRect";
+    params.uniType = "RRect";
     super(params);
     this.dataclass = PolygonConstant.ShapeTypes.ROUNDED_RECTANGLE;
     LogUtil.Debug("= S.RRect: constructor output:", this);
@@ -91,7 +92,9 @@ class RRect extends BaseShape {
     const mainShape = svgDoc.CreateShape(OptConstant.CSType.RRect);
     mainShape.SetID(OptConstant.SVGElementClass.Shape);
 
-    const extendedFrame = $.extend(true, {}, this.Frame);
+    // const extendedFrame = $.extend(true, {}, this.Frame);
+    const extendedFrame = Utils1.DeepCopy(this.Frame);
+
     let style = this.StyleRecord;
     if (style.Line.BThick) {
       Utils2.InflateRect(extendedFrame, style.Line.BThick, style.Line.BThick);
@@ -172,9 +175,13 @@ class RRect extends BaseShape {
     drawingContainer.SetDimensionLinesVisibility(svgElement, false);
 
     const rotation = svgElement.GetRotation();
-    const previousBBox = $.extend(true, {}, this.prevBBox);
-    const dimensionClone = $.extend(true, {}, newDimensions);
-    const inflatedDimensions = $.extend(true, {}, newDimensions);
+    // const previousBBox = $.extend(true, {}, this.prevBBox);
+    // const dimensionClone = $.extend(true, {}, newDimensions);
+    // const inflatedDimensions = $.extend(true, {}, newDimensions);
+    const previousBBox = Utils1.DeepCopy(this.prevBBox);
+    const dimensionClone = Utils1.DeepCopy(newDimensions);
+    const inflatedDimensions = Utils1.DeepCopy(newDimensions);
+
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(
       previousBBox,
       dimensionClone,
@@ -259,9 +266,12 @@ class RRect extends BaseShape {
     const rotation = svgElement.GetRotation();
     this.SetDimensionLinesVisibility(svgElement, false);
 
-    const oldFrame = $.extend(true, {}, this.Frame);
-    const dimensionClone = $.extend(true, {}, newDimensions);
-    const inflatedDimensions = $.extend(true, {}, newDimensions);
+    // const oldFrame = $.extend(true, {}, this.Frame);
+    // const dimensionClone = $.extend(true, {}, newDimensions);
+    // const inflatedDimensions = $.extend(true, {}, newDimensions);
+    const oldFrame = Utils1.DeepCopy(this.Frame);
+    const dimensionClone = Utils1.DeepCopy(newDimensions);
+    const inflatedDimensions = Utils1.DeepCopy(newDimensions);
 
     const offset = T3Gv.opt.svgDoc.CalculateRotatedOffsetForResize(
       oldFrame,

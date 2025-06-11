@@ -14,6 +14,7 @@ import PolyUtil from '../Opt/Opt/PolyUtil';
 import VueCircle from '../../../../components/Basic/Circle.vue';
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
 import LogUtil from '../Util/LogUtil';
+import Utils1 from '../Util/Utils1';
 
 /**
  * Represents an oval shape in the HVAC visualization system.
@@ -74,7 +75,9 @@ class Oval extends BaseShape {
     LogUtil.Debug('S.Oval: Input renderer:', renderer, 'isHidden:', isHidden);
 
     const shapeContainer = renderer.CreateShape(OptConstant.CSType.ShapeContainer);
-    const frameCopy = $.extend(true, {}, this.Frame);
+    // const frameCopy = $.extend(true, {}, this.Frame);
+    const frameCopy = Utils1.DeepCopy(this.Frame);
+
     const style = this.StyleRecord;
 
     if (style.Line.BThick) {

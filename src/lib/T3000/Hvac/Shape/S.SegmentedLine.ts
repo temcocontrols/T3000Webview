@@ -2651,7 +2651,8 @@ class SegmentedLine extends BaseLine {
 
     // If there's a valid horizontal text position, copy the text rectangle
     if (this.LineTextX) {
-      this.trect = $.extend(true, {}, textPositioningParams.trect);
+      // this.trect = $.extend(true, {}, textPositioningParams.trect);
+      this.trect = Utils1.DeepCopy(textPositioningParams.trect);
     }
 
     // Set text growth behavior and update text flags
@@ -2891,7 +2892,9 @@ class SegmentedLine extends BaseLine {
     const connectedObject = ObjectUtil.GetObjectPtr(objectId, false);
 
     // Create an adjusted frame that accounts for knob dimensions
-    const adjustedFrame = $.extend(true, {}, this.Frame);
+    // const adjustedFrame = $.extend(true, {}, this.Frame);
+    const adjustedFrame = Utils1.DeepCopy(this.Frame);
+
     adjustedFrame.x -= knobSize / 2;
     adjustedFrame.y -= knobSize / 2;
     adjustedFrame.width += knobSize;
