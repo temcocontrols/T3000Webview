@@ -457,6 +457,12 @@ class DataOpt {
     }
   }
 
+  static SaveDataWithoutStringify(key: string, data: any): void {
+    if (data) {
+      localStorage.setItem(key, data);
+    }
+  }
+
   /**
    * Initializes state and object store with default values
    * Creates new instances of state, object store, and clipboard
@@ -502,7 +508,7 @@ class DataOpt {
   }
 
   static SaveT3Library(library: any): void {
-    this.SaveData(this.LIBRARY_KEY, library);
+    this.SaveDataWithoutStringify(this.LIBRARY_KEY, library);
   }
 
   /**

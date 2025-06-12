@@ -7237,64 +7237,48 @@ class OptUtil {
   }
 
   AddToLibrary() {
-    // Get currently selected objects from selection manager
-    const selectObjs = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
-    LogUtil.Debug("= U.OptUtil AddToLibrary - selectObjs:", selectObjs);
-    const selectedObjects = selectObjs.Data;
-    LogUtil.Debug("= U.OptUtil AddToLibrary - selectedObjects:", selectedObjects);
-    const objectCount = selectedObjects.length;
+    const selectedObj = T3Gv.stdObj.GetObject(this.selectObjsBlockId);
+    const selectedData = selectedObj.Data;
 
-    LogUtil.Debug("= U.OptUtil AddToLibrary - T3Gv.stdObj:", T3Gv.stdObj);
+    LogUtil.Debug("= u.OptUtil: AddToLibrary - Selected Object, Selected Data, Object Count", selectedObj, selectedData, selectedData.length);
 
     // Check if any objects are selected
-    if (objectCount === 0) {
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error: No objects selected");
+    if (selectedData.length === 0) {
+      LogUtil.Debug("= u.OptUtil: AddToLibrary - Error: No objects selected");
       return false;
     }
 
     // Process each selected object
     const libraryItems = [];
-    for (let i = 0; i < objectCount; i++) {
-      // const currentObject = ObjectUtil.GetObjectPtr(selectedObjects[i], false);
-      const currentObject = T3Gv.stdObj.GetObject(selectedObjects[i]);
-      LogUtil.Debug("= U.OptUtil AddToLibrary - currentObject:", currentObject);
+    selectedData.forEach(objectId => {
+      const currentObject = T3Gv.stdObj.GetObject(objectId);
       if (currentObject) {
         // Create a deep copy of the object for the library
         const libraryItem = Utils1.DeepCopy(currentObject);
         libraryItems.push(libraryItem);
       }
-    }
+    });
 
-    LogUtil.Debug("= O.OptUtil  AddToLibrary - Added objects to library:", libraryItems.length);
+    // Serialize the library items - handle circular references by custom serialization
+    const serializedItems = JSON.stringify(libraryItems, (key, value) => {
+      // Skip functions and handle special object types
+      if (typeof value === 'function') {
+        return undefined;
+      }
+      return value;
+    });
 
-    // Convert library items to JSON string to store in local storage
-    try {
-      // Serialize the library items - handle circular references by custom serialization
-      const serializedItems = JSON.stringify(libraryItems, (key, value) => {
-        // Skip functions and handle special object types
-        if (typeof value === 'function') {
-          return undefined;
-        }
-        return value;
-      });
+    // Save to local storage with the key "t3.library"
+    DataOpt.SaveT3Library(serializedItems);
 
-      // Save to local storage with the key "t3.library"
-      localStorage.setItem('t3.library', serializedItems);
-
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Successfully saved to local storage", {
-        itemCount: libraryItems.length,
-        storageKey: 't3.library',
-        sizeInBytes: serializedItems.length
-      });
-    } catch (error) {
-      // Handle storage errors (quota exceeded, etc.)
-      LogUtil.Debug("= O.OptUtil  AddToLibrary - Error saving to local storage:", error);
-      return false;
-    }
+    LogUtil.Debug("= u.OptUtil: AddToLibrary - Successfully saved to local storage", {
+      itemCount: libraryItems.length,
+      storageKey: 't3.library',
+      sizeInBytes: serializedItems.length
+    });
 
     // save new library to t3
     Hvac.IdxPage2.addToNewLibrary();
-
     return libraryItems;
   }
 
@@ -7398,6 +7382,7 @@ class OptUtil {
     SvgUtil.RenderAllSVGObjects();
     DrawUtil.CompleteOperation(libObjectIds);
 
+    T3Gv.opt.rClickParam = null;
     LogUtil.Debug("= u.OptUtil: LoadLibrary - Output: Successfully loaded and rendered", libObjectIds.length, libObjectIds);
     return true;
   }
