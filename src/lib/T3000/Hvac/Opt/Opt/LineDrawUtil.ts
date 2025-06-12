@@ -915,14 +915,6 @@ class LineDraw {
             }
           }
 
-          // Update UI if this is a symbol with data
-          // if (isSymbolWithData) {
-          //   if (symbolId !== GetSelectedButton()) {
-          //     SetCurrentSymbol(symbolId);
-          //   }
-          //   UpdateShapeList(shapeObject, symbolId, symbolTitle, false);
-          // }
-
           // Complete the operation
           DrawUtil.CompleteOperation(modifiedObjects);
         }

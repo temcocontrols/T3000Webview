@@ -404,7 +404,7 @@ class ToolActUtil {
       ObjectUtil.AddToDirtyList(objectId);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
     LogUtil.Debug("O.Opt MakeSameSize - Output:", "Completed");
   }
 
@@ -457,7 +457,7 @@ class ToolActUtil {
             currentObject.Flip(flipType);
           }
         }
-        DrawUtil.CompleteOperation(null);
+        DrawUtil.CompleteOperation();
       }
     }
 
@@ -798,7 +798,7 @@ class ToolActUtil {
         }
 
         if (alignmentPerformed) {
-          DrawUtil.CompleteOperation(null);
+          DrawUtil.CompleteOperation();
         } else {
           LogUtil.Debug("O.Opt AlignShapes - Output: AlignHooked & UnBlockMessages");
         }
@@ -949,7 +949,7 @@ class ToolActUtil {
           }
         }
         if (selectionOverride == null) {
-          DrawUtil.CompleteOperation(null);
+          DrawUtil.CompleteOperation();
         }
       }
     }

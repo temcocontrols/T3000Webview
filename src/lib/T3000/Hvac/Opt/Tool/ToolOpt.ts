@@ -550,6 +550,7 @@ class ToolOpt {
     try {
       T3Gv.opt.CloseEdit();
       T3Gv.opt.LoadLibrary();
+      T3Gv.opt.rClickParam = null; // Reset right-click parameters
     } catch (ex) {
       T3Gv.opt.ExceptionCleanup(ex);
     }

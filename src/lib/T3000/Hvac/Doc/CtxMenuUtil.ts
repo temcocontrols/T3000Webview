@@ -481,7 +481,7 @@ class CtxMenuUtil {
         icon: CopyOutlined,
         // shortcut: 'Ctrl+Shift+L',
         type: 'item',
-        disabled: true,
+        disabled: false,
         onClick: (key) => this.HandleMenuClick(key)
       }];
 

@@ -98,7 +98,7 @@ class ToolUtil {
       }
 
       var sessionBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     }
 
     LogUtil.Debug("O.ToolOpt SetDefaultWallThickness output: void");

@@ -6141,7 +6141,7 @@ class OptUtil {
             ObjectUtil.AddToDirtyList(targetObjectId);
 
             // Complete the operation
-            DrawUtil.CompleteOperation(null);
+            DrawUtil.CompleteOperation();
           }
         } else {
           // Create new image shape
@@ -6323,7 +6323,7 @@ class OptUtil {
       }
 
       // Complete the operation
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     } else {
       // Show error if no objects are selected and forceToggle is false
       LogUtil.Debug("= O.OptUtil  Lock - Error: No objects selected");
@@ -6964,7 +6964,7 @@ class OptUtil {
 
       // Add to dirty list for rendering
       ObjectUtil.AddToDirtyList(targetObjectId, true);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
 
       // Update displayed coordinates
       const dimensions = targetObject.GetDimensionsForDisplay();
@@ -7035,7 +7035,7 @@ class OptUtil {
       ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
   }
 
   /**
@@ -7100,7 +7100,7 @@ class OptUtil {
       // Add to dirty list for rendering
       ObjectUtil.AddToDirtyList(selectedObjects[index]);
     }
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
   }
 
   /**
@@ -7355,7 +7355,8 @@ class OptUtil {
       }
 
       // Position the object relative to center position with offset
-      newObject.SetShapeOrigin(docCoords.x + offsetX, docCoords.y + offsetY, null, false);
+      // newObject.SetShapeOrigin(docCoords.x + offsetX, docCoords.y + offsetY, null, false);
+      newObject.SetShapeOrigin(coordsX, coordsY, null, false);
 
       // Add the new object to document
       const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
@@ -7367,9 +7368,6 @@ class OptUtil {
       }
 
       newObjectIds.push(newObjectId);
-
-      // Draw the shape using SvgUtil.AddSVGObject as requested
-      SvgUtil.AddSVGObject(i, newObjectId, false, true);
 
       // Update offset for next object
       offsetX += newObject.Frame.width + padding;
@@ -7819,7 +7817,7 @@ class OptUtil {
     this.nudgeOpen = false;
 
     // Complete the current operation with null parameter
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug("= O.OptUtil  CloseOpenNudge - Input/Output: Nudge closed and operation completed");
   }

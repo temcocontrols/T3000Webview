@@ -640,7 +640,7 @@ class LMEvtUtil {
     }
 
     // Complete the operation and clean up
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     if (!moveData) {
       if (waslastOpDuplicate) {

@@ -592,7 +592,7 @@ class LayerUtil {
 
     // Complete the drawing operation unless skipped
     if (!skipDrawComplete) {
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     }
   }
 }

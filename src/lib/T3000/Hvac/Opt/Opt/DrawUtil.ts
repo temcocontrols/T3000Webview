@@ -369,7 +369,7 @@ class DrawUtil {
       // Get document information
       const docInfo = T3Gv.opt.svgDoc.docInfo;
       let isOutsideWorkArea = false;
-      const objectsToSelect = [];
+      const objectIdsToSelect = [];
 
       // Reset auto-scroll timer
       this.ResetAutoScrollTimer();
@@ -495,13 +495,13 @@ class DrawUtil {
 
       // Build selection list
       if (!isTextOnlyObject) {
-        objectsToSelect.push(T3Gv.opt.actionStoredObjectId);
+        objectIdsToSelect.push(T3Gv.opt.actionStoredObjectId);
       }
 
       // Handle move list if present
       if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-        objectsToSelect.length = 0;
-        objectsToSelect.push(...T3Gv.opt.moveList);
+        objectIdsToSelect.length = 0;
+        objectIdsToSelect.push(...T3Gv.opt.moveList);
         T3Gv.opt.actionStoredObjectId = -1;
       } else {
         ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
@@ -546,7 +546,7 @@ class DrawUtil {
       UIUtil.SetModalOperation(OptConstant.OptTypes.None);
 
       // Complete the operation
-      this.CompleteOperation(objectsToSelect);
+      this.CompleteOperation(objectIdsToSelect);
 
       QuasarUtil.AddCurrentObjectToAppState();
 
@@ -1149,7 +1149,7 @@ class DrawUtil {
       let objectIndex, objectCount, currentObject, replacedObjectId;
       const docInfo = T3Gv.opt.svgDoc.docInfo;
       let isOutsideWorkArea = false;
-      const objectsToSelect = [];
+      const objectIdsToSelect = [];
 
       // Check if cursor is outside the document's visible area
       if (event.clientX >= docInfo.dispX + docInfo.dispWidth) {
@@ -1266,7 +1266,7 @@ class DrawUtil {
       T3Gv.opt.UnbindDragDropOrStamp();
 
       if (!isTextOnlyObject) {
-        objectsToSelect.push(T3Gv.opt.actionStoredObjectId);
+        objectIdsToSelect.push(T3Gv.opt.actionStoredObjectId);
       }
 
       // Get operation mng for the target object
@@ -1282,8 +1282,8 @@ class DrawUtil {
 
       // Update selection list based on move list or single object
       if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-        objectsToSelect.length = 0;
-        objectsToSelect.push(...T3Gv.opt.moveList);
+        objectIdsToSelect.length = 0;
+        objectIdsToSelect.push(...T3Gv.opt.moveList);
         T3Gv.opt.actionStoredObjectId = -1;
       } else {
         ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
@@ -1337,7 +1337,7 @@ class DrawUtil {
       UIUtil.SetModalOperation(OptConstant.OptTypes.None);
 
       // Complete the operation
-      this.CompleteOperation(objectsToSelect);
+      this.CompleteOperation(objectIdsToSelect);
 
       QuasarUtil.AddCurrentObjectToAppState();
 
@@ -1632,7 +1632,7 @@ class DrawUtil {
   static StampTextObjectOnTapDone(event, optionalParam) {
     LogUtil.Debug("O.Opt StampTextObjectOnTapDone - Input:", { event, optionalParam });
 
-    let objectIds = [];
+    let objectIdsToSelect = [];
     let docCoords = T3Gv.opt.svgDoc.ConvertWindowToDocCoords(
       event.gesture.center.clientX,
       event.gesture.center.clientY
@@ -1668,8 +1668,8 @@ class DrawUtil {
     OptCMUtil.SetEditMode(NvConstant.EditState.Default);
 
     if (T3Gv.opt.moveList && T3Gv.opt.moveList.length) {
-      ObjectUtil.DeleteObjects(objectIds, false);
-      objectIds = T3Gv.opt.moveList.slice(0);
+      ObjectUtil.DeleteObjects(objectIdsToSelect, false);
+      objectIdsToSelect = T3Gv.opt.moveList.slice(0);
       T3Gv.opt.actionStoredObjectId = -1;
     } else {
       ObjectUtil.AddToDirtyList(T3Gv.opt.actionStoredObjectId);
@@ -1680,7 +1680,7 @@ class DrawUtil {
 
     T3Gv.opt.WorkAreaHammer.on('tap', EvtUtil.Evt_WorkAreaHammerClick);
 
-    this.CompleteOperation(objectIds);
+    this.CompleteOperation(objectIdsToSelect);
 
     if (T3Gv.opt.stampCompleteCallback && T3Gv.opt.actionStoredObjectId >= 0) {
       T3Gv.opt.stampCompleteCallback(T3Gv.opt.actionStoredObjectId, T3Gv.opt.stampCompleteUserData);
@@ -1696,14 +1696,14 @@ class DrawUtil {
     LMEvtUtil.LMStampPostRelease(true);
 
     if (!isTextOnly) {
-      objectIds.push(T3Gv.opt.actionStoredObjectId);
+      objectIdsToSelect.push(T3Gv.opt.actionStoredObjectId);
     }
 
     T3Gv.opt.actionStoredObjectId = -1;
     T3Gv.opt.actionSvgObject = null;
     UIUtil.SetModalOperation(OptConstant.OptTypes.None);
 
-    LogUtil.Debug("O.Opt StampTextObjectOnTapDone - Output:", { stampedShapeId: T3Gv.opt.actionStoredObjectId, objectIds });
+    LogUtil.Debug("O.Opt StampTextObjectOnTapDone - Output:", { stampedShapeId: T3Gv.opt.actionStoredObjectId, objectIdsToSelect });
   }
 
   /**
@@ -2281,13 +2281,8 @@ class DrawUtil {
     }
   }
 
-  static CompleteOperation(
-    selectionObjects?: any,
-    preserveUndoState?: boolean,
-    fitOption?: any,
-    unusedParameter?: any
-  ) {
-    LogUtil.Debug("O.Opt CompleteOperation - Input:", { selectionObjects, preserveUndoState, fitOption, unusedParameter });
+  static CompleteOperation(objectIdsToSelect?: any, preserveUndoState?: boolean, fitOption?: any, unusedParameter?: any) {
+    LogUtil.Debug("= u.DrawUtil: CompleteOperation - Input:", { objectIdsToSelect, preserveUndoState, fitOption, unusedParameter });
 
     SvgUtil.HideAllSVGSelectionStates();
 
@@ -2299,8 +2294,8 @@ class DrawUtil {
     SvgUtil.RenderDirtySVGObjects();
     UIUtil.FitDocumentWorkArea(false, false, false, fitOption);
 
-    if (selectionObjects) {
-      SelectUtil.SelectObjects(selectionObjects, false, true);
+    if (objectIdsToSelect) {
+      SelectUtil.SelectObjects(objectIdsToSelect, false, true);
     } else {
       SvgUtil.RenderAllSVGSelectionStates();
     }

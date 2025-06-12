@@ -193,7 +193,7 @@ class TextUtil {
 
       // Complete operation if needed and not prevented
       if (operationRequired && !preventCompleteOperation) {
-        DrawUtil.CompleteOperation(null);
+        DrawUtil.CompleteOperation();
       } else {
         ObjectUtil.PreserveUndoState(false);
         SvgUtil.RenderDirtySVGObjects();
