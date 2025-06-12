@@ -1147,7 +1147,7 @@ class Polygon extends BaseShape {
       if (this.Frame.x < 0 || this.Frame.y < 0) {
         T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
       }
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
       LogUtil.Debug('S.Polygon: UpdateDimensionFromTextObj output: angleChange handled');
       return;
     }

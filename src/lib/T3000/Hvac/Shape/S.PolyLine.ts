@@ -1128,7 +1128,7 @@ class PolyLine extends BaseLine {
       }
 
       SvgUtil.ShowSVGSelectionState(svgElement.GetID(), true);
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     }
 
     LogUtil.Debug("S.PolyLine: AddCorner - output: Corner added successfully");
@@ -4549,7 +4549,7 @@ class PolyLine extends BaseLine {
       ObjectUtil.AddToDirtyList(this.BlockID);
     }
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug("S.PolyLine: UpdateDimensionFromTextObj output", { text, userData });
   }

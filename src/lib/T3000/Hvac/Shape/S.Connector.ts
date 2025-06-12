@@ -1653,7 +1653,7 @@ class Connector extends BaseDrawObject {
       }
     );
 
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug('S.Connector: HitAreaClick output');
   }
@@ -3286,7 +3286,7 @@ class Connector extends BaseDrawObject {
       }
 
       LayerUtil.ShowOverlayLayer();
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
     } catch (error) {
       Instance.Shape.BaseShape.prototype.LMActionClickExpCleanup.call(this, error);
       T3Gv.opt.ExceptionCleanup(error);

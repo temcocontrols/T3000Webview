@@ -2913,7 +2913,7 @@ class BaseShape extends BaseDrawObject {
       T3Gv.opt.actionSvgObject = null;
       // T3Gv.opt.theActionTable = null;
       LayerUtil.ShowOverlayLayer();
-      DrawUtil.CompleteOperation(null);
+      DrawUtil.CompleteOperation();
 
       LogUtil.Debug("S.BasicShape - LMActionRelease output: completed");
     } catch (error) {
@@ -5740,7 +5740,7 @@ class BaseShape extends BaseDrawObject {
     if (this.Frame.x < 0 || this.Frame.y < 0) {
       T3Gv.opt.ScrollObjectIntoView(this.BlockID, false);
     }
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
     LogUtil.Debug("= S.BaseShape - UpdateDimensionFromTextObj output: update complete");
   }
 

@@ -1427,7 +1427,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     LayerUtil.ShowOverlayLayer();
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
 
     LogUtil.Debug("= S.BaseLine: LMActionRelease completed");
   }
@@ -4979,7 +4979,7 @@ class BaseLine extends BaseDrawObject {
     }
 
     // Complete the current operation
-    DrawUtil.CompleteOperation(null);
+    DrawUtil.CompleteOperation();
     LogUtil.Debug("= S.BaseLine: Completed operation for BlockID", this.BlockID);
 
     // If frame coordinates are negative, scroll the object into view
