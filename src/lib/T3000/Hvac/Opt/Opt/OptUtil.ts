@@ -7316,7 +7316,7 @@ class OptUtil {
 
     LogUtil.Debug("= u.OptUtil: LoadLibrary - rck:", T3Gv.opt.rClickParam);
 
-    // Calculate the coordinates for placing the library objects
+    // Calculate the coordinates for placing the library objects, by default at (100, 100)
     const hasRck = T3Gv.opt.rClickParam && T3Gv.opt.rClickParam.hitPoint.x && T3Gv.opt.rClickParam.hitPoint.y;
 
     const coordsX = hasRck ? T3Gv.opt.rClickParam.hitPoint.x : 100;
@@ -7326,71 +7326,79 @@ class OptUtil {
     const docCoords = this.CalcDocCoords(coordsX, coordsY);
     LogUtil.Debug("= u.OptUtil: LoadLibrary - docCoords:", docCoords);
 
-    // Calculate position for placing the shapes
+    // Track newly created objects for selection
+    const libObjectIds = [];
+
+    // Track the offset from first shape's original position to desired position
+    let firstShapeOrigX = null;
+    let firstShapeOrigY = null;
     let offsetX = 0;
     let offsetY = 0;
-    const padding = 20; // Space between objects
-
-    // Track newly created objects for selection
-    const newObjectIds = [];
 
     // Process each library item
-    for (let i = 0; i < libraries.length; i++) {
-      const libraryItem = libraries[i];
-
+    libraries.forEach((libraryItem, index) => {
       if (!libraryItem.Data) {
-        continue;
+        return;
       }
 
       const shapeData = DataOpt.ConvertPlanObjectToShape(libraryItem.Data);
-      const originalObject = shapeData;
 
-      LogUtil.Debug("= u.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", originalObject);
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - ConvertPlanObjectToShape:", shapeData);
 
-      // Clone the object data but create a proper instance based on type
-      let newObject = shapeData;
-
-      if (!newObject) {
-        continue;
+      if (!shapeData) {
+        return;
       }
 
-      // Position the object relative to center position with offset
-      // newObject.SetShapeOrigin(docCoords.x + offsetX, docCoords.y + offsetY, null, false);
-      newObject.SetShapeOrigin(coordsX, coordsY, null, false);
+      // Keep original frame for reference
+      const originalFrame = Utils1.DeepCopy(shapeData.Frame);
+
+      // For the first shape, calculate the offset between its original position
+      // and the target position (coordsX, coordsY)
+      if (firstShapeOrigX === null) {
+        firstShapeOrigX = originalFrame.x;
+        firstShapeOrigY = originalFrame.y;
+
+        // Calculate offset from original to desired position
+        offsetX = coordsX - firstShapeOrigX;
+        offsetY = coordsY - firstShapeOrigY;
+      }
+
+      // Apply the calculated offset to maintain relative positioning
+      const newX = originalFrame.x + offsetX;
+      const newY = originalFrame.y + offsetY;
+
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - Positioning shape:", {
+        index,
+        original: { x: originalFrame.x, y: originalFrame.y },
+        new: { x: newX, y: newY },
+        offset: { x: offsetX, y: offsetY }
+      });
+
+      // Set the new position for the shape
+      shapeData.SetShapeOrigin(newX, newY, null, false);
 
       // Add the new object to document
-      const newObjectId = DrawUtil.AddNewObject(newObject, false, false);
-
-      LogUtil.Debug("= u.OptUtil: LoadLibrary - newObject,newObjectId:", newObject, newObjectId);
+      const newObjectId = DrawUtil.AddNewObject(shapeData, false, false);
 
       if (newObjectId < 0) {
-        continue;
+        return;
       }
 
-      newObjectIds.push(newObjectId);
+      libObjectIds.push(newObjectId);
 
-      // Update offset for next object
-      offsetX += newObject.Frame.width + padding;
+      LogUtil.Debug("= u.OptUtil: LoadLibrary - newObject,newObjectId:", shapeData, newObjectId);
 
-      // Wrap to next row if needed
-      if (offsetX > 800) {
-        offsetX = 0;
-        offsetY += 200 + padding;
-      }
-    }
+    });
 
-    if (newObjectIds.length <= 0) {
+    if (libObjectIds.length <= 0) {
       return false;
     }
 
-    // this.SelectObjects(newObjectIds, false, true);
-
-    // Clear any current selection
     this.CloseEdit(true);
     SvgUtil.RenderAllSVGObjects();
-    DrawUtil.CompleteOperation(newObjectIds);
+    DrawUtil.CompleteOperation(libObjectIds);
 
-    LogUtil.Debug("= u.OptUtil: LoadLibrary - Output: Successfully loaded and rendered", newObjectIds.length, "objects");
+    LogUtil.Debug("= u.OptUtil: LoadLibrary - Output: Successfully loaded and rendered", libObjectIds.length, libObjectIds);
     return true;
   }
 

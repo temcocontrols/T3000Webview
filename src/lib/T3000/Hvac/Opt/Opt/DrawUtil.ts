@@ -2281,6 +2281,29 @@ class DrawUtil {
     }
   }
 
+  /**
+   * Finalizes a drawing or editing operation in the T3000 system.
+   *
+   * This method handles the cleanup and state management after a drawing/editing operation
+   * is complete. It manages SVG selection states, dynamic guides, link updates, rendering,
+   * object selection, and workspace view adjustments.
+   *
+   * @param objectIdsToSelect - Optional array of object IDs to select after the operation completes
+   * @param preserveUndoState - Optional flag to prevent updating the undo state (true = preserve current undo state)
+   * @param fitOption - Optional configuration for how to fit the workspace view after the operation
+   * @param unusedParameter - Reserved parameter not currently used
+   *
+   * @remarks
+   * The method performs several cleanup tasks:
+   * - Hides all SVG selection states
+   * - Removes dynamic guides
+   * - Updates links and line hops
+   * - Renders any dirty SVG objects
+   * - Fits the document work area according to specified options
+   * - Selects objects if IDs are provided
+   * - Preserves undo state (if not explicitly prevented)
+   * - Shows coordinates and resets operation flags
+   */
   static CompleteOperation(objectIdsToSelect?: any, preserveUndoState?: boolean, fitOption?: any, unusedParameter?: any) {
     LogUtil.Debug("= u.DrawUtil: CompleteOperation - Input:", { objectIdsToSelect, preserveUndoState, fitOption, unusedParameter });
 
