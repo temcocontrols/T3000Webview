@@ -575,6 +575,15 @@ class ToolOpt {
       T3Gv.opt.ExceptionCleanup(ex);
     }
   }
+
+  ClearContextMenu() {
+    try {
+      QuasarUtil.ShowContextMenu(false, "DocumentArea", "Default");
+    }
+    catch (ex) {
+      T3Gv.opt.ExceptionCleanup(ex);
+    }
+  }
 }
 
 export default ToolOpt

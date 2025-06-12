@@ -1,18 +1,8 @@
 
-
 import T3Gv from "../Data/T3Gv";
-import DataOpt from "../Opt/Data/DataOpt";
-import ObjectUtil from "../Opt/Data/ObjectUtil";
-import DrawUtil from "../Opt/Opt/DrawUtil";
-import LayerUtil from "../Opt/Opt/LayerUtil";
-import SvgUtil from "../Opt/Opt/SvgUtil";
 import PolygonConstant from "../Opt/Polygon/PolygonConstant";
 import ToolOpt from "../Opt/Tool/ToolOpt"
 import $ from 'jquery'
-import UIUtil from "../Opt/UI/UIUtil";
-import Hvac from "../Hvac";
-import T3Opt from "../Doc/T3Opt";
-import T3Util from "../Util/T3Util";
 import LogUtil from "../Util/LogUtil";
 
 class EvtOpt {
@@ -157,6 +147,8 @@ class EvtOpt {
       this.BindDuct12Event();
 
       this.BindResetScaleEvent();
+
+      this.BindDocumentAreaEvent();
     });
   }
 
@@ -1162,6 +1154,12 @@ class EvtOpt {
   BindResetScaleEvent() {
     $("#btn_try_Reset_Scale").on("pointerdown", (event) => {
       EvtOpt.toolOpt.ResetScaleAct(event);
+    });
+  }
+
+  BindDocumentAreaEvent() {
+    $("#document-area").on("pointerdown", (event) => {
+      EvtOpt.toolOpt.ClearContextMenu();
     });
   }
 }
